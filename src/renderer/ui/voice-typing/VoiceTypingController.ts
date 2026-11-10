@@ -1,6 +1,6 @@
+import { SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "../../../ipc/module-service-channels";
 import { errMessage } from "../../../shared/utils";
 import { api } from "../../../ipc/renderer/api";
-import { SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "../../../ipc/module-service-channels";
 import { EventEndpoint } from "../../../ipc/api-types";
 import { settings } from "../../api/settings";
 import { ui } from "../../api/ui";
@@ -9,6 +9,7 @@ import { normalizeVoiceTypingShortcut } from "../../../shared/voice-typing-short
 import { toClipboard } from "../../core/utils/utils";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 import type { VoiceTypingOverlayState } from "./VoiceTypingOverlayView";
+import { claimSpeechPort } from "../speech/speech-port-inbox";
 import { liveSpeechSessionCoordinator } from "../speech/LiveSpeechSessionCoordinator";
 import { SpeechTranscriptionProvider } from "../speech/SpeechTranscriptionProvider";
 import { createSpeechServiceChannel, type SpeechServiceChannel } from "../speech/SpeechServiceChannel";
@@ -17,7 +18,6 @@ import { microphoneOptions, reportMicrophoneStatus, watchMicrophoneSettings } fr
 import { resolveMicrophoneDevice } from "../speech/microphone-device";
 import { openPrivateLoopback } from "../speech/private-loopback";
 
-const VOICE_BOARD_PREFIX = "voice-typing:";
 const MAX_AUDIO_MS = 300_000;
 const AUDIO_SAMPLE_RATE = 16_000;
 
@@ -70,12 +70,9 @@ export class VoiceTypingController {
     private translateShortcut = "Alt+Shift+V";
     private level = 0;
     private timer: ReturnType<typeof setInterval> | undefined;
-    private boardChannelSubscription: (() => void) | undefined;
     private shortcutSubscription: (() => void) | undefined;
     private settingsSubscription: (() => void) | undefined;
-    private readonly pendingPorts = new Map<string, MessagePort>();
     private providerDiscovery: SpeechTranscriptionProvider | undefined;
-    private readonly portWaiters = new Map<string, (port: MessagePort) => void>();
     private readonly onState: (state: VoiceTypingOverlayState) => void;
 
     public constructor(onState: (state: VoiceTypingOverlayState) => void) {
@@ -84,13 +81,6 @@ export class VoiceTypingController {
 
     public start(): void {
         this.providerDiscovery = new SpeechTranscriptionProvider();
-        this.boardChannelSubscription = api.onBoardServiceChannel((boardId, channelId, port) => {
-            // Every board's channel arrives on this event too; those ports belong to their board views.
-            if (!boardId.startsWith(VOICE_BOARD_PREFIX)) return;
-            const waiter = this.portWaiters.get(channelId);
-            if (waiter) { this.portWaiters.delete(channelId); waiter(port); }
-            else this.pendingPorts.set(channelId, port);
-        });
         this.shortcutSubscription = rendererEvents[EventEndpoint.eVoiceTypingShortcut].subscribe((event) => {
             if (event.action === "start") this.startSession(event.sessionId, event.mode ?? "transcribe");
             else if (event.action === "stop") this.stopSession(event.sessionId);
@@ -108,19 +98,14 @@ export class VoiceTypingController {
     }
 
     public dispose(): void {
-        this.boardChannelSubscription?.();
         this.providerDiscovery?.dispose();
         this.providerDiscovery = undefined;
         this.shortcutSubscription?.();
         this.settingsSubscription?.();
-        this.boardChannelSubscription = undefined;
         this.shortcutSubscription = undefined;
         this.settingsSubscription = undefined;
         if (this.timer) clearInterval(this.timer);
         this.timer = undefined;
-        for (const port of this.pendingPorts.values()) port.close();
-        this.pendingPorts.clear();
-        this.portWaiters.clear();
         const session = this.session;
         if (session) void this.cancelSession(session.id);
     }
@@ -188,15 +173,15 @@ export class VoiceTypingController {
         const live = features?.includes("live") ?? false;
         if (session.cancelled || this.session !== session) return;
 
-        const opened = this.waitForChannel(session);
         const channelId = await api.connectHostServiceChannel({
             interfaceId: "speech.transcribe",
             provider: provider.provider,
             version: 1,
             openMessage: { type: "transcribe", format: { encoding: "pcm-s16le", sampleRate: AUDIO_SAMPLE_RATE, channels: 1 }, ...(session.mode === "translate" ? { translate: true } : {}), ...(live ? { live: true } : {}) },
         });
-        const port = await this.waitForPort(channelId);
-        this.pendingPorts.delete(channelId);
+        const port = await claimSpeechPort(channelId, SERVICE_CHANNEL_OPEN_TIMEOUT_MS, "The provider channel did not reach the app window.");
+        if (session.cancelled || session.finished || this.session !== session) { port.close(); return; }
+        const opened = this.waitForChannel(session);
         session.channel = createSpeechServiceChannel(port);
         session.live = live;
         this.observeChannel(session);
@@ -239,21 +224,6 @@ export class VoiceTypingController {
     private waitForChannel(session: VoiceSession): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             session.accepted = { resolve, reject };
-        });
-    }
-
-    private waitForPort(channelId: string): Promise<MessagePort> {
-        const pending = this.pendingPorts.get(channelId);
-        if (pending) {
-            this.pendingPorts.delete(channelId);
-            return Promise.resolve(pending);
-        }
-        return new Promise<MessagePort>((resolve, reject) => {
-            const timer = setTimeout(() => {
-                this.portWaiters.delete(channelId);
-                reject(new Error("The provider channel did not reach the app window."));
-            }, SERVICE_CHANNEL_OPEN_TIMEOUT_MS);
-            this.portWaiters.set(channelId, (port) => { clearTimeout(timer); resolve(port); });
         });
     }
 

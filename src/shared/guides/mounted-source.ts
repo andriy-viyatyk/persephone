@@ -1,5 +1,5 @@
 /**
- * Mounting a second (third, nth) guide corpus into the single guide index (US-1406 / EPIC-100 D7).
+ * Mounting a second (third, nth) guide corpus into the single guide index.
  *
  * The app's own corpus (`assets/guides`) stays the root source. Every installed, TRUSTED board that
  * declares a `guides` folder in its `board-manifest.json` is mounted as an additional `GuideSource`

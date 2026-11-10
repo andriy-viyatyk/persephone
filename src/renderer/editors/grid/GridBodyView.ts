@@ -65,14 +65,12 @@ function gridProps(props: GridBodyViewProps, onGrid: DataGridProps["onGrid"]): D
         rows,
         getRowKey,
         rowNoun: "row",
-        // `state.search` verbatim: the empty string is the value "no search", not an absent
-        // option. US-1109 removed the trap that made this load-bearing — `invalidatePushed()`
-        // now retains its key set, so a cleared option is representable either way — but the
-        // semantic reason stands on its own.
+        // Pass `state.search` verbatim: an empty string means "no search", not an absent option.
+        // `invalidatePushed()` retains the key set, so a cleared search remains representable.
         searchString: state.search,
         // Only filters naming a live column reach av-grid — it validates the option loudly and
         // takes the whole grid down over a filter whose column is gone. Persisted filters outlive
-        // their columns routinely: toggling the CSV header row renames every column, and US-1436
+        // their columns routinely: toggling the CSV header row renames every column, and 
         // renamed header-free CSV's columns once and for all. Pruned here rather than in state, so
         // a filter whose column comes back is still there when it does.
         filters: state.filters.filter((f) =>

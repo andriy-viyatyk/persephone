@@ -1,5 +1,5 @@
 /**
- * IPC contract for per-profile browser network settings (US-1557).
+ * IPC contract for per-profile browser network settings.
  *
  * A browser profile's Electron session partition (`persist:browser-<name>`), or
  * an Incognito page's in-memory one, can be pointed at a SOCKS5/HTTP proxy.

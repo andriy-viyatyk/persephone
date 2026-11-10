@@ -20,22 +20,18 @@ export type MultiSelectViewProps<T = IListBoxItem> = MultiSelectProps<T>;
  * The multi-select dropdown: a read-only `Input` with a chevron button, and a `Popover` hosting a
  * `MultiListBox`.
  *
- * Structurally this is `SelectView` with a different list and no in-trigger search — read that class
- * first; everything about the `contentView` seam, the ref split and the native-event unwrap is the
- * same shape. Four differences are deliberate and must not be "harmonised" away:
+ * This uses `SelectView`'s content view and native-event handling with a different list and no
+ * in-trigger search. Its prop and accessibility behavior is:
  *
  * - **The trigger is `readOnly` unconditionally**, and it takes no `onChange`. There is no typing in
  *   a `MultiSelect` trigger; the search box lives inside the `MultiListBox`. `props.readOnly`
  *   therefore reaches only the root's `data-readonly` and the list.
  * - **`disabled` and `readOnly` are not equivalent here.** `MultiSelectModel.tryOpen` checks
  *   `disabled` only, so a read-only `MultiSelect` still opens (rows are inspectable, not
- *   toggleable), and the chevron is disabled on `disabled` alone. `Select` refuses both. EPIC-056
- *   C3-5 says preserve, not reconcile.
+ *   toggleable), and the chevron is disabled on `disabled` alone. `Select` refuses both.
  * - **`matchAnchorWidth` is a real prop**, defaulted in the view. `Select` hardcodes it.
- * - **The list carries `id = model.popoverId`.** The trigger has always advertised
- *   `aria-controls="…-popover"` and nothing ever carried that id, so the reference dangled in the
- *   previous implementation. C3-5 obliges this task to assert the aria pairing resolves, which a
- *   verbatim port cannot do — see US-1018 D8. This is the task's one intentional DOM delta.
+ * - **The list carries `id = model.popoverId`.** This makes the trigger's `aria-controls` reference
+ *   resolve to the popover list.
  *
  * `applyRoot` stays off the state path: it runs `applyRestProps`, which removes and re-adds every
  * `on*` listener per call, and rest props cannot have changed on a state write. `data-state` is the
@@ -272,7 +268,7 @@ export class MultiSelectView<T = IListBoxItem> extends VanillaView<MultiSelectVi
         const props = this.props;
         const { popoverResized } = this.model.state.get();
         return {
-            // The element `aria-controls` points at. See the class comment and US-1018 D8.
+            // The element `aria-controls` points at. See the class comment and.
             id: this.model.popoverId,
             items: props.items,
             value: props.value,

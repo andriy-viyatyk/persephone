@@ -2,7 +2,7 @@ import type { WikiSearchHit } from "./MnemeRootEditorModel";
 import { t } from "../../../shared/i18n/t";
 
 // =============================================================================
-// Mneme search results → markdown (US-680).
+// Mneme search results → markdown.
 //
 // `search` results are rendered as a single markdown document by
 // `MarkdownBlock` instead of bespoke result rows. Each hit's title links to its

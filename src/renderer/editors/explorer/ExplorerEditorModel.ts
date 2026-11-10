@@ -37,7 +37,7 @@ export interface ExplorerEditorState extends EditorStateBase {
     treeState?: TreeProviderViewSavedState;
     selectedHref?: string | null;
     searchState?: FileSearchState;
-    /** Whether the Boards sibling panel is open (EPIC-036 / US-761). Persisted so the panel
+    /** Whether the Boards sibling panel is open. Persisted so the panel
      *  survives restart and page-move-between-windows; Search has no analogue because its
      *  visibility is derived from `searchState`. */
     boardsOpen?: boolean;

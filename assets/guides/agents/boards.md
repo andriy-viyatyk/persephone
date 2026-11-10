@@ -11,16 +11,19 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.49.0** in this build. Bridge `1.49.0` adds toolbar breadcrumbs. Check `persephone.version` before using a
-bridge member that may not exist in an older app. Bridge `1.42.0` adds multiline board settings;
+Bridge `1.49.0` adds toolbar breadcrumbs. Check `persephone.version` before using a bridge member
+that may not exist in an older app. Bridge `1.42.0` adds multiline board settings;
 boards that rely on them must set `minBridgeVersion: "1.42.0"`. Bridge `1.43.0` adds checkbox
 multi-select controls for string settings; boards that rely on them must set
-`minBridgeVersion: "1.43.0"`. It also adds the host-service API
-`persephone.mcp.issueSessionEndpoint()`. The returned handle has `url`, `headers` containing the
-Bearer authorization header, `token`, and an idempotent `revoke()` method. Revoke it when the agent
-session ends; the host also revokes active handles during service shutdown. Because it exposes full
-app control, issuance requires the board's granted `appScripting` permission. Service boards using
-this API must declare `minBridgeVersion: "1.42.0"`. The same bridge release adds
+`minBridgeVersion: "1.43.0"`.
+<!-- board-template:exclude -->
+The host-service API `persephone.mcp.issueSessionEndpoint()` returns a handle with `url`, `headers`
+containing the Bearer authorization header, `token`, and an idempotent `revoke()` method. Revoke
+it when the agent session ends; the host also revokes active handles during service shutdown.
+Because it exposes full app control, issuance requires the board's granted `appScripting`
+permission. Service boards using this API must declare `minBridgeVersion: "1.42.0"`.
+<!-- /board-template:exclude -->
+The same bridge release adds
 `persephone.service.openChannel(openMessage)` for ordered, two-way streaming to the board's own
 service. Register one `persephone.service.onChannel((channel, openMessage, info) => ...)` handler in
 the service entry; same-board opens include `info.page.boardId`, while cross-board opens add
@@ -41,7 +44,7 @@ must declare `minBridgeVersion: "1.42.0"`. Cross-board service interfaces use pr
 `uses: [{ id: "agent.session", version: 1 }]` declarations. Every non-empty `uses` grant is Full
 access and covers providers trusted now or later. This grants messaging only: providers need their
 own trust and `service` permission, and must enforce their own approval policy for untrusted
-messages. `audio`, `agent.session`, `speech.transcribe`, `speech.synthesize`, `speech.wake`, and `text.translate` are reserved platform ids; legacy interface ids otherwise use `author/name`. For new declarations and consumers, see [Capabilities](capabilities.md).
+messages. `audio`, `agent.session`, `speech.transcribe`, `speech.synthesize`, `speech.wake`, and `text.translate` are reserved platform ids; legacy interface ids otherwise use `author/name`. For new declarations and consumers, see <!-- board-template:exclude -->[Capabilities](capabilities.md)<!-- /board-template:exclude -->.
 Consumers call `services.list(id)` to choose a provider and
 `services.connect(id, { provider, version }, openMessage?)` to connect; versions match exactly.
 Boards use these cross-board calls from board pages; use
@@ -52,13 +55,13 @@ The provider's existing `onChannel` callback receives `info.interface = { id, ve
 rechecks grants and declarations when connecting, and closes channels on trust or page lifecycle
 changes. Local caller ids are hashed so the board path is not disclosed. Boards using this API
 must declare `minBridgeVersion: "1.42.0"`. The reserved `speech.transcribe` interface has a
-[normative v1 contract](./speech-transcribe.md): consumers stream record-then-transcribe PCM audio
+<!-- board-template:exclude -->[normative v1 contract](./speech-transcribe.md)<!-- /board-template:exclude -->: consumers stream record-then-transcribe PCM audio
 and providers return one result or error per channel. The **Speech to Text** catalog board in
 `persephone-boards` provides it; **Agent Chat** gains a voice button when a provider is installed.
 Both boards require Persephone 5.0.15.
-The [speech synthesis](./speech-synthesize.md) and [wake and stop phrase](./speech-wake.md) guides define their normative v1 contracts.
+The <!-- board-template:exclude -->[speech synthesis](./speech-synthesize.md)<!-- /board-template:exclude --> and <!-- board-template:exclude -->[wake and stop phrase](./speech-wake.md)<!-- /board-template:exclude --> guides define their normative v1 contracts.
 
-The reserved `text.translate` interface has a [normative v1 contract](./text-translate.md) for
+The reserved `text.translate` interface has a <!-- board-template:exclude -->[normative v1 contract](./text-translate.md)<!-- /board-template:exclude --> for
 detection, keyed text/HTML translation, and explicit model downloads.
 Bridge `1.41.0` adds
 `persephone.trashFile(path)`, which moves a file to the OS Recycle Bin. Bridge `1.40.0` adds optional
@@ -131,7 +134,7 @@ user-facing wording:
 | `fileSystem: "board"` | Board folder and files picked in its dialogs. “Read and write files in this board's folder (including its own code) and files you pick in its dialogs.” |
 | `fileSystem: "full"` | Any accessible file. “Read and write any file you can access.” — **Full access** |
 | `openExternal: true` | Final OS/browser/application launch. “Open links or files in your browser or another app.” Opening links inside Persephone remains available without it. Without this permission, an HTTP(S) link using the OS-default-browser setting falls back to an internal Browser tab and is noted in the board log; other external schemes are blocked. |
-| `appScripting: true` | `persephone.call` and app scripts/agent tools. Capability access has separate grant rules; see [Capabilities](capabilities.md). “Control Persephone: run app scripts, open and change pages, use agent tools.” — **Full access** |
+| `appScripting: true` | `persephone.call` and app scripts/agent tools. Capability access has separate grant rules; see <!-- board-template:exclude -->[Capabilities](capabilities.md)<!-- /board-template:exclude -->. “Control Persephone: run app scripts, open and change pages, use agent tools.” — **Full access** |
 | `network: false` | Denies `persephone.fetch()`. |
 | `network: "internet"` | Public services; local/private network addresses blocked. “Connect to public internet services; local and private network addresses are blocked.” |
 | `network: "full"` | Internet, this computer and LAN. “Connect to the internet, this computer, and your local network.” — **Full access** |
@@ -534,7 +537,7 @@ author), **review it before `registerBoard`**:
 
 The full checklist — what trust actually grants, what to grep for and why, vendored-library
 supply chain, command injection, and when to re-review (an update keeps the board's existing
-trust) — is [Reviewing a board before you trust it](./board-review.md),
+trust) — is <!-- board-template:exclude -->[Reviewing a board before you trust it](./board-review.md)<!-- /board-template:exclude -->,
 `guides.agents["board-review"]`.
 
 All six calls are reached through **`script.execute`** — there are no separate board call paths for them.
@@ -553,17 +556,48 @@ blank board contains:
   **Already linked in `index.html`; don't fetch or recreate it.**
 - `board-manifest.json` — the board-identity file (already valid).
 - `lang/en.json` — the default UI messages; the starter calls `persephone.i18n.t()` to display them.
-- `CLAUDE.md` — the generic board authoring guide. **When the board is built, rewrite this file
-  to document _this_ board** (purpose, how it works, key files, run/test steps, gotchas) so a
-  future agent has instant context — see the "rewrite this file" note at its top. The generic
-  reference is always available in this resource, so it's safe to trim.
+- `CLAUDE.md` — generated from this guide when a blank board is scaffolded. **When the board is
+  built, rewrite this file to document _this_ board** (purpose, how it works, key files, run/test
+  steps, gotchas) so a future agent has instant context — see the "rewrite this file" note at its
+  top. The generic reference is always available in this resource, so it's safe to trim.
 
 Edit these with your own file tools (or `app.fs` inside another `script.execute`). The key
 surfaces:
 
+### Ship your own documentation — the `guides` folder
+
+Put the board's user and agent documentation **in the board**, so it versions and ships with the
+board independently of a Persephone release.
+
+1. Add `"guides": "guides"` to `board-manifest.json`.
+2. Create `guides/index.md` (the entry page) and any further `.md` files, including nested folders.
+3. Start every page with front matter:
+
+```markdown
+---
+title: "Using My Board"
+audience: user
+summary: "One sentence, shown beside the page in the About guide tree."
+editorId: "board"
+---
+
+# Using My Board
+...
+```
+
+`title` and `summary` are required. `audience` is `user`, `agent`, or `both`; `agent` pages stay
+hidden until the reader enables **Show agent guides**, so user and agent documentation can live
+side by side. `editorId: "board"` marks a page as documentation for this board and makes `F1` on
+one of its pages open that guide. Use the literal token `board`; the real editor id contains an
+absolute path and differs on every machine. A `## Layout` section is available as
+`guides[...].layout`.
+
+Only a **trusted** board contributes documentation. Untrusting or removing the board removes its
+pages from the guide tree and search immediately.
+
 ### Languages
 
-For app language packs, follow [`guides.agents.languages`](languages.md). The instructions below cover board language files.
+For app language packs, follow <!-- board-template:exclude -->[`guides.agents.languages`](languages.md)<!-- /board-template:exclude -->. The instructions below cover board language files.
 
 A board declares its packs in `board-manifest.json` and keeps one `<code>.json` file in the pack
 folder per language:
@@ -725,9 +759,8 @@ const handle = persephone.executeNode(script, args?, { cwd, env, name }); // scr
   / `name`-based `getJobs()`). Runtime is **Node 24** with **`node:sqlite` built in** (incl.
   FTS5) — SQLite with no npm install.
 - **Resident-server pattern:** spawn one long-lived script and feed it JSON lines over stdin
-  instead of a spawn per operation — one ~150 ms spawn on open, then each op costs only its own
-  work. Pair with `setBoardBusy(true)` to survive a reload and re-attach by `name` via
-  `getJobs()`.
+  instead of spawning once per operation. Pair with `setBoardBusy(true)` to survive a reload and
+  re-attach by `name` via `getJobs()`.
 
 ```js
 const srv = persephone.executeNode("scripts/db-server.js", [dbPath], { name: "db" });
@@ -735,12 +768,21 @@ srv.on("stdout", chunk => handleJsonLine(chunk));   // {id, columns, rows} | {id
 srv.write(JSON.stringify({ id: 1, sql }) + "\n");   // per query — db stays open, no re-spawn
 ```
 
+For the `executeNode()` versus declared-service ownership choice, see
+[Declared services and shared storage](#declared-services-and-shared-storage).
+
 ### Declared services and shared storage
 
-The canonical service-versus-`executeNode()` choice is maintained in the board template's
-[authoring guide](../../board-template/CLAUDE.md#declared-module-services-manifestservice). Use that
-wording when choosing process ownership; this section records the service contract and agent
-observations.
+| `executeNode()` | Declared `service` |
+|---|---|
+| Board-page child process, started by the page and normally scoped to its frame. | Platform-started utility process, started lazily and supervised; it can run with no board page open. |
+
+For this service-versus-`executeNode()` process-ownership choice, use the guidance in this section.
+Choose `executeNode()` for work initiated by the visible board page: it starts with the page and
+its process normally ends with the frame. Choose a declared `service` for background or
+platform-owned work that must survive a page reload, serve requests with no board page open, or
+have supervised lifecycle status. A service is platform-started lazily in a utility process and
+can use `persephone.storage` for shared per-board JSON state.
 
 A manifest may declare a board-relative ESM entry and its bridge requirement:
 
@@ -770,6 +812,17 @@ Bridge 1.36.0. A board that depends on this service locale contract must set
 `store.json` itself. Service stdout/stderr is written to the board's `ui.log`. Ordinary boards
 store it at `<boardRoot>/ui.log`; bundled boards store it at `<userData>/board-logs/<id>/ui.log`.
 The selected application profile determines `userData`.
+
+For a resident backend tied to the visible page, `executeNode()` can also keep one long-lived
+script open and exchange JSON lines over stdin/stdout. This avoids starting a new child for each
+operation; use `setBoardBusy(true)` if it must survive a reload, then re-attach by `name` with
+`getJobs()`:
+
+```js
+const srv = persephone.executeNode("scripts/db-server.js", [dbPath], { name: "db" });
+srv.on("stdout", chunk => handleJsonLine(chunk));   // {id, columns, rows} | {id, error}
+srv.write(JSON.stringify({ id: 1, sql }) + "\n");   // per query — db stays open
+```
 
 ### Service-backed content providers
 
@@ -931,7 +984,7 @@ bounded `Uint8Array` replies (at most 1 MiB), never a stream.
 ### Capability handlers and in-memory intents
 
 Use the manifest's `capabilities` array to register named work. For new providers and consumers,
-see [Capabilities](capabilities.md) for method declarations, `getCapability`, discovery and grants.
+see <!-- board-template:exclude -->[Capabilities](capabilities.md)<!-- /board-template:exclude --> for method declarations, `getCapability`, discovery and grants.
 `appScripting` gates `persephone.call()`; a trusted board's unified capability access instead
 requires an exact `uses` id/version grant. Legacy `persephone.capabilities.invoke` requires trust
 only. The example below is a legacy page-intent declaration.
@@ -1023,7 +1076,7 @@ const entries = await persephone.capabilities.list();
 For voice sessions, the reserved `audio@1` capability provides `audio.muteApp()`, which returns
 a global playback-mute lease. Boards using it require `minBridgeVersion: "1.52.0"` and an exact
 `audio@1` entry in `uses`; capture methods also need their source permission. Release the lease
-when listening ends, including error paths. See the [audio guide](audio.md) for lifecycle and
+when listening ends, including error paths. See the <!-- board-template:exclude -->[audio guide](audio.md)<!-- /board-template:exclude --> for lifecycle and
 playback scope.
 
 The legacy wrapper invokes by id with `persephone.capabilities.invoke(id, payload, { version, deadlineMs })`. A board
@@ -1057,6 +1110,17 @@ and a restored page does not receive them again. This is broker policy, not an O
 can be paged and Chromium may retain its own caches.
 
 ### Integration tier (in-app effects `execute()` can't express)
+
+#### Confirmations and prompts — `window.confirm` / `alert` / `prompt`
+
+Persephone replaces these functions in every board frame with synchronous calls to its app dialog,
+titled with the board name. They return the user's choice: `alert()` returns `undefined`,
+`confirm()` returns `true` or `false`, and `prompt()` returns the entered text (including an empty
+string) or `null` on Cancel. An agent can answer the dialog too. While it is open, every board
+pauses because boards share one renderer process; if the page or window goes away, the call returns
+the cancel result. For richer UI, use a native `<dialog>` with `showModal()` and the recommended
+`dialog.css`; it does not pause other boards. Child `about:blank` and `srcdoc` frames retain
+Chromium's native dialogs, and `beforeunload` prompts are not covered.
 
 #### Navigation returns
 
@@ -1247,15 +1311,15 @@ page. Persephone closes the tab the return created and leaves the tab the user w
   waits for the same handshake as `getFilePath()`. `boardRoot` is where the board app is installed,
   while `folderPath` is the claimed directory it operates on. Folder mode never supplies a file path,
   and `editorKind: "content-host"` / `"stream-host"` applies only to the file association.
-- `persephone.call(path, options?)` — requires `appScripting: true`; resolve the same bounded AiVision descriptor tree as the MCP
-  `call` tool, rooted at the page hosting this Board. The Board must be trusted; trust is checked
+- `persephone.call(path, options?)` — requires `appScripting: true`; resolve the same bounded AiVision descriptor tree as the
+  <!-- board-template:exclude -->MCP `call` tool<!-- /board-template:exclude -->, rooted at the page hosting this Board. The Board must be trusted; trust is checked
   again when each call resolves, so revoking trust also blocks an already-mounted Board. The call
   always uses `hints: "never"` and returns only a JSON-safe plain value; it rejects an `Error` for
   resolver, transport, timeout, or serialization failures. `args` invokes the final method,
   `value` assigns a writable property, and an explicit `maxLength` optionally bounds shaped strings
   or structured results (structured truncation keeps whole values). Board calls are unbounded by
   default. `persephone.call()` returns the bounded value itself;
-  `shown`/`total` metadata is available in the external MCP `call` envelope. `args` and `value`
+  <!-- board-template:exclude -->`shown`/`total` metadata is available in the external MCP `call` envelope.<!-- /board-template:exclude --> `args` and `value`
   cannot be combined.
   ```js
   const source = await persephone.call("page.grouped.content");
@@ -1290,8 +1354,8 @@ page. Persephone closes the tab the return created and leaves the tab the user w
   switching tabs does not retarget the call. The resolver's existing descriptor restrictions still
   apply, including the private incognito/Tor browser-page guard. No renderer object or method crosses
   the Board port.
-  This is the renderer-side, page-scoped tree: `main.*` and `windows[i].*` are MCP-only routing
-  paths and cannot be resolved through the Board bridge. The `boards` namespace exposes local board
+  <!-- board-template:exclude -->This is the renderer-side, page-scoped tree: `main.*` and `windows[i].*` are MCP-only routing
+  paths and cannot be resolved through the Board bridge.<!-- /board-template:exclude --> The `boards` namespace exposes local board
   inventory and lifecycle operations, while `tools` exposes registered Agent Tools; tool execution
   runs with the user's privileges and returns environment-variable names only. Trust, board
   registration, and toolset registration remain user-mediated actions, so a call can request them
@@ -1321,8 +1385,8 @@ Remote `.app` calls use the same four-level host timeout policy: a per-call `tim
 remote method's declared `timeoutMs`, the session-only in-memory `boards.callTimeoutMs`, then the
 30-second built-in fallback. The selected level and full path are included in a timeout error;
 `boards.callTimeoutMs` is not persisted. The per-call option applies only to a remote `.app` leaf.
-For MCP calls, the server waits five seconds beyond a supplied per-call `timeoutMs`; if omitted,
-it waits up to 125 seconds total. Pass `timeoutMs` for a slower operation that needs more time.
+<!-- board-template:exclude -->For MCP calls, the server waits five seconds beyond a supplied per-call `timeoutMs`; if omitted,
+it waits up to 125 seconds total.<!-- /board-template:exclude --> Pass `timeoutMs` for a slower operation that needs more time.
 
 #### A board's own model: `.app`
 
@@ -1358,7 +1422,7 @@ confirmation to the interactive UI.
 The `.app` member is optional. If the board exposes nothing, use `snapshot()` and the returned refs
 as the fallback for driving its rendered UI.
 
-When you are the one **building** the board, [AI Vision](./ai-vision.md)
+When you are the one **building** the board, <!-- board-template:exclude -->[AI Vision](./ai-vision.md)<!-- /board-template:exclude -->
 (`guides.agents["ai-vision"]`) is the authoring reference for publishing this model: the descriptor
 contract, `createElements`, the `refresh()` shape rule, and the constraints an agent-facing method
 must respect.
@@ -1689,8 +1753,7 @@ the board fails silently. Bundle fonts/images locally too (or inline images as `
 **Recommended components:** the `boards-assets/manifest.json` catalog lists pre-tested,
 theme-skinned libraries (grids, charts, markdown, …) with their vendor download URLs and load
 order. The skins are **not bundled in the installer** — they live on GitHub. Fetch the manifest and
-each skin from the raw base URL (also returned by `main.boardsManifestUrl` /
-`boardsAssetsBaseUrl`):
+each skin from the raw base URL specified in the manifest:
 
 - Manifest: `https://raw.githubusercontent.com/andriy-viyatyk/persephone/main/boards-assets/manifest.json`
 - Each component's `skin.file` (e.g. `tabulator.css`) is fetchable as **`baseUrl + skin.file`**, where
@@ -1792,8 +1855,8 @@ the manifest's `loadOrder`.
   apply the changes with **… → Reload board** in the in-board toolbar — or, when driving the board
   as an agent, `pages[pageId].editor.reload()`. A dirty board prompts before reload; Save failure
   rejects without remounting, while Cancel returns `{ refreshed: false, cancelled: true, pageId,
-  frameReady, renderState }`. MCP calls can return a pending attention result while the dialog is
-  open, so answer it in a concurrent call and inspect page/frame state afterward. Once approved,
+  frameReady, renderState }`. <!-- board-template:exclude -->MCP calls can return a pending attention result while the dialog is
+  open, so answer it in a concurrent call and inspect page/frame state afterward.<!-- /board-template:exclude --> Once approved,
   the path returns after the new main frame is ready, so an iterate loop is race-free: edit files →
   `reload()` → `snapshot()`.
 - **`board-manifest.json` is not covered by a reload.** Persephone caches a board's manifest from the

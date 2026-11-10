@@ -1772,7 +1772,11 @@
     "voiceTyping.translatingRecording": "正在录音 — 翻译成英语 — 按 {binding} 停止，按 Esc 取消",
     "voiceTyping.translatingTranscribing": "正在转录为英语 — 按 Esc 取消",
     "settings.microphoneReferenceReady": "电脑音频参考信号已启用",
-    "settings.microphoneReferenceUnavailable": "电脑音频参考信号不可用；将继续降噪，但不进行回声消除：{reason}"
+    "settings.microphoneReferenceUnavailable": "电脑音频参考信号不可用；将继续降噪，但不进行回声消除：{reason}",
+    "shell.ungroup": "取消分组",
+    "shell.mutePage": "静音页面",
+    "shell.unmutePage": "取消页面静音",
+    "tools.siteExtensionActionFailed": "网站扩展操作失败。"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3447,6 +3451,10 @@
     "voiceTyping.translatingRecording": "e3db99f8",
     "voiceTyping.translatingTranscribing": "dcf439f0",
     "settings.microphoneReferenceReady": "043e4ffb",
-    "settings.microphoneReferenceUnavailable": "d1af3faf"
+    "settings.microphoneReferenceUnavailable": "d1af3faf",
+    "shell.ungroup": "460af6ed",
+    "shell.mutePage": "724c00d7",
+    "shell.unmutePage": "af4c43a2",
+    "tools.siteExtensionActionFailed": "96558212"
   }
 }

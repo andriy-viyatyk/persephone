@@ -1,7 +1,7 @@
 // Set-shaped tree-provider actions shared by TreeProviderViewModel (the Explorer
 // tree) and CategoryViewModel (the folder-content page). Everything here operates on
 // plain `ILink` items, never on a tree node, so both views can use one implementation
-// of the D9 pruning rule, the plural menu labels and the batch delete.
+// of the pruning rule, the plural menu labels and the batch delete.
 //
 // Sibling to `os-clipboard.ts` (which owns the OS clipboard I/O these menu items call).
 

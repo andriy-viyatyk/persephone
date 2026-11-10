@@ -1,4 +1,4 @@
-/** Panel-id prefix for a board's declared secondary views (EPIC-044). Each declared
+/** Panel-id prefix for a board's declared secondary views. Each declared
  *  view maps to `board-secondary:<viewId>`; the sidebar composite key is
  *  `<editorId>::board-secondary:<viewId>`. */
 export const BOARD_SECONDARY_PREFIX = "board-secondary:";

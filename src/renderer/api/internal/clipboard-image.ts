@@ -46,10 +46,10 @@ export function getClipboardImageFile(e: ClipboardEvent): File | null {
  *
  * Any `text/html` fragment carrying markup qualifies: a picture copied from
  * PowerPoint (an `<img>` with no bitmap beside it), a Teams conversation, a
- * table from Excel, a selection from a web page. US-729 originally gated this
+ * table from Excel, a selection from a web page. originally gated this
  * on the fragment containing an `<img src=`, which silently dropped every
  * text-only rich copy — a Teams chat selection produces ~7 KB of `<p>`/`<span>`
- * markup and not one image tag, so nothing opened (US-1281).
+ * markup and not one image tag, so nothing opened.
  *
  * A `text/html` entry with no tag at all is not rich content and still returns
  * `null`, leaving it to normal paste handling.

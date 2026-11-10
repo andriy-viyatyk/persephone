@@ -25,7 +25,7 @@ function findGuidePath(
  * A board's real editor id embeds an absolute path (`board-editor:C:\...`), which differs per
  * machine and can never be written into a shipped guide, so a board's own page claims its board
  * with the token `editorId: "board"` — honored only for pages that live under that board's own
- * mount (US-1406). A board page therefore reaches its documentation with F1 exactly as a built-in
+ * mount. A board page therefore reaches its documentation with F1 exactly as a built-in
  * editor's page does.
  */
 function claimsEditor(
@@ -89,7 +89,7 @@ export class KeyboardService {
                 break;
 
             case "F12":
-                // An active browser page claims F12 for its own page's DevTools (it prevents
+                // An active browser page claims for its own page's DevTools (it prevents
                 // the default first); everywhere else F12 opens Persephone's DevTools.
                 if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.defaultPrevented) break;
                 e.preventDefault();
@@ -124,7 +124,7 @@ export class KeyboardService {
                     if (e.shiftKey) {
                         api.openNewWindow();
                     } else if (!appWindow.isBoardMode) {
-                        // Board windows open only the board's own pages (EPIC-136).
+                        // Board windows open only the board's own pages.
                         pagesModel.addEmptyPage();
                     }
                 }

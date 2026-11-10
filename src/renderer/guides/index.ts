@@ -3,7 +3,7 @@ import { createMountedGuideSource } from "../../shared/guides/mounted-source";
 import { RendererGuideSource } from "./guide-source";
 import { resolveRendererBoardGuideMounts } from "./board-guide-mounts";
 
-// The app's own corpus plus one mount per trusted board that ships a `guides` folder (US-1406).
+// The app's own corpus plus one mount per trusted board that ships a `guides` folder.
 // Mounts are re-resolved as the index scans, so trusting, updating or removing a board changes the
 // tree and search results without an app restart.
 const rendererGuideIndex = createGuideIndex(createMountedGuideSource(

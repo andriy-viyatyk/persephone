@@ -1,8 +1,10 @@
+import type { CapabilityErrorCode } from "../shared/capability-constants";
+import type { BoardHostTextId } from "../shared/board/host-text";
+export type { BoardHostTextId } from "../shared/board/host-text";
 import type { CapabilityJson } from "../shared/capability-contract";
 /**
  * Board bridge wire types — the `persephone` integration tier carried over the
- * per-board `MessagePort` (EPIC-034 / US-724; re-homed onto a `MessageChannelMain`
- * port in EPIC-037 / US-771).
+ * per-board `MessagePort`, transferred through a `MessageChannelMain` port.
  *
  * A board iframe has no `ipcRenderer` and no preload — its only channel to the
  * privileged side is a `MessagePort` minted per board in main and transferred into
@@ -34,14 +36,14 @@ import type {
     RunnerStartMsg,
     RunnerStdinMsg,
 } from "./runner-channels";
-import type { CapabilityErrorCode, IntentEnvelope, CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientResult, CapabilityProvider } from "./capability-bus-channels";
+import type { IntentEnvelope, CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientResult, CapabilityProvider } from "./capability-bus-channels";
 import type { PathWatchBatch } from "./api-types";
 
 export type { BoardServiceStatus } from "./module-service-channels";
 
 /** The host color palette pushed into a board: the frozen color `--p-*` contract
  *  resolved to concrete values, plus theme identity. The `vars` keys are `--p-*`
- *  names (e.g. `--p-bg`). Re-pushed on every theme switch (US-725). */
+ *  names (e.g. `--p-bg`). Re-pushed on every theme switch. */
 export interface BoardThemePalette {
     /** Active theme id, e.g. "default-dark". */
     id: string;
@@ -51,7 +53,7 @@ export interface BoardThemePalette {
     vars: Record<string, string>;
     /** The `--p-graph-*` family as concrete values, keyed by the camelCased CSS suffix
      *  (`--p-graph-node-default` → `nodeDefault`) — a `<canvas>` cannot consume `var(...)`
-     *  (EPIC-100 / US-1404). Optional ON THE WIRE only: the renderer ships the family inside
+ *  The field is optional on the wire only: the renderer ships the family inside
      *  `vars` like every other color, and the board SHIM derives this field from it, so the
      *  palette a board actually observes always carries it. */
     graph?: Record<string, string>;
@@ -67,33 +69,15 @@ export interface BoardI18nContext {
 }
 
 /** App-catalog strings used by Persephone's built-in board UI. */
-export type BoardHostTextId =
-    | "openLink"
-    | "copyLink"
-    | "openImageInNewTab"
-    | "copyImage"
-    | "saveImageAs"
-    | "imageFileFilter"
-    | "allFilesFileFilter"
-    | "cut"
-    | "copy"
-    | "paste"
-    | "saveImageDialogTitle"
-    | "failedToOpenImage"
-    | "failedToCopyImage"
-    | "imageSaved"
-    | "failedToSaveImage"
-    | "pasteFailed";
-
 export type BoardHostText = Record<BoardHostTextId, string>;
 
 /** The board context baked into served HTML by the `board://` handler as
- *  `window.__persephoneBoot` (EPIC-037 / US-771) — read synchronously by the shim
+ *  `window.__persephoneBoot` — read synchronously by the shim
  *  before the first author script, replacing the old synchronous `getContext` IPC.
  *  The board root is NOT included: main fills the default `execute()` cwd + relative
  *  file paths from its own `boardId → root` registry. */
 export interface BoardBootContext {
-    /** Initial color palette, applied by the shim at first paint (US-725). Live
+    /** Initial color palette, applied by the shim at first paint. Live
      *  switches arrive later as a {@link MainToBoard} `theme` envelope over the port. */
     theme: BoardThemePalette;
     /** Locale and board message tables fixed for this document registration. */
@@ -102,8 +86,8 @@ export interface BoardBootContext {
     hostText: BoardHostText;
     /** Static metric vars (`--p-space-*`, `--p-radius-*`, …) — theme-independent. */
     tokens: Record<string, string>;
-    /** The host renderer's origin — the shim accepts the port-handshake message only
-     *  when `event.origin === hostOrigin` AND `event.source === window.parent` (C2). */
+    /** The host renderer's origin. The shim accepts the port handshake only when
+     *  `event.origin === hostOrigin` and `event.source === window.parent`. */
     hostOrigin: string;
 }
 
@@ -112,18 +96,20 @@ export type BoardNotifyType = "info" | "success" | "warning" | "error";
 export interface BoardNotifyMsg {
     message: string;
     type?: BoardNotifyType;
+    /** Keep the toast until the user closes it (bridge 1.33.0). */
+    persistent?: boolean;
 }
 
 export interface BoardOpenRawLinkMsg {
     href: string;
     /** Optional registered editor id to open the file with (e.g. "md-view").
      *  Falls back to the default editor when omitted or when the editor doesn't
-     *  accept the file (US-756 C6). */
+     *  accept the file. */
     editor?: string;
 }
 
-/** `persephone.openContent(...)` — the board equivalent of `pages.addEditorPage` (EPIC-100 /
- *  US-1404). CREATE-ONLY by design: it builds one new in-memory, untitled page in the board's own
+/** `persephone.openContent(...)` is the board equivalent of `pages.addEditorPage`.
+ *  It creates one new in-memory, untitled page in the board's own
  *  window and returns that page's id. It carries no handle to any pre-existing page, so it does not
  *  widen `persephone.call`'s deliberate page scoping. */
 export interface BoardOpenContentRequest {
@@ -166,9 +152,9 @@ export interface BoardContentOpenResultMsg {
     error?: string;
 }
 
-/** Encoding for the board file bridge (US-756 C4). "utf8" returns/accepts a plain
+/** Encoding for the board file bridge. "utf8" returns/accepts a plain
  *  string; "base64" returns/accepts base64; "binary" returns/accepts the bytes
- *  themselves as a `Uint8Array` (bridge API 1.1.0 / app 4.0.21 — US-933).
+ *  "binary" returns and accepts the bytes as a `Uint8Array`, avoiding base64 conversion overhead.
  *
  *  Prefer "binary" for binary files. "base64" costs an encode in main, a ~33% larger
  *  payload over the port, and an `atob` + per-byte decode in the board (measured: 65 ms
@@ -194,7 +180,7 @@ export interface BoardWriteFileMsg {
     encoding?: BoardFileEncoding;
 }
 
-// ── Port RPC envelopes (EPIC-037 / US-771) ───────────────────────────────────
+// ── Port RPC envelopes ────────────────────────────────────
 // board ↔ main over the per-board MessagePort. Request/reply uses an `id`; fire-
 // and-forget effects carry no id; `execute()` wraps runner-channels messages in a
 // `runner` envelope (board→main: start/stdin/end-stdin/kill; main→board: stdout/
@@ -253,7 +239,7 @@ export interface BoardFileAccess { read: boolean; write: boolean }
 export type BoardJsonValue = null | string | boolean | number
     | BoardJsonValue[] | { [key: string]: BoardJsonValue };
 
-/** A live job owned by this board (US-799) — the `getJobs` RPC result element.
+/** A live job owned by this board — the `getJobs` RPC result element.
  *  Plain data over the port; the shim wraps each in a control handle
  *  (`kill`/`write`/`endStdin` posting the usual runner messages by `jobId`). */
 export interface BoardJobInfo {
@@ -318,7 +304,7 @@ export type BoardToMain =
     | { kind: "rpc"; id: number; method: BoardRpcMethod; args: unknown[] }
     | { kind: "call"; id: number; request: BoardCallRequest }
     | { kind: "fire"; method: BoardFireMethod; args: unknown[] }
-    | { kind: "connected" } // shim → main: handshake liveness (mode D, EPIC-037 C11)
+    | { kind: "connected" } // shim → main: confirms the bridge is live after its handshake
     | BoardRunnerOutMsg;
 
 /** Everything main posts to the board over the port. */
@@ -330,7 +316,7 @@ export type MainToBoard =
     | BoardRunnerInMsg;
 
 /** The init message the host renderer posts into the board frame to transfer the
- *  port (the single `window.postMessage` survivor — C2). The transferred port is on
+ *  port. The transferred port is on
  *  `event.ports[0]`; the shim validates `event.origin`/`event.source` before use. */
 export interface BoardPortInitMsg {
     __persephoneInit: true;
@@ -344,10 +330,10 @@ export interface BoardPortInitMsg {
     intent?: IntentEnvelope;
     /** True when this page's platform-owned pipe may be addressed by `host.streamUrl()`. */
     pipeUrlEnabled?: boolean;
-    /** The board's current busy flag (US-799) — carried at handshake so a re-created
+    /** The board's current busy flag — carried at handshake so a re-created
      *  board can read `persephone.getBoardBusy()` and reinitialize its running state. */
     busy?: boolean;
-    /** The file a custom-editor board edits (EPIC-042) — carried at handshake so the board
+    /** The file a custom-editor board edits — carried at handshake so the board
      *  can read `persephone.getFilePath()`. Undefined for a board opened plainly. */
     filePath?: string;
     /** The raw persisted source identity — carried at handshake so the board can read
@@ -360,7 +346,7 @@ export interface BoardPortInitMsg {
     /** The absolute directory claimed by a folder editor; distinct from the board root and
      *  from the file-only `filePath` axis. Read through `persephone.getFolderPath()`. */
     folderPath?: string;
-    /** True when this board is a content-host editor (EPIC-043): Persephone owns the content
+    /** True when this board is a content-host editor: Persephone owns the content
      *  host and pushes `host:content`. Gates `persephone.host.getContent/getLanguage` in the shim
      *  (a plain board rejects instead of hanging). */
     contentHost?: boolean;
@@ -646,7 +632,7 @@ export type BoardToHostMsg =
     | BoardCapabilityInvokeRequestMsg
     | BoardNavigationCreateReturnUrlMsg;
 
-/** Host content pushed renderer → board over `iframe.contentWindow.postMessage` (EPIC-043).
+/** Host content pushed renderer → board over `iframe.contentWindow.postMessage`.
  *  Repeated: an initial snapshot after the frame loads, then on every host content/language
  *  change. Echo-guarded renderer-side (a push equal to the board's last `setContent` is skipped),
  *  so the board's `onContentChange` never re-fires for the board's own write. */
@@ -667,7 +653,7 @@ export interface BoardSourceOpenedMsg {
     context?: BoardSourceContext;
 }
 
-/** Shared state pushed renderer → board over `iframe.contentWindow.postMessage` (EPIC-044).
+/** Shared state pushed renderer → board over `iframe.contentWindow.postMessage`.
  *  A snapshot after the frame loads (seed), then on every change. `seq` is a monotonic
  *  per-model version: the shim applies a push only when `seq` exceeds the last applied,
  *  so seed-vs-init / set / merge deliveries are order-independent (no echo-guard needed). */
@@ -688,7 +674,7 @@ export interface BoardFilePathResultMsg {
     error?: string;
 }
 
-/** Reply to a board `board:fileIcons` request (US-1533). `urls` holds each distinct icon once, as a
+/** Reply to a board `board:fileIcons` request. `urls` holds each distinct icon once, as a
  *  `data:` URL; `icons` maps every requested name to an index into `urls`. */
 export interface BoardFileIconsResultMsg {
     __persephone: "fileIcons:result";
@@ -698,7 +684,7 @@ export interface BoardFileIconsResultMsg {
     error?: string;
 }
 
-/** Reply to a board `board:var` request pushed renderer → board (EPIC-046). Matched to the
+/** Reply to a board `board:var` request pushed renderer → board. Matched to the
  *  request by `reqId`. `result` carries the method's return (get: string|undefined; list:
  *  string[]; set: undefined); `error` is set instead when the request rejected (not configured
  *  + user declined, locked, or a store error). */

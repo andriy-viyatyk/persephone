@@ -13,12 +13,6 @@ export interface AcceptanceInput {
     fileName?: string;
     language?: string;
     host?: TextFileModel;
-    /** Resolution mode (walkthrough 02 / S5). Scales priority:
-     *    - "edit" prefers Monaco; preview editors fall back.
-     *    - "view" prefers dedicated viewers; Monaco falls back.
-     *  The boolean "can this editor handle the input?" MUST NOT depend on
-     *  mode — `accepts()` returns -1 only when truly incompatible. */
-    mode?: "edit" | "view";
 }
 
 type EditorModuleCommon = {
@@ -65,8 +59,7 @@ export interface EditorDefinition {
 
     /** Single acceptance predicate. Returns priority (higher wins) or -1 if
      *  not applicable. The page evaluates this against the current host (for
-     *  switch UI via `findEditorsAccepting`); the registry evaluates it against
-     *  file metadata (for `resolveForFile`). Content-based detection is
+     *  switch UI via `findEditorsAccepting`). Content-based detection is
      *  absorbed: editors peek at `host.state.get().content` when they recognize
      *  their format by marker. Built from `match` via `makeAccepts`. */
     accepts(input: AcceptanceInput): number;
@@ -126,26 +119,6 @@ class EditorRegistry {
                 `editors.languages for the valid ids.`,
             );
         }
-    }
-
-    /** Resolve the best editor id for opening a file. Mode controls preference
-     *  between edit-oriented (Monaco) and view-oriented (markdown-view, …)
-     *  editors when both accept the file. Defaults to "edit". */
-    resolveForFile(
-        fileName: string,
-        language?: string,
-        mode: "edit" | "view" = "edit",
-    ): string {
-        let bestId = "monaco";
-        let bestPriority = 0;
-        for (const def of this.definitions.values()) {
-            const p = def.accepts({ fileName, language, mode });
-            if (p > bestPriority) {
-                bestPriority = p;
-                bestId = def.id;
-            }
-        }
-        return bestId;
     }
 
     /** Resolve the best editor id for opening a folder. Category View is the
@@ -263,23 +236,6 @@ class EditorRegistry {
         return editor;
     }
 
-    /** Detect a structured-content editor for a host's current content (the
-     *  "open as X?" suggestion). First `match.detectsContent` match wins.
-     *  Robust to unloaded content — empty content matches nothing, so an early
-     *  call before the host finishes loading simply yields no suggestion and
-     *  re-runs once content arrives. Mirrors the legacy `detectContentEditor`,
-     *  now host-driven (/ C581-3). */
-    detectContentEditor(host: TextFileModel): string | undefined {
-        const s = host.state.get() as { content?: string; language?: string };
-        const content = s.content ?? "";
-        if (!content) return undefined;
-        const language = s.language ?? "";
-        for (const def of this.definitions.values()) {
-            if (def.match?.detectsContent?.(language, content)) return def.id;
-        }
-        return undefined;
-    }
-
     /** Instantiate a new editor by id. Lazy-loads the module on first use.
      *  Returns a bare editor — no host. Callers drive the three-phase
      *  lifecycle:
@@ -288,7 +244,7 @@ class EditorRegistry {
      *      editor.applyRestoreData(data);   // OR editor.switchFrom(oldEditor)
      *      await editor.restore();
      *
-     *  `instanceId` (walkthrough 04 / P6 / C2 + walkthrough 05 / M5 / C1):
+     *  `instanceId`:
      *  when provided, preserves cache-file id continuity across app restarts
      *  and multi-window transfer. Omit for new pages / switch widget /
      *  open-file. */
@@ -318,7 +274,7 @@ class EditorRegistry {
         // instance id may be stamped. An empty string must NOT clobber state:
         // a falsy id breaks all id-based dedup downstream (panel keys,
         // addSecondaryView), causing duplicate editors to accumulate
-        // (EPIC-031 / US-616 regression fix).
+        // This prevents the regression from recurring.
         if (instanceId) {
             editor.state.update((s) => { s.id = instanceId; });
         }

@@ -1,9 +1,6 @@
 /*
- * `text-overflow: ellipsis` is carried over verbatim from the Emotion block, where it was already a
- * no-op: the element is `display: flex`, so its text is an anonymous flex item and `text-overflow`
- * does not apply to it. Making it work would change how long section labels render, which is a
- * design decision rather than part of a conversion — so it is flagged here and left alone. The same
- * dead declaration exists in `ListBox/SectionItem.css`.
+ * The section label is a flex container, so `text-overflow: ellipsis` does not apply to its
+ * anonymous text item. Keep the current rendering of long section labels.
  *
  * The level guides live in `tree-indents.css`.
  */

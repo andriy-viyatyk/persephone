@@ -1,9 +1,10 @@
+import { PLATFORM_AUDIO_CAPABILITY_ID, PLATFORM_SERVICE_INTERFACE_IDS } from "./capability-constants";
+export { PLATFORM_SERVICE_INTERFACE_IDS } from "./capability-constants";
 import { normalizeBoardRelativePath } from "./guides/mounted-source";
 import { MAX_CAPABILITY_DECLARATIONS, MAX_CAPABILITY_ID_LENGTH, MAX_CAPABILITY_TITLE_LENGTH } from "./capability-limits";
 
 export const BOARD_MANIFEST_FILE = "board-manifest.json";
 
-export const PLATFORM_SERVICE_INTERFACE_IDS = new Set(["agent.session", "speech.transcribe", "speech.synthesize", "speech.wake", "text.translate"]);
 export const MAX_SERVICE_INTERFACE_DECLARATIONS = MAX_CAPABILITY_DECLARATIONS;
 export const MAX_SERVICE_INTERFACE_ID_LENGTH = MAX_CAPABILITY_ID_LENGTH;
 export const MAX_SERVICE_INTERFACE_TITLE_LENGTH = MAX_CAPABILITY_TITLE_LENGTH;
@@ -13,7 +14,7 @@ export interface BoardServiceUseDeclaration { id: string; version: number }
 
 function validServiceInterfaceId(id: string, provider: boolean): boolean {
     if (id.length > MAX_SERVICE_INTERFACE_ID_LENGTH || /\s/.test(id)) return false;
-    if (id === "audio") return !provider;
+    if (id === PLATFORM_AUDIO_CAPABILITY_ID) return !provider;
     if (PLATFORM_SERVICE_INTERFACE_IDS.has(id)) return true;
     if (!provider && /^[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+$/.test(id)) return true;
     const parts = id.split("/");

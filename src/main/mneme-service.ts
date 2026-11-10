@@ -58,10 +58,6 @@ export function getMnemeUrl(): string {
     return `http://127.0.0.1:${currentPort}/mcp`;
 }
 
-export function isMnemeRunning(): boolean {
-    return sidecar.isRunning;
-}
-
 export function getMnemeStatus(): MnemeStatus {
     return { running: sidecar.isRunning, url: getMnemeUrl() };
 }

@@ -40,10 +40,9 @@
      * are unaffected. Descendant selectors, because rows may be consumer-rendered via `renderItem`
      * (they still render a TreeItem carrying `data-type="tree-item"`).
      *
-     * THE `[data-type="tree"]` ANCHOR IS LOAD-BEARING. The Emotion original was scoped to this
-     * component's own generated class. Dropping the anchor turns this into a global rule that paints
+     * The `[data-type="tree"]` anchor is load-bearing. Without it, this becomes a global rule that paints
      * any TreeItem under any container that opted in with `data-focus-selection` — including a
-     * TreeItem rendered inside a ListBox's `renderItem`, which this codebase does. EPIC-056 C3-8.
+     * TreeItem rendered inside a ListBox's `renderItem`.
      */
     [data-type="tree"][data-focus-selection]:focus-within [data-type="tree-item"][data-selected] {
         background-color: var(--color-bg-tree-selection, transparent);

@@ -1916,7 +1916,11 @@
     "voiceTyping.translatingRecording": "Nagrywanie — tłumaczenie na angielski — {binding}, aby zatrzymać; Esc, aby anulować",
     "voiceTyping.translatingTranscribing": "Transkrypcja na angielski — Esc, aby anulować",
     "settings.microphoneReferenceReady": "Aktywne odniesienie audio komputera",
-    "settings.microphoneReferenceUnavailable": "Odniesienie audio komputera jest niedostępne; czyszczenie szumów trwa bez usuwania echa: {reason}"
+    "settings.microphoneReferenceUnavailable": "Odniesienie audio komputera jest niedostępne; czyszczenie szumów trwa bez usuwania echa: {reason}",
+    "shell.ungroup": "Rozgrupuj",
+    "shell.mutePage": "Wycisz stronę",
+    "shell.unmutePage": "Włącz dźwięk strony",
+    "tools.siteExtensionActionFailed": "Nie udało się wykonać działania rozszerzenia witryny."
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3591,6 +3595,10 @@
     "voiceTyping.translatingRecording": "e3db99f8",
     "voiceTyping.translatingTranscribing": "dcf439f0",
     "settings.microphoneReferenceReady": "043e4ffb",
-    "settings.microphoneReferenceUnavailable": "d1af3faf"
+    "settings.microphoneReferenceUnavailable": "d1af3faf",
+    "shell.ungroup": "460af6ed",
+    "shell.mutePage": "724c00d7",
+    "shell.unmutePage": "af4c43a2",
+    "tools.siteExtensionActionFailed": "96558212"
   }
 }

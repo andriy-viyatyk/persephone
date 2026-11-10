@@ -1,4 +1,4 @@
-// Recursive file/folder copy + move onto the local filesystem (US-807).
+// Recursive file/folder copy + move onto the local filesystem.
 // Used by the Explorer tree's clipboard paste; built on `app.fs` per the
 // no-direct-`fs` coding standard.
 

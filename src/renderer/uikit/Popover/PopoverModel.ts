@@ -226,8 +226,8 @@ export class PopoverModel extends TComponentModel<PopoverState, PopoverProps> {
             if (this.resizeCleanup === onLost) this.resizeCleanup = undefined;
         };
 
-        // Deliberate exemption from uikit Rule 9 ("no model touches the DOM"), of the kind
-        // EPIC-077 §C-5 names: this is a pointer-capture drag session, not rendering. The three
+        // Deliberate exemption from uikit Rule 9 ("no model touches the DOM"): this is a
+        // pointer-capture drag session, not rendering. The three
         // listeners exist only between pointerdown and lostpointercapture/pointerup, they remove
         // themselves in `onLost`, and `cancelResize()` tears down a session that never ended.
         // Moving them to the view would split one drag gesture across two owners for no gain.

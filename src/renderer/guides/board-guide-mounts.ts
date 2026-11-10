@@ -1,7 +1,7 @@
 /**
- * Resolves the board corpora mounted into the renderer's guide index (US-1406 / EPIC-100 D7).
+ * Resolves the board corpora mounted into the renderer's guide index.
  *
- * Only TRUSTED boards, plus the boards bundled with the app (US-1626), are enumerated. A bundled
+ * Only TRUSTED boards, plus the boards bundled with the app, are enumerated. A bundled
  * board ships with Persephone, the same footing as `assets/guides`. Trust is the gate because a board's guides are Markdown
  * written by the board's author and rendered by Persephone's own Markdown pipeline (which permits
  * raw HTML) inside the About page: a trusted board already runs arbitrary code through
@@ -79,7 +79,7 @@ export async function resolveRendererBoardGuideMounts(): Promise<readonly BoardG
     }));
 }
 
-/** The mount id of an installed board, or undefined when it contributes no guides. Used by `F1`
+/** The mount id of an installed board, or undefined when it contributes no guides. Used by ``
  *  to find the branch a board's own guide pages live under. */
 export async function getBoardGuideMountId(boardRoot: string): Promise<string | undefined> {
     const key = fpNormalizeForCompare(boardRoot);

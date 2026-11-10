@@ -1,7 +1,7 @@
 import * as monaco from "monaco-editor";
 import { errMessage } from "../../../shared/utils";
 
-// Per-page TypeScript error highlighting (US-1744). Global diagnostics stay off; this asks the TS worker
+// Per-page TypeScript error highlighting. Global diagnostics stay off; this asks the TS worker
 // for syntactic + semantic diagnostics of one model and sets Persephone-owned markers.
 
 // ── Tuning constants ─────────────────────────────────────────────────────────

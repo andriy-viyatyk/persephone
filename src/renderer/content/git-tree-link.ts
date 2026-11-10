@@ -1,5 +1,5 @@
 /**
- * `git-tree://` link scheme (EPIC-030 / US-612).
+ * `git-tree://` link scheme.
  *
  * Encodes the repo root for the Git Tree editor. Clicking a repo's `.git`
  * folder in the Explorer produces one of these URLs (via

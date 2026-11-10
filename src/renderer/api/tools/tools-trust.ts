@@ -1,5 +1,5 @@
 /**
- * Toolset trust / registration registry (EPIC-038 / US-801). A toolset's tools are run via
+ * Toolset trust / registration registry. A toolset's tools are run via
  * `tools.execute`, which is arbitrary RCE, so a toolset is only known + runnable once its
  * folder has been registered here. Registration ≡ trust: this one list is both "the toolsets
  * Persephone knows about" and "the toolsets it is allowed to run" (like the boards registry).
@@ -7,17 +7,17 @@
  * Persisted across sessions as a line-delimited list of absolute folder paths at
  * `<userData>/data/trustedTools.txt`. Trust is NEVER read from a toolset's manifest or any
  * in-folder file — a copied toolset must not be able to self-trust. It is always a user
- * action: the confirmation dialog on agent-initiated registration (US-804) or the management
- * UI (US-805).
+ * action: the confirmation dialog on agent-initiated registration or the management
+ * UI.
  *
  * Structured after `board-trust.ts` (reactive `TGlobalState` + lazy `load()` + the `fs`
- * data-file helpers) with two deliberate differences (US-801 T-C1/T-C2):
+ * data-file helpers) with two deliberate differences:
  *   1. **Exact-path matching**, NOT board-trust's inherited/outer-wins `pathCovers`. A
  *      registered path is a toolset *leaf* (one folder = one toolset, one fixed-name
  *      `tools-manifest.json`); parent-folder inheritance would wrongly collapse a nested or
  *      sibling toolset out of enumeration.
  *   2. A `subscribePaths` method so the `registeredTools` model can re-enumerate on
- *      registration changes WITHOUT any filesystem watcher (T-C5).
+ *      registration changes WITHOUT any filesystem watcher (T-).
  *
  * This module is intentionally NOT exposed on the `app` object model or any script `.d.ts` —
  * a script must never be able to silently self-trust.

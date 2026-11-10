@@ -52,7 +52,7 @@ All editor code lives in `/src/renderer/editors/`.
 
 > **Toolset editor:** `ToolsetEditorModel` is a lightweight read-only viewer for one registered *toolset* (a folder holding `tools-manifest.json` + tool scripts — the Agent Tools registry). Like the board and git-tree editors it is a **no-host target editor** (`hasContentHost: false`, `accepts: () => -1`): it is never resolved from a filename, but opened by the `persephone-toolset://` link scheme (encode/decode in `content/persephone-toolset-link.ts`, parsed in `parsers.ts` → `target: "toolset-view"`, built by its module's `newEditorModel` through `PagesLifecycleModel.buildEditorById`, and restored via the `NO_HOST_EDITOR_IDS` allow-list in `PagesPersistenceModel`). Opening it from a normal click on `tools-manifest.json` is deliberately *not* wired — that still opens the JSON in Monaco; instead the file gets an "Open Toolset" trailing icon in the Explorer tree (register-gated via `RegisterToolsetDialog` when the folder is untrusted), mirroring `board-manifest.json`'s "Open Board" icon. The view shows the manifest's metadata, a registered chip, Open-Folder / Open-Log buttons, and a card per declared tool. The registry/trust/executor layer it reads (`api/tools/`) is intentionally kept off the `app` model and every script `.d.ts`, so scripts can neither self-register nor execute tools — the same rule that keeps `board-trust.ts` unscriptable.
 
-> **Board editor:** `BoardEditorModel` is a Pattern-B (survive-navigation) editor. It hosts the board's `index.html` in an in-DOM cross-origin `<iframe src="board://<host>/index.html">` (no `sandbox` attribute; `host` is a stable hash of the board root minted by main; isolated by SOP + `nodeIntegrationInSubFrames: false` + a CSP that forbids remote network). The `board://` protocol is registered once on the host session and routes host→board-root. A browser-IIFE shim (`src/board-shim.ts`), inlined into the served HTML by the `board://` handler, rebuilds `window.persephone` — the bridge object — over a per-board `MessagePort` (minted by `MessageChannelMain` in main, handed off through a one-time renderer-brokered handshake): `execute()` (thin client over the main-process command runner), the integration tier (`openRawLink`, `notify`, file/folder dialogs, `readFile`/`writeFile`), and the theme/token contract (`--p-*` CSS variables injected into the served `<head>` for a themed first paint, live across theme switches). Main enforces the trusted grant snapshot for object-form manifest permissions; trusted legacy manifests without declarations temporarily retain unrestricted bridge access. The theme shortcuts travel the other way for the same SOP reason the content bridge exists: the host's global `KeyboardService` listens on the **host** document, which a cross-origin frame's keydown never reaches, so the shim forwards Ctrl+Alt+`[` / `]` to the host as `board:cycleTheme` and both paths converge on the shared `api/cycle-app-theme.ts`. It uses the same bubble-phase `defaultPrevented` opt-out as the forwarded Ctrl+S, and — unlike `board:setStatusText`, which is main-frame-only because the footer is main-view state — it is accepted from **any** frame, since the app theme is global rather than per-board. Automation (`call` object-model automation) targets the board **frame** via CDP through `BoardTargetModel`. External boards are gated by `board-trust.ts` and show `UntrustedBoardView.ts` until trusted; bundled boards under `assets/boards/` use permissions from their shipped manifest. A missing board root shows `BoardNotFoundView.ts`. The `boards-assets/` root holds the recommended-components catalog (skins + manifest). See `assets/board-template/CLAUDE.md` for the board authoring guide.
+> **Board editor:** `BoardEditorModel` is a Pattern-B (survive-navigation) editor. It hosts the board's `index.html` in an in-DOM cross-origin `<iframe src="board://<host>/index.html">` (no `sandbox` attribute; `host` is a stable hash of the board root minted by main; isolated by SOP + `nodeIntegrationInSubFrames: false` + a CSP that forbids remote network). The `board://` protocol is registered once on the host session and routes host→board-root. A browser-IIFE shim (`src/board-shim.ts`), inlined into the served HTML by the `board://` handler, rebuilds `window.persephone` — the bridge object — over a per-board `MessagePort` (minted by `MessageChannelMain` in main, handed off through a one-time renderer-brokered handshake): `execute()` (thin client over the main-process command runner), the integration tier (`openRawLink`, `notify`, file/folder dialogs, `readFile`/`writeFile`), and the theme/token contract (`--p-*` CSS variables injected into the served `<head>` for a themed first paint, live across theme switches). Main enforces the trusted grant snapshot for object-form manifest permissions; trusted legacy manifests without declarations temporarily retain unrestricted bridge access. The theme shortcuts travel the other way for the same SOP reason the content bridge exists: the host's global `KeyboardService` listens on the **host** document, which a cross-origin frame's keydown never reaches, so the shim forwards Ctrl+Alt+`[` / `]` to the host as `board:cycleTheme` and both paths converge on the shared `api/cycle-app-theme.ts`. It uses the same bubble-phase `defaultPrevented` opt-out as the forwarded Ctrl+S, and — unlike `board:setStatusText`, which is main-frame-only because the footer is main-view state — it is accepted from **any** frame, since the app theme is global rather than per-board. Automation (`call` object-model automation) targets the board **frame** via CDP through `BoardTargetModel`. External boards are gated by `board-trust.ts` and show `UntrustedBoardView.ts` until trusted; bundled boards under `assets/boards/` use permissions from their shipped manifest. A missing board root shows `BoardNotFoundView.ts`. The `boards-assets/` root holds the recommended-components catalog (skins + manifest). See `assets/guides/agents/boards.md` for the canonical board authoring guide; scaffolding generates a board-local `CLAUDE.md` from it.
 
 > **Board TypeScript projects:** A board can register an authorized folder containing `tsconfig.json` through `persephone.registerTypeScriptProject(root)`. The renderer registry records the root and selected project files; loading is lazy until a matching Monaco `.ts`/`.tsx` page opens. Those Monaco models use file URIs, project declarations are added as extra libraries, and watched file changes refresh IntelliSense. The project is released when its last Monaco page closes or the board bridge port is disposed. Diagnostics remain off globally; project pages expose a per-page toggle for syntactic and semantic markers. Compiler options are not applied, so these markers are not a full `tsc` run.
 
@@ -216,7 +216,7 @@ abstract class EditorModel<TState extends IEditorState = IEditorState> {
 }
 ```
 
-`EditorModel` extends `TDialogModel` indirectly via the queue/state primitives — every editor can `close()` with confirmation and has a `canClose` guard.
+Editors expose their own lifecycle and release confirmation methods; `TDialogModel.canClose` is a dialog guard, not a universal editor contract.
 
 ## TextHostEditorModel Base Class
 
@@ -439,8 +439,7 @@ only editors may omit it. Registration lives in
 `EDITOR_MATCHERS[id]` and `accepts` defaulting to `makeAccepts(match)` (or `() => -1` for
 standalone editors with no matcher). Monaco and `file-diff` carry explicit `accepts`
 overrides. Each row's `load` keeps a literal `import("./…")` so Vite code splitting is
-preserved, and row order is preserved deliberately — it breaks priority ties in
-`resolveForFile`.
+preserved, and row order breaks equal file-match priorities in `resolve`.
 
 `capabilities?` declares built-in handoffs owned by the editor. The renderer capability service
 seeds `app.capabilities` from these declarations at startup, keeping page/editor construction in
@@ -532,7 +531,7 @@ File path → editorRegistry.resolve(filePath) → EditorModule → createEditor
 
 Markdown sits at 10 rather than sharing monaco's floor because Persephone is used far more as a documentation *viewer* than as a Markdown editor, so `.md` files open in the rendered Preview by default. The tier is kept below 20 so a compound name always outranks it, and `md-view` derives its extension set from the shared Monaco language table (`getLanguageByExtension`) instead of a duplicated list — `.md`, `.markdown`, `.mkd`, `.mdown`, and the rest come along automatically.
 
-Content-based detection is **not** part of this path: `acceptFile` never sees content. It belongs to `accepts()` (priority 60 when a `detectsContent` matcher fires) and reaches the user through the switch widget and `detectContentEditor` — see [Content-Based Editor Detection](#content-based-editor-detection).
+Content-based detection is **not** part of this path: `acceptFile` never sees content. It belongs to `accepts()` (priority 60 when a `detectsContent` matcher fires) and reaches the user through the switch widget — see [Content-Based Editor Detection](#content-based-editor-detection).
 
 All editor registration is in `/src/renderer/editors/register-editors.ts`; the matchers themselves are in `/src/renderer/editors/base/editor-matchers.ts`.
 
@@ -724,12 +723,7 @@ The Link editor embeds a `"type"` property in its JSON content:
 
 This allows the correct switch button to appear even when the file name doesn't match the expected pattern (e.g., `.link.json`). Detection uses fast regex checks (no JSON parsing) via the matcher's `detectsContent` function. The bundled REST Client board independently recognizes its collection marker through its manifest `contentMasks`; board content detection never participates in file-open resolution.
 
-`TextFileModel` runs detection:
-- **Immediately** on `restore()` and `changeEditor()`
-- **Debounced (2.5s)** on `changeContent()`
-- Timer is cancelled on `dispose()`
-
-The detected editor is stored in `TextFileModel.state.detectedContentEditor` and merged into switch options by the toolbar.
+The switch widget evaluates `accepts()` against the current host state, including its content, when building the available options.
 
 ## Bundled board exception
 
@@ -750,7 +744,6 @@ editorRegistry.findEditorsAccepting(host)          // All ids accepting a live c
 editorRegistry.validateForLanguage(editor, lang)   // Validate editor/language combo
 editorRegistry.getSwitchOptions(lang, filePath)    // Get UI switch options ([] when fewer than 2 apply)
 editorRegistry.getPreviewEditor(lang, filePath)    // Get auto-preview editor for the file
-editorRegistry.detectContentEditor(lang, content)  // Detect editor from content `type` field
 editorRegistry.createEditor(id)                    // Create an EditorModel instance
 ```
 

@@ -5,7 +5,7 @@ import { shell } from "../../api/shell";
 import { ui } from "../../api/ui";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 import { fs as appFs } from "../../api/fs";
-import type { MenuItem } from "../../uikit";
+import type { MenuItem } from "../../uikit/Menu/index";
 import { textFileMenuItems } from "../shared/editor-menu-items";
 import { IEditorState, EditorView } from "../../../shared/types";
 import { ScriptPanelModel } from "./ScriptPanel";
@@ -27,14 +27,12 @@ export interface TextFileEditorModelState extends IEditorState {
     encrypted?: boolean;
     restored: boolean;
     temp: boolean;
-    /** Editor detected from content (for example, a link collection marker) */
-    detectedContentEditor?: EditorView;
-    /** Git repo membership (EPIC-030). Detected once on filePath resolve when
+    /** Git repo membership. Detected once on filePath resolve when
      *  the "Git integration" setting is on. `undefined` = not yet checked;
      *  `null` = checked, not a repo (or git unavailable). Not persisted —
-     *  re-detected on restore, like `detectedContentEditor`. */
+     *  re-detected on restore. */
     gitRepo?: { root: string; branch: string } | null;
-    /** HS1 — editor-keyed view-state slot map. Each text-bearing editor that
+    /** Editor-keyed view-state slot map. Each text-bearing editor that
      *  wraps this host reads + writes its own slot via
      *  `getEditorState<XxxSettings>(this.editorId)` /
      *  `setEditorState<XxxSettings>(this.editorId, value)` from IContentHost.
@@ -187,38 +185,7 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
     script = new ScriptPanelModel(this);
 
     // =========================================================================
-    // Content-based editor detection
-    // =========================================================================
-
-    private _detectTimer: ReturnType<typeof setTimeout> | null = null;
-
-    /** Run content detection immediately and update state if changed. */
-    private detectContentEditor = () => {
-        const detected = editorRegistry.detectContentEditor(this);
-        if (detected !== this.state.get().detectedContentEditor) {
-            this.state.update((s) => { s.detectedContentEditor = detected as EditorView | undefined; });
-        }
-    };
-
-    /** Schedule detection after a debounce delay (for content changes). */
-    private scheduleDetection = () => {
-        if (this._detectTimer) clearTimeout(this._detectTimer);
-        this._detectTimer = setTimeout(() => {
-            this._detectTimer = null;
-            this.detectContentEditor();
-        }, 2500);
-    };
-
-    /** Cancel any pending detection timer. */
-    private cancelDetection = () => {
-        if (this._detectTimer) {
-            clearTimeout(this._detectTimer);
-            this._detectTimer = null;
-        }
-    };
-
-    // =========================================================================
-    // Git repo detection (EPIC-030 / US-610)
+    // Git repo detection 
     // =========================================================================
 
     /** Detect git repo membership for the current filePath, gated by the
@@ -263,7 +230,6 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
             state.temp = state.temp && !byUser;
         });
         this.io.markModificationUnsaved();
-        this.scheduleDetection();
     };
 
     changeEditor = (editor: EditorView) => {
@@ -272,24 +238,7 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
         this.state.update((s) => {
             s.editor = validated;
         });
-        this.detectContentEditor();
     };
-
-    getRestoreData() {
-        const {
-            content,
-            deleted,
-            password,
-            encrypted,
-            restored,
-            detectedContentEditor,
-            ...pageData
-        } = this.state.get();
-        if (this.pipe) {
-            pageData.pipe = this.pipe.toDescriptor();
-        }
-        return pageData;
-    }
 
     applyRestoreData = (data: Partial<TextFileEditorModelState>): void => {
         let restoredPipe: IContentPipe | null | undefined;
@@ -351,7 +300,7 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
         return this.state.get().editorSettings?.[editorId] as T | undefined;
     }
 
-    /** HS1 — write editor-keyed view-state slot. Sync. The shallow rebuild
+    /** Write editor-keyed view-state slot. Sync. The shallow rebuild
      *  preserves immutability assumptions for downstream subscribers. */
     setEditorState<T>(editorId: string, value: T): void {
         this.state.update((s) => {
@@ -386,7 +335,6 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
     async restore(options?: { signal?: AbortSignal }) {
         await this.io.restore(options);
         await this.script.restore(this.state.get().id);
-        this.detectContentEditor();
         void this.detectGitRepo();
         this.state.update((s) => {
             s.restored = true;
@@ -394,7 +342,6 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
     }
 
     async dispose(): Promise<void> {
-        this.cancelDetection();
         this.io.dispose();
         this.script.dispose();
         await appFs.deleteCacheFiles(this.state.get().id);
@@ -446,7 +393,6 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
     confirmRelease = async (_closing?: boolean): Promise<boolean> => {
         return this.actions.confirmRelease();
     };
-    canClose = () => this.actions.canClose();
 }
 
 export function newTextFileModel(filePath?: string): TextFileModel {

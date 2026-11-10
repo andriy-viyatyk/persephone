@@ -1,3 +1,4 @@
+import { PLATFORM_AUDIO_CAPABILITY_ID , CAPABILITY_ERROR_CODES } from "../shared/capability-constants";
 import { capabilityRegistry, type CapabilityRegistration } from "./capability-registry";
 import { randomUUID } from "node:crypto";
 import { MAX_INTENT_DEPTH, MAX_INTENT_PAYLOAD_BYTES, MAX_OUTSTANDING_INTENTS_PER_HANDLER } from "../shared/capability-limits";
@@ -43,7 +44,7 @@ export interface MainCapabilityInvocationContext {
     readonly dispose: () => void;
 }
 
-const errorCodes = new Set<CapabilityErrorCode>(["no-handler", "untrusted", "handler-closed", "crashed", "cancelled", "timeout", "cycle", "payload-too-large", "busy", "rejected", "permission-denied", "channel-backpressure", "channel-closed"]);
+const errorCodes = new Set<CapabilityErrorCode>(CAPABILITY_ERROR_CODES);
 function capabilityError(code: CapabilityErrorCode, message: string = code): Error { return Object.assign(new Error(message), { code }); }
 function checkedJson(value: unknown): CapabilityJson {
     const ancestors = new Set<object>();
@@ -232,7 +233,7 @@ class CapabilityRouter {
         const declaration = registration.methods[method];
         if (declaration.kind === "channel") return this.invokeChannel(bound, method, args, context);
         if (declaration.kind === "open") return this.invokeOpen(bound, method, args, context);
-        const mainOwnedAudio = registration.origin === "platform" && registration.id === "audio" && registration.handlerKey === "audio";
+        const mainOwnedAudio = registration.origin === "platform" && registration.id === PLATFORM_AUDIO_CAPABILITY_ID && registration.handlerKey === "audio";
         if (declaration.kind !== "call" || (registration.origin !== "board" && !mainOwnedAudio)) throw capabilityError("no-handler");
         if (!Array.isArray(args)) throw capabilityError("rejected", "Arguments must be an array.");
         const jsonArgs = checkedJson(args) as CapabilityJson[];
@@ -423,7 +424,7 @@ class CapabilityRouter {
     private async invokeChannel(bound: BoundCapability, method: string, args: unknown[], context: CapabilityCallContext) {
         const registration = this.authorize(bound, method);
         if (bound.caller.kind === "agent") throw capabilityError("permission-denied");
-        const mainOwnedAudio = registration.origin === "platform" && registration.id === "audio" && registration.handlerKey === "audio";
+        const mainOwnedAudio = registration.origin === "platform" && registration.id === PLATFORM_AUDIO_CAPABILITY_ID && registration.handlerKey === "audio";
         if ((!mainOwnedAudio && registration.origin !== "board") || !Array.isArray(args) || args.length > 1) throw capabilityError("rejected");
         if (mainOwnedAudio && method === "muteApp" && args.length !== 0) throw capabilityError("rejected");
         const argument = args.length ? checkedJson(args[0]) : {};

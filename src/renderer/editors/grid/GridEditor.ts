@@ -44,7 +44,7 @@ export type GridQueueRequest = never;
 /**
  * What is remembered about one column, and the whole of it.
  *
- * Deliberately **not** av-grid's `Column` (US-1020 / D2). The old grid persisted its own
+ * Deliberately **not** av-grid's `Column`. The old grid persisted its own
  * `Column` objects, which made a third-party type the on-disk contract in two places — the
  * descriptor in `openFiles.txt` and embedded editor state slots —
  * so a field rename upstream became a migration over users' disks. It also invited a
@@ -54,7 +54,7 @@ export type GridQueueRequest = never;
  * These fields are all the editor has ever actually written. Everything else on a column
  * is either derived from the data (width detection, data type) or a default.
  *
- * Legacy note: descriptors written before US-1020 carry the old grid's misspelled
+ * Legacy note: descriptors written before carry the old grid's misspelled
  * `resizible`, plus `filterType: "options"` which is now av-grid's default. Both are read and
  * dropped by `toColumnSetting`.
  */
@@ -65,7 +65,7 @@ export interface GridColumnSetting {
     hidden?: boolean;
     dataType?: DataType;
     /**
-     * The column's filter mode, written ONLY for an explicit `"text"` opt-in (US-1434).
+     * The column's filter mode, written ONLY for an explicit `"text"` opt-in.
      *
      * Absent means the options checklist, which is both av-grid's default and this editor's, so
      * a setting written before this field existed needs no migration and no legacy branch: it
@@ -145,7 +145,7 @@ export interface GridEditorState extends EditorStateBase {
     // View-derived — present on state for reactive reads; stripped from
     // getRestoreData (GR8 / MO5 pattern).
     //
-    // US-1020 / D1: `rows` is **not** here. av-grid owns the live row array — it writes
+    // Rows are **not** stored here. av-grid owns the live row array — it writes
     // `row[key] = value` itself on an edit — and immer's autoFreeze would deep-freeze any array
     // put into this state, so a row in reactive state is a row av-grid cannot write to. The
     // count is kept because the footer needs it reactively; the rows themselves live on
@@ -192,7 +192,7 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, void, GridQ
     private _maxRowId = 0;
 
     /**
-     * The rows, before a grid exists to own them (US-1020 / D1).
+     * The rows, before a grid exists to own them.
      *
      * Parsing happens in `onHostAttached`, which runs before the view mounts, so there has to be
      * somewhere to put them that is not reactive state. After `setGrid` this is only the seed
@@ -230,7 +230,7 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, void, GridQ
         >;
     }
 
-    // ── The grid handle (US-1020 / D1) ──────────────────────────────────
+    // ── The grid handle  ──────────────────────────────────
 
     /**
      * Take or release the grid instance. Called by `GridBody` through `onGrid`.
@@ -507,7 +507,7 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, void, GridQ
      *
      * `setRows` rather than a `rows` prop push: it keeps the scroll position and reuses every
      * cell already on screen, and it is the only path that works once av-grid owns the array
-     * (D1). The columns go through state, because that is what the view passes at `create()`.
+     *. The columns go through state, because that is what the view passes at `create`.
      */
     private setRows(rows: any[], columns: Column[]): void {
         this._rows = rows;
@@ -601,13 +601,13 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, void, GridQ
         return res;
     }
 
-    // ── av-grid callbacks (US-1020 / D1) ─────────────────────────
+    // ── av-grid callbacks  ─────────────────────────
 
     /**
      * Every one of these returns `void`, never `false`.
      *
      * av-grid reads `false` as "veto this operation", which is the door back to the controlled
-     * model D1 rules out: the grid would stop writing and this model would have to re-apply every
+     * model rules out: the grid would stop writing and this model would have to re-apply every
      * mutation itself, against rows immer has frozen. Here the grid performs the change and the
      * model's only job is to notice, so the file gets written.
      */

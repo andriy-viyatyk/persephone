@@ -1,9 +1,9 @@
 /**
- * `.env` loading for toolsets (EPIC-038 / US-802). A thin wrapper over Node's built-in
+ * `.env` loading for toolsets. A thin wrapper over Node's built-in
  * `util.parseEnv` — verified present in Persephone's runtime (Node 22 / Electron 39) and
  * dotenv-compatible (the parser behind `node --env-file`): it handles `KEY=VALUE`, `#` comments,
  * blank lines, `export ` prefixes, single/double quotes, and inline comments, and skips malformed
- * lines without throwing. So there is no hand-rolled parser and no `dotenv` dependency (T-C5).
+ * lines without throwing. So there is no hand-rolled parser and no `dotenv` dependency (T-).
  *
  * We parse content we read ourselves; we deliberately do NOT use `process.loadEnvFile`, which
  * would mutate the renderer's own `process.env`. The parsed map is passed to `app.proc.execute`

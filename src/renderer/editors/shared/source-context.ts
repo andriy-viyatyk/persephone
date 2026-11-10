@@ -75,7 +75,7 @@ export async function navigateToSourceItem(
     // Owned by nobody on purpose. Navigation can REPLACE the editor that scheduled it, detaching
     // and disposing that editor before this callback runs. Editor-scoped scheduling is cancelled
     // by disposal, and a guard against the editor's page changing cannot pass. That is what stopped
-    // Collections/Tags selection from following Video Player auto-advance (US-1288). This callback
+    // Collections/Tags selection from following Video Player auto-advance. This callback
     // closes over the page and item, touches no editor state, and re-reads panelEditors after paint;
     // it remains safe to outlive the editor that scheduled it.
     afterPaint(() => {

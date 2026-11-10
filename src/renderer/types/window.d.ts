@@ -1,4 +1,4 @@
-import { Endpoint, EventEndpoint } from "../../ipc/api-types";
+import { Endpoint, EventEndpoint, RendererEvent } from "../../ipc/api-types";
 import type { BoardPipeChannel } from "../../ipc/board-pipe-channels";
 import type { BoardServiceSettingsChannel } from "../../ipc/board-service-settings-channels";
 
@@ -13,7 +13,7 @@ declare global {
         electron: {
             ipcRenderer: {
                 sendMessage(
-                    channel: Endpoint | EventEndpoint | BoardPipeChannel | BoardServiceSettingsChannelName | PreloadEvent,
+                    channel: Endpoint | EventEndpoint | BoardPipeChannel | BoardServiceSettingsChannelName | RendererEvent,
                     ...args: unknown[]
                 ): void;
                 on(
@@ -24,7 +24,7 @@ declare global {
                     channel: Endpoint | `${Endpoint}_${number}` | BoardPipeChannel,
                     func: (...args: unknown[]) => void
                 ): void;
-                /** Ports-aware listener (EPIC-037 / US-771) — surfaces a transferred
+                /** Ports-aware listener — surfaces a transferred
                  *  MessagePort (on `event.ports`) that `on`/`once` drop. */
                 onPort(
                     channel: EventEndpoint,

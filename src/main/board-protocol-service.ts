@@ -16,7 +16,7 @@ import { resolveBoardDialogFrame } from "./cdp-service";
 import { requestBoardDialog } from "./board-dialog-service";
 
 /**
- * `board://` scheme handler (EPIC-034 / US-723; host-routed in EPIC-037 / US-770) —
+ * `board://` scheme handler, routed by host —
  * serves a board's own files in-process (no HTTP server / port).
  *
  * The scheme is declared privileged once at startup (`main-setup.ts`), and the
@@ -39,8 +39,8 @@ const hostToRoot = new Map<string, string>();
 /** board:// URL host → its design + handshake context. The color palette + static
  *  metric tokens are injected as a `:root{--p-*}` `<style>` at serve time (parse-time
  *  theming → no first-paint flash); `hostOrigin` (the host renderer's origin) is baked
- *  into `window.__persephoneBoot` so the shim can validate the port handshake (US-771
- *  C2). Theme is app-global; each host registers with the then-current palette and
+ * into `window.__persephoneBoot` so the shim can validate the port handshake.
+ *  The theme is app-global; each host registers with the then-current palette and
  *  `updateAllBoardThemes` refreshes them on a theme switch. */
 interface BoardDesign {
     theme: BoardThemePalette;
@@ -51,7 +51,7 @@ interface BoardDesign {
 }
 const hostToDesign = new Map<string, BoardDesign>();
 
-/** board:// host → live registration count (EPIC-044 / US-853). A board's main and
+/** board:// host → live registration count. A board's main and
  *  secondary frames resolve to the SAME host (`boardRootToHost` is deterministic), so
  *  each frame registers/unregisters it. The host→root/design mappings are dropped only
  *  when the LAST frame unregisters — otherwise a secondary-panel close (or a main reload
@@ -71,7 +71,7 @@ export function boardRootToHost(boardRoot: string): string {
 }
 
 /** CSP for board HTML documents: local origin only; inline scripts/styles allowed
- *  (author convenience, US-723 C2); remote forbidden. Set as a response header. */
+ *  enabled for author convenience and forbidden for remote boards. Set as a response header. */
 const BOARD_CSP = [
     "default-src 'none'",
     // 'wasm-unsafe-eval' permits compiling WebAssembly and nothing else — it does not
@@ -114,8 +114,8 @@ function safeJson(value: unknown): string {
 
 /** Build the `window.__persephoneBoot` `<script>` — the board context read
  *  synchronously by the shim before the first author script (replaces the old
- *  `getContext` IPC, US-771): initial theme/tokens + the host renderer origin for
- *  the C2 handshake check. */
+ *  `getContext` IPC provides the initial theme/tokens and host renderer origin for
+ * the handshake check. */
 function buildBootScript(design: BoardDesign | undefined): string {
     const boot = {
         theme: design?.theme ?? { id: "", isDark: true, vars: {} },
@@ -128,7 +128,7 @@ function buildBootScript(design: BoardDesign | undefined): string {
 }
 
 /** The bridge shim source (`board-shim.js`, built beside `main.js`). Inlined into served HTML so
- *  `window.persephone` exists synchronously, before the first author script (US-771).
+ *  `window.persephone` exists synchronously, before the first author script.
  *
  *  Cached for the process lifetime in a packaged build (the file cannot change under us). In DEV the
  *  cache is skipped, because the dev server rebuilds the shim on every edit WITHOUT restarting
@@ -182,7 +182,7 @@ function injectHead(html: string, fragment: string): string {
  *  style + boot + the ~100 kB shim) lands *before* that meta and pushes it well past the
  *  1024-byte sniffing window, so the whole document was being decoded as windows-1252 and
  *  every non-ASCII character in the shim (the em dashes in the AiVision member cautions,
- *  found by the todo board in EPIC-098) reached the agent mojibaked. The header wins over
+ *  found by the todo board reached the agent mojibaked. The header wins over
  *  the meta, so stating it here fixes the document and its scripts, which inherit it. */
 const UTF8_MIME_TYPES = new Set([
     "text/html",
@@ -201,7 +201,7 @@ function boardContentType(mime: string): string {
     return UTF8_MIME_TYPES.has(mime) ? `${mime}; charset=utf-8` : mime;
 }
 
-/** Log a missing board **document** to the board's `ui.log` (EPIC-037 / US-774 C11,
+/** Log a missing board **document** to the board's `ui.log`,
  *  mode A). A `board://` handler that returns a 404 `Response` is a *completed* load to
  *  Electron, so `did-fail-load` never fires for a renamed/missing `index.html` — log it
  *  here so the failure is reported immediately and precisely (the on-board log indicator
@@ -221,7 +221,7 @@ async function serveBoardPipe(
     // inside the stream's pull loop. Aborted from two sources: the inbound Request's own signal,
     // and the response ReadableStream's cancel() algorithm — the mechanism the Streams spec fires
     // when the consumer (Chromium) abandons an in-flight response, e.g. a <video> seek that
-    // supersedes the previous Range request without the page ever closing (US-1518 section 7a).
+    // supersedes the previous Range request without the page ever closing (see section 7a).
     const abort = new AbortController();
     if (requestSignal?.aborted) abort.abort();
     else requestSignal?.addEventListener("abort", () => abort.abort(), { once: true });
@@ -366,7 +366,7 @@ async function serveBoardFile(request: Request): Promise<Response> {
         if (permissions?.kind === "flags") headers.set("Permissions-Policy", "local-fonts=()");
         // Inject, in order, into <head> (before any author script/stylesheet):
         //   1. the `--p-*` palette `<style>` → first paint is themed (no white flash);
-        //   2. `window.__persephoneBoot` → initial theme/tokens + host origin (US-771);
+        //   2. `window.__persephoneBoot` → initial theme/tokens + host origin;
         //   3. the bridge shim → defines `window.persephone` synchronously.
         const html = await response.text();
         const design = hostToDesign.get(host);
@@ -405,8 +405,8 @@ export function initBoardProtocol(partition: string): void {
 /** Map a board into the host-routed registry; returns its stable `board://` host.
  *  Idempotent — re-registering the same root refreshes its design and returns the
  *  same host. The handler itself is already registered (`initBoardProtocol`).
- *  `hostOrigin` is the calling renderer's origin, baked into the shim for the C2
- *  handshake check (US-771). */
+ *  `hostOrigin` is the calling renderer's origin, baked into the shim for the 
+ *  handshake check. */
 export function registerBoard(
     boardRoot: string,
     theme: BoardThemePalette,
@@ -424,7 +424,8 @@ export function registerBoard(
 }
 
 /** Drop a board from the registry on unmount/close. No session teardown — the host
- *  session is shared and long-lived (storage handling is US-772 / EPIC-037 C12). */
+ *  session is shared and long-lived, with storage handled by Electron's session.
+ */
 export function unregisterBoard(host: string): void {
     const n = (hostRefCount.get(host) ?? 0) - 1;
     if (n > 0) {
@@ -458,7 +459,7 @@ export function getBoardRegistrationSnapshot(): {
 }
 
 /** Resolve a `board://` host → its absolute board root. Used by the per-board port
- *  bridge (US-771) to default `execute()` cwd + relative file paths. */
+ *  bridge to default `execute()` cwd + relative file paths. */
 export function getBoardRootForHost(host: string): string | undefined {
     return hostToRoot.get(host);
 }

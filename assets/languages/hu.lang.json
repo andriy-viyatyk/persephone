@@ -1820,7 +1820,11 @@
     "voiceTyping.translatingRecording": "Felvétel — fordítás angolra — leállítás: {binding}, megszakítás: Esc",
     "voiceTyping.translatingTranscribing": "Átírás angolul — megszakítás: Esc",
     "settings.microphoneReferenceReady": "A számítógép hangja referenciajelként aktív",
-    "settings.microphoneReferenceUnavailable": "A számítógép hangja nem érhető el referenciaként; a zajtisztítás visszhangkioltás nélkül folytatódik: {reason}"
+    "settings.microphoneReferenceUnavailable": "A számítógép hangja nem érhető el referenciaként; a zajtisztítás visszhangkioltás nélkül folytatódik: {reason}",
+    "shell.ungroup": "Csoport szétbontása",
+    "shell.mutePage": "Lap némítása",
+    "shell.unmutePage": "Lap némításának feloldása",
+    "tools.siteExtensionActionFailed": "A webhelybővítmény művelete nem sikerült."
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3495,6 +3499,10 @@
     "voiceTyping.translatingRecording": "e3db99f8",
     "voiceTyping.translatingTranscribing": "dcf439f0",
     "settings.microphoneReferenceReady": "043e4ffb",
-    "settings.microphoneReferenceUnavailable": "d1af3faf"
+    "settings.microphoneReferenceUnavailable": "d1af3faf",
+    "shell.ungroup": "460af6ed",
+    "shell.mutePage": "724c00d7",
+    "shell.unmutePage": "af4c43a2",
+    "tools.siteExtensionActionFailed": "96558212"
   }
 }

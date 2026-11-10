@@ -3,7 +3,7 @@ import { CdpSession } from "./CdpSession";
 import { APP_WINDOW_CDP_KEY } from "../../ipc/api-types";
 
 /**
- * `IBrowserTarget` adapter for Persephone's OWN main window (US-810), letting the
+ * `IBrowserTarget` adapter for Persephone's OWN main window, letting the
  * shared automation operations drive the app's own UI through `window.screen` — page
  * tabs, sidebar, toolbars, dialogs, and the active editor. Selected explicitly via
  * `window.screen` or the explicit `pageId: "app"` target.

@@ -163,7 +163,7 @@ session-only exact-file read access; source grants never enable writes, and a `f
 board cannot read context siblings.
 
 For the service-versus-`executeNode()` ownership decision, use the canonical wording in the
-[board-authoring guide](../../board-template/CLAUDE.md#declared-module-services-manifestservice)
+[board-authoring guide](./boards.md#declared-services-and-shared-storage)
 instead of creating a second rule here.
 
 ## Code that arrives after you trust it

@@ -53,7 +53,7 @@ export class ScriptRunnerBase {
 
         const libraryPath = settings.get("script-library.path") as string | undefined;
         if (libraryPath) {
-            registerLibraryExtensions(libraryPath);
+            registerLibraryExtensions(() => settings.get("script-library.path"));
             // Only clear cache when files actually changed (file watcher sets libraryDirty)
             if (this.libraryDirty) {
                 clearLibraryRequireCache(libraryPath);

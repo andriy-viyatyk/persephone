@@ -23,7 +23,7 @@ export interface BrowserProfile {
     name: string;
     color: string;
     bookmarksFile?: string;
-    /** Network route for this profile's session (US-1557). Missing = direct. */
+    /** Network route for this profile's session. Missing = direct. */
     network?: BrowserNetwork;
 }
 
@@ -173,7 +173,7 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "voice-typing.auto-stop-inactivity-ms": "Stop voice typing after this many milliseconds in which the transcription provider produced no new draft or committed text, measured from when recording started. Unlike the silence setting this ignores microphone level, so it still ends a session in a noisy room, or one in which nothing was ever said and so no committed segment exists for silence detection to arm on. Only applies to providers that support live transcription, because a provider without it sends no text until the session ends. The short values suit a fast machine, where a draft arrives within a second of speech; allow more on a slow one or when transcription runs on the CPU. Allowed: 0 (off), 2000, 3000, 4000, 5000, 10000, 15000, 30000. Default: 0.",
     "microphone.clean": "Enable DTLN noise cleaning. A consumer requesting computer sound cancellation also enables DTLN noise removal when this is off. Default: true.",
     "microphone.attenuation-db": "Maximum DTLN suppression by frame RMS in dB; 0 means unlimited. Default: 30. Applies whenever DTLN runs.",
-    "microphone.notches": "Device-specific resonance cuts keyed by resolved microphone device ID. Frequencies at or above 8000 Hz are retained but bypassed at the 16000 Hz processing rate. Device IDs are stored locally and may change.",
+    "microphone.notches": "Device-specific resonance cuts keyed by resolved microphone device ID. Frequencies must be between 20 and 7999 Hz inclusive; invalid device profiles are discarded. Device IDs are stored locally and may change.",
     "boards.excalidraw-library-migrated": "Bookkeeping: whether the pre-5.0.4 \"drawing.library-path\" has already been\noffered to the bundled Excalidraw board as its own \"library-path\" setting.\nBoolean. Set to true once that one-time import has run, so clearing the setting\nin Settings stays cleared instead of being re-imported on the next start.\nSet it back to false AND restart Persephone to run the import once more:\nthe import is attempted once per run, so clearing the flag alone changes nothing.",
 };
 
@@ -239,6 +239,8 @@ const defaultAppSettingsState = {
 
 type AppSettingsState = typeof defaultAppSettingsState;
 
+export const MICROPHONE_NOTCH_FREQUENCY_RANGE = { min: 20, max: 7999 } as const;
+
 function normalizeMicrophoneSetting(key: string, value: unknown): unknown {
     if (key === "microphone.clean") return typeof value === "boolean" ? value : true;
     if (key === "microphone.attenuation-db") return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100 ? value : MICROPHONE_TUNING.attenuationDb;
@@ -248,7 +250,7 @@ function normalizeMicrophoneSetting(key: string, value: unknown): unknown {
     for (const [id, raw] of Object.entries(value)) {
         if (!id || id === "default" || !raw || typeof raw !== "object") continue;
         const n = raw as Partial<MicrophoneNotch>;
-        if (typeof n.enabled === "boolean" && typeof n.frequency === "number" && n.frequency >= 20 && n.frequency <= 20000
+        if (typeof n.enabled === "boolean" && typeof n.frequency === "number" && n.frequency >= MICROPHONE_NOTCH_FREQUENCY_RANGE.min && n.frequency <= MICROPHONE_NOTCH_FREQUENCY_RANGE.max
             && typeof n.q === "number" && n.q >= 0.1 && n.q <= 50 && typeof n.gainDb === "number" && n.gainDb >= -60 && n.gainDb <= 0) {
             result[id] = { enabled: n.enabled, frequency: n.frequency, q: n.q, gainDb: n.gainDb };
         }

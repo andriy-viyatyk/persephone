@@ -1,7 +1,7 @@
 /*
- * Translated from the five Emotion blocks in `MultiListBox.tsx` (EPIC-056 US-1016). The row styles
- * are gone entirely — the rows are now ordinary `[data-type="list-item"][data-checkbox]` elements
- * owned by `ListItem.css`, including the leading `[data-part="check"]` box that used to live here.
+ * The root and header rules apply to the MultiListBox structure. Rows use
+ * `[data-type="list-item"][data-checkbox]` styles from `ListItem.css`, including their leading
+ * `[data-part="check"]` box.
  *
  * The select-all row's `height: 24px` stays a literal, as it was: it is not `height.controlSm`
  * semantically, it matches the default `rowHeight` so the header lines up with the rows below it.

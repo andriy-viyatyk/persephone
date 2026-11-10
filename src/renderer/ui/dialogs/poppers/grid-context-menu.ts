@@ -105,7 +105,7 @@ export function showGridContextMenu<R>(
     // as its first statement, so letting the event through means the grid's menu opens and is
     // immediately replaced by a bare Copy / Inspect one. The grid's native host stops the event here
     // too, which is the convention rather than a
-    // workaround. Found in US-1020; the story panel that would have caught it was never run.
+    // workaround. Found in The story panel that would have caught this issue was never run.
     e.event.stopPropagation();
 
     void showAppPopupMenu(e.x, e.y, menu);

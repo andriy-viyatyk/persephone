@@ -108,7 +108,7 @@ export class MultiSelectModel<T = IListBoxItem> extends TComponentModel<
 
     // --- ids ---
     private _elementId = "";
-    /** Fed by the view from `nextElementId("multiselect")` — replaces the former generated-ID source (C3-5). */
+    /** Fed by the view from `nextElementId("multiselect")` — provides stable IDs for accessibility references. */
     setElementId = (elementId: string) => {
         this._elementId = elementId;
     };
@@ -153,9 +153,8 @@ export class MultiSelectModel<T = IListBoxItem> extends TComponentModel<
      * moved row set and a moved highlight, and two writes make the second one report no content
      * change (uikit/CLAUDE.md, "Scrolling after a change that resizes the content").
      *
-     * `closeInto` also carries what `MultiSelectModel.init`'s effect used to do on a
-     * `queueMicrotask` (EPIC-056 C3-6 #9): the resize override is a *consequence of closing*, so it
-     * belongs at the site that closes.
+     * `closeInto` also resets the resize override because that override is only needed while the
+     * list is open.
      */
 
     private openInto(s: MultiSelectState): void {

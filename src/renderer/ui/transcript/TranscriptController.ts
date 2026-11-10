@@ -3,6 +3,7 @@ import { api } from "../../../ipc/renderer/api";
 import { errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
 import { ui } from "../../api/ui";
+import { claimSpeechPort } from "../speech/speech-port-inbox";
 import { liveSpeechSessionCoordinator } from "../speech/LiveSpeechSessionCoordinator";
 import { PcmAudioCapture } from "../speech/PcmAudioCapture";
 import { microphoneOptions, reportMicrophoneStatus, watchMicrophoneSettings } from "../speech/microphone-settings";
@@ -37,9 +38,6 @@ export class TranscriptController {
     private releaseLease: (() => void) | undefined;
     private finishing = false;
     private cancelled = false;
-    private readonly pendingPorts = new Map<string, MessagePort>();
-    private readonly portWaiters = new Map<string, (port: MessagePort) => void>();
-    private channelSubscription: (() => void) | undefined;
     private audioContext: AudioContext | undefined;
 
     public constructor(getEditor: () => monaco.editor.IStandaloneCodeEditor | undefined, onState: (state: TranscriptState) => void) {
@@ -69,16 +67,10 @@ export class TranscriptController {
                 return;
             }
             const sourceKinds: Array<"microphone" | "computer"> = source === "both" ? ["computer", "microphone"] : [source === "computer" ? "computer" : "microphone"];
-            this.channelSubscription = api.onBoardServiceChannel((boardId, channelId, port) => {
-                if (!boardId.startsWith("voice-typing:")) return;
-                const waiter = this.portWaiters.get(channelId);
-                if (waiter) { this.portWaiters.delete(channelId); waiter(port); }
-                else this.pendingPorts.set(channelId, port);
-            });
             this.sources.push(...sourceKinds.map((kind): SourceSession => ({ kind, sendQueue: Promise.resolve(), ended: false, queuedChunks: 0 })));
             for (const item of this.sources) {
                 await this.openChannel(item, provider.provider);
-                if (this.cancelled) return;
+                if (this.cancelled || !this.sources.includes(item)) return;
                 if (this.finishing) {
                     item.ended = true;
                     item.channel?.send({ type: "end" });
@@ -141,7 +133,9 @@ export class TranscriptController {
             version: 1,
             openMessage: { type: "transcribe", format: { encoding: "pcm-s16le", sampleRate: 16_000, channels: 1 }, live: true },
         });
-        source.channel = createSpeechServiceChannel(await this.waitForPort(channelId));
+        const port = await claimSpeechPort(channelId, 5000, "The speech provider channel did not reach the app window.");
+        if (this.cancelled || !this.sources.includes(source)) { port.close(); return; }
+        source.channel = createSpeechServiceChannel(port);
         source.terminal = new Promise<void>((resolve) => { source.resolveTerminal = resolve; });
         const ready = new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => reject(new Error(t("transcript.failed"))), 15_000);
@@ -231,15 +225,6 @@ export class TranscriptController {
         if (source.kind === "microphone") watchMicrophoneSettings(source.capture, stream);
     }
 
-    private waitForPort(channelId: string): Promise<MessagePort> {
-        const pending = this.pendingPorts.get(channelId);
-        if (pending) { this.pendingPorts.delete(channelId); return Promise.resolve(pending); }
-        return new Promise<MessagePort>((resolve, reject) => {
-            const timer = setTimeout(() => { this.portWaiters.delete(channelId); reject(new Error("The speech provider channel did not reach the app window.")); }, 5000);
-            this.portWaiters.set(channelId, (port) => { clearTimeout(timer); resolve(port); });
-        });
-    }
-
     /** The line the transcript last wrote, so later segments of the same utterance continue it. */
     private lastLine: { source: "microphone" | "computer"; utterance: unknown; versionId: number } | undefined;
 
@@ -276,11 +261,6 @@ export class TranscriptController {
         }
         await this.audioContext?.close().catch(() => {});
         this.audioContext = undefined;
-        this.channelSubscription?.();
-        this.channelSubscription = undefined;
-        this.portWaiters.clear();
-        this.pendingPorts.forEach((port) => port.close());
-        this.pendingPorts.clear();
         await api.clearTranscriptLoopback().catch(() => {});
         await api.clearVoiceTypingMicrophone().catch(() => {});
         this.releaseLease?.();

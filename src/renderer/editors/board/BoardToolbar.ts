@@ -124,7 +124,7 @@ export class BoardToolbarView extends VanillaView<{
             toolbarText: state.toolbarText,
         }), this.sync);
         // A board window's own board is the whole app there; File Explorer would open the
-        // Persephone sidebar on it, so the locked board page hides the button (EPIC-136).
+        // Persephone sidebar on it, so the locked board page hides the button.
         const page = this.model.page;
         if (page) this.bind(page.state, (state) => state.version, this.sync);
     }

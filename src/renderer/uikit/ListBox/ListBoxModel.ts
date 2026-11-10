@@ -156,7 +156,7 @@ export class ListBoxModel<T = IListBoxItem> extends TComponentModel<
 
     // --- ids ---
     private _elementId = "";
-    /** Fed by the view from `nextElementId("lb")` — replaces the former generated-ID source (EPIC-056 C3-5). */
+    /** Fed by the view from `nextElementId("lb")` — replaces the former generated-ID source. */
     setElementId = (elementId: string) => {
         this._elementId = elementId;
     };
@@ -413,6 +413,6 @@ export class ListBoxModel<T = IListBoxItem> extends TComponentModel<
      * repaint is `repaintSignature()` plus the view's gate, and the scroll-into-view on
      * `activeIndex` is one unconditional `scrollToRow` from the view's update path — the engine now
      * queues that request itself when it has no usable size yet, which is what the old
-     * `setTimeout(0)` was approximating. See EPIC-056 C3-6 rows 1 and 2.
+     * `setTimeout(0)` was approximating.
      */
 }

@@ -13,7 +13,7 @@ import { createSectionRoot, helpHeader, panel, settingsPath, text } from "./sett
 import "../../../uikit/Button/Button.css";
 
 /**
- * Settings summary for site extensions (US-1613): the extensions folder, installed and trusted
+ * Settings summary for site extensions: the extensions folder, installed and trusted
  * counts, and a button to the full list in the Tools & Editors hub's Site extensions tab.
  */
 export class SiteExtensionsSectionView extends VanillaView<Record<string, never>> {

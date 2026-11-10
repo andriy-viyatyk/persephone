@@ -1,16 +1,14 @@
 /*
- * Rule order mirrors the Emotion block this replaces. Two things differ from `ListBox/ListItem.css`
- * and must not be "made consistent" with it:
+ * Two selectors differ from `ListBox/ListItem.css` because their owners have different specificity:
  *
  * 1. The focused-selection override carries NO `:not([data-drop-active])`. `ListItem` needed that
- *    because both rules lived in the same Emotion block, where source order decided the winner.
- *    Tree's focused override lives on the *container* block (`Tree.css`) at specificity (0,5,0)
+ * because both rules use the same specificity in `ListItem.css`, where source order decides the winner.
+ *    Tree's focused override lives on the *container* rule (`Tree.css`) at specificity (0,5,0)
  *    against this file's drop rule at (0,2,0), so it already outranks the drop feedback today.
  *    Adding the `:not()` would change behaviour: it would let the drop highlight paint a selected
  *    row in a focused tree, which it does not do now.
- * 2. There is no `[data-loading]` rule. The original was an empty block with a comment reserving it
- *    for a future dim-while-loading style; the comment now lives next to where the attribute is
- *    written in `TreeItemView`, and an empty rule is not worth a stylesheet entry.
+ * 2. There is no `[data-loading]` rule. Loading state is represented by the chevron and does not
+ *    change the row's styling.
  *
  * The level guides live in `tree-indents.css`, shared with the section row. This file owns only the
  * selected-state override of their border colour, which is far more specific than the base rule, so
@@ -39,7 +37,7 @@
         pointer-events: none;
     }
 
-    /* Blurred-state selected/active backgrounds (`rowSelectionBase`, relocated by EPIC-056 C3-7). */
+    /* Apply the blurred-state selection backgrounds directly to this row. */
     [data-type="tree-item"][data-active]:not([data-selected]) {
         background-color: var(--color-bg-message, transparent);
     }
@@ -55,8 +53,8 @@
      * chevron and light-grey guides sit on top of the highlight. The chevron takes the selected icon
      * colour; the guides simply disappear into the highlight.
      *
-     * Row-hosted form, deliberately unanchored: the Emotion `&` was already the row, so this is not
-     * the selector that needed the `[data-type="tree"]` anchor.
+     * This row-local selector accepts any focus-selection ancestor. The container-level selectors
+     * in `Tree.css` use the tree root anchor to avoid affecting other lists.
      */
     [data-focus-selection]:focus-within
         [data-type="tree-item"][data-selected] > [data-part="chevron"] > .tree-chevron,
@@ -124,9 +122,8 @@
     }
 
     /*
-     * Both levels are named because a React-valued icon adds one `display: contents` wrapper from
-     * `fillSlot`. Named explicitly rather than reached with a descendant selector: the Emotion rule
-     * was `& svg` scoped to `.tree-icon`, and widening it would start resizing icons inside
+     * Both levels are named because a slot can place its SVG directly under `.tree-icon` or inside
+     * a `children-slot` host. Keep the selector explicit so it does not resize icons inside
      * caller-supplied trailing controls.
      */
     [data-type="tree-item"] > .tree-icon > svg,
@@ -155,9 +152,7 @@
      * primary label, never content competing with it. It belongs here rather than in the caller's
      * colour choice because `--color-text-light` is already the faintest text token in every theme,
      * so a caller wanting fainter than that has nothing left to reach for; this composes with
-     * whatever colour the content chose. (US-1451 review proposed dropping it and leaning on the
-     * caller's token. That was tried and rejected in review-with-the-user: the token alone reads
-     * too strong for a path sitting beside the folder name.)
+     * whatever colour the content chose.
      *
      * `flex: 1 1 0` gives it only the space the label leaves: a zero basis takes no part in
      * shrinking, so the label truncates only once the secondary content has nothing left. The

@@ -1868,7 +1868,11 @@
     "voiceTyping.translatingRecording": "Enregistrement — traduction vers l’anglais — {binding} pour arrêter, Échap pour annuler",
     "voiceTyping.translatingTranscribing": "Transcription en anglais — Échap pour annuler",
     "settings.microphoneReferenceReady": "Référence audio de l’ordinateur active",
-    "settings.microphoneReferenceUnavailable": "Référence audio de l’ordinateur indisponible ; le nettoyage du bruit continue sans annulation de l’écho : {reason}"
+    "settings.microphoneReferenceUnavailable": "Référence audio de l’ordinateur indisponible ; le nettoyage du bruit continue sans annulation de l’écho : {reason}",
+    "shell.ungroup": "Dissocier",
+    "shell.mutePage": "Couper le son de la page",
+    "shell.unmutePage": "Réactiver le son de la page",
+    "tools.siteExtensionActionFailed": "L’action de l’extension de site a échoué."
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3543,6 +3547,10 @@
     "voiceTyping.translatingRecording": "e3db99f8",
     "voiceTyping.translatingTranscribing": "dcf439f0",
     "settings.microphoneReferenceReady": "043e4ffb",
-    "settings.microphoneReferenceUnavailable": "d1af3faf"
+    "settings.microphoneReferenceUnavailable": "d1af3faf",
+    "shell.ungroup": "460af6ed",
+    "shell.mutePage": "724c00d7",
+    "shell.unmutePage": "af4c43a2",
+    "tools.siteExtensionActionFailed": "96558212"
   }
 }

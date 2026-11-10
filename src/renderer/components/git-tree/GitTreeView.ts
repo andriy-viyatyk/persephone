@@ -1,4 +1,4 @@
-/** Native implementation of the reusable Git Tree (US-1030). */
+/** Native implementation of the reusable Git Tree. */
 import { DataGridView } from "../../uikit/DataGrid/DataGridView";
 import {
     defaultColumnWidth,
@@ -195,9 +195,9 @@ function refitGraphColumn(
 }
 
 /**
- * The native grid owns its rows, but the projection remains identity-gated like the former
- * `useMemo([commits, leadingRows])`. This prevents an unrelated parent update from replacing all
- * rows and resetting av-grid's pooled cells.
+ * The native grid owns its rows, and the projection is rebuilt only when commits or leading rows
+ * change. This prevents an unrelated parent update from replacing all rows and resetting av-grid's
+ * pooled cells.
  */
 export class GitTreeView extends VanillaView<GitTreeProps> {
     private readonly gridView: DataGridView<GitCommitRow>;

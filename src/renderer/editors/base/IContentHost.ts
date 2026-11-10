@@ -1,6 +1,6 @@
 import type { IState } from "../../core/state/state";
 import type { HostDescriptor } from "../../../shared/persistence";
-import type { MenuItem } from "../../uikit";
+import type { MenuItem } from "../../uikit/Menu/index";
 
 /** Minimal reactive state every host exposes. */
 export interface IContentHostState {

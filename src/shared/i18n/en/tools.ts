@@ -84,6 +84,7 @@ export const toolsCatalog = {
     siteExtensionsDescription: { message: "Scripts that give agents a model of a website. Each runs only on its own hosts, and only after you trust it." },
     filterExtensions: { message: "Filter by name or host…" },
     folderPath: { message: "Folder: {path}" },
+    siteExtensionActionFailed: { message: "Site extension action failed.", note: "Fallback error when a site extension action fails without an error message." },
     siteExtensionsLoadFailed: { message: "Site extensions could not be loaded." },
     noSiteExtensions: { message: "No site extensions installed." },
     noExtensionsMatch: { message: "No site extensions match the filter." },

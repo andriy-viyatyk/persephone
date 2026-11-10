@@ -39,19 +39,18 @@ export { BOARD_MANIFEST_FILE, normalizeBoardServicePath, normalizeBrowserUrlMask
 export const BOARD_MANIFEST_SCHEMA_VERSION = 1;
 
 /**
- * Board-identity manifest (EPIC-035 / US-745). Its presence is what marks a folder
- * as a board (it gates enumeration; consumed further in US-746 / US-749).
+ * Board-identity manifest. Its presence is what marks a folder
+ * as a board; its presence gates enumeration and Explorer display.
  *
  * Holds `schemaVersion` + optional **descriptive metadata** (name, description, author,
  * repository) plus the **Custom Editor** fields (`fileMasks` / `editorPriority` /
- * `editorName`, EPIC-042). The Custom Editor fields register the board as an editor for
+ * `editorName`). The Custom Editor fields register the board as an editor for
  * matching files, but are **only honored when the board is TRUSTED** — the trust gate is
  * applied by the consumer (the custom-editor registry), never here.
- * Trust is NEVER stored here (a received board must not be able to self-trust —
- * EPIC-035 C2); trust lives in the app-side registry.
+ * Trust is never stored here; the app-side registry owns trust decisions.
  */
 /**
- * One secondary (sidebar) view a board declares (EPIC-044). `id` is the stable,
+ * One secondary (sidebar) view a board declares. `id` is the stable,
  * author-supplied view key (must NOT contain "::", the sidebar composite-key
  * separator). `html` is the board-relative entry file (defaults to the main
  * entry, "index.html", so one file can serve every view and branch on
@@ -100,12 +99,12 @@ export interface BoardManifest {
     /** Optional source-repository URL. Metadata only. */
     repository?: string;
     /**
-     * Board version (semver string, EPIC-045). Metadata; the installed-version side of
+     * Board version (semver string). Metadata; the installed-version side of
      * the update comparison against the published catalog. Written/bumped by the author.
      */
     version?: string;
     /**
-     * Whether the board is meaningful to open with no file / to pin (EPIC-045). Default is
+     * Whether the board is meaningful to open with no file / to pin. Default is
      * DERIVED (see `isBoardStandalone`): true when the board has no `fileMasks`
      * (tools/dashboards), false when it has masks (a file-bound board must opt in).
      */
@@ -116,7 +115,7 @@ export interface BoardManifest {
     singleInstanceMasks?: string[];
     /**
      * Minimum Persephone version this board version requires (semver; absent = no
-     * requirement, EPIC-045). Per-version app-compatibility gate.
+     * requirement). Per-version app-compatibility gate.
      */
     minAppVersion?: string;
     /** Minimum bridge version this board requires (semver; absent = no requirement). */
@@ -139,7 +138,7 @@ export interface BoardManifest {
     capabilities?: BoardCapabilityDeclaration[];
     settings?: unknown;
 
-    // ── Custom Editor axis (EPIC-042) — acted upon only when the board is TRUSTED ──
+    // ── Custom Editor axis  — acted upon only when the board is TRUSTED ──
     /**
      * File masks this board is the editor for, matched against the file NAME (basename).
      * Globs: `*` = any run of chars, `?` = one char. Examples: "*.drawio", "*.grid.json".
@@ -173,7 +172,7 @@ export interface BoardManifest {
      */
     folderEditorMasks?: string[];
     /**
-     * CONTENT detection (EPIC-100 / US-1404) — regular-expression sources tested against the page's
+     * CONTENT detection — regular-expression sources tested against the page's
      * text content, the board-manifest counterpart of a built-in matcher's `detectsContent`. A board
      * declaring `"contentMasks": ["\"type\"\s*:\s*\"force-graph\""]` is offered as an editor-switch
      * option for any page whose content matches, including an UNTITLED, in-memory page that no
@@ -207,13 +206,13 @@ export interface BoardManifest {
      */
     editorName?: string;
     /**
-     * How Persephone sets this board up as a file editor (EPIC-043).
-     * - absent / "simple": EPIC-042 behavior — the board gets a filePath (`getFilePath`) and
+     * How Persephone sets this board up as a file editor.
+     * - absent / "simple": behavior — the board gets a filePath (`getFilePath`) and
      *   reads/writes the file DIRECTLY via `readFile`/`writeFile`. No Persephone content host.
      * - "content-host": Persephone builds the board WITH a content host (owning the pipe,
      *   encoding, encryption, auto-save cache, and dirty state) and injects `persephone.host.*`.
      * Honored only when the board is TRUSTED, like every other Custom Editor field. Inert until
-     * the construction path consumes it (US-845).
+     * the construction path consumes it.
      */
     editorKind?: "simple" | "content-host" | "stream-host";
     /**
@@ -230,14 +229,14 @@ export interface BoardManifest {
     editorSources?: "local" | "any";
 
     /**
-     * Secondary (sidebar) views this board contributes (EPIC-044). Independent of
+     * Secondary (sidebar) views this board contributes. Independent of
      * `fileMasks` / the custom-editor axis — a plain board can declare them too.
      * Read via `readBoardSecondaryViews` (NOT `getBoardEditorAssociation`).
      */
     secondaryViews?: SecondaryViewDecl[];
 
     /**
-     * Board-relative folder holding the board's own documentation (EPIC-100 D7 / US-1406). When
+     * Board-relative folder holding the board's own documentation, with optional `README.md` and `guides/` entries. When
      * present and the board is TRUSTED, every `.md` file under it is mounted into Persephone's
      * guide index at `installed-boards/<board-id>/…` — the About guide tree, `F1`,
      * `guides.search()` and `guides["installed-boards/<id>/<page>"]` over MCP all pick it up with
@@ -247,7 +246,7 @@ export interface BoardManifest {
      * A single relative folder name/path, validated by `normalizeBoardGuidesFolder`: absolute
      * paths, drive letters, `..` segments and empty segments are rejected; interior backslashes
      * are repaired to `/`. Absent → the board
-     * contributes no documentation, which is what every board built before US-1406 does.
+     * contributes no documentation, which is what every board built before does.
      * Honored only when the board is TRUSTED, like every other capability-bearing field: an
      * untrusted board renders nothing at all, and its Markdown (which may carry raw HTML) is
      * never read into Persephone's own About page.
@@ -543,7 +542,7 @@ export function defaultBoardManifest(name = ""): BoardManifest {
 }
 
 /** True iff the folder carries a `board-manifest.json`. Cheap existence check —
- *  does not parse. (Enumeration / Explorer gating consume this in US-746 / US-749.) */
+ *  does not parse. Enumeration and Explorer use this check. */
 export async function isBoardFolder(boardRoot: string): Promise<boolean> {
     return fs.exists(boardManifestPath(boardRoot));
 }
@@ -791,7 +790,7 @@ export interface BoardEditorAssociation {
     fileMasks: string[];
     /** Normalized folder globs narrowing `fileMasks` to certain locations. Empty = any folder. */
     folderMasks: string[];
-    /** Normalized, compilable content-detection regex sources (US-1404). Empty = no content
+    /** Normalized, compilable content-detection regex sources. Empty = no content
      *  detection. Switch-option scope only — never consulted when opening a file. */
     contentMasks: string[];
     /** Resolution priority (>= 0). Non-finite / negative input → 0. */
@@ -823,7 +822,7 @@ export function getBoardEditorAssociation(
     const folderEditorMasks = normalizeFolderEditorMasks(manifest.folderEditorMasks);
     // `folderMasks` only NARROW file masks, so it alone still creates nothing. `folderEditorMasks`
     // deliberately creates a folder association on its own.
-    // `contentMasks` DO (US-1404): a board may detect its format by content alone and appear as a
+    // `contentMasks` DO: a board may detect its format by content alone and appear as a
     // switch option on untitled pages without claiming any file name. `matchesBoardMasks` still
     // requires a file-mask hit, so an empty `fileMasks` can never take a file from a built-in.
     const folderMasks = normalizeFolderMasks(manifest.folderMasks);
@@ -990,7 +989,7 @@ export function normalizeSecondaryViews(raw: unknown): SecondaryViewDecl[] {
 
 /**
  * Extract the declared secondary views from a manifest. Independent of `fileMasks`
- * (EPIC-044 O1). Delegates to `normalizeSecondaryViews`.
+ *. Delegates to `normalizeSecondaryViews`.
  */
 export function readBoardSecondaryViews(
     manifest: BoardManifest | null | undefined,
@@ -998,12 +997,12 @@ export function readBoardSecondaryViews(
     return normalizeSecondaryViews(manifest?.secondaryViews);
 }
 
-/** Derived usage group for a board, for UI grouping / pin gating (EPIC-045). */
+/** Derived usage group for a board, for UI grouping / pin gating. */
 export type BoardUsageGroup = "file-viewer" | "file-editor" | "tool";
 
 /**
  * Whether a board is standalone — openable with no file and eligible for pinning /
- * the "+" new-page dropdown (EPIC-045). Default when `standalone` is absent: no masks →
+ * the "+" new-page dropdown. Default when `standalone` is absent: no masks →
  * true (tools/dashboards are inherently standalone), masks → false (a file-bound board
  * must opt in). An explicit boolean always wins.
  */

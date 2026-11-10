@@ -2,7 +2,7 @@
  * Level guides, shared by the tree row and the tree section row. Imported by `tree-indents.ts`
  * itself, so a view cannot get the helper without its stylesheet.
  *
- * Two properties of the Emotion original are reproduced deliberately and must NOT be "tidied":
+ * Two declarations are intentional and must remain as written:
  *
  * 1. NO `box-sizing`. The original set none and there is no global border-box reset in the
  *    renderer, so a non-first indent is 16px of content plus a 1px border = 17px, and the leading
@@ -12,7 +12,7 @@
  *    child of the engine's absolutely positioned cell wrapper — and `align-items: center` does not
  *    stretch it, so the used height is 0px (measured) and the border below draws nothing. Giving
  *    the row a definite height would switch guide lines on in six editors, which is a design
- *    change, not a conversion. See EPIC-056's follow-up list.
+ *    changing the row height would add guide lines to several editors.
  *
  * `:not([data-first])` rather than `:not(:first-of-type)`: `:first-of-type` filters by element name
  * among siblings and ignores the attribute filter attached to it, and the chevron stub is also a

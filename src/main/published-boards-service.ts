@@ -11,11 +11,11 @@ import {
 } from "../ipc/api-param-types";
 
 /**
- * Published Boards catalog service (EPIC-045 / US-862). Mirrors `version-service.ts`:
+ * Published Boards catalog service. Mirrors `version-service.ts`:
  * `net.fetch` the raw `boards-manifest.json`, gate on a 24h `electronStore` timestamp
  * (`force` bypasses), cache the last-good catalog so the UI works offline, and broadcast
  * `ePublishedBoardsUpdated` when the content changes. No download / install here — the
- * install engine is US-863+.
+ * install engine is +.
  */
 
 const CATALOG_SCHEMA_VERSION = 1;

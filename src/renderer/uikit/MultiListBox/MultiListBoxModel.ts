@@ -147,13 +147,9 @@ export class MultiListBoxModel<T = IListBoxItem> extends TComponentModel<
      * The row-selected predicate handed to `ListBox`.
      *
      * `ListBox` repaints its cells when the explicit `selectedKeys` signal moves. The predicate
-     * itself remains stable because it reads the current plain fields. The remaining explanation
-     * below describes the old failure mode for historical context.
-     * `ListBoxModel.repaintSignature()` moves, and this predicate is the only slot that can carry a
-     * parent-owned selection — `value` is never forwarded to the inner list. With a stable identity,
-     * checking a row would move no slot at all and the box would keep its old glyph until some
-     * unrelated input changed (the self-healing form of the masked-defect class recorded in
-     * `doc/epics/completed.md:625-632` under `## EPIC-067 — De-React Epic E9: the editor chrome contract`).
+     * itself remains stable because it reads the current plain fields. The inner list does not
+     * receive `value`, so the explicit `selectedKeys` signal carries parent-owned selection changes
+     * and triggers the repaint.
      */
     isSelected = this.isSelectedForSource.bind(this);
 

@@ -1,5 +1,5 @@
 /**
- * Routed `src` resolution for renderer-drawn remote resources (US-896, US-1557).
+ * Routed `src` resolution for renderer-drawn remote resources.
  *
  * A Tor page's or proxied profile's route lives on its Electron session
  * partition and therefore covers only the page's `<webview>`. The Link editor

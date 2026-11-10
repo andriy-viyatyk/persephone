@@ -33,7 +33,7 @@ export class TorInfoDialogView extends VanillaView<DialogViewProps> {
     private readonly orgRow: HTMLDivElement;
     private readonly orgValue: HTMLSpanElement;
     private readonly torValue: HTMLSpanElement;
-    /** Proxy mode (US-1557): no Tor verdict, no Reconnect, and "through the proxy" wording. */
+    /** Proxy mode: no Tor verdict, no Reconnect, and "through the proxy" wording. */
     private readonly isTor: boolean;
     private readonly errorElement: HTMLSpanElement;
     private readonly warningElement: HTMLSpanElement;

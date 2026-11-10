@@ -1,4 +1,4 @@
-// Site-extension runtime (EPIC-120 PoC, US-1602). Built as a standalone IIFE and evaluated in a
+// Site-extension runtime. Built as a standalone IIFE and evaluated in a
 // web page's main world ahead of a site-extension script, which publishes its AiVision model with
 // `__persephoneSiteRuntime.expose(root)`. The site does not ship `ai-vision`; this bundle does.
 import { AI_VISION_SCHEMA_VERSION, expose } from "ai-vision/remote";

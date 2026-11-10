@@ -154,28 +154,3 @@ function resolveMnemeLink(currentMnemeUrl: string, link: string): string {
     }
     return `mneme://${[root, ...baseSegs].join("/")}${fragment}`;
 }
-
-/**
- * Checks whether a link is a local/relative file reference
- * (not an external URL, mailto, or anchor-only link).
- */
-export function isLocalLink(link: string): boolean {
-    const lower = link.toLowerCase();
-    return !(
-        lower.startsWith("http://") ||
-        lower.startsWith("https://") ||
-        lower.startsWith("file://") ||
-        lower.startsWith("mailto:") ||
-        lower.startsWith("#")
-    );
-}
-
-/**
- * Resolves a relative link to an absolute file path (not a file:// URL).
- * Strips URL fragments (#section) before resolution.
- */
-export function resolveRelativePath(currentFilePath: string, link: string): string {
-    const linkWithoutFragment = link.split("#")[0];
-    const currentDir = fpDirname(currentFilePath);
-    return fpResolve(currentDir, linkWithoutFragment);
-}

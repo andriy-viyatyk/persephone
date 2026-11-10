@@ -1,3 +1,4 @@
+import { CAPABILITY_ERROR_CODES } from "../../shared/capability-constants";
 import type { CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientResult } from "../capability-bus-channels";
 import type { CapabilityErrorCode, CapabilityJson } from "../../shared/capability-contract";
 import { errMessage } from "../../shared/utils";
@@ -72,7 +73,7 @@ import type { PathWatchEndpoint } from "./path-watch-handlers";
 
 let siteExtensionRuntime: string | null = null;
 
-const clientErrorCodes = new Set<CapabilityErrorCode>(["no-handler", "untrusted", "handler-closed", "crashed", "cancelled", "timeout", "cycle", "payload-too-large", "busy", "rejected", "permission-denied", "channel-backpressure", "channel-closed"]);
+const clientErrorCodes = new Set<CapabilityErrorCode>(CAPABILITY_ERROR_CODES);
 export const activeCapabilityRequests = new WeakMap<Electron.WebContents, Map<string, AbortController>>();
 
 function checkCapabilitySender(event: IpcMainEvent): void {
@@ -425,7 +426,7 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
         return app.getPath(folder as Parameters<typeof app.getPath>[0]);
     }
 
-    /** The site-extension runtime bundle (EPIC-120 PoC), built beside `main.js`. Re-read in dev,
+    /** The site-extension runtime bundle, built beside `main.js`. Re-read in dev,
      *  where the watcher rebuilds it without restarting Electron. */
     getSiteExtensionRuntime = async (): Promise<string> => {
         if (siteExtensionRuntime === null || !app.isPackaged) {

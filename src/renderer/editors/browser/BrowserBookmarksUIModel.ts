@@ -1,3 +1,4 @@
+import { bookmarkProfileSelection } from "./bookmark-profile";
 import { BrowserBookmarks, createEmptyLinkFile } from "./BrowserBookmarks";
 import { showEditLinkDialog } from "../link-editor/EditLinkDialog";
 import { api } from "../../../ipc/renderer/api";
@@ -108,24 +109,14 @@ export class BrowserBookmarksUIModel {
             if (!filePath) return null;
 
             // Persist the file path in settings for this profile
-            const { profileName: pName, isIncognito: isInc } = this.model.state.get();
-            if (isInc) {
-                settings.set("browser-incognito-bookmarks-file", filePath);
-            } else if (pName) {
+            const selection = bookmarkProfileSelection(this.model.state.get(), settings.get("browser-default-profile"));
+            if (selection.kind === "setting") {
+                settings.set(selection.key, filePath);
+            } else {
                 const profiles = settings.get("browser-profiles");
                 settings.set("browser-profiles", profiles.map((p: BrowserProfile) =>
-                    p.name === pName ? { ...p, bookmarksFile: filePath } : p,
+                    p.name === selection.name ? { ...p, bookmarksFile: filePath } : p,
                 ));
-            } else {
-                const defaultName = settings.get("browser-default-profile");
-                if (defaultName) {
-                    const profiles = settings.get("browser-profiles");
-                    settings.set("browser-profiles", profiles.map((p: BrowserProfile) =>
-                        p.name === defaultName ? { ...p, bookmarksFile: filePath } : p,
-                    ));
-                } else {
-                    settings.set("browser-default-bookmarks-file", filePath);
-                }
             }
         }
 
@@ -235,7 +226,7 @@ export class BrowserBookmarksUIModel {
         const { urlInput, activeTabId, tabs, isIncognito, isTor } = this.model.state.get();
 
         // Cache the favicon for this hostname before showing the dialog.
-        // US-896 — skip on Tor pages too: `saveFavicon` downloads over a raw Node
+        // Skip on Tor pages too: `saveFavicon` downloads over a raw Node
         // https request (no proxy at all) AND writes to the persistent on-disk
         // cache. The `page-favicon-updated` path in BrowserView already excludes
         // Tor; this one used to check only incognito.
@@ -244,7 +235,7 @@ export class BrowserBookmarksUIModel {
             if (activeTab?.favicon) {
                 const { getHostname, saveFavicon } = await import("../../components/icons/favicon-cache");
                 const hostname = getHostname(urlInput);
-                // A proxied profile downloads it through its own session (US-1557).
+                // A proxied profile downloads it through its own session.
                 const routedUrl = this.model.network.routedFetchUrl(activeTab.favicon);
                 if (hostname && routedUrl !== null) saveFavicon(hostname, activeTab.favicon, routedUrl);
             }

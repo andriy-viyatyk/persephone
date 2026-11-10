@@ -1,3 +1,4 @@
+import { getStartupDataPath } from "../../core/utils/startup-data-path";
 import { api } from "../../../ipc/renderer/api";
 import { ThemeDefinition } from "./types";
 import { defaultDark } from "./default-dark";
@@ -30,7 +31,7 @@ const builtInThemes: ThemeDefinition[] = [
 function readCustomThemesSync(): ThemeDefinition[] {
     try {
         const fs = require("fs");
-        const themesPath = fpJoin(process.env.APPDATA, "persephone", "data", "themes");
+        const themesPath = fpJoin(getStartupDataPath(), "themes");
         if (!fs.existsSync(themesPath)) return [];
         const definitions: ThemeDefinition[] = [];
         for (const filename of fs.readdirSync(themesPath)) {
@@ -108,7 +109,7 @@ function readStartupThemeId(): string {
     try {
         const fs = require("fs");
         const settingsPath = fpJoin(
-            process.env.APPDATA, "persephone", "data", "appSettings.json"
+            getStartupDataPath(), "appSettings.json"
         );
         const raw = fs.readFileSync(settingsPath, "utf-8");
         // Strip // comments — appSettings.json uses JSON5 comments

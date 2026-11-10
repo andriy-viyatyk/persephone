@@ -22,7 +22,7 @@ interface EditLinkDialogState {
     categories: string[];
     availableTags: string[];
     discoveredImages: string[];
-    /** US-896 / US-1557 — route (Tor or proxied profile) to fetch preview/discovered images through. */
+    /** — route (Tor or proxied profile) to fetch preview/discovered images through. */
     imageProxy: ImageRoute | null;
 }
 
@@ -108,7 +108,7 @@ export interface ShowEditLinkDialogOptions {
     tags?: string[];
     /** Discovered images from browser (for future integration) */
     discoveredImages?: string[];
-    /** US-896 / US-1557 — route to fetch preview/discovered images through. Pass the
+    /** — route to fetch preview/discovered images through. Pass the
      *  owning LinkEditor's `imageProxy`; omit on direct pages. */
     imageProxy?: ImageRoute | null;
 }

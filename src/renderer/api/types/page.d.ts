@@ -41,7 +41,7 @@ export type IFacadeEditorId =
 
 /**
  * Built-in editors without an operation facade, plus runtime custom board ids, plus `""` for a
- * page that has NO editor at all — a tab left open after its editor was closed (US-1408). The
+ * page that has NO editor at all — a tab left open after its editor was closed. The
  * empty id is a real value `page.editor.id` can hold, so comparing against it must type-check.
  */
 export type IGenericEditorId = Exclude<EditorView, IFacadeEditorId>

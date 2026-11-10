@@ -194,7 +194,7 @@ export interface BrowserEditorState extends IEditorState {
      * read and drive. Deliberately not persisted: after a restart the page counts as the user's.
      */
     openedByAgent: boolean;
-    /** `profile-src` token while this page's profile is proxied, else "" (US-1557). */
+    /** `profile-src` token while this page's profile is proxied, else "". */
     networkToken: string;
     /** Proxy shown in the URL bar, e.g. "SOCKS5 127.0.0.1:1080"; "" when direct. */
     networkLabel: string;
@@ -217,7 +217,7 @@ export interface BrowserEditorState extends IEditorState {
     /** Bookmarks drawer width in pixels. Persisted (NH3 — sixth instance of `leftPanelWidth`-equivalent silent fix). */
     bookmarksWidth: number;
     /** SecondaryViews sidebar width (Categories/Tags/Hostnames panels) inside the
-     *  bookmarks surfaces. Persisted per epic Concern 4 (US-601). */
+     *  bookmarks surfaces. Persisted in browser state. */
     bookmarksSidebarWidth?: number;
     /** Whether the current URL is bookmarked (star button state). */
     isBookmarked: boolean;

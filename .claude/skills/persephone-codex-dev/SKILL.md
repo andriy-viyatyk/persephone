@@ -291,7 +291,7 @@ conversion broke the app" when a restart fixes it sends the user chasing nothing
 
 `/review`, `/document`, and `/userdoc` go to Codex too — do not run them yourself.
 
-**Always run them on Luna:** pass `-m gpt-6-luna -e high` to `codex-run.sh` instead of letting the
+**Always run them on Luna:** pass `--luna` (same as `-m gpt-6-luna -e high`) to `codex-run.sh` instead of letting the
 policy pick. *(User decision, 2026-11-03.)* Review and documentation are less critical than planning
 and implementation, so they should not spend the Terra budget those need.
 

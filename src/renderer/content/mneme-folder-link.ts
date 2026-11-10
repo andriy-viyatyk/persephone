@@ -1,5 +1,5 @@
 /**
- * `mneme-folder://` link scheme (EPIC-032 / US-663).
+ * `mneme-folder://` link scheme.
  *
  * Encodes the **root folder** (the parent of a clicked `.mneme` directory) for
  * the Mneme root editor. Clicking a root's `.mneme` folder in the Explorer

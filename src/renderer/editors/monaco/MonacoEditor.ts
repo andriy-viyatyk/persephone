@@ -24,7 +24,7 @@ export interface MonacoEditorState extends EditorStateBase {
      *  persisted (defaults to false on restore). */
     hasSelection: boolean;
     wordWrap: boolean;
-    /** Per-page TypeScript error highlighting for project files (US-1744). */
+    /** Per-page TypeScript error highlighting for project files. */
     diagnostics: boolean;
 }
 
@@ -75,10 +75,6 @@ export class MonacoEditor extends TextHostEditorModel<
             !hs.modified &&
             (this.state.get().title === "" || this.state.get().title === "untitled")
         );
-    }
-
-    hasTextSelection(): boolean {
-        return this.state.get().hasSelection;
     }
 
     get wordWrap(): boolean {

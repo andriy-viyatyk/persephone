@@ -37,8 +37,8 @@ export function claimViewOwnership(view: IOwnedView): void {
  * build child DOM and install bindings. update() before mount stores props but
  * does not call the update hook, because there is no child DOM to update yet.
  *
- * Unlike a React effect, mount() and update() are explicit lifecycle calls. The
- * base intentionally does not batch, schedule, render, or create a React root.
+ * Subclasses build DOM during `mount()` and receive explicit `update()` calls. No framework root
+ * or render scheduler drives these lifecycle methods.
  */
 export abstract class VanillaView<P> implements IOwnedView {
     readonly root: HTMLElement;
@@ -191,7 +191,7 @@ export abstract class VanillaView<P> implements IOwnedView {
      * release triggered during disposal safely finds nothing to remove.
      *
      * This is the owned-resource counterpart of `releaseChild()`. Its absence
-     * is what made US-1152: five secondary views re-bound to a replacement
+     * is what made: five secondary views re-bound to a replacement
      * model with no way to drop the previous subscription.
      */
     private ownReleasable(dispose: Cleanup): Cleanup {

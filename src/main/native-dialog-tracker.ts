@@ -43,22 +43,6 @@ function beginNativeDialog(browserWindow: BrowserWindow | undefined, kind: Nativ
     };
 }
 
-export function registerNativeDialogAbortController(browserWindow: BrowserWindow, controller: AbortController): () => void {
-    let state = activeDialogs.get(browserWindow);
-    if (!state) {
-        state = { activeKinds: new Map(), messageBoxControllers: new Set() };
-        activeDialogs.set(browserWindow, state);
-    }
-    state.messageBoxControllers.add(controller);
-    return () => {
-        const currentState = activeDialogs.get(browserWindow);
-        currentState?.messageBoxControllers.delete(controller);
-        if (currentState && currentState.activeKinds.size === 0 && currentState.messageBoxControllers.size === 0) {
-            activeDialogs.delete(browserWindow);
-        }
-    };
-}
-
 export async function withNativeDialog<T>(
     browserWindow: BrowserWindow | undefined,
     kind: NativeDialogKind,

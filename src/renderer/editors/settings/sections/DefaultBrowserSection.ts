@@ -127,5 +127,3 @@ export class DefaultBrowserSectionView extends VanillaView<Record<string, never>
         api.openDefaultAppsSettings();
     };
 }
-
-export { DefaultBrowserSectionView as DefaultBrowserSection };

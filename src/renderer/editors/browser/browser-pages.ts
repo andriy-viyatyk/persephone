@@ -91,17 +91,18 @@ export async function showBrowserPage(
                 t("browser.browserTorSecureFailed", { error: errMessage(err) }),
                 "error",
             );
+            await editor.dispose();
             return;
         }
     }
 
-    // A proxied profile (US-1557): `restore()` above already applied the route
+    // A proxied profile: `restore()` above already applied the route
     // and records a failure instead of throwing, so a restore never drops a page.
     // A NEW page is refused instead — it has no tabs worth keeping.
     const networkError = editor.state.get().networkError;
     if (networkError) {
         ui.notify(t("browser.browserProxyOpenFailed", { error: networkError }), "error");
-        editor.network.dispose();
+        await editor.dispose();
         return;
     }
 

@@ -10,7 +10,7 @@ import { ui } from "../../api/ui";
 import { fs } from "../../api/fs";
 import { settings } from "../../api/settings";
 import { fpJoin, fpBasename } from "../../core/utils/file-path";
-import { showProgress } from "../../uikit";
+import { showProgress } from "../../uikit/Progress/progressModel";
 import { mnemeStatusModel } from "../../api/mneme-status";
 import { mnemeConnection } from "../../api/mneme-connection";
 import {
@@ -75,7 +75,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
     private _connSub: (() => void) | null = null;
     private _aborts: Record<string, AbortController> = {};
 
-    /** Background-job status poll (US-669): while any root is indexing or the
+    /** Background-job status poll: while any root is indexing or the
      *  model is downloading, re-`status` on a timer so the editor shows
      *  live progress without holding the originating MCP call open. */
     private _pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -88,7 +88,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
 
     constructor(state: TComponentState<MnemeConfigEditorState>) {
         super(state);
-        // Reuse the shared Mneme connection (US-673) instead of opening a third MCP
+        // Reuse the shared Mneme connection instead of opening a third MCP
         // session to the same loopback sidecar (which starved the connection pool and
         // hung status). The shared connection owns the lifecycle; the editor only
         // mirrors its status and issues tool calls through its client.
@@ -294,7 +294,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         if (!client) return;
         try {
             // Returns immediately — Mneme indexes the new root in the background
-            // (US-669). Poll status so the per-root progress bar fills in.
+            // Poll status so the per-root progress bar fills in.
             await client.callTool({ name: "add_root", arguments: { folder, name } });
             await this.refreshStatus();
             mnemeStatusModel.refresh();
@@ -386,7 +386,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         });
     }
 
-    // ── Per-root filters (root_config — US-668) ──────────────────────
+    // ── Per-root filters (`root_config`) ──────────────────────
 
     getRootConfig = async (root: string): Promise<void> => {
         const client = mnemeConnection.getClient();
@@ -407,7 +407,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         if (!client) return;
         try {
             // Returns immediately — Mneme reindexes the root in the background
-            // (US-693). Poll status so the per-root progress bar fills in.
+            // Poll status so the per-root progress bar fills in.
             const result = await client.callTool({
                 name: "root_config",
                 arguments: { root, include, ignore },
@@ -431,7 +431,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         const client = mnemeConnection.getClient();
         if (!client) return;
         try {
-            // Returns immediately — Mneme downloads in the background (US-669).
+            // Returns immediately — Mneme downloads in the background.
             // Poll status so the Model panel's download bar fills in.
             await client.callTool({ name: "model_update", arguments: {} });
             await this.refreshStatus();

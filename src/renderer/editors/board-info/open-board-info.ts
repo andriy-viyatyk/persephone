@@ -5,7 +5,7 @@ import type { PageModel } from "../../api/pages/PageModel";
 import { BoardInfoEditorModel, getDefaultBoardInfoEditorState } from "./BoardInfoEditorModel";
 
 /**
- * Navigate a page's main editor to the Board Info editor with explicit params (EPIC-045 / US-867).
+ * Navigate a page's main editor to the Board Info editor with explicit params.
  *
  * `switchMainEditor` alone cannot cover every opener — its board branch only knows mask-bearing
  * trusted boards and its simple branch needs a `filePath`. This helper replaces the page's main
@@ -52,7 +52,7 @@ export async function transitionPageToBoardInfo(
 }
 
 /**
- * Open the Board Info editor in a NEW page (EPIC-045 / US-870 — the hub's Install / Update /
+ * Open the Board Info editor in a NEW page for the hub's Install, Update, or
  * Properties actions). Unlike `openBoardInfo(page, …)`, which replaces an existing page's main
  * editor, this creates a fresh Board Info page and focuses it, leaving all other pages untouched.
  * `catalogId` → install mode; `boardRoot` → properties mode.

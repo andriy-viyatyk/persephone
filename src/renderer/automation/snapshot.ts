@@ -243,7 +243,7 @@ async function getOwnedIframeTargets(
 }
 
 /** How long one iframe's AX tree may take before the snapshot leaves that frame out. A frame
- *  whose renderer is blocked — every board frame while a board dialog awaits its answer (US-1762)
+ *  whose renderer is blocked — every board frame while a board dialog awaits its answer 
  *  — never replies, and must not hang the whole host snapshot that shows the dialog. */
 const IFRAME_AX_TREE_TIMEOUT_MS = 1500;
 

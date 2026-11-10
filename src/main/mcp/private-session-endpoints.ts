@@ -8,7 +8,7 @@ import { createMcpServer } from "./server-factory";
 const MAX_ENDPOINTS = 64;
 const MAX_TRANSPORTS = 64;
 const MAX_TRANSPORTS_PER_TOKEN = 4;
-// No idle expiry (US-1804). Unlike the public server (US-797), every session here belongs to a grant
+// No idle expiry. Unlike the public server, every session here belongs to a grant
 // that its board revokes when the agent session closes or the service stops, which closes the
 // session too; MAX_TRANSPORTS_PER_TOKEN and MAX_ENDPOINTS bound the rest. An idle timeout only broke
 // agents waiting in Wake mode: after 30 quiet minutes their next tool call failed with "Invalid session".

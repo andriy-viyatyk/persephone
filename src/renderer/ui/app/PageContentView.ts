@@ -149,7 +149,7 @@ export class PageContentView extends VanillaView<PageContentProps> {
             // ExplorerEditor owns the explorer/search/boards panels. Guarding here meant
             // clicking Search or Boards on a freshly created folder page wrote and persisted
             // the state but rendered nothing, until a later mount happened to see the panels
-            // already present (US-1365). SecondaryViewsView does its own change detection,
+            // already present. SecondaryViewsView does its own change detection,
             // so an unconditional update costs a short array compare and a key check.
             this.secondaryView.update(props);
         }

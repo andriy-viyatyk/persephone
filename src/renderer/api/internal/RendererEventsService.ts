@@ -9,6 +9,7 @@ import { isBoardClaimedScheme, schemeOf } from "../../content/scheme-registry";
 import { boardEditorId } from "../../editors/board/custom-editor-registry";
 import { UpdateCheckResult } from "../../../ipc/api-param-types";
 import { EventEndpoint } from "../../../ipc/api-types";
+import type { BoardNotifyMsg } from "../../../ipc/board-bridge-channels";
 import type { PageDescriptor } from "../../../shared/types";
 import type { LaunchInput } from "../../../shared/launch-input";
 import { saveWindowStateForShutdown } from "./save-window-state";
@@ -50,7 +51,7 @@ export class RendererEventsService {
         // Update check notification
         rendererEvents[EventEndpoint.eUpdateAvailable].subscribe(this.handleUpdateAvailable);
 
-        // Board `persephone.notify()` toast (US-724)
+        // Board `persephone.notify()` toast.
         rendererEvents[EventEndpoint.eBoardNotify].subscribe(this.handleBoardNotify);
 
     }
@@ -164,7 +165,7 @@ export class RendererEventsService {
         }
     };
 
-    private handleBoardNotify = (data: { message: string; type?: "info" | "success" | "warning" | "error"; persistent?: boolean }) => {
+    private handleBoardNotify = (data: BoardNotifyMsg) => {
         void ui.notify(data.message, data.type ?? "info", { persistent: data.persistent === true });
     };
 

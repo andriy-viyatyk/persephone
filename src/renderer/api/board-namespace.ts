@@ -4,14 +4,14 @@ import { boardTrust } from "./board-trust";
 import { fpNormalizeForCompare } from "../core/utils/file-path";
 
 // =============================================================================
-// Shared board identity and vars namespace resolution (EPIC-111 / US-1499).
+// Shared board identity and vars namespace resolution.
 // =============================================================================
 
 // Deliberately NOT cached. `readBoardManifest()` reads from disk on every call, so resolution is
 // always current — and the namespace depends on the manifest's own `author`/`name`, which change
 // through neither the trust list nor bundled registration. A cache keyed on those two signals
 // would go stale exactly when it matters most: someone adds a missing `name` to make their board
-// eligible for settings (EPIC-111 S7) and nothing happens until a restart, with nothing on screen
+    // eligible for settings, and nothing happens until a restart; there is no on-screen change
 // explaining why. The cost is one small read and parse per call; if a consumer ever makes this a
 // hot path, cache it then, against a measurement and with manifest-level invalidation.
 

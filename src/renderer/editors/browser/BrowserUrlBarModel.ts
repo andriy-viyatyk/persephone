@@ -3,7 +3,7 @@ import {
     SEARCH_ENGINES,
 } from "./BrowserEditorModel";
 import { searchHistoryManager } from "./browser-search-history";
-import type { MenuItem } from "../../uikit";
+import type { MenuItem } from "../../uikit/Menu/index";
 import { ContextMenuEvent } from "../../api/events/events";
 import { t } from "../../../shared/i18n/t";
 import type { BrowserEditorModel } from "./BrowserEditorModel";
@@ -188,9 +188,10 @@ export class BrowserUrlBarModel {
             this.model.navigate(s.urlInput);
             this.urlInputRef?.blur();
         } else if (e.key === "Escape") {
+            const currentUrl = this.model.currentUrl || "";
             this.model.state.update((st) => {
                 st.suggestionsOpen = false;
-                st.urlInput = st.url;
+                st.urlInput = currentUrl;
             });
             this.urlInputRef?.blur();
         }

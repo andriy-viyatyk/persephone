@@ -1,5 +1,5 @@
 // =============================================================================
-// Board environment-variables schema + load-result types (EPIC-046 / US-887).
+// Board environment-variables schema + load-result types.
 //
 // The `.env.json` file maps a per-board NAMESPACE ("author/name", "bundled:<folder-id>", or a board root
 // path) to PROFILES ("default", "dev", "qa", …), each a flat key→value map of

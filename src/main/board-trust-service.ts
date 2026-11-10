@@ -277,6 +277,14 @@ class BoardTrustService {
         return this.getGrantedPermissionsFromSnapshot(boardRoot);
     }
 
+    async getGrantedRootsFromSnapshot(): Promise<string[]> {
+        await this.ready();
+        const disabledRoots = new Set([...this.disabledBundledBoards].map(id =>
+            normalizePathForCompare(path.join(getAssetPath("boards"), id))));
+        return this.permissionSnapshot.map(({ root }) => root)
+            .filter(root => !disabledRoots.has(normalizePathForCompare(root)));
+    }
+
     /** Read an already-built main-owned grant snapshot without awaiting initialization. */
     getGrantedPermissionsFromSnapshot(boardRoot: string): NormalizedBoardPermissions | undefined {
         const key = normalizePathForCompare(boardRoot);

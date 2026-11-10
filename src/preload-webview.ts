@@ -20,7 +20,7 @@ if (process.isMainFrame) {
 const WEBMCP_ENABLE_FLAG = "--persephone-webmcp-enabled";
 const webMcpEnabled = process.argv.includes(WEBMCP_ENABLE_FLAG);
 
-// ── window.chrome polyfill (US-813) ──────────────────────────────────
+// ── window.chrome polyfill ───────────────────────────────────────────
 // Google sign-in rejects the browser ("This browser or app may not be
 // secure" → /v3/signin/rejected) when window.chrome is an empty {}.
 // Electron leaves it bare; real Chrome populates loadTimes/csi/app.
@@ -348,7 +348,7 @@ document.addEventListener("pointerdown", () => {
 // Intercept shortcuts that should be handled by the host renderer (find bar).
 
 // Ctrl+F belongs to the PAGE first and to Persephone only if the page passes
-// (US-1284) — the rule Chrome and Edge follow. A page running its own find UI
+// — the rule Chrome and Edge follow. A page running its own find UI
 // calls `preventDefault()`; a page that ignores the key leaves it unclaimed and
 // expects the browser's find bar. The earlier version prevented and
 // `stopImmediatePropagation()`'d in the capture phase, deliberately beating

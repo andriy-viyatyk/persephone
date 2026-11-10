@@ -1,5 +1,5 @@
 // OS file-clipboard actions shared by TreeProviderViewModel and
-// CategoryViewModel (US-807). Windows-Explorer-compatible copy/cut/paste of
+// CategoryViewModel. Windows-Explorer-compatible copy/cut/paste of
 // files — CF_HDROP interop via the clip-service IPC endpoints.
 //
 // Only meaningful for the local-filesystem provider (`provider.type === "file"`,

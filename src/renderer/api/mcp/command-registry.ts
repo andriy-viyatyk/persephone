@@ -9,7 +9,7 @@ import {
 } from "./board-ts-project";
 import type { McpCommandHandler, McpParams, McpResponse } from "./types";
 
-// `call` is the whole advertised manifest (US-1353); `board_call` is the internal Board bridge.
+// `call` is the whole advertised manifest; `board_call` is the internal Board bridge.
 type McpCommandMethod =
     | "call"
     | "board_call"

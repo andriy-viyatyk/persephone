@@ -288,7 +288,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
     };
 
     private readonly handleItemClick = (item: ITreeProviderItem): void => {
-        // The already-selected guard and the selection write both live in openItem (US-1323 moved
+        // The already-selected guard and the selection write both live in openItem, which moved
         // them there). Repeating them here made openItem's own guard see the href this handler had
         // just written and return before opening the link, so no click ever navigated.
         void this.model.openItem(item);

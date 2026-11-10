@@ -14,7 +14,7 @@ import { englishMessage } from "../../shared/i18n/t";
 import type { MessageKey } from "../../shared/i18n/en";
 
 // =============================================================================
-// Secondary Editor Registrations (EPIC-016)
+// Secondary Editor Registrations 
 // =============================================================================
 
 secondaryViewRegistry.register({
@@ -45,7 +45,7 @@ secondaryViewRegistry.register({
     id: "boards",
     labelKey: "shell.boards",
     label: englishMessage("shell.boards"),
-    // Sidebar-only sub-panel of Explorer (EPIC-036 / US-761) — its own boards glyph,
+    // Sidebar-only sub-panel of Explorer — its own boards glyph,
     // mirroring how "search" overrides to the search registry name. Lists trusted boards under the
     // Explorer root via the shared BoardsTree. Uses the colored variant so the panel
     // header reads as an accent.
@@ -100,11 +100,11 @@ secondaryViewRegistry.register({
     id: "mneme-tree",
     labelKey: "shell.wiki",
     label: englishMessage("shell.wiki"),
-    // No icon override → falls back to the editor's MemoryIcon (EPIC-032 / US-663).
+    // No icon override → falls back to the editor's MemoryIcon.
     loadView: () => import("./mneme-root/MnemeTreeSecondaryView"),
 });
 
-// Board secondary views (EPIC-044 / US-853): one registration serves the whole
+// Board secondary views: one registration serves the whole
 // `board-secondary:*` id family — a board declares zero-or-more views in its manifest
 // (or via `persephone.setSecondaryViews`), each mapped to a `board-secondary:<viewId>`
 // panel. BoardSecondaryView reads its `panelId` to render the matching view over the
@@ -152,8 +152,7 @@ const EDITORS: EditorRow[] = [
         // outrank it in view mode. Its matcher carries the separate file-resolution
         // floor (0) + switch-first (0) priorities for the registry's resolve /
         // getSwitchOptions / validateForLanguage.
-        accepts: (input) => {
-            if (input.mode === "view") return 10;
+        accepts: () => {
             return 50;
         },
         load: async () => (await import("./monaco")).monacoModule,
@@ -191,11 +190,11 @@ const EDITORS: EditorRow[] = [
         id: "board-info",
         nameKey: "editors.boardInfo",
         guidePath: "boards",
-        // Host-capable holder (EPIC-045): adopts/yields the shared content host WITHOUT rendering
+        // Host-capable holder: adopts/yields the shared content host WITHOUT rendering
         // it, so `Text ↔ + ↔ installed board` switches transfer the same host with no reload.
         hasContentHost: true,
         // Never a default open target — reached only via the "+" switch entry or explicit
-        // navigation (hub / update toast / Properties button, US-867). No matcher → accepts -1.
+        // navigation (hub, update toast, or Properties button). No matcher → accepts -1.
         load: async () => (await import("./board-info")).boardInfoModule,
     },
     {
@@ -203,7 +202,7 @@ const EDITORS: EditorRow[] = [
         nameKey: "editors.gitDiff",
         guidePath: "editors/file-diff",
         hasContentHost: true,
-        // Host-aware (EPIC-030 / US-613): offered for any file detected in a git
+        // Host-aware: offered for any file detected in a git
         // repo, regardless of changes (Concern 2A). No host (file-open resolution)
         // → -1, so it never becomes a default open target. Below monaco (50) so
         // editing stays the primary editor.
@@ -232,7 +231,7 @@ for (const e of EDITORS) {
 
 seedPlatformCapabilities();
 
-// Warm the custom-editor registry (EPIC-042 / EPIC-109) while bootstrap joins this same
+// Warm the custom-editor registry while bootstrap joins this same
 // initialization before restoring pages. The fire-and-forget warm-up preserves the existing
 // preload path for callers that load the editor registry independently.
 void customEditorRegistry.ensureInitialized();

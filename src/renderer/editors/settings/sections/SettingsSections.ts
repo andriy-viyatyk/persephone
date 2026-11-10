@@ -1,5 +1,5 @@
 import { app } from "../../../api/app";
-import { settings } from "../../../api/settings";
+import { MICROPHONE_NOTCH_FREQUENCY_RANGE, settings } from "../../../api/settings";
 import { ui } from "../../../api/ui";
 import { api } from "../../../../ipc/renderer/api";
 import { createComponentModelDriver, TComponentModel, type ComponentModelDriver } from "../../../core/state/model";
@@ -710,7 +710,6 @@ export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, n
     }
 }
 
-export { LinkBehaviorSectionView as LinkBehaviorSection, WindowBehaviorSectionView as WindowBehaviorSection, EditorBehaviorSectionView as EditorBehaviorSection, GitIntegrationSectionView as GitIntegrationSection, BoardVarsSectionView as BoardVarsSection, VideoPlayerSectionView as VideoPlayerSection, TerminalSectionView as TerminalSection };
 
 /** Settings for managed microphone capture. */
 type MicrophoneProfileView = CheckboxView | InputView;
@@ -877,7 +876,7 @@ export class MicrophoneAudioSectionView extends VanillaView<Record<string, never
 
         const fields = panel({ direction: "row", align: "center", gap: "lg", paddingLeft: "xxl" });
         for (const [key, title, min, max] of [
-            ["frequency", t("settings.microphoneFrequency"), 20, 7999],
+            ["frequency", t("settings.microphoneFrequency"), MICROPHONE_NOTCH_FREQUENCY_RANGE.min, MICROPHONE_NOTCH_FREQUENCY_RANGE.max],
             ["q", t("settings.microphoneQ"), 0.1, 50],
             ["gainDb", t("settings.microphoneGain"), -60, 0],
         ] as const) {

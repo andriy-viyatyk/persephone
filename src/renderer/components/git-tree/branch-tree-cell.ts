@@ -1,6 +1,6 @@
 /**
- * SVG commit-graph cell for the Git Tree component (EPIC-030 / US-611; ported to av-grid in
- * EPIC-057 / US-1021).
+ * SVG commit-graph cell for the Git Tree component (; ported to av-grid in
+ * ).
  *
  * A dumb painter of one row's swimlane slice (computed by `swimlane-layout.ts`). Under av-grid a
  * `render` hook supplies cell *content* inside the library's own pooled `.avg-data-cell`, so
@@ -9,7 +9,7 @@
  * hover and selection tints land on this cell exactly as they land on a text cell.
  *
  * The SVG is drawn at a constant width (independent of the cell box) and clipped by the cell:
- * shrinking the column slides the clip edge, never rescales the graph (EPIC-030 Concern 9). The
+ * shrinking the column slides the clip edge, never rescales the graph. The
  * two declarations that make that true live in `GitTree.css`.
  */
 import type { CellRenderer } from "../../uikit/DataGrid";

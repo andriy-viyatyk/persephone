@@ -1,11 +1,11 @@
 // Design token constants for UIKit components.
-// Values derived from codebase analysis — see EPIC-025 Design Decision #1.
+// Numeric values align with the app's spacing, size, and typography tokens.
 //
-// Usage in Emotion styled components:
+// Usage in UIKit view styles:
 //   import { spacing, gap, radius, height, fontSize } from "../tokens";
 //
-// Numeric values are in pixels. Emotion auto-adds "px" for CSS properties
-// that accept pixel values, so `fontSize.base` → `font-size: 14px`.
+// Values are pixels. Add CSS units when assigning them through CSSOM; static
+// stylesheets use the corresponding theme variables.
 // Use `spacing.md * 2` for arithmetic when needed.
 
 // ---------------------------------------------------------------------------

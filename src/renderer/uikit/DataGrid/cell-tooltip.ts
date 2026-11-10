@@ -5,7 +5,7 @@
  * an ellipsis and a tooltip; av-grid gives the ellipsis (2.2.3) and no tooltip, because a
  * framework-free published grid cannot own Persephone's tooltip component, its delay, its theme,
  * or its coordination with the app's overlay and drag registries. So the tooltip is restored here,
- * once, in the seam every consumer mounts through (EPIC-057 / US-1024).
+ * once, in the seam every consumer mounts through.
  *
  * ## One attachment, many targets
  *

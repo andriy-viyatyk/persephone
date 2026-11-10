@@ -224,7 +224,7 @@ export class PagesLifecycleModel {
         folderPath?: string,
     ): Promise<EditorOrHost> => {
         editorId = await resolveBoardEditorId(editorId);
-        // Custom-editor board (EPIC-042): a `board-editor:<root>` id has no static
+        // Custom-editor board: a `board-editor:<root>` id has no static
         // registry def, so branch BEFORE the `!def` text fallback (which would else
         // open the file silently as text). Build the board initialized with the file
         // it edits (→ persephone.getFilePath()).
@@ -247,7 +247,7 @@ export class PagesLifecycleModel {
                 const { createBoardEditorForFolder } = await import("../../editors/board");
                 return createBoardEditorForFolder(resolvedBoardRoot, folderPath) as unknown as EditorOrHost;
             }
-            // Content-host board (EPIC-043): build the subclass WITH an adopted host so
+            // Content-host board: build the subclass WITH an adopted host so
             // Persephone owns the pipe/encoding/encryption/cache/dirty state. The host's
             // pipe is assigned by `createEditorFromFile` and restored below.
             const match = matchingEntry;
@@ -311,7 +311,7 @@ export class PagesLifecycleModel {
         const editor = target
             ? await this.newEditorModelByTarget(filePath, target)
             : await this.newEditorModel(filePath);
-        // A content-host board (EPIC-043) owns its content on the adopted HOST, not on the
+        // A content-host board owns its content on the adopted HOST, not on the
         // board's own state — so pipe assignment and the pre-restore language reset must
         // target the host. A bare TextFileModel host has no `contentHost` accessor, so
         // `host` is null and everything falls through to the editor itself (unchanged for
@@ -682,7 +682,7 @@ export class PagesLifecycleModel {
         if (!filePath && options?.folderPath === undefined) return undefined;
         const singletonPage = await this.openSingleInstanceBoard(filePath, pipe, options);
         if (singletonPage) return singletonPage;
-        // Existing-page dedupe is deliberately left intact (US-637): an already-
+        // Existing-page dedupe is deliberately left intact: an already-
         // open file just activates its page and the diff metadata is dropped.
         // "Open in new Tab" preselection therefore applies only on a fresh open.
         const existingPage = filePath
@@ -697,7 +697,7 @@ export class PagesLifecycleModel {
                 if (!adopted) pipe?.dispose();
             }
             // The document is already open — an anchor link into it is still a jump
-            // request, so honor the fragment on the live editor (US-901).
+            // request, so honor the fragment on the live editor.
             if (options?.fragment) {
                 const reveal: () => void = () => existingPage.mainEditorInstance?.revealFragment?.(options.fragment as string);
                 if (existingPage.isRestoring) void existingPage.ready.then(reveal, (): void => {});
@@ -720,7 +720,7 @@ export class PagesLifecycleModel {
         // A failed editor-module load rejects out of `createEditorFromFile`, and every
         // caller here reaches it from a user action (explorer click, link, drop). Left
         // unguarded the rejection escaped into an un-awaited promise and the click did
-        // nothing at all — US-1163's shape, one path over. `undefined` is already this
+        // nothing at all — shape, one path over. `undefined` is already this
         // method's "did not open" answer, so no caller changes.
         const editor = await guard(
             t("api.failedToOpenNamedFile", { name: fpBasename(filePath ?? options?.folderPath ?? "folder") }),
@@ -732,7 +732,7 @@ export class PagesLifecycleModel {
                     filePath as string,
                     pipe,
                     requestedTarget,
-                    options.sourceLink?.title,
+                    options?.sourceLink?.title,
                 );
                 // TextFileModel is adapted into a TextHostEditorModel below; its file-open path
                 // opts in there. Every standalone model preserves restore-before-add and the
@@ -760,7 +760,7 @@ export class PagesLifecycleModel {
         }
         // Honor an explicit content-host target (e.g. "file-diff") that isn't the
         // file's natural editor, so a new-tab open lands on the requested editor —
-        // mirrors navigatePageTo's isExplicitHostTarget handling (US-637).
+        // mirrors navigatePageTo's isExplicitHostTarget handling.
         const explicitTarget = requestedTarget;
         if (
             editor.state.get().type === "textFile" &&
@@ -796,7 +796,7 @@ export class PagesLifecycleModel {
         const addedPage = this.addPage(adapter, page, options?.onPageCreated);
         const currentPage = addedPage;
         // Apply caller-chosen diff revisions to a freshly-built File Diff editor
-        // (no-op for any other editor type / when no revisions given) (US-637).
+        // (no-op for any other editor type / when no revisions given).
         const applyOpenHints = (): void => {
             if (this.model.query.findPage(currentPage.id) !== currentPage) return;
             const currentEditor = currentPage.mainEditorInstance;
@@ -825,55 +825,6 @@ export class PagesLifecycleModel {
         this.model.closeFirstPageIfEmpty();
         return currentPage;
     };
-
-    openFileAsArchive = async (filePath: string): Promise<PageModel> => {
-        if (filePath.toLowerCase().endsWith(".asar")) {
-            return this._openAsarArchive(filePath);
-        }
-        return this._openZipArchive(filePath);
-    };
-
-    private async _openAsarArchive(filePath: string): Promise<PageModel> {
-        const archiveRoot = filePath;
-        const existing = this.model.state.get().pages.find((p) => {
-            const explorer = p.findExplorer();
-            if (!explorer) return false;
-            const s = explorer.state.get() as { type?: string; rootPath?: string };
-            return s.type === "fileExplorer" && s.rootPath === archiveRoot;
-        });
-        if (existing) {
-            this.model.navigation.showPage(existing.id);
-            return existing;
-        }
-        const page = await this.addEmptyPageWithNavPanel(archiveRoot);
-        this.model.closeFirstPageIfEmpty();
-        return page;
-    }
-
-    private async _openZipArchive(filePath: string): Promise<PageModel> {
-        const existing = this.model.state.get().pages.find((p) => {
-            const main = p.mainEditor;
-            if (!main) return false;
-            const s = main.state.get() as { type?: string; archiveUrl?: string };
-            return s.type === "archiveFile" && s.archiveUrl === filePath;
-        });
-        if (existing) {
-            this.model.navigation.showPage(existing.id);
-            return existing;
-        }
-
-        const legacy = await this.buildEditorById("archive-view", filePath);
-
-        const page = new PageModel();
-        const adapter = wrap(legacy);
-        page.attach(adapter);
-        page.setMainEditorId(adapter.id);
-        page.ensureSecondaryViewsModel();
-
-        this.addPage(adapter, page);
-        this.model.closeFirstPageIfEmpty();
-        return page;
-    }
 
     closePage = async (pageId: string): Promise<boolean> => {
         const page = this.model.query.findPage(pageId);
@@ -904,9 +855,8 @@ export class PagesLifecycleModel {
     };
 
     /**
-     * Open two files side-by-side in compare mode. Walkthrough 06 / CK8:
-     * compose `groupTabs + enterCompareMode` instead of mutating
-     * `compareMode` state field directly.
+     * Open two files side-by-side in compare mode by grouping the pages and
+     * entering compare mode.
      */
     openDiff = async (
         params: { firstPath: string; secondPath: string } | undefined,
@@ -918,7 +868,7 @@ export class PagesLifecycleModel {
         let existingSecond = this.model.query.findPageByFilePath(secondPath);
 
         // Either side can fail to build; report and abort rather than grouping a
-        // half-built comparison (US-1163's shape).
+        // half-built comparison state.
         if (!existingFirst) {
             const pipe = await this.createPipeFromPath(firstPath);
             const editor = await guard(t("api.failedToOpenNamedFile", { name: fpBasename(firstPath) }), () =>
@@ -1028,8 +978,8 @@ export class PagesLifecycleModel {
     // ── Multi-window operations ──────────────────────────────────────
 
     /**
-     * Receive a page transferred from another window. Walkthrough 05 / M2:
-     * delegates to `PagesPersistenceModel.restorePage` for the shared restore
+     * Receive a page transferred from another window. Delegate to
+     * `PagesPersistenceModel.restorePage` for the shared restore
      * pathway; this method only does the target-window-side splice + activate.
      */
     retryRestore = async (pageId: string): Promise<void> => {
@@ -1141,7 +1091,7 @@ export class PagesLifecycleModel {
         } else {
             this.model.detachPage(page);
             this.model.removePage(page);
-            // Keep-alive editors (busy Board, US-799) never transfer their
+            // Keep-alive editors (busy Board) never transfer their
             // processes to the target window: the page is re-created there from
             // its descriptor, so the source-side model would otherwise leak —
             // and with it the jobs main keeps alive for it. Dispose them here
@@ -1159,8 +1109,8 @@ export class PagesLifecycleModel {
     // ── Duplication ──────────────────────────────────────────────────
 
     /**
-     * Walkthrough 05 / M2: build a fresh-id descriptor, then route through
-     * `restorePage` for symmetric construction.
+     * Build a fresh-id descriptor before routing through `restorePage` for
+     * symmetric construction.
      */
     duplicatePage = async (pageId: string) => {
         const page = this.model.query.findPage(pageId);
@@ -1216,8 +1166,6 @@ export class PagesLifecycleModel {
         await appInstance.events.openRawLink.sendAsync(createLinkData(href));
     };
 
-    handleOpenUrl = (url: string) => this.sendOpenRawLink(url);
-
     openPathInNewWindow = (filePath: string) => {
         if (!filePath) return;
         api.openNewWindow(filePath);
@@ -1225,8 +1173,7 @@ export class PagesLifecycleModel {
 
     // ── Grouped text helper ──────────────────────────────────────────
 
-    /** Walkthrough 07 / GK2 (signature refined 08 / T2): use `getTextFileHost`
-     *  to discriminate text-bearing partner pages. */
+    /** Use `getTextFileHost` to discriminate text-bearing partner pages. */
     requireGroupedText = (
         pageId: string,
         suggestedLanguage?: string,
@@ -1270,7 +1217,7 @@ export class PagesLifecycleModel {
      * module that fails to load rejects *here* — before `AsyncEditorView` exists to
      * show the error. Without the guard the rejection escaped into every caller's
      * un-awaited promise and the user got no page, no message and nothing logged:
-     * clicking the entry simply did nothing (US-1163). Returns `undefined` on
+     * clicking the entry simply did nothing. Returns `undefined` on
      * failure, so callers that use the page must check it.
      */
     private showEditorPage = async (
@@ -1401,7 +1348,7 @@ export class PagesLifecycleModel {
     };
 
     /**
-     * `sessionHandle` (US-1557) comes from a Tor or proxied browser page: the image
+     * `sessionHandle` comes from a Tor or proxied browser page: the image
      * is then read only through that page's session, so it is not shown by URL
      * (an `<img src>` in this renderer would fetch it direct) but from the bytes.
      */

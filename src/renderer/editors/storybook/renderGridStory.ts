@@ -143,7 +143,7 @@ class RenderGridDemoView extends VanillaView<GridDemoProps> {
 
 /**
  * The id stays `virtual-grid` while the name is `RenderGrid`, and the mismatch is deliberate: the
- * id is a persisted key. A stored storybook selection or a deep link written before EPIC-079
+ * id is a persisted key. A stored storybook selection or a deep link written before 
  * retired the `uikit/VirtualGrid` fork still points at it, and renaming would silently break those
  * for no user-visible gain. The name is what anyone actually reads.
  */

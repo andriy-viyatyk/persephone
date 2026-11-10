@@ -1,5 +1,5 @@
 /**
- * Shared DTOs for git integration (EPIC-030).
+ * Shared DTOs for git integration.
  *
  * Plain data types crossing the main↔renderer IPC boundary for the git
  * request/response endpoints (`gitProbe`, `gitDetectRepo`). No main-only
@@ -21,22 +21,22 @@ export interface GitRepoInfo {
     branch: string;
 }
 
-/** Options for a `git log` query (EPIC-030 / US-611). */
+/** Options for a `git log` query. */
 export interface GitLogOptions {
-    /** Cap on commits returned (Concern 7 — simple bounded load). Default 500.
-     *  `0` (or negative) means no limit — load all commits ("Load all", US-612). */
+    /** Cap on commits returned; the limit keeps each load bounded. Default 500.
+     *  `0` (or negative) means no limit — load all commits. */
     maxCount?: number;
-    /** Skip the first N commits — pagination for "load more" (US-612). */
+    /** Skip the first N commits — pagination for "load more". */
     skip?: number;
     /** Limit history to a single file (repo-relative or absolute), via `--follow`. */
     file?: string;
     /** Walk ALL refs (`git log --all`), not just HEAD — so the whole-repo Git Tree
      *  shows every branch's commits (like Git Extensions) even when HEAD is behind
-     *  another branch. Omit/false for file-scoped history (US-636). */
+     *  another branch. Omit/false for file-scoped history. */
     all?: boolean;
 }
 
-/** Kind of a decoration ref, used to color its label (US-611). */
+/** Kind of a decoration ref, used to color its label. */
 export type GitRefKind = "head" | "branch" | "remote" | "tag";
 
 /** A decoration ref at a commit (the prefix is parsed off into `kind`). */
@@ -46,7 +46,7 @@ export interface GitRef {
     kind: GitRefKind;
 }
 
-/** One changed file in `git status` (EPIC-031 / US-616). */
+/** One changed file in `git status`. */
 export interface GitFileChange {
     /** Repo-relative path, forward-slashed. */
     path: string;
@@ -57,20 +57,20 @@ export interface GitFileChange {
     oldPath?: string;
 }
 
-/** Result of a mutating git op (EPIC-031 / US-631). Never thrown across IPC —
+/** Result of a mutating git op. Never thrown across IPC —
  *  `ok:false` + message lets the renderer surface failure without a crash. */
 export interface GitMutationResult {
     ok: boolean;
     error?: string;
 }
 
-/** Git author identity (EPIC-031 / US-632). Empty strings when unset in git config. */
+/** Git author identity. Empty strings when unset in git config. */
 export interface GitIdentity {
     name: string;
     email: string;
 }
 
-/** Target of a `git switch` (EPIC-031 / US-636). The renderer builds this from a
+/** Target of a `git switch`. The renderer builds this from a
  *  clicked commit row or refs-panel node; the service maps it to a `git switch` form. */
 export type GitSwitchTarget =
     | { type: "branch"; name: string }   // local branch → `git switch <name>`
@@ -78,18 +78,18 @@ export type GitSwitchTarget =
     | { type: "commit"; hash: string }   // detached HEAD at a commit
     | { type: "tag"; name: string };     // detached HEAD at a tag
 
-/** Split working-tree status for a repo (EPIC-031 / US-616). */
+/** Split working-tree status for a repo. */
 export interface GitStatusResult {
     /** Index (staged) changes. */
     staged: GitFileChange[];
     /** Working-tree (unstaged) changes, including untracked ('?'). */
     unstaged: GitFileChange[];
     /** Current branch name (simple-git status `.current`), or undefined when
-     *  detached / no commits yet (EPIC-031 / US-632). */
+     *  detached / no commits yet. */
     branch?: string;
 }
 
-/** Repository refs for the Git Tree "Branches & Tags" panel (EPIC-031 / US-634). */
+/** Repository refs for the Git Tree "Branches & Tags" panel. */
 export interface GitRefs {
     /** Current branch name (HEAD), or undefined when detached / no commits. */
     current?: string;
@@ -104,13 +104,13 @@ export interface GitRefs {
     tags: string[];
 }
 
-/** Options for `git fetch` (US-641). */
+/** Options for `git fetch`. */
 export interface GitFetchOptions {
     /** Fetch only this remote; omit → fetch all remotes (`--all`). */
     remote?: string;
 }
 
-/** Ahead/behind counts for the current branch vs its upstream (US-641).
+/** Ahead/behind counts for the current branch vs its upstream.
  *  `hasUpstream: false` when the branch has no configured upstream — not an error. */
 export interface GitAheadBehind {
     ahead: number;
@@ -120,7 +120,7 @@ export interface GitAheadBehind {
     hasUpstream: boolean;
 }
 
-/** Options for `git push` (US-641). */
+/** Options for `git push`. */
 export interface GitPushOptions {
     /** Remote name. Defaults to "origin" (or the sole configured remote). */
     remote?: string;
@@ -130,7 +130,7 @@ export interface GitPushOptions {
     setUpstream?: boolean;
 }
 
-/** Result of a `git push` operation (US-641). Extends `GitMutationResult`
+/** Result of a `git push` operation. Extends `GitMutationResult`
  *  with a rejection flag for non-fast-forward pushes. */
 export interface GitPushResult {
     ok: boolean;
@@ -140,7 +140,7 @@ export interface GitPushResult {
     rejected?: boolean;
 }
 
-/** Options for `git pull` (US-642). */
+/** Options for `git pull`. */
 export interface GitPullOptions {
     /** When true, pull with `--rebase` instead of merge. */
     rebase?: boolean;
@@ -148,7 +148,7 @@ export interface GitPullOptions {
     ffOnly?: boolean;
 }
 
-/** Result of a `git pull` operation (US-642). */
+/** Result of a `git pull` operation. */
 export interface GitPullResult {
     ok: boolean;
     error?: string;
@@ -160,7 +160,7 @@ export interface GitPullResult {
     summary?: string;
 }
 
-/** One commit row from `git log --topo-order` (EPIC-030 / US-611). */
+/** One commit row from `git log --topo-order`. */
 export interface GitCommit {
     /** Full 40-char hash. */
     hash: string;
@@ -171,7 +171,7 @@ export interface GitCommit {
     /** First line of the commit message. */
     subject: string;
     authorName: string;
-    /** Author email (`%ae`) — shown in the Git Tree "Commit" panel (US-629). */
+    /** Author email (`%ae`) — shown in the Git Tree "Commit" panel. */
     authorEmail: string;
     /** Commit (author) date as epoch ms. */
     authorDate: number;

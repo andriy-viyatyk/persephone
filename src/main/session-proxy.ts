@@ -1,6 +1,5 @@
 /**
- * Session proxy primitives shared by Tor mode and proxied browser profiles
- * (US-1557).
+ * Session proxy primitives shared by Tor mode and proxied browser profiles.
  *
  * Both put an Electron session behind a single proxy with no direct fallback
  * and no bypass rules beyond Chromium's implicit loopback/link-local ones, and

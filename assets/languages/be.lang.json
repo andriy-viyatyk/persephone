@@ -1916,7 +1916,11 @@
     "voiceTyping.translatingRecording": "Запіс — пераклад на англійскую мову — {binding}, каб спыніць; Esc, каб скасаваць",
     "voiceTyping.translatingTranscribing": "Транскрыбоўванне на англійскай мове — Esc, каб скасаваць",
     "settings.microphoneReferenceReady": "Аўдыя з камп’ютара выкарыстоўваецца як апорны сігнал",
-    "settings.microphoneReferenceUnavailable": "Апорны сігнал з камп’ютара недаступны; шумапрыглушэнне працягваецца без скасавання рэха: {reason}"
+    "settings.microphoneReferenceUnavailable": "Апорны сігнал з камп’ютара недаступны; шумапрыглушэнне працягваецца без скасавання рэха: {reason}",
+    "shell.ungroup": "Разгрупаваць",
+    "shell.mutePage": "Адключыць гук старонкі",
+    "shell.unmutePage": "Уключыць гук старонкі",
+    "tools.siteExtensionActionFailed": "Не ўдалося выканаць дзеянне пашырэння сайта."
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3591,6 +3595,10 @@
     "voiceTyping.translatingRecording": "e3db99f8",
     "voiceTyping.translatingTranscribing": "dcf439f0",
     "settings.microphoneReferenceReady": "043e4ffb",
-    "settings.microphoneReferenceUnavailable": "d1af3faf"
+    "settings.microphoneReferenceUnavailable": "d1af3faf",
+    "shell.ungroup": "460af6ed",
+    "shell.mutePage": "724c00d7",
+    "shell.unmutePage": "af4c43a2",
+    "tools.siteExtensionActionFailed": "96558212"
   }
 }

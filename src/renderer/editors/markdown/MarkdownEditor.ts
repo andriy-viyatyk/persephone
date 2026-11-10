@@ -72,14 +72,14 @@ export class MarkdownEditor extends TextHostEditorModel<
         this.typedQueue.send({ type: "focus" });
     }
 
-    /** US-901 — scroll to a heading anchor from a `#fragment` link. The body may
+    /** — scroll to a heading anchor from a `#fragment` link. The body may
      *  not be mounted yet (this runs right after the editor is attached to the
      *  page); `ComponentQueue` buffers the event and drains it on subscribe. */
     revealFragment(fragment: string): void {
         if (fragment) this.typedQueue.send({ type: "anchor", fragment });
     }
 
-    /** Back-navigate the page to the previous Markdown document (US-784). Pops
+    /** Back-navigate the page to the previous Markdown document. Pops
      *  the page's back stack and re-opens that entry in place. Goes straight
      *  through `openRawLink` (not the link interceptor), so it does not push a
      *  new history entry. No-op when there's no page or no history. */

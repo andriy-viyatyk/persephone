@@ -83,7 +83,7 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         rows: [
             { key: "microphone.clean", label: "Clean microphone audio", purpose: "Enable DTLN noise suppression. A consumer requesting computer sound cancellation also runs DTLN when this is off." },
             { key: "microphone.attenuation-db", label: "Attenuation limit", purpose: "Limit frame-RMS suppression in dB; zero is unlimited." },
-            { key: "microphone.notches", label: "Microphone resonance", purpose: "Per-device resonance reduction frequency, Q and cut. Frequencies at or above 8 kHz are preserved but bypassed." },
+            { key: "microphone.notches", label: "Microphone resonance", purpose: "Per-device resonance reduction frequency, Q and cut. Frequencies must be between 20 and 7999 Hz inclusive; invalid device profiles are discarded." },
         ],
     },
     {
@@ -239,7 +239,7 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
             { key: "agent-tips.enabled", label: "Agent tips", purpose: "Offer optional suggestions to MCP agents after repeated site automation." },
             { key: "mcp.enabled", label: "MCP server", purpose: "Whether the MCP HTTP server is enabled for AI agents to drive Persephone." },
             { key: "mcp.port", label: "MCP port", purpose: "The loopback port used by the MCP HTTP server." },
-            { key: "main.scripting.enabled", label: "Main-process scripting", purpose: "Whether call â†’ main.script.execute may run code in Persephone's main process." },
+            { key: "main.scripting.enabled", label: "Main-process scripting", purpose: "Whether call → main.script.execute may run code in Persephone's main process." },
             { key: "mneme.enabled", label: "Mneme", purpose: "Whether the local Mneme markdown knowledge base is enabled." },
             { key: "mneme.port", label: "Mneme port", purpose: "The loopback port used by Mneme's HTTP/MCP server." },
         ],

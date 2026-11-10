@@ -55,7 +55,7 @@ class LockedStateView extends VanillaView<{ model: EnvVarsEditor }> {
         // `flex: 1` is load-bearing: EnvVarsBodyView's root is `display: contents`, so this
         // panel is a direct flex child of `text-chrome-root` and must grow to fill the space
         // between the toolbar and the footer. Without it the panel sizes to its text, the
-        // footer rides up under the message and the rest of the page is empty (US-1183).
+        // footer rides up under the message and the rest of the page is empty.
         super(props, createPanelElement({ direction: "column", justify: "center", align: "center", gap: "md", padding: "xxl", flex: 1, minHeight: 0 }));
     }
 
@@ -88,7 +88,7 @@ class ErrorStateView extends VanillaView<{ message: string | undefined }> {
 
     public constructor(props: { message: string | undefined }) {
         const messageElement = createTextElement("", { color: "light", size: "xs" });
-        // See LockedStateView: `flex: 1` makes this branch fill the chrome body. US-1183.
+        // See LockedStateView: `flex: 1` makes this branch fill the chrome body..
         super(props, createPanelElement(
             { direction: "column", justify: "center", align: "center", gap: "sm", padding: "xxl", flex: 1, minHeight: 0 },
             [

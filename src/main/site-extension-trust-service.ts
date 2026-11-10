@@ -1,3 +1,4 @@
+import { isValidSiteExtensionId, isExactSiteExtensionHost } from "../shared/site-extension-validation";
 import { validateSiteExtensionFetchHosts } from "../shared/site-extension-hosts";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
@@ -6,16 +7,6 @@ import type { SiteExtensionTrustSnapshot } from "../ipc/api-types";
 import { EventEndpoint } from "../ipc/api-types";
 import { openWindows } from "./open-windows";
 import { getDataFolder } from "./utils";
-
-const ID_PATTERN = /^[a-z0-9-]+$/;
-
-function validHost(host: unknown): host is string {
-    if (typeof host !== "string" || host !== host.toLowerCase()) return false;
-    try {
-        const url = new URL(`https://${host}`);
-        return url.hostname === host && !url.port && url.pathname === "/" && !url.search && !url.hash;
-    } catch { return false; }
-}
 
 /** Folder identity for comparison: Windows paths are case-insensitive. */
 function folderKey(folder: string): string {
@@ -33,9 +24,9 @@ function parseTrustFile(text: string): { folder?: string; snapshot: SiteExtensio
     }
     const snapshot: SiteExtensionTrustSnapshot = {};
     for (const [id, raw] of Object.entries(root.extensions)) {
-        if (!ID_PATTERN.test(id) || !raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Invalid site extension trust record.");
+        if (!isValidSiteExtensionId(id) || !raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Invalid site extension trust record.");
         const record = raw as { hosts?: unknown; fetchHosts?: unknown; enabled?: unknown };
-        if (!Array.isArray(record.hosts) || record.hosts.length === 0 || !record.hosts.every(validHost)
+        if (!Array.isArray(record.hosts) || record.hosts.length === 0 || !record.hosts.every(isExactSiteExtensionHost)
             || typeof record.enabled !== "boolean") throw new Error("Invalid site extension trust record.");
         const fetchHosts = validateSiteExtensionFetchHosts(record.fetchHosts === undefined ? [] : record.fetchHosts);
         if (!fetchHosts) throw new Error("Invalid site extension trust record.");
@@ -70,7 +61,7 @@ class SiteExtensionTrustService {
     /**
      * Records the folder the renderer reads extensions from. A different folder drops every grant,
      * so an extension there is trusted again. A file written before folders were recorded
-     * (US-1605) adopts the first folder it is bound to.
+     *  adopts the first folder it is bound to.
      */
     async bindFolder(folder: string): Promise<SiteExtensionTrustSnapshot> {
         await this.init();
@@ -124,8 +115,8 @@ class SiteExtensionTrustService {
     }
 
     private validateInput(id: string, hosts: string[]): void {
-        if (typeof id !== "string" || !ID_PATTERN.test(id)) throw new Error("Invalid site extension id.");
-        if (!Array.isArray(hosts) || hosts.length === 0 || !hosts.every(validHost)) throw new Error("Invalid site extension host list.");
+        if (typeof id !== "string" || !isValidSiteExtensionId(id)) throw new Error("Invalid site extension id.");
+        if (!Array.isArray(hosts) || hosts.length === 0 || !hosts.every(isExactSiteExtensionHost)) throw new Error("Invalid site extension host list.");
     }
     private copy(): SiteExtensionTrustSnapshot {
         return Object.fromEntries(Object.entries(this.snapshot).map(([id, grant]) => [id, { hosts: [...grant.hosts], fetchHosts: [...grant.fetchHosts], enabled: grant.enabled }]));

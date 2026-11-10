@@ -77,8 +77,8 @@ const defaultMaxVisibleItems = 10;
  *
  * Four things in here are load-bearing:
  *
- * - **No row renderer.** The rows are ordinary `ListItem`s with `checkbox: true` (EPIC-056 US-1016),
- *   which is what discharges US-1014's obligation: no consumer of `ListBox`'s `renderItem` hatch
+ * - **No row renderer.** The rows are ordinary `ListItem`s with `checkbox: true`,
+ * which is what discharges 's obligation: no consumer of `ListBox`'s `renderItem` hatch
  *   remains inside `uikit/`, so a settled scroll here creates no new slot subtrees.
  * - **State is read with one compound `bind`, not a `mutate`/`onStateApplied` funnel.** Both of this
  *   model's state fields (`searchText`, `activeIndex`) *are* child props, which is the case Rule 9

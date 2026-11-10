@@ -29,7 +29,7 @@ export const getDefaultToolsHubEditorState = (): ToolsHubEditorState => ({
 
 /**
  * Tools & Editors hub — a singleton full-page counterpart to the AppBar "Tools & Editors"
- * slide-out panel (EPIC-045 / US-870). Five content tabs (Built-in / Registered boards /
+ * slide-out panel. Five content tabs (Built-in / Registered boards /
  * Search boards / Tools / Site extensions) + a Pinned rail. Like About/Storybook it is a page-sized
  * `hasContentHost: false` editor reached only via `showToolsHubPage`; the fixed page id makes
  * it a singleton (`addPage` dedupes).

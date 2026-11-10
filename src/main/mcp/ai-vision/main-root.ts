@@ -12,13 +12,13 @@ import { cancelNativeDialogs, getNativeDialogState } from "../../native-dialog-t
 import type { NativeDialogKind } from "../../native-dialog-tracker";
 
 /**
- * The main process's half of the AiVision tree (EPIC-083, US-1290).
+ * The main process's half of the AiVision tree.
  *
  * Everything under a window is renderer knowledge; the `windows` collection is main-process
  * knowledge (`openWindows`, `windowStates`). The `call` tool resolves `windows`, `windows[i]` and a
  * window's own members here with the same shared resolver the renderer uses, and forwards anything
  * deeper — `windows[1].pages[0].content` — to that window's renderer as `pages[0].content`.
- * US-1295 adds the `main` node beside `windows`.
+ *  adds the `main` node beside `windows`.
  */
 
 /** Members of one window that the main process answers itself; anything else is forwarded. */
@@ -221,7 +221,7 @@ export class MainAiRoot implements IAiVisible {
     readonly guides: GuidesNode;
 
     constructor(onGuideRead?: (path: string) => void) {
-        // The app's own corpus plus one mount per trusted board shipping a `guides` folder (US-1406).
+        // The app's own corpus plus one mount per trusted board shipping a `guides` folder.
         const source = createMountedGuideSource(new MainGuideSource(), resolveMainBoardGuideMounts);
         this.guides = new GuidesNode(createGuideIndex(source), source, onGuideRead);
     }

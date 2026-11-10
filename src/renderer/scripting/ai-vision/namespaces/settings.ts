@@ -44,7 +44,7 @@ const SETTINGS_NO_ROW_ERRORS: Readonly<Record<string, string>> = {
 
 /**
  * Keys an agent may not switch off through `call`, because doing so severs the very channel the
- * call arrived on — and nothing on the far side can switch them back. Found by US-1307's acceptance
+ * call arrived on — and nothing on the far side can switch them back. Found by acceptance
  * run: asked only WHERE the MCP server is turned off, the test agent highlighted the right control
  * and then set `mcp.enabled` to false, disconnecting itself. Recovery needed a hand-edit of
  * appSettings.json, which no agent can reach once its transport is gone.

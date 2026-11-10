@@ -1,6 +1,6 @@
 /**
- * The L/R side-select cell for the Git Diff "Revisions" panel (EPIC-031 / US-618; ported to
- * av-grid in EPIC-057 / US-1021).
+ * The L/R side-select cell for the Git Diff "Revisions" panel, rendered by av-grid.
+ * av-grid Av-grid provides the cell container used by this selector.
  *
  * Two small toggles per row — **L** (the diff's `from`) and **R** (its `to`) — in a fixed,
  * sticky-left status column. The Unstaged row passes `showLeft: false` (the diff `from` is never

@@ -111,7 +111,7 @@ export function logRemoteNotify(text: string, path?: string, origin: "board" | "
 /**
  * Record a toast the agent should know about without being told to look.
  *
- * `ui.alerts` (US-1464) made toasts readable, but only on request, so an error raised by the
+ * `ui.alerts` made toasts readable, but only on request, so an error raised by the
  * agent's own last call stayed invisible until it thought to ask — and the whole point of an
  * error toast is that nobody was expecting it. This pushes the same information through the
  * event feed, which every MCP reply already carries.

@@ -1,3 +1,4 @@
+import { PAGE_ZOOM_MIN, PAGE_ZOOM_MAX } from "../../../shared/browser-zoom";
 import { englishMessage } from "../../../shared/i18n/t";
 const { ipcRenderer } = require("electron");
 import { TComponentState } from "../../core/state/state";
@@ -80,7 +81,7 @@ export class BrowserEditor extends EditorModel<
     readonly tabs: BrowserTabsModel;
     /** Sub-model: Tor partition and daemon lifecycle. */
     readonly tor: BrowserTorModel;
-    /** Sub-model: the profile's proxy route (US-1557); inert on Tor/incognito pages. */
+    /** Sub-model: the profile's proxy route; inert on Tor/incognito pages. */
     readonly network: BrowserProfileNetworkModel;
 
     readonly typedQueue: ComponentQueue<BrowserQueueEvent, BrowserQueueRequest>;
@@ -295,7 +296,7 @@ export class BrowserEditor extends EditorModel<
             }
             return;
         }
-        // F12 devtools
+        // F12 opens DevTools.
         if (e.key === "F12") {
             e.preventDefault();
             this.webview.openDevTools();
@@ -365,7 +366,7 @@ export class BrowserEditor extends EditorModel<
             }
         }
 
-        // Same ordering for a proxied profile (US-1557): Electron does not persist
+        // Same ordering for a proxied profile: Electron does not persist
         // `setProxy`, so a restored page re-applies it before any webview mounts. On
         // failure the page keeps its tabs but mounts no webview (see `networkError`)
         // rather than browse a session whose route is unknown.
@@ -384,6 +385,12 @@ export class BrowserEditor extends EditorModel<
         }
     }
 
+    get currentUrl(): string | undefined {
+        const state = this.state.get();
+        const tab = state.tabs.find(t => t.id === state.activeTabId);
+        return this.tabs.currentUrls.get(state.activeTabId) || tab?.url || state.url || undefined;
+    }
+
     getRestoreData(): EditorDescriptor {
         const s = this.state.get();
         // Save all tabs with their actual current URLs
@@ -392,8 +399,7 @@ export class BrowserEditor extends EditorModel<
             url: this.tabs.currentUrls.get(t.id) || t.url,
         }));
         // Top-level url = active tab's actual URL
-        const activeTab = tabs.find((t) => t.id === s.activeTabId);
-        const url = activeTab ? activeTab.url : s.url;
+        const url = this.currentUrl;
         return {
             editorId: this.editorId,
             id: s.id,
@@ -407,7 +413,7 @@ export class BrowserEditor extends EditorModel<
                 activeTabId: s.activeTabId,
                 tabsPanelWidth: s.tabsPanelWidth,
                 bookmarksWidth: s.bookmarksWidth, // NH3 promoted to persisted (sixth instance of leftPanelWidth-equivalent silent fix)
-                bookmarksSidebarWidth: s.bookmarksSidebarWidth, // US-601 SecondaryViews sidebar width
+                bookmarksSidebarWidth: s.bookmarksSidebarWidth, // Persist the secondary-view sidebar width.
 
                 profileName: s.profileName,
                 isIncognito: s.isIncognito,
@@ -428,7 +434,7 @@ export class BrowserEditor extends EditorModel<
                     loading: false, audible: false, canGoBack: false, canGoForward: false,
                     id: createInternalTabId(),
                     groupId: t.groupId || createTabGroupId(),
-                    zoomPercent: Number.isFinite(t.zoomPercent) && t.zoomPercent >= 50 && t.zoomPercent <= 200 ? t.zoomPercent : 100,
+                    zoomPercent: Number.isFinite(t.zoomPercent) && t.zoomPercent >= PAGE_ZOOM_MIN && t.zoomPercent <= PAGE_ZOOM_MAX ? t.zoomPercent : 100,
                 }));
                 // Map activeTabId: if the original activeTabId matches a tab by index, use the new ID
                 const origIndex = data.tabs.findIndex(
@@ -472,7 +478,7 @@ export class BrowserEditor extends EditorModel<
             }
             if (data.tabsPanelWidth) s.tabsPanelWidth = data.tabsPanelWidth;
             if (data.bookmarksWidth !== undefined) s.bookmarksWidth = data.bookmarksWidth; // NH3
-            if (data.bookmarksSidebarWidth !== undefined) s.bookmarksSidebarWidth = data.bookmarksSidebarWidth; // US-601
+            if (data.bookmarksSidebarWidth !== undefined) s.bookmarksSidebarWidth = data.bookmarksSidebarWidth;
             if (data.profileName !== undefined) s.profileName = data.profileName;
             if (data.isIncognito !== undefined) s.isIncognito = data.isIncognito;
             if (data.isTor !== undefined) {
@@ -560,7 +566,7 @@ export class BrowserEditor extends EditorModel<
     /** Switch the current search query to a different engine. Also updates the tab's homeUrl. */
     switchSearchEngine = (engineId: string) => {
         const s = this.state.get();
-        const currentUrl = this.tabs.currentUrls.get(s.activeTabId) || s.url;
+        const currentUrl = this.currentUrl || "";
         const detected = detectSearchEngine(currentUrl);
         this.setSearchEngine(engineId);
         const query = detected?.query || s.lastSearchQuery;

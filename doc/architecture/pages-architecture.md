@@ -10,42 +10,34 @@ page lifecycle, action taxonomy, and internal submodel structure.
 
 ## 1. Window Bootstrap Lifecycle
 
-The renderer initializes in a strict 3-layer sequence before the application mount runs.
-This ensures all systems are ready before the UI appears — no race conditions,
-no flash of empty state. `renderer.ts` returns the `mount(container)` callback from
-`renderer/index.ts`; the shell is native and React content is mounted only in the explicit
-Excalidraw island.
+Main starts in `src/main.ts`: it parses and applies the optional profile, acquires the single-instance
+lock, and calls `setupMainProcess()` from `src/main/main-setup.ts`. The renderer imports locale
+startup before loading Monaco NLS, then imports the app, IPC API, and settings in parallel. It loads
+the renderer index while `app.init()` and `app.initSetup()` run; after that it initializes app
+services, waits for settings, synchronizes board trust, initializes the custom board editor registry,
+restores pages, and wires app events. Board-mode windows then open and lock their requested board
+page before startup inputs are dispatched.
+
+Bootstrap schedules `api.windowReady()` on a zero-delay timer and returns `renderer/index.ts`'
+`mount` callback. `startRenderer()` invokes that callback before the timer fires. The shell and editor
+views use native `VanillaView` classes; browser pages own Chromium `<webview>` elements and board
+pages host board content in an iframe.
 
 ```mermaid
 graph TD
-    A["App Start"] -->|Electron loaded| B["renderer.ts bootstrap()"]
-    B -->|Parallel load| C["import Renderer Code<br/>+ app.init"]
-    C -->|Side effects| C1["configure-monaco<br/>register-editors"]
-    B -->|await| D["app.initServices<br/>Layer 1"]
-    D -->|Walk app-service-registry descriptors| D1["load each service<br/>then invoke optional initializer"]
-    D1 --> E["app.initPages<br/>Restore pages"]
-    E --> F["app.initEvents<br/>Layer 3"]
-    F -->|Initialize services| F1["GlobalEventService<br/>KeyboardService<br/>WindowStateService<br/>RendererEventsService"]
-    F1 -->|Dispatch cold-start inputs| F2["app.openStartupInputs"]
-    F2 --> G["api.windowReady<br/>Signal window ready"]
-    G -->|mount(container)| H["MainPageView<br/>Tabs + Active Editor"]
-    H -->|User interactions| I["Page operations"]
-
-    E -->|✓ Success| E1["Pages loaded from storage"]
-    E -->|✗ Error| E2["Notify user, create empty"]
-    E1 --> F
-    E2 --> F
-    F2 -->|File or URL input| F2a["Open through link pipeline"]
-    F2 -->|Diff input| F2b["Open file diff"]
-    F2a --> G
-    F2b --> G
-    F2 -->|No inputs; ensure page exists| G
-
-    style B fill:#fff3e0
-    style D fill:#fff3e0
-    style E fill:#fff3e0
-    style F fill:#fff3e0
-    style H fill:#c8e6c9
+    M["main.ts: profile + single-instance lock"] --> S["setupMainProcess: security, services, IPC, window"]
+    S --> R["renderer.ts: locale startup + Monaco NLS"]
+    R --> P["parallel imports: app, IPC API, settings"]
+    P --> I["renderer index import + app.init + app.initSetup"]
+    I --> V["app services + settings wait"]
+    V --> T["board trust sync + custom editor registry"]
+    T --> L["restore pages + wire app events"]
+    L --> B["optional board-mode page open and lock"]
+    B --> O["dispatch startup inputs"]
+    O --> W["schedule windowReady on zero-delay timer"]
+    W --> C["return mount callback"]
+    C --> H["startRenderer mounts native shell before timer"]
+    H --> U["Page operations"]
 ```
 
 **Layer 1 — Services** (`app.initServices()`): Walks the descriptor table in
@@ -83,10 +75,10 @@ PageModel (one per tab — stable identity, never changes during navigation)
 ├── state: TOneState<IPageState>        // reactive: { pinSide, popoverSize, hasSidebar, mainEditorId, restoreStatus }
 ├── ready: Promise<void>                 // current deferred restore attempt
 ├── mainEditor: EditorModel | null      // the content (swapped during navigation)
-├── secondaryViews: EditorModel[]     // sidebar panels (ExplorerEditorModel, ArchiveEditorModel, etc.)
+├── secondaryViews: EditorModel[]     // sidebar panels (ExplorerEditor, ArchiveEditorModel, etc.)
 ├── secondaryViewsModel                  // sidebar open/close/width
 ├── activePanel: string                 // which panel is expanded
-├── findExplorer() / createExplorer()   // ExplorerEditorModel helpers
+├── findExplorer() / createExplorer()   // ExplorerEditor helpers
 ├── findEditorByFilePath(path)          // existing editor on this page for a file (navigation reuse)
 ├── ensurePipeOwner()                   // await renderer ownership before a pipe-backed media session
 ├── toggleNavigator() / canOpenNavigator() // sidebar toggle (creates Explorer if needed)
@@ -382,7 +374,7 @@ as named steps (the lifecycle keeps a one-line delegate), and
 `showBrowserPage` / `openUrlInBrowserTab` beside the browser editor — reached via dynamic
 import so the startup-loaded pages model never statically imports the browser chunk.
 
-`PagesModel` delegates all submodel methods as its own (46 public methods). Exported as a singleton:
+`PagesModel` forwards the composed submodels' public operations. Exported as a singleton:
 
 ```typescript
 import { pagesModel } from "../api/pages";
@@ -409,7 +401,6 @@ import { pagesModel } from "../api/pages";
 - `checkEmptyPage()` — auto-create empty page when last one closes
 - `addEmptyPageWithNavPanel(folderPath)` — creates a PageModel with `mainEditor = null` and an initialized sidebar (Explorer panel). Used by sidebar double-click, archive browsing, the "Open Folder" menu, the "Open Folder" item in the Tools & Editors list, the folder-tree context menu, opening a link that points to a directory, and a folder path arriving from the command line or Explorer's "Open with persephone" folder context menu. The page renders just the sidebar with an empty content area.
 - `showClipboardPage()` — reuses or creates the fixed-ID editorless Clipboard singleton with an Explorer host whose persisted composition contains only the Clipboard panel.
-- `openFileAsArchive(filePath)` — opens an archive for browsing. Creates a PageModel with sidebar root set to the archive root. Reuses existing tab if the archive is already open. ZIP archives use `!` separator (e.g., `doc.zip!word/document.xml`) via `archive-service.ts`; `.asar` archives use the regular path directly (e.g., `app.asar`) via Electron's native fs patching — see `file-path.ts`.
 - `openLinks(links, title?)` — creates a link collection page. A `LinkEditor` with `.link.json` content is added as a Pattern A secondary view (never mainEditor). The Categories panel appears in the sidebar; clicking a link navigates the page's main area to that file. Accepts `(ILink | string)[]` — strings are converted to LinkItems with auto-generated titles.
 - `save()` / `restore()` — persistence (called by bootstrap, not by scripts)
 - Submodel instances — private composition detail
@@ -545,7 +536,7 @@ Do NOT use for:
 
 ## 9. PageModel — Sidebar and Navigation Context
 
-PageModel is the tab container that owns the sidebar layout (open/close/width via `secondaryViewsModel`), panel selection (`activePanel`), and secondary views. Explorer state (tree provider, selection, search) is owned by `ExplorerEditorModel` in `secondaryViews[]`. PageModel survives navigation — when the user navigates to a new file, only `page.mainEditor` changes while the PageModel (and its sidebar) stays intact.
+PageModel is the tab container that owns the sidebar layout (open/close/width via `secondaryViewsModel`), panel selection (`activePanel`), and secondary views. Explorer state (tree provider, selection, search) is owned by `ExplorerEditor` in `secondaryViews[]`. PageModel survives navigation — when the user navigates to a new file, only `page.mainEditor` changes while the PageModel (and its sidebar) stays intact.
 
 **Source:** [`/src/renderer/api/pages/PageModel.ts`](../../src/renderer/api/pages/PageModel.ts)
 
@@ -622,7 +613,7 @@ case remain significant. Ordinary `openUrlInBrowserTab()` searches skip board-ow
 
 **`beforeNavigateAway(newEditor)`** lets the old editor inspect `newEditor.sourceLink` to decide whether to keep itself as a secondary view. The base implementation clears `secondaryView`. Subclasses like ArchiveEditorModel override to check `newEditor.sourceLink?.sourceId === this.id`.
 
-**`notifyMainEditorChanged()`** calls `onMainEditorChanged(newMainEditor)` on each secondary view. Each editor reacts independently: ExplorerEditorModel clears selection if the new editor wasn't opened from Explorer, ArchiveEditorModel checks if the new main editor was opened from its archive — if not, it clears `secondaryView` and is cleaned up.
+**`notifyMainEditorChanged()`** calls `onMainEditorChanged(newMainEditor)` on each secondary view. Each editor reacts independently: ExplorerEditor clears selection if the new editor wasn't opened from Explorer, ArchiveEditorModel checks if the new main editor was opened from its archive — if not, it clears `secondaryView` and is cleaned up.
 
 ### Markdown in-page navigation
 
@@ -648,13 +639,13 @@ pipeline.
 
 ## 10. Secondary Editor System
 
-PageModel holds a `secondaryViews[]` array of EditorModel instances that appear as sidebar panels in SecondaryViews. This is a major subsystem with its own lifecycle — see the dedicated document for full details.
+PageModel derives `panelEditors` from attached editors that contribute sidebar panels. This is a major subsystem with its own lifecycle — see the dedicated document for full details.
 
 **Full documentation:** [Secondary Editor System](secondary-views.md)
 
 **Quick summary:**
-- Secondary views register by setting `model.secondaryView = ["panel-id"]` — the setter automatically manages `PageModel.secondaryViews[]`
-- **Pattern A** (separate model): A dedicated EditorModel subclass, e.g., ExplorerEditorModel
+- Secondary views register by setting `model.secondaryView = ["panel-id"]` — the setter updates state and `PageModel.panelEditors` derives panel contributors from attached editors
+- **Pattern A** (separate model): A dedicated EditorModel subclass, e.g., ExplorerEditor
 - **Pattern B** (mainEditor as secondary): The mainEditor registers itself in `secondaryViews[]` simultaneously, e.g., ArchiveEditorModel when browsing an archive
 - Lifecycle hooks: `beforeNavigateAway()`, `onMainEditorChanged()`, `onPanelExpanded()`
 - Header contract: the panel stack owns each header element and passes it to the panel view as `headerHost`

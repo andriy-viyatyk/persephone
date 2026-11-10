@@ -35,7 +35,7 @@ function invokeErrorMessage(err: unknown): string {
 }
 
 /**
- * Owns one browser page's profile network (US-1557): applies the profile's
+ * Owns one browser page's profile network: applies the profile's
  * proxy to its session before the page mounts, re-applies it when the setting
  * changes, and exposes the route app-rendered content must use.
  *

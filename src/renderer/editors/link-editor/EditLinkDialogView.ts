@@ -195,7 +195,7 @@ class DiscoveredImagesView extends VanillaView<DiscoveredImagesProps> {
         }));
         tile.replaceChildren();
 
-        // US-896 — null suppresses the thumbnail on a Tor page whose circuit isn't up. The tile
+        //  — null suppresses the thumbnail on a Tor page whose circuit isn't up. The tile
         // stays clickable: the URL is still a valid choice even when it can't be previewed.
         const thumbSrc = resolveRoutedSrc(record.url, this.props.imageProxy);
         if (!thumbSrc) return;

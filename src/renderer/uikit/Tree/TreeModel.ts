@@ -63,6 +63,12 @@ function runAccessor<R>(source: unknown, accessor: TraitType<R>): R {
     ) as R;
 }
 
+function globalRepaintProps<T>(props: TreeProps<T>): readonly unknown[] {
+    return [props.searchText, props.renderItem, props.indentSize, props.isSelected,
+        props.getTooltip, props.getName, props.getSecondaryLabel, props.id, props.traitTypeId,
+        props.getDragData, props.acceptsDrop, props.onDragStartOverride];
+}
+
 // =============================================================================
 // Model
 // =============================================================================
@@ -132,7 +138,7 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
 
     // --- ids ---
     private _elementId = "";
-    /** Fed by the view from `nextElementId("tree")` — replaces the former generated-ID source (EPIC-056 C3-5). */
+    /** Fed by the view from `nextElementId("tree")` — replaces the former generated-ID source. */
     setElementId = (elementId: string) => {
         this._elementId = elementId;
     };
@@ -194,17 +200,7 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
     private appliedDefaultExpandAll: TreeProps<T>["defaultExpandAll"] | undefined = undefined;
     private appliedDefaultExpandedValues: TreeProps<T>["defaultExpandedValues"] | undefined = undefined;
     private appliedActiveIndex: TreeProps<T>["activeIndex"] = undefined;
-    private appliedSearchText: TreeProps<T>["searchText"] = undefined;
-    private appliedRenderItem: TreeProps<T>["renderItem"] = undefined;
-    private appliedIndentSize: TreeProps<T>["indentSize"] = undefined;
-    private appliedIsSelected: TreeProps<T>["isSelected"] = undefined;
-    private appliedGetTooltip: TreeProps<T>["getTooltip"] = undefined;
-    private appliedGetSecondaryLabel: TreeProps<T>["getSecondaryLabel"] = undefined;
-    private appliedId: TreeProps<T>["id"] = undefined;
-    private appliedTraitTypeId: TreeProps<T>["traitTypeId"] = undefined;
-    private appliedGetDragData: TreeProps<T>["getDragData"] = undefined;
-    private appliedAcceptsDrop: TreeProps<T>["acceptsDrop"] = undefined;
-    private appliedOnDragStartOverride: TreeProps<T>["onDragStartOverride"] = undefined;
+    private appliedGlobalRepaintProps: readonly unknown[] = [];
     private hasAppliedProps = false;
     private pendingGlobalRepaint = false;
     private pendingRowRepaint = false;
@@ -230,18 +226,9 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
             : this.resolveSelectionValue(this.props.value).value;
         const selectedKeyChanged = !Object.is(this.selectedKey, nextSelectedKey);
         const activeChanged = this.appliedActiveIndex !== this.props.activeIndex;
-        const globalChanged = this.hasAppliedProps && (
-            this.appliedSearchText !== this.props.searchText
-            || this.appliedRenderItem !== this.props.renderItem
-            || this.appliedIndentSize !== this.props.indentSize
-            || this.appliedIsSelected !== this.props.isSelected
-            || this.appliedGetTooltip !== this.props.getTooltip
-            || this.appliedGetSecondaryLabel !== this.props.getSecondaryLabel
-            || this.appliedId !== this.props.id
-            || this.appliedTraitTypeId !== this.props.traitTypeId
-            || this.appliedGetDragData !== this.props.getDragData
-            || this.appliedAcceptsDrop !== this.props.acceptsDrop
-            || this.appliedOnDragStartOverride !== this.props.onDragStartOverride
+        const globalProps = globalRepaintProps(this.props);
+        const globalChanged = this.hasAppliedProps && globalProps.some(
+            (value, index) => !Object.is(value, this.appliedGlobalRepaintProps[index]),
         );
 
         if (rowsChanged) {
@@ -261,17 +248,7 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
         this.appliedDefaultExpandAll = this.props.defaultExpandAll;
         this.appliedDefaultExpandedValues = this.props.defaultExpandedValues;
         this.appliedActiveIndex = this.props.activeIndex;
-        this.appliedSearchText = this.props.searchText;
-        this.appliedRenderItem = this.props.renderItem;
-        this.appliedIndentSize = this.props.indentSize;
-        this.appliedIsSelected = this.props.isSelected;
-        this.appliedGetTooltip = this.props.getTooltip;
-        this.appliedGetSecondaryLabel = this.props.getSecondaryLabel;
-        this.appliedId = this.props.id;
-        this.appliedTraitTypeId = this.props.traitTypeId;
-        this.appliedGetDragData = this.props.getDragData;
-        this.appliedAcceptsDrop = this.props.acceptsDrop;
-        this.appliedOnDragStartOverride = this.props.onDragStartOverride;
+        this.appliedGlobalRepaintProps = globalProps;
         this.hasAppliedProps = true;
     };
 
@@ -883,7 +860,7 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
     // --- change detection ---
 
     /**
-     * Everything a rendered cell reads, for the host view's `DepsGate` (EPIC-056 C3-6).
+     * Everything a rendered cell reads, for the host view's `DepsGate`.
      *
      * Fixed length — `depsChanged` reads a length change as "changed". **No reactive state**: a
      * state change does not pump props in a vanilla driver, so a state slot would be dead code.
@@ -902,18 +879,7 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
             this.rows,
             this.selectedKey,
             this.props.activeIndex,
-            this.props.searchText,
-            this.props.renderItem,
-            this.props.indentSize,
-            this.props.isSelected,
-            this.props.getTooltip,
-            this.props.getName,
-            this.props.getSecondaryLabel,
-            this.props.id,
-            this.props.traitTypeId,
-            this.props.getDragData,
-            this.props.acceptsDrop,
-            this.props.onDragStartOverride,
+            ...globalRepaintProps(this.props),
         ];
     }
 

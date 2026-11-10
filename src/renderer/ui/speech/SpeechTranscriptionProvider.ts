@@ -1,24 +1,14 @@
-import { api } from "../../../ipc/renderer/api";
 import { SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "../../../ipc/module-service-channels";
+import { api } from "../../../ipc/renderer/api";
 import type { BoardServiceProvider } from "../../../ipc/board-bridge-channels";
+import { claimSpeechPort } from "./speech-port-inbox";
 import { createSpeechServiceChannel, type SpeechServiceChannel } from "./SpeechServiceChannel";
 
 const DESCRIBE_TIMEOUT_MS = 4000;
 
 export class SpeechTranscriptionProvider {
     private readonly describeCache = new Map<string, string[]>();
-    private readonly pendingPorts = new Map<string, MessagePort>();
-    private readonly portWaiters = new Map<string, (port: MessagePort) => void>();
-    private readonly unsubscribe: () => void;
-
-    public constructor() {
-        this.unsubscribe = api.onBoardServiceChannel((boardId, channelId, port) => {
-            if (!boardId.startsWith("voice-typing:")) return;
-            const waiter = this.portWaiters.get(channelId);
-            if (waiter) { this.portWaiters.delete(channelId); waiter(port); }
-            else this.pendingPorts.set(channelId, port);
-        });
-    }
+    private disposed = false;
 
     public async list(): Promise<BoardServiceProvider[]> {
         return (await api.getBoardServiceProviders("speech.transcribe")).filter((provider) => provider.version === 1);
@@ -29,17 +19,13 @@ export class SpeechTranscriptionProvider {
         return features?.includes("live");
     }
 
-    public async open(provider: BoardServiceProvider, live: boolean): Promise<SpeechServiceChannel> {
-        const channelId = await api.connectHostServiceChannel({ interfaceId: "speech.transcribe", provider: provider.provider, version: 1, openMessage: { type: "transcribe", format: { encoding: "pcm-s16le", sampleRate: 16000, channels: 1 }, ...(live ? { live: true } : {}) } });
-        return createSpeechServiceChannel(await this.waitForPort(channelId));
-    }
-
     public async describeFeatures(provider: BoardServiceProvider, refresh = false): Promise<string[] | undefined> {
         const key = `${provider.provider}@${provider.version}`;
         const cached = this.describeCache.get(key);
         if (!refresh && cached !== undefined) return cached;
         const channelId = await api.connectHostServiceChannel({ interfaceId: "speech.transcribe", provider: provider.provider, version: 1, openMessage: { type: "describe" } });
-        const port = await this.waitForPort(channelId);
+        const port = await claimSpeechPort(channelId, SERVICE_CHANNEL_OPEN_TIMEOUT_MS, "The speech provider channel did not open.");
+        if (this.disposed) { port.close(); return undefined; }
         const channel = createSpeechServiceChannel(port);
         try {
             const features = await new Promise<string[] | undefined>((resolve) => {
@@ -68,22 +54,7 @@ export class SpeechTranscriptionProvider {
     }
 
     public dispose(): void {
-        this.unsubscribe();
-        this.pendingPorts.forEach((port) => port.close());
-        this.pendingPorts.clear();
-        this.portWaiters.clear();
-    }
-
-    private async waitForPort(channelId: string): Promise<MessagePort> {
-        const pending = this.pendingPorts.get(channelId);
-        if (pending) { this.pendingPorts.delete(channelId); return pending; }
-        return new Promise<MessagePort>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-                this.portWaiters.delete(channelId);
-                reject(new Error("The speech provider channel did not open."));
-            }, SERVICE_CHANNEL_OPEN_TIMEOUT_MS);
-            this.portWaiters.set(channelId, (port) => { clearTimeout(timeout); resolve(port); });
-        });
+        this.disposed = true;
     }
 }
 

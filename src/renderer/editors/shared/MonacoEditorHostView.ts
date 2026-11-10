@@ -11,7 +11,7 @@ const modelsPendingDisposal = new Set<monaco.editor.ITextModel>();
 export interface MonacoEditorHostProps {
     initialValue?: string;
     language?: string;
-    /** File URI for the initial model (project IntelliSense, US-1744). Used only at mount. */
+    /** File URI for the initial model, used for project IntelliSense. Used only at mount. */
     modelUri?: monaco.Uri;
     options?: monaco.editor.IStandaloneEditorConstructionOptions;
     onMount?: (host: MonacoEditorHostView) => void;

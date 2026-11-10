@@ -3,7 +3,7 @@ import { isPositiveIntegerTimeout } from "../../../shared/ai-vision-timeout";
 import type { HintMode } from "ai-vision";
 
 /**
- * The `call` MCP command — one path into the live object model (EPIC-083).
+ * The `call` MCP command — one path into the live object model.
  * The main process peels `windows[i]` off the path before forwarding and passes the kinds whose
  * member lists this session has already seen, so hint dedupe survives the process boundary.
  */

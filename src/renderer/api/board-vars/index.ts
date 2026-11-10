@@ -1,5 +1,5 @@
-// Board environment variables — foundation (EPIC-046 / US-887).
-// Consumed by the board bridge (US-888) and the `.env.json` editor (US-889).
+// Board environment variables — foundation.
+// Consumed by the board bridge and the `.env.json` editor.
 
 export { boardVars } from "./BoardEnvStore";
 export { resolveBoardVarRequest, type BoardVarReply } from "./board-vars-bridge";

@@ -1772,7 +1772,11 @@
     "voiceTyping.translatingRecording": "녹음 중 — 영어로 번역 — 중지: {binding}, 취소: Esc",
     "voiceTyping.translatingTranscribing": "영어로 텍스트 변환 중 — 취소: Esc",
     "settings.microphoneReferenceReady": "컴퓨터 오디오 참조 활성화됨",
-    "settings.microphoneReferenceUnavailable": "컴퓨터 오디오 참조를 사용할 수 없습니다. 에코 제거 없이 소음 정리를 계속합니다: {reason}"
+    "settings.microphoneReferenceUnavailable": "컴퓨터 오디오 참조를 사용할 수 없습니다. 에코 제거 없이 소음 정리를 계속합니다: {reason}",
+    "shell.ungroup": "그룹 해제",
+    "shell.mutePage": "페이지 음소거",
+    "shell.unmutePage": "페이지 음소거 해제",
+    "tools.siteExtensionActionFailed": "사이트 확장 프로그램 작업에 실패했습니다."
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3447,6 +3451,10 @@
     "voiceTyping.translatingRecording": "e3db99f8",
     "voiceTyping.translatingTranscribing": "dcf439f0",
     "settings.microphoneReferenceReady": "043e4ffb",
-    "settings.microphoneReferenceUnavailable": "d1af3faf"
+    "settings.microphoneReferenceUnavailable": "d1af3faf",
+    "shell.ungroup": "460af6ed",
+    "shell.mutePage": "724c00d7",
+    "shell.unmutePage": "af4c43a2",
+    "tools.siteExtensionActionFailed": "96558212"
   }
 }

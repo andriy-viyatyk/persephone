@@ -1,5 +1,5 @@
 import { TComponentState } from "../../core/state/state";
-import type { BreadcrumbProps } from "../../uikit/Breadcrumb";
+import type { BreadcrumbProps } from "../../uikit/Breadcrumb/BreadcrumbView";
 import { BreadcrumbView } from "../../uikit/Breadcrumb/BreadcrumbView";
 import { ButtonView, type ButtonViewProps } from "../../uikit/Button/ButtonView";
 import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";

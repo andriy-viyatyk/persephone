@@ -664,5 +664,3 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         }
     }
 }
-
-export { BrowserProfilesSectionView as BrowserProfilesSection };

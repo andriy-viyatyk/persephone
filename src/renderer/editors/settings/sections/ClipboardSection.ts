@@ -119,5 +119,3 @@ export class ClipboardSectionView extends VanillaView<Record<string, never>> {
         this.maxItemsInput?.update(this.inputProps(state.maxItemsValue));
     }
 }
-
-export { ClipboardSectionView as ClipboardSection };

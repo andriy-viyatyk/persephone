@@ -1,3 +1,4 @@
+import { PAGE_ZOOM_MIN, PAGE_ZOOM_MAX } from "../shared/browser-zoom";
 /**
  * Main process browser service.
  *
@@ -121,7 +122,7 @@ function toChromeUserAgent(ua: string): string {
  *
  * This covers the top frame only: a cross-origin iframe runs in its own renderer process and
  * reads `app.userAgentFallback` instead, so `initBrowserUserAgent()` must clean that too. A page
- * whose iframes still say "Electron" fails Cloudflare's challenge endlessly (US-1584).
+ * whose iframes still say "Electron" fails Cloudflare's challenge endlessly.
  */
 function cleanUserAgent(ses: Electron.Session): void {
     if (cleanedSessions.has(ses)) return;
@@ -152,7 +153,7 @@ interface RegisteredWebview {
     senderWebContents: WebContents;
     listeners: Array<{ event: string; handler: AnyEventHandler }>;
     /** One-shot: when true, the next will-prevent-unload is allowed without a
-     *  confirmation prompt. Armed by a hard reload (Ctrl+F5 / Ctrl+Shift+R from
+     *  confirmation prompt. Armed by a hard reload (Ctrl+F5 or Ctrl+Shift+R from
      *  either keyboard path), consumed by the will-prevent-unload handler, and
      *  cleared defensively on did-stop-loading so it can never leak to a later
      *  reload if no prompt was triggered. */
@@ -171,7 +172,7 @@ interface RegisteredWebview {
 const registrations = new Map<string, RegisteredWebview>();
 
 function validZoomPercent(value: unknown): value is number {
-    return typeof value === "number" && Number.isFinite(value) && value >= 50 && value <= 200;
+    return typeof value === "number" && Number.isFinite(value) && value >= PAGE_ZOOM_MIN && value <= PAGE_ZOOM_MAX;
 }
 
 function applyGuestZoom(registration: RegisteredWebview): void {
@@ -589,9 +590,9 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
 
     // A page with a beforeunload handler (e.g. an unsaved-changes guard) tries
     // to cancel reloads/navigations. Electron's default is to SILENTLY cancel
-    // the unload — no prompt, no reload — which makes Reload/F5 appear dead.
+        // the unload — no prompt, no reload — which makes the browser appear unresponsive.
     // Surface a confirmation instead: "Leave" allows the unload (reload
-    // proceeds), "Cancel" keeps the page. A hard reload (Ctrl+F5 /
+        // proceeds), "Cancel" keeps the page. A hard reload (Ctrl+F5 or
     // Ctrl+Shift+R) arms bypassUnloadGuard to skip the prompt and force through.
     on("will-prevent-unload", (event: Electron.Event) => {
         const reg = registrations.get(key);
@@ -722,7 +723,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
 
     // Intercept browser hotkeys before the webview consumes them.
     //
-    // Ctrl+F and Escape are deliberately NOT handled here (US-1284). This hook
+    // Ctrl+F and Escape are deliberately NOT handled here. This hook
     // fires *before* the key is dispatched to the guest page, so
     // `preventDefault()` means the page's own DOM never sees the keydown — a
     // page with its own find UI, or one that closes its popover on Escape,
@@ -752,7 +753,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         if (input.key === "F5" || (keyLower === "r" && input.control)) {
             _e.preventDefault();
             if (input.key === "F5" ? input.control : input.shift) {
-                // Hard reload (Ctrl+F5 / Ctrl+Shift+R): force through any
+                // Hard reload (Ctrl+F5 or Ctrl+Shift+R): force through any
                 // beforeunload guard without prompting.
                 const reg = registrations.get(key);
                 if (reg) reg.bypassUnloadGuard = true;
@@ -1230,7 +1231,7 @@ export function initBrowserHandlers(): void {
         globalPopupRateLimiter.allow("popups");
     });
 
-    // Hard reload routed from the renderer (Ctrl+F5 / Ctrl+Shift+R while focus
+        // Hard reload routed from the renderer (Ctrl+F5 or Ctrl+Shift+R while focus
     // is on the browser UI rather than inside the page). Arm the bypass flag
     // and reload here so the beforeunload guard is skipped without a prompt —
     // mirrors the main-side before-input-event path.

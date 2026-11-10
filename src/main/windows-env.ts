@@ -1,5 +1,5 @@
 /**
- * US-800 — Windows environment backfill.
+ *  — Windows environment backfill.
  *
  * On Windows a process's environment block is a copy handed to it by its parent
  * at `CreateProcess` time; nothing the app does afterwards can recover variables

@@ -12,16 +12,15 @@ import { boardEditorId } from "./custom-editor-registry";
 import { errMessage } from "../../../shared/utils";
 
 /**
- * Content-host board (EPIC-043). A board that edits a file through Persephone's content host —
+ * Content-host board. A board that edits a file through Persephone's content host —
  * the same `TextFileModel` (`IContentHost`) that backs Monaco / Grid. Persephone owns
  * the pipe, encoding, encryption, auto-save cache, and dirty state; the board works with the
- * content over the `persephone.host.*` bridge (US-846). It switches with the built-in editors by
+ * content over the `persephone.host.*` bridge. It switches with the built-in editors by
  * TRANSFERRING the shared host (no reload / no data loss), via `CONTENT_HOST_TRAIT`.
  *
  * Subclass of `BoardEditorModel`: inherits the iframe / trust / toolbar / automation / icon
  * machinery unchanged, and adds only the host composition (template: `MonacoEditor`). Built in the
- * `board-editor:<root>` construction branch when the manifest declares `editorKind: "content-host"`
- * (US-845).
+ * `board-editor:<root>` construction branch when the manifest declares `editorKind: "content-host"`.
  */
 export class BoardContentEditorModel extends BoardEditorModel {
     override readonly deferRestoreOnOpen = true;
@@ -66,14 +65,13 @@ export class BoardContentEditorModel extends BoardEditorModel {
         return root ? boardEditorId(root) : "board-view";
     }
 
-    /** Switch options while ON the board: ALL built-in editors that accept the host (to switch
-     *  back) plus this board. Uses the SAME `findEditorsAccepting(host)` call the built-in
-     *  editors use, so the board's option list is identical to theirs — e.g. a `*.todo.json`
-     *  board offers `Text Editor` + `ToDo` + `Todo`, matching what the built-in Todo editor
-     *  shows (US-886). UNLIKE the base board, NO `isPlainLocalPath` gate — content-host boards
-     *  edit https/archive/encrypted files too (CH4). `findEditorsAccepting` reads the host's
-     *  `filePath ?? title`, so an untitled page stays resolvable. Before the host is adopted
-     *  (pre-restore window) it falls back to the single natural built-in editor. */
+    /** While on the board, offer every built-in editor that accepts the host, plus this board.
+     *  This uses the same `findEditorsAccepting(host)` call as built-in editors, so the options
+     *  match theirs; for example, a `*.todo.json` board offers `Text Editor`, `ToDo`, and `Todo`.
+     *  Content-host boards can edit HTTP, archive, and encrypted files because they do not use
+     *  the base board's `isPlainLocalPath` check. `findEditorsAccepting` reads `filePath ?? title`
+     *  so untitled pages stay resolvable. Before the host is adopted during window restore,
+     *  this falls back to the single natural built-in editor. */
     override findCompatibleEditors(): string[] {
         const root = this.state.get().boardRoot;
         if (!root) return [];
@@ -96,11 +94,11 @@ export class BoardContentEditorModel extends BoardEditorModel {
 
         // Preserve the editor id across the host swap so editor-owned cache files remain associated.
         this.state.update((s) => { s.id = oldEditor.id; });
-        // `host.state.editor` is stamped "board-view" inside `adoptHost` (Concern C1).
+        // `host.state.editor` is stamped "board-view" inside `adoptHost` (Concern ).
         this.adoptHost(host);
     }
 
-    /** Adopt a host (from `switchFrom`, from US-845 construction, or from `restore`). Wires host
+    /** Adopt a host (from `switchFrom`, from construction, or from `restore`). Wires host
      *  state → `descriptorChanged` for persistence, copies title/id, forwards `page`. */
     adoptHost(host: TextFileModel): void {
         this._host = host;
@@ -122,7 +120,7 @@ export class BoardContentEditorModel extends BoardEditorModel {
             s.title = title || (filePath ? fpBasename(filePath) : s.title);
             if (id) s.id = id;
         });
-        // Mark the host as board-rendered for introspection consistency (Concern C1).
+        // Mark the host as board-rendered for introspection consistency (Concern ).
         // "board-view" is the valid EditorView token (there is no "board"); it is never
         // persisted (`getDescriptor` omits `editor`) and is overwritten by the receiving
         // built-in's `switchFrom` on a switch away.
@@ -140,7 +138,7 @@ export class BoardContentEditorModel extends BoardEditorModel {
     // ── Lifecycle ───────────────────────────────────────────────────────
 
     /** Board validation (trust, refreshBoards, legacy-throw) via `super.restore()`, THEN ensure
-     *  the content host. Prefers an already-adopted host (US-845 pre-builds the pipe for non-local
+     * the content host. Prefers an already-adopted host and pre-builds the pipe for non-local
      *  files); otherwise builds a fallback from `_pendingHost` or the local file path. */
     override async restore(options?: EditorRestoreOptions): Promise<void> {
         await super.restore();
@@ -158,7 +156,7 @@ export class BoardContentEditorModel extends BoardEditorModel {
         } catch (err) {
             const message = errMessage(err, "Failed to restore board content.");
             ui.notify(message, "error");
-            // Drives the host-restore-failure empty state in the view (US-846).
+            // Drives the host-restore-failure empty state in the view.
             this.state.update((s) => { s.contentHostError = message; });
         }
         this._pendingHost = undefined;
@@ -168,7 +166,7 @@ export class BoardContentEditorModel extends BoardEditorModel {
 
     /** Base board pins `editorId: "board-view"` + the full board state; we add the host
      *  descriptor. `d.host` present on a `board-view` descriptor is the content-host-vs-plain
-     *  discriminator at restore (US-845's `restorePage` branch). */
+     *  discriminator at restore in the `restorePage` branch. */
     override getRestoreData(): EditorDescriptor {
         const data = super.getRestoreData();
         data.host = this._host?.getDescriptor();
@@ -200,7 +198,7 @@ export class BoardContentEditorModel extends BoardEditorModel {
         return this._host ? this._host.confirmRelease(closing) : true;
     }
 
-    // ── Content bridge (US-846) — the view (`BoardWebview`) owns the echo-guard ──
+    // ── Content bridge  — the view (`BoardWebview`) owns the echo-guard ──
 
     /** Apply content the board wrote (`persephone.host.setContent`). `byUser` true → marks the file
      *  modified + schedules the autosave cache, exactly like a Monaco/Grid user edit. */

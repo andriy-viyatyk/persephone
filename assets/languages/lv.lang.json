@@ -1868,7 +1868,11 @@
     "voiceTyping.translatingRecording": "Notiek ierakstīšana — tulkošana angļu valodā — {binding}, lai apturētu; Esc, lai atceltu",
     "voiceTyping.translatingTranscribing": "Notiek transkribēšana angļu valodā — Esc, lai atceltu",
     "settings.microphoneReferenceReady": "Datora audio atsauces signāls ir aktīvs",
-    "settings.microphoneReferenceUnavailable": "Datora audio atsauces signāls nav pieejams; trokšņu tīrīšana turpinās bez atbalss slāpēšanas: {reason}"
+    "settings.microphoneReferenceUnavailable": "Datora audio atsauces signāls nav pieejams; trokšņu tīrīšana turpinās bez atbalss slāpēšanas: {reason}",
+    "shell.ungroup": "Atgrupēt",
+    "shell.mutePage": "Izslēgt lapas skaņu",
+    "shell.unmutePage": "Ieslēgt lapas skaņu",
+    "tools.siteExtensionActionFailed": "Vietnes paplašinājuma darbība neizdevās."
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3543,6 +3547,10 @@
     "voiceTyping.translatingRecording": "e3db99f8",
     "voiceTyping.translatingTranscribing": "dcf439f0",
     "settings.microphoneReferenceReady": "043e4ffb",
-    "settings.microphoneReferenceUnavailable": "d1af3faf"
+    "settings.microphoneReferenceUnavailable": "d1af3faf",
+    "shell.ungroup": "460af6ed",
+    "shell.mutePage": "724c00d7",
+    "shell.unmutePage": "af4c43a2",
+    "tools.siteExtensionActionFailed": "96558212"
   }
 }

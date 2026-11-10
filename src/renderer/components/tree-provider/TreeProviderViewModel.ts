@@ -7,7 +7,7 @@ import { ContextMenuEvent } from "../../api/events/events";
 import { app } from "../../api/app";
 import { ui } from "../../api/ui";
 import { t } from "../../../shared/i18n/t";
-import { fpBasename, fpDirname, fpIsAbsolute, fpResolve } from "../../core/utils/file-path";
+import { fpBasename, fpDirname, fpIsAbsolute, fpNormalizeForCompare, fpResolve } from "../../core/utils/file-path";
 import type { IFileLink } from "../../core/traits/fileLinkTraits";
 import {
     copyPathsToOsClipboard,
@@ -38,7 +38,7 @@ import {
     getFolderMenuItems,
     type ItemMenuActions,
 } from "./item-menus";
-import { sameHref, sameHrefs } from "./href-utils";
+import { hrefKey, sameHref, sameHrefs } from "./href-utils";
 import type { SlotText } from "../../uikit/shared/slots";
 import type { PathWatchBatch } from "../../../ipc/api-types";
 
@@ -95,7 +95,7 @@ export interface TreeProviderViewProps {
     getSecondaryLabel?: (item: ITreeProviderItem, level: number) => SlotContent;
     /** Override root node label. When omitted, uses provider.displayName. */
     rootLabel?: string;
-    /** Allow Ctrl/Shift-click multi-selection and plural actions (EPIC-049).
+    /** Allow Ctrl/Shift-click multi-selection and plural actions.
      *  Explorer-only for now — every other tree stays single-select. */
     multiSelect?: boolean;
 }
@@ -234,7 +234,7 @@ export class TreeProviderViewModel extends TComponentModel<
     }
 
     /** The primary row — what paste targeting operates on when several rows are selected.
-     *  The Tree emits selections in flat visible order (US-937), so with a multi-selection
+     *  The Tree emits selections in flat visible order, so with a multi-selection
      *  this is the bottom-most selected row rather than literally the last-clicked one.
      *  Exact for a single selection, which is the case that matters for Ctrl+V. */
     private primaryNode = (): TreeProviderNode | null => {
@@ -249,8 +249,8 @@ export class TreeProviderViewModel extends TComponentModel<
 
     /** Prune `nodes` through `operationItems` (which works on ILink shapes). */
     private operationNodes = (nodes: TreeProviderNode[]): TreeProviderNode[] => {
-        const keep = new Set(this.operationItems(nodes.map((n) => n.data)).map((d) => d.href));
-        return nodes.filter((n) => keep.has(n.data.href));
+        const keep = new Set(this.operationItems(nodes.map((n) => n.data)).map((d) => hrefKey(d.href)));
+        return nodes.filter((n) => keep.has(hrefKey(n.data.href)));
     };
 
     /** Sink for the UIKit Tree's `onSelectionChange` (multiSelect mode). */
@@ -297,7 +297,7 @@ export class TreeProviderViewModel extends TComponentModel<
             }
             const original = this.state.get().tree;
             if (!original) { await this.buildTree(); return; }
-            const normalize = (value: string) => fpResolve(value).replace(/\\/g, "/").replace(/\/$/, "").toLowerCase();
+            const normalize = fpNormalizeForCompare;
             const root = normalize(provider.rootPath);
             const find = (node: TreeProviderNode, path: string): TreeProviderNode | null => {
                 if (normalize(node.data.href) === path) return node;
@@ -453,7 +453,7 @@ export class TreeProviderViewModel extends TComponentModel<
             // OLD tree remains visible the entire time (no intermediate state.update).
             const sorted = [...expandedPaths].sort((a, b) => a.length - b.length);
             for (const href of sorted) {
-                if (href === provider.rootPath) continue;
+                if (sameHref(href, provider.rootPath)) continue;
                 const node = findNode(workingTree, href);
                 if (!node || !node.data.isDirectory) continue;
                 const listPath = this.getListPath(node);
@@ -471,7 +471,7 @@ export class TreeProviderViewModel extends TComponentModel<
             // Subsequent builds skip the seed: once the root is in the map, user state in
             // Tree's own `state.expanded` overrides the hint anyway.
             if (this.disposed || this.props.provider !== provider || generation !== this.treeGeneration) return;
-            if (!this.initialExpandMap || !(provider.rootPath in this.initialExpandMap)) {
+            if (!this.initialExpandMap || !new Set(Object.keys(this.initialExpandMap).map(hrefKey)).has(hrefKey(provider.rootPath))) {
                 const collapsedMap = this.buildAllCollapsedMap(workingTree);
                 this.initialExpandMap = { ...collapsedMap, ...this.initialExpandMap };
             }
@@ -588,7 +588,7 @@ export class TreeProviderViewModel extends TComponentModel<
         // For ArchiveTreeProvider: href is "archive.zip!inner/path", we need inner path
         // The category of children = the directory path the provider understands
         // For root node, category is "" and we use provider.rootPath
-        if (item.href === provider.rootPath) {
+        if (sameHref(item.href, provider.rootPath)) {
             return provider.rootPath;
         }
         // For child directories, build the inner path from category + name
@@ -641,7 +641,7 @@ export class TreeProviderViewModel extends TComponentModel<
         if (expanded) {
             this.loadChildrenIfNeeded(id);
         } else {
-            // Only visible rows may stay selected (epic D10). The Tree fires this for the
+            // Only visible rows may stay selected. The Tree fires this for the
             // toggled row only, even with `collapseDescendants` — fine, because
             // pruneSelectionToVisible recomputes the whole visible set.
             this.pruneSelectionToVisible();
@@ -649,15 +649,20 @@ export class TreeProviderViewModel extends TComponentModel<
         this.props.onStateChange?.(this.getState());
     };
 
-    // ── Visible-row selection pruning (epic D10) ─────────────────────────
+    // ── Visible-row selection pruning ─────────────────────────
 
     /** Resolve effective expansion the way `buildTree` does: user-toggled Tree state wins
      *  where defined, restored hints (`initialExpandMap`) fill in, default collapsed. */
     private expandedResolver = (
         map: Record<string, boolean> = this.treeModel?.getExpandedMap() ?? {},
-    ) => (href: string): boolean => {
-        const fromState = map[href];
-        return fromState !== undefined ? !!fromState : !!this.initialExpandMap?.[href];
+    ) => {
+        const stateByKey = new Map(Object.entries(map).map(([key, value]) => [hrefKey(key), value]));
+        const hintsByKey = new Map(Object.entries(this.initialExpandMap ?? {}).map(([key, value]) => [hrefKey(key), value]));
+        return (href: string): boolean => {
+            const key = hrefKey(href);
+            const fromState = stateByKey.get(key);
+            return fromState !== undefined ? !!fromState : !!hintsByKey.get(key);
+        };
     };
 
     /** Every href currently rendered as a row: walk from the root, descending into a
@@ -669,7 +674,7 @@ export class TreeProviderViewModel extends TComponentModel<
         if (!tree) return out;
         const isExpanded = this.expandedResolver();
         const walk = (node: TreeProviderNode, isRoot: boolean) => {
-            out.add(node.data.href);
+            out.add(hrefKey(node.data.href));
             if (!node.data.isDirectory || !node.items) return;
             if (!isRoot && !isExpanded(node.data.href)) return;
             for (const child of node.items) walk(child, false);
@@ -684,7 +689,7 @@ export class TreeProviderViewModel extends TComponentModel<
         const { selectedValues } = this.state.get();
         if (!selectedValues.length) return;
         const visible = this.visibleHrefs();
-        const kept = selectedValues.filter((href) => visible.has(href));
+        const kept = selectedValues.filter((href) => visible.has(hrefKey(href)));
         if (kept.length === selectedValues.length) return;
         this.state.update((s) => { s.selectedValues = kept; });
         this.props.onStateChange?.(this.getState());
@@ -728,7 +733,7 @@ export class TreeProviderViewModel extends TComponentModel<
                 // whose expansion came from the `initialExpandMap` hint — i.e. every restored
                 // or freshly-built tree the user has not clicked in yet. Saving the raw map
                 // there stores `{}`, so clearing the search restores nothing and the tree
-                // collapses to its root (US-1039). `buildTree` already merges the two the same
+                // collapses to its root. `buildTree` already merges the two the same
                 // way (`:310-327`); `expandedResolver` is that rule, so reuse it rather than
                 // restate it. Order matters: it reads `initialExpandMap`, which is cleared below.
                 const stateMap = Object.fromEntries(
@@ -799,7 +804,7 @@ export class TreeProviderViewModel extends TComponentModel<
         return new Set(
             Object.entries(map)
                 .filter(([, expanded]) => expanded)
-                .map(([id]) => id),
+                .map(([id]) => hrefKey(id)),
         );
     };
 
@@ -847,7 +852,10 @@ export class TreeProviderViewModel extends TComponentModel<
     collapsePath = async (path: string): Promise<void> => {
         const href = this.toItemHref(path);
         await this.revealItem(href);
-        if (this.treeModel?.getExpandedMap()[href]) this.treeModel.toggleItem(href);
+        const expanded = this.treeModel?.getExpandedMap() ?? {};
+        const originalKeys = new Map(Object.keys(expanded).map((key) => [hrefKey(key), key]));
+        const original = originalKeys.get(hrefKey(href));
+        if (original !== undefined && expanded[original]) this.treeModel?.toggleItem(original);
     };
 
     // ── Click handlers ───────────────────────────────────────────────────
@@ -891,7 +899,7 @@ export class TreeProviderViewModel extends TComponentModel<
         const { provider } = this.props;
         const nodes = this.selectedNodes;
         const node = this.primaryNode();
-        const hasRoot = nodes.some((n) => n.data.href === provider.rootPath);
+        const hasRoot = nodes.some((n) => sameHref(n.data.href, provider.rootPath));
         const consume = () => {
             e.preventDefault();
             e.stopPropagation();
@@ -918,7 +926,7 @@ export class TreeProviderViewModel extends TComponentModel<
             }
         }
 
-        // OS file clipboard (US-807 actions) — file provider only.
+        // OS file clipboard actions — file provider only.
         if (!e.ctrlKey || e.altKey || e.shiftKey) return false;
         const key = e.key.toLowerCase();
         if (key !== "c" && key !== "x" && key !== "v") return false;
@@ -1000,7 +1008,7 @@ export class TreeProviderViewModel extends TComponentModel<
     /**
      * The pruned selection to act on when `node` was right-clicked, or null when the
      * single-row menu should be built instead — i.e. multiSelect is off, the row is outside
-     * the selection, or pruning (epic D9) collapsed the set to one node. A "Copy (1)" label
+     * the selection, or pruning collapsed the set to one node. A "Copy (1)" label
      * over a plural code path is a worse menu than the single-row one, which also offers
      * Rename, Paste and Open Terminal here.
      */
@@ -1008,13 +1016,13 @@ export class TreeProviderViewModel extends TComponentModel<
         if (!this.props.multiSelect) return null;
         const { selectedValues } = this.state.get();
         if (selectedValues.length < 2) return null;
-        if (!selectedValues.includes(node.data.href)) return null;
+        if (!new Set(selectedValues.map(hrefKey)).has(hrefKey(node.data.href))) return null;
         const targets = this.operationNodes(this.selectedNodes);
         return targets.length > 1 ? targets : null;
     };
 
     /** Set-shaped actions over N selected rows. `nodes` is already pruned, so every count
-     *  shown here is the pruned count (epic D9). */
+     *  shown here is the pruned count. */
     private getMultiMenuItems = (nodes: TreeProviderNode[]): MenuItem[] =>
         buildMultiItemMenuItems(
             this.props.provider,
@@ -1036,13 +1044,13 @@ export class TreeProviderViewModel extends TComponentModel<
             provider: this.props.provider,
             item: node.data,
             directory: this.getListPath(node),
-            isRoot: node.data.href === this.props.provider.rootPath,
+            isRoot: sameHref(node.data.href, this.props.provider.rootPath),
             actions: this.itemMenuActions,
         });
 
     // ── File operations ──────────────────────────────────────────────────
 
-    /** Paste the OS clipboard's files into `targetDir` and refresh (US-807). */
+    /** Paste the OS clipboard's files into `targetDir` and refresh. */
     private pasteIntoDir = (targetDir: string) => pasteIntoDir(this.itemCrudContext, targetDir);
 
     private createNewFile = (dirPath: string) => createNewFile(this.itemCrudContext, dirPath);
@@ -1058,8 +1066,8 @@ export class TreeProviderViewModel extends TComponentModel<
 
     /**
      * Confirm once, then delete every node in `nodes`. Public: plural context menu + the
-     * Delete key. Prunes nested selections first (epic D9), so a folder plus files inside it
-     * deletes the folder only — and the count in the confirm is the pruned count (epic D8:
+     * Delete key. Prunes nested selections first, so a folder plus files inside it
+     * deletes the folder only — and the count in the confirm is the pruned count (:
      * count only, no name list).
      */
     deleteItemsAction = async (nodes: TreeProviderNode[]) => {
@@ -1081,7 +1089,7 @@ export class TreeProviderViewModel extends TComponentModel<
     /**
      * The items a drag starting on `node` should carry: the whole selection when the row is
      * part of it, otherwise just that row (Explorer behavior — dragging an unselected row does
-     * not silently carry the selection). Pruned through `operationItems` (epic D9), so a folder
+     * not silently carry the selection). Pruned through `operationItems`, so a folder
      * dragged together with items inside it carries the folder only, and never includes the
      * tree root. Single-select trees always get the one row.
      */
@@ -1090,11 +1098,11 @@ export class TreeProviderViewModel extends TComponentModel<
         const { selectedValues } = this.state.get();
         const dragsSelection = !!multiSelect
             && selectedValues.length > 1
-            && selectedValues.includes(node.data.href);
+            && new Set(selectedValues.map(hrefKey)).has(hrefKey(node.data.href));
         const items = dragsSelection
             ? this.selectedNodes.map((n) => n.data)
             : [node.data];
-        return this.operationItems(items).filter((i) => i.href !== provider.rootPath);
+        return this.operationItems(items).filter((i) => !sameHref(i.href, provider.rootPath));
     };
 
     // ── Drop targets ─────────────────────────────────────────────────────
@@ -1187,7 +1195,7 @@ function toNode(item: ITreeProviderItem): TreeProviderNode {
 }
 
 function findNode(tree: TreeProviderNode, href: string): TreeProviderNode | null {
-    if (tree.data.href === href) return tree;
+    if (sameHref(tree.data.href, href)) return tree;
     if (tree.items) {
         for (const child of tree.items) {
             const found = findNode(child, href);
@@ -1200,7 +1208,7 @@ function findNode(tree: TreeProviderNode, href: string): TreeProviderNode | null
 function findParent(tree: TreeProviderNode | null, href: string): TreeProviderNode | null {
     if (!tree || !tree.items) return null;
     for (const child of tree.items) {
-        if (child.data.href === href) return tree;
+        if (sameHref(child.data.href, href)) return tree;
         const found = findParent(child, href);
         if (found) return found;
     }
@@ -1212,7 +1220,7 @@ function updateNodeChildren(
     href: string,
     children: TreeProviderNode[],
 ): TreeProviderNode {
-    if (node.data.href === href) {
+    if (sameHref(node.data.href, href)) {
         return { ...node, items: children };
     }
     if (node.items) {
@@ -1287,7 +1295,7 @@ function filterChildrenShallow(
     const result: TreeProviderNode[] = [];
     for (const item of items) {
         if (item.data.isDirectory) {
-            if (expandedPaths.has(item.data.href)) {
+            if (expandedPaths.has(hrefKey(item.data.href))) {
                 result.push({
                     ...item,
                     items: filterChildrenShallow(item.items, words, expandedPaths),

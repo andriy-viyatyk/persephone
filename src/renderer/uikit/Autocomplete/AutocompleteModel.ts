@@ -144,7 +144,7 @@ export class AutocompleteModel extends TComponentModel<AutocompleteState, Autoco
 
     // --- ids ---
     private _elementId = "";
-    /** Fed by the view from `nextElementId("autocomplete")` — replaces the former generated-ID source (C3-5). */
+    /** Fed by the view from `nextElementId("autocomplete")` — provides stable IDs for accessibility references. */
     setElementId = (elementId: string) => {
         this._elementId = elementId;
     };
@@ -230,9 +230,8 @@ export class AutocompleteModel extends TComponentModel<AutocompleteState, Autoco
     /*
      * A draft mutator, not a setter: it mutates an immer draft and never calls `state.update`
      * itself, so every path that closes produces exactly **one** write (uikit/CLAUDE.md, "Scrolling
-     * after a change that resizes the content"). It also carries what `AutocompleteModel.init`'s
-     * effect used to do on a `queueMicrotask` (EPIC-056 C3-6 #10): clearing the highlight is a
-     * consequence of closing, so it belongs at the sites that close. Three of the four already did
+     * after a change that resizes the content"). It also clears the highlight when closing:
+     * clearing is a consequence of closing, so it belongs at the sites that close. Three of the four already did
      * it by hand; routing all four through here is what makes that checkable.
      */
     private closeInto(s: AutocompleteState): void {

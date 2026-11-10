@@ -6,29 +6,19 @@ import { boardSecondaryPanelId, parseBoardSecondaryPanelId } from "./board-secon
 import type { BoardEditorModel } from "./BoardEditorModel";
 
 /**
- * `IBrowserTarget` adapter for a Board (EPIC-034 / US-730; re-homed onto the
- * `<iframe>` in EPIC-037 / US-773), letting the existing `browser_*` MCP automation
- * tools drive a board's frames.
+ * `IBrowserTarget` adapter for board automation. The board has no `WebContents` of its
+ * own, so commands route through the host window's `<iframe>`.
  *
- * A board has no navigation and no agent-creatable tabs, but it DOES have multiple
- * frames — the main view plus each declared secondary (sidebar) view (EPIC-044 /
- * US-858). Those frames are surfaced through the tab abstraction the interface already
- * provides: `tabs` enumerates the main frame + one tab per declared secondary view,
- * `switchTab` selects which frame subsequent commands drive, and `cdp(tabId?)` /
- * `focusWebview` / `insertText` all honor the active (or an explicit) tab. Each frame
- * has its own CDP registration keyed `${model.id}/${tabId}` (main → `main`, secondary →
- * `board-secondary:<viewId>`), resolved to the specific board frame by its `?v=` nonce.
+ * A board has no navigation or agent-creatable tabs, but it can have several frames:
+ * the main view and each declared secondary view. `tabs` exposes those frames,
+ * `switchTab` selects one, and `cdp(tabId?)`, `focusWebview`, and `insertText`
+ * operate on the active or explicitly selected frame. Each frame has a separate
+ * CDP registration, resolved by its `?v=` nonce.
  *
- * The single-target guarantee the old code enforced (v1 drove only the main frame) is
- * replaced by explicit selection: `activeTabId` defaults to `main`, so nothing changes
- * until an agent selects a secondary view. Because a secondary frame is only attachable
- * while its sidebar panel is mounted, selection (and a readiness gate before every
- * command) auto-expands the panel and WAITS until the frame has registered for CDP — the
- * agent never sees an "iframe not mounted" error.
- *
- * Navigation and add/close-tab throw a clear error — the dispatcher turns it into a
- * JSON-RPC error. The whole iframe-vs-webContents difference stays below this seam (the
- * agent only ever passes `pageId` + a tab index).
+ * The active tab defaults to `main`, so behavior stays unchanged until a secondary
+ * view is selected. Selecting one expands its sidebar panel and waits for the frame
+ * to register before issuing commands. Navigation and tab creation or closing return
+ * clear errors because a board has fixed frames and no page navigation.
  */
 const NAV_MSG =
     "Navigation is not supported on board pages — a board is a single fixed document. " +
@@ -129,7 +119,7 @@ export class BoardTargetModel implements IBrowserTarget {
     /**
      * Select which board frame `browser_*` drives. Selecting the main frame is instant;
      * selecting a secondary view auto-expands its sidebar panel and WAITS until the frame
-     * is CDP-attachable, so the command that follows always succeeds (US-858).
+     * is CDP-attachable, so the command that follows always succeeds.
      */
     async switchTab(tabId: string): Promise<void> {
         if (tabId === BOARD_CDP_TAB) {

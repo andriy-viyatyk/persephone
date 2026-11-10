@@ -1,5 +1,5 @@
+import { CAPABILITY_BOARD_PREFIX , SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "../../ipc/module-service-channels";
 import { createRendererCapabilityChannel } from "./renderer-capability-channel";
-import { SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "../../ipc/module-service-channels";
 import { api } from "../../ipc/renderer/api";
 import { createCapabilityProxy } from "../../shared/capability-client";
 import { errMessage } from "../../shared/utils";
@@ -196,7 +196,7 @@ async function openRendererCapabilityChannel(request: import("../../ipc/capabili
     const ports = new Map<string, MessagePort>();
     let resolvePort: ((port: MessagePort) => void) | undefined;
     const unsubscribe = api.onBoardServiceChannel((boardId, channelId, port) => {
-        if (boardId !== `capability:${request.requestId}`) return;
+        if (boardId !== `${CAPABILITY_BOARD_PREFIX}${request.requestId}`) return;
         if (channelId === expected && resolvePort) resolvePort(port);
         else ports.set(channelId, port);
     });

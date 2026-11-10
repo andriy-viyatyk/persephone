@@ -1,6 +1,6 @@
 // Developer-friendly, zero-padded, local-time `YYYY-MM-DD HH:mm` (24-hour, no
-// seconds — US-618). Shared by every git-history view (popovers, Revisions
-// panel, whole-repo editor's date column, and the Commit info panel — US-629)
+// Git timestamps are Unix seconds. Shared by every git-history view (popovers, Revisions
+// panel, and the whole-repo editor's date column and Commit info panel.
 // so the format stays consistent in one place.
 
 const pad = (n: number) => String(n).padStart(2, "0");

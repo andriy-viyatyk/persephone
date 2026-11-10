@@ -69,7 +69,7 @@ import {
 import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
 
 // =============================================================================
-// Language â†’ Icon mapping
+// Language → Icon mapping
 // =============================================================================
 
 export const languageIconMap: { [key: string]: SvgIconComponent } = {
@@ -123,7 +123,7 @@ export const languageIconMap: { [key: string]: SvgIconComponent } = {
 };
 
 // =============================================================================
-// Compound file extension â†’ Icon mapping (overrides language icons)
+// Compound file extension → Icon mapping (overrides language icons)
 // =============================================================================
 
 const filePatternIcons: Array<{ pattern: RegExp; icon: SvgIconComponent }> = [
@@ -244,5 +244,5 @@ export interface FileTypeIconProps extends SvgIconProps {
 }
 
 // =============================================================================
-// FileTypeIcon â€” unified icon component
+// FileTypeIcon — unified icon component
 // =============================================================================

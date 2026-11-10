@@ -322,9 +322,6 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
 
     private getFolderTooltip(folder: MenuFolder): string | undefined {
         if (folder.path) return folder.path;
-        if (folder.id === openTabsId) return "Currently opened tabs";
-        if (folder.id === recentFilesId) return "Recently opened files";
-        if (folder.id === scriptLibraryId) return settings.get("script-library.path") || "Script library folder";
         return undefined;
     }
 

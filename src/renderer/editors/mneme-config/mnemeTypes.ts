@@ -33,7 +33,7 @@ export interface WikiModelFile {
     bytes: number;
 }
 
-/** Live model-download progress (US-669), present while a background
+/** Live model-download progress, present while a background
  *  `model_update` is in flight or errored. Mirrors Rust `ModelDownloadStatus`. */
 export interface WikiModelDownload {
     phase: "idle" | "downloading" | "verifying" | "done" | "error" | string;
@@ -57,7 +57,7 @@ export interface WikiStatus {
     model?: WikiModelStatus;
 }
 
-/** Result of `root_config` (US-668). */
+/** Result of `root_config`. */
 export interface WikiRootConfig {
     name: string;
     folder: string;
@@ -99,13 +99,13 @@ export function isModelReady(status: WikiStatus | null): boolean {
     return !!status?.model && status.model.complete === true;
 }
 
-/** True while a root's background reindex pass is active (US-669) —
+/** True while a root's background reindex pass is active —
  *  `scanning`/`embedding`, as opposed to `idle`/`done`/`cancelled`/`error`. */
 export function isReindexActive(p?: WikiReindexProgress): boolean {
     return !!p && (p.phase === "scanning" || p.phase === "embedding");
 }
 
-/** True while a background model download is active (US-669). */
+/** True while a background model download is active. */
 export function isDownloadActive(d?: WikiModelDownload): boolean {
     return !!d && (d.phase === "downloading" || d.phase === "verifying");
 }

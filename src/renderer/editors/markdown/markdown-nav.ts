@@ -3,7 +3,7 @@ import { fpExtname } from "../../core/utils/file-path";
 import { parseGuideUrl } from "../../../shared/guides/guide-links";
 
 // Extensions that count as a "local markdown document" for in-page navigation
-// (US-784). A clicked link to one of these — when it resolves to a local file —
+//. A clicked link to one of these — when it resolves to a local file —
 // is navigated within the same page instead of opening a new tab.
 const MARKDOWN_EXTENSIONS = new Set([".md", ".markdown"]);
 

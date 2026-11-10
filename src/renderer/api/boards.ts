@@ -42,29 +42,29 @@ export function explicitBoardCallTimeoutMs(): number | undefined {
 }
 
 /**
- * `app.boards` — board lifecycle for scripts / agents (EPIC-035 / US-750).
+ * `app.boards` — board lifecycle for scripts / agents.
  *
  * `createBoard` / `createDemoBoard` wrap the editor-independent
  * `createBoardFromTemplate` (which scaffolds the template, guarantees
- * `board-manifest.json`, and auto-trusts the board — EPIC-035 C5). `openBoard`
+ * `board-manifest.json`, and auto-trusts the board during user-initiated creation. `openBoard`
  * opens an existing board by its root path through the generic `app.openRawLink`
  * pipeline (encoding the `persephone-board://` link internally). Editor-adjacent
  * modules are reached via dynamic `import()` so the core `api` bundle stays
- * decoupled (C750-6).
+ * decoupled from the renderer's internal models.
  *
- * `registerBoard` / `unregisterBoard` / `renameBoard` (EPIC-045 / US-868) are the
+ * `registerBoard` / `unregisterBoard` / `renameBoard` are the
  * lifecycle triples for agents: register requests trust via the user's dialog (never
  * self-trusts), unregister untrusts + unpins, rename moves a trusted board to a new
  * folder carrying its trust/pin/install registration along with no dialog.
  *
  * `searchPublished` / `getPublishedVersions` / `downloadPublished` / `installPublished` /
- * `uninstallBoard` / `checkPublishedUpdates` (EPIC-045 / US-869) drive the published-boards
+ * `uninstallBoard` / `checkPublishedUpdates` drive the published-boards
  * catalog. The same request-vs-grant model holds: download trusts nothing (inert code on disk for
  * review), install shows the user the trust dialog, uninstall shows the delete confirmation.
  */
 async function create(name: string, dir: string, template: string): Promise<string> {
     // Ensure the container exists (recursive; no-op if present) so creating into a
-    // not-yet-existing path works without a separate mkdir (C750-5).
+    // not-yet-existing path works without a separate mkdir call.
     await fs.mkdir(dir);
     const { createBoardFromTemplate } = await import("../editors/board/board-scaffold");
     return createBoardFromTemplate(name, dir, template);
@@ -229,7 +229,7 @@ function toBoardListing(
 ): BoardListing {
     // Absent optionals are OMITTED, never set to `undefined`: a key explicitly holding
     // `undefined` crosses the MCP/IPC boundary as `null`, which is exactly the falsy
-    // stand-in EPIC-088 decision 9 forbids an agent from seeing. An omitted key reads as
+    // stand-in forbids an agent from seeing. An omitted key reads as
     // "unavailable"; a present one always carries a real value.
     const installed = installedListing(source);
     return {
@@ -324,14 +324,14 @@ export const boards: IBoards = {
             throw new Error(`Not a board: "${boardRoot}" is missing or has no board-manifest.json.`);
         }
         // Encode the persephone-board:// link in one tested place and open it via
-        // the generic pipeline (US-748). The agent never builds the link by hand.
+        // the generic pipeline. The agent never builds the link by hand.
         const { encodePersephoneBoardLink } = await import("../content/persephone-board-link");
         await app.events.openRawLink.sendAsync(createLinkData(encodePersephoneBoardLink(boardRoot), {
             sourceId: "app-api",
         }));
     },
 
-    // ── Board lifecycle — trust / untrust / rename (EPIC-045 / US-868) ──────────
+    // ── Board lifecycle — trust / untrust / rename  ──────────
     // Security invariant: the API requests, the user's trust dialog grants. `boardTrust`
     // is never touched here without either a user dialog (registerBoard) or a same-content
     // path move (renameBoard — no privilege gain) / a privilege reduction (unregisterBoard).
@@ -443,7 +443,7 @@ export const boards: IBoards = {
     /** Explicitly stop a running service. */
     stopService: (boardRoot: string): Promise<void> => api.stopModuleService(boardRoot),
 
-    // ── Published catalog — discover / install / update (EPIC-045 / US-869) ──────
+    // ── Published catalog — discover / install / update  ──────
 
     searchPublished: async (query?: string): Promise<PublishedBoardResult[]> => {
         await ensureCatalog();

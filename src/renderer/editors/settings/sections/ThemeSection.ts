@@ -3,9 +3,9 @@ import { ui } from "../../../api/ui";
 import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
 import { app } from "../../../api/app";
 import { deleteCustomTheme } from "../../../api/custom-theme-storage";
-import { getMissingEditCapabilityMessage, isCapabilityErrorWithCode } from "../../../api/capability-feedback";
+import { isCapabilityErrorWithCode } from "../../../api/capability-feedback";
 import { errMessage } from "../../../../shared/utils";
-import { englishMessage, t } from "../../../../shared/i18n/t";
+import { t } from "../../../../shared/i18n/t";
 import { applyTheme, getAvailableThemes } from "../../../theme/themes";
 import type { ThemeDefinition } from "../../../theme/themes/types";
 import { themeState } from "../../../theme/theme-state";
@@ -298,8 +298,7 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
             return;
         }
 
-        const missingMessage = getMissingEditCapabilityMessage(error, "theme.edit");
-        if (missingMessage === englishMessage("settings.themeEditorMissing")) {
+        if (isCapabilityErrorWithCode(error, "no-handler")) {
             try {
                 await app.pages.showToolsHubPage({ tab: "search" });
             } catch (navigationError) {
@@ -361,5 +360,3 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
             }));
     }
 }
-
-export { ThemeSectionView as ThemeSection };

@@ -1,6 +1,11 @@
+import { isCapabilityErrorCode, type CapabilityErrorCode } from "./shared/capability-constants";
+import { formatMessage } from "./shared/i18n/format-message";
+import { ENGLISH_BOARD_HOST_TEXT } from "./shared/board/host-text";
+import { validateBoardPageStateKey, validateBoardPageStateValue } from "./shared/board/page-state-validation";
+import { PLATFORM_AUDIO_CAPABILITY_ID } from "./shared/capability-constants";
 import { createCapabilityProxy } from "./shared/capability-client";
 /**
- * Board bridge shim (EPIC-037 / US-771) — the successor to `preload-board.ts`.
+ * Board bridge shim — the successor to `preload-board.ts`.
  *
  * Unlike a webview preload, this runs in a PLAIN BROWSER context inside the board
  * `<iframe>` (no Node, no Electron, no `ipcRenderer`). The `board://` handler inlines
@@ -88,7 +93,7 @@ import type {
     MainToBoard,
 } from "./ipc/board-bridge-channels";
 import type { PathWatchBatch } from "./ipc/api-types";
-import { isCapabilityErrorCode, type CapabilityErrorCode, type IntentEnvelope, type CapabilityClientInvoke, type CapabilityClientOptions, type CapabilityClientResult, type CapabilityProvider } from "./ipc/capability-bus-channels";
+import type { IntentEnvelope, CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientResult, CapabilityProvider } from "./ipc/capability-bus-channels";
 import { AI_VISION_SCHEMA_VERSION, expose } from "ai-vision/remote";
 import { createElements as createDomElements, highlightElement } from "ai-vision/dom";
 import type {
@@ -221,25 +226,6 @@ const boot: BoardBootContext =
         hostOrigin: "",
     };
 
-const ENGLISH_BOARD_HOST_TEXT: Record<BoardHostTextId, string> = {
-    openLink: "Open Link",
-    copyLink: "Copy Link",
-    openImageInNewTab: "Open Image in New Tab",
-    copyImage: "Copy Image",
-    saveImageAs: "Save Image As…",
-    imageFileFilter: "Image",
-    allFilesFileFilter: "All Files",
-    cut: "Cut",
-    copy: "Copy",
-    paste: "Paste",
-    saveImageDialogTitle: "Save Image",
-    failedToOpenImage: "Failed to open image: {error}",
-    failedToCopyImage: "Failed to copy image: {error}",
-    imageSaved: "Image saved.",
-    failedToSaveImage: "Failed to save image: {error}",
-    pasteFailed: "Paste failed: {error}",
-};
-
 function resolveBoardHostText(id: BoardHostTextId, params?: { error?: string }): string {
     const template = boot.hostText[id] || ENGLISH_BOARD_HOST_TEXT[id];
     return params?.error === undefined ? template : template.replace(/\{error\}/g, params.error);
@@ -262,16 +248,7 @@ function translateBoardMessage(key: string, params?: Record<string, unknown>): s
         }
     }
     if (message === undefined) return key;
-    if (typeof message !== "string") {
-        const count = params?.count;
-        const category = typeof count === "number" ? boardPluralRules.select(count) : "other";
-        message = message[category] ?? message.other;
-        if (typeof message !== "string") return key;
-    }
-    return message.replace(/\{([\w.-]+)\}/g, (token, name: string) => {
-        const value = params?.[name];
-        return value === undefined || value === null ? token : String(value);
-    });
+    return formatMessage(message, undefined, params, count => boardPluralRules.select(count)) ?? key;
 }
 
 function hasBoardMessage(key: string): boolean {
@@ -291,7 +268,7 @@ function hasBoardMessage(key: string): boolean {
 const hostOriginStrict = /^https?:\/\//i.test(boot.hostOrigin);
 const hostPostTarget = hostOriginStrict ? boot.hostOrigin : "*";
 
-// ── View role (EPIC-044 / O6) ────────────────────────────────────────────────
+// ── View role ────────────────────────────────────────────────────────────────
 // Which view this frame renders: "main" for the board's main iframe, or a declared
 // secondary view's id. Delivered synchronously via the iframe src's `view=` query param
 // (read here before any author script), so a single HTML file can branch on
@@ -304,7 +281,7 @@ try {
     // location unavailable — keep "main"
 }
 
-/** CSS-variable prefix of the graph color family (EPIC-100 / US-1404). */
+/** CSS-variable prefix of the graph color family. */
 const P_GRAPH_PREFIX = "--p-graph-";
 
 /** Derive `palette.graph` from the `--p-graph-*` entries of `vars`: the CSS suffix, camelCased
@@ -327,7 +304,7 @@ let currentTheme: BoardThemePalette = withGraphPalette(boot.theme);
 const tokens: Record<string, string> = boot.tokens;
 const themeCbs: Array<(t: BoardThemePalette) => void> = [];
 
-// ── Busy flag (US-799) ────────────────────────────────────────────────────────
+// ── Busy flag ────────────────────────────────────────────────────────────────
 // `null` until known: the handshake init message carries the host-side value (a
 // re-created busy board reads `true`); a local `setBoardBusy` call sets it
 // immediately and wins over a later-arriving init. `getBoardBusy()` awaits the
@@ -342,7 +319,7 @@ function settleBusy(value: boolean): void {
     busyResolvers.length = 0;
 }
 
-// ── filePath (EPIC-042) ─────────────────────────────────────────────────────────
+// ── filePath ────────────────────────────────────────────────────────────────
 // The file a custom-editor board edits, carried at the handshake. `getFilePath()` awaits
 // the handshake; a plain board settles to `undefined`. A separate `settled` flag (not a
 // null sentinel like busy) because `undefined` is itself a valid settled value.
@@ -437,7 +414,7 @@ function whenHandshake(): Promise<void> {
     return new Promise<void>((resolve) => filePathResolvers.push(() => resolve()));
 }
 
-// ── Host content (EPIC-043) ──────────────────────────────────────────────────
+// ── Host content ────────────────────────────────────────────────────────────
 // Content-host boards read Persephone-owned content pushed as `host:content`. A snapshot lands
 // after the frame loads, then on every change. `getContent()` awaits the first snapshot (settle-
 // once + await-any-time, like getFilePath); `onContentChange` fires on each subsequent push.
@@ -467,11 +444,11 @@ function settleHostContent(content: string, language: string | undefined): void 
     }
 }
 
-// ── Shared state (EPIC-044) ────────────────────────────────────────────────────
+// ── Shared state ────────────────────────────────────────────────────────────
 // A pure replica of the Persephone-side shared state, updated ONLY by seq-stamped
 // `state:sync` pushes. `get()` settles on the first snapshot (await any time), `onChange`
 // fires on each subsequent one. Writes (init/set/merge) post to the host and come back
-// as a push — onChange is the source of truth, like React setState.
+// as a push — onChange is the shared-state source of truth.
 
 let sharedStateSettled = false;
 let sharedState: Record<string, unknown> = {};
@@ -745,22 +722,6 @@ if (!toolbarDocumentLoaded) {
 function postAfterDocumentLoad(send: () => void): void {
     if (toolbarDocumentLoaded) send();
     else pendingDocumentMessages.push(send);
-}
-
-const PAGE_STATE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}(?![\s\S])/;
-const PAGE_STATE_MAX_BYTES = 10 * 1024 * 1024;
-
-function validatePageStateKey(key: unknown): asserts key is string {
-    if (typeof key !== "string" || !PAGE_STATE_KEY_PATTERN.test(key)) {
-        throw new TypeError("Board page-state keys must be 1–32 ASCII characters matching [A-Za-z0-9][A-Za-z0-9._-]*.");
-    }
-}
-
-function validatePageStateValue(value: unknown): asserts value is string {
-    if (typeof value !== "string") throw new TypeError("Board page-state values must be strings.");
-    if (new TextEncoder().encode(value).byteLength > PAGE_STATE_MAX_BYTES) {
-        throw new RangeError("Board page-state values cannot exceed 10 MiB in UTF-8.");
-    }
 }
 
 function hostRequest<T>(
@@ -1136,7 +1097,7 @@ async function getCapabilityRpc(id: string, options?: CapabilityClientOptions) {
             let channel: BoardServiceChannel;
             try { channel = await waitForServiceChannel((result as { channelId: string }).channelId); }
             catch (error) { void capabilityRpc("capabilityCancel", [request.requestId]).catch((): void => undefined); throw error; }
-            if (id !== "audio" || method !== "muteApp") return channel;
+            if (id !== PLATFORM_AUDIO_CAPABILITY_ID || method !== "muteApp") return channel;
             let released = false;
             let pending: Promise<void> | undefined;
             channel.onClose(() => { released = true; });
@@ -1361,7 +1322,7 @@ function exposeAiVision(root: object): IAiVisionRemote {
         },
         notify: (text: string): void => {
             if (aiVisionRemote !== remote || aiVisionGeneration !== generation) return;
-            // US-1399 owns the board notify transport; this only delegates to ai-vision.
+            // The board notify transport owns delivery; this only delegates to ai-vision.
             remote.notify(text);
         },
         dispose: () => {
@@ -1472,13 +1433,13 @@ function attachPort(p: MessagePort): void {
     // Flush queued outgoing messages in order.
     for (const msg of sendQueue) p.postMessage(msg);
     sendQueue.length = 0;
-    // Mode D (EPIC-037 C11): tell main the bridge is live so its handshake watchdog stands
+    // Tell main the bridge is live so its handshake watchdog stands
     // down. A board that paints but never reaches here is reported as "bridge dead".
     p.postMessage({ kind: "connected" } as BoardToMain);
 }
 
 // One-time handshake: accept the transferred port only from the host renderer
-// parent frame (C2). `event.source === window.parent` is the load-bearing check;
+// parent frame. `event.source === window.parent` is the load-bearing check;
 // the origin check is belt-and-suspenders, enforced only for a strict (http[s])
 // host — a file:// host's cross-origin `event.origin` is the opaque "null" and
 // would never match the baked "file://" (see `hostOriginStrict` above).
@@ -1549,10 +1510,10 @@ onHostMessage((event) => {
         }
         | undefined;
     if (!data || data.__persephoneInit !== true) return;
-    // Busy flag carried at handshake (US-799). A local setBoardBusy call that
+    // Busy flag carried at handshake. A local setBoardBusy call that
     // already ran wins (busyState !== null) — the init value is then stale.
     if (busyState === null) settleBusy(!!data.busy);
-    // filePath carried at handshake (EPIC-042). Every handshake settles it — a plain board
+    // filePath carried at handshake. Every handshake settles it — a plain board
     // carries `undefined`, so `getFilePath()` still resolves (to undefined).
     if (!filePathSettled) {
         // Non-local source flag — read BEFORE settling, since settling releases waiting
@@ -1561,7 +1522,7 @@ onHostMessage((event) => {
         folderPathValue = typeof data.folderPath === "string" ? data.folderPath : undefined;
         settleFilePath(data.filePath);
     }
-    // sourceUrl carried at handshake (D11). Every handshake settles it — a plain board carries
+    // sourceUrl carried at handshake. Every handshake settles it — a plain board carries
     // `undefined`, so `getSourceUrl()` still resolves (to undefined).
     if (!sourceUrlSettled) {
         initialSourcePrivateSession = data.initialSourcePrivateSession === true;
@@ -1570,7 +1531,7 @@ onHostMessage((event) => {
     }
     if (typeof data.pageVisible === "boolean") setPageVisibility(data.pageVisible);
     setVoiceTypingAutoStopSilence(data.voiceTypingAutoStopSilenceMs);
-    // Content-host flag (EPIC-043) — gates the persephone.host content API.
+    // Content-host flag gates the persephone.host content API.
     if (data.contentHost) hostEnabled = true;
     pipePageId = typeof data.pageId === "string" ? data.pageId : undefined;
     pipeUrlEnabled = data.pipeUrlEnabled === true;
@@ -1684,7 +1645,7 @@ onHostMessage((event) => {
     pending.settle(event.data as BoardHostRequestReply);
 });
 
-// Board settings change push (EPIC-111) — effective values include the declaration default.
+    // Board settings change push — effective values include the declaration default.
 onHostMessage((event) => {
     const data = event.data as BoardSettingsChangedMsg | undefined;
     if (!data || data.__persephone !== "settings:changed"
@@ -1799,7 +1760,7 @@ onHostMessage((event) => {
     if (activeIntent?.requestId === data.requestId) activeIntent.cancelled = true;
 });
 
-// Host content push (EPIC-043) — renderer → board over window.postMessage. Same trust gate as the
+// Host content push — renderer → board over window.postMessage. Same trust gate as the
 // handshake: source must be the host parent frame; origin enforced only for a strict http(s) host.
 // A SEPARATE listener because the handshake listener above early-returns non-`__persephoneInit`.
 onHostMessage((event) => {
@@ -1808,7 +1769,7 @@ onHostMessage((event) => {
     settleHostContent(data.content, data.language);
 });
 
-// Shared-state push (EPIC-044) — renderer → board. Same trust gate as host:content.
+// Shared-state push — renderer → board. Same trust gate as host:content.
 onHostMessage((event) => {
     const data = event.data as BoardStateSyncMsg | undefined;
     if (!data || data.__persephone !== "state:sync") return;
@@ -1881,7 +1842,7 @@ onHostMessage((event) => {
     }
 });
 
-// Automatic save (EPIC-043 / CH3) — a content-host board saves through Persephone's pipe on
+// Automatic save — a content-host board saves through Persephone's pipe on
 // Ctrl/Cmd+S with zero board code. `window` bubble phase, so a board handler on document/an element
 // runs FIRST and can opt out via preventDefault(). Harmless on a plain board (main ignores it).
 window.addEventListener("keydown", (e: KeyboardEvent) => {
@@ -1915,7 +1876,7 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
     }
 });
 
-// External-link routing (US-884) — a board frame lives on a locked-down `board://` origin.
+// External-link routing — a board frame lives on a locked-down `board://` origin.
 // A plain `<a href="http(s)://…">` (e.g. a hyperlink inside a rendered .docx) would navigate
 // the FRAME itself to that URL, which the host renderer's frame-src CSP blocks (ERR_BLOCKED_BY_CSP)
 // — leaving the board blank (white screen). The main-process `will-frame-navigate` guard can't
@@ -1946,10 +1907,10 @@ window.addEventListener("auxclick", (e: MouseEvent) => {
 
 installBoardContextMenu({ fire, rpc, hostText: resolveBoardHostText });
 
-// Host-overlay dismissal (EPIC-037 / US-773 C10): a cross-origin board's inner clicks
+// Host-overlay dismissal: a cross-origin board's inner clicks
 // don't bubble to the host, so an open Persephone menu/popover/command-palette wouldn't
 // close when the user clicks into the board. Post a capture-phase interaction ping to
-// the host frame (this is the board→host-frame channel — NOT the board↔main C1 port);
+// the host frame (this is the board→host-frame channel — NOT the board↔main port);
 // the host replays it as a `document` pointerdown through `dismissOverlays()`, the same
 // helper its webview guest and HTML iframe use. Capture phase so it fires even when the
 // board already has focus.
@@ -2000,33 +1961,33 @@ function createHandle(
 
 (window as unknown as { persephone: unknown }).persephone = {
     // Bridge API version — bumped when the `persephone.*` surface gains something.
-    // 1.2.0: programmatic AiVision calls (US-1296); 1.3.0 adds remote trees (US-1390);
-    // 1.4.0 adds the host-frame AiVision notify bridge (US-1399); 1.5.0 adds `openContent()`,
-    // the `--p-graph-*` family + `getTheme().graph`, and manifest `contentMasks` (US-1404);
-    // 1.6.0 adds the bridge contract declarations for service and storage (EPIC-106);
-    // 1.7.0 adds board capability declarations and the renderer-local capability bus (EPIC-108);
-    // 1.8.0 adds intent delivery and board-to-board capability invocation (US-1481);
-    // 1.9.0 adds renderer-owned navigation return URLs (US-1489).
-    // 1.10.0 adds the host-rendered board toolbar catalog (US-1493).
-    // 1.11.0 adds transient board-settable page-toolbar text (US-1494).
-    // 1.12.0 adds `clipboard.writeImage` / `clipboard.writeText` (US-1496).
-    // 1.13.0 adds renderer-owned `settings.get()` and `settings.onChange()` (EPIC-111).
-    // 1.14.0 adds `getSourceUrl()` for non-materializing source identity handoff (D11).
+    // 1.2.0: programmatic AiVision calls; 1.3.0 adds remote trees;
+    // 1.4.0 adds the host-frame AiVision notify bridge; 1.5.0 adds `openContent()`,
+    // the `--p-graph-*` family + `getTheme().graph`, and manifest `contentMasks`;
+    // 1.6.0 adds the bridge contract declarations for service and storage;
+    // 1.7.0 adds board capability declarations and the renderer-local capability bus;
+    // 1.8.0 adds intent delivery and board-to-board capability invocation;
+    // 1.9.0 adds renderer-owned navigation return URLs.
+    // 1.10.0 adds the host-rendered board toolbar catalog.
+    // 1.11.0 adds transient board-settable page-toolbar text.
+    // 1.12.0 adds `clipboard.writeImage` / `clipboard.writeText`.
+    // 1.13.0 adds renderer-owned `settings.get()` and `settings.onChange()`.
+    // 1.14.0 adds `getSourceUrl` for non-materializing source identity handoff.
     // 1.15.0 adds explicit board service stopping through the main supervisor.
     // 1.16.0 adds a read-only board service status query.
     // 1.17.0 adds runtime source-open events through `source.onOpen()`.
-    // 1.18.0 adds persephone.icons.forFiles() (US-1533).
-    // 1.26.0 adds live board service provider status subscriptions (US-1562).
-    // 1.27.0 adds the transient host-rendered board footer status-bar catalog (US-1566).
-    // 1.39.0 adds authorized, classified file and folder watches (US-1694).
-    // 1.28.0 adds the `segmented` board toolbar control (US-1577).
+    // 1.18.0 adds persephone.icons.forFiles().
+    // 1.26.0 adds live board service provider status subscriptions.
+    // 1.27.0 adds the transient host-rendered board footer status-bar catalog.
+    // 1.39.0 adds authorized, classified file and folder watches.
+    // 1.28.0 adds the `segmented` board toolbar control.
     // 1.37.0 adds initial and runtime source-panel snapshots to `source`.
     // 1.36.0 adds registration-time `locale` and board-pack `i18n.t()` / `has()`.
-    // 1.35.0 adds the themes bridge (EPIC-123), the plain-page unsaved-changes protocol (US-1641),
-    //   text toolbar buttons (a labelled button/menu) and `placement: "board-menu"` (US-1642).
-    // 1.34.0 adds page-scoped board UI state in the host cache (US-1621), and fixes
+    // 1.35.0 adds the themes bridge, the plain-page unsaved-changes protocol,
+    //   text toolbar buttons (a labelled button/menu) and `placement: "board-menu"`.
+    // 1.34.0 adds page-scoped board UI state in the host cache, and fixes
     //   persephone.fetch() response bodies, which never arrived since 1.25.0 because the shim did
-    //   not request chunks (US-1623). A board that reads response bodies needs 1.34.0.
+    // not request chunks. A board that reads response bodies needs 1.34.0.
     version: BOARD_BRIDGE_VERSION,
     locale: boardLocale,
     i18n: {
@@ -2124,11 +2085,11 @@ function createHandle(
         createElements: createBoardElements,
     },
 
-    /** This frame's view role (EPIC-044): "main" for the board's main view, or the id of a
+    /** This frame's view role: "main" for the board's main view, or the id of a
      *  declared secondary view. Branch on it to render every view from one HTML file. */
     view: viewRole,
 
-    /** Replace this board's full set of secondary (sidebar) views at runtime (EPIC-044).
+    /** Replace this board's full set of secondary (sidebar) views at runtime.
      *  Each view: `{ id, html?, title? }` — `html` defaults to the main entry, so one file
      *  can serve every view (branch on `persephone.view`). `[]` removes them all. Available
      *  on every frame (main + secondary); the change is authoritative on the Persephone side. */
@@ -2352,7 +2313,7 @@ function createHandle(
     /** Page-scoped opaque string values, stored in the host cache and removed with this page. */
     pageState: {
         get(key: string): Promise<string | undefined> {
-            try { validatePageStateKey(key); } catch (error: unknown) { return Promise.reject(error); }
+            try { validateBoardPageStateKey(key); } catch (error: unknown) { return Promise.reject(error); }
             return hostRequest({ __persephone: "board:pageState:get", key }, "pageState:get:result", (reply) => {
                 const data = reply as BoardPageStateGetResultMsg;
                 if (data.error != null) throw new Error(data.error);
@@ -2362,8 +2323,8 @@ function createHandle(
         },
         set(key: string, value: string): Promise<void> {
             try {
-                validatePageStateKey(key);
-                validatePageStateValue(value);
+                validateBoardPageStateKey(key);
+                validateBoardPageStateValue(value);
             } catch (error: unknown) {
                 return Promise.reject(error);
             }
@@ -2373,7 +2334,7 @@ function createHandle(
             });
         },
         remove(key: string): Promise<void> {
-            try { validatePageStateKey(key); } catch (error: unknown) { return Promise.reject(error); }
+            try { validateBoardPageStateKey(key); } catch (error: unknown) { return Promise.reject(error); }
             return hostRequest({ __persephone: "board:pageState:remove", key }, "pageState:remove:result", (reply) => {
                 const data = reply as BoardPageStateRemoveResultMsg;
                 if (data.error != null) throw new Error(data.error);
@@ -2484,7 +2445,7 @@ function createHandle(
         return rpc("openBoard", [folder]) as Promise<void>;
     },
 
-    // ── Busy / surviving jobs (US-799) ────────────────────────────────────────
+    // ── Busy / surviving jobs ────────────────────────────────────────────────
 
     /** Declare that this board's spawned processes must outlive the board itself.
      *  While busy, navigating the page away (or reloading the board) destroys the
@@ -2520,7 +2481,7 @@ function createHandle(
         return new Promise<boolean>((resolve) => busyResolvers.push(resolve));
     },
 
-    /** The absolute path of the file this board edits as a custom editor (EPIC-042), or
+    /** The absolute path of the file this board edits as a custom editor, or
      *  `undefined` for a board opened plainly. Resolves when the host handshake lands, so it
      *  is safe to await at any time. Read/write the file with `persephone.readFile`/`writeFile`.
      *
@@ -2586,7 +2547,7 @@ function createHandle(
         return folderPathValue;
     },
 
-    /** Content-host bridge (EPIC-043). Meaningful only when this board is a content-host editor
+    /** Content-host bridge. Meaningful only when this board is a content-host editor
      *  (manifest `editorKind: "content-host"`); on a plain board `getContent`/`getLanguage` reject.
      *  Safe to call at ANY time — each method awaits the handshake internally before deciding,
      *  so boot ordering never matters (no ready-gate needed by the board). */
@@ -2671,12 +2632,12 @@ function createHandle(
         },
     },
 
-    /** Shared-state channel (EPIC-044) — available on EVERY board frame (main + secondary),
+    /** Shared-state channel — available on EVERY board frame (main + secondary),
      *  authoritative on the Persephone side. `get()`/`onChange` read the replica; `init`/`set`/
      *  `merge` post to the host and return void (the change arrives via `onChange`). */
     state: {
         /** Declare defaults (fill-missing — restored values win) + which keys persist across
-         *  restart/reload (opt-in, D9). Typically called once by the main view at boot. */
+         *  restart/reload (opt-in). Typically called once by the main view at boot. */
         init(defaults: Record<string, unknown>, options?: { restorableKeys?: string[] }): void {
             try {
                 window.parent.postMessage(
@@ -2726,7 +2687,7 @@ function createHandle(
         },
     },
 
-    /** Board environment variables (EPIC-046). Reads/writes ONLY this board's namespace
+    /** Board environment variables. Reads/writes ONLY this board's namespace
      *  (resolved host-side from the board's identity — a board cannot name another's). All
      *  reject when the store is not configured (and the user declines to create it), locked
      *  (encrypted + cancelled/wrong password), or on a store error — handle rejection. */

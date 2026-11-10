@@ -1,3 +1,4 @@
+import { COMPLETED_RECORDING_PATTERN } from "../../../shared/recording-filenames";
 import { englishMessage, t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import {
@@ -110,7 +111,7 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         const filePath = this.filePath;
         if (!filePath) return false;
         return fpNormalizeForCompare(fpDirname(filePath)) === fpNormalizeForCompare(app.fs.resolveDataPath("recordings"))
-            && /^persephone-recording-[0-9a-f-]{36}\.(?:mp4|webm)$/i.test(fpBasename(filePath));
+            && COMPLETED_RECORDING_PATTERN.test(fpBasename(filePath));
     }
 
     saveTemporaryRecording = async (): Promise<void> => {
@@ -160,7 +161,7 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
     }
 
     /** The same source was opened onto this page again. A pipe-backed source that failed gets
-     *  a fresh pipe session, so reopening its link recovers the page (US-1528). A failed
+     * a fresh pipe session, so reopening its link recovers the page. A failed
      *  stream response reaches the media element as "unsupported format", so that state
      *  retries too. A playing page and HTTP/local sources are left as they are. */
     override onReopen(freshPipe?: IContentPipe): boolean {

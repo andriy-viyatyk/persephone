@@ -4,7 +4,7 @@ import { fillSlot, type SlotContent } from "../shared/fill-slot";
 import { highlightInto } from "../shared/highlight";
 import { createIconElement, createIconPlaceholderElement, isIconName } from "../shared/slots";
 import type { IconRef, SlotText } from "../shared/slots";
-import { attachTooltip, type TooltipAttachment, type TooltipOptions } from "../Tooltip";
+import { attachTooltip, type TooltipAttachment, type TooltipOptions } from "../Tooltip/attach-tooltip";
 import { VanillaView } from "../shared/vanilla-view";
 import type { ListItemProps } from "./ListItem";
 import "./ListItem.css";
@@ -14,7 +14,7 @@ import "./ListItem.css";
  *
  * `ListBoxView` builds one per pooled cell and calls `update()` as that cell is re-pointed at
  * different rows. It is the sole driver: the `ListItem` face that once wrapped this class for
- * app-layer JSX callers was deleted in EPIC-074, and `ListItem.ts` now holds only the props type.
+ * The app-layer wrapper was removed; `ListItem.ts` now holds only the props type.
  * The class stays the single implementation because a second one — a row with six state attributes,
  * three slots, three variants x three selection styles and a drop state — would drift, and nothing
  * in the build would catch it.
@@ -60,7 +60,7 @@ export class ListItemView extends VanillaView<ListItemProps> {
     protected onMount(): void {
         // Created but not attached: a row has no checkbox unless `checkbox` says so. Unlike the icon
         // and trailing hosts this is a real box (`inline-flex`, 16x16, `flex-shrink: 0`), because the
-        // Emotion block it replaces sized `[data-part='check']` itself.
+        // `[data-part='check']` selector sizes it directly.
         this.checkHost = document.createElement("span");
         this.checkHost.dataset.part = "check";
 

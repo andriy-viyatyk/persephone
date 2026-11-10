@@ -1,3 +1,4 @@
+import { PAGE_ZOOM_MIN, PAGE_ZOOM_MAX, PAGE_ZOOM_STEP } from "../../../shared/browser-zoom";
 const { ipcRenderer } = require("electron");
 import { EditorToolbarView } from "../base/EditorToolbarView";
 import { BrowserEditor } from "./BrowserEditor";
@@ -105,7 +106,7 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
     protected onMount(): void {
         const existing = this.model.webview.webviewRefs.get(this.tabId);
         if (existing && existing !== this.webview && existing.isConnected) {
-            // Preserve the US-806 duplicate-connected-webview warning verbatim in meaning.
+            // Preserve the duplicate-connected-webview warning verbatim in meaning.
             console.warn(
                 `[browser] duplicate webview mount for tab ${this.tabId} — `
                     + "previous webview is still connected (US-806)",
@@ -114,11 +115,11 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
         this.model.webview.webviewRefs.set(this.tabId, this.webview);
         // Delete only our OWN entry. The earlier implementation deleted unconditionally, but its
         // duplicate-mount warning above exists precisely because "a new view mounted before
-        // the old one unmounted" has been observed for this tab key (US-806, trigger unknown).
+        // the old one unmounted" has been observed for this tab key; the trigger is unknown.
         // In that ordering an unconditional delete removes the *live* webview from the map, so
         // `webviewRefs.get(tabId)` reports nothing for a tab that has one — and the tab then
         // silently stops responding to navigation while its guest renderer stays alive. This is
-        // the same class as the board bridge regression (EPIC-072 C1a): on a shared key, the
+        // the same class as the board bridge regression: on a shared key, the
         // entry you did not put there belongs to somebody else. Identical in the normal path.
         this.own(() => {
             this.wasCurrentWebview = this.model.webview.webviewRefs.get(this.tabId) === this.webview;
@@ -170,7 +171,7 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
 
         const onIpcMessage = (event: Electron.IpcMessageEvent): void => {
             const { channel, args } = event;
-            if (channel === "translation-ready" || channel === "translation-units" || channel === "translation-detection-sample") {
+            if (channel === "translation-ready" || channel === "translation-units") {
                 this.model.webview.handleTranslationFrame(this.tabId, event.frameId, channel, args[0]);
             } else if (channel === "page-title") {
                 const title = args[0] as string;
@@ -248,7 +249,7 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
         this.model.updateTab(this.tabId, { favicon: faviconUrl });
         const state = this.model.state.get();
         if (state.isIncognito || state.isTor) return;
-        // A proxied profile downloads it through its own session (US-1557).
+        // A proxied profile downloads it through its own session.
         const routedUrl = this.model.network.routedFetchUrl(faviconUrl);
         if (routedUrl === null) return;
         void import("../../components/icons/favicon-cache").then((cache) => {
@@ -331,7 +332,7 @@ export class BrowserTabPageView extends VanillaView<{ model: BrowserEditor; tabI
 
 interface ProfileNetworkErrorProps { model: BrowserEditor; error: string; }
 
-/** Shown instead of the page's webviews when its profile proxy could not be applied (US-1557). */
+/** Shown instead of the page's webviews when its profile proxy could not be applied. */
 class ProfileNetworkErrorView extends VanillaView<ProfileNetworkErrorProps> {
     private readonly message = createTextElement("", { size: "sm", color: "light" });
     private readonly retry: ButtonView;
@@ -515,11 +516,8 @@ interface BrowserZoomContentProps {
 }
 
 // Page-zoom popover geometry: the presets sit beside the slider at their own values, like a scale.
-const PAGE_ZOOM_MIN = 50;
-const PAGE_ZOOM_MAX = 200;
 const PAGE_ZOOM_SLIDER_HEIGHT = 200; // px; tall enough that the 75% and 50% presets do not overlap
 const PAGE_ZOOM_THUMB_SIZE = 12; // px; matches the uikit slider thumb
-const PAGE_ZOOM_STEP = 5; // %; slider step and one wheel notch
 const PAGE_ZOOM_PRESETS = [200, 150, 100, 75, 50];
 
 /** Distance from the slider top to the thumb centre for a value (vertical slider, max at top). */
@@ -598,7 +596,7 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     private translatePopoverOpen = false;
     private translationStateTabId = "";
     private translationStateUnsubscribe: (() => void) | undefined;
-    /** Proxied-profile marker (US-1557); opens the network info dialog. */
+    /** Proxied-profile marker; opens the network info dialog. */
     private readonly proxyChip = document.createElement("button");
     private pageMenu: MenuHandle | undefined;
     private searchMenu: MenuHandle | undefined;
@@ -1216,7 +1214,7 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
 
     private readonly sync = (state: BrowserEditorState): void => {
         this.toolbar.update({ model: this.model, state }); this.tabs.update(this.tabsProps(state)); this.tabsHost.style.width = `${state.tabsPanelWidth}px`; this.loadingBar.toggleAttribute("data-loading", state.loading); this.splitter.update({ name: "tabs-webview-splitter", orientation: "vertical", value: state.tabsPanelWidth, onChange: this.model.setTabsPanelWidth, side: "before", min: 32, background: "default", hoverBackground: "light", border: "none" });
-        // No webview mounts while the profile's proxy could not be applied (US-1557):
+        // No webview mounts while the profile's proxy could not be applied:
         // its session route is unknown, and a mounted webview would start loading.
         this.pageManager.update({ pageIds: state.networkError ? [] : state.tabs.filter((tab) => this.model.tabs.isMaterialized(tab.id)).map((tab) => tab.id), activeId: state.activeTabId, renderPage: () => this.pageViewCtor });
         const active = state.tabs.find((tab) => tab.id === state.activeTabId); const navigationKey = `${state.activeTabId}\u0000${active?.url ?? ""}`;
@@ -1277,7 +1275,7 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
         // zero width by calling `onChangeWidth` *during* `mount()`, so a props object captured
         // before mount still says `width: 0` and the `update()` below would overwrite the recovery.
         // `bookmarksWidth` defaults to 0, so that made the first open on any new browser page render
-        // a 0px-wide, invisible drawer that only a close-and-reopen fixed (US-1188).
+        // a 0px-wide, invisible drawer that only a close-and-reopen fixed.
         const drawerProps = (): BookmarksDrawerProps => ({ open: true, bookmarks, width: this.model.state.get().bookmarksWidth, onChangeWidth: (width: number) => this.model.state.update((s) => { s.bookmarksWidth = width; }), onClose: this.model.bookmarksUI.handleCloseBookmarks });
         let created: BookmarksDrawerView | undefined; this.drawerSwap.set("drawer", () => { created = new BookmarksDrawerView(drawerProps()); this.drawerView = created; return created; }); created?.mount(); this.drawerView?.update(drawerProps());
     }

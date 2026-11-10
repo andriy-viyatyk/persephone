@@ -98,7 +98,7 @@ export class LinkCategoryPanelView extends VanillaView<LinkCategoryPanelProps> {
             // `SlotText` (native slot content) — TreeProviderViewModel.getTooltip, Tree's
             // own getTooltip, and TreeItemView all declare it — while `fillSlot` underneath has
             // accepted `Node` since Epic B. Widening it is a 15-declaration change across `uikit/`
-            // and two unconverted editors, deliberately out of EPIC-071's scope and recorded in
+            // and two unconverted editors, deliberately out of 's scope and recorded in
             // its §E13-11 for a later epic. The cast is the documented symptom of that gap, not a
             // silenced disagreement: the sibling `renderTrailing` one line above this type already
             // carries the `| Node` arm that this member is missing.

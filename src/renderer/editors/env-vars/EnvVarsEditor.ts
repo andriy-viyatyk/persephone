@@ -85,7 +85,7 @@ export class EnvVarsEditor extends TextHostEditorModel<EnvVarsEditorState> {
 
         this.loadData(host.state.get().content ?? "");
 
-        // Consume the envNamespace hint (US-889) — deliberately lands on the HOST's state, not
+        // Consume the envNamespace hint — deliberately lands on the HOST's state, not
         // this editor's own (freshly constructed) state; see EditorModel.getNavigationSourceId
         // for the same gotcha in a different consumer. Applied after loadData so `data` is
         // already populated.
@@ -156,7 +156,7 @@ export class EnvVarsEditor extends TextHostEditorModel<EnvVarsEditorState> {
         this.writeToHost(content, true);
     };
 
-    // ── Namespace focus (US-889 — persephone.var.show()) ─────────────────
+    // ── Namespace focus: `persephone.var.show` ─────────────────
 
     focusNamespace = (namespace: string): void => {
         this.state.update((s) => {

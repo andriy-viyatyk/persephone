@@ -17,10 +17,8 @@ type Subscriber = () => void;
 
 const overlays = new Set<HTMLElement>();
 const subscribers = new Set<Subscriber>();
-let version = 0;
 
 function notify() {
-    version++;
     subscribers.forEach((cb) => cb());
 }
 
@@ -56,8 +54,4 @@ export const overlayRegistry = {
         return () => { subscribers.delete(cb); };
     },
 
-    /** Snapshot for `useSyncExternalStore` — monotonic version that changes on every notify. */
-    getVersion(): number {
-        return version;
-    },
 };

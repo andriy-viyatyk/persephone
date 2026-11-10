@@ -16,7 +16,7 @@ export interface LinkTooltipContentProps {
     onToggleTag?: (link: ILink, tag: string) => void;
     /** Show "Copy link as JSON" affordance next to the title. Default: false. */
     showCopyJson?: boolean;
-    /** US-896 / US-1557 — route to fetch the preview image through, on a Tor or proxied page. */
+    /** — route to fetch the preview image through, on a Tor or proxied page. */
     imageProxy?: ImageRoute | null;
 }
 

@@ -26,7 +26,7 @@ type Entry = { listing?: SiteExtensionListing; id: string; grant?: Grant };
 type RowView = ButtonView | IconButtonView | SwitchView;
 
 /**
- * Tools & Editors hub tab listing every installed site extension (US-1613): trust state,
+ * Tools & Editors hub tab listing every installed site extension: trust state,
  * enable/disable, revoke, open folder, remove. Settings shows only a summary that links here.
  */
 export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
@@ -201,7 +201,7 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
 
     private async perform(action: () => Promise<void>): Promise<void> {
         try { await action(); }
-        catch (error) { ui.notify(errMessage(error, "Site extension action failed."), "error"); }
+        catch (error) { ui.notify(errMessage(error, t("tools.siteExtensionActionFailed")), "error"); }
         await this.refresh();
     }
 

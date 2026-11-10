@@ -1,5 +1,5 @@
 /**
- * The Board `--p-*` design contract (EPIC-034 / US-725) — the single place
+ * The Board `--p-*` design contract — the single place
  * that defines the board-facing CSS-variable names and resolves their values.
  *
  * Two parts:
@@ -9,7 +9,7 @@
  *  • Metric tokens — spacing / gap / radius / size / font scales generated from
  *    `uikit/tokens.ts`. Theme-independent constants → built once, delivered at init only.
  *
- * The `--p-*` names are the public contract (epic C5); the source mapping below may
+ * The `--p-*` names are the public contract; the source mapping below may
  * change behind them. The board host (`board-protocol-service` inject + the bridge
  * shim's theme sync) only *applies* the maps produced here — it never imports this
  * module, keeping the contract defined in exactly one place.
@@ -55,7 +55,7 @@ export const BOARD_TOKEN_VARS: Record<string, string> = {
     ...mapScale("--p-space", spacing),
     ...mapScale("--p-gap", gap),
     ...mapScale("--p-radius", radius),
-    // Frozen board contract (EPIC-034); the app token was removed by EPIC-052 A7.
+    // Frozen board contract: keep the public token names stable for boards.
     "--p-radius-full": "50%",
     ...mapScale("--p-size", height),
     ...mapScale("--p-font", fontSize),

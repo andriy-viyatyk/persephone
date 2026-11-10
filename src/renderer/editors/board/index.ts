@@ -15,7 +15,7 @@ export const boardModule: EditorModule = {
     newEditorModel: async (filePath?: string) => {
         const model = new BoardEditorModel(new TComponentState(getDefaultBoardEditorState()));
         if (filePath) {
-            // A board is opened by its own root path (persephone-board:// link, US-748).
+            // A board is opened by its own root path (persephone-board:// link).
             const boardLink = decodePersephoneBoardLink(filePath);
             if (boardLink) model.initFromBoardRoot(boardLink.boardRoot);
         }

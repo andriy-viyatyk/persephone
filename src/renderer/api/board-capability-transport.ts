@@ -1,5 +1,5 @@
+import { isCapabilityErrorCode } from "../../shared/capability-constants";
 import {
-    isCapabilityErrorCode,
     type CapabilityOutcome,
     type CapabilityRegistration,
     type CapabilityTransport,

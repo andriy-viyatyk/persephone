@@ -1,3 +1,4 @@
+import "./check-capability-contract.mjs";
 /**
  * Production build script for electron-builder.
  *

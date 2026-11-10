@@ -1,17 +1,13 @@
 /**
- * Resolves the board corpora mounted into the MAIN-process guide index (US-1406 / EPIC-100 D7),
+ * Resolves the board corpora mounted into the MAIN-process guide index,
  * the one `guides.*` over MCP is served from.
  *
- * Main owns the grant record at `<userData>/data/trustedBoards.json`, so this
- * process reads it directly rather than round-tripping to a window that may not be open. Only
- * TRUSTED boards and the boards BUNDLED under `<appRoot>/assets/boards` are mounted (US-1626): a
- * bundled board ships with the app, the same footing as `assets/guides`. An untrusted board
- * contributes no documentation, exactly as it contributes no editor association.
+ * Trust eligibility is provided by the main-owned board trust snapshot.
  */
 import fs from "node:fs";
 import path from "node:path";
 
-import { getAppRootPath, getDataFolder } from "../../utils";
+import { boardTrustService } from "../../board-trust-service";
 import { errMessage } from "../../../shared/utils";
 import {
     boardGuideIdFromRoot,
@@ -21,7 +17,6 @@ import {
 } from "../../../shared/guides/mounted-source";
 import { MainGuideSource } from "./guide-source";
 
-const TRUSTED_BOARDS_FILE = "trustedBoards.json";
 const BOARD_MANIFEST_FILE = "board-manifest.json";
 
 /** How long a resolved mount list is reused. Bounds how stale trust and manifest changes can be;
@@ -33,30 +28,6 @@ let cachedAt = 0;
 
 function comparisonKey(boardRoot: string): string {
     return boardRoot.replace(/[\\/]+/g, "/").replace(/\/+$/, "").toLowerCase();
-}
-
-function readTrustedRoots(): readonly string[] {
-    try {
-        const file = path.join(getDataFolder(), TRUSTED_BOARDS_FILE);
-        const parsed: unknown = JSON.parse(fs.readFileSync(file, "utf-8"));
-        if (!parsed || typeof parsed !== "object" || !Array.isArray((parsed as { boards?: unknown }).boards)) return [];
-        return (parsed as { boards: { root?: unknown }[] }).boards
-            .map((entry) => entry.root)
-            .filter((root): root is string => typeof root === "string");
-    } catch {
-        return [];
-    }
-}
-
-function readBundledRoots(): readonly string[] {
-    try {
-        const boardsRoot = path.join(getAppRootPath(), "assets", "boards");
-        return fs.readdirSync(boardsRoot, { withFileTypes: true })
-            .filter(entry => entry.isDirectory())
-            .map(entry => path.join(boardsRoot, entry.name));
-    } catch {
-        return [];
-    }
 }
 
 function readGuidesFolder(boardRoot: string): string | null {
@@ -77,8 +48,8 @@ export async function resolveMainBoardGuideMounts(): Promise<readonly BoardGuide
     try {
         // Deterministic order: sorted by comparison key, so mount ids (and the duplicate-name
         // suffixes) are stable, and so are the tree and `guides.search()`.
-        const roots = [...new Map([...readTrustedRoots(), ...readBundledRoots()]
-            .map(root => [comparisonKey(root), root])).values()].sort((left, right) =>
+        const grantedRoots = await boardTrustService.getGrantedRootsFromSnapshot();
+        const roots = [...new Map(grantedRoots.map(root => [comparisonKey(root), root])).values()].sort((left, right) =>
             comparisonKey(left) < comparisonKey(right) ? -1 : 1);
         const taken = new Set<string>();
         const mounts: BoardGuideMount[] = [];

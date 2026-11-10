@@ -1,15 +1,15 @@
 /**
- * Registered-tools model (EPIC-038 / US-801). Enumerates the toolset folders registered in
+ * Registered-tools model. Enumerates the toolset folders registered in
  * `toolsTrust`, reads + validates each `tools-manifest.json`, and exposes a collision-resolved
- * flat list of tools (id = `<toolset-name>/<tool-name>`). Consumed by the MCP layer (US-803:
- * `tools.search` / `tools.execute` / `tools.toolsets.refresh`) and the management UI (US-805).
+ * flat list of tools (id = `<toolset-name>/<tool-name>`). Consumed by the MCP layer (:
+ * `tools.search` / `tools.execute` / `tools.toolsets.refresh`) and the management UI.
  *
- * Deliberately does NOT watch the filesystem (US-801 T-C5): tool registration/editing happens
+ * Deliberately does NOT watch the filesystem: tool registration and editing happen
  * only during tool development, so a standing per-toolset watcher is unwanted background cost.
  * The model re-enumerates on exactly two triggers:
  *   1. a `toolsTrust` registration change (an in-memory subscription, not a file watcher), and
- *   2. an explicit `refresh()` — surfaced as the `tools.toolsets.refresh` call path (US-803) and the
- *      management-UI Refresh button (US-805).
+ *   2. an explicit `refresh()` — surfaced as the `tools.toolsets.refresh` call path and the
+ *      management-UI Refresh button.
  */
 import { TModel } from "../../core/state/model";
 import { TGlobalState } from "../../core/state/state";
@@ -27,11 +27,11 @@ export interface RegisteredTool {
     /** `${toolsetName}/${tool.name}` — the id agents pass to `tools.execute`. */
     id: string;
     toolsetName: string;
-    /** Absolute toolset folder path (the execute cwd in US-802). */
+    /** Absolute toolset folder path; used as the tool execution working directory. */
     toolsetRoot: string;
-    /** Toolset-level manifest description — part of the search corpus (US-812). */
+    /** Toolset-level manifest description — part of the search corpus. */
     toolsetDescription?: string;
-    /** Toolset-level manifest keywords — part of the search corpus (US-812). */
+    /** Toolset-level manifest keywords — part of the search corpus. */
     toolsetKeywords?: string[];
     tool: ToolDef;
 }
@@ -48,8 +48,8 @@ export interface RegisteredToolset {
     valid: boolean;
     /** Validation / read errors ("manifest missing", per-field messages, collision note). */
     errors: string[];
-    /** True when this toolset's name collided with an earlier-registered one (this one lost
-     *  — its tools are excluded from the flat list). EPIC C8. */
+    /** True when this toolset's name collided with an earlier-registered one, so its tools
+     *  are excluded from the flat list. */
     shadowed: boolean;
 }
 

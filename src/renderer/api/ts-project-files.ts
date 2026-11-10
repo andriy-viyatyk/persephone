@@ -2,7 +2,7 @@ import { fs } from "./fs";
 import { fpBasename, fpExtname, fpJoin, fpNormalizeForCompare, fpRelative, fpResolve } from "../core/utils/file-path";
 import type { TsProject } from "./ts-project-registry";
 
-// ── Tuning constants (US-1744) ───────────────────────────────────────────────
+// ── Tuning constants  ───────────────────────────────────────────────
 /** Most `.ts`/`.tsx` files registered for one project. */
 export const TS_PROJECT_MAX_SOURCE_FILES = 2000;
 /** Largest source file loaded, in bytes. */

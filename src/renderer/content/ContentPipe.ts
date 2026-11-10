@@ -2,7 +2,7 @@ import type { IContentPipe, IPipeDescriptor, IPipeStage } from "../api/types/io.
 import type { IProvider, IProviderStat, IPipeStageStatus, ProviderWatchDetails } from "../api/types/io.provider";
 import type { ITransformer } from "../api/types/io.transformer";
 import { createProviderFromDescriptor } from "./registry";
-import { decodeBuffer, encodeString } from "./encoding";
+import { decodeBuffer, encodeString } from "../core/utils/text-encoding";
 import { FileProvider } from "./providers/FileProvider";
 import { ArchiveTransformer } from "./transformers/ArchiveTransformer";
 

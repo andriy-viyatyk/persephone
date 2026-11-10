@@ -141,9 +141,10 @@ also runs DTLN noise removal when cleaning is off. **Attenuation limit** bounds 
 each frame's RMS in dB; enter `0` for unlimited attenuation. Select a microphone under **Resonance settings for** to manage
 its profile. The current Windows default is selected when it can be identified; profiles are saved
 per microphone and resonance reduction is off by default. Enabling it exposes frequency, Q, and cut
-controls for that microphone. New frequencies range from 20 to 7,999 Hz; stored frequencies at or
-above 8,000 Hz remain saved but are bypassed. These settings affect the managed audio service and local dictation
-capture; direct microphone capture started by a board is outside this service. Wake Word recognition
+controls for that microphone. Frequencies must be from 20 to 7,999 Hz; saved notch profiles outside
+that range are ignored when settings are loaded or changed. These settings affect the managed audio
+service and local dictation capture; direct microphone capture started by a board is outside this
+service. Wake Word recognition
 may change when the capture processing changes, so re-record its enrollment afterward.
 
 On Windows, Transcript microphone capture and voice typing request an internal computer-audio
@@ -266,7 +267,7 @@ example.
 | `voice-typing.auto-stop-inactivity-ms` | Defaults to `0` (off); `2000`, `3000`, `4000`, `5000`, `10000`, `15000`, or `30000` stops voice typing when a live provider sends no new text |
 | `microphone.clean` | Enables local DTLN noise suppression for managed microphone capture; on by default. A consumer requesting computer sound cancellation also runs DTLN noise removal when this is off |
 | `microphone.attenuation-db` | Bounds suppression by frame RMS in dB; `0` means unlimited. Applies whenever DTLN runs |
-| `microphone.notches` | Stores optional frequency, Q, and cut settings per microphone; off by default. New frequencies range from 20 to 7,999 Hz; saved values at or above 8,000 Hz are preserved but bypassed |
+| `microphone.notches` | Stores optional frequency, Q, and cut settings per microphone; off by default. Frequencies must be from 20 to 7,999 Hz; saved notch profiles outside that range are ignored when settings are loaded or changed |
 | `language` | Defaults to `auto`; chooses a supported language and reloads all open windows when changed |
 | `browser-windows-sso` | Windows only and off by default; allows regular browser profiles to use Windows sign-in proof on supported Microsoft sign-in pages |
 | `mneme.enabled` | Off by default; enables the separate Mneme service, whose port is `mneme.port` |

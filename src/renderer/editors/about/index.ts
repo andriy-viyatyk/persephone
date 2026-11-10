@@ -11,5 +11,3 @@ export const aboutModule: EditorModule = {
 
 export { AboutEditor, getDefaultAboutEditorState, ABOUT_PAGE_ID } from "./AboutEditor";
 export type { AboutEditorState } from "./AboutEditor";
-export { AboutEditor as AboutEditorModel } from "./AboutEditor";
-export type { AboutEditorState as AboutEditorModelState } from "./AboutEditor";

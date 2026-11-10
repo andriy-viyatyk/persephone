@@ -9,7 +9,7 @@ import { git } from "../../api/git";
 import type { ILinkDiffRevision } from "../../api/types/io.link-data";
 
 /**
- * A revision selection for one side of the diff (EPIC-030 / US-613).
+ * A revision selection for one side of the diff.
  *   - unstaged → the working tree = current editor content (live host content)
  *   - staged   → the git index (`:path`) = staged changes
  *   - head     → the last commit (`HEAD:path`)
@@ -43,7 +43,7 @@ export const defaultFileDiffEditorState: FileDiffEditorState = {
 };
 
 /**
- * File Diff editor (EPIC-030 / US-613).
+ * File Diff editor.
  *
  * A host-adopting (`hasContentHost: true`) editor surfaced via the editor switch
  * for any text file in a git repo. Renders a Monaco diff of the file between two
@@ -60,12 +60,12 @@ export class FileDiffEditor extends TextHostEditorModel<FileDiffEditorState> {
     private _diffResolution = 0;
 
     /** Set once `applyDiffRevisions` has installed a caller-chosen comparison
-     *  (US-637). Tells `initDiffDefaults` to keep `from`/`to` untouched so a late
+     *. Tells `initDiffDefaults` to keep `from`/`to` untouched so a late
      *  git-detection re-run can't clobber the explicit selection. */
     private _explicitRevs = false;
 
     /** Single file-scoped commit-list model (model-view), shared by both toolbar
-     *  popovers AND the "Revisions" secondary panel (US-618). All three render the
+     *  popovers AND the "Revisions" secondary panel. All three render the
      *  same single-file history; selection is a render prop (`selectedHash` /
      *  `sideSelect`), not model state, so one model backs them all. Owned here so
      *  it survives popover open/close; loaded eagerly in `configureForRepo` (the
@@ -107,7 +107,7 @@ export class FileDiffEditor extends TextHostEditorModel<FileDiffEditorState> {
     };
 
     /**
-     * Apply a caller-chosen comparison from link metadata (US-637). Called once,
+     * Apply a caller-chosen comparison from link metadata. Called once,
      * right after a fresh File Diff editor is constructed on open (the open
      * pipeline never calls this on a reuse/activate path). Marks the selection
      * explicit so a late `initDiffDefaults()` (fired when git detection lands on
@@ -144,7 +144,7 @@ export class FileDiffEditor extends TextHostEditorModel<FileDiffEditorState> {
         void this.initDiffDefaults(resolution);
     }
 
-    /** Header "Refresh" for the Revisions panel (US-618): reload the commit list
+    /** Header "Refresh" for the Revisions panel: reload the commit list
      *  and re-derive `hasStaged` (which drives the panel's Staged endpoint row).
      *  `configure` is a no-op when the repo/file is unchanged, so this just
      *  re-fetches (it never wipes the list). */
@@ -175,7 +175,7 @@ export class FileDiffEditor extends TextHostEditorModel<FileDiffEditorState> {
         this.state.update((s) => {
             s.hasStaged = hasStaged;
             // A caller-chosen comparison (link metadata) wins — never normalize
-            // over an explicit selection (US-637).
+            // over an explicit selection.
             if (this._explicitRevs) return;
             if (!hasStaged) {
                 // No staged version → "Staged"/"HEAD" all equal the latest commit;
@@ -191,7 +191,7 @@ export class FileDiffEditor extends TextHostEditorModel<FileDiffEditorState> {
 
     getRestoreData(): EditorDescriptor {
         // Persist `from`/`to` so the exact comparison restores (app restart +
-        // cross-window drag both use this descriptor path; Concern 1).
+        // cross-window drag both use this descriptor path; ).
         const d = super.getRestoreData();
         const s = this.state.get();
         (d.state as Record<string, unknown>).from = s.from;
@@ -240,7 +240,7 @@ export class FileDiffEditor extends TextHostEditorModel<FileDiffEditorState> {
         // also its own secondary view). We do NOT
         // override `beforeNavigateAway`, so the base default clears this panel when
         // the editor stops being main — it disappears on navigation to another file
-        // AND on switching the Git Diff back to the Text Editor (US-618).
+        // AND on switching the Git Diff back to the Text Editor.
         this.secondaryView = ["git-diff-revisions"];
     }
 

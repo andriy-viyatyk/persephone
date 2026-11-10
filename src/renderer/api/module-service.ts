@@ -61,7 +61,7 @@ interface ServiceLeaseClient {
     requestNumber: number;
     disposed: boolean;
     /** Live count of outstanding `readBinary`/`readRange` requests, pushed by the host via
-     *  `content-read-count` (US-1518 decision 10). */
+     *  `content-read-count` event. */
     activeContentReads: number;
 }
 
@@ -553,7 +553,7 @@ function providerRangeReadable(boardRoot: string, type: string): boolean | undef
 }
 
 /** Live count of `readBinary`/`readRange` requests currently outstanding against this board's
- *  service (US-1518 decision 10). Mirrors `providerWritable()`/`providerRangeReadable()`'s shape —
+ *  service. Mirrors `providerWritable`/`providerRangeReadable`'s shape —
  *  a plain getter, no new subscription primitive. */
 function activeContentReads(boardRoot: string): number {
     return clients.get(normalizeRoot(boardRoot))?.activeContentReads ?? 0;

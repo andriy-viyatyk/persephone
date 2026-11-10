@@ -1,8 +1,8 @@
 /*
- * Git-tree cell styling (EPIC-057 / US-1021).
+ * Git-tree cell styling.
  *
- * These cells are av-grid `render` hooks returning HTML strings, so Emotion cannot reach them and
- * a stylesheet is the only form available. The layer is what makes it work: the app's order is
+ * These cells are av-grid `render` hooks returning HTML strings, so this stylesheet targets
+ * selectors emitted by av-grid. The app's layer order is
  * `base, uikit, app, editor` (`theme/style-layers.css`), and `@layer app` outranks av-grid's
  * `@layer uikit` regardless of specificity — so a rule aimed at `.avg-data-cell` wins without a
  * specificity contest.
@@ -25,8 +25,8 @@
        4px cell padding would shift every lane right and misalign the graph from the layout
        arithmetic. `flex-start` because the cell is border-box with a 1px bottom border, so a 24px
        row has a 23px content box — centring a 24px SVG in it lands the node's centre on a
-       half-pixel and blurs the ring. The old React cell was a block container, so the SVG sat at
-       the top and its last pixel went under the border; this reproduces that exactly. */
+       half-pixel and blurs the ring. Top alignment keeps the SVG's last pixel from painting
+       beneath the row border. */
     .avg-grid .avg-data-cell[data-column-key="graph"] {
         padding: 0;
         align-items: flex-start;
@@ -34,14 +34,11 @@
 
     /* `.avg-data-cell` is inline-flex, so the SVG is a flex item: without this it shrinks to fit a
        narrowed column and the viewBox rescales the graph. Pinned, it overflows at constant size and
-       the cell's own `overflow: hidden` slides the clip edge instead (EPIC-030 Concern 9).
+       the cell's own `overflow: hidden` slides the clip edge instead.
 
-       Deliberately NOT positioned. EPIC-057 C4-6 claimed a returned renderer must be absolutely
-       positioned; that was true of the React grid, where a `cellRenderer` *was* the cell and
-       received the absolute box. Here the content is the cell's child — av-grid positions
-       `.avg-data-cell` around it — and positioning this would move it into the positioned paint
-       step after `.avg-data-cell::before`, so the graph would paint OVER the hover and selection
-       tints while the rest of the row painted under them. See US-1021 F8. */
+       Deliberately not positioned. av-grid positions the data cell around this child; positioning
+       the child would move it into the paint step after `.avg-data-cell::before`, causing the
+       graph to cover hover and selection tints while the rest of the row paints beneath them. */
     .avg-grid .avg-data-cell[data-column-key="graph"] > svg {
         display: block;
         flex: 0 0 auto;
@@ -59,7 +56,7 @@
     }
 
     /* Decoration-ref chips (branch / tag / HEAD / remote). Shared by the subject cell's `render`
-       string and the React `RefBadge` the Commit info panel uses, so the chip is defined once.
+       string and the Commit info panel's `RefBadge`, so the chip is defined once.
        The per-kind text colour stays an inline style at both call sites: `REF_COLOR` is palette
        hex, not a custom property, so a stylesheet cannot name it without hardcoding a colour. */
     .git-ref-badge {
@@ -73,18 +70,17 @@
         font-weight: 600;
     }
 
-    /* The chips keep their size and the text absorbs the shrink — the same division of labour the
-       React cell got from `flexShrink: 0` plus `<TruncatedText>`. The shrinking half is now
-       av-grid's `.avg-cell-text`, which the subject and hash renderers emit: the three
+    /* The chips keep their size and the text absorbs the shrink. av-grid's `.avg-cell-text`,
+       emitted by the subject and hash renderers, handles text shrinking: the three
        declarations that used to live here as `.git-subject-text` were the library's own rule,
-       written by hand before the library had it (av-grid 2.2.3, US-1024). */
-    /* Synthetic endpoint rows (Unstaged/Staged) read as special rows, not commits (US-618). */
+       written by hand before the library had it (av-grid 2.2.3). */
+    /* Synthetic endpoint rows (Unstaged/Staged) read as special rows, not commits. */
     .avg-grid .avg-data-cell .git-special-subject {
         font-style: italic;
         color: var(--color-text-light);
     }
 
-    /* The L/R side-select toggles (US-618). Spans rather than buttons, and no listeners of their
+    /* The L/R side-select toggles are spans rather than buttons and have no listeners of their
        own: av-grid's cells are pooled and the root delegates — see `side-select-cell.ts`. */
     .avg-grid .avg-data-cell[data-column-key="--side-select--"] {
         justify-content: center;
@@ -132,7 +128,7 @@
 
     /* The "Load more" footer, passed to av-grid as `extraElement`. av-grid's own `.avg-extra`
        supplies `position: absolute; left: 0; right: 0; bottom: 0`, so only the band's own look
-       belongs here — the four declarations the React version hand-wrote are gone (US-1021 F5).
+       belongs here. av-grid supplies the footer positioning.
        The opaque background is kept even though `whiteSpaceY` now reserves the room: it is what
        makes the band read as a footer rather than as empty space. */
     .git-tree-load-more {

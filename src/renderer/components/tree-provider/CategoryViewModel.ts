@@ -418,7 +418,7 @@ export class CategoryViewModel extends TComponentModel<
         }
     };
 
-    // ── Drag out (US-944) ────────────────────────────────────────────────
+    // ── Drag out  ────────────────────────────────────────────────
 
     /** Whether rows can be dragged out. Same gate as `acceptsDrops`: the drag-out path is a
      *  native OS file drag, which needs hrefs that are absolute local paths. */
@@ -461,7 +461,7 @@ export class CategoryViewModel extends TComponentModel<
         return true;
     };
 
-    // ── Drop (US-943) ────────────────────────────────────────────────────
+    // ── Drop  ────────────────────────────────────────────────────
     //
     // Two kinds of target: a folder row/tile, and the view itself (whitespace, the
     // "Empty folder" placeholder, the gaps between tiles) which means the open folder.
@@ -707,7 +707,7 @@ export class CategoryViewModel extends TComponentModel<
         bgEvent.items.push(...items);
     };
 
-    /** Paste the OS clipboard's files into `targetDir` and refresh (US-807). */
+    /** Paste the OS clipboard's files into `targetDir` and refresh. */
     private pasteIntoDir = (targetDir: string) => pasteIntoDir(this.itemCrudContext, targetDir);
 
     /** Path to pass to provider create/list calls for a folder item: parent category +

@@ -1,6 +1,6 @@
 /**
- * The "Load more · Load all" footer for the Git Tree grid (EPIC-030 / US-611; ported to av-grid in
- * EPIC-057 / US-1021).
+ * The "Load more · Load all" footer for the Git Tree grid (; ported to av-grid in
+ * ).
  *
  * Handed to av-grid as `extraElement`, which is the one host element the grid **parents and
  * nothing else** — never inspected, cleared, restyled beyond the `avg-extra` class, or destroyed,
@@ -9,7 +9,7 @@
  *
  * av-grid's own stylesheet positions `.avg-extra` as a full-width band at the bottom of the
  * scrolling content, so the four positioning declarations the earlier renderer hand-wrote are gone
- * (US-1021 F5). The band is taller than the default 20px trailing slack, so the caller pairs it
+ *. The band is taller than the default 20px trailing slack, so the caller pairs it
  * with `whiteSpaceY`.
  */
 import { t } from "../../../shared/i18n/t";

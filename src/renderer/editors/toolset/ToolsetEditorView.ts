@@ -33,9 +33,8 @@ function selectToolsetState(state: ToolsetEditorState): ToolsetProjection {
 
 type BranchKey = "errors" | "tools";
 
-// Read-only view of a single registered toolset (EPIC-038 / US-805): manifest info + tool list,
-// with Open-Folder / Open-Log actions. Pure UIKit composition (no Emotion — editors are app code,
-// outside the `ui/` chrome exception).
+// Read-only view of a registered toolset: manifest info and tool list, with
+// Open-Folder / Open-Log actions. The view composes UIKit components directly.
 export class ToolsetEditorView extends VanillaView<{ model: ToolsetEditorModel }> {
     private model: ToolsetEditorModel;
     private modelSubscription: (() => void) | undefined;

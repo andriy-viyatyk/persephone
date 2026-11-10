@@ -3,7 +3,7 @@ import { fpNormalizeForCompare } from "../../core/utils/file-path";
 
 /**
  * Reactive registry of the boards that are currently BUSY somewhere in this window
- * (US-799): a busy board's processes outlive its iframe, so the board may be running
+ *: a busy board's processes outlive its iframe, so the board may be running
  * invisibly (its model demoted off a page's main slot). The Boards panel reads this
  * to show a "running" indicator, keeping hidden busy boards discoverable.
  *

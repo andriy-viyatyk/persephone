@@ -155,20 +155,15 @@ export interface SelectState {
     searchText: string;
     activeIndex: number | null;
     popoverResized: boolean;
-    // Inlined from the former useSelectItems hook:
+    // Current item-source state:
     loadedItems: IListBoxItem[];
     loadedSources: unknown[];
     itemsLoading: boolean;
     itemsLoaded: boolean;
     /**
-     * Last load error. Written and cleared, but **rendered nowhere** — the only consumer of a
-     * rejection is `props.onItemsLoadError`, invoked at the rejection site. It is therefore
-     * deliberately absent from `SelectView`'s `bind` selector.
-     *
-     * Adding an error arm to the dropdown requires adding the slot at the same time. An arm rendered
-     * from an unsubscribed field is the masked-defect class recorded in
-     * `doc/epics/completed.md:653-656` under `## EPIC-067 — De-React Epic E9: the editor chrome contract` in its
-     * purest form: it would appear only after some unrelated state moved, and read as a rendering glitch.
+     * The last load error is reported through `props.onItemsLoadError` at the rejection site and
+     * is not rendered. If the view displays it later, add it to `SelectView`'s bind selector so the
+     * view updates when the error changes.
      */
     itemsError: unknown;
 }
@@ -206,7 +201,7 @@ export class SelectModel<T = IListBoxItem> extends TComponentModel<SelectState, 
 
     // --- ids ---
     /**
-     * Replaces the former generated-ID source (EPIC-056 C3-5). The value is opaque and generated either way; the
+     * Replaces the former generated-ID source. The value is opaque and generated either way; the
      * *relationship* it encodes is the contract — `data-id` on the root is interpolated into the
      * popover's `outsideClickIgnoreSelector`, and `listboxId` is the `Input`'s `aria-controls` and
      * the list's `id`, which `aria-activedescendant` is derived from.
@@ -648,19 +643,11 @@ export class SelectModel<T = IListBoxItem> extends TComponentModel<SelectState, 
     // --- lifecycle ---
 
     /*
-     * This model's prop-driven lifecycle is owned by `createComponentModelDriver`
-     * (EPIC-056 C3-6 rows 5-8). Where the four former reactions went:
-     *
-     * - `:520` items-source reset -> `setProps` below, behind an identity guard.
-     * - `:535` load trigger -> `resetItemsCache` for sync sources, `startLoadIfNeeded` from the open
-     *   transition for async ones.
-     * - `:556` close reset -> `closeInto`, inline in the write that closes.
-     * - `:577` `activeIndex` seed -> `openInto` on the open transition, and `commitLoaded` when the
-     *   rows arrive.
-     *
-     * Two of those carried a `queueMicrotask`, and both are gone: the transitions now write their
-     * state at the mutation sites that own them. The one surviving `queueMicrotask` in this file
-     * clears `_suppressFocusOpen` after the synchronous focus event.
+     * `createComponentModelDriver` owns prop updates. `setProps` resets item state when the source
+     * identity changes; sync items load during that reset, while async items load on open. `closeInto`
+     * resets close state, and `openInto` seeds the active index. These transitions write state at
+     * their mutation sites. The remaining `queueMicrotask` clears `_suppressFocusOpen` after the
+     * synchronous focus event.
      */
 
     /**

@@ -409,7 +409,7 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
     ): BoardSettingsSectionDescriptor {
         // Keyed on the board's portable identity, never on its root path: `data-name` is an
         // addressability contract (ui-element-contract.md) and a board root changes between dev
-        // and packaged builds and on a reinstall elsewhere (EPIC-109 D5).
+        // and packaged builds and on a reinstall elsewhere.
         const id = `board-${encodeURIComponent(board.namespace)}`;
         return {
             kind: "board",

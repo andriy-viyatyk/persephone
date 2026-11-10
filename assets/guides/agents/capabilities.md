@@ -114,6 +114,8 @@ For board pages the new `open` method deliberately requires `uses` but not `appS
 
 All new kinds reject with the same closed union; `CapabilityError` has a readable `message`. Channel close uses the same codes, including normal `channel-closed`. Legacy APIs retain their documented errors.
 
+Boards relying on all capability error codes on the frame route or prompt errors for refused fetch requests require `minBridgeVersion: "1.55.0"` and `minAppVersion: "5.0.19"` or later.
+
 | Code | Meaning |
 |---|---|
 | `no-handler` | No matching declaration, method, provider or registered handler. |

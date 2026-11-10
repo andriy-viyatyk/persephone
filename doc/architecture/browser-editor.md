@@ -16,23 +16,19 @@ The browser editor uses three levels of tab nesting:
 
 ### Model Composition
 
-`BrowserEditor` is the coordinator for the browser page. It owns editor-level
-restore/persistence, profile presentation, navigation normalization, keyboard
-shortcuts, and popup policy, while composing focused sub-models:
+`BrowserEditor` coordinates editor-level restore/persistence, profile presentation, navigation
+normalization, keyboard shortcuts, and popup policy while composing focused submodels:
 
-- `BrowserTabsModel` owns internal-tab lifecycle and tab-scoped resources:
-  current URL and favicon caches, active-tab history, mute/panel operations, and
-  the `BrowserBookmarks` resource.
-- `BrowserTorModel` owns the per-instance partition identifiers, fail-closed
-  proxy arming, Tor listeners/reconnect lifecycle, and window-close cleanup.
-- `BrowserWebviewModel`, `BrowserUrlBarModel`, `BrowserBookmarksUIModel`, and
-  `BrowserTargetModel` own webview events, URL-bar state, bookmark UI, and
-  automation respectively.
+- `BrowserTabsModel` owns internal-tab lifecycle and tab-scoped resources, including URL and favicon
+  caches, active-tab history, mute/panel operations, and the `BrowserBookmarks` resource.
+- `BrowserTorModel` owns per-instance partition identifiers, proxy arming, Tor listeners and reconnect
+  lifecycle, and window-close cleanup.
+- `BrowserWebviewModel`, `BrowserUrlBarModel`, `BrowserBookmarksUIModel`, and `BrowserTargetModel`
+  own webview events, URL-bar state, bookmark UI, and automation respectively.
 
-The host keeps thin tab and Tor delegates for existing callers, but the
-implementation and resource cleanup live in the relevant sub-model. Views read
-tab-scoped data through `model.tabs` and the browser page still exposes the same
-facade and IPC contracts.
+The host's tab and Tor methods are compatibility forwarding points; the corresponding submodels own
+those behaviors and their cleanup. Views use the composed models, while the browser page retains its
+existing facade and IPC contracts.
 
 ### Browser toolbar order
 
@@ -71,9 +67,8 @@ order of first appearance in the tab list (`groupColors`).
 
 Group IDs are persisted in `getRestoreData()`. `applyRestoreData()` assigns fresh group IDs to restored tabs that lack one (backward compatibility).
 
-The compact tab hover preview uses the native `PopoverView` and `@floating-ui/dom`. The former
-React-only `@floating-ui/react` dependency is not part of the browser editor; `@floating-ui/dom`
-remains the shared positioning dependency for eight UIKit consumers.
+The compact tab hover preview is owned by `BrowserTabsPanel` and displayed through a native
+`PopoverView`, which uses the shared `@floating-ui/dom` positioning library.
 
 ### Tab Activation History
 
@@ -141,45 +136,46 @@ Each materialized internal tab has its own `<webview>` element. On session resto
 
 ### PageManagerView (Native Placeholder DOM Stability)
 
-Webview elements are hosted by `PageManagerView` (`src/renderer/components/page-manager/`). The view owns imperatively-created placeholder divs, appends new placeholders with `appendChild`, and mounts one native `BrowserTabPageView` per materialized tab. Each page view owns its `BrowserWebviewItemView` and its blank-page overlay, so no React island is needed for internal tabs. This prevents `<webview>` elements from being destroyed and recreated when the tab array changes (tabs closed, reordered).
-
-Without PageManager, rebuilding the tab list would detach and reinsert DOM nodes when array positions shift. Reinserted `<webview>` elements are treated as new by the browser and reload, losing user data.
-
-**How it works:**
-1. For each tab ID, a stable placeholder `<div>` is created via `document.createElement()` and newly-created placeholders are appended to the manager root
-2. A native `BrowserTabPageView` is mounted into each placeholder and owns the connected `BrowserWebviewItemView`
-3. When a tab is closed, only its placeholder is removed with `removeChild()` — siblings are untouched
-4. Visibility is controlled via `display: none` on inactive placeholders
-
-The `BlankPageLinksView` overlay (bookmarks on empty tabs) is also owned by the per-tab native view, so its lifecycle is tied to that tab. Existing placeholders are never re-appended during tab reordering, so the `<webview>` element identity remains stable.
+Webview elements are hosted by the native `PageManagerView` (`src/renderer/components/page-manager/`).
+It owns imperatively-created placeholder divs, appends new placeholders, and mounts one native
+`BrowserTabPageView` per materialized tab. Each page view owns its `BrowserWebviewItemView` and blank
+page overlay. Existing placeholders are retained as tabs change or reorder, preserving each webview
+and its guest renderer process.
 
 ### Webview View Identity
 
-`BrowserWebviewItemView` is a retained native child of `BrowserTabPageView`. The page view updates its tab projection imperatively while the `<webview>` element remains stable; navigation and per-event updates flow through `BrowserWebviewModel`. The blank-page overlay is an owned conditional child, released when the tab is no longer blank. This native identity boundary prevents browser state updates and tab-array reorderings from recreating guest renderer processes.
-
-If you add a `tab` field that `BrowserWebviewItem` renders from, extend the memo comparator accordingly — otherwise the view goes stale.
-
-`BrowserWebviewItem`'s mount effect also warns (`[browser] duplicate webview mount…`) when a webview mounts for a tab whose previous element is still connected to the DOM — a duplicate live mount leaks a whole guest renderer process. The warning exists to make that (rare, trigger unknown) condition self-identifying.
+`BrowserWebviewItemView` creates and retains its webview in `onMount`. `BrowserTabPageView` updates
+the tab projection through `sync()` and the child's `onUpdate()` while preserving the same webview
+element. The blank-page overlay is an owned conditional child, released when the tab is no longer
+blank. The item view releases its listeners, readiness state, and main-process registration when it
+is disposed.
 
 ### dom-ready Gating
 
-A `webviewReady` set tracks which mounted webviews have fired `dom-ready`. The navigation effect checks this before calling `webview.loadURL()`. Without this, calling `loadURL()` on a newly created webview before it's attached to the DOM crashes the app. Automation readiness waiters are separate: they are resolved after the guest is registered with the main process, or after a bounded timeout, so a targeted background tab can be used without activating it.
+The `BrowserView` update path forwards active-tab URL changes to
+`BrowserWebviewModel.navigateWebview()`. The model calls `loadURL()` only when the registered webview
+has reached its `dom-ready` state. Automation readiness waiters are separate: they resolve after the
+guest is registered with main, or after a bounded timeout, so a targeted background tab can be used
+without activating it.
 
 ### IPC Registration
 
-Each webview registers with the main process using a composite key: `${tabId}/${internalTabId}`. This supports multiple internal tabs per persephone page tab. Registration happens on `dom-ready`, and cleanup happens on component unmount.
-
-**Important:** The IPC registration effect must NOT include `tab.url` in its dependency array. If it does, the effect cleanup runs on every URL change, which clears the `webviewReady` state and breaks navigation.
+`BrowserWebviewItemView` registers a webview with main on `dom-ready` using the composite key
+`${tabId}/${internalTabId}`. The view owns the registration and unregisters it during disposal; main
+also removes tracked listeners and registrations when the webContents or sender is destroyed.
+URL projection changes update the existing view and must not unregister the webview or clear its
+readiness state.
 
 ## Data Flow
 
 ### 1. User navigates (types URL + Enter)
 
 ```
-BrowserEditorView → model.navigate(url) → state.url + active tab.url updated
-    → Navigation effect detects URL change
-    → Checks webviewReady before calling loadURL()
-    → webview loads the page
+BrowserView update path
+  -> BrowserWebviewModel.navigateWebview(activeTabId, url)
+  -> if the registered webview is dom-ready, webview.loadURL(url)
+  -> main receives webContents navigation events and sends BrowserChannel.event
+  -> BrowserWebviewModel.handleBrowserEvent updates current URL and URL-bar projection
 ```
 
 ### 2. Navigation events (page loaded, redirected)
@@ -1278,10 +1274,11 @@ does not constrain trusted `script.execute`.
 
 ### Shared input and actionability
 
-The shared resolver in `operations.ts` accepts a CSS selector or snapshot ref. Selector actions
-filter to visible matches, fail immediately on multiple matches, and accept a zero-based `{ nth }`
-among visible matches. Before trusted actions it checks attachment, visibility, stability across
-two animation-frame measurements (with a bounded timer fallback), enabled state, and hit-testing
+The shared resolver in `operations.ts` accepts a CSS selector or snapshot ref. Action operations use
+strict actionable resolution: they require one visible match unless a zero-based `{ nth }` selects
+among visible matches. Query and read methods use query-mode resolution and do not enforce the same
+single-match rule. Before trusted actions it checks attachment, visibility, stability across two
+animation-frame measurements (with a bounded timer fallback), enabled state, and hit-testing
 at the dispatch point. Transient failures retry on timers to the operation timeout (5 seconds by
 default). `{ force: true }` skips all checks. `requestAnimationFrame` is used only for this bounded
 stability check, not wait polling.
@@ -1384,7 +1381,7 @@ Additionally, `LinkViewModel.onGetLinkMenuItems` is an optional callback that al
 
 8. **Webview background color.** Sites that don't set an explicit background rely on the browser default (white). The webview uses dynamic background: `color.background.default` for blank/new tabs (matching the app theme), switching to `#ffffff` once the user navigates to a real page.
 
-9. **Emotion `&` selector in nested rules.** In Emotion's object syntax, `&` always resolves to the root styled component's class. Inside nested selectors like `"& .tab-close"`, a child rule `".tab-item:hover &"` would generate `.tab-item:hover .ROOT` — not `.tab-item:hover .tab-close`. Always define hover-reveal rules at the parent level: `"& .tab-item": { "&:hover .tab-close": { opacity: 1 } }`.
+9. **Browser styles.** Make browser styling changes in the co-located static CSS files under `src/renderer/editors/browser/`.
 
 10. **DRM / Widevine CDM.** The app uses [Castlabs Electron (ECS)](https://github.com/castlabs/electron-releases) — a fork with Widevine DRM support. At startup, `components.whenReady()` in `main-setup.ts` ensures the CDM is downloaded. Production builds require VMP signing via Castlabs EVS (`scripts/vmp-sign.mjs`). Without VMP signing, DRM works on test pages but not on Netflix/Disney+.
 

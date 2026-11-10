@@ -15,7 +15,7 @@ import type { GuideTreeNode } from "../../shared/guides";
  * server. Tools are data (see `tools/`); this assembles the complete group list for
  * each new session.
  *
- * The manifest is `call` alone (US-1353). Every capability Persephone once advertised as a
+ * The manifest is `call` alone. Every capability Persephone once advertised as a
  * separate tool is a path under it.
  */
 export function createMcpServer(tips: AgentTipsRegistry): McpServerInstance {

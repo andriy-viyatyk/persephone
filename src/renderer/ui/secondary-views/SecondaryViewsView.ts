@@ -108,7 +108,7 @@ export class SecondaryViewsView extends VanillaView<SecondaryViewsProps> {
         // case, since one ExplorerEditor owns all three panels. Guarding reconcile on the
         // model list alone therefore dropped those panels: the state was written (and
         // persisted) but nothing rendered until a later mount saw them already present,
-        // which is why the toggles only appeared to work on a restored page (US-1365).
+        // which is why the toggles only appeared to work on a restored page.
         if (viewsChanged || this.renderedPanelsChanged()) {
             this.reconcile();
         }

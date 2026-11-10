@@ -3,18 +3,18 @@
  *
  * Two consumers, one map:
  *
- *  • **Boards** (EPIC-034 / US-725) resolve these names to concrete hex and push them into a
+ *  • **Boards** resolve these names to concrete hex and push them into a
  *    sandboxed iframe, which cannot inherit anything from the host document.
- *  • **av-grid** (EPIC-057 / US-1019) reads them directly out of the cascade: every `--avg-*`
+ *  • **av-grid** reads them directly out of the cascade: every `--avg-*`
  *    token in its stylesheet falls back to a `--p-*` counterpart, and its own rules read
  *    `--p-text-strong` by name. Setting a custom property re-tints with zero repaints, so a
  *    theme switch needs no subscription here — see `installPVarBridge()`.
  *
- * The names are the public contract (epic C5); the source mapping below may change behind them.
+ * The public names stay stable; the source mapping below may change behind them.
  */
 
 /** Color `--p-*` var → source `color.ts` (`--color-*`) var. `--p-accent*` is a
- *  deliberate mapping (no 1:1 `accent` token — epic C5): it mirrors the filled
+ *  deliberate mapping (there is no one-to-one `accent` token): it mirrors the filled
  *  primary Button (`uikit/Button`, the `selection` pair), NOT the `primary.*`
  *  group — which is a *text-color* semantic (`primary.background` is `#000`), so
  *  using it as a fill produced a black button with invisible-on-hover text. */
@@ -43,7 +43,7 @@ export const P_VAR_SOURCES: Record<string, string> = {
     "--p-scrollbar-thumb": "--color-bg-scrollbar-thumb",
     "--p-shadow": "--color-shadow-default",
 
-    // Graph family (EPIC-100 / US-1404) — the 14 dedicated force-graph colors, exposed so a
+    // Graph family — the 14 dedicated force-graph colors, exposed so a
     // board can render a force graph with the app's per-theme fidelity instead of deriving a
     // palette from the general set. A board drawing on a <canvas> cannot consume `var(...)`,
     // so the same values also reach it as concrete strings on `persephone.getTheme().graph`,

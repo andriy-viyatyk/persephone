@@ -12,9 +12,9 @@ import { capabilityRouter } from "../../capability-router";
 import { CAPABILITY_AGENT_BRIDGE_ALLOWANCE_MS } from "../../../shared/capability-limits";
 
 /**
- * `call` — one path into Persephone's live object model (EPIC-083).
+ * `call` — one path into Persephone's live object model.
  *
- * Routing (design decision 2 + the architecture sketch): the main process owns `windows`. A path
+ * Routing (design + the architecture sketch): the main process owns `windows`. A path
  * that starts with `windows` is resolved here against `MainAiRoot` — `windows`, `windows[1]`,
  * `windows[1].open()`, `windows.$help` — until it reaches something a window answers itself
  * (`windows[1].pages[0].content`); that remainder is forwarded to that window's renderer as

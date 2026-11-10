@@ -16,11 +16,11 @@ export class AppEvents {
     readonly fileExplorer = new FileExplorerEvents();
     readonly browser = new BrowserEvents();
 
-    // Link pipeline (EPIC-012 → EPIC-023)
+    // Link pipeline (openRawLink → openLink → openContent)
     readonly openRawLink = new EventChannel<ILinkData>({ name: "openRawLink" });
     readonly openLink = new EventChannel<ILinkData>({ name: "openLink" });
     readonly openContent = new EventChannel<ILinkData>({ name: "openContent" });
 
-    // Link context menu — type-aware menu items for any ILink (EPIC-015, EPIC-018)
+    // Link context menu — type-aware menu items for any ILink 
     readonly linkContextMenu = new EventChannel<ContextMenuEvent<ILink>>({ name: "linkContextMenu" });
 }

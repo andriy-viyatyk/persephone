@@ -2,7 +2,6 @@ import { t } from "../../../shared/i18n/t";
 import { ui } from "../../api/ui";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 import { pagesModel } from "../../api/pages";
-import { PageModel } from "../../api/pages/PageModel";
 import { scriptRunner } from "../../scripting/ScriptRunner";
 import { isScriptLanguage } from "../../scripting/transpile";
 
@@ -96,17 +95,5 @@ export class TextFileActionsModel {
             default:
                 return false;
         }
-    };
-
-    canClose = async (): Promise<boolean> => {
-        const result = await this.model.confirmRelease(true);
-        if (result) {
-            if (!this.model.skipSave) {
-                await this.model.dispose();
-            }
-        } else {
-            if (this.model.page instanceof PageModel) pagesModel.focusPage(this.model.page);
-        }
-        return result;
     };
 }

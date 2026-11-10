@@ -1,3 +1,4 @@
+import { settings } from "../api/settings";
 import { getSucraseTransform } from "./transpile";
 
 const fs = require("fs") as typeof import("fs");
@@ -33,12 +34,21 @@ const MODULE_CONTEXT_PREFIX =
  *
  * Must be called after `ensureSucraseLoaded()`.
  */
-export function registerLibraryExtensions(libraryPath: string): void {
+export function registerLibraryExtensions(getLibraryPath: () => string | undefined): void {
     if (extensionsRegistered) return;
     extensionsRegistered = true;
 
     const originalJsHandler = require.extensions[".js"];
-    const normalizedLibPath = fpResolve(libraryPath);
+    let lastPath = getLibraryPath();
+    let normalizedLibPath = lastPath ? fpResolve(lastPath) : undefined;
+    settings.onChanged.subscribe(({ key }) => {
+        if (key !== "script-library.path") return;
+        lastPath = getLibraryPath();
+        const nextPath = lastPath ? fpResolve(lastPath) : undefined;
+        if (normalizedLibPath) clearLibraryRequireCache(normalizedLibPath);
+        if (nextPath) clearLibraryRequireCache(nextPath);
+        normalizedLibPath = nextPath;
+    });
 
     require.extensions[".ts"] = (module: NodeModule, filename: string) => {
         const transform = getSucraseTransform();
@@ -58,7 +68,8 @@ export function registerLibraryExtensions(libraryPath: string): void {
     require.extensions[".js"] = (module: NodeModule, filename: string) => {
         // Only transpile .js files inside the library folder
         const transform = getSucraseTransform();
-        if (transform && globalThis.__activeScriptContext__ && fpResolve(filename).startsWith(normalizedLibPath)) {
+        const libraryPath = getLibraryPath();
+        if (transform && globalThis.__activeScriptContext__ && libraryPath && fpResolve(filename).startsWith(fpResolve(libraryPath))) {
             const code = fs.readFileSync(filename, "utf-8");
             const { code: compiled } = transform(code, {
                 transforms: ["imports"],

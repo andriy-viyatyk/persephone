@@ -9,8 +9,6 @@ const MAX_BATCH_CODE_POINTS = 64000;
 const WRITE_BATCH_INTERVAL_MS = 25;
 const NEAR_VIEWPORT_DISTANCE_PX = 1000;
 const NEAR_VIEWPORT_ROOT_MARGIN = `${NEAR_VIEWPORT_DISTANCE_PX}px 0px`;
-const MIN_DETECTION_SAMPLE_CHARS = 1000;
-const MAX_DETECTION_SAMPLE_CHARS = 4096;
 // The Translate board rejects a single HTML item over 8,192 UTF-16 code units; larger units are split into their children.
 const MAX_HTML_UNIT_CODE_UNITS = 8000;
 
@@ -51,7 +49,6 @@ export function installPageTranslationAgent(): void {
     let emitTimer: ReturnType<typeof setTimeout> | undefined;
     let writeTimer: ReturnType<typeof setTimeout> | undefined;
     let writing = false;
-    const isTopFrame = Boolean(process.isMainFrame);
     let pageHideHandler: (() => void) | undefined;
 
     const cachedOutput = (element: Element, key: string): string | undefined => ownOutput.get(element)?.get(key);
@@ -77,26 +74,6 @@ export function installPageTranslationAgent(): void {
     const isSkipped = (element: Element): boolean => {
         for (let current: Element | null = element; current; current = current.parentElement) if (isExcluded(current)) return true;
         return false;
-    };
-    const visibleTextSample = (): string => {
-        const parts: string[] = [];
-        let length = 0;
-        const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT, {
-            acceptNode(node): number {
-                const parent = node.parentElement;
-                if (!parent || isSkipped(parent) || !node.nodeValue?.trim()) return NodeFilter.FILTER_REJECT;
-                const style = getComputedStyle(parent);
-                return style.display === "none" || style.visibility === "hidden" ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
-            },
-        });
-        let node: Node | null;
-        while ((node = walker.nextNode()) && length < MAX_DETECTION_SAMPLE_CHARS) {
-            const value = node.nodeValue || "";
-            const remaining = MAX_DETECTION_SAMPLE_CHARS - length;
-            parts.push(value.slice(0, remaining));
-            length += Math.min(value.length, remaining);
-        }
-        return parts.join("").slice(0, MAX_DETECTION_SAMPLE_CHARS);
     };
     const sourceValue = (target: UnitTarget): string => {
         if (target.attribute) return target.element.getAttribute(target.attribute) || "";
@@ -355,10 +332,6 @@ export function installPageTranslationAgent(): void {
         });
         observeRoot(document.documentElement);
         discoverRoot(document);
-        if (isTopFrame) {
-            const sample = visibleTextSample();
-            if (sample.length >= MIN_DETECTION_SAMPLE_CHARS) ipcRenderer.sendToHost("translation-detection-sample", { scope, lang: document.documentElement.getAttribute("lang") || "", text: sample.slice(0, MAX_DETECTION_SAMPLE_CHARS) });
-        }
         pageHideHandler = () => { active = false; restore(); if (emitTimer) clearTimeout(emitTimer); if (writeTimer) clearTimeout(writeTimer); };
         window.addEventListener("pagehide", pageHideHandler, { once: true });
     };

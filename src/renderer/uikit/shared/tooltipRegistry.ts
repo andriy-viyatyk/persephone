@@ -30,10 +30,8 @@ interface ActiveTooltip {
 let active: ActiveTooltip | null = null;
 let dragging = false;
 const subscribers = new Set<Subscriber>();
-let version = 0;
 
 function notify() {
-    version++;
     subscribers.forEach((cb) => cb());
 }
 
@@ -114,8 +112,4 @@ export const tooltipRegistry = {
         };
     },
 
-    /** Snapshot for `useSyncExternalStore` — monotonic version that bumps on every change. */
-    getVersion(): number {
-        return version;
-    },
 };

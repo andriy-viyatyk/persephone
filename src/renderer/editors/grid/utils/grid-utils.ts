@@ -117,7 +117,7 @@ function detectColumns(data: any[]): Column[] {
  * Row identity, held beside the rows rather than inside them.
  *
  * This replaced a `#intrnl-id` property spread into every row and stripped again on every save
- * (US-1020 / D3). That scheme mutated the user's own data, which cost a save path in every
+ *. That scheme mutated the user's own data, which cost a save path in every
  * serializer and carried a real bug: JSON that already contained the key got a visible column
  * whose values were overwritten with row indices and then deleted on save.
  *

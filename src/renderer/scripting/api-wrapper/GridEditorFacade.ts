@@ -142,7 +142,7 @@ export class GridEditorFacade implements IAiVisible {
     /**
      * A **copy** of the rows.
      *
-     * av-grid owns the live array (US-1020 / D1), so handing it out directly would give a script
+     * av-grid owns the live array, so handing it out directly would give a script
      * something it could mutate without the grid repainting or the file being written — which
      * looks like it worked. Before the migration this returned an immer-frozen array, where the
      * same mutation silently did nothing. A copy is honest in both directions: use `editCell` to

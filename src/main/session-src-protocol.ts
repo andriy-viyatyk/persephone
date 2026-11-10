@@ -17,7 +17,7 @@ import type { Session } from "electron";
 import { torService } from "./tor-service";
 import { errMessage } from "../shared/utils";
 import type { NormalizedBoardPermissions } from "../shared/board-manifest-utils";
-import { isPrivateAddress, pinnedLookup, type BoardNetworkAddress } from "../shared/board-network-guard";
+import { assertBoardNetworkAllowed, pinnedLookup, type BoardNetworkAddress } from "../shared/board-network-guard";
 
 
 const SESSION_HANDLE_TTL_MS = 5 * 60 * 1000;
@@ -176,7 +176,7 @@ async function serveSessionSrc(request: Request): Promise<Response> {
         for (let redirects = 0; ; redirects++) {
             if (!/^https?:$/.test(safeProtocol(currentUrl))) throw new Error("Only http(s) redirect targets are allowed.");
             const addresses = entry.boardPolicy
-                ? await assertBoardNetworkAllowed(currentUrl, entry.boardPolicy)
+                ? await assertBoardNetworkAllowed(new URL(currentUrl), { network: entry.boardPolicy.permissions.kind === "legacy" ? "full" : entry.boardPolicy.permissions.flags.network, appScripting: entry.boardPolicy.permissions.kind === "legacy" || entry.boardPolicy.permissions.flags.appScripting, mcpUrl: entry.boardPolicy.mcpUrl }, { lookup: dns.lookup, isIP: net.isIP })
                 : undefined;
             upstream = entry.boardPolicy && !entry.routed
                 ? await pinnedSessionFetch(currentUrl, {
@@ -218,38 +218,6 @@ async function serveSessionSrc(request: Request): Promise<Response> {
         statusText: upstream.statusText,
         headers,
     });
-}
-
-async function assertBoardNetworkAllowed(
-    url: string,
-    policy: NonNullable<SessionSourceEntry["boardPolicy"]>,
-): Promise<BoardNetworkAddress[]> {
-    const permissions = policy.permissions;
-    const network = permissions.kind === "legacy" ? "full" : permissions.flags.network;
-    if (network === false) throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
-    const target = new URL(url);
-    const mcp = new URL(policy.mcpUrl);
-    const port = Number(target.port || (target.protocol === "https:" ? 443 : 80));
-    const mcpPort = Number(mcp.port || (mcp.protocol === "https:" ? 443 : 80));
-    const targetHost = target.hostname.replace(/^\[|\]$/g, "");
-    const mcpHost = mcp.hostname.replace(/^\[|\]$/g, "");
-    const targetFamily = net.isIP(targetHost);
-    const mcpFamily = net.isIP(mcpHost);
-    const targetAddresses = targetFamily
-        ? [{ address: targetHost, family: targetFamily }]
-        : await dns.lookup(targetHost, { all: true, verbatim: true });
-    const mcpAddresses = mcpFamily
-        ? [{ address: mcpHost, family: mcpFamily }]
-        : await dns.lookup(mcpHost, { all: true, verbatim: true }).catch((): { address: string; family: number }[] => []);
-    const appScripting = permissions.kind === "legacy" || permissions.flags.appScripting;
-    if (!appScripting && port === mcpPort && (
-        targetHost.toLowerCase() === mcpHost.toLowerCase()
-        || targetAddresses.some(({ address }) => mcpAddresses.some((item) => item.address === address))
-    )) throw new Error('permission-denied: "appScripting" is not enabled in board-manifest.json');
-    if (network === "internet" && targetAddresses.some(({ address }) => isPrivateAddress(address, net.isIP))) {
-        throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
-    }
-    return targetAddresses;
 }
 
 interface PinnedSessionFetchOptions {

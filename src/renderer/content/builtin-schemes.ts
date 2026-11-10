@@ -1,3 +1,4 @@
+import { decodeFolderEditorLink } from "./folder-editor-link";
 import type { ILinkData } from "../../shared/link-data";
 import { openImageForEdit, notifyEditCapabilityFailure } from "../api/capability-feedback";
 import { errMessage } from "../../shared/utils";
@@ -13,28 +14,6 @@ import { registerScheme, type SchemeHookContext } from "./scheme-registry";
 import { DialogButton, dialogButton } from "../ui/dialogs/dialog-buttons";
 
 const OPEN_EXTERNAL_LINK = "Open";
-
-function decodeFolderEditorLink(raw: string): { editorId: string; anchorFolder: string } | null {
-    const prefix = "folder-editor://";
-    if (!raw.startsWith(prefix)) return null;
-    try {
-        const binary = atob(raw.slice(prefix.length));
-        const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-        const json = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-        const payload: unknown = JSON.parse(json);
-        if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
-        const candidate = payload as { editorId?: unknown; anchorFolder?: unknown };
-        if (
-            typeof candidate.editorId !== "string"
-            || candidate.editorId.length === 0
-            || typeof candidate.anchorFolder !== "string"
-            || candidate.anchorFolder.length === 0
-        ) return null;
-        return { editorId: candidate.editorId, anchorFolder: candidate.anchorFolder };
-    } catch {
-        return null;
-    }
-}
 
 async function notifyUser(message: string, type: "error" | "warning"): Promise<void> {
     const { ui } = await import("../api/ui");
@@ -64,7 +43,8 @@ async function parseVirtual(
 }
 
 async function parseFolderEditor(data: ILinkData, context: SchemeHookContext): Promise<void> {
-    const parsed = decodeFolderEditorLink(data.href);
+    const decoded = decodeFolderEditorLink(data.href);
+    const parsed = decoded && { editorId: decoded.editorId, anchorFolder: decoded.anchorFolder };
     if (!parsed) {
         await notifyUser(t("api.invalidFolderEditorLink", { href: data.href }), "warning");
         data.handled = true;

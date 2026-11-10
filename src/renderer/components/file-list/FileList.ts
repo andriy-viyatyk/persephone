@@ -1,6 +1,6 @@
 import type { SlotContent } from "../../uikit/shared/fill-slot";
 import type { MenuItem } from "../../uikit/Menu";
-import type { IconRef } from "../../uikit";
+import type { IconRef } from "../../uikit/shared/slots";
 import { TComponentModel } from "../../core/state/model";
 
 export interface FileListItem {

@@ -1,3 +1,5 @@
+export const STARTUP_DATA_DIR_ARG = "--persephone-data-dir=";
+
 /** Profile metadata is passed by the main process before renderer initialization. */
 export function rendererProfileName(): string | undefined {
     return process.argv.find((arg) => arg.startsWith("--persephone-application-profile="))?.slice("--persephone-application-profile=".length);

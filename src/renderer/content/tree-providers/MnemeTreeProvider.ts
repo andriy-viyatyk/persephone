@@ -22,7 +22,7 @@ interface MnemeTreeEntry {
 }
 
 /**
- * Read-only ITreeProvider for a single Mneme root (EPIC-032 / US-663).
+ * Read-only ITreeProvider for a single Mneme root.
  *
  * Lists one level per call via the `tree` MCP tool with `depth: 1` (the
  * sidecar then returns only the requested node + its immediate children — the
@@ -38,7 +38,7 @@ interface MnemeTreeEntry {
  * scheme-less so the tree view's `category + "/" + title` child-path
  * reconstruction is unaffected.
  *
- * Writable (US-674): `addItem`/`mkdir`/`rename`/`deleteItem` map onto the Mneme
+ * Writable: `addItem`/`mkdir`/`rename`/`deleteItem` map onto the Mneme
  * MCP tools (`write`/`mkdir`/`rename`/`delete`) over the shared connection — the
  * generic tree view supplies the New File / New Folder / Rename / Delete / DnD-move
  * UX once `writable` is set. `watch` rides the connection's `resources/list_changed`
@@ -136,7 +136,7 @@ export class MnemeTreeProvider implements ITreeProvider {
         }));
     }
 
-    // --- Write surface (US-674) — maps onto the Mneme MCP tools ----------------
+    // --- Write surface — maps onto the Mneme MCP tools ----------------
 
     /** Create a new (empty) document. `item.href` is the canonical `mneme://{root}/{path}`
      *  the tree view built from `category + "/" + name` via `resolveLink`; the scheme is

@@ -1,8 +1,8 @@
 import { AnyStory } from "./storyTypes";
 
 // Keep this importer touched when story files change extension so Vite drops stale specifiers.
-// US-1123 converted the composite/stateful demo wrappers; US-1124 converted the floating-layer
-// demo wrappers; US-1125 converted the virtualized data-view and dropdown wrappers; US-1126
+//  converted the composite/stateful demo wrappers; converted the floating-layer
+// demo wrappers; converted the virtualized data-view and dropdown wrappers; 
 // converted DateInput. Keep this
 // importer touched when story files change extension so Vite drops stale
 // specifiers.

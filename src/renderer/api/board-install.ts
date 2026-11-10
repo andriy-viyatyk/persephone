@@ -1,9 +1,9 @@
 /**
- * Board install orchestration (EPIC-045 / US-863). Turns a catalog entry into an
+ * Board install orchestration. Turns a catalog entry into an
  * installed-but-untrusted board on disk: download (main, streamed + sha256-verified) →
  * extract (single-pass, zip-slip-guarded) → validate it is a real board → record in the
  * install registry. Trusts NOTHING — registration is a separate consent step
- * (US-864 / US-868). `updateBoard` reinstalls an existing board in place via a
+ *. `updateBoard` reinstalls an existing board in place via a
  * temp-extract + folder swap so a failed download never destroys a working board.
  */
 import { api } from "../../ipc/renderer/api";
@@ -96,11 +96,11 @@ export async function downloadBoard(
 /**
  * Update/reinstall an already-installed board in place via a temp-extract + folder swap,
  * so a failed download never destroys the working board. Runs under the board's EXISTING
- * trust (same root). The open-pages / busy precondition + close-pages dialog is US-865's
+ * trust (same root). The open-pages / busy precondition + close-pages dialog is 
  * responsibility (wired in the caller); this function performs the swap only.
  *
  * `opts.preSwap` is re-checked immediately before the swap (after the download completes) —
- * US-865 passes an idle re-check so a page reopened mid-download aborts the swap with the
+ *  passes an idle re-check so a page reopened mid-download aborts the swap with the
  * working board left untouched.
  */
 export async function updateBoard(
@@ -112,7 +112,7 @@ export async function updateBoard(
 
 /**
  * Install a SPECIFIC published version's archive into an already-installed board's existing root,
- * via the same temp-extract + folder-swap as an update (EPIC-045 / US-867 — update, rollback, or
+ * via the same temp-extract + folder-swap as an update — update, rollback, or
  * forward). Runs under the board's EXISTING trust (same root); trust and pins are untouched. The
  * install registry is updated to the version actually installed, so "update available" reappears
  * correctly after a rollback.

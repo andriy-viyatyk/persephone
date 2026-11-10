@@ -69,7 +69,7 @@ export function createFileIconElement(options: {
     });
 }
 
-/** Create the legacy folder emoji without introducing a wrapper or an Emotion class. */
+/** Create the folder emoji element without adding another wrapper around it. */
 export function createFolderIconElement(): HTMLSpanElement {
     const element = document.createElement("span");
     element.style.fontSize = "13px";

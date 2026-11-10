@@ -3,7 +3,7 @@
  *
  * Refs from accessibility snapshots:
  * - Main frame: [ref=e123] where 123 is backendDOMNodeId
- * - Iframe #1:  [ref=f1-e456] where 1 is frame index, 456 is backendDOMNodeId
+ * - Iframe #1: `f1-e456`, where 1 is the frame index and 456 is the backendDOMNodeId.
  *
  * Frame-scoped refs use sessionId (from Target.attachToTarget) to resolve
  * in the correct iframe context via CDP DOM.resolveNode + Runtime.callFunctionOn.
@@ -38,7 +38,7 @@ export interface ParsedRef {
 /**
  * Parse a ref string to frame index + backendNodeId.
  * - "e123" → { frameIndex: null, backendNodeId: 123 }
- * - "f1-e456" → { frameIndex: 1, backendNodeId: 456 }
+ * - `f1-e456` → { frameIndex: 1, backendNodeId: 456 }
  */
 export function parseRef(ref: string): ParsedRef {
     if (ref.includes("-")) {

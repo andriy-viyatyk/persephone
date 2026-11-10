@@ -236,5 +236,3 @@ export default class LinkHostnamesNavigationPanelView extends VanillaView<LinkEd
         if (row >= 0) void this.gridModel.scrollToRow(row, "nearest");
     }
 }
-
-export { LinkHostnamesNavigationPanelView as LinkHostnamesNavigationPanel };

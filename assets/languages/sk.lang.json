@@ -1916,7 +1916,11 @@
     "voiceTyping.translatingRecording": "Nahrávanie — preklad do angličtiny — zastavíte klávesovou skratkou {binding}, zrušíte klávesom Esc",
     "voiceTyping.translatingTranscribing": "Prepis do angličtiny — zrušíte klávesom Esc",
     "settings.microphoneReferenceReady": "Referenčný zvuk počítača je aktívny",
-    "settings.microphoneReferenceUnavailable": "Referenčný zvuk počítača nie je dostupný; čistenie šumu pokračuje bez potlačenia ozveny: {reason}"
+    "settings.microphoneReferenceUnavailable": "Referenčný zvuk počítača nie je dostupný; čistenie šumu pokračuje bez potlačenia ozveny: {reason}",
+    "shell.ungroup": "Zrušiť zoskupenie",
+    "shell.mutePage": "Stlmiť stránku",
+    "shell.unmutePage": "Zapnúť zvuk stránky",
+    "tools.siteExtensionActionFailed": "Akcia rozšírenia lokality zlyhala."
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3591,6 +3595,10 @@
     "voiceTyping.translatingRecording": "e3db99f8",
     "voiceTyping.translatingTranscribing": "dcf439f0",
     "settings.microphoneReferenceReady": "043e4ffb",
-    "settings.microphoneReferenceUnavailable": "d1af3faf"
+    "settings.microphoneReferenceUnavailable": "d1af3faf",
+    "shell.ungroup": "460af6ed",
+    "shell.mutePage": "724c00d7",
+    "shell.unmutePage": "af4c43a2",
+    "tools.siteExtensionActionFailed": "96558212"
   }
 }

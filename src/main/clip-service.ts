@@ -1,4 +1,4 @@
-// Windows file-clipboard service (US-807). Bridges the renderer to the
+// Windows file-clipboard service. Bridges the renderer to the
 // clipboard subcommands of persephone-snip.exe (see snip-tool/src/clipboard.rs)
 // because Electron's clipboard API cannot read a multi-file CF_HDROP list nor
 // write one at all.

@@ -92,7 +92,7 @@ export class PageTabsView extends VanillaView<object> {
         this.root.dataset.name = "page-tabs";
         this.root.className = "page-tabs";
         // A board window opens only the pages its board asks for; new custom pages belong in a
-        // normal Persephone window, so board mode has no new-page button (EPIC-136).
+        // normal Persephone window, so board mode has no new-page button.
         this.root.append(this.wrapper);
         if (!appWindow.isBoardMode) this.root.append(this.addButton.root);
 

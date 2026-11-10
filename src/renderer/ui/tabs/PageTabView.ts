@@ -349,7 +349,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
         this.closeButton.update({
             name: "tab-close",
             size: "sm",
-            title: this.isGrouped ? "Ungroup" : "Close Page",
+            title: this.isGrouped ? t("shell.ungroup") : t("shell.closePage"),
             icon: "close",
             ...{"data-part": "close-button"},
             onClick: () => this.closeClick(),
@@ -410,7 +410,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
                 size: "sm",
                 ...{"data-part": "sound-button"},
                 active: this.projection.anyTabAudible || this.projection.pageMuted || undefined,
-                title: this.projection.pageMuted ? "Unmute Page" : "Mute Page",
+                title: this.projection.pageMuted ? t("shell.unmutePage") : t("shell.mutePage"),
                 icon: this.projection.pageMuted
                     ? createIconElement("volume-muted")
                     : createIconElement("volume"),
@@ -431,7 +431,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
                 size: "sm",
                 ...{"data-part": "sound-button"},
                 active: this.projection.anyTabAudible || this.projection.pageMuted || undefined,
-                title: this.projection.pageMuted ? "Unmute Page" : "Mute Page",
+                title: this.projection.pageMuted ? t("shell.unmutePage") : t("shell.mutePage"),
                 icon: this.projection.pageMuted
                     ? createIconElement("volume-muted")
                     : createIconElement("volume"),

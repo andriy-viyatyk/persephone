@@ -1772,7 +1772,11 @@
     "voiceTyping.translatingRecording": "録音中 — 英語に翻訳 — 停止: {binding}、キャンセル: Esc",
     "voiceTyping.translatingTranscribing": "英語で文字起こし中 — キャンセル: Esc",
     "settings.microphoneReferenceReady": "コンピューター音声の参照を使用中",
-    "settings.microphoneReferenceUnavailable": "コンピューター音声の参照を利用できません。エコー キャンセルなしでノイズ除去を続行します: {reason}"
+    "settings.microphoneReferenceUnavailable": "コンピューター音声の参照を利用できません。エコー キャンセルなしでノイズ除去を続行します: {reason}",
+    "shell.ungroup": "グループ解除",
+    "shell.mutePage": "ページをミュート",
+    "shell.unmutePage": "ページのミュートを解除",
+    "tools.siteExtensionActionFailed": "サイト拡張機能の操作に失敗しました。"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3447,6 +3451,10 @@
     "voiceTyping.translatingRecording": "e3db99f8",
     "voiceTyping.translatingTranscribing": "dcf439f0",
     "settings.microphoneReferenceReady": "043e4ffb",
-    "settings.microphoneReferenceUnavailable": "d1af3faf"
+    "settings.microphoneReferenceUnavailable": "d1af3faf",
+    "shell.ungroup": "460af6ed",
+    "shell.mutePage": "724c00d7",
+    "shell.unmutePage": "af4c43a2",
+    "tools.siteExtensionActionFailed": "96558212"
   }
 }

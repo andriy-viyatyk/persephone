@@ -1,9 +1,20 @@
+export const BOARD_FRAME_PREFIX = "board-frame:";
+export const CAPABILITY_BOARD_PREFIX = "capability:";
+export const VOICE_TYPING_BOARD_PREFIX = "voice-typing:";
+export const SPEECH_SYNTHESIZE_BOARD_PREFIX = "speech-synthesize:";
+export const SPEECH_WAKE_BOARD_PREFIX = "speech-wake:";
+export const TEXT_TRANSLATION_BOARD_PREFIX = "text-translation:";
+
+export function parseBoardIdPrefix(value: string, prefix: string): string | undefined {
+    return value.startsWith(prefix) ? value.slice(prefix.length) : undefined;
+}
+
 import type { CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientResult, CapabilityProvider } from "./capability-bus-channels";
 /**
  * Main/utility-process protocol for board module services.
  *
  * This file deliberately contains no renderer or main implementation imports so
- * that the wire contract can be consumed by the service adapter and US-1468.
+ * so the service adapter can consume the same wire contract.
  */
 
 import type { BoardServiceInterfaceDeclaration, BoardServiceUseDeclaration, NormalizedBoardPermissions } from "../shared/board-manifest-utils";
@@ -102,9 +113,9 @@ export interface TrustedBoardSnapshotEntry {
     capabilities?: BoardCapabilityDeclaration[];
     legacyCapabilities?: BoardCapabilityDeclaration[];
     boardRoot: string;
-    /** Normalized board-relative ESM entry from the US-1466 manifest contract. */
+    /** Normalized board-relative ESM entry from the manifest contract. */
     service?: string;
-    /** Result of the US-1466 trusted-plus-permission predicate. */
+    /** Whether the board passes both trust and permission checks. */
     canStartService: boolean;
     permissions: NormalizedBoardPermissions;
     /** Current normalized manifest declaration; never used for enforcement. */
@@ -185,7 +196,7 @@ export type ProviderOperation =
 
 export interface ProviderOperationPolicy {
     /** End-to-end deadline, owned by the renderer client (`module-service.request`); absent =
-     *  unbounded, released only by cancellation (EPIC-113 D6). The host runs no provider timer. */
+     *  unbounded, released only by cancellation. The host runs no provider timer. */
     readonly deadlineMs?: number;
     /** `content-read` is exempt from MAX_OUTSTANDING_REQUESTS_PER_SERVICE and counted as an
      *  outstanding content read; `control` competes for that cap. */
@@ -193,8 +204,8 @@ export interface ProviderOperationPolicy {
 }
 
 /**
- * The one provider-operation policy table (US-1544). `assets/module-service-host.mjs` cannot
- * import TypeScript; US-1543 delivers the request classes to the host in its `init` message.
+ * The provider-operation policy table is shared with the host through its `init` message,
+ * because `assets/module-service-host.mjs` cannot import TypeScript.
  * Note `stat` is unbounded but still a
  * control request: it sits on content.open()'s eager-sizing path, but must not erode the cap.
  */
@@ -275,8 +286,7 @@ export interface ProviderCapabilities {
 }
 
 /** Pushed by the host whenever the number of in-flight `readBinary`/`readRange` requests for a
- *  lease changes (US-1518 decision 10). A count, not a per-resource breakdown — D6 only requires
- *  that "a board can know a read is outstanding," not which one. */
+ *  lease changes. This count lets the board know a read is outstanding without identifying it. */
 export interface ProviderActiveContentReadCount {
     kind: "content-read-count";
     count: number;
@@ -287,7 +297,7 @@ export type RendererServiceMessage =
     | { kind: "hello-ack"; generation: number; leaseNonce: string }
     | { kind: "request"; requestId: string; message: unknown }
     /** Renderer → host only, no response expected. Frees the matching `readBinary`/`readRange`
-     *  request's slot and best-effort aborts the board's implementation (US-1518). Never sent for
+     *  request's slot and best-effort aborts the board's implementation. Never sent for
      *  control operations (`writeBinary`/`stat`/`watch*`), which keep their 10s deadline instead. */
     | { kind: "cancel"; requestId: string }
     | { kind: "response"; requestId: string; result?: unknown; error?: ServiceErrorPayload }

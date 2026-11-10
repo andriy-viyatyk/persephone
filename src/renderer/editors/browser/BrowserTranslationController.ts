@@ -24,7 +24,7 @@ export interface BrowserTranslationTabState {
 
 const INITIAL_TAB_STATE: BrowserTranslationTabState = { available: false, active: false, from: "", to: "", candidates: [] };
 
-/** Owns toolbar translation workflow; page writes and restoration remain in US-1736. */
+/** Owns toolbar translation workflow; page writes and restoration remain in `BrowserEditorModel`. */
 export class BrowserTranslationController {
     readonly state = new TOneState<Record<string, BrowserTranslationTabState>>({});
     private readonly provider = getTextTranslationProvider();

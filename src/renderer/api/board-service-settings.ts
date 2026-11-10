@@ -32,7 +32,7 @@ async function validateBoardRoot(boardRoot: unknown): Promise<string> {
     return boardRoot;
 }
 
-function reply(channel: string, requestId: string, values: Omit<BoardServiceSettingsReply, "requestId">): void {
+function reply(channel: typeof BoardServiceSettingsChannel.getReply | typeof BoardServiceSettingsChannel.subscribeReply | typeof BoardServiceSettingsChannel.unsubscribeReply, requestId: string, values: Omit<BoardServiceSettingsReply, "requestId">): void {
     window.electron.ipcRenderer.sendMessage(channel, { requestId, ...values });
 }
 

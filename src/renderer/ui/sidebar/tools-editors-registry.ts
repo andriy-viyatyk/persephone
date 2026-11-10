@@ -16,7 +16,7 @@ import {
 import { DEFAULT_BROWSER_COLOR, MEMORY_ICON_COLOR } from "../../theme/palette-colors";
 import { createFolderIconElement } from "../../components/icons/icon-elements";
 import { createIconElement } from "../../uikit/shared/slots";
-import type { IconRef } from "../../uikit";
+import type { IconRef } from "../../uikit/shared/slots";
 import type { MenuItem } from "../../uikit/Menu/types";
 import { englishMessage, t } from "../../../shared/i18n/t";
 import type { MessageKey } from "../../../shared/i18n/en";
@@ -261,10 +261,10 @@ export function enableBundledBoard(id: string): void {
 /**
  * Rows standing in for bundled boards the user has disabled.
  *
- * `getCreatableItems()` excludes them by contract (EPIC-109 D4 — the flag gates the creatable
+ * `getCreatableItems` excludes them by contract because the flag gates the creatable
  * item), which on its own left Disable as a one-way door: the row vanished, and with it the only
  * place the action lived, so the board could be brought back solely by hand-editing the settings
- * file. These rows restore the way back without weakening D4 — they are not creatable, they only
+ * file. These rows restore the way back without weakening — they are not creatable, they only
  * carry Enable.
  */
 export function getDisabledBundledBoardItems(): CreatableItem[] {

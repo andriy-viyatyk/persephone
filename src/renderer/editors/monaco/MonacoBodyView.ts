@@ -341,7 +341,7 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
         ];
         // Mount-autofocus lets the user type right after opening/switching to
         // this page — but sidebar-driven navigation (Explorer click) must not
-        // pull focus out of the sidebar (US-808).
+        // pull focus out of the sidebar.
         if (!isFocusInSidebar()) ed.focus();
     };
 

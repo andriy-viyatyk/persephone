@@ -493,7 +493,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
                         // is still rendering, not because this container lacks layout — and
                         // `markdownBlock.root` is already laid out by now, so `firstLayout` fires
                         // immediately and burns all ten attempts in a handful of microtasks without
-                        // ever letting the renderer paint. EPIC-081 deliberately leaves this on
+                        // ever letting the renderer paint. deliberately leaves this on
                         // `schedule.raf`; a real fix needs a render-complete signal from the queue.
                         this.anchorRetry = this.schedule.raf(attempt);
                     }

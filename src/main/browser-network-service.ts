@@ -1,5 +1,5 @@
 /**
- * Per-profile browser network (US-1557).
+ * Per-profile browser network.
  *
  * A browser profile's persistent partition (`persist:browser-<name>`) may be
  * put behind a SOCKS5/HTTP proxy. Electron does not persist `setProxy`, and the

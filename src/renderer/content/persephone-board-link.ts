@@ -1,5 +1,5 @@
 /**
- * `persephone-board://` link scheme (EPIC-035 / US-748).
+ * `persephone-board://` link scheme.
  *
  * Opens a SINGLE board by its own root path through the `openRawLink` pipeline,
  * routing to `target: "board-view"`. The link is a PURE board identifier: it

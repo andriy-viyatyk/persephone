@@ -1,4 +1,4 @@
-// Clipboard IPC data types (US-807) — plain data crossing the main↔renderer
+// Clipboard IPC data types — plain data crossing the main↔renderer
 // boundary for Windows file-clipboard (CF_HDROP) interop. No main-only
 // dependencies live here so both api-types.ts (renderer-facing) and
 // clip-service.ts (main) can import them.

@@ -1,5 +1,5 @@
 /**
- * File Diff body model (EPIC-030 / US-613).
+ * File Diff body model.
  *
  * Resolves the two diff sides (`from`/`to`) to text and owns the editable
  * write-back, keeping the `FileDiffBody` view a pure render (model-view). The
@@ -51,7 +51,7 @@ export class FileDiffBodyModel extends TComponentModel<FileDiffBodyState, FileDi
         if (sel.kind === "head") return git.show(root, "HEAD", relPath);
         // Empty commit hash = the empty tree (root commit's absent parent). Guard
         // it explicitly: `git.show(root, "", relPath)` would return the index, not
-        // empty (US-637).
+        // empty.
         if (!sel.hash) return "";
         return git.show(root, sel.hash, relPath);
     }

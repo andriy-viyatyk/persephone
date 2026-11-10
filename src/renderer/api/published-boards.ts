@@ -1,11 +1,11 @@
 /**
- * Renderer-side reactive model of the published-boards catalog (EPIC-045 / US-862).
+ * Renderer-side reactive model of the published-boards catalog.
  * Mirrors `board-trust.ts`: a `TGlobalState` singleton with subscriptions for views.
  * Subscribes to main's `ePublishedBoardsUpdated` broadcast and pulls the initial catalog
  * via `getPublishedBoards`. Compatibility (`minAppVersion` vs the running app) is checked
  * with the shared `compareVersions`.
  *
- * No download / install here — US-863+ own that. This model only surfaces catalog data.
+ * No download / install here — + own that. This model only surfaces catalog data.
  */
 import { TGlobalState } from "../core/state/state";
 import { api } from "../../ipc/renderer/api";

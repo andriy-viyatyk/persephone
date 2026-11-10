@@ -26,4 +26,3 @@ export const imageModule: EditorModule = {
 export { ImageEditor, getDefaultImageEditorState };
 export type { ImageEditorState } from "./ImageEditor";
 export { ImageEditor as ImageEditorModel } from "./ImageEditor";
-export type { ImageEditorState as ImageEditorModelState } from "./ImageEditor";

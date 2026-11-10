@@ -140,7 +140,7 @@ An adapter or mount face can become callerless when its native view is adopted b
 while the same file may still contain live types, models, or constants. Split those symbols into a
 framework-free core before removing the face. Treat barrels separately: a live barrel can re-export
 dead faces, and a dead barrel can hide the last stale edge. Re-run symbol and importer searches when
-removing either; typechecking and production builds do not detect an unused face or barrel.
+removing either; typechecking and production builds do not detect an unused face or barrel. Import UIKit components from their defining files; only DataGrid and Menu retain `index.ts` surfaces.
 
 **Persephone-coupled components** (the KEEP folders inside `components/`) may import `api/`, `core/`, and `theme/` directly — that's the criterion for living in `components/` at all. They should still use UIKit primitives (`Button`, `Tooltip`, `IconButton`, `Panel`, …) for primitive rendering rather than re-implementing them.
 

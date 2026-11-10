@@ -11,7 +11,7 @@ import type { IPageHost } from "../../api/pages/IPageHost";
 import type { IEditorState } from "../../../shared/types";
 import type { ILinkData } from "../../../shared/link-data";
 import type { BoardSourceContext } from "../../../shared/board-source-context";
-import type { MenuItem } from "../../uikit";
+import type { MenuItem } from "../../uikit/Menu/index";
 
 export interface EditorStateBase extends Omit<Partial<IEditorState>, "id" | "title" | "modified"> {
     /** Editor instance UUID — cache-file prefix. On switchFrom, the new
@@ -19,7 +19,7 @@ export interface EditorStateBase extends Omit<Partial<IEditorState>, "id" | "tit
     id: string;
     title: string;
     modified: boolean;
-    /** Panel contributions for the sidebar (walkthrough 03 / A8). */
+    /** Panel contributions for the sidebar (walkthrough 03 / ). */
     secondaryView?: string[];
     /** Optional cache-buster for `noLanguage` editors whose tab icon depends on
      *  internal state (not on `title`/`language`/`favicon`). The tab subscribes
@@ -30,7 +30,7 @@ export interface EditorStateBase extends Omit<Partial<IEditorState>, "id" | "tit
 
 /** Partial state used by `applyRestoreData`. Subclasses widen S with their own
  *  fields; text-bearing editors also accept a `host?: HostDescriptor` and
- *  optional ComponentQueue passthroughs (walkthrough 04 / P6 / C3). */
+ *  optional ComponentQueue passthroughs. */
 export type RestoreData<S extends EditorStateBase = EditorStateBase> = Partial<S> & {
     host?: HostDescriptor;
     revealLine?: number;
@@ -134,7 +134,7 @@ export abstract class EditorModel<
         this.page = page;
     }
 
-    // ── Lifecycle hooks — Phase 2 (walkthrough 01 / A7) ───────────────────
+    // ── Lifecycle hooks — Phase 2  ───────────────────
 
     /** Remember persisted / file-open setup data for use in `restore()`. Sync.
      *  Does NOT do I/O. Base behavior is a stash; subclasses may parse minimal
@@ -150,7 +150,7 @@ export abstract class EditorModel<
         throw new Error(`${this.constructor.name} does not implement switchFrom`);
     }
 
-    // ── Lifecycle hook — Phase 3 (walkthrough 01 / A7) ────────────────────
+    // ── Lifecycle hook — Phase 3  ────────────────────
 
     /** Realize the editor. Creates host (if not adopted via switchFrom),
      *  restores from cache/disk, subscribes to host state for
@@ -187,7 +187,7 @@ export abstract class EditorModel<
     /** Must this editor stay attached to the page when it is replaced as the
      *  main editor, even though it contributes NO panels? An invisible
      *  ownership handle — e.g. a busy Board whose spawned processes must
-     *  outlive its view (US-799). `setMainEditor` skips detach+dispose while
+     *  outlive its view. `setMainEditor` skips detach+dispose while
      *  true; the editor is disposed on page close or when the flag clears.
      *  Base: false. */
     keepAliveOnNavigation(): boolean {
@@ -199,10 +199,10 @@ export abstract class EditorModel<
         // Override in subclasses.
     }
 
-    // ── Panel contribution (walkthrough 01 / A8) ──────────────────────────
+    // ── Panel contribution  ──────────────────────────
 
     /** Pure state mutation — no side effects on `page`. PageModel observes
-     *  the slice via TOneState's selector-subscribe (walkthrough 03 / N1). */
+     * the slice via TOneState's selector-subscribe (walkthrough 03 / ). */
     get secondaryView(): string[] | undefined {
         return this.state.get().secondaryView;
     }
@@ -216,7 +216,7 @@ export abstract class EditorModel<
         return (this.state.get().secondaryView?.length ?? 0) > 0;
     }
 
-    // ── Switch widget support (walkthrough 01 / A7) ───────────────────────
+    // ── Switch widget support  ───────────────────────
 
     /** Editor ids the user can switch to from this editor. Default: empty
      *  (no switching). Text-bearing editors return
@@ -225,7 +225,7 @@ export abstract class EditorModel<
         return [];
     }
 
-    // ── Fresh-empty detection (walkthrough 01 / A3) ───────────────────────
+    // ── Fresh-empty detection  ───────────────────────
 
     /** True if this editor wraps a never-touched, never-saved empty document.
      *  Used to silently replace the auto-created empty page when the user
@@ -242,8 +242,8 @@ export abstract class EditorModel<
 
     /** True if this editor is its host's main (content-area) editor. Default
      *  derivation; a Browser host's embedded Link editor will hardcode this in
-     *  US-601. NOT reactive on its own — a view that must re-render on
-     *  promote/demote subscribes to `editor.page?.state` (US-600). */
+     *. NOT reactive on its own — a view that must re-render on
+     *  promote/demote subscribes to `editor.page?state`. */
     get isMain(): boolean {
         return this.page?.mainEditorInstance === this;
     }
@@ -267,7 +267,7 @@ export abstract class EditorModel<
         // Override in subclasses.
     }
 
-    // ── Content-host accessor (walkthrough 08 / T2 / B2) ──────────────────
+    // ── Content-host accessor ───────────────────────────────────────────
 
     /** Returns the `TextFileModel` this editor wraps, or null. Text-bearing
      *  editors override to return their `_host`. Cross-cutting primitive
@@ -328,15 +328,7 @@ export abstract class EditorModel<
         return null;
     }
 
-    // ── View-side selection probe (walkthrough 09 / PT7 / B2) ─────────────
-
-    /** Optional. Returns true when the editor surfaces a non-empty text
-     *  selection. Consumed by Run-all-script button visibility (only
-     *  renders when host language is a script language AND a selection
-     *  exists). Default: undefined — Monaco overrides. */
-    hasTextSelection?(): boolean;
-
-    // ── Navigation reuse — per-page singleton (US-617) ────────────────────
+    // ── Navigation reuse — per-page singleton  ────────────────────
 
     /** Optional. A Pattern B editor that survives navigation (e.g. Git Tree)
      *  returns true when a navigation request targets the same logical resource
@@ -361,7 +353,7 @@ export abstract class EditorModel<
      *  delivered to an existing page. This context is never persisted. */
     acceptOpenContext?(context: EditorOpenContext): void;
 
-    // ── In-document anchor navigation (US-901) ────────────────────────────
+    // ── In-document anchor navigation  ────────────────────────────
 
     /** Optional. Scroll to a document fragment (anchor / heading slug) after this
      *  editor is attached to a page. Called once by the pages lifecycle when the
@@ -381,7 +373,7 @@ export abstract class EditorModel<
         // Override in subclasses.
     }
 
-    // ── Persistence (walkthrough 04 / P1 / C3) ────────────────────────────
+    // ── Persistence  ────────────────────────────
 
     async saveState(): Promise<void> {
         // Override in subclasses.

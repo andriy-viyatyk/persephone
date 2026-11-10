@@ -1,5 +1,5 @@
 // =============================================================================
-// Panel-key helpers (US-619).
+// Panel-key helpers.
 //
 // A *rendered* secondary-view panel's identity is the composite of its owning
 // editor id and its panel-type id: `${editorId}::${panelId}`. This lets two

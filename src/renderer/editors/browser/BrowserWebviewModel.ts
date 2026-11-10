@@ -1,3 +1,4 @@
+import { PAGE_ZOOM_MIN, PAGE_ZOOM_MAX, PAGE_ZOOM_STEP } from "../../../shared/browser-zoom";
 const { ipcRenderer } = require("electron");
 import {
     BrowserChannel,
@@ -156,11 +157,9 @@ export class BrowserWebviewModel {
     };
     getPageTranslationState = (internalTabId = this.model.state.get().activeTabId) =>
         this.pageTranslations.get(internalTabId)?.state ?? { active: false, from: "", to: "", pendingCount: 0, doneCount: 0, failedCount: 0 };
-    getLatestTranslationDetectionSample = (internalTabId = this.model.state.get().activeTabId) =>
-        this.pageTranslations.get(internalTabId)?.latestDetectionSample;
     subscribePageTranslationState = (internalTabId: string, listener: () => void): (() => void) =>
         this.translationController(internalTabId).subscribe(listener);
-    handleTranslationFrame = (tabId: string, frameId: [number, number], kind: "translation-ready" | "translation-units" | "translation-detection-sample", payload: unknown): void => {
+    handleTranslationFrame = (tabId: string, frameId: [number, number], kind: "translation-ready" | "translation-units", payload: unknown): void => {
         this.translationController(tabId).handleFrame(frameId, kind, payload);
     };
     private translationController(tabId: string): BrowserPageTranslationController {
@@ -447,7 +446,7 @@ export class BrowserWebviewModel {
     }
 
     setTabZoom = (internalTabId: string, zoomPercent: number): void => {
-        if (!Number.isFinite(zoomPercent) || zoomPercent < 50 || zoomPercent > 200) return;
+        if (!Number.isFinite(zoomPercent) || zoomPercent < PAGE_ZOOM_MIN || zoomPercent > PAGE_ZOOM_MAX) return;
         if (!this.model.state.get().tabs.some((tab) => tab.id === internalTabId)) return;
         this.model.updateTab(internalTabId, { zoomPercent });
         void ipcRenderer.invoke(BrowserChannel.setZoom, { registrationKey: `${this.model.id}/${internalTabId}`, zoomPercent });
@@ -465,7 +464,7 @@ export class BrowserWebviewModel {
             case "zoom-intent": {
                 const tab = this.model.state.get().tabs.find((item) => item.id === internalTabId);
                 if (!tab || !data.zoomIntent) break;
-                const value = data.zoomIntent === "reset" ? 100 : Math.max(50, Math.min(200, tab.zoomPercent + (data.zoomIntent === "in" ? 5 : -5)));
+                const value = data.zoomIntent === "reset" ? 100 : Math.max(PAGE_ZOOM_MIN, Math.min(PAGE_ZOOM_MAX, tab.zoomPercent + (data.zoomIntent === "in" ? PAGE_ZOOM_STEP : -PAGE_ZOOM_STEP)));
                 this.setTabZoom(internalTabId, value);
                 break;
             }
@@ -628,7 +627,7 @@ export class BrowserWebviewModel {
 
     /**
      * Trust the extension a bar shows, for that bar's document only. Used by the bar's Trust button
-     * and by the agent facade (US-1614). `changed`: the manifest changed since the bar appeared,
+     * and by the agent facade. `changed`: the manifest changed since the bar appeared,
      * so the bar now shows the new name/hosts and nothing was granted. `unavailable`: the
      * extension is gone or invalid. `not-current`: no such bar, or the document changed.
      */
@@ -1362,7 +1361,7 @@ ${source}
         const networkLinks = networkLogToLinks(networkLog);
         const links = [...domLinks, ...fontLinks, ...networkLinks];
         // The list opens as a standalone page outside this page's session, so on a
-        // Tor or proxied page its image thumbnails would load direct (US-1557).
+        // Tor or proxied page its image thumbnails would load direct.
         if (this.model.network.imageRoute) {
             for (const link of links) delete link.imgSrc;
         }

@@ -16,7 +16,7 @@ const injectedScript = `<script>document.addEventListener("click",function(e){va
 // Injected ahead of the previewed document's own scripts, so it must go at the very top.
 //
 // The preview iframe has a real `html-preview://` origin, isolated from the host document. When
-// the preview was a `srcdoc` document (before US-1590), rewriting its `about:srcdoc` history URL
+// the preview was a `srcdoc` document (before ), rewriting its `about:srcdoc` history URL
 // was refused, and how Chromium refused depended on the host document's scheme: served over http
 // (the dev server)
 // it throws a catchable `SecurityError` and the page carries on, but under `file://` (a packaged

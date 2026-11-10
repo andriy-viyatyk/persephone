@@ -116,5 +116,3 @@ export class MnemeConfigEditorView extends VanillaView<MnemeConfigEditorViewProp
         } else if (this.pageModel instanceof RunningConfigView) this.pageModel.update({ model: this.model, state });
     }
 }
-
-export { MnemeConfigEditorView as MnemeConfigView };

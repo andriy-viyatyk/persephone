@@ -1,3 +1,8 @@
+export const CONTROL_CHANNEL = "persephone:audio-control";
+export const ARM_CHANNEL = "persephone:audio-arm-capture";
+export const CLEAR_CHANNEL = "persephone:audio-clear-capture";
+export const CLOSE_CHANNEL = "persephone:audio-close-channel";
+export const OPEN_CHANNEL = "persephone:audio-open-channel";
 export const AUDIO_DEVICES_REQUEST = "persephone:audio-devices-request";
 export const AUDIO_DEVICES_REPLY = "persephone:audio-devices-reply";
 export const AUDIO_SETTINGS_UPDATE = "persephone:audio-settings-update";

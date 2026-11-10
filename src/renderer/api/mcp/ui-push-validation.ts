@@ -103,7 +103,7 @@ export function invalidUiPushEntryError(raw: unknown): UiPushValidationError {
  * `strictTypes` rejects an entry type that is not one of the documented ones. The Log View call
  * does **not** pass it, so that tool's behaviour is unchanged; `pages.logView.push` does.
  *
- * The reason is a real failure, observed in US-1324's acceptance run: a Haiku agent guessed the
+ * The reason is a real failure, observed in acceptance run: a Haiku agent guessed the
  * types `"markdown"` and `"dialog"` instead of `"output.markdown"` and `"input.confirm"`. The
  * lenient fall-through accepted all three, rendered them as **empty** entries, and returned ids —
  * so the agent reported success while the user saw three blank lines. Validation only ever ran for

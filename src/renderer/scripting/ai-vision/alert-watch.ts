@@ -6,7 +6,7 @@ import { logAlertRaised } from "./event-log";
  * Push newly raised error/warning toasts into the agent event feed.
  *
  * The subscription lives here rather than in `AlertsBar` on purpose: UIKit is agnostic of the
- * ai-vision layer, and US-1464 established that this layer imports the alerts model and never
+ * ai-vision layer, and established that this layer imports the alerts model and never
  * the reverse. Watching the model also catches every producer — `ui.notify`, the unhandled
  * rejection handler, anything that reaches `addAlert` — instead of only the one entry point a
  * call-site hook would cover.

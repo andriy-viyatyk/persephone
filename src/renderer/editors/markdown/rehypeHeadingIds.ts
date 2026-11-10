@@ -1,5 +1,5 @@
 /**
- * Rehype plugin that gives every rendered heading a stable `id` (US-901), so a
+ * Rehype plugin that gives every rendered heading a stable `id`, so a
  * `#fragment` link can scroll to it. Mirrors GitHub's slug algorithm, which is
  * also what Azure DevOps wiki links assume.
  *

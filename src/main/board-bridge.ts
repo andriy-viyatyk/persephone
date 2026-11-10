@@ -1,6 +1,7 @@
+import { BOARD_FRAME_PREFIX } from "../ipc/module-service-channels";
 /**
- * Per-board bridge (EPIC-034 / US-724; re-homed onto a `MessagePort` in
- * EPIC-037 / US-771).
+ * Per-board bridge (; re-homed onto a `MessagePort` in
+ * ).
  *
  * A board iframe has no `ipcRenderer` and no preload. Its only channel to the
  * privileged side is a `MessageChannelMain` port minted **per board** in main:
@@ -18,7 +19,7 @@
  *
  * The board root + owner window are resolved from the per-board registry (keyed by
  * the boardId minted at the handshake), NOT from `event.sender.session` — with one
- * shared host session that can't disambiguate boards (the old model, US-770).
+ * shared host session that can't disambiguate boards, as in the old model.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -51,6 +52,7 @@ import {
     BoardFolderListOptions,
     BoardWatchOptions,
 } from "../ipc/board-bridge-channels";
+import type { BoardNotifyMsg } from "../ipc/board-bridge-channels";
 import { RunnerChannel, RunnerKillMsg, RunnerStartMsg, RunnerStdinMsg } from "../ipc/runner-channels";
 import { EventEndpoint, type PathWatchBatch, type PathWatchOwner } from "../ipc/api-types";
 import {
@@ -253,7 +255,7 @@ interface BoardPortEntry {
     root: string;
     /** The board's `board://` host. */
     host: string;
-    /** The owning `BoardEditorModel` id (US-799) — stable across mounts/reloads of
+     /** The owning `BoardEditorModel` ID, stable across mounts/reloads of
      *  the same board tab, unlike the per-mount `boardId`. Groups job sinks for
      *  busy retention + final reaping. */
     ownerId: string;
@@ -263,11 +265,11 @@ interface BoardPortEntry {
     hostedFilePath: string | null;
     /** Per-load identity prevents delayed updates from changing a replacement port. */
     token: string;
-    /** Set when the shim's "connected" message arrives (mode D, EPIC-037 C11). */
+     /** Set when the shim's "connected" message arrives. */
     connected?: boolean;
     /** Mode-D handshake watchdog; cleared on connect / dispose. */
     watchdog?: ReturnType<typeof setTimeout>;
-    /** Normalized roots of the TypeScript projects this frame registered (US-1744). */
+    /** Normalized roots of the TypeScript projects this frame registered. */
     tsProjectRoots: Set<string>;
     capabilityRequests: Map<string, AbortController>;
 }
@@ -311,7 +313,7 @@ function watchPathInScope(scopePath: string, candidatePath: string, kind: "file"
     return relative === "" || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
 }
 
-// ── Busy owners — job retention across mounts (US-799) ────────────────────────
+// ── Busy owners — job retention across mounts  ────────────────────────
 // A board that called `persephone.setBoardBusy(true)` keeps its spawned jobs when
 // its iframe unmounts (page navigation / reload): `disposeBoardPort` skips reaping
 // for a busy owner, and the sinkIds accumulate under the owner until a final
@@ -351,7 +353,7 @@ export function reapBoardOwner(ownerId: string): void {
     busyOwners.delete(ownerId);
 }
 
-/** Mirror the renderer's busy flag (US-799). Clearing busy with no live port for
+/** Mirror the renderer's busy flag. Clearing busy with no live port for
  *  the owner (defensive — busy normally changes only while the board is mounted)
  *  reaps immediately, since no future unmount would. */
 export function setBoardBusy(ownerId: string, busy: boolean): void {
@@ -375,7 +377,7 @@ export function setBoardCallTimeout(timeoutMs: number): void {
 /** Host webContents we've wired load-failure + crash/destroy reaping on (once each). */
 const wiredHosts = new Set<number>();
 
-/** Mode-D (C11) handshake watchdog window: a healthy board connects in tens of ms; this
+/** Mode-D handshake watchdog window: a healthy board connects in tens of ms; this
  *  is generous against a slow first paint while still catching a dead bridge. */
 const BOARD_HANDSHAKE_TIMEOUT_MS = 5000;
 
@@ -959,7 +961,7 @@ const boardRpcHandlers: Record<BoardRpcMethod, BoardRpcHandler> = {
             const invocation = capabilityRouter.createInvocationContext(bound, { signal: controller.signal, owner: entry.hostWebContents, target: entry.hostWebContents });
             try {
                 const value = await capabilityRouter.invoke(bound, request.method, request.args, { invocation, target: entry.hostWebContents,
-                    ...(channel ? { channelDelivery: { target: entry.hostWebContents, requestId: `board-frame:${entry.boardId}` } } : {}) });
+                    ...(channel ? { channelDelivery: { target: entry.hostWebContents, requestId: `${BOARD_FRAME_PREFIX}${entry.boardId}` } } : {}) });
                 if (channel) {
                     const opened = value as { channelId: string; onClose: (listener: () => void) => () => void };
                     openedChannel = true;
@@ -1068,8 +1070,8 @@ function runFire(entry: BoardPortEntry, method: BoardFireMethod, args: unknown[]
         if (!message) return;
         const type = args[1] as BoardNotifyType | undefined;
         const persistent = args[2] === true;
-        win?.webContents.send(EventEndpoint.eBoardNotify, { message, type, persistent });
-        // Mirror errors/warnings to the board's ui.log (US-726) for author/agent review.
+        win?.webContents.send(EventEndpoint.eBoardNotify, { message, type, persistent } satisfies BoardNotifyMsg);
+        // Mirror errors/warnings to the board's ui.log for author/agent review.
         if (type === "error" || type === "warning") {
             void boardLog.append(entry.root, type, message).catch(() => {});
         }
@@ -1120,7 +1122,7 @@ function handleBoardMessage(boardId: string, data: BoardToMain): void {
     if (!entry || !data) return;
 
     if (data.kind === "connected") {
-        // Mode D (C11): the shim is live — cancel the handshake watchdog.
+        // Mode D: the shim is live — cancel the handshake watchdog.
         entry.connected = true;
         if (entry.watchdog) {
             clearTimeout(entry.watchdog);
@@ -1165,7 +1167,7 @@ function handleBoardMessage(boardId: string, data: BoardToMain): void {
 
 /** Reap every board hosted by a host webContents that crashed/was destroyed —
  *  including kept (port-less) jobs of busy owners, which the `boardPorts` loop
- *  can't see (US-799). */
+ *  can't see. */
 function reapHost(hostWebContentsId: number): void {
     for (const [boardId, entry] of [...boardPorts]) {
         if (entry.hostWebContents.id === hostWebContentsId) disposeBoardPort(boardId);
@@ -1177,7 +1179,7 @@ function reapHost(hostWebContentsId: number): void {
 }
 
 /** Append a board load failure to its `ui.log` and toast the host renderer — the shared
- *  funnel for modes A and D (EPIC-037 C11). Never throws into the caller. */
+ *  funnel for modes A and D. Never throws into the caller. */
 function reportBoardLoadFailure(hostWebContents: WebContents, root: string, detail: string): void {
     if (root) {
         void boardLog.append(root, "error", detail).catch(() => {});
@@ -1186,7 +1188,7 @@ function reportBoardLoadFailure(hostWebContents: WebContents, root: string, deta
         hostWebContents.send(EventEndpoint.eBoardNotify, {
             message: `Board failed to load: ${detail}`,
             type: "error",
-        });
+        } satisfies BoardNotifyMsg);
     } catch {
         // Window gone — nothing to toast.
     }
@@ -1194,7 +1196,7 @@ function reportBoardLoadFailure(hostWebContents: WebContents, root: string, deta
 
 /**
  * Wire a host renderer once: mode-A board load-failure reporting + crash reaping of its
- * orphaned board ports (EPIC-037 C11). Idempotent (guarded by `wiredHosts`). Called at
+ * orphaned board ports. Idempotent (guarded by `wiredHosts`). Called at
  * board MOUNT (`registerBoard` via the controller — so it catches a main-doc failure that
  * never fires the iframe `load`) and again from `createBoardPort`.
  */
@@ -1227,9 +1229,9 @@ export function ensureHostWired(hostWebContents: WebContents): void {
 
 /** Mint a per-board port pair, wire port2 to the RPC handler, deliver port1 to the
  *  requesting host renderer. Called from the `requestBoardPort` endpoint on every
- *  iframe `load` (US-771 C771-6); a re-request for a live boardId disposes the old.
+ *  iframe `load`; a re-request for a live boardId disposes the old.
  *  `ownerId` is the owning BoardEditorModel id — the stable job-retention key
- *  across mounts of the same board tab (US-799). */
+ * across mounts of the same board tab. */
 export function createBoardPort(
     hostWebContents: WebContents,
     boardId: string,
@@ -1252,7 +1254,7 @@ export function createBoardPort(
 
     ensureHostWired(hostWebContents);
 
-    // Mode D (C11): the shim posts `{ kind: "connected" }` as soon as it attaches the port.
+    // Mode D: the shim posts `{ kind: "connected" }` as soon as it attaches the port.
     // If it never arrives, the board painted but its bridge is dead — report it.
     if (root) {
         entry.watchdog = setTimeout(() => {
@@ -1284,7 +1286,7 @@ export function updateBoardHostedPath(
 }
 
 /** Tear down a board's port (unmount / reload / host crash). Jobs: a BUSY owner's
- *  jobs are KEPT (they outlive the iframe — US-799); otherwise every job of the
+ *  jobs are KEPT because they outlive the iframe; otherwise every job of the
  *  owner is reaped (current sink + any kept from prior busy mounts). */
 export function disposeBoardPort(boardId: string): void {
     const entry = boardPorts.get(boardId);
@@ -1304,13 +1306,13 @@ export function disposeBoardPort(boardId: string): void {
     cleanupBoardWatches(boardId);
     try { entry.port.close(); } catch { /* already closed */ }
     if (entry.tsProjectRoots.size && !entry.hostWebContents.isDestroyed()) {
-        // Release this frame's TypeScript projects (US-1744); covers reload, close, grant refresh and quit.
+        // Release this frame's TypeScript projects on reload, close, grant refresh, or quit.
         void sendToRendererForWebContents("board_releaseTsProjects", { owner: entry.boardId }, entry.hostWebContents)
             .catch((error: unknown) => { console.warn(`Releasing TypeScript projects failed: ${errMessage(error)}`); });
     }
     boardPorts.delete(boardId);
     if (!busyOwners.has(entry.ownerId)) {
-        // Per-sink reaping (EPIC-044 / D10, B1): a board's main + secondary frames share
+        // Per-sink reaping: a board's main and secondary frames share
         // one owner (`model.id`). A single frame's port going away reaps ONLY that frame's
         // jobs (its sink), never the shared owner's other frames — else closing a secondary
         // panel would tree-kill the main frame's processes. The WHOLE owner is reaped only
@@ -1320,7 +1322,7 @@ export function disposeBoardPort(boardId: string): void {
     }
 }
 
-/** Live retint: push a new palette to every running board (US-771). */
+/** Live retint: push a new palette to every running board. */
 export function pushThemeToBoards(palette: BoardThemePalette): void {
     for (const entry of boardPorts.values()) {
         try {

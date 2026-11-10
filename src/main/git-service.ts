@@ -1,14 +1,14 @@
 /**
- * Main-process git wrapper (EPIC-030 / US-610).
+ * Main-process git wrapper.
  *
  * Owns all `simple-git` usage — a thin promise wrapper over the user's
  * installed `git` CLI (no native bindings; no git binary bundled). Lazy-imported
  * by the IPC controller. Every operation is best-effort and NEVER throws: a
  * missing git binary or a non-repo directory resolves to a "not available"
- * result, so the renderer degrades gracefully (EPIC-030 Concern 4).
+ * result, so the renderer can handle a missing Git executable gracefully.
  *
  * v1 exposes exactly two operations — availability probe + repo detection.
- * Log/show/diff arrive with US-611/US-613 as further endpoints.
+ * Log/show/diff arrive with as further endpoints.
  */
 import { simpleGit } from "simple-git";
 import type { GitAheadBehind, GitCommit, GitFetchOptions, GitFileChange, GitIdentity, GitLogOptions, GitMutationResult, GitProbeResult, GitPullOptions, GitPullResult, GitPushOptions, GitPushResult, GitRef, GitRefs, GitRepoInfo, GitStatusResult, GitSwitchTarget } from "../ipc/git-ipc";
@@ -60,7 +60,7 @@ export async function detectRepo(dir: string): Promise<GitRepoInfo | null> {
         }
         return { root, branch };
     } catch {
-        return null; // not a repo, or git missing → graceful (Concern 4)
+        return null; // Not a repo, or Git is missing; callers handle either case gracefully.
     }
 }
 
@@ -73,9 +73,9 @@ const LOG_FORMAT = ["%H", "%P", "%s", "%an", "%ae", "%at", "%D"].join(FIELD_SEP)
 
 /**
  * Parse decoration refs (`%D` under `--decorate=full`), classifying each by kind
- * so the renderer can color it (US-611). Full ref paths are used so a local branch
+ * so the renderer can color it. Full ref paths are used so a local branch
  * whose name contains a slash (e.g. "feature/api") is NOT mistaken for a remote —
- * the namespace prefix is authoritative, not a "contains /" heuristic (US-636 fix).
+ * the namespace prefix is authoritative; checking whether the name contains a slash is not enough.
  *
  * Examples (full form): "HEAD -> refs/heads/main", "refs/heads/feature/api",
  * "refs/remotes/origin/main", "tag: refs/tags/v1.0". The returned `name` is the
@@ -142,7 +142,7 @@ function parseLog(raw: string): GitCommit[] {
  * Never throws — returns [] when git is unavailable or `dir` is not a repo.
  *
  * Parents come from `%P` (all parents, space-separated); `--topo-order` keeps
- * the swimlane layout (US-611) correct without needing `--parents`.
+ * the swimlane layout correct without needing `--parents`.
  */
 export async function log(dir: string, opts: GitLogOptions = {}): Promise<GitCommit[]> {
     const max = opts.maxCount ?? 500;
@@ -153,15 +153,15 @@ export async function log(dir: string, opts: GitLogOptions = {}): Promise<GitCom
             "--topo-order",
             // Full ref paths so `%D` distinguishes local branches (refs/heads/…)
             // from remote-tracking ones (refs/remotes/…) even when a local branch
-            // name contains a slash, e.g. "feature/api" (US-636 fix).
+             // name contains a slash, e.g. "feature/api"; the namespace prefix disambiguates it.
             "--decorate=full",
             `--pretty=format:${LOG_FORMAT}`,
         ];
         // Walk every ref, not just HEAD — the whole-repo Git Tree then shows all
         // branches' commits (like Git Extensions) even when HEAD is behind another
-        // branch (US-636). File-scoped history keeps the HEAD/--follow walk.
+        // branch. File-scoped history keeps the HEAD/--follow walk.
         if (opts.all) args.push("--all");
-        // max <= 0 means "no limit" — load all commits ("Load all", US-612).
+        // max <= 0 means "no limit" — load all commits.
         if (max > 0) args.push(`--max-count=${max}`);
         if (opts.skip && opts.skip > 0) args.push(`--skip=${opts.skip}`);
         if (opts.file) args.push("--follow", "--", opts.file);
@@ -174,7 +174,7 @@ export async function log(dir: string, opts: GitLogOptions = {}): Promise<GitCom
 
 /**
  * Working-tree status split into staged (index) and unstaged (working-tree)
- * changes (EPIC-031 / US-616). Untracked files appear under `unstaged` with
+ * changes. Untracked files appear under `unstaged` with
  * status `?`; git-ignored files are omitted by `git status` (and thus here).
  * Never throws — returns empty arrays when git is unavailable or `dir` is not
  * a repo.
@@ -187,7 +187,7 @@ export async function status(dir: string): Promise<GitStatusResult> {
     try {
         // GIT_OPTIONAL_LOCKS=0 (≡ `git --no-optional-locks status`) stops status
         // from rewriting `.git/index` to refresh its stat-cache. That write would
-        // otherwise trip the Git Tree auto-refresh watcher (US-624) into a loop:
+        // otherwise trip the Git Tree auto-refresh watcher into a loop:
         // watch → refresh → status → rewrite index → watch → … The two-arg
         // `.env(name, value)` SUPPLEMENTS the inherited process env (PATH etc.);
         // the single-object form would replace it.
@@ -211,7 +211,7 @@ export async function status(dir: string): Promise<GitStatusResult> {
             }
         }
         // `s.current` is the branch name ("main"), null when detached/no commits.
-        // Carried here so the commit dialog (US-632) can show it without a 2nd round-trip.
+        // Carried here so the commit dialog can show it without a 2nd round-trip.
         return { staged, unstaged, branch: s.current ?? undefined };
     } catch {
         return { staged: [], unstaged: [] };
@@ -219,13 +219,13 @@ export async function status(dir: string): Promise<GitStatusResult> {
 }
 
 /**
- * Repository refs for the "Branches & Tags" panel (EPIC-031 / US-634): local
+ * Repository refs for the "Branches & Tags" panel: local
  * branches, remote names + remote-tracking branches, and tags, plus the current
  * branch. Never throws — returns all-empty on failure or when `dir` is not a repo.
  *
  * `%(refname:short)` strips the namespace, so each namespace is queried
  * separately to keep the lists unambiguous. `GIT_OPTIONAL_LOCKS=0` keeps these
- * reads from rewriting `.git` (same loop-safety as `status`, US-624). Remote
+ * reads from rewriting `.git`, using the same loop-safety as `status`. Remote
  * names come from `git remote` (a remote may exist with zero branches); the
  * symbolic `<remote>/HEAD` ref is dropped.
  */
@@ -273,7 +273,7 @@ export async function refs(dir: string): Promise<GitRefs> {
 }
 
 /**
- * Configured fetch URL of a remote (US-644 — "Copy Remote URL" in the Git Tree
+ * Configured fetch URL of a remote, shown by "Copy Remote URL" in the Git Tree
  * tab menu). Returns "" when git is unavailable, the dir is not a repo, the
  * remote name is empty, or the remote has no URL. Never throws.
  */
@@ -289,7 +289,7 @@ export async function remoteUrl(dir: string, remote: string): Promise<string> {
 }
 
 /**
- * Blob content of a file at a revision (EPIC-030 / US-613). `rev` may be:
+ * Blob content of a file at a revision. `rev` may be:
  *   - ""      → the index (`:path`) — the staged blob if staged, else HEAD,
  *   - "HEAD"  → the last commit,
  *   - a hash  → that commit.
@@ -306,7 +306,7 @@ export async function show(dir: string, rev: string, path: string): Promise<stri
 }
 
 /**
- * Full commit message (subject + body) for one commit (EPIC-031 / US-629).
+ * Full commit message (subject + body) for one commit.
  * Fetched lazily by the Git Tree "Commit" panel for the selected commit only,
  * so the `log` payload stays lean (it carries just the subject). Returns ""
  * when the commit is absent or git is unavailable. Never throws.
@@ -323,8 +323,8 @@ export async function commitMessage(dir: string, hash: string): Promise<string> 
  * Files changed by one commit, vs its first parent (`--root` lists every file
  * for the initial commit). Returns the same `GitFileChange` DTO as `status()`:
  * repo-relative forward-slashed paths with M/A/D/R/C/T status letters, and
- * `oldPath` for renames/copies. Used by the Git Tree "Diff" tab (EPIC-031 /
- * US-630). Never throws — [] on failure or when git is unavailable.
+ * `oldPath` for renames/copies. Used by the Git Tree "Diff" tab for staged and unstaged changes.
+ * ). Never throws — [] on failure or when git is unavailable.
  */
 export async function commitFiles(dir: string, hash: string): Promise<GitFileChange[]> {
     try {
@@ -351,7 +351,7 @@ export async function commitFiles(dir: string, hash: string): Promise<GitFileCha
 }
 
 /**
- * Stage paths — move working-tree changes into the index (EPIC-031 / US-631,
+ * Stage paths — move working-tree changes into the index (,
  * the first mutating git op). `git add -- <paths>` also stages deletions and
  * untracked files, and operates on the WHOLE path (not per-hunk) so a
  * partially-staged file becomes fully staged. `paths` is repo-relative
@@ -366,8 +366,8 @@ export async function stage(dir: string, paths: string[]): Promise<GitMutationRe
 }
 
 /**
- * Unstage paths — move index changes back to the working tree (EPIC-031 /
- * US-631). `git reset -- <paths>` (≡ `git reset HEAD -- <paths>`) operates on
+ * Unstage paths — move index changes back to the working tree.
+ * ). `git reset -- <paths>` (≡ `git reset HEAD -- <paths>`) operates on
  * the whole path, so a partially-staged file becomes fully unstaged. On an
  * initial-commit repo there is no HEAD to reset against, so fall back to
  * `git rm --cached` to unstage the freshly-added blobs. Never throws.
@@ -387,8 +387,8 @@ export async function unstage(dir: string, paths: string[]): Promise<GitMutation
 }
 
 /**
- * Discard working-tree changes — "Reset" for the Unstaged list (EPIC-031 /
- * US-631). Tracked paths are restored to their staged/HEAD version via
+ * Discard working-tree changes — "Reset" for the Unstaged list.
+ * ). Tracked paths are restored to their staged/HEAD version via
  * `git checkout -- <paths>`; untracked paths (status '?') are removed from disk
  * via `git clean -f -- <paths>`. DESTRUCTIVE — the caller confirms first. Never
  * throws.
@@ -407,7 +407,7 @@ export async function discard(
 }
 
 /**
- * Effective git author identity (EPIC-031 / US-632) — `git config user.name` /
+ * Effective git author identity — `git config user.name` /
  * `user.email`, the layered system→global→local resolution. Used to PREPOPULATE the
  * commit dialog (what Git Extensions reads — the user never types it because it lives in
  * `~/.gitconfig`). Each key throws when unset → "" (no identity configured). Never throws.
@@ -425,7 +425,7 @@ export async function getIdentity(dir: string): Promise<GitIdentity> {
 }
 
 /**
- * Commit the staged index with `message` (EPIC-031 / US-632). `simpleGit().commit`
+ * Commit the staged index with `message`. `simpleGit.commit`
  * commits only what is staged (no `-a`). When `identity` carries a name/email, it is
  * applied as a PER-COMMIT override (`-c user.name=… -c user.email=…` via simple-git's
  * `config` option) — NO config file is written (decided "per-commit only"). Rejects an
@@ -451,7 +451,7 @@ export async function commit(
 }
 
 /**
- * Switch HEAD to a branch / remote branch / commit / tag (EPIC-031 / US-636) — the
+ * Switch HEAD to a branch / remote branch / commit / tag — the
  * first history-moving op. Uses `git switch` (git ≥ 2.23):
  *   - branch  → `switch <name>`
  *   - remote  → `switch -c <short> --track <ref>`, falling back to `switch <short>`
@@ -490,7 +490,7 @@ export async function switchTo(dir: string, target: GitSwitchTarget): Promise<Gi
 }
 
 /**
- * Create a branch (EPIC-031 / US-638). `startPoint` is a commit hash / ref;
+ * Create a branch. `startPoint` is a commit hash / ref;
  * omitted → current HEAD. `checkout` true uses `git switch -c` (create + check
  * out, carrying the staged index so a following commit lands on the new branch);
  * false uses `git branch` (create only, HEAD unmoved). An invalid or already-
@@ -515,7 +515,7 @@ export async function createBranch(
 }
 
 /**
- * Fetch remote-tracking branches (US-641). When `opts.remote` is given, fetch
+ * Fetch remote-tracking branches. When `opts.remote` is given, fetch
  * only that remote; otherwise `--all --prune`. Sets GIT_TERMINAL_PROMPT=0 so
  * HTTPS without a helper fails fast rather than hanging. Never throws.
  */
@@ -531,7 +531,7 @@ export async function fetch(dir: string, opts: GitFetchOptions = {}): Promise<Gi
 }
 
 /**
- * Ahead/behind count for the current branch vs its upstream (US-641).
+ * Ahead/behind count for the current branch vs its upstream.
  * Uses `rev-list --left-right --count @{upstream}...HEAD`:
  *   left count  = commits on upstream not on HEAD = "behind"
  *   right count = commits on HEAD not on upstream = "ahead"
@@ -560,7 +560,7 @@ export async function aheadBehind(dir: string): Promise<GitAheadBehind> {
 }
 
 /**
- * Push the current (or specified) branch to its upstream remote (US-641).
+ * Push the current (or specified) branch to its upstream remote.
  * Passes `-u <remote> <branch>` to set the tracking reference whenever the
  * current branch has no upstream — detected fresh here rather than trusting the
  * caller, so the combined "Commit & Push" flow on a just-created branch reliably
@@ -627,7 +627,7 @@ export async function push(dir: string, opts: GitPushOptions = {}): Promise<GitP
 }
 
 /**
- * Pull from the current branch's upstream (US-642). Merge by default; `--rebase` when
+ * Pull from the current branch's upstream. Merge by default; `--rebase` when
  * `opts.rebase`, `--ff-only` when `opts.ffOnly`. Sets GIT_TERMINAL_PROMPT=0 so HTTPS
  * without a credential helper fails fast; GIT_OPTIONAL_LOCKS=0 to avoid a stat-cache
  * rewrite while the working tree is updated. Detects conflicts from the error text and

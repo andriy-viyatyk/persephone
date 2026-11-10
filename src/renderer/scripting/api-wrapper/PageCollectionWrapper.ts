@@ -16,7 +16,7 @@ import {
 import { choiceRule, validateCallArguments } from "ai-vision";
 import type { IAiCallContext } from "../ai-vision/root";
 
-// AiVision (EPIC-083): the kind-level description of this wrapper. Kept next to the members it
+// AiVision: the kind-level description of this wrapper. Kept next to the members it
 // describes so a new method and its descriptor entry land in the same diff.
 const PAGES_MEMBERS: readonly IAiMember[] = [
     { name: "all", kind: "property", summary: "Every open page as an array (index by position)." },
@@ -179,7 +179,7 @@ export class PageCollectionWrapper implements IAiVisible {
         return new LogViewEditorFacade(getMcpLogViewEditor, "log-view", "Log View", getOrCreateMcpLogViewEditor);
     }
 
-    /** A wrapper for any OPEN page, editor or not (US-1408). A page whose main editor was
+    /** A wrapper for any OPEN page, editor or not. A page whose main editor was
      *  detached is still a tab the user sees, so `undefined` here means "no such page" and
      *  nothing else — it must never mean "this page has no editor". */
     private wrap(page: PageModel | null | undefined): PageWrapper | undefined {
@@ -199,7 +199,7 @@ export class PageCollectionWrapper implements IAiVisible {
     /** Every open page, in tab order — including one whose editor was closed while the tab
      *  stayed open. Filtering those out is what made the agent's page list disagree with the
      *  user's tab strip, shifted every numeric index past the hidden page, and made
-     *  `closePage` refuse an id the user can close with one click (US-1408). */
+     *  `closePage` refuse an id the user can close with one click. */
     get all(): PageWrapper[] {
         return this.pages.pages.map((p) => new PageWrapper(
             p.mainEditor ?? null, this.releaseList, undefined, this.callContext, p,

@@ -126,7 +126,7 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
                     if (result?.[0]) await setBoardSetting(this.props.boardRoot, declaration.id, result[0]);
                 },
                 reset: () => unsetBoardSetting(this.props.boardRoot, declaration.id),
-                clearLabel: "Reset",
+                clearLabel: t("settings.reset"),
             }));
             this.root.append(library.root);
             library.mount();

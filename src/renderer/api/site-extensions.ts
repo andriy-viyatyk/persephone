@@ -1,10 +1,11 @@
+import { isValidSiteExtensionId, isExactSiteExtensionHost } from "../../shared/site-extension-validation";
+export { isValidSiteExtensionId, isExactSiteExtensionHost } from "../../shared/site-extension-validation";
 import { validateSiteExtensionFetchHosts } from "../../shared/site-extension-hosts";
 import { fpJoin, fpRelative, fpResolve, fpSep } from "../core/utils/file-path";
 import { fs } from "./fs";
 import { settings } from "./settings";
 import { siteExtensionTrust } from "./site-extension-trust";
 
-const EXTENSION_ID_PATTERN = /^[a-z0-9-]+$/;
 const MANIFEST_NAME = "manifest.json";
 
 interface SiteExtensionManifest {
@@ -43,26 +44,6 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 function nonEmptyString(value: unknown): value is string {
     return typeof value === "string" && value.trim().length > 0;
-}
-
-export function isValidSiteExtensionId(id: string): boolean {
-    return EXTENSION_ID_PATTERN.test(id);
-}
-
-export function isExactSiteExtensionHost(value: string): boolean {
-    if (!value || value !== value.toLowerCase()) return false;
-    try {
-        const parsed = new URL(`https://${value}`);
-        return parsed.hostname === value
-            && parsed.port === ""
-            && parsed.username === ""
-            && parsed.password === ""
-            && parsed.pathname === "/"
-            && parsed.search === ""
-            && parsed.hash === "";
-    } catch {
-        return false;
-    }
 }
 
 /** Returns a deduplicated manifest host list, or undefined when the value is invalid. */

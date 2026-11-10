@@ -1,3 +1,5 @@
+import { isCapabilityErrorCode, type CapabilityErrorCode } from "../../../shared/capability-constants";
+import { BOARD_HOST_TEXT_CATALOG } from "../../../shared/board/host-text";
 import color from "../../theme/color";
 import { api } from "../../../ipc/renderer/api";
 import { fpNormalizeForCompare, isPlainLocalPath } from "../../core/utils/file-path";
@@ -45,7 +47,7 @@ import type {
     BoardSaveResultMsg,
     BoardVarResultMsg,
 } from "../../../ipc/board-bridge-channels";
-import { isCapabilityErrorCode, type CapabilityErrorCode, type CapabilityOutcome, type IntentRequest } from "../../../ipc/capability-bus-channels";
+import type { CapabilityOutcome, IntentRequest } from "../../../ipc/capability-bus-channels";
 import { resolveBoardNamespace } from "../../api/board-namespace";
 import { resolveBoardVarRequest } from "../../api/board-vars/board-vars-bridge";
 import { t } from "../../../shared/i18n/t";
@@ -446,6 +448,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             if (!gatePassed) {
                 if (gate.rejectionLog) this.appendLog("warn", gate.rejectionLog);
                 if ("reqId" in message && typeof message.reqId === "number") {
+                    if (type === "board:fetch:pull" || type === "board:fetch:abort") this.fetchBridge.abort(message.reqId);
                     const error = "This board is no longer trusted.";
                     const reply: BoardHostFrameMsg | undefined = type === "board:pageState:get"
                         ? { __persephone: "pageState:get:result", reqId: message.reqId, error }
@@ -455,6 +458,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                         ? { __persephone: "pageState:remove:result", reqId: message.reqId, error }
                         : type === "board:source:navigate"
                         ? { __persephone: "source:navigate:result", reqId: message.reqId, error }
+                        : type === "board:fetch" || type === "board:fetch:pull" || type === "board:fetch:abort"
+                        ? { __persephone: "fetch:error", reqId: message.reqId, error }
                         : undefined;
                     if (reply) this.replyToFrame(context.frame, context.generation, reply);
                 }
@@ -578,24 +583,9 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const manifest = await readNormalizedBoardManifest(boardRoot);
         const boardI18n = await loadBoardI18n(boardRoot, manifest?.languages);
         if (manifest) refreshBoardDisplayText(boardRoot, boardI18n.context);
-        const hostText: BoardHostText = {
-            openLink: t("board.openLink"),
-            copyLink: t("editors.copyLink"),
-            openImageInNewTab: t("board.openImageInNewTab"),
-            copyImage: t("board.copyImage"),
-            saveImageAs: t("board.saveImageAs"),
-            imageFileFilter: t("board.imageFileFilter"),
-            allFilesFileFilter: t("board.allFilesFileFilter"),
-            cut: t("menus.cut"),
-            copy: t("menus.copy"),
-            paste: t("menus.paste"),
-            saveImageDialogTitle: t("board.saveImageDialogTitle"),
-            failedToOpenImage: t("board.failedToOpenImage"),
-            failedToCopyImage: t("board.failedToCopyImage"),
-            imageSaved: t("board.imageSaved"),
-            failedToSaveImage: t("board.failedToSaveImage"),
-            pasteFailed: t("board.pasteFailed"),
-        };
+        const hostText = Object.fromEntries(
+            Object.entries(BOARD_HOST_TEXT_CATALOG).map(([id, entry]) => [id, t(entry.key)]),
+        ) as BoardHostText;
         const h = await api.registerBoard(boardRoot, computeBoardThemePalette(), BOARD_TOKEN_VARS, boardI18n.context, hostText);
         if (!this.live) {
             void api.unregisterBoard(h);

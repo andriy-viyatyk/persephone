@@ -196,7 +196,7 @@ export abstract class TextHostEditorModel<
 
     async restore(options?: EditorRestoreOptions): Promise<void> {
         // Restoring a persisted page: a failure must reach `restorePage()`, which keeps the
-        // original descriptor as a recovery placeholder (US-1761). Swapping in an empty
+        // original descriptor as a recovery placeholder. Swapping in an empty
         // document here would be saved over the real one on the next session save.
         const fromPersistedHost = this._pendingHost !== undefined;
         try {

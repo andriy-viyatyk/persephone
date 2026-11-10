@@ -83,7 +83,7 @@ interface EditColumnRow {
 const getRowKey = (row: EditColumnRow) => row.idx;
 
 /**
- * `rows` is **not** here (US-1020 / D1). This popover's grid owns its own row array the same way
+ * `rows` is **not** here. This popover's grid owns its own row array the same way
  * the editor's does — immer would deep-freeze anything put into this state, and av-grid writes
  * `row[key] = value` itself when a cell is edited. The rows live on the model as a plain field
  * and are read back through `getRows()`.
@@ -419,7 +419,7 @@ class ColumnsOptionsContentView extends VanillaView<undefined> {
         // against an indefinite parent. It therefore falls back to the scroll area's initial
         // ~51px, the host grows to fill the popover around it, and the grid never re-measures:
         // the popover looks right and the columns list is a sliver. `height: 0` makes the base
-        // definite while the inherited `flex-grow: 1` still fills the panel (US-1191).
+        // definite while the inherited `flex-grow: 1` still fills the panel.
         gridView.root.style.height = "0";
         outerPanel.append(gridView.root);
         this.root.append(outerPanel);

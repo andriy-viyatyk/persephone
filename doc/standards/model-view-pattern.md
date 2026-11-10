@@ -365,7 +365,7 @@ code-owned `innerHTML` is acceptable when clearer, but runtime data must never b
 into markup. `replaceChildren` is allowed for a region the view owns outright, never for a
 [`KeyedList`](../../src/renderer/uikit/shared/keyed-list.ts)-managed container. For conditional
 owned roots, use [`SubtreeSwap`](../../src/renderer/uikit/shared/subtree-swap.ts); both helpers
-are direct imports from `uikit/shared/`, not public `uikit/index.ts` exports.
+are direct imports from `uikit/shared/`.
 
 ## The props-pump convention
 
@@ -400,9 +400,10 @@ fields.
 
 Every `onX` handler that crosses a props or update boundary is a bound method stored as a field and
 created once. Do not allocate an arrow handler inside a props builder or an update path. The
-existing pattern is [`TreeProviderViewImpl.ts:327-399`](../../src/renderer/components/tree-provider/TreeProviderViewImpl.ts#L327-L399),
-where selection, active-state, expansion, drag, and context-menu handlers are stable fields and
-can be passed into child props repeatedly.
+A documented example is [`DataGridView.ts`](../../src/renderer/uikit/DataGrid/DataGridView.ts),
+which installs stable callback trampolines and updates their behavior through current props. Do not
+use `TreeProviderViewImpl.treeProps()` as a stable-props example: some callbacks there are created
+as fresh arrows on each call.
 
 The reason is recorded in the header of
 [`DataGridView.ts:10-32`](../../src/renderer/uikit/DataGrid/DataGridView.ts#L10-L32):
@@ -849,9 +850,9 @@ class MyViewModel extends TComponentModel<State, Props> {
 
 | Component | Model | Description |
 |-----------|-------|-------------|
-| `GridEditor` | `GridPageModel` | Complex data grid with filters, sorting |
-| `MarkdownView` | `MarkdownViewModel` | Markdown preview with scroll state |
-| `ImageViewer` | `ImageViewModel` | Image viewer with zoom/pan |
+| `GridEditor` | `GridEditor` / `GridEditorView` | Grid editor with filters and sorting |
+| `MarkdownEditor` | `MarkdownEditor` / `MarkdownEditorView` | Markdown preview with scroll state |
+| `ImageEditor` | `ImageEditor` / `ImageEditorView` | Image viewer with zoom and pan |
 | Settings sections | `BrowserProfilesSectionModel`, `McpSectionModel`, and models in `SettingsSections.ts` | Async settings operations and external status subscriptions |
 
 ## Benefits

@@ -4,7 +4,7 @@ import { openEnvVarsPage } from "../../editors/env-vars/open-env-vars";
 import { errMessage } from "../../../shared/utils";
 
 // =============================================================================
-// Board vars bridge orchestration (EPIC-046 / US-888).
+// Board vars bridge orchestration.
 //
 // The single renderer-side entry point `BoardWebview` calls for every
 // `persephone.var.*` request: loads the store (showing the "Create environment
@@ -14,7 +14,7 @@ import { errMessage } from "../../../shared/utils";
 //
 // Requests are serialized on a shared in-flight chain so two boards hitting a
 // locked/not-configured store at once can't each pop a password/create dialog
-// (US-887 concern #5).
+// Coordinates loading, updates, and access to the board environment-variable store.
 // =============================================================================
 
 export interface BoardVarReply {
@@ -43,8 +43,8 @@ async function runVarRequest(
     method: "get" | "set" | "list" | "show",
     args: unknown[],
 ): Promise<BoardVarReply> {
-    // "show" needs the store configured and unlocked too — that's what resolves the path
-    // openEnvVarsPage() opens (US-889).
+    // "show" needs the store configured and unlocked to resolve the path that
+    // `openEnvVarsPage()` opens.
     let load = await boardVars.ensureLoaded();
 
     if (load.status === "not-configured") {

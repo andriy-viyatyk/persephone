@@ -2,7 +2,7 @@ import { fs } from "../../api/fs";
 import { fpJoin } from "../../core/utils/file-path";
 
 /**
- * Per-board custom icon resolution (EPIC-034 / US-744) — mirrors `favicon-cache.ts`.
+ * Per-board custom icon resolution — mirrors `favicon-cache.ts`.
  *
  * A board declares its icon by dropping `icon.svg` / `icon.png` / `icon.ico` (first
  * match wins, SVG preferred) in its folder. This module probes for that file and

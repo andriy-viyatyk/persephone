@@ -1,5 +1,5 @@
 /**
- * Pure builder for the boards tree (EPIC-036 / US-759). Turns a finite set of board-root
+ * Pure builder for the boards tree. Turns a finite set of board-root
  * paths into a nested tree of containing folders down to each board, with VSCode-style
  * single-child folder compaction. No filesystem walk — the input is the known
  * trusted-board list, so the whole tree is built in memory and rendered fully expanded.
@@ -20,7 +20,7 @@ import { fpBasename, fpRelative, fpSep } from "../../core/utils/file-path";
 export interface BoardTreeNode {
     /** Globally-unique row id. Folder → "dir:<normalized path>"; board → "board:<absolute root>".
      *  The prefixes namespace the two kinds so a folder path can never collide with a board root
-     *  (defensive — US-766 already forbids a board nested inside another trusted board). */
+     *  (defensive — already forbids a board nested inside another trusted board). */
     value: string;
     /** Display label — a path segment, a compacted joined-path, or the board folder name. */
     label: string;

@@ -1,9 +1,10 @@
+import { PLATFORM_AUDIO_CAPABILITY_ID, PLATFORM_CAPABILITY_IDS } from "./capability-constants";
+export type { CapabilityErrorCode } from "./capability-constants";
 import { normalizeBoardServicePath, normalizeStringList, type BoardServiceInterfaceDeclaration } from "./board-manifest-utils";
 import { CAPABILITY_DEFAULT_TIMEOUT_MS, CAPABILITY_MAX_TIMEOUT_MS, MAX_CAPABILITY_ARGUMENTS, MAX_CAPABILITY_DECLARATIONS, MAX_CAPABILITY_DESCRIPTION_LENGTH, MAX_CAPABILITY_ID_LENGTH, MAX_CAPABILITY_METHOD_NAME_LENGTH, MAX_CAPABILITY_METHODS, MAX_CAPABILITY_TITLE_LENGTH } from "./capability-limits";
 
 export interface CapabilityArgument { name: string; type: string; optional?: boolean; description?: string }
 export type CapabilityJson = null | boolean | number | string | CapabilityJson[] | { [key: string]: CapabilityJson };
-export type CapabilityErrorCode = "no-handler" | "untrusted" | "handler-closed" | "crashed" | "cancelled" | "timeout" | "cycle" | "payload-too-large" | "busy" | "rejected" | "permission-denied" | "channel-backpressure" | "channel-closed";
 export interface CapabilityCallerIdentity { id: string; name: string; kind: "board-page" | "board-service" | "platform" | "agent" }
 export interface CapabilityMethod { kind: "call" | "channel" | "open"; summary: string; args: CapabilityArgument[]; returns?: string; timeoutMs: number; agent: boolean; payloadSchema?: unknown }
 export interface BoardCapabilityDeclaration {
@@ -12,7 +13,7 @@ export interface BoardCapabilityDeclaration {
     methods?: Record<string, CapabilityMethod>;
 }
 
-const reservedIds = ["text.open", "content.view", "image.edit", "diagram.edit", "http.request.open", "certificate.view", "theme.edit", "agent.session", "speech.transcribe", "speech.synthesize", "speech.wake", "text.translate"];
+const reservedIds: readonly string[] = Object.values(PLATFORM_CAPABILITY_IDS);
 const identifier = /^[A-Za-z][A-Za-z0-9_]*$/;
 const legacyOpenTypes: Readonly<Record<string, readonly string[]>> = {
     "speech.transcribe": ["describe", "transcribe"],
@@ -65,7 +66,7 @@ const boundedString = (value: unknown, max: number, nonempty = false): value is 
 export function validateLegacyCapabilityDeclaration(declaration: BoardCapabilityDeclaration): string | undefined {
     const id = declaration.id.trim();
     if (!id) return "Capability id must not be empty.";
-    if (id === "audio") return 'Capability id "audio" is reserved for Persephone.';
+    if (id === PLATFORM_AUDIO_CAPABILITY_ID) return 'Capability id "audio" is reserved for Persephone.';
     if (/\s/.test(id)) return `Capability id "${id}" must not contain whitespace.`;
     if (id.includes("@")) return `Capability id "${id}" must not contain "@".`;
     if (declaration.version !== undefined && !Number.isInteger(declaration.version)) return `Capability "${id}" version must be an integer.`;

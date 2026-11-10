@@ -52,7 +52,7 @@ export interface MnemeRootEditorState extends EditorStateBase {
     /** Selected file href in the tree — highlighted on restore. */
     selectedHref?: string;
 
-    // --- Search (US-676) — all transient (skipSave); reset on restore. ---
+    // --- Search — all transient (skipSave); reset on restore. ---
     /** Current query text. */
     searchQuery: string;
     /** Selected search mode (default "hybrid"). */
@@ -68,7 +68,7 @@ export interface MnemeRootEditorState extends EditorStateBase {
     /** False until the first search runs — distinguishes the initial hint from "no results". */
     hasSearched: boolean;
 
-    // --- Filters (US-678) — all transient; folded into search on the next run. ---
+    // --- Filters — all transient; folded into search on the next run. ---
     /** Include tags — a result must carry all of these. */
     filterTags: string[];
     /** Exclude tags — a result must carry none of these. */
@@ -118,7 +118,7 @@ export const getDefaultMnemeRootEditorState = (): MnemeRootEditorState => ({
 });
 
 /**
- * Mneme root editor (EPIC-032 / US-663).
+ * Mneme root editor.
  *
  * Opened by clicking a `.mneme` folder in any file tree (mirrors `.git` → Git
  * Tree). The main view is a "Mneme" placeholder for now; the editor's value is

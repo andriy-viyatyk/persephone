@@ -52,7 +52,7 @@ export function allowDrop(e: DragEvent): void {
     }
 }
 
-// ── OS file drags + event-expando transport (US-675) ──────────────────────────
+// ── OS file drags + event-expando transport  ──────────────────────────
 
 /** True if the drag carries OS files. During `dragover` only the type is visible
  *  (the file list/paths become readable at `drop`). */

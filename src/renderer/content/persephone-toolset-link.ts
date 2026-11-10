@@ -1,9 +1,9 @@
 /**
- * `persephone-toolset://` link scheme (EPIC-038 / US-805).
+ * `persephone-toolset://` link scheme.
  *
  * Opens a SINGLE toolset by its own root path through the `openRawLink` pipeline, routing to
  * `target: "toolset-view"`. The link is a PURE toolset identifier: it encodes the toolset root
- * and nothing else. Mirrors `persephone-board://` (US-748).
+ * and nothing else. Mirrors `persephone-board://`.
  *
  * A link scheme (not a filename-`accepts` editor) is deliberate: a normal click on
  * `tools-manifest.json` in Explorer must still open the JSON in Monaco; only the Explorer

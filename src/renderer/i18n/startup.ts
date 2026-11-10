@@ -1,3 +1,4 @@
+import { getStartupDataPath } from "../core/utils/startup-data-path";
 import { parseJSON5 } from "../core/utils/parse-utils";
 import { fpJoin } from "../core/utils/file-path";
 import { errMessage } from "../../shared/utils";
@@ -46,7 +47,7 @@ function readDirectory(directory: string): LanguagePack[] {
 
 function readStartupLanguage(): string {
     try {
-        const settingsPath = fpJoin(process.env.APPDATA, "persephone", "data", "appSettings.json");
+        const settingsPath = fpJoin(getStartupDataPath(), "appSettings.json");
         const parsed = parseJSON5(nodeFs.readFileSync(settingsPath, "utf8")) as { settings?: { language?: unknown }; language?: unknown } | undefined;
         const language = parsed?.settings?.language ?? parsed?.language;
         return typeof language === "string" ? language : "auto";
@@ -76,7 +77,7 @@ function readStartupArguments(): { preferred: string[]; assetDirectory: string }
 
 const startupArguments = readStartupArguments();
 const builtInPacks = readDirectory(startupArguments.assetDirectory);
-const userPacks = readDirectory(fpJoin(process.env.APPDATA, "persephone", "data", "languages"));
+const userPacks = readDirectory(fpJoin(getStartupDataPath(), "languages"));
 const allPacks = [...builtInPacks, ...userPacks];
 const requestedLocale = readStartupLanguage();
 const activeLocale = resolveLocale(requestedLocale, startupArguments.preferred, allPacks);

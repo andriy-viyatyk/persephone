@@ -1,9 +1,9 @@
 /**
- * `tor-src://` protocol handler (US-896).
+ * `tor-src://` protocol handler.
  *
  * Tor mode is a per-browser-page Electron session partition carrying a SOCKS5
  * proxy (see `tor-service.ts`). That proxy covers the page's `<webview>` only —
- * anything the app renderer draws itself (React) goes out over the app session
+ * anything the app renderer draws itself goes out over the app session
  * and leaks the user's real IP. The Link editor rendered on a Tor page's blank
  * tab is exactly that case: its bookmark images are plain `<img src="https://…">`.
  *
@@ -67,7 +67,7 @@ async function handleTorSrc(request: Request): Promise<Response> {
     try {
         // The Tor partition's session carries the SOCKS5 proxy — this is the
         // whole point of routing through main rather than fetching in the
-        // renderer. No header rewriting: no UA/Referer spoofing (US-896).
+        // renderer. No header rewriting: no UA/Referer spoofing.
         upstream = await session.fromPartition(torPartition).fetch(target);
     } catch (err) {
         return new Response(`Tor fetch failed: ${errMessage(err)}`, { status: 502 });

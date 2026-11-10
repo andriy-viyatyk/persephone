@@ -5,6 +5,7 @@ import { app, BrowserWindow, dialog, DownloadItem, Session, shell, WebContents }
 import { DownloadEntry } from "../ipc/api-param-types";
 import type { BrowserUrlMaskClaim } from "../ipc/api-param-types";
 import { EventEndpoint } from "../ipc/api-types";
+import type { BoardNotifyMsg } from "../ipc/board-bridge-channels";
 import { matchesBrowserUrlMask } from "../shared/browser-url-masks";
 import { openWindows } from "./open-windows";
 import { getDataFolder, preparePath } from "./utils";
@@ -59,7 +60,7 @@ function motwUrl(raw: string): string | undefined {
 /**
  * Mark a completed browser download as coming from the internet (Mark-of-the-Web), as Chrome
  * and Firefox do: Windows then shows SmartScreen for executables, Protected View for Office
- * files and the "blocked" flag on archives. Electron does not write it (US-1592).
+ * files and the "blocked" flag on archives. Electron does not write it.
  * ZoneId=3 is always written: Persephone does not map URLs to the user's IE zones, so
  * intranet sources are treated as internet too (the stricter side). A filesystem without
  * alternate data streams (FAT32, exFAT, some network shares) cannot store the mark; the
@@ -170,7 +171,7 @@ class DownloadService {
             item.cancel();
             const torPartition = torService.findActivePartitionForSession(webContents.session);
             const routed = Boolean(torPartition) || browserNetworkService.isProxiedSession(webContents.session);
-            // A proxied profile is persistent but must not hand the board a direct fetch (US-1557).
+            // A proxied profile is persistent but must not hand the board a direct fetch.
             const sessionHandle = torPartition
                 || !webContents.session.isPersistent()
                 || routed
@@ -184,7 +185,7 @@ class DownloadService {
             sendToBrowserHost(webContents, EventEndpoint.eBoardNotify, {
                 message: `${claim.boardName} claimed this download and opened its source URL.`,
                 type: "info",
-            });
+            } satisfies BoardNotifyMsg);
             return;
         }
 

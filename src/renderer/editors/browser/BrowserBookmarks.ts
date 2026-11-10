@@ -14,7 +14,7 @@ export class BrowserBookmarks {
     readonly textFileHost: TextFileModel;
     readonly linkEditor: LinkEditor;
     /** IPageHost that hosts the Link editor's SecondaryViews panels in the
-     *  browser empty page + bookmarks drawer (US-601). */
+     *  browser empty page + bookmarks drawer. */
     readonly panelHost = new BrowserPanelHost();
     private saveDebounced = debounce(() => this.textFileHost.saveFile(), 300);
     private readonly subscriptions = new DisposableStore();
@@ -63,7 +63,7 @@ export class BrowserBookmarks {
         this.linkEditor.adoptHost(this.textFileHost);
         this.linkEditor.loadData(this.textFileHost.state.get().content ?? "");
 
-        // US-601 — attach the Link editor to the browser panel host so its
+        // Attach the Link editor to the browser panel host so its
         // Categories/Tags/Hostnames panels render via SecondaryViews on the
         // browser empty page + bookmarks drawer. setPage seeds the active panel
         // from the restored `expandedPanel` HS1 slot.

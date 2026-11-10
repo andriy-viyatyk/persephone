@@ -124,7 +124,7 @@ export class PagesModel extends TModel<OpenFilesState> {
     /**
      * Remove a page from `pages[]` / `ordered[]`. Does NOT dispose the page —
      * `detachPage` cleared `onClose`, and the cross-window transfer path
-     * (walkthrough 05 / M4) relies on this. CK7: drops compareGroups entry
+     * This relies on the exactly-two-pages invariant. It drops the compareGroups entry
      * for the pair.
      */
     removePage = (page: PageModel) => {
@@ -141,7 +141,7 @@ export class PagesModel extends TModel<OpenFilesState> {
             if (s.popoverPageId === page.id) s.popoverPageId = undefined;
             // Read `compareGroups` off the pre-update snapshot, never off the draft.
             // `TOneState.update` runs immer `produce` and this repository deliberately
-            // does not call `enableMapSet()` (US-970), so *reading* a Set/Map property
+            // does not call `enableMapSet()`, so *reading* a Set/Map property
             // on a draft makes immer try to proxy it and throw "The plugin for 'MapSet'
             // has not been loaded". Assigning one is fine, which is why every other
             // `compareGroups`/`leftRight`/`rightLeft` write in PagesLayoutModel is safe.
@@ -201,8 +201,8 @@ export class PagesModel extends TModel<OpenFilesState> {
 
     /**
      * Close the first page if it's a fresh empty Monaco page and there are
-     * exactly two pages total. Walkthrough 01 / L3 + A3: delegate to the
-     * editor's `isFreshEmpty()` instead of hardcoding state-field checks.
+     * exactly two pages total. Delegate to the editor's `isFreshEmpty()` so the
+     * exactly-two-pages invariant stays in PagesModel.
      */
     closeFirstPageIfEmpty = () => {
         const pages = this.state.get().pages;
@@ -225,9 +225,6 @@ export class PagesModel extends TModel<OpenFilesState> {
         return this.query.groupedPage;
     }
     findPage = (pageId?: string) => this.query.findPage(pageId);
-    findPagesByBoardRoot = (boardRoot?: string) => this.query.findPagesByBoardRoot(boardRoot);
-    findPageByBoardRoot = (boardRoot?: string, singleInstanceMasks?: readonly string[]) =>
-        this.query.findPageByBoardRoot(boardRoot, singleInstanceMasks);
     getGroupedPage = (withPageId: string) =>
         this.query.getGroupedPage(withPageId);
     getLeftGroupedPage = (withPageId: string) =>
@@ -242,7 +239,6 @@ export class PagesModel extends TModel<OpenFilesState> {
     get pages() {
         return this.query.pages;
     }
-    getFirstRightPinnedIndex = () => this.query.getFirstRightPinnedIndex();
 
     // Navigation delegates
     showPage = (pageId?: string) => this.navigation.showPage(pageId);
@@ -283,8 +279,6 @@ export class PagesModel extends TModel<OpenFilesState> {
         await page?.ready;
         return page;
     };
-    openFileAsArchive = (filePath: string) =>
-        this.lifecycle.openFileAsArchive(filePath);
     closePage = (pageId: string) => this.lifecycle.closePage(pageId);
     openFileWithDialog = () => this.lifecycle.openFileWithDialog();
     openFileFromDialog = () => this.lifecycle.openFileFromDialog();
@@ -306,7 +300,6 @@ export class PagesModel extends TModel<OpenFilesState> {
     }) => this.lifecycle.movePageIn(data);
     movePageOut = (pageId?: string) => this.lifecycle.movePageOut(pageId);
     duplicatePage = (pageId: string) => this.lifecycle.duplicatePage(pageId);
-    handleOpenUrl = (url: string) => this.lifecycle.handleOpenUrl(url);
     openPathInNewWindow = (filePath: string) =>
         this.lifecycle.openPathInNewWindow(filePath);
     requireGroupedText = (pageId: string, suggestedLanguage?: string) =>
@@ -345,8 +338,6 @@ export class PagesModel extends TModel<OpenFilesState> {
     // Layout delegates
     moveTab = (fromId: string, toId: string) =>
         this.layout.moveTab(fromId, toId);
-    moveTabByIndex = (fromIndex: number, toIndex: number) =>
-        this.layout.moveTabByIndex(fromIndex, toIndex);
     pinTab = (pageId: string, side: "left" | "right" = "left") =>
         this.layout.pinTab(pageId, side);
     unpinTab = (pageId: string) => this.layout.unpinTab(pageId);
@@ -358,13 +349,11 @@ export class PagesModel extends TModel<OpenFilesState> {
         pageId2: string,
         enforceAdjacency = false
     ) => this.layout.groupTabs(pageId1, pageId2, enforceAdjacency);
-    fixGrouping = () => this.layout.fixGrouping();
     enterCompareMode = (pageId: string) => this.layout.enterCompareMode(pageId);
     exitCompareMode = (pageId: string) => this.layout.exitCompareMode(pageId);
 
     // Persistence delegates
     saveState = () => this.persistence.saveState();
     saveStateDebounced = () => this.persistence.saveStateDebounced();
-    onAppQuit = () => this.persistence.onAppQuit();
     init = () => this.persistence.init();
 }

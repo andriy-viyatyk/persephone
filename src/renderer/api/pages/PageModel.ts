@@ -229,13 +229,12 @@ export class PageModel implements IPageHost {
     }
 
     /** The bare panel-type id of the active panel (composite `activePanel` is
-     *  `${editorId}::${panelId}`). Use this for "is panel X expanded" checks
-     *  (US-619). */
+     *  `${editorId}::${panelId}`). Use this for "is panel X expanded" checks. */
     get activePanelId(): string {
         return panelIdOf(this.activePanel);
     }
 
-    // ── Per-editor slice subscriptions (walkthrough 03 / N1) ───────────
+    // ── Per-editor slice subscriptions ────────────────────────────────
 
     private _editorSubs = new Map<string, () => void>();
     private readonly subscriptions = new DisposableStore();
@@ -252,7 +251,7 @@ export class PageModel implements IPageHost {
      * a page moves between windows. `onClose` also fires only from the interactive `close()`,
      * while `dispose()` is reached by every teardown path.
      *
-     * Added by EPIC-108 (US-1480) for the capability bus, which must settle a caller's
+     * Added for the capability bus, which must settle a caller's
      * in-flight intents when its page goes away.
      */
     readonly disposed = new Subscription<void>();
@@ -450,7 +449,7 @@ export class PageModel implements IPageHost {
 
     /** Add an editor to `editors[]`. No-op if already present.
      *
-     *  Walkthrough 03 / N1: subscribes to the editor's `secondaryView` slice
+     *  Subscribe to the editor's `secondaryView` slice
      *  via the TOneState selector overload. The handler fires only when the
      *  panel list reference changes; visibility criterion enforced in
      *  `onEditorPanelsChanged`. */
@@ -489,9 +488,9 @@ export class PageModel implements IPageHost {
             this.state.update((s) => { s.mainEditorId = null; });
         }
         // Adjust activePanel if it pointed to a panel this editor owned. A
-        // composite key carries the owning editor id; a bare value (a pre-US-619
+        // composite key carries the owning editor id; a bare value (a pre-
         // persisted id not yet converted by an accordion click) is matched
-        // against the detached editor's own panel ids (US-619).
+        // against the detached editor's own panel ids.
         const active = parsePanelKey(this.activePanel);
         const ownedByDetached = active.editorId
             ? active.editorId === editor.id
@@ -524,15 +523,6 @@ export class PageModel implements IPageHost {
             return;
         }
         if (editor) this.attach(editor as EditorModel);
-    }
-
-    /** Compat shim — detach without disposing. */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    removeSecondaryViewWithoutDispose(editor: any): void {
-        const id = editor?.state?.get?.()?.id ?? editor?.id;
-        const target = id ? this.editors.find((e) => e.id === id) : undefined;
-        if (target) this.detach(target);
-        else if (editor) this.detach(editor as EditorModel);
     }
 
     /** Compat shim — detach + dispose. Used when the user explicitly closes a panel. */
@@ -575,11 +565,6 @@ export class PageModel implements IPageHost {
         while (this.pendingCleanupPromises.size) {
             await Promise.all([...this.pendingCleanupPromises]);
         }
-    }
-
-    /** Compat shim — find a secondary view by its id. */
-    findSecondaryView(editorId: string): EditorModel | undefined {
-        return this.panelEditors.find((e) => e.id === editorId);
     }
 
     /**
@@ -630,7 +615,7 @@ export class PageModel implements IPageHost {
         let editorToDispose: EditorModel | null = null;
         const idTransferred = !!(oldMain && newEditor && oldMain.id === newEditor.id);
         // Survival criteria: panel contributors demote to the sidebar; a
-        // keep-alive editor (busy Board, US-799) stays attached as an invisible
+        // keep-alive editor (busy Board) stays attached as an invisible
         // ownership handle. Everything else is detached + disposed.
         if (
             oldMain &&
@@ -734,7 +719,7 @@ export class PageModel implements IPageHost {
             this._activePanel = patch.activePanel;
             // Side effects use the BARE panel id (the composite key carries the
             // owning editor id). Resolve the owner by id first, then fall back to
-            // a panel-type match for a bare/seed value (US-619).
+            // a panel-type match for a bare/seed value.
             const { editorId, panelId } = parsePanelKey(patch.activePanel);
             const owner = this.editors.find((e) => e.id === editorId)
                 ?? this.editors.find((e) => e.secondaryView?.includes(panelId));
@@ -764,7 +749,7 @@ export class PageModel implements IPageHost {
      *  through). Models call this with their bare panel id; since every current
      *  multi-instance concern (`git-changes`) has no `expandPanel` caller, the
      *  first-owner resolution is unambiguous in practice. A future multi-owner
-     *  panel that calls `expandPanel` should pass the composite key (US-619). */
+     *  panel that calls `expandPanel` should pass the composite key. */
     expandPanel(panelId: string): void {
         if (!panelId) return;
         if (isCompositePanelKey(panelId)) {
@@ -914,7 +899,7 @@ export class PageModel implements IPageHost {
 
     /**
      * Close this page (tab). Iterates panel-contributing editors first, then
-     * the main editor (walkthrough 03 / N7). Cancellation on any modified
+     * the main editor (walkthrough 03 / ). Cancellation on any modified
      * editor aborts the close while leaving the page visible.
      */
     async close(): Promise<boolean> {
@@ -976,8 +961,8 @@ export class PageModel implements IPageHost {
     // ── Persistence ──────────────────────────────────────────────────
 
     /**
-     * Build the page's serialized descriptor (walkthrough 04 / C7 +
-     * walkthrough 08 / T3). Consumed by PagesPersistenceModel.saveState,
+     * Build the page's serialized descriptor (walkthrough 04 / +
+     * walkthrough 08 / ). Consumed by PagesPersistenceModel.saveState,
      * PageTab.getDragData, and PagesLifecycleModel.duplicatePage.
      */
     getDescriptor(): PageDescriptor {

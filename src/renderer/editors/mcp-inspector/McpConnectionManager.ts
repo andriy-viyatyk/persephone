@@ -19,7 +19,7 @@ export interface McpConnectionConfig {
     command?: string;
     args?: string[];
     env?: Record<string, string>;
-    /** Auto-reconnect with capped backoff on unexpected transport drops (US-671). Default false. */
+    /** Auto-reconnect with capped backoff on unexpected transport drops. Default false. */
     autoReconnect?: boolean;
 }
 
@@ -47,7 +47,7 @@ export interface McpServerInfo {
 let ClientClass: typeof Client;
 let StreamableHTTPClientTransportClass: typeof StreamableHTTPClientTransport;
 let StdioClientTransportClass: typeof StdioClientTransport;
-// Notification schemas for resource subscriptions (US-661); loaded alongside the client.
+// Notification schemas for resource subscriptions; loaded alongside the client.
 let ResourceUpdatedNotificationSchemaRef: typeof import("@modelcontextprotocol/sdk/types.js").ResourceUpdatedNotificationSchema;
 let ResourceListChangedNotificationSchemaRef: typeof import("@modelcontextprotocol/sdk/types.js").ResourceListChangedNotificationSchema;
 
@@ -70,7 +70,7 @@ export class McpConnectionManager {
     private _serverInfo: McpServerInfo | null = null;
     private _error = "";
     private _disconnecting = false;
-    /** Last config passed to connect(), replayed by auto-reconnect (US-671). */
+    /** Last config passed to connect(), replayed by auto-reconnect. */
     private _lastConfig: McpConnectionConfig | null = null;
     /** Whether to auto-reconnect on unexpected transport drops (opt-in per connection). */
     private _autoReconnect = false;
@@ -80,14 +80,14 @@ export class McpConnectionManager {
     private _reconnectAttempt = 0;
     /** Identity of the current client/transport pair. Late callbacks from an older pair are inert. */
     private _transportGeneration = 0;
-    /** Resource URIs to (re)subscribe on connect; survives reconnects, cleared on dispose (US-661). */
+    /** Resource URIs to (re)subscribe on connect; survives reconnects, cleared on dispose. */
     private subscriptions = new Set<string>();
 
     /** Callback fired whenever connection status changes. */
     onStatusChange: (status: McpConnectionStatus, error?: string) => void = () => {};
-    /** Fired when the server emits notifications/resources/updated for a subscribed URI (US-661). */
+    /** Fired when the server emits notifications/resources/updated for a subscribed URI. */
     onResourceUpdated: (uri: string) => void = () => {};
-    /** Fired when the server emits notifications/resources/list_changed (US-661). */
+    /** Fired when the server emits notifications/resources/list_changed. */
     onResourceListChanged: () => void = () => {};
 
     get status(): McpConnectionStatus { return this._status; }
@@ -99,7 +99,7 @@ export class McpConnectionManager {
         return this._status === "connected" ? this.client : null;
     }
 
-    /** Subscribe to a resource URI's `resources/updated` notifications (US-661). The URI is
+    /** Subscribe to a resource URI's `resources/updated` notifications. The URI is
      *  remembered and re-subscribed on every (re)connect; calling while disconnected just records
      *  it for replay. Failures (missing capability / unknown doc) are swallowed. */
     async subscribeResource(uri: string): Promise<void> {
@@ -113,7 +113,7 @@ export class McpConnectionManager {
         }
     }
 
-    /** Stop receiving `resources/updated` for a URI and drop it from the replay set (US-661). */
+    /** Stop receiving `resources/updated` for a URI and drop it from the replay set. */
     async unsubscribeResource(uri: string): Promise<void> {
         this.subscriptions.delete(uri);
         if (this._status === "connected" && this.client) {
@@ -131,7 +131,7 @@ export class McpConnectionManager {
             await this.disconnect();
         }
 
-        // Remember the target so an unexpected drop can be retried (US-671). Set after the guard's
+        // Remember the target so an unexpected drop can be retried. Set after the guard's
         // disconnect(), which clears these. A scheduled retry is superseded by this explicit attempt.
         this._lastConfig = config;
         this._autoReconnect = !!config.autoReconnect;
@@ -150,7 +150,7 @@ export class McpConnectionManager {
                     new URL(config.url),
                     {
                         // Harden the SSE stream against transient drops before the app-level
-                        // auto-reconnect (US-671) has to step in — the SDK default is only 2 retries.
+                        // auto-reconnect has to step in — the SDK default is only 2 retries.
                         reconnectionOptions: {
                             initialReconnectionDelay: 1000,
                             maxReconnectionDelay: 15000,
@@ -174,7 +174,7 @@ export class McpConnectionManager {
                 { capabilities: {} },
             );
 
-            // Resource-subscription notifications (US-661) — register before connect so a
+            // Resource-subscription notifications — register before connect so a
             // notification arriving immediately after the stream opens isn't missed.
             this.client.setNotificationHandler(ResourceUpdatedNotificationSchemaRef, (n) => {
                 this.onResourceUpdated(n.params.uri);
@@ -225,7 +225,7 @@ export class McpConnectionManager {
             };
 
             // Replay subscriptions across (re)connects — the prior Client was destroyed on
-            // disconnect, and an auto-reconnect (US-671) lands here too (US-661).
+            // disconnect, and an auto-reconnect lands here too.
             if (this.subscriptions.size > 0 && this._serverInfo.capabilities.resources) {
                 for (const uri of this.subscriptions) {
                     try {

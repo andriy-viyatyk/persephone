@@ -1,9 +1,9 @@
 /**
- * Tool execution engine (EPIC-038 / US-802). Runs a registered tool: resolve `toolId` in
+ * Tool execution engine. Runs a registered tool: resolve `toolId` in
  * `registeredTools`, load the toolset's `.env`, spawn its `command` via `app.proc.execute` with
  * cwd = the toolset folder, feed the JSON `args` on stdin, enforce a timeout with tree-kill, and
  * reduce the child's output to a structured {@link ToolRunResult} via the marker/fallback
- * contract (EPIC C2). After every run it records call stats (`tool-stats.ts`) and appends the
+ * contract. After every run it records call stats (`tool-stats.ts`) and appends the
  * run to the per-toolset log (`tool-log.ts`).
  *
  * The handle is consumed in STREAMING mode (not `getJson`): `getJson(pattern)` throws on a
@@ -12,7 +12,7 @@
  * which the self-repair reply (exit code + stderr + toolset path) needs.
  *
  * Not exposed on `app`/scripts — this is the trust-gated surface reached only via the MCP
- * meta-tools (US-803) and the management UI (US-805). (Scripts already have raw `app.proc`.)
+ * meta-tools and the management UI. (Scripts already have raw `app.proc`.)
  */
 import { proc } from "../proc";
 import { registeredTools, RegisteredTool } from "./registered-tools";
@@ -21,11 +21,11 @@ import { toolStats } from "./tool-stats";
 import { appendToolLog, ToolLogEntry } from "./tool-log";
 import { concatChunks, errMessage } from "../../../shared/utils";
 
-/** The stdout result marker (EPIC C2). A tool prints `##PERSEPHONE_RESULT##<json>` on its own
+/** The stdout result marker. A tool prints `##PERSEPHONE_RESULT##<json>` on its own
  *  line; the LAST occurrence wins, so third-party library noise on stdout is harmless. */
 export const TOOL_RESULT_MARKER = "##PERSEPHONE_RESULT##";
 
-/** Default per-tool timeout when the manifest omits `timeoutMs` (EPIC C6). */
+/** Default per-tool timeout when the manifest omits `timeoutMs`. */
 export const DEFAULT_TOOL_TIMEOUT_MS = 120_000;
 
 export interface ToolRunResult {
@@ -46,14 +46,14 @@ export interface ToolRunResult {
     /** true when the run was killed by the timeout. */
     timedOut: boolean;
     durationMs: number;
-    /** Non-blocking best-effort arg-validation notes (EPIC C12); the tool ran regardless. */
+    /** Non-blocking best-effort arg-validation notes; the tool ran regardless. */
     argWarnings?: string[];
     /** Human-readable failure summary when !ok. */
     error?: string;
 }
 
 /**
- * Best-effort structural check of `args` against a tool's `inputSchema` (EPIC C12 — no ajv).
+ * Best-effort structural check of `args` against a tool's `inputSchema` without Ajv. Collects a
  * NON-BLOCKING: returns human-readable warnings only; the caller runs the tool regardless (the
  * tool script validates its own inputs anyway). A missing/loose schema yields no warnings.
  */
@@ -113,7 +113,7 @@ interface ParsedOutput {
     parseError?: string;
 }
 
-/** Extract the result from stdout per the C2 contract: last `##PERSEPHONE_RESULT##<json>` line
+/** Extract the result from stdout per the contract: last `##PERSEPHONE_RESULT##<json>` line
  *  wins; the marker line(s) are stripped from `logs`; no marker → whole trimmed stdout is a
  *  plain-text result. */
 function parseToolOutput(stdout: string): ParsedOutput {
@@ -141,7 +141,7 @@ function parseToolOutput(stdout: string): ParsedOutput {
     }
 }
 
-/** Run an already-resolved tool. Used by {@link executeToolById} and the US-805 test-run. */
+/** Run an already-resolved tool. Used by {@link executeToolById} and the test-run. */
 export async function executeTool(tool: RegisteredTool, args?: unknown): Promise<ToolRunResult> {
     const startedAt = Date.now();
     const argWarnings = validateArgs(tool.tool.inputSchema, args);

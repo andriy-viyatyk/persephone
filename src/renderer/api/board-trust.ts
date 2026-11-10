@@ -1,11 +1,11 @@
 /**
- * Per-board trust gate (EPIC-035). A Board's UI is web content and
+ * Per-board trust gate. A Board's UI is web content and
  * `persephone.execute()` is arbitrary RCE, so a board does not render or run
  * until the user has trusted it. Trust is per board (its absolute root folder),
  * persisted across sessions in a line-delimited list of original-case absolute
  * paths at `<userData>/data/trustedBoards.txt`.
  *
- * Main owns that file and the snapshots derived from it (US-1538): this class
+ * Main owns that file and the snapshots derived from it: this class
  * asks main to mutate trust and mirrors the authoritative list main returns or
  * broadcasts to every window, so no window can hold, or push back, a stale list.
  *
@@ -20,7 +20,7 @@
 import { api } from "../../ipc/renderer/api";
 import { TGlobalState } from "../core/state/state";
 import { fpNormalizeForCompare } from "../core/utils/file-path";
-import type { NormalizedBoardPermissions, BoardPermissionFlags, BoardServiceUseDeclaration } from "../../shared/board-manifest-utils";
+import { boardPermissionAllows, type NormalizedBoardPermissions, type BoardPermissionFlags, type BoardServiceUseDeclaration } from "../../shared/board-manifest-utils";
 
 /**
  * True when `ancestorKey` equals or contains `descendantKey` (path-boundary aware).
@@ -141,9 +141,7 @@ class BoardTrust {
             const key = fpNormalizeForCompare(boardRoot);
             const grant = [...this.grants].find(([root]) => pathCovers(root, key))?.[1];
             if (!grant) return false;
-            if (grant.kind === "legacy") return flag !== "service" || grant.service;
-            const value = grant.flags[flag];
-            return value === true || value === "board" || value === "full" || value === "internet";
+            return boardPermissionAllows(grant, flag);
         } catch { return false; }
     }
 

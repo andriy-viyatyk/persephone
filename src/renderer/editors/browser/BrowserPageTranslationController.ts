@@ -1,4 +1,4 @@
-import type { TranslationActivationMessage, TranslationDetectionSampleMessage, TranslationFrameScope, TranslationResultMessage, TranslationUnit, TranslationUnitsMessage } from "../../../ipc/browser-translation-messages";
+import type { TranslationActivationMessage, TranslationFrameScope, TranslationResultMessage, TranslationUnit, TranslationUnitsMessage } from "../../../ipc/browser-translation-messages";
 import { errMessage } from "../../../shared/utils";
 import { getTextTranslationProvider, type TranslationPriority } from "../../ui/translation/TextTranslationProvider";
 
@@ -22,7 +22,6 @@ export class BrowserPageTranslationController {
     private readonly currentFrameByTuple = new Map<string, FrameKey>();
     private readonly queue = new Map<string, QueuedUnit>();
     private readonly latestRevisions = new Map<string, number>();
-    private readonly detectionSamples = new Map<string, TranslationDetectionSampleMessage>();
     private providerId: string | undefined;
     private scope = "";
     private active = false;
@@ -51,10 +50,6 @@ export class BrowserPageTranslationController {
         for (const listener of this.stateListeners) listener();
     }
 
-    /** Latest sample is retained per frame; US-1737 consumes the top frame's value. */
-    get latestDetectionSample(): TranslationDetectionSampleMessage | undefined {
-        return this.detectionSamples.values().next().value as TranslationDetectionSampleMessage | undefined;
-    }
 
     async start(from: string, to: string): Promise<void> {
         await this.stop();
@@ -77,21 +72,13 @@ export class BrowserPageTranslationController {
         this.queue.clear(); this.latestRevisions.clear(); this.inFlight = 0;
         for (const [key, frame] of this.frames) this.sendActivation(key, frame, false);
         this.scope = "";
-        if (clearFrames) { this.frames.clear(); this.currentFrameByTuple.clear(); this.detectionSamples.clear(); }
+        if (clearFrames) { this.frames.clear(); this.currentFrameByTuple.clear(); }
         this.notifyStateChanged();
     }
 
     dispose(): void { void this.stop(true); }
 
-    handleFrame(frameId: [number, number], kind: "translation-ready" | "translation-units" | "translation-detection-sample", payload: unknown): void {
-        if (kind === "translation-detection-sample") {
-            const sample = payload as TranslationDetectionSampleMessage;
-            if (!sample?.scope?.document || typeof sample.text !== "string") return;
-            const key = this.registerFrame(frameId, sample.scope);
-            this.detectionSamples.set(key, sample);
-            this.notifyStateChanged();
-            return;
-        }
+    handleFrame(frameId: [number, number], kind: "translation-ready" | "translation-units", payload: unknown): void {
         const message = payload as TranslationUnitsMessage;
         if (!message?.scope?.document || (kind === "translation-units" && !Array.isArray(message.items))) return;
         const key = this.registerFrame(frameId, message.scope);
@@ -181,7 +168,7 @@ export class BrowserPageTranslationController {
 
     private dropFrame(key: FrameKey): void {
         const frame = this.frames.get(key);
-        this.frames.delete(key); this.detectionSamples.delete(key);
+        this.frames.delete(key);
         for (const [unitKey, queued] of this.queue) if (queued.frameKey === key) this.queue.delete(unitKey);
         for (const unitKey of this.latestRevisions.keys()) if (unitKey.startsWith(`${key}\u0000`)) this.latestRevisions.delete(unitKey);
         if (frame && this.currentFrameByTuple.get(frame.tuple) === key) this.currentFrameByTuple.delete(frame.tuple);

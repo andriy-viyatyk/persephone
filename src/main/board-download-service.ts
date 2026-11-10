@@ -8,7 +8,7 @@ import { EventEndpoint } from "../ipc/api-types";
 import { BoardArchiveDownloadRequest } from "../ipc/api-param-types";
 
 /**
- * Board-archive download service (EPIC-045 / US-863). Streams a published board's
+ * Board-archive download service. Streams a published board's
  * release ZIP via `net.fetch`, verifying its sha256 incrementally, into a dedicated
  * scratch folder under the app's data folder (NOT the OS temp dir). Broadcasts throttled
  * progress and supports cancel. Trusts nothing — the renderer (`board-install.ts`)

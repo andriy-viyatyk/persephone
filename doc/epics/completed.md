@@ -1,3 +1,18 @@
+## EPIC-141 — Refactoring Phase 0: quick wins and cleanup
+
+Completed 2026-11-10. Phase 0 of the [refactoring roadmap](../refactoring-roadmap.md): delete dead
+code, give each duplicated contract and helper one source, fix the bugs the November review found,
+and bring the developer docs and code comments back in line with the code. No persisted data,
+`window.persephone`, script API, AiVision, `data-name` or MCP `call` contract changed. Epic
+document: [EPIC-141](EPIC-141.md).
+
+- [x] **Dead code (US-1806).** 53 files deleted, including the unused registry handler, `board-api.d.ts`, the `core`, `editors` and `uikit` barrels (DataGrid and Menu kept); direct imports are now the rule.
+- [x] **Single sources (US-1807, US-1808).** Capability error codes, board page-state and site-extension validation, the board network guard, module-service prefixes and audio channels each have one owner; `npm run check:contracts` mirror-checks the module-service host and `capabilities.d.ts`. Browser zoom, message formatting, text encoding and recording file names likewise; fixed English entry catalogs in the language list.
+- [x] **Bugs (US-1809, US-1811, US-1812, US-1813).** Board permission checks, disabled bundled boards in guide mounts, capability error codes through the frame route, refused fetches reporting `fetch:error`, guarded IPC handlers (bridge 1.55.0); browser current URL, bookmark profiles, refused pages disposed, `text=` selectors; one speech-port inbox, library cache refresh, startup data path; notch range 20–7,999 Hz, tree repaint on rename, seven mojibake strings, four new UI messages.
+- [x] **IPC typing (US-1810).** Renderer event types, the board settings reply and `BoardNotifyMsg` typed end to end.
+- [x] **Docs and comments (US-1814, US-1815, US-1816).** The board template `CLAUDE.md` is generated from `agents/boards.md`; architecture docs corrected; ticket IDs and decision codes removed from code comments, with a coding-style rule against them.
+- [x] **Epic review.** `/review` found nothing to act on; `/document` found the docs already current; `/userdoc` corrected the microphone notch range in the Settings guide; the four new messages translated into all 17 packs.
+
 ## EPIC-139 — Voice assistant: talk to an agent by name
 
 Completed 2026-11-07. Say an enrolled name, hear a chime, speak a request: Agent Chat sends it to

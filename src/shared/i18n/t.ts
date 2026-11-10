@@ -1,3 +1,4 @@
+import { formatMessage } from "./format-message";
 import { englishCatalog, type MessageKey, type MessageParams } from "./en";
 import { getActiveLocale } from "./active-locale";
 import { pluralCategory } from "./plurals";
@@ -12,29 +13,12 @@ export function setLocalePacks(user: LanguagePack | undefined, builtIn: Language
     builtInPack = builtIn;
 }
 
-function formatMessage(message: PackMessage | undefined, fallback: PackMessage | undefined, params?: Record<string, unknown>, locale = getActiveLocale()): string {
-    let selected = message ?? fallback;
-    if (selected && typeof selected === "object") {
-        const count = params?.count;
-        const category = typeof count === "number" ? pluralCategory(locale, count) : "other";
-        const fallbackMessage = fallback && typeof fallback === "object"
-            ? fallback[category] ?? fallback.other
-            : fallback;
-        selected = selected[category] ?? selected.other ?? fallbackMessage;
-    }
-    if (typeof selected !== "string") return "";
-    return selected.replace(/\{([\w.-]+)\}/g, (match, name: string) => {
-        const value = params?.[name];
-        return value === undefined || value === null ? match : String(value);
-    });
-}
-
 /** Render a catalog message using its English source, regardless of active locale or packs. */
 export function englishMessage<K extends MessageKey>(key: K, params?: MessageParams<K>): string {
     const [area, name] = key.split(".");
     const message = (englishCatalog as Record<string, Record<string, PackMessage>>)[area]?.[name];
     if (message === undefined) return key;
-    return formatMessage(message, message, params as Record<string, unknown> | undefined, "en");
+    return formatMessage(message, message, params as Record<string, unknown> | undefined, count => pluralCategory("en", count)) ?? "";
 }
 
 /**
@@ -51,7 +35,8 @@ export function t<K extends MessageKey>(key: K, params?: MessageParams<K>): stri
     if (resolved === undefined) return key;
     const [area, name] = key.split(".");
     const fallback = (englishCatalog as Record<string, Record<string, PackMessage>>)[area]?.[name];
-    return formatMessage(resolved, fallback, params as Record<string, unknown> | undefined);
+    const locale = getActiveLocale();
+    return formatMessage(resolved, fallback, params as Record<string, unknown> | undefined, count => pluralCategory(locale, count)) ?? "";
 }
 
 export function getPluralCategories(locale: string, counts: readonly number[]): Intl.LDMLPluralRule[] {

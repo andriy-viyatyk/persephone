@@ -163,7 +163,7 @@ interface IBrowserPrivacyState {
  * One open page for the agent. Identified by its PAGE, not by its editor: a page whose main
  * editor has been detached (`mainEditorId === null`) is a real tab the user sees — it renders
  * the empty-page state and is titled "Empty" — so it must be visible and actionable here too
- * (US-1408). `model` is therefore nullable, and every member falls back to what such a page
+ *. `model` is therefore nullable, and every member falls back to what such a page
  * genuinely has rather than throwing or pretending an editor is present.
  */
 export class PageWrapper implements IAiVisible {
@@ -363,7 +363,10 @@ export class PageWrapper implements IAiVisible {
             summary.isIncognito = !!state.isIncognito;
             summary.isTor = !!state.isTor;
             if (state.openedByAgent) summary.openedByAgent = true;
-            if (agentMayAccessBrowserPage(state) && state.url) summary.url = state.url;
+            if (agentMayAccessBrowserPage(state)) {
+                const url = (this.model as unknown as BrowserEditorModel).currentUrl;
+                if (url) summary.url = url;
+            }
         }
         return summary;
     }

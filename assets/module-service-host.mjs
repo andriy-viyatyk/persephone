@@ -430,8 +430,8 @@ function isContentReadOperation(operation) {
     return hostConfig.providerRequestClasses[operation] === "content-read";
 }
 
-/** US-1518 decision 10: pushes the live outstanding-content-read count to the renderer over the
- *  existing announcement transport, whenever it changes. */
+/** Pushes the live outstanding-content-read count to the renderer over the existing
+ *  announcement transport whenever it changes. */
 function pushActiveContentReads(lease) {
     if (!lease.attached) return;
     postRenderer(lease.port, { kind: "content-read-count", count: lease.activeContentReads });

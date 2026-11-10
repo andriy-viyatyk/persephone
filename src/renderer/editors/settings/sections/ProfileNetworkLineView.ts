@@ -29,7 +29,7 @@ export interface ProfileNetworkLineProps {
 }
 
 /**
- * One browser profile's network route (US-1557): Direct, or an unauthenticated
+ * One browser profile's network route: Direct, or an unauthenticated
  * SOCKS5/HTTP proxy endpoint. Edits are persisted only once the endpoint is
  * valid; until then the saved route stays in force and the error is shown.
  */

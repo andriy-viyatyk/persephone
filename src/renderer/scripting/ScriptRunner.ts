@@ -23,13 +23,6 @@ class ScriptRunner extends ScriptRunnerBase {
     handlePromiseException = 0;
 
     /**
-     * Simple run — creates context, executes, cleans up, returns raw result.
-     */
-    run = async (script: string, page?: EditorOrHost, language?: string): Promise<unknown> => {
-        return this.executeWithContext(script, page, undefined, language);
-    };
-
-    /**
      * MCP mode — creates context, captures console, cleans up, returns structured result.
      */
     runWithCapture = async (script: string, page?: EditorOrHost, language?: string, tipCollector?: AgentTipCollector): Promise<McpScriptResult> => {

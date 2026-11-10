@@ -9,9 +9,6 @@ export type EditorCategoryDragData =
     | { kind: "category-item"; categoryId: string; ref: PinnedRef }
     | { kind: "category-block"; categoryId: string };
 
-export type PinnedDragData = { kind: "reorder"; index: number; ref: PinnedRef }
-    | Extract<EditorCategoryDragData, { kind: "source" }>;
-
 const BOARD_PREFIX = "board:";
 
 export function encodePin(ref: PinnedRef): string {
@@ -38,29 +35,8 @@ export function getPinnedStrings(): string[] {
     return getEditorCategories().flatMap((category) => category.items);
 }
 
-export function isPinned(ref: PinnedRef): boolean {
-    return getPinnedStrings().includes(encodePin(ref));
-}
-
-export function addPin(ref: PinnedRef): void {
-    moveEditorToCategory(ref, "top");
-}
-
 export function removePin(ref: PinnedRef): void {
     removeCategoryMembership(ref);
-}
-
-export function insertPin(ref: PinnedRef, index: number): void {
-    moveCategoryItem(ref, "top", index);
-}
-
-export function movePin(dragIndex: number, hoverIndex: number): void {
-    const categories = getEditorCategories();
-    const top = categories.find((category) => category.id === "top");
-    if (!top) return;
-    const [ref] = top.items.splice(dragIndex, 1);
-    top.items.splice(hoverIndex, 0, ref);
-    saveEditorCategories(categories);
 }
 
 export function saveEditorCategories(categories: EditorCategory[]): void {

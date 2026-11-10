@@ -62,7 +62,7 @@ export class TabItemView extends VanillaView<TabItemProps> {
     /**
      * `url` is already routed: the favicon is drawn by the host renderer, outside the
      * page's session, so a Tor or proxied page must fetch it through that session
-     * (US-1557) — and shows the globe while its route is not up.
+     *  The host shows a globe until the routed favicon is available.
      */
     private renderFavicon(url: string): void {
         if (!url) {

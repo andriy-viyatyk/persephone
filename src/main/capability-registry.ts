@@ -1,3 +1,4 @@
+import { PLATFORM_AUDIO_CAPABILITY_ID } from "../shared/capability-constants";
 import type { CapabilityRegistration as LegacyRegistration } from "../ipc/capability-bus-channels";
 import type { BoardServiceTrustSnapshot } from "../ipc/module-service-channels";
 import type { BoardCapabilityDeclaration, CapabilityMethod } from "../shared/capability-contract";
@@ -34,7 +35,7 @@ const platform: CapabilityRegistration[] = [
         ...entry, provider: "persephone", name: "persephone", handlerKey: entry.editorId,
         origin: "platform" as const, methods: { open: { kind: "open" as const, summary: "Open", args: [{ name: "payload", type: "unknown" }], timeoutMs: CAPABILITY_DEFAULT_TIMEOUT_MS, agent: true } },
     })),
-    { id: "audio", version: 1, priority: 50, provider: "persephone", name: "persephone",
+    { id: PLATFORM_AUDIO_CAPABILITY_ID, version: 1, priority: 50, provider: "persephone", name: "persephone",
         // eslint-disable-next-line vanilla-view/no-hardcoded-ui-strings -- Protocol metadata requires the stable platform provider title.
         handlerKey: "audio", origin: "platform", title: "Audio", methods: audioMethods },
 ];
@@ -48,7 +49,7 @@ class CapabilityRegistry {
     replace(snapshot: BoardServiceTrustSnapshot): void {
         this.boardSnapshot = snapshot;
         const previous = this.boards;
-        this.boards = snapshot.boards.flatMap((board) => (board.capabilities ?? []).filter((declaration) => declaration.id !== "audio" && !declaration.id.startsWith("system.")).map((declaration, index) => ({
+        this.boards = snapshot.boards.flatMap((board) => (board.capabilities ?? []).filter((declaration) => declaration.id !== PLATFORM_AUDIO_CAPABILITY_ID && !declaration.id.startsWith("system.")).map((declaration, index) => ({
             ...declaration, version: declaration.version ?? 1, priority: declaration.priority ?? 50,
             provider: boardRootKey(board.boardRoot), name: board.boardName ?? "", handlerKey: `${boardRootKey(board.boardRoot)}:${index}`,
             origin: "board" as const, methods: Object.fromEntries(Object.entries(declaration.methods ?? {}).filter(([, method]) =>
@@ -67,7 +68,7 @@ class CapabilityRegistry {
     snapshot() {
         const legacyRegistrations: LegacyRegistration[] = [
             ...PLATFORM_CAPABILITIES.map(({ editorId, ...entry }) => ({ ...entry, handlerKey: editorId, origin: "platform" as const })),
-            ...this.boardSnapshot.boards.flatMap((board) => (board.legacyCapabilities ?? []).filter((declaration) => declaration.id !== "audio").map((declaration) => {
+            ...this.boardSnapshot.boards.flatMap((board) => (board.legacyCapabilities ?? []).filter((declaration) => declaration.id !== PLATFORM_AUDIO_CAPABILITY_ID).map((declaration) => {
                 const { methods: _methods, ...fields } = declaration;
                 return { ...fields, version: declaration.version ?? 1, priority: declaration.priority ?? 50,
                     handlerKey: `board-editor:${board.boardRoot}`, origin: "board" as const,

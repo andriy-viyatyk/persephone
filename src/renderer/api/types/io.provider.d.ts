@@ -57,7 +57,7 @@ export interface IProvider {
     onStatusChange?(callback: () => void): () => void;
     /** Read binary content from the source. `options.signal`, when present, is aborted once
      *  Persephone stops waiting on this read (page close, cancellation); honoring it is optional,
-     *  tolerating its presence is mandatory (US-1518). */
+     *  tolerating its presence is mandatory. */
     readBinary(options?: { signal?: AbortSignal }): Promise<Buffer>;
     /**
      * Create a readable stream from the source with an optional byte range.
@@ -66,7 +66,7 @@ export interface IProvider {
      * Optional — providers that do not support streaming should omit this method.
      * The range end is inclusive (same as the HTTP Range header convention).
      * `options.signal`, when present, is aborted once Persephone stops waiting on this read;
-     * honoring it is optional, tolerating its presence is mandatory (US-1518).
+     * honoring it is optional, tolerating its presence is mandatory.
      */
     createReadStream?(
         range?: { start: number; end: number },

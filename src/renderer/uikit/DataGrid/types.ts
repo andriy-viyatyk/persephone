@@ -2,12 +2,12 @@
  * The Persephone-facing type surface of av-grid.
  *
  * Everything a consumer needs is re-exported here so that no file outside this folder ever names
- * the package — the enforceable form of [EPIC-057 C4-1](../../../../doc/epics/EPIC-057.md), checked
+ * the package — the enforceable form of [ ](../../../../doc/epics/.md), checked
  * by the `no-restricted-imports` block in `eslint.config.mjs`. A later decision to vendor the
  * library's source changes this folder's imports and nothing else.
  *
  * Names are av-grid's own, deliberately. This is a *mounting* shim, not a reconciliation layer
- * (C4-2), so a consumer reading av-grid's documentation finds the same option names in its props.
+ * These names match av-grid's documentation, so consumers find the same option names in its props.
  */
 import type { AVGrid, AVGridOptions } from "av-grid";
 
@@ -75,7 +75,7 @@ export type DataGridInstance<R = any> = AVGrid<R>;
  *  • `injectStyles` — always `false`. The library's self-injected sheet is unlayered, and
  *    unlayered CSS outranks every rule in `@layer base, uikit, app, editor`, so the stylesheet
  *    comes in through `DataGrid.css` instead.
- *  • `persistFilters` — filters live in `IEditorState`, not `localStorage` (C4-3).
+ *  • `persistFilters` — filters live in `IEditorState`, not `localStorage`.
  *
  * Two tiers, and the distinction is load-bearing — see `DataGridView`. Callback props are bound
  * once at `create()`; value props are shallow-diffed and pushed through `setOptions`.

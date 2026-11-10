@@ -41,7 +41,7 @@ export const getDefaultToolsetEditorState = (): ToolsetEditorState => ({
 });
 
 /**
- * Toolset editor (EPIC-038 / US-805).
+ * Toolset editor.
  *
  * A lightweight, read-only view of a single registered toolset: shows the manifest's info + the
  * declared tools and offers Open-Folder / Open-Log buttons. Opened by a `persephone-toolset://`
@@ -80,7 +80,7 @@ export class ToolsetEditorModel extends EditorModel<ToolsetEditorState> {
         void this.reload();
     }
 
-    /** Init — opened by a `persephone-toolset://` link (US-805). */
+    /** Init — opened by a `persephone-toolset://` link. */
     initFromToolsetRoot(toolsetRoot: string): void {
         this.state.update((s) => {
             s.toolsetRoot = toolsetRoot;

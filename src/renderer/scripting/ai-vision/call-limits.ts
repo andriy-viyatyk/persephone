@@ -8,7 +8,7 @@
  *
  * A script or a board is not an agent. It receives the value programmatically, in JavaScript, and
  * a truncated value is simply wrong data — worse than a large one, because nothing in the return
- * shape says it was cut. That was US-1511: the Excalidraw board's Screen Snip asks the host for a
+ * shape says it was cut. That was: the Excalidraw board's Screen Snip asks the host for a
  * PNG data URL through `persephone.call("shell.startScreenSnip")`, and the string came back clipped
  * to exactly 20,000 characters. A truncated PNG still carries a valid IHDR in its first bytes, so
  * the board read the FULL pixel dimensions and inserted a correctly sized image element — while the

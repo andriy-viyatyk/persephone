@@ -1,11 +1,9 @@
 /*
- * Translated from the single Emotion block in `Select.tsx` (EPIC-056 US-1017). Three declarations
- * and no state arms: every `data-*` attribute on the Select root is addressing only, and the visual
- * states belong to the composed `Input`, `IconButton`, `Popover` and `ListBox`.
+ * The Select root supplies flex layout and a full-width default. Visual states belong to the
+ * composed Input, IconButton, Popover, and ListBox views.
  *
- * `width` / `min-width` / `max-width` from props are written to `element.style` by
- * `SelectView.applyRoot`, matching React's own output — which is why the view must write `""` and
- * not `"100%"` when a prop is absent: the `width: 100%` below is the default the cascade provides.
+ * Width props are applied by `SelectView.applyRoot`. An absent prop removes the inline value,
+ * allowing the `width: 100%` rule below to provide the default.
  */
 @layer uikit {
     [data-type="select"] {

@@ -1,11 +1,11 @@
 /**
- * Install registry for catalog-downloaded boards (EPIC-045 / US-863). Tracks WHAT was
+ * Install registry for catalog-downloaded boards. Tracks WHAT was
  * downloaded from the published catalog (id → install root + version) in
  * `installedBoards.json`, so update checks and the "already installed" filter have data.
  *
  * This is INDEPENDENT of trust (`board-trust.ts`): a downloaded-but-unregistered board
  * has a registry entry here but is not trusted and does not run. Registration (trust) is
- * a separate consent step (US-864 / US-868).
+ * a separate consent step.
  *
  * Mirrors `board-trust.ts`: a reactive `TGlobalState` + lazy `load()` + the `fs`
  * data-file helpers. One entry per catalog id — re-downloading to a different dir moves
@@ -20,7 +20,7 @@ import { isBoardFolder } from "../editors/board/board-manifest";
 
 const INSTALLED_BOARDS_FILE = "installedBoards.json";
 
-/** One catalog-installed board (EPIC-045 / US-863). */
+/** One catalog-installed board. */
 export interface InstalledBoardEntry {
     /** Catalog board id (folder name under the repo's boards/). Unique per entry. */
     id: string;
@@ -30,7 +30,7 @@ export interface InstalledBoardEntry {
     version: string;
     /** Epoch ms of install/last update. */
     installedAt: number;
-    /** Reserved for US-865: last version we toasted an update for (per-entry, renderer-side). */
+    /** Reserved for: last version we toasted an update for (per-entry, renderer-side). */
     lastNotifiedVersion?: string;
 }
 
@@ -96,7 +96,7 @@ class BoardInstallRegistry {
         await this.persist(entries);
     }
 
-    /** Record the version we last toasted an update for (US-865 toast dedup — once per
+    /** Record the version we last toasted an update for (toast deduplication — once per
      *  board+version). No-op if the id is not installed. */
     async setLastNotified(id: string, version: string): Promise<void> {
         await this.load();

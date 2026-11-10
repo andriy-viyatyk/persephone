@@ -8,7 +8,7 @@ import { getBoardIconPathSync, resolveBoardIcon } from "./board-icon-cache";
 import { mimeTypeForPath } from "../../../shared/mime-types";
 
 /**
- * `persephone.icons.forFiles()` host side (US-1533): resolve file names to the icon Persephone
+ * `persephone.icons.forFiles()` host side: resolve file names to the icon Persephone
  * shows for them, as image URLs a board frame can load. Every URL is a `data:` URL because the
  * board protocol's CSP allows `img-src 'self' data: blob:` and not `file:`.
  */

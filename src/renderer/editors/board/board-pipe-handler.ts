@@ -27,7 +27,7 @@ interface PipeMemo {
 interface PendingRead {
     pipeKind: BoardPipeKind;
     pipeId: string;
-    /** US-1518: aborted on page close (`invalidateBoardPipePage()`) or on an explicit
+    /** Aborted on page close (`invalidateBoardPipePage()`) or on an explicit
      *  {requestId}-scoped cancel from main (`handleCancel()`, section 7a). Threaded into
      *  `createReadStream()`/`readBinary()` so the underlying module-service request is released
      *  even though a board's implementation is not obliged to observe the signal. */

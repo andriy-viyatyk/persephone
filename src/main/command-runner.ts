@@ -1,7 +1,7 @@
 /**
  * Main-process streaming command runner — the engine behind
- * `app.proc.execute()` (and, via US-724, the Board `persephone.execute()` and
- * `persephone.executeNode()` utility process).
+ * `app.proc.execute()` and the Board `persephone.execute()` API use this runner.
+ * The Board `persephone.executeNode()` utility process uses the same runner.
  *
  * Spawns a child process from a command-line string and streams its
  * stdout / stderr / exit / error back to the caller, keyed by `jobId`. The
@@ -9,7 +9,7 @@
  * in an Electron utility process through `startNodeJobTo`. Modeled on the async-worker host
  * (`worker-host.ts`): a `Map<jobId, …>` registry.
  *
- * The transport is abstracted behind a {@link JobSink} (EPIC-037 / US-771) so
+ * The transport is abstracted behind a {@link JobSink} so
  * one spawn/stream/tree-kill engine serves two callers:
  *  • the renderer `app` API + scripts, over IPC (`event.sender.send`) — a
  *    `WebContents`-backed sink wired in `initCommandRunner`;
@@ -18,7 +18,7 @@
  *
  * Boards are sandboxed (no Node), so the spawn must live here in main; every
  * front-end reaches this single owner, which keeps the process registry — and
- * the tree-kill added in US-720 — centralized.
+ * The shared tree-kill helper centralizes process termination.
  */
 import { ChildProcessWithoutNullStreams, spawn } from "child_process";
 import path from "node:path";
@@ -50,10 +50,10 @@ export interface JobSink {
 interface Job {
     proc: JobProcess;
     sink: JobSink;
-    /** The spawned command line — surfaced by `getJobsBySinkIds` (US-799). */
+    /** The spawned command line — surfaced by `getJobsBySinkIds`. */
     command: string;
     /** Optional caller-chosen job name (`opts.name`) — the re-association key
-     *  for a board's surviving jobs (US-799). */
+     * for a board's surviving jobs. */
     name?: string;
     stdoutBuf: Buffer[];
     stderrBuf: Buffer[];
@@ -97,7 +97,7 @@ function webContentsSink(sender: WebContents): JobSink {
  * Kill a child process and its entire descendant tree.
  *
  * Windows: `taskkill /PID <pid> /T /F` — /T walks the child tree, /F forces.
- *   Closes the US-719 gap: with `shell: true` the tracked child is cmd.exe
+ *   Closes the gap: with `shell: true` the tracked child is cmd.exe
  *   and the real workload is a grandchild; a plain proc.kill() only ends
  *   cmd.exe and orphans the grandchild (which holds the stdio pipes open, so
  *   `close` never fires). taskkill /T kills the whole tree → pipes close →
@@ -289,7 +289,7 @@ const NODE_SCRIPT_HOST = "node-script-host.mjs";
 /**
  * Run a board's Node script (`persephone.executeNode`) in an Electron utility process: the
  * packaged app locks the RunAsNode fuse, so the app binary can no longer be spawned as Node
- * (US-1591). Same sink protocol as startJobTo; signal is always null.
+ *. Same sink protocol as startJobTo; signal is always null.
  */
 export function startNodeJobTo(sink: JobSink, msg: RunnerStartMsg): void {
     const { jobId, command: script, opts } = msg;
@@ -374,7 +374,7 @@ export function endJobStdin(jobId: string): void {
     }
 }
 
-/** A live job's identity, as returned by {@link getJobsBySinkIds} (US-799). */
+/** A live job's identity, as returned by {@link getJobsBySinkIds}. */
 export interface JobInfo {
     jobId: string;
     command: string;
@@ -382,7 +382,7 @@ export interface JobInfo {
 }
 
 /** List the live jobs owned by any of `sinkIds` (a board owner's current + kept
- *  sinks). Read-only — used by the board bridge's `getJobs` RPC (US-799). */
+ *  sinks). Read-only — used by the board bridge's `getJobs` RPC. */
 export function getJobsBySinkIds(sinkIds: Iterable<string>): JobInfo[] {
     const result: JobInfo[] = [];
     for (const sinkId of sinkIds) {

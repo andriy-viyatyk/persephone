@@ -96,7 +96,7 @@ class AutoloadRunner {
 
         // Ensure sucrase is loaded and library extensions registered
         await ensureSucraseLoaded();
-        registerLibraryExtensions(libraryPath);
+        registerLibraryExtensions(() => settings.get("script-library.path"));
 
         // Create shared ScriptContext (no page, no consoleLogs)
         this.scriptContext = new ScriptContext(undefined, undefined, libraryPath);

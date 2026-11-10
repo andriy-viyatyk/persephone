@@ -143,7 +143,7 @@ export async function showBrowserContextMenu({
                 label: t("browser.toolbarOpenImageNewTab"),
                 startGroup: items.length > 0,
                 onClick: async () => {
-                    // A Tor/proxied page's image is read through its session (US-1557).
+                    // A Tor/proxied page's image is read through its session.
                     const sessionHandle = await model.network.sessionSource(srcURL);
                     if (sessionHandle === null) {
                         ui.notify(t("browser.secureRouteImageFailed"), "warning");

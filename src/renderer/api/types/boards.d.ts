@@ -248,7 +248,7 @@ export interface IBoards {
     /** Explicitly stop the board's declared service. */
     stopService(boardRoot: string): Promise<void>;
 
-    // ── Published catalog (remote) — discover / install / update (EPIC-045 / US-869) ──────
+    // ── Published catalog (remote) — discover / install / update  ──────
 
     /**
      * Search the remote published-boards catalog (the curated GitHub catalog Persephone ships against),

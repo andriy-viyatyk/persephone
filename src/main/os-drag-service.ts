@@ -1,4 +1,4 @@
-// Native OS file drag-out (US-833). Bridges the renderer to Electron's
+// Native OS file drag-out. Bridges the renderer to Electron's
 // `webContents.startDrag`, the only supported way to originate a Windows
 // CF_HDROP drag from a window — the format Windows Explorer and the Microsoft
 // Teams desktop app consume as a file drop.

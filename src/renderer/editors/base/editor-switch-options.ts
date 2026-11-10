@@ -144,7 +144,7 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
     const local = !filePath || isPlainLocalPath(filePath);
     const fileName = filePath ?? hostState?.title ?? editorState.title ?? "";
 
-    // Boards claim a page by file name (`fileMasks`) or by CONTENT (`contentMasks`, US-1404 â€” the
+    // Boards claim a page by file name (`fileMasks`) or by CONTENT (`contentMasks`, — the
     // manifest counterpart of a built-in matcher's `detectsContent`). The content path is what lets
     // a board be offered on an UNTITLED, in-memory page, whose "file name" is just its title. Both
     // sets then pass the same locality gate, so a content match on a non-local source still needs a

@@ -136,8 +136,8 @@ class AutocompleteContentView extends VanillaView<AutocompleteContentProps> {
     }
 
     /**
-     * Replaces the `Panel` + `Spacer` composition the previous implementation used (EPIC-056 US-1018
-     * D4) — `Panel`'s last consumer inside `uikit/`. The two slot hosts are `display: contents`, as
+     * Replaces the `Panel` + `Spacer` composition the previous implementation used — `Panel`'s
+     * last consumer inside `uikit/`. The two slot hosts are `display: contents`, as
      * `fillSlot`'s slot host is, so the header content and the action stay flex items of
      * the row as direct children.
      */

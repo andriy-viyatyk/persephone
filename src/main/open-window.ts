@@ -9,7 +9,8 @@ import { EventEndpoint } from "../ipc/api-types";
 import { normalizeVoiceTypingShortcut, RIGHT_CTRL_SHORTCUT, SHIFT_RIGHT_CTRL_SHORTCUT, voiceTypingShortcutForInput } from "../shared/voice-typing-shortcut";
 import { debounce, errMessage } from "../shared/utils";
 import { electronStore } from "./e-store";
-import { getAssetPath } from "./utils";
+import { getAssetPath, getDataFolder } from "./utils";
+import { STARTUP_DATA_DIR_ARG } from "../shared/application-profile";
 import { appPartition } from "./constants";
 import { getBoardRootForHost } from "./board-protocol-service";
 import { boardAppId, boardProfileArgument, boardIdentityHash, boardRootForLaunchArgs, boardWindowIconPath, getBoardLauncherPath, writeBoardWindowIcon } from "./board-window-identity";
@@ -123,14 +124,15 @@ export class OpenWindow {
                 nodeIntegration: true,
                 contextIsolation: false,
                 additionalArguments: [
+                    `${STARTUP_DATA_DIR_ARG}${getDataFolder()}`,
                     `--persephone-preferred-languages=${JSON.stringify(app.getPreferredSystemLanguages())}`,
                     `--persephone-languages-dir=${getAssetPath("languages")}`,
                     ...(applicationProfileName() ? [`--persephone-application-profile=${applicationProfileName()}`] : []),
                     ...(boardRoot ? [`--persephone-board-root=${encodeURIComponent(boardRoot)}`] : []),
                 ],
-                // webSecurity stays off (investigated in US-1590). The renderer reads cross-origin responses with
+                // webSecurity stays off because the renderer reads cross-origin responses with
                 // Chromium fetch — favicon cache, Image editor, the in-app MCP client (which must send no Origin:
-                // the MCP servers refuse browser requests, US-1588), and user scripts' global fetch — and the dev
+                // the MCP servers refuse browser requests, and user scripts' global fetch — and the dev
                 // origin (http://localhost) loads file:// media. It grants nothing an attacker in this window lacks:
                 // nodeIntegration already bypasses SOP. Guest content stays isolated (sandboxed preview, board://).
                 webSecurity: false,
@@ -306,7 +308,7 @@ export class OpenWindow {
             this.send(EventEndpoint.eOpenUrl, { url });
         });
 
-        // US-884: `will-navigate` above covers only the MAIN frame. A board renders in an
+        //: `will-navigate` above covers only the MAIN frame. A board renders in an
         // out-of-process subframe on a `board://<host>` origin; a stray link inside it (e.g.
         // an <a href="http://…"> in a rendered .docx) navigates the FRAME away from board://,
         // which can't load http — the frame goes blank (white screen). Subframe navigations

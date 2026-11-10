@@ -1,5 +1,5 @@
 /**
- * Commit-graph swimlane layout (EPIC-030 / US-611).
+ * Commit-graph swimlane layout.
  *
  * Ported from VS Code's `toISCMHistoryItemViewModelArray`
  * (src/vs/workbench/contrib/scm/browser/scmHistory.ts).
@@ -34,7 +34,7 @@ export interface GitEdge {
 }
 
 /**
- * Row kind (US-618). Real commits are "commit"; the Git Diff "File History" panel
+ * Row kind. Real commits are "commit"; the Git Diff "File History" panel
  * also injects synthetic "unstaged"/"staged" rows at the top of its grid so the
  * working-tree / index endpoints are selectable inline (not as separate UI above
  * the table). Synthetic rows carry an empty date/hash and a label in `subject`.
@@ -48,7 +48,7 @@ export type GitRowType = "commit" | "unstaged" | "staged";
  */
 export interface GitCommitRow extends GitCommit {
     /** "commit" for real history; "unstaged"/"staged" for the synthetic endpoint
-     *  rows (US-618). Lets the panel recognize special rows. */
+     *  rows. Lets the panel recognize special rows. */
     recordType: GitRowType;
     node: { column: number; color: string };
     inputSwimlanes: GitLane[];
@@ -57,7 +57,7 @@ export interface GitCommitRow extends GitCommit {
 }
 
 /**
- * Build a synthetic endpoint row (US-618). Empty date/hash (`authorDate: 0` →
+ * Build a synthetic endpoint row. Empty date/hash (`authorDate: 0` →
  * blank via `dateText`; `shortHash: ""`), no refs, a sentinel hash for the row
  * key, and the label in `subject`.
  */

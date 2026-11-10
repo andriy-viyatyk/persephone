@@ -1,3 +1,4 @@
+import { bookmarkProfileSelection } from "./bookmark-profile";
 import { TOneState } from "../../core/state/state";
 const { ipcRenderer } = require("electron");
 import { BrowserChannel } from "../../../ipc/browser-ipc";
@@ -57,19 +58,10 @@ export class BrowserTabsModel {
     }
 
     getBookmarksFilePath = (): string => {
-        const { profileName, isIncognito, isTor } = this.model.state.get();
-        if (isTor) return settings.get("tor.bookmarks-file") || "";
-        if (isIncognito) return settings.get("browser-incognito-bookmarks-file") || "";
-        if (profileName) {
-            const profiles = settings.get("browser-profiles");
-            return profiles.find((p: BrowserProfile) => p.name === profileName)?.bookmarksFile || "";
-        }
-        const defaultName = settings.get("browser-default-profile");
-        if (defaultName) {
-            const profiles = settings.get("browser-profiles");
-            return profiles.find((p: BrowserProfile) => p.name === defaultName)?.bookmarksFile || "";
-        }
-        return settings.get("browser-default-bookmarks-file") || "";
+        const selection = bookmarkProfileSelection(this.model.state.get(), settings.get("browser-default-profile"));
+        if (selection.kind === "setting") return settings.get(selection.key) || "";
+        const profiles = settings.get("browser-profiles");
+        return profiles.find((p: BrowserProfile) => p.name === selection.name)?.bookmarksFile || "";
     };
 
     preloadBookmarks = async (generation = this.bookmarkLifecycleGeneration): Promise<void> => {

@@ -40,7 +40,7 @@
     [data-type="tag"][data-clickable]:hover { border-color: var(--color-border-active, currentColor); }
     [data-type="tag"][data-disabled] { opacity: 0.5; pointer-events: none; }
     [data-type="tag"][data-truncate] { min-width: 0; }
-    /* Intentional: the display:contents React-slot span is an inert truncation match. */
+    /* The selector also matches the slot host, whose display: contents adds no layout box. */
     [data-type="tag"][data-truncate] > span {
         overflow: hidden;
         text-overflow: ellipsis;

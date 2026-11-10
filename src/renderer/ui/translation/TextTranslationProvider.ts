@@ -1,5 +1,5 @@
+import { TEXT_TRANSLATION_BOARD_PREFIX , SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "../../../ipc/module-service-channels";
 import { api } from "../../../ipc/renderer/api";
-import { SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "../../../ipc/module-service-channels";
 import type { BoardServiceProvider } from "../../../ipc/board-bridge-channels";
 import { errMessage } from "../../../shared/utils";
 import { createTranslationServiceChannel, type TranslationServiceChannel } from "./TranslationServiceChannel";
@@ -67,7 +67,7 @@ export class TextTranslationProvider {
     public constructor() {
         this.unsubscribe = api.onBoardServiceChannel((boardId, channelId, port) => {
             // Every board's channel arrives on this event with the same port; only close our own.
-            if (!boardId.startsWith("text-translation:")) return;
+            if (!boardId.startsWith(TEXT_TRANSLATION_BOARD_PREFIX)) return;
             if (this.disposed) { port.close(); return; }
             const waiter = this.portWaiters.get(channelId);
             if (waiter) { this.portWaiters.delete(channelId); waiter.resolve(port); }

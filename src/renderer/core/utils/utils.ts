@@ -2,8 +2,6 @@ import { api } from "../../../ipc/renderer/api";
 
 type SetStateAction<S> = S | ((previous: S) => S);
 
-export const isNullOrUndefined = (v: unknown) => v === null || v === undefined;
-
 export function resolveState<S>(
     newState: SetStateAction<S>,
     getPrevState: () => S
@@ -13,34 +11,21 @@ export function resolveState<S>(
         : newState;
 }
 
-export const range = (from: number, to: number) => from <= to
-    ? Array.from({ length: to - from + 1 }, (_, i) => from + i)
-    : Array.from({ length: from - to + 1 }, (_, i) => to + i);
-
 /**
  * Copy text to the OS clipboard through Electron's native clipboard.
  *
  * Deliberately NOT `navigator.clipboard.writeText`. Chromium stamps every
  * Web-API clipboard write with the registered `CanIncludeInClipboardHistory`
  * format set to 0 — "do not put this in clipboard history" — which Windows
- * clipboard-history tools honour (EPIC-104 D6). Persephone's own tracker no
+ * clipboard-history tools honour. Persephone's own tracker no
  * longer drops those, because the watcher exempts copies our own process owns
- * (EPIC-104 D15), but every other history tool on the machine still does.
+ *, but every other history tool on the machine still does.
  * Electron's native write sets no such format and,
  * unlike the Web API, does not require document focus, which removes a class of
  * "Document is not focused" copy failures.
  */
 export function toClipboard(text: string): void {
     void api.clipboardWriteText(text).catch((error: unknown) => console.error("Failed to copy text:", error));
-}
-
-/** Format an ISO date string as YYYY-MM-DD */
-export function formatDate(isoString: string): string {
-    const d = new Date(isoString);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
 }
 
 /**

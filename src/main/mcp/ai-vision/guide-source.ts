@@ -9,7 +9,7 @@ export type { GuideEntryKind };
 
 /**
  * Main-process adapter for a guide corpus rooted at one folder. The default root is the packaged,
- * outside-the-asar `assets/guides`; US-1406 also instantiates one per mounted board, rooted at that
+ * outside-the-asar `assets/guides`; also instantiates one per mounted board, rooted at that
  * board's own guides folder. Containment is therefore PER INSTANCE — a board source measures
  * escapes against the board's folder, never against `assets/guides`.
  */

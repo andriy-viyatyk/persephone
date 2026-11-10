@@ -1,5 +1,5 @@
 /*
- * Rule order is load-bearing and mirrors the Emotion block this replaces:
+ * Rule order preserves selection and interaction priorities:
  *   - the hover / accent-selection rules come before [data-drop-active], which must outrank them at
  *     equal specificity because a drop target is momentary and selection is persistent;
  *   - the focus-within override carries :not([data-drop-active]) because it is one attribute *more*
@@ -7,10 +7,8 @@
  * Keeping every row rule in this one file is what makes that order a local, checkable fact instead
  * of a dependency on stylesheet import order.
  *
- * The blurred/focused selection rules are a hand-translated copy of `shared/selection-style.ts`'s
- * `rowSelectionBase` and `rowFocusSelectionOverride`, scoped to this component's own root
- * (EPIC-056 C3-7). That module still serves Tree, TreeItem and the sidebar FolderItem and is deleted
- * by the task that converts the last of them.
+ * The blurred/focused selection values match `shared/selection-style.ts`, which also serves Tree,
+ * TreeItem, and the sidebar FolderItem.
  *
  * The row itself is NOT the absolutely positioned element — the virtualization engine positions the
  * cell wrapper and this row is an ordinary in-flow child of it. That is why `width: 100%` works and
@@ -43,11 +41,9 @@
 
     /*
      * The `:hover` arm deliberately skips checkbox rows. `MultiListBox` sets `activeIndex` on
-     * mouseenter, so a hovered row already paints through `[data-active]` — and the row this
-     * replaced (MultiListBox's own `ItemRow`) had no hover rule at all. Keeping both would highlight
-     * two rows at once whenever the keyboard moved the active row away from the pointer, or rows
-     * scrolled under a stationary pointer (which fires no mouseenter). Faithful conversion first;
-     * turning hover on for checkbox rows is a visible change and belongs in its own task.
+     * mouseenter, so a hovered row already paints through `[data-active]`. An additional hover rule
+     * would highlight two rows when keyboard navigation moves the active row away from the pointer
+     * or when rows scroll beneath a stationary pointer.
      */
     [data-type="list-item"][data-variant="browse"][data-active],
     [data-type="list-item"][data-variant="browse"]:not([data-checkbox]):hover {
@@ -97,15 +93,12 @@
     }
 
     /*
-     * Slot icons. Emotion could write `& > svg` because React put every slot's svg directly under
-     * the row — which covered the leading icon *and* the default trailing check/chevron. The vanilla
-     * view routes each slot through a `display: contents` host, and a React-valued slot adds one
-     * more `display: contents` wrapper from fillSlot, so both levels of both slots are named here.
+     * Slot icons can be direct children or nested in a `children-slot` host, so the selectors cover
+     * both levels of the icon and trailing parts.
      *
      * They are named explicitly rather than reached with a descendant selector on purpose: a custom
-     * `trailing` node such as an `IconButton` renders its svg deeper than one level, and the Emotion
-     * rule did not size that either. Widening this to a descendant selector would start resizing
-     * icons inside caller-supplied controls.
+     * `trailing` node such as an `IconButton` can render its svg deeper than one level. A descendant
+     * selector would also resize icons inside caller-supplied controls.
      */
     [data-type="list-item"] > [data-part="icon"] > svg,
     [data-type="list-item"] > [data-part="icon"] > [data-part="children-slot"] > svg,

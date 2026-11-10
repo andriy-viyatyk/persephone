@@ -21,7 +21,7 @@ import {
     VideoStreamSessionResult,
 } from "./api-param-types";
 import { GitAheadBehind, GitCommit, GitFetchOptions, GitFileChange, GitIdentity, GitLogOptions, GitMutationResult, GitProbeResult, GitPullOptions, GitPullResult, GitPushOptions, GitPushResult, GitRefs, GitRepoInfo, GitStatusResult, GitSwitchTarget } from "./git-ipc";
-import type { BoardHostText, BoardI18nContext, BoardThemePalette } from "./board-bridge-channels";
+import type { BoardHostText, BoardI18nContext, BoardNotifyMsg, BoardThemePalette } from "./board-bridge-channels";
 import type { NormalizedBoardPermissions } from "../shared/board-manifest-utils";
 import type {
     ClipboardFileList,
@@ -434,20 +434,20 @@ export type Api = {
     [Endpoint.unregisterBoard]: (host: string) => Promise<void>;
     [Endpoint.updateBoardTheme]: (theme: BoardThemePalette) => Promise<void>;
     // Mint a per-board MessagePort in main and deliver port1 to this renderer via
-    // a postMessage on `eBoardPort` (EPIC-037 / US-771). Resolves once the request
+    // a postMessage on `eBoardPort`. Resolves once the request
     // is sent; the port arrives asynchronously on the event channel. `ownerId` is
-    // the owning BoardEditorModel id — the stable job-retention key (US-799).
+    // the owning BoardEditorModel id — the stable job-retention key.
     [Endpoint.requestBoardPort]: (boardId: string, host: string, ownerId: string, hostedPath: string | null, token: string) => Promise<void>;
     [Endpoint.updateBoardHostedPath]: (boardId: string, token: string, hostedPath: string | null) => Promise<boolean>;
     [Endpoint.disposeBoardPort]: (boardId: string) => Promise<void>;
-    // Busy retention (US-799): mirror the renderer's busy flag / tree-kill every
+    // Busy retention: mirror the renderer's busy flag / tree-kill every
     // job (kept + current) of a board owner on final teardown (model dispose).
     [Endpoint.setBoardBusy]: (ownerId: string, busy: boolean) => Promise<void>;
     [Endpoint.setBoardCallTimeout]: (timeoutMs: number) => Promise<void>;
     [Endpoint.reapBoardOwner]: (ownerId: string) => Promise<void>;
     // `frameNonce` (the iframe's ?v= value) pins CDP automation to THIS tab's specific
     // board frame — disambiguating multiple tabs of the same board + the pre-reload
-    // frame after a remount (US-796).
+    // frame after a remount.
     [Endpoint.registerBoardFrame]: (boardId: string, boardHost: string, frameNonce?: string, tab?: string, title?: string, pageId?: string) => Promise<void>;
     [Endpoint.unregisterBoardFrame]: (boardId: string, tab?: string, frameNonce?: string) => Promise<void>;
     [Endpoint.registerBoardPipePage]: (pageId: string, host?: string, boardRoot?: string, hostedDocument?: boolean) => Promise<void>;
@@ -544,19 +544,19 @@ export enum EventEndpoint {
     eClipboardHistoryChanged = "eClipboardHistoryChanged",
     eClipboardStatusChanged = "eClipboardStatusChanged",
     eBoardNotify = "eBoardNotify",
-    // Main → host renderer: delivers a per-board MessagePort (EPIC-037 / US-771).
+    // Main → host renderer: delivers a per-board MessagePort.
     // Carried via webContents.postMessage with the port on `event.ports[0]`, so it
     // is consumed through the preload's ports-aware `onPort` (NOT the typed event
     // system, which drops `event.ports`). No EventApi entry for that reason.
     eBoardPort = "eBoardPort",
     // Main → host renderer: board-service channel endpoint for one board frame.
     eBoardServiceChannel = "eBoardServiceChannel",
-    // Main → host renderer: a live module-service MessagePort (US-1467/US-1468).
+    // Main → host renderer: a live module-service MessagePort.
     // It is delivered with webContents.postMessage and therefore is not an EventApi entry.
     eModuleServicePort = "eModuleServicePort",
-    // Published-boards catalog changed (US-862) — carries the new catalog.
+    // Published-boards catalog changed — carries the new catalog.
     ePublishedBoardsUpdated = "ePublishedBoardsUpdated",
-    // Board-archive download progress (US-863) — throttled byte progress per installId.
+    // Board-archive download progress — throttled byte progress per installId.
     eBoardInstallProgress = "eBoardInstallProgress",
     eModuleServiceStatusChanged = "eModuleServiceStatusChanged",
     eBoardTrustChanged = "eBoardTrustChanged",
@@ -612,19 +612,13 @@ export type EventApi = {
     [EventEndpoint.eAudioCaptureCount]: EventObject<{ count: number; revision: number }>;
     [EventEndpoint.eClipboardHistoryChanged]: EventObject<ClipboardHistoryChanged>;
     [EventEndpoint.eClipboardStatusChanged]: EventObject<ClipboardStatus>;
-    // Board `persephone.notify()` → host renderer toast (US-724). Union
-    // inlined to keep this shared module free of renderer-type imports.
-    [EventEndpoint.eBoardNotify]: EventObject<{
-        message: string;
-        type?: "info" | "success" | "warning" | "error";
-        /** Keep the toast until the user closes it (bridge 1.33.0). */
-        persistent?: boolean;
-    }>;
-    // Published-boards catalog refresh (US-862): main broadcasts the new catalog when
+    // Board `persephone.notify()` → host renderer toast.
+    [EventEndpoint.eBoardNotify]: EventObject<BoardNotifyMsg>;
+    // Published-boards catalog refresh: main broadcasts the new catalog when
     // it changes; the renderer catalog model updates reactively.
     [EventEndpoint.ePublishedBoardsUpdated]: EventObject<PublishedBoardsCatalog>;
-    // Board-archive download progress (US-863): main streams the ZIP and broadcasts
-    // throttled byte progress; the install UI (US-864) renders it from editor state.
+    // Board-archive download progress: main streams the ZIP and broadcasts
+    // throttled byte progress; the install UI renders it from editor state.
     [EventEndpoint.eBoardInstallProgress]: EventObject<{ installId: string; receivedBytes: number; totalBytes: number }>;
     [EventEndpoint.eModuleServiceStatusChanged]: EventObject<BoardServiceStatus>;
     [EventEndpoint.eBoardTrustChanged]: EventObject<string[]>;

@@ -1,6 +1,6 @@
 /**
  * Pure builder that turns a flat `GitRefs` DTO into the "Branches & Tags" panel
- * tree (EPIC-031 / US-634): three fixed roots — Branches, Remotes, Tags.
+ * tree: three fixed roots — Branches, Remotes, Tags.
  *
  * - **Branches**: local branches with `/`-folder nesting (`feature/x` → folder
  *   `feature` containing leaf `x`).

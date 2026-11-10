@@ -95,7 +95,7 @@ export async function blobToBuffer(blob: Blob): Promise<Buffer> {
  * the reason documented on `toClipboard` in `core/utils/utils.ts`: Chromium
  * marks Web-API clipboard writes `CanIncludeInClipboardHistory = 0`, so an
  * image copied that way is excluded from clipboard history — including
- * Persephone's own tracker (EPIC-104 D6). The native write carries no such
+ * Persephone's own tracker. The native write carries no such
  * format, and needs no document focus.
  */
 export async function copyPngBlobToClipboard(blob: Blob): Promise<void> {

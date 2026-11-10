@@ -92,7 +92,7 @@ export interface PublishedBoardArchive {
 }
 
 /**
- * One board entry in the catalog `boards-manifest.json` (EPIC-045). The association
+ * One board entry in the catalog `boards-manifest.json`. The association
  * fields (fileMasks/folderMasks/folderEditorMasks/folderEditorPriority/editorName/editorKind/
  * standalone) are copied by the publish
  * automation from the board's own board-manifest.json so the client can advertise a
@@ -144,7 +144,7 @@ export interface PublishedBoardsResult {
     error?: string;
 }
 
-/** One published version of a board (from `boards/<id>/versions-manifest.json`, EPIC-045). */
+/** One published version of a board (from `boards/<id>/versions-manifest.json`). */
 export interface PublishedBoardVersion {
     version: string;
     date?: string;
@@ -160,7 +160,7 @@ export interface PublishedBoardVersions {
     versions: PublishedBoardVersion[];
 }
 
-/** One in-flight board-archive download (EPIC-045 / US-863). `installId` is minted by the
+/** One in-flight board-archive download. `installId` is minted by the
  *  renderer so it can match `eBoardInstallProgress` events and cancel a specific download. */
 export interface BoardArchiveDownloadRequest {
     installId: string;

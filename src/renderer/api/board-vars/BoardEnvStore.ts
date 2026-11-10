@@ -16,7 +16,7 @@ import {
 import { errMessage } from "../../../shared/utils";
 
 // =============================================================================
-// BoardEnvStore (EPIC-046 / US-887).
+// BoardEnvStore.
 //
 // Session-singleton store over the global `.env.json` file (path from the
 // `board-vars.file` setting). Mirrors the BrowserBookmarks encrypted-file
@@ -48,7 +48,7 @@ class BoardEnvStore {
 
     /** The path most recently resolved by `ensureLoaded()` — lets `persephone.var.show()` open
      *  the file without the editor itself needing to know about the `board-vars.file` setting
-     *  (US-889). Empty when never loaded. */
+     *. Empty when never loaded. */
     get filePath(): string {
         return this.loadedPath ?? "";
     }
@@ -123,7 +123,7 @@ class BoardEnvStore {
         return Object.keys(this.parsed[namespace]?.[env || DEFAULT_PROFILE] ?? {});
     }
 
-    /** The whole parsed file (for the editor — US-889). Returns a live reference; do not mutate. */
+    /** The whole parsed file returned to the editor. Returns a live reference; do not mutate. */
     getAll(): BoardVarsFile {
         return this.parsed;
     }

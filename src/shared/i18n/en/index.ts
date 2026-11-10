@@ -20,52 +20,36 @@ import { voiceTypingCatalog } from "./voiceTyping";
 import { transcriptCatalog } from "./transcript";
 import { translationCatalog } from "./translation";
 
+export const englishEntryCatalogs = {
+    common: commonCatalog,
+    main: mainCatalog,
+    settings: settingsCatalog,
+    dialogs: dialogsCatalog,
+    shell: shellCatalog,
+    editors: editorsCatalog,
+    menus: menusCatalog,
+    api: apiCatalog,
+    browser: browserCatalog,
+    board: boardCatalog,
+    explorer: explorerCatalog,
+    links: linksCatalog,
+    git: gitCatalog,
+    mneme: mnemeCatalog,
+    about: aboutCatalog,
+    tools: toolsCatalog,
+    uikit: uikitCatalog,
+    logView: logViewCatalog,
+    voiceTyping: voiceTypingCatalog,
+    transcript: transcriptCatalog,
+    translation: translationCatalog,
+} as const;
+
 type MessagesOf<T> = { [K in keyof T]: T[K] extends { message: infer M } ? M : never };
-export const englishCatalog = {
-    common: Object.fromEntries(Object.entries(commonCatalog).map(([key, entry]) => [key, entry.message])),
-    main: Object.fromEntries(Object.entries(mainCatalog).map(([key, entry]) => [key, entry.message])),
-    settings: Object.fromEntries(Object.entries(settingsCatalog).map(([key, entry]) => [key, entry.message])),
-    dialogs: Object.fromEntries(Object.entries(dialogsCatalog).map(([key, entry]) => [key, entry.message])),
-    shell: Object.fromEntries(Object.entries(shellCatalog).map(([key, entry]) => [key, entry.message])),
-    editors: Object.fromEntries(Object.entries(editorsCatalog).map(([key, entry]) => [key, entry.message])),
-    menus: Object.fromEntries(Object.entries(menusCatalog).map(([key, entry]) => [key, entry.message])),
-    api: Object.fromEntries(Object.entries(apiCatalog).map(([key, entry]) => [key, entry.message])),
-    browser: Object.fromEntries(Object.entries(browserCatalog).map(([key, entry]) => [key, entry.message])),
-    board: Object.fromEntries(Object.entries(boardCatalog).map(([key, entry]) => [key, entry.message])),
-    explorer: Object.fromEntries(Object.entries(explorerCatalog).map(([key, entry]) => [key, entry.message])),
-    links: Object.fromEntries(Object.entries(linksCatalog).map(([key, entry]) => [key, entry.message])),
-    git: Object.fromEntries(Object.entries(gitCatalog).map(([key, entry]) => [key, entry.message])),
-    mneme: Object.fromEntries(Object.entries(mnemeCatalog).map(([key, entry]) => [key, entry.message])),
-    about: Object.fromEntries(Object.entries(aboutCatalog).map(([key, entry]) => [key, entry.message])),
-    tools: Object.fromEntries(Object.entries(toolsCatalog).map(([key, entry]) => [key, entry.message])),
-    uikit: Object.fromEntries(Object.entries(uikitCatalog).map(([key, entry]) => [key, entry.message])),
-    logView: Object.fromEntries(Object.entries(logViewCatalog).map(([key, entry]) => [key, entry.message])),
-    voiceTyping: Object.fromEntries(Object.entries(voiceTypingCatalog).map(([key, entry]) => [key, entry.message])),
-    transcript: Object.fromEntries(Object.entries(transcriptCatalog).map(([key, entry]) => [key, entry.message])),
-    translation: Object.fromEntries(Object.entries(translationCatalog).map(([key, entry]) => [key, entry.message])),
-} as unknown as {
-    common: MessagesOf<typeof commonCatalog>;
-    main: MessagesOf<typeof mainCatalog>;
-    settings: MessagesOf<typeof settingsCatalog>;
-    dialogs: MessagesOf<typeof dialogsCatalog>;
-    shell: MessagesOf<typeof shellCatalog>;
-    editors: MessagesOf<typeof editorsCatalog>;
-    menus: MessagesOf<typeof menusCatalog>;
-    api: MessagesOf<typeof apiCatalog>;
-    browser: MessagesOf<typeof browserCatalog>;
-    board: MessagesOf<typeof boardCatalog>;
-    explorer: MessagesOf<typeof explorerCatalog>;
-    links: MessagesOf<typeof linksCatalog>;
-    git: MessagesOf<typeof gitCatalog>;
-    mneme: MessagesOf<typeof mnemeCatalog>;
-    about: MessagesOf<typeof aboutCatalog>;
-    tools: MessagesOf<typeof toolsCatalog>;
-    uikit: MessagesOf<typeof uikitCatalog>;
-    logView: MessagesOf<typeof logViewCatalog>;
-    voiceTyping: MessagesOf<typeof voiceTypingCatalog>;
-    transcript: MessagesOf<typeof transcriptCatalog>;
-    translation: MessagesOf<typeof translationCatalog>;
-};
+export const englishCatalog = Object.fromEntries(
+    Object.entries(englishEntryCatalogs).map(([area, entries]) => [area, Object.fromEntries(
+        Object.entries(entries).map(([key, entry]) => [key, entry.message]),
+    )]),
+) as { [Area in keyof typeof englishEntryCatalogs]: MessagesOf<(typeof englishEntryCatalogs)[Area]> };
 
 export type EnglishCatalog = typeof englishCatalog;
 export type MessageKey = {

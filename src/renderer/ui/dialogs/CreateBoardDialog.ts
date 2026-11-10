@@ -18,7 +18,7 @@ export interface CreateBoardDialogProps {
     /** Which bundled template to scaffold. "board-template" (blank) | "demo-board".
      *  Default "board-template". */
     template?: string;
-    /** Initial folder (the Explorer root when one is open; C8 — omit when none, so both the
+    /** Initial folder (the Explorer root when one is open; — omit when none, so both the
      *  input and the Browse dialog's defaultPath start empty). */
     defaultFolder?: string;
     /** Initial board name (e.g. "Demo" for the Demo entry point). Default "". */

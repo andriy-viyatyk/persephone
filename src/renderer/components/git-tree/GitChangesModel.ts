@@ -1,5 +1,5 @@
 /**
- * Git changes (status) data model (EPIC-031 / US-616).
+ * Git changes (status) data model.
  *
  * Focused submodel of the Git Tree editor (model-view) — the sibling of
  * `GitTreeModel`. Holds the working-tree status (staged + unstaged file lists)
@@ -27,7 +27,7 @@ export interface GitChangesState {
     loading: boolean;
     /** Probe result — `false` → git unavailable; lists render empty. */
     gitOk: boolean;
-    /** Current branch name, or undefined when detached / no commits (US-632). */
+    /** Current branch name, or undefined when detached / no commits. */
     branch?: string;
 }
 
@@ -90,8 +90,8 @@ export class GitChangesModel {
         });
     };
 
-    /** Stage paths (working-tree → index), then reload the lists (US-631). The
-     *  US-624 watcher also fires, but reload now for immediate feedback. On
+    /** Stage paths (working tree → index), then reload the lists. The
+     *   watcher also fires, but reload immediately for feedback. On
      *  failure, surface a toast and still reload (shows the true, unchanged
      *  state). `paths` already expanded for renames by the caller (path+oldPath). */
     stagePaths = async (paths: string[]): Promise<void> => {
@@ -101,7 +101,7 @@ export class GitChangesModel {
         await this.reload();
     };
 
-    /** Unstage paths (index → working-tree), then reload (US-631). Symmetric to
+    /** Unstage paths (index → working tree), then reload. Symmetric to
      *  `stagePaths`. */
     unstagePaths = async (paths: string[]): Promise<void> => {
         if (!this.repoRoot || !paths.length) return;
@@ -111,7 +111,7 @@ export class GitChangesModel {
     };
 
     /** Discard working-tree changes for the given Unstaged files — "Reset"
-     *  (US-631). Tracked files restore to their staged/HEAD version; untracked
+     *. Tracked files restore to their staged/HEAD version; untracked
      *  ('?') files are deleted from disk. DESTRUCTIVE — the caller confirms
      *  first. Renames expand to path+oldPath. Toasts on failure, then reloads. */
     resetChanges = async (changes: GitFileChange[]): Promise<void> => {
@@ -126,16 +126,16 @@ export class GitChangesModel {
     };
 
     /** Effective git author identity (config user.name/email) for prepopulating the
-     *  commit dialog (US-632). Empty strings when unset or no repo. */
+     *  commit dialog. Empty strings when unset or no repo. */
     getIdentity = (): Promise<GitIdentity> => {
         return this.repoRoot ? git.getIdentity(this.repoRoot) : Promise.resolve({ name: "", email: "" });
     };
 
-    /** Commit the staged index with the dialog's (possibly edited) identity (US-632).
+    /** Commit the staged index with the dialog's (possibly edited) identity.
      *  Identity is applied as a per-commit override — no config is written. When
      *  `newBranch` is given (the dialog's branch name was changed, or HEAD was
      *  detached), a branch is created + checked out FIRST via `git switch -c`
-     *  (US-638) — which carries the staged index — so the commit lands on the new
+     *   — which carries the staged index — so the commit lands on the new
      *  branch; a create failure (invalid/duplicate name) toasts and aborts the commit
      *  (returns false → the dialog stays open for a retry). Toasts on failure, then
      *  reloads. Returns whether it succeeded — the future push step keys off this. */

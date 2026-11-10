@@ -115,9 +115,8 @@ export class PagesLayoutModel {
     };
 
     /**
-     * Ungroup the pair containing `pageId`. Walkthrough 06 / CK7: also drops
-     * any `compareGroups` entry for the pair so compare-mode exits when the
-     * grouping ends.
+     * Ungroup the pair containing `pageId`. Also drop its `compareGroups` entry
+     * so compare mode exits when grouping ends.
      */
     ungroup = (pageId: string) => {
         const state = this.model.state.get();
@@ -189,10 +188,8 @@ export class PagesLayoutModel {
 
     /**
      * Sanity sweep — fix swapped pairs and drop dangling groups. Called from
-     * `removePage` and `moveTabByIndex`.
-     *
-     * Walkthrough 07 / GK3: kept as single sweep. CK7: no trailing
-     * `fixCompareMode()` call — `ungroup`'s own compareGroups cleanup covers it.
+     * `removePage` and `moveTabByIndex`. Keep this as one sweep; `ungroup`
+     * already cleans compare groups.
      */
     fixGrouping = () => {
         const state = this.model.state.get();

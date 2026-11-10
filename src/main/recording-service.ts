@@ -1,3 +1,4 @@
+import { COMPLETED_RECORDING_PATTERN } from "../shared/recording-filenames";
 import { BrowserWindow, type WebContents } from "electron";
 import fs from "node:fs";
 import path from "node:path";
@@ -18,7 +19,6 @@ interface RecordingEntry {
 const directory = () => path.join(getDataFolder(), "recordings");
 const byId = new Map<string, RecordingEntry>();
 const byOwner = new Map<number, string>();
-const completedPattern = /^persephone-recording-[0-9a-f-]{36}\.(?:mp4|webm)$/i;
 
 function ownedEntry(ownerId: number, recordingId: string): RecordingEntry {
     const entry = byId.get(recordingId);
@@ -42,7 +42,7 @@ export async function initializeRecordingService(): Promise<void> {
     for (const name of await fs.promises.readdir(folder)) {
         const filePath = path.join(folder, name);
         const partial = /^persephone-recording-[0-9a-f-]{36}\.partial$/i.test(name);
-        if (!partial && !completedPattern.test(name)) continue;
+        if (!partial && !COMPLETED_RECORDING_PATTERN.test(name)) continue;
         try {
             const stat = await fs.promises.stat(filePath);
             if (partial || stat.mtimeMs < cutoff) await fs.promises.rm(filePath, { force: true });

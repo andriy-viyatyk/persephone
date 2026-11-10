@@ -79,7 +79,7 @@ function validateValue(value: BoardSettingValue, declaration: BoardSettingDeclar
  * `<userData>/data/excalidraw-lib`, and the legacy draw editor created exactly that folder and
  * stored its absolute path. Importing it would pin a machine-specific path that means precisely
  * what empty already means — and a pinned absolute path is the one thing that stops board
- * settings surviving a reinstall elsewhere (EPIC-111 S11). Only a folder the user actually chose
+ * settings surviving a reinstall elsewhere. Only a folder the user actually chose
  * is worth carrying over.
  */
 async function isDefaultExcalidrawLibraryPath(legacyPath: string): Promise<boolean> {

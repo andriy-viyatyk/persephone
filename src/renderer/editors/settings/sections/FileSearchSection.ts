@@ -95,5 +95,3 @@ export class FileSearchSectionView extends VanillaView<Record<string, never>> {
         settings.set("search-exclude", this.excludeValue.split(",").map((item) => item.trim()).filter(Boolean));
     }
 }
-
-export { FileSearchSectionView as FileSearchSection };

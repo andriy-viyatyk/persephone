@@ -55,3 +55,35 @@ export function pinnedLookup(addresses: BoardNetworkAddress[]) {
         callback(null, matches[0].address, matches[0].family);
     };
 }
+
+export async function assertBoardNetworkAllowed(
+    url: URL,
+    policy: { network: false | "internet" | "full"; appScripting: boolean; mcpUrl: string },
+    dependencies: { lookup: (host: string, options: { all: true; verbatim: true }) => Promise<BoardNetworkAddress[]>; isIP: (address: string) => number },
+): Promise<BoardNetworkAddress[]> {
+    if (policy.network === false) throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
+    const port = Number(url.port || (url.protocol === "https:" ? 443 : 80));
+    const mcp = new URL(policy.mcpUrl);
+    const targetHost = url.hostname.replace(/^\[|\]$/g, "");
+    const mcpHost = mcp.hostname.replace(/^\[|\]$/g, "");
+    if (!policy.appScripting && targetHost.toLowerCase() === mcpHost.toLowerCase()
+        && port === Number(mcp.port || (mcp.protocol === "https:" ? 443 : 80))) {
+        throw new Error('permission-denied: "appScripting" is not enabled in board-manifest.json');
+    }
+    const family = dependencies.isIP(targetHost);
+    const addresses = family ? [{ address: targetHost, family }]
+        : await dependencies.lookup(targetHost, { all: true, verbatim: true });
+    if (!addresses.length) throw new Error(`DNS resolution returned no addresses for ${targetHost}.`);
+    const mcpFamily = dependencies.isIP(mcpHost);
+    const mcpAddresses = mcpFamily ? [{ address: mcpHost, family: mcpFamily }]
+        : await dependencies.lookup(mcpHost, { all: true, verbatim: true })
+            .catch((): { address: string; family: number }[] => []);
+    if (!policy.appScripting && port === Number(mcp.port || (mcp.protocol === "https:" ? 443 : 80))
+        && addresses.some(({ address }) => mcpAddresses.some((mcpAddress) => address === mcpAddress.address))) {
+        throw new Error('permission-denied: "appScripting" is not enabled in board-manifest.json');
+    }
+    if (policy.network === "internet" && addresses.some(({ address }) => isPrivateAddress(address, dependencies.isIP))) {
+        throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
+    }
+    return addresses;
+}

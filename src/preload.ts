@@ -5,7 +5,7 @@ import {
 } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { Endpoint, EventEndpoint } from "./ipc/api-types";
+import { Endpoint, EventEndpoint, RendererEvent } from "./ipc/api-types";
 import type { BoardPipeChannel } from "./ipc/board-pipe-channels";
 import type { BoardServiceSettingsChannel } from "./ipc/board-service-settings-channels";
 
@@ -13,7 +13,7 @@ type BoardServiceSettingsChannelName = typeof BoardServiceSettingsChannel[keyof 
 
 const electronHandler = {
     ipcRenderer: {
-        sendMessage(channel: Endpoint | EventEndpoint | BoardPipeChannel | BoardServiceSettingsChannelName, ...args: unknown[]) {
+        sendMessage(channel: Endpoint | EventEndpoint | BoardPipeChannel | BoardServiceSettingsChannelName | RendererEvent, ...args: unknown[]) {
             ipcRenderer.send(channel, ...args);
         },
         on(
@@ -36,7 +36,7 @@ const electronHandler = {
         ) {
             ipcRenderer.once(channel, (_event, ...args) => func(...args));
         },
-        // Ports-aware listener (EPIC-037 / US-771). The `on`/`once` wrappers above
+        // Ports-aware listener. The `on`/`once` wrappers above
         // drop the IpcRendererEvent, so a transferred MessagePort (which arrives on
         // `event.ports`) is unreachable through them. `onPort` surfaces the ports
         // explicitly — used to receive a per-board bridge port from main.
@@ -65,7 +65,7 @@ window.electron = electronHandler;
     path.join(__dirname, "preload-webview.js"),
 ).toString();
 
-// Boards no longer use a webview preload (EPIC-037 / US-771) — the persephone
+    // Boards no longer use a webview preload; the Persephone
 // bridge is a shim injected into board HTML by the board:// handler, talking to
 // main over a per-board MessagePort. No boardPreloadUrl is needed.
 

@@ -3,12 +3,12 @@ import type { EnvVarsEditor } from "./EnvVarsEditor";
 
 // =============================================================================
 // persephone.var.show() — open the CONFIGURED board-vars file, scoped to the calling
-// board's namespace (EPIC-046 / US-889).
+// board's namespace.
 //
 // Mirrors PagesModel.openFile's "dispatch via openRawLink, then look the page up
 // independently" shape rather than calling PagesLifecycleModel.openFile directly — that
 // shape is what makes this work identically whether the file is fresh-opened or already
-// open in another tab (see US-889 task doc, Background/design decision #7).
+// open in another tab (see task doc, Background/design decision #7).
 //
 // Imports BoardEnvStore directly (not the api/board-vars barrel) to avoid a circular
 // module dependency: the barrel re-exports board-vars-bridge.ts, which imports this file.

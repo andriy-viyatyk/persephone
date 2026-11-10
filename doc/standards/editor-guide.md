@@ -299,8 +299,7 @@ The loop derives the rest: `match` comes from `EDITOR_MATCHERS["my-editor"]` (ad
 matcher in `/src/renderer/editors/base/editor-matchers.ts`), and `accepts` defaults to
 `makeAccepts(match)` — or `() => -1` when there is no matcher (standalone editors that never
 match a file). Only editors with special acceptance semantics (monaco, file-diff) set an
-explicit `accepts` on their row. Row order matters — it breaks priority ties in
-`resolveForFile` — so append unless you have a reason not to.
+explicit `accepts` on their row. Row order breaks equal file-match priorities in `resolve`, so append unless you have a reason not to.
 
 ### Row / Matcher Options
 
@@ -348,7 +347,7 @@ The `acceptFile` ladder as actually registered — highest wins, and ties go to 
 - `100` — Exclusive viewers with no text view: image, archive, video
 - `200` — Pseudo-paths: `tree-category://` links
 
-Content-based detection is **not** on this ladder — it scores `60` inside `accepts()` and never reaches `acceptFile`, so it influences the switch widget and `detectContentEditor`, not which editor opens a file.
+Content-based detection is **not** on this ladder — it scores `60` inside `accepts()` and never reaches `acceptFile`, so it influences the switch widget, not which editor opens a file.
 
 A trusted or bundled board declaring `editorPriority` in its `board-manifest.json` competes on this same ladder and must **strictly** exceed the best built-in claimant to become the default. The bundled Excalidraw board uses `50`; it wins `.excalidraw` because Monaco is the remaining built-in fallback at `0`, while a trusted replacement at the same board priority wins by board-origin tie rules. See [Custom-Editor Boards](../architecture/editors.md#custom-editor-boards).
 

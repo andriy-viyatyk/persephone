@@ -1,11 +1,11 @@
 /**
- * Custom-editor registry (EPIC-042 / US-837). Enumerates trusted and bundled boards, reads each board's
+ * Custom-editor registry. Enumerates trusted and bundled boards, reads each board's
  * `board-manifest.json`, and maps files → the boards that claim them (via the manifest's
- * `fileMasks` / `editorPriority`, US-836). It answers, synchronously, "which trusted and bundled boards
- * claim this file, and at what priority" — the data source the resolution (US-838) and
+ * `fileMasks` / `editorPriority`). It answers, synchronously, "which trusted and bundled boards
+ * claim this file, and at what priority" — the data source the resolution and
  * switch-widget tasks consume.
  *
- * Mirrors `registeredTools` (EPIC-038): a `TModel` singleton over `TGlobalState`, an in-memory
+ * Mirrors `registeredTools`: a `TModel` singleton over `TGlobalState`, an in-memory
  * subscription to trust and bundled-source changes (NOT a filesystem watcher — CE7), a
  * full-rebuild `refresh()`, and sync getters + reactive hooks. A source change flips associations
  * live (CE3).
@@ -97,7 +97,7 @@ export interface CustomEditorMatch extends Omit<BoardEditorAssociation, "editorN
     name: string;
     /** Reserved metadata key used only by renderer presentation; `name` remains English. */
     displayNameKey: "manifest.name" | "manifest.editorName";
-    /** File resolution priority (>= 0) from the manifest (US-836 `editorPriority`). */
+    /** File resolution priority (>= 0) from the manifest's `editorPriority` field. */
     priority: number;
 
 }
@@ -153,7 +153,7 @@ export interface BoardSettingsRegistration {
     name: string;
     /** The board's portable `<author>/<name>` identity. Addressable UI names key on this rather
      *  than on `boardRoot`, which differs between dev and packaged builds and changes on a
-     *  reinstall elsewhere (EPIC-109 D5). */
+     *  reinstall elsewhere. */
     namespace: string;
     origin: "trusted" | "bundled";
     declarations: BoardSettingDeclaration[];
@@ -200,7 +200,7 @@ function createBoardSchemeHooks(providerType: string, boardRoot: string): Scheme
             data.pipe = context.createPipe(data.pipeDescriptor);
             if (context.phase === "source-path") return;
             // Target resolution is an OPEN-phase concern: `source-path` rebuilds a pipe for a page
-            // that already exists and discards `data.target` (EPIC-113 D15).
+            // that already exists and discards `data.target`.
             const effectivePath = urlPathFileName(data.url);
             // Evaluate the empty-name branch BEFORE resolveEditorIdForFile: it substitutes the
             // whole URL via `matchPath || filePath` when effectivePath is empty, then Monaco's
@@ -638,7 +638,7 @@ export const customEditorRegistry = new CustomEditorRegistry();
 
 /**
  * Resolve the winning editor id for opening a file, merging the built-in registry with
- * trusted or bundled file-associated boards (EPIC-042 / EPIC-109). A board wins when it can handle the SOURCE (see the
+ * trusted or bundled file-associated boards. A board wins when it can handle the SOURCE (see the
  * capability gate below) and its `editorPriority` is STRICTLY greater than the best built-in
  * claimant (built-ins win exact ties; among boards, source order — `getBoardsForFile`
  * preserves it). Returns the built-in id otherwise.
@@ -662,7 +662,7 @@ export function resolveEditorIdForFile(
     const builtinId = builtinDef?.id;
     if (!filePath || !match) return builtinId;
     // A simple board reads the file itself, so by default it is offered real local files only
-    // (EPIC-042 CE4); a content-host board also handles https/archive/encrypted (EPIC-043 CH4).
+    // The content-host board also handles HTTPS, archive, and encrypted content.
     // So the local-path gate filters the board scan by capability rather than short-circuiting it.
     const local = isPlainLocalPath(filePath);
     const builtinPriority = builtinDef?.match?.acceptFile?.(match) ?? 0;

@@ -59,17 +59,6 @@ export class PagesQueryModel {
         });
     };
 
-    /** Find every page whose main editor belongs to the given board root. */
-    findPagesByBoardRoot = (boardRoot?: string): PageModel[] => {
-        if (!boardRoot) return [];
-        const normalizedRoot = fpNormalizeForCompare(boardRoot);
-        return this.model.state.get().pages.filter((page) => {
-            const editor = page.mainEditorInstance as { boardRoot?: string } | null;
-            return !!editor?.boardRoot
-                && fpNormalizeForCompare(editor.boardRoot) === normalizedRoot;
-        });
-    };
-
     /** Find the most recently shown page for a board in this renderer window. */
     findPageByBoardRoot = (
         boardRoot?: string,

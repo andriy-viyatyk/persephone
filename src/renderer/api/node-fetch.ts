@@ -16,7 +16,7 @@ import type { IFetchOptions } from "./types/app";
 import { TorChannel } from "../../ipc/tor-ipc";
 import { settings } from "./settings";
 import { agentFor, parseProxy, type ProxyRoute } from "./proxy-tunnel";
-import { isPrivateAddress, pinnedLookup } from "../../shared/board-network-guard";
+import { assertBoardNetworkAllowed, pinnedLookup } from "../../shared/board-network-guard";
 
 const https = require("https") as typeof import("https");
 const http = require("http") as typeof import("http");
@@ -159,30 +159,7 @@ function doFetch(
 
         const prepare = async (): Promise<{ addresses?: { address: string; family: number }[] }> => {
             if (!boardPolicy) return {};
-            if (boardPolicy.network === false) throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
-            const port = Number(urlObj.port || (isHttps ? 443 : 80));
-            const mcp = new URL(boardPolicy.mcpUrl);
-            const targetHost = urlObj.hostname.replace(/^\[|\]$/g, "");
-            const mcpHost = mcp.hostname.replace(/^\[|\]$/g, "");
-            if (!boardPolicy.appScripting && targetHost.toLowerCase() === mcpHost.toLowerCase()
-                && port === Number(mcp.port || (mcp.protocol === "https:" ? 443 : 80))) {
-                throw new Error('permission-denied: "appScripting" is not enabled in board-manifest.json');
-            }
-            const family = net.isIP(targetHost);
-            const addresses = family ? [{ address: targetHost, family }]
-                : await dns.lookup(targetHost, { all: true, verbatim: true });
-            if (!addresses.length) throw new Error(`DNS resolution returned no addresses for ${targetHost}.`);
-            const mcpFamily = net.isIP(mcpHost);
-            const mcpAddresses = mcpFamily ? [{ address: mcpHost, family: mcpFamily }]
-                : await dns.lookup(mcpHost, { all: true, verbatim: true })
-                    .catch((): { address: string; family: number }[] => []);
-            if (!boardPolicy.appScripting && port === Number(mcp.port || (mcp.protocol === "https:" ? 443 : 80))
-                && addresses.some(({ address }) => mcpAddresses.some((mcpAddress) => address === mcpAddress.address))) {
-                throw new Error('permission-denied: "appScripting" is not enabled in board-manifest.json');
-            }
-            if (boardPolicy.network === "internet" && addresses.some(({ address }) => isPrivateAddress(address, net.isIP))) {
-                throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
-            }
+            const addresses = await assertBoardNetworkAllowed(urlObj, boardPolicy, { lookup: dns.lookup, isIP: net.isIP });
             return route ? {} : { addresses };
         };
 

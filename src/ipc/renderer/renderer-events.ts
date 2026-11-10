@@ -3,6 +3,7 @@ import { DownloadEntry, PublishedBoardsCatalog, UpdateCheckResult } from "../api
 import { EventApi, EventEndpoint, EventObject, McpStatus, MnemeStatus, type PathWatchEvent } from "../api-types";
 import type { ClipboardHistoryChanged, ClipboardStatus } from "../clipboard-ipc";
 import type { BoardServiceStatus } from "../module-service-channels";
+import type { BoardNotifyMsg } from "../board-bridge-channels";
 
 class RendererEventObject<T> implements EventObject<T> {
     private subscribers: Array<(data: T) => void> = [];
@@ -158,10 +159,7 @@ class RendererEvents implements EventApi {
         EventEndpoint.eClipboardStatusChanged
     );
 
-    [EventEndpoint.eBoardNotify] = new RendererEventObject<{
-        message: string;
-        type?: "info" | "success" | "warning" | "error";
-    }>(EventEndpoint.eBoardNotify);
+    [EventEndpoint.eBoardNotify] = new RendererEventObject<BoardNotifyMsg>(EventEndpoint.eBoardNotify);
 
     [EventEndpoint.ePublishedBoardsUpdated] = new RendererEventObject<PublishedBoardsCatalog>(
         EventEndpoint.ePublishedBoardsUpdated

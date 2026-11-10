@@ -14,7 +14,7 @@ import type { ITreeProviderItem } from "../../api/types/io.tree";
 import { ArchiveIcon } from "../../theme/icons";
 import type { NavigationState } from "../base/navigation-state";
 import type { IPageHost } from "../../api/pages/IPageHost";
-import type { MenuItem } from "../../uikit";
+import type { MenuItem } from "../../uikit/Menu/index";
 import { filePathMenuItems } from "../shared/editor-menu-items";
 
 export interface ArchiveEditorState extends EditorStateBase {
@@ -60,7 +60,7 @@ export class ArchiveEditor extends EditorModel<ArchiveEditorState> {
     }
 
     /** Expose the archive path as `filePath` so host-less consumers read a single value:
-     *  the switch widget (matching file-associated boards, US-876) and the `switchMainEditor`
+     * the switch widget (matching file-associated boards) and the `switchMainEditor`
      *  simple-board branch (which bails on a missing `filePath`). Stored as `archiveUrl`. */
     override get filePath(): string | undefined {
         return this.state.get().archiveUrl || undefined;
@@ -69,7 +69,7 @@ export class ArchiveEditor extends EditorModel<ArchiveEditorState> {
     /** Switch options while ON the archive view (base returns []): just this editor, so the
      *  switch widget renders once a file-associated board (e.g. an Excel viewer for a `.xlsx`,
      *  itself a ZIP) is appended by the widget — letting the user switch back to the board
-     *  (US-876). A plain archive with no associated board yields a single-entry list, which the
+     *. A plain archive with no associated board yields a single-entry list, which the
      *  widget hides — no regression. Empty for a non-local archive (boards edit local files). */
     override findCompatibleEditors(): string[] {
         const path = this.filePath;

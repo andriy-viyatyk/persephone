@@ -13,7 +13,7 @@ export const SUB_MENU_DELAY_MS = 400;
  * Height cap for a menu popover. Only long menus reach it — the language menu's 96 items would
  * otherwise fill the whole window. The value was always intended; it was simply inert until
  * `PopoverModel`'s size middleware started taking the minimum of the available space and a
- * requested `maxHeight` (US-1040). Short menus are unaffected.
+ * requested `maxHeight`. Short menus are unaffected.
  */
 export const MAX_HEIGHT = 500;
 

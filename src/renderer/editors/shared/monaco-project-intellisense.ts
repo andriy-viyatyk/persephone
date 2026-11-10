@@ -16,7 +16,7 @@ import {
 import { tsProjectRegistry, type TsProject, type TsProjectChange } from "../../api/ts-project-registry";
 import type { MonacoEditorHostView } from "./MonacoEditorHostView";
 
-// Project IntelliSense (US-1744): a registered TypeScript project folder is loaded lazily as extra libs
+// Project IntelliSense: a registered TypeScript project folder is loaded lazily as extra libs
 // at real file URIs into Monaco's single TS worker, while a page edits a `.ts` file under it.
 
 // ── Tuning constants ─────────────────────────────────────────────────────────
@@ -388,7 +388,7 @@ class ProjectPageBindingImpl implements ProjectPageBinding {
 
     /**
      * Re-evaluate project membership and the model URI. `fromRegistry` never downgrades: when a project
-     * is removed the model keeps its file URI (decision 4); only the page's own changes downgrade.
+     * is removed the model keeps its file URI; only the page's own changes downgrade.
      */
     public reconcile(fromRegistry = false): void {
         if (this.disposed) return;

@@ -1,3 +1,4 @@
+import "./check-capability-contract.mjs";
 /**
  * Development script — Forge-free replacement for `electron-forge start`.
  *

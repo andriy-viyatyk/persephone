@@ -51,11 +51,10 @@ export interface IContentPipe {
     /** Serialize pipe to a descriptor (only includes persistent transformers). */
     toDescriptor(): IPipeDescriptor;
     /** Read binary content — provider.readBinary() piped through all transformers.
-     *  `options.signal`, when present, is forwarded to the underlying provider where supported
-     *  (US-1518). */
+     *  `options.signal`, when present, is forwarded to the underlying provider where supported. */
     readBinary(options?: { signal?: AbortSignal }): Promise<Buffer>;
     /** Create a stream of logical pipe bytes for an inclusive range. `options.signal`, when
-     *  present, is forwarded to the underlying provider where supported (US-1518). */
+     *  present, is forwarded to the underlying provider where supported. */
     createReadStream(
         range?: { start: number; end: number },
         options?: { signal?: AbortSignal },

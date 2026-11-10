@@ -7,12 +7,12 @@
  * Three kinds of automation target share these handlers:
  *  • Browser pages — each is its own `<webview>` `WebContents`; the debugger attaches
  *    directly to it (resolved via the browser's `getWebContents` resolver).
- *  • Boards (EPIC-037) — a board is an in-DOM `board://<host>` `<iframe>` inside the
+ *  • Boards — a board is an in-DOM `board://<host>` `<iframe>` inside the
  *    HOST window's `WebContents` (no board webContents). The debugger attaches to the
  *    host wc, and every board command is routed to the board frame via its flattened
  *    CDP session, so `Runtime.evaluate` / `Accessibility.getFullAXTree` / screenshots
- *    run in the board frame, NEVER the host's own React UI.
- *  • The app window itself — automating Persephone's OWN React UI (the `APP_WINDOW_CDP_KEY`
+ *    run in the board frame, NEVER the app renderer UI.
+ *  • The app window itself — automating Persephone's own renderer UI (the `APP_WINDOW_CDP_KEY`
  *    sentinel, used by `browser_*` with `pageId: "app"`). Needs no registration: the
  *    command arrives from the target window's own renderer, so `event.sender` IS the
  *    window to drive. We attach the debugger to it and run commands on the TOP-LEVEL
@@ -171,7 +171,7 @@ export function clearCdpTargetState(key: string): void {
 }
 
 /**
- * Board frame registrations (EPIC-037 / US-773). Kept SEPARATE from the browser's
+ * Board frame registrations. Kept SEPARATE from the browser's
  * registrations: a board has no webContents of its own — it is a `board://<host>`
  * frame of the host window's webContents. We store the host wc + the board's
  * `board://` host, and lazily resolve (and cache) the board frame's flattened CDP
@@ -185,7 +185,7 @@ interface BoardReg {
     boardHost: string;
     /** The iframe document's `?v=` nonce (per-mount boardId). Disambiguates THIS tab's
      *  frame from other tabs of the same board (same origin) and from the pre-reload
-     *  frame after a remount — origin alone is not unique (US-796). */
+     *  frame after a remount — origin alone is not unique. */
     frameNonce?: string;
     title?: string;
     pageId?: string;
@@ -602,7 +602,7 @@ async function resolveBoardSession(reg: BoardReg): Promise<string | undefined> {
     );
     // Prefer the frame whose URL carries THIS registration's ?v= nonce — origin alone
     // is ambiguous when the same board is open in several tabs, or when a remount's old
-    // frame briefly lingers (US-796). Fall back to the first same-origin frame only when
+    // frame briefly lingers. Fall back to the first same-origin frame only when
     // no nonce is known or none matches (e.g. an older shim without the tag).
     const target =
         (reg.frameNonce &&
@@ -975,7 +975,7 @@ async function armNavigationWait(
  * cached on demand). A command WITH a session (snapshot's nested-iframe attaches)
  * passes through unchanged. `Target.getTargets` short-circuits to an empty list —
  * boards are single local documents, so nested-iframe snapshots are unsupported
- * (EPIC-037 C773-2); this keeps the shared snapshot code from discovering sibling
+ *; this keeps the shared snapshot code from discovering sibling
  * frames. On a stale session (the frame reloaded) we re-resolve once.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -985,13 +985,13 @@ async function boardSend(reg: BoardReg, method: string, params: object | undefin
 
     // `Page.captureScreenshot` can only run on a TOP-LEVEL target, not the board's
     // OOPIF session. Capture the host page on the top-level session, clipped to the
-    // board iframe's on-screen rect (EPIC-037 C773-4).
+    // board iframe's on-screen rect.
     if (method === "Page.captureScreenshot") {
         ensureAttached(reg.host);
         let boardRect: { x: number; y: number; width: number; height: number; scale: number } | undefined;
         try {
             // Select THIS tab's iframe by its ?v= nonce (multiple tabs of the same board
-            // share the board:// src prefix; only one is visible — US-796). Fall back to
+            // share the board:// src prefix; only one is visible. Fall back to
             // the origin-prefix selector when no nonce is known.
             const selector = reg.frameNonce
                 ? `iframe[src*="v=${reg.frameNonce}"]`
@@ -1259,7 +1259,7 @@ export function initCdpHandlers(
                         throw new Error("Failed to attach CDP debugger");
                     }
                 }
-                // Top-level session — Persephone's own React UI. `sessionId` is passed
+                // Top-level session — Persephone's own renderer UI. `sessionId` is passed
                 // through so the shared snapshot code's nested-iframe attaches (board
                 // frames inside the app) and their `f1-…` refs still resolve.
                 return wc.debugger.sendCommand(method, params, sessionId);

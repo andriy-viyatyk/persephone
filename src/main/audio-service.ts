@@ -1,5 +1,8 @@
+import { PLATFORM_AUDIO_CAPABILITY_ID } from "../shared/capability-constants";
+import { parseBoardIdPrefix, BOARD_FRAME_PREFIX, CAPABILITY_BOARD_PREFIX } from "../ipc/module-service-channels";
+import { CONTROL_CHANNEL, ARM_CHANNEL, CLEAR_CHANNEL, OPEN_CHANNEL, CLOSE_CHANNEL } from "../ipc/audio-channels";
 import { globalMuteService } from "./global-mute-service";
-import { app, BrowserWindow, ipcMain, MessageChannelMain, type MessagePortMain, type UtilityProcess, type WebContents } from "electron";
+import { app, BrowserWindow, MessageChannelMain, type MessagePortMain, type UtilityProcess, type WebContents } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { EventEndpoint } from "../ipc/api-types";
@@ -15,11 +18,6 @@ import { armAudioMicrophoneGrant, armAudioLoopbackGrant, clearAudioCaptureGrants
 import { setAudioCaptureCount } from "./audio-capture-state";
 import { guardedIpcHandle, guardedIpcOn } from "./ipc-sender-guard";
 
-const CONTROL_CHANNEL = "persephone:audio-control";
-const ARM_CHANNEL = "persephone:audio-arm-capture";
-const CLEAR_CHANNEL = "persephone:audio-clear-capture";
-const CLOSE_CHANNEL = "persephone:audio-close-channel";
-const OPEN_CHANNEL = "persephone:audio-open-channel";
 // Vite replaces this identifier in development and production builds.
 declare const AUDIO_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 
@@ -122,7 +120,7 @@ class AudioService {
             }
         });
         setAudioWindowTargetResolver(() => this.window && !this.window.isDestroyed() ? this.window.webContents : undefined);
-        ipcMain.on(AUDIO_DEVICES_REPLY, (event, reply: AudioDevicesReply) => {
+        guardedIpcOn(AUDIO_DEVICES_REPLY, (event, reply: AudioDevicesReply) => {
             const window = this.window;
             if (!window || window.isDestroyed() || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame
                 || !reply || typeof reply.requestId !== "string" || reply.epoch !== this.epoch) return;
@@ -131,7 +129,7 @@ class AudioService {
             if ("error" in reply) request.reject(capabilityError("rejected", reply.error));
             else request.resolve(reply.devices);
         });
-        ipcMain.on(CONTROL_CHANNEL, (event, message: { type?: unknown; channelId?: unknown; epoch?: unknown; code?: unknown; message?: unknown; count?: unknown }) => {
+        guardedIpcOn(CONTROL_CHANNEL, (event, message: { type?: unknown; channelId?: unknown; epoch?: unknown; code?: unknown; message?: unknown; count?: unknown }) => {
             const window = this.window;
             if (!window || window.isDestroyed() || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) return;
             if (message?.type === "ready" && message.epoch === this.epoch) {
@@ -155,14 +153,14 @@ class AudioService {
                 setAudioCaptureCount(message.count as number);
             }
         });
-        ipcMain.handle(ARM_CHANNEL, async (event, source: unknown) => {
+        guardedIpcHandle(ARM_CHANNEL, async (event, source: unknown) => {
             const window = this.window;
             if (!window || window.isDestroyed() || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame
                 || (source !== "microphone" && source !== "computer")) throw capabilityError("permission-denied");
             if (source === "computer") armAudioLoopbackGrant(window.webContents);
             else armAudioMicrophoneGrant(window.webContents);
         });
-        ipcMain.handle(CLEAR_CHANNEL, (event) => {
+        guardedIpcHandle(CLEAR_CHANNEL, (event) => {
             const window = this.window;
             if (!window || window.isDestroyed() || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw capabilityError("permission-denied");
             clearAudioCaptureGrants(window.webContents);
@@ -284,7 +282,7 @@ class AudioService {
             reauthorize();
             if ("mainFrame" in delivery.target) {
                 delivery.target.postMessage(EventEndpoint.eBoardServiceChannel, {
-                    boardId: delivery.requestId.startsWith("board-frame:") ? delivery.requestId.slice(12) : `capability:${delivery.requestId}`,
+                    boardId: parseBoardIdPrefix(delivery.requestId, BOARD_FRAME_PREFIX) ?? `${CAPABILITY_BOARD_PREFIX}${delivery.requestId}`,
                     channelId,
                 }, [consumerPort]);
             } else {
@@ -358,7 +356,7 @@ class AudioService {
             reauthorize();
             if (invocation.signal.aborted) throw capabilityError("cancelled");
             if ("mainFrame" in delivery.target) delivery.target.postMessage(EventEndpoint.eBoardServiceChannel, {
-                boardId: delivery.requestId.startsWith("board-frame:") ? delivery.requestId.slice(12) : `capability:${delivery.requestId}`, channelId,
+                boardId: parseBoardIdPrefix(delivery.requestId, BOARD_FRAME_PREFIX) ?? `${CAPABILITY_BOARD_PREFIX}${delivery.requestId}`, channelId,
             }, [consumer]);
             else delivery.target.postMessage({ kind: "capability-client-port", requestId: delivery.requestId }, [consumer]);
             if (invocation.signal.aborted) throw capabilityError("cancelled");
@@ -398,12 +396,12 @@ class AudioService {
     }
 
     private authorize(bound: BoundCapability, source?: "microphone" | "computer"): void {
-        if (bound.registration.id !== "audio" || bound.registration.version !== 1 || bound.registration.origin !== "platform") throw capabilityError("permission-denied");
+        if (bound.registration.id !== PLATFORM_AUDIO_CAPABILITY_ID || bound.registration.version !== 1 || bound.registration.origin !== "platform") throw capabilityError("permission-denied");
         if (bound.caller.kind === "agent") throw capabilityError("permission-denied");
         if (bound.caller.kind === "platform") return;
         if (!("provider" in bound.caller)) throw capabilityError("permission-denied");
         const board = capabilityRegistry.board(bound.caller.provider);
-        if (!board || !board.uses?.some((use) => use.id === "audio" && use.version === 1)
+        if (!board || !board.uses?.some((use) => use.id === PLATFORM_AUDIO_CAPABILITY_ID && use.version === 1)
             || (bound.caller.kind === "board-service" && !board.canStartService)) throw capabilityError("permission-denied", "The board is not trusted for audio.");
         if (source === "microphone" && !boardPermissionAllows(board.permissions, "microphone")) throw capabilityError("permission-denied", "Microphone permission is required.");
         if (source === "computer" && (board.permissions.kind !== "flags" || !boardPermissionAllows(board.permissions, "computerAudio"))) throw capabilityError("permission-denied", "Computer audio permission is required.");

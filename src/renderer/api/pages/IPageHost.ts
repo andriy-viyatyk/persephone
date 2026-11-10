@@ -7,7 +7,7 @@ import type { NavEntry } from "../../../shared/persistence";
 
 /**
  * The editor↔owner contract that `EditorModel.page` is typed as. `PageModel`
- * implements it in full; a future `BrowserPanelHost` (US-601) implements the
+ * implements it in full; a future `BrowserPanelHost` implements the
  * required members and omits the optional main-editor-navigation group.
  *
  * The required core (identity, reactive state, panels/sidebar, transient store)
@@ -24,12 +24,12 @@ export interface IPageHost {
     panelEditors: EditorModel[];
     activePanel: string;
     /** Bare panel-type id of the active panel (`activePanel` is the composite
-     *  `${editorId}::${panelId}`). Use for "is panel X expanded" checks (US-619). */
+     *  `${editorId}::${panelId}`). Use for "is panel X expanded" checks. */
     activePanelId: string;
     hasSidebar: boolean;
     /** Whether the sidebar is mandatory-open (cannot be closed). PageModel
      *  computes the Explorer-only-closeable rule; an embedded `BrowserPanelHost`
-     *  (US-601) returns `true`. Read by the close affordances (toggle / ✕). */
+     *   returns `true`. Read by the close affordances (toggle / ✕). */
     sidebarMandatory?: boolean;
     expandPanel(panelId: string): void;
     setActivePanel(panel: string): void;
@@ -46,17 +46,17 @@ export interface IPageHost {
     getTransient<T>(key: string): T | undefined;
     setTransient(key: string, value: unknown): void;
 
-    // Markdown in-page back-navigation history (US-784)
+    // Markdown in-page back-navigation history 
     pushNavBack(entry: NavEntry): void;
     popNavBack(): NavEntry | undefined;
 
     // ── OPTIONAL — page-tab property (an embedded host isn't a pinnable tab) ──
     pinned?: boolean;
-    /** The board a board-mode window was launched for (EPIC-136); its tab is locked first. */
+    /** The board a board-mode window was launched for; its tab is locked first. */
     readonly isLockedBoardPage?: boolean;
 
     // ── OPTIONAL — main-editor navigation (a Browser host omits these).
-    //    Membership FINAL as of US-600 (Link exercised the full surface): every
+    //    Membership is final after Link exercised the full surface: every
     //    member below has a live `editor.page?.…` caller. `setMainEditor`/`close`
     //    were trimmed — they are only ever called via the concrete `pagesModel`,
     //    never through `editor.page`. ──

@@ -1,3 +1,5 @@
+import { CONTROL_CHANNEL, ARM_CHANNEL, CLEAR_CHANNEL, OPEN_CHANNEL, CLOSE_CHANNEL } from "../../ipc/audio-channels";
+import { isCapabilityErrorCode } from "../../shared/capability-constants";
 import { createRendererCapabilityChannel } from "../api/renderer-capability-channel";
 import { errMessage } from "../../shared/utils";
 import { PcmAudioCapture } from "../ui/speech/PcmAudioCapture";
@@ -10,11 +12,6 @@ import { MICROPHONE_TUNING, type MicrophoneNotch, type MicrophoneCleaningOptions
 import type { LoopbackLease } from "../ui/speech/LoopbackReference";
 
 const { ipcRenderer } = require("electron") as typeof import("electron");
-const CONTROL_CHANNEL = "persephone:audio-control";
-const ARM_CHANNEL = "persephone:audio-arm-capture";
-const CLEAR_CHANNEL = "persephone:audio-clear-capture";
-const OPEN_CHANNEL = "persephone:audio-open-channel";
-const CLOSE_CHANNEL = "persephone:audio-close-channel";
 const epoch = Number(new URL(location.href).searchParams.get("epoch"));
 
 interface CaptureOptions {
@@ -478,7 +475,7 @@ ipcRenderer.on(CLOSE_CHANNEL, (_event: Electron.IpcRendererEvent, message: { cha
     if (typeof message?.channelId !== "string") return;
     const record = channels.get(message.channelId);
     if (!record) return;
-    const code = typeof message.code === "string" && ["no-handler", "untrusted", "handler-closed", "crashed", "cancelled", "timeout", "cycle", "payload-too-large", "busy", "rejected", "permission-denied", "channel-backpressure", "channel-closed"].includes(message.code)
+    const code = isCapabilityErrorCode(message.code)
         ? message.code as CapabilityErrorCode : "cancelled";
     const reason = typeof message.message === "string" ? message.message : "Audio channel closed.";
     record.channel.close({ code, message: reason });

@@ -12,7 +12,7 @@ export const torInfoDialogId = Symbol("torInfoDialog");
 
 /**
  * Egress info for a routed browser page: a Tor page (exit IP, Tor verdict,
- * Reconnect) or a proxied profile page (US-1557 — egress IP and location only).
+ * Reconnect), or a proxied profile page, where it shows only the egress IP and location.
  */
 export interface TorInfoDialogState {
     mode: "tor" | "proxy";
@@ -97,7 +97,7 @@ export function showTorInfoDialog(partition: string) {
     return openInfoDialog("tor", partition, "");
 }
 
-/** Egress info for a proxied browser profile page (US-1557). */
+/** Egress info for a proxied browser profile page. */
 export function showBrowserNetworkInfoDialog(partition: string, proxyLabel: string) {
     return openInfoDialog("proxy", partition, proxyLabel);
 }

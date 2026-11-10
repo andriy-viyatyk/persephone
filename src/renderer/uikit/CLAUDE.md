@@ -14,13 +14,10 @@ Each component lives in its own subfolder:
 ```
 uikit/
   tokens.ts              ← design token constants
-  index.ts               ← public exports
   Button/
     ButtonView.ts
-    index.ts
   Input/
     InputView.ts
-    index.ts
   ...
 ```
 
@@ -352,7 +349,6 @@ uikit/ListBox/
     ListBoxView.ts        ← Native view
     ListBoxModel.ts       ← Model (TComponentModel subclass)
     ListBox.story.ts
-    index.ts
 ```
 
 Model classes are suffixed `Model` (matching the rest of the codebase — `GridPageModel`,
@@ -377,8 +373,7 @@ Every UIKit component exposes a framework-free `VanillaView`. The detailed model
 section is the mandatory checklist for a class extending `VanillaView`.
 
 Import `VanillaView`, `KeyedList`, and `SubtreeSwap` directly from their files under
-`uikit/shared/`; these lifecycle and structural helpers are internal and are not public barrel
-exports from `uikit/index.ts`.
+`uikit/shared/`. Import components and helpers from their defining files; only DataGrid and Menu retain index surfaces.
 
 ### Lifecycle and ownership
 

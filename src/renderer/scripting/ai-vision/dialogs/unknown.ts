@@ -6,8 +6,8 @@ import { cancelDialog, descriptor, requireButton, type DialogAdapter, type Dialo
  *
  * Without it, one unregistered dialog makes `dialogs[i]` — and `children()`, and every attention
  * block — throw for *all* open dialogs, so a single missed registration blinds the agent to the
- * whole stack. `EditLinkDialog` was exactly that miss (found by EPIC-084's `/review`, after
- * US-1298's inventory put the count at 13).
+ * whole stack. `EditLinkDialog` was exactly that miss (found by 's `/review`, after
+ * 's inventory put the count at 13).
  *
  * A dialog reached this way is still answerable: `cancel()` is the one action that works without
  * knowing anything about the model, and it is what an agent needs to unblock the app. Fields the

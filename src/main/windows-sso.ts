@@ -1,4 +1,4 @@
-// Windows single sign-on for Microsoft work and school accounts (US-1581).
+// Windows single sign-on for Microsoft work and school accounts.
 //
 // On an Entra-joined device, Conditional Access can require proof that the sign-in comes from
 // that device. Edge, Chrome and Firefox get it from Windows (IProofOfPossessionCookieInfoManager)

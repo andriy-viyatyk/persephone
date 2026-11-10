@@ -88,7 +88,7 @@ export class FileWatcher {
 }
 
 /**
- * Recursive directory watcher (US-624). A disposable wrapper over the shared
+ * Recursive directory watcher. A disposable wrapper over the shared
  * path-watch service. Used by the Git Tree editor to auto-refresh when the repo
  * changes on disk.
  *

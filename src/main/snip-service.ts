@@ -4,7 +4,7 @@ import path from "path";
 import { openWindows } from "./open-windows";
 
 /** Resolve the persephone-snip.exe path (also hosts the clipboard subcommands
- *  used by clip-service.ts — US-807). Packaged: beside persephone.exe; dev:
+ *  used by `clip-service.ts`. Packaged: beside persephone.exe; dev:
  *  the local cargo release build. */
 export function getSnipToolPath(): string {
     if (app.isPackaged) {

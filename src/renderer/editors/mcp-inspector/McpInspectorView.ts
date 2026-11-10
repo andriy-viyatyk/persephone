@@ -274,5 +274,3 @@ class HistoryPanelView extends VanillaView<{ model: McpInspectorEditorModel }> {
     private readonly showHistory = (): void => { void this.props.model.showHistory(); };
     private readonly clearHistory = (): void => { this.props.model.clearHistory(); this.render(); };
 }
-
-export { McpInspectorEditorView as McpInspectorView };

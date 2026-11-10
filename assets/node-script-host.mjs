@@ -1,4 +1,4 @@
-// Host for a board's persephone.executeNode() script (US-1591). Runs in an Electron
+// Host for a board's persephone.executeNode() script. Runs in an Electron
 // utilityProcess so the packaged app can lock the RunAsNode fuse. It gives the script the
 // semantics of `node script.js`: argv, CommonJS/ESM entry, stdin fed by the main process over
 // parentPort, and exit when the event loop has nothing left — none of which a utilityProcess

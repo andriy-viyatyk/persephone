@@ -574,9 +574,9 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.updateBoardTheme, theme);
     };
 
-    // Ask main to mint a per-board MessagePort (EPIC-037 / US-771). The port arrives
+    // Ask main to mint a per-board MessagePort. The port arrives
     // asynchronously on `eBoardPort` — subscribe via `onBoardPort` before requesting.
-    // `ownerId` = the owning BoardEditorModel id, the stable job-retention key (US-799).
+    // `ownerId` = the owning BoardEditorModel id, the stable job-retention key.
     requestBoardPort = async (boardId: string, host: string, ownerId: string, hostedPath: string | null, token: string) => {
         return executeOnce<void>(Endpoint.requestBoardPort, boardId, host, ownerId, hostedPath, token);
     };
@@ -589,7 +589,7 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.disposeBoardPort, boardId);
     };
 
-    // Busy retention (US-799): mirror the board model's busy flag to main so a busy
+    // Busy retention: mirror the board model's busy flag to main so a busy
     // owner's jobs survive port disposal; reap everything on final teardown.
     setBoardBusy = async (ownerId: string, busy: boolean) => {
         return executeOnce<void>(Endpoint.setBoardBusy, ownerId, busy);
@@ -620,7 +620,7 @@ class ApiCalls implements Api {
         });
     };
 
-    // Register a board's board:// frame for CDP automation (EPIC-037 / US-773). Main
+    // Register a board's board:// frame for CDP automation. Main
     // attaches the debugger to the calling window's webContents and routes commands to
     // the board frame. Call on each iframe load (a reload recreates the frame).
     registerBoardFrame = async (boardId: string, boardHost: string, frameNonce?: string, tab?: string, title?: string, pageId?: string) => {

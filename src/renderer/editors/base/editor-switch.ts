@@ -72,7 +72,7 @@ async function rebuildEditorOverFile(
     const { pagesModel } = await import("../../api/pages");
     const { attachEditorToPage } = await import("../../api/pages/PagesLifecycleModel");
     // A failed module load for the target editor rejects here. Unguarded, the user
-    // answered the release prompt and then nothing happened at all (US-1163's shape).
+    // answered the release prompt and then nothing happened at all ('s shape).
     // `confirmRelease` is a predicate and disposes nothing, so aborting leaves the
     // existing editor installed and usable — the toast explains why it stayed.
     const built = await guard(`Failed to open ${fpBasename(filePath)}`, () =>
@@ -102,8 +102,8 @@ export async function switchMainEditor(
 
     // The "+" install target is host-TOLERANT in every direction: `BoardInfoEditorModel.switchFrom`
     // adopts a shared content host when the source holds one, and otherwise captures the source's
-    // file path (the shape it was written for — the host-less Archive viewer) or, since US-1432,
-    // its `folderAnchor`. It is therefore dispatched FIRST, ahead of both branches that would
+    // file path for a host-less Archive viewer, or the source's `folderAnchor` for a directory.
+    // It is therefore dispatched FIRST, ahead of both branches that would
     // otherwise claim it:
     //
     //  - the board branch below would dispose-and-rebuild it over the file. `board-info` declares
@@ -188,8 +188,8 @@ export async function switchMainEditor(
         newBoardRoot !== null
         || parseBoardEditorId(oldEditor.editorId) !== null;
     if (boardInvolved) {
-        // A content-host board (EPIC-043) transfers the shared host like Monaco↔Grid;
-        // a simple board (EPIC-042) has no host and dispose-and-rebuilds. Determine the
+        // A content-host board transfers the shared host like Monaco↔Grid;
+        // a simple board has no host and dispose-and-rebuilds. Determine the
         // NEW board's kind from the registry (a plain built-in is host-capable iff it
         // declares `hasContentHost`).
         let newBoardKind: "simple" | "content-host" | "stream-host" | undefined;
@@ -239,7 +239,7 @@ export async function switchMainEditor(
             return;
         }
 
-        // Simple board (either direction) — dispose-and-rebuild + confirmRelease (EPIC-042).
+        // Simple board (either direction) — dispose-and-rebuild + confirmRelease.
         if (!filePath) return;
         await rebuildEditorOverFile(page, oldEditor, filePath, newEditorId, sourceLink);
         return;
@@ -251,7 +251,7 @@ export async function switchMainEditor(
     }
     // A host-transfer switch needs the OLD editor to actually hold a shared content host for
     // the new one to adopt. A host-less source — the Board Info install page that never
-    // adopted a host, or the host-less Archive viewer for a zip-based file (US-864/US-876) —
+    // adopted a host, or the host-less Archive viewer for a zip-based file —
     // has nothing to hand over, and a real file editor's `switchFrom` would throw. When the
     // target is such a file editor, dispose-and-rebuild it over the file instead (mirrors the
     // simple-board branch above). The "+" install target needs no exemption here: it is

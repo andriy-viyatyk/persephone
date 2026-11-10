@@ -37,7 +37,7 @@ class TorService {
     private fetchIdleTimer: ReturnType<typeof setTimeout> | undefined;
     /**
      * Every partition currently carrying the Tor SOCKS proxy, bootstrapped or not.
-     * Answers "is this a Tor session?" for the guest WebRTC policy (US-1557), which
+     * Answers "is this a Tor session?" for the guest WebRTC policy, which
      * must hold from the first navigation — before `activePartitions` includes it.
      */
     private proxiedPartitions = new Set<string>();
@@ -229,7 +229,7 @@ class TorService {
 
     /**
      * True only while `partition` belongs to a live, bootstrapped Tor page.
-     * Gates the `tor-src://` handler (US-896) so the scheme is inert whenever no
+     * Gates the `tor-src://` handler so the scheme is inert whenever no
      * Tor page is running — do not relax this to a plain `activePartitions` check.
      */
     isActiveTorPartition(partition: string): boolean {
@@ -272,7 +272,7 @@ class TorService {
 
     /**
      * Restart tor.exe so fresh circuits — and normally a new exit node — are
-     * used, then re-apply the proxy to every active partition (US-897).
+     * used, then re-apply the proxy to every active partition.
      *
      * The daemon is shared, so this affects all open Tor pages, not just
      * `partition`. Status is broadcast so their indicators stay honest.
@@ -432,7 +432,7 @@ class TorService {
     // -------------------------------------------------------------------------
 
     /**
-     * Push a status change to every window (US-897). Only `restart()` uses this;
+     * Push a status change to every window. Only `restart()` uses this;
      * the initial start still reports through its invoke result.
      */
     private broadcastStatus(status: TorStatus, error?: string): void {

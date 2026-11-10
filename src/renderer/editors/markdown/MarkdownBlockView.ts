@@ -93,7 +93,7 @@ function preprocessFrontmatter(content: string): string {
 }
 
 // =============================================================================
-// Anchor resolution (US-901)
+// Anchor resolution 
 // =============================================================================
 
 function findAnchorTarget(root: HTMLElement, fragment: string): HTMLElement | null {

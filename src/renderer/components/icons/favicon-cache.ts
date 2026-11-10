@@ -97,7 +97,7 @@ export function getFaviconPathSync(hostname: string): string | null {
  * Downloads the image and saves it as a binary file.
  * No-op if already cached for this hostname.
  *
- * `routedUrl` (US-1557) is the same favicon wrapped in a route scheme such as
+ * `routedUrl` is the same favicon wrapped in a route scheme such as
  * `profile-src://` — set for a proxied browser profile, whose favicon must be
  * fetched through the profile session. It is read with Chromium `fetch()`; with
  * no route the download uses Node https directly.

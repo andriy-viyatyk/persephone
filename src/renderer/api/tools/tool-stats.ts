@@ -1,6 +1,6 @@
 /**
- * In-memory per-tool call statistics (EPIC-038 / US-802). Reactive counters — which tool was
- * run, how many times, how many failed — consumed by the US-805 management UI. Deliberately
+ * In-memory per-tool call statistics. Reactive counters — which tool was
+ * run, how many times, how many failed — consumed by the management UI. Deliberately
  * holds NO logs or output (that goes to the per-toolset `tools-execution.log`, see `tool-log.ts`)
  * and is NOT persisted: it resets on app restart. `tool-executor` calls `record()` after every
  * run (success or failure).

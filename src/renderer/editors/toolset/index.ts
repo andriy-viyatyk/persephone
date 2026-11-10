@@ -15,7 +15,7 @@ export const toolsetModule: EditorModule = {
     newEditorModel: async (filePath?: string) => {
         const model = new ToolsetEditorModel(new TComponentState(getDefaultToolsetEditorState()));
         if (filePath) {
-            // A toolset is opened by its own root path (persephone-toolset:// link, US-805).
+            // A toolset is opened by its own root path (persephone-toolset:// link).
             const link = decodePersephoneToolsetLink(filePath);
             if (link) model.initFromToolsetRoot(link.toolsetRoot);
         }

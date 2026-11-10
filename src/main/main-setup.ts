@@ -59,7 +59,7 @@ export function setupMainProcess() {
         console.error(`Site extension trust initialization failed: ${errMessage(error)}`);
     });
 
-    // US-800: recover standard Windows folder/system env vars before any child
+    // Recover standard Windows folder and system environment variables before any child
     // process is spawned, in case the app was launched from a degraded shell.
     reconstructWindowsEnv();
 
@@ -79,7 +79,7 @@ export function setupMainProcess() {
             },
         },
         {
-            // Tor-routed remote resources for renderer-drawn content (US-896).
+            // Tor-routed remote resources for renderer-drawn content.
             // The app renderer is not covered by a Tor page's session proxy, so
             // e.g. the Link editor's bookmark images opt in via this scheme.
             scheme: "tor-src",
@@ -90,7 +90,7 @@ export function setupMainProcess() {
             },
         },
         {
-            // Proxied-profile routed remote resources for renderer-drawn content (US-1557):
+            // Proxied-profile routed remote resources for renderer-drawn content:
             // the `tor-src` counterpart for browser profiles behind a proxy.
             scheme: PROFILE_SRC_SCHEME,
             privileges: {
@@ -102,7 +102,7 @@ export function setupMainProcess() {
             },
         },
         {
-            // Short-lived private-session capabilities for claimed browser downloads (US-1531).
+            // Short-lived private-session capabilities for claimed browser downloads.
             scheme: "session-src",
             privileges: {
                 standard: true,
@@ -113,7 +113,7 @@ export function setupMainProcess() {
             },
         },
         {
-            // Board frontend delivery (EPIC-034 / US-723). NOT bypassCSP — board
+            // Board frontend delivery. NOT bypassCSP — board
             // pages are governed by the CSP the board:// handler sets (forbids remote).
             scheme: "board",
             privileges: {
@@ -123,8 +123,8 @@ export function setupMainProcess() {
             },
         },
         {
-            // Native HTML preview documents (US-1590). A srcdoc frame would inherit the main window's
-            // strict CSP; this scheme serves each preview with its own (the pre-US-1590 policy).
+            // Native HTML preview documents. A srcdoc frame would inherit the main window's
+            // strict CSP; this scheme serves each preview with its own CSP.
             scheme: "html-preview",
             privileges: { standard: true, secure: true, supportFetchAPI: true },
         },
@@ -179,14 +179,14 @@ export function setupMainProcess() {
 
         registerAssetProtocol(appPartition);
         registerAssetProtocol(fileAccessPersistPartition);
-        // US-896 — lets renderer-drawn content (the Link editor's bookmark images on
+        // Registering this scheme lets renderer-drawn content (the Link editor's bookmark images on
         // a Tor page's blank tab) fetch a remote URL through that page's Tor session.
         // Only the app window's session needs it — do not widen to other partitions.
         registerTorSrcProtocol(appPartition);
         registerSessionSrcProtocol(appPartition);
         registerProfileSrcProtocol(appPartition);
-        // Single host-routed board:// handler on the main window's session (EPIC-037 /
-        // US-770) — boards load board://<host> iframes in this session, routed by host.
+        // Single host-routed board:// handler on the main window's session.
+        // Boards load board://<host> iframes in this session, routed by host.
         const { initBoardProtocol } = await import("./board-protocol-service");
         initBoardProtocol(appPartition);
         const { initHtmlPreviewProtocol } = await import("./html-preview-protocol");
@@ -209,11 +209,11 @@ export function setupMainProcess() {
         // Check for updates after a short delay to not slow down startup
         setTimeout(() => {
             if (!applicationProfileName()) versionService.checkForUpdates();
-            // Refresh the published-boards catalog on the same 24h-gated cadence (US-862).
+            // Refresh the published-boards catalog on the same 24h-gated cadence.
             import("./published-boards-service").then(({ publishedBoardsService }) =>
                 publishedBoardsService.getPublishedBoards(),
             );
-            // Sweep any board-download ZIP orphaned by a crash mid-download (US-863).
+            // Sweep any board-download ZIP orphaned by a crash mid-download.
             import("./board-download-service").then(({ boardDownloadService }) =>
                 boardDownloadService.cleanDownloadsFolder(),
             );

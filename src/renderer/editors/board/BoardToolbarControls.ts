@@ -823,7 +823,7 @@ export class BoardToolbarControls extends VanillaView<{
         this.records.clear();
         this.frameGeneration = undefined;
         // The retiring frame's `{ file }` icons are cached by board root + path; drop them so a
-        // board that edited an icon on disk renders the new one after its reload (D7).
+        // board that edited an icon on disk renders the new one after its reload.
         invalidateBoardToolbarIcons(this.model.boardRoot ?? "");
         this.model.clearToolbarControlsForFrame(frameGeneration);
         this.publishDeclarations();

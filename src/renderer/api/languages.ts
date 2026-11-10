@@ -1,22 +1,4 @@
-import { englishCatalog, type MessageKey } from "../../shared/i18n/en";
-import { aboutCatalog } from "../../shared/i18n/en/about";
-import { apiCatalog } from "../../shared/i18n/en/api";
-import { boardCatalog } from "../../shared/i18n/en/board";
-import { browserCatalog } from "../../shared/i18n/en/browser";
-import { commonCatalog } from "../../shared/i18n/en/common";
-import { dialogsCatalog } from "../../shared/i18n/en/dialogs";
-import { editorsCatalog } from "../../shared/i18n/en/editors";
-import { explorerCatalog } from "../../shared/i18n/en/explorer";
-import { gitCatalog } from "../../shared/i18n/en/git";
-import { linksCatalog } from "../../shared/i18n/en/links";
-import { logViewCatalog } from "../../shared/i18n/en/logView";
-import { mainCatalog } from "../../shared/i18n/en/main";
-import { menusCatalog } from "../../shared/i18n/en/menus";
-import { mnemeCatalog } from "../../shared/i18n/en/mneme";
-import { settingsCatalog } from "../../shared/i18n/en/settings";
-import { shellCatalog } from "../../shared/i18n/en/shell";
-import { toolsCatalog } from "../../shared/i18n/en/tools";
-import { uikitCatalog } from "../../shared/i18n/en/uikit";
+import { englishCatalog, englishEntryCatalogs, type MessageKey } from "../../shared/i18n/en";
 import { auditLanguagePack } from "../../shared/i18n/audit-pack";
 import { getActiveLocale } from "../../shared/i18n/active-locale";
 import { hashEnglishMessage } from "../../shared/i18n/hash";
@@ -82,29 +64,8 @@ function writeLanguagePackAtomically(path: string, pack: LanguagePack): Promise<
     return fs.write(temporary, `${JSON.stringify(pack, null, 2)}\n`).then(() => fs.rename(temporary, path));
 }
 
-const ENGLISH_ENTRY_CATALOGS = {
-    common: commonCatalog,
-    main: mainCatalog,
-    settings: settingsCatalog,
-    dialogs: dialogsCatalog,
-    shell: shellCatalog,
-    editors: editorsCatalog,
-    menus: menusCatalog,
-    api: apiCatalog,
-    browser: browserCatalog,
-    board: boardCatalog,
-    explorer: explorerCatalog,
-    links: linksCatalog,
-    git: gitCatalog,
-    mneme: mnemeCatalog,
-    about: aboutCatalog,
-    tools: toolsCatalog,
-    uikit: uikitCatalog,
-    logView: logViewCatalog,
-} as const;
-
 type CatalogEntry = { message: LanguageMessage; note?: string };
-const entryCatalogs = ENGLISH_ENTRY_CATALOGS as unknown as Record<string, Record<string, CatalogEntry>>;
+const entryCatalogs = englishEntryCatalogs as unknown as Record<string, Record<string, CatalogEntry>>;
 const messagesByArea = englishCatalog as unknown as Record<string, Record<string, LanguageMessage>>;
 
 function cloneMessage(message: PackMessage): LanguageMessage {

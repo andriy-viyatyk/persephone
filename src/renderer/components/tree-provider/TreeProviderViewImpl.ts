@@ -1,3 +1,4 @@
+import { hrefKey, sameHref } from "./href-utils";
 import { createComponentModelDriver, type ComponentModelDriver } from "../../core/state/model";
 import { TraitSet, traited, type Traited } from "../../core/traits/traits";
 import { TraitTypeId, type TraitDragPayload } from "../../core/traits";
@@ -148,7 +149,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
         if (!tNodes) {
             this.leaveTreeArm();
             this.removeSearch();
-            this.showMessage("empty", "No content");
+            this.showMessage("empty", t("mneme.noContent"));
             return;
         }
 
@@ -343,7 +344,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
     }
 
     private isSelected = (node: TreeProviderNode): boolean =>
-        this.selectedSet.has(node.data.href.toLowerCase());
+        this.selectedSet.has(hrefKey(node.data.href));
 
     /**
      * Hand the Tree a *new* `isSelected` whenever the selection actually changes.
@@ -364,7 +365,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
      */
     private syncSelection(selectedValues: readonly string[]): void {
         const next = new Set<string>();
-        for (const href of selectedValues) next.add(href.toLowerCase());
+        for (const href of selectedValues) next.add(hrefKey(href));
         if (next.size === this.selectedSet.size) {
             let same = true;
             for (const href of next) {
@@ -374,7 +375,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
         }
         this.selectedSet = next;
         this.isSelected = (node: TreeProviderNode): boolean =>
-            this.selectedSet.has(node.data.href.toLowerCase());
+            this.selectedSet.has(hrefKey(node.data.href));
     }
 
     private readonly onSelectionChange = (nodes: TreeProviderNode[]): void => {
@@ -384,10 +385,9 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
     /**
      * Hover highlight. The Tree paints the hovered row through `[data-active]`, and reports the row
      * under the pointer here -- so storing the index is only half the job: it has to reach the Tree
-     * as a prop before anything repaints. The React original was a `useState` setter, where the
-     * re-render re-passed `activeIndex` for free; the conversion kept the assignment and dropped the
-     * propagation, so hover silently stopped painting while selection kept working (it routes
-     * through `model.setSelection`, which changes model state and so runs `applyState`).
+     * as a prop before anything repaints. Updating the Tree props here makes the hover state reach
+     * the row; selection follows `model.setSelection`, which changes model state and runs
+     * `applyState`.
      *
      * `tNodesFor` is identity-cached and `activeIndex` alone sets only `pendingRowRepaint` in
      * `TreeModel`, so this repaints the two affected rows rather than the whole viewport -- which is
@@ -422,7 +422,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
     };
 
     private readonly canCollapse = (node: TreeProviderNode): boolean =>
-        node.data.href !== this.props.provider.rootPath;
+        !sameHref(node.data.href, this.props.provider.rootPath);
 
     private readonly onExpandChange = (value: string | number, expanded: boolean): void => {
         this.model.onExpandChange(String(value), expanded);
@@ -439,7 +439,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
 
     private readonly getDragData = (node: TreeProviderNode): unknown | null => {
         const provider = this.props.provider;
-        if (node.data.href === provider.rootPath) return null;
+        if (sameHref(node.data.href, provider.rootPath)) return null;
         const items = this.model.dragItemsFor(node);
         return items.length ? { items, sourceId: provider.sourceUrl } : null;
     };
@@ -450,7 +450,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
         event: DragEvent,
     ): boolean => {
         const href = node.data.href;
-        if (!href || href === this.props.provider.rootPath) return false;
+        if (!href || sameHref(href, this.props.provider.rootPath)) return false;
         const paths = this.model.dragItemsFor(node).map((item) => item.href);
         if (!paths.length) return false;
         event.preventDefault();

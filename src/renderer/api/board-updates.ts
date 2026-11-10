@@ -1,5 +1,5 @@
 /**
- * Board update detection + safe-swap orchestration (EPIC-045 / US-865).
+ * Board update detection + safe-swap orchestration.
  *
  * Derives "a newer COMPATIBLE catalog version than what is installed" from the catalog ×
  * the install registry, and runs the update via board-install's `updateBoard` behind the
@@ -129,7 +129,7 @@ export async function removeBoardFromPages(root: string): Promise<void> {
  * `action` only words the prompts. Both callers need the same guarantee: no live board editor
  * may hold the folder, because an update renames it and a delete removes it. On Windows a file
  * still open anywhere under the folder is only marked for deletion rather than removed, which
- * is what left an empty folder behind after "Delete board" (US-1407).
+ * is what left an empty folder behind after "Delete board".
  */
 export async function ensureBoardIdle(
     root: string,

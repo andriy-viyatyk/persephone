@@ -17,7 +17,7 @@ import {
     type ExplorerEditorState,
 } from "../../editors/explorer";
 import { TComponentState } from "../../core/state/state";
-import { appWindow, signalReadyToQuit } from "../window";
+import { appWindow } from "../window";
 import { fs as appFs } from "../fs";
 import { panelKey, parsePanelKey } from "../../ui/secondary-views/panel-key";
 import type { BoardEditorState } from "../../editors/board";
@@ -246,7 +246,7 @@ export class PagesPersistenceModel {
             desc.editors.map(async (d) => {
                 try {
                     // A demoted busy Board persisted at shutdown must not resurrect
-                    // (US-799): busy is transient (its processes died with the app),
+                    //: busy is transient (its processes died with the app),
                     // so a non-main board descriptor would restore as an invisible
                     // zombie handle. Boards restore only as the main editor.
                     if (d.editorId === "board-view" && d.id !== desc.mainEditorId) {
@@ -271,7 +271,7 @@ export class PagesPersistenceModel {
                         if (!current) return null;
                         invalidFolderBoard = undefined;
                     }
-                    // Content-host board (EPIC-043): persisted `board-view` + a host
+                    // Content-host board: persisted `board-view` + a host
                     // descriptor. Rebuild the subclass, apply the board state (boardRoot /
                     // filePath live in `d.state`, NOT the host descriptor), reconstruct the
                     // host from `d.host`, then restore. MUST precede the generic `if (d.host)`
@@ -348,7 +348,7 @@ export class PagesPersistenceModel {
                             // Guarantee a non-empty id. A blank id (from a
                             // previously-corrupted descriptor) breaks id-based
                             // dedup and lets duplicate editors/panels accumulate
-                            // (EPIC-031 / US-616 regression fix).
+                            // This preserves the regression fix.
                             (s as { id: string }).id =
                                 d.id || (s as { id?: string }).id || crypto.randomUUID();
                         });
@@ -423,7 +423,7 @@ export class PagesPersistenceModel {
                 open: desc.sidebar.open,
                 width: desc.sidebar.width,
             });
-            // `activePanel` may be composite (`${editorId}::${panelId}`, US-619)
+             // `activePanel` may be composite (`${editorId}:${panelId}`)
             // or a bare seed/legacy id. Validate by the parsed panel id, and —
             // when composite — require the named editor to still exist.
             const panel = desc.sidebar.activePanel;
@@ -514,15 +514,6 @@ export class PagesPersistenceModel {
         } finally {
             this.restored = true;
         }
-    };
-
-    onAppQuit = async () => {
-        if (appWindow.isBoardMode) { signalReadyToQuit(); return; }
-        await Promise.all(
-            this.model.state.get().pages.map((page) => page.saveState()),
-        );
-        await this.saveState();
-        signalReadyToQuit();
     };
 }
 

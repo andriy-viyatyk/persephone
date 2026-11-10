@@ -1,12 +1,11 @@
+import { isCapabilityErrorCode, type CapabilityErrorCode } from "../../shared/capability-constants";
 import {
-    isCapabilityErrorCode,
     INTENT_DEADLINE_MS,
     MAX_INTENT_DEPTH,
     MAX_INTENT_PAYLOAD_BYTES,
     MAX_OUTSTANDING_INTENTS_PER_HANDLER,
 } from "../../ipc/capability-bus-channels";
 import type {
-    CapabilityErrorCode,
     CapabilityRegistration,
     CapabilityTransport,
     IntentRequest,

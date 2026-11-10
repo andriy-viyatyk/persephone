@@ -1868,7 +1868,11 @@
     "voiceTyping.translatingRecording": "Se înregistrează — traducere în engleză — {binding} pentru oprire, Esc pentru anulare",
     "voiceTyping.translatingTranscribing": "Se transcrie în engleză — Esc pentru anulare",
     "settings.microphoneReferenceReady": "Referință audio de la computer activă",
-    "settings.microphoneReferenceUnavailable": "Referința audio de la computer nu este disponibilă; curățarea zgomotului continuă fără anularea ecoului: {reason}"
+    "settings.microphoneReferenceUnavailable": "Referința audio de la computer nu este disponibilă; curățarea zgomotului continuă fără anularea ecoului: {reason}",
+    "shell.ungroup": "Degrupează",
+    "shell.mutePage": "Dezactivează sunetul paginii",
+    "shell.unmutePage": "Activează sunetul paginii",
+    "tools.siteExtensionActionFailed": "Acțiunea extensiei site-ului a eșuat."
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3543,6 +3547,10 @@
     "voiceTyping.translatingRecording": "e3db99f8",
     "voiceTyping.translatingTranscribing": "dcf439f0",
     "settings.microphoneReferenceReady": "043e4ffb",
-    "settings.microphoneReferenceUnavailable": "d1af3faf"
+    "settings.microphoneReferenceUnavailable": "d1af3faf",
+    "shell.ungroup": "460af6ed",
+    "shell.mutePage": "724c00d7",
+    "shell.unmutePage": "af4c43a2",
+    "tools.siteExtensionActionFailed": "96558212"
   }
 }

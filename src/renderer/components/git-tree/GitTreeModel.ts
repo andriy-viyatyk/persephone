@@ -1,5 +1,5 @@
 /**
- * Git Tree data model (EPIC-030 / US-613).
+ * Git Tree data model.
  *
  * Editor-owned model holding the commit list plus the load/pagination state and
  * actions for the `<GitTree>` view (model-view pattern). The component is a pure
@@ -19,7 +19,7 @@ import type { GitCommit, GitRef } from "../../../ipc/git-ipc";
 import type { GitCommitRow } from "./swimlane-layout";
 import type { GitRefNodeKind } from "./git-refs-tree";
 
-/** Commits loaded per page (Concern 7 — manual "load more"). */
+/** Commits loaded per page; additional pages load manually with "load more". */
 export const GIT_TREE_PAGE = 200;
 
 /** Does a commit decoration ref correspond to the clicked panel ref?
@@ -64,7 +64,7 @@ export class GitTreeModel {
     private loaded = false;
     private disposed = false;
 
-    /** Live grid handle, registered by the `<GitTree>` view on mount (US-634).
+    /** Live grid handle, registered by the `<GitTree>` view on mount.
      *  Present only while the grid is rendered (i.e. the Git Tree is the page's
      *  main editor) — undefined otherwise, in which case `revealRef` no-ops. */
     private grid: DataGridInstance<GitCommitRow> | undefined;
@@ -72,7 +72,7 @@ export class GitTreeModel {
     /** Set true by `markStale()` when a repo change happened while the tree was
      *  not the page's main editor; cleared by the next `reload()`. The owning
      *  editor reloads on promote-back only when stale (visibility-aware refresh,
-     *  US-634). */
+     *  ). */
     private _stale = false;
     get stale(): boolean {
         return this._stale;
@@ -190,7 +190,7 @@ export class GitTreeModel {
     }
 
     /**
-     * Focus the "Comment" (subject) cell of the commit a ref points to (US-634).
+     * Focus the "Comment" (subject) cell of the commit a ref points to.
      * Matches the ref against each loaded commit's decoration refs; if found,
      * focuses + scrolls to that row's subject cell. If the ref's tip isn't among
      * the loaded commits (history is paginated), focuses the LAST row instead, so
@@ -204,7 +204,7 @@ export class GitTreeModel {
         // (hidden ones filtered out, the checkbox column prepended when enabled) while
         // `getColumns()` returns the declared array — for this grid the two coincide: no column is
         // ever hidden, `selectColumn` is never set, and `revealRef` is reachable only from the
-        // whole-repo editor, which has no side-select column (US-1021 F6).
+        // whole-repo editor, which has no side-select column.
         const rows = grid.getVisibleRows();
         const columns = grid.getColumns();
         if (!rows.length || !columns.length) return;

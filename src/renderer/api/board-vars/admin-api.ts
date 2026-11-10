@@ -2,7 +2,7 @@ import { boardVars } from "./BoardEnvStore";
 import { resolveBoardNamespace } from "../board-namespace";
 
 // =============================================================================
-// Agent-facing admin API over the board environment-variables store (EPIC-046 / US-891).
+// Agent-facing admin API over the board environment-variables store.
 //
 // Exposed to scripts as `app.boardVars`. Unlike the board-side `persephone.var.*` bridge
 // (BoardWebview resolves and locks the namespace to the calling board), this surface is

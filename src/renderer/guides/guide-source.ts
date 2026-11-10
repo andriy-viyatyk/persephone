@@ -6,7 +6,7 @@ import { isSafeGuidePath } from "../../shared/guides/guide-links";
 
 /**
  * Renderer-side adapter for a guide corpus rooted at one folder. The default root is the packaged
- * `assets/guides`; US-1406 also instantiates one per mounted board, rooted at that board's own
+ * `assets/guides`; also instantiates one per mounted board, rooted at that board's own
  * guides folder, so containment is PER INSTANCE rather than measured against `assets/guides`.
  */
 export class RendererGuideSource implements GuideSource {

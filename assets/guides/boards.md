@@ -198,7 +198,7 @@ controls reading clipboard contents.
 
 Bridge `1.8.0` adds the capability and intent methods documented below to the additive provider,
 service, and stream-host surface; boards that do not use them continue to work unchanged.
-The current board bridge is **1.48.0**. Bridge `1.48.0` adds `persephone.openBoard(folder)` for opening a folder this board can list; the target follows its normal trust flow. Boards using it should set `minBridgeVersion: "1.48.0"`. Folder listing authorization and target-board trust are independent decisions. Bridge `1.42.0` adds `format: "multiline"` for string board
+Bridge `1.48.0` adds `persephone.openBoard(folder)` for opening a folder this board can list; the target follows its normal trust flow. Boards using it should set `minBridgeVersion: "1.48.0"`. Folder listing authorization and target-board trust are independent decisions. Bridge `1.42.0` adds `format: "multiline"` for string board
 settings, rendered as a multi-line Textarea in Persephone's Settings page; boards that rely on it
 must set `minBridgeVersion: "1.42.0"`. It also adds the host-service API
 `persephone.mcp.issueSessionEndpoint()` for explicitly authorized board services. The returned
@@ -895,7 +895,7 @@ One spawn when the board opens; after that, each request costs only its own work
 
 ### Declared services, storage, and lifecycle
 
-The [board template's authoring guide](../board-template/CLAUDE.md#declared-module-services-manifestservice)
+The [board authoring guide](./agents/boards.md#declared-services-and-shared-storage)
 is the canonical choice guide for service versus `executeNode()`. A service is declared with a
 board-relative ESM entry such as:
 

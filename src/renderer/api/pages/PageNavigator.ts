@@ -44,7 +44,7 @@ export interface NavigatePageToOptions {
 }
 
 /** Shared exit for every successful navigation path: repaint, focus (unless
- *  the user is working in a sidebar panel — e.g. the Explorer tree, US-808),
+ * the user is working in a sidebar panel, such as the Explorer tree, so keep
  *  persist. */
 function finishNavigation(model: PagesModel, page: PageModel): void {
     model.onShow.send(page);
@@ -62,7 +62,7 @@ function sameFileIdentity(first: string, second: string): boolean {
 /** Skip the "save changes?" prompt when the current main editor will survive
  *  this navigation (demote to a sidebar panel) rather than be released —
  *  nothing is being discarded. A Link editor navigating to one of its own
- *  links, or any modified Link editor, stays on the page (US-718). The prompt
+ *  links, or any modified Link editor, stays on the page. The prompt
  *  still fires on a genuine close (separate path).
  *  The survives check reads `mainEditorInstance` (the EditorModel subclass
  *  that carries the override); `confirmRelease` is intentionally called on
@@ -82,7 +82,7 @@ async function confirmLeaveCurrentEditor(
     return true;
 }
 
-/** US-617: a Pattern B editor that survives navigation (Git Tree) is a
+/**: a Pattern B editor that survives navigation (Git Tree) is a
  *  per-page singleton. If the page already holds an instance representing
  *  this target, promote it back to main and refresh — never build a
  *  duplicate. Duplicates would accumulate as redundant surviving secondary
@@ -191,7 +191,7 @@ async function buildEditor(
  *  non-default content-host target (e.g. "file-diff", which is never the
  *  natural default for a file) must win over the language preview editor.
  *  Normal opens carry target === resolveId, so they fall through to the
- *  preview editor exactly as before (EPIC-031 / US-616). */
+ *  preview editor exactly as before. */
 function applyEditorSelection(
     legacy: EditorOrHost,
     newFilePath: string,
@@ -293,14 +293,14 @@ export async function navigatePageTo(
     // Apply caller-chosen diff revisions to the freshly-built File Diff editor
     // (no-op for any other editor type / when no revisions given). The
     // reuseNavigationTarget path returned earlier, so this only ever runs on
-    // a fresh build (US-637).
+    // a fresh build.
     (adapter as EditorModel as {
         applyDiffRevisions?: (f?: ILinkDiffRevision, t?: ILinkDiffRevision) => void;
     }).applyDiffRevisions?.(options?.diffFrom, options?.diffTo);
 
     // Anchor target from the opening link. Deliberately NOT part of skipPreview
     // above: revealLine / highlightText force the Monaco text editor, while a
-    // fragment must keep the language preview editor (e.g. md-view) (US-901).
+    // fragment must keep the language preview editor (e.g. md-view).
     if (options?.fragment) adapter.revealFragment?.(options.fragment);
 
     // revealLine / highlightText apply after the editor has mounted.

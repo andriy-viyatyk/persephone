@@ -48,7 +48,7 @@ export interface Traited<V = unknown> {
 /**
  * Creates a Traited value — always explicit, never auto-discovered.
  * Symbol properties are silently lost on spread/JSON, so auto-discovery
- * via tagged objects was rejected (see EPIC-026 resolved concerns).
+ * via tagged objects was rejected (see resolved concerns).
  */
 export function traited<V>(target: V, traits: TraitSet): Traited<V> {
     return { target, traits };

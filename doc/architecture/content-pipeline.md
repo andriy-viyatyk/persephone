@@ -335,7 +335,7 @@ than seven days.
 
 | Transformer | Type | Persistent | Description |
 |-------------|------|------------|-------------|
-| `ZipTransformer` | `zip` | Yes | Extract/replace a single entry in a ZIP archive via jszip (dynamic import). Write rebuilds the archive with the modified entry. |
+| `ArchiveTransformer` | `archive` | Yes | Extracts an archive entry through `archiveService`; writes replace an entry in ZIP-based archives via jszip (dynamic import). |
 | `DecryptTransformer` | `decrypt` | No | AES-GCM encrypt/decrypt via `shell.encryption`. Non-persistent -- password must never be serialized to disk. |
 
 The `persistent` flag controls whether the transformer appears in `toDescriptor()` output. Non-persistent transformers are excluded from serialization but still participate in `clone()` (in-memory only).
@@ -345,10 +345,10 @@ The `persistent` flag controls whether the transformer appears in `toDescriptor(
 `TextFileIOModel` maintains two pipes for each text page:
 
 ```
-Primary pipe:  FileProvider("report.json") → [ZipTransformer, DecryptTransformer]
+Primary pipe:  FileProvider("report.json") → [ArchiveTransformer, DecryptTransformer]
                ↕ read/write source file
 
-Cache pipe:    CacheFileProvider(pageId) → [ZipTransformer, DecryptTransformer]
+Cache pipe:    CacheFileProvider(pageId) → [ArchiveTransformer, DecryptTransformer]
                ↕ auto-save unsaved changes
 ```
 
@@ -358,7 +358,7 @@ When the primary pipe changes (e.g., after decryption adds a `DecryptTransformer
 
 ## Encoding Detection
 
-`decodeBuffer()` in `encoding.ts` detects text encoding with this priority:
+[`decodeBuffer()`](../../src/renderer/core/utils/text-encoding.ts) detects text encoding with this priority:
 
 1. **BOM detection** (O(1)) -- UTF-8-BOM (`EF BB BF`), UTF-16LE (`FF FE`), UTF-16BE (`FE FF`)
 2. **Large file skip** -- files >20MB default to UTF-8 (skip detection)
@@ -426,14 +426,14 @@ Key rules:
 | `/src/renderer/content/source-recovery.ts` | Provider-availability recovery watches and shared typed provider-error reporting |
 | `/src/renderer/content/link-utils.ts` | URL → pipe descriptor resolution and shared URL path/fragment helpers |
 | `/src/renderer/content/open-handler.ts` | Layer 3 -- page creation from pipe |
-| `/src/renderer/content/encoding.ts` | Encoding detection (`decodeBuffer`) and encoding (`encodeString`) |
+| `/src/renderer/core/utils/text-encoding.ts` | Shared text codec: encoding detection (`decodeBuffer`) and encoding (`encodeString`) |
 | `/src/renderer/content/providers/FileProvider.ts` | Local file provider |
 | `/src/renderer/content/providers/HttpProvider.ts` | HTTP/HTTPS provider |
 | `/src/renderer/content/providers/CacheFileProvider.ts` | Cache file provider |
 | `/src/renderer/content/providers/GuideProvider.ts` | Read-only application guide provider |
 | `/src/renderer/guides/guide-source.ts` | Renderer `GuideSource` over the packaged guide corpus |
 | `/src/renderer/guides/index.ts` | Shared renderer guide index and page/tree accessors |
-| `/src/renderer/content/transformers/ZipTransformer.ts` | ZIP archive entry transformer |
+| `/src/renderer/content/transformers/ArchiveTransformer.ts` | Archive entry transformer (`archive`; ZIP-based writes supported) |
 | `/src/renderer/content/transformers/DecryptTransformer.ts` | AES-GCM encryption transformer |
 | `/src/renderer/api/types/io.pipe.d.ts` | `IContentPipe`, `IPipeDescriptor` type definitions |
 | `/src/renderer/api/types/io.provider.d.ts` | `IProvider`, `IProviderDescriptor` type definitions |

@@ -1,23 +1,7 @@
 /*
- * Translated from the Emotion in `Autocomplete.tsx` (EPIC-056 US-1018).
- *
- * The root block is the `Root` styled component, unchanged. Note that `width` / `min-width` /
- * `max-width` from props are NOT written to this element — the React implementation forwarded them
- * to the inner `Input`, and the conversion preserves that.
- *
- * The header rule is a verbatim relocation of what `Panel` computed for
- * `direction="row" align="center" paddingY="sm" paddingX="md"`: `display: flex` and
- * `box-sizing: border-box` from `.panel-root`, `align-items: center` and the four padding values
- * from Panel's inline style. `flex-direction: row` is omitted because it is the CSS default and
- * `Panel.css` has no `data-direction="row"` rule either. This is `Panel`'s last consumer inside
- * `uikit/`; see US-1018 D4 for why dropping the `panel-root` class and Panel's `data-*` attributes
- * is observable by nothing.
- *
- * The selector is deliberately root-level rather than
- * `[data-type="autocomplete"] [data-part="header"]`: the row lives inside the popover's floating
- * branch, which portals into `#persephone-overlay-layer`, so a selector anchored on the Autocomplete
- * root cannot reach it. `[data-type="popover-resize-handle"]` is the same pattern for the same
- * reason.
+ * Autocomplete's root does not receive the width props; they belong to the inner Input.
+ * The header uses its own data-type selector because it lives in the popover portal, outside the
+ * Autocomplete root. The former Panel class and data attributes have no current consumers.
  */
 @layer uikit {
     [data-type="autocomplete"] {

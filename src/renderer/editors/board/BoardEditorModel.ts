@@ -1,3 +1,4 @@
+import { validateBoardPageStateKey, validateBoardPageStateValue } from "../../../shared/board/page-state-validation";
 import { EditorModel, type EditorOpenContext, type EditorStateBase } from "../base/EditorModel";
 import { editorRegistry } from "../base/editorRegistry";
 import { api } from "../../../ipc/renderer/api";
@@ -32,7 +33,7 @@ import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 import { pagesModel } from "../../api/pages";
 import { errMessage } from "../../../shared/utils";
 import { englishMessage, t } from "../../../shared/i18n/t";
-import type { MenuItem } from "../../uikit";
+import type { MenuItem } from "../../uikit/Menu/index";
 import { invalidateBoardIcon } from "./board-icon-cache";
 import { createBoardShortcut } from "./board-shortcut";
 import { markBoardBusy } from "./busy-boards";
@@ -114,14 +115,14 @@ export interface BoardEditorState extends EditorStateBase {
     /** Bumped to force a remount of the board's webview — by the manual Reload
      *  action and the `pages[i].editor.reload()` call path. */
     reloadToken: number;
-    /** Busy retention flag (US-799): set via `persephone.setBoardBusy(true)` when the
+    /** Busy retention flag: set via `persephone.setBoardBusy(true)` when the
      *  board spawned processes that must outlive it. While busy, this model survives
      *  page navigation as an invisible ownership handle (its jobs in main are kept);
      *  page close / dispose kills them. TRANSIENT — cleared on restore (processes
      *  never survive an app restart). */
     busy?: boolean;
-    /** The file this board edits as a custom editor (EPIC-042). Set on the SWITCH path
-     *  (US-839) via `initFromBoardRoot`; on the openRawLink path the file rides
+    /** The file this board edits as a custom editor. Set on the SWITCH path
+     *   via `initFromBoardRoot`; on the openRawLink path the file rides
      *  `state.sourceLink.filePath` instead. Read both via `currentFilePath()`. Served to the
      *  board via `persephone.getFilePath()`. Undefined for a plain board. */
     filePath?: string;
@@ -143,22 +144,22 @@ export interface BoardEditorState extends EditorStateBase {
     /** Sidebar panel contributions — DERIVED from `secondaryViewDefs`
      *  (`board-secondary:<id>` per declared view). Read by `contributesPanels()`. */
     secondaryView?: string[];
-    /** Declared secondary views (EPIC-044): seeded from the manifest on first load
-     *  (a persisted set wins — D6), replaced at runtime by `setSecondaryViews` (US-854).
+    /** Declared secondary views: seeded from the manifest on first load
+     *  A persisted set takes precedence; otherwise values come from `setSecondaryViews`.
      *  `secondaryView` is derived from this. Persists as part of the board state. */
     secondaryViewDefs?: SecondaryViewDecl[];
-    /** Shared-state channel store (EPIC-044 / D1) — the single in-memory state object
-     *  mirrored into every board frame via `persephone.state.*`. Populated in US-852;
-     *  declared here so the field exists. Only `sharedStateRestorableKeys` are persisted
-     *  (opt-in, D9 — the US-852 `getRestoreData` override, NOT the base full-state dump). */
+    /** Shared-state channel store — the in-memory state object mirrored into every
+     *  board frame through `persephone.state.*`. Only keys in
+     *  `sharedStateRestorableKeys` are persisted through `getRestoreData`.
+     */
     sharedState?: Record<string, unknown>;
-    /** Keys of `sharedState` the board declared persistable via `persephone.state.init`
-     *  (EPIC-044 / D9). Populated in US-852. */
+    /** Keys of `sharedState` declared persistable through `persephone.state.init`.
+     *  Populated during board initialization. */
     sharedStateRestorableKeys?: string[];
-    /** Content-host boards only (EPIC-043): set when the content HOST fails to restore (file
+    /** Content-host boards only: set when the content HOST fails to restore (file
      *  missing / unreadable), so the view shows a distinct empty state rather than a blank board. */
     contentHostError?: string;
-    /** Footer status text set via `persephone.setStatusText()` (US-892), e.g. a Todo board's
+    /** Footer status text set via `persephone.setStatusText()`, e.g. a Todo board's
      *  "N items" count. TRANSIENT — stripped in `getRestoreData()` and cleared in `restore()`
      *  (like `busy`), so a persisted blob never resurrects a stale count; the board re-sets it on
      *  load. Rendered by `BoardEditorView` in the `EditorStatusBarView` contributions slot (main-view footer only). */
@@ -178,22 +179,6 @@ export interface BoardEditorState extends EditorStateBase {
     muteButtonFrameGeneration?: number;
 }
 
-const BOARD_PAGE_STATE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}(?![\s\S])/;
-const BOARD_PAGE_STATE_MAX_BYTES = 10 * 1024 * 1024;
-
-function validateBoardPageStateKey(key: unknown): asserts key is string {
-    if (typeof key !== "string" || !BOARD_PAGE_STATE_KEY_PATTERN.test(key)) {
-        throw new TypeError("Board page-state keys must be 1–32 ASCII characters matching [A-Za-z0-9][A-Za-z0-9._-]*.");
-    }
-}
-
-function validateBoardPageStateValue(value: unknown): asserts value is string {
-    if (typeof value !== "string") throw new TypeError("Board page-state values must be strings.");
-    if (new TextEncoder().encode(value).byteLength > BOARD_PAGE_STATE_MAX_BYTES) {
-        throw new RangeError("Board page-state values cannot exceed 10 MiB in UTF-8.");
-    }
-}
-
 export const getDefaultBoardEditorState = (): BoardEditorState => ({
     // Per-instance UUID — keys this editor in `page.editors[]`.
     id: crypto.randomUUID(),
@@ -206,17 +191,17 @@ export const getDefaultBoardEditorState = (): BoardEditorState => ({
 });
 
 /**
- * Board editor (EPIC-034 / EPIC-035 / EPIC-036).
+ * Board editor.
  *
  * Renders a single standalone board: the folder at `boardRoot` (carrying
  * `board-manifest.json`). Opened by a `persephone-board://` link — from the
- * Explorer Boards panel (US-761), the manifest-row "Open Board" button, or the
+ * Explorer Boards panel, the manifest-row "Open Board" button, or the
  * MCP `openBoard` tool. Rendering and `execute()` are gated by the per-board
  * trust gate: an untrusted board shows a placeholder + "Trust board" button
  * instead of rendering; a board whose folder is gone shows "Board not found".
  *
  * A board does NOT survive navigation — it is a plain main editor, re-opened from
- * the Boards panel or the in-board toolbar (EPIC-036 C4).
+ * the Boards panel or the in-board toolbar.
  */
 export class BoardEditorModel extends EditorModel<BoardEditorState> {
     private boardDisplayNameEnglish: string | undefined;
@@ -235,8 +220,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     skipSave = true;
     showBackgroundOrnament = true;
 
-    /** Automation adapter — lets the `browser_*` MCP tools drive this board's
-     *  frame (EPIC-034 / US-730; re-homed onto the `<iframe>` in EPIC-037 / US-773). */
+    /** Automation adapter for the `browser_*` MCP tools. Commands run in the host
+     *  window and target the board through its `<iframe>`. */
     readonly target = new BoardTargetModel(this);
 
     private aiVisionRegistration: BoardAiVisionRegistration | undefined;
@@ -272,10 +257,9 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     private releaseCancelled = false;
     private releaseError: string | undefined;
 
-    /** Live `<iframe>` elements of the currently-mounted board frames, keyed by
-     *  automation tab id (`"main"` + one `board-secondary:<viewId>` per open secondary
-     *  view — EPIC-044 / US-858). Set on each frame's mount effect (the ELEMENT, for
-     *  automation focus), cleared on unmount. Transient (not persisted). */
+    /** Live `<iframe>` elements for mounted board frames, keyed by automation tab id:
+     *  `"main"` and one `board-secondary:<viewId>` per open secondary view. Used for
+     *  automation focus; cleared on unmount and not persisted. */
     readonly frames = new Map<string, HTMLIFrameElement>();
 
     /** Track the theme overlay generation owned by one mounted board frame. */
@@ -300,13 +284,13 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
 
     /** Tab ids whose frame has finished loading AND registered for CDP in main
      *  (BoardWebview's handleLoad, after `registerBoardFrame` resolves). This — NOT
-     *  `frames` — is the "attachable now" signal automation waits on (US-858): a
+     *  `frames` — is the "attachable now" signal automation waits on: a
      *  mounted-but-not-yet-registered frame would make `cdp-service` throw. */
     readonly loadedTabs = new Set<string>();
 
     /** Active automation tab id — which frame the `browser_*` tools drive
      *  (BoardTargetModel.switchTab / ensureReady). Defaults to the main frame, so a
-     *  single-frame board and the default automation path are unchanged (US-858). */
+     *  single-frame board and the default automation path are unchanged. */
     activeTabId = BOARD_CDP_TAB;
 
     /** Remember the capability for a source while the board opens it. */
@@ -611,7 +595,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         ];
     }
 
-    // ── Busy retention (US-799) ──────────────────────────────────────────
+    // ── Busy retention  ──────────────────────────────────────────
 
     /** Authoritative renderer-side busy holder. Set from the shim's `board:busy`
      *  post (via BoardWebview). Updates the reactive state (panel indicator),
@@ -630,9 +614,9 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         this.workingState.set(working);
     }
 
-    // ── Shared state (EPIC-044) ──────────────────────────────────────────
+    // ── Shared state  ──────────────────────────────────────────
 
-    /** Monotonic shared-state version (EPIC-044) — stamped on every `state:sync` push so a
+    /** Monotonic shared-state version — stamped on every `state:sync` push so a
      *  frame ignores stale/out-of-order deliveries (seed-on-load vs init/set/merge). Instance
      *  property, kept OFF the reactive state: never persisted, resets to 0 each session. */
     sharedStateSeq = 0;
@@ -652,7 +636,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     }
 
     /** Seed defaults (fill-missing — existing/restored values win) + record the restorable
-     *  keys (`persephone.state.init`, opt-in persistence D9). Idempotent; last init wins for
+     *  keys passed to `persephone.state.init`. Initialization is idempotent; the last call wins for
      *  the key set. */
     initSharedState(defaults: Record<string, unknown>, restorableKeys?: string[]): void {
         this.sharedStateSeq++;
@@ -1149,7 +1133,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     override getRestoreData() {
         const data = super.getRestoreData();
         data.editorId = "board-view";
-        // D9 (EPIC-044): persist ONLY the board-declared restorable subset of sharedState —
+        //: persist ONLY the board-declared restorable subset of sharedState —
         // undeclared/transient state must never bloat the open-pages file. Shallow-clone so
         // we don't mutate the live `state` object `super` returned by reference.
         const s = this.state.get();
@@ -1163,7 +1147,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
                 }
             }
         }
-        // `statusText` is transient footer chrome (US-892) — never persist it, or a stale count
+        // `statusText` is transient footer chrome — never persist it, or a stale count
         // would resurrect on restore before the board re-sets it. `undefined` is dropped by JSON.
         // `contentPath` is transient too: a persisted cache path would point at a file the cache may
         // have GC'd, and the source could have changed — `ensureContentPath` re-materializes.
@@ -1187,9 +1171,9 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         return data;
     }
 
-    /** Single-board init — opened by a `persephone-board://` link (US-748) or the
-     *  MCP `openBoard` (US-750). `filePath` is passed only on the custom-editor SWITCH path
-     *  (US-839); on the openRawLink path it rides `state.sourceLink` instead. */
+    /** Single-board init — opened by a `persephone-board://` link or the
+     *  MCP `openBoard`. `filePath` is passed only on the custom-editor SWITCH path
+     *; on the openRawLink path it rides `state.sourceLink` instead. */
     initFromBoardRoot(boardRoot: string, filePath?: string, folderPath?: string): void {
         boardRoot = customEditorRegistry.entries.find((entry) =>
             fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot)
@@ -1245,16 +1229,16 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      *  persisted state; re-load trust + re-validate the board. Legacy `.persephone`
      *  project-mode state (had `boardsDir`, no `boardRoot`) is no longer supported —
      *  throw so PagesPersistenceModel's catch drops the editor rather than restoring
-     *  a broken empty board tab (EPIC-036 C6). */
+     * a broken empty board tab. */
     async restore(): Promise<void> {
         const s = this.state.get();
         if (!s.boardRoot) throw new Error("legacy project-mode board editor — dropped on restore");
         if (s.modified) this.state.update((state) => { state.modified = false; });
         this.sourceRestoreBlockedOnRestore = s.sourceRestoreBlocked === true;
-        // Busy is transient (US-799): processes never survive an app restart
+        // Busy is transient: processes never survive an app restart
         // (`will-quit` kills every child), so a persisted flag is always stale.
         if (s.busy) this.state.update((st) => { st.busy = false; });
-        // Footer status text (US-892) is transient too — clear any value carried in from a
+        // Footer status text is transient too — clear any value carried in from a
         // pre-fix persisted blob, so a stale count never flashes before the board re-sets it.
         if (s.statusText) this.state.update((st) => { st.statusText = undefined; });
         // Toolbar text is transient page chrome too. Clear even a persisted empty string, and
@@ -1310,7 +1294,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
 
     /** Re-validate the single board: clear the selection (→ BoardNotFoundView) when
      *  the board folder no longer carries a manifest, and re-probe its icon so a
-     *  freshly added icon.* shows after a refresh without an app restart (US-744). */
+     *  freshly added icon.* shows after a refresh without an app restart. */
     async refreshBoards(): Promise<void> {
         const boardRoot = this.state.get().boardRoot;
         if (!boardRoot) return;
@@ -1324,7 +1308,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         this.state.update((s) => {
             if (!valid) s.selectedBoard = undefined;
         });
-        // Seed/derive the declared secondary views (EPIC-044). Only when the board
+        // Seed/derive the declared secondary views. Only when the board
         // resolves; a missing board contributes no panels.
         if (valid) {
             await this.seedSecondaryViews();
@@ -1334,7 +1318,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     }
 
     /** Seed `secondaryViewDefs` from the manifest on FIRST load only — a persisted /
-     *  restored set wins (D6 / US-855 restore precedence) — then derive the panel-id list.
+     *  restored set takes precedence; otherwise derive the panel-id list.
      *  Idempotent: once `secondaryViewDefs` is defined it is never re-seeded here. */
     private async seedSecondaryViews(): Promise<void> {
         const boardRoot = this.state.get().boardRoot;
@@ -1356,7 +1340,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         });
     }
 
-    /** Replace the declared secondary views at runtime (`persephone.setSecondaryViews`, US-854).
+    /** Replace the declared secondary views at runtime (`persephone.setSecondaryViews`).
      *  Writes `state.secondaryViewDefs` (validated) then recomputes `state.secondaryView`; the
      *  page's slice subscription reconciles the sidebar panels live. `[]` removes them all. */
     setSecondaryViews(views: unknown): void {
@@ -1365,14 +1349,14 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         this.deriveSecondaryPanels();
     }
 
-    /** Set the content-host footer status text (`persephone.setStatusText`, US-892). TRANSIENT —
+    /** Set the content-host footer status text (`persephone.setStatusText`). TRANSIENT —
      *  not persisted; the board re-sets it on load. Rendered by `BoardEditorView` via the
      *  `EditorStatusBarView` contributions slot (main-view footer only). */
     setStatusText(text: string): void {
         this.state.update((s) => { s.statusText = typeof text === "string" ? text : ""; });
     }
 
-    /** Set transient main-frame page-toolbar text for one live board-frame generation (US-1494).
+    /** Set transient main-frame page-toolbar text for one live board-frame generation.
      *  The empty string is retained as an explicit board clear; the toolbar view renders it and
      *  an unset value identically, as a blank slot — there is no board-path fallback. */
     setToolbarTextForFrame(frameGeneration: number, text: string): void {
@@ -1391,11 +1375,11 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         });
     }
 
-    /** A busy board that survived navigate-away (US-799) had its derived `secondaryView`
+    /** A busy board that survived navigate-away had its derived `secondaryView`
      *  cleared by the base `beforeNavigateAway` while demoted — which is all the Pattern-A
      *  disposal of a NON-busy board needs (with no derived panels `contributesPanels()` is
-     *  false, so `setMainEditor` disposes it; the board never lingers as a sidebar contributor,
-     *  EPIC-044 / D8). `secondaryViewDefs` (the source of truth) is deliberately RETAINED, so on
+     *  false, so `setMainEditor` disposes it; the board never lingers as a sidebar contributor.
+     *  `secondaryViewDefs` (the source of truth) is deliberately retained, so on
      *  re-promotion — when `PagesLifecycleModel` reuses this surviving instance via
      *  `matchesNavigationTarget` — we simply re-derive the panel-id list from it: the board comes
      *  back with exactly the views it had (manifest- or runtime-declared), synchronously, with no
@@ -1419,7 +1403,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
 
     /** Manual Reload — remount the board's webview to pick up edited files
      *  (`index.html` / `app.js` / CSS). Re-probes the board icon so a mid-session
-     *  `icon.*` change shows on demand (no folder watcher — US-744 live refresh is
+     *  `icon.*` change shows on demand (no folder watcher — live refresh is
      *  intentionally dropped). Also invoked by the board editor's reload path. */
     async reloadBoard(): Promise<void> {
         if (!(await this.confirmRelease())) return;
@@ -1472,7 +1456,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     /** Drop the live `<iframe>` reference and the board frame's CDP registration on
      *  teardown. `BoardWebview`'s unmount normally unregisters the frame, but `dispose()`
      *  can run without the normal board-frame teardown (forced close / window teardown), so clear
-     *  it here too — both are idempotent. Also the FINAL job teardown (US-799):
+     * it here too — both are idempotent. Also the FINAL job teardown:
      *  `reapBoardOwner` tree-kills every job this board owner kept alive while busy —
      *  page close overrides busy ("page closed → kill anyway"). */
     override async dispose(): Promise<void> {
@@ -1498,7 +1482,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         this.reloadAwaitingRegistration = false;
         this.releaseContentResources();
         // A custom-editor board opened via openRawLink is handed a FileProvider pipe by the
-        // open-handler — dispose it for hygiene (EPIC-042 CC8). `ensureContentPath` may have read
+        // open-handler — dispose it for hygiene. `ensureContentPath` may have read
         // it since; disposing is correct either way.
         (this as { pipe?: { dispose?: () => void } }).pipe?.dispose?.();
         // Drop the materialized content cache (non-local sources only). The whole per-editor

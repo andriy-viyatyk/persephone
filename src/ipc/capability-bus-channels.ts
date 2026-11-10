@@ -3,19 +3,6 @@ import type { CapabilityErrorCode as ClientErrorCode, CapabilityMethod } from ".
 export { MAX_INTENT_PAYLOAD_BYTES, MAX_INTENT_DEPTH, MAX_OUTSTANDING_INTENTS_PER_HANDLER } from "../shared/capability-limits";
 export { CAPABILITY_DEFAULT_TIMEOUT_MS as INTENT_DEADLINE_MS } from "../shared/capability-limits";
 
-export const CAPABILITY_ERROR_CODES = [
-    "no-handler", "untrusted", "handler-closed", "crashed", "cancelled",
-    "timeout", "cycle", "payload-too-large", "busy", "rejected",
-] as const;
-
-export type CapabilityErrorCode = (typeof CAPABILITY_ERROR_CODES)[number];
-
-const capabilityErrorCodeSet: ReadonlySet<string> = new Set(CAPABILITY_ERROR_CODES);
-
-export function isCapabilityErrorCode(value: unknown): value is CapabilityErrorCode {
-    return typeof value === "string" && capabilityErrorCodeSet.has(value);
-}
-
 export interface IntentEnvelope {
     id: string;
     version?: number;
@@ -69,18 +56,12 @@ export interface BoundOpenSettlement {
     error?: { code: string; message: string };
 }
 
-export interface IntentSettlement {
-    requestId: string;
-    result?: unknown;
-    error?: { code: CapabilityErrorCode; message: string };
-}
-
 export interface CapabilityTransport {
     /** Dispatch to a board handler; resolves when the board settles, rejects with a typed code. */
     dispatch(registration: CapabilityRegistration, request: IntentRequest): Promise<unknown>;
     /** Best-effort cancel for a request already dispatched. Never throws. */
     cancel(registration: CapabilityRegistration, requestId: string): void;
-    /** The chain/depth currently in force for a page, for D6. 0-length when idle. */
+    /** The chain/depth currently in force for a page. A depth of 0 means idle. */
     chainForPage(pageId: string | undefined): { chain: readonly string[]; depth: number };
 }
 

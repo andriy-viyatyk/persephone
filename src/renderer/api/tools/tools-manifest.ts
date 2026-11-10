@@ -8,9 +8,9 @@ export const TOOLS_MANIFEST_FILE = "tools-manifest.json";
 export const TOOLS_MANIFEST_SCHEMA_VERSION = 1;
 
 /**
- * One tool declared by a toolset (EPIC-038 / US-801). Unlike the board manifest — which
+ * One tool declared by a toolset. Unlike the board manifest — which
  * carries descriptive metadata only — a tool declares **behavior**: the command to run and
- * how it is parameterized. `tools.execute` (US-802) is arbitrary RCE, so a toolset only runs
+ * how it is parameterized. `tools.execute` is arbitrary RCE, so a toolset only runs
  * once its folder is trusted (see `tools-trust.ts`).
  */
 export interface ToolDef {
@@ -21,31 +21,31 @@ export interface ToolDef {
     /**
      * JSON Schema for the tool's args (MCP `inputSchema` dialect). Describes parameters to
      * the agent. Optional — a no-parameter tool may omit it. The tool script must still
-     * validate its own inputs (EPIC C12: validation here is best-effort, not authoritative).
+     * validate its own inputs (: validation here is best-effort, not authoritative).
      */
     inputSchema?: object;
-    /** Command-line string, spawned with cwd = the toolset folder (US-802 runs it). */
+    /** Command-line string, spawned with cwd set to the toolset folder. */
     command: string;
-    /** Optional per-tool timeout (ms). US-802 applies a default when omitted. */
+    /** Optional per-tool timeout (ms). applies a default when omitted. */
     timeoutMs?: number;
-    /** Optional shell override (EPIC C10). Mirrors `IExecuteOptions.shell`; default true. */
+    /** Optional shell override. Mirrors `IExecuteOptions.shell`; default true. */
     shell?: string | boolean;
     /**
      * NAMES of required env vars (values live in the toolset's `.env` — never in the
-     * manifest, never returned through MCP). EPIC C4.
+     * manifest, never returned through MCP)..
      */
     env?: string[];
     /**
      * Free-text runtime prerequisites (e.g. "python 3.11+, pyodbc", "az cli"). Surfaced for
-     * provisioning a new machine after copying a toolset (EPIC C9).
+     * provisioning a new machine after copying a toolset.
      */
     requirements?: string;
-    /** Optional extra search terms for `tools.search` (EPIC C5). */
+    /** Optional extra search terms for `tools.search`. */
     keywords?: string[];
 }
 
 /**
- * Toolset manifest (EPIC-038 / US-801). Its presence at a folder root is what marks the
+ * Toolset manifest. Its presence at a folder root is what marks the
  * folder as a toolset (it gates enumeration + registration). Trust is NEVER stored here —
  * a copied toolset must not be able to self-trust; trust lives in the app-side registry
  * (`tools-trust.ts`).
@@ -55,7 +55,7 @@ export interface ToolsManifest {
     schemaVersion: number;
     /**
      * Toolset name — the AUTHORITATIVE id namespace, NOT the folder basename (folders get
-     * renamed when copied between machines). EPIC C8.
+     * renamed when copied between machines)..
      */
     name: string;
     /** Optional free-text description of the toolset. */
@@ -79,7 +79,7 @@ export function defaultToolsManifest(name: string): ToolsManifest {
 }
 
 /** True iff the folder carries a `tools-manifest.json`. Cheap existence check — does not
- *  parse. Gates enumeration (`registered-tools.ts`) and registration (US-805). */
+ *  parse. Gates enumeration (`registered-tools.ts`) and registration. */
 export async function isToolsetFolder(toolsetRoot: string): Promise<boolean> {
     return fs.exists(toolsManifestPath(toolsetRoot));
 }
@@ -106,15 +106,15 @@ export async function writeToolsManifest(toolsetRoot: string, manifest: ToolsMan
 }
 
 /** Write a default manifest only if the folder doesn't already have one. Used by the
- *  create/scaffold flow (US-804) so every new toolset is a valid, identifiable toolset. */
+ *  create/scaffold flow so every new toolset is a valid, identifiable toolset. */
 export async function ensureToolsManifest(toolsetRoot: string, name: string): Promise<void> {
     if (await isToolsetFolder(toolsetRoot)) return;
     await writeToolsManifest(toolsetRoot, defaultToolsManifest(name));
 }
 
 /**
- * Structural best-effort validation of a parsed manifest (EPIC C12 — no ajv). Collects a
- * precise error per problem so the UI (US-805) and the MCP layer (US-803) can explain what
+ * Structural best-effort validation of a parsed manifest, without Ajv. Collects a
+ * precise error per problem so the UI and the MCP layer can explain what
  * is wrong. This validates the manifest's *shape*, not the tools' runtime behavior; each
  * tool script is still responsible for validating its own inputs at run time.
  */

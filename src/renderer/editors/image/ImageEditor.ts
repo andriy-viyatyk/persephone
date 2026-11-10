@@ -12,7 +12,7 @@ import { fs as appFs } from "../../api/fs";
 import { ui } from "../../api/ui";
 import { pipeFromSourcePath } from "../../content/rebuild-pipe";
 import type { IImageExport } from "../base/IImageExport";
-import type { MenuItem } from "../../uikit";
+import type { MenuItem } from "../../uikit/Menu/index";
 import { rasterToPngBlob, savePngViaDialog } from "../shared/image-export";
 import { filePathMenuItems } from "../shared/editor-menu-items";
 import { openImageForEdit } from "../../api/capability-feedback";

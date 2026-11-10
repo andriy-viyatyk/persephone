@@ -1,5 +1,5 @@
 /**
- * Per-toolset run log (EPIC-038 / US-802). Each tool run is appended to
+ * Per-toolset run log. Each tool run is appended to
  * `<toolsetRoot>/tools-execution.log` — the detailed I/O (args, stdout logs, stderr) goes to
  * this file rather than memory, so it stays out of the UI's reactive state and can be opened in
  * Persephone for debugging.

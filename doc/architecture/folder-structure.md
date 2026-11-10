@@ -43,8 +43,9 @@ persephone/
 │   │   └── scripting/      # Scripting guide and API reference
 │   ├── board-base.css      # Shared board stylesheet copied into every board — theme defaults + the opt-in .p-* chrome layer
 │   ├── module-service-host.mjs # Utility-process host that injects storage/settings, imports the service entry, and owns lifecycle, request/channel, and private MCP session APIs
-│   ├── board-template/     # Scaffold copied into every new board
-│   │   └── CLAUDE.md       # Board authoring guide (bridge surface, --p-* contract, chrome classes, reload, MCP debug)
+│   ├── board-template/     # Starter files copied into every new blank board
+│   ├── board-template-header.md # Board-local header prepended to its generated CLAUDE.md
+│   ├── guides/agents/boards.md # Canonical board authoring guide; filtered into new blank boards
 │   ├── boards/             # Boards shipped inside the installer resources
 │   │   ├── excalidraw/     # Bundled Excalidraw board, manifest, library fetcher, and committed prebuilt lib/
 │   │   └── rest-client/    # Bundled REST Client board (plain JavaScript)
@@ -297,7 +298,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── board-provider-factory.ts # Trusted-board ProxyProvider factory
 │   ├── scheme-registry.ts  # Platform/script URL-scheme parse and resolve hooks
 │   ├── builtin-schemes.ts  # Built-in URL-scheme registrations and handlers
-│   ├── encoding.ts         # Text encoding detection (BOM, jschardet) and conversion (iconv-lite)
 │   ├── parsers.ts          # Layer 1: scheme dispatch plus file/archive and cURL/fetch adapters on openRawLink
 │   ├── resolvers.ts        # Layer 2: registered-scheme dispatch plus fallback pipe resolvers on openLink
 │   ├── link-utils.ts       # URL → pipe descriptor resolution and shared URL path/fragment helpers
@@ -661,14 +661,11 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── boards-tree-build.ts      # Pure builder: board path list → compacted folder/board node tree
 │   │   ├── BoardTargetModel.ts       # Automation adapter (IBrowserTarget for Object Model call paths)
 │   │   ├── board-manifest.ts         # board-manifest.json identity file — read/ensure; a folder is a board iff it carries one; Custom Editor fields, singleInstance/singleInstanceMasks routing, board settings, permissions/minBridgeVersion/service axes, and matcher/accessor helpers
-│   │   ├── board-service-permission.ts # Trust-plus-permissions predicate consumed by the module-service supervisor
 │   │   ├── custom-editor-registry.ts # Reactive mask → trusted/bundled-board map; board-editor:<root> virtual ids; resolveEditorIdForFile/resolveEditorIdForFolder (merge built-in + board); isBoardEditorId
 │   │   ├── board-icon-cache.ts       # Module-level icon cache (SVG/PNG/ICO → data URL, per board path)
-│   │   ├── board-usage-cache.ts      # Reactive board-standalone metadata cache (mirrors the icon cache)
 │   │   ├── busy-boards.ts            # Reactive registry of busy board roots (drives the Boards panel "running" dot)
 │   │   ├── board-theme.ts            # computeBoardThemePalette + BOARD_TOKEN_VARS (--p-* contract)
 │   │   ├── board-scaffold.ts         # Scaffold helpers — copy board-template into a new board folder (writes board-manifest.json)
-│   │   ├── board-api.d.ts            # Author-facing window.persephone contract (the canonical board API .d.ts)
 │   │   ├── UntrustedBoardView.ts      # Shown in place of the board iframe when the board is untrusted (Trust board button)
 │   │   ├── BoardNotFoundView.ts       # Shown when a board root no longer exists on disk (e.g. stale trusted/pinned path)
 │   │   └── index.ts                   # boardModule + native EditorModule factory
@@ -703,8 +700,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   └── FindBarView.ts            # Native browser find bar
 │   │
 │   ├── register-editors.ts # Editor registration — table-driven (EDITORS rows + loop) + content-host module preload
-│   ├── types.ts            # View-module prop types (required native EditorModule.View)
-│   └── index.ts
+│   └── types.ts            # View-module prop types (required native EditorModule.View)
 │
 ├── scripting/              # Script Execution
 │   ├── ScriptRunnerBase.ts # Core execution engine (transpile, execute, library)
@@ -779,7 +775,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │                       # for the permanent contract.
 │   ├── CLAUDE.md           # UIKit authoring rules (canonical reference)
 │   ├── tokens.ts           # Design tokens (spacing, sizing, radius, fontSize, gap, height)
-│   ├── index.ts            # Public exports (one entry per primitive)
 │   ├── Button/             # Button
 │   ├── IconButton/         # Icon-only button (also: chip variant)
 │   ├── SplitButton/        # Primary action + caret dropdown menu (composes IconButton + WithMenu)
@@ -866,8 +861,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── listener-list.ts # Shared listener registration and dispatch core
 │   │   ├── model.ts        # TModel, TDialogModel, TComponentModel, createComponentModelDriver
 │   │   ├── ComponentQueue.ts # Model-to-view event and request/reply mailbox
-│   │   ├── events.ts       # Emitter/Event primitive and named Subscription broadcasts
-│   │   └── index.ts
+│   │   └── events.ts       # Emitter/Event primitive and named Subscription broadcasts
 │   ├── traits/             # Trait system — drag-and-drop type negotiation
 │   │   ├── traits.ts       # TraitKey<T>, TraitSet, Traited<V>, traited(), isTraited()
 │   │   ├── TraitRegistry.ts # TraitRegistry singleton + TraitTypeId enum
@@ -877,6 +871,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   └── index.ts        # Public exports
 │   ├── utils/              # Utility functions
 │   │   ├── utils.ts        # General helpers
+│   │   ├── text-encoding.ts # Shared decodeBuffer/encodeString codec used by fs and content pipes
 │   │   ├── DisposableStore.ts # Function/object cleanup ownership, child stores, and ordered cleanup
 │   │   ├── scheduling.ts   # OwnerScheduler, Delayer, and paint-boundary scheduling helpers
 │   │   ├── echo-guard.ts   # Bounded exact-value self-write echo guard
@@ -886,16 +881,13 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── html-resources.ts  # HTML resource extraction (cheerio)
 │   │   ├── file-path.ts    # Archive-aware path utility (wraps ALL path.* usage)
 │   │   ├── path-utils.ts   # Markdown link resolution
-│   │   ├── obj-path.ts     # Deep object access by path
 │   │   ├── language-mapping.ts  # Extension → Monaco language
 │   │   ├── monaco-languages.ts  # Monaco language config
 │   │   ├── file-watcher.ts      # File change detection
 │   │   ├── copy-files.ts        # Recursive file/folder copy + move onto the local fs (paste backend; guards, progress, per-item errors)
 │   │   ├── focus-utils.ts       # isFocusInSidebar() — editors skip mount/navigation autofocus while focus is in a sidebar panel
-│   │   ├── memorize.ts          # Memoization
 │   │   ├── types.ts             # Type helpers
 │   │   └── index.ts
-│   └── index.ts
 │
 ├── theme/                  # Styling
 │   ├── color.ts            # Color tokens (CSS custom properties)

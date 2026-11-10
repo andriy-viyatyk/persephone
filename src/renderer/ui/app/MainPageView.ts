@@ -191,7 +191,7 @@ export class MainPageView extends VanillaView<object> {
         this.closeButton = this.createSystemButton("window-close", createIconElement("close"), t("shell.closeWindow"), () => app.window.close());
         if (appWindow.isBoardMode) {
             // The locked board tab is always shown and carries the board's icon and name, so the
-            // header holds no separate identity block — it would repeat the tab (EPIC-136).
+            // header holds no separate identity block — it would repeat the tab.
             this.header.dataset.boardMode = "";
             this.dragSpacer.className = "board-header-drag-spacer";
             this.header.append(this.pageTabs.root, this.rightPageTabs.root,
@@ -292,7 +292,7 @@ export class MainPageView extends VanillaView<object> {
      * `themeState.use()` and refreshed on a flip. A builder that returns a detached element cannot own a
      * subscription without leaking it, so keeping the glyph current is the owner's job —
      * this view rebuilds it. Without this, switching theme left the app-menu glyph on the previous
-     * background until something else rebuilt the header (EPIC-064 E6-6 concern 1).
+     * background until something else rebuilt the header.
      * Called once from `onMount`, so the binding lives as long as the view and the caller may
      * discard the returned handle.
      */

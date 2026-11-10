@@ -21,34 +21,15 @@ statuses and video choices as the toolbar workflow.
 ## Architecture
 
 ```
-ScriptRunner.run(script, page?, language?)
-    │
-    ├── new ScriptContext(page?, consoleLogs?, libraryPath?)
-    │       ├── app = AppWrapper        ← wraps `app` global
-    │       │     ├── PageCollectionWrapper  ← wraps `app.pages`
-    │       │     └── Events proxy ← wraps `app.events` (auto-tracks subscriptions)
-    │       ├── page = PageWrapper      ← wraps `page` global
-    │       │     └── Editor facades (28 operation + generic)  ← page.editor
-    │       ├── io = IoNamespace        ← wraps `io` global (providers, pipes, events)
-    │       ├── ui getter (lazy, stack-based on globalThis)
-    │       ├── styledText()     ← standalone styled text builder for dialog labels
-    │       ├── preventOutput()   ← suppresses default grouped-page output
-    │       ├── customRequire    ← context-bound require with library/ resolution
-    │       ├── console          ← native or MCP-capturing
-    │       └── ScriptOutputFlags ← tracks output suppression state
-    │
-    ├── ScriptRunnerBase.execute(script, context, language?)
-    │       ├── prepare(script, language)
-    │       │     ├── transpileIfNeeded()   ← strips TS types via sucrase (lazy-loaded)
-    │       │     ├── ensureSucraseLoaded() + registerLibraryExtensions()
-    │       │     └── clearLibraryRequireCache() if dirty (file watcher only)
-    │       └── executeInternal(script, context)
-    │             ├── Expression/statement detection
-    │             ├── Wrap in async function, fn.call(context)
-    │             ├── SCRIPT_PREFIX reads from `this` (context)
-    │             └── Await result if Promise
-    │
-    └── context.dispose()  ← restores previous ui getter, unsubscribes events
+ScriptRunner.runWithCapture(script, page?, language?)
+ScriptRunner.runWithResult(pageId, script, page?, language?)
+    -> shared context-managed execution
+       -> create ScriptContext
+       -> ScriptRunnerBase.execute(script, context, language)
+          -> prepare (transpile if needed, register library extensions)
+          -> executeInternal
+       -> dispose ScriptContext in finally
+    -> capture result or write result to grouped page
 ```
 
 ## Execution Modes
@@ -1165,34 +1146,18 @@ Stateless singleton execution engine. Takes a `ScriptContext` parameter — does
 
 Located in `/src/renderer/scripting/ScriptRunner.ts`. Extends `ScriptRunnerBase`.
 
-### `run(script, page?, language?)`
-
-1. Creates `ScriptContext` (owns `app`, `page`, `customRequire`, stack-based `ui` getter)
-2. Calls `execute(script, context, language)` (base handles transpilation + execution via `fn.call(context)`)
-3. Calls `context.dispose()` in `finally` block (restores previous `ui` getter, releases resources)
-
 ### `runWithResult(pageId, script, page?, language?)`
 
-Calls `executeScript()`, then converts result to text and writes to grouped page — unless output is suppressed. Output suppression is triggered by:
-- `preventOutput()` called in the script
-- Script writing to `page.grouped.content` directly
-
-When output is suppressed and the script throws an error, the error is shown in a `TextDialog` instead of the grouped page.
+Creates a `ScriptContext`, executes through `ScriptRunnerBase.execute()`, and disposes the context
+in a shared `finally` path. It converts the result to text and writes it to the grouped page unless
+output is suppressed by `preventOutput()` or direct writes to `page.grouped.content`. If output is
+suppressed and execution fails, the error is shown in a `TextDialog`.
 
 ### `runWithCapture(script, page?, language?)`
 
-Headless execution for MCP/programmatic use. Returns a `McpScriptResult` without writing to any grouped page:
-
-```typescript
-interface McpScriptResult {
-    text: string;
-    language: string;
-    isError: boolean;
-    consoleLogs: ConsoleLogEntry[];
-}
-```
-
-Captures `console.log/error/warn/info` calls during script execution via `ScriptContext`'s console capture support. If the script accesses `ui`, console output is forwarded to both `consoleLogs` (returned to agent) and the shared MCP Log View (visible to user).
+Uses the same context creation, base execution, and disposal path for headless MCP or programmatic
+execution. It returns a `McpScriptResult` and does not write to a grouped page. `ScriptRunnerBase.execute()`
+prepares the script, including optional TypeScript transpilation, then runs it in the supplied context.
 
 ### `convertToText(value)` (utility)
 

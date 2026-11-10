@@ -310,5 +310,3 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
         return `${status.running}-${status.url}-${status.clientCount ?? 0}-${copied ?? ""}`;
     }
 }
-
-export { McpSectionView as McpSection };

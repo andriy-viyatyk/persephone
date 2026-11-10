@@ -1,16 +1,16 @@
 /**
- * Toolset scaffolding (EPIC-038 / US-804). Creates a new toolset folder by copying the bundled
- * `assets/tool-template/` into it and setting the manifest's authoritative `name` (EPIC C8).
+ * Toolset scaffolding. Creates a new toolset folder by copying the bundled
+ * `assets/tool-template/` into it and setting the manifest's authoritative `name` field.
  *
  * Deliberately **scaffold-only — it does NOT trust/register the toolset**. Registration is a
  * separate user action: the confirmation dialog on agent-initiated `tools.createToolset` (the call
- * handler), or direct `toolsTrust.trust` from the user-initiated management UI (US-805). Mirrors
+ * handler), or direct `toolsTrust.trust` from the user-initiated management UI. Mirrors
  * `board-scaffold.ts` but diverges on two points: the toolset `name` is authoritative (so it is
  * written into the copied manifest, unlike a board where name defaults to the folder), and there
- * is no auto-trust (boards auto-trust by provenance; tools never do — EPIC C3).
+ * There is no auto-trust: boards auto-trust by provenance, while tools require explicit registration.
  *
  * Not exposed on the `app` object model or any script `.d.ts` — the whole trust-adjacent surface
- * stays off scripts (US-804 T-C1), consistent with `toolsTrust` / `registeredTools` / the executor.
+ * stays off scripts, consistent with `toolsTrust` / `registeredTools` / the executor.
  * `assets/` ships beside the app in both dev (Forge `extraResource`) and packaged builds
  * (electron-builder `extraResources`), so the template is always present.
  */
@@ -37,7 +37,7 @@ async function scaffoldToolset(destDir: string): Promise<void> {
 /**
  * Create a toolset named `name` inside the container folder `dir`, scaffolded from the bundled
  * template, and return its absolute root (`<dir>/<name>`). Writes the authoritative `name` into
- * the copied manifest (EPIC C8). **Does NOT trust/register** — the caller gates registration.
+ * the copied manifest. **Does NOT trust/register** — the caller gates registration.
  * Errors on a name collision (any existing `<dir>/<name>`); on a template-copy failure it still
  * produces a usable (empty) toolset with a default manifest + warns.
  */

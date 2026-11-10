@@ -1916,7 +1916,11 @@
     "voiceTyping.translatingRecording": "Įrašoma — verčiama į anglų kalbą — sustabdykite sparčiuoju klavišu {binding}, atšaukite paspaudę „Esc“",
     "voiceTyping.translatingTranscribing": "Transkribuojama anglų kalba — atšaukti galite paspaudę „Esc“",
     "settings.microphoneReferenceReady": "Kompiuterio garso atskaitos signalas aktyvus",
-    "settings.microphoneReferenceUnavailable": "Kompiuterio garso atskaitos signalas nepasiekiamas; triukšmo valymas tęsiamas be aido slopinimo: {reason}"
+    "settings.microphoneReferenceUnavailable": "Kompiuterio garso atskaitos signalas nepasiekiamas; triukšmo valymas tęsiamas be aido slopinimo: {reason}",
+    "shell.ungroup": "Išgrupuoti",
+    "shell.mutePage": "Nutildyti puslapį",
+    "shell.unmutePage": "Įjungti puslapio garsą",
+    "tools.siteExtensionActionFailed": "Svetainės plėtinio veiksmas nepavyko."
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3591,6 +3595,10 @@
     "voiceTyping.translatingRecording": "e3db99f8",
     "voiceTyping.translatingTranscribing": "dcf439f0",
     "settings.microphoneReferenceReady": "043e4ffb",
-    "settings.microphoneReferenceUnavailable": "d1af3faf"
+    "settings.microphoneReferenceUnavailable": "d1af3faf",
+    "shell.ungroup": "460af6ed",
+    "shell.mutePage": "724c00d7",
+    "shell.unmutePage": "af4c43a2",
+    "tools.siteExtensionActionFailed": "96558212"
   }
 }

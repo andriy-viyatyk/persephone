@@ -1,5 +1,5 @@
 /**
- * `persephone.openContent(...)` orchestration (EPIC-100 / US-1404) — the renderer-side entry point
+ * `persephone.openContent(...)` orchestration — the renderer-side entry point
  * `BoardWebview` calls for a board's `board:openContent` request.
  *
  * This is the board equivalent of `pagesModel.addEditorPage(editor, language, title, content)`: the

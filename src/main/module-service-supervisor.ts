@@ -1,3 +1,5 @@
+import { parseBoardIdPrefix, BOARD_FRAME_PREFIX, CAPABILITY_BOARD_PREFIX, VOICE_TYPING_BOARD_PREFIX, SPEECH_SYNTHESIZE_BOARD_PREFIX, SPEECH_WAKE_BOARD_PREFIX, TEXT_TRANSLATION_BOARD_PREFIX } from "../ipc/module-service-channels";
+import { CAPABILITY_ERROR_CODES } from "../shared/capability-constants";
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
@@ -70,10 +72,10 @@ function delay(milliseconds: number): Promise<void> {
 }
 
 const HOST_SERVICE_CHANNEL_POLICIES = new Map<string, { interfaceId: string; version: number; openTypes: ReadonlySet<string>; boardIdPrefix: string }>([
-    ["speech.transcribe@1", { interfaceId: "speech.transcribe", version: 1, openTypes: new Set(["describe", "transcribe"]), boardIdPrefix: "voice-typing:" }],
-    ["speech.synthesize@1", { interfaceId: "speech.synthesize", version: 1, openTypes: new Set(["describe", "speak"]), boardIdPrefix: "speech-synthesize:" }],
-    ["speech.wake@1", { interfaceId: "speech.wake", version: 1, openTypes: new Set(["describe", "enroll", "list", "delete", "listen"]), boardIdPrefix: "speech-wake:" }],
-    ["text.translate@1", { interfaceId: "text.translate", version: 1, openTypes: new Set(["describe", "detect", "translate", "download"]), boardIdPrefix: "text-translation:" }],
+    ["speech.transcribe@1", { interfaceId: "speech.transcribe", version: 1, openTypes: new Set(["describe", "transcribe"]), boardIdPrefix: VOICE_TYPING_BOARD_PREFIX }],
+    ["speech.synthesize@1", { interfaceId: "speech.synthesize", version: 1, openTypes: new Set(["describe", "speak"]), boardIdPrefix: SPEECH_SYNTHESIZE_BOARD_PREFIX }],
+    ["speech.wake@1", { interfaceId: "speech.wake", version: 1, openTypes: new Set(["describe", "enroll", "list", "delete", "listen"]), boardIdPrefix: SPEECH_WAKE_BOARD_PREFIX }],
+    ["text.translate@1", { interfaceId: "text.translate", version: 1, openTypes: new Set(["describe", "detect", "translate", "download"]), boardIdPrefix: TEXT_TRANSLATION_BOARD_PREFIX }],
 ]);
 
 class ModuleServiceSupervisor {
@@ -739,7 +741,7 @@ class ModuleServiceSupervisor {
             }
             result = { ok: true, value };
         } catch (error) {
-            const codes: CapabilityErrorCode[] = ["no-handler", "untrusted", "handler-closed", "crashed", "cancelled", "timeout", "cycle", "payload-too-large", "busy", "rejected", "permission-denied", "channel-backpressure", "channel-closed"];
+            const codes: readonly CapabilityErrorCode[] = CAPABILITY_ERROR_CODES;
             const code = (error as { code?: CapabilityErrorCode })?.code;
             result = { ok: false, error: { code: code && codes.includes(code) ? code : "rejected", message: errMessage(error) } };
         } finally {
@@ -808,7 +810,7 @@ class ModuleServiceSupervisor {
                 try {
                     record.process.postMessage({ kind: "channel-open", channelId, boardId: consumer, generation: record.generation,
                         openMessage, info: { page: { boardId: consumer }, ...info } } satisfies ServiceParentMessage, [port2]);
-                    if ("mainFrame" in delivery.target) delivery.target.postMessage(EventEndpoint.eBoardServiceChannel, { boardId: delivery.requestId.startsWith("board-frame:") ? delivery.requestId.slice(12) : `capability:${delivery.requestId}`, channelId }, [relay.port2]);
+                    if ("mainFrame" in delivery.target) delivery.target.postMessage(EventEndpoint.eBoardServiceChannel, { boardId: parseBoardIdPrefix(delivery.requestId, BOARD_FRAME_PREFIX) ?? `${CAPABILITY_BOARD_PREFIX}${delivery.requestId}`, channelId }, [relay.port2]);
                     else delivery.target.postMessage({ kind: "capability-client-port", requestId: delivery.requestId } satisfies ServiceParentMessage, [relay.port2]);
                 } catch (error) { deliveredClose({ code: "handler-closed", message: "Channel delivery failed." }); port2.close(); relay.port2.close(); throw error; }
                 return { channelId, onClose(listener: () => void) { if (closed) listener(); else listeners.add(listener); return () => { listeners.delete(listener); }; } };

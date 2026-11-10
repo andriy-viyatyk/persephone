@@ -20,7 +20,7 @@ import { WikiStatus, isModelReady, parseToolResult } from "../editors/mneme-conf
  * The probe runs over the **shared** `mnemeConnection` client rather than its own
  * MCP session — a second session to the same loopback sidecar (plus the config
  * editor's) starved the renderer's HTTP connection pool and made `status`
- * hang to the 60 s timeout (US-673).
+ * hang to the 60 s timeout.
  */
 export interface MnemeStatusState {
     enabled: boolean;
@@ -127,7 +127,7 @@ class MnemeStatusModel {
         const { enabled, running } = this.state.get();
         if (!enabled || !running || this.probing) return;
         // Reuse the shared content connection — the prober no longer opens its own
-        // MCP session (US-673). `mnemeConnection` owns the connection lifecycle; if
+        // MCP session. `mnemeConnection` owns the connection lifecycle; if
         // it isn't connected yet, the model is simply not ready for this tick and the
         // onStatusChange hook re-probes once it connects.
         const client = mnemeConnection.getClient();

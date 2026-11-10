@@ -58,7 +58,7 @@ export const TorChannel = {
     stop: "tor:stop",
 
     /**
-     * Look up the exit IP / location for a Tor partition (US-897).
+     * Look up the exit IP / location for a Tor partition.
      * Renderer → Main (invoke).
      * Args: (partition: string)
      * Returns: TorIpInfo — never rejects; failures come back in `error`.
@@ -67,7 +67,7 @@ export const TorChannel = {
 
     /**
      * Restart tor.exe so fresh circuits (and normally a new exit IP) are used,
-     * then re-apply the proxy to every active Tor partition (US-897).
+     * then re-apply the proxy to every active Tor partition.
      * Renderer → Main (invoke). Resolves only after the new daemon bootstraps,
      * which can take tens of seconds.
      * Args: (partition: string)
@@ -83,7 +83,7 @@ export const TorChannel = {
     log: "tor:log",
 
     /**
-     * Tor status change originating in main (US-897).
+     * Tor status change originating in main.
      * Main → Renderer (send), broadcast to every window.
      *
      * Only a restart emits this: the daemon is shared by all Tor pages, so a

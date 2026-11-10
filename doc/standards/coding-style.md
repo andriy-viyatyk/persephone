@@ -582,6 +582,8 @@ must not import `electron`.
 
 ## Comments
 
+**No planning IDs in code:** comments say why, not which ticket; task history lives in git and `doc/tasks/completed.md`.
+
 ### When to Comment
 
 ```typescript

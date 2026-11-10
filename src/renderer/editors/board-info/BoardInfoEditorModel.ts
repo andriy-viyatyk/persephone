@@ -129,11 +129,11 @@ export interface BoardInfoEditorState extends EditorStateBase {
     type: "boardInfoPage";
     editor: "board-info";
     title: string;
-    /** Explicit openers (hub / update toast / Properties — US-867). Absent for a "+"-opened
+    /** Explicit openers: hub, update toast, or Properties action. Absent for a plus-button
      *  install, which derives its matches from the adopted host's file name. */
     catalogId?: string;
     boardRoot?: string;
-    /** Originating file path when opened from a host-less simple board / `board-view` (US-876).
+    /** Originating file path when opened from a host-less simple board / `board-view`.
      *  A content-host source carries the file via its adopted host instead, so this stays unset
      *  there. Drives the switch widget's file peers + the "Open board" return path. */
     filePath?: string;
@@ -165,7 +165,7 @@ export const getDefaultBoardInfoEditorState = (): BoardInfoEditorState => ({
 type BoardInfoSource = { path: string; kind: "file" | "folder" };
 
 /**
- * Board Info editor — install mode (EPIC-045 / US-864).
+ * Board Info editor — install mode.
  *
  * A registered full-page editor that advertises uninstalled published-catalog boards matching the
  * open file and walks the user through **Download → Register board**. Downloading trusts nothing
@@ -178,7 +178,7 @@ type BoardInfoSource = { path: string; kind: "file" | "folder" };
  * it simply has no host. The host machinery below mirrors `BoardContentEditorModel`
  * (minus the board/iframe); `switchFrom` additionally TOLERATES a host-less source.
  *
- * **Properties mode (US-867):** when `state.boardRoot` is set, the same editor shows an installed
+ * **Properties mode:** when `state.boardRoot` is set, the same editor shows an installed
  * board's info + a fetched-on-demand Versions list (install/rollback), plus Open board and
  * Uninstall/Unregister. The `openBoardInfo` helper sets `boardRoot` (and transfers a held host so a
  * content-host board keeps its file for Open board). Mode = `boardRoot ? "properties" : "install"`.
@@ -300,7 +300,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         if (!trait) {
             // Host-less source (e.g. the built-in Archive viewer for a zip-based .xlsx / .docx /
             // .pptx): it owns no shared content host to adopt, but it still knows the file. Capture
-            // the path in the US-876 `filePath` field so the install page can match catalog editors
+            // the path in the `filePath` field so the install page can match catalog editors
             // by file mask, the switch keeps showing the file's real built-in peer (e.g. "Archive |
             // +"), and the tab keeps the file name instead of collapsing to "Install editor".
             const fp = oldEditor.filePath;
@@ -339,7 +339,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
 
     private currentFileName(): string {
         // Prefer the held host's file, then a host-less simple board's captured `filePath`
-        // (US-876), then titles — so the switch resolves the file's real built-in peer.
+        // source file path, then titles — so the switch resolves the file's real built-in peer.
         return this.currentSource().path;
     }
 
@@ -387,7 +387,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         );
     }
 
-    // ── Properties mode (US-867) ─────────────────────────────────────────
+    // ── Properties mode ──────────────────────────────────────────
 
     /** Load an installed board's manifest + registry + trust into `state.props`, and kick a
      *  version-history fetch for catalog installs. A `boardRoot` that no longer holds a board
@@ -526,7 +526,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
 
     /** Install a specific published version into the board's existing root (update/rollback). No
      *  extra confirmation — the click is the intent; the busy/open-pages guard is the only safety
-     *  (epic Concern 3). Incompatible versions are refused. Re-loads properties on success. */
+     *  Incompatible versions are refused. Properties reload on success. */
     async installBoardVersion(version: PublishedBoardVersion): Promise<void> {
         const props = this.state.get().props;
         if (!props?.isCatalogInstall || !props.catalogId) return;
@@ -594,7 +594,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         if (!root) return;
         const source = this.currentSource();
         if (source.kind === "folder" || this._host || source.path !== this.title) {
-            // Content-host: lossless host transfer. Host-less simple board (US-876): the
+            // Content-host: lossless host transfer. Host-less simple board: the
             // captured `filePath` (this editor's `filePath`) lets `switchMainEditor` rebuild the
             // board over the file, returning to the file-viewing board rather than a plain board.
             await this.page?.switchMainEditor(boardEditorId(root));

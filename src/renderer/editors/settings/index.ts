@@ -11,5 +11,3 @@ export const settingsModule: EditorModule = {
 
 export { SettingsEditor, getDefaultSettingsEditorState, SETTINGS_PAGE_ID } from "./SettingsEditor";
 export type { SettingsEditorState } from "./SettingsEditor";
-export { SettingsEditor as SettingsEditorModel } from "./SettingsEditor";
-export type { SettingsEditorState as SettingsEditorModelState } from "./SettingsEditor";

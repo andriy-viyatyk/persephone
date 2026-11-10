@@ -32,8 +32,8 @@ export class PageEditorSwitchesNode implements IAiVisible {
         return this.host?.mainEditorInstance ?? null;
     }
 
-    /** Empty when the page has no editor at all (a tab left open after its editor was closed,
-     *  US-1408). Reporting "monaco" there would contradict `page.editor`, which reports no
+    /** Empty when the page has no editor at all, such as a tab left open after its editor was closed.
+     *  Reporting "monaco" there would contradict `page.editor`, which reports no
      *  editor, and would invite a switchTo() against a page with nothing to rebuild over. */
     get current(): string {
         const host = this.host;

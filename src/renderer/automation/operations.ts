@@ -17,7 +17,7 @@ import {
 import { callOnRef, getRefSessionId, parseRef } from "./ref";
 import { buildSnapshot, detectOverlay, type SnapshotOptions as SnapshotBuildOptions } from "./snapshot";
 import { dispatchKeyDown, dispatchKeyUp, pressKey, pressSyntheticKey, typeMappedCharacter, typeText } from "./input";
-import type { IBrowserTarget, ITargetTab } from "./types";
+import type { IBrowserTarget } from "./types";
 import { errMessage } from "../../shared/utils";
 import { cdpExceptionMessage, type CdpSession } from "./CdpSession";
 import { app } from "../api/app";
@@ -110,10 +110,48 @@ const DEFAULT_ACTION_TIMEOUT = 5000;
 const MAX_ACTION_TIMEOUT = 28000;
 const RETRY_INTERVAL = 100;
 
+function resolveCandidatesSource(): string {
+    return String.raw`function resolveCandidates(selector, mode) {
+        const displayed = el => { const style = getComputedStyle(el); return style.visibility !== 'hidden' && style.display !== 'none'; };
+        const visible = el => {
+            const rect = el.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0 && displayed(el);
+        };
+        if (!selector.startsWith('text=')) {
+            if (mode === 'query') document.querySelector(selector);
+            const allMatches = [...document.querySelectorAll(selector)];
+            if (mode === 'query') return allMatches;
+            const displayedMatches = allMatches.filter(displayed);
+            const sizedMatches = displayedMatches.filter(visible);
+            return force ? allMatches : sizedMatches.length ? sizedMatches : displayedMatches;
+        }
+        const source = selector.slice(5).trim();
+        const quoted = source.startsWith('"') && source.endsWith('"');
+        const wanted = (quoted ? JSON.parse(source) : source).replace(/\s+/g, ' ').trim();
+        const normalize = value => value.replace(/\s+/g, ' ').trim();
+        const candidates = [...document.querySelectorAll('body *')].filter(el => {
+            const text = normalize(el.innerText || el.textContent || '');
+            if (quoted ? text !== wanted : !text.toLocaleLowerCase().includes(wanted.toLocaleLowerCase())) return false;
+            return (mode === 'action' && force) || displayed(el);
+        });
+        const innermost = candidates.filter(el => !candidates.some(candidate => candidate !== el && el.contains(candidate)));
+        const sized = innermost.filter(visible);
+        return (mode === 'action' && force ? innermost : sized.length ? sized : innermost)
+            .sort((a, b) => {
+                const ar = a.getBoundingClientRect(), br = b.getBoundingClientRect();
+                const area = ar.width * ar.height - br.width * br.height;
+                if (area) return area;
+                const depth = el => { let value = 0; for (let node = el; node; node = node.parentElement) value++; return value; };
+                return depth(b) - depth(a);
+            });
+    }`;
+}
+
 function actionabilityFunction(): string {
     // hitTest=false (programmatic operations such as select) keeps the other checks but skips
     // the receives-pointer-events test: nothing is dispatched at a point.
     return `async function(selector, nth, force, position, hitTest = true) {
+        ${resolveCandidatesSource()}
         const describe = el => {
             if (!el) return 'unknown element';
             const id = el.id ? '#' + el.id : '';
@@ -122,42 +160,14 @@ function actionabilityFunction(): string {
             const label = el.getAttribute('aria-label') || el.getAttribute('title') || el.textContent?.trim().slice(0, 60);
             return '<' + el.localName + id + classes + '>' + (label ? ' ' + JSON.stringify(label) : '');
         };
-        const visible = el => {
-            const rect = el.getBoundingClientRect();
-            const style = getComputedStyle(el);
-            return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
-        };
         const displayed = el => { const style = getComputedStyle(el); return style.visibility !== 'hidden' && style.display !== 'none'; };
         let el = this;
         if (selector !== null) {
-            let matches;
-            if (selector.startsWith('text=')) {
-                const source = selector.slice(5).trim();
-                const quoted = source.startsWith('"') && source.endsWith('"');
-                const wanted = (quoted ? JSON.parse(source) : source).replace(/\s+/g, ' ').trim();
-                const normalize = value => value.replace(/\s+/g, ' ').trim();
-                const candidates = [...document.querySelectorAll('body *')].filter(el => {
-                    const text = normalize(el.innerText || el.textContent || '');
-                    if (quoted ? text !== wanted : !text.toLocaleLowerCase().includes(wanted.toLocaleLowerCase())) return false;
-                    return force || displayed(el);
-                });
-                const innermost = candidates.filter(el => !candidates.some(candidate => candidate !== el && el.contains(candidate)));
-                const sized = innermost.filter(visible);
-                matches = (force ? innermost : sized.length ? sized : innermost)
-                    .sort((a, b) => {
-                        const ar = a.getBoundingClientRect(), br = b.getBoundingClientRect();
-                        const area = ar.width * ar.height - br.width * br.height;
-                        if (area) return area;
-                        const depth = el => { let value = 0; for (let node = el; node; node = node.parentElement) value++; return value; };
-                        return depth(b) - depth(a);
-                    });
-            } else {
+            if (!force && !selector.startsWith('text=')) {
                 const allMatches = [...document.querySelectorAll(selector)];
-                const displayedMatches = allMatches.filter(displayed);
-                if (!force && allMatches.length > 0 && displayedMatches.length === 0) throw new Error('ACTIONABILITY_TRANSIENT: Element is not visible.');
-                const sizedMatches = displayedMatches.filter(visible);
-                matches = force ? allMatches : sizedMatches.length ? sizedMatches : displayedMatches;
+                if (allMatches.length > 0 && !allMatches.some(displayed)) throw new Error('ACTIONABILITY_TRANSIENT: Element is not visible.');
             }
+            const matches = resolveCandidates(selector, 'action');
             if (matches.length > 1 && nth == null)
                 throw new Error('ACTIONABILITY_FATAL: Ambiguous selector ' + JSON.stringify(selector) + ': ' + matches.length + ' visible matches (' + matches.slice(0, 5).map((m, i) => i + ': ' + describe(m)).join('; ') + (matches.length > 5 ? '; …' : '') + '). Use a ref, narrow the selector, or pass { nth } (zero-based among visible matches).');
             if (nth != null && (!Number.isInteger(nth) || nth < 0))
@@ -483,7 +493,7 @@ export async function clickElement(
     if (options.synthetic) {
         target.focusWebview(options.tabId);
         if ("selector" in locator) {
-            await action.cdp.evaluate(`(() => { const matches = [...document.querySelectorAll(${JSON.stringify(locator.selector)})].filter(el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none'; }); const el = matches[${options.nth ?? 0}]; if (!el) throw new Error('Element not found'); el.click(); })()`);
+            await action.cdp.evaluate(`(() => { const force = false; ${resolveCandidatesSource()} const matches = (${JSON.stringify(locator.selector)}.startsWith('text=') ? resolveCandidates(${JSON.stringify(locator.selector)}, 'query') : [...document.querySelectorAll(${JSON.stringify(locator.selector)})]).filter(el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none'; }); const el = matches[${options.nth ?? 0}]; if (!el) throw new Error('Element not found'); el.click(); })()`);
         } else {
             await callOnRef(action.cdp, locator.ref, "function() { this.click(); }");
         }
@@ -529,7 +539,7 @@ export async function hoverElement(
         target.focusWebview(options.tabId);
         const syntheticHover = "function() { this.dispatchEvent(new MouseEvent('mouseenter', {bubbles:false, composed:true})); this.dispatchEvent(new MouseEvent('mouseover', {bubbles:true, composed:true})); }";
         if ("selector" in locator) {
-            await action.cdp.evaluate(`(() => { const matches = [...document.querySelectorAll(${JSON.stringify(locator.selector)})].filter(el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none'; }); const el = matches[${options.nth ?? 0}]; if (!el) throw new Error('Element not found'); el.dispatchEvent(new MouseEvent('mouseenter', {bubbles:false, composed:true})); el.dispatchEvent(new MouseEvent('mouseover', {bubbles:true, composed:true})); })()`);
+            await action.cdp.evaluate(`(() => { const force = false; ${resolveCandidatesSource()} const matches = (${JSON.stringify(locator.selector)}.startsWith('text=') ? resolveCandidates(${JSON.stringify(locator.selector)}, 'query') : [...document.querySelectorAll(${JSON.stringify(locator.selector)})]).filter(el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none'; }); const el = matches[${options.nth ?? 0}]; if (!el) throw new Error('Element not found'); el.dispatchEvent(new MouseEvent('mouseenter', {bubbles:false, composed:true})); el.dispatchEvent(new MouseEvent('mouseover', {bubbles:true, composed:true})); })()`);
         } else {
             await callOnRef(action.cdp, locator.ref, syntheticHover);
         }
@@ -547,7 +557,8 @@ function getModifierFlags(modifiers: MouseModifier[] = []): number {
 function locatorFunction(locator: ElementLocator, nth: number | undefined, body: string, allowHidden = false): string {
     if ("ref" in locator) return `function() { ${body} }`;
     return `(() => {
-        const allMatches = [...document.querySelectorAll(${JSON.stringify(locator.selector)})];
+        const force = false; ${resolveCandidatesSource()}
+        const allMatches = (${JSON.stringify(locator.selector)}.startsWith('text=') ? resolveCandidates(${JSON.stringify(locator.selector)}, 'query') : [...document.querySelectorAll(${JSON.stringify(locator.selector)})]);
         const visibleMatches = allMatches.filter(el => {
             const rect = el.getBoundingClientRect(); const style = getComputedStyle(el);
             return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
@@ -1031,7 +1042,7 @@ export async function getElementText(
 ): Promise<string | null> {
     if ("selector" in locator) {
         return target.cdp(tabId).evaluate(
-            `document.querySelector(${JSON.stringify(locator.selector)})?.textContent ?? null`,
+            `(() => { const force = false; ${resolveCandidatesSource()} return resolveCandidates(${JSON.stringify(locator.selector)}, 'query')[0]?.textContent ?? null; })()`,
         );
     }
     return callOnRef(target.cdp(tabId), locator.ref,
@@ -1046,7 +1057,7 @@ export async function getElementValue(
 ): Promise<string | null> {
     if ("selector" in locator) {
         return target.cdp(tabId).evaluate(
-            `document.querySelector(${JSON.stringify(locator.selector)})?.value ?? null`,
+            `(() => { const force = false; ${resolveCandidatesSource()} return resolveCandidates(${JSON.stringify(locator.selector)}, 'query')[0]?.value ?? null; })()`,
         );
     }
     return callOnRef(target.cdp(tabId), locator.ref,
@@ -1062,7 +1073,7 @@ export async function getElementAttribute(
 ): Promise<string | null> {
     if ("selector" in locator) {
         return target.cdp(tabId).evaluate(
-            `document.querySelector(${JSON.stringify(locator.selector)})?.getAttribute(${JSON.stringify(attribute)}) ?? null`,
+            `(() => { const force = false; ${resolveCandidatesSource()} return resolveCandidates(${JSON.stringify(locator.selector)}, 'query')[0]?.getAttribute(${JSON.stringify(attribute)}) ?? null; })()`,
         );
     }
     return callOnRef(target.cdp(tabId), locator.ref,
@@ -1077,7 +1088,7 @@ export async function getElementHtml(
 ): Promise<string | null> {
     if ("selector" in locator) {
         return target.cdp(tabId).evaluate(
-            `document.querySelector(${JSON.stringify(locator.selector)})?.innerHTML ?? null`,
+            `(() => { const force = false; ${resolveCandidatesSource()} return resolveCandidates(${JSON.stringify(locator.selector)}, 'query')[0]?.innerHTML ?? null; })()`,
         );
     }
     return callOnRef(target.cdp(tabId), locator.ref,
@@ -1092,7 +1103,7 @@ export async function elementExists(
 ): Promise<boolean> {
     if ("selector" in locator) {
         return target.cdp(tabId).evaluate(
-            `!!document.querySelector(${JSON.stringify(locator.selector)})`,
+            `(() => { const force = false; ${resolveCandidatesSource()} return !!resolveCandidates(${JSON.stringify(locator.selector)}, 'query')[0]; })()`,
         );
     }
     await callOnRef(target.cdp(tabId), locator.ref, "function() { return true; }", true);
@@ -1126,7 +1137,8 @@ export async function waitFor(target: IBrowserTarget, options: WaitForOptions): 
                 const state = mode.state ?? "attached";
                 const selector = JSON.stringify(mode.selector);
                 satisfied = await cdp.evaluate(`(() => {
-                    const el = document.querySelector(${selector});
+                    const force = false; ${resolveCandidatesSource()}
+                    const el = resolveCandidates(${selector}, 'query')[0];
                     const attached = !!el;
                     const rect = el?.getBoundingClientRect();
                     const style = el ? getComputedStyle(el) : null;
@@ -1155,35 +1167,6 @@ export async function waitFor(target: IBrowserTarget, options: WaitForOptions): 
 
 export async function ensureTargetReady(target: IBrowserTarget, tabId?: string): Promise<void> {
     await target.ensureReady?.(tabId);
-}
-
-export function listTabs(target: IBrowserTarget): ReadonlyArray<ITargetTab> {
-    return target.tabs;
-}
-
-export async function openTab(target: IBrowserTarget, url?: string): Promise<ReadonlyArray<ITargetTab>> {
-    target.addTab(url);
-    await new Promise(resolve => setTimeout(resolve, 200));
-    return target.tabs;
-}
-
-export async function closeTab(target: IBrowserTarget, index?: number): Promise<ReadonlyArray<ITargetTab>> {
-    if (index != null) {
-        const tab = target.tabs[index];
-        if (!tab) throw new Error(`No tab at index ${index}`);
-        target.closeTab(tab.id);
-    } else {
-        target.closeTab();
-    }
-    await new Promise(resolve => setTimeout(resolve, 100));
-    return target.tabs;
-}
-
-export async function selectTab(target: IBrowserTarget, index: number): Promise<ReadonlyArray<ITargetTab>> {
-    const tab = target.tabs[index];
-    if (!tab) throw new Error(`No tab at index ${index}`);
-    await target.switchTab(tab.id);
-    return target.tabs;
 }
 
 export interface ScreenshotResult {
@@ -1229,9 +1212,10 @@ export async function takeScreenshot(
                     return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, frameOffsets };
                 }`, true)
                 : await cdp.evaluate(`(() => {
+                    const force = false; ${resolveCandidatesSource()}
                     // Same strictness as every other action: count visible matches, { nth } picks one.
                     const nth = ${JSON.stringify(options.nth ?? null)};
-                    const matches = [...document.querySelectorAll(${JSON.stringify(locator.selector)})].filter(el => {
+                    const matches = (${JSON.stringify(locator.selector)}.startsWith('text=') ? resolveCandidates(${JSON.stringify(locator.selector)}, 'query') : [...document.querySelectorAll(${JSON.stringify(locator.selector)})]).filter(el => {
                         const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
                         return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none';
                     });
@@ -1282,9 +1266,4 @@ export async function networkRequests(target: IBrowserTarget, tabId?: string, op
     const tab = tabId ? target.tabs.find(item => item.id === tabId) : target.activeTab;
     if (!tab) throw new Error(tabId ? `No tab with id "${tabId}"` : "No active tab");
     return ipcRenderer.invoke(BrowserChannel.getNetworkLog, target.cdp(tab.id).registrationKey, options);
-}
-
-export function closeActiveTab(target: IBrowserTarget): string {
-    target.closeTab();
-    return "Tab closed";
 }

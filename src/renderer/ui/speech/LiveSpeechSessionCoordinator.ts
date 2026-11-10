@@ -15,10 +15,6 @@ class LiveSpeechSessionCoordinator {
         };
     }
 
-    public isBusy(): boolean {
-        return this.owner !== undefined;
-    }
-
 }
 
 export const liveSpeechSessionCoordinator = new LiveSpeechSessionCoordinator();

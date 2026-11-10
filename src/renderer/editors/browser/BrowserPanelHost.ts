@@ -19,7 +19,7 @@ const defaultPageState: IPageState = {
 };
 
 /**
- * BrowserPanelHost — a non-Page `IPageHost` (EPIC-029 Phase 2 / US-601).
+ * BrowserPanelHost — a non-Page `IPageHost` used for browser secondary panels.
  *
  * Owns the browser's bookmarks `LinkEditor` as its sole panel editor plus its
  * own `SecondaryViewsModel`, so the controlled `SecondaryViews` component can be
@@ -46,7 +46,7 @@ export class BrowserPanelHost implements IPageHost {
     secondaryViewsModel: SecondaryViewsModel | null = null;
 
     /** Notified when the sidebar width changes, so the owning browser model can
-     *  persist it in browser state (US-601 Concern C). */
+     *  persist it in browser state. */
     onWidthChange?: (width: number) => void;
 
     private _editor: LinkEditor | null = null;
@@ -105,7 +105,7 @@ export class BrowserPanelHost implements IPageHost {
         this.secondaryViewsModel?.setStateQuiet({ activePanel: value });
     }
 
-    /** Bare panel-type id of the active composite key (US-619). */
+    /** Bare panel-type id of the active composite key. */
     get activePanelId(): string {
         return panelIdOf(this.activePanel);
     }
@@ -113,7 +113,7 @@ export class BrowserPanelHost implements IPageHost {
     // ── SecondaryViews ───────────────────────────────────────────────────────
 
     /** Seed the initial sidebar width before `attach` creates the model
-     *  (restored from browser state — US-601 Concern C). */
+     *  restored from browser state. */
     setInitialWidth(width: number | undefined): void {
         this._pendingWidth = width;
         if (this.secondaryViewsModel && width) {
@@ -149,7 +149,7 @@ export class BrowserPanelHost implements IPageHost {
         });
         if (patch.activePanel !== undefined && patch.activePanel !== prev.activePanel) {
             this._activePanel = patch.activePanel;
-            // Side effects use the BARE panel id (US-619).
+            // Side effects use the BARE panel id.
             const panelId = panelIdOf(patch.activePanel);
             this._editor?.onPanelExpanded(panelId);
             panelExpanded.send({ pageId: this.id, panelId });

@@ -8,7 +8,7 @@
  * keyed by `jobId`.
  *
  * This module is intentionally dependency-free (no imports from `src/main`
- * or `src/renderer`) so a sandboxed board preload (US-724) can import it and
+ * or `src/renderer`) so the sandboxed board preload can import it and
  * talk to the main service over raw `ipcRenderer`.
  */
 export enum RunnerChannel {
@@ -37,8 +37,8 @@ export interface RunnerSpawnOptions {
      */
     shell?: boolean | string;
     /** Optional caller-chosen job name, stored on the live job. Lets a board
-     *  re-associate its surviving jobs by name after a reload (`getJobs()`,
-     *  US-799) instead of persisting jobIds. */
+     *  re-associate its surviving jobs by name after a reload using `getJobs()`,
+     *  instead of persisting jobIds. */
     name?: string;
 }
 
@@ -48,7 +48,7 @@ export interface RunnerStartMsg {
     /** Argv-style arguments (no-shell spawns). When present, the runner calls
      *  `spawn(command, args, opts)` instead of `spawn(command, opts)`. */
     args?: string[];
-    /** Board-bridge marker (US-882): run `command` as a Node script in an Electron
+    /** Board-bridge marker: run `command` as a Node script in an Electron
      *  utility process through `startNodeJobTo`. Translated by `board-bridge.ts`;
      *  the renderer IPC path never sets it. */
     node?: boolean;
@@ -105,7 +105,7 @@ export type RunnerInboundMsg = RunnerChunkMsg | RunnerExitMsg | RunnerErrorMsg;
 // ===========================================================================
 // Handle contract — the public `execute()` API shape. The state machine that
 // implements it lives once in `src/shared/execute-handle.ts`; the two clients
-// supply only a transport, so they cannot drift (EPIC-034 US-724 / C-E):
+// supply only a transport, so they cannot drift between the two clients:
 //   • the renderer client `src/renderer/api/proc.ts` (over `window.electron`)
 //   • the board bridge shim `src/board-shim.ts` (over its per-board MessagePort)
 // The script-facing Monaco surface `src/renderer/api/types/proc.d.ts` MIRRORS
@@ -128,7 +128,7 @@ export interface IExecuteOptions {
     /**
      * Optional job name (e.g. `"backend"`). For boards: a busy board's surviving
      * jobs are listed by `persephone.getJobs()` after a reload, and `name` is the
-     * intended re-association key — no jobId persistence needed (US-799).
+     * intended re-association key — no jobId persistence needed.
      */
     name?: string;
 }

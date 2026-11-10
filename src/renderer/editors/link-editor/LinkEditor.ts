@@ -120,7 +120,7 @@ export class LinkEditor
     onGetLinkMenuItems?: (link: LinkItem) => MenuItem[];
 
     /**
-     * US-896 / US-1557 — set by an embedder whose page is routed (the browser's
+     * Route fetches through the embedding page's session when its network is routed (for example, a browser bookmark editor on Tor or a proxied profile), so remote link images do not use a direct connection.
      * bookmarks editor on a Tor page or a proxied profile) so remote link images
      * are fetched through that page's session instead of leaking direct. A
      * function, not a value: `torStatus` and the profile's network change after
@@ -136,7 +136,7 @@ export class LinkEditor
 
     /**
      * True when this editor is embedded in a Tor browser page. Gates anything
-     * that would leave a trace on disk — e.g. arming a favicon download (US-896).
+     * that would leave a trace on disk — e.g. arming a favicon download.
      */
     get isPrivatePage(): boolean {
         return !!this.imageProxy?.private;
@@ -249,14 +249,14 @@ export class LinkEditor
      *  SecondaryViews. Mirrors `ArchiveEditorModel.beforeNavigateAway`. */
     beforeNavigateAway(newModel: EditorModel): void {
         // A modified editor survives any navigation so unsaved work is never
-        // lost (US-718); an unmodified one survives only own-link navigation.
+        // lost; an unmodified one survives only own-link navigation.
         if (this.modified || this._isOpenedFromMe(newModel)) {
             return;
         }
         this.secondaryView = undefined;
     }
 
-    /** On demote, keep the full panel set (Concern 4 — no reshape). Evicts
+    /** On demote, keep the full panel set without reshaping. Evicts
      *  only when the editor is unmodified AND the new main wasn't opened from
      *  us (external navigation). A modified editor always keeps its panels. */
     onMainEditorChanged(newMainEditor: EditorModel | null): void {
@@ -273,7 +273,7 @@ export class LinkEditor
     /** A modified Link editor survives any navigation (its panels stay; unsaved
      *  work is preserved); an unmodified one survives own-link navigation. In
      *  both cases the editor is not released, so the navigation save-prompt is
-     *  skipped (US-718). */
+     *  skipped. */
     survivesNavigation(sourceLink?: ILinkData): boolean {
         return this.modified || this.isOwnNavigationSourceId(sourceLink?.sourceId);
     }
@@ -1057,14 +1057,14 @@ export class LinkEditor
     // ── Link opening ────────────────────────────────────────────────────
 
     /** Open a link clicked in a sidebar panel (Category tree / Tags-Hostnames
-     *  bottom list). Single open path (US-601 Concern A):
+     *  bottom list). A single open path:
      *   - **Embedded (browser):** when `onLinkOpen` is set (only the browser
      *     sets it), route through `openLink()` so the hook can force
      *     `target:"browser"` + `browserPageId` and navigate the empty tab (or a
      *     new tab when the current tab isn't blank / on Ctrl-click).
      *   - **Page:** dispatch `openRawLink` with the navigation metadata — opens
      *     the file in the page's main view and keeps the Link panels alive via
-     *     `_isOpenedFromMe`. Byte-identical to the pre-US-601 per-panel path. */
+     *     `_isOpenedFromMe`. Matches the previous single-panel path. */
     openLinkFromPanel = (item: ILink, sourceId: string): void => {
         if (item.id) this.selectLink(item.id);
         if (this.onLinkOpen) {
@@ -1107,7 +1107,7 @@ export class LinkEditor
      *  (sidebar-only, no main editor) would report `modified=false` and
      *  `page.close()` would skip the save prompt — the close loop reads
      *  `editor.modified` on each entry in `editors[]` and only the main-editor
-     *  branch goes through `unwrapToHost`. (US-592.) */
+     *  branch goes through `unwrapToHost`. */
     get modified(): boolean {
         return this._host ? this._host.modified : super.modified;
     }

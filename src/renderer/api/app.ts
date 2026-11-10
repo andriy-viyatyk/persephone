@@ -146,20 +146,20 @@ class App {
         await initCustomThemeStorage();
 
         // Subscribe the published-boards catalog model to main's broadcast and pull the
-        // initial catalog (US-862). Fire-and-forget — no view blocks on it, and a fetch
+        // initial catalog. Fire-and-forget — no view blocks on it, and a fetch
         // failure is named but does not block startup (cached catalog / empty).
         import("./published-boards")
             .then(({ publishedBoards }) => publishedBoards.load())
             .catch((error: unknown) => this._reportBackgroundFailure("published-boards", error));
 
         // Load the board install registry so update checks / "already installed" filters
-        // have data (US-863). Fire-and-forget; reconciles stale entries on load.
+        // have data. Fire-and-forget; reconciles stale entries on load.
         import("./board-install-registry")
             .then(({ boardInstallRegistry }) => boardInstallRegistry.load())
             .catch((error: unknown) => this._reportBackgroundFailure("board-install-registry", error));
 
         // Hydrate the Agent Tools registry so the `tools` call node can answer without
-        // initializing (and therefore mutating) it on a read (US-1328). Fire-and-forget,
+        // initializing (and therefore mutating) it on a read. Fire-and-forget,
         // like the two above: nothing blocks on it, and `registeredTools.isInitialized`
         // lets the node fail closed until it lands.
         import("./tools/registered-tools")

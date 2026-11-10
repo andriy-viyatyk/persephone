@@ -1,5 +1,5 @@
 /**
- * Git branches/tags data model (EPIC-031 / US-634).
+ * Git branches/tags data model.
  *
  * Focused submodel of the Git Tree editor (model-view) — the sibling of
  * `GitTreeModel` and `GitChangesModel`. Holds the repository refs (local
@@ -56,7 +56,7 @@ export class GitBranchesModel {
 
     /** Set true by `markStale()` when a repo change happened while this panel was
      *  hidden; cleared by the next `reload()`. The owning editor reloads on reveal
-     *  only when stale (visibility-aware refresh, US-634). */
+     * only when stale (visibility-aware refresh). */
     private _stale = false;
     get stale(): boolean {
         return this._stale;
@@ -114,7 +114,7 @@ export class GitBranchesModel {
         });
     };
 
-    /** Fetch all remotes, then reload refs + ahead/behind (US-641).
+    /** Fetch all remotes, then reload refs and ahead/behind counts.
      *  Sets `fetching` for the duration; toasts on failure. Never throws. The
      *  `finally` guarantees the busy flag clears even if `reload()` throws, so the
      *  toolbar button can't get stuck disabled. */
@@ -130,7 +130,7 @@ export class GitBranchesModel {
         }
     };
 
-    /** Push the current branch to its upstream (US-641). When there is no upstream,
+    /** Push the current branch to its upstream. When there is no upstream,
      *  passes `setUpstream:true` to create one (`-u origin <branch>`). Sets `pushing`
      *  for the duration; toasts on failure or rejection. Reloads afterward. Never throws.
      *  The `finally` guarantees the busy flag clears even if `reload()` throws. */
@@ -157,7 +157,7 @@ export class GitBranchesModel {
         }
     };
 
-    /** Pull from the current branch's upstream (US-642). Merge by default; rebase when
+    /** Pull from the current branch's upstream. Merge by default; rebase when
      *  `opts.rebase`. On success reloads refs + ahead/behind; on conflict toasts the list
      *  of conflicted files (the Changes panel then shows them with status 'U'); on other
      *  failure (no upstream, HTTPS auth, dirty tree) toasts the git error. Never throws.
@@ -183,7 +183,7 @@ export class GitBranchesModel {
         }
     };
 
-    /** Cheap ahead/behind-only reload (US-641) — used by the editor toolbar's refresh
+    /** Cheap ahead/behind-only reload — used by the editor toolbar's refresh
      *  when the tree is visible but the Branches panel is collapsed (so the full refs
      *  reload is skipped). Skips while a fetch/push/pull is in flight (that flow reloads on
      *  its own — avoids a racing write that flickers the count badge). Never throws. */

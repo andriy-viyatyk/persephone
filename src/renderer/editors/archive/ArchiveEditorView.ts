@@ -85,7 +85,7 @@ export class ArchiveEditorView extends VanillaView<{ model: EditorModel }> {
         this.applyLoadedRoot();
         // onMount() returns early when the model had no provider, so the toolbar
         // and tree were never built. The provider is set before mount on every
-        // path (see US-1113), so this is unreachable today — but the fields are
+        // construction path, so this is unreachable today — but the fields are
         // definite-assignment asserted, which would make it a TypeError rather
         // than a no-op if a future path ever loaded a provider after mount.
         if (!this.pageToolbar) return;

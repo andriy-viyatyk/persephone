@@ -388,7 +388,7 @@ export class FileSearchModel {
         const searchId = this.currentSearchId;
         this.disposed = true;
         this.currentSearchId = null;
-        // Cancel carries this view's own search id (US-1041), so disposal can stop its worker
+        // Cancel carries this view's own search id, so disposal can stop its worker
         // instead of letting it walk a tree nobody is watching. Safe even if another view has
         // since replaced this search: the main process compares ids and no-ops on a mismatch.
         // Sent directly rather than through cancelSearch(), which early-returns once disposed
