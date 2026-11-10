@@ -132,8 +132,8 @@ class App {
 
         const { load: loadUiPreferences } = await import("./ui-preferences");
         await loadUiPreferences();
-        const { initModuleServiceStatus } = await import("./module-service-status");
-        await initModuleServiceStatus();
+        const { moduleServiceStatus } = await import("./module-service-status");
+        await moduleServiceStatus.load();
         this._reportServiceFailures();
 
         // Custom definitions and their shared-directory watcher must be ready before Settings mounts.
@@ -234,8 +234,8 @@ class App {
         if (this._eventsInitialized) return;
         this._eventsInitialized = true;
         const services = this as unknown as AppServiceSurface;
-        const { initSiteExtensionTrustSync } = await import("./site-extension-trust-sync");
-        initSiteExtensionTrustSync();
+        const { siteExtensionTrust } = await import("./site-extension-trust");
+        siteExtensionTrust.start();
 
         // The navigation-return registry owns the sole browser URL claim subscription.
         // Initialize it after pages exist and before any browser or board view mounts.

@@ -47,6 +47,7 @@
     "api.actionFailed": "{action}: {error}",
     "api.autoloadScriptError": "Automatinio skripto įkėlimo klaida: {message}",
     "api.boardBusyDeleting": "Ši lenta šiuo metu veikia. Prieš naikindami ją, sustabdykite.",
+    "api.boardBusyRemoving": "Ši lenta šiuo metu veikia. Prieš pašalindami ją sustabdykite.",
     "api.boardBusyUpdating": "Ši lenta šiuo metu veikia. Prieš atnaujindami ją, sustabdykite.",
     "api.boardInstalled": "Įdiegta {name} v{version}.",
     "api.boardInstallFailed": "Nepavyko įdiegti: {error}",
@@ -55,6 +56,12 @@
       "few": "Ši lenta atidaryta {count} puslapiuose; prieš ją naikinant puslapius reikia uždaryti. Puslapiai liks atidaryti ir bus tušti. Tęsti?",
       "many": "Ši lenta atidaryta {count} puslapių; prieš ją naikinant puslapius reikia uždaryti. Puslapiai liks atidaryti ir bus tušti. Tęsti?",
       "other": "Ši lenta atidaryta {count} puslapio; prieš ją naikinant puslapį reikia uždaryti. Puslapis liks atidarytas ir bus tuščias. Tęsti?"
+    },
+    "api.boardOpenRemoving": {
+      "one": "Ši lenta atverta {count} puslapyje ir turi būti uždaryta prieš ją pašalinant. Puslapis liks atvertas ir bus tuščias. Tęsti?",
+      "few": "Ši lenta atverta {count} puslapiuose ir turi būti uždaryta prieš ją pašalinant. Puslapiai liks atverti ir bus tušti. Tęsti?",
+      "many": "Ši lenta atverta {count} puslapių ir turi būti uždaryta prieš ją pašalinant. Puslapiai liks atverti ir bus tušti. Tęsti?",
+      "other": "Ši lenta atverta {count} puslapyje ir turi būti uždaryta prieš ją pašalinant. Puslapis liks atvertas ir bus tuščias. Tęsti?"
     },
     "api.boardOpenTitle": "Lenta atidaryta",
     "api.boardOpenUpdating": {
@@ -3599,6 +3606,8 @@
     "shell.ungroup": "460af6ed",
     "shell.mutePage": "724c00d7",
     "shell.unmutePage": "af4c43a2",
-    "tools.siteExtensionActionFailed": "96558212"
+    "tools.siteExtensionActionFailed": "96558212",
+    "api.boardBusyRemoving": "fc62a483",
+    "api.boardOpenRemoving": "6426988c"
   }
 }

@@ -5,6 +5,7 @@ import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { PERSEPHONE_BOARD_PREFIX } from "../../content/persephone-board-link";
 import { matchesFileMask } from "../../../shared/board/board-masks";
 import { BoardRoot } from "../../../shared/board/board-root";
+import { asBoardHostEditor } from "../boards/board-host-editor";
 
 /**
  * PagesQueryModel — Read-only queries on the page collection.
@@ -74,6 +75,15 @@ export class PagesQueryModel {
             const editor = page.mainEditorInstance as { boardRoot?: string } | null;
             return !!editor?.boardRoot
                 && BoardRoot.from(editor.boardRoot).equals(boardRoot);
+        });
+    };
+
+    /** Open pages whose MAIN editor runs a board (or the board at `boardRoot` when supplied), in tab order. */
+    findPagesByBoardRoot = (boardRoot?: string): PageModel[] => {
+        const key = boardRoot === undefined ? undefined : BoardRoot.from(boardRoot).key;
+        return this.model.state.get().pages.filter((page) => {
+            const host = asBoardHostEditor(page.mainEditorInstance);
+            return !!host?.boardRoot && (key === undefined || BoardRoot.from(host.boardRoot).key === key);
         });
     };
 

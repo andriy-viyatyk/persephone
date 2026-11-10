@@ -62,11 +62,11 @@ import {
     waitForResponse as waitForResponseOperation,
 } from "../../automation/operations";
 import type { WaitMode } from "../../automation/operations";
-import { getBoardPermissionOrigin } from "../../api/boards/board-access";
+import { boardRegistry } from "../../api/boards/board-registry";
 import { boardSecondaryPanelId } from "../../editors/board/board-secondary";
 import { projectBoardManifest } from "./board-manifest-projection";
 import { BROWSER_AUTOMATION_MEMBERS } from "../ai-vision/browser-automation-members";
-import { explicitBoardCallTimeoutMs } from "../../api/boards";
+import { appCallTimeout } from "../../api/ai-vision-call-timeout";
 import { isPositiveIntegerTimeout, resolveBoardCallTimeout } from "../../../shared/ai-vision-timeout";
 import type { IAiCallContext } from "../ai-vision/root";
 import { errMessage } from "../../../shared/utils";
@@ -401,7 +401,7 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
     get renderState(): BoardRenderState {
         const state = this.editor.state.get();
         if (!state.boardRoot || !state.selectedBoard) return "not-found";
-        return getBoardPermissionOrigin(state.boardRoot) ?? "untrusted";
+        return boardRegistry.permissionOrigin(state.boardRoot) ?? "untrusted";
     }
 
     async getManifest(): Promise<IBoardManifest | undefined> {
@@ -510,7 +510,7 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
         const timeout = resolveBoardCallTimeout(
             isPositiveIntegerTimeout(this.callContext?.timeoutMs) ? this.callContext?.timeoutMs : undefined,
             isPositiveIntegerTimeout(request.timeoutMs) ? request.timeoutMs : undefined,
-            explicitBoardCallTimeoutMs(),
+            appCallTimeout.explicit(),
         );
         const pageId = this.editor.page?.id;
         const path = request.path || "<root>";

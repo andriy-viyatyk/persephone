@@ -10,6 +10,24 @@ persephone uses a custom reactive state system built on `TOneState` + Immer:
 
 All state primitives live in `/src/renderer/core/state/`.
 
+## Main-owned snapshot mirrors
+
+`MainSnapshotMirror<T>` in `core/state/MainSnapshotMirror.ts` is the shared base for renderer
+models that mirror state owned by main. A subclass supplies an initial value, `fetch()` for a full
+snapshot, `subscribeToMain()` for its broadcast, and optionally `normalize()` and `revisionOf()`.
+`load()` attaches the broadcast before its first pull; `apply()` normalizes an authoritative
+broadcast or mutation response; `reload()` coalesces concurrent pulls. Revision-aware mirrors
+discard older snapshots, and the base's applied-stamp guard prevents a slow initial pull from
+overwriting a newer broadcast when no main revision exists. Subclasses can use
+`subscribeSnapshot()` for consumers that need model updates.
+
+The board mirror indexes the full main-owned snapshot by exact `BoardRoot.key`; it includes trusted
+and enabled bundled entries, grants, service uses, and file-access grants. Consumers use
+`BoardRegistry` for synchronous permission reads and subscriptions instead of issuing per-board
+pulls. `BoardRegistry` remains an internal API model rather than an `app` service. The same base is
+used by the capability index, published-board catalog, site-extension trust, and module-service
+status.
+
 ## When to Use What
 
 | Primitive | Use case | Location |

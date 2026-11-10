@@ -325,7 +325,6 @@ class ApiCalls implements Api {
     capabilityCancel = (requestId: string) => executeOnce<void>(Endpoint.capabilityCancel, requestId);
     getCapabilityIndex = async () => executeOnce<ReturnType<typeof import("../../main/capability-registry").capabilityRegistry.snapshot>>(Endpoint.getCapabilityIndex);
     setCapabilityPreferences = async (preferences: Record<string, string>) => executeOnce<void>(Endpoint.setCapabilityPreferences, preferences);
-    onCapabilityIndexSnapshot = (callback: (snapshot: ReturnType<typeof import("../../main/capability-registry").capabilityRegistry.snapshot>) => void) => window.electron.ipcRenderer.on(EventEndpoint.eCapabilityIndexSnapshot, callback as (...args: unknown[]) => void);
     onCapabilityIndexChanged = (callback: (revision: number) => void) => window.electron.ipcRenderer.on(EventEndpoint.eCapabilityIndexChanged, callback as (...args: unknown[]) => void);
 
     setWindowsSsoEnabled = async (enabled: boolean) => {
@@ -669,12 +668,8 @@ class ApiCalls implements Api {
         return executeOnce<string[]>(Endpoint.setBoardTrust, boardRoot, trusted, expectedPermissions, expectedUses);
     };
 
-    getBoardTrustPaths = async () => {
-        return executeOnce<string[]>(Endpoint.getBoardTrustPaths);
-    };
-
-    getBoardPermissionGrants = async () => {
-        return executeOnce<import("../module-service-channels").TrustedBoardSnapshotEntry[]>(Endpoint.getBoardPermissionGrants);
+    getBoardSnapshot = async () => {
+        return executeOnce<import("../board-snapshot-channels").BoardSnapshot>(Endpoint.getBoardSnapshot);
     };
 
     getBoardServiceProviders = async (interfaceId: string) =>
@@ -696,8 +691,6 @@ class ApiCalls implements Api {
     onVoiceTypingShortcut = (callback: (event: import("../api-types").EventApi[EventEndpoint.eVoiceTypingShortcut] extends import("../api-types").EventObject<infer T> ? T : never) => void) =>
         window.electron.ipcRenderer.on(EventEndpoint.eVoiceTypingShortcut, callback as (...args: unknown[]) => void);
 
-    getBoardFileAccessGrants = async (boardRoot: string) =>
-        executeOnce<{ folderGrants: string[]; fileGrants: string[] }>(Endpoint.getBoardFileAccessGrants, boardRoot);
     revokeBoardFileAccessGrant = async (boardRoot: string, kind: "folder" | "file", canonicalPath: string) =>
         executeOnce<void>(Endpoint.revokeBoardFileAccessGrant, boardRoot, kind, canonicalPath);
     grantBoardSourceReads = async (boardRoot: string, sourcePaths: string[], contextPaths: string[] = []) =>

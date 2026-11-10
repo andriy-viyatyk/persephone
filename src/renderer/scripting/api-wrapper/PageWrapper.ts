@@ -259,7 +259,7 @@ export class PageWrapper implements IAiVisible {
         const id = this.currentEditorId();
         if (!id) return new GenericEditorFacade("", "None");
         const name = editorRegistry.getById(id)?.name
-            ?? customEditorRegistry.entries.find((entry) => entry.editorId === id)?.name
+            ?? customEditorRegistry.findByEditorId(id)?.name
             ?? id;
         const editor = this.mainEditor;
         const factory = editor

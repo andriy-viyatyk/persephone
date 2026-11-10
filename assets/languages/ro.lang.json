@@ -47,6 +47,7 @@
     "api.actionFailed": "{action}: {error}",
     "api.autoloadScriptError": "Eroare în scriptul de încărcare automată: {message}",
     "api.boardBusyDeleting": "Acest panou rulează în prezent. Opriți-l înainte de a-l șterge.",
+    "api.boardBusyRemoving": "Acest panou rulează în prezent. Opriți-l înainte de eliminare.",
     "api.boardBusyUpdating": "Acest panou rulează în prezent. Opriți-l înainte de a-l actualiza.",
     "api.boardInstalled": "S-a instalat {name} v{version}.",
     "api.boardInstallFailed": "Instalarea a eșuat: {error}",
@@ -54,6 +55,11 @@
       "one": "Acest panou este deschis în {count} pagină și trebuie închis înainte de ștergere. Pagina rămâne deschisă și va fi goală. Continuați?",
       "few": "Acest panou este deschis în {count} pagini și trebuie închis înainte de ștergere. Paginile rămân deschise și vor fi goale. Continuați?",
       "other": "Acest panou este deschis în {count} de pagini și trebuie închis înainte de ștergere. Paginile rămân deschise și vor fi goale. Continuați?"
+    },
+    "api.boardOpenRemoving": {
+      "one": "Acest panou este deschis în {count} pagină și trebuie închis înainte de eliminare. Pagina va rămâne deschisă și goală. Continuați?",
+      "few": "Acest panou este deschis în {count} pagini și trebuie închis înainte de eliminare. Paginile vor rămâne deschise și goale. Continuați?",
+      "other": "Acest panou este deschis în {count} de pagini și trebuie închis înainte de eliminare. Paginile vor rămâne deschise și goale. Continuați?"
     },
     "api.boardOpenTitle": "Panoul este deschis",
     "api.boardOpenUpdating": {
@@ -3551,6 +3557,8 @@
     "shell.ungroup": "460af6ed",
     "shell.mutePage": "724c00d7",
     "shell.unmutePage": "af4c43a2",
-    "tools.siteExtensionActionFailed": "96558212"
+    "tools.siteExtensionActionFailed": "96558212",
+    "api.boardBusyRemoving": "fc62a483",
+    "api.boardOpenRemoving": "6426988c"
   }
 }

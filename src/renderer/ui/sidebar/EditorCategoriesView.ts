@@ -6,15 +6,16 @@ import { app } from "../../api/app";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { ui } from "../../api/ui";
-import { boardTrust } from "../../api/boards/board-trust";
+import { boardRegistry } from "../../api/boards/board-registry";
 import { boardDisplayText, boardMetadataKeys } from "../../api/boards/board-display-text";
 import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
 import { fpBasename } from "../../core/utils/file-path";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { InputView } from "../../uikit/Input/InputView";
 import { EditorCategoryColumnListView, type EditorCategoryColumn } from "./EditorCategoryColumnListView";
-import { createEditorCategory, deleteEditorCategory, encodePin, getEditorCategories, moveCategory, moveCategoryItem, moveEditorToCategory, removeCategoryMembership, renameEditorCategory } from "./pinned-items";
-import { getCreatableItems, getCreatableItemLabel } from "./tools-editors-registry";
+import { editorCategories } from "../../api/editor-categories";
+import { getCreatableItems, getCreatableItemLabel } from "../../api/creatable-items";
+import { createCreatableItemIcon } from "./creatable-item-icon";
 import "./EditorCategoriesView.css";
 
 export interface EditorCategoriesViewProps { onRenameStart?: (categoryId: string) => void }
@@ -41,15 +42,15 @@ export class EditorCategoriesView extends VanillaView<EditorCategoriesViewProps>
         button.dataset.name = "editor-category-new";
         button.textContent = t("shell.editorCategoryNew");
         button.addEventListener("click", () => {
-            const category = createEditorCategory("");
+            const category = editorCategories.create("");
             this.render();
             this.beginRename(category.id, true);
         });
         this.toolbar.append(button);
         this.root.append(this.toolbar);
         this.own(settings.onChanged.subscribe(({ key }) => { if (key === "editor-categories" || key === "browser-profiles") this.render(); }));
-        this.own(boardTrust.subscribePaths(() => this.refreshBoards()));
-        void boardTrust.load().then(this.refreshBoards, this.refreshBoards);
+        this.own(boardRegistry.subscribeMembership(() => this.refreshBoards()));
+        void boardRegistry.load().then(this.refreshBoards, this.refreshBoards);
         this.render();
     }
 
@@ -67,14 +68,14 @@ export class EditorCategoriesView extends VanillaView<EditorCategoriesViewProps>
         this.releaseRename();
         if (this.list) this.releaseChild(this.list);
         this.list?.root.remove();
-        const categories = getEditorCategories();
+        const categories = editorCategories.categories();
         const items = getCreatableItems(settings.get("browser-profiles"));
         const itemRows = items.map((item) => ({
             ref: item.id, label: getCreatableItemLabel(item), categoryId: "", categoryItem: true,
-            icon: item.icon instanceof Node ? item.icon : undefined,
+            icon: createCreatableItemIcon(item),
         }));
         const boardRows = this.boardRoots.map((root) => ({
-            ref: `board:${root}`, label: boardDisplayText(root, undefined, boardMetadataKeys.name, fpBasename(root)),
+            ref: editorCategories.encodeRef({ kind: "board", root }), label: boardDisplayText(root, undefined, boardMetadataKeys.name, fpBasename(root)),
             categoryId: "", categoryItem: true, icon: createBoardGlyphElement(root),
         }));
         const columns: EditorCategoryColumn[] = categories.map((category) => ({
@@ -90,22 +91,22 @@ export class EditorCategoriesView extends VanillaView<EditorCategoriesViewProps>
         const list = new EditorCategoryColumnListView({
             columns,
             height: "calc(100% - 36px)",
-            rowData: (row) => ({ kind: "category-item", categoryId: row.categoryId, ref: row.ref.startsWith("board:") ? { kind: "board", root: row.ref.slice(6) } : { kind: "editor", id: row.ref } }),
+            rowData: (row) => ({ kind: "category-item", categoryId: row.categoryId, ref: editorCategories.decodeRef(row.ref) }),
             onDrop: (column, row, data) => {
                 if (data.kind === "category-block") {
-                    if (column.id !== "top") moveCategory(data.categoryId, Math.max(1, columns.findIndex((item) => item.id === column.id)));
+                    if (column.id !== "top") editorCategories.move(data.categoryId, Math.max(1, columns.findIndex((item) => item.id === column.id)));
                     return;
                 }
                 const ref = data.ref;
                 if (row) {
-                    const items = getEditorCategories().find((item) => item.id === column.id)?.items ?? [];
+                    const items = editorCategories.categories().find((item) => item.id === column.id)?.items ?? [];
                     let index = items.indexOf(row.ref);
                     if (data.kind === "category-item" && data.categoryId === column.id) {
-                        const sourceIndex = items.indexOf(encodePin(ref));
+                        const sourceIndex = items.indexOf(editorCategories.encodeRef(ref));
                         if (sourceIndex >= 0 && sourceIndex < index) index--;
                     }
-                    moveCategoryItem(ref, column.id, index < 0 ? items.length : index);
-                } else moveEditorToCategory(ref, column.id);
+                    editorCategories.assign(ref, column.id, index < 0 ? items.length : index);
+                } else editorCategories.assign(ref, column.id);
             },
             renderHeading: (column, heading) => this.renderHeading(column.id, heading),
             renderRowAction: (row, element) => {
@@ -115,18 +116,17 @@ export class EditorCategoriesView extends VanillaView<EditorCategoriesViewProps>
                 remove.title = t("shell.editorCategoryRemoveItem");
                 remove.addEventListener("click", (event) => {
                     event.stopPropagation();
-                    const ref = row.ref.startsWith("board:")
-                        ? { kind: "board" as const, root: row.ref.slice(6) }
-                        : { kind: "editor" as const, id: row.ref };
-                    removeCategoryMembership(ref);
+                    const ref = editorCategories.decodeRef(row.ref);
+                    editorCategories.unassign(ref);
                 });
                 element.append(remove);
             },
             activateOnDoubleClick: true,
             onActivate: (row) => {
                 if (!row.categoryItem) return;
-                if (row.ref.startsWith("board:")) {
-                    void app.events.openRawLink.sendAsync(createLinkData(encodePersephoneBoardLink(row.ref.slice(6))));
+                const ref = editorCategories.decodeRef(row.ref);
+                if (ref.kind === "board") {
+                    void app.events.openRawLink.sendAsync(createLinkData(encodePersephoneBoardLink(ref.root)));
                 } else items.find((item) => item.id === row.ref)?.create();
             },
         });
@@ -137,7 +137,7 @@ export class EditorCategoriesView extends VanillaView<EditorCategoriesViewProps>
 
     /** Every trusted board is eligible, whatever file types it declares. */
     private readonly refreshBoards = (): void => {
-        this.boardRoots = boardTrust.listPaths();
+        this.boardRoots = boardRegistry.roots("trusted");
         this.render();
     };
 
@@ -145,7 +145,7 @@ export class EditorCategoriesView extends VanillaView<EditorCategoriesViewProps>
         if (categoryId === "top") return;
         heading.dataset.name = "editor-category-header";
         heading.draggable = true;
-        const category = getEditorCategories().find((item) => item.id === categoryId);
+        const category = editorCategories.categories().find((item) => item.id === categoryId);
         const label = document.createElement("span");
         label.textContent = category?.name ?? "";
         heading.replaceChildren(label);
@@ -168,7 +168,7 @@ export class EditorCategoriesView extends VanillaView<EditorCategoriesViewProps>
         heading.append(remove);
     }
 
-    private async deleteCategory(categoryId: string, category: ReturnType<typeof getEditorCategories>[number] | undefined): Promise<void> {
+    private async deleteCategory(categoryId: string, category: ReturnType<typeof editorCategories.categories>[number] | undefined): Promise<void> {
             if (category?.items.length) {
                 const result = await showConfirmationDialog({
                     message: t("shell.editorCategoryDeleteConfirm", { name: category.name }),
@@ -176,12 +176,12 @@ export class EditorCategoriesView extends VanillaView<EditorCategoriesViewProps>
                 });
                 if (result !== DialogButton.yes) return;
             }
-            deleteEditorCategory(categoryId);
+            editorCategories.remove(categoryId);
     }
 
     /** `isNew`: the category was just created unnamed, so cancelling the rename deletes it. */
     private beginRename(categoryId: string, isNew = false): void {
-        const category = getEditorCategories().find((item) => item.id === categoryId);
+        const category = editorCategories.categories().find((item) => item.id === categoryId);
         if (!category || categoryId === "top") return;
         const heading = this.root.querySelector<HTMLElement>(`[data-category-id="${CSS.escape(categoryId)}"] [data-part="heading"]`);
         if (!heading) return;
@@ -205,16 +205,16 @@ export class EditorCategoriesView extends VanillaView<EditorCategoriesViewProps>
         const cancel = () => {
             if (finished) return;
             finished = true;
-            if (isNew) deleteEditorCategory(categoryId);
+            if (isNew) editorCategories.remove(categoryId);
             this.render();
         };
         const commit = (): boolean => {
             const name = input.value.trim();
-            const duplicate = getEditorCategories().some((item) => item.id !== categoryId && item.name.toLocaleLowerCase() === name.toLocaleLowerCase());
+            const duplicate = editorCategories.categories().some((item) => item.id !== categoryId && item.name.toLocaleLowerCase() === name.toLocaleLowerCase());
             if (!name) { ui.notify(t("shell.editorCategoryNameRequired"), "warning"); return false; }
             if (duplicate) { ui.notify(t("shell.editorCategoryNameDuplicate"), "warning"); return false; }
             finished = true;
-            renameEditorCategory(categoryId, name);
+            editorCategories.rename(categoryId, name);
             this.render();
             return true;
         };

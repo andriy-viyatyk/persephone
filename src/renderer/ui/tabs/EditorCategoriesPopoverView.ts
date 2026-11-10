@@ -1,13 +1,14 @@
 import { t } from "../../../shared/i18n/t";
 import { app } from "../../api/app";
-import { boardTrust } from "../../api/boards/board-trust";
+import { boardRegistry } from "../../api/boards/board-registry";
 import { settings } from "../../api/settings";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { EditorCategoryColumnListView, type EditorCategoryColumn } from "../sidebar/EditorCategoryColumnListView";
-import { decodePin, encodePin, getEditorCategories, type EditorCategoryDragData } from "../sidebar/pinned-items";
-import { getCreatableItems, getCreatableItemLabel } from "../sidebar/tools-editors-registry";
+import { EditorCategoryColumnListView, type EditorCategoryColumn, type EditorCategoryDragData } from "../sidebar/EditorCategoryColumnListView";
+import { editorCategories } from "../../api/editor-categories";
+import { getCreatableItems, getCreatableItemLabel } from "../../api/creatable-items";
+import { createCreatableItemIcon } from "../sidebar/creatable-item-icon";
 import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
 import { fpBasename } from "../../core/utils/file-path";
 import { buildBoardsTree } from "../../editors/board/boards-tree-build";
@@ -57,7 +58,7 @@ export class EditorCategoriesPopoverView extends VanillaView<EditorCategoriesPop
         this.listen(this.resizeHandle, "pointerdown", this.onResizePointerDown);
         this.listen(this.root, "keydown", this.onKeyDown);
         this.root.append(this.header, this.resizeHandle);
-        this.own(boardTrust.subscribePaths(this.refreshBoards));
+        this.own(boardRegistry.subscribeMembership(this.refreshBoards));
         this.own(onBoardDisplayTextChanged(() => this.renderList()));
         this.own(subscribeBoardIconChanges(() => this.renderList()));
         this.own(settings.onChanged.subscribe(({ key }) => { if (key === "editor-categories" || key === "browser-profiles") this.renderList(); }));
@@ -127,7 +128,7 @@ export class EditorCategoriesPopoverView extends VanillaView<EditorCategoriesPop
 
     /** Every trusted board is eligible, whatever file types it declares. */
     private readonly refreshBoards = (): void => {
-        this.eligibleBoards = boardTrust.listPaths();
+        this.eligibleBoards = boardRegistry.roots("trusted");
         this.renderList();
     };
 
@@ -135,7 +136,7 @@ export class EditorCategoriesPopoverView extends VanillaView<EditorCategoriesPop
         if (this.list) this.releaseChild(this.list);
         this.list?.root.remove();
         const eligible = getCreatableItems(settings.get("browser-profiles")).map((item) => ({
-            ref: item.id, label: getCreatableItemLabel(item), icon: item.icon instanceof Node ? item.icon : undefined,
+            ref: item.id, label: getCreatableItemLabel(item), icon: createCreatableItemIcon(item),
             create: item.create,
         }));
         const sortedRoots: string[] = [];
@@ -147,34 +148,34 @@ export class EditorCategoriesPopoverView extends VanillaView<EditorCategoriesPop
         };
         visitBoardNodes(buildBoardsTree(this.eligibleBoards));
         const boardRows = sortedRoots.map((root) => ({
-            ref: encodePin({ kind: "board", root }),
+            ref: editorCategories.encodeRef({ kind: "board", root }),
             label: boardDisplayText(root, undefined, boardMetadataKeys.name, fpBasename(root)),
             icon: createBoardGlyphElement(root),
             create: () => { void app.events.openRawLink.sendAsync(createLinkData(encodePersephoneBoardLink(root))); },
         }));
         const allRows = [...eligible, ...boardRows];
-        const membership = new Set(getEditorCategories().flatMap((category) => category.items));
+        const membership = new Set(editorCategories.categories().flatMap((category) => category.items));
         const query = this.query.trim().toLocaleLowerCase();
-        const columns: EditorCategoryColumn[] = getEditorCategories().map((category) => ({
+        const columns: EditorCategoryColumn[] = editorCategories.categories().map((category) => ({
             id: category.id,
             label: category.id === "top" ? t("shell.editorCategoryTop") : category.name,
             rows: category.items.flatMap((ref) => {
-                const item = allRows.find((row) => row.ref === ref);
-                return item && (!query || item.label.toLocaleLowerCase().includes(query))
-                    ? [{ ref, label: item.label, icon: item.icon, categoryId: category.id, categoryItem: true }]
+                const row = allRows.find((candidate) => candidate.ref === ref);
+                return row && (!query || row.label.toLocaleLowerCase().includes(query))
+                    ? [{ ref, label: row.label, icon: row.icon, categoryId: category.id, categoryItem: true }]
                     : [];
             }),
         })).filter((column) => column.id === "top" || column.rows.length > 0);
         const other = allRows.filter((row) => !membership.has(row.ref) && (!query || row.label.toLocaleLowerCase().includes(query)));
-        columns.push({ id: "other", label: t("shell.editorCategoryOther"), rows: other.map((item) => ({ ref: item.ref, label: item.label, icon: item.icon, categoryId: "other", categoryItem: false })) });
+        columns.push({ id: "other", label: t("shell.editorCategoryOther"), rows: other.map((row) => ({ ref: row.ref, label: row.label, icon: row.icon, categoryId: "other", categoryItem: false })) });
         const list = new EditorCategoryColumnListView({
             columns,
             height: "auto",
             draggable: false,
             droppable: false,
             rowData: (row): EditorCategoryDragData => row.categoryItem
-                ? { kind: "category-item", categoryId: row.categoryId, ref: decodePin(row.ref) }
-                : { kind: "source", ref: decodePin(row.ref) },
+                ? { kind: "category-item", categoryId: row.categoryId, ref: editorCategories.decodeRef(row.ref) }
+                : { kind: "source", ref: editorCategories.decodeRef(row.ref) },
             onDrop: () => {},
             onActivate: (row) => {
                 const item = allRows.find((candidate) => candidate.ref === row.ref);

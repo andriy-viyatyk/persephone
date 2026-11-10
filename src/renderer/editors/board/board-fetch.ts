@@ -8,7 +8,7 @@ import type {
 import { errMessage } from "../../../shared/utils";
 import { BoardGrant, type BoardNetworkPolicy } from "../../../shared/board/board-grant";
 import type { IFetchOptions } from "../../api/types/app";
-import { boardTrust } from "../../api/boards/board-trust";
+import { boardRegistry } from "../../api/boards/board-registry";
 import { api } from "../../../ipc/renderer/api";
 
 interface ActiveBoardFetch {
@@ -43,7 +43,7 @@ export class BoardFetchBridge {
         try {
             if (typeof message.url !== "string") throw new TypeError("persephone.fetch() requires a URL string.");
             const init = this.validateInit(message.init);
-            const grant = (await boardTrust.getGrant(boardRoot)) ?? BoardGrant.NONE;
+            const grant = boardRegistry.grant(boardRoot) ?? BoardGrant.NONE;
             if (grant.networkMode() === false) throw BoardGrant.deny("network");
             const mcpUrl = await api.getBoardMcpEndpoint();
             const { nodeFetch } = await import("../../api/node-fetch");

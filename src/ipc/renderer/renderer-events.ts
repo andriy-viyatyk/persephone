@@ -173,8 +173,8 @@ class RendererEvents implements EventApi {
         EventEndpoint.eModuleServiceStatusChanged,
     );
 
-    [EventEndpoint.eBoardTrustChanged] = new RendererEventObject<string[]>(
-        EventEndpoint.eBoardTrustChanged,
+    [EventEndpoint.eBoardSnapshotChanged] = new RendererEventObject<import("../board-snapshot-channels").BoardSnapshot>(
+        EventEndpoint.eBoardSnapshotChanged,
     );
     [EventEndpoint.eCapabilityIndexSnapshot] = new RendererEventObject<ReturnType<typeof import("../../main/capability-registry").capabilityRegistry.snapshot>>(
         EventEndpoint.eCapabilityIndexSnapshot,

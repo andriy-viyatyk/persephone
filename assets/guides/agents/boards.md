@@ -472,12 +472,13 @@ create (a folder the user points you at, or one you downloaded for review):
   `false` if the user declines. Typical review flow: read the board's scripts/HTML, report to the
   user, then call this and let them answer the dialog.
 - **`app.boards.unregisterBoard(boardRoot)`** → `Promise<void>` — untrust the board and remove
-  its pin. No dialog (it only reduces privilege). The board stops running.
+  its category membership. No dialog (it only reduces privilege): open board pages are released,
+  the service is stopped, and pages with no other editor close. A page with another editor stays open.
 - **`app.boards.renameBoard(boardRoot, newName)`** → `Promise<string>` — rename the board's
-  folder within its parent, carrying trust, pin, and any catalog-install registration to the
-  new path with **no dialog** (same trusted content, new path), and re-pointing any open board
-  page. Returns the new root. Throws if the board is running (busy), is not a board, or the new
-  name already exists. This solves "rename my board" as a single action with zero user clicks.
+  folder within its parent, carrying trust, category membership and its position, and any
+  catalog-install registration to the new path with **no dialog**. It stops the service and
+  re-points open board pages. Returns the new root. Throws if the board is running (busy), is
+  not a board, or the new name already exists. This solves "rename my board" as a single action with zero user clicks.
 
 ## Published boards — discover, install, update (script API)
 
@@ -508,8 +509,9 @@ inert on disk; only `registerBoard` (a user trust-dialog click) activates it.
   that prompt. (A *fresh* install always installs the latest; for a specific fresh version use
   `downloadPublished(id, { version })` + `registerBoard(root)`.)
 - **`app.boards.uninstallBoard(id)`** → `Promise<boolean>` — shows the **delete confirmation**,
-  then removes the board folder + trust + pin + registry entry. Returns `true` if removed, `false`
-  if cancelled. Throws if the id is not installed.
+  then releases open board pages, stops the service, and removes the board folder, trust, category
+  membership, and install entry. Returns `true` if removed, `false` if cancelled. Throws if the
+  id is not installed.
 - **`app.boards.checkPublishedUpdates(force?)`** → `Promise<BoardUpdateInfo[]>` — refresh the
   catalog (`force: true` bypasses the periodic-check gate) and list installed boards with a
   compatible newer version. **No dialog.**

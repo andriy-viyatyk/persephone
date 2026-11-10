@@ -112,7 +112,7 @@ export class BrowserEditor extends EditorModel<
         }));
         this.translation = new BrowserTranslationController(this);
         this.webview.setTranslationLifecycle(this.translation.onPageNavigation);
-        this.own(siteExtensionTrust.subscribe((snapshot) => {
+        this.own(siteExtensionTrust.subscribeSnapshot((snapshot) => {
             this.webview.refreshActionTrust();
             this.state.update((state) => {
                 state.siteExtensionTrustPrompts = state.siteExtensionTrustPrompts.filter((prompt) => {

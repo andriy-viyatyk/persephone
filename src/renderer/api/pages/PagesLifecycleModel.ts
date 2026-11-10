@@ -32,7 +32,6 @@ import {
 import { readBoardManifest } from "../boards/board-manifest-io";
 import { matchesFileMask, untitledFileNameForMasks } from "../../../shared/board/board-masks";
 import { type NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
-import type { BoardEditorModel } from "../../editors/board";
 import type { HubTab } from "../../editors/tools-hub";
 import { PageModel } from "./PageModel";
 import { navigatePageTo, type NavigatePageToOptions } from "./PageNavigator";
@@ -228,45 +227,10 @@ export class PagesLifecycleModel {
         // it edits (→ persephone.getFilePath()).
         const boardRoot = parseBoardEditorId(editorId);
         if (boardRoot !== null) {
-            const matchingEntry = customEditorRegistry.entries.find((entry) =>
-                BoardRoot.from(entry.boardRoot).equals(boardRoot)
-            );
-            const resolvedBoardRoot = matchingEntry?.boardRoot ?? boardRoot;
-            if (folderPath !== undefined) {
-                const match = customEditorRegistry.entries.find(
-                    (entry) => BoardRoot.from(entry.boardRoot).equals(boardRoot),
-                );
-                const claimsFolder = customEditorRegistry
-                    .getBoardsForFolder(folderPath)
-                    .some((entry) => BoardRoot.from(entry.boardRoot).equals(boardRoot));
-                if (!match || !claimsFolder) {
-                    throw new Error(`Board does not claim folder: ${folderPath}`);
-                }
-                const { createBoardEditorForFolder } = await import("../../editors/board");
-                return createBoardEditorForFolder(resolvedBoardRoot, folderPath) as unknown as EditorOrHost;
-            }
-            // Content-host board: build the subclass WITH an adopted host so
-            // Persephone owns the pipe/encoding/encryption/cache/dirty state. The host's
-            // pipe is assigned by `createEditorFromFile` and restored below.
-            const match = matchingEntry;
-            if (match?.editorKind === "content-host") {
-                const { getDefaultBoardEditorState } = await import("../../editors/board");
-                const { BoardContentEditorModel } = await import(
-                    "../../editors/board/BoardContentEditorModel"
-                );
-                const model = new BoardContentEditorModel(
-                    new TComponentState(getDefaultBoardEditorState()),
-                );
-                model.initFromBoardRoot(resolvedBoardRoot, filePath);
-                model.adoptHost(newTextFileModel(filePath));
-                return model as unknown as EditorOrHost;
-            }
-            // stream-host deliberately stays on the base board model: it owns a live pipe URL,
-            // not a text host, autosave pair, or materialized content path.
-            const { boardModule } = await import("../../editors/board");
-            const model = boardModule.createEditor() as unknown as BoardEditorModel;
-            model.initFromBoardRoot(resolvedBoardRoot, filePath);
-            return model as unknown as EditorOrHost;
+            const { createBoardEditor } = await import("../../editors/board");
+            return (await createBoardEditor(folderPath !== undefined
+                ? { kind: "folder", boardRoot, folderPath }
+                : { kind: "file", boardRoot, filePath, host: "new" })) as unknown as EditorOrHost;
         }
         const def = editorRegistry.getById(editorId);
         if (!def || def.hasContentHost) {
@@ -358,9 +322,7 @@ export class PagesLifecycleModel {
     ): Promise<PageModel> => {
         const editorId = boardEditorId(boardRoot);
         const normalizedManifest = await readBoardManifest(boardRoot);
-        const match = customEditorRegistry.entries.find(
-            (entry) => BoardRoot.from(entry.boardRoot).equals(boardRoot),
-        );
+        const match = customEditorRegistry.findByRoot(boardRoot);
         if (!match || match.origin !== "bundled" || match.editorKind !== "content-host") {
             throw new Error(`Bundled board is not an enabled content-host editor: ${boardRoot}`);
         }
@@ -393,11 +355,8 @@ export class PagesLifecycleModel {
         title: string,
         onPageCreated: (page: PageModel) => void,
     ): Promise<PageModel> => {
-        const bundledContentHost = customEditorRegistry.entries.some(
-            (entry) => BoardRoot.from(entry.boardRoot).equals(boardRoot)
-                && entry.origin === "bundled"
-                && entry.editorKind === "content-host",
-        );
+        const entry = customEditorRegistry.findByRoot(boardRoot);
+        const bundledContentHost = entry?.origin === "bundled" && entry.editorKind === "content-host";
         if (bundledContentHost) {
             return this.addBundledBoardPage(boardRoot, { title, onPageCreated });
         }
@@ -905,9 +864,7 @@ export class PagesLifecycleModel {
         const boardRoot = parseBoardEditorId(resolvedTarget);
         const board = boardRoot === null
             ? undefined
-            : customEditorRegistry.entries.find((entry) =>
-                BoardRoot.from(entry.boardRoot).equals(boardRoot),
-            );
+            : customEditorRegistry.findByRoot(boardRoot);
         let sourceContext: BoardSourceContext | undefined;
         const sourcePage = this.model.query.findPage(pageId);
         if (board && sourcePage && options?.sourceLink) {

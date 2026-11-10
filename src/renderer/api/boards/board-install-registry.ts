@@ -3,11 +3,11 @@
  * downloaded from the published catalog (id → install root + version) in
  * `installedBoards.json`, so update checks and the "already installed" filter have data.
  *
- * This is INDEPENDENT of trust (`board-trust.ts`): a downloaded-but-unregistered board
+ * This is INDEPENDENT of trust (`board-registry.ts`): a downloaded-but-unregistered board
  * has a registry entry here but is not trusted and does not run. Registration (trust) is
  * a separate consent step.
  *
- * Mirrors `board-trust.ts`: a reactive `TGlobalState` + lazy `load()` + the `fs`
+ * Mirrors `board-registry.ts`: a reactive `TGlobalState` + lazy `load()` + the `fs`
  * data-file helpers. One entry per catalog id — re-downloading to a different dir moves
  * the entry. Entries whose root no longer holds a board manifest (folder deleted
  * manually) are pruned on `load()`.
@@ -135,16 +135,6 @@ class BoardInstallRegistry {
     /** True after the persisted install registry has been loaded at least once. */
     isLoaded(): boolean {
         return this.state.get().loaded;
-    }
-
-    /** Read and validate installed entries without pruning or updating reactive state. */
-    async readInstalled(): Promise<InstalledBoardEntry[]> {
-        try {
-            const parsed = parseInstalledEntries(await fs.getDataFile(INSTALLED_BOARDS_FILE));
-            return await this.liveEntries(parsed);
-        } catch {
-            return [];
-        }
     }
 
     subscribeInstalled(listener: () => void): () => void {

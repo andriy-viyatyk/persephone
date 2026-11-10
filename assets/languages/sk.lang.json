@@ -47,6 +47,7 @@
     "api.actionFailed": "{action}: {error}",
     "api.autoloadScriptError": "Chyba skriptu automatického načítania: {message}",
     "api.boardBusyDeleting": "Táto tabuľa je práve spustená. Pred odstránením ju zastavte.",
+    "api.boardBusyRemoving": "Táto tabuľa je práve spustená. Pred odstránením ju zastavte.",
     "api.boardBusyUpdating": "Táto tabuľa je práve spustená. Pred aktualizáciou ju zastavte.",
     "api.boardInstalled": "Nainštalovala sa tabuľa {name} v{version}.",
     "api.boardInstallFailed": "Inštalácia zlyhala: {error}",
@@ -55,6 +56,12 @@
       "few": "Táto tabuľa je otvorená na {count} stranách a pred odstránením ju treba zavrieť. Strany zostanú otvorené a budú prázdne. Pokračovať?",
       "many": "Táto tabuľa je otvorená na {count} stranách a pred odstránením ju treba zavrieť. Strany zostanú otvorené a budú prázdne. Pokračovať?",
       "other": "Táto tabuľa je otvorená na {count} strane a pred odstránením ju treba zavrieť. Strana zostane otvorená a bude prázdna. Pokračovať?"
+    },
+    "api.boardOpenRemoving": {
+      "one": "Táto tabuľa je otvorená na {count} stránke a pred odstránením sa musí zavrieť. Stránka zostane otvorená a prázdna. Pokračovať?",
+      "few": "Táto tabuľa je otvorená na {count} stránkach a pred odstránením sa musí zavrieť. Stránky zostanú otvorené a prázdne. Pokračovať?",
+      "many": "Táto tabuľa je otvorená na {count} stránkach a pred odstránením sa musí zavrieť. Stránky zostanú otvorené a prázdne. Pokračovať?",
+      "other": "Táto tabuľa je otvorená na {count} stránke a pred odstránením sa musí zavrieť. Stránka zostane otvorená a prázdna. Pokračovať?"
     },
     "api.boardOpenTitle": "Tabuľa je otvorená",
     "api.boardOpenUpdating": {
@@ -3599,6 +3606,8 @@
     "shell.ungroup": "460af6ed",
     "shell.mutePage": "724c00d7",
     "shell.unmutePage": "af4c43a2",
-    "tools.siteExtensionActionFailed": "96558212"
+    "tools.siteExtensionActionFailed": "96558212",
+    "api.boardBusyRemoving": "fc62a483",
+    "api.boardOpenRemoving": "6426988c"
   }
 }

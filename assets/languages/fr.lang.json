@@ -47,6 +47,7 @@
     "api.actionFailed": "{action} : {error}",
     "api.autoloadScriptError": "Erreur du script chargé automatiquement : {message}",
     "api.boardBusyDeleting": "Ce tableau est en cours d’exécution. Arrêtez-le avant de le supprimer.",
+    "api.boardBusyRemoving": "Ce tableau est en cours d’exécution. Arrêtez-le avant de le supprimer.",
     "api.boardBusyUpdating": "Ce tableau est en cours d’exécution. Arrêtez-le avant de le mettre à jour.",
     "api.boardInstalled": "{name} v{version} a été installé.",
     "api.boardInstallFailed": "Échec de l’installation : {error}",
@@ -54,6 +55,11 @@
       "one": "Ce tableau est ouvert dans {count} page et doit être fermé avant sa suppression. La page restera ouverte et sera vide. Continuer ?",
       "many": "Ce tableau est ouvert dans {count} pages et doit être fermé avant sa suppression. Les pages resteront ouvertes et seront vides. Continuer ?",
       "other": "Ce tableau est ouvert dans {count} page et doit être fermé avant sa suppression. La page restera ouverte et sera vide. Continuer ?"
+    },
+    "api.boardOpenRemoving": {
+      "one": "Ce tableau est ouvert dans {count} page et doit être fermé avant sa suppression. La page restera ouverte et vide. Continuer ?",
+      "many": "Ce tableau est ouvert dans {count} pages et doit être fermé avant sa suppression. Les pages resteront ouvertes et vides. Continuer ?",
+      "other": "Ce tableau est ouvert dans {count} pages et doit être fermé avant sa suppression. Les pages resteront ouvertes et vides. Continuer ?"
     },
     "api.boardOpenTitle": "Le tableau est ouvert",
     "api.boardOpenUpdating": {
@@ -3551,6 +3557,8 @@
     "shell.ungroup": "460af6ed",
     "shell.mutePage": "724c00d7",
     "shell.unmutePage": "af4c43a2",
-    "tools.siteExtensionActionFailed": "96558212"
+    "tools.siteExtensionActionFailed": "96558212",
+    "api.boardBusyRemoving": "fc62a483",
+    "api.boardOpenRemoving": "6426988c"
   }
 }

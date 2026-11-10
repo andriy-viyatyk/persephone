@@ -164,7 +164,7 @@ export interface RawBoardManifest {
      * Honored only when the board is TRUSTED, like every other Custom Editor field. Inert until
      * the construction path consumes it.
      */
-    editorKind?: "simple" | "content-host" | "stream-host";
+    editorKind?: BoardEditorKind;
     /**
      * Which SOURCES this board's `fileMasks` association accepts.
      * - absent / "local": plain local files only.
@@ -204,7 +204,13 @@ export interface RawBoardManifest {
     guides?: string;
 }
 
-export type BoardEditorKind = "simple" | "content-host" | "stream-host";
+export const BOARD_EDITOR_KINDS = ["simple", "content-host", "stream-host"] as const;
+
+export type BoardEditorKind = typeof BOARD_EDITOR_KINDS[number];
+
+export function isBoardEditorKind(value: unknown): value is BoardEditorKind {
+    return typeof value === "string" && BOARD_EDITOR_KINDS.includes(value as BoardEditorKind);
+}
 
 export interface NormalizedBoardManifest {
     schemaVersion: unknown;
@@ -312,7 +318,7 @@ function createBoardEditorAssociation(
             ? rawFolderEditorPriority
             : 0;
     const name = typeof manifest.editorName === "string" ? manifest.editorName.trim() : "";
-    const editorKind: BoardEditorKind = manifest.editorKind === "content-host" || manifest.editorKind === "stream-host"
+    const editorKind: BoardEditorKind = isBoardEditorKind(manifest.editorKind)
         ? manifest.editorKind
         : "simple";
     const editorSources = manifest.editorSources === "any" ? "any" : "local";
@@ -392,7 +398,7 @@ export function parseBoardManifest(raw: unknown): NormalizedBoardManifest | null
     if (typeof source.editorPriority === "number") normalized.editorPriority = Number.isFinite(source.editorPriority) && source.editorPriority > 0 ? source.editorPriority : 0;
     if (typeof source.folderEditorPriority === "number") normalized.folderEditorPriority = Number.isFinite(source.folderEditorPriority) && source.folderEditorPriority > 0 ? source.folderEditorPriority : 0;
     if (typeof source.editorName === "string" && source.editorName.trim()) normalized.editorName = source.editorName.trim();
-    if (source.editorKind === "simple" || source.editorKind === "content-host" || source.editorKind === "stream-host") normalized.editorKind = source.editorKind;
+    if (isBoardEditorKind(source.editorKind)) normalized.editorKind = source.editorKind;
     if (source.editorSources === "local" || source.editorSources === "any") normalized.editorSources = source.editorSources;
     if (has("secondaryViews") && Array.isArray(source.secondaryViews)) normalized.secondaryViews = normalizeSecondaryViews(source.secondaryViews);
     if (typeof source.guides === "string") {

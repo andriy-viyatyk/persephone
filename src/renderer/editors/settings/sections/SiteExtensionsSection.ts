@@ -60,7 +60,7 @@ export class SiteExtensionsSectionView extends VanillaView<Record<string, never>
         this.browseButton.mount();
         this.resetButton.mount();
         this.openButton.mount();
-        this.own(siteExtensionTrust.subscribe(() => { void this.refresh(); }));
+        this.own(siteExtensionTrust.subscribeSnapshot(() => { void this.refresh(); }));
         this.own(settings.onChanged.subscribe(({ key }) => { if (key === "site-extensions.path") void this.refresh(); }));
         void this.refresh();
     }

@@ -47,12 +47,17 @@
     "api.actionFailed": "{action}: {error}",
     "api.autoloadScriptError": "Szkript automatikus betöltési hibája: {message}",
     "api.boardBusyDeleting": "Ez a tábla jelenleg fut. Törlés előtt állítsa le.",
+    "api.boardBusyRemoving": "Ez a tábla jelenleg fut. Eltávolítás előtt állítsa le.",
     "api.boardBusyUpdating": "Ez a tábla jelenleg fut. Frissítés előtt állítsa le.",
     "api.boardInstalled": "Telepítve: {name} v{version}.",
     "api.boardInstallFailed": "Nem sikerült telepíteni: {error}",
     "api.boardOpenDeleting": {
       "one": "Ez a tábla {count} lapon van megnyitva, törlés előtt be kell zárni. A lap nyitva marad és kiürül. Folytatja?",
       "other": "Ez a tábla {count} lapon van megnyitva, törlés előtt be kell zárni. A lapok nyitva maradnak és kiürülnek. Folytatja?"
+    },
+    "api.boardOpenRemoving": {
+      "one": "Ez a tábla {count} oldalon van megnyitva, ezért eltávolítás előtt be kell zárni. Az oldal nyitva és üres marad. Folytatja?",
+      "other": "Ez a tábla {count} oldalon van megnyitva, ezért eltávolítás előtt be kell zárni. Az oldalak nyitva és üresen maradnak. Folytatja?"
     },
     "api.boardOpenTitle": "A tábla meg van nyitva",
     "api.boardOpenUpdating": {
@@ -3503,6 +3508,8 @@
     "shell.ungroup": "460af6ed",
     "shell.mutePage": "724c00d7",
     "shell.unmutePage": "af4c43a2",
-    "tools.siteExtensionActionFailed": "96558212"
+    "tools.siteExtensionActionFailed": "96558212",
+    "api.boardBusyRemoving": "fc62a483",
+    "api.boardOpenRemoving": "6426988c"
   }
 }

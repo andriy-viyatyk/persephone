@@ -47,6 +47,7 @@
     "api.actionFailed": "Azione non riuscita: {action}: {error}",
     "api.autoloadScriptError": "Errore nello script di caricamento automatico: {message}",
     "api.boardBusyDeleting": "Questa bacheca è in esecuzione. Arrestala prima di eliminarla.",
+    "api.boardBusyRemoving": "Questa bacheca è in esecuzione. Arrestala prima di rimuoverla.",
     "api.boardBusyUpdating": "Questa bacheca è in esecuzione. Arrestala prima di aggiornarla.",
     "api.boardInstalled": "Bacheca {name} v{version} installata.",
     "api.boardInstallFailed": "Installazione non riuscita: {error}",
@@ -54,6 +55,11 @@
       "one": "Questa bacheca è aperta in {count} pagina e deve essere chiusa prima di eliminarla. La pagina resterà aperta e vuota. Continuare?",
       "many": "Questa bacheca è aperta in {count} pagine e deve essere chiusa prima di eliminarla. Le pagine resteranno aperte e vuote. Continuare?",
       "other": "Questa bacheca è aperta in {count} pagine e deve essere chiusa prima di eliminarla. Le pagine resteranno aperte e vuote. Continuare?"
+    },
+    "api.boardOpenRemoving": {
+      "one": "Questa bacheca è aperta in {count} pagina e deve essere chiusa prima della rimozione. La pagina resterà aperta e vuota. Continuare?",
+      "many": "Questa bacheca è aperta in {count} pagine e deve essere chiusa prima della rimozione. Le pagine resteranno aperte e vuote. Continuare?",
+      "other": "Questa bacheca è aperta in {count} pagine e deve essere chiusa prima della rimozione. Le pagine resteranno aperte e vuote. Continuare?"
     },
     "api.boardOpenTitle": "Bacheca aperta",
     "api.boardOpenUpdating": {
@@ -3551,6 +3557,8 @@
     "shell.ungroup": "460af6ed",
     "shell.mutePage": "724c00d7",
     "shell.unmutePage": "af4c43a2",
-    "tools.siteExtensionActionFailed": "96558212"
+    "tools.siteExtensionActionFailed": "96558212",
+    "api.boardBusyRemoving": "fc62a483",
+    "api.boardOpenRemoving": "6426988c"
   }
 }

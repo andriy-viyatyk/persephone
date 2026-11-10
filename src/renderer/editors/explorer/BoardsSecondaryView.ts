@@ -1,8 +1,8 @@
 import { app } from "../../api/app";
 import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
-import { boardTrust } from "../../api/boards/board-trust";
-import { ensureBoardIdle } from "../../api/boards/board-idle";
+import { boardRegistry } from "../../api/boards/board-registry";
+import { boardLifecycle } from "../../api/boards/board-lifecycle";
 import { toolsTrust } from "../../api/tools/tools-trust";
 import { registeredTools } from "../../api/tools/registered-tools";
 import { createLinkData } from "../../../shared/link-data";
@@ -12,8 +12,6 @@ import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
 import { fpBasename } from "../../core/utils/file-path";
 import { BoardRoot } from "../../../shared/board/board-root";
 import { toClipboard } from "../../core/utils/utils";
-import { removePin } from "../../ui/sidebar/pinned-items";
-import { errMessage } from "../../../shared/utils";
 import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
 import type { MenuItem } from "../../uikit/Menu";
 import type { IconButtonProps } from "../../uikit/IconButton/IconButtonView";
@@ -161,11 +159,11 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
             this.segmentedControl?.update(this.segmentedProps());
             this.refreshBody();
         });
-        this.own(boardTrust.subscribePaths(() => this.refreshBody()));
+        this.own(boardRegistry.subscribeMembership(() => this.refreshBody()));
         this.own(registeredTools.subscribeToolsets(() => this.refreshBody()));
         this.own(subscribeBusyBoardRoots(() => this.refreshBody()));
 
-        void boardTrust.load().then(() => this.refreshBody());
+        void boardRegistry.load().then(() => this.refreshBody());
         void registeredTools.ensureInitialized().then(() => this.refreshBody());
         this.refreshBody();
         this.updateHeader(this.props);
@@ -457,21 +455,6 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
             buttons: [dialogButton(onDisk ? DialogButton.delete : DialogButton.remove), dialogButton(DialogButton.cancel)],
         });
         if (confirmed === DialogButton.cancel || !confirmed) return;
-        if (onDisk) {
-            // Nothing may hold the folder open: on Windows a live handle inside it makes the
-            // files delete but the folder itself fail with ENOTEMPTY.
-            if (!(await ensureBoardIdle(root, "deleting"))) return;
-        }
-        try {
-            if (onDisk) await fs.removeDir(root, true);
-        } catch (error) {
-            ui.notify(
-                errMessage(error, t("api.failedToDeleteBoardFolder")),
-                "error",
-            );
-            return;
-        }
-        await boardTrust.untrust(root);
-        removePin({ kind: "board", root });
+        await boardLifecycle.delete(root);
     }
 }

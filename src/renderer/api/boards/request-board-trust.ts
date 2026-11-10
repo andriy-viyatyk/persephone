@@ -1,17 +1,15 @@
-import { boardTrust } from "./board-trust";
+import { boardRegistry } from "./board-registry";
 import { BoardRoot } from "../../../shared/board/board-root";
 import { BoardGrant } from "../../../shared/board/board-grant";
 import { confirmNamespaceNotColliding } from "./board-namespace";
 import { showBoardPermissionChangeDialog, showTrustBoardDialog } from "../../ui/dialogs/TrustBoardDialog";
 import { boardTrustDisclosure } from "../../../shared/board/board-manifest-queries";
 import { readBoardManifest } from "./board-manifest-io";
-import { bundledBoardRegistry } from "./bundled-board-registry";
 import { errMessage } from "../../../shared/utils";
 import { fpBasename } from "../../core/utils/file-path";
 import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText } from "./board-display-text";
 import { boardInstallRegistry } from "./board-install-registry";
-import { uninstallCatalogBoard } from "./board-install";
-import { removeBoardFromPages } from "./board-idle";
+import { boardLifecycle } from "./board-lifecycle";
 
 /** In-flight trust requests by board root, so concurrent opens/reloads of the same board share
  *  one dialog instead of stacking a copy per caller. */
@@ -29,14 +27,13 @@ export function requestBoardTrust(boardRoot: string): Promise<boolean> {
 }
 
 async function requestBoardTrustOnce(boardRoot: string): Promise<boolean> {
-    await bundledBoardRegistry.ensureInitialized();
-    if (bundledBoardRegistry.isBundled(boardRoot)) return true;
+    await boardRegistry.load();
+    if (boardRegistry.isBundled(boardRoot)) return boardRegistry.isPermitted(boardRoot);
 
-    await boardTrust.load();
-    await boardTrust.refreshPermissionSnapshot();
-    const trusted = boardTrust.isTrusted(boardRoot);
+    await boardRegistry.reload();
+    const trusted = boardRegistry.isTrusted(boardRoot);
     if (trusted) {
-        const snapshot = await boardTrust.getPermissionSnapshot(boardRoot);
+        const snapshot = boardRegistry.permissionSnapshot(boardRoot);
         if (!snapshot || !snapshot.manifestChanged) return true;
         const proposed = snapshot.manifestPermissions;
         const grant = BoardGrant.from(snapshot.permissions);
@@ -63,7 +60,7 @@ async function requestBoardTrustOnce(boardRoot: string): Promise<boolean> {
             // Closed without a decision: the board does not run, and comes off its pages. The
             // dialog appears again on the next open.
             if (choice === undefined) {
-                await removeBoardFromPages(boardRoot);
+                await boardLifecycle.releasePages(boardRoot);
                 return false;
             }
             if (choice === "unregister") {
@@ -71,11 +68,10 @@ async function requestBoardTrustOnce(boardRoot: string): Promise<boolean> {
                 continue;
             }
             try {
-                await boardTrust.trust(boardRoot, proposed, [...snapshot.manifestUses]);
+                await boardRegistry.trust(boardRoot, proposed, [...snapshot.manifestUses]);
                 return true;
             } catch (error) {
                 if (!errMessage(error).includes("Board permissions changed while the trust dialog was open")) throw error;
-                await boardTrust.load();
                 return requestBoardTrustOnce(boardRoot);
             }
         }
@@ -93,27 +89,22 @@ async function requestBoardTrustOnce(boardRoot: string): Promise<boolean> {
     if (!(await confirmNamespaceNotColliding(boardRoot))) return false;
 
     try {
-        await boardTrust.trust(boardRoot, disclosure.permissions, [...disclosure.uses]);
+        await boardRegistry.trust(boardRoot, disclosure.permissions, [...disclosure.uses]);
         return true;
     } catch (error) {
         if (!errMessage(error).includes("Board permissions changed while the trust dialog was open")) throw error;
-        await boardTrust.load();
         return requestBoardTrustOnce(boardRoot);
     }
 }
 
 /** "Unregister board" from the permission-change dialog: a catalog install is uninstalled (its
- *  folder deleted, after its own confirmation); a local board is untrusted (which unloads it
- *  from its pages) and its folder kept.
+ *  folder deleted, after its own confirmation); a local board is untrusted and its folder kept.
  *  Returns false when the user backs out, so the change dialog is shown again. */
 async function removeBoard(boardRoot: string, boardName: string): Promise<boolean> {
     await boardInstallRegistry.load();
     const installed = boardInstallRegistry.getByRoot(boardRoot);
     if (installed) {
-        return uninstallCatalogBoard({ root: boardRoot, name: boardName, catalogId: installed.id });
+        return boardLifecycle.uninstall(installed.id, boardName);
     }
-    await boardTrust.untrust(boardRoot);
-    const { removePin } = await import("../../ui/sidebar/pinned-items");
-    removePin({ kind: "board", root: boardRoot });
-    return true;
+    return boardLifecycle.unregister(boardRoot, { consented: true });
 }

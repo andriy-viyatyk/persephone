@@ -12,20 +12,19 @@ import {
     type CustomEditorRegistrationIssue,
 } from "../../api/boards/custom-editor-registry";
 import { isBoardFolder, readBoardManifest } from "../../api/boards/board-manifest-io";
-import { normalizeVersionRequirement, getBoardCompatibility } from "../../../shared/version-utils";
-import { type BoardContentProviderDeclaration, type BoardCapabilityDeclaration, type SecondaryViewDecl } from "../../../shared/board/board-manifest-schema";
+import { normalizeVersionRequirement } from "../../../shared/version-utils";
+import { type BoardContentProviderDeclaration, type BoardCapabilityDeclaration, type BoardEditorKind, type SecondaryViewDecl } from "../../../shared/board/board-manifest-schema";
 import { type BoardServiceInterfaceDeclaration, type BoardServiceUseDeclaration } from "../../../shared/board/board-service-declarations";
 import { ensureBoardDisplayText } from "../../api/boards/board-display-text";
-import { BOARD_BRIDGE_VERSION } from "../../../shared/board-bridge-version";
+import { boardManifestCompatibility } from "../../../shared/board/board-manifest-queries";
 import { BOARD_INFO_EDITOR_ID } from "./board-info-id";
 import { publishedBoards } from "../../api/boards/published-boards";
 import { boardInstallRegistry } from "../../api/boards/board-install-registry";
 import { downloadBoard } from "../../api/boards/board-install";
-import { boardTrust } from "../../api/boards/board-trust";
+import { boardRegistry } from "../../api/boards/board-registry";
+import { boardLifecycle } from "../../api/boards/board-lifecycle";
 import type { BoardPermissionChange } from "../../../shared/board/board-grant";
-import { BoardGrant } from "../../../shared/board/board-grant";
 import { requestBoardTrust } from "../../api/boards/request-board-trust";
-import { bundledBoardRegistry } from "../../api/boards/bundled-board-registry";
 import { app } from "../../api/app";
 import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
@@ -43,14 +42,13 @@ import type { BoardSettingDeclaration } from "../../../shared/board/board-settin
 import { BoardColorIcon } from "../../theme/icons";
 import { errMessage } from "../../../shared/utils";
 import { moduleServiceStatus } from "../../api/module-service-status";
-import { ensureBoardIdle } from "../../api/boards/board-idle";
 import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
 import { englishMessage, t } from "../../../shared/i18n/t";
 
 const DELETE_AND_CONTINUE = "Delete & continue";
 
 /** Transient per-board download UI (not persisted). Downloaded/registered state is read from
- *  `boardInstallRegistry` + `boardTrust`, which are authoritative; this only tracks the in-flight
+ *  `boardInstallRegistry` + `boardRegistry`, which are authoritative; this only tracks the in-flight
  *  download and the last error. */
 export interface InstallProgress {
     phase: "downloading" | "error";
@@ -93,7 +91,7 @@ export interface BoardPropsInfo {
     folderEditorPriority?: number;
     editorPriority?: number;
     editorName?: string;
-    editorKind?: "simple" | "content-host" | "stream-host";
+    editorKind?: BoardEditorKind;
     editorSources?: "local" | "any";
     contentProviders?: BoardContentProviderDeclaration[];
     capabilities?: BoardCapabilityDeclaration[];
@@ -210,7 +208,6 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     private _pendingHost: HostDescriptor | undefined = undefined;
     private _catalogSub: (() => void) | null = null;
     private _serviceStatusSub: (() => void) | null = null;
-    private _trustSub: (() => void) | null = null;
     /** installId of the in-flight download per catalog id (for Cancel). */
     private readonly _activeDownloads = new Map<string, string>();
     /** installIds the user cancelled — so the rejected download isn't shown as an error. */
@@ -221,19 +218,21 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         this.own(() => this._hostStateUnsub?.());
         this.own(() => this._catalogSub?.());
         this.own(() => this._serviceStatusSub?.());
-        this.own(() => this._trustSub?.());
-        this._trustSub = rendererEvents[EventEndpoint.eBoardTrustChanged].subscribe(() => {
+        this.own(boardRegistry.subscribe(() => {
             if (this.mode !== "properties") return;
-            void boardTrust.refreshPermissionSnapshot().then(() => this.loadProperties());
-        });
-        this._serviceStatusSub = rendererEvents[EventEndpoint.eModuleServiceStatusChanged].subscribe((status) => {
-            const root = this.state.get().boardRoot;
-            if (!root || !BoardRoot.from(root).equals(status.boardRoot)) return;
-            this.state.update((s) => {
-                if (!s.props || !BoardRoot.from(s.props.root).equals(root)) return;
-                s.props.serviceStatus = moduleServiceStatus.getStatus(root);
-            });
-        });
+            void this.loadProperties(false);
+        }));
+        const followStatus = (root: string | undefined): void => {
+            this._serviceStatusSub?.();
+            this._serviceStatusSub = root
+                ? moduleServiceStatus.subscribe(root, (status) => this.state.update((s) => {
+                    if (!s.props || !BoardRoot.from(s.props.root).equals(root)) return;
+                    s.props.serviceStatus = status;
+                }))
+                : null;
+        };
+        this.own(this.state.subscribe(followStatus, (s) => s.boardRoot));
+        followStatus(this.state.get().boardRoot);
         this.own(customEditorRegistry.state.subscribe(() => {
             const root = this.state.get().boardRoot;
             if (!root) return;
@@ -378,7 +377,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         }
         // Refresh install tiles if the catalog changes while the screen is open (install mode only).
         this._catalogSub?.();
-        this._catalogSub = rendererEvents[EventEndpoint.ePublishedBoardsUpdated].subscribe(
+        this._catalogSub = publishedBoards.subscribeCatalog(
             () => { if (this.mode === "install") void this.reconcile(); },
         );
     }
@@ -388,11 +387,11 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     /** Load an installed board's manifest + registry + trust into `state.props`, and kick a
      *  version-history fetch for catalog installs. A `boardRoot` that no longer holds a board
      *  manifest renders a "no longer installed" empty state. */
-    async loadProperties(): Promise<void> {
+    async loadProperties(reloadRegistry = true): Promise<void> {
         const root = this.state.get().boardRoot;
         if (!root) return;
         await customEditorRegistry.ensureInitialized();
-        await bundledBoardRegistry.ensureInitialized();
+        await boardRegistry.load();
         if (!(await isBoardFolder(root))) {
             this.state.update((s) => {
                 s.props = {
@@ -412,21 +411,12 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         const reg = boardInstallRegistry.getByRoot(root);
         const manifest = await readBoardManifest(root);
         if (manifest) await ensureBoardDisplayText(root, manifest);
-        await boardTrust.load();
-        await boardTrust.refreshPermissionSnapshot();
-        const permissionSnapshot = await boardTrust.getPermissionSnapshot(root);
-        const fileAccessGrants = boardTrust.isTrusted(root)
-            ? await boardTrust.getFileAccessGrants(root)
-            : { folderGrants: [], fileGrants: [] };
+        if (reloadRegistry) await boardRegistry.reload();
+        const permissionSnapshot = boardRegistry.permissionSnapshot(root);
+        const fileAccessGrants = boardRegistry.fileAccess(root);
         const assoc = manifest?.association ?? null;
         const minBridgeVersion = normalizeVersionRequirement(manifest?.minBridgeVersion);
-        const bridgeCompatibility = getBoardCompatibility(
-            {
-                minBridgeVersion,
-                requiresMinBridgeVersion: !!manifest && BoardGrant.from(manifest.permissions).isDeclared(),
-            },
-            { bridgeVersion: BOARD_BRIDGE_VERSION },
-        );
+        const bridgeCompatibility = boardManifestCompatibility(manifest);
         await moduleServiceStatus.refresh();
         const serviceStatus = moduleServiceStatus.getStatus(root);
         const contentProviders = manifest?.contentProviders;
@@ -444,7 +434,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             manifestVersion: manifest?.version,
             permissions: permissionSnapshot?.permissions,
             proposedPermissions: permissionSnapshot?.manifestPermissions ?? manifest?.permissions,
-            isBundled: bundledBoardRegistry.isBundled(root),
+            isBundled: boardRegistry.isBundled(root),
             permissionChanges: permissionSnapshot?.manifestChanged ? permissionSnapshot.changes : undefined,
             permissionChangePending: permissionSnapshot?.manifestChanged,
             standalone: manifest?.standalone,
@@ -479,7 +469,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             guides: manifest?.guides,
             registrationIssues: registrationIssues.length > 0 ? [...registrationIssues] : undefined,
             root,
-            trusted: boardTrust.isTrusted(root),
+            trusted: boardRegistry.isTrusted(root),
             fileAccessGrants,
             isCatalogInstall: !!reg,
             catalogId: reg?.id,
@@ -497,8 +487,8 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         const root = this.state.get().props?.root;
         if (!root) return;
         try {
-            await boardTrust.revokeFileAccessGrant(root, kind, canonicalPath);
-            const fileAccessGrants = await boardTrust.getFileAccessGrants(root);
+            await boardRegistry.revokeFileAccessGrant(root, kind, canonicalPath);
+            const fileAccessGrants = boardRegistry.fileAccess(root);
             this.state.update((state) => { if (state.props?.root === root) state.props.fileAccessGrants = fileAccessGrants; });
         } catch (error: unknown) {
             void ui.notify(errMessage(error, "Could not revoke the remembered board path."), "warning");
@@ -526,20 +516,13 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     async installBoardVersion(version: PublishedBoardVersion): Promise<void> {
         const props = this.state.get().props;
         if (!props?.isCatalogInstall || !props.catalogId) return;
-        if (!publishedBoards.isCompatible(version.minAppVersion)) {
-            void ui.notify(
-                t("api.boardVersionRequiresApp", { version: version.minAppVersion }),
-                "warning",
-            );
-            return;
-        }
-        const { runBoardVersionInstall } = await import("../../api/boards/board-updates");
-        const ok = await runBoardVersionInstall({
+        const ok = await boardLifecycle.installVersion({
             root: props.root,
             id: props.catalogId,
             name: props.name,
             archive: version.archive,
             version: version.version,
+            minAppVersion: version.minAppVersion,
         });
         if (ok) await this.loadProperties();
     }
@@ -551,12 +534,8 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     async uninstall(): Promise<void> {
         const props = this.state.get().props;
         if (!props) return;
-        const { uninstallCatalogBoard } = await import("../../api/boards/board-install");
-        const removed = await uninstallCatalogBoard({
-            root: props.root,
-            name: props.name,
-            catalogId: props.catalogId,
-        });
+        if (!props.catalogId) return;
+        const removed = await boardLifecycle.uninstall(props.catalogId, props.name);
         if (removed) await this.pageModel?.setMainEditor(null);
     }
 
@@ -574,11 +553,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         });
         if (choice !== DialogButton.remove) return;
 
-        if (!(await ensureBoardIdle(props.root))) return;
-
-        await boardTrust.untrust(props.root);
-        const { removePin } = await import("../../ui/sidebar/pinned-items");
-        removePin({ kind: "board", root: props.root });
+        if (!(await boardLifecycle.unregister(props.root))) return;
         await this.pageModel?.setMainEditor(null);
     }
 
@@ -732,13 +707,8 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         if (!(await requestBoardTrust(root))) return;
         await customEditorRegistry.refresh();
         if (source.kind === "folder") {
-            const trustedEntry = customEditorRegistry.entries.find((candidate) =>
-                BoardRoot.from(candidate.boardRoot).equals(root),
-            );
-            const claimsFolder = customEditorRegistry.getBoardsForFolder(source.path).some(
-                (candidate) => BoardRoot.from(candidate.boardRoot).equals(root),
-            );
-            if (!trustedEntry || !claimsFolder) {
+            const claim = customEditorRegistry.findFolderClaim(root, source.path);
+            if (!claim) {
                 void ui.notify(
                     t("board.boardTrustedNoLongerClaimsFolder"),
                     "warning",

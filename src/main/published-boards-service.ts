@@ -2,6 +2,7 @@ import { net } from "electron";
 import { electronStore } from "./e-store";
 import { openWindows } from "./open-windows";
 import { EventEndpoint } from "../ipc/api-types";
+import { isBoardEditorKind } from "../shared/board/board-manifest-schema";
 import {
     PublishedBoardInfo,
     PublishedBoardsCatalog,
@@ -121,11 +122,7 @@ function validateBoard(entry: unknown): PublishedBoardInfo | null {
     ) {
         return null;
     }
-    const editorKind =
-        e.editorKind === "content-host" ? "content-host"
-        : e.editorKind === "stream-host" ? "stream-host"
-        : e.editorKind === "simple" ? "simple"
-        : undefined;
+    const editorKind = isBoardEditorKind(e.editorKind) ? e.editorKind : undefined;
     return {
         id: e.id,
         version: e.version,

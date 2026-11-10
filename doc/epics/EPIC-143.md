@@ -39,7 +39,7 @@ pipeline) builds on the subscriber model from US-1830 and is the next epic.
   `getPermissionGrants()` has no side effects.
 - File-access grants have one owner. No dynamic `import()` remains between trust, file access and the pipe service.
 
-## Decisions this epic acts on (roadmap Â§6, accepted 2026-11-10)
+## Decisions this epic acts on (roadmap §6, accepted 2026-11-10)
 
 - **D6:** boards never nest. Trust, grants and the supervisor's trusted-root check use exact-key lookup (US-1829).
 - **D12:** user-meaningful configuration goes in `appSettings.json`, geometry and MRU lists in `uiPreferences`.
@@ -159,14 +159,14 @@ Task documents are written per task when it is picked up. The finding IDs point 
 
 ## Rules for every task in this epic
 
-- **The roadmap guardrails apply** ([Â§7](../refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back), also
+- **The roadmap guardrails apply** ([§7](../refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back), also
   in `doc/agents-common.md`). Every plan names the module that owns each rule it touches and the existing helper it
   reuses: `PendingRequests`, `WireError`, `SerialQueue`, `codedError`, `BoardRoot`, `BoardGrant`, the path containment
   helpers, `onWebContentsGone`.
 - **Each copy is replaced, not wrapped.** A task is done when the old copies are gone.
 - **Pure moves first.** When a task both moves files and changes logic (US-1826's rename of `renderer-bridge.ts`,
   US-1830's split), the move is done and verified on its own first.
-- **Contracts that must not change** ([roadmap Â§8](../refactoring-roadmap.md#8-execution-notes)): `trustedBoards.json`,
+- **Contracts that must not change** ([roadmap §8](../refactoring-roadmap.md#8-execution-notes)): `trustedBoards.json`,
   the site-extension trust file and the other migrated JSON files, `window.persephone.*`, the script API, MCP `call`
   behaviour and its JSON-RPC error codes as the agent sees them, AiVision paths and messages. The private wire between
   main and the renderer may change; both sides ship together.

@@ -1,7 +1,6 @@
 import { BoardServiceSettingsChannel, type BoardServiceSettingsChange } from "../../ipc/board-service-settings-channels";
 import { getBoardSetting, initializeBoardSettings, subscribeBoardSettings } from "./board-settings/board-settings-bridge";
-import { boardTrust } from "./boards/board-trust";
-import { bundledBoardRegistry } from "./boards/bundled-board-registry";
+import { boardRegistry } from "./boards/board-registry";
 import { readBoardManifest } from "./boards/board-manifest-io";
 import { BoardRoot } from "../../shared/board/board-root";
 import { codedError, toCodedError } from "../../shared/coded-error";
@@ -16,11 +15,10 @@ function isScalar(value: unknown): value is string | number | boolean {
 
 async function validateBoardRoot(boardRoot: unknown): Promise<string> {
     if (typeof boardRoot !== "string" || !boardRoot.trim()) throw new Error("service-exited");
-    await Promise.all([boardTrust.load(), bundledBoardRegistry.ensureInitialized()]);
+    await boardRegistry.load();
     const root = BoardRoot.tryFrom(boardRoot);
     if (!root) throw new Error("service-exited");
-    const bundled = bundledBoardRegistry.list().some((entry) => root.equals(entry.root));
-    if (!bundled && !boardTrust.isTrusted(boardRoot)) throw codedError("untrusted");
+    if (!boardRegistry.isPermitted(boardRoot)) throw codedError("untrusted");
     if (!await readBoardManifest(boardRoot)) throw codedError("service-exited");
     return boardRoot;
 }

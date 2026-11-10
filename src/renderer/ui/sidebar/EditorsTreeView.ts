@@ -1,6 +1,7 @@
 import { t } from "../../../shared/i18n/t";
 import { app } from "../../api/app";
-import { boardTrust } from "../../api/boards/board-trust";
+import { boardRegistry } from "../../api/boards/board-registry";
+import { boardLifecycle } from "../../api/boards/board-lifecycle";
 import { ui } from "../../api/ui";
 import { listBoardUpdates, runBoardUpdate } from "../../api/boards/board-updates";
 import { publishedBoards } from "../../api/boards/published-boards";
@@ -17,10 +18,12 @@ import { BoardRoot } from "../../../shared/board/board-root";
 import { toClipboard } from "../../core/utils/utils";
 import { TraitTypeId, getTraitDragData, hasTraitDragData } from "../../core/traits";
 import { TreeView } from "../../uikit/Tree/TreeView";
+import { createIconElement } from "../../uikit/shared/slots";
 import type { MenuItem } from "../../uikit/Menu";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { createEditorCategory, getCategoryForRef, getEditorCategories, isPinnedRef, moveEditorToCategory, removeCategoryMembership, type PinnedRef } from "./pinned-items";
-import { getCreatableItemLabel, getCreatableItems, getDisabledBundledBoardItems, getBundledBoardContextMenu, type CreatableItem } from "./tools-editors-registry";
+import { editorCategories, type CategoryRef } from "../../api/editor-categories";
+import { getCreatableItemLabel, getCreatableItems, getDisabledBundledBoardItems, type CreatableItem } from "../../api/creatable-items";
+import { createCreatableItemIcon } from "./creatable-item-icon";
 import "./EditorsTreeView.css";
 
 interface BuiltinEditorNode {
@@ -58,13 +61,13 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
         this.tree = this.child(new TreeView<EditorTreeNode>(this.lastProps));
         this.root.append(this.tree.root);
         this.tree.mount();
-        this.own(boardTrust.subscribePaths(this.refresh));
+        this.own(boardRegistry.subscribeMembership(this.refresh));
         this.own(publishedBoards.subscribeCatalog(this.refresh));
         this.own(settings.onChanged.subscribe(({ key }) => {
-            if (key === "browser-profiles" || key === "disabled-bundled-boards" || key === "editor-categories") this.refresh();
+            if (key === "browser-profiles" || key === "editor-categories") this.refresh();
         }));
         this.own(onBoardDisplayTextChanged(() => this.refresh()));
-        void boardTrust.load().then(this.refresh, this.refresh);
+        void boardRegistry.load().then(this.refresh, this.refresh);
         this.refresh();
     }
 
@@ -111,7 +114,7 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
         if (payload?.typeId !== TraitTypeId.PinnedEditor || !isEditorCategoryDragData(payload.data)) return;
         dragEvent.preventDefault();
         dragEvent.stopPropagation();
-        removeCategoryMembership(payload.data.ref);
+        editorCategories.unassign(payload.data.ref);
     };
 
     private treeProps() {
@@ -123,7 +126,7 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
                 kind: "builtin" as const, value: `disabled:${item.id}`, label: getCreatableItemLabel(item), item, disabled: true,
             })),
         ];
-        const nodes = buildBoardsTree(boardTrust.listPaths(), undefined, (root, fallback) =>
+        const nodes = buildBoardsTree(boardRegistry.roots("trusted"), undefined, (root, fallback) =>
             boardDisplayText(root, undefined, boardMetadataKeys.name, fallback));
         const query = this.filterText.trim().toLocaleLowerCase();
         const matchingBuiltins = query ? builtins.filter((node) => matches(node.label, query)) : builtins;
@@ -145,12 +148,12 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
             onActiveChange: this.handleActiveChange,
             onChange: (node: EditorTreeNode) => this.open(node),
             getIconElement: (node: EditorTreeNode) => node.kind === "builtin"
-                ? node.item.icon instanceof Node ? node.item.icon.cloneNode(true) : undefined
+                ? createCreatableItemIcon(node.item)
                 : node.kind === "board" ? createBoardGlyphElement(node.root, 16) : node.kind === "folder" ? createFolderIconElement() : undefined,
             getContextMenu: (node: EditorTreeNode) => this.contextMenu(node),
             renderTrailing: (node: EditorTreeNode) => {
                 const ref = this.refFor(node);
-                const category = ref && getCategoryForRef(ref);
+                const category = ref && editorCategories.categoryOf(ref);
                 const boardRoot = node.kind === "board" ? node.root : undefined;
                 const update = boardRoot
                     ? listBoardUpdates().find((candidate) => BoardRoot.from(candidate.root).equals(boardRoot))
@@ -187,7 +190,7 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
         };
     }
 
-    private refFor(node: EditorTreeNode): PinnedRef | undefined {
+    private refFor(node: EditorTreeNode): CategoryRef | undefined {
         if (node.kind === "builtin" && !node.disabled) return { kind: "editor", id: node.item.id };
         // Every trusted board can join a category, file-associated ones included: they all open
         // without a file from this page, so they can from the + popover too.
@@ -211,8 +214,8 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
             ? [...(getBundledBoardContextMenu(node.item) ?? [])]
             : node.kind === "board" && node.root ? this.boardContextItems(node.root) : [];
         if (ref) {
-            const categories = getEditorCategories();
-            const assigned = getCategoryForRef(ref);
+            const categories = editorCategories.categories();
+            const assigned = editorCategories.categoryOf(ref);
             items.unshift({
                 label: t("shell.editorCategoryAddTo"),
                 startGroup: true,
@@ -220,18 +223,18 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
                     ...categories.map((category) => ({
                         label: category.id === "top" ? t("shell.editorCategoryTop") : category.name,
                         selected: assigned?.id === category.id,
-                        onClick: () => moveEditorToCategory(ref, category.id),
+                        onClick: () => editorCategories.assign(ref, category.id),
                     })),
                     ...(this.props.onNewCategory ? [{
                         label: t("shell.editorCategoryNewAndAssign"),
                         startGroup: true,
                         onClick: () => {
-                            const category = createEditorCategory("");
-                            moveEditorToCategory(ref, category.id);
+                            const category = editorCategories.create("");
+                            editorCategories.assign(ref, category.id);
                             this.props.onNewCategory?.(category.id);
                         },
                     }] : []),
-                    ...(assigned ? [{ label: t("shell.editorCategoryRemoveItem"), onClick: () => removeCategoryMembership(ref), startGroup: true }] : []),
+                    ...(assigned ? [{ label: t("shell.editorCategoryRemoveItem"), onClick: () => editorCategories.unassign(ref), startGroup: true }] : []),
                 ],
             });
         }
@@ -254,23 +257,40 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
             label: t("common.remove"),
             startGroup: true,
             onClick: () => {
-                void boardTrust.untrust(root);
-                removeCategoryMembership({ kind: "board", root });
-                ui.notify(t("shell.removedFromTrustedBoards"), "info");
+                void boardLifecycle.unregister(root).then((removed) => {
+                    if (removed) void ui.notify(t("shell.removedFromTrustedBoards"), "info");
+                });
             },
         });
         return items;
     }
 }
 
-function isEditorCategoryDragData(value: unknown): value is { kind: "source" | "category-item"; ref: PinnedRef } {
+function isEditorCategoryDragData(value: unknown): value is { kind: "source" | "category-item"; ref: CategoryRef } {
     if (!value || typeof value !== "object") return false;
     const data = value as { kind?: unknown; ref?: unknown };
-    return (data.kind === "source" || data.kind === "category-item") && isPinnedRef(data.ref);
+    return (data.kind === "source" || data.kind === "category-item") && editorCategories.isRef(data.ref);
 }
 
 function matches(label: string, query: string): boolean {
     return label.toLocaleLowerCase().includes(query);
+}
+
+function getBundledBoardContextMenu(item: CreatableItem): MenuItem[] | undefined {
+    if (!item.bundledBoardId) return undefined;
+    if (item.enable) {
+        return [{
+            label: t("shell.enable"),
+            icon: createIconElement("check", { width: 14, height: 14 }),
+            onClick: item.enable,
+        }];
+    }
+    if (!item.disable) return undefined;
+    return [{
+        label: t("shell.disable"),
+        icon: createIconElement("remove", { width: 14, height: 14 }),
+        onClick: item.disable,
+    }];
 }
 
 /** Keeps matching board leaves and every folder on the path to one; a matching folder keeps all of its boards. */

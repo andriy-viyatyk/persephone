@@ -8,9 +8,8 @@ import { resolveAiCall } from "../../scripting/ai-vision/call";
 import { ScriptContext } from "../../scripting/ScriptContext";
 import { getPreviewGeneration } from "../../theme/themes";
 import { app } from "../app";
-import { isBoardPermitted } from "./board-access";
 import { asBoardHostEditor } from "./board-host-editor";
-import { boardTrust } from "./board-trust";
+import { boardRegistry } from "./board-registry";
 import { pagesModel } from "../pages";
 import { tsProjectRegistry } from "../ts-project-registry";
 import { createLinkData } from "../../../shared/link-data";
@@ -108,10 +107,10 @@ async function handleBoardCall(params: BoardCallParams): Promise<unknown> {
     const { boardRoot, contextEditor } = resolveBoardHost(ownerId);
     const context = new ScriptContext(contextEditor);
     try {
-        if (!(await boardTrust.allows(boardRoot, "appScripting"))) throw new Error(BoardGrant.deny("appScripting").message);
+        if (!boardRegistry.grant(boardRoot)?.allows("appScripting")) throw new Error(BoardGrant.deny("appScripting").message);
         const result = await resolveAiCall(context, request, undefined, {
             page: context.page,
-            restricted: () => isBoardPermitted(boardRoot) ? undefined : "This Board is not permitted to use persephone.call().",
+            restricted: () => boardRegistry.isPermitted(boardRoot) ? undefined : "This Board is not permitted to use persephone.call().",
         });
         if (result.error) throw new Error(result.error);
         return result.result;
@@ -127,7 +126,7 @@ async function handleBoardThemes(params: RendererRpcMethods["boardThemes"]["para
         const { boardRoot, boardEditor } = resolveBoardHost(params.ownerId);
         const method = params.method;
         if (!BOARD_THEME_METHODS.has(method)) throw new Error(`Unknown board themes method: ${method}`);
-        if (!(await boardTrust.allows(boardRoot, "themes"))) throw new Error(BoardGrant.deny("themes").message);
+        if (!boardRegistry.grant(boardRoot)?.allows("themes")) throw new Error(BoardGrant.deny("themes").message);
         const clonedArgs = cloneJson(params.args);
         if (!Array.isArray(clonedArgs)) throw new Error("Theme bridge accepts JSON arrays only.");
         const args: unknown[] = clonedArgs;

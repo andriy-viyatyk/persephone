@@ -4,6 +4,7 @@ import type {
     IBoardSecondaryViewDeclaration,
     IBoardSettingDeclaration,
 } from "./board-editor";
+import type { BoardEditorKind } from "./common";
 
 export type BoardInfoMode = "install" | "properties";
 
@@ -37,7 +38,7 @@ export interface IBoardInfoCatalogMatch {
     /** Direct folder resolution priority for `folderEditorMasks`. */
     readonly folderEditorPriority?: number;
     readonly editorName?: string;
-    readonly editorKind?: "simple" | "content-host" | "stream-host";
+    readonly editorKind?: BoardEditorKind;
     readonly standalone?: boolean;
     readonly minAppVersion?: string;
     readonly screenshotUrl?: string;
@@ -79,7 +80,7 @@ export interface IBoardInfoProperties {
     readonly folderEditorPriority?: number;
     readonly editorPriority?: number;
     readonly editorName?: string;
-    readonly editorKind?: "simple" | "content-host" | "stream-host";
+    readonly editorKind?: BoardEditorKind;
     readonly editorSources?: "local" | "any";
     readonly contentProviders?: readonly IBoardInfoContentProviderDeclaration[];
     readonly capabilities?: readonly IBoardInfoCapabilityDeclaration[];

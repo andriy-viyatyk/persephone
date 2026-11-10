@@ -13,17 +13,9 @@ import { fpJoin, fpDirname, fpIsInside } from "../../core/utils/file-path";
 import { readBoardManifest } from "./board-manifest-io";
 import { PublishedBoardArchive, PublishedBoardInfo } from "../../../ipc/api-param-types";
 import { boardInstallRegistry } from "./board-install-registry";
-import { boardTrust } from "./board-trust";
-import { errMessage } from "../../../shared/utils";
-import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
-import { t } from "../../../shared/i18n/t";
+import { boardRegistry } from "./board-registry";
 import { invalidateBoardDisplayText } from "./board-display-text";
-import { publishedBoards } from "./published-boards";
-import { publishedBoardDisplayText } from "./published-board-display-text";
-import { getActiveLocale } from "../../../shared/i18n/active-locale";
-import { ensureBoardIdle } from "./board-idle";
 import { customEditorRegistry } from "./custom-editor-registry";
-import { ui } from "../ui";
 
 function newInstallId(): string {
     return crypto.randomUUID();
@@ -112,64 +104,10 @@ export async function updateBoard(
 }
 
 /**
- * Install a SPECIFIC published version's archive into an already-installed board's existing root,
- * via the same temp-extract + folder-swap as an update — update, rollback, or
- * forward). Runs under the board's EXISTING trust (same root); trust and pins are untouched. The
- * install registry is updated to the version actually installed, so "update available" reappears
- * correctly after a rollback.
- *
- * `opts.preSwap` is re-checked immediately before the swap (after the download completes) so a page
- * reopened mid-download aborts the swap with the working board left untouched.
- */
-/**
- * Uninstall a catalog-installed board: confirm → ensure idle (close-pages / busy guard) → delete
- * the folder → untrust → unpin → registry remove. Returns whether it was removed (`false` =
- * cancelled / busy / delete failed). Shared by the Board Info editor's Uninstall action and
- * `app.boards.uninstallBoard`, so the confirm wording lives in one place. Does NOT touch any page
- * itself — `ensureBoardIdle` already closes the board's open pages, and a page-hosting caller
- * unloads its own empty page afterward.
- */
-export async function uninstallCatalogBoard(args: {
-    root: string;
-    name: string;
-    catalogId?: string;
-}): Promise<boolean> {
-    const catalogEntry = args.catalogId
-        ? publishedBoards.getCatalog().find((board) => board.id === args.catalogId)
-        : undefined;
-    const displayName = catalogEntry
-        ? publishedBoardDisplayText(catalogEntry, getActiveLocale()).name
-        : args.name;
-    const { showConfirmationDialog } = await import("../../ui/dialogs/ConfirmationDialog");
-    const choice = await showConfirmationDialog({
-        title: t("api.deleteBoardTitle"),
-        message: t("api.deleteBoardConfirmation", { name: displayName }),
-        buttons: [dialogButton(DialogButton.delete), dialogButton(DialogButton.cancel)],
-    });
-    if (choice !== DialogButton.delete) return false;
-
-    if (!(await ensureBoardIdle(args.root, "deleting"))) return false;
-
-    try {
-        await api.stopModuleService(args.root);
-        await fs.removeDir(args.root, true);
-    } catch (err) {
-        ui.notify(errMessage(err, t("api.failedToDeleteBoardFolder")), "error");
-        return false;
-    }
-    await boardTrust.untrust(args.root);
-    invalidateBoardDisplayText(args.root);
-    const { removePin } = await import("../../ui/sidebar/pinned-items");
-    removePin({ kind: "board", root: args.root });
-    if (args.catalogId) await boardInstallRegistry.remove(args.catalogId);
-    return true;
-}
-
-/**
  * Rename a folder a just-stopped process was using. Windows can report the process gone a moment
  * before it releases the folder, so EBUSY / EPERM are retried briefly (about 3 s in total).
  */
-async function renameReleasedFolder(from: string, to: string): Promise<void> {
+export async function renameReleasedFolder(from: string, to: string): Promise<void> {
     for (let attempt = 0; ; attempt++) {
         try {
             await fs.rename(from, to);
@@ -182,6 +120,16 @@ async function renameReleasedFolder(from: string, to: string): Promise<void> {
     }
 }
 
+/**
+ * Install a SPECIFIC published version's archive into an already-installed board's existing root,
+ * via the same temp-extract + folder-swap as an update — update, rollback, or
+ * forward). Runs under the board's EXISTING trust (same root); trust and pins are untouched. The
+ * install registry is updated to the version actually installed, so "update available" reappears
+ * correctly after a rollback.
+ *
+ * `opts.preSwap` is re-checked immediately before the swap (after the download completes) so a page
+ * reopened mid-download aborts the swap with the working board left untouched.
+ */
 export async function installVersion(
     id: string,
     archive: PublishedBoardArchive,
@@ -242,7 +190,7 @@ export async function installVersion(
             installedAt: Date.now(),
         });
         invalidateBoardDisplayText(root);
-        await boardTrust.refreshPermissionSnapshot();
+        await boardRegistry.reload();
         await customEditorRegistry.refresh();
         return root;
     } finally {

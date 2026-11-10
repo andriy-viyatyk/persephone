@@ -19,14 +19,16 @@ import { KeyedList } from "../../uikit/shared/keyed-list";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { IState } from "../../core/state/state";
 import type { MenuItem } from "../../uikit/Menu/types";
-import { getCreatableItemLabel, getCreatableItems } from "../sidebar/tools-editors-registry";
-import { decodePin, getPinnedStrings } from "../sidebar/pinned-items";
+import { getCreatableItemLabel, getCreatableItems } from "../../api/creatable-items";
+import { editorCategories } from "../../api/editor-categories";
+import { createCreatableItemIcon } from "../sidebar/creatable-item-icon";
 import { minTabWidth, pinnedTabEncryptedWidth, pinnedTabWidth } from "./PageTab";
 import { PageTabView } from "./PageTabView";
 import type { PageModel } from "../../api/pages/PageModel";
 import "./PageTabs.css";
 import { EditorCategoriesPopoverView } from "./EditorCategoriesPopoverView";
 import { appWindow } from "../../api/window";
+import { boardRegistry } from "../../api/boards/board-registry";
 
 interface TabProjection {
     pages: PageModel[];
@@ -113,10 +115,10 @@ export class PageTabsView extends VanillaView<object> {
             if (
                 key === "browser-profiles"
                 || key === "editor-categories"
-                || key === "disabled-bundled-boards"
             ) this.updateAddMenu();
         });
         this.own(settingsSubscription);
+        this.own(boardRegistry.subscribeMembership(() => this.updateAddMenu()));
         this.own(subscribeBoardIconChanges(() => this.updateAddMenu()));
         this.own(onBoardDisplayTextChanged((_root, reason) => {
             if (reason === "invalidate") this.warmedBoardRoots.clear();
@@ -334,18 +336,16 @@ export class PageTabsView extends VanillaView<object> {
             if (item.boardRoot) this.warmBoard(item.boardRoot);
         }
         const items: MenuItem[] = [];
-        for (const stored of getPinnedStrings()) {
-            const ref = decodePin(stored);
+        for (const stored of editorCategories.allRefs()) {
+            const ref = editorCategories.decodeRef(stored);
             if (ref.kind === "editor") {
                 const item = allItems.find((candidate) => candidate.id === ref.id);
                 if (item) {
-                    // Pinned items are also displayed in the sidebar rail. Clone native icons so
-                    // opening this menu cannot move the rail's single-use DOM node to the menu.
-                    const icon = item.icon instanceof Node ? item.icon.cloneNode(true) : item.icon;
-                    items.push({ label: getCreatableItemLabel(item), icon, onClick: item.create });
+                    items.push({ label: getCreatableItemLabel(item), icon: createCreatableItemIcon(item), onClick: item.create });
                 }
             } else {
                 const root = ref.root;
+                if (!boardRegistry.isTrusted(root)) continue;
                 this.warmBoard(root);
                 items.push({
                     label: boardDisplayText(

@@ -6,12 +6,12 @@
  * switch-widget tasks consume.
  *
  * Mirrors `registeredTools`: a `TModel` singleton over `TGlobalState`, an in-memory
- * subscription to trust and bundled-source changes (NOT a filesystem watcher — CE7), a
+ * subscription to registry membership changes (NOT a filesystem watcher — CE7), a
  * full-rebuild `refresh()`, and sync getters + reactive hooks. A source change flips associations
  * live (CE3).
  *
  * Nested boards are unsupported by design: each board lives in its own folder, so `refresh()`
- * enumerates trusted roots directly and consumes the separate app-owned bundled registry (a board
+ * enumerates trusted roots directly and consumes enabled bundled entries from BoardRegistry (a board
  * only via an ancestor folder is intentionally not enumerated).
  */
 import { TModel } from "../../core/state/model";
@@ -21,13 +21,9 @@ import { BoardRoot } from "../../../shared/board/board-root";
 import { OwnershipRegistry } from "../../../shared/ownership-registry";
 import { errMessage } from "../../../shared/utils";
 import { editorRegistry } from "../../editors/base/editorRegistry";
-import { boardTrust } from "./board-trust";
+import { boardRegistry } from "./board-registry";
 import { boardInstallRegistry } from "./board-install-registry";
-import { settings } from "../settings";
-import { bundledBoardRegistry } from "./bundled-board-registry";
 import { invalidateBoardDisplayText } from "./board-display-text";
-import { BOARD_BRIDGE_VERSION } from "../../../shared/board-bridge-version";
-import { getBoardCompatibility } from "../../../shared/version-utils";
 import { urlPathFileName } from "../../content/link-utils";
 import {
     replaceProviderDeclarations,
@@ -44,11 +40,10 @@ import {
 import { createBoardProvider } from "../../content/board-provider-factory";
 import { matchesBoardMasks } from "./board-file-masks";
 import { matchesFileMask, matchesContentMasks, matchesFolderEditorMasks } from "../../../shared/board/board-masks";
-import { hostOwnsPipe } from "../../../shared/board/board-manifest-queries";
+import { boardManifestCompatibility, hostOwnsPipe } from "../../../shared/board/board-manifest-queries";
 import { type BoardContentProviderDeclaration, type BoardCapabilityDeclaration, type BoardEditorAssociation, type NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
 import { readBoardManifest } from "./board-manifest-io";
 import { stableBoardIdentity } from "../../../shared/board/board-stable-identity";
-import { BoardGrant } from "../../../shared/board/board-grant";
 import type { BoardSettingDeclaration } from "../../../shared/board/board-settings-declarations";
 import { validateLegacyCapabilityDeclaration } from "../../../shared/capability-contract";
 
@@ -74,7 +69,7 @@ export async function resolveBoardEditorId(editorId: string): Promise<string> {
     const boardRoot = parseBoardEditorId(editorId);
     if (boardRoot === null) return editorId;
 
-    const currentRoot = await bundledBoardRegistry.resolvePersistedRoot(boardRoot);
+    const currentRoot = await boardRegistry.resolvePersistedRoot(boardRoot);
     return currentRoot === undefined ? editorId : boardEditorId(currentRoot);
 }
 
@@ -171,10 +166,7 @@ const defaultState: CustomEditorRegistryState = {
 
 /** The claiming board's display name, for titling a page opened on a link that carries none. */
 function boardDisplayName(boardRoot: string): string | undefined {
-    const normalizedRoot = BoardRoot.from(boardRoot);
-    return customEditorRegistry.entries.find((entry) =>
-        normalizedRoot.equals(entry.boardRoot)
-    )?.name;
+    return customEditorRegistry.findByRoot(boardRoot)?.name;
 }
 
 function createBoardSchemeHooks(providerType: string, boardRoot: string): SchemeHooks {
@@ -407,11 +399,10 @@ function reportNewRegistrationIssues(
 }
 
 class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
+    private entriesByRootKey = new Map<string, CustomEditorMatch>();
     private initialized = false;
     private initialization: Promise<void> | undefined;
-    private pathsSub: (() => void) | undefined;
-    private bundledSub: (() => void) | undefined;
-    private settingsSub: (() => void) | undefined;
+    private membershipSub: (() => void) | undefined;
     /** Generation counter guarding refresh() against stale overwrites: overlapping refreshes
      *  (a rapid untrust+trust pair, e.g. renaming a board folder, fires one per mutation) can
      *  finish out of order, and an earlier refresh landing last would clobber the newer entry
@@ -422,15 +413,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         super(new TGlobalState(defaultState));
         // In-memory reactive subscription (NOT a filesystem watcher): re-enumerate on any
         // trust/untrust — this is what makes an untrust drop the association live (CE3/CE7).
-        this.pathsSub = boardTrust.subscribePaths(() => {
-            void this.refresh();
-        });
-        this.bundledSub = bundledBoardRegistry.subscribe(() => {
-            void this.refresh();
-        });
-        this.settingsSub = settings.onChanged.subscribe(({ key }) => {
-            if (key === "disabled-bundled-boards") void this.refresh();
-        });
+        this.membershipSub = boardRegistry.subscribeMembership(() => { void this.refresh(); });
     }
 
     /** Idempotent: load board sources then enumerate. Call before reading state. */
@@ -438,9 +421,8 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         if (this.initialized) return;
         if (!this.initialization) {
             this.initialization = (async () => {
-                await boardTrust.load();
+                await boardRegistry.load();
                 await boardInstallRegistry.load();
-                await bundledBoardRegistry.ensureInitialized();
                 await this.refresh();
                 this.initialized = true;
             })().finally(() => {
@@ -456,32 +438,25 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
     async refresh(): Promise<void> {
         invalidateBoardDisplayText();
         const gen = ++this.refreshGen;
-        await bundledBoardRegistry.ensureInitialized();
-        const roots = boardTrust.listPaths();
+        await boardRegistry.load();
+        const bundledManifests = new Map(boardRegistry.bundled().map((board) => [BoardRoot.from(board.root).key, board.manifest]));
         const installedBoards = boardInstallRegistry.listInstalled()
-            .filter((installed) => !boardTrust.isTrusted(installed.root));
+            .filter((installed) => !boardRegistry.isTrusted(installed.root));
         const makeSource = (root: string, manifest: NormalizedBoardManifest | null, origin: BoardRefreshSource["origin"]): BoardRefreshSource => {
             const boardName = manifest?.name?.trim() || fpBasename(root);
             const settingsNamespace = stableBoardIdentity(manifest);
             return { root, manifest, origin, boardName, settingsNamespace };
         };
-        const [trustedSources, installedSources] = await Promise.all([
-            Promise.all(roots.map(async (root) => makeSource(root, await readBoardManifest(root), "trusted"))),
+        const [permittedSources, installedSources] = await Promise.all([
+            Promise.all(boardRegistry.list().map(async (entry) => makeSource(
+                entry.root,
+                entry.origin === "bundled" ? bundledManifests.get(entry.key) ?? null : await readBoardManifest(entry.root),
+                entry.origin,
+            ))),
             Promise.all(installedBoards.map(async (installed) => makeSource(installed.root, await readBoardManifest(installed.root), "installed"))),
         ]);
-        const sources: BoardRefreshSource[] = [
-            ...trustedSources,
-            ...bundledBoardRegistry.enabledEntries()
-                .map((bundled) => makeSource(bundled.root, bundled.manifest, "bundled")),
-            ...installedSources,
-        ];
-        const compatibleSources = sources.filter((source) => getBoardCompatibility(
-            {
-                minBridgeVersion: source.manifest?.minBridgeVersion,
-                requiresMinBridgeVersion: !!source.manifest && BoardGrant.from(source.manifest.permissions).isDeclared(),
-            },
-            { bridgeVersion: BOARD_BRIDGE_VERSION },
-        ).compatible);
+        const sources: BoardRefreshSource[] = [...permittedSources, ...installedSources];
+        const compatibleSources = sources.filter((source) => boardManifestCompatibility(source.manifest).compatible);
         const boardSources = compatibleSources.filter(
             (source): source is BoardRefreshSource & { origin: "trusted" | "bundled" } =>
                 source.origin !== "installed",
@@ -531,6 +506,11 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         const urlMaskIssues = collectUrlMaskAxis(boardSources);
         if (gen !== this.refreshGen) return;
 
+        this.entriesByRootKey = new Map(entries.flatMap((entry) => {
+            const root = BoardRoot.tryFrom(entry.boardRoot);
+            return root ? [[root.key, entry] as const] : [];
+        }));
+
         const previousIssues = this.state.get().registrationIssues;
         const dependentSchemeIssues = new Set<CustomEditorRegistrationIssue>();
         unregisterBoardProviders();
@@ -551,6 +531,34 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
     /** All file-associated boards (sync, non-reactive). */
     get entries(): CustomEditorMatch[] {
         return this.state.get().entries;
+    }
+
+    /** Find the custom-editor association for a board root, ignoring path casing. */
+    findByRoot(root: string | null | undefined): CustomEditorMatch | undefined {
+        const key = root ? BoardRoot.tryFrom(root)?.key : undefined;
+        return key ? this.entriesByRootKey.get(key) : undefined;
+    }
+
+    /** Return the registry's original-case spelling of a root when it has an association. */
+    canonicalRoot(root: string): string {
+        return this.findByRoot(root)?.boardRoot ?? root;
+    }
+
+    /** Find a board association only when it also claims the given folder. */
+    findFolderClaim(root: string, folderPath: string): CustomEditorMatch | undefined {
+        const match = this.findByRoot(root);
+        if (!match) return undefined;
+        const matchKey = BoardRoot.tryFrom(match.boardRoot)?.key;
+        if (!matchKey) return undefined;
+        return this.getBoardsForFolder(folderPath).find((entry) =>
+            BoardRoot.tryFrom(entry.boardRoot)?.key === matchKey
+        );
+    }
+
+    /** Resolve a persisted board editor id to its current custom-editor association. */
+    findByEditorId(editorId: string): CustomEditorMatch | undefined {
+        const root = parseBoardEditorId(editorId);
+        return root === null ? undefined : this.findByRoot(root);
     }
 
     /** Active trusted and bundled boards with normalized user-facing settings. */
@@ -616,12 +624,8 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
     }
 
     dispose(): void {
-        this.pathsSub?.();
-        this.pathsSub = undefined;
-        this.bundledSub?.();
-        this.bundledSub = undefined;
-        this.settingsSub?.();
-        this.settingsSub = undefined;
+        this.membershipSub?.();
+        this.membershipSub = undefined;
         // Drain the model's DisposableStore after existing teardown.
         super.dispose();
     }

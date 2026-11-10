@@ -66,9 +66,7 @@ import { boardSecondaryPanelId } from "./board-secondary";
 import type { BoardEditorModel } from "./BoardEditorModel";
 import type { BoardContentEditorModel } from "./BoardContentEditorModel";
 import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
-import { isBoardPermitted, subscribeBoardPermission } from "../../api/boards/board-access";
-import { boardTrust } from "../../api/boards/board-trust";
-import { isKeyInside } from "../../../shared/path-containment";
+import { boardRegistry } from "../../api/boards/board-registry";
 import { BoardGrant } from "../../../shared/board/board-grant";
 import { readBoardManifest } from "../../api/boards/board-manifest-io";
 import { loadBoardI18n } from "../../api/boards/board-i18n";
@@ -438,12 +436,12 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         if (entry.gate) {
             const gate = entry.gate;
             const gatePassed = gate.kind === "trusted"
-                ? isBoardPermitted(this.props.boardRoot)
+                ? boardRegistry.isPermitted(this.props.boardRoot)
                 : gate.kind === "main"
                 ? this.isMain
                 : this.isMain
                     && this.props.model.frames.get(BOARD_CDP_TAB) === context.frame
-                    && isBoardPermitted(this.props.boardRoot)
+                    && boardRegistry.isPermitted(this.props.boardRoot)
                     && (gate.kind !== "mainTrustedText"
                         || ("text" in message && typeof message.text === "string"));
             if (!gatePassed) {
@@ -499,13 +497,13 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         }
         this.lastPageVisibility = this.getPageVisibility();
         this.ownSubscription(pagesModel.state.subscribe(() => this.updatePageVisibility()));
-        this.ownSubscription(boardTrust.subscribeGrants((changedRoots) => {
+        this.ownSubscription(boardRegistry.subscribe((change) => {
             const boardKey = BoardRoot.from(this.props.boardRoot).key;
-            if (!changedRoots.some((root) => isKeyInside(root, boardKey) || isKeyInside(boardKey, root))) return;
+            if (!change.keys.includes(boardKey)) return;
             void this.refreshIframeGrant();
         }));
-        this.ownSubscription(subscribeBoardPermission(() => {
-            if (!isBoardPermitted(this.props.boardRoot)) {
+        this.ownSubscription(boardRegistry.subscribeMembership(() => {
+            if (!boardRegistry.isPermitted(this.props.boardRoot)) {
                 if (this.isMain) this.props.model.setWorking(false);
                 this.props.model.clearStatusBarItemsForFrame(this.generation);
                 this.props.onStatusBarClear?.(this.generation);
@@ -605,7 +603,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     private async createIframe(): Promise<void> {
         const host = this.host;
         if (!host || this.iframe) return;
-        const grant = await boardTrust.getGrant(this.props.boardRoot);
+        const grant = boardRegistry.grant(this.props.boardRoot);
         if (!this.live || host !== this.host || !grant || this.iframe) return;
         const { entry = "index.html", view = "main" } = this.props;
         const iframe = document.createElement("iframe");
@@ -628,7 +626,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     }
 
     private async refreshIframeGrant(): Promise<void> {
-        const grant = await boardTrust.getGrant(this.props.boardRoot);
+        const grant = boardRegistry.grant(this.props.boardRoot);
         if (!this.live || BoardGrant.same(grant, this.iframeGrant)) return;
         const iframe = this.iframe;
         if (this.isMain) this.props.model.setWorking(false);
@@ -1052,7 +1050,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const contentWindow = frame?.contentWindow;
         const model = this.props.model;
         if (!this.live || !this.isMain || generation !== this.generation || !host || !frame || !contentWindow
-            || model.frames.get(BOARD_CDP_TAB) !== frame || !isBoardPermitted(this.props.boardRoot)) return;
+            || model.frames.get(BOARD_CDP_TAB) !== frame || !boardRegistry.isPermitted(this.props.boardRoot)) return;
         const message: BoardStatusBarActionMsg = { __persephone: "statusBar:action", id: event.id };
         try { contentWindow.postMessage(message, `board://${host}`); } catch { /* frame replaced */ }
     }
@@ -1063,7 +1061,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const frame = this.iframe;
         const contentWindow = frame?.contentWindow;
         if (!this.live || !this.isMain || generation !== this.generation || !host || !frame || !contentWindow
-            || this.props.model.frames.get(BOARD_CDP_TAB) !== frame || !isBoardPermitted(this.props.boardRoot)) return;
+            || this.props.model.frames.get(BOARD_CDP_TAB) !== frame || !boardRegistry.isPermitted(this.props.boardRoot)) return;
         const message: BoardMuteToggleMsg = { __persephone: "page:muteToggle" };
         try { contentWindow.postMessage(message, `board://${host}`); } catch { /* frame replaced */ }
     }
@@ -1095,7 +1093,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const model = this.props.model;
         if (!this.live || !this.isMain || !host || !frame || !contentWindow
             || model.frames.get(BOARD_CDP_TAB) !== frame
-            || !isBoardPermitted(this.props.boardRoot)) return;
+            || !boardRegistry.isPermitted(this.props.boardRoot)) return;
         const message: BoardToolbarControlEventMsg = {
             __persephone: "toolbar:control",
             id: event.id,
@@ -1175,7 +1173,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const contentWindow = frame?.contentWindow;
         if (!this.live || !host || !frame || !contentWindow
             || this.props.model.frames.get(this.tabId) !== frame
-            || !isBoardPermitted(this.props.boardRoot)) {
+            || !boardRegistry.isPermitted(this.props.boardRoot)) {
             return Promise.reject(new Error("The board frame is unavailable or untrusted."));
         }
         const generation = this.generation;
@@ -1403,7 +1401,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const generation = this.generation;
         let reply: BoardCapabilityInvokeResultMsg;
         try {
-            if (!isBoardPermitted(this.props.boardRoot)) {
+            if (!boardRegistry.isPermitted(this.props.boardRoot)) {
                 throw new CapabilityError("untrusted", "The board is no longer trusted.");
             }
             const invocation = await invokeCapabilityOutcome(message.id, message.payload, {
@@ -1505,8 +1503,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
 
         let reply: BoardContentOpenResultMsg;
         try {
-            if (!isBoardPermitted(this.props.boardRoot)) throw new Error("This board is not trusted.");
-            const grant = (await boardTrust.getGrant(this.props.boardRoot)) ?? BoardGrant.NONE;
+            if (!boardRegistry.isPermitted(this.props.boardRoot)) throw new Error("This board is not trusted.");
+            const grant = boardRegistry.grant(this.props.boardRoot) ?? BoardGrant.NONE;
             if (/^https?:/i.test(request.link) && grant.networkMode() === false) throw BoardGrant.deny("network");
             if (typeof request.link !== "string") throw new Error("content.open() requires a link string.");
             if (request.timeoutMs !== undefined
@@ -1580,7 +1578,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const generation = this.generation;
         let reply: BoardNavigationReturnUrlResultMsg;
         try {
-            if (!isBoardPermitted(this.props.boardRoot)) throw new Error("This board is not trusted.");
+            if (!boardRegistry.isPermitted(this.props.boardRoot)) throw new Error("This board is not trusted.");
             if (model.frames.get(this.tabId) !== frame || !frame.contentWindow) {
                 throw new Error("The board frame is unavailable.");
             }
@@ -1611,7 +1609,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         frame: HTMLIFrameElement,
     ): void {
         const generation = this.generation;
-        const reply = isBoardPermitted(this.props.boardRoot)
+        const reply = boardRegistry.isPermitted(this.props.boardRoot)
             ? resolveBoardOpenContent(request)
             : { error: "This board is not trusted." };
         const message: BoardOpenContentResultMsg = {

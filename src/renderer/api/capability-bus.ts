@@ -12,7 +12,7 @@ import type {
 } from "../../ipc/capability-bus-channels";
 import { errMessage } from "../../shared/utils";
 import { toCodedError, type CodedError } from "../../shared/coded-error";
-import { isBoardPermitted, subscribeBoardPermission } from "./boards/board-access";
+import { boardRegistry } from "./boards/board-registry";
 import { pagesModel } from "./pages";
 import type { CapabilityInvokeOptions } from "./types/capabilities";
 import { windowClosing } from "../core/state/events";
@@ -178,7 +178,7 @@ class CapabilityBus {
     private transport: CapabilityTransport | undefined;
 
     constructor() {
-        subscribeBoardPermission(() => this.settleUntrustedRequests());
+        boardRegistry.subscribeMembership(() => this.settleUntrustedRequests());
         windowClosing.subscribe(() => this.settleAll("cancelled", true));
     }
 
@@ -193,7 +193,7 @@ class CapabilityBus {
     ): Promise<unknown> {
         const requestId = crypto.randomUUID();
         if (registration.origin === "board"
-            && (!registration.boardRoot || !isBoardPermitted(registration.boardRoot))) {
+            && (!registration.boardRoot || !boardRegistry.isPermitted(registration.boardRoot))) {
             return Promise.reject(new CapabilityError(
                 "untrusted",
                 `Capability handler "${registration.handlerKey}" is not trusted.`,
@@ -392,7 +392,7 @@ class CapabilityBus {
         for (const pending of [...this.pending.values()]) {
             const { registration } = pending;
             if (registration.origin !== "board" || !registration.boardRoot) continue;
-            if (isBoardPermitted(registration.boardRoot)) continue;
+            if (boardRegistry.isPermitted(registration.boardRoot)) continue;
             this.settle(
                 pending.request.requestId,
                 new CapabilityError("untrusted", "The capability handler board is no longer trusted.", pending.request.requestId),

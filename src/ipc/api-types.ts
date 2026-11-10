@@ -186,8 +186,7 @@ export enum Endpoint {
     downloadBoardArchive = "downloadBoardArchive",
     cancelBoardDownload = "cancelBoardDownload",
     setBoardTrust = "setBoardTrust",
-    getBoardTrustPaths = "getBoardTrustPaths",
-    getBoardPermissionGrants = "getBoardPermissionGrants",
+    getBoardSnapshot = "getBoardSnapshot",
     getBoardServiceProviders = "getBoardServiceProviders",
     connectHostServiceChannel = "connectHostServiceChannel",
     insertVoiceTypingText = "insertVoiceTypingText",
@@ -197,7 +196,6 @@ export enum Endpoint {
     clearTranscriptLoopback = "clearTranscriptLoopback",
     setVoiceTypingConfig = "setVoiceTypingConfig",
     setVoiceTypingState = "setVoiceTypingState",
-    getBoardFileAccessGrants = "getBoardFileAccessGrants",
     revokeBoardFileAccessGrant = "revokeBoardFileAccessGrant",
     grantBoardSourceReads = "grantBoardSourceReads",
     getBoardMcpEndpoint = "getBoardMcpEndpoint",
@@ -463,9 +461,7 @@ export type Api = {
     [Endpoint.cancelBoardDownload]: (installId: string) => Promise<void>;
     /** Request a main-owned trust mutation and return its authoritative path list. */
     [Endpoint.setBoardTrust]: (boardRoot: string, trusted: boolean, expectedPermissions?: NormalizedBoardPermissions, expectedUses?: import("../shared/board/board-service-declarations").BoardServiceUseDeclaration[]) => Promise<string[]>;
-    /** Read the main-owned trusted path list. */
-    [Endpoint.getBoardTrustPaths]: () => Promise<string[]>;
-    [Endpoint.getBoardPermissionGrants]: () => Promise<import("./module-service-channels").TrustedBoardSnapshotEntry[]>;
+    [Endpoint.getBoardSnapshot]: () => Promise<import("./board-snapshot-channels").BoardSnapshot>;
     [Endpoint.getBoardServiceProviders]: (interfaceId: string) => Promise<import("./board-bridge-channels").BoardServiceProvider[]>;
     [Endpoint.connectHostServiceChannel]: (request: HostServiceChannelRequest) => Promise<string>;
     [Endpoint.insertVoiceTypingText]: (request: { sessionId: string; text: string; deferClipboard?: boolean }) => Promise<{ copied: boolean }>;
@@ -475,7 +471,6 @@ export type Api = {
     [Endpoint.clearTranscriptLoopback]: () => Promise<void>;
     [Endpoint.setVoiceTypingConfig]: (request: { shortcut: string; translateShortcut: string }) => Promise<void>;
     [Endpoint.setVoiceTypingState]: (request: { state: "idle" | "recording" | "transcribing" }) => Promise<void>;
-    [Endpoint.getBoardFileAccessGrants]: (boardRoot: string) => Promise<{ folderGrants: string[]; fileGrants: string[] }>;
     [Endpoint.revokeBoardFileAccessGrant]: (boardRoot: string, kind: "folder" | "file", canonicalPath: string) => Promise<void>;
     [Endpoint.grantBoardSourceReads]: (boardRoot: string, sourcePaths: string[], contextPaths?: string[]) => Promise<void>;
     [Endpoint.getBoardMcpEndpoint]: () => Promise<string>;
@@ -562,7 +557,7 @@ export enum EventEndpoint {
     // Board-archive download progress — throttled byte progress per installId.
     eBoardInstallProgress = "eBoardInstallProgress",
     eModuleServiceStatusChanged = "eModuleServiceStatusChanged",
-    eBoardTrustChanged = "eBoardTrustChanged",
+    eBoardSnapshotChanged = "eBoardSnapshotChanged",
     eCapabilityIndexSnapshot = "eCapabilityIndexSnapshot",
     eCapabilityIndexChanged = "eCapabilityIndexChanged",
     eCapabilityOpen = "eCapabilityOpen",
@@ -624,7 +619,7 @@ export type EventApi = {
     // throttled byte progress; the install UI renders it from editor state.
     [EventEndpoint.eBoardInstallProgress]: EventObject<{ installId: string; receivedBytes: number; totalBytes: number }>;
     [EventEndpoint.eModuleServiceStatusChanged]: EventObject<BoardServiceStatus>;
-    [EventEndpoint.eBoardTrustChanged]: EventObject<string[]>;
+    [EventEndpoint.eBoardSnapshotChanged]: EventObject<import("./board-snapshot-channels").BoardSnapshot>;
     [EventEndpoint.eCapabilityIndexSnapshot]: EventObject<ReturnType<typeof import("../main/capability-registry").capabilityRegistry.snapshot>>;
     [EventEndpoint.eCapabilityIndexChanged]: EventObject<number>;
     [EventEndpoint.eSiteExtensionTrustChanged]: EventObject<SiteExtensionTrustSnapshot>;

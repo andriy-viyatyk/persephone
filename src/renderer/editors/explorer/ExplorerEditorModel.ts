@@ -17,7 +17,7 @@ import { createFolderIconElement } from "../../components/icons/icon-elements";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { openToolset as openToolsetLink } from "../../content/persephone-toolset-link";
-import { boardTrust } from "../../api/boards/board-trust";
+import { boardRegistry } from "../../api/boards/board-registry";
 import { toolsTrust } from "../../api/tools/tools-trust";
 import { registeredTools } from "../../api/tools/registered-tools";
 import { readToolsManifest } from "../../api/tools/tools-manifest";
@@ -248,7 +248,7 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
     listBoards(): string[] {
         if (!this.rootPath) return [];
         const rootKey = this.rootPath.replace(/\\/g, "/").toLowerCase();
-        return boardTrust.listPaths()
+        return boardRegistry.roots("trusted")
             .filter(path => {
                 const key = path.replace(/\\/g, "/").toLowerCase();
                 return key === rootKey || key.startsWith(rootKey + "/");

@@ -8,10 +8,11 @@ import type {
 } from "../../api/types/board-info-editor";
 import type { BoardInfoEditorModel } from "../../editors/board-info/BoardInfoEditorModel";
 import { boardInstallRegistry } from "../../api/boards/board-install-registry";
-import { boardTrust } from "../../api/boards/board-trust";
+import { boardRegistry } from "../../api/boards/board-registry";
 import { requestBoardTrust } from "../../api/boards/request-board-trust";
 import { boardPermissionLines, FULL_ACCESS_DETAIL } from "../../api/boards/board-permission-copy";
 import { BoardGrant } from "../../../shared/board/board-grant";
+import type { BoardEditorKind } from "../../../shared/board/board-manifest-schema";
 // After Phase 2 extraction, UI consumers use t(key) and agent-facing output uses englishMessage(key) with the same catalog key.
 import { publishedBoards } from "../../api/boards/published-boards";
 import { ui } from "../../api/ui";
@@ -83,7 +84,7 @@ or openBoard member.
 
 Downloading is inert and untrusted. Registration is the only trust-granting step and remains the
 user click through "Trust this board?"; no facade method accepts or returns a trust decision, calls
-boardTrust.trust(), or bypasses that dialog. The separate environment-variable namespace collision
+boardRegistry.trust(), or bypasses that dialog. The separate environment-variable namespace collision
 confirmation follows the trust prompt. All renderer dialog answers are made through the live
 dialogs[0] adapter: this includes Trust this board?, the namespace-collision dialog, and generic
 confirmations titled "Folder already exists", "Remove board", "Delete board", and "Board is open".
@@ -221,7 +222,7 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
                 }
                 : {}),
             root: properties.root,
-            trusted: properties.missing ? false : boardTrust.isTrusted(properties.root),
+            trusted: properties.missing ? false : boardRegistry.isTrusted(properties.root),
             isCatalogInstall: properties.isCatalogInstall,
             ...(properties.catalogId !== undefined ? { catalogId: properties.catalogId } : {}),
             ...(properties.installedVersion !== undefined ? { installedVersion: properties.installedVersion } : {}),
@@ -284,7 +285,7 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
             folderEditorMasks?: string[];
             folderEditorPriority?: number;
             editorName?: string;
-            editorKind?: "simple" | "content-host" | "stream-host";
+            editorKind?: BoardEditorKind;
             standalone?: boolean;
             minAppVersion?: string;
             screenshotUrl?: string;
@@ -300,7 +301,7 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
             installState = "downloading";
         } else if (installedEntry) {
             root = installedEntry.root;
-            installState = boardTrust.isTrusted(root) ? "registered" : "downloaded";
+            installState = boardRegistry.isTrusted(root) ? "registered" : "downloaded";
         } else if (installUi?.phase === "error") {
             installState = "error";
         }

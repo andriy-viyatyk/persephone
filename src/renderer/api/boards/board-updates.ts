@@ -2,22 +2,15 @@
  * Board update detection + safe-swap orchestration.
  *
  * Derives "a newer COMPATIBLE catalog version than what is installed" from the catalog ×
- * the install registry, and runs the update via board-install's `updateBoard` behind the
- * open-pages / busy precondition (close-pages dialog) required by the epic Design. Kept
+ * the install registry, and runs the update through BoardLifecycle's open-pages / busy precondition. Kept
  * separate from the toast (BoardEditorModel) and the sidebar (TrustedBoardsList) so the two
  * surfaces agree on what "an update" is and how it is applied.
  */
 import { compareVersions } from "../../../shared/version-utils";
-import type { PublishedBoardArchive, PublishedBoardInfo } from "../../../ipc/api-param-types";
-import { ui } from "../ui";
+import type { PublishedBoardInfo } from "../../../ipc/api-param-types";
 import { publishedBoards } from "./published-boards";
 import { boardInstallRegistry } from "./board-install-registry";
-import { ensureBoardIdle, isBoardIdle } from "./board-idle";
-import { installVersion } from "./board-install";
-import { errMessage } from "../../../shared/utils";
-import { t } from "../../../shared/i18n/t";
-import { getActiveLocale } from "../../../shared/i18n/active-locale";
-import { publishedBoardDisplayText } from "./published-board-display-text";
+import { boardLifecycle } from "./board-lifecycle";
 
 export interface BoardUpdate {
     /** Installed root (the board folder), original case. */
@@ -66,46 +59,14 @@ export function listBoardUpdates(): BoardUpdate[] {
         .filter((update): update is BoardUpdate => !!update);
 }
 
-/**
- * Preconditioned, user-consented install of a SPECIFIC version into `root` (update, rollback, or
- * forward): ensure idle (close-pages dialog if needed) → swap via `installVersion`, re-checking
- * idleness right before the swap (a page could reopen during the download). Returns whether the
- * swap happened. Never throws — surfaces via toasts.
- */
-export async function runBoardVersionInstall(args: {
-    root: string;
-    id: string;
-    name: string;
-    archive: PublishedBoardArchive;
-    version: string;
-}): Promise<boolean> {
-    if (!(await ensureBoardIdle(args.root))) return false;
-    const catalogEntry = publishedBoards.getCatalog().find((board) => board.id === args.id);
-    const displayName = catalogEntry
-        ? publishedBoardDisplayText(catalogEntry, getActiveLocale()).name
-        : args.name;
-    try {
-        await ui.showProgress(
-            installVersion(args.id, args.archive, args.version, {
-                preSwap: async () => isBoardIdle(args.root),
-            }),
-            t("api.installingBoard", { name: displayName, version: args.version }),
-        );
-        void ui.notify(t("api.boardInstalled", { name: displayName, version: args.version }), "success");
-        return true;
-    } catch (err) {
-        void ui.notify(t("api.boardInstallFailed", { error: errMessage(err) }), "error");
-        return false;
-    }
-}
-
-/** Update to the catalog-latest version (thin wrapper over `runBoardVersionInstall`). */
+/** Update to the catalog-latest version through the shared board lifecycle. */
 export async function runBoardUpdate(update: BoardUpdate): Promise<boolean> {
-    return runBoardVersionInstall({
+    return boardLifecycle.installVersion({
         root: update.root,
         id: update.id,
         name: update.entry.name,
         archive: update.entry.archive,
         version: update.latestVersion,
+        minAppVersion: update.entry.minAppVersion,
     });
 }

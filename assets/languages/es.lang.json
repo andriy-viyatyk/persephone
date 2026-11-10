@@ -47,6 +47,7 @@
     "api.actionFailed": "{action}: {error}",
     "api.autoloadScriptError": "Error del script de carga automática: {message}",
     "api.boardBusyDeleting": "Este tablero está en ejecución. Deténlo antes de eliminarlo.",
+    "api.boardBusyRemoving": "Este tablero está en ejecución. Deténlo antes de quitarlo.",
     "api.boardBusyUpdating": "Este tablero está en ejecución. Deténlo antes de actualizarlo.",
     "api.boardInstalled": "Se instaló {name} v{version}.",
     "api.boardInstallFailed": "No se pudo instalar: {error}",
@@ -54,6 +55,11 @@
       "one": "Este tablero está abierto en {count} página y debes cerrarla antes de eliminarlo. La página seguirá abierta y quedará vacía. ¿Quieres continuar?",
       "many": "Este tablero está abierto en {count} páginas y debes cerrarlas antes de eliminarlo. Las páginas seguirán abiertas y quedarán vacías. ¿Quieres continuar?",
       "other": "Este tablero está abierto en {count} páginas y debes cerrarlas antes de eliminarlo. Las páginas seguirán abiertas y quedarán vacías. ¿Quieres continuar?"
+    },
+    "api.boardOpenRemoving": {
+      "one": "Este tablero está abierto en {count} página y debe cerrarse antes de quitarlo. La página permanecerá abierta y vacía. ¿Continuar?",
+      "many": "Este tablero está abierto en {count} páginas y debe cerrarse antes de quitarlo. Las páginas permanecerán abiertas y vacías. ¿Continuar?",
+      "other": "Este tablero está abierto en {count} páginas y debe cerrarse antes de quitarlo. Las páginas permanecerán abiertas y vacías. ¿Continuar?"
     },
     "api.boardOpenTitle": "El tablero está abierto",
     "api.boardOpenUpdating": {
@@ -3551,6 +3557,8 @@
     "shell.ungroup": "460af6ed",
     "shell.mutePage": "724c00d7",
     "shell.unmutePage": "af4c43a2",
-    "tools.siteExtensionActionFailed": "96558212"
+    "tools.siteExtensionActionFailed": "96558212",
+    "api.boardBusyRemoving": "fc62a483",
+    "api.boardOpenRemoving": "6426988c"
   }
 }

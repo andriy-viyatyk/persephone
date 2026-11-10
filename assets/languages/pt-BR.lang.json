@@ -47,6 +47,7 @@
     "api.actionFailed": "{action}: {error}",
     "api.autoloadScriptError": "Erro no script de carregamento automático: {message}",
     "api.boardBusyDeleting": "Este quadro está em execução. Pare-o antes de excluí-lo.",
+    "api.boardBusyRemoving": "Este quadro está em execução. Pare-o antes de removê-lo.",
     "api.boardBusyUpdating": "Este quadro está em execução. Pare-o antes de atualizá-lo.",
     "api.boardInstalled": "{name} v{version} instalado.",
     "api.boardInstallFailed": "Falha na instalação: {error}",
@@ -54,6 +55,11 @@
       "one": "Este quadro está aberto em {count} página e precisa ser fechado antes da exclusão. A página permanecerá aberta e ficará vazia. Continuar?",
       "many": "Este quadro está aberto em {count} páginas e precisa ser fechado antes da exclusão. As páginas permanecerão abertas e ficarão vazias. Continuar?",
       "other": "Este quadro está aberto em {count} páginas e precisa ser fechado antes da exclusão. As páginas permanecerão abertas e ficarão vazias. Continuar?"
+    },
+    "api.boardOpenRemoving": {
+      "one": "Este quadro está aberto em {count} página e precisa ser fechado antes da remoção. A página continuará aberta e vazia. Continuar?",
+      "many": "Este quadro está aberto em {count} páginas e precisa ser fechado antes da remoção. As páginas continuarão abertas e vazias. Continuar?",
+      "other": "Este quadro está aberto em {count} páginas e precisa ser fechado antes da remoção. As páginas continuarão abertas e vazias. Continuar?"
     },
     "api.boardOpenTitle": "O quadro está aberto",
     "api.boardOpenUpdating": {
@@ -3551,6 +3557,8 @@
     "shell.ungroup": "460af6ed",
     "shell.mutePage": "724c00d7",
     "shell.unmutePage": "af4c43a2",
-    "tools.siteExtensionActionFailed": "96558212"
+    "tools.siteExtensionActionFailed": "96558212",
+    "api.boardBusyRemoving": "fc62a483",
+    "api.boardOpenRemoving": "6426988c"
   }
 }

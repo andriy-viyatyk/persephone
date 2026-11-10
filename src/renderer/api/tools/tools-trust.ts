@@ -10,9 +10,14 @@
  * action: the confirmation dialog on agent-initiated registration or the management
  * UI.
  *
- * Structured after `board-trust.ts` (reactive `TGlobalState` + lazy `load()` + the `fs`
- * data-file helpers) with two deliberate differences:
- *   1. **Exact-path matching**, NOT board-trust's inherited/outer-wins containment. A
+ * This list is renderer-owned (`trustedTools.txt`), read and written through `app.fs`. It is
+ * NOT mirrored from main or synchronized across windows (unlike `board-registry.ts` and
+ * `site-extension-trust.ts`, which mirror main-owned state through `MainSnapshotMirror`). A
+ * toolset registered in one window is not visible in another window's `registeredTools` until
+ * its next `load()`. Moving this state to main is PLAT-7 step 4 and has not been done.
+ *
+ * Differences from board trust:
+ *   1. **Exact-path matching**, NOT the board registry's inherited/outer-wins containment. A
  *      registered path is a toolset *leaf* (one folder = one toolset, one fixed-name
  *      `tools-manifest.json`); parent-folder inheritance would wrongly collapse a nested or
  *      sibling toolset out of enumeration.
@@ -35,7 +40,7 @@ interface ToolsTrustState {
 class ToolsTrust {
     private readonly state = new TGlobalState<ToolsTrustState>({ paths: [] });
 
-    /** Load the registered list from disk into reactive state. Lazy, like board-trust. */
+    /** Load the registered list from disk into reactive state. Lazy; consumers call it on mount. */
     async load(): Promise<void> {
         await fs.prepareDataFile(trustedToolsFileName, "");
         const data = await fs.getDataFile(trustedToolsFileName);

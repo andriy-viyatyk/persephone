@@ -64,10 +64,6 @@ export class BoardFileAccessService {
         return candidate;
     }
 
-    async getPersistedGrants(boardRoot: string): Promise<{ folderGrants: string[]; fileGrants: string[] }> {
-        return boardTrustService.getFileAccessGrants(boardRoot);
-    }
-
     async planRemember(boardRoot: string, kind: GrantKind, requestedPath: string): Promise<RememberPlan> {
         if (await this.isRemembered(boardRoot, kind, requestedPath)) return { kind: "covered" };
         const grant = await boardTrustService.getGrant(boardRoot);

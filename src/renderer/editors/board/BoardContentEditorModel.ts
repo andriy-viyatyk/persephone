@@ -65,6 +65,10 @@ export class BoardContentEditorModel extends BoardEditorModel {
         return root ? boardEditorId(root) : "board-view";
     }
 
+    override get editorKind() {
+        return "content-host" as const;
+    }
+
     /** While on the board, offer every built-in editor that accepts the host, plus this board.
      *  This uses the same `findEditorsAccepting(host)` call as built-in editors, so the options
      *  match theirs; for example, a `*.todo.json` board offers `Text Editor`, `ToDo`, and `Todo`.

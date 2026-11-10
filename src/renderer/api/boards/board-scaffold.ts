@@ -1,7 +1,7 @@
 import { api } from "../../../ipc/renderer/api";
 import { fs } from "../fs";
 import { ui } from "../ui";
-import { boardTrust } from "./board-trust";
+import { boardRegistry } from "./board-registry";
 import { fpJoin } from "../../core/utils/file-path";
 import { stampNewBoardManifest } from "./board-manifest-io";
 import { errMessage } from "../../../shared/utils";
@@ -127,7 +127,7 @@ export async function createBoardFromTemplate(name: string, dir: string, templat
     await stampNewBoardManifest(boardRoot, name);
     // Auto-trust a Persephone-created board: provenance-based registry write,
     // never a manifest self-declaration. Covers the list editor + the MCP create.
-    await boardTrust.trust(boardRoot);
+    await boardRegistry.trust(boardRoot);
     return boardRoot;
 }
 

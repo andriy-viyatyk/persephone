@@ -20,6 +20,7 @@ import type {
     IBrowserEvaluateOptions,
     IBrowserEvaluateFunction,
 } from "./browser-editor";
+import type { BoardEditorKind } from "./common";
 
 export type BoardRenderState = "trusted" | "bundled" | "untrusted" | "not-found";
 
@@ -101,7 +102,7 @@ export interface IBoardManifest {
     readonly folderEditorPriority?: number;
     readonly editorPriority?: number;
     readonly editorName?: string;
-    readonly editorKind?: "simple" | "content-host" | "stream-host";
+    readonly editorKind?: BoardEditorKind;
     readonly editorSources?: "local" | "any";
     readonly secondaryViews?: readonly IBoardSecondaryViewDeclaration[];
     readonly guides?: string;

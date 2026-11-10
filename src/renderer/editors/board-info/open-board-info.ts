@@ -57,13 +57,20 @@ export async function transitionPageToBoardInfo(
  * editor, this creates a fresh Board Info page and focuses it, leaving all other pages untouched.
  * `catalogId` → install mode; `boardRoot` → properties mode.
  */
+export interface BoardInfoPageHandle {
+    readonly pageId: string;
+    /** Fires with the board root after the user registers the downloaded board. Returns the unsubscribe. */
+    onInstalled(listener: (root: string) => void): () => void;
+}
+
 export async function openBoardInfoPage(
-    opts: { catalogId?: string; boardRoot?: string },
-): Promise<void> {
+    opts: { catalogId?: string; boardRoot?: string; installDir?: string },
+): Promise<BoardInfoPageHandle> {
     const { app } = await import("../../api/app");
     const model = new BoardInfoEditorModel(
         new TComponentState({ ...getDefaultBoardInfoEditorState(), ...opts }),
     );
     await model.restore();
-    app.pages.addPage(model as unknown as EditorModel);
+    const page = app.pages.addPage(model as unknown as EditorModel);
+    return { pageId: page.id, onInstalled: (listener) => model.installed.subscribe(listener) };
 }

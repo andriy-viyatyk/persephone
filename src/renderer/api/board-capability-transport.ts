@@ -8,7 +8,6 @@ import {
 } from "../../ipc/capability-bus-channels";
 import { CapabilityError } from "./capability-bus";
 import { pagesModel } from "./pages";
-import { boardPagesForRoot } from "./boards/board-idle";
 import type { PageModel } from "./pages/PageModel";
 import { toCodedError } from "../../shared/coded-error";
 
@@ -148,7 +147,7 @@ class BoardCapabilityTransport implements CapabilityTransport {
         const rootKey = BoardRoot.from(root).key;
         const producesPage = registration.alwaysOpensNewPage === true;
         let reservation = producesPage ? undefined : reservationsByRoot.get(rootKey);
-        const existingPage = !producesPage && !reservation ? boardPagesForRoot(root)[0] : undefined;
+        const existingPage = !producesPage && !reservation ? pagesModel.query.findPagesByBoardRoot(root)[0] : undefined;
         if (!reservation) {
             reservation = this.createReservation(rootKey, root);
             if (!producesPage) reservationsByRoot.set(rootKey, reservation);

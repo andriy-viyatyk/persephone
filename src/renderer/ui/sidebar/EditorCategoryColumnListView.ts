@@ -1,7 +1,12 @@
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { isPinnedRef, type EditorCategoryDragData } from "./pinned-items";
 import { TraitTypeId, getTraitDragData, hasTraitDragData, setTraitDragData } from "../../core/traits";
+import { editorCategories, type CategoryRef } from "../../api/editor-categories";
 import "./EditorCategoryColumnListView.css";
+
+export type EditorCategoryDragData =
+    | { kind: "source"; ref: CategoryRef }
+    | { kind: "category-item"; categoryId: string; ref: CategoryRef }
+    | { kind: "category-block"; categoryId: string };
 
 export interface EditorCategoryColumnRow {
     ref: string;
@@ -155,7 +160,7 @@ export class EditorCategoryColumnListView extends VanillaView<EditorCategoryColu
 function isEditorCategoryDragData(value: unknown): value is EditorCategoryDragData {
     if (!value || typeof value !== "object") return false;
     const data = value as { kind?: unknown; ref?: unknown; categoryId?: unknown };
-    if (data.kind === "source") return isPinnedRef(data.ref);
-    if (data.kind === "category-item") return typeof data.categoryId === "string" && isPinnedRef(data.ref);
+    if (data.kind === "source") return editorCategories.isRef(data.ref);
+    if (data.kind === "category-item") return typeof data.categoryId === "string" && editorCategories.isRef(data.ref);
     return data.kind === "category-block" && typeof data.categoryId === "string";
 }

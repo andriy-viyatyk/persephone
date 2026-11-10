@@ -1,8 +1,5 @@
 import { BoardRoot } from "../../shared/board/board-root";
-import {
-    EventEndpoint,
-    type ModuleServicePortPayload,
-} from "../../ipc/api-types";
+import type { ModuleServicePortPayload } from "../../ipc/api-types";
 import {
     MAX_OUTSTANDING_REQUESTS_PER_SERVICE,
     LEASE_LOST_CODE,
@@ -15,9 +12,9 @@ import {
     type RendererServiceMessage,
 } from "../../ipc/module-service-channels";
 import { api } from "../../ipc/renderer/api";
-import rendererEvents from "../../ipc/renderer/renderer-events";
 import { errMessage } from "../../shared/utils";
 import { codedError, toCodedError } from "../../shared/coded-error";
+import { moduleServiceStatus } from "./module-service-status";
 
 interface PendingRequest {
     resolve: (value: unknown) => void;
@@ -48,6 +45,7 @@ interface ProviderStatusIntent {
 
 interface ServiceLeaseClient {
     boardRoot: string;
+    unsubscribeStatus: () => void;
     state: "idle" | "attaching" | "attached" | "lost";
     port?: MessagePort;
     generation?: number;
@@ -68,7 +66,6 @@ interface ServiceLeaseClient {
 
 const clients = new Map<string, ServiceLeaseClient>();
 let portSubscription: (() => void) | undefined;
-let statusSubscription: (() => void) | undefined;
 
 function serviceError(error: unknown): Error & { code: string } {
     if (typeof error === "string") return codedError("service-error", error);
@@ -91,22 +88,15 @@ function ensureInitialized(): void {
     if (!portSubscription) {
         portSubscription = api.onModuleServicePort((payload, port) => receivePort(payload, port));
     }
-    if (!statusSubscription) {
-        statusSubscription = rendererEvents[EventEndpoint.eModuleServiceStatusChanged].subscribe((status) => {
-            const client = clients.get(BoardRoot.from(status.boardRoot).key);
-            if (!client) return;
-            const code = statusFailureCode(status);
-            if (code) loseLease(client, code);
-        });
-    }
 }
 
 function getClient(boardRoot: string): ServiceLeaseClient {
     const key = BoardRoot.from(boardRoot).key;
     let client = clients.get(key);
     if (!client) {
-        client = {
+        const createdClient: ServiceLeaseClient = {
             boardRoot,
+            unsubscribeStatus: () => undefined,
             state: "idle",
             pending: new Map(),
             capabilities: new Map(),
@@ -117,7 +107,12 @@ function getClient(boardRoot: string): ServiceLeaseClient {
             disposed: false,
             activeContentReads: 0,
         };
-        clients.set(key, client);
+        createdClient.unsubscribeStatus = moduleServiceStatus.subscribe(boardRoot, (status) => {
+            const code = statusFailureCode(status);
+            if (code) loseLease(createdClient, code);
+        });
+        clients.set(key, createdClient);
+        client = createdClient;
     }
     return client;
 }
@@ -546,10 +541,9 @@ function activeContentReads(boardRoot: string): number {
 
 function dispose(): void {
     portSubscription?.();
-    statusSubscription?.();
     portSubscription = undefined;
-    statusSubscription = undefined;
     for (const client of clients.values()) {
+        client.unsubscribeStatus();
         client.disposed = true;
         loseLease(client, "quit");
     }

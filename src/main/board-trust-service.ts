@@ -1,12 +1,12 @@
 import path from "node:path";
-import type { TrustedBoardSnapshotEntry } from "../ipc/module-service-channels";
+import type { DisabledBundledBoard } from "../ipc/board-snapshot-channels";
 import { SerialQueue } from "../shared/serial-queue";
 import type { BoardServiceUseDeclaration } from "../shared/board/board-service-declarations";
 import { BoardGrant } from "../shared/board/board-grant";
 import type { NormalizedBoardPermissions } from "../shared/board/board-permissions";
 import { BoardRoot } from "../shared/board/board-root";
 import { boardTrustStore, type TrustedBoardGrant } from "./board-trust-store";
-import { buildBoardTrustSnapshot, manifestPermissions, type BoardSource, type BoardTrustSnapshot, type BoardTrustSnapshotListener } from "./board-trust-snapshot-builder";
+import { buildBoardTrustSnapshot, manifestPermissions, withFileAccess, type BoardSource, type BoardTrustSnapshot, type BoardTrustSnapshotListener } from "./board-trust-snapshot-builder";
 import { append as appendBoardLog } from "./board-log";
 import { comparePathKey } from "./utils";
 import { readBoardManifest } from "./board-manifest-reader";
@@ -20,10 +20,9 @@ class BoardTrustService {
     private disabledBundledBoards = new Set<string>();
     private paths: string[] = [];
     private grants: TrustedBoardGrant[] = [];
-    private snapshot: BoardTrustSnapshot = { serviceSnapshot: { trustedPaths: [], boards: [] }, claims: [] };
+    private snapshot: BoardTrustSnapshot = { serviceSnapshot: { trustedPaths: [], boards: [] }, claims: [], entries: [], disabledBundled: [], change: "rebuild" };
     private readonly snapshotListeners = new Set<BoardTrustSnapshotListener>();
     private readonly boardAccessChangedListeners = new Set<BoardAccessChangedListener>();
-    private readonly trustChangedListeners = new Set<(trustedPaths: string[]) => void>();
 
     init(): Promise<void> {
         if (!this.initialization) {
@@ -50,11 +49,6 @@ class BoardTrustService {
         return () => this.snapshotListeners.delete(listener);
     }
 
-    onTrustChanged(listener: (trustedPaths: string[]) => void): () => void {
-        this.trustChangedListeners.add(listener);
-        return () => this.trustChangedListeners.delete(listener);
-    }
-
     current(): BoardTrustSnapshot {
         return this.snapshot;
     }
@@ -68,10 +62,6 @@ class BoardTrustService {
         return Promise.all(pending).then((): undefined => undefined);
     }
 
-    private notifyTrustChanged(): void {
-        for (const listener of [...this.trustChangedListeners]) listener([...this.paths]);
-    }
-
     private async notifyBoardAccessChanged(boardRoots: string[]): Promise<void> {
         const results = await Promise.allSettled(boardRoots.flatMap((boardRoot) =>
             [...this.boardAccessChangedListeners].map((listener) => listener(boardRoot))));
@@ -82,19 +72,9 @@ class BoardTrustService {
         }
     }
 
-    async getPaths(): Promise<string[]> {
-        await this.ready();
-        return [...this.paths];
-    }
-
     async refresh(): Promise<void> {
         await this.ready();
         await this.queue.run(async () => { await this.publish(await this.rebuild()); });
-    }
-
-    async getPermissionGrants(): Promise<Array<Omit<TrustedBoardSnapshotEntry, "capabilities" | "legacyCapabilities">>> {
-        await this.ready();
-        return this.snapshot.serviceSnapshot.boards.map(({ capabilities: _capabilities, legacyCapabilities: _legacyCapabilities, ...entry }) => entry);
     }
 
     async getGrant(boardRoot: string): Promise<BoardGrant | undefined> {
@@ -136,8 +116,8 @@ class BoardTrustService {
             grant[property] = values;
             await this.saveGrants(nextGrants);
             this.grants = nextGrants;
+            await this.publishFileAccessChange();
             await this.notifyBoardAccessChanged([boardRoot]);
-            this.notifyTrustChanged();
         });
     }
 
@@ -151,8 +131,8 @@ class BoardTrustService {
             grant[property] = (grant[property] ?? []).filter((value) => comparePathKey(value) !== comparePathKey(canonicalPath));
             await this.saveGrants(nextGrants);
             this.grants = nextGrants;
+            await this.publishFileAccessChange();
             await this.notifyBoardAccessChanged([boardRoot]);
-            this.notifyTrustChanged();
         });
     }
 
@@ -191,7 +171,6 @@ class BoardTrustService {
             const applied = this.publish(await this.rebuild());
             applied.catch((): undefined => undefined);
             await this.notifyBoardAccessChanged([boardRoot]);
-            this.notifyTrustChanged();
             await applied;
             return [...this.paths];
         });
@@ -209,6 +188,12 @@ class BoardTrustService {
         return boardTrustStore.save(grants);
     }
 
+    /** Only `entries[].fileAccess` changed; the manifests are not re-read and the service consumers skip it. */
+    private async publishFileAccessChange(): Promise<void> {
+        this.snapshot = { ...this.snapshot, entries: withFileAccess(this.snapshot.entries, this.grants), change: "file-access" };
+        await this.publish(this.snapshot);
+    }
+
     private dropFromSnapshot(root: BoardRoot): void {
         const serviceSnapshot = this.snapshot.serviceSnapshot;
         this.snapshot = {
@@ -218,6 +203,7 @@ class BoardTrustService {
                 boards: serviceSnapshot.boards.filter(({ boardRoot }) => !BoardRoot.from(boardRoot).equals(root)),
                 trustedPaths: serviceSnapshot.trustedPaths.filter((trustedRoot) => !BoardRoot.from(trustedRoot).equals(root)),
             },
+            entries: this.snapshot.entries.filter(({ root: entryRoot }) => !BoardRoot.from(entryRoot).equals(root)),
         };
     }
 
@@ -226,11 +212,12 @@ class BoardTrustService {
             root,
             manifest: await readBoardManifest(BoardRoot.from(root)),
         })));
-        const enabledBundledSources = await this.readBundledSources();
+        const bundledSources = await this.readBundledSources();
         const build = buildBoardTrustSnapshot({
             grants: this.grants,
             trusted: trustedSources,
-            bundled: enabledBundledSources,
+            bundled: bundledSources.enabled,
+            disabledBundled: bundledSources.disabled,
         });
         if (build.reductions.length > 0) {
             const reductionLogs = build.reductions.flatMap(({ root, permissionChanges }) => permissionChanges
@@ -247,18 +234,19 @@ class BoardTrustService {
         this.snapshot = build.snapshot;
         if (build.reductions.length > 0) {
             await this.notifyBoardAccessChanged(this.grants.map(({ root }) => root));
-            this.notifyTrustChanged();
         }
         return build.snapshot;
     }
 
-    private async readBundledSources(): Promise<BoardSource[]> {
-        const sources = await Promise.all((await listBundledBoards()).map(async ({ id, root }): Promise<BoardSource | null> => {
+    private async readBundledSources(): Promise<{ enabled: BoardSource[]; disabled: DisabledBundledBoard[] }> {
+        const listed = await listBundledBoards();
+        const disabled = listed.filter(({ id }) => this.disabledBundledBoards.has(id))
+            .map(({ id, root }): DisabledBundledBoard => ({ bundledId: id, root: root.path }));
+        const sources = await Promise.all(listed.filter(({ id }) => !this.disabledBundledBoards.has(id)).map(async ({ id, root }): Promise<BoardSource | null> => {
             const manifest = await readBoardManifest(root);
             return manifest ? { root: root.path, manifest, bundledId: id } : null;
         }));
-        return sources.filter((source): source is BoardSource => source !== null)
-            .filter((source) => !this.disabledBundledBoards.has(source.bundledId ?? ""));
+        return { enabled: sources.filter((source): source is BoardSource => source !== null), disabled };
     }
 }
 

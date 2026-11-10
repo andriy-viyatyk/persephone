@@ -20,6 +20,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
+- **Board lifecycle:** Disabling a bundled board makes its open pages unavailable until it is enabled again. Removing a board closes its pages and stops its service; renaming preserves its category pin and position.
 - **Settings help:** Hover over a **?** beside a setting or section, or focus it with Tab, to read
   its explanation. Press Escape to dismiss it. See [Settings](./screens/settings.md).
 

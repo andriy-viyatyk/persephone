@@ -6,6 +6,7 @@ import type {
     PublishedBoardVersions,
 } from "../api-param-types";
 import type { BoardHostText, BoardI18nContext, BoardThemePalette } from "../board-bridge-channels";
+import type { BoardSnapshot } from "../board-snapshot-channels";
 import type { BoardServiceStatus, ModuleServicePortResult } from "../module-service-channels";
 import { bindEndpoint } from "./endpoint-registry";
 import { activeCapabilityRequests, capabilityResult } from "./core-handlers";
@@ -37,10 +38,8 @@ export type BoardEndpoint =
     | Endpoint.downloadBoardArchive
     | Endpoint.cancelBoardDownload
     | Endpoint.setBoardTrust
-    | Endpoint.getBoardTrustPaths
-    | Endpoint.getBoardPermissionGrants
+    | Endpoint.getBoardSnapshot
     | Endpoint.getBoardServiceProviders
-    | Endpoint.getBoardFileAccessGrants
     | Endpoint.revokeBoardFileAccessGrant
     | Endpoint.grantBoardSourceReads
     | Endpoint.getBoardMcpEndpoint
@@ -128,13 +127,10 @@ export function initBoardHandlers(): void {
     bindEndpoint(Endpoint.setBoardTrust, async (_event, boardRoot: string, trusted: boolean, expectedPermissions?: import("../../shared/board/board-permissions").NormalizedBoardPermissions, expectedUses?: import("../../shared/board/board-service-declarations").BoardServiceUseDeclaration[]): Promise<string[]> => {
         return (await import("../../main/board-trust-service")).boardTrustService.setTrust(boardRoot, trusted, expectedPermissions, expectedUses);
     });
-    bindEndpoint(Endpoint.getBoardTrustPaths, async (): Promise<string[]> => {
-        return (await import("../../main/board-trust-service")).boardTrustService.getPaths();
-    });
-    bindEndpoint(Endpoint.getBoardPermissionGrants, async (): Promise<import("../module-service-channels").TrustedBoardSnapshotEntry[]> => {
-        const trust = (await import("../../main/board-trust-service")).boardTrustService;
-        await trust.refresh();
-        return trust.getPermissionGrants();
+    bindEndpoint(Endpoint.getBoardSnapshot, async (): Promise<BoardSnapshot> => {
+        // refresh() re-reads manifests (agents edit them on disk) and republishes; an unchanged result keeps its revision.
+        await (await import("../../main/board-trust-service")).boardTrustService.refresh();
+        return (await import("../../main/board-snapshot-broadcaster")).boardSnapshotBroadcaster.current();
     });
     bindEndpoint(Endpoint.getBoardServiceProviders, async (_event, interfaceId: string): Promise<import("../board-bridge-channels").BoardServiceProvider[]> => {
         if (typeof interfaceId !== "string") throw new TypeError("A service interface id is required.");
@@ -176,9 +172,6 @@ export function initBoardHandlers(): void {
         if (!openWindow) throw new Error("permission-denied");
         if (!request || typeof request.sessionId !== "string" || typeof request.text !== "string") throw new TypeError("Invalid voice typing result.");
         return openWindow.insertVoiceTypingText(request.sessionId, request.text, request.deferClipboard);
-    });
-    bindEndpoint(Endpoint.getBoardFileAccessGrants, async (_event: IpcMainEvent, boardRoot: string) => {
-        return (await import("../../main/board-file-access")).boardFileAccess.getPersistedGrants(boardRoot);
     });
     bindEndpoint(Endpoint.revokeBoardFileAccessGrant, async (_event: IpcMainEvent, boardRoot: string, kind: "folder" | "file", canonicalPath: string): Promise<void> => {
         if (kind !== "folder" && kind !== "file") throw new TypeError("Invalid board file-access grant kind.");

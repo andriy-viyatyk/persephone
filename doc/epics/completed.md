@@ -1,3 +1,19 @@
+## EPIC-144 — Refactoring Phase 3.2, 3.3 and 3.5: the renderer board registry, board lifecycle and the board editor factory
+
+Completed 2026-11-11. Roadmap Phase 3.2, 3.3 and 3.5: one renderer owner of board state fed by one main snapshot, one
+board lifecycle for every removal path, category pins pruned on trust removal, and one board-editor factory. Plans were
+written by Sonnet subagents and reviewed against the roadmap guardrails; Codex implemented. Epic document:
+[EPIC-144](EPIC-144.md).
+
+- [x] **`MainSnapshotMirror` (US-1832).** `core/state/MainSnapshotMirror.ts` gives the renderer one pull/broadcast/stale-snapshot guard; site-extension trust, published boards, module-service status (per-board `subscribe`) and the capability index (`api/capability-index.ts`) run on it; `site-extension-trust-sync.ts` is gone.
+- [x] **Main's board snapshot (US-1833).** One revisioned `BoardSnapshot` (`ipc/board-snapshot-channels.ts`, origin, grants, uses, file access, disabled bundled boards) published by `board-snapshot-broadcaster.ts` from an `onSnapshot` subscriber; file-access changes publish without re-running the service consumers.
+- [x] **`BoardRegistry` (US-1834).** `api/boards/board-registry.ts` replaces `BoardTrust`'s five maps and N+1 pulls, `board-access.ts`, the renderer bundled registry and `board-trust-sync.ts`; mutations pull afresh after main replies; a disabled bundled board is no longer permitted (matches main).
+- [x] **Board consumers (US-1835).** Listing, editor registry, guide mounts and toolbars read the registry; one `boardIdentity` (keys byte-identical) and one `boardManifestCompatibility`; `eBoardTrustChanged`, `getBoardTrustPaths` and the per-board pulls are gone; the call-timeout knob lives in `api/ai-vision-call-timeout.ts`.
+- [x] **`EditorCategoriesModel` (US-1836).** `api/editor-categories.ts` and `api/creatable-items.ts` replace `ui/sidebar/pinned-items.ts` and `tools-editors-registry.ts`; the window that untrusts a board prunes its pin; the six manual unpin calls are gone; `api/` no longer imports `ui/sidebar`.
+- [x] **`BoardLifecycle` (US-1837).** `api/boards/board-lifecycle.ts` owns unregister, delete, uninstall, rename and version install in one fixed order (pages, service, disk, trust, install record, display text); `board-idle.ts` is gone; two new messages translated into every pack.
+- [x] **Board editor factory (US-1838).** `customEditorRegistry.findByRoot` replaces the linear scans; `createBoardEditor` builds every board editor; `BoardStreamEditorModel` makes the kind fixed by class; the `draw-view` migration lives in the factory restore path.
+- [x] **Epic review.** `/review` removed three non-null assertions (one follow-up type fix in `board-registry.ts`); `/document` updated overview, key-files, folder-structure, state-management and editors; `/userdoc` updated the board guides and release notes.
+
 ## EPIC-143 — Refactoring Phase 1.5, 1.6 and 3.1: persistence, the renderer RPC and main's board ownership
 
 Completed 2026-11-10. Roadmap Phase 1.5, 1.6 and 3.1: one JSON store in main, one typed main→renderer RPC separate from

@@ -1,25 +1,19 @@
 /**
- * Renderer-side reactive model of the published-boards catalog.
- * Mirrors `board-trust.ts`: a `TGlobalState` singleton with subscriptions for views.
- * Subscribes to main's `ePublishedBoardsUpdated` broadcast and pulls the initial catalog
+ * Renderer-side mirror of the published-boards catalog.
+ * Subscribes to main's `ePublishedBoardsUpdated` broadcast and pulls the catalog
  * via `getPublishedBoards`. Compatibility (`minAppVersion` vs the running app) is checked
  * with the shared `compareVersions`.
  *
  * No download / install here — + own that. This model only surfaces catalog data.
  */
-import { TGlobalState } from "../../core/state/state";
 import { api } from "../../../ipc/renderer/api";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 import { EventEndpoint } from "../../../ipc/api-types";
 import { PublishedBoardInfo, PublishedBoardsCatalog, PublishedBoardVersions } from "../../../ipc/api-param-types";
+import { MainSnapshotMirror } from "../../core/state/MainSnapshotMirror";
 import { getBoardCompatibility } from "../../../shared/version-utils";
 import { normalizeFileMasks, normalizeFolderMasks, matchesFolderEditorMasks } from "../../../shared/board/board-masks";
 import { matchesBoardMasks } from "./board-file-masks";
-
-interface CatalogState {
-    catalog: PublishedBoardsCatalog | null;
-    loaded: boolean;
-}
 
 /** Does an UNINSTALLED catalog board claim this file? Same predicate as a trusted board's
  *  (`matchesBoardMasks`), but over the catalog entry's raw manifest-copied masks — the catalog
@@ -56,34 +50,31 @@ function normalizeCatalog(catalog: PublishedBoardsCatalog | null): PublishedBoar
     };
 }
 
-class PublishedBoards {
-    private readonly state = new TGlobalState<CatalogState>({ catalog: null, loaded: false });
-    private subscribed = false;
+class PublishedBoards extends MainSnapshotMirror<PublishedBoardsCatalog | null> {
     /** Running app version, cached at load() so the sync compatibility check needs no await
      *  (and to avoid an import cycle with `app`). */
     private appVersion = "";
 
-    /** Subscribe to main's change broadcast + pull the initial catalog. Idempotent. */
+    constructor() { super(null); }
+
+    protected async fetch(): Promise<PublishedBoardsCatalog | null> {
+        return (await api.getPublishedBoards()).catalog;
+    }
+
+    protected subscribeToMain(): void {
+        this.attach(rendererEvents[EventEndpoint.ePublishedBoardsUpdated], (catalog) => this.apply(catalog));
+    }
+
+    protected override normalize(catalog: PublishedBoardsCatalog | null): PublishedBoardsCatalog | null {
+        return normalizeCatalog(catalog);
+    }
+
+    /** Re-pulls on every call so main can run its 24-hour catalog check. */
     async load(): Promise<void> {
-        if (!this.subscribed) {
-            this.subscribed = true;
-            // The published-board catalog singleton owns this process-lifetime IPC
-            // listener; individual catalog views only consume its state.
-            rendererEvents[EventEndpoint.ePublishedBoardsUpdated].subscribe((catalog) => {
-                this.state.update((s) => {
-                    s.catalog = normalizeCatalog(catalog);
-                    s.loaded = true;
-                });
-            });
-        }
         if (!this.appVersion) {
             this.appVersion = await api.getAppVersion();
         }
-        const result = await api.getPublishedBoards();
-        this.state.update((s) => {
-            s.catalog = normalizeCatalog(result.catalog);
-            s.loaded = true;
-        });
+        await this.reload();
     }
 
     /** A board's full version history (on demand — no caching; the properties view calls this on
@@ -95,24 +86,16 @@ class PublishedBoards {
     /** Force a fresh network check (bypasses the 24h gate). */
     async refresh(): Promise<void> {
         const result = await api.getPublishedBoards(true);
-        this.state.update((s) => {
-            s.catalog = normalizeCatalog(result.catalog);
-            s.loaded = true;
-        });
+        this.apply(result.catalog);
     }
 
     /** All catalog boards (sync, non-reactive). */
     getCatalog(): PublishedBoardInfo[] {
-        return this.selectCatalogBoards(this.state.get());
-    }
-
-    /** Whether the in-memory catalog has completed a load or received an update. */
-    isLoaded(): boolean {
-        return this.state.get().loaded;
+        return this.selectCatalogBoards(this.snapshot);
     }
 
     subscribeCatalog(listener: () => void): () => void {
-        return this.state.subscribe(listener, this.selectCatalogBoards);
+        return this.state.subscribe(listener, (state) => this.selectCatalogBoards(state.snapshot));
     }
 
     /**
@@ -131,7 +114,7 @@ class PublishedBoards {
     /** Compatible catalog boards whose masks match the given file name (sync, non-reactive).
      *  Used by model code (e.g. the Board Info editor) that computes matches directly. */
     catalogBoardsForFile(fileName: string): PublishedBoardInfo[] {
-        return this.selectCatalogBoardsForFile(this.state.get(), fileName);
+        return this.selectCatalogBoardsForFile(this.snapshot, fileName);
     }
 
     subscribeCatalogBoardsForFile(
@@ -140,13 +123,13 @@ class PublishedBoards {
     ): () => void {
         return this.state.subscribe(
             listener,
-            (state) => this.selectCatalogBoardsForFile(state, fileName),
+            (state) => this.selectCatalogBoardsForFile(state.snapshot, fileName),
         );
     }
 
     /** Compatible catalog boards whose direct folder masks match the given absolute folder. */
     catalogBoardsForFolder(folderPath: string): PublishedBoardInfo[] {
-        return this.selectCatalogBoardsForFolder(this.state.get(), folderPath);
+        return this.selectCatalogBoardsForFolder(this.snapshot, folderPath);
     }
 
     subscribeCatalogBoardsForFolder(
@@ -155,15 +138,15 @@ class PublishedBoards {
     ): () => void {
         return this.state.subscribe(
             listener,
-            (state) => this.selectCatalogBoardsForFolder(state, folderPath),
+            (state) => this.selectCatalogBoardsForFolder(state.snapshot, folderPath),
         );
     }
 
     private selectCatalogBoardsForFile(
-        state: CatalogState,
+        catalog: PublishedBoardsCatalog | null,
         fileName: string,
     ): PublishedBoardInfo[] {
-        const boards = state.catalog?.boards ?? [];
+        const boards = catalog?.boards ?? [];
         return boards.filter((board) => {
             if (!this.isCompatible(board.minAppVersion)) return false;
             return matchesCatalogMasks(board, fileName);
@@ -171,18 +154,18 @@ class PublishedBoards {
     }
 
     private selectCatalogBoardsForFolder(
-        state: CatalogState,
+        catalog: PublishedBoardsCatalog | null,
         folderPath: string,
     ): PublishedBoardInfo[] {
-        const boards = state.catalog?.boards ?? [];
+        const boards = catalog?.boards ?? [];
         return boards.filter((board) => {
             if (!this.isCompatible(board.minAppVersion)) return false;
             return matchesFolderEditorMasks(folderPath, board.folderEditorMasks ?? []);
         });
     }
 
-    private selectCatalogBoards(state: CatalogState): PublishedBoardInfo[] {
-        return state.catalog?.boards ?? [];
+    private selectCatalogBoards(catalog: PublishedBoardsCatalog | null): PublishedBoardInfo[] {
+        return catalog?.boards ?? [];
     }
 }
 

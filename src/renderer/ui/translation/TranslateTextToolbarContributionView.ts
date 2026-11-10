@@ -5,8 +5,7 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { t } from "../../../shared/i18n/t";
 import type { TranslateTextPageController } from "./TranslateTextPageController";
 import type { MonacoEditor } from "../../editors/monaco/MonacoEditor";
-import { EventEndpoint } from "../../../ipc/api-types";
-import rendererEvents from "../../../ipc/renderer/renderer-events";
+import { boardRegistry } from "../../api/boards/board-registry";
 import "../../uikit/Menu/Menu.css";
 
 interface Props { controller: TranslateTextPageController; model: MonacoEditor; language: string }
@@ -38,7 +37,7 @@ export class TranslateTextToolbarContributionView extends VanillaView<Props> {
         this.button.mount();
         this.menu.mount();
         void this.props.controller.refreshProviders();
-        this.own(rendererEvents[EventEndpoint.eBoardTrustChanged].subscribe(() => { void this.props.controller.refreshProviders(); }));
+        this.own(boardRegistry.subscribe(() => { void this.props.controller.refreshProviders(); }));
         const host = this.props.model.host;
         if (host) this.own(host.state.subscribe<string>((language) => { this.language = language; this.sync(); }, (state) => (state as { language?: string }).language ?? "plaintext"));
     }

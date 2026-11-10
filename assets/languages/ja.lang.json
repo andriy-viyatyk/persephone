@@ -47,11 +47,15 @@
     "api.actionFailed": "{action}: {error}",
     "api.autoloadScriptError": "自動読み込みスクリプト エラー: {message}",
     "api.boardBusyDeleting": "このボードは現在実行中です。削除する前に停止してください。",
+    "api.boardBusyRemoving": "このボードは現在実行中です。削除する前に停止してください。",
     "api.boardBusyUpdating": "このボードは現在実行中です。更新する前に停止してください。",
     "api.boardInstalled": "{name} v{version} をインストールしました。",
     "api.boardInstallFailed": "インストールに失敗しました: {error}",
     "api.boardOpenDeleting": {
       "other": "このボードは {count} 件のページで開いているため、削除する前に閉じる必要があります。ページは開いたまま空になります。続行しますか?"
+    },
+    "api.boardOpenRemoving": {
+      "other": "このボードは {count} 個のページで開かれているため、削除する前に閉じる必要があります。ページは開いたまま空になります。続行しますか？"
     },
     "api.boardOpenTitle": "ボードは開いています",
     "api.boardOpenUpdating": {
@@ -3455,6 +3459,8 @@
     "shell.ungroup": "460af6ed",
     "shell.mutePage": "724c00d7",
     "shell.unmutePage": "af4c43a2",
-    "tools.siteExtensionActionFailed": "96558212"
+    "tools.siteExtensionActionFailed": "96558212",
+    "api.boardBusyRemoving": "fc62a483",
+    "api.boardOpenRemoving": "6426988c"
   }
 }

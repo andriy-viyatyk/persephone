@@ -47,11 +47,15 @@
     "api.actionFailed": "{action}：{error}",
     "api.autoloadScriptError": "自动加载脚本错误：{message}",
     "api.boardBusyDeleting": "此面板当前正在运行。请先停止，然后再删除。",
+    "api.boardBusyRemoving": "此面板当前正在运行。请先停止，再将其移除。",
     "api.boardBusyUpdating": "此面板当前正在运行。请先停止，然后再更新。",
     "api.boardInstalled": "已安装 {name} v{version}。",
     "api.boardInstallFailed": "安装失败：{error}",
     "api.boardOpenDeleting": {
       "other": "此面板已在 {count} 个页面中打开，删除前必须先关闭。页面会保持打开并变为空白。要继续吗？"
+    },
+    "api.boardOpenRemoving": {
+      "other": "此面板已在 {count} 个页面中打开，移除前必须将其关闭。页面仍会保持打开状态，但内容将被清空。是否继续？"
     },
     "api.boardOpenTitle": "面板已打开",
     "api.boardOpenUpdating": {
@@ -3455,6 +3459,8 @@
     "shell.ungroup": "460af6ed",
     "shell.mutePage": "724c00d7",
     "shell.unmutePage": "af4c43a2",
-    "tools.siteExtensionActionFailed": "96558212"
+    "tools.siteExtensionActionFailed": "96558212",
+    "api.boardBusyRemoving": "fc62a483",
+    "api.boardOpenRemoving": "6426988c"
   }
 }

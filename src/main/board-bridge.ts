@@ -73,7 +73,7 @@ import {
 import { errMessage } from "../shared/utils";
 import { toWireError } from "../shared/wire-error";
 import * as boardLog from "./board-log";
-import { isPositiveIntegerTimeout, resolveBoardCallTimeout } from "../shared/ai-vision-timeout";
+import { appCallTimeoutRangeMessage, isPositiveIntegerTimeout, isValidAppCallTimeout, resolveBoardCallTimeout } from "../shared/ai-vision-timeout";
 import { requestRenderer } from "./renderer-rpc";
 import type { RendererRpcMethod, RendererRpcMethods } from "../ipc/renderer-rpc";
 import { boardThemeMethodOf } from "../shared/board/board-call-route";
@@ -306,9 +306,7 @@ interface BoardWatchRecord {
 }
 const boardWatches = new Map<string, BoardWatchRecord>();
 const MAX_BOARD_WATCHES = 64;
-const BOARD_CALL_TIMEOUT_MIN_MS = 1_000;
-const BOARD_CALL_TIMEOUT_MAX_MS = 3_600_000;
-/** Unset until the renderer pushes one; see the same reasoning in `src/renderer/api/boards.ts`. */
+/** Unset until the renderer pushes one; see the same reasoning in `src/renderer/api/ai-vision-call-timeout.ts`. */
 let boardCallTimeoutMs: number | undefined;
 
 function boardWatchKey(boardId: string, watchId: number): string { return `${boardId}:${watchId}`; }
@@ -377,10 +375,7 @@ export function setBoardBusy(ownerId: string, busy: boolean): void {
 }
 
 export function setBoardCallTimeout(timeoutMs: number): void {
-    if (!Number.isFinite(timeoutMs) || !Number.isInteger(timeoutMs)
-        || timeoutMs < BOARD_CALL_TIMEOUT_MIN_MS || timeoutMs > BOARD_CALL_TIMEOUT_MAX_MS) {
-        throw new TypeError(`boards.callTimeoutMs must be an integer from ${BOARD_CALL_TIMEOUT_MIN_MS} to ${BOARD_CALL_TIMEOUT_MAX_MS}.`);
-    }
+    if (!isValidAppCallTimeout(timeoutMs)) throw new TypeError(appCallTimeoutRangeMessage);
     boardCallTimeoutMs = timeoutMs;
 }
 

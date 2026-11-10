@@ -47,12 +47,17 @@
     "api.actionFailed": "Toimingu {action} tegemine nurjus: {error}",
     "api.autoloadScriptError": "Skripti automaatne laadimine nurjus: {message}",
     "api.boardBusyDeleting": "See tahvel töötab praegu. Enne kustutamist peatage see.",
+    "api.boardBusyRemoving": "See tahvel töötab praegu. Enne eemaldamist peatage see.",
     "api.boardBusyUpdating": "See tahvel töötab praegu. Enne värskendamist peatage see.",
     "api.boardInstalled": "{name} v{version} installiti.",
     "api.boardInstallFailed": "Installimine nurjus: {error}",
     "api.boardOpenDeleting": {
       "one": "See tahvel on avatud {count} lehel. Enne kustutamist sulgege see. Leht jääb avatuks, kuid tühjaks. Kas jätkata?",
       "other": "See tahvel on avatud {count} lehel. Enne kustutamist sulgege need. Lehed jäävad avatuks, kuid tühjaks. Kas jätkata?"
+    },
+    "api.boardOpenRemoving": {
+      "one": "See tahvel on avatud {count} lehel ja see tuleb enne eemaldamist sulgeda. Leht jääb avatuks ja tühjaks. Kas jätkata?",
+      "other": "See tahvel on avatud {count} lehel ja see tuleb enne eemaldamist sulgeda. Lehed jäävad avatuks ja tühjaks. Kas jätkata?"
     },
     "api.boardOpenTitle": "Tahvel on avatud",
     "api.boardOpenUpdating": {
@@ -3503,6 +3508,8 @@
     "shell.ungroup": "460af6ed",
     "shell.mutePage": "724c00d7",
     "shell.unmutePage": "af4c43a2",
-    "tools.siteExtensionActionFailed": "96558212"
+    "tools.siteExtensionActionFailed": "96558212",
+    "api.boardBusyRemoving": "fc62a483",
+    "api.boardOpenRemoving": "6426988c"
   }
 }

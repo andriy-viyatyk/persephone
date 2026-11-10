@@ -25,13 +25,11 @@ import {
     customEditorRegistry,
     resolveBoardEditorId,
 } from "../boards/custom-editor-registry";
-import { bundledBoardRegistry } from "../boards/bundled-board-registry";
+import { boardRegistry } from "../boards/board-registry";
 import {
     decodePersephoneBoardLink,
     encodePersephoneBoardLink,
 } from "../../content/persephone-board-link";
-import { fpBasename } from "../../core/utils/file-path";
-import { BoardRoot } from "../../../shared/board/board-root";
 import { PageModel } from "./PageModel";
 import { BOARD_INFO_EDITOR_ID } from "../../editors/board-info/board-info-id";
 
@@ -44,7 +42,7 @@ async function repairBoardLink(value: unknown): Promise<unknown> {
     const decoded = decodePersephoneBoardLink(value);
     if (!decoded) return value;
 
-    const currentRoot = await bundledBoardRegistry.resolvePersistedRoot(decoded.boardRoot);
+    const currentRoot = await boardRegistry.resolvePersistedRoot(decoded.boardRoot);
     return currentRoot === undefined ? value : encodePersephoneBoardLink(currentRoot);
 }
 
@@ -57,7 +55,7 @@ async function normalizeEditorDescriptor(
         : undefined;
     const currentBoardRoot = persistedBoardRoot === undefined
         ? undefined
-        : await bundledBoardRegistry.resolvePersistedRoot(persistedBoardRoot);
+        : await boardRegistry.resolvePersistedRoot(persistedBoardRoot);
     if (currentBoardRoot !== undefined) state.boardRoot = currentBoardRoot;
 
     const sourceLink = state.sourceLink;
@@ -76,30 +74,7 @@ async function normalizeEditorDescriptor(
         state.editor = await resolveBoardEditorId(state.editor);
     }
 
-    let editorId = await resolveBoardEditorId(descriptor.editorId);
-    if (descriptor.editorId === "draw-view") {
-        await bundledBoardRegistry.ensureInitialized();
-        const excalidrawBoard = bundledBoardRegistry.list().find(
-            (board) => board.id === "excalidraw",
-        );
-        const association = excalidrawBoard
-            ? excalidrawBoard.manifest.association
-            : undefined;
-        if (excalidrawBoard && association?.editorKind === "content-host") {
-            // `BoardEditorModel.restore()` does NOT re-derive the selection from `boardRoot` —
-            // `refreshBoards()` only ever CLEARS it — and `BoardEditorView` renders the
-            // not-found branch whenever `selectedBoard` is unset. So a descriptor carrying only
-            // `boardRoot` restores as an empty "board not found" tab holding the user's drawing.
-            // Seed exactly what `selectBoard()` writes on the live path: the board folder name,
-            // in `selectedBoard` (renders) and `iconKey` (tab icon).
-            const boardName = fpBasename(excalidrawBoard.root);
-            editorId = "board-view";
-            state.boardRoot = excalidrawBoard.root;
-            state.selectedBoard = boardName;
-            state.iconKey = boardName;
-        }
-    }
-
+    const editorId = await resolveBoardEditorId(descriptor.editorId);
     return {
         ...descriptor,
         editorId,
@@ -120,10 +95,6 @@ async function normalizePageDescriptor(desc: PageDescriptor): Promise<PageDescri
     };
 }
 
-function sameBoardRoot(left: string, right: string): boolean {
-    return BoardRoot.from(left).equals(right);
-}
-
 /**
  * EditorIds of NO-HOST editors that restore via
  * `editorRegistry.createEditor` + `Object.assign(state, d.state)` (no host
@@ -131,7 +102,7 @@ function sameBoardRoot(left: string, right: string): boolean {
  * is constructed directly (not in `editorRegistry`).
  */
 const NO_HOST_EDITOR_IDS = new Set([
-    "browser-view",       "image-view",       "archive-view",       "video-view",         "settings-view",      "about-view",         "mcp-view",           "mneme-config",       "mneme-root",         "storybook-view",     "category-view",      "git-tree",           "board-view",         "toolset-view",       "tools-hub-view",  ]);
+    "browser-view",       "image-view",       "archive-view",       "video-view",         "settings-view",      "about-view",         "mcp-view",           "mneme-config",       "mneme-root",         "storybook-view",     "category-view",      "git-tree",           "toolset-view",       "tools-hub-view",  ]);
 
 type RestoreAttempt = { kind: "restored"; page: PageModel } | { kind: "invalid" } | { kind: "failed"; error: unknown };
 
@@ -249,7 +220,7 @@ export class PagesPersistenceModel {
                     //: busy is transient (its processes died with the app),
                     // so a non-main board descriptor would restore as an invisible
                     // zombie handle. Boards restore only as the main editor.
-                    if (d.editorId === "board-view" && d.id !== desc.mainEditorId) {
+                    if ((d.editorId === "board-view" || d.editorId === "draw-view") && d.id !== desc.mainEditorId) {
                         return null;
                     }
                     const boardState = d.state as Partial<BoardEditorState>;
@@ -261,40 +232,16 @@ export class PagesPersistenceModel {
                         await customEditorRegistry.ensureInitialized();
                         const boardRoot = boardState.boardRoot;
                         const current = boardRoot && folderPath
-                            ? customEditorRegistry.entries.find((entry) =>
-                                sameBoardRoot(entry.boardRoot, boardRoot)
-                                && customEditorRegistry.getBoardsForFolder(folderPath)
-                                    .some((folderEntry) =>
-                                        folderEntry.boardRoot === entry.boardRoot,
-                                    ))
+                            ? customEditorRegistry.findFolderClaim(boardRoot, folderPath)
                             : undefined;
                         if (!current) return null;
                         invalidFolderBoard = undefined;
                     }
-                    // Content-host board: persisted `board-view` + a host
-                    // descriptor. Rebuild the subclass, apply the board state (boardRoot /
-                    // filePath live in `d.state`, NOT the host descriptor), reconstruct the
-                    // host from `d.host`, then restore. MUST precede the generic `if (d.host)`
-                    // branch, which would else build a plain BoardEditorModel that throws
-                    // "legacy project-mode board editor" on restore.
-                    if (d.editorId === "board-view" && d.host && !hasPersistedFolderClaim) {
-                        const { getDefaultBoardEditorState } = await import(
-                            "../../editors/board"
-                        );
-                        const { BoardContentEditorModel } = await import(
-                            "../../editors/board/BoardContentEditorModel"
-                        );
-                        const model = new BoardContentEditorModel(
-                            new TComponentState({
-                                ...getDefaultBoardEditorState(),
-                                ...(d.state as Partial<BoardEditorState>),
-                                id: d.id,
-                            }),
-                        );
+                    if (d.editorId === "board-view" || d.editorId === "draw-view") {
+                        const { createBoardEditor } = await import("../../editors/board");
+                        const model = await createBoardEditor({ kind: "restore", descriptor: d });
+                        if (!model) return null;
                         constructed.push(model);
-                        model.applyRestoreData(
-                            d as unknown as Parameters<typeof model.applyRestoreData>[0],
-                        );
                         await model.restore();
                         return model;
                     }

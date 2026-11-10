@@ -144,6 +144,10 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── app.ts              # Root App class (bootstrap orchestrator)
 │   ├── app-service-registry.ts # Descriptor table for lazy app services and optional initialization
 │   ├── capabilities.ts      # Built-in capability lookup and invocation (`app.capabilities`)
+│   ├── capability-index.ts  # MainSnapshotMirror for the capability registry index
+│   ├── editor-categories.ts # EditorCategoriesModel; category setting and exclusive editor/board membership
+│   ├── creatable-items.ts   # Creatable-item registry for the Editors tree and new-page menu
+│   ├── ai-vision-call-timeout.ts # Session call-timeout setting owner
 │   ├── themes.ts           # Script/MCP application theme service (`app.themes`)
 │   ├── custom-theme-storage.ts # Validated custom theme persistence and cross-window watching
 │   ├── settings.ts         # ISettings implementation
@@ -183,7 +187,9 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── board-service-settings.ts # Trust- and service-gated settings reads/subscriptions for host-managed board services
 │   ├── ts-project-files.ts # Bounded tsconfig-based TypeScript project file selection
 │   ├── ts-project-registry.ts # Board-owned TypeScript project roots and file lookup
-│   ├── module-service-status.ts # Renderer-lifetime cache of main-owned module-service status
+│   ├── module-service-status.ts # MainSnapshotMirror for main-owned module-service status
+│   ├── boards/board-registry.ts # MainSnapshotMirror of the full board trust/grant/file-access snapshot
+│   ├── boards/board-lifecycle.ts # Shared board removal, rename, install, and idle lifecycle
 │   ├── boards.ts           # IBoards implementation (app.boards) — board lifecycle, trusted-board shortcut/window operations, and published-catalog ops (search/download/install/uninstall/updates)
 │   ├── internal.ts         # Disposable utilities (wrapSubscription, etc.)
 │   │
@@ -365,11 +371,10 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── RecentFileListView.ts    # Native recent-files panel
 │   │   ├── ToolsEditorsPanelView.ts # Native Tools & Editors panel
 │   │   ├── TrustedToolsListView.ts    # Native trusted-toolset list and owned trailing controls
-│   │   ├── pinned-items.ts          # Editor-category model, membership helpers, and editor/board ref encoding
 │   │   ├── EditorsTreeView.ts       # Built-in root plus trusted boards in one tree
+│   │   ├── creatable-item-icon.ts   # Fresh icon-node factory for creatable items
 │   │   ├── EditorCategoriesView.ts  # Hub-only category manager
 │   │   ├── EditorCategoryColumnListView.ts # Shared category/item column-flow layout
-│   │   ├── tools-editors-registry.ts # Creatable items registry (editors + tools)
 │   │   ├── ScriptLibraryPanelView.ts # Native script-library panel
 │   │   ├── FolderItemView.ts        # Native folder tree item
 │   ├── dialogs/            # Application dialogs
@@ -849,6 +854,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │
 ├── core/                   # Core Infrastructure
 │   ├── state/              # State management primitives
+│   │   ├── MainSnapshotMirror.ts # Revision-guarded renderer mirror for main-owned snapshots
 │   │   ├── state.ts        # TOneState, TComponentState, TGlobalState
 │   │   ├── dispatch.ts      # Module-global after-dispatch boundary
 │   │   ├── listener-list.ts # Shared listener registration and dispatch core
@@ -939,9 +945,10 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── pipe-server.ts          # Named Pipe server (launcher integration)
 ├── mcp-http-server.ts      # MCP Streamable HTTP transport — sessions (idle reaper, cap), HTTP handling, start/stop lifecycle
 ├── board-manifest-reader.ts # Main-owned normalized board manifest reader and mtime cache
+├── board-snapshot-broadcaster.ts # Publishes one full board snapshot to renderer windows
 ├── board-trust-store.ts    # Persisted trusted-board grant store
 ├── board-trust-snapshot-builder.ts # Pure derivation of service and browser-claim snapshots
-├── board-trust-subscribers.ts # Wires trust snapshots to main-process consumers
+├── board-trust-subscribers.ts # Wires trust snapshots to main-process consumers and snapshot publication
 ├── board-file-access.ts    # Board file-access grants, sessions and authorization
 ├── mcp/private-session-endpoints.ts # Lazy loopback MCP listener and revocable per-service bearer endpoints for private agent sessions
 ├── mcp/                    # What the MCP server offers, separate from how it is served
@@ -1018,6 +1025,7 @@ uses the same guard. Do not add a direct, unguarded `ipcMain` listener or handle
 ```
 /src/ipc/
 ├── api-types.ts            # IPC channel definitions
+├── board-snapshot-channels.ts # Full board snapshot event, pull, and wire types
 ├── api-param-types.ts      # IPC parameter types
 ├── browser-ipc.ts          # Browser-specific IPC channels
 ├── browser-translation-messages.ts # Typed host/guest translation messages and frame-scoped unit DTOs
@@ -1048,8 +1056,8 @@ uses the same guard. Do not add a direct, unguarded `ipcMain` listener or handle
 
 Module services cross these boundaries intentionally: main owns persisted trust and derives the
 service snapshot from trusted roots and bundled manifests before restored windows can request a
-service. The renderer mirrors authoritative trust paths and owns only the disabled-bundled-board
-setting input. Main owns the `utilityProcess` lifecycle and ordinary request path, and the static
+service. The renderer applies the complete board snapshot through `BoardRegistry` and sends the
+disabled-bundled-board setting input to main. Main owns the `utilityProcess` lifecycle and ordinary request path, and the static
 asset host is the utility-process entry that imports the board-relative ESM module. The optional
 renderer lease is a separate channel for high-volume provider traffic, not a requirement of every
 service.

@@ -47,6 +47,7 @@
     "api.actionFailed": "{action}: {error}",
     "api.autoloadScriptError": "Błąd skryptu autoload: {message}",
     "api.boardBusyDeleting": "Ta tablica jest obecnie uruchomiona. Zatrzymaj ją przed usunięciem.",
+    "api.boardBusyRemoving": "Ta tablica jest obecnie uruchomiona. Zatrzymaj ją przed usunięciem.",
     "api.boardBusyUpdating": "Ta tablica jest obecnie uruchomiona. Zatrzymaj ją przed aktualizacją.",
     "api.boardInstalled": "Zainstalowano {name} v{version}.",
     "api.boardInstallFailed": "Nie udało się zainstalować: {error}",
@@ -55,6 +56,12 @@
       "few": "Ta tablica jest otwarta na {count} stronach i należy ją zamknąć przed usunięciem. Strony pozostaną otwarte i będą puste. Kontynuować?",
       "many": "Ta tablica jest otwarta na {count} stronach i należy ją zamknąć przed usunięciem. Strony pozostaną otwarte i będą puste. Kontynuować?",
       "other": "Ta tablica jest otwarta na {count} strony i należy ją zamknąć przed usunięciem. Strony pozostaną otwarte i będą puste. Kontynuować?"
+    },
+    "api.boardOpenRemoving": {
+      "one": "Ta tablica jest otwarta na {count} stronie i musi zostać zamknięta przed usunięciem. Strona pozostanie otwarta i będzie pusta. Kontynuować?",
+      "few": "Ta tablica jest otwarta na {count} stronach i musi zostać zamknięta przed usunięciem. Strony pozostaną otwarte i będą puste. Kontynuować?",
+      "many": "Ta tablica jest otwarta na {count} stronach i musi zostać zamknięta przed usunięciem. Strony pozostaną otwarte i będą puste. Kontynuować?",
+      "other": "Ta tablica jest otwarta na {count} stronie i musi zostać zamknięta przed usunięciem. Strona pozostanie otwarta i będzie pusta. Kontynuować?"
     },
     "api.boardOpenTitle": "Tablica jest otwarta",
     "api.boardOpenUpdating": {
@@ -3599,6 +3606,8 @@
     "shell.ungroup": "460af6ed",
     "shell.mutePage": "724c00d7",
     "shell.unmutePage": "af4c43a2",
-    "tools.siteExtensionActionFailed": "96558212"
+    "tools.siteExtensionActionFailed": "96558212",
+    "api.boardBusyRemoving": "fc62a483",
+    "api.boardOpenRemoving": "6426988c"
   }
 }

@@ -1,3 +1,5 @@
+import type { BoardEditorKind } from "./common";
+
 /**
  * One published-catalog board, annotated with its install state on this machine
  * ({@link IBoards.searchPublished}).
@@ -18,7 +20,7 @@ export interface PublishedBoardResult {
     /** Direct folder resolution priority for `folderEditorMasks`. */
     folderEditorPriority?: number;
     editorName?: string;
-    editorKind?: "simple" | "content-host" | "stream-host";
+    editorKind?: BoardEditorKind;
     /** True when the board can be pinned / opened empty (tool/dashboard-style). */
     standalone?: boolean;
     /** Minimum Persephone version this latest release requires (semver; absent = no requirement). */

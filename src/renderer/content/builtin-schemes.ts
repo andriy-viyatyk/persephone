@@ -144,8 +144,8 @@ async function externalLaunchDecision(data: ILinkData): Promise<"allow" | "inter
             buttons: [dialogButton(OPEN_EXTERNAL_LINK), dialogButton(DialogButton.cancel)],
         }) === OPEN_EXTERNAL_LINK ? "allow" : "deny";
     }
-    const { boardTrust } = await import("../api/boards/board-trust");
-    if (await boardTrust.allows(data.boardRoot, "openExternal")) return "allow";
+    const { boardRegistry } = await import("../api/boards/board-registry");
+    if (boardRegistry.grant(data.boardRoot)?.allows("openExternal")) return "allow";
     const isWebLink = /^https?:\/\//i.test(data.url ?? "");
     const { api } = await import("../../ipc/renderer/api");
     const message = isWebLink

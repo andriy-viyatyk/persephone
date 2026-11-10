@@ -8,12 +8,10 @@ import { BoardRoot } from "../../../shared/board/board-root";
 import { getLanguageByExtension } from "../../core/utils/language-mapping";
 import { toClipboard } from "../../core/utils/utils";
 import { fs as appFs } from "../../api/fs";
-import { boardTrust } from "../../api/boards/board-trust";
+import { boardRegistry } from "../../api/boards/board-registry";
 import { BoardGrant } from "../../../shared/board/board-grant";
 import { requestBoardTrust } from "../../api/boards/request-board-trust";
-import { bundledBoardRegistry } from "../../api/boards/bundled-board-registry";
 import { queueLegacyBoardDeprecationNotice } from "./legacy-board-deprecation-notice";
-import { isBoardPermitted, subscribeBoardPermission } from "../../api/boards/board-access";
 import { cleanForStorage } from "../../../shared/link-data";
 import { pipeFromLink, pipeFromPersistedSource } from "../../content/rebuild-pipe";
 import { createPipeFromDescriptor } from "../../content/registry";
@@ -27,7 +25,7 @@ import {
 import { boardEditorId, customEditorRegistry } from "../../api/boards/custom-editor-registry";
 import { hostOwnsPipe } from "../../../shared/board/board-manifest-queries";
 import { isBoardFolder, readBoardManifest } from "../../api/boards/board-manifest-io";
-import { normalizeSecondaryViews, type NormalizedBoardManifest, type SecondaryViewDecl } from "../../../shared/board/board-manifest-schema";
+import { normalizeSecondaryViews, type BoardEditorKind, type NormalizedBoardManifest, type SecondaryViewDecl } from "../../../shared/board/board-manifest-schema";
 import { boardSecondaryPanelId } from "./board-secondary";
 import { BoardTargetModel } from "./BoardTargetModel";
 import { createBoardGlyphElement } from "./board-glyph-element";
@@ -283,9 +281,9 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
 
     constructor(modelState: IState<BoardEditorState>) {
         super(modelState);
-        this.own(subscribeBoardPermission(() => {
+        this.own(boardRegistry.subscribeMembership(() => {
             const boardRoot = this.state.get().boardRoot;
-            if (boardRoot && !isBoardPermitted(boardRoot)) this.clearAiVisionRegistration();
+            if (boardRoot && !boardRegistry.isPermitted(boardRoot)) this.clearAiVisionRegistration();
         }));
     }
 
@@ -427,14 +425,14 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         request: BoardAiVisionRequestHandler,
     ): void {
         const boardRoot = this.state.get().boardRoot;
-        if (!boardRoot || !isBoardPermitted(boardRoot) || this.frames.get(tab) !== iframe) return;
+        if (!boardRoot || !boardRegistry.isPermitted(boardRoot) || this.frames.get(tab) !== iframe) return;
         this.aiVisionTransports.set(tab, { iframe, generation, request });
     }
 
     isAiVisionTransportReady(tab: string): boolean {
         const boardRoot = this.state.get().boardRoot;
         const transport = this.aiVisionTransports.get(tab);
-        return !!boardRoot && isBoardPermitted(boardRoot)
+        return !!boardRoot && boardRegistry.isPermitted(boardRoot)
             && this.frames.get(tab) === transport?.iframe
             && this.loadedTabs.has(tab);
     }
@@ -448,7 +446,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         reason: "register" | "refresh" = "register",
     ): boolean {
         const boardRoot = this.state.get().boardRoot;
-        if (this.aiVisionDisposed || !boardRoot || !isBoardPermitted(boardRoot)
+        if (this.aiVisionDisposed || !boardRoot || !boardRegistry.isPermitted(boardRoot)
             || this.frames.get(BOARD_CDP_TAB) !== iframe) return false;
         const current = this.aiVisionRegistration;
         // A refresh only keeps its incarnation when it really is the same live remote: same
@@ -473,7 +471,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
 
     getAiVisionRegistration(): BoardAiVisionRegistration | undefined {
         const boardRoot = this.state.get().boardRoot;
-        if (!this.aiVisionRegistration || !boardRoot || !isBoardPermitted(boardRoot)) {
+        if (!this.aiVisionRegistration || !boardRoot || !boardRegistry.isPermitted(boardRoot)) {
             if (this.aiVisionRegistration) this.clearAiVisionRegistration();
             return undefined;
         }
@@ -503,7 +501,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
             const transport = this.aiVisionTransports.get(tab);
             const boardRoot = this.state.get().boardRoot;
             if (!transport || this.frames.get(tab) !== transport.iframe || !boardRoot
-                || !isBoardPermitted(boardRoot)) {
+                || !boardRegistry.isPermitted(boardRoot)) {
                 return Promise.reject(new Error(`The board view '${view}' is unavailable or untrusted.`));
             }
             return transport.request(request, timeoutMs, timeoutError);
@@ -867,7 +865,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         frameGeneration: number,
         declarations: readonly BoardToolbarElementDeclaration[],
     ): void {
-        if (!this.isMain || !this.state.get().boardRoot || !isBoardPermitted(this.state.get().boardRoot!)) return;
+        const boardRoot = this.state.get().boardRoot;
+        if (!this.isMain || !boardRoot || !boardRegistry.isPermitted(boardRoot)) return;
         this.toolbarFrameGeneration = frameGeneration;
         this.liveToolbarElements = [...declarations];
     }
@@ -884,7 +883,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         declarations: readonly BoardToolbarElementDeclaration[],
     ): void {
         const boardRoot = this.state.get().boardRoot;
-        if (!this.isMain || !boardRoot || !isBoardPermitted(boardRoot)) return;
+        if (!this.isMain || !boardRoot || !boardRegistry.isPermitted(boardRoot)) return;
         this.statusBarFrameGeneration = frameGeneration;
         this.liveStatusBarElements = [...declarations];
     }
@@ -898,7 +897,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
     getLiveToolbarElementDeclarations(): readonly BoardToolbarElementDeclaration[] {
         const boardRoot = this.state.get().boardRoot;
         if (!this.page || this.page.mainEditorInstance !== this || !boardRoot
-            || !isBoardPermitted(boardRoot) || !this.frames.get(BOARD_CDP_TAB)) return [];
+            || !boardRegistry.isPermitted(boardRoot) || !this.frames.get(BOARD_CDP_TAB)) return [];
         return [
             ...(this.toolbarFrameGeneration === undefined ? [] : this.liveToolbarElements),
             ...(this.statusBarFrameGeneration === undefined ? [] : this.liveStatusBarElements),
@@ -906,12 +905,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
     }
 
     /** Manifest editor kind for this board's trusted association. */
-    get editorKind(): "simple" | "content-host" | "stream-host" {
-        const boardRoot = this.state.get().boardRoot;
-        return customEditorRegistry.entries.find((entry) =>
-            BoardRoot.from(entry.boardRoot).equals(boardRoot ?? "")
-        )?.editorKind
-            ?? "simple";
+    get editorKind(): BoardEditorKind {
+        return "simple";
     }
 
     /** Whether the board bridge may address this page's platform-owned pipe by URL. */
@@ -929,17 +924,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         const host = this.contentHost;
         if (host?.pipe) return host.pipe;
         if (this.pipe) return this.pipe;
-        if (this.editorKind !== "stream-host") {
-            throw new Error("The content-host board has no live content pipe.");
-        }
-
-        const pipe = await pipeFromPersistedSource(
-            this.state.get().sourceLink,
-            this.currentFilePath(),
-            { unknownScheme: "file" },
-        );
-        this.pipe = pipe;
-        return pipe;
+        throw new Error("The content-host board has no live content pipe.");
     }
 
     async openContentResource(
@@ -960,7 +945,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         const boardRoot = this.state.get().boardRoot;
         if (!boardRoot) throw new Error("The board root is unavailable.");
         const scheme = schemeOf(link);
-        if (scheme && isBoardClaimedScheme(scheme) && !(await boardTrust.allows(boardRoot, "service"))) {
+        if (scheme && isBoardClaimedScheme(scheme) && !boardRegistry.grant(boardRoot)?.allows("service")) {
             throw BoardGrant.deny("service");
         }
         let pipe = await pipeFromLink(link, { sessionHandle, boardNetworkPolicy });
@@ -984,7 +969,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
                 pipe = createPipeFromDescriptor(descriptor);
                 filePath = canonicalPath;
             } else if (!["http", "data", "cache", "mneme", "guide"].includes(descriptor.provider.type)) {
-                if (!(await boardTrust.allows(boardRoot, "service"))) {
+                if (!boardRegistry.grant(boardRoot)?.allows("service")) {
                     throw BoardGrant.deny("service");
                 }
                 throw new Error("This registered content provider does not expose a path that can be authorized for board access.");
@@ -1056,9 +1041,6 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
      * instead of a silent "no file".
      */
     async ensureContentPath(): Promise<string | undefined> {
-        if (this.editorKind === "stream-host") {
-            throw new Error("stream-host boards do not expose a materialized content path.");
-        }
         const existing = this.state.get().contentPath;
         if (existing) return existing;
         const source = this.currentFilePath();
@@ -1171,9 +1153,6 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
      *  MCP `openBoard`. `filePath` is passed only on the custom-editor SWITCH path
      *; on the openRawLink path it rides `state.sourceLink` instead. */
     initFromBoardRoot(boardRoot: string, filePath?: string, folderPath?: string): void {
-        boardRoot = customEditorRegistry.entries.find((entry) =>
-            BoardRoot.from(entry.boardRoot).equals(boardRoot)
-        )?.boardRoot ?? boardRoot;
         const name = fpBasename(boardRoot);
         this.boardDisplayNameEnglish = name;
         this.state.update((s) => {
@@ -1189,7 +1168,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
                     ? fpBasename(folderPath)
                     : name;
         });
-        void boardTrust.load();
+        void boardRegistry.load();
         this.selectBoard(name);
         void this.refreshBoards();
         // A plain board page is titled by the manifest's display name, as a link-opened page
@@ -1258,23 +1237,18 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         // Same for a materialized content path carried in from a pre-fix persisted blob: the cache
         // file is gone (or stale), so force a re-resolve on the next `ensureContentPath()`.
         if (s.contentPath) this.state.update((st) => { st.contentPath = undefined; });
-        void boardTrust.load();
+        void boardRegistry.load();
         await this.refreshBoards();
-        const matchingEntry = customEditorRegistry.entries.find((entry) =>
-            BoardRoot.from(entry.boardRoot).equals(s.boardRoot ?? "")
-        );
+        const matchingEntry = customEditorRegistry.findByRoot(s.boardRoot);
         if (matchingEntry && matchingEntry.boardRoot !== s.boardRoot) {
             this.state.update((state) => { state.boardRoot = matchingEntry.boardRoot; });
         }
         const restoredRoot = this.state.get().boardRoot;
         if (restoredRoot && await isBoardFolder(restoredRoot)) {
-            await bundledBoardRegistry.ensureInitialized();
-            await boardTrust.load();
-            await boardTrust.refreshPermissionSnapshot();
-            const snapshot = await boardTrust.getPermissionSnapshot(restoredRoot);
-            if (boardTrust.isTrusted(restoredRoot)
-                && snapshot && BoardGrant.from(snapshot.manifestPermissions).isLegacy()
-                && !bundledBoardRegistry.isBundled(restoredRoot)) {
+            await boardRegistry.reload();
+            const snapshot = boardRegistry.permissionSnapshot(restoredRoot);
+            if (boardRegistry.isTrusted(restoredRoot)
+                && snapshot && BoardGrant.from(snapshot.manifestPermissions).isLegacy()) {
                 const manifest = await readBoardManifest(restoredRoot);
                 const boardName = manifest?.name?.trim() || fpBasename(restoredRoot);
                 queueLegacyBoardDeprecationNotice(s.id, restoredRoot, boardName);

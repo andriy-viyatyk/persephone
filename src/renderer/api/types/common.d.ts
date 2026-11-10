@@ -8,6 +8,9 @@ export interface IDisposable {
     dispose(): void;
 }
 
+/** Editor kind declared by a board manifest. */
+export type BoardEditorKind = "simple" | "content-host" | "stream-host";
+
 /**
  * A subscribable event. Call subscribe() to listen for events,
  * then call dispose() on the returned object to unsubscribe.

@@ -8,7 +8,7 @@ import { BoardEditorModel } from "./BoardEditorModel";
 import { UntrustedBoardView } from "./UntrustedBoardView";
 import { BoardNotFoundView } from "./BoardNotFoundView";
 import { BoardWebview } from "./BoardWebview";
-import { isBoardPermitted, subscribeBoardPermission } from "../../api/boards/board-access";
+import { boardRegistry } from "../../api/boards/board-registry";
 import { requestBoardTrust } from "../../api/boards/request-board-trust";
 import { BoardToolbarView } from "./BoardToolbar";
 import { ScriptPanelView } from "../text/ScriptPanelView";
@@ -193,7 +193,7 @@ export class BoardEditorView extends VanillaView<BoardEditorViewProps> {
             reloadToken: state.reloadToken,
             contentHostError: state.contentHostError,
         }), this.syncBranch);
-        this.own(subscribeBoardPermission(this.syncBranch));
+        this.own(boardRegistry.subscribeMembership(this.syncBranch));
     }
 
     protected onUpdate(): void {
@@ -210,7 +210,7 @@ export class BoardEditorView extends VanillaView<BoardEditorViewProps> {
         const selectedRoot = state.selectedBoard ? state.boardRoot : undefined;
         const key = !state.selectedBoard || !selectedRoot
             ? "not-found"
-            : !isBoardPermitted(selectedRoot)
+            : !boardRegistry.isPermitted(selectedRoot)
                 ? "untrusted"
                 : state.contentHostError
                     ? "content-error"

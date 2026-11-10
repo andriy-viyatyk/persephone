@@ -21,8 +21,9 @@ async function bootstrap(): Promise<(container: HTMLElement) => () => void> {
     ]);
     await app.initServices();
     await settings.wait();
-    const { initBoardTrustSync } = await import("./renderer/api/boards/board-trust-sync");
-    await initBoardTrustSync();
+    const { boardRegistry } = await import("./renderer/api/boards/board-registry");
+    await boardRegistry.load();
+    await import("./renderer/api/editor-categories");
     const { customEditorRegistry } = await import("./renderer/api/boards/custom-editor-registry");
     await customEditorRegistry.ensureInitialized();
     await app.initPages();

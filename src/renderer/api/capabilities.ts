@@ -36,35 +36,12 @@ import { validateThemeEditPayload } from "./theme-edit";
 import { EventEndpoint } from "../../ipc/api-types";
 import { boardCapabilityTransport } from "./board-capability-transport";
 import { serviceChannelPorts } from "./service-channel-ports";
+import { capabilityIndex } from "./capability-index";
 
 type CapabilityHandler = (payload: unknown) => Promise<CapabilityPageResult>;
 
 const builtinHandlers = new Map<string, Map<string, CapabilityHandler>>();
 let platformCandidatesSeeded = false;
-type CapabilityIndex = Awaited<ReturnType<typeof api.getCapabilityIndex>>;
-let mainIndexSnapshot: CapabilityIndex | undefined;
-let latestRevision = -1;
-let indexInitialization: Promise<void> | undefined;
-
-export function initializeCapabilityIndex(): Promise<void> {
-    if (indexInitialization) return indexInitialization;
-    const accept = (snapshot: CapabilityIndex) => {
-        if (!mainIndexSnapshot || snapshot.revision >= mainIndexSnapshot.revision) mainIndexSnapshot = snapshot;
-        latestRevision = Math.max(latestRevision, snapshot.revision);
-    };
-    let fetching: Promise<void> | undefined;
-    const refresh = (): Promise<void> => {
-        if (!fetching) fetching = (async () => {
-            do { accept(await api.getCapabilityIndex()); } while (mainIndexSnapshot && mainIndexSnapshot.revision < latestRevision);
-        })().finally(() => { fetching = undefined; });
-        return fetching;
-    };
-    api.onCapabilityIndexSnapshot((snapshot) => { accept(snapshot); if (snapshot.revision < latestRevision) void refresh(); });
-    api.onCapabilityIndexChanged((revision) => { latestRevision = Math.max(latestRevision, revision); if (!mainIndexSnapshot || mainIndexSnapshot.revision < latestRevision) void refresh(); });
-    indexInitialization = refresh();
-    return indexInitialization;
-}
-
 function capabilityKey(id: CapabilityId, representation?: string): string {
     return `${id}:${representation ?? ""}`;
 }
@@ -234,12 +211,12 @@ class Capabilities implements ICapabilities {
 
     list(): readonly CapabilityInfo[] {
         return Object.freeze(
-            (mainIndexSnapshot?.legacyRegistrations ?? []).map(copyInfo),
+            capabilityIndex.registrations().map(copyInfo),
         );
     }
 
     handlers(id: string, filter?: CapabilityHandlerFilter): readonly CapabilityInfo[] {
-        return Object.freeze((mainIndexSnapshot?.legacyRegistrations ?? []).filter((entry) => entry.id === id && matchesFilter(entry, filter))
+        return Object.freeze(capabilityIndex.registrations().filter((entry) => entry.id === id && matchesFilter(entry, filter))
             .sort((a, b) => b.priority - a.priority || Number(b.origin === "platform") - Number(a.origin === "platform")).map(copyInfo));
     }
 }

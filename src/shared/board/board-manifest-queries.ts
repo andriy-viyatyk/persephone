@@ -1,6 +1,17 @@
 import type { NormalizedBoardManifest, BoardEditorKind } from "./board-manifest-schema";
 import type { NormalizedBoardPermissions } from "./board-permissions";
 import type { BoardServiceInterfaceDeclaration, BoardServiceUseDeclaration } from "./board-service-declarations";
+import { BOARD_BRIDGE_VERSION } from "../board-bridge-version";
+import { getBoardCompatibility, type BoardCompatibilityResult } from "../version-utils";
+import { BoardGrant } from "./board-grant";
+
+/** Whether a board manifest can run on this build's bridge. */
+export function boardManifestCompatibility(manifest: NormalizedBoardManifest | null | undefined): BoardCompatibilityResult {
+    return getBoardCompatibility({
+        minBridgeVersion: manifest?.minBridgeVersion,
+        requiresMinBridgeVersion: !!manifest && BoardGrant.from(manifest.permissions).isDeclared(),
+    }, { bridgeVersion: BOARD_BRIDGE_VERSION });
+}
 
 export function hostOwnsPipe(kind: BoardEditorKind): boolean {
     return kind === "content-host" || kind === "stream-host";

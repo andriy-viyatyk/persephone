@@ -94,8 +94,9 @@ included in the offline installation. Right-click it in the Built-in list and ch
 remove its file association and its image/diagram handoff capabilities. If no replacement board is
 installed, those actions show **No image editor is registered** or **No diagram editor is
 registered**. A disabled bundled board stays in the Built-in list, greyed out and no longer
-creatable — right-click it and choose **Enable** to bring it back. The change takes effect
-immediately, with no restart.
+creatable. Any page that already has it open shows the untrusted screen while it is disabled.
+Right-click it and choose **Enable** to bring it back. The change takes effect immediately, with no
+restart.
 
 The three parts:
 
@@ -1662,6 +1663,10 @@ Once a board is installed, the same **Board Info** screen switches to a **proper
 
 If a board you're updating is currently open (or has background processes still running via `setBoardBusy`), Persephone asks you to close its pages first, with a **Close pages & continue** shortcut that does it for you (respecting any unsaved changes) and proceeds with the update.
 
+When you remove or unregister a board, Persephone closes its open pages and stops its background
+service before completing the removal. This applies whether you remove it from Board Info, the Boards
+panel, or the Editors tree. Renaming a board keeps its category pin in the same position.
+
 > Updating or rolling back a board replaces its files, including any local edits you made by hand — there's no separate warning for that beyond the click itself.
 
 ### Checking for new boards
@@ -1686,11 +1691,11 @@ An AI agent can perform the whole discover → download → review → install �
 | `app.boards.getPublishedVersions(id)` | A board's full version history. Read-only, no dialog. |
 | `app.boards.downloadPublished(id, opts?)` | Download + verify + extract a board **without trusting it** — the "can I trust this board?" entry point: download it, read its files, then decide. No dialog. |
 | `app.boards.installPublished(id, opts?)` | Opens the Board Info screen for an interactive install (or drives an update/rollback if already installed and `opts.version` is given). |
-| `app.boards.uninstallBoard(id)` | Removes an installed catalog board, after the usual delete confirmation. |
+| `app.boards.uninstallBoard(id)` | Removes an installed catalog board after confirmation, closing its open pages and stopping its service. |
 | `app.boards.checkPublishedUpdates(force?)` | Refresh the catalog and report which installed boards have an update available. No dialog. |
 | `app.boards.registerBoard(boardRoot)` | Show the trust dialog for a board already on disk (e.g. one downloaded with `downloadPublished`); resolves to whether it ended up trusted. |
-| `app.boards.unregisterBoard(boardRoot)` | Untrust a board (no dialog — untrusting only removes privilege). |
-| `app.boards.renameBoard(boardRoot, newName)` | Rename a trusted board's folder, carrying its trust, pin, and catalog registration to the new path. |
+| `app.boards.unregisterBoard(boardRoot)` | Untrust a board, closing its open pages and stopping its service. |
+| `app.boards.renameBoard(boardRoot, newName)` | Rename a trusted board's folder, carrying its trust, category pin and position, and catalog registration to the new path. |
 
 See the [Scripting API Reference](./scripting/api/app.md#boards) for full method signatures, and ask your AI agent to `persephone://guides/boards` for the complete authoring/automation reference, including a checklist for reviewing a downloaded board's files before registering it.
 

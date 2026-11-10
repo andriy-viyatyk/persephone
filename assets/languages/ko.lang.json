@@ -47,11 +47,15 @@
     "api.actionFailed": "{action} 실패: {error}",
     "api.autoloadScriptError": "자동 로드 스크립트 오류: {message}",
     "api.boardBusyDeleting": "이 보드는 현재 실행 중입니다. 삭제하기 전에 중지하세요.",
+    "api.boardBusyRemoving": "이 보드는 현재 실행 중입니다. 제거하기 전에 중지하세요.",
     "api.boardBusyUpdating": "이 보드는 현재 실행 중입니다. 업데이트하기 전에 중지하세요.",
     "api.boardInstalled": "{name} v{version}을(를) 설치했습니다.",
     "api.boardInstallFailed": "설치 실패: {error}",
     "api.boardOpenDeleting": {
       "other": "이 보드는 페이지 {count}개에서 열려 있으므로 삭제하기 전에 닫아야 합니다. 페이지는 열린 상태로 비워집니다. 계속하시겠습니까?"
+    },
+    "api.boardOpenRemoving": {
+      "other": "이 보드는 {count}개 페이지에서 열려 있으므로 제거하기 전에 닫아야 합니다. 페이지는 열린 상태로 비워집니다. 계속할까요?"
     },
     "api.boardOpenTitle": "보드가 열려 있습니다",
     "api.boardOpenUpdating": {
@@ -3455,6 +3459,8 @@
     "shell.ungroup": "460af6ed",
     "shell.mutePage": "724c00d7",
     "shell.unmutePage": "af4c43a2",
-    "tools.siteExtensionActionFailed": "96558212"
+    "tools.siteExtensionActionFailed": "96558212",
+    "api.boardBusyRemoving": "fc62a483",
+    "api.boardOpenRemoving": "6426988c"
   }
 }

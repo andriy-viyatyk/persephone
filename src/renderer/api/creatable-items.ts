@@ -1,24 +1,21 @@
-import { pagesModel } from "../../api/pages";
-import { app } from "../../api/app";
-import { fs } from "../../api/fs";
-import { type BrowserProfile } from "../../api/settings";
-import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
-import { createLinkData } from "../../../shared/link-data";
-import { guard } from "../../core/utils/guard";
-import { bundledBoardRegistry } from "../../api/boards/bundled-board-registry";
-import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
-import { boardDisplayText, boardMetadataKeys } from "../../api/boards/board-display-text";
+import { pagesModel } from "./pages";
+import { app } from "./app";
+import { fs } from "./fs";
+import { type BrowserProfile } from "./settings";
+import { encodePersephoneBoardLink } from "../content/persephone-board-link";
+import { createLinkData } from "../../shared/link-data";
+import { guard } from "../core/utils/guard";
+import { boardRegistry } from "./boards/board-registry";
+import { boardDisplayText, boardMetadataKeys } from "./boards/board-display-text";
 import {
     GridIcon, IncognitoIcon, TorIcon,
     JavascriptIcon, LinkIcon, TypescriptIcon,
-} from "../../theme/language-icons";
-import { DEFAULT_BROWSER_COLOR, MEMORY_ICON_COLOR } from "../../theme/palette-colors";
-import { createFolderIconElement } from "../../components/icons/icon-elements";
-import { createIconElement } from "../../uikit/shared/slots";
-import type { IconRef } from "../../uikit/shared/slots";
-import type { MenuItem } from "../../uikit/Menu/types";
-import { englishMessage, t } from "../../../shared/i18n/t";
-import type { MessageKey } from "../../../shared/i18n/en";
+} from "../theme/language-icons";
+import { DEFAULT_BROWSER_COLOR, MEMORY_ICON_COLOR } from "../theme/palette-colors";
+import { createFolderIconElement } from "../components/icons/icon-elements";
+import { createIconElement } from "../uikit/shared/slots";
+import { englishMessage, t } from "../../shared/i18n/t";
+import type { MessageKey } from "../../shared/i18n/en";
 
 // =============================================================================
 // Types
@@ -32,8 +29,8 @@ export interface CreatableItem {
     /** Catalog key for app-owned labels; board names remain manifest data. */
     labelKey?: MessageKey;
     labelParams?: Record<string, string | number>;
-    /** Icon element for menus and sidebar. */
-    icon?: IconRef;
+    /** A fresh icon node per call; DOM nodes are single-use. */
+    createIcon?: () => Node;
     /** Create the page/tab. */
     create: () => void;
     /** Category for grouping in the sidebar list. */
@@ -62,7 +59,7 @@ const staticItems: CreatableItem[] = [
         id: "open-folder",
         labelKey: "shell.openFolder",
         label: englishMessage("shell.openFolder"),
-        icon: createFolderIconElement(),
+        createIcon: () => createFolderIconElement(),
         create: () => {
             void (async () => {
                 const picked = await fs.showFolderDialog({ title: t("shell.openFolderInExplorer") });
@@ -77,7 +74,7 @@ const staticItems: CreatableItem[] = [
         id: "open-file",
         labelKey: "shell.openFile",
         label: englishMessage("shell.openFile"),
-        icon: createIconElement("open-file"),
+        createIcon: () => createIconElement("open-file"),
         create: () => { void pagesModel.openFileFromDialog(); },
         category: "tool",
     },
@@ -85,7 +82,7 @@ const staticItems: CreatableItem[] = [
         id: "open-url",
         labelKey: "shell.openUrl",
         label: englishMessage("shell.openUrl"),
-        icon: createIconElement("open-file"),
+        createIcon: () => createIconElement("open-file"),
         create: () => { void pagesModel.openFileWithDialog(); },
         category: "tool",
     },
@@ -93,7 +90,7 @@ const staticItems: CreatableItem[] = [
         id: "clipboard",
         labelKey: "shell.clipboard",
         label: englishMessage("shell.clipboard"),
-        icon: createIconElement("paste"),
+        createIcon: () => createIconElement("paste"),
         create: () => { void pagesModel.showClipboardPage(); },
         category: "tool",
     },
@@ -101,7 +98,7 @@ const staticItems: CreatableItem[] = [
         id: "script-js",
         labelKey: "shell.textScriptJs",
         label: englishMessage("shell.textScriptJs"),
-        icon: JavascriptIcon.createElement(),
+        createIcon: () => JavascriptIcon.createElement(),
         create: () => pagesModel.addEditorPage("monaco", "javascript", "untitled.js"),
         category: "editor",
     },
@@ -109,7 +106,7 @@ const staticItems: CreatableItem[] = [
         id: "script-ts",
         labelKey: "shell.textScriptTs",
         label: englishMessage("shell.textScriptTs"),
-        icon: TypescriptIcon.createElement(),
+        createIcon: () => TypescriptIcon.createElement(),
         create: () => pagesModel.addEditorPage("monaco", "typescript", "untitled.ts"),
         category: "editor",
     },
@@ -117,7 +114,7 @@ const staticItems: CreatableItem[] = [
         id: "grid-json",
         labelKey: "editors.gridJson",
         label: englishMessage("editors.gridJson"),
-        icon: GridIcon.createElement(),
+        createIcon: () => GridIcon.createElement(),
         create: () => pagesModel.addEditorPage("grid-json", "json", "untitled.grid.json"),
         category: "editor",
     },
@@ -125,7 +122,7 @@ const staticItems: CreatableItem[] = [
         id: "grid-csv",
         labelKey: "editors.gridCsv",
         label: englishMessage("editors.gridCsv"),
-        icon: GridIcon.createElement(),
+        createIcon: () => GridIcon.createElement(),
         create: () => pagesModel.addEditorPage("grid-csv", "csv", "untitled.grid.csv"),
         category: "editor",
     },
@@ -133,7 +130,7 @@ const staticItems: CreatableItem[] = [
         id: "link-view",
         labelKey: "editors.links",
         label: englishMessage("editors.links"),
-        icon: LinkIcon.createElement(),
+        createIcon: () => LinkIcon.createElement(),
         create: () => pagesModel.addEditorPage("link-view", "json", "untitled.link.json"),
         category: "editor",
     },
@@ -141,7 +138,7 @@ const staticItems: CreatableItem[] = [
         id: "browser",
         labelKey: "editors.browser",
         label: englishMessage("editors.browser"),
-        icon: createIconElement("globe", { color: DEFAULT_BROWSER_COLOR }),
+        createIcon: () => createIconElement("globe", { color: DEFAULT_BROWSER_COLOR }),
         create: () => { pagesModel.showBrowserPage(); },
         category: "tool",
     },
@@ -149,7 +146,7 @@ const staticItems: CreatableItem[] = [
         id: "browser-incognito",
         labelKey: "shell.browserIncognito",
         label: englishMessage("shell.browserIncognito"),
-        icon: IncognitoIcon.createElement(),
+        createIcon: () => IncognitoIcon.createElement(),
         create: () => { pagesModel.showBrowserPage({ incognito: true }); },
         category: "tool",
     },
@@ -157,7 +154,7 @@ const staticItems: CreatableItem[] = [
         id: "browser-tor",
         labelKey: "shell.browserTor",
         label: englishMessage("shell.browserTor"),
-        icon: TorIcon.createElement(),
+        createIcon: () => TorIcon.createElement(),
         create: () => { pagesModel.showBrowserPage({ tor: true }); },
         category: "tool",
     },
@@ -165,7 +162,7 @@ const staticItems: CreatableItem[] = [
         id: "mcp-inspector",
         labelKey: "editors.mcpInspector",
         label: englishMessage("editors.mcpInspector"),
-        icon: createIconElement("mcp"),
+        createIcon: () => createIconElement("mcp"),
         create: () => { pagesModel.showMcpInspectorPage(); },
         category: "tool",
     },
@@ -173,7 +170,7 @@ const staticItems: CreatableItem[] = [
         id: "mneme-config",
         labelKey: "editors.mneme",
         label: englishMessage("editors.mneme"),
-        icon: createIconElement("memory", { color: MEMORY_ICON_COLOR }),
+        createIcon: () => createIconElement("memory", { color: MEMORY_ICON_COLOR }),
         create: () => { pagesModel.showMnemeConfigPage(); },
         category: "tool",
     },
@@ -181,7 +178,7 @@ const staticItems: CreatableItem[] = [
         id: "storybook",
         labelKey: "editors.storybook",
         label: englishMessage("editors.storybook"),
-        icon: createIconElement("storybook"),
+        createIcon: () => createIconElement("storybook"),
         create: () => { pagesModel.showStorybookPage(); },
         category: "tool",
     },
@@ -189,7 +186,7 @@ const staticItems: CreatableItem[] = [
         id: "video-view",
         labelKey: "editors.videoPlayer",
         label: englishMessage("editors.videoPlayer"),
-        icon: createIconElement("player", { color: DEFAULT_BROWSER_COLOR }),
+        createIcon: () => createIconElement("player", { color: DEFAULT_BROWSER_COLOR }),
         create: () => pagesModel.showVideoPlayerPage(),
         category: "tool" as const,
     },
@@ -207,12 +204,12 @@ export function getCreatableItems(
         labelKey: "shell.browserProfile",
         labelParams: { profile: profile.name },
         label: englishMessage("shell.browserProfile", { profile: profile.name }),
-        icon: createIconElement("globe", { color: profile.color }),
+        createIcon: () => createIconElement("globe", { color: profile.color }),
         create: () => { pagesModel.showBrowserPage({ profileName: profile.name }); },
         category: "tool" as const,
     }));
 
-    const bundledItems: CreatableItem[] = bundledBoardRegistry.enabledEntries()
+    const bundledItems: CreatableItem[] = boardRegistry.bundled().filter((board) => board.enabled)
         .map((board) => {
             const label = board.manifest.name?.trim() || board.id;
             const association = board.manifest.association;
@@ -220,7 +217,6 @@ export function getCreatableItems(
                 id: `bundled-board:${board.id}`,
                 label,
                 boardRoot: board.root,
-                icon: createBoardGlyphElement(board.root),
                 create: () => {
                     void guard(`Failed to create ${label}`, async () => {
                         if (association?.editorKind === "content-host") {
@@ -234,15 +230,11 @@ export function getCreatableItems(
                 },
                 category: "editor",
                 bundledBoardId: board.id,
-                disable: () => disableBundledBoard(board.id),
+                disable: () => boardRegistry.setBundledDisabled(board.id, true),
             } satisfies CreatableItem;
         });
 
     return [...staticItems, ...bundledItems, ...profileItems];
-}
-
-export function disableBundledBoard(id: string): void {
-    bundledBoardRegistry.setDisabled(id, true);
 }
 
 /** Resolve an app-owned creatable label at the point where UI text is rendered. */
@@ -251,10 +243,6 @@ export function getCreatableItemLabel(item: CreatableItem): string {
         return boardDisplayText(item.boardRoot, undefined, boardMetadataKeys.name, item.label);
     }
     return item.labelKey ? t(item.labelKey, item.labelParams as never) : item.label;
-}
-
-export function enableBundledBoard(id: string): void {
-    bundledBoardRegistry.setDisabled(id, false);
 }
 
 /**
@@ -267,34 +255,17 @@ export function enableBundledBoard(id: string): void {
  * carry Enable.
  */
 export function getDisabledBundledBoardItems(): CreatableItem[] {
-    const disabled = bundledBoardRegistry.list().filter((board) => bundledBoardRegistry.isDisabled(board.id));
+    const disabled = boardRegistry.bundled().filter((board) => !board.enabled);
     return disabled
         .map((board) => ({
             id: `bundled-board:${board.id}`,
             label: board.manifest.name?.trim() || board.id,
             boardRoot: board.root,
-            icon: createBoardGlyphElement(board.root),
             create: () => {},
             category: "editor" as const,
             bundledBoardId: board.id,
-            enable: () => enableBundledBoard(board.id),
+            enable: () => boardRegistry.setBundledDisabled(board.id, false),
             disabled: true,
         }));
 }
 
-export function getBundledBoardContextMenu(item: CreatableItem): MenuItem[] | undefined {
-    if (!item.bundledBoardId) return undefined;
-    if (item.enable) {
-        return [{
-            label: t("shell.enable"),
-            icon: createIconElement("check", { width: 14, height: 14 }),
-            onClick: item.enable,
-        }];
-    }
-    if (!item.disable) return undefined;
-    return [{
-        label: t("shell.disable"),
-        icon: createIconElement("remove", { width: 14, height: 14 }),
-        onClick: item.disable,
-    }];
-}

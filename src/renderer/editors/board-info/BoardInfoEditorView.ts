@@ -1,6 +1,6 @@
 import { app } from "../../api/app";
 import { boardInstallRegistry, type InstalledBoardEntry } from "../../api/boards/board-install-registry";
-import { boardTrust } from "../../api/boards/board-trust";
+import { boardRegistry } from "../../api/boards/board-registry";
 import { BoardGrant } from "../../../shared/board/board-grant";
 import { requestBoardTrust } from "../../api/boards/request-board-trust";
 import { legacyBoardDeprecationWarningForUi } from "../../api/boards/board-permission-copy";
@@ -113,8 +113,7 @@ export class BoardInfoEditorView extends VanillaView<{ model: EditorModel }> {
         this.bind(this.model.state, selectSurfaceState, (state) => this.applySurfaceState(state));
         this.bind(this.model.state, selectAutoSwitchState, () => this.maybeAutoSwitch());
         this.own(boardInstallRegistry.subscribeInstalled(() => this.syncSurface()));
-        this.own(boardTrust.subscribePaths(() => this.syncSurface()));
-        this.own(boardTrust.subscribeGrants(() => { void this.model.loadProperties(); }));
+        this.own(boardRegistry.subscribeMembership(() => this.syncSurface()));
         this.own(publishedBoards.subscribeCatalog(() => this.syncSurface()));
         this.listen(window, "focus", () => {
             if (this.model.mode === "properties") void this.model.loadProperties();
@@ -365,7 +364,7 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         const headingDetails = panel({ direction: "row", align: "baseline", gap: "sm", wrap: true, flex: 1, minWidth: 0 },
             text(displayName, { size: "lg", bold: true }));
         if (info.installedVersion) headingDetails.append(text(`${untranslated("v")}${info.installedVersion}`, { size: "sm", color: "light" }));
-        const trusted = boardTrust.isTrusted(info.root);
+        const trusted = boardRegistry.isTrusted(info.root);
         headingDetails.append(text(trusted ? t("board.trusted") : t("board.notTrusted"), {
             size: "sm",
             color: trusted ? "success" : "warning",
@@ -705,7 +704,7 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         }
         const installed = props.installed.find((candidate) => candidate.id === entry.id);
         if (installed) {
-            return boardTrust.isTrusted(installed.root)
+            return boardRegistry.isTrusted(installed.root)
                 ? { kind: "registered", root: installed.root }
                 : { kind: "downloaded", root: installed.root };
         }

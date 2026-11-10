@@ -1,4 +1,4 @@
-import { isBoardPermitted, subscribeBoardPermission } from "../../api/boards/board-access";
+import { boardRegistry } from "../../api/boards/board-registry";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -54,7 +54,7 @@ export default class BoardSecondaryView extends VanillaView<SecondaryViewProps> 
         });
 
         this.bindBoardState(boardModel);
-        this.own(subscribeBoardPermission(this.renderState));
+        this.own(boardRegistry.subscribeMembership(this.renderState));
         this.own(onBoardDisplayTextChanged(this.renderState));
         this.own(() => this.header?.dispose());
         this.renderState();
@@ -116,7 +116,7 @@ export default class BoardSecondaryView extends VanillaView<SecondaryViewProps> 
         const viewId = this.viewId;
         const declaration = state.secondaryViewDefs?.find((view) => view.id === viewId);
         const selectedRoot = state.selectedBoard ? state.boardRoot : undefined;
-        const permitted = isBoardPermitted(selectedRoot ?? "");
+        const permitted = boardRegistry.isPermitted(selectedRoot ?? "");
         this.header?.update({
             headerHost: this.props.headerHost,
             icon: this.props.iconElement,

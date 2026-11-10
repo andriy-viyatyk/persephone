@@ -47,12 +47,17 @@
     "api.actionFailed": "{action}: {error}",
     "api.autoloadScriptError": "Fehler im automatisch geladenen Skript: {message}",
     "api.boardBusyDeleting": "Dieses Board wird gerade ausgeführt. Beenden Sie es, bevor Sie es löschen.",
+    "api.boardBusyRemoving": "Dieses Board wird gerade ausgeführt. Beenden Sie es, bevor Sie es entfernen.",
     "api.boardBusyUpdating": "Dieses Board wird gerade ausgeführt. Beenden Sie es, bevor Sie es aktualisieren.",
     "api.boardInstalled": "{name} v{version} installiert.",
     "api.boardInstallFailed": "Installation fehlgeschlagen: {error}",
     "api.boardOpenDeleting": {
       "one": "Dieses Board ist auf {count} Seite geöffnet und muss vor dem Löschen geschlossen werden. Die Seite bleibt geöffnet und ist danach leer. Möchten Sie fortfahren?",
       "other": "Dieses Board ist auf {count} Seiten geöffnet und muss vor dem Löschen geschlossen werden. Die Seiten bleiben geöffnet und sind danach leer. Möchten Sie fortfahren?"
+    },
+    "api.boardOpenRemoving": {
+      "one": "Dieses Board ist auf {count} Seite geöffnet und muss vor dem Entfernen geschlossen werden. Die Seite bleibt geöffnet und leer. Fortfahren?",
+      "other": "Dieses Board ist auf {count} Seiten geöffnet und muss vor dem Entfernen geschlossen werden. Die Seiten bleiben geöffnet und leer. Fortfahren?"
     },
     "api.boardOpenTitle": "Board ist geöffnet",
     "api.boardOpenUpdating": {
@@ -3503,6 +3508,8 @@
     "shell.ungroup": "460af6ed",
     "shell.mutePage": "724c00d7",
     "shell.unmutePage": "af4c43a2",
-    "tools.siteExtensionActionFailed": "96558212"
+    "tools.siteExtensionActionFailed": "96558212",
+    "api.boardBusyRemoving": "fc62a483",
+    "api.boardOpenRemoving": "6426988c"
   }
 }

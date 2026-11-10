@@ -1,4 +1,4 @@
-﻿# EPIC-127: Language packs â€” interface languages, phase 4
+# EPIC-127: Language packs — interface languages, phase 4
 
 ## Status
 
@@ -11,7 +11,7 @@ Phase 4, the last phase of the localization roadmap. After EPIC-124
 to EPIC-126, every string the app and its boards show comes from an English catalog or pack, but
 English is the only language that ships. This epic gives an agent what it needs to write a pack
 (the `app.languages` API and an agent guide, D17), proves the guide with a QA run, and then uses
-the same guide to draft the seventeen built-in languages of roadmap Â§4 for the app, the two bundled
+the same guide to draft the seventeen built-in languages of roadmap §4 for the app, the two bundled
 boards and the fifteen catalog boards. It ends with the installer offering those languages.
 
 After this epic the user does a full local test, and then publishes the catalog boards. Publishing
@@ -24,7 +24,7 @@ is not part of this epic.
   `app.languages` API lists, reads, validates, saves and applies packs.
 - An agent can validate a board's `lang/<code>.json` without switching the app language (the gap
   found in the EPIC-126 QA run).
-- Persephone ships packs for the seventeen non-English languages of roadmap Â§4, and every bundled
+- Persephone ships packs for the seventeen non-English languages of roadmap §4, and every bundled
   and catalog board has a pack for each of them. `npm run i18n:check` passes for all of them.
 - The user reviews Ukrainian before release.
 - The installer asks for its language from the same set where NSIS supports it.
@@ -32,48 +32,48 @@ is not part of this epic.
 
 ## Decisions
 
-Roadmap decisions D1â€“D15 and D17 stand (D16 withdrawn), and EPIC-126's F1â€“F9 apply to board
+Roadmap decisions D1–D15 and D17 stand (D16 withdrawn), and EPIC-126's F1–F9 apply to board
 packs. This epic adds these. They are proposals for the user to confirm or change:
 
-- **G1 â€” Built-in packs are written as files, user packs through the API.** The roadmap said the
+- **G1 — Built-in packs are written as files, user packs through the API.** The roadmap said the
   built-in packs are drafted "by following the agent guide". Driving about 26,000 translations
   through MCP calls into a running app would cost far more than it proves. So the built-in packs
   are written straight into `assets/languages/<code>.lang.json` and each board's `lang/<code>.json`
   by the drafting agent, and checked with `npm run i18n:check`. They follow the guide's
   translation rules (placeholders, plural categories, notes, glossary, source hashes). The API
   path is what a user's agent uses, and the QA run (US-1680) tests it.
-- **G2 â€” Translator notes before drafting.** Only 58 of the 1,524 catalog messages carry a `note`.
+- **G2 — Translator notes before drafting.** Only 58 of the 1,524 catalog messages carry a `note`.
   Short labels such as "Open", "Close", "New", "Format", "Clear" or "Run" have several senses, and
   a machine draft guesses wrong without context. One task (US-1678) adds notes to the ambiguous
   messages, mostly single words and short phrases, before any language is drafted. `english()`
   returns them, and the guide tells the agent to read them.
-- **G3 â€” A glossary per language, decided once.** Core terms (page, tab, board, editor, sidebar,
+- **G3 — A glossary per language, decided once.** Core terms (page, tab, board, editor, sidebar,
   script, pin, workspace terms such as "commit" and "push") are chosen once per language before
   its pack is drafted, and recorded in `doc/standards/localization-glossary.md`. Updates and fixes
   reuse the same words. The default is the terminology Windows uses in that language (Microsoft's
   style guides), so "File", "Save" and "Settings" match what users see elsewhere on their system.
   The same tone rule follows from that: the polite or informal form Windows uses in each
   language.
-- **G4 â€” `i18n:check` catches broken characters.** Delegated drafting has repeatedly saved
+- **G4 — `i18n:check` catches broken characters.** Delegated drafting has repeatedly saved
   non-ASCII text as `?` or as double-encoded UTF-8 (EPIC-126). The check fails on a translated
   message containing U+FFFD, a `?` where the English has none, or a double-encoding pattern such as
-  `Ãƒ`, `Ã`, `Ã‘` or `Ã¢â‚¬`. It also checks board packs (`--boards <folder>...`), with the same rules
+  `Ã`, `Ð`, `Ñ` or `â€`. It also checks board packs (`--boards <folder>...`), with the same rules
   the board host applies.
-- **G5 â€” Board packs go into this epic's unpublished board versions.** The catalog boards were
+- **G5 — Board packs go into this epic's unpublished board versions.** The catalog boards were
   bumped in EPIC-126 and are not published yet, so adding translated packs does not bump them
   again. Their `WHATS-NEW.md` entries gain a line about the new languages. Board work stays on
   `persephone-boards` `develop` (F9).
-- **G6 â€” Ukrainian first, then the rest in groups.** Ukrainian is drafted first, end to end (app,
+- **G6 — Ukrainian first, then the rest in groups.** Ukrainian is drafted first, end to end (app,
   bundled boards, catalog boards), so the user can review it while the rest is drafted, and so the
   drafting process is proven on one language before it runs on sixteen. The other languages go in
   four groups of four.
-- **G7 â€” `apply()` reloads every window, so agents ask first.** `apply(code)` sets the `language`
+- **G7 — `apply()` reloads every window, so agents ask first.** `apply(code)` sets the `language`
   setting and reloads every window, as the Settings picker does (D5). The guide tells an agent to
   ask the user before calling it, and to use `validate` / `validateBoard` to check a pack without
   switching.
-- **G8 â€” `save()` writes user packs only.** `save(pack)` validates the pack and writes
+- **G8 — `save()` writes user packs only.** `save(pack)` validates the pack and writes
   `<userData>/data/languages/<code>.lang.json` atomically. It never writes into `assets/` or into a
-  board folder (roadmap Â§6). A pack with a built-in code overrides only the keys it contains (D7),
+  board folder (roadmap §6). A pack with a built-in code overrides only the keys it contains (D7),
   so a one-message fix is a one-message pack.
 
 ## Current state (verified 2026-10-10)
@@ -121,7 +121,7 @@ reviews the plan; the QA run is Claude's.
 | US-1686 | Installer languages (NSIS) | Done — 18 languages; `npm run dist` builds |
 | US-1687 | Closing sweep: layout under the longest languages and CJK, roadmap | Done — no layout fixes needed |
 
-### US-1676 â€” `app.languages`, read side
+### US-1676 — `app.languages`, read side
 
 - `list()`: built-in and user packs, with code, names, completeness and whether a user pack
   overrides a built-in one. `current`: the active code and how it was chosen (setting or auto).
@@ -139,7 +139,7 @@ reviews the plan; the QA run is Claude's.
   hand-written pack with a wrong placeholder and gets the warning, and validates a test board's
   `de.json` while the app runs in English.
 
-### US-1677 â€” `app.languages`, write side
+### US-1677 — `app.languages`, write side
 
 - `save(pack)`: validate, refuse on errors with the warnings, write the user pack atomically (G8).
   A partial pack with a built-in code is allowed and overrides per key.
@@ -149,7 +149,7 @@ reviews the plan; the QA run is Claude's.
 - **Acceptance:** a one-message `uk` fix saved through MCP shows after `apply("uk")`; `delete`
   restores the built-in text; an invalid pack is refused with its warnings.
 
-### US-1678 â€” Translator notes and the check script
+### US-1678 — Translator notes and the check script
 
 - Add a `note` to every ambiguous message (G2): single words and short phrases whose sense depends
   on where they appear, verbs that could be nouns, and messages whose placeholders need explaining.
@@ -159,7 +159,7 @@ reviews the plan; the QA run is Claude's.
 - **Acceptance:** the check catches a planted `?`, a double-encoded string and a stale key, and
   reports a board pack's wrong placeholder.
 
-### US-1679 â€” Agent guide
+### US-1679 — Agent guide
 
 - `assets/guides/agents/languages.md` (`guides.agents.languages`) per D17: create a pack area by
   area; keep `{placeholders}`; supply the target language's plural categories; read notes; record
@@ -173,28 +173,28 @@ reviews the plan; the QA run is Claude's.
   to add a language").
 - **Acceptance:** an agent finds the guide from "add a language" through the MCP instructions.
 
-### US-1680 â€” QA run (Claude)
+### US-1680 — QA run (Claude)
 
 - A weak test agent with only the docs adds a small Estonian pack for one area, then fixes one
   Ukrainian message, then checks a board pack. Fix what misleads it in the guide, `$help` or the
   instructions.
 
-### US-1681 to US-1685 â€” The packs
+### US-1681 to US-1685 — The packs
 
-- Each task drafts its languages per G1â€“G3: glossary first, then the app pack area by area, then
+- Each task drafts its languages per G1–G3: glossary first, then the app pack area by area, then
   the bundled boards (REST Client, Excalidraw's own text), then the fifteen catalog boards on
   `persephone-boards` `develop` (G5), including their `manifest.*` keys.
 - `npm run i18n:check` and the board check pass; no broken characters.
 - A live look per language: Settings, a dialog, one board; screenshots for the user.
 - US-1681 hands Ukrainian to the user for review; their corrections are applied in the same task.
 
-### US-1686 â€” Installer languages
+### US-1686 — Installer languages
 
 - `electron-builder.yml` `nsis`: `multiLanguageInstaller: true` and `installerLanguages` for the
   languages NSIS ships, with the installer picking the OS language.
 - **Acceptance:** `npm run dist` builds; the installer offers the languages.
 
-### US-1687 â€” Closing sweep
+### US-1687 — Closing sweep
 
 - Check layout under the longest packs (German, Hungarian, Ukrainian) and under Chinese, Japanese
   and Korean, at the risky spots from the roadmap (tabs, pinned rail, narrow dialogs). Fix what
@@ -205,7 +205,7 @@ reviews the plan; the QA run is Claude's.
 ## Notes
 
 ### 2026-10-10
-- Created after EPIC-126 closed. G1â€“G8 are proposals for the user.
+- Created after EPIC-126 closed. G1–G8 are proposals for the user.
 
 ### 2026-10-11
 

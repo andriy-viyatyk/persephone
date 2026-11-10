@@ -3,8 +3,7 @@ import type { MenuItem } from "../../core/events/context-menu";
 import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { api } from "../../../ipc/renderer/api";
-import { EventEndpoint } from "../../../ipc/api-types";
-import rendererEvents from "../../../ipc/renderer/renderer-events";
+import { boardRegistry } from "../../api/boards/board-registry";
 import { t } from "../../../shared/i18n/t";
 import { TranscriptController, type TranscriptSource, type TranscriptState } from "./TranscriptController";
 import "./TranscriptToolbarContributionView.css";
@@ -54,7 +53,7 @@ export class TranscriptToolbarContributionView extends VanillaView<TranscriptToo
         this.button.mount();
         this.menu.mount();
         void this.refreshProviders();
-        this.own(rendererEvents[EventEndpoint.eBoardTrustChanged].subscribe(() => { void this.refreshProviders(); }));
+        this.own(boardRegistry.subscribe(() => { void this.refreshProviders(); }));
     }
 
     protected onUpdate(props: TranscriptToolbarProps): void {

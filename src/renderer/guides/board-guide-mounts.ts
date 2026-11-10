@@ -9,14 +9,13 @@
  * must gain none. Untrusting a board therefore drops its pages from the tree and from search, the
  * same way it drops its editor associations.
  */
-import { boardTrust } from "../api/boards/board-trust";
+import { boardRegistry } from "../api/boards/board-registry";
 import { fs as appFs } from "../api/fs";
 import { fpJoin } from "../core/utils/file-path";
 import { BoardRoot } from "../../shared/board/board-root";
 import { readBoardManifest } from "../api/boards/board-manifest-io";
 import { boardGuideIdFromRoot, uniqueMountId, type BoardGuideMount } from "../../shared/guides/mounted-source";
 import { RendererGuideSource } from "./guide-source";
-import { bundledBoardRegistry } from "../api/boards/bundled-board-registry";
 
 /** How long a resolved mount list is reused. Trust changes invalidate it immediately; this only
  *  bounds how stale a manifest edit (a board updated in place on disk) can be. */
@@ -32,19 +31,18 @@ let cached: readonly ResolvedBoardGuides[] | undefined;
 let cachedAt = 0;
 let inFlight: Promise<readonly ResolvedBoardGuides[]> | undefined;
 
-boardTrust.subscribePaths(() => {
+boardRegistry.subscribeMembership(() => {
     cached = undefined;
     cachedAt = 0;
 });
 
 async function resolve(): Promise<readonly ResolvedBoardGuides[]> {
-    if (!boardTrust.isLoaded()) await boardTrust.load();
+    await boardRegistry.load();
     // Deterministic order: sorted by the comparison key, so mount ids (and the duplicate-name
     // suffixes below) are stable across runs, and so are the tree and `guides.search()`.
-    await bundledBoardRegistry.ensureInitialized();
-    const roots = [...new Map([...boardTrust.listPaths(), ...bundledBoardRegistry.list().map(board => board.root)]
-        .map(root => [BoardRoot.from(root).key, root])).values()].sort((left, right) =>
-        BoardRoot.from(left).key < BoardRoot.from(right).key ? -1 : 1);
+    const roots = boardRegistry.list()
+        .sort((left, right) => (left.key < right.key ? -1 : 1))
+        .map((entry) => entry.root);
     const taken = new Set<string>();
     const resolved: ResolvedBoardGuides[] = [];
     for (const boardRoot of roots) {

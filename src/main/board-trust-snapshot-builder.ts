@@ -1,15 +1,15 @@
 import type { BrowserUrlMaskClaim } from "../ipc/api-param-types";
+import type { BoardFileAccessGrants, BoardSnapshotEntry, DisabledBundledBoard } from "../ipc/board-snapshot-channels";
 import type { BoardServiceTrustSnapshot, TrustedBoardSnapshotEntry } from "../ipc/module-service-channels";
-import { BOARD_BRIDGE_VERSION } from "../shared/board-bridge-version";
 import { mergeCapabilityDeclarations } from "../shared/capability-contract";
 import { OwnershipRegistry } from "../shared/ownership-registry";
 import { BoardGrant } from "../shared/board/board-grant";
 import { normalizePermissions, type NormalizedBoardPermissions } from "../shared/board/board-permissions";
-import { getBoardCompatibility } from "../shared/version-utils";
 import { BoardRoot } from "../shared/board/board-root";
 import type { NormalizedBoardManifest } from "../shared/board/board-manifest-schema";
 import { boardLocalCallerId } from "./board-root-hashes";
-import { stableBoardIdentity } from "../shared/board/board-stable-identity";
+import { boardIdentity } from "../shared/board/board-stable-identity";
+import { boardManifestCompatibility } from "../shared/board/board-manifest-queries";
 import { boardDisplayName } from "./board-manifest-reader";
 import type { TrustedBoardGrant } from "./board-trust-store";
 
@@ -22,12 +22,18 @@ export interface BoardSource {
 export interface BoardTrustSnapshot {
     serviceSnapshot: BoardServiceTrustSnapshot;
     claims: BrowserUrlMaskClaim[];
+    /** The renderer-facing board list; the broadcaster turns it into a `BoardSnapshot`. */
+    entries: BoardSnapshotEntry[];
+    disabledBundled: DisabledBundledBoard[];
+    /** "file-access": only `entries[].fileAccess` changed since the previous snapshot. */
+    change: "rebuild" | "file-access";
 }
 
 export interface BoardTrustSources {
     grants: readonly TrustedBoardGrant[];
     trusted: readonly BoardSource[];
     bundled: readonly BoardSource[];
+    disabledBundled: readonly DisabledBundledBoard[];
 }
 
 export interface BoardTrustReduction {
@@ -45,6 +51,52 @@ export type BoardTrustSnapshotListener = (snapshot: BoardTrustSnapshot) => void 
 
 export const manifestPermissions = (manifest: NormalizedBoardManifest | null): NormalizedBoardPermissions =>
     manifest?.permissions ?? normalizePermissions(undefined);
+
+const storedGrantFor = (grants: readonly TrustedBoardGrant[], root: string): TrustedBoardGrant | undefined =>
+    grants.find((grant) => BoardRoot.from(grant.root).equals(root));
+
+function grantedFor(source: BoardSource, storedGrant: TrustedBoardGrant | undefined): NormalizedBoardPermissions {
+    return source.bundledId
+        ? manifestPermissions(source.manifest)
+        : storedGrant?.permissions ?? manifestPermissions(source.manifest);
+}
+
+function isBoardCompatible(source: BoardSource): boolean {
+    return boardManifestCompatibility(source.manifest).compatible;
+}
+
+function isManifestChanged(source: BoardSource, storedGrant: TrustedBoardGrant | undefined): boolean {
+    return !!storedGrant
+        && (!BoardGrant.same(manifestPermissions(source.manifest), storedGrant.permissions)
+            || JSON.stringify(source.manifest?.uses ?? []) !== JSON.stringify(storedGrant.uses ?? []));
+}
+
+export const fileAccessFor = (grants: readonly TrustedBoardGrant[], root: string): BoardFileAccessGrants => {
+    const stored = storedGrantFor(grants, root);
+    return { folderGrants: [...(stored?.folderGrants ?? [])], fileGrants: [...(stored?.fileGrants ?? [])] };
+};
+
+function buildEntries(grants: readonly TrustedBoardGrant[], trusted: readonly BoardSource[], bundled: readonly BoardSource[]): BoardSnapshotEntry[] {
+    return [...trusted, ...bundled].map((source): BoardSnapshotEntry => {
+        const storedGrant = storedGrantFor(grants, source.root);
+        const manifestUses = source.manifest?.uses ?? [];
+        const base = {
+            root: source.root,
+            permissions: grantedFor(source, storedGrant),
+            manifestPermissions: manifestPermissions(source.manifest),
+            manifestChanged: isManifestChanged(source, storedGrant),
+            uses: source.bundledId ? manifestUses : storedGrant?.uses ?? [],
+            manifestUses,
+            fileAccess: source.bundledId ? { folderGrants: [], fileGrants: [] } : fileAccessFor(grants, source.root),
+        };
+        return source.bundledId ? { ...base, origin: "bundled", bundledId: source.bundledId } : { ...base, origin: "trusted" };
+    });
+}
+
+/** A file-access change touches only `fileAccess`; the manifests are not re-read. */
+export function withFileAccess(entries: readonly BoardSnapshotEntry[], grants: readonly TrustedBoardGrant[]): BoardSnapshotEntry[] {
+    return entries.map((entry) => entry.origin === "bundled" ? entry : { ...entry, fileAccess: fileAccessFor(grants, entry.root) });
+}
 
 function reduceGrants(grants: readonly TrustedBoardGrant[], trusted: readonly BoardSource[]): {
     grants: TrustedBoardGrant[];
@@ -74,20 +126,13 @@ function buildServiceSnapshot(grants: readonly TrustedBoardGrant[], trusted: rea
         const service = source.manifest?.service;
         const manifestUses = source.manifest?.uses ?? [];
         const manifestInterfaces = source.manifest?.serviceInterfaces ?? [];
-        const granted = source.bundledId
-            ? manifestPermissions(source.manifest)
-            : grants.find((grant) => BoardRoot.from(grant.root).equals(source.root))?.permissions
-                ?? manifestPermissions(source.manifest);
-        const storedGrant = grants.find((grant) => BoardRoot.from(grant.root).equals(source.root));
-        const manifestChanged = !!storedGrant
-            && (!BoardGrant.same(manifestPermissions(source.manifest), storedGrant.permissions)
-                || JSON.stringify(manifestUses) !== JSON.stringify(storedGrant.uses ?? []));
-        const callerId = stableBoardIdentity(source.manifest)
-            ?? (source.bundledId ? `bundled:${source.bundledId}` : boardLocalCallerId(BoardRoot.from(source.root)));
-        const compatible = getBoardCompatibility({
-            minBridgeVersion: source.manifest?.minBridgeVersion,
-            requiresMinBridgeVersion: BoardGrant.from(manifestPermissions(source.manifest)).isDeclared(),
-        }, { bridgeVersion: BOARD_BRIDGE_VERSION }).compatible;
+        const storedGrant = storedGrantFor(grants, source.root);
+        const granted = grantedFor(source, storedGrant);
+        const manifestChanged = isManifestChanged(source, storedGrant);
+        const callerId = boardIdentity(source.manifest,
+            source.bundledId ? { kind: "bundled", bundledId: source.bundledId } : { kind: "local" },
+            () => boardLocalCallerId(BoardRoot.from(source.root)));
+        const compatible = isBoardCompatible(source);
         const declarations = compatible ? source.manifest?.capabilities ?? [] : [];
         boards.push({
             boardRoot: source.root,
@@ -115,14 +160,7 @@ function buildClaims(trusted: readonly BoardSource[], bundled: readonly BoardSou
     const browserUrlMaskOwners = new OwnershipRegistry<BoardSource>();
     const claims: BrowserUrlMaskClaim[] = [];
     for (const source of [...trusted, ...bundled]) {
-        const compatibility = getBoardCompatibility(
-            {
-                minBridgeVersion: source.manifest?.minBridgeVersion,
-                requiresMinBridgeVersion: BoardGrant.from(manifestPermissions(source.manifest)).isDeclared(),
-            },
-            { bridgeVersion: BOARD_BRIDGE_VERSION },
-        );
-        if (!compatibility.compatible) continue;
+        if (!isBoardCompatible(source)) continue;
         const masks = source.manifest?.browserUrlMasks ?? [];
         const accepted = masks.filter((mask) => browserUrlMaskOwners.claim(
             mask,
@@ -145,6 +183,9 @@ export function buildBoardTrustSnapshot(sources: BoardTrustSources): BoardTrustB
         snapshot: {
             serviceSnapshot: buildServiceSnapshot(grants, sources.trusted, sources.bundled),
             claims: buildClaims(sources.trusted, sources.bundled),
+            entries: buildEntries(grants, sources.trusted, sources.bundled),
+            disabledBundled: [...sources.disabledBundled],
+            change: "rebuild",
         },
     };
 }

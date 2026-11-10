@@ -1,7 +1,6 @@
 import { readBoardManifest } from "./board-manifest-io";
-import { stableBoardIdentity } from "../../../shared/board/board-stable-identity";
-import { bundledBoardRegistry } from "./bundled-board-registry";
-import { boardTrust } from "./board-trust";
+import { boardIdentity } from "../../../shared/board/board-stable-identity";
+import { boardRegistry } from "./board-registry";
 import { BoardRoot } from "../../../shared/board/board-root";
 
 // =============================================================================
@@ -24,21 +23,10 @@ import { BoardRoot } from "../../../shared/board/board-root";
  * ("Persephone/Excel Viewer"); it is deliberately NOT slugged or charset-restricted.
  */
 export async function resolveBoardNamespace(boardRoot: string): Promise<string> {
-    const root = BoardRoot.from(boardRoot);
     const manifest = await readBoardManifest(boardRoot);
-    let namespace: string;
-    const identity = stableBoardIdentity(manifest);
-    if (identity) {
-        namespace = identity;
-    } else {
-        await bundledBoardRegistry.ensureInitialized();
-        const bundled = bundledBoardRegistry.list().find(
-            (record) => root.equals(record.root),
-        );
-        namespace = bundled ? `bundled:${bundled.id}` : boardRoot;
-    }
-
-    return namespace;
+    await boardRegistry.load();
+    const bundledId = boardRegistry.bundledId(boardRoot);
+    return boardIdentity(manifest, bundledId ? { kind: "bundled", bundledId } : { kind: "local" }, () => boardRoot);
 }
 
 /**
@@ -53,9 +41,9 @@ export async function findNamespaceCollision(
     const namespace = await resolveBoardNamespace(boardRoot);
     if (namespace === boardRoot) return undefined;
 
-    await boardTrust.load();
+    await boardRegistry.load();
     const root = BoardRoot.from(boardRoot);
-    for (const other of boardTrust.listPaths()) {
+    for (const other of boardRegistry.roots("trusted")) {
         if (root.equals(other)) continue;
         // eslint-disable-next-line no-await-in-loop -- small, bounded list of trusted boards
         if ((await resolveBoardNamespace(other)) === namespace) {
@@ -67,7 +55,7 @@ export async function findNamespaceCollision(
 
 /**
  * Registration-flow gate: checks for a namespace collision and, if found, shows the advisory
- * dialog. Returns `true` when it's safe to proceed with `boardTrust.trust(boardRoot)` (no
+ * dialog. Returns `true` when it's safe to proceed with `boardRegistry.trust(boardRoot)` (no
  * collision, or the user chose "Register anyway"), `false` when the user cancelled.
  */
 export async function confirmNamespaceNotColliding(boardRoot: string): Promise<boolean> {

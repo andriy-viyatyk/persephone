@@ -1,4 +1,3 @@
-import { TComponentState } from "../../core/state/state";
 import type { EditorModel } from "./EditorModel";
 import { editorRegistry } from "./editorRegistry";
 // customEditorRegistry is deliberately static: the module is already required
@@ -16,6 +15,7 @@ import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { captureBoardSourceContext } from "../shared/source-context";
 import { matchesFileMask } from "../../../shared/board/board-masks";
 import type { ILinkData } from "../../../shared/link-data";
+import type { BoardEditorKind } from "../../../shared/board/board-manifest-schema";
 
 function sourceLinkFromEditor(editor: EditorModel): ILinkData | undefined {
     return (editor.state.get() as { sourceLink?: ILinkData }).sourceLink
@@ -28,7 +28,7 @@ async function boardSwitchSourceLink(
     newEditorId: string,
     filePath: string,
 ): Promise<ILinkData | undefined> {
-    const board = customEditorRegistry.entries.find((entry) => entry.editorId === newEditorId);
+    const board = customEditorRegistry.findByEditorId(newEditorId);
     const sourceLink = sourceLinkFromEditor(oldEditor);
     if (!board || !sourceLink || !["explorer", "link-category", "link-tag"].includes(sourceLink.sourceId ?? "")) {
         return undefined;
@@ -192,11 +192,9 @@ export async function switchMainEditor(
         // a simple board has no host and dispose-and-rebuilds. Determine the
         // NEW board's kind from the registry (a plain built-in is host-capable iff it
         // declares `hasContentHost`).
-        let newBoardKind: "simple" | "content-host" | "stream-host" | undefined;
+        let newBoardKind: BoardEditorKind | undefined;
         if (newBoardRoot !== null) {
-            newBoardKind =
-                customEditorRegistry.entries.find((e) => e.editorId === newEditorId)
-                    ?.editorKind ?? "simple";
+            newBoardKind = customEditorRegistry.findByEditorId(newEditorId)?.editorKind ?? "simple";
         }
         const oldHostCapable = !!oldEditor.contentHost;
         const newHostCapable =
@@ -215,18 +213,15 @@ export async function switchMainEditor(
             // Host-transfer switch — no reload, no confirmRelease (nothing is lost).
             let newEditor: EditorModel;
             if (newBoardRoot !== null) {
-                const { getDefaultBoardEditorState } = await import("../board");
-                const { BoardContentEditorModel } = await import(
-                    "../board/BoardContentEditorModel"
-                );
                 const filePath =
                     oldEditor.contentHost?.filePath
                     ?? oldEditor.filePath;
-                const model = new BoardContentEditorModel(
-                    new TComponentState(getDefaultBoardEditorState()),
-                );
-                model.initFromBoardRoot(newBoardRoot, filePath ?? undefined);
-                newEditor = model as unknown as EditorModel;
+                newEditor = (await (await import("../board")).createBoardEditor({
+                    kind: "file",
+                    boardRoot: newBoardRoot,
+                    filePath: filePath ?? undefined,
+                    editorKind: newBoardKind,
+                })) as unknown as EditorModel;
             } else {
                 newEditor = await editorRegistry.createEditor(newEditorId);
             }

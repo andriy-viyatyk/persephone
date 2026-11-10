@@ -109,6 +109,10 @@ apply without a prompt. API-created boards
 from `app.boards.createBoard` and `createDemoBoard` scaffold and auto-trust their board; the
 installed/published-board path still uses the user trust gate.
 
+If a bundled board is disabled while its page is open, the page shows the untrusted screen until the
+board is enabled again. Removing or unregistering a board closes its open pages and stops its
+background service.
+
 A board without a permissions object, including one using the old list format, is shown as
 **Unrestricted** for compatibility. These boards are deprecated and will stop working in a future
 Persephone release. The trust dialog warns on first trust, and opening an already-trusted board

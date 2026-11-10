@@ -6,7 +6,7 @@ import type {
     IBoardSettingDeclaration,
     IBoardSettingOption,
 } from "../../api/types/board-editor";
-import type { NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
+import { isBoardEditorKind, type NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
 import { BoardGrant } from "../../../shared/board/board-grant";
 
 /** Project a normalized manifest into the copied script API shape. */
@@ -42,11 +42,7 @@ export function projectBoardManifest(manifest: NormalizedBoardManifest): IBoardM
     if (typeof manifest.folderEditorPriority === "number") copy.folderEditorPriority = manifest.folderEditorPriority;
     if (typeof manifest.editorPriority === "number") copy.editorPriority = manifest.editorPriority;
     if (typeof manifest.editorName === "string") copy.editorName = manifest.editorName;
-    if (
-        manifest.editorKind === "simple"
-        || manifest.editorKind === "content-host"
-        || manifest.editorKind === "stream-host"
-    ) copy.editorKind = manifest.editorKind;
+    if (isBoardEditorKind(manifest.editorKind)) copy.editorKind = manifest.editorKind;
     if (manifest.editorSources === "local" || manifest.editorSources === "any") copy.editorSources = manifest.editorSources;
     if (manifest.secondaryViews !== undefined) {
         copy.secondaryViews = manifest.secondaryViews.map(projectBoardSecondaryView);
