@@ -1,18 +1,19 @@
 import { t } from "../../../shared/i18n/t";
 import { app } from "../../api/app";
-import { boardTrust } from "../../api/board-trust";
+import { boardTrust } from "../../api/boards/board-trust";
 import { ui } from "../../api/ui";
-import { listBoardUpdates, runBoardUpdate } from "../../api/board-updates";
-import { publishedBoards } from "../../api/published-boards";
+import { listBoardUpdates, runBoardUpdate } from "../../api/boards/board-updates";
+import { publishedBoards } from "../../api/boards/published-boards";
 import { settings } from "../../api/settings";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { buildBoardsTree, type BoardTreeNode } from "../../editors/board/boards-tree-build";
-import { boardDisplayText, boardMetadataKeys, onBoardDisplayTextChanged } from "../../editors/board/board-display-text";
+import { boardDisplayText, boardMetadataKeys, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
 import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
 import { createBoardShortcut } from "../../editors/board/board-shortcut";
 import { createFolderIconElement } from "../../components/icons/icon-elements";
-import { fpDirname, fpNormalizeForCompare } from "../../core/utils/file-path";
+import { fpDirname } from "../../core/utils/file-path";
+import { BoardRoot } from "../../../shared/board/board-root";
 import { toClipboard } from "../../core/utils/utils";
 import { TraitTypeId, getTraitDragData, hasTraitDragData } from "../../core/traits";
 import { TreeView } from "../../uikit/Tree/TreeView";
@@ -152,7 +153,7 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
                 const category = ref && getCategoryForRef(ref);
                 const boardRoot = node.kind === "board" ? node.root : undefined;
                 const update = boardRoot
-                    ? listBoardUpdates().find((candidate) => fpNormalizeForCompare(candidate.root) === fpNormalizeForCompare(boardRoot))
+                    ? listBoardUpdates().find((candidate) => BoardRoot.from(candidate.root).equals(boardRoot))
                     : undefined;
                 if (!category && !update) return undefined;
                 const text = document.createElement("span");
@@ -238,7 +239,7 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
     }
 
     private boardContextItems(root: string): MenuItem[] {
-        const update = listBoardUpdates().find((item) => fpNormalizeForCompare(item.root) === fpNormalizeForCompare(root));
+        const update = listBoardUpdates().find((item) => BoardRoot.from(item.root).equals(root));
         const items: MenuItem[] = [];
         if (update) items.push({ label: t("shell.updateBoard", { version: update.latestVersion }), onClick: () => { void runBoardUpdate(update).then(this.refresh); } });
         items.push({ label: t("shell.copyBoardPath"), onClick: () => toClipboard(root) });

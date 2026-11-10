@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import { errMessage } from "../shared/utils";
 import { mimeTypeForPath } from "../shared/mime-types";
 import { resolveAuthorizedPath } from "./board-file-access";
+import { onWebContentsGone } from "./webcontents-lifetime";
 
 /** Each preview's current HTML, keyed by its random id (the URL host). */
 const previews = new Map<string, { html: string; owner: WebContents; resourceRoot?: string }>();
@@ -34,11 +35,10 @@ export function setHtmlPreview(owner: WebContents, id: string, html: string, res
             if (preview.owner === owner) removePreview(previewId);
         }
     };
-    owner.once("destroyed", dropOwnerPreviews);
     // A renderer reload keeps the same WebContents but disposes no view, so its previews would
     // otherwise stay until the window closes. The new document registers its own previews after
     // the navigation commits.
-    owner.on("did-navigate", dropOwnerPreviews);
+    onWebContentsGone(owner, dropOwnerPreviews, { events: ["destroyed", "did-navigate"], repeat: true });
 }
 
 export function clearHtmlPreview(id: string): void {
@@ -79,9 +79,8 @@ export function initHtmlPreviewProtocol(partition: string): void {
             resolvedPath = await resolveAuthorizedPath({
                 boardRoot: preview.resourceRoot,
                 requestedPath: relativePath,
-                permissions: { kind: "legacy", service: false },
-                intent: "read",
                 rootOnly: true,
+                intent: "read",
             });
         } catch {
             return new Response("Not found", { status: 404 });

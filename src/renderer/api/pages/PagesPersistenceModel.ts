@@ -24,14 +24,14 @@ import type { BoardEditorState } from "../../editors/board";
 import {
     customEditorRegistry,
     resolveBoardEditorId,
-} from "../../editors/board/custom-editor-registry";
-import { bundledBoardRegistry } from "../../editors/board/bundled-board-registry";
-import { getBoardEditorAssociation } from "../../editors/board/board-manifest";
+} from "../boards/custom-editor-registry";
+import { bundledBoardRegistry } from "../boards/bundled-board-registry";
 import {
     decodePersephoneBoardLink,
     encodePersephoneBoardLink,
 } from "../../content/persephone-board-link";
-import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
+import { fpBasename } from "../../core/utils/file-path";
+import { BoardRoot } from "../../../shared/board/board-root";
 import { PageModel } from "./PageModel";
 import { BOARD_INFO_EDITOR_ID } from "../../editors/board-info/board-info-id";
 
@@ -83,7 +83,7 @@ async function normalizeEditorDescriptor(
             (board) => board.id === "excalidraw",
         );
         const association = excalidrawBoard
-            ? getBoardEditorAssociation(excalidrawBoard.manifest)
+            ? excalidrawBoard.manifest.association
             : undefined;
         if (excalidrawBoard && association?.editorKind === "content-host") {
             // `BoardEditorModel.restore()` does NOT re-derive the selection from `boardRoot` —
@@ -121,7 +121,7 @@ async function normalizePageDescriptor(desc: PageDescriptor): Promise<PageDescri
 }
 
 function sameBoardRoot(left: string, right: string): boolean {
-    return fpNormalizeForCompare(left) === fpNormalizeForCompare(right);
+    return BoardRoot.from(left).equals(right);
 }
 
 /**

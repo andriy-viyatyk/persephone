@@ -8,6 +8,7 @@ import { getDataFolder, preparePath } from "./utils";
 import { PageDescriptor, WindowPages } from "../shared/types";
 import type { LaunchInput } from "../shared/launch-input";
 import type { WindowCloseResolution } from "../ipc/api-types";
+import { BoardRoot } from "../shared/board/board-root";
 
 interface OpenWindowData {
     window?: OpenWindow;
@@ -102,8 +103,8 @@ class OpenWindows {
     };
 
     openBoardWindow = (root: string): OpenWindow => {
-        const identity = path.normalize(path.resolve(root)).toLowerCase();
-        const existing = this.windows.find((record) => record.boardRoot && path.normalize(path.resolve(record.boardRoot)).toLowerCase() === identity);
+        const identity = BoardRoot.from(root);
+        const existing = this.windows.find((record) => record.boardRoot && identity.equals(record.boardRoot));
         if (existing?.window) { existing.window.focus(); return existing.window; }
         const data: OpenWindowData = { index: this.nextWindowIndex(), boardRoot: root };
         const win = new OpenWindow(undefined, root);

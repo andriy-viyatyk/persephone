@@ -6,6 +6,7 @@ import { ui } from "../../api/ui";
 import { uiPreferences } from "../../api/ui-preferences";
 import { getActiveLocale } from "../../../shared/i18n/active-locale";
 import { errMessage } from "../../../shared/utils";
+import { codedError } from "../../../shared/coded-error";
 import { formatBytes } from "../../core/utils/format";
 import { t } from "../../../shared/i18n/t";
 import { getTextTranslationProvider, type TranslationDescription, type TranslationPair, type TranslationProgress, type TranslationOperation } from "./TextTranslationProvider";
@@ -217,7 +218,7 @@ export class TranslateTextPageController {
                 });
                 currentOperation = operation;
                 try {
-                    const result = await Promise.race([operation.promise, dialogResult.then(() => { throw Object.assign(new Error("cancelled"), { code: "cancelled" }); })]);
+                    const result = await Promise.race([operation.promise, dialogResult.then(() => { throw codedError("cancelled"); })]);
                     for (const item of result.items) {
                         if (item.ok) translated.set(item.key, item.text);
                         else failed++;

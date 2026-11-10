@@ -24,7 +24,7 @@ export class HttpProvider implements IProvider {
     private readonly headers: Record<string, string>;
     private readonly body: string | undefined;
     private readonly sessionHandle: string | undefined;
-    private readonly boardNetworkPolicy: import("../../api/node-fetch").BoardNetworkPolicy | undefined;
+    private readonly boardNetworkPolicy: import("../../../shared/board/board-grant").BoardNetworkPolicy | undefined;
     private boardSessionHandle: string | undefined;
     private boardSessionHandlePromise: Promise<string> | undefined;
     private _cachedBuffer: Buffer | null = null;
@@ -46,7 +46,7 @@ export class HttpProvider implements IProvider {
             headers?: Record<string, string>;
             body?: string;
             sessionHandle?: string;
-            boardNetworkPolicy?: import("../../api/node-fetch").BoardNetworkPolicy;
+            boardNetworkPolicy?: import("../../../shared/board/board-grant").BoardNetworkPolicy;
         },
     ) {
         this.url = url;

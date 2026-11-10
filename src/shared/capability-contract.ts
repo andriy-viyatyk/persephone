@@ -1,6 +1,7 @@
 import { PLATFORM_AUDIO_CAPABILITY_ID, PLATFORM_CAPABILITY_IDS } from "./capability-constants";
 export type { CapabilityErrorCode } from "./capability-constants";
-import { normalizeBoardServicePath, normalizeStringList, type BoardServiceInterfaceDeclaration } from "./board-manifest-utils";
+import { normalizeBoardServicePath, type BoardServiceInterfaceDeclaration } from "./board/board-service-declarations";
+import { normalizeStringList } from "./board/normalize-string-list";
 import { CAPABILITY_DEFAULT_TIMEOUT_MS, CAPABILITY_MAX_TIMEOUT_MS, MAX_CAPABILITY_ARGUMENTS, MAX_CAPABILITY_DECLARATIONS, MAX_CAPABILITY_DESCRIPTION_LENGTH, MAX_CAPABILITY_ID_LENGTH, MAX_CAPABILITY_METHOD_NAME_LENGTH, MAX_CAPABILITY_METHODS, MAX_CAPABILITY_TITLE_LENGTH } from "./capability-limits";
 
 export interface CapabilityArgument { name: string; type: string; optional?: boolean; description?: string }

@@ -204,7 +204,7 @@ export class ProxyProvider implements IProvider {
 
     /** Present only when the board's registered implementation has `readRange` — mirrors
      *  `get writable()` above (`:82-85`, reading `moduleService.providerWritable(...)`) so
-     *  `hasDirectStream()` (board-pipe-handler.ts) sees an absent method, not a function that would
+     *  `hasDirectStream()` (pipe-resource-server.ts) sees an absent method, not a function that would
      *  fail, for a provider that never implements ranging. Deliberately asymmetric with `writable`:
      *  there is NO `this.config`-based fallback here. `writable` falls back to `config.writable ===
      *  true` before the capability is known; `rangeReadable` must not, or a board could declare
@@ -227,7 +227,7 @@ export class ProxyProvider implements IProvider {
         // through (ContentPipe.ts:77-80) and is public scripting surface (`io.createPipe`), so a
         // script streaming a board pipe whole used to land in ContentPipe's buffered fallback.
         // Erroring here instead would regress it; `readBinary()` keeps the same 256 MB ceiling
-        // that fallback always had. `board-pipe-handler.ts` itself always supplies a bounded
+        // that fallback always had. `pipe-resource-server.ts` itself always supplies a bounded
         // range (readChunk():176-181), so the ranged branch is the one that carries the traffic.
         const fetched = range ? this.fetchRange(range, signal) : this.readBinary({ signal });
         return Readable.from((async function* () {

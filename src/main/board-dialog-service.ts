@@ -2,6 +2,7 @@ import { BrowserWindow, type WebContents } from "electron";
 import { guardedIpcHandle } from "./ipc-sender-guard";
 import { randomUUID } from "crypto";
 import { BoardDialogChannel, type BoardDialogRecord } from "../ipc/board-dialog-ipc";
+import { onWebContentsGone } from "./webcontents-lifetime";
 
 interface Pending {
     record: BoardDialogRecord;
@@ -45,8 +46,7 @@ function watch(host: WebContents): void {
             if (item.host === host && item.record.url === previousUrl) finish(item, false);
         }
     });
-    host.on("render-process-gone", cancel);
-    host.on("destroyed", cancel);
+    onWebContentsGone(host, cancel, { events: ["render-process-gone", "destroyed"], repeat: true });
     BrowserWindow.fromWebContents(host)?.on("close", cancel);
 }
 

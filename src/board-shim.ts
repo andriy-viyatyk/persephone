@@ -1,9 +1,12 @@
+import { isBoardSettingValue } from "./shared/board/board-settings-declarations";
 import { isCapabilityErrorCode, type CapabilityErrorCode } from "./shared/capability-constants";
 import { formatMessage } from "./shared/i18n/format-message";
 import { ENGLISH_BOARD_HOST_TEXT } from "./shared/board/host-text";
 import { validateBoardPageStateKey, validateBoardPageStateValue } from "./shared/board/page-state-validation";
 import { PLATFORM_AUDIO_CAPABILITY_ID } from "./shared/capability-constants";
 import { createCapabilityProxy } from "./shared/capability-client";
+import { PendingRequests } from "./shared/pending-requests";
+import { fromWireError, wireError } from "./shared/wire-error";
 /**
  * Board bridge shim — the successor to `preload-board.ts`.
  *
@@ -34,7 +37,8 @@ import {
 } from "./ipc/runner-channels";
 import { createExecuteHandle } from "./shared/execute-handle";
 import { BOARD_BRIDGE_VERSION } from "./shared/board-bridge-version";
-import { MAX_SERVICE_CHANNEL_IN_FLIGHT, SERVICE_CHANNEL_ACK_BATCH, SERVICE_CHANNEL_ACK_DELAY_MS, SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "./ipc/module-service-channels";
+import { SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "./ipc/module-service-channels";
+import { createServiceChannel, domPort, type ServiceChannel, type ServiceChannelKind } from "./shared/service-channel";
 import type { BoardSourceContext } from "./shared/board-source-context";
 import type {
     BoardFetchErrorMsg,
@@ -480,13 +484,11 @@ let port: MessagePort | null = null;
 /** Outgoing messages queued until the port connects, then flushed in order. */
 const sendQueue: BoardToMain[] = [];
 /** Pending request/reply promises keyed by rpc id. */
-const pendingRpc = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+const pendingRpc = new PendingRequests<unknown>();
 const channelPortWaiters = new Map<string, { resolve: (port: MessagePort) => void; reject: (error: Error) => void }>();
 const earlyChannelPorts = new Map<string, MessagePort>();
-const activeServiceChannels = new Set<BoardServiceChannel>();
-let rpcId = 0;
-const pendingCalls = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
-let callId = 0;
+const activeServiceChannels = new Set<ServiceChannel>();
+const pendingCalls = new PendingRequests<unknown>({ timeoutError: () => new Error("persephone.call() timed out.") });
 // This is only a dead-port guard. It must exceed every host-side call limit, including the
 // public boards.callTimeoutMs maximum, so the host remains the single policy owner.
 const BOARD_CALL_DEAD_PORT_GUARD_MS = 2_147_000_000;
@@ -611,13 +613,12 @@ type BoardHostRequestPayload =
     | Omit<Extract<BoardToHostMsg, { __persephone: "board:pageState:remove" }>, "reqId">
     | Omit<Extract<BoardToHostMsg, { __persephone: "board:source:navigate" }>, "reqId">;
 
-const pendingHostRequests = new Map<number, {
+interface HostRequestMeta {
     requestType: BoardHostRequestPayload["__persephone"];
     expectedReplyType: BoardHostRequestReply["__persephone"];
-    settle: (message: BoardHostRequestReply) => void;
-    reject: (error: Error) => void;
     failPost: (error: unknown) => Error;
-}>();
+}
+const pendingHostRequests = new PendingRequests<BoardHostRequestReply, HostRequestMeta>({ nextId: () => ++hostRequestId });
 let hostRequestId = Math.floor(Math.random() * 0x80000000);
 const settingsChangeCbs = new Set<(change: { id: string; value: string | number | boolean }) => void>();
 let saveHandlerId = 0;
@@ -730,49 +731,28 @@ function hostRequest<T>(
     decode: (reply: BoardHostRequestReply) => T,
     failPost: (error: unknown) => Error = () => new Error("Persephone host is unavailable."),
 ): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-        const reqId = ++hostRequestId;
-        pendingHostRequests.set(reqId, {
-            requestType: message.__persephone,
-            expectedReplyType,
-            settle: (reply) => {
-                try {
-                    resolve(decode(reply));
-                } catch (error: unknown) {
-                    reject(error);
-                }
-            },
-            reject,
-            failPost,
-        });
-        postAfterDocumentLoad(() => {
-            // A request queued before load may already have been rejected (bridge replaced).
-            if (!pendingHostRequests.has(reqId)) return;
-            try {
-                window.parent.postMessage({ ...message, reqId }, hostPostTarget);
-            } catch (error: unknown) {
-                const pending = pendingHostRequests.get(reqId);
-                if (!pending) return;
-                pendingHostRequests.delete(reqId);
-                pending.reject(pending.failPost(error));
-            }
-        });
+    const { id: reqId, promise } = pendingHostRequests.create(undefined, undefined, { meta: {
+        requestType: message.__persephone,
+        expectedReplyType,
+        failPost,
+    } });
+    postAfterDocumentLoad(() => {
+        if (!pendingHostRequests.has(reqId)) return;
+        try { window.parent.postMessage({ ...message, reqId }, hostPostTarget); }
+        catch (error: unknown) { pendingHostRequests.fail(reqId, failPost(error)); }
     });
+    return promise.then(decode);
 }
 
 function rejectPendingCapabilityRequests(error: BoardCapabilityError): void {
-    for (const [reqId, pending] of pendingHostRequests) {
-        if (pending.requestType !== "board:capabilities:invoke") continue;
-        pendingHostRequests.delete(reqId);
-        pending.reject(error);
-    }
+    pendingHostRequests.failWhere((meta) => meta.requestType === "board:capabilities:invoke", error);
 }
 
 /** Pending content-path and content.open calls use the shared host request channel. */
 function filePathRpc(): Promise<string | undefined> {
     return hostRequest({ __persephone: "board:filePath" }, "filePath:result", (reply) => {
         const data = reply as BoardFilePathResultMsg;
-        if (data.error != null) throw new Error(data.error);
+        if (data.error != null) throw fromWireError(wireError(data.error));
         return data.path;
     });
 }
@@ -784,7 +764,7 @@ const FILE_ICONS_BATCH = 500;
 function fileIconsRpc(names: string[]): Promise<{ urls: string[]; icons: Record<string, number> }> {
     return hostRequest({ __persephone: "board:fileIcons", names }, "fileIcons:result", (reply) => {
         const data = reply as BoardFileIconsResultMsg;
-        if (data.error != null) throw new Error(data.error);
+        if (data.error != null) throw fromWireError(wireError(data.error));
         return { urls: data.urls ?? [], icons: data.icons ?? {} };
     });
 }
@@ -798,7 +778,7 @@ function contentOpenRpc(
         "contentOpen:result",
         (reply) => {
             const data = reply as BoardContentOpenResultMsg;
-            if (data.error != null) throw new Error(data.error);
+            if (data.error != null) throw fromWireError(wireError(data.error));
             if (typeof data.url === "string" && typeof data.size === "number"
                 && Number.isFinite(data.size) && data.size >= 0 && typeof data.contentType === "string") {
                 return { url: data.url, size: data.size, contentType: data.contentType };
@@ -811,7 +791,7 @@ function contentOpenRpc(
 function varRpc(method: "get" | "set" | "list" | "show", args: unknown[]): Promise<unknown> {
     return hostRequest({ __persephone: "board:var", varMethod: method, varArgs: args }, "var:result", (reply) => {
         const data = reply as BoardVarResultMsg;
-        if (data.error != null) throw new Error(data.error);
+        if (data.error != null) throw fromWireError(wireError(data.error));
         return data.result;
     });
 }
@@ -822,16 +802,11 @@ function settingsRpc(id: string): Promise<string | number | boolean> {
         "settings:result",
         (reply) => {
             const data = reply as BoardSettingsResultMsg;
-            if (data.error != null) throw new Error(data.error);
+            if (data.error != null) throw fromWireError(wireError(data.error));
             if (isBoardSettingValue(data.result)) return data.result;
             throw new Error("Malformed persephone.settings.get() response.");
         },
     );
-}
-
-function isBoardSettingValue(value: unknown): value is string | number | boolean {
-    return typeof value === "string" || typeof value === "boolean"
-        || (typeof value === "number" && Number.isFinite(value));
 }
 
 async function iconsForFiles(names: unknown): Promise<Record<string, string>> {
@@ -882,7 +857,7 @@ const muteToggleCbs = new Set<() => void>();
 function navigationReturnUrlRpc(): Promise<string> {
     return hostRequest({ __persephone: "navigation:createReturnUrl" }, "navigation:returnUrl", (reply) => {
         const data = reply as BoardNavigationReturnUrlResultMsg;
-        if (typeof data.error === "string") throw new Error(data.error);
+        if (typeof data.error === "string") throw fromWireError(wireError(data.error));
         if (typeof data.url === "string") return data.url;
         throw new Error("Malformed navigation return URL response.");
     });
@@ -1062,7 +1037,7 @@ function capabilityInvokeRpc(
 function openContentRpc(request: BoardOpenContentRequest): Promise<string> {
     return hostRequest({ __persephone: "board:openContent", openContent: request }, "openContent:result", (reply) => {
         const data = reply as BoardOpenContentResultMsg;
-        if (data.error != null) throw new Error(data.error);
+        if (data.error != null) throw fromWireError(wireError(data.error));
         if (typeof data.pageId === "string") return data.pageId;
         throw new Error("Malformed persephone.openContent() response.");
     });
@@ -1074,11 +1049,10 @@ function post(msg: BoardToMain): void {
 }
 
 function rpc(method: BoardRpcMethod, args: unknown[]): Promise<unknown> {
-    return new Promise<unknown>((resolve, reject) => {
-        const id = ++rpcId;
-        pendingRpc.set(id, { resolve, reject });
-        post({ kind: "rpc", id, method, args });
-    });
+    const { id, promise } = pendingRpc.create();
+    try { post({ kind: "rpc", id, method, args }); }
+    catch (error: unknown) { pendingRpc.fail(id, error); }
+    return promise;
 }
 
 async function capabilityRpc<T>(method: BoardRpcMethod, args: unknown[]): Promise<T> {
@@ -1094,8 +1068,8 @@ async function getCapabilityRpc(id: string, options?: CapabilityClientOptions) {
         const request: CapabilityClientInvoke = { requestId: crypto.randomUUID(), key: { id: provider.id, version: provider.version, provider: provider.provider, handlerKey: provider.handlerKey }, method, args, filter: options?.filter };
         const result = await capabilityRpc<unknown>("capabilityInvoke", [request]);
         if (provider.methods[method].kind === "channel") {
-            let channel: BoardServiceChannel;
-            try { channel = await waitForServiceChannel((result as { channelId: string }).channelId); }
+            let channel: ServiceChannel;
+            try { channel = await waitForServiceChannel((result as { channelId: string }).channelId, "capability"); }
             catch (error) { void capabilityRpc("capabilityCancel", [request.requestId]).catch((): void => undefined); throw error; }
             if (id !== PLATFORM_AUDIO_CAPABILITY_ID || method !== "muteApp") return channel;
             let released = false;
@@ -1116,76 +1090,10 @@ async function getCapabilityRpc(id: string, options?: CapabilityClientOptions) {
     });
 }
 
-interface BoardServiceChannel {
-    send(message: unknown): void;
-    onMessage(handler: (message: unknown) => void): () => void;
-    onClose(handler: (reason: { code: string; message: string }) => void): () => void;
-    close(reason?: { code: string; message: string }): void;
-    readonly writable: boolean;
-    whenWritable(): Promise<void>;
-}
-
-function wrapServiceChannel(port: MessagePort): BoardServiceChannel {
-    const messageHandlers = new Set<(message: unknown) => void>();
-    const closeHandlers = new Set<(reason: { code: string; message: string }) => void>();
-    const writableWaiters = new Set<{ resolve: () => void; reject: (error: Error) => void }>();
-    let closed = false;
-    let closeReason = { code: "service-exited", message: "The service channel disconnected." };
-    let sent = 0;
-    let acked = 0;
-    let received = 0;
-    let ackedReceived = 0;
-    let ackQueued = false;
-    const finish = (reason: { code: string; message: string }) => {
-        if (closed) return;
-        closed = true; closeReason = reason;
-        try { port.close(); } catch { /* already closed */ }
-        for (const waiter of writableWaiters) waiter.reject(Object.assign(new Error(reason.message), { code: reason.code }));
-        writableWaiters.clear();
-        for (const handler of closeHandlers) { try { handler(reason); } catch (error) { console.error(error); } }
-        closeHandlers.clear(); messageHandlers.clear();
-    };
-    port.onmessage = (event) => {
-        const value = event.data;
-        if (!value || typeof value !== "object") return;
-        if (value.kind === "ack" && Number.isSafeInteger(value.sequence)) {
-            acked = Math.max(acked, Math.min(value.sequence, sent));
-            for (const waiter of writableWaiters) waiter.resolve();
-            writableWaiters.clear();
-        } else if (value.kind === "data" && value.sequence === received + 1) {
-            received = value.sequence;
-            for (const handler of messageHandlers) { try { handler(value.value); } catch (error) { console.error(error); } }
-            if (received - ackedReceived >= SERVICE_CHANNEL_ACK_BATCH) { ackedReceived = received; port.postMessage({ kind: "ack", sequence: ackedReceived }); }
-            else if (!ackQueued) { ackQueued = true; setTimeout(() => { ackQueued = false; if (!closed && received > ackedReceived) { ackedReceived = received; port.postMessage({ kind: "ack", sequence: ackedReceived }); } }, SERVICE_CHANNEL_ACK_DELAY_MS); }
-        } else if (value.kind === "close") finish(value.reason ?? closeReason);
-    };
-    port.onmessageerror = () => finish({ code: "service-exited", message: "The service channel received an invalid message." });
-    port.addEventListener("close", () => finish({ code: "service-exited", message: "The board service exited." }));
-    port.start();
-    return {
-        send(value) {
-            if (closed) throw Object.assign(new Error(closeReason.message), { code: closeReason.code });
-            if (sent - acked >= MAX_SERVICE_CHANNEL_IN_FLIGHT) throw Object.assign(new Error("Service channel send window is full."), { code: "channel-backpressure" });
-            const sequence = ++sent;
-            try { port.postMessage({ kind: "data", sequence, value }); }
-            catch (error) { sent--; throw Object.assign(new Error(errMessage(error, "Channel message is not structured-cloneable.")), { code: "service-error" }); }
-        },
-        onMessage(handler) { messageHandlers.add(handler); return () => messageHandlers.delete(handler); },
-        onClose(handler) { if (closed) handler(closeReason); else closeHandlers.add(handler); return () => closeHandlers.delete(handler); },
-        close(reason = { code: "channel-closed", message: "The board page closed the channel." }) { if (closed) return; try { port.postMessage({ kind: "close", reason }); } catch { /* disconnected */ } finish(reason); },
-        get writable() { return !closed && sent - acked < MAX_SERVICE_CHANNEL_IN_FLIGHT; },
-        whenWritable() {
-            if (closed) return Promise.reject(Object.assign(new Error(closeReason.message), { code: closeReason.code }));
-            if (sent - acked < MAX_SERVICE_CHANNEL_IN_FLIGHT) return Promise.resolve();
-            return new Promise((resolve, reject) => writableWaiters.add({ resolve, reject }));
-        },
-    };
-}
-
-function waitForServiceChannel(channelId: string): Promise<BoardServiceChannel> {
-    return new Promise<BoardServiceChannel>((resolve, reject) => {
+function waitForServiceChannel(channelId: string, kind: ServiceChannelKind): Promise<ServiceChannel> {
+    return new Promise<ServiceChannel>((resolve, reject) => {
         const finish = (channelPort: MessagePort) => {
-            const channel = wrapServiceChannel(channelPort);
+            const channel = createServiceChannel(domPort(channelPort), { kind });
             activeServiceChannels.add(channel);
             channel.onClose(() => activeServiceChannels.delete(channel));
             resolve(channel);
@@ -1203,10 +1111,10 @@ function waitForServiceChannel(channelId: string): Promise<BoardServiceChannel> 
     });
 }
 
-function openServiceChannel(openMessage: unknown): Promise<BoardServiceChannel> {
+function openServiceChannel(openMessage: unknown): Promise<ServiceChannel> {
     try { structuredClone(openMessage); }
-    catch (error) { return Promise.reject(Object.assign(new Error(errMessage(error, "Channel message is not structured-cloneable.")), { code: "service-error" })); }
-    return rpc("serviceOpenChannel", [openMessage]).then((value) => waitForServiceChannel(String(value)));
+    catch (error) { return Promise.reject(Object.assign(new Error(errMessage(error, "Channel message is not structured-cloneable.")), { code: "rejected" })); }
+    return rpc("serviceOpenChannel", [openMessage]).then((value) => waitForServiceChannel(String(value), "service"));
 }
 
 window.addEventListener("pagehide", () => {
@@ -1234,30 +1142,22 @@ function call(path: string, options?: { args?: unknown[]; value?: unknown; maxLe
     if (options?.timeoutMs !== undefined && !isPositiveInteger(options.timeoutMs)) {
         return Promise.reject(new Error("persephone.call() options.timeoutMs must be a positive integer."));
     }
-    return new Promise<unknown>((resolve, reject) => {
-        const id = ++callId;
-        const timer = setTimeout(() => {
-            pendingCalls.delete(id);
-            reject(new Error("persephone.call() timed out."));
-        }, BOARD_CALL_DEAD_PORT_GUARD_MS);
-        pendingCalls.set(id, { resolve, reject, timer });
-        const request = {
-            path,
-            ...(options?.args !== undefined ? { args: options.args } : {}),
-            ...(options && Object.prototype.hasOwnProperty.call(options, "value")
-                ? { value: options.value }
-                : {}),
-            ...(options?.maxLength !== undefined ? { maxLength: options.maxLength } : {}),
-            ...(options?.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
-        };
-        try {
-            post({ kind: "call", id, request });
-        } catch (error) {
-            clearTimeout(timer);
-            pendingCalls.delete(id);
-            reject(new Error(errMessage(error, "Persephone host is unavailable.")));
-        }
-    });
+    const { id, promise } = pendingCalls.create(BOARD_CALL_DEAD_PORT_GUARD_MS);
+    const request = {
+        path,
+        ...(options?.args !== undefined ? { args: options.args } : {}),
+        ...(options && Object.prototype.hasOwnProperty.call(options, "value")
+            ? { value: options.value }
+            : {}),
+        ...(options?.maxLength !== undefined ? { maxLength: options.maxLength } : {}),
+        ...(options?.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
+    };
+    try {
+        post({ kind: "call", id, request });
+    } catch (error) {
+        pendingCalls.fail(id, new Error(errMessage(error, "Persephone host is unavailable.")));
+    }
+    return promise;
 }
 
 function isPositiveInteger(value: unknown): value is number {
@@ -1353,28 +1253,17 @@ function applyVars(vars: Record<string, string>): void {
 function onPortMessage(data: MainToBoard): void {
     if (!data) return;
     if (data.kind === "rpc-result") {
-        const p = pendingRpc.get(data.id);
-        if (!p) return;
-        pendingRpc.delete(data.id);
-        if (data.error != null) {
-            const error = new Error(data.error) as Error & { code?: string };
-            if (typeof data.code === "string") error.code = data.code;
-            p.reject(error);
-        }
-        else p.resolve(data.result);
+        if (data.error != null) pendingRpc.fail(data.id, fromWireError(data.error));
+        else pendingRpc.settle(data.id, data.result);
         return;
     }
     if (data.kind === "call-result") {
-        const pending = pendingCalls.get(data.id);
-        if (!pending) return;
-        pendingCalls.delete(data.id);
-        clearTimeout(pending.timer);
         if (typeof data.error === "string") {
-            pending.reject(new Error(data.error));
+            pendingCalls.fail(data.id, new Error(data.error));
         } else if (Object.prototype.hasOwnProperty.call(data, "result")) {
-            pending.resolve(data.result);
+            pendingCalls.settle(data.id, data.result);
         } else {
-            pending.reject(new Error("Malformed persephone.call() response."));
+            pendingCalls.fail(data.id, new Error("Malformed persephone.call() response."));
         }
         return;
     }
@@ -1412,15 +1301,10 @@ function attachPort(p: MessagePort): void {
     if (port) {
         port.close();
         const bridgeReplaced = new Error("Persephone bridge was replaced.");
-        for (const pending of pendingRpc.values()) pending.reject(bridgeReplaced);
-        pendingRpc.clear();
+        pendingRpc.failAll(bridgeReplaced);
         watchCallbacks.clear();
         failPendingBoardFetches(new Error("Persephone bridge was replaced."));
-        for (const pending of pendingCalls.values()) {
-            clearTimeout(pending.timer);
-            pending.reject(bridgeReplaced);
-        }
-        pendingCalls.clear();
+        pendingCalls.failAll(bridgeReplaced);
         const capabilityBridgeReplaced = new BoardCapabilityError(
             "handler-closed",
             "Persephone bridge was replaced.",
@@ -1639,10 +1523,8 @@ onHostMessage((event) => {
 onHostMessage((event) => {
     const envelope = event.data as { __persephone?: unknown; reqId?: unknown } | undefined;
     if (!envelope || typeof envelope.__persephone !== "string" || typeof envelope.reqId !== "number") return;
-    const pending = pendingHostRequests.get(envelope.reqId);
-    if (!pending || pending.expectedReplyType !== envelope.__persephone) return;
-    pendingHostRequests.delete(envelope.reqId);
-    pending.settle(event.data as BoardHostRequestReply);
+    pendingHostRequests.settle(envelope.reqId, event.data as BoardHostRequestReply,
+        (meta) => meta.expectedReplyType === envelope.__persephone);
 });
 
     // Board settings change push — effective values include the declaration default.
@@ -2260,7 +2142,7 @@ function createHandle(
             return rpc("serviceRequest", [message]);
         },
         /** Open a long-lived two-way channel to this board's lazily started service. */
-        openChannel(openMessage: unknown): Promise<BoardServiceChannel> {
+        openChannel(openMessage: unknown): Promise<ServiceChannel> {
             return openServiceChannel(openMessage);
         },
         /** Read this board's service lifecycle without starting it. Resolves to undefined when
@@ -2279,10 +2161,10 @@ function createHandle(
         list(interfaceId: string): Promise<Array<{ provider: string; title: string; version: number; boardName: string }>> {
             return rpc("servicesList", [interfaceId]) as Promise<Array<{ provider: string; title: string; version: number; boardName: string }>>;
         },
-        connect(interfaceId: string, selector: { provider: string; version: number }, openMessage?: unknown): Promise<BoardServiceChannel> {
+        connect(interfaceId: string, selector: { provider: string; version: number }, openMessage?: unknown): Promise<ServiceChannel> {
             try { structuredClone(openMessage); }
-            catch (error) { return Promise.reject(Object.assign(new Error(errMessage(error, "Channel message is not structured-cloneable.")), { code: "service-error" })); }
-            return rpc("servicesConnect", [interfaceId, selector, openMessage]).then((value) => waitForServiceChannel(String(value)));
+            catch (error) { return Promise.reject(Object.assign(new Error(errMessage(error, "Channel message is not structured-cloneable.")), { code: "rejected" })); }
+            return rpc("servicesConnect", [interfaceId, selector, openMessage]).then((value) => waitForServiceChannel(String(value), "service"));
         },
     },
 
@@ -2316,7 +2198,7 @@ function createHandle(
             try { validateBoardPageStateKey(key); } catch (error: unknown) { return Promise.reject(error); }
             return hostRequest({ __persephone: "board:pageState:get", key }, "pageState:get:result", (reply) => {
                 const data = reply as BoardPageStateGetResultMsg;
-                if (data.error != null) throw new Error(data.error);
+                if (data.error != null) throw fromWireError(wireError(data.error));
                 if (data.value !== undefined && typeof data.value !== "string") throw new Error("Malformed persephone.pageState.get() response.");
                 return data.value;
             });
@@ -2330,14 +2212,14 @@ function createHandle(
             }
             return hostRequest({ __persephone: "board:pageState:set", key, value }, "pageState:set:result", (reply) => {
                 const data = reply as BoardPageStateSetResultMsg;
-                if (data.error != null) throw new Error(data.error);
+                if (data.error != null) throw fromWireError(wireError(data.error));
             });
         },
         remove(key: string): Promise<void> {
             try { validateBoardPageStateKey(key); } catch (error: unknown) { return Promise.reject(error); }
             return hostRequest({ __persephone: "board:pageState:remove", key }, "pageState:remove:result", (reply) => {
                 const data = reply as BoardPageStateRemoveResultMsg;
-                if (data.error != null) throw new Error(data.error);
+                if (data.error != null) throw fromWireError(wireError(data.error));
             });
         },
     },
@@ -2534,7 +2416,7 @@ function createHandle(
                 "source:navigate:result",
                 (reply) => {
                     const data = reply as BoardSourceNavigateResultMsg;
-                    if (data.error != null) throw new Error(data.error);
+                    if (data.error != null) throw fromWireError(wireError(data.error));
                 },
             );
         },

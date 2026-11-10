@@ -1,5 +1,5 @@
 import { englishMessage, t } from "../../../shared/i18n/t";
-import { boardDisplayText, boardMetadataKeys } from "../../editors/board/board-display-text";
+import { boardDisplayText, boardMetadataKeys } from "../../api/boards/board-display-text";
 
 /** Localized presentation for app-owned page titles whose stored/API identity stays English. */
 export function displayPageTitle(editor: string | undefined, title: string | undefined, boardRoot?: string): string {

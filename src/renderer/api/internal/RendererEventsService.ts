@@ -6,7 +6,7 @@ import { appWindow, signalReadyToQuit } from "../window";
 import { ui } from "../ui";
 import { guard } from "../../core/utils/guard";
 import { isBoardClaimedScheme, schemeOf } from "../../content/scheme-registry";
-import { boardEditorId } from "../../editors/board/custom-editor-registry";
+import { boardEditorId } from "../boards/custom-editor-registry";
 import { UpdateCheckResult } from "../../../ipc/api-param-types";
 import { EventEndpoint } from "../../../ipc/api-types";
 import type { BoardNotifyMsg } from "../../../ipc/board-bridge-channels";

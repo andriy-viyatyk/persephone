@@ -17,7 +17,7 @@ import { createFolderIconElement } from "../../components/icons/icon-elements";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { openToolset as openToolsetLink } from "../../content/persephone-toolset-link";
-import { boardTrust } from "../../api/board-trust";
+import { boardTrust } from "../../api/boards/board-trust";
 import { toolsTrust } from "../../api/tools/tools-trust";
 import { registeredTools } from "../../api/tools/registered-tools";
 import { readToolsManifest } from "../../api/tools/tools-manifest";

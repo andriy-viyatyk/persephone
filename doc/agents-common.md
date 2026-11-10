@@ -229,6 +229,23 @@ never receive new pure primitives — see
 [`src/renderer/uikit/CLAUDE.md`](../src/renderer/uikit/CLAUDE.md).
 Full details: [architecture/folder-structure.md](architecture/folder-structure.md).
 
+## Refactoring guardrails
+
+The [refactoring roadmap](refactoring-roadmap.md) is removing duplicated rules and protocols. These keep them from
+coming back; a plan or change that breaks one is sent back:
+
+1. **No new protocol code.** A new cross-process message uses the shared primitives for its boundary (service
+   channel, `PendingRequests`, the wire error, the typed RPC, the frame method maps). A new correlator, ack window or
+   error envelope is a review blocker.
+2. **Board rules live in `src/shared/board/` and the board registries.** No `kind === "legacy"` branch, manifest
+   reader, root normalizer or "trusted or bundled" check anywhere else.
+3. **God files only shrink** (roadmap §2.3). A feature that needs a home gets a new collaborator class with one job.
+4. **Plans name the owner.** Every plan says which module owns each new rule and which existing helper it reuses.
+   A special case at a call site where an extension point exists (editor sources, switch strategies, traits, open
+   interceptors) is sent back.
+5. **Fix import direction, do not dodge it.** No `await import()` to break a cycle.
+6. **A `window.persephone` change bumps `BOARD_BRIDGE_VERSION`** and adds a history line.
+
 ## Critical Patterns
 
 ### 1. Dynamic Imports for Editors

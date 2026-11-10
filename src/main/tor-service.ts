@@ -14,6 +14,7 @@ import { SidecarProcess } from "./sidecar-process";
 import { errMessage } from "../shared/utils";
 import { applySessionProxy, lookupGeo, setSessionDirect } from "./session-proxy";
 import { guardedIpcHandle, guardedIpcOn } from "./ipc-sender-guard";
+import { onWebContentsGone } from "./webcontents-lifetime";
 
 const TOR_BOOTSTRAP_TIMEOUT_MS = 90_000;
 const FETCH_IDLE_GRACE_MS = 60_000;
@@ -494,8 +495,7 @@ export function initTorHandlers(): void {
                 fetchLeaseSenders.delete(senderId);
                 torService.releaseAllFetch(senderId);
             };
-            event.sender.once("destroyed", releaseSender);
-            event.sender.once("render-process-gone", releaseSender);
+            onWebContentsGone(event.sender, releaseSender, { events: ["destroyed", "render-process-gone"] });
         }
         return torService.acquireFetch(senderId, torExePath, socksPort);
     });

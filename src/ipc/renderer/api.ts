@@ -1,5 +1,6 @@
 import type { CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientResult, CapabilityProvider } from "../capability-bus-channels";
 import type { CapabilityJson } from "../../shared/capability-contract";
+import { isServiceChannelTarget, type ServiceChannelDelivery, type ServiceChannelTarget } from "../../shared/service-channel-target";
 import { PageDragData, WindowPages } from "../../shared/types";
 import type { LaunchInput } from "../../shared/launch-input";
 import {
@@ -24,6 +25,8 @@ import {
     type CreateBoardShortcutRequest,
     type HostServiceChannelRequest,
     Endpoint,
+    ENDPOINT_REPLY_CHANNEL,
+    type EndpointReply,
     EventEndpoint,
     McpStatus,
     MnemeStatus,
@@ -42,15 +45,21 @@ import type {
     ClipboardStatus,
 } from "../clipboard-ipc";
 import type { BoardServiceStatus, ModuleServicePortResult } from "../module-service-channels";
+import { PendingRequests } from "../../shared/pending-requests";
+import { fromWireError } from "../../shared/wire-error";
 
-let idGen = 0;
-const idGenMax = 2000000000;
-const getId = () => {
-    if (idGen >= idGenMax) {
-        idGen = 0;
-    }
-    return ++idGen;
-};
+const pendingEndpointCalls = new PendingRequests<unknown>();
+let replyListenerInstalled = false;
+
+function installReplyListener(): void {
+    if (replyListenerInstalled) return;
+    replyListenerInstalled = true;
+    window.electron.ipcRenderer.on(ENDPOINT_REPLY_CHANNEL, (payload) => {
+        const reply = payload as EndpointReply;
+        if (reply.ok === true) pendingEndpointCalls.settle(reply.id, reply.result);
+        else pendingEndpointCalls.fail(reply.id, fromWireError(reply.error, "Unknown error"));
+    });
+}
 
 function executeOnce<T = unknown>(command: Endpoint, ...args: unknown[]): Promise<T> {
     if (!window.electron) {
@@ -63,20 +72,10 @@ function executeOnce<T = unknown>(command: Endpoint, ...args: unknown[]): Promis
         );
     }
 
-    return new Promise<T>((resolve, reject) => {
-        // commandId is used to identify the response to this command in case of multiple commands executing in parallel
-        const commandId = getId();
-        window.electron.ipcRenderer.once(
-            `${command}_${commandId}`,
-            (arg: unknown) => {
-                if (arg instanceof Error) {
-                    reject(arg);
-                }
-                resolve(arg as T);
-            }
-        );
-        window.electron.ipcRenderer.sendMessage(command, args, commandId);
-    });
+    installReplyListener();
+    const { id, promise } = pendingEndpointCalls.create();
+    window.electron.ipcRenderer.sendMessage(command, args, id);
+    return promise as Promise<T>;
 }
 
 class ApiCalls implements Api {
@@ -613,10 +612,13 @@ class ApiCalls implements Api {
         });
     };
 
-    onBoardServiceChannel = (cb: (boardId: string, channelId: string, port: MessagePort) => void): (() => void) => {
+    onBoardServiceChannel = (cb: (target: ServiceChannelTarget, channelId: string, port: MessagePort) => void): (() => void) => {
         return window.electron.ipcRenderer.onPort(EventEndpoint.eBoardServiceChannel, (payload, ports) => {
-            const value = payload as { boardId?: string; channelId?: string } | undefined;
-            if (value?.boardId && value.channelId && ports[0]) cb(value.boardId, value.channelId, ports[0]);
+            const value = payload as Partial<ServiceChannelDelivery> | undefined;
+            const port = ports[0];
+            if (!port) return;
+            if (!value || typeof value.channelId !== "string" || !isServiceChannelTarget(value.target)) { port.close(); return; }
+            cb(value.target, value.channelId, port);
         });
     };
 
@@ -663,7 +665,7 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.cancelBoardDownload, installId);
     };
 
-    setBoardTrust = async (boardRoot: string, trusted: boolean, expectedPermissions?: import("../../shared/board-manifest-utils").NormalizedBoardPermissions, expectedUses?: import("../../shared/board-manifest-utils").BoardServiceUseDeclaration[]) => {
+    setBoardTrust = async (boardRoot: string, trusted: boolean, expectedPermissions?: import("../../shared/board/board-permissions").NormalizedBoardPermissions, expectedUses?: import("../../shared/board/board-service-declarations").BoardServiceUseDeclaration[]) => {
         return executeOnce<string[]>(Endpoint.setBoardTrust, boardRoot, trusted, expectedPermissions, expectedUses);
     };
 

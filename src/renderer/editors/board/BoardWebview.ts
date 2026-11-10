@@ -2,7 +2,8 @@ import { isCapabilityErrorCode, type CapabilityErrorCode } from "../../../shared
 import { BOARD_HOST_TEXT_CATALOG } from "../../../shared/board/host-text";
 import color from "../../theme/color";
 import { api } from "../../../ipc/renderer/api";
-import { fpNormalizeForCompare, isPlainLocalPath } from "../../core/utils/file-path";
+import { isPlainLocalPath } from "../../core/utils/file-path";
+import { BoardRoot } from "../../../shared/board/board-root";
 import { pagesModel } from "../../api/pages";
 import { isFocusInSidebar } from "../../core/utils/focus-utils";
 import type {
@@ -48,7 +49,7 @@ import type {
     BoardVarResultMsg,
 } from "../../../ipc/board-bridge-channels";
 import type { CapabilityOutcome, IntentRequest } from "../../../ipc/capability-bus-channels";
-import { resolveBoardNamespace } from "../../api/board-namespace";
+import { resolveBoardNamespace } from "../../api/boards/board-namespace";
 import { resolveBoardVarRequest } from "../../api/board-vars/board-vars-bridge";
 import { t } from "../../../shared/i18n/t";
 import {
@@ -65,13 +66,13 @@ import { boardSecondaryPanelId } from "./board-secondary";
 import type { BoardEditorModel } from "./BoardEditorModel";
 import type { BoardContentEditorModel } from "./BoardContentEditorModel";
 import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
-import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
-import { boardTrust, pathCovers } from "../../api/board-trust";
-import type { NormalizedBoardPermissions } from "../../../shared/board-manifest-utils";
-import { boardPermissionError } from "../../../shared/board-manifest-utils";
-import { readNormalizedBoardManifest } from "./board-manifest";
-import { loadBoardI18n } from "./board-i18n";
-import { refreshBoardDisplayText } from "./board-display-text";
+import { isBoardPermitted, subscribeBoardPermission } from "../../api/boards/board-access";
+import { boardTrust } from "../../api/boards/board-trust";
+import { isKeyInside } from "../../../shared/path-containment";
+import { BoardGrant } from "../../../shared/board/board-grant";
+import { readBoardManifest } from "../../api/boards/board-manifest-io";
+import { loadBoardI18n } from "../../api/boards/board-i18n";
+import { refreshBoardDisplayText } from "../../api/boards/board-display-text";
 import { getPreviewGeneration } from "../../theme/themes";
 import { errMessage } from "../../../shared/utils";
 import { CapabilityError } from "../../api/capability-bus";
@@ -191,7 +192,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     private readonly isMain: boolean;
     private host: string | null = null;
     private registeredHost: string | null = null;
-    private iframeGrant: NormalizedBoardPermissions | undefined;
+    private iframeGrant: BoardGrant | undefined;
     private iframe: HTMLIFrameElement | undefined;
     private pendingPort: MessagePort | null = null;
     private hostedPathToken = "";
@@ -499,8 +500,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.lastPageVisibility = this.getPageVisibility();
         this.ownSubscription(pagesModel.state.subscribe(() => this.updatePageVisibility()));
         this.ownSubscription(boardTrust.subscribeGrants((changedRoots) => {
-            const boardKey = fpNormalizeForCompare(this.props.boardRoot);
-            if (!changedRoots.some((root) => pathCovers(root, boardKey) || pathCovers(boardKey, root))) return;
+            const boardKey = BoardRoot.from(this.props.boardRoot).key;
+            if (!changedRoots.some((root) => isKeyInside(root, boardKey) || isKeyInside(boardKey, root))) return;
             void this.refreshIframeGrant();
         }));
         this.ownSubscription(subscribeBoardPermission(() => {
@@ -580,7 +581,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
 
     private async registerBoard(): Promise<void> {
         const { boardRoot } = this.props;
-        const manifest = await readNormalizedBoardManifest(boardRoot);
+        const manifest = await readBoardManifest(boardRoot);
         const boardI18n = await loadBoardI18n(boardRoot, manifest?.languages);
         if (manifest) refreshBoardDisplayText(boardRoot, boardI18n.context);
         const hostText = Object.fromEntries(
@@ -604,12 +605,12 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     private async createIframe(): Promise<void> {
         const host = this.host;
         if (!host || this.iframe) return;
-        const grant = await boardTrust.getGrantedPermissions(this.props.boardRoot);
+        const grant = await boardTrust.getGrant(this.props.boardRoot);
         if (!this.live || host !== this.host || !grant || this.iframe) return;
         const { entry = "index.html", view = "main" } = this.props;
         const iframe = document.createElement("iframe");
         iframe.title = t("board.frameTitle");
-        iframe.allow = iframeFeaturesForGrant(grant).join("; ");
+        iframe.allow = grant.iframeFeatures().join("; ");
         this.iframeGrant = grant;
         this.iframe = iframe;
         this.props.model.setIframe(iframe, this.tabId);
@@ -627,8 +628,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     }
 
     private async refreshIframeGrant(): Promise<void> {
-        const grant = await boardTrust.getGrantedPermissions(this.props.boardRoot);
-        if (!this.live || JSON.stringify(grant) === JSON.stringify(this.iframeGrant)) return;
+        const grant = await boardTrust.getGrant(this.props.boardRoot);
+        if (!this.live || BoardGrant.same(grant, this.iframeGrant)) return;
         const iframe = this.iframe;
         if (this.isMain) this.props.model.setWorking(false);
         this.iframe = undefined;
@@ -681,8 +682,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             void this.transferPort();
         }));
 
-        this.ownSubscription(api.onBoardServiceChannel((boardId, channelId, port) => {
-            if (boardId !== this.boardId) return;
+        this.ownSubscription(api.onBoardServiceChannel((target, channelId, port) => {
+            if (target.kind !== "board-frame" || target.boardId !== this.boardId) return;
             if (!this.live) { port.close(); return; }
             const frame = this.iframe;
             const generation = this.generation;
@@ -1505,10 +1506,8 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         let reply: BoardContentOpenResultMsg;
         try {
             if (!isBoardPermitted(this.props.boardRoot)) throw new Error("This board is not trusted.");
-            const grant = await boardTrust.getGrantedPermissions(this.props.boardRoot);
-            const network = grant?.kind === "legacy" ? "full" : grant?.flags.network ?? false;
-            const appScripting = grant?.kind === "legacy" || (grant?.kind === "flags" && grant.flags.appScripting);
-            if (/^https?:/i.test(request.link) && network === false) throw boardPermissionError("network");
+            const grant = (await boardTrust.getGrant(this.props.boardRoot)) ?? BoardGrant.NONE;
+            if (/^https?:/i.test(request.link) && grant.networkMode() === false) throw BoardGrant.deny("network");
             if (typeof request.link !== "string") throw new Error("content.open() requires a link string.");
             if (request.timeoutMs !== undefined
                 && (!Number.isSafeInteger(request.timeoutMs) || request.timeoutMs <= 0)) {
@@ -1525,7 +1524,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             }
             const mcpUrl = await api.getBoardMcpEndpoint();
             const info = await model.openContentResource(request.link, this.tabId, generation, controller.signal, {
-                network, appScripting, mcpUrl, boardRoot: this.props.boardRoot,
+                ...grant.networkPolicy({ mcpUrl, boardRoot: this.props.boardRoot }),
             });
             openedResourceId = info.resourceId;
             if (controller.signal.aborted) {
@@ -1722,18 +1721,4 @@ function capabilityError(error: unknown): { code: CapabilityErrorCode; message: 
     const value = error as { code?: unknown } | null;
     const code = isCapabilityErrorCode(value?.code) ? value.code : "rejected";
     return { code, message: errMessage(error, "The capability request failed.") };
-}
-
-function iframeFeaturesForGrant(grant: NormalizedBoardPermissions): string[] {
-    const features = ["clipboard-write"];
-    if (grant.kind === "legacy") {
-        features.push("clipboard-read");
-        return features;
-    }
-    if (grant.flags.camera) features.push("camera");
-    if (grant.flags.microphone) features.push("microphone");
-    if (grant.flags.geolocation) features.push("geolocation");
-    if (grant.flags.notifications) features.push("notifications");
-    if (grant.flags.clipboardRead) features.push("clipboard-read");
-    return features;
 }

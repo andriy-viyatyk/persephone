@@ -4,18 +4,13 @@ import { errMessage } from "../shared/utils";
 import type { BoardServiceState } from "../ipc/module-service-channels";
 import type { ModuleServiceStorageAdapter } from "./module-service-storage";
 import type { RestartBudget } from "./module-service-restart-budget";
+import type { PendingRequests } from "../shared/pending-requests";
 
 export class ServiceError extends Error {
     constructor(readonly code: string, message = code) {
         super(message);
         this.name = "ServiceError";
     }
-}
-
-export interface PendingRequest {
-    resolve: (value: unknown) => void;
-    reject: (reason: unknown) => void;
-    timer: ReturnType<typeof setTimeout>;
 }
 
 export interface RendererLease {
@@ -29,7 +24,7 @@ export interface RendererLease {
     timer: ReturnType<typeof setTimeout>;
     resolve: () => void;
     reject: (reason: unknown) => void;
-    lifecycleListeners: Array<{ event: string; listener: () => void }>;
+    stopLifecycle?: () => void;
 }
 
 export interface ServiceChannelOwner { boardId: string; generation: number; host: WebContents; consumerRoot?: string; interfaceId?: string; version?: number }
@@ -50,7 +45,7 @@ export interface ServiceRecord {
     startPromise?: Promise<{ boardRoot: string; pid?: number; startedAt: number }>;
     stopPromise?: Promise<void>;
     cancelAttempt?: (error: ServiceError) => void;
-    requests: Map<string, PendingRequest>;
+    requests: PendingRequests<unknown, undefined, string>;
     pendingRequestSlots: number;
     leases: Map<number, RendererLease>;
     channels: Map<string, ServiceChannelOwner>;

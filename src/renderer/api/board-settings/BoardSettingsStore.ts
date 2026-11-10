@@ -5,15 +5,11 @@ import {
 } from "../../editors/text/TextEditorModel";
 import { errMessage } from "../../../shared/utils";
 import { fs } from "../fs";
-import type { BoardSettingValue, BoardSettingsChange, BoardSettingsFile } from "./types";
+import { isBoardSettingValue } from "../../../shared/board/board-settings-declarations";
+import type { BoardSettingValue } from "../../../shared/board/board-settings-declarations";
+import type { BoardSettingsChange, BoardSettingsFile } from "./types";
 
 type BoardSettingsListener = (change: BoardSettingsChange) => void;
-
-function isSettingValue(value: unknown): value is BoardSettingValue {
-    return typeof value === "string"
-        || typeof value === "boolean"
-        || (typeof value === "number" && Number.isFinite(value));
-}
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
     if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
@@ -39,7 +35,7 @@ function parseSettingsFile(text: string): BoardSettingsFile {
         }
         const settings: Record<string, BoardSettingValue> = {};
         for (const [id, value] of Object.entries(rawSettings)) {
-            if (!isSettingValue(value)) {
+            if (!isBoardSettingValue(value)) {
                 throw new Error(`Board setting ${JSON.stringify(id)} in ${JSON.stringify(namespace)} must be a string, number, or boolean.`);
             }
             settings[id] = value;
@@ -77,17 +73,12 @@ class BoardSettingsStore {
     private loadedPath: string | null = null;
     private parsed: BoardSettingsFile = {};
     private loadError: string | undefined;
-    private queue: Promise<unknown> = Promise.resolve();
+    private readonly queue = new SerialQueue();
     private readonly listeners = new Set<BoardSettingsListener>();
     private modelSubscription: (() => void) | undefined;
 
     private enqueue<T>(operation: () => Promise<T>): Promise<T> {
-        const run = this.queue.then(operation);
-        this.queue = run.then(
-            (): void => undefined,
-            (): void => undefined,
-        );
-        return run;
+        return this.queue.run(operation);
     }
 
     private notify(changes: readonly BoardSettingsChange[]): void {
@@ -217,3 +208,4 @@ class BoardSettingsStore {
 }
 
 export const boardSettings = new BoardSettingsStore();
+import { SerialQueue } from "../../../shared/serial-queue";

@@ -1,8 +1,11 @@
-import { TEXT_TRANSLATION_BOARD_PREFIX , SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "../../../ipc/module-service-channels";
+import { SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "../../../ipc/module-service-channels";
 import { api } from "../../../ipc/renderer/api";
 import type { BoardServiceProvider } from "../../../ipc/board-bridge-channels";
 import { errMessage } from "../../../shared/utils";
-import { createTranslationServiceChannel, type TranslationServiceChannel } from "./TranslationServiceChannel";
+import { codedError } from "../../../shared/coded-error";
+import { openDomServiceChannel } from "../../../shared/service-channel-node";
+import type { ServiceChannel } from "../../../shared/service-channel";
+import { serviceChannelPorts } from "../../api/service-channel-ports";
 
 const DESCRIBE_TIMEOUT_MS = 4000;
 const MAX_TRANSLATE_CHANNELS = 4;
@@ -38,7 +41,7 @@ interface OperationState<T> {
     request: unknown;
     expected: string[];
     onProgress?: (message: TranslationDownloadProgress | TranslationProgress) => void;
-    channel?: TranslationServiceChannel;
+    channel?: ServiceChannel;
     cancelled: boolean;
     settled: boolean;
     resolve(value: T): void;
@@ -46,34 +49,17 @@ interface OperationState<T> {
     cancel(): void;
 }
 
-function codedError(code: string, message: string): Error {
-    return Object.assign(new Error(message), { code });
-}
-
 function priorityOrder(priority: TranslationPriority): number { return PRIORITIES.indexOf(priority); }
 
 /** Host consumer for text.translate@1. Translation batches are isolated to one channel each. */
 export class TextTranslationProvider {
-    private readonly pendingPorts = new Map<string, MessagePort>();
-    private readonly portWaiters = new Map<string, { resolve(port: MessagePort): void; reject(error: Error): void }>();
+    private readonly lifetime = new AbortController();
     private readonly operations = new Set<OperationState<unknown>>();
     private readonly queuedTranslations: OperationState<TranslationResult>[] = [];
     private readonly queuedControls: OperationState<unknown>[] = [];
     private readonly activeChannels = new Set<OperationState<unknown>>();
     private readonly activeTranslations = new Set<OperationState<TranslationResult>>();
-    private readonly unsubscribe: () => void;
     private disposed = false;
-
-    public constructor() {
-        this.unsubscribe = api.onBoardServiceChannel((boardId, channelId, port) => {
-            // Every board's channel arrives on this event with the same port; only close our own.
-            if (!boardId.startsWith(TEXT_TRANSLATION_BOARD_PREFIX)) return;
-            if (this.disposed) { port.close(); return; }
-            const waiter = this.portWaiters.get(channelId);
-            if (waiter) { this.portWaiters.delete(channelId); waiter.resolve(port); }
-            else this.pendingPorts.set(channelId, port);
-        });
-    }
 
     public async list(): Promise<BoardServiceProvider[]> {
         return (await api.getBoardServiceProviders("text.translate")).filter((provider) => provider.version === 1);
@@ -112,12 +98,8 @@ export class TextTranslationProvider {
     public dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
-        this.unsubscribe();
+        this.lifetime.abort(codedError("cancelled", "Translation provider disposed."));
         for (const operation of [...this.operations]) operation.cancel();
-        this.pendingPorts.forEach((port) => port.close());
-        this.pendingPorts.clear();
-        this.portWaiters.forEach((waiter) => waiter.reject(codedError("cancelled", "Translation provider disposed.")));
-        this.portWaiters.clear();
         this.queuedTranslations.length = 0;
         this.queuedControls.length = 0;
     }
@@ -158,7 +140,7 @@ export class TextTranslationProvider {
     }
 
     private async run<T>(state: OperationState<T>): Promise<void> {
-        let channel: TranslationServiceChannel | undefined;
+        let channel: ServiceChannel | undefined;
         let removeMessage = (): void => undefined;
         let removeClose = (): void => undefined;
         let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -167,9 +149,13 @@ export class TextTranslationProvider {
                 interfaceId: "text.translate", provider: state.provider, version: 1, openMessage: state.request,
             });
             const channelId = await this.withTimeout(connect, SERVICE_CHANNEL_OPEN_TIMEOUT_MS, "Translation provider channel did not open.");
-            const port = await this.waitForPort(channelId);
+            const port = await serviceChannelPorts.claim(channelId, {
+                timeoutMs: SERVICE_CHANNEL_OPEN_TIMEOUT_MS,
+                timeoutError: () => codedError("timeout", "Translation provider channel port did not arrive."),
+                signal: this.lifetime.signal,
+            });
             if (state.cancelled || this.disposed) { port.close(); throw codedError("cancelled", "Translation operation cancelled."); }
-            channel = createTranslationServiceChannel(port);
+            channel = openDomServiceChannel(port, "service");
             state.channel = channel;
             const response = await new Promise<unknown>((resolve, reject) => {
                 let finished = false;
@@ -236,21 +222,6 @@ export class TextTranslationProvider {
             this.activeChannels.add(next);
             void this.run(next);
         }
-    }
-
-    private async waitForPort(channelId: string): Promise<MessagePort> {
-        const pending = this.pendingPorts.get(channelId);
-        if (pending) { this.pendingPorts.delete(channelId); return pending; }
-        return new Promise<MessagePort>((resolve, reject) => {
-            const timer = setTimeout(() => {
-                this.portWaiters.delete(channelId);
-                reject(codedError("timeout", "Translation provider channel port did not arrive."));
-            }, SERVICE_CHANNEL_OPEN_TIMEOUT_MS);
-            this.portWaiters.set(channelId, {
-                resolve: (port) => { clearTimeout(timer); resolve(port); },
-                reject: (error) => { clearTimeout(timer); reject(error); },
-            });
-        });
     }
 
     private withTimeout<T>(promise: Promise<T>, milliseconds: number, message: string): Promise<T> {

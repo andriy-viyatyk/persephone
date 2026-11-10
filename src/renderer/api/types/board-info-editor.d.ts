@@ -56,9 +56,9 @@ export interface IBoardInfoProperties {
     readonly author?: string;
     readonly repository?: string;
     readonly manifestVersion?: string;
-    readonly permissions?: import("../../../shared/board-manifest-utils").NormalizedBoardPermissions;
+    readonly permissions?: import("../../../shared/board/board-permissions").NormalizedBoardPermissions;
     readonly permissionLines?: readonly string[];
-    readonly proposedPermissions?: import("../../../shared/board-manifest-utils").NormalizedBoardPermissions;
+    readonly proposedPermissions?: import("../../../shared/board/board-permissions").NormalizedBoardPermissions;
     readonly proposedPermissionLines?: readonly string[];
     readonly permissionChanges?: readonly { readonly flag: string; readonly kind: "added" | "removed" | "level"; readonly from?: boolean | string; readonly to?: boolean | string }[];
     readonly permissionChangePending?: boolean;

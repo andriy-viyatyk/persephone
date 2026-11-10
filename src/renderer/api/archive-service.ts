@@ -17,6 +17,8 @@ const nodefs = require("fs") as typeof import("fs");
 import type { IFileStat, IDirEntry } from "./types/fs";
 import { isZipBasedArchive, fpResolve, fpDirname, fpNormalizeForCompare } from "../core/utils/file-path";
 import type { LibarchiveWasm } from "libarchive-wasm";
+import { KeyedSerialQueue } from "../../shared/serial-queue";
+import { isKeyInside } from "../../shared/path-containment";
 
 // =============================================================================
 // Types
@@ -39,7 +41,7 @@ export interface ArchiveEntry {
 
 class ArchiveService {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private queues = new Map<string, Promise<any>>();
+    private readonly queues = new KeyedSerialQueue();
     private wasmModule: LibarchiveWasm | null = null;
 
     // ── WASM Module ──────────────────────────────────────────────────────
@@ -164,7 +166,7 @@ class ArchiveService {
                     const dest = fpResolve(targetDir, entryPath);
                     const destKey = fpNormalizeForCompare(dest);
                     // zip-slip: dest must be inside targetDir (equal or under it)
-                    if (destKey !== rootKey && !destKey.startsWith(rootKey + "/")) {
+                    if (!isKeyInside(rootKey, destKey)) {
                         throw new Error(`Unsafe archive entry (zip-slip): ${entryPath}`);
                     }
                     if (isDir) {
@@ -364,14 +366,7 @@ class ArchiveService {
      * Ensures no concurrent operations on the same archive.
      */
     private enqueue<T>(archivePath: string, fn: () => Promise<T>): Promise<T> {
-        const prev = this.queues.get(archivePath) ?? Promise.resolve();
-        const next = prev.then(fn, fn);
-        this.queues.set(archivePath, next);
-        next.then(
-            () => { if (this.queues.get(archivePath) === next) this.queues.delete(archivePath); },
-            () => { if (this.queues.get(archivePath) === next) this.queues.delete(archivePath); },
-        );
-        return next;
+        return this.queues.run(archivePath, fn);
     }
 }
 

@@ -10,44 +10,40 @@ import {
     customEditorRegistry,
     getFolderEditorsForFolder,
     type CustomEditorRegistrationIssue,
-} from "../board/custom-editor-registry";
-import {
-    isBoardFolder,
-    normalizeBoardVersionRequirement,
-    readNormalizedBoardManifest,
-    type BoardContentProviderDeclaration,
-    type BoardCapabilityDeclaration,
-    type BoardServiceInterfaceDeclaration,
-    type SecondaryViewDecl,
-} from "../board/board-manifest";
-import { ensureBoardDisplayText } from "../board/board-display-text";
+} from "../../api/boards/custom-editor-registry";
+import { isBoardFolder, readBoardManifest } from "../../api/boards/board-manifest-io";
+import { normalizeVersionRequirement, getBoardCompatibility } from "../../../shared/version-utils";
+import { type BoardContentProviderDeclaration, type BoardCapabilityDeclaration, type SecondaryViewDecl } from "../../../shared/board/board-manifest-schema";
+import { type BoardServiceInterfaceDeclaration, type BoardServiceUseDeclaration } from "../../../shared/board/board-service-declarations";
+import { ensureBoardDisplayText } from "../../api/boards/board-display-text";
 import { BOARD_BRIDGE_VERSION } from "../../../shared/board-bridge-version";
-import { getBoardCompatibility } from "../../../shared/version-utils";
 import { BOARD_INFO_EDITOR_ID } from "./board-info-id";
-import { publishedBoards } from "../../api/published-boards";
-import { boardInstallRegistry } from "../../api/board-install-registry";
-import { downloadBoard } from "../../api/board-install";
-import { boardTrust } from "../../api/board-trust";
-import type { BoardPermissionChange } from "../../api/board-trust";
-import { requestBoardTrust } from "../board/request-board-trust";
-import { bundledBoardRegistry } from "../board/bundled-board-registry";
+import { publishedBoards } from "../../api/boards/published-boards";
+import { boardInstallRegistry } from "../../api/boards/board-install-registry";
+import { downloadBoard } from "../../api/boards/board-install";
+import { boardTrust } from "../../api/boards/board-trust";
+import type { BoardPermissionChange } from "../../../shared/board/board-grant";
+import { BoardGrant } from "../../../shared/board/board-grant";
+import { requestBoardTrust } from "../../api/boards/request-board-trust";
+import { bundledBoardRegistry } from "../../api/boards/bundled-board-registry";
 import { app } from "../../api/app";
 import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
-import { fpBasename, fpJoin, fpNormalizeForCompare } from "../../core/utils/file-path";
+import { fpBasename, fpJoin } from "../../core/utils/file-path";
+import { BoardRoot } from "../../../shared/board/board-root";
 import { api } from "../../../ipc/renderer/api";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 import { EventEndpoint } from "../../../ipc/api-types";
 import type { BoardServiceStatus } from "../../../ipc/module-service-channels";
-import type { BoardServiceUseDeclaration } from "../../../shared/board-manifest-utils";
 import type { BoardServiceProvider } from "../../../ipc/board-bridge-channels";
 import type { PublishedBoardInfo, PublishedBoardVersion } from "../../../ipc/api-param-types";
-import type { BoardSettingDeclaration } from "../../api/board-settings/types";
+import type { BoardSettingDeclaration } from "../../../shared/board/board-settings-declarations";
 import { BoardColorIcon } from "../../theme/icons";
 import { errMessage } from "../../../shared/utils";
 import { moduleServiceStatus } from "../../api/module-service-status";
+import { ensureBoardIdle } from "../../api/boards/board-idle";
 import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
 import { englishMessage, t } from "../../../shared/i18n/t";
 
@@ -72,8 +68,8 @@ export interface BoardPropsInfo {
     repository?: string;
     /** `version` from the board's own manifest (may lag the registry after a rollback). */
     manifestVersion?: string;
-    permissions?: import("../../../shared/board-manifest-utils").NormalizedBoardPermissions;
-    proposedPermissions?: import("../../../shared/board-manifest-utils").NormalizedBoardPermissions;
+    permissions?: import("../../../shared/board/board-permissions").NormalizedBoardPermissions;
+    proposedPermissions?: import("../../../shared/board/board-permissions").NormalizedBoardPermissions;
     isBundled: boolean;
     permissionChanges?: BoardPermissionChange[];
     permissionChangePending?: boolean;
@@ -232,9 +228,9 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         });
         this._serviceStatusSub = rendererEvents[EventEndpoint.eModuleServiceStatusChanged].subscribe((status) => {
             const root = this.state.get().boardRoot;
-            if (!root || fpNormalizeForCompare(root) !== fpNormalizeForCompare(status.boardRoot)) return;
+            if (!root || !BoardRoot.from(root).equals(status.boardRoot)) return;
             this.state.update((s) => {
-                if (!s.props || fpNormalizeForCompare(s.props.root) !== fpNormalizeForCompare(root)) return;
+                if (!s.props || !BoardRoot.from(s.props.root).equals(root)) return;
                 s.props.serviceStatus = moduleServiceStatus.getStatus(root);
             });
         });
@@ -414,7 +410,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         }
         await boardInstallRegistry.load();
         const reg = boardInstallRegistry.getByRoot(root);
-        const manifest = await readNormalizedBoardManifest(root);
+        const manifest = await readBoardManifest(root);
         if (manifest) await ensureBoardDisplayText(root, manifest);
         await boardTrust.load();
         await boardTrust.refreshPermissionSnapshot();
@@ -423,11 +419,11 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             ? await boardTrust.getFileAccessGrants(root)
             : { folderGrants: [], fileGrants: [] };
         const assoc = manifest?.association ?? null;
-        const minBridgeVersion = normalizeBoardVersionRequirement(manifest?.minBridgeVersion);
+        const minBridgeVersion = normalizeVersionRequirement(manifest?.minBridgeVersion);
         const bridgeCompatibility = getBoardCompatibility(
             {
                 minBridgeVersion,
-                requiresMinBridgeVersion: manifest?.permissions.kind === "flags",
+                requiresMinBridgeVersion: !!manifest && BoardGrant.from(manifest.permissions).isDeclared(),
             },
             { bridgeVersion: BOARD_BRIDGE_VERSION },
         );
@@ -537,7 +533,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             );
             return;
         }
-        const { runBoardVersionInstall } = await import("../../api/board-updates");
+        const { runBoardVersionInstall } = await import("../../api/boards/board-updates");
         const ok = await runBoardVersionInstall({
             root: props.root,
             id: props.catalogId,
@@ -555,7 +551,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     async uninstall(): Promise<void> {
         const props = this.state.get().props;
         if (!props) return;
-        const { uninstallCatalogBoard } = await import("../../api/board-install");
+        const { uninstallCatalogBoard } = await import("../../api/boards/board-install");
         const removed = await uninstallCatalogBoard({
             root: props.root,
             name: props.name,
@@ -578,7 +574,6 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         });
         if (choice !== DialogButton.remove) return;
 
-        const { ensureBoardIdle } = await import("../../api/board-updates");
         if (!(await ensureBoardIdle(props.root))) return;
 
         await boardTrust.untrust(props.root);
@@ -738,10 +733,10 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         await customEditorRegistry.refresh();
         if (source.kind === "folder") {
             const trustedEntry = customEditorRegistry.entries.find((candidate) =>
-                fpNormalizeForCompare(candidate.boardRoot) === fpNormalizeForCompare(root),
+                BoardRoot.from(candidate.boardRoot).equals(root),
             );
             const claimsFolder = customEditorRegistry.getBoardsForFolder(source.path).some(
-                (candidate) => fpNormalizeForCompare(candidate.boardRoot) === fpNormalizeForCompare(root),
+                (candidate) => BoardRoot.from(candidate.boardRoot).equals(root),
             );
             if (!trustedEntry || !claimsFolder) {
                 void ui.notify(

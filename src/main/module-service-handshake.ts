@@ -1,6 +1,6 @@
 import type { UtilityProcess } from "electron";
 import type { ServiceMainMessage, ServiceParentMessage } from "../ipc/module-service-channels";
-import type { PendingRequest, ServiceRecord } from "./module-service-record";
+import type { ServiceRecord } from "./module-service-record";
 import { acknowledgeRendererLease } from "./module-service-leases";
 import { ServiceError, isCurrent } from "./module-service-record";
 import { errMessage } from "../shared/utils";
@@ -24,7 +24,7 @@ export interface ProcessMessageCallbacks {
     onStorageRequest: (message: Extract<ServiceMainMessage, { kind: "storage-request" }>) => void;
     onMcpEndpointRequest: (message: Extract<ServiceMainMessage, { kind: "mcp-endpoint-request" }>) => void;
     onBoardSettingsRequest: (message: Extract<ServiceMainMessage, { kind: "board-settings-get" | "board-settings-subscribe" | "board-settings-unsubscribe" }>) => void;
-    onResponse: (pending: PendingRequest, message: Extract<ServiceMainMessage, { kind: "response" }>) => void;
+    onResponse: (message: Extract<ServiceMainMessage, { kind: "response" }>) => void;
     onReady: (process: UtilityProcess) => void;
     fail: (error: ServiceError) => void;
 }
@@ -61,9 +61,8 @@ export function routeProcessMessage(
         return;
     }
     if (message.kind === "response") {
-        const pending = record.requests.get(message.requestId);
-        if (!pending) return;
-        callbacks.onResponse(pending, message);
+        if (!record.requests.has(message.requestId)) return;
+        callbacks.onResponse(message);
         return;
     }
     if (handshake.settled) return;

@@ -3,12 +3,9 @@ import { TDialogModel } from "../../core/state/model";
 import { TComponentState } from "../../core/state/state";
 import { registerDialogView } from "./dialog-view-registry";
 import { TrustBoardDialogView } from "./TrustBoardDialogView";
-import type {
-    BoardServiceInterfaceDeclaration,
-    BoardServiceUseDeclaration,
-    NormalizedBoardPermissions,
-} from "../../../shared/board-manifest-utils";
-import type { BoardPermissionChange } from "../../api/board-trust";
+import type { BoardServiceInterfaceDeclaration, BoardServiceUseDeclaration } from "../../../shared/board/board-service-declarations";
+import type { NormalizedBoardPermissions } from "../../../shared/board/board-permissions";
+import type { BoardPermissionChange } from "../../../shared/board/board-grant";
 
 export const trustBoardDialogId = Symbol("trustBoardDialog");
 

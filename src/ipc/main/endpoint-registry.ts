@@ -1,6 +1,7 @@
 import { ipcMain } from "electron";
-import { Endpoint, type Api } from "../api-types";
+import { ENDPOINT_REPLY_CHANNEL, Endpoint, type Api, type EndpointReply } from "../api-types";
 import { errMessage } from "../../shared/utils";
+import { wireError } from "../../shared/wire-error";
 import { guardIpcSender, IPC_AUTHORIZATION_ERROR } from "../../main/ipc-sender-guard";
 
 type AddEventParam<T> = T extends (...args: infer Args) => infer Return
@@ -18,18 +19,18 @@ export type BindEndpoint = <K extends Endpoint>(command: K, handler: MainApi[K])
  * instead of each owning their own `ipcMain.on` wrapper. */
 export const bindEndpoint: BindEndpoint = (command, handler) => {
     ipcMain.on(command, async (event, arg, commandId) => {
+        const reply = (payload: EndpointReply) => event.reply(ENDPOINT_REPLY_CHANNEL, payload);
         if (!guardIpcSender(event, command)) {
-            event.reply(`${command}_${commandId}`, new Error(IPC_AUTHORIZATION_ERROR));
+            reply({ id: commandId, ok: false, error: wireError(IPC_AUTHORIZATION_ERROR) });
             return;
         }
         try {
             const invoke = handler as (...args: unknown[]) => unknown;
             const result = await invoke(event, ...arg);
-            event.reply(`${command}_${commandId}`, result);
+            reply({ id: commandId, ok: true, result });
         } catch (e) {
             console.error("Api Error:", e);
-            const error = new Error(errMessage(e, "Unknown error"));
-            event.reply(`${command}_${commandId}`, error);
+            reply({ id: commandId, ok: false, error: wireError(errMessage(e, "Unknown error")) });
         }
     });
 };

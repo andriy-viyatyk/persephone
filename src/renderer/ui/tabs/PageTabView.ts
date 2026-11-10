@@ -11,7 +11,7 @@ import { settings } from "../../api/settings";
 import type { EditorOrHost } from "../../editors/base";
 import type { EditorModel } from "../../editors/base/EditorModel";
 import { BoardEditorModel } from "../../editors/board/BoardEditorModel";
-import { onBoardDisplayTextChanged } from "../../editors/board/board-display-text";
+import { onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
 import { TraitTypeId, getTraitDragData, hasTraitDragData, setTraitDragData } from "../../core/traits";
 import { createEditorIconElement, createFileTypeIconElement, subscribeFileIconElements } from "../../components/icons/icon-elements";

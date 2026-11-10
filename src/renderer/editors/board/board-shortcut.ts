@@ -4,8 +4,8 @@ import { t } from "../../../shared/i18n/t";
 import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
 import { fpBasename, fpIsAbsolute, fpJoin, fpResolve } from "../../core/utils/file-path";
-import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText } from "./board-display-text";
-import { readNormalizedBoardManifest } from "./board-manifest";
+import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText } from "../../api/boards/board-display-text";
+import { readBoardManifest } from "../../api/boards/board-manifest-io";
 import { renderBoardIconDataUrl } from "./board-window-icon";
 
 function safeShortcutName(name: string): string {
@@ -25,7 +25,7 @@ export async function createBoardShortcutCore(
     root: string,
     options?: CreateBoardShortcutOptions,
 ): Promise<{ linkPath: string; displayName: string } | null> {
-    const manifest = await readNormalizedBoardManifest(root);
+    const manifest = await readBoardManifest(root);
     if (manifest) await ensureBoardDisplayText(root, manifest);
     const fallback = manifest?.name?.trim() || fpBasename(root);
     const displayName = boardDisplayText(root, manifest, boardMetadataKeys.name, fallback);

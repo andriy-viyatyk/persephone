@@ -24,7 +24,7 @@ import { pagesModel } from "../../api/pages";
 import { errMessage } from "../../../shared/utils";
 import type { BoardOpenContentRequest } from "../../../ipc/board-bridge-channels";
 import type { EditorView } from "../../../shared/types";
-import { BOARD_EDITOR_ID_PREFIX } from "./custom-editor-registry";
+import { BOARD_EDITOR_ID_PREFIX } from "../../api/boards/custom-editor-registry";
 
 export interface BoardOpenContentReply {
     /** Id of the created page. */

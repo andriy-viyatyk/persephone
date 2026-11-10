@@ -1,22 +1,25 @@
 import { PLATFORM_AUDIO_CAPABILITY_ID } from "../shared/capability-constants";
-import { parseBoardIdPrefix, BOARD_FRAME_PREFIX, CAPABILITY_BOARD_PREFIX } from "../ipc/module-service-channels";
 import { CONTROL_CHANNEL, ARM_CHANNEL, CLEAR_CHANNEL, OPEN_CHANNEL, CLOSE_CHANNEL } from "../ipc/audio-channels";
 import { globalMuteService } from "./global-mute-service";
 import { app, BrowserWindow, MessageChannelMain, type MessagePortMain, type UtilityProcess, type WebContents } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { EventEndpoint } from "../ipc/api-types";
 import { AUDIO_DEVICES_REQUEST, AUDIO_DEVICES_REPLY, AUDIO_SETTINGS_UPDATE, AUDIO_SETTINGS_GET, AUDIO_SETTINGS_DEVICES, AUDIO_STATUS, AUDIO_STATUS_GET, AUDIO_RETRY, type AudioDevice, type AudioDevicesReply, type AudioDevicesRequest } from "../ipc/audio-channels";
 import { openWindows } from "./open-windows";
 import { MAX_SERVICE_CHANNELS_PER_BOARD } from "../shared/capability-limits";
-import { boardPermissionAllows } from "../shared/board-manifest-utils";
+import { BoardGrant } from "../shared/board/board-grant";
 import { errMessage } from "../shared/utils";
+import { codedError } from "../shared/coded-error";
+import { openElectronServiceChannel } from "../shared/service-channel-node";
+import { PendingRequests } from "../shared/pending-requests";
+import { onWebContentsGone } from "./webcontents-lifetime";
 import { appPartition } from "./constants";
 import { capabilityRegistry } from "./capability-registry";
 import type { BoundCapability, MainCapabilityInvocationContext } from "./capability-router";
 import { armAudioMicrophoneGrant, armAudioLoopbackGrant, clearAudioCaptureGrants, setAudioWindowTargetResolver } from "./permission-policy-service";
 import { setAudioCaptureCount } from "./audio-capture-state";
 import { guardedIpcHandle, guardedIpcOn } from "./ipc-sender-guard";
+import { deliverConsumerPort, deliveryOwner, type ChannelDelivery } from "./channel-delivery";
 
 // Vite replaces this identifier in development and production builds.
 declare const AUDIO_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
@@ -40,7 +43,6 @@ interface ChannelRecord {
     removeOwnerListener: () => void;
 }
 
-function capabilityError(code: string, message = code): Error { return Object.assign(new Error(message), { code }); }
 
 function withAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
     return new Promise<T>((resolve, reject) => {
@@ -51,7 +53,7 @@ function withAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
             signal.removeEventListener("abort", abort);
             if (error !== undefined) reject(error); else resolve(value as T);
         };
-        const abort = (): void => finish(signal.reason ?? capabilityError("cancelled"));
+        const abort = (): void => finish(signal.reason ?? codedError("cancelled"));
         if (signal.aborted) { abort(); return; }
         signal.addEventListener("abort", abort, { once: true });
         promise.then((value) => finish(undefined, value), (error: unknown) => finish(error));
@@ -67,7 +69,10 @@ class AudioService {
     private startupReject: ((error: unknown) => void) | undefined;
     private readonly channels = new Map<string, ChannelRecord>();
     private readonly muteChannels = new Set<() => void>();
-    private readonly deviceRequests = new Map<string, { generation: number; resolve: (devices: AudioDevice[]) => void; reject: (error: unknown) => void }>();
+    private readonly deviceRequests = new PendingRequests<AudioDevice[], { generation: number }, string>({
+        nextId: () => crypto.randomUUID(),
+        abortError: (reason) => reason ?? codedError("cancelled"),
+    });
     private pendingOpens = 0;
     private initialized = false;
     private microphoneSettings: unknown;
@@ -82,7 +87,7 @@ class AudioService {
             if (this.window && !this.window.isDestroyed()) this.window.webContents.send(AUDIO_SETTINGS_UPDATE, snapshot);
         });
         guardedIpcHandle(AUDIO_SETTINGS_GET, (event) => {
-            if (!this.window || event.sender !== this.window.webContents || event.senderFrame !== event.sender.mainFrame) throw capabilityError("permission-denied");
+            if (!this.window || event.sender !== this.window.webContents || event.senderFrame !== event.sender.mainFrame) throw codedError("permission-denied");
             return this.microphoneSettings;
         });
         guardedIpcOn(AUDIO_STATUS, (event, status: unknown) => {
@@ -93,7 +98,7 @@ class AudioService {
             for (const item of openWindows.windows) if (!item.boardRoot && item.window && !item.window.window.isDestroyed()) item.window.window.webContents.send(AUDIO_STATUS, status);
         });
         guardedIpcHandle(AUDIO_STATUS_GET, (event) => {
-            if (event.senderFrame !== event.sender.mainFrame || !openWindows.windows.some((item) => !item.boardRoot && item.window?.window.webContents === event.sender)) throw capabilityError("permission-denied");
+            if (event.senderFrame !== event.sender.mainFrame || !openWindows.windows.some((item) => !item.boardRoot && item.window?.window.webContents === event.sender)) throw codedError("permission-denied");
             return [...this.microphoneStatus.values()];
         });
         guardedIpcOn(AUDIO_RETRY, (event) => {
@@ -102,19 +107,18 @@ class AudioService {
             for (const item of openWindows.windows) if (!item.boardRoot && item.window && !item.window.window.isDestroyed()) item.window.window.webContents.send(AUDIO_RETRY);
         });
         guardedIpcHandle(AUDIO_SETTINGS_DEVICES, async (event) => {
-            if (event.senderFrame !== event.sender.mainFrame || !openWindows.windows.some((item) => !item.boardRoot && item.window?.window.webContents === event.sender)) throw capabilityError("permission-denied");
+            if (event.senderFrame !== event.sender.mainFrame || !openWindows.windows.some((item) => !item.boardRoot && item.window?.window.webContents === event.sender)) throw codedError("permission-denied");
             this.pendingOpens++;
             let requestId: string | undefined;
             try {
                 const signal = AbortSignal.timeout(10000);
                 const opened = await this.ensureWindow(signal);
-                const currentRequestId = crypto.randomUUID();
-                requestId = currentRequestId;
-                const response = new Promise<AudioDevice[]>((resolve, reject) => this.deviceRequests.set(currentRequestId, { generation: opened.generation, resolve, reject }));
-                opened.window.webContents.send(AUDIO_DEVICES_REQUEST, { requestId, epoch: this.epoch } satisfies AudioDevicesRequest);
-                return await withAbort(response, signal);
+                const created = this.deviceRequests.create(undefined, signal, { meta: { generation: opened.generation } });
+                requestId = created.id;
+                try { opened.window.webContents.send(AUDIO_DEVICES_REQUEST, { requestId, epoch: this.epoch } satisfies AudioDevicesRequest); }
+                catch (error) { this.deviceRequests.fail(requestId, error); throw error; }
+                return await created.promise;
             } finally {
-                if (requestId) this.deviceRequests.delete(requestId);
                 this.pendingOpens--;
                 this.destroyIdleWindow();
             }
@@ -124,10 +128,9 @@ class AudioService {
             const window = this.window;
             if (!window || window.isDestroyed() || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame
                 || !reply || typeof reply.requestId !== "string" || reply.epoch !== this.epoch) return;
-            const request = this.deviceRequests.get(reply.requestId);
-            if (!request || request.generation !== this.generation) return;
-            if ("error" in reply) request.reject(capabilityError("rejected", reply.error));
-            else request.resolve(reply.devices);
+            const accepted = (meta: { generation: number }) => meta.generation === this.generation;
+            if ("error" in reply) this.deviceRequests.fail(reply.requestId, codedError("rejected", reply.error.message), accepted);
+            else this.deviceRequests.settle(reply.requestId, reply.devices, accepted);
         });
         guardedIpcOn(CONTROL_CHANNEL, (event, message: { type?: unknown; channelId?: unknown; epoch?: unknown; code?: unknown; message?: unknown; count?: unknown }) => {
             const window = this.window;
@@ -156,13 +159,13 @@ class AudioService {
         guardedIpcHandle(ARM_CHANNEL, async (event, source: unknown) => {
             const window = this.window;
             if (!window || window.isDestroyed() || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame
-                || (source !== "microphone" && source !== "computer")) throw capabilityError("permission-denied");
+                || (source !== "microphone" && source !== "computer")) throw codedError("permission-denied");
             if (source === "computer") armAudioLoopbackGrant(window.webContents);
             else armAudioMicrophoneGrant(window.webContents);
         });
         guardedIpcHandle(CLEAR_CHANNEL, (event) => {
             const window = this.window;
-            if (!window || window.isDestroyed() || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw capabilityError("permission-denied");
+            if (!window || window.isDestroyed() || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw codedError("permission-denied");
             clearAudioCaptureGrants(window.webContents);
         });
         capabilityRegistry.onChange(() => {
@@ -175,11 +178,11 @@ class AudioService {
     }
 
     async callDevices(bound: BoundCapability, method: string, args: unknown[], invocation: MainCapabilityInvocationContext, reauthorize: () => void): Promise<AudioDevice[]> {
-        if (method !== "devices") throw capabilityError("no-handler");
-        if (args.length !== 0) throw capabilityError("rejected", "devices takes no arguments.");
+        if (method !== "devices") throw codedError("no-handler");
+        if (args.length !== 0) throw codedError("rejected", "devices takes no arguments.");
         const authorize = (): void => { reauthorize(); this.authorize(bound, "microphone"); };
         authorize();
-        if (invocation.signal.aborted) throw invocation.signal.reason ?? capabilityError("cancelled");
+        if (invocation.signal.aborted) throw invocation.signal.reason ?? codedError("cancelled");
         this.pendingOpens++;
         const unsubscribe = capabilityRegistry.onChange(() => {
             try { authorize(); } catch (error) { invocation.controller.abort(error); }
@@ -187,21 +190,18 @@ class AudioService {
         let requestId: string | undefined;
         try {
             const opened = await this.ensureWindow(invocation.signal);
-            if (invocation.signal.aborted) throw invocation.signal.reason ?? capabilityError("cancelled");
-            if (opened.generation !== this.generation || opened.window.isDestroyed()) throw capabilityError("handler-closed");
+            if (invocation.signal.aborted) throw invocation.signal.reason ?? codedError("cancelled");
+            if (opened.generation !== this.generation || opened.window.isDestroyed()) throw codedError("handler-closed");
             authorize();
-            const currentRequestId = crypto.randomUUID();
-            requestId = currentRequestId;
-            const response = new Promise<AudioDevice[]>((resolve, reject) => {
-                this.deviceRequests.set(currentRequestId, { generation: opened.generation, resolve, reject });
-            });
-            const message: AudioDevicesRequest = { requestId: currentRequestId, epoch: this.epoch };
-            opened.window.webContents.send(AUDIO_DEVICES_REQUEST, message);
-            const devices = await withAbort(response, invocation.signal);
+            const created = this.deviceRequests.create(undefined, invocation.signal, { meta: { generation: opened.generation } });
+            requestId = created.id;
+            const message: AudioDevicesRequest = { requestId, epoch: this.epoch };
+            try { opened.window.webContents.send(AUDIO_DEVICES_REQUEST, message); }
+            catch (error) { this.deviceRequests.fail(requestId, error); throw error; }
+            const devices = await created.promise;
             authorize();
             return devices;
         } finally {
-            if (requestId) this.deviceRequests.delete(requestId);
             unsubscribe();
             this.pendingOpens--;
             this.destroyIdleWindow();
@@ -213,31 +213,31 @@ class AudioService {
         method: string,
         argument: Record<string, unknown>,
         invocation: MainCapabilityInvocationContext,
-        delivery: { target: WebContents | UtilityProcess; requestId: string } | undefined,
+        delivery: ChannelDelivery | undefined,
         reauthorize: () => void,
     ): Promise<{ channelId: string; onClose: (listener: () => void) => () => void }> {
         if (method === "muteApp") return this.openMuteChannel(bound, argument, invocation, delivery, reauthorize);
-        if (method !== "capture" && method !== "play") throw capabilityError("no-handler", "Audio channel is unavailable.");
-        if (!delivery) throw capabilityError("no-handler", "A capability channel consumer is required.");
+        if (method !== "capture" && method !== "play") throw codedError("no-handler", "Audio channel is unavailable.");
+        if (!delivery) throw codedError("no-handler", "A capability channel consumer is required.");
         const request = method === "capture" ? this.validateCapture(argument) : this.validatePlayback(argument);
         const captureSource = method === "capture" ? (request as ReturnType<AudioService["validateCapture"]>).source : undefined;
         this.authorize(bound, captureSource);
         reauthorize();
-        if (invocation.signal.aborted) throw capabilityError("cancelled");
-        const owner = delivery.target;
+        if (invocation.signal.aborted) throw codedError("cancelled");
+        const owner = deliveryOwner(delivery);
         const callerKey = "provider" in bound.caller ? `${bound.caller.kind}:${bound.caller.provider}` : bound.caller.kind;
         if ([...this.channels.values()].filter((item) => {
             const itemCallerKey = "provider" in item.bound.caller ? `${item.bound.caller.kind}:${item.bound.caller.provider}` : item.bound.caller.kind;
             return item.owner === owner || itemCallerKey === callerKey;
         }).length >= MAX_SERVICE_CHANNELS_PER_BOARD) {
-            throw capabilityError("busy", "The audio consumer has reached its channel limit.");
+            throw codedError("busy", "The audio consumer has reached its channel limit.");
         }
 
         this.pendingOpens++;
         let openedWindow: { window: BrowserWindow; generation: number };
         try {
             openedWindow = await this.ensureWindow(invocation.signal);
-            if (invocation.signal.aborted || openedWindow.window.isDestroyed() || openedWindow.generation !== this.generation) throw capabilityError("cancelled");
+            if (invocation.signal.aborted || openedWindow.window.isDestroyed() || openedWindow.generation !== this.generation) throw codedError("cancelled");
             this.authorize(bound, captureSource);
             reauthorize();
         } catch (error) {
@@ -254,7 +254,7 @@ class AudioService {
         const ready = new Promise<void>((resolve, reject) => { readyResolve = resolve; readyReject = reject; });
         const record: ChannelRecord = {
             id: channelId, bound, source: captureSource, method, owner, invocation, controller: invocation.controller,
-            readyResolve, readyReject, ready, readyTimer: setTimeout(() => readyReject(capabilityError("handler-closed", "The audio window did not accept the channel.")), 12000),
+            readyResolve, readyReject, ready, readyTimer: setTimeout(() => readyReject(codedError("handler-closed", "The audio window did not accept the channel.")), 12000),
             closed: false, listeners: new Set(), ports: [consumerPort, audioPort], cancelOwner: () => undefined, removeOwnerListener: () => undefined,
         };
         this.channels.set(channelId, record);
@@ -264,14 +264,7 @@ class AudioService {
         invocation.signal.addEventListener("abort", cancel, { once: true });
         if ("mainFrame" in owner) {
             const contents = owner as WebContents;
-            contents.once("destroyed", cancel);
-            contents.once("render-process-gone", cancel);
-            contents.once("did-navigate", cancel);
-            record.removeOwnerListener = () => {
-                contents.removeListener("destroyed", cancel);
-                contents.removeListener("render-process-gone", cancel);
-                contents.removeListener("did-navigate", cancel);
-            };
+            record.removeOwnerListener = onWebContentsGone(contents, cancel);
         } else {
             const utility = owner as UtilityProcess;
             utility.once("exit", cancel);
@@ -280,14 +273,7 @@ class AudioService {
         let established = false;
         try {
             reauthorize();
-            if ("mainFrame" in delivery.target) {
-                delivery.target.postMessage(EventEndpoint.eBoardServiceChannel, {
-                    boardId: parseBoardIdPrefix(delivery.requestId, BOARD_FRAME_PREFIX) ?? `${CAPABILITY_BOARD_PREFIX}${delivery.requestId}`,
-                    channelId,
-                }, [consumerPort]);
-            } else {
-                delivery.target.postMessage({ kind: "capability-client-port", requestId: delivery.requestId }, [consumerPort]);
-            }
+            deliverConsumerPort(delivery, channelId, consumerPort);
             window.webContents.postMessage(OPEN_CHANNEL, { channelId, kind: method, open: request, epoch: this.epoch }, [audioPort]);
             await withAbort(ready, invocation.signal);
             reauthorize();
@@ -311,13 +297,13 @@ class AudioService {
         bound: BoundCapability,
         argument: Record<string, unknown>,
         invocation: MainCapabilityInvocationContext,
-        delivery: { target: WebContents | UtilityProcess; requestId: string } | undefined,
+        delivery: ChannelDelivery | undefined,
         reauthorize: () => void,
     ): Promise<{ channelId: string; onClose: (listener: () => void) => () => void }> {
-        if (Object.keys(argument).length || !delivery) throw capabilityError("rejected", "muteApp takes no arguments.");
+        if (Object.keys(argument).length || !delivery) throw codedError("rejected", "muteApp takes no arguments.");
         this.authorize(bound);
         reauthorize();
-        if (invocation.signal.aborted) throw capabilityError("cancelled");
+        if (invocation.signal.aborted) throw codedError("cancelled");
         const channelId = crypto.randomUUID();
         const { port1: consumer, port2: port } = new MessageChannelMain();
         const listeners = new Set<() => void>();
@@ -333,33 +319,25 @@ class AudioService {
             for (const listener of listeners) listener();
             listeners.clear();
         };
+        const channel = openElectronServiceChannel(port, "capability", finish);
+        channel.onMessage((value) => {
+            if ((value as { type?: unknown } | null)?.type !== "release") return;
+            release();
+            try { channel.send({ type: "released" }); } catch { /* Disconnected. */ }
+            channel.close();
+        });
         const board = "provider" in bound.caller ? capabilityRegistry.board(bound.caller.provider) : undefined;
         const label = (board?.boardName?.trim() || (board ? path.basename(board.boardRoot) : "Persephone")).slice(0, 100);
         this.muteChannels.add(finish);
         release = globalMuteService.acquire(label, () => {
-            try { port.postMessage({ kind: "close", reason: { code: "overridden", message: "Mute was released." } }); } catch { /* Disconnected. */ }
-            finish();
-        });
-        port.on("close", finish);
-        port.on("message", (event) => {
-            const message = event.data as { kind?: string; sequence?: number; value?: { type?: string } };
-            if (message?.kind === "close") { finish(); return; }
-            if (message?.kind === "data" && message.value?.type === "release") {
-                release();
-                try { port.postMessage({ kind: "data", sequence: 1, value: { type: "released" } }); } catch { /* Disconnected. */ }
-                finish();
-            }
+            channel.close({ code: "overridden", message: "Mute was released." });
         });
         invocation.signal.addEventListener("abort", finish, { once: true });
-        port.start();
         try {
             reauthorize();
-            if (invocation.signal.aborted) throw capabilityError("cancelled");
-            if ("mainFrame" in delivery.target) delivery.target.postMessage(EventEndpoint.eBoardServiceChannel, {
-                boardId: parseBoardIdPrefix(delivery.requestId, BOARD_FRAME_PREFIX) ?? `${CAPABILITY_BOARD_PREFIX}${delivery.requestId}`, channelId,
-            }, [consumer]);
-            else delivery.target.postMessage({ kind: "capability-client-port", requestId: delivery.requestId }, [consumer]);
-            if (invocation.signal.aborted) throw capabilityError("cancelled");
+            if (invocation.signal.aborted) throw codedError("cancelled");
+            deliverConsumerPort(delivery, channelId, consumer);
+            if (invocation.signal.aborted) throw codedError("cancelled");
             return { channelId, onClose: (listener) => {
                 if (closed) listener(); else listeners.add(listener);
                 return () => listeners.delete(listener);
@@ -369,17 +347,17 @@ class AudioService {
 
     private validateCapture(argument: Record<string, unknown>): { source: "microphone" | "computer"; deviceId?: string; echoCancel?: boolean; processing?: "default" | "raw"; cancelComputerAudio?: boolean } {
         const keys = Object.keys(argument);
-        if (keys.some((key) => !["source", "deviceId", "echoCancel", "processing", "cancelComputerAudio"].includes(key))) throw capabilityError("rejected", "Invalid audio capture options.");
-        if (argument.source !== "microphone" && argument.source !== "computer") throw capabilityError("rejected", "Audio source must be microphone or computer.");
-        if (argument.deviceId !== undefined && (typeof argument.deviceId !== "string" || !argument.deviceId.trim())) throw capabilityError("rejected", "Invalid audio device id.");
-        if (argument.echoCancel !== undefined && typeof argument.echoCancel !== "boolean") throw capabilityError("rejected", "echoCancel must be a boolean.");
-        if ("cancelComputerAudio" in argument && typeof argument.cancelComputerAudio !== "boolean") throw capabilityError("rejected", "cancelComputerAudio must be a boolean.");
-        if (argument.processing !== undefined && argument.processing !== "default" && argument.processing !== "raw") throw capabilityError("rejected", "Invalid microphone processing mode.");
-        if (argument.processing === "raw" && argument.echoCancel === true) throw capabilityError("rejected", "Raw capture cannot enable echo cancellation.");
-        if (argument.processing === "raw" && "cancelComputerAudio" in argument) throw capabilityError("rejected", "Raw capture cannot request computer audio cancellation.");
-        if (argument.source === "computer" && (argument.deviceId !== undefined || argument.echoCancel !== undefined || argument.processing !== undefined || "cancelComputerAudio" in argument)) throw capabilityError("rejected", "Computer capture does not accept microphone options.");
-        if (argument.source === "computer" && process.platform !== "win32") throw capabilityError("no-handler", "Computer audio capture is supported on Windows only.");
-        if (argument.cancelComputerAudio === true && process.platform !== "win32") throw capabilityError("no-handler", "Computer audio cancellation is supported on Windows only.");
+        if (keys.some((key) => !["source", "deviceId", "echoCancel", "processing", "cancelComputerAudio"].includes(key))) throw codedError("rejected", "Invalid audio capture options.");
+        if (argument.source !== "microphone" && argument.source !== "computer") throw codedError("rejected", "Audio source must be microphone or computer.");
+        if (argument.deviceId !== undefined && (typeof argument.deviceId !== "string" || !argument.deviceId.trim())) throw codedError("rejected", "Invalid audio device id.");
+        if (argument.echoCancel !== undefined && typeof argument.echoCancel !== "boolean") throw codedError("rejected", "echoCancel must be a boolean.");
+        if ("cancelComputerAudio" in argument && typeof argument.cancelComputerAudio !== "boolean") throw codedError("rejected", "cancelComputerAudio must be a boolean.");
+        if (argument.processing !== undefined && argument.processing !== "default" && argument.processing !== "raw") throw codedError("rejected", "Invalid microphone processing mode.");
+        if (argument.processing === "raw" && argument.echoCancel === true) throw codedError("rejected", "Raw capture cannot enable echo cancellation.");
+        if (argument.processing === "raw" && "cancelComputerAudio" in argument) throw codedError("rejected", "Raw capture cannot request computer audio cancellation.");
+        if (argument.source === "computer" && (argument.deviceId !== undefined || argument.echoCancel !== undefined || argument.processing !== undefined || "cancelComputerAudio" in argument)) throw codedError("rejected", "Computer capture does not accept microphone options.");
+        if (argument.source === "computer" && process.platform !== "win32") throw codedError("no-handler", "Computer audio capture is supported on Windows only.");
+        if (argument.cancelComputerAudio === true && process.platform !== "win32") throw codedError("no-handler", "Computer audio cancellation is supported on Windows only.");
         return { source: argument.source as "microphone" | "computer",
             ...(argument.deviceId !== undefined ? { deviceId: argument.deviceId as string } : {}),
             ...(argument.echoCancel !== undefined ? { echoCancel: argument.echoCancel as boolean } : {}),
@@ -390,21 +368,21 @@ class AudioService {
     private validatePlayback(argument: Record<string, unknown>): { sampleRate: number } {
         if (Object.keys(argument).some((key) => key !== "sampleRate") || !Number.isFinite(argument.sampleRate)
             || !Number.isInteger(argument.sampleRate) || (argument.sampleRate as number) < 8000 || (argument.sampleRate as number) > 192000) {
-            throw capabilityError("rejected", "Playback sampleRate must be an integer from 8000 through 192000 Hz.");
+            throw codedError("rejected", "Playback sampleRate must be an integer from 8000 through 192000 Hz.");
         }
         return { sampleRate: argument.sampleRate as number };
     }
 
     private authorize(bound: BoundCapability, source?: "microphone" | "computer"): void {
-        if (bound.registration.id !== PLATFORM_AUDIO_CAPABILITY_ID || bound.registration.version !== 1 || bound.registration.origin !== "platform") throw capabilityError("permission-denied");
-        if (bound.caller.kind === "agent") throw capabilityError("permission-denied");
+        if (bound.registration.id !== PLATFORM_AUDIO_CAPABILITY_ID || bound.registration.version !== 1 || bound.registration.origin !== "platform") throw codedError("permission-denied");
+        if (bound.caller.kind === "agent") throw codedError("permission-denied");
         if (bound.caller.kind === "platform") return;
-        if (!("provider" in bound.caller)) throw capabilityError("permission-denied");
+        if (!("provider" in bound.caller)) throw codedError("permission-denied");
         const board = capabilityRegistry.board(bound.caller.provider);
         if (!board || !board.uses?.some((use) => use.id === PLATFORM_AUDIO_CAPABILITY_ID && use.version === 1)
-            || (bound.caller.kind === "board-service" && !board.canStartService)) throw capabilityError("permission-denied", "The board is not trusted for audio.");
-        if (source === "microphone" && !boardPermissionAllows(board.permissions, "microphone")) throw capabilityError("permission-denied", "Microphone permission is required.");
-        if (source === "computer" && (board.permissions.kind !== "flags" || !boardPermissionAllows(board.permissions, "computerAudio"))) throw capabilityError("permission-denied", "Computer audio permission is required.");
+            || (bound.caller.kind === "board-service" && !board.canStartService)) throw codedError("permission-denied", "The board is not trusted for audio.");
+        if (source === "microphone" && !BoardGrant.from(board.permissions).allows("microphone")) throw codedError("permission-denied", "Microphone permission is required.");
+        if (source === "computer" && !BoardGrant.from(board.permissions).allows("computerAudio")) throw codedError("permission-denied", "Computer audio permission is required.");
     }
 
     private async ensureWindow(signal: AbortSignal): Promise<{ window: BrowserWindow; generation: number }> {
@@ -429,13 +407,13 @@ class AudioService {
         const target = url.href;
         window.webContents.on("will-navigate", (event, nextUrl) => { if (nextUrl !== target) event.preventDefault(); });
         window.webContents.on("will-redirect", (event, nextUrl) => { if (nextUrl !== target) event.preventDefault(); });
-        window.webContents.once("render-process-gone", () => this.failWindow(generation, capabilityError("crashed", "The audio window crashed.")));
-        window.once("closed", () => this.failWindow(generation, capabilityError("handler-closed", "The audio window closed.")));
+        window.webContents.once("render-process-gone", () => this.failWindow(generation, codedError("crashed", "The audio window crashed.")));
+        window.once("closed", () => this.failWindow(generation, codedError("handler-closed", "The audio window closed.")));
         void window.loadURL(target).catch((error: unknown) => this.failWindow(generation, error));
         let startupTimer: ReturnType<typeof setTimeout> | undefined;
         const timeout = new Promise<never>((_resolve, reject) => {
             startupTimer = setTimeout(() => {
-                const error = capabilityError("timeout", "The audio window did not become ready.");
+                const error = codedError("timeout", "The audio window did not become ready.");
                 this.failWindow(generation, error);
                 reject(error);
             }, 12000);
@@ -443,13 +421,13 @@ class AudioService {
         try {
             await withAbort(Promise.race([this.readyPromise, timeout]), signal);
         } finally { if (startupTimer) clearTimeout(startupTimer); }
-        if (generation !== this.generation || window.isDestroyed()) throw capabilityError("cancelled");
+        if (generation !== this.generation || window.isDestroyed()) throw codedError("cancelled");
         return { window, generation };
     }
 
     private failWindow(generation: number, error: unknown): void {
         if (generation !== this.generation) return;
-        for (const request of this.deviceRequests.values()) request.reject(error);
+        this.deviceRequests.failAll(error);
         this.startupReject?.(error);
         this.startupReject = undefined;
         for (const record of [...this.channels.values()]) this.finishChannel(record, "crashed", errMessage(error, "Audio window failed."), false);
@@ -474,7 +452,7 @@ class AudioService {
         this.channels.delete(record.id);
         for (const listener of record.listeners) listener();
         record.listeners.clear();
-        record.readyReject(capabilityError(code, message));
+        record.readyReject(codedError(code, message));
         this.destroyIdleWindow();
     }
 
@@ -493,9 +471,9 @@ class AudioService {
 
     dispose(): void {
         for (const close of [...this.muteChannels]) close();
-        for (const request of this.deviceRequests.values()) request.reject(capabilityError("handler-closed", "Audio service is shutting down."));
+        this.deviceRequests.failAll(codedError("handler-closed", "Audio service is shutting down."));
         for (const record of [...this.channels.values()]) this.finishChannel(record, "handler-closed", "Audio service is shutting down.", true);
-        this.startupReject?.(capabilityError("handler-closed", "Audio service is shutting down."));
+        this.startupReject?.(codedError("handler-closed", "Audio service is shutting down."));
         this.generation++;
         const window = this.window;
         this.window = undefined;

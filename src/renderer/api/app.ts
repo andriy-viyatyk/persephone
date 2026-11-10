@@ -148,13 +148,13 @@ class App {
         // Subscribe the published-boards catalog model to main's broadcast and pull the
         // initial catalog. Fire-and-forget — no view blocks on it, and a fetch
         // failure is named but does not block startup (cached catalog / empty).
-        import("./published-boards")
+        import("./boards/published-boards")
             .then(({ publishedBoards }) => publishedBoards.load())
             .catch((error: unknown) => this._reportBackgroundFailure("published-boards", error));
 
         // Load the board install registry so update checks / "already installed" filters
         // have data. Fire-and-forget; reconciles stale entries on load.
-        import("./board-install-registry")
+        import("./boards/board-install-registry")
             .then(({ boardInstallRegistry }) => boardInstallRegistry.load())
             .catch((error: unknown) => this._reportBackgroundFailure("board-install-registry", error));
 
@@ -261,8 +261,9 @@ class App {
         registerResolvers();
         registerRawLinkParsers();
         registerTreeContextMenuHandlers();
-        const { initBoardPipeHandler } = await import("../editors/board/board-pipe-handler");
-        initBoardPipeHandler();
+        const { initPipeResourceServer } = await import("../content/pipe-resource-server");
+        const { resolveBoardPagePipe } = await import("./boards/board-page-pipe");
+        initPipeResourceServer({ resolvePagePipe: resolveBoardPagePipe });
 
         // Import and initialize all event services
         const [

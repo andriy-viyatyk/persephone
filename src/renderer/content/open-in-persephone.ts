@@ -1,6 +1,6 @@
 import { getLanguageByExtension } from "../core/utils/language-mapping";
 import { fpExtname } from "../core/utils/file-path";
-import { resolveEditorIdForFile } from "../editors/board/custom-editor-registry";
+import { resolveEditorIdForFile } from "../api/boards/custom-editor-registry";
 
 /**
  * Whether Persephone has its own editor or board for this local file: a dedicated built-in editor

@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { getDataFolder, preparePath } from "./utils";
 import { armRecordingMediaGrant, clearRecordingMediaGrant } from "./permission-policy-service";
 import type { RecordingRegion } from "../ipc/api-param-types";
+import { onWebContentsGone } from "./webcontents-lifetime";
 
 interface RecordingEntry {
     id: string;
@@ -75,8 +76,7 @@ export async function startRecording(owner: WebContents, region: RecordingRegion
     }
     const entry: RecordingEntry = { id, ownerId: owner.id, partialPath, finalPath: undefined, handle, writeChain: Promise.resolve() };
     byId.set(id, entry);
-    owner.once("destroyed", () => { void cancelRecordingsForOwner(owner.id); });
-    owner.once("render-process-gone", () => { void cancelRecordingsForOwner(owner.id); });
+    onWebContentsGone(owner, () => { void cancelRecordingsForOwner(owner.id); }, { events: ["destroyed", "render-process-gone"] });
     armRecordingMediaGrant(owner.id);
     return { recordingId: id, chromeMediaSourceId: browserWindow.getMediaSourceId(), path: partialPath };
 }

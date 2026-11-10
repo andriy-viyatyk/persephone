@@ -7,8 +7,9 @@ import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { fpBasename } from "../../core/utils/file-path";
 import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
 import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
-import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../editors/board/board-display-text";
-import { readNormalizedBoardManifest, type NormalizedBoardManifest } from "../../editors/board/board-manifest";
+import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
+import { readBoardManifest } from "../../api/boards/board-manifest-io";
+import { type NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
 import { isTextFileModel } from "../../editors/text";
 import type { EditorOrHost } from "../../editors/base";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
@@ -404,7 +405,7 @@ export class PageTabsView extends VanillaView<object> {
     private warmBoard(root: string): void {
         if (this.warmedBoardRoots.has(root)) return;
         this.warmedBoardRoots.add(root);
-        void readNormalizedBoardManifest(root).then((manifest) => {
+        void readBoardManifest(root).then((manifest) => {
             if (!manifest) return;
             this.boardManifests.set(root, manifest);
             return ensureBoardDisplayText(root, manifest);

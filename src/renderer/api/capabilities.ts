@@ -1,11 +1,13 @@
-import { CAPABILITY_BOARD_PREFIX , SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "../../ipc/module-service-channels";
-import { createRendererCapabilityChannel } from "./renderer-capability-channel";
+import { SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "../../ipc/module-service-channels";
+import { openDomServiceChannel } from "../../shared/service-channel-node";
+import type { ServiceChannel } from "../../shared/service-channel";
 import { api } from "../../ipc/renderer/api";
 import { createCapabilityProxy } from "../../shared/capability-client";
 import { errMessage } from "../../shared/utils";
+import { codedError } from "../../shared/coded-error";
+import { toWireError } from "../../shared/wire-error";
 import { t } from "../../shared/i18n/t";
 import type {
-    CapabilityChannel,
     CapabilityHandlerFilter,
     CapabilityId,
     CapabilityInfo,
@@ -33,6 +35,7 @@ import { validateCertificateViewPayload } from "./certificate-view";
 import { validateThemeEditPayload } from "./theme-edit";
 import { EventEndpoint } from "../../ipc/api-types";
 import { boardCapabilityTransport } from "./board-capability-transport";
+import { serviceChannelPorts } from "./service-channel-ports";
 
 type CapabilityHandler = (payload: unknown) => Promise<CapabilityPageResult>;
 
@@ -191,24 +194,13 @@ function unwrapClientResult<T>(result: CapabilityClientResult<T>): T {
     return result.value;
 }
 
-async function openRendererCapabilityChannel(request: import("../../ipc/capability-bus-channels").CapabilityClientInvoke): Promise<CapabilityChannel> {
-    let expected: string | undefined;
-    const ports = new Map<string, MessagePort>();
-    let resolvePort: ((port: MessagePort) => void) | undefined;
-    const unsubscribe = api.onBoardServiceChannel((boardId, channelId, port) => {
-        if (boardId !== `${CAPABILITY_BOARD_PREFIX}${request.requestId}`) return;
-        if (channelId === expected && resolvePort) resolvePort(port);
-        else ports.set(channelId, port);
+async function openRendererCapabilityChannel(request: import("../../ipc/capability-bus-channels").CapabilityClientInvoke): Promise<ServiceChannel> {
+    const channelId = unwrapClientResult(JSON.parse(await api.connectHostServiceChannel({ kind: "capability", request })) as CapabilityClientResult<string>);
+    const port = await serviceChannelPorts.claim(channelId, {
+        timeoutMs: SERVICE_CHANNEL_OPEN_TIMEOUT_MS,
+        timeoutError: () => codedError("timeout", "Channel delivery timed out."),
     });
-    try {
-        expected = unwrapClientResult(JSON.parse(await api.connectHostServiceChannel({ kind: "capability", request })) as CapabilityClientResult<string>);
-        const port = ports.get(expected) ?? await new Promise<MessagePort>((resolve, reject) => {
-            const timer = setTimeout(() => reject(Object.assign(new Error("Channel delivery timed out."), { code: "timeout" })), SERVICE_CHANNEL_OPEN_TIMEOUT_MS);
-            resolvePort = (value) => { clearTimeout(timer); resolve(value); };
-        });
-        ports.delete(expected);
-        return createRendererCapabilityChannel(port);
-    } finally { unsubscribe(); for (const port of ports.values()) port.close(); }
+    return openDomServiceChannel(port, "capability");
 }
 
 class Capabilities implements ICapabilities {
@@ -283,8 +275,7 @@ export function registerBoundOpenDispatch(): void {
             window.electron.ipcRenderer.sendMessage(EventEndpoint.eCapabilityOpenResult, { requestId: request.requestId, result } satisfies BoundOpenSettlement);
         }, (error: unknown) => {
             if (!active.delete(request.requestId)) return;
-            const code = error instanceof CapabilityError ? error.code : "rejected";
-            window.electron.ipcRenderer.sendMessage(EventEndpoint.eCapabilityOpenResult, { requestId: request.requestId, error: { code, message: errMessage(error) } } satisfies BoundOpenSettlement);
+            window.electron.ipcRenderer.sendMessage(EventEndpoint.eCapabilityOpenResult, { requestId: request.requestId, error: toWireError(error, undefined, "rejected") } satisfies BoundOpenSettlement);
         });
     });
 }

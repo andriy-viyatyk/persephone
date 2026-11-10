@@ -1,4 +1,4 @@
-import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
+import { isBoardPermitted, subscribeBoardPermission } from "../../api/boards/board-access";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -11,7 +11,7 @@ import { parseBoardSecondaryPanelId } from "./board-secondary";
 import { BoardWebview } from "./BoardWebview";
 import { BoardEditorModel, type BoardEditorState } from "./BoardEditorModel";
 import { t, untranslated } from "../../../shared/i18n/t";
-import { boardDisplayText, boardMetadataKeys, onBoardDisplayTextChanged } from "./board-display-text";
+import { boardDisplayText, boardMetadataKeys, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
 
 export default class BoardSecondaryView extends VanillaView<SecondaryViewProps> {
     private boardModel: BoardEditorModel | undefined;

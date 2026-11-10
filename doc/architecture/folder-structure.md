@@ -10,7 +10,7 @@ persephone/
 │   ├── main/               # Electron main process
 │   ├── renderer/           # Native VanillaView frontend
 │   ├── ipc/                # IPC communication layer
-│   ├── shared/             # Shared types, constants, cross-process helpers, and i18n runtime/catalogs (errMessage, execute() handle state machine, remote-call timeout policy, board bridge version, board network address policy, voice-typing shortcut normalization)
+│   ├── shared/             # Shared types, constants, cross-process helpers, board manifest/value objects and service-channel protocol, plus i18n runtime/catalogs
 │   ├── renderer.ts          # Async bootstrap; calls renderer/index.ts mount(container)
 │   ├── preload.ts          # Preload script (main renderer)
 │   ├── board-shim.ts       # Board bridge shim entry — browser IIFE inlined into board HTML; boot, host trust gate, MessagePort plumbing, window.persephone and AiVision remote registration
@@ -122,7 +122,15 @@ dev server.
 
 The renderer API includes `api/ui-preferences.ts`, a synchronous cache for scalar UI preferences
 owned and persisted by the main process. It is hydrated during service initialization so page
-construction never waits for a preference read.
+construction never waits for a preference read. Board domain services and policy now live under
+`src/renderer/api/boards/`; `src/renderer/api/boards.ts` remains the `app.boards` facade, while
+`src/renderer/editors/board/` contains the board editor and its native views. The shared board
+manifest schema, `BoardGrant`, and `BoardRoot` are process-neutral value objects in
+`src/shared/board/`. The `api/boards/` directory groups board-specific collaborators such as
+manifest I/O, trust and grant handling, root identity, board localization, bundled and custom editor
+registries, published-catalog access, install/update flows, and board-host helper services. The
+board editor directory retains the editor model, views, webview, automation adapter, and visual
+components; board:// pipe resources are served from `src/renderer/content/pipe-resource-server.ts`.
 
 The renderer entry is `src/renderer.ts`: after asynchronous application bootstrap it calls
 `mount(container)` exported by `src/renderer/index.ts`. The application shell, coupled views,
@@ -139,7 +147,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── themes.ts           # Script/MCP application theme service (`app.themes`)
 │   ├── custom-theme-storage.ts # Validated custom theme persistence and cross-window watching
 │   ├── settings.ts         # ISettings implementation
-│   ├── board-namespace.ts  # Stable board settings/vars namespace resolution and collision checks
 │   ├── board-settings/     # Board-declared settings catalog, persistence, and bridge-facing reads
 │   │   ├── BoardSettingsStore.ts       # Renderer-lifetime board-settings.json store and change notifications
 │   │   ├── board-settings-bridge.ts    # Effective reads/writes/resets and board-frame change delivery
@@ -173,18 +180,12 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── mneme-status.ts     # Mneme health prober + reactive status (shared MCP connection; drives sidecar launch, indicators, and auto-opens the config editor when no model is provisioned)
 │   ├── proc.ts             # IProc implementation (app.proc.execute) — the ipcRenderer transport for the shared execute() handle (shared/execute-handle.ts); compile-time drift guard keeps it in sync with runner-channels.ts
 │   ├── terminal.ts         # openTerminalAt(dir) helper — reads terminal.command, auto-detects pwsh→powershell→cmd on first use and saves it, then launches ("Open Terminal here")
-│   ├── board-trust.ts      # Reactive mirror of main-owned trusted roots and permission grants (trustedBoards.json); bundled boards bypass it. This list IS the known-boards registry
-│   ├── board-trust-sync.ts # Loads main trust paths and syncs the renderer-owned disabled-bundled-board setting
 │   ├── module-service.ts   # Renderer client for main-routed service requests, direct board channels, and the optional per-window host-renderer lease
 │   ├── board-service-settings.ts # Trust- and service-gated settings reads/subscriptions for host-managed board services
 │   ├── ts-project-files.ts # Bounded tsconfig-based TypeScript project file selection
 │   ├── ts-project-registry.ts # Board-owned TypeScript project roots and file lookup
 │   ├── module-service-status.ts # Renderer-lifetime cache of main-owned module-service status
 │   ├── boards.ts           # IBoards implementation (app.boards) — board lifecycle, trusted-board shortcut/window operations, and published-catalog ops (search/download/install/uninstall/updates)
-│   ├── published-boards.ts # Reactive published-catalog model — useCatalog / useCatalogBoardsForFile / catalogBoardsForFolder / folder subscription / isCompatible / getVersions / updatesAvailable / refresh(force)
-│   ├── board-install.ts    # Install engine — downloadBoard (download→extract→validate→registry, traversal-guarded) + installVersion/updateBoard folder-swap + uninstallCatalogBoard
-│   ├── board-install-registry.ts # installedBoards.json reactive registry (record/remove/getByRoot/getById/useInstalled; one entry per catalog id; stale-entry reconciliation)
-│   ├── board-updates.ts    # Update detection + safe re-install — getBoardUpdate/useBoardUpdates/listBoardUpdates, runBoardUpdate/runBoardVersionInstall, ensureBoardIdle
 │   ├── internal.ts         # Disposable utilities (wrapSubscription, etc.)
 │   │
 │   ├── board-vars/         # Board environment-variables store — secrets kept outside the board folder
@@ -343,7 +344,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   └── VoiceTypingOverlayView.css
 │   ├── speech/             # Shared live speech provider discovery, service channel, PCM capture, and session lease
 │   │   ├── SpeechTranscriptionProvider.ts
-│   │   ├── SpeechServiceChannel.ts
 │   │   ├── PcmAudioCapture.ts
 │   │   └── LiveSpeechSessionCoordinator.ts
 │   ├── transcript/         # Page-scoped computer/microphone capture and Monaco Transcript toolbar contribution
@@ -352,7 +352,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   └── TranscriptToolbarContributionView.css
 │   ├── translation/        # Trusted text-translation provider channel, shared workflow, and text-page translation UI
 │   │   ├── TextTranslationProvider.ts
-│   │   ├── TranslationServiceChannel.ts
 │   │   ├── TranslationWorkflow.ts
 │   │   ├── TranslateTextPageController.ts
 │   │   └── TranslateTextToolbarContributionView.ts
@@ -656,16 +655,11 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── board-toolbar-icon.ts      # Toolbar icon resolution — registry name, sanitized inline SVG, or a file confined to the board root
 │   │   ├── board-file-icons.ts         # Resolves board-requested file names to deduplicated data URLs using Persephone's file-icon resolver
 │   │   ├── BoardWebview.ts            # Locked-down cross-origin <iframe src="board://<host>/index.html"> (no sandbox attr); brokers the MessagePort bridge handshake, settings change pushes, and appends the main-frame board-loaded separator
-│   │   ├── board-pipe-handler.ts      # Renderer side of board:// page-pipe and opaque-resource range reads
 │   │   ├── BoardsTreeView.ts         # Reusable native boards tree (single-root + multi-root; folder-compacted; click / trailing / context-menu slots)
 │   │   ├── boards-tree-build.ts      # Pure builder: board path list → compacted folder/board node tree
 │   │   ├── BoardTargetModel.ts       # Automation adapter (IBrowserTarget for Object Model call paths)
-│   │   ├── board-manifest.ts         # board-manifest.json identity file — read/ensure; a folder is a board iff it carries one; Custom Editor fields, singleInstance/singleInstanceMasks routing, board settings, permissions/minBridgeVersion/service axes, and matcher/accessor helpers
-│   │   ├── custom-editor-registry.ts # Reactive mask → trusted/bundled-board map; board-editor:<root> virtual ids; resolveEditorIdForFile/resolveEditorIdForFolder (merge built-in + board); isBoardEditorId
 │   │   ├── board-icon-cache.ts       # Module-level icon cache (SVG/PNG/ICO → data URL, per board path)
-│   │   ├── busy-boards.ts            # Reactive registry of busy board roots (drives the Boards panel "running" dot)
 │   │   ├── board-theme.ts            # computeBoardThemePalette + BOARD_TOKEN_VARS (--p-* contract)
-│   │   ├── board-scaffold.ts         # Scaffold helpers — copy board-template into a new board folder (writes board-manifest.json)
 │   │   ├── UntrustedBoardView.ts      # Shown in place of the board iframe when the board is untrusted (Trust board button)
 │   │   ├── BoardNotFoundView.ts       # Shown when a board root no longer exists on disk (e.g. stale trusted/pinned path)
 │   │   └── index.ts                   # boardModule + native EditorModule factory
@@ -987,7 +981,6 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── module-service-leases.ts # Per-WebContents renderer MessagePort lease transfer, acknowledgement, and lifecycle cleanup
 ├── module-service-restart-budget.ts # Sliding-window service failure count and bounded restart policy
 ├── board-storage.ts        # Main-owned per-board JSON store under data/board-storage/<root-hash>, sidecar metadata, validation and per-board mutation queue
-├── board-root-key.ts       # Canonical board-root normalization and SHA-256 storage key
 ├── module-service-storage.ts # Adapter routing utility-process storage requests through the main board store
 ├── cdp-service.ts          # CDP session service for call-path automation — attaches the debugger to webContents; board frames registered/resolved by their ?v= nonce
 ├── mneme-service.ts        # Mneme concerns on top of sidecar-process: port/config wiring and MnemeStatus broadcasts for the knowledge-base service

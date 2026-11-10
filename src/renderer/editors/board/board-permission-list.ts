@@ -3,9 +3,9 @@ import { createIconElement } from "../../uikit/shared/slots";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import type { TextSize } from "../../uikit/Text/text-style";
-import type { NormalizedBoardPermissions } from "../../../shared/board-manifest-utils";
-import { boardPermissionDiffLines, boardPermissionLines, boardServiceUsesLine } from "./board-permission-copy";
-import type { BoardPermissionLine } from "./board-permission-copy";
+import { boardPermissionDiffLines, boardPermissionLines, boardServiceUsesLine } from "../../api/boards/board-permission-copy";
+import { BoardGrant, type BoardGrantInput } from "../../../shared/board/board-grant";
+import type { BoardPermissionLine } from "../../api/boards/board-permission-copy";
 import { t } from "../../../shared/i18n/t";
 
 const ICON_SIZE = 14;
@@ -22,18 +22,18 @@ function rowIcon(name: "check" | "warning", iconColor: string): SVGElement {
 /** A permission set as a list: one checked row per granted permission. Full-access rows carry
  *  the warning badge; a legacy set is one warning row; an empty set is plain text. */
 export function createBoardPermissionList(
-    permissions: NormalizedBoardPermissions,
+    grant: BoardGrant,
     size?: TextSize,
 ): HTMLElement {
     const list = createPanelElement({ direction: "column", gap: "xs", align: "stretch" });
     list.setAttribute("role", "list");
-    const granted = permissions.kind === "legacy" || Object.values(permissions.flags).some((value) => value !== false);
-    for (const line of boardPermissionLines(permissions)) {
+    const granted = grant.items().length > 0;
+    for (const line of boardPermissionLines(grant)) {
         if (!granted) {
             list.append(createTextElement(t(line.textKey, line.textParams as never), { size, color: "light" }));
             continue;
         }
-        const legacy = permissions.kind === "legacy";
+        const legacy = grant.isLegacy();
         const detailSize = size === "sm" ? "xs" : size;
         const heading = createPanelElement({ direction: "row", gap: "lg", align: "center", wrap: true }, [
             createTextElement(t(line.textKey, line.textParams as never), { size }),
@@ -97,8 +97,8 @@ function signMarker(sign: "+" | "−", textColor: "success" | "light", size: Tex
 /** Granted and proposed sets as one list: a check for kept permissions, "+" for added ones and
  *  a struck-through "−" line for removed ones. */
 export function createBoardPermissionChangeList(
-    granted: NormalizedBoardPermissions,
-    proposed: NormalizedBoardPermissions,
+    granted: BoardGrant,
+    proposed: BoardGrantInput,
     size?: TextSize,
 ): HTMLElement {
     const list = createPanelElement({ direction: "column", gap: "xs", align: "stretch" });

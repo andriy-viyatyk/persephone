@@ -1,9 +1,9 @@
 import { app } from "../../api/app";
 import { settings } from "../../api/settings";
 import { ui } from "../../api/ui";
-import { customEditorRegistry, type BoardSettingsRegistration } from "../board/custom-editor-registry";
-import { readNormalizedBoardManifest } from "../board/board-manifest";
-import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText } from "../board/board-display-text";
+import { customEditorRegistry, type BoardSettingsRegistration } from "../../api/boards/custom-editor-registry";
+import { readBoardManifest } from "../../api/boards/board-manifest-io";
+import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText } from "../../api/boards/board-display-text";
 import { createLinkData } from "../../../shared/link-data";
 import { errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
@@ -345,7 +345,7 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         const generation = ++this.dynamicSectionsGeneration;
         await Promise.all(settingsBoards.map(async (board) => {
             try {
-                const manifest = await readNormalizedBoardManifest(board.boardRoot);
+                const manifest = await readBoardManifest(board.boardRoot);
                 if (manifest) await ensureBoardDisplayText(board.boardRoot, manifest);
             } catch {
                 // English manifest text remains a usable display fallback when a pack cannot load.

@@ -8,13 +8,13 @@ import {
     getFolderEditorsForFolder,
     parseBoardEditorId,
     customEditorRegistry,
-} from "../board/custom-editor-registry";
+} from "../../api/boards/custom-editor-registry";
 import { BOARD_INFO_EDITOR_ID } from "../board-info/board-info-id";
 import type { PageModel } from "../../api/pages/PageModel";
 import { guard } from "../../core/utils/guard";
 import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { captureBoardSourceContext } from "../shared/source-context";
-import { matchesFileMask } from "../board/board-manifest";
+import { matchesFileMask } from "../../../shared/board/board-masks";
 import type { ILinkData } from "../../../shared/link-data";
 
 function sourceLinkFromEditor(editor: EditorModel): ILinkData | undefined {

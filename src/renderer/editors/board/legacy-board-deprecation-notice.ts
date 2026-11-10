@@ -1,6 +1,6 @@
 import { ui } from "../../api/ui";
-import { fpNormalizeForCompare } from "../../core/utils/file-path";
-import { legacyBoardsDeprecationToastForUi } from "./board-permission-copy";
+import { BoardRoot } from "../../../shared/board/board-root";
+import { legacyBoardsDeprecationToastForUi } from "../../api/boards/board-permission-copy";
 
 const pendingBoards = new Map<string, string>();
 const pendingEditorIds = new Set<string>();
@@ -13,7 +13,7 @@ export function queueLegacyBoardDeprecationNotice(
 ): void {
     if (pendingEditorIds.has(editorId)) return;
     pendingEditorIds.add(editorId);
-    const rootKey = fpNormalizeForCompare(boardRoot);
+    const rootKey = BoardRoot.from(boardRoot).key;
     pendingBoards.set(rootKey, boardName);
     if (flushTimer) return;
     flushTimer = setTimeout(() => {

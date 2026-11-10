@@ -1,4 +1,4 @@
-import { Endpoint, EventEndpoint, RendererEvent } from "../../ipc/api-types";
+import { ENDPOINT_REPLY_CHANNEL, Endpoint, EventEndpoint, RendererEvent } from "../../ipc/api-types";
 import type { BoardPipeChannel } from "../../ipc/board-pipe-channels";
 import type { BoardServiceSettingsChannel } from "../../ipc/board-service-settings-channels";
 
@@ -17,11 +17,11 @@ declare global {
                     ...args: unknown[]
                 ): void;
                 on(
-                    channel: Endpoint | `${Endpoint}_${number}` | EventEndpoint | BoardPipeChannel | BoardServiceSettingsChannelName,
+                    channel: Endpoint | typeof ENDPOINT_REPLY_CHANNEL | EventEndpoint | BoardPipeChannel | BoardServiceSettingsChannelName,
                     func: (...args: unknown[]) => void
                 ): () => void;
                 once(
-                    channel: Endpoint | `${Endpoint}_${number}` | BoardPipeChannel,
+                    channel: Endpoint | BoardPipeChannel,
                     func: (...args: unknown[]) => void
                 ): void;
                 /** Ports-aware listener — surfaces a transferred

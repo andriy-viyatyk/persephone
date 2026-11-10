@@ -217,9 +217,12 @@ Page-to-service messages have no byte limit because board frames cannot measure 
 There are at most 16 channels per frame and 128 per service. Use
 `if (!channel.writable) await channel.whenWritable(); channel.send(x)` to respect backpressure;
 `send()` throws `channel-backpressure` at the limit. Oversized service messages throw
-`channel-message-too-large`. `close()` without a reason reports `channel-closed` to the other side. Channels close on page reload, service exit or stop, trust loss, and
+`payload-too-large`; non-cloneable values throw `rejected`. `close()` without a reason reports `channel-closed` to the other side. Channels close on page reload, service exit or stop, trust loss, and
 app quit (`renderer-reloaded`, `service-exited`, `untrusted`, and `quit`). Boards using this API
 must declare `minBridgeVersion: "1.42.0"`.
+Boards that rely on the newer `payload-too-large` and `rejected` send errors, reasonless-close
+reporting, or queued delivery before an `onMessage` listener is registered must declare
+`minBridgeVersion: "1.56.0"`.
 The same release also supports cross-board service interfaces. The following legacy compatibility
 example uses `serviceInterfaces` and `services.connect`; for new `methods`, `getCapability` and
 `uses` declarations, see [Capabilities](./agents/capabilities.md). A provider declares

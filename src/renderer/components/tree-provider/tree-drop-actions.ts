@@ -15,6 +15,7 @@ import type { IFileLink, ILink, ITreeProvider } from "../../api/types/io.tree";
 import { ui } from "../../api/ui";
 import { copyPathsInto } from "../../core/utils/copy-files";
 import { fpDirname, fpNormalizeForCompare } from "../../core/utils/file-path";
+import { isKeyInside } from "../../../shared/path-containment";
 import { pruneNestedItems } from "./plural-actions";
 import { supportsOsClipboard } from "./os-clipboard";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
@@ -131,7 +132,7 @@ async function moveFilesInto(
     const illegal = moving.find((i) => {
         if (!i.isDirectory) return false;
         const srcCmp = fpNormalizeForCompare(i.href);
-        return targetCmp === srcCmp || targetCmp.startsWith(srcCmp + "/");
+        return isKeyInside(srcCmp, targetCmp);
     });
     if (illegal) {
         ui.notify(t("menus.cannotMoveFolderIntoItself", { name: illegal.title }), "warning");

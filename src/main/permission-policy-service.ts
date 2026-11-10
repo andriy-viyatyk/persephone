@@ -343,29 +343,29 @@ function boardGrantForOrigin(origin: string | undefined) {
     const host = origin.slice("board://".length);
     if (!host || host.includes("/") || host.includes(":")) return undefined;
     const root = getBoardRootForHost(host);
-    return root ? boardTrustService.getGrantedPermissionsFromSnapshot(root) : undefined;
+    return root ? boardTrustService.getGrantFromSnapshot(root) : undefined;
 }
 
 function boardPermissionAllowed(
     permission: string,
-    grant: NonNullable<ReturnType<typeof boardTrustService.getGrantedPermissionsFromSnapshot>>,
+    grant: NonNullable<ReturnType<typeof boardTrustService.getGrantFromSnapshot>>,
     details: Electron.PermissionRequest | Electron.PermissionCheckHandlerHandlerDetails,
     isRequest: boolean,
 ): boolean {
     if (permission === "fullscreen" || permission === "pointerLock" || permission === "clipboard-sanitized-write") return true;
-    if (grant.kind === "legacy") return APP_ALLOW.has(permission);
-    if (permission === "clipboard-read") return grant.flags.clipboardRead;
-    if (permission === "geolocation") return grant.flags.geolocation;
-    if (permission === "notifications") return grant.flags.notifications;
+    const device = grant.deviceAccess();
+    if (permission === "clipboard-read") return device.clipboardRead;
+    if (permission === "geolocation") return device.geolocation;
+    if (permission === "notifications") return device.notifications;
     if (permission === "media") {
         if (isRequest) {
             const mediaTypes = (details as Electron.MediaAccessPermissionRequest).mediaTypes;
             if (!mediaTypes?.length || mediaTypes.some((type) => type !== "video" && type !== "audio")) return false;
-            return mediaTypes.every((type) => type === "video" ? grant.flags.camera : grant.flags.microphone);
+            return mediaTypes.every((type) => type === "video" ? device.camera : device.microphone);
         }
         const mediaType = (details as Electron.PermissionCheckHandlerHandlerDetails).mediaType;
-        if (mediaType === "video") return grant.flags.camera;
-        if (mediaType === "audio") return grant.flags.microphone;
+        if (mediaType === "video") return device.camera;
+        if (mediaType === "audio") return device.microphone;
     }
     return false;
 }

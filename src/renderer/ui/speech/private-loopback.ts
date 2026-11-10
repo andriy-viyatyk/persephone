@@ -1,12 +1,13 @@
 import { api } from "../../../ipc/renderer/api";
 import { PcmAudioCapture } from "./PcmAudioCapture";
 import type { LoopbackLease } from "./LoopbackReference";
+import { SerialQueue } from "../../../shared/serial-queue";
 
-let requests: Promise<unknown> = Promise.resolve();
+const loopbackQueue = new SerialQueue();
 
 /** The guarded Transcript grant is also used by internal voice-typing references. */
 export function openPrivateLoopback(context: AudioContext, borrowed?: MediaStream): Promise<LoopbackLease> {
-    const request = requests.then(async (): Promise<LoopbackLease> => {
+    return loopbackQueue.run(async (): Promise<LoopbackLease> => {
         let stream = borrowed;
         if (!stream) {
             try {
@@ -33,6 +34,4 @@ export function openPrivateLoopback(context: AudioContext, borrowed?: MediaStrea
             release: () => { void capture.stop(); },
         };
     });
-    requests = request.catch((): undefined => undefined);
-    return request;
 }

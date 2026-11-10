@@ -12,6 +12,7 @@ import type {
     ClipboardStatus,
 } from "../ipc/clipboard-ipc";
 import { errMessage } from "../shared/utils";
+import { SerialQueue } from "../shared/serial-queue";
 import { writeClipboardFiles } from "./clip-service";
 import { getSnipToolPath } from "./snip-service";
 import { openWindows } from "./open-windows";
@@ -99,7 +100,7 @@ let historyLoaded = false;
 let historyItems: ClipboardIndexItem[] = [];
 let maxItems = 100;
 let revision = 0;
-let mutationQueue: Promise<void> = Promise.resolve();
+const mutationQueue = new SerialQueue();
 
 let enabled = false;
 let lastError: string | undefined;
@@ -181,9 +182,7 @@ function snapshot(): ClipboardHistorySnapshot {
 }
 
 function enqueue<T>(operation: () => Promise<T>): Promise<T> {
-    const result = mutationQueue.then(operation, operation);
-    mutationQueue = result.then<void>(() => undefined, () => undefined);
-    return result;
+    return mutationQueue.run(operation);
 }
 
 function isClipboardFlavor(value: unknown): value is ClipboardFlavor {

@@ -1,7 +1,7 @@
 import { api } from "../../../../ipc/renderer/api";
 import { getBoardSetting, setBoardSetting, subscribeBoardSettings, unsetBoardSetting } from "../../../api/board-settings/board-settings-bridge";
 import { ui } from "../../../api/ui";
-import type { BoardSettingDeclaration, BoardSettingValue } from "../../../api/board-settings/types";
+import type { BoardSettingDeclaration, BoardSettingValue } from "../../../../shared/board/board-settings-declarations";
 import { ButtonView } from "../../../uikit/Button/ButtonView";
 import { CheckboxView } from "../../../uikit/Checkbox/CheckboxView";
 import { InputView } from "../../../uikit/Input/InputView";
@@ -16,7 +16,7 @@ import { errMessage } from "../../../../shared/utils";
 import { t } from "../../../../shared/i18n/t";
 import { LibraryPathSectionView } from "./SettingsSections";
 import { createSectionRoot, helpHeader, helpIcon, panel, settingsFieldLabel } from "./settings-native";
-import { boardDisplayText, boardMetadataKeys } from "../../board/board-display-text";
+import { boardDisplayText, boardMetadataKeys } from "../../../api/boards/board-display-text";
 import "../../../uikit/Textarea/Textarea.css";
 
 export interface BoardSettingsSectionProps {

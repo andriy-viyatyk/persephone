@@ -309,7 +309,7 @@ export type BoardToMain =
 
 /** Everything main posts to the board over the port. */
 export type MainToBoard =
-    | { kind: "rpc-result"; id: number; result?: unknown; error?: string; code?: string }
+    | { kind: "rpc-result"; id: number; result?: unknown; error?: import("../shared/wire-error").WireError }
     | BoardCallResultMsg
     | { kind: "watch"; watchId: number; batch: PathWatchBatch }
     | { kind: "theme"; palette: BoardThemePalette }

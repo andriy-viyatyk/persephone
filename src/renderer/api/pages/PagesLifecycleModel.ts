@@ -23,17 +23,15 @@ import {
     resolveBoardEditorId,
     boardEditorId,
     customEditorRegistry,
-} from "../../editors/board/custom-editor-registry";
+} from "../boards/custom-editor-registry";
 import {
     decodePersephoneBoardLink,
     encodePersephoneBoardLink,
     PERSEPHONE_BOARD_PREFIX,
 } from "../../content/persephone-board-link";
-import {
-    readNormalizedBoardManifest,
-    untitledFileNameForMasks,
-    type NormalizedBoardManifest,
-} from "../../editors/board/board-manifest";
+import { readBoardManifest } from "../boards/board-manifest-io";
+import { matchesFileMask, untitledFileNameForMasks } from "../../../shared/board/board-masks";
+import { type NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
 import type { BoardEditorModel } from "../../editors/board";
 import type { HubTab } from "../../editors/tools-hub";
 import { PageModel } from "./PageModel";
@@ -41,7 +39,8 @@ import { navigatePageTo, type NavigatePageToOptions } from "./PageNavigator";
 import { guard } from "../../core/utils/guard";
 import { errMessage } from "../../../shared/utils";
 import { RestoreFailedEditor } from "../../editors/restore-failed/RestoreFailedEditor";
-import { fpBasename, fpExtname, fpNormalizeForCompare } from "../../core/utils/file-path";
+import { fpBasename, fpExtname } from "../../core/utils/file-path";
+import { BoardRoot } from "../../../shared/board/board-root";
 import { getLanguageByExtension } from "../../core/utils/language-mapping";
 
 import type { ILink } from "../../api/types/io.tree";
@@ -54,7 +53,6 @@ import { pipeFromPersistedSource, pipeFromSourcePath } from "../../content/rebui
 import { openImageForEdit } from "../capability-feedback";
 import { captureBoardSourceContext } from "../../editors/shared/source-context";
 import type { BoardSourceContext } from "../../../shared/board-source-context";
-import { matchesFileMask } from "../../editors/board/board-manifest";
 
 const CLIPBOARD_PAGE_ID = "clipboard-page";
 
@@ -170,7 +168,7 @@ export class PagesLifecycleModel {
         const boardRoot = this.resolveBoardRootForOpen(options?.target, filePath);
         const normalizedManifest = options && Object.prototype.hasOwnProperty.call(options, "normalizedManifest")
             ? options.normalizedManifest
-            : boardRoot ? await readNormalizedBoardManifest(boardRoot) : null;
+            : boardRoot ? await readBoardManifest(boardRoot) : null;
         if (!boardRoot || normalizedManifest?.singleInstance !== true) return undefined;
 
         const masks = normalizedManifest.singleInstanceMasks;
@@ -231,16 +229,16 @@ export class PagesLifecycleModel {
         const boardRoot = parseBoardEditorId(editorId);
         if (boardRoot !== null) {
             const matchingEntry = customEditorRegistry.entries.find((entry) =>
-                fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot)
+                BoardRoot.from(entry.boardRoot).equals(boardRoot)
             );
             const resolvedBoardRoot = matchingEntry?.boardRoot ?? boardRoot;
             if (folderPath !== undefined) {
                 const match = customEditorRegistry.entries.find(
-                    (entry) => fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot),
+                    (entry) => BoardRoot.from(entry.boardRoot).equals(boardRoot),
                 );
                 const claimsFolder = customEditorRegistry
                     .getBoardsForFolder(folderPath)
-                    .some((entry) => fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot));
+                    .some((entry) => BoardRoot.from(entry.boardRoot).equals(boardRoot));
                 if (!match || !claimsFolder) {
                     throw new Error(`Board does not claim folder: ${folderPath}`);
                 }
@@ -359,9 +357,9 @@ export class PagesLifecycleModel {
         options?: { title?: string; onPageCreated?: (page: PageModel) => void },
     ): Promise<PageModel> => {
         const editorId = boardEditorId(boardRoot);
-        const normalizedManifest = await readNormalizedBoardManifest(boardRoot);
+        const normalizedManifest = await readBoardManifest(boardRoot);
         const match = customEditorRegistry.entries.find(
-            (entry) => fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot),
+            (entry) => BoardRoot.from(entry.boardRoot).equals(boardRoot),
         );
         if (!match || match.origin !== "bundled" || match.editorKind !== "content-host") {
             throw new Error(`Bundled board is not an enabled content-host editor: ${boardRoot}`);
@@ -396,7 +394,7 @@ export class PagesLifecycleModel {
         onPageCreated: (page: PageModel) => void,
     ): Promise<PageModel> => {
         const bundledContentHost = customEditorRegistry.entries.some(
-            (entry) => fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot)
+            (entry) => BoardRoot.from(entry.boardRoot).equals(boardRoot)
                 && entry.origin === "bundled"
                 && entry.editorKind === "content-host",
         );
@@ -908,7 +906,7 @@ export class PagesLifecycleModel {
         const board = boardRoot === null
             ? undefined
             : customEditorRegistry.entries.find((entry) =>
-                fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot),
+                BoardRoot.from(entry.boardRoot).equals(boardRoot),
             );
         let sourceContext: BoardSourceContext | undefined;
         const sourcePage = this.model.query.findPage(pageId);
@@ -1272,7 +1270,7 @@ export class PagesLifecycleModel {
         if (!normalizedKey || normalizedKey.length > 256) {
             throw new Error("openRawLink reuseKey must be 1–256 non-whitespace characters.");
         }
-        const normalizedRoot = fpNormalizeForCompare(boardRoot);
+        const normalizedRoot = BoardRoot.from(boardRoot).key;
         let page = this.model.query.findBoardRunPage(boardRoot, normalizedKey);
         if (!page) {
             page = await this.showBrowserPage({ url });

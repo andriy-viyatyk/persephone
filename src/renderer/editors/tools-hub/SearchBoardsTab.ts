@@ -1,7 +1,7 @@
-import { boardInstallRegistry, type InstalledBoardEntry } from "../../api/board-install-registry";
+import { boardInstallRegistry, type InstalledBoardEntry } from "../../api/boards/board-install-registry";
 import { t, untranslated } from "../../../shared/i18n/t";
-import { listBoardUpdates, type BoardUpdate } from "../../api/board-updates";
-import { publishedBoards } from "../../api/published-boards";
+import { listBoardUpdates, type BoardUpdate } from "../../api/boards/board-updates";
+import { publishedBoards } from "../../api/boards/published-boards";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { ButtonView } from "../../uikit/Button/ButtonView";
@@ -12,12 +12,13 @@ import { claimViewOwnership, VanillaView, type IOwnedView } from "../../uikit/sh
 import { KeyedList } from "../../uikit/shared/keyed-list";
 import { openBoardInfoPage } from "../board-info/open-board-info";
 import { BoardScreenshotView } from "../board-info/BoardScreenshotView";
-import { boardUsageGroup, type BoardManifest, type BoardUsageGroup } from "../board/board-manifest";
-import { fpNormalizeForCompare } from "../../core/utils/file-path";
+import { boardUsageGroup, type BoardUsageGroup } from "../../../shared/board/board-manifest-queries";
+import { normalizeFileMasks } from "../../../shared/board/board-masks";
+import { BoardRoot } from "../../../shared/board/board-root";
 import { formatBytes } from "../../core/utils/format-bytes";
 import type { PublishedBoardInfo } from "../../../ipc/api-param-types";
 import { getActiveLocale } from "../../../shared/i18n/active-locale";
-import { publishedBoardDisplayText } from "../../api/published-board-display-text";
+import { publishedBoardDisplayText } from "../../api/boards/published-board-display-text";
 import "../../uikit/Button/Button.css";
 import "../../uikit/IconButton/IconButton.css";
 import "../../uikit/Input/Input.css";
@@ -34,9 +35,9 @@ function groupLabel(group: BoardUsageGroup): string {
 
 function usageGroupOf(board: PublishedBoardInfo): BoardUsageGroup {
     return boardUsageGroup({
-        fileMasks: board.fileMasks,
+        fileMasks: normalizeFileMasks(board.fileMasks),
         standalone: board.standalone,
-    } as BoardManifest);
+    });
 }
 
 interface BoardCardProps {
@@ -218,7 +219,7 @@ export class SearchBoardsTabView extends VanillaView<Record<string, never>> {
         this.catalog = publishedBoards.getCatalog();
         this.installed = boardInstallRegistry.listInstalled();
         this.updates = new Map(listBoardUpdates().map((update) => [
-            fpNormalizeForCompare(update.root),
+            BoardRoot.from(update.root).key,
             update,
         ]));
         this.input?.update(this.inputProps());
@@ -427,7 +428,7 @@ export class BoardCardView extends VanillaView<BoardCardProps> {
         const display = publishedBoardDisplayText(props.board, getActiveLocale());
         const installed = props.installed.find((entry) => entry.id === id);
         const { id: installedId = null, root: installedRoot = null, version: installedVersion = null } = installed ?? {};
-        const update = installed ? props.updates.get(fpNormalizeForCompare(installed.root)) : undefined;
+        const update = installed ? props.updates.get(BoardRoot.from(installed.root).key) : undefined;
         const { latestVersion: updateVersion = null } = update ?? {};
         const nextDetailsSignature: BoardDetailsSignature = {
             id,

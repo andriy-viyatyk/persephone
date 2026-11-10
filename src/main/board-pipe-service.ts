@@ -8,6 +8,8 @@ import {
     type BoardPipeKind,
 } from "../ipc/board-pipe-channels";
 import type { ByteRange } from "../shared/range-utils";
+import { onWebContentsGone } from "./webcontents-lifetime";
+import { PendingRequests } from "../shared/pending-requests";
 
 interface PipeOwner {
     webContents: WebContents;
@@ -17,12 +19,10 @@ interface PipeOwner {
     hostedDocument: boolean;
 }
 
-interface PendingRead {
+interface PendingReadMeta {
     pipeKind: BoardPipeKind;
     pipeId: string;
     webContents: WebContents;
-    resolve: (reply: BoardPipeReadReply) => void;
-    reject: (error: Error) => void;
 }
 
 export class BoardPipeError extends Error {
@@ -38,7 +38,9 @@ export class BoardPipeError extends Error {
 class BoardPipeService {
     private readonly owners = new Map<string, PipeOwner>();
     private readonly ownersByWebContents = new Map<number, Set<string>>();
-    private readonly pending = new Map<string, PendingRead>();
+    private readonly pending = new PendingRequests<BoardPipeReadReply, PendingReadMeta, string>({
+        nextId: () => `board-pipe-${Date.now()}-${++this.requestSequence}`,
+    });
     private readonly wiredWebContents = new Map<number, WebContents>();
     private requestSequence = 0;
 
@@ -104,11 +106,11 @@ class BoardPipeService {
         if (boardRoot && filePath !== undefined && !hostedDocument) {
             return (async () => {
                 const { boardTrustService } = await import("./board-trust-service");
-                const permissions = await boardTrustService.getGrantedPermissions(boardRoot);
+                const permissions = await boardTrustService.getGrant(boardRoot);
                 if (!permissions) throw new BoardPipeError(404, "Board pipe resource not found.");
                 const { resolveAuthorizedPath } = await import("./board-file-access");
                 await resolveAuthorizedPath({
-                    boardRoot, requestedPath: filePath, permissions, intent: "read",
+                    boardRoot, requestedPath: filePath, grant: permissions, intent: "read",
                 });
                 return this.requestRead(owner, host, pipeKind, pipeId, rangeHeader, range, signal);
             })();
@@ -129,7 +131,7 @@ class BoardPipeService {
             return Promise.reject(new BoardPipeError(503, "Board pipe read was cancelled."));
         }
 
-        const requestId = `board-pipe-${Date.now()}-${++this.requestSequence}`;
+        const { id: requestId, promise } = this.pending.create(undefined, undefined, { meta: { pipeKind, pipeId, webContents: owner.webContents } });
         const request: BoardPipeReadRequest = {
             requestId,
             pipeKind,
@@ -137,62 +139,25 @@ class BoardPipeService {
             ...(rangeHeader !== undefined ? { rangeHeader } : {}),
             ...(range !== undefined ? { range } : {}),
         };
-        return new Promise<BoardPipeReadReply>((resolve, reject) => {
-            let settled = false;
-            const onAbort = (): void => {
-                if (settled || !this.pending.delete(requestId)) return;
-                settled = true;
-                reject(new BoardPipeError(503, "Board pipe read was cancelled."));
-                try {
-                    owner.webContents.send(
-                        BOARD_PIPE_CANCEL_CHANNEL,
-                        { requestId } satisfies BoardPipeCancelMessage,
-                    );
-                } catch {
-                    // The renderer may already be gone; nothing left to cancel.
-                }
-            };
-            signal?.addEventListener("abort", onAbort, { once: true });
-            this.pending.set(requestId, {
-                pipeKind,
-                pipeId,
-                webContents: owner.webContents,
-                resolve: (value) => {
-                    if (settled) return;
-                    settled = true;
-                    signal?.removeEventListener("abort", onAbort);
-                    resolve(value);
-                },
-                reject: (error) => {
-                    if (settled) return;
-                    settled = true;
-                    signal?.removeEventListener("abort", onAbort);
-                    reject(error);
-                },
-            });
-            try {
-                owner.webContents.send(BOARD_PIPE_READ_CHANNEL, request);
-            } catch (error) {
-                this.pending.delete(requestId);
-                settled = true;
-                signal?.removeEventListener("abort", onAbort);
-                reject(new BoardPipeError(503, "The board renderer is unavailable."));
-            }
-        });
+        const onAbort = (): void => {
+            if (!this.pending.fail(requestId, new BoardPipeError(503, "Board pipe read was cancelled."))) return;
+            try { owner.webContents.send(BOARD_PIPE_CANCEL_CHANNEL, { requestId } satisfies BoardPipeCancelMessage); }
+            catch { /* The renderer may already be gone; nothing left to cancel. */ }
+        };
+        signal?.addEventListener("abort", onAbort, { once: true });
+        try { owner.webContents.send(BOARD_PIPE_READ_CHANNEL, request); }
+        catch { this.pending.fail(requestId, new BoardPipeError(503, "The board renderer is unavailable.")); }
+        return promise.finally(() => signal?.removeEventListener("abort", onAbort));
     }
 
     handleReply(webContents: WebContents, reply: BoardPipeReadReply): void {
         if (!reply || typeof reply.requestId !== "string") return;
-        const pending = this.pending.get(reply.requestId);
-        if (!pending || pending.webContents !== webContents) return;
-        this.pending.delete(reply.requestId);
-        pending.resolve(reply);
+        this.pending.settle(reply.requestId, reply, (meta) => meta.webContents === webContents);
     }
 
     dispose(): void {
         const error = new BoardPipeError(503, "Board pipe service is shutting down.");
-        for (const request of this.pending.values()) request.reject(error);
-        this.pending.clear();
+        this.pending.failAll(error);
         this.owners.clear();
         this.ownersByWebContents.clear();
         this.wiredWebContents.clear();
@@ -202,8 +167,7 @@ class BoardPipeService {
         if (this.wiredWebContents.has(webContents.id)) return;
         this.wiredWebContents.set(webContents.id, webContents);
         const cleanup = () => this.removeWebContents(webContents);
-        webContents.once("destroyed", cleanup);
-        webContents.once("render-process-gone", cleanup);
+        onWebContentsGone(webContents, cleanup, { events: ["destroyed", "render-process-gone"] });
     }
 
     private removeWebContents(webContents: WebContents): void {
@@ -215,11 +179,7 @@ class BoardPipeService {
         }
         this.ownersByWebContents.delete(webContents.id);
         this.wiredWebContents.delete(webContents.id);
-        for (const [requestId, request] of this.pending) {
-            if (request.webContents !== webContents) continue;
-            this.pending.delete(requestId);
-            request.reject(new BoardPipeError(404, "Board pipe page is no longer available."));
-        }
+        this.pending.failWhere((meta) => meta.webContents === webContents, new BoardPipeError(404, "Board pipe page is no longer available."));
     }
 
     private removeOwner(pipeKey: string, error: Error): void {
@@ -230,18 +190,11 @@ class BoardPipeService {
         const separator = pipeKey.indexOf(":");
         const pipeKind = pipeKey.slice(0, separator) as BoardPipeKind;
         const pipeId = pipeKey.slice(separator + 1);
-        for (const [requestId, request] of this.pending) {
-            if (request.pipeKind !== pipeKind || request.pipeId !== pipeId) continue;
-            this.pending.delete(requestId);
-            if (pipeKind === "resource") {
-                try {
-                    owner.webContents.send(BOARD_PIPE_CANCEL_CHANNEL, { requestId } satisfies BoardPipeCancelMessage);
-                } catch {
-                    // The renderer may already be gone; rejection still releases the HTTP read.
-                }
-            }
-            request.reject(error);
-        }
+        this.pending.failWhere((meta) => meta.pipeKind === pipeKind && meta.pipeId === pipeId, error,
+            pipeKind === "resource" ? (requestId) => {
+                try { owner.webContents.send(BOARD_PIPE_CANCEL_CHANNEL, { requestId } satisfies BoardPipeCancelMessage); }
+                catch { /* The renderer may already be gone; rejection still releases the HTTP read. */ }
+            } : undefined);
     }
 
     private ownerKey(pipeKind: BoardPipeKind, pipeId: string): string {

@@ -1,7 +1,7 @@
 import { isValidSiteExtensionId, isExactSiteExtensionHost } from "../../shared/site-extension-validation";
 export { isValidSiteExtensionId, isExactSiteExtensionHost } from "../../shared/site-extension-validation";
 import { validateSiteExtensionFetchHosts } from "../../shared/site-extension-hosts";
-import { fpJoin, fpRelative, fpResolve, fpSep } from "../core/utils/file-path";
+import { fpIsInside, fpJoin, fpResolve } from "../core/utils/file-path";
 import { fs } from "./fs";
 import { settings } from "./settings";
 import { siteExtensionTrust } from "./site-extension-trust";
@@ -73,8 +73,7 @@ function validateManifest(raw: unknown, extensionDir: string): SiteExtensionMani
     if (!nonEmptyString(script)) return "script must be a non-empty relative path";
     if (isAbsolutePath(script)) return "script path must be relative";
     const scriptPath = fpResolve(extensionDir, script);
-    const relativePath = fpRelative(extensionDir, scriptPath);
-    if (relativePath === ".." || relativePath.startsWith(`..${fpSep}`) || isAbsolutePath(relativePath)) {
+    if (!fpIsInside(extensionDir, scriptPath)) {
         return "script path must stay inside the extension folder";
     }
 

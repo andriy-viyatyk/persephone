@@ -62,7 +62,7 @@ import {
     waitForResponse as waitForResponseOperation,
 } from "../../automation/operations";
 import type { WaitMode } from "../../automation/operations";
-import { getBoardPermissionOrigin } from "../../editors/board/board-access";
+import { getBoardPermissionOrigin } from "../../api/boards/board-access";
 import { boardSecondaryPanelId } from "../../editors/board/board-secondary";
 import { projectBoardManifest } from "./board-manifest-projection";
 import { BROWSER_AUTOMATION_MEMBERS } from "../ai-vision/browser-automation-members";

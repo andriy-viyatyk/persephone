@@ -4,7 +4,8 @@ import type { BoardServiceTrustSnapshot } from "../ipc/module-service-channels";
 import type { BoardCapabilityDeclaration, CapabilityMethod } from "../shared/capability-contract";
 import { CAPABILITY_DEFAULT_TIMEOUT_MS } from "../shared/capability-limits";
 import { PLATFORM_CAPABILITIES } from "../shared/platform-capabilities";
-import { boardRootKey } from "./board-root-key";
+import { BoardRoot } from "../shared/board/board-root";
+import { boardRootDigest } from "./board-root-hashes";
 import { EventEndpoint } from "../ipc/api-types";
 import { openWindows } from "./open-windows";
 
@@ -51,7 +52,7 @@ class CapabilityRegistry {
         const previous = this.boards;
         this.boards = snapshot.boards.flatMap((board) => (board.capabilities ?? []).filter((declaration) => declaration.id !== PLATFORM_AUDIO_CAPABILITY_ID && !declaration.id.startsWith("system.")).map((declaration, index) => ({
             ...declaration, version: declaration.version ?? 1, priority: declaration.priority ?? 50,
-            provider: boardRootKey(board.boardRoot), name: board.boardName ?? "", handlerKey: `${boardRootKey(board.boardRoot)}:${index}`,
+            provider: boardRootDigest(BoardRoot.from(board.boardRoot)), name: board.boardName ?? "", handlerKey: `${boardRootDigest(BoardRoot.from(board.boardRoot))}:${index}`,
             origin: "board" as const, methods: Object.fromEntries(Object.entries(declaration.methods ?? {}).filter(([, method]) =>
                 method.kind === "open" || (!!board.service && board.canStartService))),
         })).filter((entry) => Object.keys(entry.methods).length > 0)).map((entry) => {
@@ -78,7 +79,7 @@ class CapabilityRegistry {
         return { revision: this.revision, registrations: [...platform, ...this.boards], legacyRegistrations };
     }
     onChange(listener: () => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
-    board(provider: string) { return this.boardSnapshot.boards.find((entry) => boardRootKey(entry.boardRoot) === provider); }
+    board(provider: string) { return this.boardSnapshot.boards.find((entry) => boardRootDigest(BoardRoot.from(entry.boardRoot)) === provider); }
 }
 
 export const capabilityRegistry = new CapabilityRegistry();

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { getAssetPath } from "../../utils";
+import { getAssetPath, isPathInside } from "../../utils";
 import type { GuideSource, GuideSourceEntry } from "../../../shared/guides";
 import type { GuideEntryKind, GuideEntryKindProbe } from "../../../shared/guides/mounted-source";
 
@@ -57,8 +57,7 @@ export class MainGuideSource implements GuideSource, GuideEntryKindProbe {
             throw new Error(`Unsafe guide path "${relativePath}".`);
         }
         const candidate = path.resolve(this.guideRoot, relativePath);
-        const relative = path.relative(this.guideRoot, candidate);
-        if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+        if (!isPathInside(this.guideRoot, candidate)) {
             throw new Error(`Guide path "${relativePath}" escapes the guide root.`);
         }
         return candidate;

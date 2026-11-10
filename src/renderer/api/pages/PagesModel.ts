@@ -17,6 +17,7 @@ import { PagesPersistenceModel } from "./PagesPersistenceModel";
 import { PagesLayoutModel } from "./PagesLayoutModel";
 import { PagesLifecycleModel } from "./PagesLifecycleModel";
 import { api } from "../../../ipc/renderer/api";
+import { invalidatePagePipe } from "../../content/pipe-resource-server";
 
 // ── State ────────────────────────────────────────────────────────────
 
@@ -110,9 +111,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         const pageId = page.id;
         void api.unregisterBoardPipePage(pageId);
         void api.deleteVideoStreamSessionsByPage(pageId);
-        void import("../../editors/board/board-pipe-handler").then(({ invalidateBoardPipePage }) => {
-            invalidateBoardPipePage(pageId);
-        });
+        invalidatePagePipe(pageId);
         const unsubscribe = this.pageSubscriptions.get(pageId);
         if (unsubscribe) {
             unsubscribe();

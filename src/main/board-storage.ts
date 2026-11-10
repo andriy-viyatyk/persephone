@@ -2,8 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 import type { BoardJsonValue } from "../ipc/board-bridge-channels";
 import { errMessage } from "../shared/utils";
-import { getAssetPath, getDataFolder } from "./utils";
-import { boardRootKey, bundledBoardKey, normalizeBoardRoot } from "./board-root-key";
+import { KeyedSerialQueue } from "../shared/serial-queue";
+import { getDataFolder } from "./utils";
+import { BoardRoot } from "../shared/board/board-root";
+import { boardRootDigest, bundledBoardDigest } from "./board-root-hashes";
+import { bundledBoardId } from "./bundled-boards";
 
 export type JsonValue = BoardJsonValue;
 export type BoardStorageState = Record<string, JsonValue>;
@@ -39,7 +42,7 @@ export interface BoardStorageOperationContract {
 }
 
 const cache = new Map<string, CachedBoardStorage>();
-const queues = new Map<string, Promise<void>>();
+const queues = new KeyedSerialQueue();
 
 function errorCode(error: unknown): string | undefined {
     if (typeof error !== "object" || error === null || !("code" in error)) return undefined;
@@ -111,11 +114,11 @@ function cloneJsonValue(value: JsonValue): JsonValue {
 }
 
 function contextForRoot(boardRoot: string): BoardStorageContext {
-    const normalizedRoot = normalizeBoardRoot(boardRoot);
-    const bundledId = bundledBoardId(normalizedRoot);
+    const root = BoardRoot.from(boardRoot);
+    const bundledId = bundledBoardId(root);
     const boardKey = bundledId === undefined
-        ? boardRootKey(normalizedRoot)
-        : bundledBoardKey(bundledId);
+        ? boardRootDigest(root)
+        : bundledBoardDigest(bundledId);
     if (!BOARD_KEY_PATTERN.test(boardKey)) {
         throw new Error("Failed to derive a valid board storage key.");
     }
@@ -128,7 +131,7 @@ function contextForRoot(boardRoot: string): BoardStorageContext {
     }
 
     return {
-        boardRoot: normalizedRoot,
+        boardRoot: root.digestInputs.storage,
         boardKey,
         bundledId,
         folderPath,
@@ -140,22 +143,6 @@ function contextForRoot(boardRoot: string): BoardStorageContext {
 /** Return the canonical identity used to namespace storage for this board root. */
 export function getBoardStorageKey(boardRoot: string): string {
     return contextForRoot(boardRoot).boardKey;
-}
-
-function bundledBoardId(normalizedRoot: string): string | undefined {
-    const boardsRoot = path.resolve(getAssetPath("boards"));
-    const relativePath = path.relative(boardsRoot, normalizedRoot);
-    if (
-        !relativePath
-        || relativePath === ".."
-        || relativePath.startsWith(`..${path.sep}`)
-        || path.isAbsolute(relativePath)
-    ) {
-        return undefined;
-    }
-
-    const segments = relativePath.split(/[\\/]/).filter(Boolean);
-    return segments.length === 1 ? segments[0] : undefined;
 }
 
 async function loadStore(context: BoardStorageContext): Promise<BoardStorageState> {
@@ -293,14 +280,7 @@ async function persistStore(context: BoardStorageContext, state: BoardStorageSta
 }
 
 function enqueue<T>(boardKey: string, operation: () => Promise<T>): Promise<T> {
-    const previous = queues.get(boardKey) ?? Promise.resolve();
-    const result = previous.then(operation, operation);
-    const tail: Promise<void> = result.then((): void => undefined, (): void => undefined);
-    queues.set(boardKey, tail);
-    void tail.then((): void => {
-        if (queues.get(boardKey) === tail) queues.delete(boardKey);
-    });
-    return result;
+    return queues.run(boardKey, operation);
 }
 
 /** Read a value from the main-owned store. Missing keys resolve to `undefined`. */

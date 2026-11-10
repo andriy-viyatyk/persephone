@@ -4,8 +4,9 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import { getLauncherPath } from "./browser-registration";
+import { BoardRoot } from "../shared/board/board-root";
+import { boardWindowKey } from "./board-root-hashes";
 
 /** electron-builder's uninstall key for appId `com.viyatyk.persephone` (a UUID v5 of the appId). */
 const INSTALLED_UNINSTALL_KEY = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\de6947fe-4b42-50ca-ab55-d20f314ae2b2";
@@ -45,7 +46,7 @@ export function getBoardLauncherPath(): string {
 
 export function boardAppId(boardRoot: string): string {
     const name = applicationProfileName();
-    return `Persephone.Board.${name ? name + "." : ""}${boardIdentityHash(boardRoot)}`;
+    return `Persephone.Board.${name ? name + "." : ""}${boardWindowKey(BoardRoot.from(boardRoot))}`;
 }
 
 export function boardProfileArgument(): string {
@@ -53,13 +54,8 @@ export function boardProfileArgument(): string {
     return name ? ` --profile ${name}` : "";
 }
 
-/** Stable board identity shared by board windows and their Windows shortcuts. */
-export function boardIdentityHash(boardRoot: string): string {
-    return createHash("sha256").update(path.normalize(path.resolve(boardRoot)).toLowerCase()).digest("hex");
-}
-
 export function boardWindowIconPath(boardRoot: string): string {
-    return path.join(app.getPath("userData"), "board-icons", `${boardIdentityHash(boardRoot)}.ico`);
+    return path.join(app.getPath("userData"), "board-icons", `${boardWindowKey(BoardRoot.from(boardRoot))}.ico`);
 }
 
 /** Resolve a board root for a quoted `--board` argument without a trailing slash. */

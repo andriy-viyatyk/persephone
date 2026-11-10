@@ -3,7 +3,7 @@ import type {
 } from "../../ipc/board-bridge-channels";
 import { pagesModel } from "./pages";
 import { browserUrlChanged, type BrowserUrlEvent } from "../core/state/events";
-import type { BoardEditorModel } from "../editors/board/BoardEditorModel";
+import type { IBoardHostEditor } from "./boards/board-host-editor";
 
 const RETURN_HOST_SUFFIX = ".board-return.persephone.invalid";
 const RETURN_PATH = "/";
@@ -27,7 +27,7 @@ export interface NavigationReturnClaim {
 
 export interface BoardNavigationReturnClaimOptions {
     pageId?: string;
-    model: BoardEditorModel;
+    model: Pick<IBoardHostEditor, "frames">;
     frame: HTMLIFrameElement;
     tabId: string;
     targetOrigin: string;
@@ -37,7 +37,7 @@ export interface BoardNavigationReturnClaimOptions {
 }
 
 interface BoardFrameOwner {
-    readonly model: BoardEditorModel;
+    readonly model: Pick<IBoardHostEditor, "frames">;
     readonly frame: HTMLIFrameElement;
     readonly tabId: string;
     readonly targetOrigin: string;
@@ -139,11 +139,11 @@ class BoardNavigationReturnService {
         return claim.url;
     }
 
-    releaseBoardFrame(model: BoardEditorModel, frame: HTMLIFrameElement, tabId: string): void {
+    releaseBoardFrame(model: Pick<IBoardHostEditor, "frames">, frame: HTMLIFrameElement, tabId: string): void {
         this.retireMatchingBoardClaims(model, frame, tabId);
     }
 
-    resetBoardFrame(model: BoardEditorModel, frame: HTMLIFrameElement, tabId: string): void {
+    resetBoardFrame(model: Pick<IBoardHostEditor, "frames">, frame: HTMLIFrameElement, tabId: string): void {
         this.retireMatchingBoardClaims(model, frame, tabId);
     }
 
@@ -164,7 +164,7 @@ class BoardNavigationReturnService {
     }
 
     private retireMatchingBoardClaims(
-        model: BoardEditorModel,
+        model: Pick<IBoardHostEditor, "frames">,
         frame: HTMLIFrameElement,
         tabId: string,
     ): void {

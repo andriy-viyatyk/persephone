@@ -12,6 +12,7 @@ import {
 } from "./link-utils";
 import { registerScheme, type SchemeHookContext } from "./scheme-registry";
 import { DialogButton, dialogButton } from "../ui/dialogs/dialog-buttons";
+import { resolveEditorIdForFile, isBoardEditorId } from "../api/boards/custom-editor-registry";
 
 const OPEN_EXTERNAL_LINK = "Open";
 
@@ -143,7 +144,7 @@ async function externalLaunchDecision(data: ILinkData): Promise<"allow" | "inter
             buttons: [dialogButton(OPEN_EXTERNAL_LINK), dialogButton(DialogButton.cancel)],
         }) === OPEN_EXTERNAL_LINK ? "allow" : "deny";
     }
-    const { boardTrust } = await import("../api/board-trust");
+    const { boardTrust } = await import("../api/boards/board-trust");
     if (await boardTrust.allows(data.boardRoot, "openExternal")) return "allow";
     const isWebLink = /^https?:\/\//i.test(data.url ?? "");
     const { api } = await import("../../ipc/renderer/api");
@@ -203,7 +204,6 @@ async function resolveData(data: ILinkData, context: SchemeHookContext): Promise
         return;
     }
 
-    const { resolveEditorIdForFile } = await import("../editors/board/custom-editor-registry");
     data.target = data.target || resolveEditorIdForFile(data.url, data.url) || "monaco";
     data.pipeDescriptor = resolveUrlToPipeDescriptor(data.url, data) ?? undefined;
     if (!data.pipeDescriptor) return;
@@ -331,8 +331,6 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
         ) headerTarget = "monaco";
     }
 
-    const { resolveEditorIdForFile, isBoardEditorId } =
-        await import("../editors/board/custom-editor-registry");
     // A board that registered this extension as a custom editor (a font, an office document)
     // is content intent too; otherwise the browser would just download the file.
     const boardClaimsExtension = !hasContentExtension && !!ext

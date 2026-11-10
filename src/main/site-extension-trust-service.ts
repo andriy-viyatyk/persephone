@@ -7,6 +7,7 @@ import type { SiteExtensionTrustSnapshot } from "../ipc/api-types";
 import { EventEndpoint } from "../ipc/api-types";
 import { openWindows } from "./open-windows";
 import { getDataFolder } from "./utils";
+import { SerialQueue } from "../shared/serial-queue";
 
 /** Folder identity for comparison: Windows paths are case-insensitive. */
 function folderKey(folder: string): string {
@@ -42,10 +43,10 @@ class SiteExtensionTrustService {
     /** The site extensions folder the grants were made in. Grants never carry over to another folder. */
     private folder: string | undefined;
     private initialization: Promise<void> | undefined;
-    private operation = Promise.resolve();
+    private readonly queue = new SerialQueue();
 
     init(): Promise<void> {
-        this.initialization ??= this.serialize(async () => {
+        this.initialization ??= this.queue.run(async () => {
             const file = path.join(getDataFolder(), "trustedSiteExtensions.json");
             try { ({ folder: this.folder, snapshot: this.snapshot } = parseTrustFile(await fs.readFile(file, "utf8"))); }
             catch (error) {
@@ -99,7 +100,7 @@ class SiteExtensionTrustService {
 
     /** `change` returns false when nothing changed; then nothing is written or broadcast. */
     private async mutate(change: (next: SiteExtensionTrustSnapshot) => boolean | void, folder?: string): Promise<SiteExtensionTrustSnapshot> {
-        return this.serialize(async () => {
+        return this.queue.run(async () => {
             const next = this.copy();
             if (change(next) === false) return this.copy();
             // Read the folder inside the queue: a bind queued earlier may have changed it.
@@ -120,11 +121,6 @@ class SiteExtensionTrustService {
     }
     private copy(): SiteExtensionTrustSnapshot {
         return Object.fromEntries(Object.entries(this.snapshot).map(([id, grant]) => [id, { hosts: [...grant.hosts], fetchHosts: [...grant.fetchHosts], enabled: grant.enabled }]));
-    }
-    private serialize<T>(task: () => Promise<T>): Promise<T> {
-        const result = this.operation.then(task, task);
-        this.operation = result.then((): undefined => undefined, (): undefined => undefined);
-        return result;
     }
     private async writeAtomically(snapshot: SiteExtensionTrustSnapshot, folder: string | undefined): Promise<void> {
         const directory = getDataFolder();

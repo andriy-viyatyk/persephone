@@ -1,5 +1,5 @@
 import { app } from "../../api/app";
-import { publishedBoards } from "../../api/published-boards";
+import { publishedBoards } from "../../api/boards/published-boards";
 import { shell } from "../../api/shell";
 import { guard } from "../../core/utils/guard";
 import { createLinkData } from "../../../shared/link-data";

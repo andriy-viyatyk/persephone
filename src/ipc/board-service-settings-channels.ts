@@ -1,4 +1,4 @@
-import type { ServiceErrorPayload } from "./module-service-channels";
+import type { WireError } from "../shared/wire-error";
 
 export type BoardServiceSettingValue = string | number | boolean;
 
@@ -16,7 +16,7 @@ export interface BoardServiceSettingsReply {
     requestId: string;
     ok: boolean;
     result?: BoardServiceSettingValue;
-    error?: ServiceErrorPayload;
+    error?: WireError;
 }
 
 export interface BoardServiceSettingsRequest {

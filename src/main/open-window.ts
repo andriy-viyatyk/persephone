@@ -13,7 +13,9 @@ import { getAssetPath, getDataFolder } from "./utils";
 import { STARTUP_DATA_DIR_ARG } from "../shared/application-profile";
 import { appPartition } from "./constants";
 import { getBoardRootForHost } from "./board-protocol-service";
-import { boardAppId, boardProfileArgument, boardIdentityHash, boardRootForLaunchArgs, boardWindowIconPath, getBoardLauncherPath, writeBoardWindowIcon } from "./board-window-identity";
+import { boardAppId, boardProfileArgument, boardRootForLaunchArgs, boardWindowIconPath, getBoardLauncherPath, writeBoardWindowIcon } from "./board-window-identity";
+import { BoardRoot } from "../shared/board/board-root";
+import { boardWindowStateKey } from "./board-root-hashes";
 
 interface WindowState {
     width: number;
@@ -95,7 +97,7 @@ export class OpenWindow {
 
     constructor(position?: { x: number; y: number }, boardRoot?: string) {
         this.boardRoot = boardRoot;
-        const boardKey = boardRoot ? `boardWindowState.${boardIdentityHash(boardRoot)}` : "windowState";
+        const boardKey = boardRoot ? boardWindowStateKey(BoardRoot.from(boardRoot)) : "windowState";
         let windowState: WindowState = electronStore.get(boardKey, {
             width: 1024,
             height: 680,
@@ -401,7 +403,7 @@ export class OpenWindow {
         if (this.window && !this.window.isMaximized() && !this.window.isFullScreen()) {
             const bounds = this.window?.getBounds();
             if (bounds) {
-                electronStore.set(this.boardRoot ? `boardWindowState.${boardIdentityHash(this.boardRoot)}` : "windowState", {
+                electronStore.set(this.boardRoot ? boardWindowStateKey(BoardRoot.from(this.boardRoot)) : "windowState", {
                     width: bounds.width,
                     height: bounds.height,
                     x: bounds.x,

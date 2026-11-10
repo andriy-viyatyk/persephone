@@ -65,7 +65,7 @@ import {
     customEditorRegistry,
     parseBoardEditorId,
     resolveEditorIdForFile,
-} from "../../editors/board/custom-editor-registry";
+} from "../../api/boards/custom-editor-registry";
 import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
 
 // =============================================================================

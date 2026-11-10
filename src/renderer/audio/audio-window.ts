@@ -1,10 +1,13 @@
 import { CONTROL_CHANNEL, ARM_CHANNEL, CLEAR_CHANNEL, OPEN_CHANNEL, CLOSE_CHANNEL } from "../../ipc/audio-channels";
 import { isCapabilityErrorCode } from "../../shared/capability-constants";
-import { createRendererCapabilityChannel } from "../api/renderer-capability-channel";
+import { openDomServiceChannel } from "../../shared/service-channel-node";
 import { errMessage } from "../../shared/utils";
+import { toWireError } from "../../shared/wire-error";
+import { SerialQueue } from "../../shared/serial-queue";
 import { PcmAudioCapture } from "../ui/speech/PcmAudioCapture";
 import { ComputerAudioGate } from "../ui/speech/ComputerAudioGate";
-import type { CapabilityChannel, CapabilityErrorCode } from "../api/types/capabilities";
+import type { CapabilityErrorCode } from "../api/types/capabilities";
+import type { ServiceChannel } from "../../shared/service-channel";
 import { MAX_SERVICE_CHANNEL_MESSAGE_BYTES } from "../../shared/capability-limits";
 import { AUDIO_DEVICES_REQUEST, AUDIO_DEVICES_REPLY, AUDIO_SETTINGS_GET, AUDIO_SETTINGS_UPDATE, AUDIO_STATUS, AUDIO_RETRY, type AudioDevicesRequest, type AudioDevicesReply } from "../../ipc/audio-channels";
 import { microphoneDeviceId, resolveMicrophoneDevice } from "../ui/speech/microphone-device";
@@ -47,7 +50,7 @@ interface PlaybackState {
     ended: boolean;
 }
 interface OpenChannelMessage { channelId: string; kind: "capture" | "play"; open: CaptureOptions | { sampleRate: number }; epoch: number }
-interface ActiveChannel { channelId: string; channel: CapabilityChannel; kind: "capture" | "play"; source?: SharedSource; playback?: PlaybackState; closed: boolean; queue: unknown[]; draining: boolean }
+interface ActiveChannel { channelId: string; channel: ServiceChannel; kind: "capture" | "play"; source?: SharedSource; playback?: PlaybackState; closed: boolean; queue: unknown[]; draining: boolean }
 
 const sources = new Map<string, SharedSource>();
 const channels = new Map<string, ActiveChannel>();
@@ -92,7 +95,7 @@ ipcRenderer.on(AUDIO_DEVICES_REQUEST, (_event: Electron.IpcRendererEvent, reques
             .map((device) => ({ deviceId: device.deviceId, label: device.label || "", isDefault: device.deviceId === "default" })) };
         ipcRenderer.send(AUDIO_DEVICES_REPLY, reply);
     }).catch((error: unknown) => {
-        const reply: AudioDevicesReply = { requestId: request.requestId, epoch, error: errMessage(error, "Device enumeration failed.") };
+        const reply: AudioDevicesReply = { requestId: request.requestId, epoch, error: toWireError(error, "Device enumeration failed.") };
         ipcRenderer.send(AUDIO_DEVICES_REPLY, reply);
     });
 });
@@ -151,18 +154,16 @@ function reportSourceStatus(source: SharedSource, mode: string, reason: string):
 
 // Each request arms and then clears a one-use grant in main, so requests must not overlap:
 // a concurrent request would consume or clear the other's grant.
-let streamRequests: Promise<unknown> = Promise.resolve();
+const streamQueue = new SerialQueue();
 
 function requestStream(options: CaptureOptions): Promise<MediaStream> {
-    const request = streamRequests.then(() => requestStreamNow(options));
-    streamRequests = request.catch((): undefined => undefined);
-    return request;
+    return streamQueue.run(() => requestStreamNow(options));
 }
 
 // Chromium hides device ids and labels unless the media permission check passes, which it does
 // only while main has armed the microphone grant; queued with stream requests so grants never overlap.
 function enumerateDevices(): Promise<MediaDeviceInfo[]> {
-    const request = streamRequests.then(async () => {
+    return streamQueue.run(async () => {
         try {
             await ipcRenderer.invoke(ARM_CHANNEL, "microphone");
             return await navigator.mediaDevices.enumerateDevices();
@@ -170,8 +171,6 @@ function enumerateDevices(): Promise<MediaDeviceInfo[]> {
             await ipcRenderer.invoke(CLEAR_CHANNEL).catch(() => {});
         }
     });
-    streamRequests = request.catch((): undefined => undefined);
-    return request;
 }
 
 async function requestStreamNow(options: CaptureOptions): Promise<MediaStream> {
@@ -427,7 +426,7 @@ function receivePlaybackMessage(record: ActiveChannel, message: unknown): void {
     }
 }
 
-function finish(record: ActiveChannel, code: CapabilityErrorCode, message: string, report = true): void {
+function finish(record: ActiveChannel, code: string, message: string, report = true): void {
     if (record.closed) return;
     record.closed = true;
     stopPlayback(record);
@@ -447,7 +446,7 @@ ipcRenderer.on(OPEN_CHANNEL, (event: Electron.IpcRendererEvent, message: OpenCha
         port?.close();
         return;
     }
-    const channel = createRendererCapabilityChannel(port);
+    const channel = openDomServiceChannel(port, "capability");
     const record: ActiveChannel = { channelId: message.channelId, channel, kind: message.kind, closed: false, queue: [], draining: false };
     channels.set(message.channelId, record);
     channel.onClose((reason) => finish(record, reason.code, reason.message));

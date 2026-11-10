@@ -1,14 +1,16 @@
 import { app } from "../../api/app";
 import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
-import { boardTrust } from "../../api/board-trust";
+import { boardTrust } from "../../api/boards/board-trust";
+import { ensureBoardIdle } from "../../api/boards/board-idle";
 import { toolsTrust } from "../../api/tools/tools-trust";
 import { registeredTools } from "../../api/tools/registered-tools";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { showCreateBoardDialog } from "../../ui/dialogs/CreateBoardDialog";
 import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
-import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
+import { fpBasename } from "../../core/utils/file-path";
+import { BoardRoot } from "../../../shared/board/board-root";
 import { toClipboard } from "../../core/utils/utils";
 import { removePin } from "../../ui/sidebar/pinned-items";
 import { errMessage } from "../../../shared/utils";
@@ -33,7 +35,7 @@ import type { ExplorerEditor, ExplorerBoardsTab } from "./ExplorerEditorModel";
 import { BoardsTreeView } from "../board/BoardsTreeView";
 import { createBoardShortcut } from "../board/board-shortcut";
 import { ToolsTreeView } from "../tools/ToolsTreeView";
-import { isBoardRootBusy, subscribeBusyBoardRoots } from "../board/busy-boards";
+import { isBoardRootBusy, subscribeBusyBoardRoots } from "../../api/boards/busy-boards";
 import "../../uikit/Button/Button.css";
 import "../../uikit/SegmentedControl/SegmentedControl.css";
 import { t } from "../../../shared/i18n/t";
@@ -336,7 +338,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
 
     private renderTrailing(root: string): Node | undefined {
         if (!isBoardRootBusy(root)) return undefined;
-        const key = fpNormalizeForCompare(root);
+        const key = BoardRoot.from(root).key;
         let indicator = this.busyIndicators.get(key);
         if (!indicator) {
             indicator = this.child(new DotView({
@@ -350,9 +352,10 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
     }
 
     private pruneBusyIndicators(boards: string[]): void {
-        const keys = new Set(boards.map((board) => fpNormalizeForCompare(board)));
+        const rootsByKey = new Map(boards.map((board) => [BoardRoot.from(board).key, board]));
         for (const [key, indicator] of this.busyIndicators) {
-            if (!keys.has(key) || !isBoardRootBusy(key)) {
+            const root = rootsByKey.get(key);
+            if (!root || !isBoardRootBusy(root)) {
                 this.releaseChild(indicator);
                 this.busyIndicators.delete(key);
             }
@@ -457,7 +460,6 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
         if (onDisk) {
             // Nothing may hold the folder open: on Windows a live handle inside it makes the
             // files delete but the folder itself fail with ENOTEMPTY.
-            const { ensureBoardIdle } = await import("../../api/board-updates");
             if (!(await ensureBoardIdle(root, "deleting"))) return;
         }
         try {

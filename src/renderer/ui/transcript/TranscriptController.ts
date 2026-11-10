@@ -3,13 +3,14 @@ import { api } from "../../../ipc/renderer/api";
 import { errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
 import { ui } from "../../api/ui";
-import { claimSpeechPort } from "../speech/speech-port-inbox";
+import { serviceChannelPorts } from "../../api/service-channel-ports";
 import { liveSpeechSessionCoordinator } from "../speech/LiveSpeechSessionCoordinator";
 import { PcmAudioCapture } from "../speech/PcmAudioCapture";
 import { microphoneOptions, reportMicrophoneStatus, watchMicrophoneSettings } from "../speech/microphone-settings";
 import { resolveMicrophoneDevice } from "../speech/microphone-device";
 import { settings } from "../../api/settings";
-import { createSpeechServiceChannel, type SpeechServiceChannel } from "../speech/SpeechServiceChannel";
+import { openDomServiceChannel } from "../../../shared/service-channel-node";
+import type { ServiceChannel } from "../../../shared/service-channel";
 import { SpeechTranscriptionProvider } from "../speech/SpeechTranscriptionProvider";
 import { openPrivateLoopback } from "../speech/private-loopback";
 
@@ -18,7 +19,7 @@ export interface TranscriptState { status: "idle" | "starting" | "recording" | "
 
 interface SourceSession {
     kind: "microphone" | "computer";
-    channel?: SpeechServiceChannel;
+    channel?: ServiceChannel;
     capture?: PcmAudioCapture;
     stream?: MediaStream;
     sendQueue: Promise<void>;
@@ -133,9 +134,9 @@ export class TranscriptController {
             version: 1,
             openMessage: { type: "transcribe", format: { encoding: "pcm-s16le", sampleRate: 16_000, channels: 1 }, live: true },
         });
-        const port = await claimSpeechPort(channelId, 5000, "The speech provider channel did not reach the app window.");
+        const port = await serviceChannelPorts.claim(channelId, { timeoutMs: 5000, timeoutError: () => new Error("The speech provider channel did not reach the app window.") });
         if (this.cancelled || !this.sources.includes(source)) { port.close(); return; }
-        source.channel = createSpeechServiceChannel(port);
+        source.channel = openDomServiceChannel(port, "service");
         source.terminal = new Promise<void>((resolve) => { source.resolveTerminal = resolve; });
         const ready = new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => reject(new Error(t("transcript.failed"))), 15_000);

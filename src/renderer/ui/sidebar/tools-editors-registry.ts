@@ -5,10 +5,9 @@ import { type BrowserProfile } from "../../api/settings";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { createLinkData } from "../../../shared/link-data";
 import { guard } from "../../core/utils/guard";
-import { bundledBoardRegistry } from "../../editors/board/bundled-board-registry";
+import { bundledBoardRegistry } from "../../api/boards/bundled-board-registry";
 import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
-import { getBoardEditorAssociation } from "../../editors/board/board-manifest";
-import { boardDisplayText, boardMetadataKeys } from "../../editors/board/board-display-text";
+import { boardDisplayText, boardMetadataKeys } from "../../api/boards/board-display-text";
 import {
     GridIcon, IncognitoIcon, TorIcon,
     JavascriptIcon, LinkIcon, TypescriptIcon,
@@ -216,7 +215,7 @@ export function getCreatableItems(
     const bundledItems: CreatableItem[] = bundledBoardRegistry.enabledEntries()
         .map((board) => {
             const label = board.manifest.name?.trim() || board.id;
-            const association = getBoardEditorAssociation(board.manifest);
+            const association = board.manifest.association;
             return {
                 id: `bundled-board:${board.id}`,
                 label,

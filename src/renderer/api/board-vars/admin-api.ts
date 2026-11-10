@@ -1,5 +1,5 @@
 import { boardVars } from "./BoardEnvStore";
-import { resolveBoardNamespace } from "../board-namespace";
+import { resolveBoardNamespace } from "../boards/board-namespace";
 
 // =============================================================================
 // Agent-facing admin API over the board environment-variables store.

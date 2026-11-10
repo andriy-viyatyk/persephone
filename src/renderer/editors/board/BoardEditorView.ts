@@ -8,8 +8,8 @@ import { BoardEditorModel } from "./BoardEditorModel";
 import { UntrustedBoardView } from "./UntrustedBoardView";
 import { BoardNotFoundView } from "./BoardNotFoundView";
 import { BoardWebview } from "./BoardWebview";
-import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
-import { requestBoardTrust } from "./request-board-trust";
+import { isBoardPermitted, subscribeBoardPermission } from "../../api/boards/board-access";
+import { requestBoardTrust } from "../../api/boards/request-board-trust";
 import { BoardToolbarView } from "./BoardToolbar";
 import { ScriptPanelView } from "../text/ScriptPanelView";
 import { EditorStatusBarView } from "../base/EditorStatusBarView";
@@ -18,7 +18,7 @@ import { spacing } from "../../uikit/tokens";
 import { BoardStatusBarItems } from "./BoardStatusBarItems";
 import { t } from "../../../shared/i18n/t";
 import { appWindow } from "../../api/window";
-import { fpNormalizeForCompare } from "../../core/utils/file-path";
+import { BoardRoot } from "../../../shared/board/board-root";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 
@@ -302,8 +302,8 @@ export class BoardEditorView extends VanillaView<BoardEditorViewProps> {
         // Only the board this window was launched for: declining closes the whole window,
         // so another untrusted board opened inside it keeps the ordinary Trust button.
         if (!appWindow.isBoardMode || !appWindow.boardRoot) return;
-        const identity = fpNormalizeForCompare(boardRoot);
-        if (identity !== fpNormalizeForCompare(appWindow.boardRoot)) return;
+        const identity = BoardRoot.from(boardRoot).key;
+        if (identity !== BoardRoot.from(appWindow.boardRoot).key) return;
         if (this.trustPromptRoot === identity) return;
         this.trustPromptRoot = identity;
         void requestBoardTrust(boardRoot).then((trusted) => {

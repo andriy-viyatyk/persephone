@@ -7,12 +7,13 @@ import type {
     IBoardInfoVersion,
 } from "../../api/types/board-info-editor";
 import type { BoardInfoEditorModel } from "../../editors/board-info/BoardInfoEditorModel";
-import { boardInstallRegistry } from "../../api/board-install-registry";
-import { boardTrust } from "../../api/board-trust";
-import { requestBoardTrust } from "../../editors/board/request-board-trust";
-import { boardPermissionLines, FULL_ACCESS_DETAIL } from "../../editors/board/board-permission-copy";
+import { boardInstallRegistry } from "../../api/boards/board-install-registry";
+import { boardTrust } from "../../api/boards/board-trust";
+import { requestBoardTrust } from "../../api/boards/request-board-trust";
+import { boardPermissionLines, FULL_ACCESS_DETAIL } from "../../api/boards/board-permission-copy";
+import { BoardGrant } from "../../../shared/board/board-grant";
 // After Phase 2 extraction, UI consumers use t(key) and agent-facing output uses englishMessage(key) with the same catalog key.
-import { publishedBoards } from "../../api/published-boards";
+import { publishedBoards } from "../../api/boards/published-boards";
 import { ui } from "../../api/ui";
 import { compareVersions } from "../../../shared/version-utils";
 import { createElements } from "ai-vision/dom";
@@ -100,7 +101,7 @@ names, and this facade adds no value, setter, .env, or password path. Existing b
 remain the lifecycle action paths; this facade only owns the folder picker and download cancellation.`;
 
 function projectPermissionLines(permissions: NonNullable<IBoardInfoProperties["permissions"]>): string[] {
-    return boardPermissionLines(permissions).flatMap(({ text, fullAccess }) =>
+    return boardPermissionLines(BoardGrant.from(permissions)).flatMap(({ text, fullAccess }) =>
         fullAccess ? [text, "Full access", FULL_ACCESS_DETAIL] : [text]);
 }
 
@@ -154,15 +155,11 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
             ...(properties.repository !== undefined ? { repository: properties.repository } : {}),
             ...(properties.manifestVersion !== undefined ? { manifestVersion: properties.manifestVersion } : {}),
             ...(properties.permissions !== undefined
-                ? { permissions: properties.permissions.kind === "legacy"
-                    ? { ...properties.permissions }
-                    : { kind: "flags" as const, flags: { ...properties.permissions.flags } },
+                ? { permissions: BoardGrant.from(properties.permissions).clone(),
                     permissionLines: projectPermissionLines(properties.permissions) }
                 : {}),
             ...(properties.proposedPermissions !== undefined
-                ? { proposedPermissions: properties.proposedPermissions.kind === "legacy"
-                    ? { ...properties.proposedPermissions }
-                    : { kind: "flags" as const, flags: { ...properties.proposedPermissions.flags } },
+                ? { proposedPermissions: BoardGrant.from(properties.proposedPermissions).clone(),
                     proposedPermissionLines: projectPermissionLines(properties.proposedPermissions) }
                 : {}),
             ...(properties.permissionChanges !== undefined

@@ -3,6 +3,7 @@ import { Endpoint, EventEndpoint, type PathWatchSubscribeRequest, type PathWatch
 import { bindEndpoint } from "./endpoint-registry";
 import { openWindows } from "../../main/open-windows";
 import { pathWatchService, type PathWatchSubscribeResult } from "../../main/path-watch-service";
+import { onWebContentsGone } from "../../main/webcontents-lifetime";
 
 export type PathWatchEndpoint = "subscribePathWatch" | "unsubscribePathWatch" | "beginPathMove" | "completePathMove";
 
@@ -42,11 +43,10 @@ function releaseSender(sender: WebContents): void {
 function trackSender(sender: WebContents): void {
     if (watchedSenders.has(sender)) return;
     watchedSenders.add(sender);
-    sender.once("destroyed", () => releaseSender(sender));
     // `did-navigate` fires only once a main-frame, cross-document navigation commits.
     // `did-start-navigation` also fires for navigations `will-navigate` then cancels (a dropped
     // file, a clicked link), which would drop every subscription of a renderer that never reloaded.
-    sender.on("did-navigate", () => releaseSender(sender));
+    onWebContentsGone(sender, () => releaseSender(sender), { events: ["destroyed", "did-navigate"], repeat: true });
 }
 
 export function initPathWatchHandlers(): void {

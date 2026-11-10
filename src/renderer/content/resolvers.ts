@@ -1,5 +1,5 @@
 import { app } from "../api/app";
-import { resolveEditorIdForFile } from "../editors/board/custom-editor-registry";
+import { resolveEditorIdForFile } from "../api/boards/custom-editor-registry";
 import { isArchivePath } from "../core/utils/file-path";
 import { createPipeFromDescriptor } from "./registry";
 import { dispatchRegisteredSchemeResolve } from "./scheme-registry";

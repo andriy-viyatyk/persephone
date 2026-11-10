@@ -6,7 +6,8 @@ import type {
     IBoardSettingDeclaration,
     IBoardSettingOption,
 } from "../../api/types/board-editor";
-import type { NormalizedBoardManifest } from "../../editors/board/board-manifest";
+import type { NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
+import { BoardGrant } from "../../../shared/board/board-grant";
 
 /** Project a normalized manifest into the copied script API shape. */
 export function projectBoardManifest(manifest: NormalizedBoardManifest): IBoardManifest | undefined {
@@ -20,9 +21,7 @@ export function projectBoardManifest(manifest: NormalizedBoardManifest): IBoardM
     if (typeof manifest.standalone === "boolean") copy.standalone = manifest.standalone;
     if (typeof manifest.minAppVersion === "string") copy.minAppVersion = manifest.minAppVersion;
     if (manifest.permissions !== undefined) {
-        copy.permissions = manifest.permissions.kind === "legacy"
-            ? { ...manifest.permissions }
-            : { kind: "flags", flags: { ...manifest.permissions.flags } };
+        copy.permissions = BoardGrant.from(manifest.permissions).clone();
     }
     if (typeof manifest.minBridgeVersion === "string") copy.minBridgeVersion = manifest.minBridgeVersion;
     if (typeof manifest.service === "string") copy.service = manifest.service;

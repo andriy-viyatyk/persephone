@@ -16,7 +16,7 @@ pipeline, but `ILinkData.target` does not name a capability.
 | --- | --- |
 | [`src/main/capability-registry.ts`](../../src/main/capability-registry.ts) | Main-process platform and board provider index, snapshots and revision notifications. |
 | [`src/main/capability-router.ts`](../../src/main/capability-router.ts) | Caller visibility, resolution, provider binding, reauthorization and dispatch for `call`, board-service `channel`, platform `audio@1` channels and `open`. |
-| [`src/main/capability-channel.ts`](../../src/main/capability-channel.ts) | Bounded message/acknowledgement channel returned for channel methods. |
+| [`src/shared/service-channel.ts`](../../src/shared/service-channel.ts) and [`src/shared/service-channel-node.ts`](../../src/shared/service-channel-node.ts) | The one windowed-ack channel; host mirror in `assets/module-service-host.mjs`, checked by `check:contracts`. |
 | [`src/shared/capability-contract.ts`](../../src/shared/capability-contract.ts) and [`capability-limits.ts`](../../src/shared/capability-limits.ts) | Declaration normalization, legacy projection, shared method types and limits. |
 | [`src/shared/capability-client.ts`](../../src/shared/capability-client.ts) | Builds named-method proxies for clients. |
 | [`src/shared/platform-capabilities.ts`](../../src/shared/platform-capabilities.ts) | Metadata for platform providers backed by editor handlers. |
@@ -24,7 +24,6 @@ pipeline, but `ILinkData.target` does not name a capability.
 | [`src/renderer/scripting/ai-vision/namespaces/capabilities.ts`](../../src/renderer/scripting/ai-vision/namespaces/capabilities.ts) | Agent discovery tree and named method calls. |
 | [`src/renderer/api/board-capability-transport.ts`](../../src/renderer/api/board-capability-transport.ts) | Legacy board intent delivery and lifecycle for renderer compatibility calls. |
 | [`src/main/audio-service.ts`](../../src/main/audio-service.ts) and [`src/renderer/audio/audio-window.ts`](../../src/renderer/audio/audio-window.ts) | Main-owned `audio@1` channel lifecycle and the isolated hidden renderer that owns shared capture/playback resources. |
-| [`src/renderer/api/renderer-capability-channel.ts`](../../src/renderer/api/renderer-capability-channel.ts) | Renderer-side ordered channel and acknowledgement implementation shared by board consumers and the audio provider window. |
 | [`src/main/permission-policy-service.ts`](../../src/main/permission-policy-service.ts) | Frame-bound one-shot grants for hidden audio-window microphone and Windows loopback capture, separate from Transcript grants. |
 
 Board pages and board services use the bridge `persephone.capabilities` client. They resolve a

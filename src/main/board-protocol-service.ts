@@ -1,5 +1,4 @@
 import { app, net, session } from "electron";
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -12,8 +11,11 @@ import { errMessage } from "../shared/utils";
 import * as boardLog from "./board-log";
 import { boardTrustService } from "./board-trust-service";
 import { resolveAuthorizedPath } from "./board-file-access";
+import { BoardGrant } from "../shared/board/board-grant";
 import { resolveBoardDialogFrame } from "./cdp-service";
 import { requestBoardDialog } from "./board-dialog-service";
+import { BoardRoot } from "../shared/board/board-root";
+import { boardHost } from "./board-root-hashes";
 
 /**
  * `board://` scheme handler, routed by host —
@@ -23,7 +25,7 @@ import { requestBoardDialog } from "./board-dialog-service";
  * `protocol.handle("board", …)` is registered **once** on the host renderer's shared
  * session (`initBoardProtocol`, called at startup with `appPartition`). A board loads
  * a **distinct cross-origin** `board://<host>` where `host` is a stable hash of the
- * board root (`boardRootToHost`); the handler routes each request by its URL host to
+ * board root (`boardHost`); the handler routes each request by its URL host to
  * the matching board root (`hostToRoot`). Per-board isolation comes from the distinct
  * cross-origin origin + `nodeIntegrationInSubFrames:false` + the served CSP — not from
  * a per-board session partition.
@@ -52,23 +54,11 @@ interface BoardDesign {
 const hostToDesign = new Map<string, BoardDesign>();
 
 /** board:// host → live registration count. A board's main and
- *  secondary frames resolve to the SAME host (`boardRootToHost` is deterministic), so
+ *  secondary frames resolve to the SAME host (`boardHost` is deterministic), so
  *  each frame registers/unregisters it. The host→root/design mappings are dropped only
  *  when the LAST frame unregisters — otherwise a secondary-panel close (or a main reload
  *  while panels exist) would tear out the routing a surviving frame still needs. */
 const hostRefCount = new Map<string, number>();
-
-/** Stable, DNS-label-safe `board://` host for a board root: a hash of the normalized
- *  path. Same root → same host → same `board://<host>` origin (so per-board storage
- *  is stable within an app run). The leading letter keeps it an unambiguous DNS label. */
-export function boardRootToHost(boardRoot: string): string {
-    const norm =
-        process.platform === "win32"
-            ? path.resolve(boardRoot).toLowerCase()
-            : path.resolve(boardRoot);
-    const hash = crypto.createHash("sha256").update(norm).digest("hex").slice(0, 20);
-    return `b${hash}`;
-}
 
 /** CSP for board HTML documents: local origin only; inline scripts/styles allowed
  *  enabled for author convenience and forbidden for remote boards. Set as a response header. */
@@ -316,8 +306,8 @@ async function serveBoardFile(request: Request): Promise<Response> {
     const root = hostToRoot.get(host);
     if (!root) return new Response("No board registered", { status: 404 });
 
-    const permissions = await boardTrustService.getGrantedPermissions(root);
-    const confined = permissions?.kind === "flags" || await currentManifestIsObject(root);
+    const grant = await boardTrustService.getGrant(root);
+    const confined = grant?.isDeclared() || await currentManifestIsObject(root);
     let rel: string;
     try {
         rel = decodeURIComponent(pathname).replace(/^\/+/, "") || "index.html";
@@ -331,9 +321,8 @@ async function serveBoardFile(request: Request): Promise<Response> {
             resolved = await resolveAuthorizedPath({
                 boardRoot: root,
                 requestedPath: rel,
-                permissions: permissions ?? { kind: "legacy", service: false },
-                intent: "read",
                 rootOnly: true,
+                intent: "read",
             });
         } catch {
             return new Response("Not found", { status: 404 });
@@ -363,7 +352,7 @@ async function serveBoardFile(request: Request): Promise<Response> {
     headers.set("Cache-Control", "no-store"); // boards are local; keeps edit→reload instant
     if (mime === "text/html") {
         headers.set("Content-Security-Policy", BOARD_CSP);
-        if (permissions?.kind === "flags") headers.set("Permissions-Policy", "local-fonts=()");
+        if (grant?.isDeclared()) headers.set("Permissions-Policy", "local-fonts=()");
         // Inject, in order, into <head> (before any author script/stylesheet):
         //   1. the `--p-*` palette `<style>` → first paint is themed (no white flash);
         //   2. `window.__persephoneBoot` → initial theme/tokens + host origin;
@@ -387,7 +376,7 @@ async function serveBoardFile(request: Request): Promise<Response> {
 async function currentManifestIsObject(root: string): Promise<boolean> {
     try {
         const manifest = JSON.parse(await fs.promises.readFile(path.join(root, "board-manifest.json"), "utf8")) as { permissions?: unknown };
-        return !!manifest && typeof manifest.permissions === "object" && manifest.permissions !== null && !Array.isArray(manifest.permissions);
+        return BoardGrant.fromManifest(manifest?.permissions).isDeclared();
     } catch {
         return false;
     }
@@ -415,9 +404,9 @@ export function registerBoard(
     hostText: BoardHostText,
     hostOrigin: string,
 ): string {
-    const root = path.resolve(boardRoot);
-    const host = boardRootToHost(root);
-    hostToRoot.set(host, root);
+    const root = BoardRoot.from(boardRoot);
+    const host = boardHost(root);
+    hostToRoot.set(host, root.path);
     hostToDesign.set(host, { theme, tokens, i18n, hostText, hostOrigin });
     hostRefCount.set(host, (hostRefCount.get(host) ?? 0) + 1);
     return host;

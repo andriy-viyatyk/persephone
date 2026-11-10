@@ -1,17 +1,20 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { NormalizedBoardPermissions } from "../shared/board-manifest-utils";
-import { boardPermissionError } from "../shared/board-manifest-utils";
+import { BoardGrant } from "../shared/board/board-grant";
+import { BoardRoot } from "../shared/board/board-root";
+import { isPathInside } from "./utils";
 
 type FileIntent = "read" | "write" | "folder" | "list";
+
+type ResolveScope = { grant: BoardGrant } | { rootOnly: true } | { userPicked: true };
 
 interface ResolveOptions {
     boardRoot: string;
     requestedPath: string;
-    permissions: NormalizedBoardPermissions;
     intent: FileIntent;
-    rootOnly?: boolean;
 }
+
+type ScopedResolveOptions = ResolveOptions & ResolveScope;
 
 interface PickedPath {
     readonly path: string;
@@ -30,11 +33,6 @@ function normalizedForCompare(value: string): string {
     return process.platform === "win32" ? trimmed.toLowerCase() : trimmed;
 }
 
-function isWithin(root: string, candidate: string): boolean {
-    const relative = path.relative(normalizedForCompare(root), normalizedForCompare(candidate));
-    return relative === "" || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
-}
-
 function normalizeWindowsComponents(value: string): string {
     const normalized = value.replace(/\//g, "\\");
     const prefix = path.win32.parse(normalized).root;
@@ -51,11 +49,11 @@ function validateRequestedPath(value: unknown): asserts value is string {
     if (typeof value !== "string" || value.trim().length === 0) throw new Error("A file path is required");
     const slashNormalized = value.replace(/\//g, "\\");
     if (slashNormalized.startsWith("\\\\?\\") || slashNormalized.startsWith("\\\\.\\")) {
-        throw boardPermissionError("fileSystem");
+        throw BoardGrant.deny("fileSystem");
     }
     const driveDesignator = /^[A-Za-z]:/.test(slashNormalized) ? 2 : 0;
-    if (driveDesignator && !path.win32.isAbsolute(slashNormalized)) throw boardPermissionError("fileSystem");
-    if (slashNormalized.slice(driveDesignator).includes(":")) throw boardPermissionError("fileSystem");
+    if (driveDesignator && !path.win32.isAbsolute(slashNormalized)) throw BoardGrant.deny("fileSystem");
+    if (slashNormalized.slice(driveDesignator).includes(":")) throw BoardGrant.deny("fileSystem");
 }
 
 async function realpathNative(value: string): Promise<string> {
@@ -86,31 +84,28 @@ async function resolveExistingOrNewTarget(value: string, intent: FileIntent): Pr
     }
 }
 
-function effectiveFileSystem(permissions: NormalizedBoardPermissions): false | "board" | "full" {
-    return permissions.kind === "legacy" ? "full" : permissions.flags.fileSystem;
-}
-
-function allowedByScope(boardRoot: string, candidate: string, permissions: NormalizedBoardPermissions,
+function allowedByScope(boardRoot: string, candidate: string, grant: BoardGrant | undefined, userPicked: boolean,
     intent: FileIntent, grants: { folderGrants: string[]; fileGrants: string[] }): boolean {
-    const mode = effectiveFileSystem(permissions);
+    if (userPicked) return true;
+    const mode = grant?.fileSystemMode() ?? false;
     if (mode === "full") return true;
     if (intent === "read") {
-        const key = normalizedForCompare(boardRoot);
+        const key = BoardRoot.from(boardRoot).key;
         const candidateKey = normalizedForCompare(candidate);
         if (sourceReadPathsByRoot.get(key)?.has(candidateKey) || deliveredSourcePathsByRoot.get(key)?.has(candidateKey)) return true;
     }
     if (mode !== "board") return false;
-    if (isWithin(boardRoot, candidate)) return true;
-    const picks = pickedPathsByRoot.get(normalizedForCompare(boardRoot)) ?? [];
-    if (picks.some((pick) => pick.folder ? isWithin(pick.path, candidate) : normalizedForCompare(pick.path) === normalizedForCompare(candidate))) return true;
+    if (isPathInside(boardRoot, candidate)) return true;
+    const picks = pickedPathsByRoot.get(BoardRoot.from(boardRoot).key) ?? [];
+    if (picks.some((pick) => pick.folder ? isPathInside(pick.path, candidate) : normalizedForCompare(pick.path) === normalizedForCompare(candidate))) return true;
     if ((intent === "read" || intent === "list" || intent === "folder")
-        && grants.folderGrants.some((folder) => isWithin(folder, candidate))) return true;
+        && grants.folderGrants.some((folder) => isPathInside(folder, candidate))) return true;
     if ((intent === "read" || intent === "write") && grants.fileGrants.some((file) => normalizedForCompare(file) === normalizedForCompare(candidate))) return true;
     return false;
 }
 
 async function persistedGrants(boardRoot: string): Promise<{ folderGrants: string[]; fileGrants: string[] }> {
-    const key = normalizedForCompare(boardRoot);
+    const key = BoardRoot.from(boardRoot).key;
     const cached = persistedGrantCache.get(key);
     if (cached) return cached;
     const { boardTrustService } = await import("./board-trust-service");
@@ -120,19 +115,19 @@ async function persistedGrants(boardRoot: string): Promise<{ folderGrants: strin
 }
 
 export function invalidatePersistedBoardGrants(boardRoot: string): void {
-    persistedGrantCache.delete(normalizedForCompare(boardRoot));
+    persistedGrantCache.delete(BoardRoot.from(boardRoot).key);
 }
 
 /** Resolve and authorize every path a board can cause the app to access. */
-export async function resolveAuthorizedPath(options: ResolveOptions): Promise<string> {
+export async function resolveAuthorizedPath(options: ScopedResolveOptions): Promise<string> {
     validateRequestedPath(options.requestedPath);
     const root = await realpathNative(options.boardRoot);
     const candidate = await resolveExistingOrNewTarget(
         path.isAbsolute(options.requestedPath) ? options.requestedPath : path.resolve(root, options.requestedPath),
         options.intent,
     );
-    if (options.rootOnly) {
-        if (!isWithin(root, candidate)) throw boardPermissionError("fileSystem");
+    if ("rootOnly" in options) {
+        if (!isPathInside(root, candidate)) throw BoardGrant.deny("fileSystem");
         return candidate;
     }
     const grants = await persistedGrants(root);
@@ -141,16 +136,16 @@ export async function resolveAuthorizedPath(options: ResolveOptions): Promise<st
     if (fileGrant && options.intent !== "folder" && options.intent !== "list") {
         try {
             const stat = await fs.promises.stat(candidate);
-            if (!stat.isFile()) throw boardPermissionError("fileSystem");
+            if (!stat.isFile()) throw BoardGrant.deny("fileSystem");
             const real = await realpathNative(candidate);
-            if (normalizedForCompare(real) !== normalizedForCompare(fileGrant)) throw boardPermissionError("fileSystem");
+            if (normalizedForCompare(real) !== normalizedForCompare(fileGrant)) throw BoardGrant.deny("fileSystem");
         } catch (error: unknown) {
             if ((error as NodeJS.ErrnoException).code !== "ENOENT" || options.intent !== "write") throw error;
             const parent = await realpathNative(path.dirname(candidate));
-            if (normalizedForCompare(path.join(parent, path.basename(candidate))) !== normalizedForCompare(fileGrant)) throw boardPermissionError("fileSystem");
+            if (normalizedForCompare(path.join(parent, path.basename(candidate))) !== normalizedForCompare(fileGrant)) throw BoardGrant.deny("fileSystem");
         }
     }
-    if (!allowedByScope(root, candidate, options.permissions, options.intent, grants)) throw boardPermissionError("fileSystem");
+    if (!allowedByScope(root, candidate, "grant" in options ? options.grant : undefined, "userPicked" in options, options.intent, grants)) throw BoardGrant.deny("fileSystem");
     return candidate;
 }
 
@@ -159,7 +154,7 @@ export async function resolveHostedReadOrAuthorizedPath(options: {
     boardRoot: string;
     requestedPath: string;
     hostedPath: string | null;
-    permissions: NormalizedBoardPermissions;
+    grant: BoardGrant;
 }): Promise<string> {
     if (options.hostedPath) {
         try {
@@ -185,13 +180,13 @@ export async function resolveHostedReadOrAuthorizedPath(options: {
     return resolveAuthorizedPath({
         boardRoot: options.boardRoot,
         requestedPath: options.requestedPath,
-        permissions: options.permissions,
+        grant: options.grant,
         intent: "read",
     });
 }
 
-export function requireDialogPermission(permissions: NormalizedBoardPermissions): void {
-    if (effectiveFileSystem(permissions) === false) throw boardPermissionError("fileSystem");
+export function requireDialogPermission(grant: BoardGrant): void {
+    if (grant.fileSystemMode() === false) throw BoardGrant.deny("fileSystem");
 }
 
 /** Keep delivered board sources and source-context items in separate session-only read grants. */
@@ -200,7 +195,7 @@ export async function grantBoardSourceReads(boardRoot: string, sourceValues: str
         throw new TypeError("At most 5,000 source paths may be delivered at once.");
     }
     const root = await realpathNative(boardRoot);
-    const key = normalizedForCompare(root);
+    const key = BoardRoot.from(root).key;
     const delivered = deliveredSourcePathsByRoot.get(key) ?? new Set<string>();
     const context = sourceReadPathsByRoot.get(key) ?? new Set<string>();
     for (const [values, granted] of [[sourceValues, delivered], [contextValues, context]] as const) {
@@ -218,7 +213,7 @@ export async function grantBoardSourceReads(boardRoot: string, sourceValues: str
 }
 
 export function clearBoardFileAccess(boardRoot: string): void {
-    const key = normalizedForCompare(boardRoot);
+    const key = BoardRoot.from(boardRoot).key;
     pickedPathsByRoot.delete(key);
     sourceReadPathsByRoot.delete(key);
     deliveredSourcePathsByRoot.delete(key);
@@ -229,7 +224,7 @@ export function clearBoardFileAccess(boardRoot: string): void {
 export async function isDeliveredSourceFile(boardRoot: string, requestedPath: string): Promise<string | undefined> {
     const root = await realpathNative(boardRoot);
     const candidate = await realpathNative(requestedPath);
-    const key = normalizedForCompare(root);
+    const key = BoardRoot.from(root).key;
     if (!deliveredSourcePathsByRoot.get(key)?.has(normalizedForCompare(candidate))) return undefined;
     if (!(await fs.promises.stat(candidate)).isFile()) return undefined;
     return candidate;
@@ -238,7 +233,7 @@ export async function isDeliveredSourceFile(boardRoot: string, requestedPath: st
 export async function isDialogPickedPath(boardRoot: string, requestedPath: string, folder: boolean): Promise<string | undefined> {
     const root = await realpathNative(boardRoot);
     const candidate = await resolveExistingOrNewTarget(requestedPath, folder ? "folder" : "write");
-    const picks = pickedPathsByRoot.get(normalizedForCompare(root)) ?? [];
+    const picks = pickedPathsByRoot.get(BoardRoot.from(root).key) ?? [];
     return picks.some((pick) => pick.folder === folder && normalizedForCompare(pick.path) === normalizedForCompare(candidate))
         ? candidate
         : undefined;
@@ -249,30 +244,30 @@ export async function recordPickedPaths(
     boardRoot: string,
     values: string | string[] | undefined,
     folder: boolean,
-    permissions: NormalizedBoardPermissions,
+    grant: BoardGrant,
 ): Promise<void> {
-    requireDialogPermission(permissions);
+    requireDialogPermission(grant);
     if (values === undefined) return;
     const picks = Array.isArray(values) ? values : [values];
     const root = await realpathNative(boardRoot);
-    const recorded = pickedPathsByRoot.get(normalizedForCompare(root)) ?? [];
+    const recorded = pickedPathsByRoot.get(BoardRoot.from(root).key) ?? [];
     for (const value of picks) {
         const resolved = await resolveAuthorizedPath({
             boardRoot: root,
             requestedPath: value,
-            permissions: { kind: "legacy", service: false },
+            userPicked: true,
             intent: folder ? "folder" : "write",
         });
         recorded.push({ path: resolved, folder });
     }
-    pickedPathsByRoot.set(normalizedForCompare(root), recorded);
+    pickedPathsByRoot.set(BoardRoot.from(root).key, recorded);
 }
 
 /** Re-resolve a just-created write target immediately before opening it. */
 export async function recheckWriteTarget(
     boardRoot: string,
     requestedPath: string,
-    permissions: NormalizedBoardPermissions,
+    grant: BoardGrant,
 ): Promise<string> {
-    return resolveAuthorizedPath({ boardRoot, requestedPath, permissions, intent: "write" });
+    return resolveAuthorizedPath({ boardRoot, requestedPath, grant, intent: "write" });
 }

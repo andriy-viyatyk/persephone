@@ -1,3 +1,19 @@
+## EPIC-142 — Refactoring Phase 1: shared primitives and the board core
+
+Completed 2026-11-10. Roadmap Phase 1.1 to 1.4 and 2.1: one implementation of each cross-process primitive, one shared
+board core in `src/shared/board/`, and the board domain moved into `src/renderer/api/boards/`. Plans were written by
+Sonnet subagents and reviewed against the roadmap guardrails; Codex implemented. Epic document: [EPIC-142](EPIC-142.md).
+
+- [x] **Request correlation (US-1817).** `shared/pending-requests.ts` and `shared/wire-error.ts` replace 11 hand-built correlators (endpoint replies, MCP, board settings, board pipe, audio devices, capability open, the shim, the host clients, `supervisor.request`); `check:contracts` pins the host mirror.
+- [x] **Small primitives (US-1818).** `SerialQueue`, `codedError`, `isKeyInside` / `fpIsInside` / `isPathInside` and `onWebContentsGone` replace 60 local copies.
+- [x] **One service channel (US-1819).** `shared/service-channel.ts` replaces 7 copies with one size rule, one ack policy and one error code per failure; bridge 1.56.0.
+- [x] **Typed port routing (US-1820).** A `ServiceChannelTarget` union and `deliverConsumerPort` replace the `boardId` prefixes; one renderer port router.
+- [x] **Shared manifest model (US-1821).** Eight `shared/board/` modules replace `board-manifest.ts` and `board-manifest-utils.ts`; `readBoardManifest` returns the normalized manifest.
+- [x] **`BoardGrant` (US-1822).** Every legacy-permission branch outside the grant and the trust-record parser is gone, so US-1609 is a local deletion.
+- [x] **`BoardRoot` (US-1823).** One root identity and one hashing module; every persisted key and the `board://` host verified byte-identical.
+- [x] **`api/boards/` (US-1824).** 20 files moved; cycle-dodging dynamic imports removed; three named `api/` to `editors/board/` exceptions, pinned by an ESLint rule.
+- [x] **Epic review.** `/review` removed two non-null assertions in `pending-requests.ts`; `/document` updated `key-files.md`, `folder-structure.md` and `overview.md`; `/userdoc` added the 1.56.0 `minBridgeVersion` note to the boards guide. No catalog messages changed.
+
 ## EPIC-141 — Refactoring Phase 0: quick wins and cleanup
 
 Completed 2026-11-10. Phase 0 of the [refactoring roadmap](../refactoring-roadmap.md): delete dead

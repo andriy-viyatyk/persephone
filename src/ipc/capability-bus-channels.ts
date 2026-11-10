@@ -1,4 +1,5 @@
 import type { CapabilityErrorCode as ClientErrorCode, CapabilityMethod } from "../shared/capability-contract";
+import type { WireError } from "../shared/wire-error";
 
 export { MAX_INTENT_PAYLOAD_BYTES, MAX_INTENT_DEPTH, MAX_OUTSTANDING_INTENTS_PER_HANDLER } from "../shared/capability-limits";
 export { CAPABILITY_DEFAULT_TIMEOUT_MS as INTENT_DEADLINE_MS } from "../shared/capability-limits";
@@ -53,7 +54,7 @@ export interface BoundOpenDispatch {
 export interface BoundOpenSettlement {
     requestId: string;
     result?: unknown;
-    error?: { code: string; message: string };
+    error?: WireError;
 }
 
 export interface CapabilityTransport {

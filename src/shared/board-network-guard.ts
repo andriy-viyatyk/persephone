@@ -58,17 +58,17 @@ export function pinnedLookup(addresses: BoardNetworkAddress[]) {
 
 export async function assertBoardNetworkAllowed(
     url: URL,
-    policy: { network: false | "internet" | "full"; appScripting: boolean; mcpUrl: string },
+    policy: BoardNetworkPolicy,
     dependencies: { lookup: (host: string, options: { all: true; verbatim: true }) => Promise<BoardNetworkAddress[]>; isIP: (address: string) => number },
 ): Promise<BoardNetworkAddress[]> {
-    if (policy.network === false) throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
+    if (policy.network === false) throw BoardGrant.deny("network");
     const port = Number(url.port || (url.protocol === "https:" ? 443 : 80));
     const mcp = new URL(policy.mcpUrl);
     const targetHost = url.hostname.replace(/^\[|\]$/g, "");
     const mcpHost = mcp.hostname.replace(/^\[|\]$/g, "");
     if (!policy.appScripting && targetHost.toLowerCase() === mcpHost.toLowerCase()
         && port === Number(mcp.port || (mcp.protocol === "https:" ? 443 : 80))) {
-        throw new Error('permission-denied: "appScripting" is not enabled in board-manifest.json');
+        throw BoardGrant.deny("appScripting");
     }
     const family = dependencies.isIP(targetHost);
     const addresses = family ? [{ address: targetHost, family }]
@@ -80,10 +80,13 @@ export async function assertBoardNetworkAllowed(
             .catch((): { address: string; family: number }[] => []);
     if (!policy.appScripting && port === Number(mcp.port || (mcp.protocol === "https:" ? 443 : 80))
         && addresses.some(({ address }) => mcpAddresses.some((mcpAddress) => address === mcpAddress.address))) {
-        throw new Error('permission-denied: "appScripting" is not enabled in board-manifest.json');
+        throw BoardGrant.deny("appScripting");
     }
     if (policy.network === "internet" && addresses.some(({ address }) => isPrivateAddress(address, dependencies.isIP))) {
-        throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
+        throw BoardGrant.deny("network");
     }
     return addresses;
 }
+import { BoardGrant, type BoardNetworkPolicy } from "./board/board-grant";
+
+export type { BoardNetworkPolicy } from "./board/board-grant";

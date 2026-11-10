@@ -7,7 +7,7 @@ import type {
     EditorModule,
 } from "./base/editorRegistry";
 import { EDITOR_MATCHERS, makeAccepts } from "./base/editor-matchers";
-import { customEditorRegistry } from "./board/custom-editor-registry";
+import { customEditorRegistry } from "../api/boards/custom-editor-registry";
 import { BOARD_SECONDARY_PREFIX } from "./board/board-secondary";
 import { secondaryViewRegistry } from "../ui/secondary-views/secondary-view-registry";
 import { englishMessage } from "../../shared/i18n/t";

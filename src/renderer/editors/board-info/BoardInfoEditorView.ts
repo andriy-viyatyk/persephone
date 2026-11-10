@@ -1,12 +1,13 @@
 import { app } from "../../api/app";
-import { boardInstallRegistry, type InstalledBoardEntry } from "../../api/board-install-registry";
-import { boardTrust } from "../../api/board-trust";
-import { requestBoardTrust } from "../board/request-board-trust";
-import { legacyBoardDeprecationWarningForUi } from "../board/board-permission-copy";
-import { boardDisplayText, boardMetadataKeys } from "../board/board-display-text";
+import { boardInstallRegistry, type InstalledBoardEntry } from "../../api/boards/board-install-registry";
+import { boardTrust } from "../../api/boards/board-trust";
+import { BoardGrant } from "../../../shared/board/board-grant";
+import { requestBoardTrust } from "../../api/boards/request-board-trust";
+import { legacyBoardDeprecationWarningForUi } from "../../api/boards/board-permission-copy";
+import { boardDisplayText, boardMetadataKeys } from "../../api/boards/board-display-text";
 import { createBoardPermissionChangeList, createBoardPermissionList, createBoardServiceUsesPermissionList } from "../board/board-permission-list";
-import { publishedBoards } from "../../api/published-boards";
-import { publishedBoardDisplayText } from "../../api/published-board-display-text";
+import { publishedBoards } from "../../api/boards/published-boards";
+import { publishedBoardDisplayText } from "../../api/boards/published-board-display-text";
 import { getActiveLocale } from "../../../shared/i18n/active-locale";
 import { createLinkData } from "../../../shared/link-data";
 import { compareVersions } from "../../../shared/version-utils";
@@ -417,19 +418,19 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
             metadata.append(text(t("board.notTrustedNoPermissions"), { size: "sm", color: "warning" }));
             if (info.proposedPermissions) {
                 metadata.append(text(t("board.proposedPermissions"), { size: "sm", bold: true }));
-                metadata.append(this.permissionList(info.proposedPermissions, info.proposedPermissions.kind === "legacy" && !info.isBundled, displayName));
+                metadata.append(this.permissionList(info.proposedPermissions, BoardGrant.from(info.proposedPermissions).isLegacy() && !info.isBundled, displayName));
             }
         } else if (info.permissions) {
             metadata.append(text(t("board.grantedPermissions"), { size: "sm", bold: true }));
-            metadata.append(this.permissionList(info.permissions, info.proposedPermissions?.kind === "legacy" && !info.isBundled, displayName));
+            metadata.append(this.permissionList(info.permissions, (info.proposedPermissions ? BoardGrant.from(info.proposedPermissions).isLegacy() : false) && !info.isBundled, displayName));
         }
         if (info.permissionChangePending && info.proposedPermissions) {
             const pending = panel({ direction: "column", gap: "xs", align: "stretch" });
             pending.append(text(t("board.pendingPermissionChange"), { size: "sm", bold: true, color: "warning" }));
             if (info.permissions) {
-                pending.append(createBoardPermissionChangeList(info.permissions, info.proposedPermissions, "sm"));
+                pending.append(createBoardPermissionChangeList(BoardGrant.from(info.permissions), info.proposedPermissions, "sm"));
             } else {
-                pending.append(this.permissionList(info.proposedPermissions, info.proposedPermissions.kind === "legacy" && !info.isBundled, displayName));
+                pending.append(this.permissionList(info.proposedPermissions, BoardGrant.from(info.proposedPermissions).isLegacy() && !info.isBundled, displayName));
             }
             if (info.service) pending.append(text(t("board.serviceDeclared"), { size: "sm", color: "light" }));
             this.addButton(pending, {
@@ -722,8 +723,9 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         boardName = "This board",
     ): HTMLElement {
         const list = panel({ direction: "column", gap: "xs", align: "stretch" });
-        list.append(createBoardPermissionList(permissions, "sm"));
-        if (permissions.kind === "legacy") {
+        const grant = BoardGrant.from(permissions);
+        list.append(createBoardPermissionList(grant, "sm"));
+        if (grant.isLegacy()) {
             list.append(text(t("board.legacyPermissionExplanation"), { size: "sm", color: "light" }));
             if (showDeprecationWarning) list.append(text(legacyBoardDeprecationWarningForUi(boardName), { size: "sm", color: "warning" }));
         }

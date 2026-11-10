@@ -33,6 +33,7 @@ import {
 import { errMessage } from "../shared/utils";
 import { getAssetPath } from "./utils";
 import { guardedIpcOn } from "./ipc-sender-guard";
+import { onWebContentsGone } from "./webcontents-lifetime";
 
 /** Coalesce stdout/stderr bursts into one message per ~tick to cut message count. */
 const COALESCE_MS = 16;
@@ -76,7 +77,7 @@ const jobsBySink = new Map<string, Set<string>>();
 
 /** Per-WebContents reap wiring (so we attach lifecycle listeners exactly once).
  *  Only the IPC sink uses this; the board sink is reaped explicitly by the bridge. */
-const senderReapers = new Map<number, { wc: WebContents; reap: () => void }>();
+const senderReapers = new Map<number, { wc: WebContents; stop: () => void }>();
 
 /** Build a sink that streams to a `WebContents` over IPC (tolerates a destroyed
  *  sender — window/webview closed). */
@@ -157,8 +158,7 @@ export function reapJobsBySinkId(sinkId: string): void {
 function reapSender(senderId: number): void {
     const entry = senderReapers.get(senderId);
     if (entry) {
-        try { entry.wc.removeListener("render-process-gone", entry.reap); } catch { /* gone */ }
-        // 'destroyed' was once() — already removed if it fired.
+        entry.stop();
         senderReapers.delete(senderId);
     }
     reapJobsBySinkId(String(senderId));
@@ -168,9 +168,8 @@ function reapSender(senderId: number): void {
 function wireSenderReaping(sender: WebContents): void {
     if (senderReapers.has(sender.id)) return;
     const reap = () => reapSender(sender.id);
-    senderReapers.set(sender.id, { wc: sender, reap });
-    sender.once("destroyed", reap);
-    sender.on("render-process-gone", reap);
+    const stop = onWebContentsGone(sender, reap, { events: ["destroyed", "render-process-gone"], repeat: true });
+    senderReapers.set(sender.id, { wc: sender, stop });
 }
 
 function flush(jobId: string): void {

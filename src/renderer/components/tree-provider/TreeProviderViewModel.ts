@@ -7,6 +7,7 @@ import { ContextMenuEvent } from "../../api/events/events";
 import { app } from "../../api/app";
 import { ui } from "../../api/ui";
 import { t } from "../../../shared/i18n/t";
+import { SerialQueue } from "../../../shared/serial-queue";
 import { fpBasename, fpDirname, fpIsAbsolute, fpNormalizeForCompare, fpResolve } from "../../core/utils/file-path";
 import type { IFileLink } from "../../core/traits/fileLinkTraits";
 import {
@@ -39,6 +40,7 @@ import {
     type ItemMenuActions,
 } from "./item-menus";
 import { hrefKey, sameHref, sameHrefs } from "./href-utils";
+import { isKeyInside } from "../../../shared/path-containment";
 import type { SlotText } from "../../uikit/shared/slots";
 import type { PathWatchBatch } from "../../../ipc/api-types";
 
@@ -157,7 +159,7 @@ export class TreeProviderViewModel extends TComponentModel<
     private previousShowLinks: boolean | undefined;
     private previousSelectedHref: string | undefined;
     private treeGeneration = 0;
-    private watchQueue: Promise<void> = Promise.resolve();
+    private readonly watchQueue = new SerialQueue();
     private disposed = false;
 
     setProps = () => {
@@ -285,7 +287,7 @@ export class TreeProviderViewModel extends TComponentModel<
 
     private queueWatchRefresh = (batch?: PathWatchBatch) => {
         const provider = this.props.provider;
-        this.watchQueue = this.watchQueue.then(async () => {
+        void this.watchQueue.run(async () => {
             if (this.disposed || this.props.provider !== provider) return;
             // Batches run one at a time, so the generation is taken when this one starts: a later
             // batch is not a reason to rebuild, but an expansion load or rebuild in between is.
@@ -317,7 +319,7 @@ export class TreeProviderViewModel extends TComponentModel<
                 const paths = change.type === "moved" ? [change.path, change.to] : [change.path];
                 for (const path of paths) {
                     const key = normalize(path);
-                    if (key === root || !key.startsWith(root + "/")) { await this.buildTree(); return; }
+                    if (!isKeyInside(root, key, { allowSame: false })) { await this.buildTree(); return; }
                     const node = find(original, key);
                     if (change.type === "changed" && !node?.data.isDirectory) continue;
                     const parent = fpDirname(path);

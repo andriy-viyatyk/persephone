@@ -414,7 +414,7 @@ A **Board** is a small local web application (plain HTML + JS) owned by the user
 - The `board://` handler adds `charset=utf-8` to every text MIME response (HTML, JavaScript, CSS, JSON, Markdown, CSV, XML, YAML, SVG, and plain text). This is explicit because the injected head fragment can precede an author's `<meta charset>` by more than the encoding-sniffing window. Board files and pipe responses use the shared extension-to-MIME table in `/src/shared/mime-types.ts`.
 - The board loads in a plain `<iframe src="board://<host>/index.html">` rendered in the host renderer's DOM — no `sandbox` attribute (a bare `sandbox` forces an opaque origin with no stable per-board storage). Each board gets a **distinct cross-origin** `board://<host>` origin, where `host` is a stable hash of the normalized board root minted by `registerBoard` in the main process. Isolation from the Node-privileged host comes from the Same-Origin Policy (a cross-origin child cannot reach `window.parent`), `nodeIntegrationInSubFrames: false`, and the served CSP — adequate for trusted, user-authorized local code. Because the iframe lives in the DOM, all host overlays (page-tab context menu, dropdowns, dialogs, command palette, tooltips) compose over it naturally. This mirrors VS Code's editor-webview model.
 - The `board://` protocol is registered **once** on the shared host session and routes by **host → board root** (a `Map` registry, populated on board open, dropped on close). It serves the board's local files; the CSP (`connect-src 'self'`) blocks direct remote network access from the frame. Boards with a granted `network` permission can use the `persephone.fetch()` bridge, which routes requests through the app's Node HTTP client. For `network: "internet"`, each redirect hop is DNS-resolved and rejected if any answer is a private address; direct connections pin DNS lookup to those checked addresses, while requests using a configured Browser/Tor route keep that route. `network: "full"` permits private destinations. Requests to the app's MCP endpoint also require `appScripting`. Distinct `board://<host>` origins give per-board `localStorage`/IndexedDB/cookie isolation without separate session partitions. Per-board origin isolation replaces process-level isolation; the bridge remains bounded by the user-granted manifest permissions described below.
-- Trust is **per external board**: only boards the user has explicitly trusted render, while app-owned bundled boards under `assets/boards/` render without a trust entry. Main owns the persisted decision and grant snapshots in `trustedBoards.json` under `<userData>/data/` (migrating the older `trustedBoards.txt` path list); the renderer's `board-trust.ts` is a reactive mirror, and trust is never read from a manifest or any in-board file — a received board cannot self-trust. Foreign boards prompt a "Trust board" dialog on first open; boards created through Persephone's own API (`app.boards.createBoard`/`createDemoBoard`, user or agent) are auto-trusted at creation. Boards are not nested by design, though the current code still accepts a grant whose normalized root equals or path-boundary-covers the requested board root. Exact-root lookup is the planned Phase 3.1 behavior. This trusted-boards list also *is* the known-boards registry surfaced in the sidebar; bundled boards are intentionally outside it.
+- Trust is **per external board**: only boards the user has explicitly trusted render, while app-owned bundled boards under `assets/boards/` render without a trust entry. Main owns the persisted decision and grant snapshots in `trustedBoards.json` under `<userData>/data/` (migrating the older `trustedBoards.txt` path list); the renderer's board registry in `src/renderer/api/boards/` is a reactive mirror, and trust is never read from a manifest or any in-board file — a received board cannot self-trust. Foreign boards prompt a "Trust board" dialog on first open; boards created through Persephone's own API (`app.boards.createBoard`/`createDemoBoard`, user or agent) are auto-trusted at creation. `BoardRoot` in `src/shared/board/board-root.ts` owns absolute-root validation and canonical comparison keys, and `BoardGrant` in `src/shared/board/board-grant.ts` owns permission projection and grant comparisons. Board-specific manifest parsing, root policy and permission checks use these shared models and the board registries rather than local copies. This trusted-boards list also *is* the known-boards registry surfaced in the sidebar; bundled boards are intentionally outside it.
 
 Trust and capability grants are separate. Main persists each trusted root with the normalized permission set granted at trust time in `trustedBoards.json`; legacy path-list data is migrated by reading the current manifest. For object-form `permissions`, the main-process bridge and device-permission policy enforce the grant set. A manifest permission change requires re-trust before the new set is used; reductions can reconcile without a prompt. The trust dialog and Board Info list enabled capabilities and identify broad grants as **Full access**. Manifests without declared permissions still use the legacy unrestricted behavior for now and produce a persistent migration warning; the old string-array form is also supported during this transition. Bundled boards use their shipped manifest permissions as their grant set.
 
@@ -447,11 +447,20 @@ the 16-per-frame / 128-per-service caps; application messages bypass main. The h
 the page endpoint to the exact `BoardWebview` iframe. The service registers one
 `persephone.service.onChannel((channel, openMessage, info) => ...)`; same-board opens include
 `info.page.boardId`, while cross-board opens add `info.interface` and descriptive `info.caller` fields.
-Both directions use ordered sequence numbers and cumulative acknowledgements with a 256-message
-window. The utility process enforces the 1 MiB service-to-page serialized payload cap. Board frames
+Both directions use the shared `ServiceChannel` protocol in `src/shared/service-channel.ts`, with
+ordered sequence numbers, cumulative acknowledgements, bounded in-flight delivery and a common
+wire-error shape. The Node utility-process adapter uses the same protocol rules; the host's checked
+JavaScript mirror lives in `assets/module-service-host.mjs`. Renderer-targeted ports are delivered
+by `channelId` through `src/renderer/api/service-channel-ports.ts`, while board-frame ports remain
+owned by their board views. The protocol rejects payloads over the 1 MiB serialized cap. Board frames
 have no Node integration, so page-to-service traffic is count-bounded only. Reload, service exit,
 trust loss, and quit close channels with their lifecycle codes. Service channels and provider
 renderer leases are separate port paths.
+
+Bridge version **1.56.0** brings board service channels onto the shared protocol contract: common
+`payload-too-large`, `rejected`, and `channel-closed` errors, plus delivery of messages that arrive
+before the consumer subscribes. `BOARD_BRIDGE_VERSION` is the source of truth for the bridge
+requirement.
 
 Cross-board `persephone.services.list()` discovery is rebuilt from the main-owned trusted service
 snapshot. A consumer's persisted exact `(interface id, version)` `uses` grant is checked before
@@ -471,8 +480,10 @@ and the exact interface metadata. The channel is owned and closed by the module-
 with the provider's normal lifecycle.
 
 Voice Typing is a private app-shell controller, not a renderer service-registry entry or board API.
-It listens on the shared board-channel event and accepts only its reserved `voice-typing:<windowId>`
-channel IDs; ports for ordinary board channels are left untouched for their owning board views.
+It claims renderer-targeted service ports by their main-issued `channelId` through
+`serviceChannelPorts`; board-frame ports remain with their owning board views. The wire target is
+`ServiceChannelTarget { kind: "renderer" }`, while host-service `info.page.boardId` labels remain
+unchanged for providers.
 Main keeps each window's transcription and translation shortcuts and activity state so it can
 consume matching keydowns before the focused editor or embedded browser handles them. The default
 shortcuts are `Alt+V` and `Alt+Shift+V`; a configured right Ctrl tap or Shift+right Ctrl tap is

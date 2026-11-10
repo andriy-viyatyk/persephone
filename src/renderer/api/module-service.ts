@@ -1,3 +1,4 @@
+import { BoardRoot } from "../../shared/board/board-root";
 import {
     EventEndpoint,
     type ModuleServicePortPayload,
@@ -16,7 +17,7 @@ import {
 import { api } from "../../ipc/renderer/api";
 import rendererEvents from "../../ipc/renderer/renderer-events";
 import { errMessage } from "../../shared/utils";
-import { fpNormalizeForCompare } from "../core/utils/file-path";
+import { codedError, toCodedError } from "../../shared/coded-error";
 
 interface PendingRequest {
     resolve: (value: unknown) => void;
@@ -69,26 +70,10 @@ const clients = new Map<string, ServiceLeaseClient>();
 let portSubscription: (() => void) | undefined;
 let statusSubscription: (() => void) | undefined;
 
-function normalizeRoot(boardRoot: string): string {
-    return fpNormalizeForCompare(boardRoot);
-}
-
-function errorForCode(code: string, message = code): Error & { code: string } {
-    const error = new Error(message) as Error & { code: string };
-    error.code = code || "service-error";
-    return error;
-}
-
 function serviceError(error: unknown): Error & { code: string } {
-    if (typeof error === "string") return errorForCode("service-error", error);
-    if (error !== null && typeof error === "object") {
-        const value = error as { code?: unknown; message?: unknown };
-        if (typeof value.code === "string" && typeof value.message === "string") {
-            return errorForCode(value.code, value.message);
-        }
-        if (typeof value.code === "string") return errorForCode(value.code, errMessage(error, "Service request failed"));
-    }
-    return errorForCode("service-error", errMessage(error, "Service request failed"));
+    if (typeof error === "string") return codedError("service-error", error);
+    const coded = toCodedError(error, "service-error", { fallbackMessage: "Service request failed" });
+    return codedError(coded.code || "service-error", coded.message);
 }
 
 function statusFailureCode(status: BoardServiceStatus): string | undefined {
@@ -108,7 +93,7 @@ function ensureInitialized(): void {
     }
     if (!statusSubscription) {
         statusSubscription = rendererEvents[EventEndpoint.eModuleServiceStatusChanged].subscribe((status) => {
-            const client = clients.get(normalizeRoot(status.boardRoot));
+            const client = clients.get(BoardRoot.from(status.boardRoot).key);
             if (!client) return;
             const code = statusFailureCode(status);
             if (code) loseLease(client, code);
@@ -117,7 +102,7 @@ function ensureInitialized(): void {
 }
 
 function getClient(boardRoot: string): ServiceLeaseClient {
-    const key = normalizeRoot(boardRoot);
+    const key = BoardRoot.from(boardRoot).key;
     let client = clients.get(key);
     if (!client) {
         client = {
@@ -138,7 +123,7 @@ function getClient(boardRoot: string): ServiceLeaseClient {
 }
 
 function receivePort(payload: ModuleServicePortPayload, port: MessagePort): void {
-    const client = clients.get(normalizeRoot(payload.boardRoot));
+    const client = clients.get(BoardRoot.from(payload.boardRoot).key);
     if (!client || client.disposed || !client.acquisitionState) {
         port.close();
         return;
@@ -265,7 +250,7 @@ function dropPending(
 function rejectPending(client: ServiceLeaseClient, code: string): void {
     for (const requestId of client.pending.keys()) {
         const pending = dropPending(client, requestId);
-        pending?.reject(errorForCode(code));
+        pending?.reject(codedError(code || "service-error"));
     }
 }
 
@@ -299,7 +284,7 @@ function loseLease(client: ServiceLeaseClient, code: string): void {
     if (acquisition) {
         if (acquisition.timer) clearTimeout(acquisition.timer);
         client.acquisitionState = undefined;
-        acquisition.reject(errorForCode(code));
+        acquisition.reject(codedError(code || "service-error"));
     }
     rejectPending(client, code);
 }
@@ -339,7 +324,7 @@ function request(
     signal?: AbortSignal,
 ): Promise<unknown> {
     if (typeof boardRoot !== "string" || boardRoot.length === 0) {
-        return Promise.reject(errorForCode("service-not-declared"));
+            return Promise.reject(codedError("service-not-declared"));
     }
     ensureInitialized();
     const client = getClient(boardRoot);
@@ -350,18 +335,18 @@ function request(
             if (pending.requestClass === "control") controlCount++;
         }
         if (controlCount >= MAX_OUTSTANDING_REQUESTS_PER_SERVICE) {
-            return Promise.reject(errorForCode("service-busy"));
+            return Promise.reject(codedError("service-busy"));
         }
     }
     const requestId = `renderer-${++client.requestNumber}`;
     return new Promise<unknown>((resolve, reject) => {
         const timer = policy.deadlineMs === undefined ? undefined : setTimeout(() => {
             const pending = dropPending(client, requestId, true);
-            pending?.reject(errorForCode("service-timeout"));
+            pending?.reject(codedError("service-timeout"));
         }, policy.deadlineMs);
         const onAbort = (): void => {
             const pending = dropPending(client, requestId, true);
-            pending?.reject(errorForCode("provider-cancelled"));
+            pending?.reject(codedError("provider-cancelled"));
         };
         if (signal) signal.addEventListener("abort", onAbort, { once: true });
         client.pending.set(requestId, {
@@ -543,12 +528,12 @@ function subscribeProviderStatus(
 }
 
 function providerWritable(boardRoot: string, type: string): boolean | undefined {
-    const client = clients.get(normalizeRoot(boardRoot));
+    const client = clients.get(BoardRoot.from(boardRoot).key);
     return client?.capabilities.get(type);
 }
 
 function providerRangeReadable(boardRoot: string, type: string): boolean | undefined {
-    const client = clients.get(normalizeRoot(boardRoot));
+    const client = clients.get(BoardRoot.from(boardRoot).key);
     return client?.rangeCapabilities.get(type);
 }
 
@@ -556,7 +541,7 @@ function providerRangeReadable(boardRoot: string, type: string): boolean | undef
  *  service. Mirrors `providerWritable`/`providerRangeReadable`'s shape —
  *  a plain getter, no new subscription primitive. */
 function activeContentReads(boardRoot: string): number {
-    return clients.get(normalizeRoot(boardRoot))?.activeContentReads ?? 0;
+    return clients.get(BoardRoot.from(boardRoot).key)?.activeContentReads ?? 0;
 }
 
 function dispose(): void {

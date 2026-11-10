@@ -2,7 +2,7 @@ import { TDialogModel } from "../../core/state/model";
 import { TComponentState } from "../../core/state/state";
 import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
-import { createBoardFromTemplate } from "../../editors/board/board-scaffold";
+import { createBoardFromTemplate } from "../../api/boards/board-scaffold";
 import { errMessage } from "../../../shared/utils";
 import { showDialog } from "./Dialogs";
 import { registerDialogView } from "./dialog-view-registry";

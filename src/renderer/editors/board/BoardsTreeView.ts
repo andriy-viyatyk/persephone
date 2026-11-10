@@ -8,8 +8,9 @@ import { createFolderIconElement } from "../../components/icons/icon-elements";
 import { subscribeBoardIconChanges } from "./board-icon-cache";
 import { createBoardGlyphElement } from "./board-glyph-element";
 import { buildBoardsTree, type BoardTreeNode } from "./boards-tree-build";
-import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText, onBoardDisplayTextChanged } from "./board-display-text";
-import { readNormalizedBoardManifest, type NormalizedBoardManifest } from "./board-manifest";
+import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
+import { readBoardManifest } from "../../api/boards/board-manifest-io";
+import { type NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
 
 export interface BoardsTreeViewProps {
     name?: string;
@@ -157,7 +158,7 @@ export class BoardsTreeView extends VanillaView<BoardsTreeViewProps> {
     private warmBoard(root: string): void {
         if (this.warmedRoots.has(root)) return;
         this.warmedRoots.add(root);
-        void readNormalizedBoardManifest(root).then((manifest) => {
+        void readBoardManifest(root).then((manifest) => {
             if (!manifest) return;
             this.manifests.set(root, manifest);
             return ensureBoardDisplayText(root, manifest);

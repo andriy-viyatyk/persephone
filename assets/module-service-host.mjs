@@ -10,11 +10,50 @@ if (!parentPort || !serviceEntry) {
     process.exit(1);
 }
 
-// Tail-ack delay (mirrors SERVICE_CHANNEL_ACK_DELAY_MS): each port message is its own task, so a microtask would ack every message.
-const SERVICE_CHANNEL_ACK_DELAY_MS = 10;
-const storagePending = new Map();
-const mcpEndpointPending = new Map();
-const boardSettingsPending = new Map();
+// â”€â”€ MIRROR of src/shared/pending-requests.ts + src/shared/wire-error.ts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// The check confirms member names and the default wire code; it cannot prove behavior across languages.
+const WIRE_ERROR_DEFAULT_CODE = "error";
+class PendingRequests {
+    #entries = new Map();
+    constructor(options = {}) { this.nextId = options.nextId; }
+    get size() { return this.#entries.size; }
+    create(timeoutMs, _signal, extra = {}) {
+        const id = extra.id ?? this.nextId();
+        if (this.#entries.has(id)) throw new Error("Duplicate pending request id");
+        let resolve;
+        let reject;
+        const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+        const entry = { resolve, reject, timer: undefined };
+        this.#entries.set(id, entry);
+        if (timeoutMs > 0) entry.timer = setTimeout(() => this.fail(id, (extra.timeoutError ?? (() => new Error("Request timed out.")))()), timeoutMs);
+        return { id, promise };
+    }
+    settle(id, value) {
+        const entry = this.#take(id);
+        if (!entry) return false;
+        entry.resolve(value);
+        return true;
+    }
+    fail(id, error) {
+        const entry = this.#take(id);
+        if (!entry) return false;
+        entry.reject(error);
+        return true;
+    }
+    failAll(error) { for (const id of this.#entries.keys()) this.fail(id, error); }
+    clear() { for (const id of this.#entries.keys()) this.#take(id); }
+    #take(id) {
+        const entry = this.#entries.get(id);
+        if (!entry) return undefined;
+        this.#entries.delete(id);
+        if (entry.timer !== undefined) clearTimeout(entry.timer);
+        return entry;
+    }
+}
+// â”€â”€ end mirror â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const storagePending = new PendingRequests({ nextId: () => `storage-${process.pid}-${Date.now()}-${++requestNumber}` });
+const mcpEndpointPending = new PendingRequests({ nextId: () => `mcp-${process.pid}-${Date.now()}-${++requestNumber}` });
+const boardSettingsPending = new PendingRequests({ nextId: () => `board-settings-${process.pid}-${Date.now()}-${++requestNumber}` });
 const boardSettingsCallbacks = new Set();
 const activeMcpEndpoints = new Set();
 let boardSettingsSubscriptionId;
@@ -33,6 +72,15 @@ function errorMessage(error, fallback) {
         return error.message;
     }
     return fallback;
+}
+
+function settleMainResponse(pending, message, failureFallback, successValue, hasError) {
+    if (hasError(message)) {
+        pending.fail(message.requestId, codedError(
+            typeof message.error === "string" ? "service-error" : message.error?.code ?? "service-error",
+            errorMessage(message.error, failureFallback),
+        ));
+    } else pending.settle(message.requestId, successValue(message));
 }
 
 function isRecord(value) {
@@ -89,67 +137,29 @@ function copyProviderStatus(value) {
 }
 
 async function storageRequest(operation, args) {
-    await configReady;
-    if (storagePending.size >= hostConfig.maxOutstandingRequestsPerService) {
-        return Promise.reject(Object.assign(new Error("Service is busy."), { code: "service-busy" }));
-    }
-    const requestId = `storage-${process.pid}-${Date.now()}-${++requestNumber}`;
-    return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => {
-            storagePending.delete(requestId);
-            reject(new Error("service-timeout"));
-        }, hostConfig.serviceRequestDeadlineMs);
-        storagePending.set(requestId, { resolve, reject, timer });
-        try {
-            parentPort.postMessage({ kind: "storage-request", requestId, operation, args });
-        } catch {
-            clearTimeout(timer);
-            storagePending.delete(requestId);
-            reject(new Error("service-exited"));
-        }
-    });
+    return mainRequest(storagePending, "storage-request", { operation, args }, { timeoutMessage: "service-timeout", exitedMessage: "service-exited" });
 }
 
 async function mcpEndpointRequest(operation, token) {
-    await configReady;
-    if (mcpEndpointPending.size >= hostConfig.maxOutstandingRequestsPerService) {
-        throw Object.assign(new Error("Service is busy."), { code: "service-busy" });
-    }
-    const requestId = `mcp-${process.pid}-${Date.now()}-${++requestNumber}`;
-    return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => {
-            mcpEndpointPending.delete(requestId);
-            reject(Object.assign(new Error("Service request timed out."), { code: "service-timeout" }));
-        }, hostConfig.serviceRequestDeadlineMs);
-        mcpEndpointPending.set(requestId, { resolve, reject, timer });
-        try { parentPort.postMessage({ kind: "mcp-endpoint-request", requestId, operation, ...(token ? { token } : {}) }); }
-        catch {
-            clearTimeout(timer);
-            mcpEndpointPending.delete(requestId);
-            reject(Object.assign(new Error("The service has exited."), { code: "service-exited" }));
-        }
-    });
+    return mainRequest(mcpEndpointPending, "mcp-endpoint-request", { operation, ...(token ? { token } : {}) },
+        { timeoutMessage: "Service request timed out.", exitedMessage: "The service has exited." });
 }
 
 async function boardSettingsRequest(kind, fields = {}) {
+    return mainRequest(boardSettingsPending, kind, fields,
+        { timeoutMessage: "Service request timed out.", exitedMessage: "The service has exited." });
+}
+
+const codedError = (code, message = code) => Object.assign(new Error(message), { code });
+
+async function mainRequest(pending, kind, fields, { exitedMessage, timeoutMessage }) {
     await configReady;
-    if (boardSettingsPending.size >= hostConfig.maxOutstandingRequestsPerService) {
-        throw Object.assign(new Error("Service is busy."), { code: "service-busy" });
-    }
-    const requestId = `board-settings-${process.pid}-${Date.now()}-${++requestNumber}`;
-    return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => {
-            boardSettingsPending.delete(requestId);
-            reject(Object.assign(new Error("Service request timed out."), { code: "service-timeout" }));
-        }, hostConfig.serviceRequestDeadlineMs);
-        boardSettingsPending.set(requestId, { resolve, reject, timer });
-        try { parentPort.postMessage({ kind, requestId, ...fields }); }
-        catch {
-            clearTimeout(timer);
-            boardSettingsPending.delete(requestId);
-            reject(Object.assign(new Error("The service has exited."), { code: "service-exited" }));
-        }
-    });
+    if (pending.size >= hostConfig.maxOutstandingRequestsPerService) throw codedError("service-busy", "Service is busy.");
+    const { id: requestId, promise } = pending.create(hostConfig.serviceRequestDeadlineMs, undefined,
+        { timeoutError: () => codedError("service-timeout", timeoutMessage) });
+    try { parentPort.postMessage({ kind, requestId, ...fields }); }
+    catch { pending.fail(requestId, codedError("service-exited", exitedMessage)); }
+    return promise;
 }
 
 function assertHostSettingsApi() {
@@ -344,7 +354,7 @@ function settleCapabilityClient(requestId) {
     if (!pending.result.ok) {
         pending.port?.close();
         pending.reject(Object.assign(new Error(pending.result.error.message), { code: pending.result.error.code }));
-    } else pending.resolve(pending.channel ? makeServiceChannel(`client:${requestId}`, pending.port) : pending.result.value);
+    } else pending.resolve(pending.channel ? makeServiceChannel(`client:${requestId}`, pending.port, "capability") : pending.result.value);
 }
 
 const persephone = globalThis.persephone ?? {};
@@ -828,11 +838,7 @@ async function runShutdown(message) {
     shutdownStarted = true;
     boardSettingsCallbacks.clear();
     boardSettingsSubscriptionId = undefined;
-    for (const [requestId, pending] of boardSettingsPending) {
-        clearTimeout(pending.timer);
-        pending.reject(Object.assign(new Error("The service has exited."), { code: "service-exited" }));
-        boardSettingsPending.delete(requestId);
-    }
+    boardSettingsPending.failAll(codedError("service-exited", "The service has exited."));
     for (const channel of [...serviceChannels.values()]) channel.close({ code: "service-exited", message: "The board service is shutting down." });
     let failed = false;
     for (const endpoint of [...activeMcpEndpoints]) {
@@ -850,73 +856,138 @@ async function runShutdown(message) {
     process.exit(failed ? 1 : 0);
 }
 
-function makeServiceChannel(channelId, port) {
-    const messageHandlers = new Set();
-    const closeHandlers = new Set();
-    const writableWaiters = new Set();
-    let closed = false;
-    let closeReason;
-    let outgoingSequence = 0;
-    let acknowledgedSequence = 0;
-    let incomingSequence = 0;
-    let lastAck = 0;
+// ----- MIRROR of src/shared/service-channel.ts -----
+// This catches renamed members and changed constants, but cannot prove two implementations behave identically.
+const SERVICE_CHANNEL_ACK_DELAY_MS = 10;
+const SERVICE_CHANNEL_WIRE_KINDS = ["data", "ack", "close"];
+const SERVICE_CHANNEL_CODES = {
+    backpressure: "channel-backpressure",
+    tooLarge: "payload-too-large",
+    notCloneable: "rejected",
+    closed: "channel-closed",
+};
+const SERVICE_CHANNEL_PEER_GONE = {
+    service: { code: "service-exited", message: "The channel peer disconnected." },
+    capability: { code: "handler-closed", message: "The channel peer disconnected." },
+};
+function electronPort(port) {
+    return {
+        post: (frame) => port.postMessage(frame),
+        start: ({ onMessage, onClose }) => {
+            port.on("message", (event) => onMessage(eventData(event)));
+            port.on("close", () => onClose());
+            port.start();
+        },
+        close: () => { try { port.close(); } catch { /* already closed */ } },
+    };
+}
+function createServiceChannel(port, options) {
+    const listeners = new Set();
+    const closeListeners = new Set();
+    const waiters = new Set();
+    const early = [];
+    let ended;
+    let sent = 0;
+    let acknowledged = 0;
+    let received = 0;
+    let delivered = 0;
+    let acknowledgedIncoming = 0;
     let ackQueued = false;
-    const notifyClose = (reason) => {
-        if (closed) return;
-        closed = true;
-        closeReason = reason;
-        serviceChannels.delete(channelId);
-        try { port.close(); } catch { /* closed */ }
-        for (const waiter of writableWaiters) waiter.reject(Object.assign(new Error(reason.message), { code: reason.code }));
-        writableWaiters.clear();
-        for (const handler of closeHandlers) { try { handler(reason); } catch (error) { console.error(error); } }
-        closeHandlers.clear();
-        messageHandlers.clear();
-        try { parentPort.postMessage({ kind: "channel-ended", channelId }); } catch { /* exiting */ }
+    const end = (reason) => {
+        if (ended) return;
+        ended = reason;
+        early.length = 0;
+        port.close();
+        try { options.onEnd?.(); } catch (error) { console.error(error); }
+        for (const waiter of waiters) waiter.reject(codedError(reason.code, reason.message));
+        waiters.clear();
+        for (const listener of closeListeners) { try { listener(reason); } catch (error) { console.error(error); } }
+        closeListeners.clear();
+        listeners.clear();
     };
-    const channel = {
-        send(value) {
-            if (closed) throw Object.assign(new Error(closeReason?.message ?? "Channel is closed."), { code: closeReason?.code ?? "service-exited" });
-            if (outgoingSequence - acknowledgedSequence >= hostConfig.maxServiceChannelInFlight) throw Object.assign(new Error("Channel send window is full."), { code: "channel-backpressure" });
-            let bytes;
-            try { bytes = serialize(value).byteLength; }
-            catch { throw Object.assign(new Error("Channel message is not structured-cloneable."), { code: "service-error" }); }
-            if (bytes > hostConfig.maxServiceChannelMessageBytes) throw Object.assign(new Error("Service channel message exceeds 1 MiB."), { code: "channel-message-too-large" });
-            const sequence = ++outgoingSequence;
-            try { port.postMessage({ kind: "data", sequence, value }); }
-            catch (error) { throw Object.assign(new Error(errorMessage(error, "Channel send failed.")), { code: "service-error" }); }
-        },
-        onMessage(handler) { messageHandlers.add(handler); return () => messageHandlers.delete(handler); },
-        onClose(handler) { if (closed) handler(closeReason); else closeHandlers.add(handler); return () => closeHandlers.delete(handler); },
-        close(reason = { code: "channel-closed", message: "The service closed the channel." }) {
-            if (closed) return;
-            try { port.postMessage({ kind: "close", reason }); } catch { /* peer may be gone */ }
-            notifyClose(reason);
-        },
-        get writable() { return !closed && outgoingSequence - acknowledgedSequence < hostConfig.maxServiceChannelInFlight; },
-        whenWritable() {
-            if (closed) return Promise.reject(Object.assign(new Error(closeReason.message), { code: closeReason.code }));
-            if (outgoingSequence - acknowledgedSequence < hostConfig.maxServiceChannelInFlight) return Promise.resolve();
-            return new Promise((resolve, reject) => writableWaiters.add({ resolve, reject }));
-        },
+    const flushAck = () => {
+        ackQueued = false;
+        if (ended || delivered <= acknowledgedIncoming) return;
+        acknowledgedIncoming = delivered;
+        try { port.post({ kind: "ack", sequence: delivered }); } catch { /* peer gone: the close event follows */ }
     };
-    port.on("message", (event) => {
-        const message = eventData(event);
-        if (!isRecord(message)) return;
-        if (message.kind === "ack" && Number.isSafeInteger(message.sequence) && message.sequence > acknowledgedSequence) {
-            acknowledgedSequence = Math.min(message.sequence, outgoingSequence);
-            for (const waiter of writableWaiters) waiter.resolve();
-            writableWaiters.clear();
-        } else if (message.kind === "data" && Number.isSafeInteger(message.sequence)) {
-            if (message.sequence !== incomingSequence + 1) return;
-            incomingSequence = message.sequence;
-            for (const handler of messageHandlers) { try { handler(message.value); } catch (error) { console.error(error); } }
-            if (incomingSequence - lastAck >= hostConfig.serviceChannelAckBatch) { lastAck = incomingSequence; port.postMessage({ kind: "ack", sequence: lastAck }); }
-            else if (!ackQueued) { ackQueued = true; setTimeout(() => { ackQueued = false; if (!closed && incomingSequence > lastAck) { lastAck = incomingSequence; port.postMessage({ kind: "ack", sequence: lastAck }); } }, SERVICE_CHANNEL_ACK_DELAY_MS); }
-        } else if (message.kind === "close") notifyClose(message.reason ?? { code: "service-exited", message: "The channel peer closed." });
+    const noteDelivered = () => {
+        delivered++;
+        if (delivered - acknowledgedIncoming >= hostConfig.serviceChannelAckBatch) flushAck();
+        else if (!ackQueued) { ackQueued = true; setTimeout(flushAck, SERVICE_CHANNEL_ACK_DELAY_MS); }
+    };
+    const dispatch = (value) => {
+        for (const listener of [...listeners]) { try { listener(value); } catch (error) { console.error(error); } }
+        noteDelivered();
+    };
+    port.start({
+        onMessage(data) {
+            if (!isRecord(data)) return;
+            const frame = data;
+            if (frame.kind === "ack" && Number.isSafeInteger(frame.sequence)) {
+                acknowledged = Math.max(acknowledged, Math.min(frame.sequence, sent));
+                for (const waiter of waiters) waiter.resolve();
+                waiters.clear();
+            } else if (frame.kind === "data" && frame.sequence === received + 1) {
+                received = frame.sequence;
+                if (listeners.size === 0) early.push(frame.value); else dispatch(frame.value);
+            } else if (frame.kind === "close") {
+                const reason = isRecord(frame.reason) && typeof frame.reason.code === "string" && frame.reason.code.length > 0 && typeof frame.reason.message === "string"
+                    ? frame.reason : { code: SERVICE_CHANNEL_CODES.closed, message: "Channel closed." };
+                end(reason);
+            }
+        },
+        onInvalid: () => end({ code: SERVICE_CHANNEL_PEER_GONE[options.kind].code, message: "The channel received an invalid message." }),
+        onClose: () => end(SERVICE_CHANNEL_PEER_GONE[options.kind]),
     });
-    port.on("close", () => notifyClose({ code: "service-exited", message: "The channel peer disconnected." }));
-    port.start();
+    return {
+        get writable() { return !ended && sent - acknowledged < hostConfig.maxServiceChannelInFlight; },
+        send(value) {
+            if (ended) throw codedError(ended.code, ended.message);
+            if (sent - acknowledged >= hostConfig.maxServiceChannelInFlight) throw codedError(SERVICE_CHANNEL_CODES.backpressure, "Channel send window is full.");
+            let bytes;
+            try { bytes = options.measureBytes(value); }
+            catch { throw codedError(SERVICE_CHANNEL_CODES.notCloneable, "Channel message is not cloneable."); }
+            if (bytes > hostConfig.maxServiceChannelMessageBytes) throw codedError(SERVICE_CHANNEL_CODES.tooLarge, "Channel message is too large.");
+            const sequence = sent + 1;
+            try { port.post({ kind: "data", sequence, value }); }
+            catch (error) { throw codedError(SERVICE_CHANNEL_CODES.notCloneable, errorMessage(error, "Channel message is not cloneable.")); }
+            sent = sequence;
+        },
+        whenWritable() {
+            if (ended) return Promise.reject(codedError(ended.code, ended.message));
+            if (sent - acknowledged < hostConfig.maxServiceChannelInFlight) return Promise.resolve();
+            return new Promise((resolve, reject) => waiters.add({ resolve, reject }));
+        },
+        onMessage(listener) {
+            if (ended) return () => undefined;
+            listeners.add(listener);
+            if (early.length) for (const value of early.splice(0)) dispatch(value);
+            return () => { listeners.delete(listener); };
+        },
+        onClose(listener) {
+            if (ended) { try { listener(ended); } catch (error) { console.error(error); } return () => undefined; }
+            closeListeners.add(listener);
+            return () => { closeListeners.delete(listener); };
+        },
+        close(reason = { code: SERVICE_CHANNEL_CODES.closed, message: "Channel closed." }) {
+            if (ended) return;
+            try { port.post({ kind: "close", reason }); } catch { /* peer gone */ }
+            end(reason);
+        },
+    };
+}
+// ----- end mirror -----
+
+function makeServiceChannel(channelId, port, kind = "service") {
+    const channel = createServiceChannel(electronPort(port), {
+        kind,
+        measureBytes: (value) => serialize(value).byteLength,
+        onEnd: () => {
+            serviceChannels.delete(channelId);
+            try { parentPort.postMessage({ kind: "channel-ended", channelId }); } catch { /* exiting */ }
+        },
+    });
     serviceChannels.set(channelId, channel);
     return channel;
 }
@@ -1090,58 +1161,23 @@ originalPortMethods.on("message", (event) => {
         return;
     }
     if (message.kind === "storage-response" && typeof message.requestId === "string") {
-        const request = storagePending.get(message.requestId);
-        if (request) {
-            clearTimeout(request.timer);
-            storagePending.delete(message.requestId);
-            if ("error" in message) request.reject(Object.assign(
-                new Error(errorMessage(message.error, "Service storage request failed.")),
-                { code: typeof message.error === "string" ? "service-error" : message.error?.code ?? "service-error" },
-            ));
-            else request.resolve(message.result);
-        }
+        settleMainResponse(storagePending, message, "Service storage request failed.", (value) => value.result, (value) => "error" in value);
         forwardEntryEvent(event, message);
         return;
     }
     if (message.kind === "mcp-endpoint-response" && typeof message.requestId === "string") {
-        const request = mcpEndpointPending.get(message.requestId);
-        if (request) {
-            clearTimeout(request.timer);
-            mcpEndpointPending.delete(message.requestId);
-            if (message.error) request.reject(Object.assign(
-                new Error(errorMessage(message.error, "MCP endpoint request failed.")),
-                { code: message.error.code ?? "service-error" },
-            ));
-            else request.resolve(message.result);
-        }
+        settleMainResponse(mcpEndpointPending, message, "MCP endpoint request failed.", (value) => value.result, (value) => Boolean(value.error));
         forwardEntryEvent(event, message);
         return;
     }
     if (message.kind === "board-settings-response" && typeof message.requestId === "string") {
-        const request = boardSettingsPending.get(message.requestId);
-        if (request) {
-            clearTimeout(request.timer);
-            boardSettingsPending.delete(message.requestId);
-            if (message.error) request.reject(Object.assign(
-                new Error(errorMessage(message.error, "Board settings request failed.")),
-                { code: message.error.code ?? "service-error" },
-            ));
-            else request.resolve(message.result);
-        }
+        settleMainResponse(boardSettingsPending, message, "Board settings request failed.", (value) => value.result, (value) => Boolean(value.error));
         forwardEntryEvent(event, message);
         return;
     }
     if (message.kind === "board-settings-subscribe-response" || message.kind === "board-settings-unsubscribe-response") {
-        const request = typeof message.requestId === "string" ? boardSettingsPending.get(message.requestId) : undefined;
-        if (request) {
-            clearTimeout(request.timer);
-            boardSettingsPending.delete(message.requestId);
-            if (message.error) request.reject(Object.assign(
-                new Error(errorMessage(message.error, "Board settings subscription failed.")),
-                { code: message.error.code ?? "service-error" },
-            ));
-            else request.resolve();
-        }
+        if (typeof message.requestId === "string") settleMainResponse(boardSettingsPending, message,
+            "Board settings subscription failed.", () => undefined, (value) => Boolean(value.error));
         forwardEntryEvent(event, message);
         return;
     }
@@ -1218,11 +1254,8 @@ process.on("exit", () => {
     for (const controller of capabilityRequests.values()) controller.abort();
     capabilityRequests.clear();
     for (const lease of [...rendererLeases.values()]) closeRendererLease(lease, "service-exited");
-    for (const request of storagePending.values()) clearTimeout(request.timer);
     storagePending.clear();
-    for (const request of mcpEndpointPending.values()) clearTimeout(request.timer);
     mcpEndpointPending.clear();
-    for (const request of boardSettingsPending.values()) clearTimeout(request.timer);
     boardSettingsPending.clear();
     boardSettingsCallbacks.clear();
     boardSettingsSubscriptionId = undefined;

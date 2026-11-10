@@ -1,6 +1,6 @@
 import { t } from "../../../shared/i18n/t";
 import { app } from "../../api/app";
-import { boardTrust } from "../../api/board-trust";
+import { boardTrust } from "../../api/boards/board-trust";
 import { settings } from "../../api/settings";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
@@ -11,7 +11,7 @@ import { getCreatableItems, getCreatableItemLabel } from "../sidebar/tools-edito
 import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
 import { fpBasename } from "../../core/utils/file-path";
 import { buildBoardsTree } from "../../editors/board/boards-tree-build";
-import { boardDisplayText, boardMetadataKeys, onBoardDisplayTextChanged } from "../../editors/board/board-display-text";
+import { boardDisplayText, boardMetadataKeys, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
 import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
 import { pagesModel } from "../../api/pages";
 import { InputView } from "../../uikit/Input/InputView";

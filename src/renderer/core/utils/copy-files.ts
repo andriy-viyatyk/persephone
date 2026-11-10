@@ -4,6 +4,7 @@
 
 import { fs } from "../../api/fs";
 import { fpBasename, fpJoin, fpNormalizeForCompare } from "./file-path";
+import { isKeyInside } from "../../../shared/path-containment";
 import { beginPathMove, completePathMove } from "../../api/path-watch";
 
 export interface CopyPathsOptions {
@@ -57,7 +58,7 @@ export async function copyPathsInto(
         if (fpNormalizeForCompare(fpJoin(targetDir, fpBasename(src))) === srcCmp) {
             continue; // already in the target folder — nothing to do
         }
-        if (stat.isDirectory && (targetCmp === srcCmp || targetCmp.startsWith(srcCmp + "/"))) {
+        if (stat.isDirectory && isKeyInside(srcCmp, targetCmp)) {
             throw new Error(`Cannot paste folder "${fpBasename(src)}" into itself.`);
         }
         sources.push({

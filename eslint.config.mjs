@@ -749,6 +749,26 @@ export default tseslint.config(
         },
     },
 
+    // US-1824: api/ may construct board editors only at its three documented exception sites.
+    {
+        files: ["src/renderer/api/**/*.ts"],
+        ignores: [
+            // Exceptions E1-E3 are documented in doc/tasks/US-1824-api-boards-move/README.md.
+            "src/renderer/api/pages/PagesLifecycleModel.ts",
+            "src/renderer/api/pages/PagesPersistenceModel.ts",
+            "src/renderer/api/boards.ts",
+        ],
+        rules: {
+            "import/no-restricted-paths": ["error", {
+                zones: [{
+                    target: "./src/renderer/api",
+                    from: "./src/renderer/editors/board",
+                    message: "api/ must not import editors/board/. Board domain modules live in api/boards/ (US-1824).",
+                }],
+            }],
+        },
+    },
+
     // C4-1: av-grid is reached only through uikit/DataGrid, so a later decision to vendor the
     // library's source changes one folder instead of every consumer.
     {

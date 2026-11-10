@@ -3,6 +3,17 @@ import path from 'path';
 import fs from 'fs';
 import { app } from 'electron';
 import type { LaunchInput } from "../shared/launch-input";
+import { isKeyInside, type PathContainmentOptions } from "../shared/path-containment";
+
+/** Comparison key for non-board paths. Board roots use BoardRoot.key. */
+export function comparePathKey(filePath: string): string {
+    const resolved = path.resolve(filePath).replace(/\\/g, "/").replace(/\/+$/, "");
+    return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+}
+
+export function isPathInside(parent: string, child: string, options?: PathContainmentOptions): boolean {
+    return isKeyInside(comparePathKey(parent), comparePathKey(child), options);
+}
 
 export const preparePath = (dirPath: string): boolean => {
     if (!fs.existsSync(dirPath)) {

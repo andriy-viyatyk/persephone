@@ -7,7 +7,7 @@ import { Endpoint } from "../api-types";
 import { boardPipeService } from "../../main/board-pipe-service";
 import { guardedIpcOn } from "../../main/ipc-sender-guard";
 import { bindEndpoint } from "./endpoint-registry";
-import { normalizeBoardRoot } from "../../main/board-root-key";
+import { BoardRoot } from "../../shared/board/board-root";
 
 export function initBoardPipeHandlers(): void {
     bindEndpoint(
@@ -16,8 +16,8 @@ export function initBoardPipeHandlers(): void {
             if (hostedDocument && !boardRoot) throw new Error("A hosted document pipe requires its host-owned board root.");
             if (boardRoot) {
                 const registeredRoot = host ? (await import("../../main/board-protocol-service")).getBoardRootForHost(host) : undefined;
-                if (!registeredRoot || normalizeBoardRoot(registeredRoot) !== normalizeBoardRoot(boardRoot)) throw new Error("The board pipe host does not own this board root.");
-                const permissions = await (await import("../../main/board-trust-service")).boardTrustService.getGrantedPermissions(boardRoot);
+                if (!registeredRoot || !BoardRoot.from(registeredRoot).equals(boardRoot)) throw new Error("The board pipe host does not own this board root.");
+                const permissions = await (await import("../../main/board-trust-service")).boardTrustService.getGrant(boardRoot);
                 if (!permissions) throw new Error("This board is not trusted.");
             }
             boardPipeService.registerPage(pageId, event.sender, host, boardRoot, hostedDocument);
@@ -37,13 +37,13 @@ export function initBoardPipeHandlers(): void {
             }
             if (boardRoot) {
                 const registeredRoot = (await import("../../main/board-protocol-service")).getBoardRootForHost(host);
-                if (!registeredRoot || normalizeBoardRoot(registeredRoot) !== normalizeBoardRoot(boardRoot)) throw new Error("The board pipe host does not own this board root.");
+                if (!registeredRoot || !BoardRoot.from(registeredRoot).equals(boardRoot)) throw new Error("The board pipe host does not own this board root.");
                 const { boardTrustService } = await import("../../main/board-trust-service");
-                const permissions = await boardTrustService.getGrantedPermissions(boardRoot);
+                const permissions = await boardTrustService.getGrant(boardRoot);
                 if (!permissions) throw new Error("This board is not trusted.");
                 if (filePath !== undefined) {
                     await (await import("../../main/board-file-access")).resolveAuthorizedPath({
-                        boardRoot, requestedPath: filePath, permissions, intent: "read",
+                        boardRoot, requestedPath: filePath, grant: permissions, intent: "read",
                     });
                 }
             }

@@ -22,7 +22,7 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { Cleanup } from "../../core/utils/DisposableStore";
 import { createIconElement } from "../../uikit/shared/slots";
 import { fpBasename, fpDirname } from "../../core/utils/file-path";
-import { BOARD_MANIFEST_FILE } from "../board/board-manifest";
+import { BOARD_MANIFEST_FILE } from "../../../shared/board/board-manifest-schema";
 import type { ExplorerEditor } from "./ExplorerEditorModel";
 import "../../uikit/IconButton/IconButton.css";
 import { t } from "../../../shared/i18n/t";

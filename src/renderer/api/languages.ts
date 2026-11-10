@@ -9,6 +9,7 @@ import { fpJoin } from "../core/utils/file-path";
 import { fs } from "./fs";
 import { flushSettingsSave, settings } from "./settings";
 import { api } from "../../ipc/renderer/api";
+import { validateBoardLanguagePack } from "./boards/board-i18n";
 import type {
     BoardValidationView,
     EnglishCatalogEntryView,
@@ -234,7 +235,6 @@ export const languages: ILanguages = {
     },
 
     async validateBoard(boardRoot: string, code: string): Promise<BoardValidationView> {
-        const { validateBoardLanguagePack } = await import("../editors/board/board-i18n");
         return await validateBoardLanguagePack(boardRoot, code);
     },
 

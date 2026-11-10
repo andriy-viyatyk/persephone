@@ -1,16 +1,16 @@
 import { pagesModel } from "../pages";
-import { isBoardPermitted } from "../../editors/board/board-access";
+import { isBoardPermitted } from "../boards/board-access";
 import { ScriptContext } from "../../scripting/ScriptContext";
 import { resolveAiCall } from "../../scripting/ai-vision/call";
 import { UNBOUNDED_CALL_MAX_LENGTH } from "../../scripting/ai-vision/call-limits";
 import { errMessage } from "../../../shared/utils";
 import type { McpParams, McpResponse } from "./types";
 import { isPositiveIntegerTimeout } from "../../../shared/ai-vision-timeout";
-import { boardTrust } from "../board-trust";
-import { boardPermissionError } from "../../../shared/board-manifest-utils";
+import { boardTrust } from "../boards/board-trust";
+import { BoardGrant } from "../../../shared/board/board-grant";
 import { app } from "../app";
 import { getPreviewGeneration } from "../../theme/themes";
-import type { BoardEditorModel } from "../../editors/board/BoardEditorModel";
+import { asBoardHostEditor } from "../boards/board-host-editor";
 
 const BOARD_THEME_METHODS = new Set([
     "list", "get", "current", "derive", "contrast", "fork", "file", "save", "rename", "delete", "apply", "preview", "endPreview",
@@ -100,7 +100,7 @@ export async function handleBoardCall(params: McpParams): Promise<McpResponse> {
             const method = themeMatch[1];
             if (!BOARD_THEME_METHODS.has(method)) return { error: { code: -32603, message: `Unknown board themes method: ${method}` } };
             if (!(await boardTrust.allows(boardRoot, "themes"))) {
-                return { error: { code: -32603, message: boardPermissionError("themes").message } };
+                return { error: { code: -32603, message: BoardGrant.deny("themes").message } };
             }
             const boardId = typeof params?.boardId === "string" ? params.boardId : "";
             const args = cloneJson(request.args ?? []) as unknown[];
@@ -112,13 +112,13 @@ export async function handleBoardCall(params: McpParams): Promise<McpResponse> {
                 result = await service[method](...(value !== undefined ? [value] : args));
             }
             if (method === "preview" && boardId) {
-                (boardEditor as BoardEditorModel).recordBoardThemePreview(boardId, getPreviewGeneration());
+                asBoardHostEditor(boardEditor)?.recordBoardThemePreview(boardId, getPreviewGeneration());
             }
             const safeResult = cloneJson(result === undefined ? null : result);
             return { result: safeResult };
         }
         if (!(await boardTrust.allows(boardRoot, "appScripting"))) {
-            return { error: { code: -32603, message: boardPermissionError("appScripting").message } };
+            return { error: { code: -32603, message: BoardGrant.deny("appScripting").message } };
         }
         const result = await resolveAiCall(context, request, undefined, {
             page: context.page,

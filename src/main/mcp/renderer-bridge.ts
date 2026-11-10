@@ -3,6 +3,8 @@ import { openWindows } from "../open-windows";
 import { MCP_EXECUTE, MCP_RESULT } from "../../shared/constants";
 import { McpResponse } from "./types";
 import { guardedIpcOn } from "../ipc-sender-guard";
+import { PendingRequestError, PendingRequests } from "../../shared/pending-requests";
+import { errMessage } from "../../shared/utils";
 
 // ── IPC Bridge (main ↔ renderer) ───────────────────────────────────
 // Reuses the same MCP_EXECUTE/MCP_RESULT channels as the old pipe server.
@@ -12,11 +14,14 @@ export const RENDERER_REQUEST_TIMEOUT_MESSAGE = "Request timeout";
 
 let ipcInitialized = false;
 let requestIdGen = 0;
-const pendingRequests = new Map<string, { resolve: (response: McpResponse) => void; startedAt: number }>();
+const pendingRequests = new PendingRequests<McpResponse, { startedAt: number }, string>({
+    nextId: () => `mcp_${++requestIdGen}_${Date.now()}`,
+    timeoutError: () => new PendingRequestError("timeout", RENDERER_REQUEST_TIMEOUT_MESSAGE),
+});
 
 export function hasRecentRendererRequest(windowMs = 5000): boolean {
     const now = Date.now();
-    return Array.from(pendingRequests.values()).some(request => now - request.startedAt <= windowMs);
+    return pendingRequests.some((meta) => now - meta.startedAt <= windowMs);
 }
 
 export function initMcpIpc(): void {
@@ -24,11 +29,7 @@ export function initMcpIpc(): void {
     ipcInitialized = true;
 
     guardedIpcOn(MCP_RESULT, (_event, requestId: string, response: McpResponse) => {
-        const request = pendingRequests.get(requestId);
-        if (request) {
-            pendingRequests.delete(requestId);
-            request.resolve(response);
-        }
+        pendingRequests.settle(requestId, response);
     });
 }
 
@@ -58,26 +59,16 @@ export async function sendToRenderer(method: string, params: unknown, windowInde
         await windowData.whenReady;
     }
 
-    const requestId = `mcp_${++requestIdGen}_${Date.now()}`;
     const effectiveTimeout = timeoutMs ?? REQUEST_TIMEOUT_MS;
-
-    return new Promise((resolve) => {
-        let timer: ReturnType<typeof setTimeout> | undefined;
-
-        if (effectiveTimeout > 0) {
-            timer = setTimeout(() => {
-                pendingRequests.delete(requestId);
-                resolve({ error: { code: -32603, message: RENDERER_REQUEST_TIMEOUT_MESSAGE } });
-            }, effectiveTimeout);
-        }
-
-        pendingRequests.set(requestId, { startedAt: Date.now(), resolve: (response) => {
-            if (timer) clearTimeout(timer);
-            resolve(response);
-        } });
-
+    const { id: requestId, promise } = pendingRequests.create(effectiveTimeout, undefined, { meta: { startedAt: Date.now() } });
+    const response = promise.catch((error: unknown): McpResponse => ({ error: { code: -32603, message: errMessage(error) } }));
+    try {
         windowData.window.window.webContents.send(MCP_EXECUTE, requestId, method, params);
-    });
+    } catch (error) {
+        pendingRequests.fail(requestId, error);
+        throw error;
+    }
+    return response;
 }
 
 /** Send through the existing correlated renderer transport to a specific host WebContents. */
@@ -97,8 +88,5 @@ export function sendToRendererForWebContents(
 
 /** Resolve every in-flight renderer request with an error (server shutdown). */
 export function cancelPendingRequests(message: string): void {
-    for (const [, request] of pendingRequests) {
-        request.resolve({ error: { code: -32603, message } });
-    }
-    pendingRequests.clear();
+    pendingRequests.failAll(new Error(message));
 }

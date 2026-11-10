@@ -38,7 +38,7 @@ export async function pipeFromLink(
     options: {
         unknownScheme?: "reject" | "file";
         sessionHandle?: string;
-        boardNetworkPolicy?: import("../api/node-fetch").BoardNetworkPolicy;
+        boardNetworkPolicy?: import("../../shared/board/board-grant").BoardNetworkPolicy;
     } = { unknownScheme: "reject" },
 ): Promise<IContentPipe> {
     const registered = await resolveRegisteredSourcePath(link);

@@ -17,4 +17,4 @@ export interface AudioProcessingStatus { mode: string; reason: string }
 export interface AudioDevicesRequest { requestId: string; epoch: number }
 export type AudioDevicesReply =
     | { requestId: string; epoch: number; devices: AudioDevice[] }
-    | { requestId: string; epoch: number; error: string };
+    | { requestId: string; epoch: number; error: import("../shared/wire-error").WireError };

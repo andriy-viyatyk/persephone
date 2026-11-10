@@ -4,25 +4,30 @@ import { editorRegistry } from "../base/editorRegistry";
 import { api } from "../../../ipc/renderer/api";
 import { BOARD_CDP_TAB } from "../../../ipc/api-types";
 import { fpBasename, fpExtname, fpJoin, fpNormalizeForCompare, isPlainLocalPath } from "../../core/utils/file-path";
+import { BoardRoot } from "../../../shared/board/board-root";
 import { getLanguageByExtension } from "../../core/utils/language-mapping";
 import { toClipboard } from "../../core/utils/utils";
 import { fs as appFs } from "../../api/fs";
-import { boardTrust } from "../../api/board-trust";
-import { requestBoardTrust } from "./request-board-trust";
-import { bundledBoardRegistry } from "./bundled-board-registry";
+import { boardTrust } from "../../api/boards/board-trust";
+import { BoardGrant } from "../../../shared/board/board-grant";
+import { requestBoardTrust } from "../../api/boards/request-board-trust";
+import { bundledBoardRegistry } from "../../api/boards/bundled-board-registry";
 import { queueLegacyBoardDeprecationNotice } from "./legacy-board-deprecation-notice";
-import { isBoardPermitted, subscribeBoardPermission } from "./board-access";
+import { isBoardPermitted, subscribeBoardPermission } from "../../api/boards/board-access";
 import { cleanForStorage } from "../../../shared/link-data";
 import { pipeFromLink, pipeFromPersistedSource } from "../../content/rebuild-pipe";
 import { createPipeFromDescriptor } from "../../content/registry";
 import { isBoardClaimedScheme, schemeOf } from "../../content/scheme-registry";
 import { contentTypeForPipe } from "../../content/board-pipe-utils";
+import { registerPipeResource, unregisterPipeResource } from "../../content/pipe-resource-server";
 import {
     decodePersephoneBoardLink,
     PERSEPHONE_BOARD_PREFIX,
 } from "../../content/persephone-board-link";
-import { boardEditorId, customEditorRegistry } from "./custom-editor-registry";
-import { hostOwnsPipe, isBoardFolder, normalizeSecondaryViews, readBoardManifest, readNormalizedBoardManifest, readBoardSecondaryViews, type NormalizedBoardManifest, type SecondaryViewDecl } from "./board-manifest";
+import { boardEditorId, customEditorRegistry } from "../../api/boards/custom-editor-registry";
+import { hostOwnsPipe } from "../../../shared/board/board-manifest-queries";
+import { isBoardFolder, readBoardManifest } from "../../api/boards/board-manifest-io";
+import { normalizeSecondaryViews, type NormalizedBoardManifest, type SecondaryViewDecl } from "../../../shared/board/board-manifest-schema";
 import { boardSecondaryPanelId } from "./board-secondary";
 import { BoardTargetModel } from "./BoardTargetModel";
 import { createBoardGlyphElement } from "./board-glyph-element";
@@ -32,11 +37,13 @@ import { ui } from "../../api/ui";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 import { pagesModel } from "../../api/pages";
 import { errMessage } from "../../../shared/utils";
+import { KeyedSerialQueue } from "../../../shared/serial-queue";
 import { englishMessage, t } from "../../../shared/i18n/t";
 import type { MenuItem } from "../../uikit/Menu/index";
 import { invalidateBoardIcon } from "./board-icon-cache";
 import { createBoardShortcut } from "./board-shortcut";
-import { markBoardBusy } from "./busy-boards";
+import { markBoardBusy } from "../../api/boards/busy-boards";
+import type { IBoardHostEditor } from "../../api/boards/board-host-editor";
 import type { IState } from "../../core/state/state";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import type { BoardSourceContext } from "../../../shared/board-source-context";
@@ -203,7 +210,7 @@ export const getDefaultBoardEditorState = (): BoardEditorState => ({
  * A board does NOT survive navigation — it is a plain main editor, re-opened from
  * the Boards panel or the in-board toolbar.
  */
-export class BoardEditorModel extends EditorModel<BoardEditorState> {
+export class BoardEditorModel extends EditorModel<BoardEditorState> implements IBoardHostEditor {
     private boardDisplayNameEnglish: string | undefined;
     /** Virtual `board-editor:<root>` when acting as a custom editor for a file (so the
      *  switch widget shows/highlights it and `switchMainEditor` routes correctly), else
@@ -239,7 +246,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     }> = [];
     private readonly sourceSessionHandles = new Map<string, string>();
     private readonly sourceSessionHandleTimers = new Map<string, ReturnType<typeof setTimeout>>();
-    private readonly pageStateQueues = new Map<string, Promise<void>>();
+    private readonly pageStateQueues = new KeyedSerialQueue();
     private boardStorageKeyPromise: Promise<string> | undefined;
     /** Sources that arrived with a private session. They are never fetched on the default one. */
     private readonly sessionBoundSources = new Set<string>();
@@ -770,7 +777,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         if (!boardRoot) return false;
         const boardLink = decodePersephoneBoardLink(filePath);
         return !!boardLink
-            && fpNormalizeForCompare(boardLink.boardRoot) === fpNormalizeForCompare(boardRoot);
+            && BoardRoot.from(boardLink.boardRoot).equals(boardRoot);
     }
 
     /** Absolute root of the board this editor runs (undefined for a plain, path-less board).
@@ -801,15 +808,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     private enqueuePageStateOperation<T>(key: string, operation: (cacheName: string) => Promise<T>): Promise<T> {
         validateBoardPageStateKey(key);
         return this.getBoardPageStateNamespace().then((boardKey) => {
-            const queueKey = `${boardKey}:${key}`;
-            const previous = this.pageStateQueues.get(queueKey) ?? Promise.resolve();
-            const result = previous.then(() => operation(`board-state-${boardKey}-${key}`));
-            const tail: Promise<void> = result.then((): void => undefined, (): void => undefined);
-            this.pageStateQueues.set(queueKey, tail);
-            void tail.then(() => {
-                if (this.pageStateQueues.get(queueKey) === tail) this.pageStateQueues.delete(queueKey);
-            });
-            return result;
+            return this.pageStateQueues.run(`${boardKey}:${key}`, () => operation(`board-state-${boardKey}-${key}`));
         });
     }
 
@@ -910,7 +909,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     get editorKind(): "simple" | "content-host" | "stream-host" {
         const boardRoot = this.state.get().boardRoot;
         return customEditorRegistry.entries.find((entry) =>
-            fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot ?? "")
+            BoardRoot.from(entry.boardRoot).equals(boardRoot ?? "")
         )?.editorKind
             ?? "simple";
     }
@@ -948,7 +947,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         tabId: string,
         generation: number,
         signal?: AbortSignal,
-        boardNetworkPolicy?: import("../../api/node-fetch").BoardNetworkPolicy,
+        boardNetworkPolicy?: import("../../../shared/board/board-grant").BoardNetworkPolicy,
     ): Promise<ContentResourceInfo> {
         if (signal?.aborted) throw new Error("The content resource request was cancelled.");
         // Setup failures leave the handle available for a retry. Once setup succeeds, the provider
@@ -962,14 +961,14 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         if (!boardRoot) throw new Error("The board root is unavailable.");
         const scheme = schemeOf(link);
         if (scheme && isBoardClaimedScheme(scheme) && !(await boardTrust.allows(boardRoot, "service"))) {
-            throw new Error('permission-denied: "service" is not enabled in board-manifest.json');
+            throw BoardGrant.deny("service");
         }
         let pipe = await pipeFromLink(link, { sessionHandle, boardNetworkPolicy });
         try {
             const descriptor = pipe.toDescriptor();
             let filePath: string | undefined;
             if (descriptor.provider.type === "http" && boardNetworkPolicy?.network === false) {
-                throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
+                throw BoardGrant.deny("network");
             }
             if (descriptor.provider.type === "file") {
                 const configuredPath = descriptor.provider.config.path;
@@ -986,7 +985,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
                 filePath = canonicalPath;
             } else if (!["http", "data", "cache", "mneme", "guide"].includes(descriptor.provider.type)) {
                 if (!(await boardTrust.allows(boardRoot, "service"))) {
-                    throw new Error('permission-denied: "service" is not enabled in board-manifest.json');
+                    throw BoardGrant.deny("service");
                 }
                 throw new Error("This registered content provider does not expose a path that can be authorized for board access.");
             }
@@ -1000,8 +999,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             this.contentResources.set(resourceId, { pipe, tabId, generation });
             // Publish to the read path BEFORE returning, so the URL handed to the board is already
             // serviceable — the board may fetch it on the next line.
-            const { registerBoardContentResource } = await import("./board-pipe-handler");
-            registerBoardContentResource(resourceId, pipe, boardRoot, false);
+            registerPipeResource(resourceId, pipe, { kind: "board", boardRoot, hostedDocument: false });
             if (sourceSessionHandle && this.sourceSessionHandles.get(link) === sourceSessionHandle) {
                 this.sourceSessionHandles.delete(link);
                 const timer = this.sourceSessionHandleTimers.get(link);
@@ -1033,9 +1031,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         this.contentResources.delete(resourceId);
         resource.pipe.dispose();
         void api.unregisterBoardPipeResource(resourceId);
-        void import("./board-pipe-handler").then(({ invalidateBoardPipeResource }) => {
-            invalidateBoardPipeResource(resourceId);
-        });
+        unregisterPipeResource(resourceId);
     }
 
     releaseContentResources(tabId?: string, generation?: number): void {
@@ -1176,7 +1172,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      *; on the openRawLink path it rides `state.sourceLink` instead. */
     initFromBoardRoot(boardRoot: string, filePath?: string, folderPath?: string): void {
         boardRoot = customEditorRegistry.entries.find((entry) =>
-            fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(boardRoot)
+            BoardRoot.from(entry.boardRoot).equals(boardRoot)
         )?.boardRoot ?? boardRoot;
         const name = fpBasename(boardRoot);
         this.boardDisplayNameEnglish = name;
@@ -1265,7 +1261,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         void boardTrust.load();
         await this.refreshBoards();
         const matchingEntry = customEditorRegistry.entries.find((entry) =>
-            fpNormalizeForCompare(entry.boardRoot) === fpNormalizeForCompare(s.boardRoot ?? "")
+            BoardRoot.from(entry.boardRoot).equals(s.boardRoot ?? "")
         );
         if (matchingEntry && matchingEntry.boardRoot !== s.boardRoot) {
             this.state.update((state) => { state.boardRoot = matchingEntry.boardRoot; });
@@ -1277,9 +1273,9 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             await boardTrust.refreshPermissionSnapshot();
             const snapshot = await boardTrust.getPermissionSnapshot(restoredRoot);
             if (boardTrust.isTrusted(restoredRoot)
-                && snapshot?.manifestPermissions.kind === "legacy"
+                && snapshot && BoardGrant.from(snapshot.manifestPermissions).isLegacy()
                 && !bundledBoardRegistry.isBundled(restoredRoot)) {
-                const manifest = await readNormalizedBoardManifest(restoredRoot);
+                const manifest = await readBoardManifest(restoredRoot);
                 const boardName = manifest?.name?.trim() || fpBasename(restoredRoot);
                 queueLegacyBoardDeprecationNotice(s.id, restoredRoot, boardName);
             }
@@ -1325,7 +1321,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         if (!boardRoot) return;
         if (this.state.get().secondaryViewDefs === undefined) {
             const manifest = await readBoardManifest(boardRoot);
-            const defs = readBoardSecondaryViews(manifest);
+            const defs = manifest?.secondaryViews ?? [];
             this.state.update((s) => { s.secondaryViewDefs = defs; });
         }
         this.deriveSecondaryPanels();
@@ -1444,7 +1440,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     /** Read the current board manifest through the board model's path authority. */
     readManifestForFacade(): Promise<NormalizedBoardManifest | null> {
         const boardRoot = this.state.get().boardRoot;
-        return boardRoot ? readNormalizedBoardManifest(boardRoot) : Promise.resolve(null);
+        return boardRoot ? readBoardManifest(boardRoot) : Promise.resolve(null);
     }
 
     /** Resolve the main-owned board log path, or undefined when no board is resolved. */

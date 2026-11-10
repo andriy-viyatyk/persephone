@@ -2,14 +2,16 @@ import { app } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import type { BoardLogLevel } from "../ipc/api-types";
-import { getAssetPath } from "./utils";
+import { BoardRoot } from "../shared/board/board-root";
+import { bundledBoardId } from "./bundled-boards";
+import { SerialQueue } from "../shared/serial-queue";
 
 const MAX_BOARD_LOG_BYTES = 256 * 1024;
 const MAX_BOARD_LOG_LINE_BYTES = 8 * 1024;
 const BOARD_LOG_TAIL_BYTES = 128 * 1024;
 
 interface BoardLogQueue {
-    pending: Promise<void>;
+    serial: SerialQueue;
     cachedSize?: number;
 }
 
@@ -20,40 +22,25 @@ function normalizePath(filePath: string): string {
     return process.platform === "win32" ? resolved.toLowerCase() : resolved;
 }
 
-function bundledBoardId(root: string): string | undefined {
-    const boardsRoot = path.resolve(getAssetPath("boards"));
-    const resolvedRoot = path.resolve(root);
-    const relative = path.relative(boardsRoot, resolvedRoot);
-    const comparableRelative = process.platform === "win32" ? relative.toLowerCase() : relative;
-    if (!comparableRelative || comparableRelative === ".."
-        || comparableRelative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)
-        || path.dirname(relative) !== ".") {
-        return undefined;
-    }
-    return path.basename(fs.realpathSync(resolvedRoot));
-}
-
 export function boardLogPath(root: string): string {
-    const resolvedRoot = path.resolve(root);
-    const boardId = bundledBoardId(resolvedRoot);
+    const boardRoot = BoardRoot.from(root);
+    const boardId = bundledBoardId(boardRoot);
     if (boardId) return path.join(app.getPath("userData"), "board-logs", boardId, "ui.log");
-    return path.join(resolvedRoot, "ui.log");
+    return path.join(boardRoot.path, "ui.log");
 }
 
 function queueFor(filePath: string): BoardLogQueue {
     const key = normalizePath(filePath);
     let queue = queues.get(key);
     if (!queue) {
-        queue = { pending: Promise.resolve() };
+        queue = { serial: new SerialQueue() };
         queues.set(key, queue);
     }
     return queue;
 }
 
 function enqueue<T>(queue: BoardLogQueue, operation: () => Promise<T>): Promise<T> {
-    const result = queue.pending.then(operation);
-    queue.pending = result.then((): void => {}, (): void => {});
-    return result;
+    return queue.serial.run(operation);
 }
 
 async function initializeSize(queue: BoardLogQueue, filePath: string): Promise<void> {

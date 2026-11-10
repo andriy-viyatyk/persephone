@@ -406,7 +406,7 @@ page-to-service traffic uses only the count bound. Channel limits are 16 per boa
 per service. Same-board `info` contains `page: { boardId }`; cross-board calls add optional
 `interface` and `caller` properties without changing the callback. Close reasons use
 `renderer-reloaded`, `service-exited`, `untrusted`, and `quit`; full windows throw
-`channel-backpressure`, oversized service messages throw `channel-message-too-large`.
+`channel-backpressure`, oversized service messages throw `payload-too-large`, and non-cloneable values throw `rejected`.
 
 Cross-board services use normalized manifest fields `serviceInterfaces: [{ id, version, title? }]`
 and `uses: [{ id, version }]`. `agent.session`, `speech.transcribe`, `speech.synthesize`, `speech.wake`, and `text.translate` are reserved platform ids; other ids use exactly

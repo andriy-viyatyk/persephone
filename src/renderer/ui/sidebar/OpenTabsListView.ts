@@ -8,8 +8,9 @@ import { ListBoxView } from "../../uikit/ListBox/ListBoxView";
 import type { IListBoxItem, ListBoxProps } from "../../uikit/ListBox/types";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { displayPageTitle } from "../tabs/page-title";
-import { ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../editors/board/board-display-text";
-import { readNormalizedBoardManifest, type NormalizedBoardManifest } from "../../editors/board/board-manifest";
+import { ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
+import { readBoardManifest } from "../../api/boards/board-manifest-io";
+import { type NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
 import { fpBasename } from "../../core/utils/file-path";
 
 export interface OpenTabsListProps {
@@ -170,7 +171,7 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
     private warmBoard(root: string): void {
         if (this.warmedBoardRoots.has(root)) return;
         this.warmedBoardRoots.add(root);
-        void readNormalizedBoardManifest(root).then((manifest) => {
+        void readBoardManifest(root).then((manifest) => {
             if (!manifest) return;
             this.boardManifests.set(root, manifest);
             return ensureBoardDisplayText(root, manifest);

@@ -17,3 +17,7 @@ export const MAX_SERVICE_CHANNELS_PER_BOARD = 16;
 export const MAX_SERVICE_CHANNELS_PER_SERVICE = 128;
 export const MAX_SERVICE_CHANNEL_IN_FLIGHT = 256;
 export const MAX_SERVICE_CHANNEL_MESSAGE_BYTES = 1024 * 1024;
+/** Acknowledge each batch of delivered service-channel messages. */
+export const SERVICE_CHANNEL_ACK_BATCH = 32;
+/** Tail-ack delay: each port message is its own task, so a microtask would ack every message. */
+export const SERVICE_CHANNEL_ACK_DELAY_MS = 10;

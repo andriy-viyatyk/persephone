@@ -1,21 +1,22 @@
-import { boardInstallRegistry } from "../../api/board-install-registry";
-import { publishedBoards } from "../../api/published-boards";
-import { fpBasename, fpExtname, fpNormalizeForCompare, isPlainLocalPath } from "../../core/utils/file-path";
+import { boardInstallRegistry } from "../../api/boards/board-install-registry";
+import { publishedBoards } from "../../api/boards/published-boards";
+import { fpBasename, fpExtname, isPlainLocalPath } from "../../core/utils/file-path";
 import { getLanguageByExtension } from "../../core/utils/language-mapping";
 import {
     customEditorRegistry,
     getFolderEditorsForFolder,
     parseBoardEditorId,
     resolveEditorIdForFile,
-} from "../board/custom-editor-registry";
+} from "../../api/boards/custom-editor-registry";
 import { BOARD_INFO_EDITOR_ID } from "../board-info/board-info-id";
 import type { TextFileModel } from "../text/TextEditorModel";
 import type { EditorModel } from "./EditorModel";
 import { editorRegistry } from "./editorRegistry";
-import { hostOwnsPipe } from "../board/board-manifest";
+import { hostOwnsPipe } from "../../../shared/board/board-manifest-queries";
 import { englishMessage, t } from "../../../shared/i18n/t";
 import type { MessageKey } from "../../../shared/i18n/en";
-import { boardDisplayText } from "../board/board-display-text";
+import { boardDisplayText } from "../../api/boards/board-display-text";
+import { BoardRoot } from "../../../shared/board/board-root";
 
 export interface IEditorSwitchOption {
     readonly id: string;
@@ -101,13 +102,13 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
             if (selectedBoard) boardNameById.set(currentBoardId, selectedBoard);
         }
         const trustedRoots = new Set(
-            boardMatches.map((board) => fpNormalizeForCompare(board.boardRoot)),
+            boardMatches.map((board) => BoardRoot.from(board.boardRoot).key),
         );
         const catalogMatches = publishedBoards.catalogBoardsForFolder(folderPath).filter((board) => {
             const installedEntry = boardInstallRegistry.listInstalled()
                 .find((entry) => entry.id === board.id);
             return !installedEntry
-                || !trustedRoots.has(fpNormalizeForCompare(installedEntry.root));
+                || !trustedRoots.has(BoardRoot.from(installedEntry.root).key);
         });
         if (catalogMatches.length > 0 && !merged.includes(BOARD_INFO_EDITOR_ID)) {
             merged.push(BOARD_INFO_EDITOR_ID);
@@ -164,7 +165,7 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
     const catalogAll = publishedBoards.catalogBoardsForFile(fileName);
     const installed = boardInstallRegistry.listInstalled();
     const trustedRoots = new Set(
-        boardMatches.map((board) => fpNormalizeForCompare(board.boardRoot)),
+        boardMatches.map((board) => BoardRoot.from(board.boardRoot).key),
     );
     const catalogMatches = catalogAll.filter((catalogBoard) => {
         if (
@@ -172,7 +173,7 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
             && !hostOwnsPipe(catalogBoard.editorKind)
         ) return false;
         const installedEntry = installed.find((entry) => entry.id === catalogBoard.id);
-        return !installedEntry || !trustedRoots.has(fpNormalizeForCompare(installedEntry.root));
+        return !installedEntry || !trustedRoots.has(BoardRoot.from(installedEntry.root).key);
     });
 
     const merged = [...model.findCompatibleEditors()];

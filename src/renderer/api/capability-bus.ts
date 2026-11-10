@@ -11,13 +11,14 @@ import type {
     IntentRequest,
 } from "../../ipc/capability-bus-channels";
 import { errMessage } from "../../shared/utils";
-import { isBoardPermitted, subscribeBoardPermission } from "../editors/board/board-access";
+import { toCodedError, type CodedError } from "../../shared/coded-error";
+import { isBoardPermitted, subscribeBoardPermission } from "./boards/board-access";
 import { pagesModel } from "./pages";
 import type { CapabilityInvokeOptions } from "./types/capabilities";
 import { windowClosing } from "../core/state/events";
 
 /** A typed failure from a capability invocation. */
-export class CapabilityError extends Error {
+export class CapabilityError extends Error implements CodedError<CapabilityErrorCode> {
     readonly name = "CapabilityError";
     readonly cause?: unknown;
 
@@ -164,19 +165,11 @@ function transportError(error: unknown, requestId: string): CapabilityError {
     if (error instanceof CapabilityError) {
         return new CapabilityError(error.code, error.message, requestId, error.cause ?? error);
     }
-    const candidate = error as { code?: unknown; message?: unknown } | null | undefined;
-    if (isCapabilityErrorCode(candidate?.code)) {
-        const message = typeof candidate.message === "string"
-            ? candidate.message
-            : errMessage(error, "Capability handler failed.");
-        return new CapabilityError(candidate.code, message, requestId, error);
-    }
-    return new CapabilityError(
-        "rejected",
-        errMessage(error, "Capability handler rejected the request."),
-        requestId,
-        error,
-    );
+    const coded = toCodedError<CapabilityErrorCode>(error, "rejected", {
+        accepts: isCapabilityErrorCode,
+        fallbackMessage: "Capability handler rejected the request.",
+    });
+    return new CapabilityError(coded.code, coded.message, requestId, error);
 }
 
 class CapabilityBus {

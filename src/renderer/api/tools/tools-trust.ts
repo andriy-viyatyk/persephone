@@ -12,7 +12,7 @@
  *
  * Structured after `board-trust.ts` (reactive `TGlobalState` + lazy `load()` + the `fs`
  * data-file helpers) with two deliberate differences:
- *   1. **Exact-path matching**, NOT board-trust's inherited/outer-wins `pathCovers`. A
+ *   1. **Exact-path matching**, NOT board-trust's inherited/outer-wins containment. A
  *      registered path is a toolset *leaf* (one folder = one toolset, one fixed-name
  *      `tools-manifest.json`); parent-folder inheritance would wrongly collapse a nested or
  *      sibling toolset out of enumeration.

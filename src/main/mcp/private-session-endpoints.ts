@@ -1,9 +1,10 @@
 import { AgentTipsRegistry } from "./agent-tips";
 import { randomBytes, timingSafeEqual, randomUUID } from "node:crypto";
 import http from "node:http";
-import path from "node:path";
 import { loadSdk, requireSdk, type McpServerInstance, type McpTransportInstance } from "./sdk";
 import { createMcpServer } from "./server-factory";
+import { codedError } from "../../shared/coded-error";
+import { BoardRoot } from "../../shared/board/board-root";
 
 const MAX_ENDPOINTS = 64;
 const MAX_TRANSPORTS = 64;
@@ -32,11 +33,6 @@ let statusChanged: (() => void) | undefined;
 let shuttingDown = false;
 
 function broadcast(): void { statusChanged?.(); }
-
-function normalizeBoardRoot(boardRoot: string): string {
-    const normalized = path.resolve(boardRoot).replace(/\\/g, "/").replace(/\/+$/, "");
-    return process.platform === "win32" ? normalized.toLowerCase() : normalized;
-}
 
 function authorizedToken(req: http.IncomingMessage): string | undefined {
     const header = req.headers.authorization;
@@ -203,12 +199,12 @@ async function ensureServer(): Promise<string> {
 export function setPrivateMcpStatusChanged(callback: () => void): void { statusChanged = callback; }
 
 export async function issuePrivateMcpEndpoint(boardRoot: string): Promise<{ url: string; headers: { Authorization: string }; token: string }> {
-    if (shuttingDown) throw Object.assign(new Error("Private MCP endpoint is shutting down"), { code: "service-exited" });
-    if (grants.size >= MAX_ENDPOINTS) throw Object.assign(new Error("Private MCP endpoint busy"), { code: "service-busy" });
+    if (shuttingDown) throw codedError("service-exited", "Private MCP endpoint is shutting down");
+    if (grants.size >= MAX_ENDPOINTS) throw codedError("service-busy", "Private MCP endpoint busy");
     const token = randomBytes(32).toString("hex");
     const url = await ensureServer();
-    if (shuttingDown) throw Object.assign(new Error("Private MCP endpoint is shutting down"), { code: "service-exited" });
-    if (grants.size >= MAX_ENDPOINTS) throw Object.assign(new Error("Private MCP endpoint busy"), { code: "service-busy" });
+    if (shuttingDown) throw codedError("service-exited", "Private MCP endpoint is shutting down");
+    if (grants.size >= MAX_ENDPOINTS) throw codedError("service-busy", "Private MCP endpoint busy");
     grants.set(token, { boardRoot, tokenBytes: Buffer.from(token, "hex") });
     broadcast();
     return { url, headers: { Authorization: `Bearer ${token}` }, token };
@@ -225,13 +221,13 @@ export async function revokePrivateMcpEndpoint(token: string): Promise<void> {
 
 export async function revokePrivateMcpEndpointForBoard(boardRoot: string, token: string): Promise<void> {
     const grant = grants.get(token);
-    if (!grant || normalizeBoardRoot(grant.boardRoot) !== normalizeBoardRoot(boardRoot)) return;
+    if (!grant || !BoardRoot.from(grant.boardRoot).equals(boardRoot)) return;
     await revokePrivateMcpEndpoint(token);
 }
 
 export async function revokePrivateMcpEndpointsForBoard(boardRoot: string): Promise<void> {
-    const key = normalizeBoardRoot(boardRoot);
-    const tokens = [...grants].filter(([, grant]) => normalizeBoardRoot(grant.boardRoot) === key).map(([token]) => token);
+    const key = BoardRoot.from(boardRoot).key;
+    const tokens = [...grants].filter(([, grant]) => BoardRoot.from(grant.boardRoot).key === key).map(([token]) => token);
     for (const token of tokens) {
         const grant = grants.get(token);
         grant?.tokenBytes.fill(0);

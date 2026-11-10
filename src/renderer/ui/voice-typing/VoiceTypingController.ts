@@ -1,5 +1,6 @@
 import { SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "../../../ipc/module-service-channels";
 import { errMessage } from "../../../shared/utils";
+import { codedError } from "../../../shared/coded-error";
 import { api } from "../../../ipc/renderer/api";
 import { EventEndpoint } from "../../../ipc/api-types";
 import { settings } from "../../api/settings";
@@ -9,10 +10,11 @@ import { normalizeVoiceTypingShortcut } from "../../../shared/voice-typing-short
 import { toClipboard } from "../../core/utils/utils";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 import type { VoiceTypingOverlayState } from "./VoiceTypingOverlayView";
-import { claimSpeechPort } from "../speech/speech-port-inbox";
+import { serviceChannelPorts } from "../../api/service-channel-ports";
 import { liveSpeechSessionCoordinator } from "../speech/LiveSpeechSessionCoordinator";
 import { SpeechTranscriptionProvider } from "../speech/SpeechTranscriptionProvider";
-import { createSpeechServiceChannel, type SpeechServiceChannel } from "../speech/SpeechServiceChannel";
+import { openDomServiceChannel } from "../../../shared/service-channel-node";
+import type { ServiceChannel } from "../../../shared/service-channel";
 import { PcmAudioCapture } from "../speech/PcmAudioCapture";
 import { microphoneOptions, reportMicrophoneStatus, watchMicrophoneSettings } from "../speech/microphone-settings";
 import { resolveMicrophoneDevice } from "../speech/microphone-device";
@@ -27,7 +29,7 @@ interface VoiceSession {
     providerFeatures?: string[];
     cancelled: boolean;
     stopRequested: boolean;
-    channel?: SpeechServiceChannel;
+    channel?: ServiceChannel;
     capture?: AudioCapture;
     /** Set once the provider accepted the channel; audio captured before then waits in capture.pending. */
     channelReady?: boolean;
@@ -167,7 +169,7 @@ export class VoiceTypingController {
         const providers = await this.providerDiscovery?.list() ?? [];
         if (session.cancelled || this.session !== session) return;
         const provider = providers.find((item) => item.version === 1);
-        if (!provider) throw Object.assign(new Error(t("voiceTyping.missingProvider")), { code: "missing-provider" });
+        if (!provider) throw codedError("missing-provider", t("voiceTyping.missingProvider"));
         const features = await this.providerDiscovery?.describeFeatures(provider, session.mode === "translate").catch((): undefined => undefined);
         session.providerFeatures = features;
         const live = features?.includes("live") ?? false;
@@ -179,10 +181,10 @@ export class VoiceTypingController {
             version: 1,
             openMessage: { type: "transcribe", format: { encoding: "pcm-s16le", sampleRate: AUDIO_SAMPLE_RATE, channels: 1 }, ...(session.mode === "translate" ? { translate: true } : {}), ...(live ? { live: true } : {}) },
         });
-        const port = await claimSpeechPort(channelId, SERVICE_CHANNEL_OPEN_TIMEOUT_MS, "The provider channel did not reach the app window.");
+        const port = await serviceChannelPorts.claim(channelId, { timeoutMs: SERVICE_CHANNEL_OPEN_TIMEOUT_MS, timeoutError: () => new Error("The provider channel did not reach the app window.") });
         if (session.cancelled || session.finished || this.session !== session) { port.close(); return; }
         const opened = this.waitForChannel(session);
-        session.channel = createSpeechServiceChannel(port);
+        session.channel = openDomServiceChannel(port, "service");
         session.live = live;
         this.observeChannel(session);
         await opened;

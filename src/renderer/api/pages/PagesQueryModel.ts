@@ -3,7 +3,8 @@ import type { PageModel } from "./PageModel";
 import type { TextFileModel } from "../../editors/text";
 import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { PERSEPHONE_BOARD_PREFIX } from "../../content/persephone-board-link";
-import { matchesFileMask } from "../../editors/board/board-manifest";
+import { matchesFileMask } from "../../../shared/board/board-masks";
+import { BoardRoot } from "../../../shared/board/board-root";
 
 /**
  * PagesQueryModel — Read-only queries on the page collection.
@@ -49,12 +50,12 @@ export class PagesQueryModel {
 
     /** Find the Browser page transiently owned by one board Run key. */
     findBoardRunPage = (boardRoot: string, reuseKey: string): PageModel | undefined => {
-        const normalizedRoot = fpNormalizeForCompare(boardRoot);
+        const normalizedRoot = BoardRoot.from(boardRoot);
         return this.model.state.get().pages.find((page) => {
             if (page.mainEditorInstance?.editorId !== "browser-view") return false;
             const owner = page.getBoardRunOwner();
             return !!owner
-                && fpNormalizeForCompare(owner.boardRoot) === normalizedRoot
+                && normalizedRoot.equals(owner.boardRoot)
                 && owner.reuseKey === reuseKey;
         });
     };
@@ -72,7 +73,7 @@ export class PagesQueryModel {
             }
             const editor = page.mainEditorInstance as { boardRoot?: string } | null;
             return !!editor?.boardRoot
-                && fpNormalizeForCompare(editor.boardRoot) === fpNormalizeForCompare(boardRoot);
+                && BoardRoot.from(editor.boardRoot).equals(boardRoot);
         });
     };
 
@@ -84,7 +85,7 @@ export class PagesQueryModel {
         if (!page) return false;
         const editor = page.mainEditorInstance as { boardRoot?: string; filePath?: string } | null;
         if (!editor?.boardRoot
-            || fpNormalizeForCompare(editor.boardRoot) !== fpNormalizeForCompare(boardRoot)) return false;
+            || !BoardRoot.from(editor.boardRoot).equals(boardRoot)) return false;
         const filePath = editor.filePath;
         return !filePath
             || filePath.startsWith(PERSEPHONE_BOARD_PREFIX)

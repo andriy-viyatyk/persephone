@@ -16,7 +16,7 @@ import { session } from "electron";
 import type { Session } from "electron";
 import { torService } from "./tor-service";
 import { errMessage } from "../shared/utils";
-import type { NormalizedBoardPermissions } from "../shared/board-manifest-utils";
+import { BoardGrant } from "../shared/board/board-grant";
 import { assertBoardNetworkAllowed, pinnedLookup, type BoardNetworkAddress } from "../shared/board-network-guard";
 
 
@@ -48,7 +48,7 @@ interface SessionSourceEntry {
     readonly expiryTimer: ReturnType<typeof setTimeout>;
     readonly boardPolicy?: {
         readonly boardRoot: string;
-        readonly permissions: NormalizedBoardPermissions;
+        readonly grant: BoardGrant;
         readonly mcpUrl: string;
     };
 }
@@ -84,7 +84,7 @@ export function registerSessionSource(
 export function bindSessionSourceToBoard(
     sourceHandle: string,
     boardRoot: string,
-    permissions: NormalizedBoardPermissions,
+    grant: BoardGrant,
     mcpUrl: string,
 ): string {
     const source = sessionSources.get(sourceHandle);
@@ -103,7 +103,7 @@ export function bindSessionSourceToBoard(
         routed: source.routed,
         expiresAt,
         expiryTimer,
-        boardPolicy: { boardRoot, permissions, mcpUrl },
+        boardPolicy: { boardRoot, grant, mcpUrl },
     });
     return handle;
 }
@@ -176,7 +176,7 @@ async function serveSessionSrc(request: Request): Promise<Response> {
         for (let redirects = 0; ; redirects++) {
             if (!/^https?:$/.test(safeProtocol(currentUrl))) throw new Error("Only http(s) redirect targets are allowed.");
             const addresses = entry.boardPolicy
-                ? await assertBoardNetworkAllowed(new URL(currentUrl), { network: entry.boardPolicy.permissions.kind === "legacy" ? "full" : entry.boardPolicy.permissions.flags.network, appScripting: entry.boardPolicy.permissions.kind === "legacy" || entry.boardPolicy.permissions.flags.appScripting, mcpUrl: entry.boardPolicy.mcpUrl }, { lookup: dns.lookup, isIP: net.isIP })
+                ? await assertBoardNetworkAllowed(new URL(currentUrl), entry.boardPolicy.grant.networkPolicy({ mcpUrl: entry.boardPolicy.mcpUrl }), { lookup: dns.lookup, isIP: net.isIP })
                 : undefined;
             upstream = entry.boardPolicy && !entry.routed
                 ? await pinnedSessionFetch(currentUrl, {

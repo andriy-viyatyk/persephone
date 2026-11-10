@@ -1,4 +1,5 @@
-import { isCapabilityErrorCode } from "../../shared/capability-constants";
+import { isCapabilityErrorCode, type CapabilityErrorCode } from "../../shared/capability-constants";
+import { BoardRoot } from "../../shared/board/board-root";
 import {
     type CapabilityOutcome,
     type CapabilityRegistration,
@@ -7,10 +8,9 @@ import {
 } from "../../ipc/capability-bus-channels";
 import { CapabilityError } from "./capability-bus";
 import { pagesModel } from "./pages";
-import { boardPagesForRoot } from "./board-updates";
+import { boardPagesForRoot } from "./boards/board-idle";
 import type { PageModel } from "./pages/PageModel";
-import { fpNormalizeForCompare } from "../core/utils/file-path";
-import { errMessage } from "../../shared/utils";
+import { toCodedError } from "../../shared/coded-error";
 
 export interface BoardCapabilityFrame {
     readonly boardRoot: string;
@@ -104,16 +104,11 @@ function capabilityTitle(registration: CapabilityRegistration, request: IntentRe
 
 function normalizeTransportError(error: unknown): CapabilityError {
     if (error instanceof CapabilityError) return error;
-    if (error && typeof error === "object") {
-        const value = error as { code?: unknown; message?: unknown };
-        if (isCapabilityErrorCode(value.code)) {
-            return new CapabilityError(
-                value.code,
-                typeof value.message === "string" ? value.message : "The board request failed.",
-            );
-        }
-    }
-    return new CapabilityError("rejected", errMessage(error, "The board request failed."));
+    const coded = toCodedError<CapabilityErrorCode>(error, "rejected", {
+        accepts: isCapabilityErrorCode,
+        fallbackMessage: "The board request failed.",
+    });
+    return new CapabilityError(coded.code, coded.message);
 }
 
 class BoardCapabilityTransport implements CapabilityTransport {
@@ -150,7 +145,7 @@ class BoardCapabilityTransport implements CapabilityTransport {
             active: false,
         };
         this.routes.set(request.requestId, route);
-        const rootKey = fpNormalizeForCompare(root);
+        const rootKey = BoardRoot.from(root).key;
         const producesPage = registration.alwaysOpensNewPage === true;
         let reservation = producesPage ? undefined : reservationsByRoot.get(rootKey);
         const existingPage = !producesPage && !reservation ? boardPagesForRoot(root)[0] : undefined;

@@ -1,4 +1,4 @@
-import { fpRelative, fpResolve, fpSep } from "../core/utils/file-path";
+import { fpIsInside, fpResolve } from "../core/utils/file-path";
 import { fs } from "./fs";
 import { siteExtensionStore, isValidSiteExtensionId } from "./site-extensions";
 import { siteExtensionTrust } from "./site-extension-trust";
@@ -11,8 +11,7 @@ export async function siteExtensionFolder(id: string): Promise<string> {
     if (!isValidSiteExtensionId(id)) throw new Error("Invalid site extension id.");
     const root = await siteExtensionStore.getRoot();
     const folder = fpResolve(root, id);
-    const relative = fpRelative(root, folder);
-    if (!relative || relative === ".." || relative.startsWith(`..${fpSep}`)) {
+    if (!fpIsInside(root, folder, { allowSame: false })) {
         throw new Error("Extension folder is outside the site extensions directory.");
     }
     return folder;

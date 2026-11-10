@@ -3,6 +3,7 @@ import { parseJSON5 } from "../core/utils/parse-utils";
 import { errMessage } from "../../shared/utils";
 import { fpJoin, fpNormalizeForCompare, fpRelative, fpResolve, isArchivePath, isAsarPath, isPlainLocalPath } from "../core/utils/file-path";
 import { compileTsGlob } from "./ts-project-files";
+import { isKeyInside } from "../../shared/path-containment";
 
 export interface TsProject {
     /** Absolute root in the BOARD's spelling (not the realpath). */
@@ -132,7 +133,7 @@ class TsProjectRegistry {
         const key = fpNormalizeForCompare(filePath);
         let best: TsProject | undefined;
         for (const project of this.projects.values()) {
-            if (!key.startsWith(`${project.key}/`)) continue;
+            if (!isKeyInside(project.key, key, { allowSame: false })) continue;
             if (!best || project.key.length > best.key.length) best = project;
         }
         return best;

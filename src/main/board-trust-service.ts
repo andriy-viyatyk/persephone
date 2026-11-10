@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { BrowserUrlMaskClaim } from "../ipc/api-param-types";
@@ -6,24 +6,23 @@ import type { BoardServiceTrustSnapshot, TrustedBoardSnapshotEntry } from "../ip
 import { BOARD_BRIDGE_VERSION } from "../shared/board-bridge-version";
 import { mergeCapabilityDeclarations, normalizeCapabilityDeclarations } from "../shared/capability-contract";
 import { OwnershipRegistry } from "../shared/ownership-registry";
-import {
-    BOARD_MANIFEST_FILE,
-    normalizeBoardServicePath,
-    normalizeBrowserUrlMasks,
-    normalizePermissions,
-    normalizeServiceInterfaces,
-    normalizeServiceUses,
-    type BoardServiceUseDeclaration,
-    type NormalizedBoardPermissions,
-} from "../shared/board-manifest-utils";
+import { SerialQueue } from "../shared/serial-queue";
+import { isKeyInside } from "../shared/path-containment";
+import { BOARD_MANIFEST_FILE } from "../shared/board/board-manifest-schema";
+import { normalizeBoardServicePath, normalizeServiceInterfaces, normalizeServiceUses, type BoardServiceUseDeclaration } from "../shared/board/board-service-declarations";
+import { normalizeBrowserUrlMasks } from "../shared/board/board-masks";
+import { BoardGrant } from "../shared/board/board-grant";
+import { normalizePermissions, type NormalizedBoardPermissions } from "../shared/board/board-permissions";
 import { getBoardCompatibility } from "../shared/version-utils";
-import { normalizeBoardRoot } from "./board-root-key";
+import { BoardRoot } from "../shared/board/board-root";
+import { boardLocalCallerId } from "./board-root-hashes";
+import { stableBoardIdentity } from "../shared/board/board-stable-identity";
 import { EventEndpoint } from "../ipc/api-types";
 import { downloadService } from "./download-service";
 import { moduleServiceSupervisor } from "./module-service-supervisor";
 import { openWindows } from "./open-windows";
 import { append as appendBoardLog } from "./board-log";
-import { getAssetPath, getDataFolder } from "./utils";
+import { comparePathKey, getAssetPath, getDataFolder } from "./utils";
 
 interface BoardManifestData {
     name?: unknown;
@@ -46,21 +45,14 @@ interface BoardSource {
 type BoardAccessChangedListener = (boardRoot: string) => Promise<void>;
 const boardAccessChangedListeners = new Set<BoardAccessChangedListener>();
 
-function normalizePathForCompare(filePath: string): string {
-    return normalizeBoardRoot(filePath).replace(/\/+$/, "");
-}
-
-function pathCovers(ancestor: string, descendant: string): boolean {
-    return descendant === ancestor || descendant.startsWith(`${ancestor}/`);
-}
-
 function parseTrustedPaths(data: string): string[] {
     const lines = data.split("\n").map((line) => line.trim()).filter(Boolean);
     const paths: string[] = [];
     const seen = new Set<string>();
     for (const boardRoot of lines) {
-        if (!path.isAbsolute(boardRoot)) return [];
-        const key = normalizePathForCompare(boardRoot);
+        const root = BoardRoot.tryFrom(boardRoot);
+        if (!root) return [];
+        const key = root.key;
         if (!key || seen.has(key)) continue;
         seen.add(key);
         paths.push(boardRoot);
@@ -93,7 +85,7 @@ function parseTrustRecords(data: string): { records: TrustedBoardGrant[]; migrat
                 continue;
             }
             const record = item as { root?: unknown; permissions?: unknown; folderGrants?: unknown; fileGrants?: unknown; uses?: unknown };
-            if (typeof record.root !== "string" || !path.isAbsolute(record.root)) reason = "root is not an absolute path";
+            if (typeof record.root !== "string" || !BoardRoot.tryFrom(record.root)) reason = "root is not an absolute path";
             const permissions = record.permissions;
             if (!reason && (!permissions || typeof permissions !== "object")) reason = "permissions are not an object";
             const normalized = permissions as Partial<NormalizedBoardPermissions>;
@@ -133,39 +125,18 @@ function parseTrustRecords(data: string): { records: TrustedBoardGrant[]; migrat
                 for (const candidate of input) {
                     if (typeof candidate !== "string" || !path.isAbsolute(candidate)) continue;
                     const canonical = path.resolve(candidate);
-                    const key = normalizePathForCompare(canonical);
+                    const key = comparePathKey(canonical);
                     if (!key || seen.has(key)) continue;
                     seen.add(key);
                     result.push(canonical);
                 }
                 return result;
             };
-            result.push({ root: path.resolve(record.root as string), permissions: permissions as NormalizedBoardPermissions,
+            result.push({ root: BoardRoot.from(record.root as string).path, permissions: permissions as NormalizedBoardPermissions,
                 folderGrants: validPaths(record.folderGrants), fileGrants: validPaths(record.fileGrants), uses: normalizeServiceUses(record.uses) });
         }
         return { records: result, migrated };
     } catch { return null; }
-}
-
-function permissionReduction(previous: NormalizedBoardPermissions, proposed: NormalizedBoardPermissions): string[] | undefined {
-    if (previous.kind === "legacy" && proposed.kind === "legacy") {
-        return previous.service && !proposed.service ? ["service"] : undefined;
-    }
-    if (previous.kind !== "flags" || proposed.kind !== "flags") return undefined;
-    const oldFlags = previous.flags;
-    const newFlags = proposed.flags;
-    const levels = { false: 0, board: 1, internet: 1, full: 2 } as const;
-    const changes: string[] = [];
-    for (const key of Object.keys(oldFlags) as (keyof typeof oldFlags)[]) {
-        const oldValue = oldFlags[key];
-        const newValue = newFlags[key];
-        if (oldValue === newValue) continue;
-        const oldRank = typeof oldValue === "boolean" ? Number(oldValue) : levels[oldValue];
-        const newRank = typeof newValue === "boolean" ? Number(newValue) : levels[newValue];
-        if (newRank > oldRank) return undefined;
-        changes.push(`${key}: ${oldValue} -> ${newValue}`);
-    }
-    return changes.length ? changes : undefined;
 }
 
 async function readManifest(boardRoot: string): Promise<BoardManifestData | null> {
@@ -187,7 +158,7 @@ function boardName(source: BoardSource): string {
 
 class BoardTrustService {
     private initialization: Promise<void> | undefined;
-    private operation = Promise.resolve();
+    private readonly queue = new SerialQueue();
     private disabledBundledBoards = new Set<string>();
     private paths: string[] = [];
     private grants: TrustedBoardGrant[] = [];
@@ -195,7 +166,7 @@ class BoardTrustService {
 
     init(): Promise<void> {
         if (!this.initialization) {
-            this.initialization = this.serialize(async () => {
+            this.initialization = this.queue.run(async () => {
                 const dataFolder = getDataFolder();
                 await fs.mkdir(dataFolder, { recursive: true });
                 const trustFile = path.join(dataFolder, "trustedBoards.json");
@@ -215,7 +186,7 @@ class BoardTrustService {
                     try { legacy = await fs.readFile(legacyFile, "utf8"); } catch { /* first run */ }
                     const oldPaths = parseTrustedPaths(legacy);
                     this.grants = await Promise.all(oldPaths.map(async (root) => ({
-                        root: path.resolve(root),
+                        root: BoardRoot.from(root).path,
                         permissions: normalizePermissions((await readManifest(root))?.permissions),
                     })));
                     await this.writeGrantsAtomically(this.grants);
@@ -257,12 +228,12 @@ class BoardTrustService {
         manifestPermissions: NormalizedBoardPermissions;
         manifestUses: BoardServiceUseDeclaration[];
         service?: string;
-        serviceInterfaces: import("../shared/board-manifest-utils").BoardServiceInterfaceDeclaration[];
+        serviceInterfaces: import("../shared/board/board-service-declarations").BoardServiceInterfaceDeclaration[];
         boardName: string;
         callerId: string;
     }>> {
         await this.ready();
-        return this.serialize(async () => {
+        return this.queue.run(async () => {
             const { serviceSnapshot, claims } = await this.createSnapshots(this.paths);
             await moduleServiceSupervisor.applyBoardServiceTrustSnapshot(serviceSnapshot);
             downloadService.setBrowserUrlMaskClaims(claims);
@@ -272,46 +243,44 @@ class BoardTrustService {
         });
     }
 
-    async getGrantedPermissions(boardRoot: string): Promise<NormalizedBoardPermissions | undefined> {
+    async getGrant(boardRoot: string): Promise<BoardGrant | undefined> {
         await this.ready();
-        return this.getGrantedPermissionsFromSnapshot(boardRoot);
+        return this.getGrantFromSnapshot(boardRoot);
     }
 
     async getGrantedRootsFromSnapshot(): Promise<string[]> {
         await this.ready();
         const disabledRoots = new Set([...this.disabledBundledBoards].map(id =>
-            normalizePathForCompare(path.join(getAssetPath("boards"), id))));
+            BoardRoot.from(path.join(getAssetPath("boards"), id)).key));
         return this.permissionSnapshot.map(({ root }) => root)
-            .filter(root => !disabledRoots.has(normalizePathForCompare(root)));
+            .filter(root => !disabledRoots.has(BoardRoot.from(root).key));
     }
 
     /** Read an already-built main-owned grant snapshot without awaiting initialization. */
-    getGrantedPermissionsFromSnapshot(boardRoot: string): NormalizedBoardPermissions | undefined {
-        const key = normalizePathForCompare(boardRoot);
-        return this.permissionSnapshot.find(({ root }) => normalizePathForCompare(root) === key)?.permissions;
+    getGrantFromSnapshot(boardRoot: string): BoardGrant | undefined {
+        const permissions = this.permissionSnapshot.find(({ root }) => BoardRoot.from(root).equals(boardRoot))?.permissions;
+        return permissions ? BoardGrant.from(permissions) : undefined;
     }
 
     getGrantedUsesFromSnapshot(boardRoot: string): BoardServiceUseDeclaration[] {
-        const key = normalizePathForCompare(boardRoot);
-        return [...(this.permissionSnapshot.find(({ root }) => normalizePathForCompare(root) === key)?.uses ?? [])];
+        return [...(this.permissionSnapshot.find(({ root }) => BoardRoot.from(root).equals(boardRoot))?.uses ?? [])];
     }
 
     async getFileAccessGrants(boardRoot: string): Promise<{ folderGrants: string[]; fileGrants: string[] }> {
         await this.ready();
-        const key = normalizePathForCompare(boardRoot);
-        const grant = this.grants.find((entry) => normalizePathForCompare(entry.root) === key);
+        const grant = this.grants.find((entry) => BoardRoot.from(entry.root).equals(boardRoot));
         return { folderGrants: [...(grant?.folderGrants ?? [])], fileGrants: [...(grant?.fileGrants ?? [])] };
     }
 
     async addFileAccessGrant(boardRoot: string, kind: "folder" | "file", canonicalPath: string): Promise<void> {
         await this.ready();
-        await this.serialize(async () => {
+        await this.queue.run(async () => {
             const nextGrants = this.grants.map((entry) => ({ ...entry, folderGrants: [...(entry.folderGrants ?? [])], fileGrants: [...(entry.fileGrants ?? [])] }));
-            const grant = nextGrants.find((entry) => normalizePathForCompare(entry.root) === normalizePathForCompare(boardRoot));
+            const grant = nextGrants.find((entry) => BoardRoot.from(entry.root).equals(boardRoot));
             if (!grant) throw new Error("This board is not trusted.");
             const property = kind === "folder" ? "folderGrants" : "fileGrants";
             const values = [...(grant[property] ?? [])];
-            if (!values.some((value) => normalizePathForCompare(value) === normalizePathForCompare(canonicalPath))) values.push(path.resolve(canonicalPath));
+            if (!values.some((value) => comparePathKey(value) === comparePathKey(canonicalPath))) values.push(path.resolve(canonicalPath));
             grant[property] = values;
             await this.writeGrantsAtomically(nextGrants);
             this.grants = nextGrants;
@@ -323,12 +292,12 @@ class BoardTrustService {
 
     async revokeFileAccessGrant(boardRoot: string, kind: "folder" | "file", canonicalPath: string): Promise<void> {
         await this.ready();
-        await this.serialize(async () => {
+        await this.queue.run(async () => {
             const nextGrants = this.grants.map((entry) => ({ ...entry, folderGrants: [...(entry.folderGrants ?? [])], fileGrants: [...(entry.fileGrants ?? [])] }));
-            const grant = nextGrants.find((entry) => normalizePathForCompare(entry.root) === normalizePathForCompare(boardRoot));
+            const grant = nextGrants.find((entry) => BoardRoot.from(entry.root).equals(boardRoot));
             if (!grant) return;
             const property = kind === "folder" ? "folderGrants" : "fileGrants";
-            grant[property] = (grant[property] ?? []).filter((value) => normalizePathForCompare(value) !== normalizePathForCompare(canonicalPath));
+            grant[property] = (grant[property] ?? []).filter((value) => comparePathKey(value) !== comparePathKey(canonicalPath));
             await this.writeGrantsAtomically(nextGrants);
             this.grants = nextGrants;
             (await import("./board-file-access")).invalidatePersistedBoardGrants(boardRoot);
@@ -337,29 +306,26 @@ class BoardTrustService {
         });
     }
 
-    async allows(boardRoot: string, flag: keyof import("../shared/board-manifest-utils").BoardPermissionFlags): Promise<boolean> {
+    async allows(boardRoot: string, flag: keyof import("../shared/board/board-permissions").BoardPermissionFlags): Promise<boolean> {
         await this.ready();
-        const grant = this.permissionSnapshot.find(({ root }) =>
-            pathCovers(normalizePathForCompare(root), normalizePathForCompare(boardRoot)));
+        const grant = this.permissionSnapshot.find(({ root }) => isKeyInside(BoardRoot.from(root).key, BoardRoot.from(boardRoot).key));
         if (!grant) return false;
-        const permissions = grant.permissions;
-        if (permissions.kind === "legacy") return flag !== "computerAudio" && (flag !== "service" || permissions.service);
-        const value = permissions.flags[flag];
-        return value === true || value === "board" || value === "full" || value === "internet";
+        return BoardGrant.from(grant.permissions).allows(flag);
     }
 
     async setTrust(boardRoot: string, trusted: boolean, expectedPermissions?: NormalizedBoardPermissions, expectedUses?: BoardServiceUseDeclaration[]): Promise<string[]> {
         await this.ready();
-        return this.serialize(async () => {
+        return this.queue.run(async () => {
             if (typeof boardRoot !== "string" || !path.isAbsolute(boardRoot)) {
                 throw new Error("Board trust requires an absolute root path.");
             }
+            const boardRootIdentity = BoardRoot.from(boardRoot);
             const current = [...this.paths];
             const nextGrants = [...this.grants];
-            const key = normalizePathForCompare(boardRoot);
+            const key = boardRootIdentity.key;
             if (trusted) {
-                const effectiveRoot = current.find((root) => pathCovers(normalizePathForCompare(root), key));
-                if (effectiveRoot && normalizePathForCompare(effectiveRoot) !== key) return [...current];
+                const effectiveRoot = current.find((root) => isKeyInside(BoardRoot.from(root).key, key));
+                if (effectiveRoot && !BoardRoot.from(effectiveRoot).equals(boardRootIdentity)) return [...current];
                 const manifest = await readManifest(boardRoot);
                 const permissions = normalizePermissions(manifest?.permissions);
                 const uses = normalizeServiceUses(manifest?.uses);
@@ -368,12 +334,12 @@ class BoardTrustService {
                     throw new Error("Board permissions changed while the trust dialog was open. Review the updated permissions and try again.");
                 }
                 // Stored and shown as the resolved path (backslashes, original case); compare with the key.
-                const grant = { root: path.resolve(boardRoot), permissions, uses: expectedUses ?? uses };
-                const kept = nextGrants.filter(({ root }) => !pathCovers(key, normalizePathForCompare(root))
-                    && normalizePathForCompare(root) !== key);
+                const grant = { root: boardRootIdentity.path, permissions, uses: expectedUses ?? uses };
+                const kept = nextGrants.filter(({ root }) => !isKeyInside(key, BoardRoot.from(root).key)
+                    && !BoardRoot.from(root).equals(boardRootIdentity));
                 nextGrants.splice(0, nextGrants.length, ...kept, grant);
             } else {
-                nextGrants.splice(0, nextGrants.length, ...nextGrants.filter(({ root }) => normalizePathForCompare(root) !== key));
+                nextGrants.splice(0, nextGrants.length, ...nextGrants.filter(({ root }) => !BoardRoot.from(root).equals(boardRootIdentity)));
             }
             await this.writeGrantsAtomically(nextGrants);
             if (!trusted) (await import("./board-file-access")).clearBoardFileAccess(boardRoot);
@@ -391,18 +357,12 @@ class BoardTrustService {
 
     async setDisabledBundledBoards(ids: string[]): Promise<void> {
         await this.ready();
-        await this.serialize(async () => {
+        await this.queue.run(async () => {
             this.disabledBundledBoards = new Set(ids.filter((id): id is string => typeof id === "string"));
             const { serviceSnapshot, claims } = await this.createSnapshots(this.paths);
             await moduleServiceSupervisor.applyBoardServiceTrustSnapshot(serviceSnapshot);
             downloadService.setBrowserUrlMaskClaims(claims);
         });
-    }
-
-    private serialize<T>(operation: () => Promise<T>): Promise<T> {
-        const result = this.operation.then(operation, operation);
-        this.operation = result.then((): undefined => undefined, (): undefined => undefined);
-        return result;
     }
 
     private async writeGrantsAtomically(grants: TrustedBoardGrant[]): Promise<void> {
@@ -435,10 +395,10 @@ class BoardTrustService {
         let reductionsApplied = false;
         const reductionLogs: Promise<void>[] = [];
         const nextGrants = this.grants.map((grant) => {
-            const source = trustedSources.find(({ root }) => normalizePathForCompare(root) === normalizePathForCompare(grant.root));
+            const source = trustedSources.find(({ root }) => BoardRoot.from(root).equals(grant.root));
             if (!source) return grant;
             const manifestPermissions = normalizePermissions(source.manifest?.permissions);
-            const changes = permissionReduction(grant.permissions, manifestPermissions);
+            const changes = BoardGrant.from(grant.permissions).reductionTo(manifestPermissions);
             const manifestUses = normalizeServiceUses(source.manifest?.uses);
             const grantUses = grant.uses ?? [];
             const reducedUses = grantUses.filter((use) => manifestUses.some((item) => item.id === use.id && item.version === use.version));
@@ -466,27 +426,24 @@ class BoardTrustService {
             const manifestInterfaces = normalizeServiceInterfaces(source.manifest?.serviceInterfaces);
             const granted = source.bundledId
                 ? normalizePermissions(source.manifest?.permissions)
-                : this.grants.find((grant) => normalizePathForCompare(grant.root) === normalizePathForCompare(source.root))?.permissions
+                : this.grants.find((grant) => BoardRoot.from(grant.root).equals(source.root))?.permissions
                     ?? normalizePermissions(source.manifest?.permissions);
-            const storedGrant = this.grants.find((grant) => normalizePathForCompare(grant.root) === normalizePathForCompare(source.root));
+            const storedGrant = this.grants.find((grant) => BoardRoot.from(grant.root).equals(source.root));
             const manifestChanged = !!storedGrant
-                && (JSON.stringify(normalizePermissions(source.manifest?.permissions)) !== JSON.stringify(storedGrant.permissions)
+                && (!BoardGrant.same(normalizePermissions(source.manifest?.permissions), storedGrant.permissions)
                     || JSON.stringify(manifestUses) !== JSON.stringify(storedGrant.uses ?? []));
-            const author = typeof source.manifest?.author === "string" ? source.manifest.author.trim() : "";
-            const name = typeof source.manifest?.name === "string" ? source.manifest.name.trim() : "";
-            const callerId = author && name ? `${author}/${name}` : source.bundledId
-                ? `bundled:${source.bundledId}`
-                : `local:${createHash("sha256").update(normalizePathForCompare(source.root)).digest("hex")}`;
+            const callerId = stableBoardIdentity(source.manifest)
+                ?? (source.bundledId ? `bundled:${source.bundledId}` : boardLocalCallerId(BoardRoot.from(source.root)));
             const compatible = getBoardCompatibility({
                 minBridgeVersion: source.manifest?.minBridgeVersion,
-                requiresMinBridgeVersion: normalizePermissions(source.manifest?.permissions).kind === "flags",
+                requiresMinBridgeVersion: BoardGrant.from(normalizePermissions(source.manifest?.permissions)).isDeclared(),
             }, { bridgeVersion: BOARD_BRIDGE_VERSION }).compatible;
             const declarations = compatible ? normalizeCapabilityDeclarations(source.manifest?.capabilities, undefined, { service: source.manifest?.service, permissions: source.manifest?.permissions }) : [];
             boards.push({
                 boardRoot: source.root,
                 legacyCapabilities: declarations.filter((declaration) => !declaration.methods || Object.values(declaration.methods).some((method) => method.kind === "open")),
                 capabilities: compatible ? mergeCapabilityDeclarations(declarations, manifestInterfaces) : [],
-                canStartService: granted.kind === "legacy" ? granted.service : granted.flags.service,
+                canStartService: BoardGrant.from(granted).canRunService(),
                 permissions: granted,
                 manifestPermissions: normalizePermissions(source.manifest?.permissions),
                 ...(manifestChanged ? { manifestChanged: true } : {}),
@@ -513,7 +470,7 @@ class BoardTrustService {
             const compatibility = getBoardCompatibility(
                 {
                     minBridgeVersion: source.manifest?.minBridgeVersion,
-                    requiresMinBridgeVersion: !!source.manifest?.permissions && typeof source.manifest.permissions === "object" && !Array.isArray(source.manifest.permissions),
+                    requiresMinBridgeVersion: BoardGrant.fromManifest(source.manifest?.permissions).isDeclared(),
                 },
                 { bridgeVersion: BOARD_BRIDGE_VERSION },
             );

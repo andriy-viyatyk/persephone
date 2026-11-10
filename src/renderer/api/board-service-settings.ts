@@ -1,10 +1,11 @@
 import { BoardServiceSettingsChannel, type BoardServiceSettingsRequest, type BoardServiceSettingsReply } from "../../ipc/board-service-settings-channels";
 import { getBoardSetting, initializeBoardSettings, subscribeBoardSettings } from "./board-settings/board-settings-bridge";
-import { boardTrust } from "./board-trust";
-import { bundledBoardRegistry } from "../editors/board/bundled-board-registry";
-import { readBoardManifest } from "../editors/board/board-manifest";
-import { fpNormalizeForCompare } from "../core/utils/file-path";
-import { errMessage } from "../../shared/utils";
+import { boardTrust } from "./boards/board-trust";
+import { bundledBoardRegistry } from "./boards/bundled-board-registry";
+import { readBoardManifest } from "./boards/board-manifest-io";
+import { BoardRoot } from "../../shared/board/board-root";
+import { codedError } from "../../shared/coded-error";
+import { toWireError } from "../../shared/wire-error";
 
 const subscriptions = new Map<string, () => void>();
 let initialized = false;
@@ -14,21 +15,14 @@ function isScalar(value: unknown): value is string | number | boolean {
         || (typeof value === "number" && Number.isFinite(value));
 }
 
-function errorPayload(error: unknown): { code: string; message: string } {
-    const candidate = error && typeof error === "object" ? error as { code?: unknown } : undefined;
-    return {
-        code: typeof candidate?.code === "string" ? candidate.code : "service-error",
-        message: errMessage(error, "Board settings request failed."),
-    };
-}
-
 async function validateBoardRoot(boardRoot: unknown): Promise<string> {
     if (typeof boardRoot !== "string" || !boardRoot.trim()) throw new Error("service-exited");
     await Promise.all([boardTrust.load(), bundledBoardRegistry.ensureInitialized()]);
-    const key = fpNormalizeForCompare(boardRoot);
-    const bundled = bundledBoardRegistry.list().some((entry) => fpNormalizeForCompare(entry.root) === key);
-    if (!bundled && !boardTrust.isTrusted(boardRoot)) throw Object.assign(new Error("untrusted"), { code: "untrusted" });
-    if (!await readBoardManifest(boardRoot)) throw Object.assign(new Error("service-exited"), { code: "service-exited" });
+    const root = BoardRoot.tryFrom(boardRoot);
+    if (!root) throw new Error("service-exited");
+    const bundled = bundledBoardRegistry.list().some((entry) => root.equals(entry.root));
+    if (!bundled && !boardTrust.isTrusted(boardRoot)) throw codedError("untrusted");
+    if (!await readBoardManifest(boardRoot)) throw codedError("service-exited");
     return boardRoot;
 }
 
@@ -51,7 +45,7 @@ export function initBoardServiceSettings(): void {
                 if (!isScalar(result)) throw new Error("Board setting result must be a finite scalar.");
                 reply(BoardServiceSettingsChannel.getReply, request.requestId, { ok: true, result });
             } catch (error: unknown) {
-                reply(BoardServiceSettingsChannel.getReply, request.requestId, { ok: false, error: errorPayload(error) });
+                reply(BoardServiceSettingsChannel.getReply, request.requestId, { ok: false, error: toWireError(error, "Board settings request failed.", "service-error") });
             }
         })();
     });
@@ -74,7 +68,7 @@ export function initBoardServiceSettings(): void {
                 }
                 reply(BoardServiceSettingsChannel.subscribeReply, request.requestId, { ok: true });
             } catch (error: unknown) {
-                reply(BoardServiceSettingsChannel.subscribeReply, request.requestId, { ok: false, error: errorPayload(error) });
+                reply(BoardServiceSettingsChannel.subscribeReply, request.requestId, { ok: false, error: toWireError(error, "Board settings request failed.", "service-error") });
             }
         })();
     });

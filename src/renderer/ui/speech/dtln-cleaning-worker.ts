@@ -1,11 +1,12 @@
 import { DtlnEngine } from "./DtlnEngine";
 import { errMessage } from "../../../shared/utils";
+import { SerialQueue } from "../../../shared/serial-queue";
 import type { MicrophoneCleaningOptions } from "./microphone-cleaning-types";
 
 const HOP = 128;
 let engine: DtlnEngine | undefined;
 let options: MicrophoneCleaningOptions;
-let queue = Promise.resolve();
+const messageQueue = new SerialQueue();
 let count = 0, misses = 0, ratio = 0, overload = 0;
 const dryDelay = [new Float32Array(HOP), new Float32Array(HOP), new Float32Array(HOP)];
 let x1 = 0, x2 = 0, y1 = 0, y2 = 0, gain = 1;
@@ -58,7 +59,7 @@ async function fetchBytes(path: string): Promise<ArrayBuffer> {
 }
 
 self.onmessage = ({ data }: MessageEvent): void => {
-    queue = queue.then(async () => {
+    void messageQueue.run(async () => {
         if (data.type === "init") {
             options = data.options; configureNotch();
             const [wasm, first, second] = await Promise.all([

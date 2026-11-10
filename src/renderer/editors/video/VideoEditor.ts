@@ -24,6 +24,7 @@ import { errMessage } from "../../../shared/utils";
 import { pipeFromLink, pipeFromPersistedSource, UnresolvableLinkError } from "../../content/rebuild-pipe";
 import { reportProviderError, watchSourceRecovery } from "../../content/source-recovery";
 import { isProviderResolutionError } from "../../content/registry";
+import { registerPipeResource, unregisterPipeResource } from "../../content/pipe-resource-server";
 import type { VideoStreamSessionConfig } from "../../../ipc/api-param-types";
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -189,16 +190,14 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
             if (sessionId) await api.deleteVideoStreamSession(sessionId);
         } finally {
             if (resourceId) {
-                const { invalidateBoardPipeResource } = await import("../board/board-pipe-handler");
-                invalidateBoardPipeResource(resourceId);
+                unregisterPipeResource(resourceId);
             }
         }
     };
 
     private invalidateResource = async (resourceId: string | undefined): Promise<void> => {
         if (!resourceId) return;
-        const { invalidateBoardPipeResource } = await import("../board/board-pipe-handler");
-        invalidateBoardPipeResource(resourceId);
+        unregisterPipeResource(resourceId);
     };
 
     private ensurePipeForSource = async (
@@ -274,8 +273,7 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
                     await pipe.stat();
                     if (requestId !== this.sourceRequestId) return;
                     resourceId = `video-${crypto.randomUUID()}`;
-                    const { registerVideoSessionResource } = await import("../board/board-pipe-handler");
-                    registerVideoSessionResource(resourceId, pipe);
+                    registerPipeResource(resourceId, pipe, { kind: "video-session" });
                     config = { pipe: true, pipeResourceId: resourceId, pageId: this.page?.id };
                     this.installRecoveryWatch(pipe, requestId);
                 }

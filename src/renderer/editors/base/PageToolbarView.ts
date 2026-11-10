@@ -1,13 +1,13 @@
-import { boardInstallRegistry } from "../../api/board-install-registry";
+import { boardInstallRegistry } from "../../api/boards/board-install-registry";
 import { guard } from "../../core/utils/guard";
 import type { IPageHost } from "../../api/pages/IPageHost";
-import { publishedBoards } from "../../api/published-boards";
+import { publishedBoards } from "../../api/boards/published-boards";
 import type { EditorModel, EditorStateBase } from "./EditorModel";
 import { getEditorSwitchFileName, getEditorSwitchOptions } from "./editor-switch-options";
 import { EditorToolbarView } from "./EditorToolbarView";
 import { TextHostEditorModel } from "./TextHostEditorModel";
-import { customEditorRegistry } from "../board/custom-editor-registry";
-import { onBoardDisplayTextChanged } from "../board/board-display-text";
+import { customEditorRegistry } from "../../api/boards/custom-editor-registry";
+import { onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
 import { isTextFileModel, type TextFileEditorModelState, type TextFileModel } from "../text/TextEditorModel";
 import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
 import {

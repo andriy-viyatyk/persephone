@@ -37,7 +37,7 @@ other value is a duration in milliseconds. The callback immediately receives the
 then receives changes; call its returned function to unsubscribe. Feature-detect
 `persephone.voiceTyping` before use because older apps do not expose this API. Use
 `if (!channel.writable) await channel.whenWritable(); channel.send(x)`; errors include
-`channel-backpressure` and `channel-message-too-large`. Channels close with `renderer-reloaded`,
+`channel-backpressure`, `payload-too-large`, and non-cloneable values throw `rejected`. Channels close with `renderer-reloaded`,
 `service-exited`, `untrusted`, or `quit` on the matching lifecycle event. Boards using channels
 must declare `minBridgeVersion: "1.42.0"`. Cross-board service interfaces use provider
 `serviceInterfaces: [{ id: "agent.session", version: 1, title: "Agent Chat" }]` and consumer
@@ -905,7 +905,7 @@ channel.send({ type: "update", value });
 ```
 
 `send()` can throw `channel-backpressure`; an oversized service-to-page payload throws
-`channel-message-too-large`. Close reasons identify reload, service exit, trust loss, and app quit.
+`payload-too-large`, and non-cloneable values throw `rejected`. Close reasons identify reload, service exit, trust loss, and app quit.
 
 ### Browser-download URL claims
 

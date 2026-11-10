@@ -1,14 +1,3 @@
-export const BOARD_FRAME_PREFIX = "board-frame:";
-export const CAPABILITY_BOARD_PREFIX = "capability:";
-export const VOICE_TYPING_BOARD_PREFIX = "voice-typing:";
-export const SPEECH_SYNTHESIZE_BOARD_PREFIX = "speech-synthesize:";
-export const SPEECH_WAKE_BOARD_PREFIX = "speech-wake:";
-export const TEXT_TRANSLATION_BOARD_PREFIX = "text-translation:";
-
-export function parseBoardIdPrefix(value: string, prefix: string): string | undefined {
-    return value.startsWith(prefix) ? value.slice(prefix.length) : undefined;
-}
-
 import type { CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientResult, CapabilityProvider } from "./capability-bus-channels";
 /**
  * Main/utility-process protocol for board module services.
@@ -17,8 +6,10 @@ import type { CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientR
  * so the service adapter can consume the same wire contract.
  */
 
-import type { BoardServiceInterfaceDeclaration, BoardServiceUseDeclaration, NormalizedBoardPermissions } from "../shared/board-manifest-utils";
+import type { BoardServiceInterfaceDeclaration, BoardServiceUseDeclaration } from "../shared/board/board-service-declarations";
+import type { NormalizedBoardPermissions } from "../shared/board/board-permissions";
 import type { BoardCapabilityDeclaration, CapabilityCallerIdentity, CapabilityErrorCode, CapabilityJson } from "../shared/capability-contract";
+import type { WireError } from "../shared/wire-error";
 import { CAPABILITY_DEFAULT_TIMEOUT_MS } from "../shared/capability-limits";
 
 export const SERVICE_HANDSHAKE_TIMEOUT_MS = 5000;
@@ -27,13 +18,10 @@ export const SERVICE_RENDERER_LEASE_TIMEOUT_MS = 5000;
 export const SERVICE_QUIT_GATE_TIMEOUT_MS = 5000;
 export { MAX_OUTSTANDING_REQUESTS_PER_SERVICE, MAX_SERVICE_CHANNELS_PER_BOARD, MAX_SERVICE_CHANNELS_PER_SERVICE, MAX_SERVICE_CHANNEL_IN_FLIGHT, MAX_SERVICE_CHANNEL_MESSAGE_BYTES } from "../shared/capability-limits";
 export const SERVICE_REQUEST_DEADLINE_MS = CAPABILITY_DEFAULT_TIMEOUT_MS;
-export const SERVICE_CHANNEL_ACK_BATCH = 32;
-/** Tail-ack delay: each port message is its own task, so a microtask would ack every message. */
-export const SERVICE_CHANNEL_ACK_DELAY_MS = 10;
 /** How long an opened channel waits for its port to reach the board frame. */
 export { CAPABILITY_DEFAULT_TIMEOUT_MS as SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "../shared/capability-limits";
 
-export interface ServiceChannelCloseReason { code: string; message: string }
+export type ServiceChannelCloseReason = WireError;
 export type ServiceChannelWireMessage =
     | { kind: "channel-open"; channelId: string; boardId: string; generation: number; openMessage: unknown; info: { page: { boardId: string }; interface?: { id: string; version: number }; caller?: { id: string; name: string } } }
     | { kind: "channel-close"; channelId: string; reason: ServiceChannelCloseReason };
@@ -73,7 +61,7 @@ export const STOP_REASON_LEASE_REASON: Readonly<Record<ServiceStopReason, Render
     quit: "quit",
 };
 export type ServiceStorageOperation = "get" | "set" | "delete" | "keys";
-export interface ServiceErrorPayload { code: string; message: string }
+export type ServiceErrorPayload = WireError;
 export type ModuleServicePortResult = { ok: true } | { ok: false; error: ServiceErrorPayload };
 export interface ServiceHostConfig {
     capabilityCalls: Array<{ id: string; version: number; method: string }>;

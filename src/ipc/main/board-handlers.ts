@@ -10,7 +10,7 @@ import type { BoardServiceStatus, ModuleServicePortResult } from "../module-serv
 import { bindEndpoint } from "./endpoint-registry";
 import { activeCapabilityRequests, capabilityResult } from "./core-handlers";
 import { errMessage } from "../../shared/utils";
-import { boardPermissionError } from "../../shared/board-manifest-utils";
+import { BoardGrant } from "../../shared/board/board-grant";
 
 export type BoardEndpoint =
     | Endpoint.connectHostServiceChannel
@@ -126,7 +126,7 @@ export function initBoardHandlers(): void {
     bindEndpoint(Endpoint.cancelBoardDownload, async (_event, installId: string): Promise<void> => {
         (await import("../../main/board-download-service")).boardDownloadService.cancelBoardDownload(installId);
     });
-    bindEndpoint(Endpoint.setBoardTrust, async (_event, boardRoot: string, trusted: boolean, expectedPermissions?: import("../../shared/board-manifest-utils").NormalizedBoardPermissions, expectedUses?: import("../../shared/board-manifest-utils").BoardServiceUseDeclaration[]): Promise<string[]> => {
+    bindEndpoint(Endpoint.setBoardTrust, async (_event, boardRoot: string, trusted: boolean, expectedPermissions?: import("../../shared/board/board-permissions").NormalizedBoardPermissions, expectedUses?: import("../../shared/board/board-service-declarations").BoardServiceUseDeclaration[]): Promise<string[]> => {
         return (await import("../../main/board-trust-service")).boardTrustService.setTrust(boardRoot, trusted, expectedPermissions, expectedUses);
     });
     bindEndpoint(Endpoint.getBoardTrustPaths, async (): Promise<string[]> => {
@@ -139,7 +139,7 @@ export function initBoardHandlers(): void {
             permissions,
             manifestPermissions,
             ...(manifestChanged ? { manifestChanged: true } : {}),
-            canStartService: permissions.kind === "legacy" ? permissions.service : permissions.flags.service,
+            canStartService: BoardGrant.from(permissions).canRunService(),
             uses,
             manifestUses,
             service,
@@ -171,7 +171,7 @@ export function initBoardHandlers(): void {
                     const { capabilityRouter } = await import("../../main/capability-router");
                     const bound = capabilityRouter.bindKey({ kind: "platform" }, input.key, input.filter);
                     if (!bound || bound.registration.methods[input.method]?.kind !== "channel") throw Object.assign(new Error("Capability handler unavailable."), { code: "no-handler" });
-                    const channel = await capabilityRouter.invoke(bound, input.method, input.args, { signal: controller.signal, owner: event.sender, target: event.sender, channelDelivery: { target: event.sender, requestId: input.requestId } });
+                    const channel = await capabilityRouter.invoke(bound, input.method, input.args, { signal: controller.signal, owner: event.sender, target: event.sender, channelDelivery: { kind: "renderer", webContents: event.sender } });
                     if (!channel || typeof channel !== "object" || !("channelId" in channel) || typeof channel.channelId !== "string") throw Object.assign(new Error("Capability channel unavailable."), { code: "no-handler" });
                     return channel.channelId;
                 } finally { active.delete(input.requestId); }
@@ -198,9 +198,9 @@ export function initBoardHandlers(): void {
     });
     bindEndpoint(Endpoint.grantBoardSourceReads, async (_event: IpcMainEvent, boardRoot: string, sourcePaths: string[], contextPaths: string[] = []): Promise<void> => {
         const { boardTrustService } = await import("../../main/board-trust-service");
-        const permissions = await boardTrustService.getGrantedPermissions(boardRoot);
-        if (!permissions) throw new Error("This board is not trusted.");
-        const mode = permissions.kind === "legacy" ? "full" : permissions.flags.fileSystem;
+        const grant = await boardTrustService.getGrant(boardRoot);
+        if (!grant) throw new Error("This board is not trusted.");
+        const mode = grant.fileSystemMode();
         await (await import("../../main/board-file-access")).grantBoardSourceReads(
             boardRoot, sourcePaths, mode === "board" ? contextPaths : [],
         );
@@ -210,18 +210,18 @@ export function initBoardHandlers(): void {
     });
     bindEndpoint(Endpoint.authorizeBoardFilePath, async (_event, boardRoot: string, requestedPath: string, intent: "read" | "write" = "read"): Promise<string> => {
         const { boardTrustService } = await import("../../main/board-trust-service");
-        const permissions = await boardTrustService.getGrantedPermissions(boardRoot);
-        if (!permissions) throw boardPermissionError("fileSystem");
+        const grant = await boardTrustService.getGrant(boardRoot);
+        if (!grant) throw BoardGrant.deny("fileSystem");
         return (await import("../../main/board-file-access")).resolveAuthorizedPath({
-            boardRoot, requestedPath, permissions, intent,
+            boardRoot, requestedPath, grant, intent,
         });
     });
     bindEndpoint(Endpoint.bindBoardSessionSource, async (_event, handle: string, boardRoot: string): Promise<string> => {
         const { boardTrustService } = await import("../../main/board-trust-service");
-        const permissions = await boardTrustService.getGrantedPermissions(boardRoot);
-        if (!permissions) throw new Error("This board is not trusted.");
+        const grant = await boardTrustService.getGrant(boardRoot);
+        if (!grant) throw new Error("This board is not trusted.");
         const mcpUrl = await (await import("../../main/mcp-http-server")).getMcpUrl();
-        return (await import("../../main/session-src-protocol")).bindSessionSourceToBoard(handle, boardRoot, permissions, mcpUrl);
+        return (await import("../../main/session-src-protocol")).bindSessionSourceToBoard(handle, boardRoot, grant, mcpUrl);
     });
     bindEndpoint(Endpoint.setDisabledBundledBoards, async (_event, ids: string[]): Promise<void> => {
         await (await import("../../main/board-trust-service")).boardTrustService.setDisabledBundledBoards(ids);

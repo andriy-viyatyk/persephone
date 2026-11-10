@@ -1,9 +1,10 @@
 import type { IAiVisionDescriptor } from "ai-vision";
 import type { TrustBoardDialogProps } from "../../../ui/dialogs/TrustBoardDialog";
-import { BOARD_PERMISSION_INTRODUCTION, PERMISSION_CHANGE_TITLE, boardPermissionDiffLines, boardPermissionLines, permissionChangeMessage } from "../../../editors/board/board-permission-copy";
+import { BOARD_PERMISSION_INTRODUCTION, PERMISSION_CHANGE_TITLE, boardPermissionDiffLines, boardPermissionLines, permissionChangeMessage } from "../../../api/boards/board-permission-copy";
 // After Phase 2 extraction, UI consumers use t(key) and agent-facing output uses englishMessage(key) with the same catalog key.
 import { cancelDialog, closeWithResult, descriptor, dialogState, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
 import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+import { BoardGrant } from "../../../../shared/board/board-grant";
 
 const TRUST_BOARD = "Trust Board";
 const ACCEPT_PERMISSIONS = "Accept";
@@ -62,10 +63,10 @@ export class TrustBoardDialogAdapter implements DialogAdapter {
         const change = this.state.change;
         if (change) {
             const marks = { kept: "✓ ", added: "+ ", removed: "- " } as const;
-            return boardPermissionDiffLines(change.granted, change.proposed).map(({ text, fullAccess, mark }) =>
+            return boardPermissionDiffLines(BoardGrant.from(change.granted), change.proposed).map(({ text, fullAccess, mark }) =>
                 marks[mark] + text + (fullAccess && mark !== "removed" ? " (Full access)" : ""));
         }
-        return boardPermissionLines(this.permissions).flatMap(({ text, fullAccess }) =>
+        return boardPermissionLines(BoardGrant.from(this.permissions)).flatMap(({ text, fullAccess }) =>
             fullAccess ? [text, "Full access", "Can reach everything your user account can."] : [text]);
     }
     get change(): TrustBoardDialogProps["change"] {

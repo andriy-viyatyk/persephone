@@ -1,9 +1,9 @@
 import { EventEndpoint } from "../../ipc/api-types";
+import { BoardRoot } from "../../shared/board/board-root";
 import { SERVICE_REQUEST_DEADLINE_MS, type BoardServiceStatus } from "../../ipc/module-service-channels";
 import { api } from "../../ipc/renderer/api";
 import rendererEvents from "../../ipc/renderer/renderer-events";
 import { errMessage } from "../../shared/utils";
-import { fpNormalizeForCompare } from "../core/utils/file-path";
 import { withTimeout } from "../core/utils/utils";
 
 const statuses = new Map<string, BoardServiceStatus>();
@@ -12,13 +12,9 @@ let statusSubscription: (() => void) | undefined;
 let refreshPromise: Promise<void> | undefined;
 let statusRevision = 0;
 
-function statusKey(boardRoot: string): string {
-    return fpNormalizeForCompare(boardRoot);
-}
-
 function replaceStatus(status: BoardServiceStatus): void {
     if (typeof status?.boardRoot !== "string" || status.boardRoot.length === 0) return;
-    const key = statusKey(status.boardRoot);
+    const key = BoardRoot.from(status.boardRoot).key;
     statusRevision += 1;
     statusEventRevisions.set(key, statusRevision);
     statuses.set(key, status);
@@ -35,7 +31,7 @@ async function hydrate(): Promise<void> {
     const snapshotStatuses = new Map<string, BoardServiceStatus>();
     for (const status of snapshot) {
         if (typeof status?.boardRoot !== "string" || status.boardRoot.length === 0) continue;
-        snapshotStatuses.set(statusKey(status.boardRoot), status);
+        snapshotStatuses.set(BoardRoot.from(status.boardRoot).key, status);
     }
     for (const key of statuses.keys()) {
         if (!snapshotStatuses.has(key) && (statusEventRevisions.get(key) ?? 0) <= hydrationRevision) {
@@ -67,7 +63,7 @@ export function refresh(): Promise<void> {
 }
 
 export function getStatus(boardRoot: string): BoardServiceStatus | undefined {
-    return statuses.get(statusKey(boardRoot));
+    return statuses.get(BoardRoot.from(boardRoot).key);
 }
 
 export const moduleServiceStatus = {

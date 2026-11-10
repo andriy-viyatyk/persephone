@@ -9,9 +9,10 @@ import type { DialogViewProps } from "./dialog-view-registry";
 import type { TrustBoardDialogProps, TrustBoardDialogResult } from "./TrustBoardDialog";
 import {
     legacyBoardDeprecationWarningForUi,
-} from "../../editors/board/board-permission-copy";
+} from "../../api/boards/board-permission-copy";
 import { createBoardPermissionChangeList, createBoardPermissionList, createBoardServiceUsesPermissionList } from "../../editors/board/board-permission-list";
 import { t } from "../../../shared/i18n/t";
+import { BoardGrant } from "../../../shared/board/board-grant";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 
@@ -41,7 +42,7 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
                 createTextElement(t("board.permissionChangeMessage", { boardName: state.boardName })),
                 createTextElement(t("dialogs.trustReviewHint"), { color: "warning" }),
                 boardPathElement,
-                createBoardPermissionChangeList(change.granted, change.proposed),
+                createBoardPermissionChangeList(BoardGrant.from(change.granted), change.proposed),
                 ...(serviceUsesPermissionList ? [serviceUsesPermissionList] : []),
                 ...(change.useChanges.length ? [createTextElement(t("board.serviceUseChanges", { changes: change.useChanges.map(({ kind, use }) => `${kind}: ${use.id}@${use.version}`).join(", ") }))] : []),
             ]
@@ -51,8 +52,8 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
                 createTextElement(t("dialogs.trustReviewHint"), { color: "warning" }),
                 boardPathElement,
                 createPanelElement({ direction: "column", gap: "sm" }, [
-                    createBoardPermissionList(state.permissions),
-                    ...(state.permissions.kind === "legacy"
+                    createBoardPermissionList(BoardGrant.from(state.permissions)),
+                    ...(BoardGrant.from(state.permissions).isLegacy()
                         ? [
                             createTextElement(t("board.legacyPermissionExplanation"), { color: "light" }),
                             createTextElement(legacyBoardDeprecationWarningForUi(state.boardName), { color: "warning" }),

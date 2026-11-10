@@ -1,10 +1,10 @@
 import { app } from "../../api/app";
-import { publishedBoards } from "../../api/published-boards";
-import { boardInstallRegistry } from "../../api/board-install-registry";
-import { listBoardUpdates } from "../../api/board-updates";
+import { publishedBoards } from "../../api/boards/published-boards";
+import { boardInstallRegistry } from "../../api/boards/board-install-registry";
+import { listBoardUpdates } from "../../api/boards/board-updates";
 import { createLinkData } from "../../../shared/link-data";
 import { t } from "../../../shared/i18n/t";
-import { fpNormalizeForCompare } from "../../core/utils/file-path";
+import { BoardRoot } from "../../../shared/board/board-root";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement, applyTextAttributes, resolveTextAttributes } from "../../uikit/Text/text-style";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
@@ -161,7 +161,7 @@ export class BoardToolbarView extends VanillaView<{
             size: "sm", color: "light", truncate: true, hoverUnderline: false,
         }));
         const hasUpdate = !!boardRoot && listBoardUpdates().some((update) =>
-            fpNormalizeForCompare(update.root) === fpNormalizeForCompare(boardRoot),
+            BoardRoot.from(update.root).equals(boardRoot),
         );
         this.moreButton.update({
             name: "board-toolbar-more",
@@ -188,7 +188,7 @@ export class BoardToolbarView extends VanillaView<{
     private menuItems(): MenuItem[] {
         const boardRoot = this.boardRoot;
         const hasUpdate = !!boardRoot && listBoardUpdates().some((update) =>
-            fpNormalizeForCompare(update.root) === fpNormalizeForCompare(boardRoot),
+            BoardRoot.from(update.root).equals(boardRoot),
         );
         // The board's own entries come first; Persephone's recovery actions follow in their own group.
         const boardItems = this.boardControls.boardMenuItems();

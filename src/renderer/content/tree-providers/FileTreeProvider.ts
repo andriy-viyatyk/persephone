@@ -12,7 +12,7 @@ import { editorRegistry } from "../../editors/base/editorRegistry";
 import {
     customEditorRegistry,
     resolveEditorIdForFolder,
-} from "../../editors/board/custom-editor-registry";
+} from "../../api/boards/custom-editor-registry";
 import type { PathWatchBatch } from "../../../ipc/api-types";
 import { subscribe } from "../../api/path-watch";
 import { fs } from "../../api/fs";

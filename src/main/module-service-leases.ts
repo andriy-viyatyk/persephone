@@ -8,6 +8,7 @@ import {
 } from "../ipc/module-service-channels";
 import { errMessage } from "../shared/utils";
 import { ServiceError, type RendererLease, type ServiceRecord } from "./module-service-record";
+import { onWebContentsGone } from "./webcontents-lifetime";
 
 export interface LeaseCallbacks {
     getProcess: (record: ServiceRecord) => UtilityProcess | undefined;
@@ -45,7 +46,6 @@ export async function transferRendererLease(
             timer,
             resolve,
             reject,
-            lifecycleListeners: [],
         };
         record.leases.set(target.id, lease);
         listenForLeaseLifecycle(record, lease, callbacks);
@@ -131,20 +131,14 @@ function listenForLeaseLifecycle(record: ServiceRecord, lease: RendererLease, ca
     const release = (reason: RendererLeaseLostReason): void => {
         if (record.leases.get(lease.ownerId) === lease) failLease(record, lease, reason, callbacks);
     };
-    const listeners: Array<{ event: string; listener: () => void }> = [
-        { event: "destroyed", listener: () => release("service-exited") },
-        { event: "render-process-gone", listener: () => release("service-exited") },
-        { event: "did-navigate", listener: () => release("superseded") },
-    ];
-    for (const { event, listener } of listeners) {
-        lease.owner.on(event as "destroyed", listener);
-        lease.lifecycleListeners.push({ event, listener });
-    }
+    lease.stopLifecycle = onWebContentsGone(
+        lease.owner,
+        (event) => release(event === "did-navigate" ? "superseded" : "service-exited"),
+        { repeat: true },
+    );
 }
 
 function removeLeaseLifecycleListeners(lease: RendererLease): void {
-    for (const { event, listener } of lease.lifecycleListeners) {
-        lease.owner.removeListener(event as "destroyed", listener);
-    }
-    lease.lifecycleListeners.length = 0;
+    lease.stopLifecycle?.();
+    lease.stopLifecycle = undefined;
 }

@@ -1,20 +1,14 @@
-import {
-    hasStableBoardIdentity,
-    normalizeBoardSettings,
-    readBoardManifest,
-} from "../../editors/board/board-manifest";
-import { resolveBoardNamespace } from "../board-namespace";
+import { hasStableBoardIdentity, missingBoardIdentityFields } from "../../../shared/board/board-stable-identity";
+import { boardSettingsIdentityMessage } from "../../../shared/board/board-settings-declarations";
+import type { BoardSettingDeclaration, BoardSettingValue } from "../../../shared/board/board-settings-declarations";
+import { readBoardManifest } from "../boards/board-manifest-io";
+import { resolveBoardNamespace } from "../boards/board-namespace";
 import { fpJoin, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { settings } from "../settings";
 import { api } from "../../../ipc/renderer/api";
 import { errMessage } from "../../../shared/utils";
+import { SerialQueue } from "../../../shared/serial-queue";
 import { boardSettings } from "./BoardSettingsStore";
-import type {
-    BoardSettingDeclaration,
-    BoardSettingValue,
-} from "./types";
-
-export { normalizeBoardSettings } from "../../editors/board/board-manifest";
 
 /** Ensure the shared settings file and its external-edit watcher are ready. */
 export function initializeBoardSettings(): Promise<void> {
@@ -42,26 +36,14 @@ function matchesType(value: BoardSettingValue, declaration: BoardSettingDeclarat
           : typeof value === "number" && Number.isFinite(value);
 }
 
-function missingIdentityFields(manifest: unknown): string[] {
-    const candidate = manifest && typeof manifest === "object"
-        ? manifest as { author?: unknown; name?: unknown }
-        : {};
-    const missing: string[] = [];
-    if (typeof candidate.author !== "string" || candidate.author.trim().length === 0) missing.push("author");
-    if (typeof candidate.name !== "string" || candidate.name.trim().length === 0) missing.push("name");
-    return missing;
-}
-
 async function resolveDeclaration(
     boardRoot: string,
     id: string,
 ): Promise<{ namespace: string; declaration: BoardSettingDeclaration }> {
     const manifest = await readBoardManifest(boardRoot);
-    if (!hasStableBoardIdentity(manifest)) {
-        const missing = missingIdentityFields(manifest);
-        throw new Error(`Board settings require a stable board identity; missing ${missing.join(" and ")}.`);
-    }
-    const declaration = normalizeBoardSettings(manifest).find((candidate) => candidate.id === id);
+    const missing = missingBoardIdentityFields(manifest);
+    if (missing.length > 0) throw new Error(boardSettingsIdentityMessage(missing));
+    const declaration = manifest?.settings?.find((candidate) => candidate.id === id);
     if (!declaration) throw new Error(`Unknown or malformed board setting ${JSON.stringify(id)}.`);
     return { namespace: await resolveBoardNamespace(boardRoot), declaration };
 }
@@ -147,7 +129,7 @@ async function readEffectiveBoardSetting(
     return declaration.default;
 }
 
-let requestChain: Promise<unknown> = Promise.resolve();
+const requestQueue = new SerialQueue();
 
 /** Serialized board-facing request entry point. The board transport accepts only `get`. */
 export function resolveBoardSettingsRequest(
@@ -155,7 +137,7 @@ export function resolveBoardSettingsRequest(
     method: "get",
     args: unknown[],
 ): Promise<BoardSettingsReply> {
-    const run = requestChain.then(async (): Promise<BoardSettingsReply> => {
+    return requestQueue.run(async (): Promise<BoardSettingsReply> => {
         if (method !== "get") return { error: `Unknown settings method: ${String(method)}` };
         const id = args[0];
         if (typeof id !== "string" || id.trim().length === 0) {
@@ -167,15 +149,11 @@ export function resolveBoardSettingsRequest(
             return { error: errMessage(error, "Failed to read board setting.") };
         }
     });
-    requestChain = run.then((): void => undefined, (): void => undefined);
-    return run;
 }
 
 /** Renderer-only effective read. Defaults are returned without being persisted. */
 export function getBoardSetting(boardRoot: string, id: string): Promise<BoardSettingValue> {
-    const run = requestChain.then(() => readEffectiveBoardSetting(boardRoot, id.trim()));
-    requestChain = run.then((): void => undefined, (): void => undefined);
-    return run;
+    return requestQueue.run(() => readEffectiveBoardSetting(boardRoot, id.trim()));
 }
 
 /** Renderer-only mutation path for the future Settings page. */
@@ -184,25 +162,21 @@ export async function setBoardSetting(
     id: string,
     value: BoardSettingValue,
 ): Promise<void> {
-    const run = requestChain.then(async () => {
+    await requestQueue.run(async () => {
         const { namespace, declaration } = await resolveDeclaration(boardRoot, id);
         await migrateLegacyExcalidrawLibraryPath(namespace, declaration);
         validateValue(value, declaration);
         await boardSettings.set(namespace, declaration.id, value);
     });
-    requestChain = run.then((): void => undefined, (): void => undefined);
-    await run;
 }
 
 /** Renderer-only reset path. Removing the stored key makes reads use the current default. */
 export async function unsetBoardSetting(boardRoot: string, id: string): Promise<void> {
-    const run = requestChain.then(async () => {
+    await requestQueue.run(async () => {
         const { namespace, declaration } = await resolveDeclaration(boardRoot, id);
         await migrateLegacyExcalidrawLibraryPath(namespace, declaration);
         await boardSettings.unset(namespace, declaration.id);
     });
-    requestChain = run.then((): void => undefined, (): void => undefined);
-    await run;
 }
 
 /** Subscribe one host frame to effective changes for its own board namespace. */
@@ -216,7 +190,7 @@ export function subscribeBoardSettings(
             if (!hasStableBoardIdentity(manifest)) return;
             const namespace = await resolveBoardNamespace(boardRoot);
             if (namespace !== change.namespace) return;
-            const declaration = normalizeBoardSettings(manifest).find((candidate) => candidate.id === change.id);
+            const declaration = manifest?.settings?.find((candidate) => candidate.id === change.id);
             if (!declaration) return;
             const stored = await boardSettings.get(namespace, change.id);
             const value = stored === undefined ? declaration.default : stored;

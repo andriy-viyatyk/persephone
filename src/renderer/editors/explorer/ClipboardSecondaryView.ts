@@ -11,6 +11,7 @@ import type {
 } from "../../../ipc/clipboard-ipc";
 import { createLinkData } from "../../../shared/link-data";
 import { errMessage } from "../../../shared/utils";
+import { SerialQueue } from "../../../shared/serial-queue";
 import { t, untranslated } from "../../../shared/i18n/t";
 import { createFileIconElement, subscribeFileIconElements } from "../../components/icons/icon-elements";
 import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view-registry";
@@ -74,7 +75,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
     private restarting = false;
     private selectedId: string | undefined;
     private activeIndex: number | null = null;
-    private openQueue: Promise<void> = Promise.resolve();
+    private readonly openQueue = new SerialQueue();
     private openQueueGeneration = 0;
     private selectNextCapture = false;
 
@@ -429,7 +430,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
 
     private enqueueOpen(item: ClipboardHistoryItem): void {
         const generation = this.openQueueGeneration;
-        this.openQueue = this.openQueue.then(async () => {
+        void this.openQueue.run(async () => {
             if (this.isDisposed || generation !== this.openQueueGeneration) return;
             await this.openItem(item);
             this.takeListFocus();

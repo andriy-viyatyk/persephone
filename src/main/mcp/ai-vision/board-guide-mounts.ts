@@ -16,6 +16,7 @@ import {
     type BoardGuideMount,
 } from "../../../shared/guides/mounted-source";
 import { MainGuideSource } from "./guide-source";
+import { BoardRoot } from "../../../shared/board/board-root";
 
 const BOARD_MANIFEST_FILE = "board-manifest.json";
 
@@ -25,10 +26,6 @@ const MOUNT_CACHE_MS = 1000;
 
 let cached: readonly BoardGuideMount[] = [];
 let cachedAt = 0;
-
-function comparisonKey(boardRoot: string): string {
-    return boardRoot.replace(/[\\/]+/g, "/").replace(/\/+$/, "").toLowerCase();
-}
 
 function readGuidesFolder(boardRoot: string): string | null {
     try {
@@ -49,8 +46,8 @@ export async function resolveMainBoardGuideMounts(): Promise<readonly BoardGuide
         // Deterministic order: sorted by comparison key, so mount ids (and the duplicate-name
         // suffixes) are stable, and so are the tree and `guides.search()`.
         const grantedRoots = await boardTrustService.getGrantedRootsFromSnapshot();
-        const roots = [...new Map(grantedRoots.map(root => [comparisonKey(root), root])).values()].sort((left, right) =>
-            comparisonKey(left) < comparisonKey(right) ? -1 : 1);
+        const roots = [...new Map(grantedRoots.map(root => [BoardRoot.from(root).key, root])).values()].sort((left, right) =>
+            BoardRoot.from(left).key < BoardRoot.from(right).key ? -1 : 1);
         const taken = new Set<string>();
         const mounts: BoardGuideMount[] = [];
         for (const boardRoot of roots) {

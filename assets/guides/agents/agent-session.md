@@ -179,7 +179,7 @@ Every provider event uses `{type, ...}` and includes the echoed `id` when replyi
 For v1 use these error codes where applicable: `cli-not-found`, `cli-version-unsupported`,
 `not-logged-in`, `model-unavailable`, `resume-not-found`, `provider-unavailable`, `limit-reached`,
 `busy`, and `protocol-error`. The platform can also close the channel with service-channel codes such as
-`channel-backpressure`, `channel-closed`, `channel-message-too-large`, `service-busy`,
+`channel-backpressure`, `channel-closed`, `payload-too-large`, `rejected`, `service-busy`,
 `service-exited`, `renderer-reloaded`, `untrusted`, `connection-refused`, `quit`, and
 `service-error`. A provider should send a useful non-fatal `error` before closing when possible.
 

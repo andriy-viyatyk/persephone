@@ -8,7 +8,7 @@ import { fpBasename } from "../../core/utils/file-path";
 import { ui } from "../../api/ui";
 import { TextFileModel, newTextFileModel } from "../text/TextEditorModel";
 import { BoardEditorModel, type BoardEditorState } from "./BoardEditorModel";
-import { boardEditorId } from "./custom-editor-registry";
+import { boardEditorId } from "../../api/boards/custom-editor-registry";
 import { errMessage } from "../../../shared/utils";
 
 /**

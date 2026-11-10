@@ -2,6 +2,7 @@ import { CAPABILITY_ERROR_CODES } from "../../shared/capability-constants";
 import type { CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientResult } from "../capability-bus-channels";
 import type { CapabilityErrorCode, CapabilityJson } from "../../shared/capability-contract";
 import { errMessage } from "../../shared/utils";
+import { BoardGrant } from "../../shared/board/board-grant";
 import { applicationProfileName } from "../../main/application-profile";
 import { t } from "../../shared/i18n/t";
 import { exitWindowHtmlFullscreen, getHostFullscreenIntent, getPostFullscreenMaximize, reapplyBrowserGuestZoom, restoreGuestFullscreen, setHostFullscreenIntent, setPostFullscreenMaximize, windowHtmlFullscreenKeys } from "../../main/browser-service";
@@ -18,6 +19,7 @@ import { WindowPages, PageDragData } from "../../shared/types";
 import { dragModel } from "../../main/drag-model";
 import { fileIconCache } from "../../main/fileIconCache";
 import { versionService } from "../../main/version-service";
+import { onWebContentsGone } from "../../main/webcontents-lifetime";
 import * as browserRegistration from "../../main/browser-registration";
 import { downloadService } from "../../main/download-service";
 import { setMainScriptsEnabled } from "../../main/mcp/ai-vision/main-script-gate";
@@ -123,9 +125,7 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
         const controller = new AbortController();
         active.set(request.requestId, controller);
         const closed = () => controller.abort();
-        event.sender.once("destroyed", closed);
-        event.sender.once("render-process-gone", closed);
-        event.sender.once("did-navigate", closed);
+        const stop = onWebContentsGone(event.sender, closed);
         try {
             const invocation = capabilityRouter.createInvocationContext(bound, { signal: controller.signal, owner: event.sender, target: event.sender });
             try {
@@ -135,9 +135,7 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
             }
         } finally {
             active.delete(request.requestId);
-            event.sender.removeListener("destroyed", closed);
-            event.sender.removeListener("render-process-gone", closed);
-            event.sender.removeListener("did-navigate", closed);
+            stop();
         }
     });
     capabilityCancel = async (event: IpcMainEvent, requestId: string): Promise<void> => {
@@ -465,7 +463,7 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExte
      *  it an unopenable file looks like a menu item that does nothing. Empty = accepted. */
     openPath = async (event: IpcMainEvent, path: string, boardRoot?: string): Promise<string> => {
         if (boardRoot && !(await (await import("../../main/board-trust-service")).boardTrustService.allows(boardRoot, "openExternal"))) {
-            throw new Error('permission-denied: "openExternal" is not enabled in board-manifest.json');
+            throw BoardGrant.deny("openExternal");
         }
         return shell.openPath(path);
     }

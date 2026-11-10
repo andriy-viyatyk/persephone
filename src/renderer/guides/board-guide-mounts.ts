@@ -9,13 +9,14 @@
  * must gain none. Untrusting a board therefore drops its pages from the tree and from search, the
  * same way it drops its editor associations.
  */
-import { boardTrust } from "../api/board-trust";
+import { boardTrust } from "../api/boards/board-trust";
 import { fs as appFs } from "../api/fs";
-import { fpJoin, fpNormalizeForCompare } from "../core/utils/file-path";
-import { normalizeBoardGuidesFolder, readBoardManifest } from "../editors/board/board-manifest";
+import { fpJoin } from "../core/utils/file-path";
+import { BoardRoot } from "../../shared/board/board-root";
+import { readBoardManifest } from "../api/boards/board-manifest-io";
 import { boardGuideIdFromRoot, uniqueMountId, type BoardGuideMount } from "../../shared/guides/mounted-source";
 import { RendererGuideSource } from "./guide-source";
-import { bundledBoardRegistry } from "../editors/board/bundled-board-registry";
+import { bundledBoardRegistry } from "../api/boards/bundled-board-registry";
 
 /** How long a resolved mount list is reused. Trust changes invalidate it immediately; this only
  *  bounds how stale a manifest edit (a board updated in place on disk) can be. */
@@ -42,12 +43,12 @@ async function resolve(): Promise<readonly ResolvedBoardGuides[]> {
     // suffixes below) are stable across runs, and so are the tree and `guides.search()`.
     await bundledBoardRegistry.ensureInitialized();
     const roots = [...new Map([...boardTrust.listPaths(), ...bundledBoardRegistry.list().map(board => board.root)]
-        .map(root => [fpNormalizeForCompare(root), root])).values()].sort((left, right) =>
-        fpNormalizeForCompare(left) < fpNormalizeForCompare(right) ? -1 : 1);
+        .map(root => [BoardRoot.from(root).key, root])).values()].sort((left, right) =>
+        BoardRoot.from(left).key < BoardRoot.from(right).key ? -1 : 1);
     const taken = new Set<string>();
     const resolved: ResolvedBoardGuides[] = [];
     for (const boardRoot of roots) {
-        const folder = normalizeBoardGuidesFolder((await readBoardManifest(boardRoot))?.guides);
+        const folder = (await readBoardManifest(boardRoot))?.guides;
         if (!folder) continue;
         const baseId = boardGuideIdFromRoot(boardRoot);
         if (!baseId) continue;
@@ -82,6 +83,6 @@ export async function resolveRendererBoardGuideMounts(): Promise<readonly BoardG
 /** The mount id of an installed board, or undefined when it contributes no guides. Used by ``
  *  to find the branch a board's own guide pages live under. */
 export async function getBoardGuideMountId(boardRoot: string): Promise<string | undefined> {
-    const key = fpNormalizeForCompare(boardRoot);
-    return (await resolveCached()).find(entry => fpNormalizeForCompare(entry.boardRoot) === key)?.id;
+    const root = BoardRoot.from(boardRoot);
+    return (await resolveCached()).find(entry => root.equals(entry.boardRoot))?.id;
 }

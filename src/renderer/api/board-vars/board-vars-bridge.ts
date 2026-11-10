@@ -2,6 +2,7 @@ import { showCreateBoardVarsStorageDialog } from "../../ui/dialogs/CreateBoardVa
 import { boardVars } from "./BoardEnvStore";
 import { openEnvVarsPage } from "../../editors/env-vars/open-env-vars";
 import { errMessage } from "../../../shared/utils";
+import { SerialQueue } from "../../../shared/serial-queue";
 
 // =============================================================================
 // Board vars bridge orchestration.
@@ -12,8 +13,8 @@ import { errMessage } from "../../../shared/utils";
 // against the CALLER'S namespace (resolved by `BoardWebview` from the board
 // root — never supplied by the board itself).
 //
-// Requests are serialized on a shared in-flight chain so two boards hitting a
-// locked/not-configured store at once can't each pop a password/create dialog
+// Requests are serialized so two boards hitting a locked/not-configured store
+// at once can't each pop a password/create dialog.
 // Coordinates loading, updates, and access to the board environment-variable store.
 // =============================================================================
 
@@ -22,20 +23,14 @@ export interface BoardVarReply {
     error?: string;
 }
 
-let chain: Promise<unknown> = Promise.resolve();
+const requestQueue = new SerialQueue();
 
 export function resolveBoardVarRequest(
     namespace: string,
     method: "get" | "set" | "list" | "show",
     args: unknown[],
 ): Promise<BoardVarReply> {
-    const run = chain.then(() => runVarRequest(namespace, method, args));
-    // Keep the chain alive regardless of this request's outcome.
-    chain = run.then(
-        (): void => undefined,
-        (): void => undefined,
-    );
-    return run;
+    return requestQueue.run(() => runVarRequest(namespace, method, args));
 }
 
 async function runVarRequest(

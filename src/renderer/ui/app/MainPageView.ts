@@ -16,6 +16,7 @@ import { windowRecording, type WindowRecordingState } from "../../api/window-rec
 import type { RecordingRegion } from "../../../ipc/api-param-types";
 import { showMcpRequestLog } from "../../api/mcp-handler";
 import { errMessage } from "../../../shared/utils";
+import { SerialQueue } from "../../../shared/serial-queue";
 import { PageTabsView } from "../tabs/PageTabsView";
 import { RightPageTabsView } from "../tabs/RightPageTabsView";
 import { VoiceTypingController } from "../voice-typing/VoiceTypingController";
@@ -26,11 +27,12 @@ import { HeaderQuickSettingsPopoverView } from "./HeaderQuickSettingsPopover";
 import { appWindow } from "../../api/window";
 import { api } from "../../../ipc/renderer/api";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
-import { readNormalizedBoardManifest } from "../../editors/board/board-manifest";
-import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../editors/board/board-display-text";
+import { readBoardManifest } from "../../api/boards/board-manifest-io";
+import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
 import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
 import { renderBoardIconDataUrl } from "../../editors/board/board-window-icon";
-import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
+import { fpBasename } from "../../core/utils/file-path";
+import { BoardRoot } from "../../../shared/board/board-root";
 import "./MainPage.css";
 
 async function runSnip(hideWindows: boolean): Promise<void> {
@@ -181,7 +183,7 @@ export class MainPageView extends VanillaView<object> {
     private closeButton: HTMLButtonElement | undefined;
     private boardIdentityActive = true;
     private boardIconRevision = 0;
-    private boardIdentitySend: Promise<void> = Promise.resolve();
+    private readonly boardIdentityQueue = new SerialQueue();
 
     private buildHeader(): void {
         this.header.className = "app-header";
@@ -198,12 +200,12 @@ export class MainPageView extends VanillaView<object> {
                 this.dragSpacer, this.minimizeButton, this.toggleWindowButton, this.closeButton);
             void this.refreshBoardIdentity();
             this.own(onBoardDisplayTextChanged((root) => {
-                if (appWindow.boardRoot && fpNormalizeForCompare(root) === fpNormalizeForCompare(appWindow.boardRoot)) {
+                if (appWindow.boardRoot && BoardRoot.tryFrom(root)?.equals(appWindow.boardRoot)) {
                     void this.refreshBoardIdentity();
                 }
             }));
             this.own(subscribeBoardIconChanges((root) => {
-                if (root && appWindow.boardRoot && fpNormalizeForCompare(root) === fpNormalizeForCompare(appWindow.boardRoot)) {
+                if (root && appWindow.boardRoot && BoardRoot.tryFrom(root)?.equals(appWindow.boardRoot)) {
                     void this.refreshBoardIdentity();
                 }
             }));
@@ -266,7 +268,7 @@ export class MainPageView extends VanillaView<object> {
         if (!root || !this.boardIdentityActive) return;
         const revision = ++this.boardIconRevision;
         try {
-            const manifest = await readNormalizedBoardManifest(root);
+            const manifest = await readBoardManifest(root);
             if (!this.boardIdentityActive || revision !== this.boardIconRevision) return;
             if (manifest) await ensureBoardDisplayText(root, manifest);
             if (!this.boardIdentityActive || revision !== this.boardIconRevision) return;
@@ -276,11 +278,10 @@ export class MainPageView extends VanillaView<object> {
             const iconDataUrl = await renderBoardIconDataUrl(root);
             if (!this.boardIdentityActive || revision !== this.boardIconRevision) return;
             const identity = { displayName: name, iconDataUrl };
-            this.boardIdentitySend = this.boardIdentitySend.catch((): void => undefined).then(async (): Promise<void> => {
+            await this.boardIdentityQueue.run(async (): Promise<void> => {
                 if (!this.boardIdentityActive || revision !== this.boardIconRevision) return;
                 await api.setBoardWindowIdentity(identity);
             });
-            await this.boardIdentitySend;
         } catch (error) {
             console.error("Failed to update board window identity", error);
         }

@@ -10,6 +10,8 @@
  * - Inner path: "word/document.xml"
  */
 
+import { isKeyInside, type PathContainmentOptions } from "../../../shared/path-containment";
+
 const path = require("path") as typeof import("path");
 
 // ── Archive path separator ──────────────────────────────────────────
@@ -257,6 +259,11 @@ export function fpIsAbsolute(filePath: string): boolean {
 export function fpNormalizeForCompare(filePath: string): string {
     const resolved = path.resolve(filePath).replace(/\\/g, "/").replace(/\/+$/, "");
     return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+}
+
+/** True when `child` equals or lies under `parent`; `{ allowSame: false }` accepts only descendants. */
+export function fpIsInside(parent: string, child: string, options?: PathContainmentOptions): boolean {
+    return isKeyInside(fpNormalizeForCompare(parent), fpNormalizeForCompare(child), options);
 }
 
 /** Wrapper for `path.relative()`. */

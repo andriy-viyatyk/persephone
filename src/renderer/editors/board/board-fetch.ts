@@ -6,8 +6,9 @@ import type {
     BoardFetchChunkMsg,
 } from "../../../ipc/board-bridge-channels";
 import { errMessage } from "../../../shared/utils";
+import { BoardGrant, type BoardNetworkPolicy } from "../../../shared/board/board-grant";
 import type { IFetchOptions } from "../../api/types/app";
-import { boardTrust } from "../../api/board-trust";
+import { boardTrust } from "../../api/boards/board-trust";
 import { api } from "../../../ipc/renderer/api";
 
 interface ActiveBoardFetch {
@@ -42,18 +43,16 @@ export class BoardFetchBridge {
         try {
             if (typeof message.url !== "string") throw new TypeError("persephone.fetch() requires a URL string.");
             const init = this.validateInit(message.init);
-            const grant = await boardTrust.getGrantedPermissions(boardRoot);
-            const network = grant?.kind === "legacy" ? "full" : grant?.flags.network ?? false;
-            const appScripting = grant?.kind === "legacy" || (grant?.kind === "flags" && grant.flags.appScripting);
-            if (network === false) throw new Error('permission-denied: "network" is not enabled in board-manifest.json');
+            const grant = (await boardTrust.getGrant(boardRoot)) ?? BoardGrant.NONE;
+            if (grant.networkMode() === false) throw BoardGrant.deny("network");
             const mcpUrl = await api.getBoardMcpEndpoint();
             const { nodeFetch } = await import("../../api/node-fetch");
             const response = await nodeFetch(message.url, {
                 ...init,
                 ...(init.body instanceof ArrayBuffer ? { body: new Blob([init.body]).stream() } : {}),
                 signal: current.controller.signal,
-                boardNetworkPolicy: { network, appScripting, mcpUrl },
-            } as IFetchOptions & { boardNetworkPolicy: { network: false | "internet" | "full"; appScripting: boolean; mcpUrl: string } });
+                boardNetworkPolicy: grant.networkPolicy({ mcpUrl }),
+            } as IFetchOptions & { boardNetworkPolicy: BoardNetworkPolicy });
             if (this.active.get(message.reqId) !== current) return;
             const hasBody = response.body !== null;
             const head: BoardFetchHeadMsg = {

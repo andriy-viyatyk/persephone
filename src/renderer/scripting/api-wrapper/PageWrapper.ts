@@ -5,7 +5,7 @@ import { editorRegistry } from "../../editors/base/editorRegistry";
 import type { EditorModel } from "../../editors/base/EditorModel";
 import { isTextFileModel, type TextFileModel } from "../../editors/text/TextEditorModel";
 import type { IContentPipe } from "../../api/types/io.pipe";
-import { customEditorRegistry, isBoardEditorId } from "../../editors/board/custom-editor-registry";
+import { customEditorRegistry, isBoardEditorId } from "../../api/boards/custom-editor-registry";
 import type { BoardEditorModel } from "../../editors/board/BoardEditorModel";
 import type { BoardInfoEditorModel } from "../../editors/board-info/BoardInfoEditorModel";
 import { MonacoEditor } from "../../editors/monaco/MonacoEditor";

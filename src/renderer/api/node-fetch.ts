@@ -17,6 +17,7 @@ import { TorChannel } from "../../ipc/tor-ipc";
 import { settings } from "./settings";
 import { agentFor, parseProxy, type ProxyRoute } from "./proxy-tunnel";
 import { assertBoardNetworkAllowed, pinnedLookup } from "../../shared/board-network-guard";
+import type { BoardNetworkPolicy } from "../../shared/board/board-grant";
 
 const https = require("https") as typeof import("https");
 const http = require("http") as typeof import("http");
@@ -73,8 +74,6 @@ interface TorRouteLease {
     route: ProxyRoute;
     release(): void;
 }
-
-export interface BoardNetworkPolicy { network: false | "internet" | "full"; appScripting: boolean; mcpUrl: string; boardRoot?: string }
 
 async function acquireTorRoute(signal?: AbortSignal): Promise<TorRouteLease> {
     if (signal?.aborted) throw new Error("The HTTP request was aborted.");

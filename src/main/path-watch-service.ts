@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { FSWatcher, Stats } from "node:fs";
 import { errMessage } from "../shared/utils";
+import { isPathInside } from "./utils";
 import type { PathWatchBatch, PathWatchChange, PathWatchOwner } from "../ipc/api-types";
 
 const DEFAULT_DEBOUNCE_MS = 300;
@@ -133,11 +134,6 @@ function normalizePath(input: string): { path: string; key: string } {
     return { path: normalized, key: process.platform === "win32" ? normalized.toLowerCase() : normalized };
 }
 
-function isWithin(parent: string, candidate: string): boolean {
-    const relative = path.relative(parent, candidate);
-    return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative));
-}
-
 async function statPath(target: string): Promise<Stats | undefined> {
     try {
         return await fs.promises.stat(target);
@@ -192,7 +188,7 @@ function watcherId(pathKey: string, recursive: boolean): string {
 function findWatcher(pathKey: string, recursive: boolean, kind: SubscriptionKind, targetPath: string): WatcherRecord | undefined {
     // W2(a): a recursive watcher on the requested path or nearest existing ancestor.
     const recursiveCandidates = [...watchers.values()]
-        .filter(record => record.recursive && isWithin(record.root, targetPath))
+        .filter(record => record.recursive && isPathInside(record.root, targetPath))
         .sort((left, right) => right.root.length - left.root.length);
     if (recursiveCandidates.length) return recursiveCandidates[0];
 
@@ -248,7 +244,7 @@ function openWatcherHandle(record: WatcherRecord): void {
 
 function scopeAccepts(subscription: SubscriptionRecord, candidate: string): boolean {
     if (subscription.kind === "file") return normalizePath(candidate).key === subscription.key;
-    if (subscription.recursive) return isWithin(subscription.path, candidate);
+    if (subscription.recursive) return isPathInside(subscription.path, candidate);
     return normalizePath(path.dirname(candidate)).key === subscription.key || normalizePath(candidate).key === subscription.key;
 }
 
@@ -294,7 +290,7 @@ async function canonicalPath(input: string): Promise<string> {
 
 function intentMatchesPath(intent: MoveIntent, candidatePath: string): boolean {
     const candidate = normalizePath(candidatePath);
-    return candidate.key === intent.fromKey || isWithin(intent.from, candidate.path);
+    return candidate.key === intent.fromKey || isPathInside(intent.from, candidate.path);
 }
 
 function scheduleIntentExpiry(intent: MoveIntent): void {
@@ -351,7 +347,7 @@ async function beginMove(fromInput: string, toInput: string): Promise<string> {
     }
     moveIntents.set(id, intent);
     for (const watcher of watchers.values()) {
-        if (!isWithin(intent.from, watcher.root)) continue;
+        if (!isPathInside(intent.from, watcher.root)) continue;
         intent.suspendedWatcherIds.add(watcher.id);
         watcher.suspensionOwners.add(id);
         const handle = watcher.watcher;
@@ -378,7 +374,7 @@ function completeMove(id: string, succeeded: boolean): void {
     }
     scheduleIntentExpiry(intent);
     for (const subscription of subscriptions.values()) {
-        if (intent.matchedSubscriptionIds.has(subscription.id) || !isWithin(intent.from, subscription.path)) continue;
+        if (intent.matchedSubscriptionIds.has(subscription.id) || !isPathInside(intent.from, subscription.path)) continue;
         const ownPathKey = subscription.key;
         if (!subscription.pending.has(ownPathKey)) enqueue(subscription, subscription.path, "rename");
         else scheduleFlush(subscription);
@@ -454,7 +450,7 @@ async function flushSubscription(subscription: SubscriptionRecord, ended?: PathW
     } else {
         const candidates = pendingEntries.map(([key, value]) => ({ key, ...value }));
         const rootKey = subscription.key;
-        const hasChildEvent = candidates.some(candidate => candidate.key !== rootKey && isWithin(subscription.path, candidate.path));
+        const hasChildEvent = candidates.some(candidate => candidate.key !== rootKey && isPathInside(subscription.path, candidate.path));
         for (const candidate of candidates) {
             const moveEligible = subscription.key === candidate.key && [...moveIntents.values()].some(intent =>
                 intent.phase === "completed" && intent.expiresAt > Date.now()
@@ -563,7 +559,7 @@ async function handleRawEvent(record: WatcherRecord, eventType: string, filename
         endWatcher(record, "removed");
         return;
     }
-    if (candidate && normalizedType === "rename" && !isRootEvent && isWithin(record.root, candidate)) {
+    if (candidate && normalizedType === "rename" && !isRootEvent && isPathInside(record.root, candidate)) {
         recordRecentRenamePath(record, candidate);
     }
     if (filename === null || isRootEvent) {
