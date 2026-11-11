@@ -1,6 +1,4 @@
-import type {
-    BoardNavigationReturnMsg,
-} from "../../ipc/board-bridge-channels";
+import { frameEvent } from "../../ipc/board-bridge/frame-protocol";
 import { pagesModel } from "./pages";
 import { browserUrlChanged, type BrowserUrlEvent } from "../core/state/events";
 import type { IBoardHostEditor } from "./boards/board-host-editor";
@@ -27,7 +25,7 @@ export interface NavigationReturnClaim {
 
 export interface BoardNavigationReturnClaimOptions {
     pageId?: string;
-    model: Pick<IBoardHostEditor, "frames">;
+    model: Pick<IBoardHostEditor, "frameRegistry">;
     frame: HTMLIFrameElement;
     tabId: string;
     targetOrigin: string;
@@ -37,7 +35,7 @@ export interface BoardNavigationReturnClaimOptions {
 }
 
 interface BoardFrameOwner {
-    readonly model: Pick<IBoardHostEditor, "frames">;
+    readonly model: Pick<IBoardHostEditor, "frameRegistry">;
     readonly frame: HTMLIFrameElement;
     readonly tabId: string;
     readonly targetOrigin: string;
@@ -139,11 +137,7 @@ class BoardNavigationReturnService {
         return claim.url;
     }
 
-    releaseBoardFrame(model: Pick<IBoardHostEditor, "frames">, frame: HTMLIFrameElement, tabId: string): void {
-        this.retireMatchingBoardClaims(model, frame, tabId);
-    }
-
-    resetBoardFrame(model: Pick<IBoardHostEditor, "frames">, frame: HTMLIFrameElement, tabId: string): void {
+    releaseBoardFrame(model: Pick<IBoardHostEditor, "frameRegistry">, frame: HTMLIFrameElement, tabId: string): void {
         this.retireMatchingBoardClaims(model, frame, tabId);
     }
 
@@ -164,7 +158,7 @@ class BoardNavigationReturnService {
     }
 
     private retireMatchingBoardClaims(
-        model: Pick<IBoardHostEditor, "frames">,
+        model: Pick<IBoardHostEditor, "frameRegistry">,
         frame: HTMLIFrameElement,
         tabId: string,
     ): void {
@@ -221,7 +215,7 @@ class BoardNavigationReturnService {
     }
 
     private isBoardOwnerCurrent(owner: BoardFrameOwner): boolean {
-        return owner.model.frames.get(owner.tabId) === owner.frame
+        return owner.model.frameRegistry.isCurrentFrame(owner.tabId, owner.frame)
             && owner.isCurrent()
             && owner.currentGeneration() === owner.generation;
     }
@@ -230,13 +224,9 @@ class BoardNavigationReturnService {
         if (!this.isBoardOwnerCurrent(owner)) return;
         const contentWindow = owner.frame.contentWindow;
         if (!contentWindow) return;
-        const message: BoardNavigationReturnMsg = {
-            __persephone: "navigation:return",
-            url: event.url,
-            query: event.query,
-            hash: event.hash,
-        };
-        contentWindow.postMessage(message, owner.targetOrigin);
+        contentWindow.postMessage(frameEvent("navigation.return", {
+            url: event.url, query: event.query, hash: event.hash,
+        }), owner.targetOrigin);
     }
 }
 

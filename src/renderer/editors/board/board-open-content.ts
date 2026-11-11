@@ -1,19 +1,19 @@
 /**
  * `persephone.openContent(...)` orchestration — the renderer-side entry point
- * `BoardWebview` calls for a board's `board:openContent` request.
+ * the content-open bridge calls for a board's `board:openContent` request.
  *
  * This is the board equivalent of `pagesModel.addEditorPage(editor, language, title, content)`: the
  * five Force Graph features that create an in-memory page in ANOTHER editor (Open as markdown, Open
  * in grid, Extract, Extract with children, Open in Drawing) have no board-side expression otherwise,
  * because `openRawLink` opens a *href* and would need a `data:` URL that cannot carry a large graph.
  *
- * ── Scope, deliberately narrow ────────────────────────────────────────────────
+ * Scope, deliberately narrow.
  * `persephone.call` is rooted at the page HOSTING the board, and this addition does not widen that.
  * `openContent` is a CREATE-ONLY constructor:
  *   • it returns the id of a page the board itself just created — never a handle to an existing one;
  *   • it cannot read, enumerate, navigate, close, or mutate any page (there is no counterpart verb);
  *   • the created page lives in the board's OWN window (this module runs in that renderer);
- *   • the caller is re-checked for trust by `BoardWebview` on every request, so an untrust blocks an
+ *   • the caller is re-checked for trust by the board host router on every request, so an untrust blocks an
  *     already-mounted board;
  *   • a `board-editor:<root>` id is rejected outright, so a board cannot conjure another board.
  * Every other validation is `addEditorPage`'s own (unknown editor id, unknown language, standalone
@@ -22,7 +22,7 @@
  */
 import { pagesModel } from "../../api/pages";
 import { errMessage } from "../../../shared/utils";
-import type { BoardOpenContentRequest } from "../../../ipc/board-bridge-channels";
+import type { BoardOpenContentRequest } from "../../../ipc/board-bridge/frame-protocol";
 import type { EditorView } from "../../../shared/types";
 import { BOARD_EDITOR_ID_PREFIX } from "../../api/boards/custom-editor-registry";
 

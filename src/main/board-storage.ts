@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { BoardJsonValue } from "../ipc/board-bridge-channels";
+import type { BoardJsonValue } from "../ipc/board-bridge/port-protocol";
 import { errMessage } from "../shared/utils";
 import { KeyedSerialQueue } from "../shared/serial-queue";
 import { getDataFolder } from "./utils";

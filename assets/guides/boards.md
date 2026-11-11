@@ -756,7 +756,7 @@ Every open board displays a thin toolbar above the board's content area. The too
 | **File Explorer** (folder icon) | Open the File Explorer panel rooted at the board's parent folder. Hidden on the locked board page in a board window. |
 | **Text slot** | Empty unless the open board fills it with `persephone.toolbar.setText()`. A non-interactive label; the board's own folder path is under **… → Board properties** and the tab's **Copy Board Path**. |
 | **…** (Board actions) | Open **Reload board**, **Open board log**, and **Board properties**. A board can add its own actions at the top of this menu. An update-available dot appears here when a newer catalog version is ready. |
-| **Board controls** | Controls the open board declared for itself — buttons, toggles, menus, dropdowns, segmented choice buttons and text boxes — shown between the label and Persephone's own buttons, and separated from them. They belong to the board, so they change with it and disappear when it reloads until it declares them again. |
+| **Board controls** | Controls the open board declared for itself — buttons, toggles, menus, dropdowns, segmented choice buttons and text boxes — shown between the label and Persephone's own buttons, and separated from them. They belong to the board, so they change with it and clear when it reloads, its grants change, or it loses trust; the frame can declare them again after it starts. |
 
 Trusted and bundled boards can declare these controls with `persephone.toolbar.set()` and handle
 their picks with `persephone.toolbar.onAction()`. A `segmented` control shows joined choice buttons
@@ -794,7 +794,8 @@ A board that plays audio can show a mute button on its page tab. Report the curr
 `persephone.page.setMuted(muted)`; pass `null` to remove the button. When the user clicks the tab
 button, `persephone.page.onMuteToggle(callback)` runs the callback. The board remains responsible
 for changing its audio and reporting the resulting state, including changes made through its own
-controls:
+controls. Removing trust or changing the board's grants clears the button until the main frame
+reports its mute state again:
 
 ```js
 persephone.page.setMuted(audio.muted);
@@ -828,6 +829,10 @@ A board that wants to draw its own custom right-click menu instead can call `eve
 ## The board bridge — `window.persephone`
 
 The only Persephone-specific API a board sees is `window.persephone`. Everything else is plain web development.
+
+Host requests can reject with an `Error` that has a readable `.message` and may also have a stable
+`.code`. If the user removes the board's trust while a request is in progress, the request rejects
+immediately with `code === "untrusted"` and the message `"This board is no longer trusted."`.
 
 ### `persephone.execute(commandLine, options?)`
 
@@ -1195,6 +1200,8 @@ hints, writable properties, methods, `elements`, and `highlight(...)`. A declara
 board panel and runs in the panel's frame. If no model is published, use the board editor's
 `snapshot()` and refs instead. See the [AI Vision guide](./agents/ai-vision.md) for how to publish
 one, and the [agent board guide](./agents/boards.md) for the rest of the board authoring surface.
+If the board frame reloads while an AiVision request is pending, that request rejects with the
+message `"The board frame was reloaded."`.
 
 ### Page-scoped board UI state: `persephone.pageState`
 
@@ -1584,13 +1591,15 @@ Three things a content-host board can do that a simple board cannot:
 
 **Same chrome as the built-in editor it replaces.** A content-host board's editor-switch control offers the exact same options its file's built-in editor would — including **Text Editor** (Monaco) even when the file's natural built-in viewer is something else (for example, a board for `*.drawio` files shows `Text Editor | Drawio`, matching what a built-in viewer for that file type would show). The board also gets the same footer row a built-in text editor shows: a **script** toggle that opens the [Script Panel](./scripting/index.md#script-panel) to run a script against the file's content, and the file's encoding with a provider icon (local file, HTTP, or Mneme).
 
-**Footer status text:** any board can put its own text in its footer bar — call `persephone.setStatusText(text)` with any string, e.g. a **Todo board** (a published board that replaces Persephone's former built-in Todo editor — see [What's New](./whats-new.md)) showing its `"12 items"` count. Call it from the board's main view; pass `""` to clear it. A **simple** board has the footer too (without the script toggle and encoding). Guard the call with `persephone.setStatusText?.(…)` if the same board also targets older Persephone builds.
+**Footer status text:** any board can put its own text in its footer bar — call `persephone.setStatusText(text)` with any string, e.g. a **Todo board** (a published board that replaces Persephone's former built-in Todo editor — see [What's New](./whats-new.md)) showing its `"12 items"` count. Call it from the board's main view; pass `""` to clear it. A **simple** board has the footer too (without the script toggle and encoding). The text clears when its frame reloads, its grants change, or it loses trust; set it again from the main frame after it starts. Guard the call with `persephone.setStatusText?.(…)` if the same board also targets older Persephone builds.
 
 **Footer status-bar items:** boards that require bridge version `1.27.0` can also use
 `persephone.statusBar.set()` to add transient text labels and buttons beside the footer indicators.
 Items can be updated by id, hidden for later reuse, and aligned to the end of the board contribution
 area. With bridge `1.42.0`, a text item can set `variant: "chip"` to appear as a compact bordered
 pill instead of plain text. The legacy `setStatusText()` label remains in its existing position.
+Items clear when their frame reloads, the board's grants change, or the board loses trust; the
+active main frame can declare them again after it starts.
 
 **Page-toolbar text:** a trusted or bundled board's main view can call
 `persephone.toolbar.setText(text)` to replace the wide middle label in the page toolbar. This is
@@ -1600,7 +1609,8 @@ when no board had claimed it, which spent the toolbar's whole flexible span on s
 had just chosen and could not act on. So `persephone.toolbar.setText("")` now clears the slot
 rather than restoring that path. The label remains non-interactive, and while a board's text is
 shown its native tooltip carries the full path. Reloading, navigating away, a frame error, or
-losing trust clears the text; the newly mounted frame must set it again. It is safe to call
+losing trust or changing the board's grants clears the text; the newly mounted frame must set it
+again. It is safe to call
 `setText()` (and `toolbar.set()` / `update()`) from top-level script code: calls made while the
 page is still loading are held and applied, in order, once it has loaded.
 
@@ -1715,6 +1725,7 @@ A board isn't limited to the single main view in its tab. It can declare one or 
 - The main view and every secondary panel share state, so selecting something in a sidebar panel (e.g. picking a list) can instantly filter or update what the main view shows, and vice versa.
 - Some of what a board puts in that shared state is remembered across app restarts and board reloads (a per-board author choice), so a selection you made can still be there next time you open the board.
 - Closing the board's tab, or navigating it to something else, closes its secondary panels along with it — they aren't a way to keep the board running in the background (see [Long-running processes](#long-running-processes-setboardbusy--getboardbusy--getjobs) for that).
+- Closing one secondary panel leaves the main frame's toolbar and status items in place.
 
 > **Building a board with secondary views?** See the board's own `CLAUDE.md` (or `persephone://guides/boards` for an AI agent) for the full `persephone.state.*` and `persephone.setSecondaryViews` reference. The bundled **Demo board** includes a working example.
 

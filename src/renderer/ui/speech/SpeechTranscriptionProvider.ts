@@ -1,6 +1,6 @@
 import { SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "../../../ipc/module-service-channels";
 import { api } from "../../../ipc/renderer/api";
-import type { BoardServiceProvider } from "../../../ipc/board-bridge-channels";
+import type { BoardServiceProvider } from "../../../ipc/board-bridge/port-protocol";
 import { serviceChannelPorts } from "../../api/service-channel-ports";
 import { openDomServiceChannel } from "../../../shared/service-channel-node";
 

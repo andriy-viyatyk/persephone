@@ -9,7 +9,7 @@ import { isBoardClaimedScheme, schemeOf } from "../../content/scheme-registry";
 import { boardEditorId } from "../boards/custom-editor-registry";
 import { UpdateCheckResult } from "../../../ipc/api-param-types";
 import { EventEndpoint } from "../../../ipc/api-types";
-import type { BoardNotifyMsg } from "../../../ipc/board-bridge-channels";
+import type { BoardNotifyMsg } from "../../../ipc/board-bridge/port-protocol";
 import type { PageDescriptor } from "../../../shared/types";
 import type { LaunchInput } from "../../../shared/launch-input";
 import { saveWindowStateForShutdown } from "./save-window-state";

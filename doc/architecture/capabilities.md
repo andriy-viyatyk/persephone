@@ -211,10 +211,12 @@ active request context is removed before the next one starts, so the frame handl
 time. A request is never routed to a handler page in a different window.
 
 The intent lifecycle, including `requestId`, `resolve(value, { discardPage? })`, `reject(reason)`,
-frame validation and cancellation, is implemented by
-[`BoardWebview.ts`](../../src/renderer/editors/board/BoardWebview.ts) and
-[`board-shim.ts`](../../src/board-shim.ts). A page opened for the first request receives its
-intent in the initial board-port message; a reused page receives the intent over the host-frame
+frame validation and cancellation, is routed by the board frame composition and
+[`BoardHostRouter`](../../src/renderer/editors/board/frame/board-host-router.ts), with the board
+intent adapter in
+[`board-capability-frame-adapter.ts`](../../src/renderer/api/capabilities/board-capability-frame-adapter.ts)
+and the public frame API in [`board-shim.ts`](../../src/board-shim.ts). A page opened for the first
+request receives its intent in the initial board-port message; a reused page receives the intent over the host-frame
 message channel. `discardPage` is separate from the opaque result and discards only a page created
 for that request. A late or duplicate settlement cannot settle a later request.
 

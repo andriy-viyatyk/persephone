@@ -16,7 +16,8 @@ import type { MenuItem } from "../../core/events/context-menu";
 import { SwitchWidgetView } from "../base/PageToolbarView";
 import { openBoardInfo } from "../board-info/open-board-info";
 import type { BoardEditorModel } from "./BoardEditorModel";
-import { BoardToolbarControls, type ToolbarAction } from "./BoardToolbarControls";
+import { BoardToolbarControls } from "./BoardToolbarControls";
+import type { ToolbarAction } from "./chrome/board-chrome-protocol";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 import "../../uikit/IconButton/IconButton.css";
@@ -80,25 +81,6 @@ export class BoardToolbarView extends VanillaView<{
         };
     }
 
-    public setToolbarControls(
-        controls: readonly import("../../../ipc/board-bridge-channels").BoardToolbarControlDescriptor[],
-        frameGeneration: number,
-        warning: (message: string) => void,
-    ): void {
-        this.boardControls.set(controls, frameGeneration, warning);
-    }
-
-    public updateToolbarControls(
-        patches: readonly import("../../../ipc/board-bridge-channels").BoardToolbarControlPatch[],
-        warning: (message: string) => void,
-    ): void {
-        this.boardControls.updateCatalog(patches, warning);
-    }
-
-    public clearToolbarControls(frameGeneration: number): void {
-        this.boardControls.clear(frameGeneration);
-    }
-
     protected onMount(): void {
         this.pathPanel.append(this.pathText);
         this.morePanel.append(this.moreButton.root);
@@ -121,8 +103,8 @@ export class BoardToolbarView extends VanillaView<{
         void boardInstallRegistry.load();
         this.bind(this.model.state, (state) => ({
             boardRoot: state.boardRoot,
-            toolbarText: state.toolbarText,
         }), this.sync);
+        this.bind(this.model.chrome.state, (state) => state.toolbarText, this.sync);
         // A board window's own board is the whole app there; File Explorer would open the
         // Persephone sidebar on it, so the locked board page hides the button.
         const page = this.model.page;
@@ -152,7 +134,7 @@ export class BoardToolbarView extends VanillaView<{
         // already chose and cannot act on; the path is still one click away under
         // … → Board properties, and on the tab's Copy Board Path. `""` and `undefined` are
         // deliberately the same here, so `setText("")` clears rather than restoring a fallback.
-        const slotText = state.toolbarText ?? "";
+        const slotText = this.model.chrome.state.get().toolbarText ?? "";
         this.pathText.textContent = slotText;
         // An empty inline element has no hover target, so the tooltip only exists when a board
         // has actually put something in the slot — where the path remains its documented title.
@@ -194,7 +176,13 @@ export class BoardToolbarView extends VanillaView<{
         const boardItems = this.boardControls.boardMenuItems();
         return [
             ...boardItems,
-            { id: "reload-board", label: t("board.reloadBoard"), icon: "refresh", startGroup: boardItems.length > 0, onClick: () => this.model.reloadBoard() },
+            {
+                id: "reload-board",
+                label: t("board.reloadBoard"),
+                icon: "refresh",
+                startGroup: boardItems.length > 0,
+                onClick: () => this.model.reloadBoard(),
+            },
             { id: "open-board-log", label: t("board.openBoardLog"), icon: "log", onClick: () => void this.openLog() },
             {
                 id: "board-properties",

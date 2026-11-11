@@ -3,6 +3,7 @@ import { CdpSession } from "../../automation/CdpSession";
 import { BOARD_CDP_TAB } from "../../../ipc/api-types";
 import { panelKey } from "../../ui/secondary-views/panel-key";
 import { boardSecondaryPanelId, parseBoardSecondaryPanelId } from "./board-secondary";
+import type { BoardFrameRegistry } from "./model/BoardFrameRegistry";
 import type { BoardEditorModel } from "./BoardEditorModel";
 
 /**
@@ -28,7 +29,7 @@ const TAB_MSG =
     "declared secondary views) are fixed by its manifest. Use the editor's tabs and switchTab() to switch between them.";
 
 export class BoardTargetModel implements IBrowserTarget {
-    constructor(private readonly model: BoardEditorModel) {}
+    constructor(private readonly model: BoardEditorModel, private readonly registry: BoardFrameRegistry) {}
 
     get id(): string {
         return this.model.id;
@@ -37,7 +38,7 @@ export class BoardTargetModel implements IBrowserTarget {
     cdp(tabId?: string): CdpSession {
         // Route to the active tab's frame unless an explicit tab is given. The key shape
         // `${model.id}/${tab}` matches the per-frame registration in cdp-service.
-        return new CdpSession(`${this.model.id}/${tabId ?? this.model.activeTabId}`);
+        return new CdpSession(`${this.model.id}/${tabId ?? this.registry.activeTabId}`);
     }
 
     inputCdp(tabId?: string, sessionId?: string) {
@@ -54,7 +55,7 @@ export class BoardTargetModel implements IBrowserTarget {
         // Focus remains available to the explicit synthetic compatibility path. Trusted mouse
         // and keyboard input use the resolved board-frame CDP session; the cross-origin
         // contentWindow itself cannot be focused.
-        this.model.getFrame(tabId ?? this.model.activeTabId)?.focus();
+        this.registry.getFrame(tabId ?? this.registry.activeTabId)?.focus();
     }
 
     async insertText(text: string, tabId?: string): Promise<void> {
@@ -87,7 +88,7 @@ export class BoardTargetModel implements IBrowserTarget {
             url: "board:///index.html",
             title: s.selectedBoard ?? "Board",
             loading: false,
-            active: this.model.activeTabId === BOARD_CDP_TAB,
+            active: this.registry.activeTabId === BOARD_CDP_TAB,
         };
         const secondaryTabs = defs.map<ITargetTab>((d) => {
             const id = boardSecondaryPanelId(d.id);
@@ -98,8 +99,8 @@ export class BoardTargetModel implements IBrowserTarget {
                 // `loading:true` means "declared but not attachable yet" — its sidebar panel
                 // is closed, or open but its frame hasn't registered for CDP. switchTab /
                 // ensureReady open it and wait on demand.
-                loading: !this.model.loadedTabs.has(id),
-                active: this.model.activeTabId === id,
+                loading: !this.registry.isLoaded(id),
+                active: this.registry.activeTabId === id,
             };
         });
         return [mainTab, ...secondaryTabs];
@@ -123,13 +124,12 @@ export class BoardTargetModel implements IBrowserTarget {
      */
     async switchTab(tabId: string): Promise<void> {
         if (tabId === BOARD_CDP_TAB) {
-            this.model.activeTabId = BOARD_CDP_TAB;
+            this.registry.selectTab(BOARD_CDP_TAB);
             return;
         }
         const viewId = parseBoardSecondaryPanelId(tabId);
-        const known = viewId != null && (this.model.state.get().secondaryViewDefs ?? []).some((d) => d.id === viewId);
-        if (!known) throw new Error(`Unknown board view '${tabId}'.`);
-        this.model.activeTabId = tabId;
+        if (viewId === null || !this.registry.hasSecondaryView(viewId)) throw new Error(`Unknown board view '${tabId}'.`);
+        this.registry.selectTab(tabId);
         await this.mountAndWait(tabId);
     }
 
@@ -139,9 +139,9 @@ export class BoardTargetModel implements IBrowserTarget {
      * loading — expand + wait here so the command that follows always succeeds. A no-op for
      * the main tab and for an already-ready secondary (resolves immediately).
      */
-    async ensureReady(tabId = this.model.activeTabId): Promise<void> {
+    async ensureReady(tabId = this.registry.activeTabId): Promise<void> {
         if (tabId === BOARD_CDP_TAB) return;
-        // `loadedTabs` records that the frame REGISTERED for CDP — not that it is on screen.
+        // The registry records when a frame REGISTERED for CDP — not whether it is on screen.
         // A secondary panel that has loaded and then been collapsed keeps its frame mounted and
         // registered, and Chromium omits hidden subtrees from the accessibility tree, so a
         // snapshot of a loaded-but-collapsed frame comes back EMPTY instead of failing. Skipping
@@ -167,12 +167,12 @@ export class BoardTargetModel implements IBrowserTarget {
 
     /**
      * Resolve once the tab's frame has finished loading + registered for CDP
-     * (`model.loadedTabs`), or after `timeoutMs`. Never rejects: on the rare timeout the
+     * (the registry's loaded flag), or after `timeoutMs`. Never rejects: on the rare timeout the
      * following CDP command still runs and cdp-service's resolve-and-retry surfaces any
      * genuine failure with a real message.
      */
     private waitForLoaded(tabId: string, timeoutMs: number): Promise<void> {
-        if (this.model.loadedTabs.has(tabId)) return Promise.resolve();
-        return this.model.waitForFrameLoad(tabId, timeoutMs).then((): void => undefined);
+        if (this.registry.isLoaded(tabId)) return Promise.resolve();
+        return this.registry.waitForFrameLoad(tabId, timeoutMs).then((): void => undefined);
     }
 }

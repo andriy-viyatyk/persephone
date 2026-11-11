@@ -5,7 +5,7 @@ import { app, BrowserWindow, dialog, DownloadItem, Session, shell, WebContents }
 import { DownloadEntry } from "../ipc/api-param-types";
 import type { BrowserUrlMaskClaim } from "../ipc/api-param-types";
 import { EventEndpoint } from "../ipc/api-types";
-import type { BoardNotifyMsg } from "../ipc/board-bridge-channels";
+import type { BoardNotifyMsg } from "../ipc/board-bridge/port-protocol";
 import { matchesBrowserUrlMask } from "../shared/browser-url-masks";
 import { openWindows } from "./open-windows";
 import { preparePath } from "./utils";

@@ -1,4 +1,5 @@
-import type { BoardFireMethod, BoardHostTextId, BoardOpenRawLinkOptions, BoardRpcMethod } from "./ipc/board-bridge-channels";
+import type { BoardFireMethod, BoardOpenRawLinkOptions, BoardRpcMethod } from "./ipc/board-bridge/port-protocol";
+import type { BoardHostTextId } from "./ipc/board-bridge/boot";
 import { errMessage } from "./shared/utils";
 
 export interface BoardContextMenuBridge {

@@ -1956,6 +1956,10 @@ untitled drawing, PNG-over-SVG). Add a new recipe there when you solve a fresh i
 
 The debugging surfaces, in the order to check them:
 
+- **Rejected frame requests** may expose a stable `error.code` in addition to `error.message`. Check
+  the code when handling host rejections; requests made after trust is revoked reject immediately
+  with `code === "untrusted"` instead of waiting for a timeout.
+
 - **`ui.log`** is the board's black box: ordinary boards keep it in the board folder; bundled
   boards keep it at `<userData>/board-logs/<id>/ui.log`. All entries, including
   service stdout/stderr, are written through the main-process `src/main/board-log.ts`. Each

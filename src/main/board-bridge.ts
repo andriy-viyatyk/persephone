@@ -35,23 +35,9 @@ import {
     nativeImage,
     shell,
 } from "electron";
-import {
-    BoardFileEncoding,
-    BoardCallRequest,
-    BoardFireMethod,
-    BoardNotifyType,
-    BoardRunnerOutMsg,
-    BoardRpcMethod,
-    BoardThemePalette,
-    BoardToMain,
-    OpenFileDialogParams,
-    OpenFolderDialogParams,
-    SaveFileDialogParams,
-    BoardFolderEntry,
-    BoardFolderListOptions,
-    BoardWatchOptions,
-} from "../ipc/board-bridge-channels";
-import type { BoardNotifyMsg } from "../ipc/board-bridge-channels";
+import type { BoardFileEncoding, BoardCallRequest, BoardFireMethod, BoardNotifyType, BoardRunnerOutMsg, BoardRpcMethod, BoardToMain, BoardFolderEntry, BoardFolderListOptions, BoardWatchOptions, BoardNotifyMsg } from "../ipc/board-bridge/port-protocol";
+import type { BoardThemePalette } from "../ipc/board-bridge/boot";
+import type { OpenFileDialogParams, OpenFolderDialogParams, SaveFileDialogParams } from "../ipc/api-param-types";
 import { RunnerChannel, RunnerKillMsg, RunnerStartMsg, RunnerStdinMsg } from "../ipc/runner-channels";
 import { EventEndpoint, type PathWatchBatch, type PathWatchOwner } from "../ipc/api-types";
 import {

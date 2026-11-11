@@ -38,7 +38,7 @@ import {
     type ModuleServicePortPayload,
 } from "../api-types";
 import { GitAheadBehind, GitCommit, GitFetchOptions, GitFileChange, GitIdentity, GitLogOptions, GitMutationResult, GitProbeResult, GitPullOptions, GitPullResult, GitPushOptions, GitPushResult, GitRefs, GitRepoInfo, GitStatusResult, GitSwitchTarget } from "../git-ipc";
-import type { BoardHostText, BoardI18nContext, BoardThemePalette } from "../board-bridge-channels";
+import type { BoardHostText, BoardI18nContext, BoardThemePalette } from "../board-bridge/boot";
 import type {
     ClipboardFileList,
     ClipboardHistorySnapshot,
@@ -672,7 +672,7 @@ class ApiCalls implements Api {
     };
 
     getBoardServiceProviders = async (interfaceId: string) =>
-        executeOnce<import("../board-bridge-channels").BoardServiceProvider[]>(Endpoint.getBoardServiceProviders, interfaceId);
+        executeOnce<import("../board-bridge/port-protocol").BoardServiceProvider[]>(Endpoint.getBoardServiceProviders, interfaceId);
 
     connectHostServiceChannel = async (request: HostServiceChannelRequest) =>
         executeOnce<string>(Endpoint.connectHostServiceChannel, request);

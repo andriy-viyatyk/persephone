@@ -36,7 +36,7 @@ import { api } from "../../../ipc/renderer/api";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 import { EventEndpoint } from "../../../ipc/api-types";
 import type { BoardServiceStatus } from "../../../ipc/module-service-channels";
-import type { BoardServiceProvider } from "../../../ipc/board-bridge-channels";
+import type { BoardServiceProvider } from "../../../ipc/board-bridge/port-protocol";
 import type { PublishedBoardInfo, PublishedBoardVersion } from "../../../ipc/api-param-types";
 import type { BoardSettingDeclaration } from "../../../shared/board/board-settings-declarations";
 import { BoardColorIcon } from "../../theme/icons";

@@ -5,7 +5,7 @@ import type {
     PublishedBoardsResult,
     PublishedBoardVersions,
 } from "../api-param-types";
-import type { BoardHostText, BoardI18nContext, BoardThemePalette } from "../board-bridge-channels";
+import type { BoardHostText, BoardI18nContext, BoardThemePalette } from "../board-bridge/boot";
 import type { BoardSnapshot } from "../board-snapshot-channels";
 import type { BoardServiceStatus, ModuleServicePortResult } from "../module-service-channels";
 import { bindEndpoint } from "./endpoint-registry";
@@ -132,7 +132,7 @@ export function initBoardHandlers(): void {
         await (await import("../../main/board-trust-service")).boardTrustService.refresh();
         return (await import("../../main/board-snapshot-broadcaster")).boardSnapshotBroadcaster.current();
     });
-    bindEndpoint(Endpoint.getBoardServiceProviders, async (_event, interfaceId: string): Promise<import("../board-bridge-channels").BoardServiceProvider[]> => {
+    bindEndpoint(Endpoint.getBoardServiceProviders, async (_event, interfaceId: string): Promise<import("../board-bridge/port-protocol").BoardServiceProvider[]> => {
         if (typeof interfaceId !== "string") throw new TypeError("A service interface id is required.");
         const trust = (await import("../../main/board-trust-service")).boardTrustService;
         await trust.refresh();

@@ -144,7 +144,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── app.ts              # Root App class (bootstrap orchestrator)
 │   ├── app-service-registry.ts # Descriptor table for lazy app services and optional initialization
 │   ├── capability-error.ts  # Shared renderer capability errors and normalization
-│   ├── capabilities/        # Script capability client, typed-RPC open server, handlers, validators, board dispatcher and index mirror
+│   ├── capabilities/        # Script capability client, typed-RPC open server, handlers, validators, board dispatcher, frame adapter, and index mirror
 │   ├── editor-categories.ts # EditorCategoriesModel; category setting and exclusive editor/board membership
 │   ├── creatable-items.ts   # Creatable-item registry for the Editors tree and new-page menu
 │   ├── ai-vision-call-timeout.ts # Session call-timeout setting owner
@@ -656,9 +656,12 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── BoardToolbar.ts           # In-board toolbar — File Explorer / board text slot / … menu; hosts the board-declared control group
 │   │   ├── BoardToolbar.css           # Board-control group styling — separates board items from Persephone's own
 │   │   ├── BoardToolbarControls.ts    # Board-declared control catalog — descriptor validation, keyed reconciliation, action events
+│   │   ├── chrome/                    # Board chrome protocol validators shared by model and views
+│   │   ├── frame/                     # Per-frame session, typed endpoint, router composition, and feature bridges
+│   │   ├── model/                     # Frame registry, chrome, AiVision, source, page-state, and content-resource owners
 │   │   ├── board-toolbar-icon.ts      # Toolbar icon resolution — registry name, sanitized inline SVG, or a file confined to the board root
 │   │   ├── board-file-icons.ts         # Resolves board-requested file names to deduplicated data URLs using Persephone's file-icon resolver
-│   │   ├── BoardWebview.ts            # Locked-down cross-origin <iframe src="board://<host>/index.html"> (no sandbox attr); brokers the MessagePort bridge handshake, settings change pushes, and appends the main-frame board-loaded separator
+│   │   ├── BoardWebview.ts            # Thin native iframe view; creates and retires its BoardFrameSession
 │   │   ├── BoardsTreeView.ts         # Reusable native boards tree (single-root + multi-root; folder-compacted; click / trailing / context-menu slots)
 │   │   ├── boards-tree-build.ts      # Pure builder: board path list → compacted folder/board node tree
 │   │   ├── BoardTargetModel.ts       # Automation adapter (IBrowserTarget for Object Model call paths)
@@ -726,6 +729,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │       ├── VideoEditorFacade.ts    # IVideoEditor facade (playback and media state)
 │       ├── FileDiffEditorFacade.ts # IFileDiffEditor facade (revision state)
 │       ├── BoardEditorFacade.ts    # IBoardEditor facade (metadata, trust state, automation, panels, conditional .app proxy, reload)
+│       ├── board-editor-facade-definitions.ts # Board facade descriptors and member definitions
 │       ├── BoardInfoEditorFacade.ts # IBoardInfoEditor facade (install/properties state)
 │       ├── ToolsetEditorFacade.ts  # IToolsetEditor facade (registered toolset state/actions)
 │       ├── ToolsHubEditorFacade.ts # IToolsHubEditor facade (hub tab state)
@@ -920,7 +924,7 @@ The renderer API service table lives in `/src/renderer/api/app-service-registry.
 `App` class loads each descriptor and invokes its optional initializer. `app.capabilities` lives
 under `/src/renderer/api/capabilities/`: `CapabilitiesClient.ts` exposes the script API,
 `open-dispatch-server.ts` handles the typed main-to-renderer open RPC, and the sibling handler,
-validator, board-dispatcher and index-mirror modules own renderer-side work. Provider resolution,
+validator, board-dispatcher, board-frame adapter and index-mirror modules own renderer-side work. Provider resolution,
 authorization, limits and invocation dispatch are owned by main's `CapabilityClient` and
 `CapabilityRouter`. The script contract is typed by
 `/src/renderer/api/types/capabilities.d.ts`.
@@ -1045,6 +1049,7 @@ uses the same guard. Do not add a direct, unguarded `ipcMain` listener or handle
 ├── search-ipc.ts           # Search IPC channels + wire types; also the batch-flush bounds, the matched-line result cap, and the default exclude patterns that seed the search-exclude setting
 ├── worker-channels.ts      # Worker thread IPC channels (app.runAsync)
 ├── runner-channels.ts      # Streaming command-runner IPC channels + wire types (RunnerChannel, inbound/outbound message unions, IExecuteHandle contract — implemented once in shared/execute-handle.ts for proc.ts and board-shim.ts)
+├── board-bridge/             # Board boot context, port wire types, frame envelopes, UI catalogs, and origin routes
 ├── module-service-channels.ts # Main/utility-process service protocol, lifecycle status, trust snapshot, renderer leases, direct board channels, and storage wire types
 ├── board-pipe-channels.ts    # Board-pipe range request/reply wire types
 ├── popup-rate-limiter.ts   # Global popup/tab rate limiter (app-wide singleton)

@@ -3,7 +3,7 @@ import { fpJoin } from "../../core/utils/file-path";
 import { getActiveLocale } from "../../../shared/i18n/active-locale";
 import { parseBoardLanguagePack, validateBoardTranslationPack, type BoardLanguages, type BoardPack } from "../../../shared/i18n/board-pack";
 import { pseudoText } from "../../../shared/i18n/pseudo-text";
-import type { BoardI18nContext, BoardI18nTable } from "../../../ipc/board-bridge-channels";
+import type { BoardI18nContext, BoardI18nTable } from "../../../ipc/board-bridge/boot";
 import { readBoardManifest } from "./board-manifest-io";
 
 export interface BoardI18nLoadResult {

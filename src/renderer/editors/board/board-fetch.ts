@@ -1,77 +1,54 @@
-import type {
-    BoardFetchErrorMsg,
-    BoardFetchHeadMsg,
-    BoardFetchInit,
-    BoardFetchRequestMsg,
-    BoardFetchChunkMsg,
-} from "../../../ipc/board-bridge-channels";
+import type { BoardFetchHead, BoardFetchInit, HostToBoardEvents } from "../../../ipc/board-bridge/frame-protocol";
 import { errMessage } from "../../../shared/utils";
 import { BoardGrant, type BoardNetworkPolicy } from "../../../shared/board/board-grant";
 import type { IFetchOptions } from "../../api/types/app";
 import { boardRegistry } from "../../api/boards/board-registry";
 import { api } from "../../../ipc/renderer/api";
 
+type FetchEventName = "fetch.chunk" | "fetch.error";
+type FetchEmitter = <E extends FetchEventName>(name: E, payload: HostToBoardEvents[E], transfer?: Transferable[]) => boolean;
 interface ActiveBoardFetch {
-    controller: AbortController;
-    frame: HTMLIFrameElement;
-    generation: number;
-    post: (frame: HTMLIFrameElement, generation: number, message: BoardFetchHeadMsg | BoardFetchChunkMsg | BoardFetchErrorMsg,
-        transfer?: Transferable[]) => boolean;
+    readonly controller: AbortController;
+    readonly frame: HTMLIFrameElement;
+    readonly generation: number;
+    readonly emit: FetchEmitter;
     reader?: ReadableStreamDefaultReader<Uint8Array>;
 }
+const INIT_KEYS = new Set(["method", "headers", "body", "timeout", "maxRedirects", "rejectUnauthorized", "tor", "proxy"]);
 
-const INIT_KEYS = new Set([
-    "method", "headers", "body", "timeout", "maxRedirects", "rejectUnauthorized", "tor", "proxy",
-]);
-
+/** Owns the streaming fetch lifetime; envelope correlation stays in BoardFrameEndpoint. */
 export class BoardFetchBridge {
     private readonly active = new Map<number, ActiveBoardFetch>();
 
-    start(
-        message: BoardFetchRequestMsg,
-        boardRoot: string,
-        frame: HTMLIFrameElement,
-        generation: number,
-        post: ActiveBoardFetch["post"],
-    ): void {
-        const current: ActiveBoardFetch = { controller: new AbortController(), frame, generation, post };
-        this.active.set(message.reqId, current);
-        void this.run(message, boardRoot, current);
+    start(id: number, params: { url: string; init: BoardFetchInit }, boardRoot: string, frame: HTMLIFrameElement, generation: number, emit: FetchEmitter): Promise<BoardFetchHead> {
+        const current: ActiveBoardFetch = { controller: new AbortController(), frame, generation, emit };
+        this.active.set(id, current);
+        return this.run(id, params, boardRoot, current);
     }
 
-    private async run(message: BoardFetchRequestMsg, boardRoot: string, current: ActiveBoardFetch): Promise<void> {
+    private async run(id: number, params: { url: string; init: BoardFetchInit }, boardRoot: string, current: ActiveBoardFetch): Promise<BoardFetchHead> {
         try {
-            if (typeof message.url !== "string") throw new TypeError("persephone.fetch() requires a URL string.");
-            const init = this.validateInit(message.init);
+            if (typeof params.url !== "string") throw new TypeError("persephone.fetch() requires a URL string.");
+            const init = this.validateInit(params.init);
             const grant = boardRegistry.grant(boardRoot) ?? BoardGrant.NONE;
             if (grant.networkMode() === false) throw BoardGrant.deny("network");
             const mcpUrl = await api.getBoardMcpEndpoint();
             const { nodeFetch } = await import("../../api/node-fetch");
-            const response = await nodeFetch(message.url, {
+            const response = await nodeFetch(params.url, {
                 ...init,
                 ...(init.body instanceof ArrayBuffer ? { body: new Blob([init.body]).stream() } : {}),
                 signal: current.controller.signal,
                 boardNetworkPolicy: grant.networkPolicy({ mcpUrl }),
             } as IFetchOptions & { boardNetworkPolicy: BoardNetworkPolicy });
-            if (this.active.get(message.reqId) !== current) return;
+            if (this.active.get(id) !== current) throw new Error("The board fetch was cancelled.");
             const hasBody = response.body !== null;
-            const head: BoardFetchHeadMsg = {
-                __persephone: "fetch:head",
-                reqId: message.reqId,
-                status: response.status,
-                statusText: response.statusText,
-                headers: [...response.headers.entries()],
-                hasBody,
-            };
-            if (!current.post(current.frame, current.generation, head)) { this.abort(message.reqId); return; }
-            if (!response.body) { this.active.delete(message.reqId); return; }
-            current.reader = response.body.getReader();
+            const head: BoardFetchHead = { status: response.status, statusText: response.statusText, headers: [...response.headers.entries()], hasBody };
+            if (!response.body) this.active.delete(id);
+            else current.reader = response.body.getReader();
+            return head;
         } catch (error: unknown) {
-            if (this.active.get(message.reqId) !== current) return;
-            this.active.delete(message.reqId);
-            current.post(current.frame, current.generation, {
-                __persephone: "fetch:error", reqId: message.reqId, error: errMessage(error),
-            });
+            if (this.active.get(id) === current) this.active.delete(id);
+            throw error;
         }
     }
 
@@ -92,36 +69,32 @@ export class BoardFetchBridge {
         return value;
     }
 
-    async pull(reqId: number): Promise<void> {
-        const current = this.active.get(reqId);
+    async pull(id: number): Promise<void> {
+        const current = this.active.get(id);
         if (!current?.reader) return;
         try {
             const { done, value } = await current.reader.read();
-            if (this.active.get(reqId) !== current) return;
+            if (this.active.get(id) !== current) return;
             if (done) {
-                this.active.delete(reqId);
-                current.post(current.frame, current.generation, { __persephone: "fetch:chunk", reqId, done: true });
+                this.active.delete(id);
+                current.emit("fetch.chunk", { id, done: true });
                 return;
             }
             const buffer = value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength) as ArrayBuffer;
-            const message: BoardFetchChunkMsg = { __persephone: "fetch:chunk", reqId, chunk: buffer, done: false };
-            if (!current.post(current.frame, current.generation, message, [buffer])) this.abort(reqId);
+            if (!current.emit("fetch.chunk", { id, chunk: buffer, done: false }, [buffer])) this.abort(id);
         } catch (error: unknown) {
-            if (this.active.get(reqId) !== current) return;
-            this.active.delete(reqId);
-            current.post(current.frame, current.generation, { __persephone: "fetch:error", reqId, error: errMessage(error) });
+            if (this.active.get(id) !== current) return;
+            this.active.delete(id);
+            current.emit("fetch.error", { id, message: errMessage(error) });
         }
     }
 
-    abort(reqId: number): void {
-        const current = this.active.get(reqId);
+    abort(id: number): void {
+        const current = this.active.get(id);
         if (!current) return;
-        this.active.delete(reqId);
+        this.active.delete(id);
         current.controller.abort();
         void current.reader?.cancel().catch(() => {});
     }
-
-    dispose(): void {
-        for (const reqId of this.active.keys()) this.abort(reqId);
-    }
+    dispose(): void { for (const id of this.active.keys()) this.abort(id); }
 }

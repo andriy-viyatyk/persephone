@@ -6,7 +6,7 @@ import { validateBoardPageStateKey, validateBoardPageStateValue } from "./shared
 import { PLATFORM_AUDIO_CAPABILITY_ID } from "./shared/capability-constants";
 import { createCapabilityProxy } from "./shared/capability-client";
 import { PendingRequests } from "./shared/pending-requests";
-import { fromWireError, wireError } from "./shared/wire-error";
+import { fromWireError } from "./shared/wire-error";
 /**
  * Board bridge shim — the successor to `preload-board.ts`.
  *
@@ -40,62 +40,13 @@ import { BOARD_BRIDGE_VERSION } from "./shared/board-bridge-version";
 import { SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "./ipc/module-service-channels";
 import { createServiceChannel, domPort, type ServiceChannel, type ServiceChannelKind } from "./shared/service-channel";
 import type { BoardSourceContext } from "./shared/board-source-context";
-import type {
-    BoardFetchErrorMsg,
-    BoardFetchHeadMsg,
-    BoardFetchInit,
-    BoardFetchChunkMsg,
-    BoardAiVisionRegistrationMsg,
-    BoardAiVisionNotifyMsg,
-    BoardAiVisionRequestMsg,
-    BoardAiVisionResultMsg,
-    BoardCapabilityIntentCancelMsg,
-    BoardCapabilityIntentRequestMsg,
-    BoardCapabilityIntentResultMsg,
-    BoardCapabilityInvokeResultMsg,
-    BoardContentOpenResultMsg,
-    BoardFilePathResultMsg,
-    BoardBootContext,
-    BoardJsonValue,
-    BoardFireMethod,
-    BoardOpenRawLinkOptions,
-    BoardHostContentMsg,
-    BoardHostTextId,
-    BoardSourceOpenedMsg,
-    BoardJobInfo,
-    BoardToolbarControlEventMsg,
-    BoardToolbarControlType,
-    BoardToolbarSetMsg,
-    BoardToolbarUpdateMsg,
-    BoardStatusBarSetMsg,
-    BoardStatusBarUpdateMsg,
-    BoardStatusBarActionMsg,
-    BoardMuteToggleMsg,
-    BoardSaveRequestMsg,
-    BoardSaveHandlerSyncMsg,
-    BoardSaveResultMsg,
-    BoardFileIconsResultMsg,
-    BoardNavigationReturnMsg,
-    BoardNavigationReturnUrlResultMsg,
-    BoardOpenContentRequest,
-    BoardOpenContentResultMsg,
-    BoardPageStateGetResultMsg,
-    BoardPageStateSetResultMsg,
-    BoardPageStateRemoveResultMsg,
-    BoardSourceNavigateResultMsg,
-    BoardRpcMethod,
-    BoardStateSyncMsg,
-    BoardSettingsChangedMsg,
-    BoardSettingsResultMsg,
-    BoardToHostMsg,
-    BoardToolbarTextMsg,
-    BoardVarResultMsg,
-    BoardThemePalette,
-    BoardToMain,
-    BoardWatchOptions,
-    BoardServiceStatus,
-    MainToBoard,
-} from "./ipc/board-bridge-channels";
+import { NO_REPLY, type BoardFetchHead, type BoardFetchInit, type BoardOpenContentRequest, type BoardToHostEvents } from "./ipc/board-bridge/frame-protocol";
+import type { BoardBootContext, BoardHostTextId, BoardThemePalette } from "./ipc/board-bridge/boot";
+import type { BoardJsonValue, BoardFireMethod, BoardOpenRawLinkOptions, BoardJobInfo, BoardRpcMethod, BoardToMain, BoardWatchOptions, MainToBoard } from "./ipc/board-bridge/port-protocol";
+import type { BoardToolbarControlType } from "./ipc/board-bridge/ui-catalog";
+import type { BoardServiceStatus } from "./ipc/module-service-channels";
+import { BOARD_DIALOG_MAX_BYTES, BOARD_DIALOG_PATH, boardPipePagePath } from "./ipc/board-bridge/origin-routes";
+import type { BoardDialogKind, BoardDialogXhrRequest } from "./ipc/board-bridge/origin-routes";
 import type { PathWatchBatch } from "./ipc/api-types";
 import type { IntentEnvelope, CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientResult, CapabilityProvider } from "./ipc/capability-bus-channels";
 import { AI_VISION_SCHEMA_VERSION, expose } from "ai-vision/remote";
@@ -110,16 +61,18 @@ import type {
 import type { IAiVisionRemote } from "ai-vision/remote";
 import { installBoardDiagnostics } from "./board-console-mirror";
 import { installBoardContextMenu } from "./board-context-menu";
+import { HostFrameChannel } from "./board-host-frame-channel";
 import { errMessage } from "./shared/utils";
 import type { ThemeDefinition, ThemeDraft, ContrastReport, CustomThemeFile, CustomThemeBase } from "./renderer/api/types/themes";
 
-function boardDialog(type: "alert" | "confirm" | "prompt", message: string, defaultPrompt = ""): unknown {
+function boardDialog(type: BoardDialogKind, message: string, defaultPrompt = ""): unknown {
     try {
         const identity = new URL(location.href);
-        const payload = JSON.stringify({ type, message, defaultPrompt, url: location.href, nonce: identity.searchParams.get("v"), view: identity.searchParams.get("view") ?? "main" });
-        if (new TextEncoder().encode(payload).length > 65536) return null;
+        const body: BoardDialogXhrRequest = { type, message, defaultPrompt, url: location.href, nonce: identity.searchParams.get("v"), view: identity.searchParams.get("view") ?? "main" };
+        const payload = JSON.stringify(body);
+        if (new TextEncoder().encode(payload).length > BOARD_DIALOG_MAX_BYTES) return null;
         const request = new XMLHttpRequest();
-        request.open("POST", `${location.protocol}//${location.host}/__persephone/dialog`, false);
+        request.open("POST", `${location.protocol}//${location.host}${BOARD_DIALOG_PATH}`, false);
         request.setRequestHeader("Content-Type", "application/json");
         request.send(payload);
         return request.status === 200 ? JSON.parse(request.responseText) : null;
@@ -271,6 +224,12 @@ function hasBoardMessage(key: string): boolean {
 // origin + source frame) target `"*"`.
 const hostOriginStrict = /^https?:\/\//i.test(boot.hostOrigin);
 const hostPostTarget = hostOriginStrict ? boot.hostOrigin : "*";
+let hostRequestId = Math.floor(Math.random() * 0x80000000);
+const hostFrame = new HostFrameChannel({
+    targetOrigin: hostPostTarget,
+    acceptOrigin: hostOriginStrict ? boot.hostOrigin : undefined,
+    nextId: () => ++hostRequestId,
+});
 
 // ── View role ────────────────────────────────────────────────────────────────
 // Which view this frame renders: "main" for the board's main iframe, or a declared
@@ -359,7 +318,7 @@ let pipePageId: string | undefined;
 let pipeUrlEnabled = false;
 
 // True when the handshake `filePath` is NOT directly readable — its real source is an archive entry
-// or an `http(s)` URL. `getFilePath()` then resolves through a `board:filePath` request, so the
+// or an `http(s)` URL. `getFilePath()` then resolves through the frame request channel, so the
 // board always receives a readable LOCAL path (Persephone materializes the source into a cache
 // file). The resolved path is memoized below, so repeated calls cost one request.
 let filePathNeedsMaterialize = false;
@@ -585,41 +544,6 @@ const runnerHandlers = new Map<
     (channel: RunnerInboundChannel, msg: RunnerInboundMsg) => void
 >();
 
-type BoardHostRequestReply =
-    | BoardFilePathResultMsg
-    | BoardFileIconsResultMsg
-    | BoardContentOpenResultMsg
-    | BoardOpenContentResultMsg
-    | BoardPageStateGetResultMsg
-    | BoardPageStateSetResultMsg
-    | BoardPageStateRemoveResultMsg
-    | BoardSourceNavigateResultMsg
-    | BoardVarResultMsg
-    | BoardSettingsResultMsg
-    | BoardNavigationReturnUrlResultMsg
-    | BoardCapabilityInvokeResultMsg;
-
-type BoardHostRequestPayload =
-    | Omit<Extract<BoardToHostMsg, { __persephone: "board:var" }>, "reqId">
-    | Omit<Extract<BoardToHostMsg, { __persephone: "board:settings" }>, "reqId">
-    | Omit<Extract<BoardToHostMsg, { __persephone: "board:filePath" }>, "reqId">
-    | Omit<Extract<BoardToHostMsg, { __persephone: "board:fileIcons" }>, "reqId">
-    | Omit<Extract<BoardToHostMsg, { __persephone: "board:contentOpen" }>, "reqId">
-    | Omit<Extract<BoardToHostMsg, { __persephone: "board:openContent" }>, "reqId">
-    | Omit<Extract<BoardToHostMsg, { __persephone: "navigation:createReturnUrl" }>, "reqId">
-    | Omit<Extract<BoardToHostMsg, { __persephone: "board:capabilities:invoke" }>, "reqId">
-    | Omit<Extract<BoardToHostMsg, { __persephone: "board:pageState:get" }>, "reqId">
-    | Omit<Extract<BoardToHostMsg, { __persephone: "board:pageState:set" }>, "reqId">
-    | Omit<Extract<BoardToHostMsg, { __persephone: "board:pageState:remove" }>, "reqId">
-    | Omit<Extract<BoardToHostMsg, { __persephone: "board:source:navigate" }>, "reqId">;
-
-interface HostRequestMeta {
-    requestType: BoardHostRequestPayload["__persephone"];
-    expectedReplyType: BoardHostRequestReply["__persephone"];
-    failPost: (error: unknown) => Error;
-}
-const pendingHostRequests = new PendingRequests<BoardHostRequestReply, HostRequestMeta>({ nextId: () => ++hostRequestId });
-let hostRequestId = Math.floor(Math.random() * 0x80000000);
 const settingsChangeCbs = new Set<(change: { id: string; value: string | number | boolean }) => void>();
 let saveHandlerId = 0;
 const saveHandlers = new Map<number, () => void | boolean | Promise<void | boolean>>();
@@ -630,20 +554,72 @@ function activeSaveRegistration(): { id: number; handler: () => void | boolean |
     return entry ? { id: entry[0], handler: entry[1] } : undefined;
 }
 
+hostFrame.handle("save", async ({ discard }) => {
+    if (discard === true) {
+        await Promise.allSettled([...discardHandlers].map((handler) => Promise.resolve().then(handler)));
+        return { success: true };
+    }
+    const registration = activeSaveRegistration();
+    if (!registration) return { success: false, error: "The board has no active Save handler." };
+    try {
+        const result = await registration.handler();
+        const current = activeSaveRegistration();
+        return current?.id === registration.id
+            ? { success: result !== false }
+            : { success: false, error: "The board's Save handler changed while it was saving." };
+    } catch (error: unknown) {
+        return { success: false, error: errMessage(error, "The board failed to save its changes.") };
+    }
+});
+hostFrame.on("save.handlerSync", () => {
+    const active = activeSaveRegistration();
+    if (active) hostFrame.emit("saveHandler", { handlerId: active.id, registered: true });
+});
+
+hostFrame.handle("aiVision.request", async ({ request }) => {
+    const remote = aiVisionRemote;
+    const generation = aiVisionGeneration;
+    const isLocalElementAction = viewRole !== "main" && (request.action === "ai:elements" || request.action === "ai:highlight");
+    try {
+        const response = isLocalElementAction ? await handleLocalAiVisionRequest(request)
+            : remote ? await remote.handle(request)
+                : { ok: false as const, error: "The board has not exposed an AiVision root." };
+        if (aiVisionRemote !== remote || aiVisionGeneration !== generation) return NO_REPLY;
+        return response;
+    } catch (error: unknown) {
+        if (aiVisionRemote !== remote || aiVisionGeneration !== generation) return NO_REPLY;
+        return { ok: false, error: errMessage(error, "The AiVision request failed.") };
+    }
+});
+
+hostFrame.handle("capabilities.intent", (params, context) => {
+    if (typeof context.id !== "string" || typeof params.id !== "string") throw new Error("Malformed capability intent request.");
+    if (activeIntent && !activeIntent.settled && !activeIntent.cancelled && activeIntent.requestId !== context.id) {
+        return Promise.reject(Object.assign(new Error("The board is already serving a capability request."), { code: "rejected" }));
+    }
+    if (activeIntent?.requestId === context.id && activeIntent.delivered) return NO_REPLY;
+    activeIntent = makeIntentContext({
+        id: params.id,
+        ...(typeof params.version === "number" ? { version: params.version } : {}),
+        requestId: context.id,
+        payload: params.payload,
+    });
+    deliverIntent();
+    return activeIntent.outcome;
+});
+
 interface BoardFetchInitInput extends Omit<BoardFetchInit, "body"> {
     body?: string | ArrayBuffer | ArrayBufferView | Blob;
     signal?: AbortSignal;
 }
 interface PendingBoardFetch {
-    resolve: (response: Response) => void;
-    reject: (error: Error) => void;
+    fail: (error: Error) => void;
     controller?: ReadableStreamDefaultController<Uint8Array>;
-    pullResolve?: (chunk: BoardFetchChunkMsg) => void;
+    pullResolve?: (chunk: { id: number; chunk?: ArrayBuffer; done: boolean }) => void;
     signal?: AbortSignal;
     abortListener?: () => void;
-    headResolved?: boolean;
 }
-const pendingBoardFetches = new Map<number, PendingBoardFetch>();
+const fetchStreams = new Map<number, PendingBoardFetch>();
 
 function abortError(): DOMException { return new DOMException("The fetch was aborted.", "AbortError"); }
 
@@ -652,109 +628,71 @@ function removeBoardFetchAbortListener(pending: PendingBoardFetch): void {
 }
 
 function failPendingBoardFetches(error: Error): void {
-    for (const [reqId, pending] of pendingBoardFetches) {
-        pendingBoardFetches.delete(reqId);
+    hostFrame.failPending("fetch", error);
+    for (const [reqId, pending] of fetchStreams) {
+        fetchStreams.delete(reqId);
         removeBoardFetchAbortListener(pending);
-        pending.reject(error);
         try { pending.controller?.error(error); } catch { /* stream already closed */ }
-        pending.pullResolve?.({ __persephone: "fetch:chunk", reqId, done: true });
+        pending.pullResolve?.({ id: reqId, done: true });
     }
 }
 
-function boardFetch(url: string, init: BoardFetchInitInput = {}): Promise<Response> {
+async function boardFetch(url: string, init: BoardFetchInitInput = {}): Promise<Response> {
     if (typeof url !== "string") return Promise.reject(new TypeError("persephone.fetch() requires a URL string."));
     const { signal, body, ...options } = init;
     if (signal?.aborted) return Promise.reject(abortError());
-    let normalizedBody: string | ArrayBuffer | undefined;
-    if (typeof body === "string") normalizedBody = body;
-    else if (body instanceof Blob) normalizedBody = undefined;
-    else if (body instanceof ArrayBuffer) normalizedBody = body;
-    else if (ArrayBuffer.isView(body)) normalizedBody = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) as ArrayBuffer;
-    const reqId = ++hostRequestId;
-    return new Promise<Response>((resolve, reject) => {
-        const pending: PendingBoardFetch = { resolve, reject, signal };
-        pendingBoardFetches.set(reqId, pending);
-        const abort = (): void => {
-            window.parent.postMessage({ __persephone: "board:fetch:abort", reqId }, hostPostTarget);
-            pendingBoardFetches.delete(reqId);
-            removeBoardFetchAbortListener(pending);
-            const error = abortError();
-            pending.reject(error);
-            try { pending.controller?.error(error); } catch { /* stream already closed */ }
-        };
-        pending.abortListener = abort;
-        signal?.addEventListener("abort", abort, { once: true });
-        const post = (): void => {
-            if (!pendingBoardFetches.has(reqId)) return;
-            try {
-                if (body instanceof Blob) {
-                    void body.arrayBuffer().then((arrayBuffer) => {
-                        if (pendingBoardFetches.has(reqId)) window.parent.postMessage({
-                            __persephone: "board:fetch", reqId, url, init: { ...options, body: arrayBuffer },
-                        }, hostPostTarget);
-                    }, (error: unknown) => {
-                        pendingBoardFetches.delete(reqId);
-                        pending.reject(new Error(errMessage(error)));
-                    });
-                } else {
-                    window.parent.postMessage({ __persephone: "board:fetch", reqId, url,
-                        init: { ...options, ...(normalizedBody === undefined ? {} : { body: normalizedBody }) },
-                    }, hostPostTarget);
-                }
-            } catch (error: unknown) {
-                pendingBoardFetches.delete(reqId);
-                removeBoardFetchAbortListener(pending);
-                pending.reject(new Error(errMessage(error, "Persephone host is unavailable.")));
-            }
-        };
-        postAfterDocumentLoad(post);
+    let wireBody: string | ArrayBuffer | undefined;
+    if (typeof body === "string") wireBody = body;
+    else if (body instanceof Blob) wireBody = await body.arrayBuffer();
+    else if (body instanceof ArrayBuffer) wireBody = body;
+    else if (ArrayBuffer.isView(body)) wireBody = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) as ArrayBuffer;
+    if (signal?.aborted) throw abortError();
+    const { id, promise } = hostFrame.requestWithId("fetch", { url, init: { ...options, ...(wireBody === undefined ? {} : { body: wireBody }) } });
+    const abort = (): void => {
+        hostFrame.emit("fetch.abort", { id });
+        hostFrame.cancel(id, abortError());
+        fetchStreams.get(id)?.fail(abortError());
+    };
+    signal?.addEventListener("abort", abort, { once: true });
+    let head: BoardFetchHead;
+    try { head = await promise; }
+    catch (error: unknown) { signal?.removeEventListener("abort", abort); throw error; }
+    if (!head.hasBody) { signal?.removeEventListener("abort", abort); return new Response(null, { status: head.status, statusText: head.statusText, headers: head.headers }); }
+    const pending: PendingBoardFetch = { fail: (error) => { try { pending.controller?.error(error); } catch { /* stream already closed */ } fetchStreams.delete(id); removeBoardFetchAbortListener(pending); pending.pullResolve?.({ id, done: true }); }, signal, abortListener: abort };
+    fetchStreams.set(id, pending);
+    const stream = new ReadableStream<Uint8Array>({
+        start(controller) { pending.controller = controller; },
+        async pull() {
+            if (!fetchStreams.has(id)) return;
+            const chunk = await new Promise<{ id: number; chunk?: ArrayBuffer; done: boolean }>((resolve) => {
+                pending.pullResolve = resolve;
+                hostFrame.emit("fetch.pull", { id });
+            });
+            pending.pullResolve = undefined;
+            if (chunk.done) { fetchStreams.delete(id); removeBoardFetchAbortListener(pending); pending.controller?.close(); }
+            else if (chunk.chunk) pending.controller?.enqueue(new Uint8Array(chunk.chunk));
+        },
+        cancel() { hostFrame.emit("fetch.abort", { id }); fetchStreams.delete(id); removeBoardFetchAbortListener(pending); },
     });
+    return new Response(stream, { status: head.status, statusText: head.statusText, headers: head.headers });
 }
 
-let toolbarDocumentLoaded = document.readyState === "complete";
-const pendingDocumentMessages: Array<() => void> = [];
-if (!toolbarDocumentLoaded) {
-    window.addEventListener("load", () => {
-        toolbarDocumentLoaded = true;
-        for (const send of pendingDocumentMessages.splice(0)) send();
-    }, { once: true });
-}
-
-function postAfterDocumentLoad(send: () => void): void {
-    if (toolbarDocumentLoaded) send();
-    else pendingDocumentMessages.push(send);
-}
-
-function hostRequest<T>(
-    message: BoardHostRequestPayload,
-    expectedReplyType: BoardHostRequestReply["__persephone"],
-    decode: (reply: BoardHostRequestReply) => T,
-    failPost: (error: unknown) => Error = () => new Error("Persephone host is unavailable."),
-): Promise<T> {
-    const { id: reqId, promise } = pendingHostRequests.create(undefined, undefined, { meta: {
-        requestType: message.__persephone,
-        expectedReplyType,
-        failPost,
-    } });
-    postAfterDocumentLoad(() => {
-        if (!pendingHostRequests.has(reqId)) return;
-        try { window.parent.postMessage({ ...message, reqId }, hostPostTarget); }
-        catch (error: unknown) { pendingHostRequests.fail(reqId, failPost(error)); }
-    });
-    return promise.then(decode);
-}
+hostFrame.on("fetch.chunk", (payload) => fetchStreams.get(payload.id)?.pullResolve?.(payload));
+hostFrame.on("fetch.error", (payload) => {
+    const pending = fetchStreams.get(payload.id);
+    if (!pending) return;
+    const error = new Error(payload.message);
+    if (pending.signal && !pending.signal.aborted) pending.fail(error);
+    else pending.fail(error);
+});
 
 function rejectPendingCapabilityRequests(error: BoardCapabilityError): void {
-    pendingHostRequests.failWhere((meta) => meta.requestType === "board:capabilities:invoke", error);
+    hostFrame.failPending("capabilities.invoke", error);
 }
 
 /** Pending content-path and content.open calls use the shared host request channel. */
 function filePathRpc(): Promise<string | undefined> {
-    return hostRequest({ __persephone: "board:filePath" }, "filePath:result", (reply) => {
-        const data = reply as BoardFilePathResultMsg;
-        if (data.error != null) throw fromWireError(wireError(data.error));
-        return data.path;
-    });
+    return hostFrame.request("filePath", {});
 }
 
 const fileIconCache = new Map<string, string>();
@@ -762,51 +700,24 @@ let fileIconCacheGeneration = 0;
 const FILE_ICONS_BATCH = 500;
 
 function fileIconsRpc(names: string[]): Promise<{ urls: string[]; icons: Record<string, number> }> {
-    return hostRequest({ __persephone: "board:fileIcons", names }, "fileIcons:result", (reply) => {
-        const data = reply as BoardFileIconsResultMsg;
-        if (data.error != null) throw fromWireError(wireError(data.error));
-        return { urls: data.urls ?? [], icons: data.icons ?? {} };
-    });
+    return hostFrame.request("fileIcons", { names });
 }
 
 function contentOpenRpc(
     link: string,
     timeoutMs?: number,
 ): Promise<{ url: string; size: number; contentType: string }> {
-    return hostRequest(
-        { __persephone: "board:contentOpen", link, ...(timeoutMs === undefined ? {} : { timeoutMs }) },
-        "contentOpen:result",
-        (reply) => {
-            const data = reply as BoardContentOpenResultMsg;
-            if (data.error != null) throw fromWireError(wireError(data.error));
-            if (typeof data.url === "string" && typeof data.size === "number"
-                && Number.isFinite(data.size) && data.size >= 0 && typeof data.contentType === "string") {
-                return { url: data.url, size: data.size, contentType: data.contentType };
-            }
-            throw new Error("Malformed persephone.content.open() response.");
-        },
-    );
-}
-
-function varRpc(method: "get" | "set" | "list" | "show", args: unknown[]): Promise<unknown> {
-    return hostRequest({ __persephone: "board:var", varMethod: method, varArgs: args }, "var:result", (reply) => {
-        const data = reply as BoardVarResultMsg;
-        if (data.error != null) throw fromWireError(wireError(data.error));
-        return data.result;
+    return hostFrame.request("contentOpen", { link, ...(timeoutMs === undefined ? {} : { timeoutMs }) }).then((value) => {
+        if (typeof value.url === "string" && typeof value.size === "number" && Number.isFinite(value.size) && value.size >= 0 && typeof value.contentType === "string") return value;
+        throw new Error("Malformed persephone.content.open() response.");
     });
 }
 
 function settingsRpc(id: string): Promise<string | number | boolean> {
-    return hostRequest(
-        { __persephone: "board:settings", settingsMethod: "get", settingsArgs: [id] },
-        "settings:result",
-        (reply) => {
-            const data = reply as BoardSettingsResultMsg;
-            if (data.error != null) throw fromWireError(wireError(data.error));
-            if (isBoardSettingValue(data.result)) return data.result;
-            throw new Error("Malformed persephone.settings.get() response.");
-        },
-    );
+    return hostFrame.request("settings.get", { id }).then((value) => {
+        if (isBoardSettingValue(value)) return value;
+        throw new Error("Malformed persephone.settings.get() response.");
+    });
 }
 
 async function iconsForFiles(names: unknown): Promise<Record<string, string>> {
@@ -855,10 +766,8 @@ const statusBarActionCbs = new Set<(event: { id: string }) => void>();
 const muteToggleCbs = new Set<() => void>();
 
 function navigationReturnUrlRpc(): Promise<string> {
-    return hostRequest({ __persephone: "navigation:createReturnUrl" }, "navigation:returnUrl", (reply) => {
-        const data = reply as BoardNavigationReturnUrlResultMsg;
-        if (typeof data.error === "string") throw fromWireError(wireError(data.error));
-        if (typeof data.url === "string") return data.url;
+    return hostFrame.request("navigation.createReturnUrl", {}).then((url) => {
+        if (typeof url === "string") return url;
         throw new Error("Malformed navigation return URL response.");
     });
 }
@@ -871,30 +780,9 @@ function onNavigationReturn(callback: (event: PersephoneNavigationReturnEvent) =
     };
 }
 
-type ToolbarMessage = BoardToolbarSetMsg | BoardToolbarUpdateMsg | BoardToolbarTextMsg;
-type StatusBarMessage = BoardStatusBarSetMsg | BoardStatusBarUpdateMsg;
-
-function sendToolbarMessage(message: ToolbarMessage): void {
-    try {
-        window.parent.postMessage(message, hostPostTarget);
-    } catch {
-        // parent gone
-    }
-}
-
-function postToolbarMessage(message: ToolbarMessage): void {
-    postAfterDocumentLoad(() => sendToolbarMessage(message));
-}
-
 function onToolbarAction(callback: (event: PersephoneToolbarActionEvent) => void): () => void {
     toolbarActionCbs.add(callback);
     return () => toolbarActionCbs.delete(callback);
-}
-
-function postStatusBarMessage(message: StatusBarMessage): void {
-    postAfterDocumentLoad(() => {
-        try { window.parent.postMessage(message, hostPostTarget); } catch { /* parent gone */ }
-    });
 }
 
 function onStatusBarAction(callback: (event: { id: string }) => void): () => void {
@@ -908,6 +796,9 @@ interface BoardIntentContext extends BoardIntentInit {
     cancelled: boolean;
     settled: boolean;
     delivered: boolean;
+    outcome: Promise<{ result?: unknown; discardPage?: boolean }>;
+    finish(value: { result?: unknown; discardPage?: boolean }): void;
+    fail(error: unknown): void;
     resolve(value: unknown, options?: { discardPage?: boolean }): void;
     reject(reason?: unknown): void;
 }
@@ -933,16 +824,8 @@ function settleIntent(
 ): void {
     if (!intent || intent.cancelled || intent.settled) return;
     intent.settled = true;
-    try {
-        window.parent.postMessage({
-            __persephone: "capabilities:intent:result",
-            requestId: intent.requestId,
-            ...(error ? { error } : { result }),
-            ...(discardPage === undefined ? {} : { discardPage }),
-        } as BoardCapabilityIntentResultMsg, hostPostTarget);
-    } catch {
-        // The parent may disappear while a handler is settling.
-    }
+    if (error) intent.fail(Object.assign(new Error(error.message), { code: error.code }));
+    else intent.finish({ result, ...(discardPage === undefined ? {} : { discardPage }) });
 }
 
 /** Build the context for one request. Shared by both delivery routes: the initial intent
@@ -954,6 +837,9 @@ function makeIntentContext(init: {
     requestId: string;
     payload: unknown;
 }): BoardIntentContext {
+    let finishOutcome: (value: { result?: unknown; discardPage?: boolean }) => void = () => {};
+    let failOutcome: (error: unknown) => void = () => {};
+    const outcome = new Promise<{ result?: unknown; discardPage?: boolean }>((resolve, reject) => { finishOutcome = resolve; failOutcome = reject; });
     const context: BoardIntentContext = {
         id: init.id,
         ...(typeof init.version === "number" ? { version: init.version } : {}),
@@ -962,6 +848,9 @@ function makeIntentContext(init: {
         cancelled: false,
         settled: false,
         delivered: false,
+        outcome,
+        finish: finishOutcome,
+        fail: failOutcome,
         resolve: (value: unknown, options?: { discardPage?: boolean }) => {
             if (!context.cancelled) settleIntent(context, undefined, value, options?.discardPage);
         },
@@ -1005,23 +894,11 @@ function capabilityInvokeRpc(
     payload: unknown,
     options?: { version?: number; deadlineMs?: number },
 ): Promise<unknown> {
-    return hostRequest(
-        {
-            __persephone: "board:capabilities:invoke",
-            id,
-            ...(options?.version === undefined ? {} : { version: options.version }),
-            payload,
-            ...(options?.deadlineMs === undefined ? {} : { deadlineMs: options.deadlineMs }),
-        },
-        "capabilities:invoke:result",
-        (reply) => {
-            const data = reply as BoardCapabilityInvokeResultMsg;
-            if (data.error) throw capabilityErrorFromReply(data.error);
-            if (typeof data.pageId === "string") return { pageId: data.pageId, result: data.result };
-            return { result: data.result };
-        },
-        (error) => new BoardCapabilityError("rejected", errMessage(error, "Persephone host is unavailable.")),
-    );
+    return hostFrame.request("capabilities.invoke", {
+        id, ...(options?.version === undefined ? {} : { version: options.version }), payload,
+        ...(options?.deadlineMs === undefined ? {} : { deadlineMs: options.deadlineMs }),
+    }, { postError: (error) => new BoardCapabilityError("rejected", errMessage(error, "Persephone host is unavailable.")) })
+        .catch((error: unknown) => { throw capabilityErrorFromReply(error as { code?: unknown; message?: unknown }); });
 }
 
 /**
@@ -1035,10 +912,8 @@ function capabilityInvokeRpc(
  * exactly the scoping it has today — this adds one constructor, not a page-model escape hatch.
  */
 function openContentRpc(request: BoardOpenContentRequest): Promise<string> {
-    return hostRequest({ __persephone: "board:openContent", openContent: request }, "openContent:result", (reply) => {
-        const data = reply as BoardOpenContentResultMsg;
-        if (data.error != null) throw fromWireError(wireError(data.error));
-        if (typeof data.pageId === "string") return data.pageId;
+    return hostFrame.request("openContent", { request }).then((pageId) => {
+        if (typeof pageId === "string") return pageId;
         throw new Error("Malformed persephone.openContent() response.");
     });
 }
@@ -1126,12 +1001,11 @@ window.addEventListener("pagehide", () => {
     earlyChannelPorts.clear();
 });
 
-onHostMessage((event) => {
-    const message = event.data as { __persephone?: string; channelId?: string } | undefined;
-    if (message?.__persephone !== "service:channelPort" || typeof message.channelId !== "string" || !event.ports[0]) return;
-    const waiter = channelPortWaiters.get(message.channelId);
-    if (waiter) { channelPortWaiters.delete(message.channelId); waiter.resolve(event.ports[0]); }
-    else earlyChannelPorts.set(message.channelId, event.ports[0]);
+hostFrame.on("service.channelPort", (payload, context) => {
+    if (typeof payload.channelId !== "string" || !context.ports[0]) return;
+    const waiter = channelPortWaiters.get(payload.channelId);
+    if (waiter) { channelPortWaiters.delete(payload.channelId); waiter.resolve(context.ports[0]); }
+    else earlyChannelPorts.set(payload.channelId, context.ports[0]);
 });
 
 function call(path: string, options?: { args?: unknown[]; value?: unknown; maxLength?: number; timeoutMs?: number }): Promise<unknown> {
@@ -1169,14 +1043,8 @@ function postAiVisionRegistration(
     reason: "register" | "refresh" = "register",
 ): void {
     if (viewRole !== "main") return;
-    const message: BoardAiVisionRegistrationMsg = {
-        __persephone: "board:aiVision",
-        schemaVersion: remote.schemaVersion,
-        shape: decorateAiVisionShape(remote.describe()),
-        reason,
-    };
     try {
-        window.parent.postMessage(message, hostPostTarget);
+        hostFrame.emit("aiVision.register", { schemaVersion: remote.schemaVersion, shape: decorateAiVisionShape(remote.describe()), reason });
     } catch {
         // The host frame may have gone away while the board is being replaced.
     }
@@ -1191,12 +1059,8 @@ function exposeAiVision(root: object): IAiVisionRemote {
         onHostSignal: (signal: IAiHostSignal) => {
             if (signal.type !== "notify" || viewRole !== "main"
                 || aiVisionRemote !== remote || aiVisionGeneration !== generation) return;
-            const message: BoardAiVisionNotifyMsg = {
-                __persephone: "board:aiNotify",
-                text: signal.text,
-            };
             try {
-                window.parent.postMessage(message, hostPostTarget);
+                hostFrame.emit("aiVision.notify", { text: signal.text });
             } catch {
                 // The host frame may have gone away while the board is being replaced.
             }
@@ -1327,73 +1191,9 @@ function attachPort(p: MessagePort): void {
 // the origin check is belt-and-suspenders, enforced only for a strict (http[s])
 // host — a file:// host's cross-origin `event.origin` is the opaque "null" and
 // would never match the baked "file://" (see `hostOriginStrict` above).
-/** Register a message delivered by the Board host frame. `event.source` is the
- * load-bearing boundary; strict HTTP(S) hosts additionally require the boot-time
- * origin. Keep every host-frame protocol behind this gate. */
-function onHostMessage(handler: (event: MessageEvent) => void): void {
-    window.addEventListener("message", (event: MessageEvent) => {
-        if (event.source !== window.parent) return;
-        if (hostOriginStrict && event.origin !== boot.hostOrigin) return;
-        handler(event);
-    });
-}
+hostFrame.listen();
 
-onHostMessage((event) => {
-    const message = event.data as BoardSaveRequestMsg | BoardSaveHandlerSyncMsg | undefined;
-    if (message?.__persephone === "board:saveHandlerSync") {
-        const active = activeSaveRegistration();
-        if (active) window.parent.postMessage({ __persephone: "board:saveHandler", handlerId: active.id, registered: true }, hostPostTarget);
-        return;
-    }
-    if (!message || message.__persephone !== "board:saveRequest"
-        || typeof message.requestId !== "number") return;
-    if (message.discard) {
-        const requestId = message.requestId;
-        void Promise.allSettled([...discardHandlers].map((handler) => Promise.resolve().then(handler))).then(() => {
-            const reply: BoardSaveResultMsg = { __persephone: "board:saveResult", requestId, success: true };
-            window.parent.postMessage(reply, hostPostTarget);
-        });
-        return;
-    }
-    const registration = activeSaveRegistration();
-    if (!registration) {
-        const reply: BoardSaveResultMsg = {
-            __persephone: "board:saveResult", requestId: message.requestId,
-            success: false, error: "The board has no active Save handler.",
-        };
-        window.parent.postMessage(reply, hostPostTarget);
-        return;
-    }
-    Promise.resolve().then(() => registration.handler()).then((result) => {
-        const current = activeSaveRegistration();
-        const reply: BoardSaveResultMsg = current?.id === registration.id
-            ? { __persephone: "board:saveResult", requestId: message.requestId, success: result !== false }
-            : { __persephone: "board:saveResult", requestId: message.requestId, success: false,
-                error: "The board's Save handler changed while it was saving." };
-        window.parent.postMessage(reply, hostPostTarget);
-    }).catch((error: unknown) => {
-        const reply: BoardSaveResultMsg = {
-            __persephone: "board:saveResult", requestId: message.requestId,
-            success: false, error: errMessage(error, "The board failed to save its changes."),
-        };
-        window.parent.postMessage(reply, hostPostTarget);
-    });
-});
-
-onHostMessage((event) => {
-    const data = event.data as
-        {
-            __persephoneInit?: boolean; busy?: boolean; filePath?: string;
-            sourceUrl?: string;
-            sourceContext?: BoardSourceContext;
-            initialSourcePrivateSession?: boolean;
-            pageVisible?: boolean;
-            voiceTypingAutoStopSilenceMs?: unknown;
-            folderPath?: string; contentHost?: boolean; materialize?: boolean;
-            pageId?: string; pipeUrlEnabled?: boolean; intent?: BoardIntentInit;
-        }
-        | undefined;
-    if (!data || data.__persephoneInit !== true) return;
+hostFrame.onInit((data, ports) => {
     // Busy flag carried at handshake. A local setBoardBusy call that
     // already ran wins (busyState !== null) — the init value is then stale.
     if (busyState === null) settleBusy(!!data.busy);
@@ -1427,70 +1227,14 @@ onHostMessage((event) => {
             requestId: data.intent.requestId,
             payload: data.intent.payload,
         });
+        hostFrame.answer(data.intent.requestId, activeIntent.outcome);
         deliverIntent();
     }
-    const p = event.ports && event.ports[0];
+    const p = ports[0];
     if (p) attachPort(p);
 });
 
-onHostMessage((event) => {
-    const data = event.data as BoardFetchHeadMsg | BoardFetchChunkMsg | BoardFetchErrorMsg | undefined;
-    if (!data || typeof data.reqId !== "number") return;
-    const pending = pendingBoardFetches.get(data.reqId);
-    if (!pending) return;
-    if (data.__persephone === "fetch:error") {
-        const error = new Error(data.error);
-        pendingBoardFetches.delete(data.reqId);
-        removeBoardFetchAbortListener(pending);
-        if (!pending.headResolved) pending.reject(error);
-        try { pending.controller?.error(error); } catch { /* stream already closed */ }
-        pending.pullResolve?.({ __persephone: "fetch:chunk", reqId: data.reqId, done: true });
-        return;
-    }
-    if (data.__persephone === "fetch:head") {
-        if (pending.headResolved) return;
-        pending.headResolved = true;
-        const stream = data.hasBody ? new ReadableStream<Uint8Array>({
-            start(controller) { pending.controller = controller; },
-            async pull() {
-                if (!pendingBoardFetches.has(data.reqId)) return;
-                const chunk = await new Promise<BoardFetchChunkMsg>((resolve) => {
-                    pending.pullResolve = resolve;
-                    // The host reads the next chunk only when asked; without this request the body never arrives.
-                    window.parent.postMessage({ __persephone: "board:fetch:pull", reqId: data.reqId }, hostPostTarget);
-                });
-                pending.pullResolve = undefined;
-                if (chunk.done) {
-                    pendingBoardFetches.delete(data.reqId);
-                    removeBoardFetchAbortListener(pending);
-                    pending.controller?.close();
-                } else if (chunk.chunk) {
-                    pending.controller?.enqueue(new Uint8Array(chunk.chunk));
-                }
-            },
-            cancel() {
-                window.parent.postMessage({ __persephone: "board:fetch:abort", reqId: data.reqId }, hostPostTarget);
-                pendingBoardFetches.delete(data.reqId);
-                removeBoardFetchAbortListener(pending);
-            },
-        }) : null;
-        if (!data.hasBody) {
-            pendingBoardFetches.delete(data.reqId);
-            removeBoardFetchAbortListener(pending);
-        }
-        pending.resolve(new Response(stream, {
-            status: data.status,
-            statusText: data.statusText,
-            headers: data.headers,
-        }));
-        return;
-    }
-    if (data.__persephone === "fetch:chunk") pending.pullResolve?.(data);
-});
-
-onHostMessage((event) => {
-    const data = event.data as { __persephone?: unknown; milliseconds?: unknown } | undefined;
-    if (data?.__persephone !== "voice-typing:auto-stop-silence-changed") return;
+hostFrame.on("voiceTyping.autoStopSilenceChanged", (data) => {
     setVoiceTypingAutoStopSilence(data.milliseconds);
 });
 
@@ -1507,9 +1251,8 @@ function setVoiceTypingAutoStopSilence(value: unknown): void {
 // Runtime source identities arrive independently of the initial source handshake. This listener
 // is installed before board application code runs, so events posted while the board is loading are
 // retained until `source.onOpen()` subscribes.
-onHostMessage((event) => {
-    const data = event.data as BoardSourceOpenedMsg | undefined;
-    if (!data || data.__persephone !== "source:opened" || typeof data.sourceUrl !== "string") return;
+hostFrame.on("source.opened", (data) => {
+    if (typeof data.sourceUrl !== "string") return;
     const pending = {
         sourceUrl: data.sourceUrl,
         ...(data.privateSession === true ? { privateSession: true } : {}),
@@ -1519,19 +1262,9 @@ onHostMessage((event) => {
     else deliverSourceOpen(pending.sourceUrl, pending.privateSession, pending.context);
 });
 
-// A single listener settles all hostRequest replies by request id and expected reply type.
-onHostMessage((event) => {
-    const envelope = event.data as { __persephone?: unknown; reqId?: unknown } | undefined;
-    if (!envelope || typeof envelope.__persephone !== "string" || typeof envelope.reqId !== "number") return;
-    pendingHostRequests.settle(envelope.reqId, event.data as BoardHostRequestReply,
-        (meta) => meta.expectedReplyType === envelope.__persephone);
-});
-
     // Board settings change push — effective values include the declaration default.
-onHostMessage((event) => {
-    const data = event.data as BoardSettingsChangedMsg | undefined;
-    if (!data || data.__persephone !== "settings:changed"
-        || typeof data.id !== "string" || data.id.trim().length === 0
+hostFrame.on("settings.changed", (data) => {
+    if (typeof data.id !== "string" || data.id.trim().length === 0
         || !isBoardSettingValue(data.value)) return;
     const change = { id: data.id, value: data.value };
     for (const callback of settingsChangeCbs) {
@@ -1543,10 +1276,8 @@ onHostMessage((event) => {
     }
 });
 
-onHostMessage((event) => {
-    const data = event.data as BoardToolbarControlEventMsg | undefined;
-    if (!data || data.__persephone !== "toolbar:control"
-        || typeof data.id !== "string" || !data.id
+hostFrame.on("toolbar.control", (data) => {
+    if (typeof data.id !== "string" || !data.id
         || (data.type !== "button" && data.type !== "toggle" && data.type !== "menu"
             && data.type !== "select" && data.type !== "segmented" && data.type !== "input"
             && data.type !== "breadcrumb")
@@ -1566,28 +1297,23 @@ onHostMessage((event) => {
     }
 });
 
-onHostMessage((event) => {
-    const data = event.data as BoardStatusBarActionMsg | undefined;
-    if (!data || data.__persephone !== "statusBar:action"
-        || typeof data.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(data.id)) return;
+hostFrame.on("statusBar.action", (data) => {
+    if (typeof data.id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(data.id)) return;
     for (const callback of statusBarActionCbs) {
         try { callback({ id: data.id }); }
         catch (error: unknown) { console.error("persephone.statusBar.onAction callback error:", error); }
     }
 });
 
-onHostMessage((event) => {
-    const data = event.data as BoardMuteToggleMsg | undefined;
-    if (!data || data.__persephone !== "page:muteToggle") return;
+hostFrame.on("page.muteToggle", () => {
     for (const callback of muteToggleCbs) {
         try { callback(); }
         catch (error: unknown) { console.error("persephone.page.onMuteToggle callback error:", error); }
     }
 });
 
-onHostMessage((event) => {
-    const data = event.data as { __persephone?: unknown; visible?: unknown } | undefined;
-    if (data?.__persephone !== "page:visibility" || typeof data.visible !== "boolean") return;
+hostFrame.on("page.visibility", (data) => {
+    if (typeof data.visible !== "boolean") return;
     setPageVisibility(data.visible);
 });
 
@@ -1605,109 +1331,29 @@ function setPageVisibility(visible: boolean): void {
 // created for it; every later request reuses this frame and arrives here. Without this
 // handler a reused handler page silently receives nothing and every such call hangs to its
 // deadline, which is exactly how it shipped before being caught in live testing.
-onHostMessage((event) => {
-    const data = event.data as BoardCapabilityIntentRequestMsg | undefined;
-    if (!data || data.__persephone !== "capabilities:intent"
-        || typeof data.requestId !== "string" || typeof data.id !== "string") return;
-    if (activeIntent && !activeIntent.settled && !activeIntent.cancelled
-        && activeIntent.requestId !== data.requestId) {
-        // The renderer serializes delivery; reject if an unexpected overlap reaches this frame.
-        try {
-            window.parent.postMessage({
-                __persephone: "capabilities:intent:result",
-                requestId: data.requestId,
-                error: { code: "rejected", message: "The board is already serving a capability request." },
-            } as BoardCapabilityIntentResultMsg, hostPostTarget);
-        } catch {
-            // The parent may disappear while the frame is refusing.
-        }
-        return;
-    }
-    if (activeIntent?.requestId === data.requestId && activeIntent.delivered) return;
-    activeIntent = makeIntentContext({
-        id: data.id,
-        ...(typeof data.version === "number" ? { version: data.version } : {}),
-        requestId: data.requestId,
-        payload: data.payload,
-    });
-    deliverIntent();
-});
-
 // Capability cancel/list/invoke results — renderer → board over window.postMessage.
 // Same source and origin gate as the handshake.
-onHostMessage((event) => {
-    const data = event.data as BoardCapabilityIntentCancelMsg | undefined;
-    if (!data || data.__persephone !== "capabilities:intent:cancel"
-        || typeof data.requestId !== "string") return;
+hostFrame.on("capabilities.cancel", (data) => {
+    if (typeof data.requestId !== "string") return;
     if (activeIntent?.requestId === data.requestId) activeIntent.cancelled = true;
 });
 
 // Host content push — renderer → board over window.postMessage. Same trust gate as the
 // handshake: source must be the host parent frame; origin enforced only for a strict http(s) host.
 // A SEPARATE listener because the handshake listener above early-returns non-`__persephoneInit`.
-onHostMessage((event) => {
-    const data = event.data as BoardHostContentMsg | undefined;
-    if (!data || data.__persephone !== "host:content") return;
+hostFrame.on("host.content", (data) => {
     settleHostContent(data.content, data.language);
 });
 
 // Shared-state push — renderer → board. Same trust gate as host:content.
-onHostMessage((event) => {
-    const data = event.data as BoardStateSyncMsg | undefined;
-    if (!data || data.__persephone !== "state:sync") return;
+hostFrame.on("state.sync", (data) => {
     applyStateSync(data.state ?? {}, typeof data.seq === "number" ? data.seq : 0);
 });
 
 // Host-initiated AiVision leaf request. The remote generation is captured before the await so a
 // board that replaces its exposed root cannot send an old result into the host's new registration.
-onHostMessage((event) => {
-    const data = event.data as BoardAiVisionRequestMsg | undefined;
-    if (!data || data.__persephone !== "ai:request" || typeof data.reqId !== "number") return;
-    const remote = aiVisionRemote;
-    const generation = aiVisionGeneration;
-    const isLocalElementAction = viewRole !== "main"
-        && (data.request.action === "ai:elements" || data.request.action === "ai:highlight");
-    const responsePromise: Promise<IAiRemoteResponse> = isLocalElementAction
-        ? handleLocalAiVisionRequest(data.request)
-        : remote
-          ? remote.handle(data.request)
-          : Promise.resolve({ ok: false, error: "The board has not exposed an AiVision root." });
-    void responsePromise
-        .then((response) => {
-            if (aiVisionRemote !== remote || aiVisionGeneration !== generation) return;
-            const message: BoardAiVisionResultMsg = {
-                __persephone: "board:aiResult",
-                reqId: data.reqId,
-                response,
-            };
-            try {
-                window.parent.postMessage(message, hostPostTarget);
-            } catch {
-                // The host frame may have gone away while the remote was handling the request.
-            }
-        })
-        .catch((error: unknown) => {
-            if (aiVisionRemote !== remote || aiVisionGeneration !== generation) return;
-            const message: BoardAiVisionResultMsg = {
-                __persephone: "board:aiResult",
-                reqId: data.reqId,
-                response: {
-                    ok: false,
-                    error: errMessage(error, "The AiVision request failed."),
-                },
-            };
-            try {
-                window.parent.postMessage(message, hostPostTarget);
-            } catch {
-                // The host frame may have gone away while the remote was handling the request.
-            }
-        });
-});
-
-onHostMessage((event) => {
-    const data = event.data as BoardNavigationReturnMsg | undefined;
-    if (!data || data.__persephone !== "navigation:return"
-        || typeof data.url !== "string" || !data.query || !data.hash) return;
+hostFrame.on("navigation.return", (data) => {
+    if (typeof data.url !== "string" || !data.query || !data.hash) return;
     // Hand the board the documented shape only. Forwarding the raw message would leak
     // the internal `__persephone` discriminator into the public event object.
     const returnEvent: PersephoneNavigationReturnEvent = {
@@ -1732,7 +1378,7 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
         if (e.defaultPrevented) return; // the board claimed it — stand down
         e.preventDefault();
         try {
-            window.parent.postMessage({ __persephone: "board:save" }, hostPostTarget);
+            hostFrame.emit("content.save", {});
         } catch {
             // parent gone — nothing to save
         }
@@ -1749,10 +1395,7 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
     if (e.defaultPrevented) return; // the board claimed it — stand down
     e.preventDefault();
     try {
-        window.parent.postMessage(
-            { __persephone: "board:cycleTheme", direction: e.code === "BracketRight" ? 1 : -1 },
-            hostPostTarget,
-        );
+        hostFrame.emit("theme.cycle", { direction: e.code === "BracketRight" ? 1 : -1 });
     } catch {
         // parent gone — nothing to theme
     }
@@ -1799,16 +1442,12 @@ installBoardContextMenu({ fire, rpc, hostText: resolveBoardHostText });
 window.addEventListener(
     "pointerdown",
     () => {
-        try {
-            window.parent.postMessage({ __persephone: "board:interact" }, hostPostTarget);
-        } catch {
-            // parent gone — nothing to dismiss
-        }
+        hostFrame.emit("interact", {});
     },
     true,
 );
 
-installBoardDiagnostics(hostPostTarget);
+installBoardDiagnostics((name, payload) => hostFrame.emit(name, payload));
 
 // ── execute() handle (state machine shared with renderer/api/proc.ts) ────────
 
@@ -1882,12 +1521,12 @@ function createHandle(
         /** Whether this page is active or shown beside the active page. */
         get visible(): boolean { return pageVisible; },
         setModified(modified: boolean): void {
-            window.parent.postMessage({ __persephone: "board:setModified", modified: modified === true }, hostPostTarget);
+            hostFrame.emit("modified.set", { modified: modified === true });
         },
         /** Show the page tab's mute button in this state, like the Video Player's; `null` removes it.
          *  Call it again whenever the board's own mute changes so the tab stays in step. */
         setMuted(muted: boolean | null): void {
-            window.parent.postMessage({ __persephone: "board:setMuted", muted: muted === null ? null : muted === true }, hostPostTarget);
+            hostFrame.emit("muted.set", { muted: muted === null ? null : muted === true });
         },
         /** Run when the user clicks the page tab's mute button; flip the mute and call setMuted. */
         onMuteToggle(callback: () => void): () => void {
@@ -1930,15 +1569,15 @@ function createHandle(
         if (typeof handler !== "function") throw new TypeError("persephone.onSaveRequest expects a function.");
         const id = ++saveHandlerId;
         saveHandlers.set(id, handler);
-        window.parent.postMessage({ __persephone: "board:saveHandler", handlerId: id, registered: true }, hostPostTarget);
+        hostFrame.emit("saveHandler", { handlerId: id, registered: true });
         return () => {
             if (!saveHandlers.has(id)) return;
             const wasActive = activeSaveRegistration()?.id === id;
             saveHandlers.delete(id);
-            window.parent.postMessage({ __persephone: "board:saveHandler", handlerId: id, registered: false }, hostPostTarget);
+            hostFrame.emit("saveHandler", { handlerId: id, registered: false });
             const active = activeSaveRegistration();
             if (wasActive && active) {
-                window.parent.postMessage({ __persephone: "board:saveHandler", handlerId: active.id, registered: true }, hostPostTarget);
+                hostFrame.emit("saveHandler", { handlerId: active.id, registered: true });
             }
         };
     },
@@ -1977,45 +1616,33 @@ function createHandle(
      *  on every frame (main + secondary); the change is authoritative on the Persephone side. */
     setSecondaryViews(views: Array<{ id: string; html?: string; title?: string }>): void {
         try {
-            window.parent.postMessage(
-                { __persephone: "board:setSecondaryViews", views: Array.isArray(views) ? views : [] },
-                hostPostTarget,
-            );
+            hostFrame.emit("secondaryViews.set", { views: Array.isArray(views) ? views : [] });
         } catch {
             // parent gone
         }
     },
 
     toolbar: {
-        set(controls: BoardToolbarSetMsg["controls"]): void {
-            postToolbarMessage({
-                __persephone: "board:setToolbarControls",
-                controls: Array.isArray(controls) ? controls as BoardToolbarSetMsg["controls"] : [],
-            });
+        set(controls: BoardToHostEvents["toolbar.set"]["controls"]): void {
+            hostFrame.emit("toolbar.set", { controls: Array.isArray(controls) ? controls as BoardToHostEvents["toolbar.set"]["controls"] : [] });
         },
-        update(partial: BoardToolbarUpdateMsg["controls"]): void {
-            postToolbarMessage({
-                __persephone: "board:updateToolbarControls",
-                controls: Array.isArray(partial) ? partial as BoardToolbarUpdateMsg["controls"] : [],
-            });
+        update(partial: BoardToHostEvents["toolbar.update"]["controls"]): void {
+            hostFrame.emit("toolbar.update", { controls: Array.isArray(partial) ? partial as BoardToHostEvents["toolbar.update"]["controls"] : [] });
         },
         /** Set transient text in the main page toolbar; `""` clears it. The slot has no
          *  fallback — it is blank until a board fills it. */
         setText(text: string): void {
-            postToolbarMessage({
-                __persephone: "board:setToolbarText",
-                toolbarText: typeof text === "string" ? text : String(text ?? ""),
-            });
+            hostFrame.emit("toolbar.setText", { toolbarText: typeof text === "string" ? text : String(text ?? "") });
         },
         onAction: onToolbarAction,
     },
 
     statusBar: {
-        set(items: BoardStatusBarSetMsg["items"]): void {
-            postStatusBarMessage({ __persephone: "board:setStatusBarItems", items: Array.isArray(items) ? items : [] });
+        set(items: BoardToHostEvents["statusBar.set"]["items"]): void {
+            hostFrame.emit("statusBar.set", { items: Array.isArray(items) ? items : [] });
         },
-        update(id: string, patch: Omit<BoardStatusBarUpdateMsg["items"][number], "id">): void {
-            postStatusBarMessage({ __persephone: "board:updateStatusBarItems", items: [{ id, ...patch }] });
+        update(id: string, patch: Omit<BoardToHostEvents["statusBar.update"]["items"][number], "id">): void {
+            hostFrame.emit("statusBar.update", { items: [{ id, ...patch }] });
         },
         onAction: onStatusBarAction,
     },
@@ -2026,10 +1653,7 @@ function createHandle(
      *  no footer. Pass `""` to clear. */
     setStatusText(text: string): void {
         try {
-            window.parent.postMessage(
-                { __persephone: "board:setStatusText", statusText: typeof text === "string" ? text : String(text ?? "") },
-                hostPostTarget,
-            );
+            hostFrame.emit("statusText.set", { statusText: typeof text === "string" ? text : String(text ?? "") });
         } catch {
             // parent gone
         }
@@ -2196,11 +1820,9 @@ function createHandle(
     pageState: {
         get(key: string): Promise<string | undefined> {
             try { validateBoardPageStateKey(key); } catch (error: unknown) { return Promise.reject(error); }
-            return hostRequest({ __persephone: "board:pageState:get", key }, "pageState:get:result", (reply) => {
-                const data = reply as BoardPageStateGetResultMsg;
-                if (data.error != null) throw fromWireError(wireError(data.error));
-                if (data.value !== undefined && typeof data.value !== "string") throw new Error("Malformed persephone.pageState.get() response.");
-                return data.value;
+            return hostFrame.request("pageState.get", { key }).then((value) => {
+                if (value !== undefined && typeof value !== "string") throw new Error("Malformed persephone.pageState.get() response.");
+                return value;
             });
         },
         set(key: string, value: string): Promise<void> {
@@ -2210,17 +1832,11 @@ function createHandle(
             } catch (error: unknown) {
                 return Promise.reject(error);
             }
-            return hostRequest({ __persephone: "board:pageState:set", key, value }, "pageState:set:result", (reply) => {
-                const data = reply as BoardPageStateSetResultMsg;
-                if (data.error != null) throw fromWireError(wireError(data.error));
-            });
+            return hostFrame.request("pageState.set", { key, value });
         },
         remove(key: string): Promise<void> {
             try { validateBoardPageStateKey(key); } catch (error: unknown) { return Promise.reject(error); }
-            return hostRequest({ __persephone: "board:pageState:remove", key }, "pageState:remove:result", (reply) => {
-                const data = reply as BoardPageStateRemoveResultMsg;
-                if (data.error != null) throw fromWireError(wireError(data.error));
-            });
+            return hostFrame.request("pageState.remove", { key });
         },
     },
 
@@ -2335,9 +1951,9 @@ function createHandle(
      *  the app) still kills them. Call with `false` when the processes stopped. */
     setBoardBusy(busy: boolean): void {
         settleBusy(!!busy);
-        try {
-            window.parent.postMessage({ __persephone: "board:busy", busy: !!busy }, hostPostTarget);
-        } catch {
+            try {
+                hostFrame.emit("busy", { busy: !!busy });
+            } catch {
             // parent gone — nothing to inform
         }
     },
@@ -2345,11 +1961,7 @@ function createHandle(
     /** Declare transient visual activity on this page's tab; this does not retain the board or its processes. */
     setWorking(working: boolean): void {
         try {
-            const message: Extract<BoardToHostMsg, { __persephone: "board:working" }> = {
-                __persephone: "board:working",
-                working: !!working,
-            };
-            window.parent.postMessage(message, hostPostTarget);
+            hostFrame.emit("working", { working: !!working });
         } catch {
             // parent gone — nothing to inform
         }
@@ -2411,14 +2023,7 @@ function createHandle(
             if (typeof href !== "string" || !href) {
                 return Promise.reject(new TypeError("persephone.source.navigate() requires a non-empty href."));
             }
-            return hostRequest(
-                { __persephone: "board:source:navigate", href },
-                "source:navigate:result",
-                (reply) => {
-                    const data = reply as BoardSourceNavigateResultMsg;
-                    if (data.error != null) throw fromWireError(wireError(data.error));
-                },
-            );
+            return hostFrame.request("source.navigate", { href });
         },
         onOpen: onSourceOpen,
     },
@@ -2444,7 +2049,7 @@ function createHandle(
             if (!pipePageId) {
                 throw new Error("Persephone did not provide a page id for streamUrl()");
             }
-            return new URL(`/__pipe/${encodeURIComponent(pipePageId)}`, location.origin).toString();
+            return new URL(boardPipePagePath(pipePageId), location.origin).toString();
         },
 
         /** Current content — resolves to the first pushed snapshot (await any time). */
@@ -2470,10 +2075,7 @@ function createHandle(
                 hostContentResolvers.length = 0;
             }
             try {
-                window.parent.postMessage(
-                    { __persephone: "board:setContent", content },
-                    hostPostTarget,
-                );
+                hostFrame.emit("content.set", { content });
             } catch {
                 // parent gone
             }
@@ -2507,7 +2109,7 @@ function createHandle(
          *  already saves automatically (CH3). */
         save(): void {
             try {
-                window.parent.postMessage({ __persephone: "board:save" }, hostPostTarget);
+                hostFrame.emit("content.save", {});
             } catch {
                 // parent gone
             }
@@ -2522,14 +2124,7 @@ function createHandle(
          *  restart/reload (opt-in). Typically called once by the main view at boot. */
         init(defaults: Record<string, unknown>, options?: { restorableKeys?: string[] }): void {
             try {
-                window.parent.postMessage(
-                    {
-                        __persephone: "board:stateInit",
-                        defaults: defaults ?? {},
-                        restorableKeys: options?.restorableKeys,
-                    },
-                    hostPostTarget,
-                );
+                hostFrame.emit("state.init", { defaults: defaults ?? {}, restorableKeys: options?.restorableKeys });
             } catch {
                 // parent gone
             }
@@ -2544,7 +2139,7 @@ function createHandle(
         /** Replace the whole shared state. */
         set(next: Record<string, unknown>): void {
             try {
-                window.parent.postMessage({ __persephone: "board:setState", state: next ?? {} }, hostPostTarget);
+                hostFrame.emit("state.set", { state: next ?? {} });
             } catch {
                 // parent gone
             }
@@ -2553,7 +2148,7 @@ function createHandle(
         /** Shallow-merge keys into the shared state. */
         merge(partial: Record<string, unknown>): void {
             try {
-                window.parent.postMessage({ __persephone: "board:mergeState", partial: partial ?? {} }, hostPostTarget);
+                hostFrame.emit("state.merge", { partial: partial ?? {} });
             } catch {
                 // parent gone
             }
@@ -2576,19 +2171,19 @@ function createHandle(
     var: {
         /** A single value (the `default` profile when `env` is omitted), or undefined if unset. */
         get(name: string, env?: string): Promise<string | undefined> {
-            return varRpc("get", [name, env]) as Promise<string | undefined>;
+            return hostFrame.request("var.get", { name, ...(env === undefined ? {} : { env }) });
         },
         /** Write a value into this board's namespace (re-encrypts on save if the file is encrypted). */
         set(name: string, value: string, env?: string): Promise<void> {
-            return varRpc("set", [name, value, env]) as Promise<void>;
+            return hostFrame.request("var.set", { name, value, ...(env === undefined ? {} : { env }) });
         },
         /** This board's key names in a profile (NOT values). */
         list(env?: string): Promise<string[]> {
-            return varRpc("list", [env]) as Promise<string[]>;
+            return hostFrame.request("var.list", env === undefined ? {} : { env });
         },
         /** Open the Environment Variables editor, scoped to this board's namespace. */
         show(): Promise<void> {
-            return varRpc("show", []) as Promise<void>;
+            return hostFrame.request("var.show", {});
         },
     },
 

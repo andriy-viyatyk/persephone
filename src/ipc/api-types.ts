@@ -22,7 +22,8 @@ import {
     VideoStreamSessionResult,
 } from "./api-param-types";
 import { GitAheadBehind, GitCommit, GitFetchOptions, GitFileChange, GitIdentity, GitLogOptions, GitMutationResult, GitProbeResult, GitPullOptions, GitPullResult, GitPushOptions, GitPushResult, GitRefs, GitRepoInfo, GitStatusResult, GitSwitchTarget } from "./git-ipc";
-import type { BoardHostText, BoardI18nContext, BoardNotifyMsg, BoardThemePalette } from "./board-bridge-channels";
+import type { BoardHostText, BoardI18nContext, BoardThemePalette } from "./board-bridge/boot";
+import type { BoardNotifyMsg } from "./board-bridge/port-protocol";
 import type { NormalizedBoardPermissions } from "../shared/board/board-permissions";
 import type {
     ClipboardFileList,
@@ -460,7 +461,7 @@ export type Api = {
     /** Request a main-owned trust mutation and return its authoritative path list. */
     [Endpoint.setBoardTrust]: (boardRoot: string, trusted: boolean, expectedPermissions?: NormalizedBoardPermissions, expectedUses?: import("../shared/board/board-service-declarations").BoardServiceUseDeclaration[]) => Promise<string[]>;
     [Endpoint.getBoardSnapshot]: () => Promise<import("./board-snapshot-channels").BoardSnapshot>;
-    [Endpoint.getBoardServiceProviders]: (interfaceId: string) => Promise<import("./board-bridge-channels").BoardServiceProvider[]>;
+    [Endpoint.getBoardServiceProviders]: (interfaceId: string) => Promise<import("./board-bridge/port-protocol").BoardServiceProvider[]>;
     [Endpoint.connectHostServiceChannel]: (request: HostServiceChannelRequest) => Promise<string>;
     [Endpoint.insertVoiceTypingText]: (request: { sessionId: string; text: string; deferClipboard?: boolean }) => Promise<{ copied: boolean }>;
     [Endpoint.armVoiceTypingMicrophone]: () => Promise<void>;

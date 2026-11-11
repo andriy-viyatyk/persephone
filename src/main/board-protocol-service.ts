@@ -2,7 +2,8 @@ import { app, net, session } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import type { BoardHostText, BoardI18nContext, BoardThemePalette } from "../ipc/board-bridge-channels";
+import type { BoardHostText, BoardI18nContext, BoardThemePalette } from "../ipc/board-bridge/boot";
+import { BOARD_DIALOG_MAX_BYTES, parseBoardDialogXhrRequest, parseBoardOriginRoute } from "../ipc/board-bridge/origin-routes";
 import type { BoardPipeKind } from "../ipc/board-pipe-channels";
 import { BoardPipeError } from "./board-pipe-service";
 import { readPipeRange, BoardPipeRangeError } from "./board-pipe-range-reader";
@@ -249,60 +250,43 @@ async function serveBoardPipe(
     return new Response(result.status === 416 ? null : body, { status: result.status, headers });
 }
 
+async function serveBoardDialog(request: Request, host: string): Promise<Response> {
+    if (request.method !== "POST" || request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json" || !request.body) return new Response(null, { status: 400 });
+    try {
+        const reader = request.body.getReader();
+        const chunks: Uint8Array[] = [];
+        let size = 0;
+        for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            size += value.length;
+            if (size > BOARD_DIALOG_MAX_BYTES) { await reader.cancel(); return new Response(null, { status: 413 }); }
+            chunks.push(value);
+        }
+        const bytes = new Uint8Array(size);
+        let offset = 0;
+        for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+        const input: unknown = JSON.parse(new TextDecoder().decode(bytes));
+        const data = parseBoardDialogXhrRequest(input);
+        if (!data) return new Response(null, { status: 400 });
+        const source = new URL(data.url);
+        if (source.protocol !== "board:" || source.host !== host || source.searchParams.get("v") !== data.nonce || (source.searchParams.get("view") ?? "main") !== data.view) return new Response(null, { status: 400 });
+        const frame = resolveBoardDialogFrame(host, data.nonce, data.view);
+        if (!frame) return new Response(null, { status: 404 });
+        const result = await requestBoardDialog(frame.host, frame.key, { type: data.type, message: data.message, defaultPrompt: data.defaultPrompt, url: data.url, title: frame.title, pageId: frame.pageId }, request.signal);
+        return new Response(JSON.stringify(result), { headers: { "Content-Type": "application/json" } });
+    } catch {
+        return new Response(null, { status: 400 });
+    }
+}
+
 async function serveBoardFile(request: Request): Promise<Response> {
     const { host, pathname } = new URL(request.url);
-    if (pathname === "/__persephone/dialog") {
-        if (request.method !== "POST" || request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json" || !request.body) return new Response(null, { status: 400 });
-        try {
-            const reader = request.body.getReader();
-            const chunks: Uint8Array[] = [];
-            let size = 0;
-            for (;;) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                size += value.length;
-                if (size > 65536) { await reader.cancel(); return new Response(null, { status: 413 }); }
-                chunks.push(value);
-            }
-            const bytes = new Uint8Array(size);
-            let offset = 0;
-            for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
-            const input: unknown = JSON.parse(new TextDecoder().decode(bytes));
-            if (!input || typeof input !== "object") return new Response(null, { status: 400 });
-            const data = input as Record<string, unknown>;
-            if ((data.type !== "alert" && data.type !== "confirm" && data.type !== "prompt") || typeof data.message !== "string" || typeof data.defaultPrompt !== "string" || typeof data.url !== "string" || typeof data.nonce !== "string" || typeof data.view !== "string") return new Response(null, { status: 400 });
-            const source = new URL(data.url);
-            if (source.protocol !== "board:" || source.host !== host || source.searchParams.get("v") !== data.nonce || (source.searchParams.get("view") ?? "main") !== data.view) return new Response(null, { status: 400 });
-            const frame = resolveBoardDialogFrame(host, data.nonce, data.view);
-            if (!frame) return new Response(null, { status: 404 });
-            const result = await requestBoardDialog(frame.host, frame.key, { type: data.type, message: data.message, defaultPrompt: data.defaultPrompt, url: data.url, title: frame.title, pageId: frame.pageId }, request.signal);
-            return new Response(JSON.stringify(result), { headers: { "Content-Type": "application/json" } });
-        } catch {
-            return new Response(null, { status: 400 });
-        }
-    }
-    if (pathname.startsWith("/__pipe/resource/")) {
-        const encodedResourceId = pathname.slice("/__pipe/resource/".length);
-        if (!encodedResourceId || encodedResourceId.includes("/")) return new Response("Not found", { status: 404 });
-        let resourceId: string;
-        try {
-            resourceId = decodeURIComponent(encodedResourceId);
-        } catch {
-            return new Response("Not found", { status: 404 });
-        }
-        return serveBoardPipe(host, "resource", resourceId, request.headers.get("Range") || undefined, request.signal);
-    }
-    if (pathname.startsWith("/__pipe/")) {
-        const encodedPageId = pathname.slice("/__pipe/".length);
-        if (!encodedPageId || encodedPageId.includes("/")) return new Response("Not found", { status: 404 });
-        let pageId: string;
-        try {
-            pageId = decodeURIComponent(encodedPageId);
-        } catch {
-            return new Response("Not found", { status: 404 });
-        }
-        return serveBoardPipe(host, "page", pageId, request.headers.get("Range") || undefined, request.signal);
-    }
+    const route = parseBoardOriginRoute(pathname);
+    if (route?.kind === "invalid") return new Response("Not found", { status: 404 });
+    if (route?.kind === "dialog") return serveBoardDialog(request, host);
+    if (route?.kind === "pipe-resource") return serveBoardPipe(host, "resource", route.resourceId, request.headers.get("Range") || undefined, request.signal);
+    if (route?.kind === "pipe-page") return serveBoardPipe(host, "page", route.pageId, request.headers.get("Range") || undefined, request.signal);
     const root = hostToRoot.get(host);
     if (!root) return new Response("No board registered", { status: 404 });
 

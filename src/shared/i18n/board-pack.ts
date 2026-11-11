@@ -1,6 +1,6 @@
 import { normalizeBoardRelativePath } from "../guides/mounted-source";
 import { parsePackMessage, messagePlaceholders, hasSamePlaceholders } from "./validate-pack";
-import type { BoardI18nMessage, BoardI18nTable } from "../../ipc/board-bridge-channels";
+import type { BoardI18nMessage, BoardI18nTable } from "../../ipc/board-bridge/boot";
 
 export interface BoardLanguages {
     folder: string;

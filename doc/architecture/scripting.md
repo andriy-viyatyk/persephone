@@ -1002,11 +1002,11 @@ node's live `elements` declarations.
 ### Remote AiVision trees
 
 Remote object models are mounted only at `pages[i].editor.app`. A board's main frame publishes a
-serializable shape through `persephone.aiVision.expose(root)`; `BoardWebview` forwards the shape and
-routes `ai:*` requests to the owning frame. `BoardEditorFacade` builds the host-side proxy only after
-the board is trusted and registered. Board element declarations are answered inside their owning
-frame, and a declaration with a secondary-view `view` causes that frame to be mounted before the
-request is sent. Secondary frames do not publish separate roots.
+serializable shape through `persephone.aiVision.expose(root)`; `BoardAiVisionChannel` owns the shape,
+transport registration, and request routing to the owning frame. `BoardEditorFacade` builds the
+host-side proxy only after the board is trusted and registered. Board element declarations are
+answered inside their owning frame, and a declaration with a secondary-view `view` causes that
+frame to be mounted before the request is sent. Secondary frames do not publish separate roots.
 
 The board registration has an explicit lifecycle. The initial `expose()` and any new remote after a
 reload or second `expose()` arrive as `BoardAiVisionRegistrationMsg.reason: "register"`; the same

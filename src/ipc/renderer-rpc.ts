@@ -1,5 +1,5 @@
 import type { HintMode } from "ai-vision";
-import type { BoardCallRequest } from "./board-bridge-channels";
+import type { BoardCallRequest } from "./board-bridge/port-protocol";
 import type { BoardServiceSettingValue } from "./board-service-settings-channels";
 import type { BoundOpenDispatch, CapabilityOutcome } from "./capability-bus-channels";
 import type { WireError } from "../shared/wire-error";

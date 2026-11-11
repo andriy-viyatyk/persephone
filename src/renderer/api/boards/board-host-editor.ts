@@ -4,7 +4,9 @@ import { isBoardEditorId } from "./custom-editor-registry";
 
 export interface IBoardHostEditor {
     readonly boardRoot: string | undefined;
-    readonly frames: ReadonlyMap<string, HTMLIFrameElement>;
+    readonly frameRegistry: {
+        isCurrentFrame(tab: string, frame: HTMLIFrameElement): boolean;
+    };
     recordBoardThemePreview(boardId: string, generation: number): void;
     readonly pipeUrlEnabled?: boolean;
     resolveStreamPipe?(): Promise<IContentPipe>;

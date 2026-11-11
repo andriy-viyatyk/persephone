@@ -1,3 +1,19 @@
+## EPIC-146 — Refactoring Phase 4.1 and 4.2: the frame protocol and the board editor runtime split
+
+Completed 2026-11-11. Roadmap Phase 4.1 and 4.2: one direction-typed frame protocol between the board shim and the host
+renderer, and the board editor runtime split into single-job collaborators. Plans by Sonnet subagents (US-1844 to US-1847)
+and Codex Terra (US-1848 to US-1851), reviewed against the roadmap guardrails; Codex Luna implemented. Epic document:
+[EPIC-146](EPIC-146.md).
+
+- [x] **Bridge contracts split (US-1844).** `src/ipc/board-bridge/` (`boot`, `port-protocol`, `frame-protocol`, `ui-catalog`, `origin-routes`) replaces `board-bridge-channels.ts`; the reserved board-origin paths and the dialog XHR body have one owner.
+- [x] **`BoardFrameRegistry` (US-1845).** The model's frame maps, loaded tabs, active tab and load waiters have one owner; `BoardTargetModel` is the only external writer of the active tab.
+- [x] **`BoardFrameSession` (US-1846).** One liveness check and one `retire(reason)` with a written teardown table replace about 37 guards and five drifting teardown lists; closing a secondary view no longer clears the main frame's chrome.
+- [x] **Frame envelopes (US-1847).** `req`/`res`/`evt` envelopes with per-direction method maps; the shim's `HostFrameChannel` and the renderer's `BoardFrameEndpoint` pair requests once, on `PendingRequests` and the wire error.
+- [x] **`BoardHostRouter` (US-1848).** A gated router table and feature bridge modules; every gated request gets an `untrusted` reply (roadmap bug #12); `BoardWebview` is a thin view; the notify rate limiter has an owner.
+- [x] **`BoardFrameChrome` (US-1849).** Toolbar, status bar, texts, mute and save live in one owner keyed by `{ session, generation }`; validators moved to `chrome/board-chrome-protocol.ts`; chrome left `BoardEditorState`.
+- [x] **`BoardAiVisionChannel` (US-1850).** Registration, incarnation, routing and aggregation moved out of the model and facade; one `hasSecondaryView`.
+- [x] **Model collaborators (US-1851).** `BoardSourceInbox`, `BoardPageStateStore` and `BoardContentResources`; one reload implementation.
+
 ## EPIC-145 — Refactoring Phase 3.4: one capability pipeline
 
 Completed 2026-11-11. Roadmap Phase 3.4: every capability invocation goes caller → `CapabilityClient` →

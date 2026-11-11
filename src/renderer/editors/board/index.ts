@@ -20,6 +20,16 @@ export type BoardEditorSpec =
     | { kind: "folder"; boardRoot: string; folderPath: string }
     | { kind: "restore"; descriptor: EditorDescriptor };
 
+function stripLegacyBoardChromeState(state: unknown): Record<string, unknown> {
+    if (!state || typeof state !== "object" || Array.isArray(state)) return {};
+    const sanitized = { ...(state as Record<string, unknown>) };
+    delete sanitized.statusText;
+    delete sanitized.toolbarText;
+    delete sanitized.toolbarTextFrameGeneration;
+    delete sanitized.muteButtonFrameGeneration;
+    return sanitized;
+}
+
 export function createBoardEditor(
     spec: Exclude<BoardEditorSpec, { kind: "restore" }>,
 ): Promise<BoardEditorModel>;
@@ -32,6 +42,8 @@ export async function createBoardEditor(
     await customEditorRegistry.ensureInitialized();
     if (spec.kind === "restore") {
         const descriptor = spec.descriptor;
+        const sanitizedState = stripLegacyBoardChromeState(descriptor.state);
+        const sanitizedDescriptor = { ...descriptor, state: sanitizedState };
         if (descriptor.editorId === "draw-view") {
             await boardRegistry.load();
             const excalidraw = boardRegistry.bundled().find((board) => board.id === "excalidraw");
@@ -39,12 +51,12 @@ export async function createBoardEditor(
             const { BoardContentEditorModel } = await import("./BoardContentEditorModel");
             const model = new BoardContentEditorModel(new TComponentState({
                 ...getDefaultBoardEditorState(),
-                ...descriptor.state,
+                ...sanitizedState,
                 id: descriptor.id,
                 boardRoot: excalidraw.root,
             }));
             model.applyRestoreData(
-                descriptor as unknown as Parameters<typeof model.applyRestoreData>[0],
+                sanitizedDescriptor as unknown as Parameters<typeof model.applyRestoreData>[0],
             );
             // restore() does not re-derive the selection from boardRoot; refreshBoards() only clears it, and
             // BoardEditorView shows its not-found state while the selection is unset. Seed the old tab and icon.
@@ -55,30 +67,30 @@ export async function createBoardEditor(
             const { BoardContentEditorModel } = await import("./BoardContentEditorModel");
             const model = new BoardContentEditorModel(new TComponentState({
                 ...getDefaultBoardEditorState(),
-                ...descriptor.state,
+                ...sanitizedState,
                 id: descriptor.id,
             }));
             model.applyRestoreData(
-                descriptor as unknown as Parameters<typeof model.applyRestoreData>[0],
+                sanitizedDescriptor as unknown as Parameters<typeof model.applyRestoreData>[0],
             );
             return model;
         }
 
-        const boardState = descriptor.state as Partial<ReturnType<typeof getDefaultBoardEditorState>>;
+        const boardState = sanitizedState as Partial<ReturnType<typeof getDefaultBoardEditorState>>;
         const editorKind = customEditorRegistry.findByRoot(boardState.boardRoot)?.editorKind;
         const model = editorKind === "stream-host"
             ? new BoardStreamEditorModel(new TComponentState({
                 ...getDefaultBoardEditorState(),
-                ...descriptor.state,
+                ...sanitizedState,
                 id: descriptor.id || boardState.id || crypto.randomUUID(),
             }))
             : createPlainBoardEditorWithState({
                 ...getDefaultBoardEditorState(),
-                ...descriptor.state,
+                ...sanitizedState,
                 id: descriptor.id || boardState.id || crypto.randomUUID(),
             });
         model.applyRestoreData(
-            descriptor.state as unknown as Parameters<typeof model.applyRestoreData>[0],
+            sanitizedDescriptor as unknown as Parameters<typeof model.applyRestoreData>[0],
         );
         return model;
     }

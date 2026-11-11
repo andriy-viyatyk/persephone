@@ -1,10 +1,9 @@
-import type {
-    BoardToolbarControlDescriptor,
-    BoardToolbarControlPatch,
-    BoardToolbarIcon,
-    BoardToolbarControlType,
-    BoardToolbarSegment,
-} from "../../../ipc/board-bridge-channels";
+import type { BoardToolbarControlDescriptor } from "../../../ipc/board-bridge/ui-catalog";
+import {
+    type BoardChromeWarning as ToolbarWarning,
+    type ToolbarAction,
+} from "./chrome/board-chrome-protocol";
+import type { BoardChromeCatalog, BoardChromeOwner } from "./model/BoardFrameChrome";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
@@ -35,260 +34,19 @@ import {
 import { errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
 
-export const BOARD_TOOLBAR_CONTROL_LIMIT = 8;
-const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
-const CONTROL_TYPES = new Set<BoardToolbarControlType>(["button", "toggle", "menu", "select", "segmented", "input", "breadcrumb"]);
-
-export type ToolbarAction = {
-    readonly id: string;
-    readonly type: BoardToolbarControlType;
-    readonly value?: boolean | string;
-};
-
-type ToolbarWarning = (message: string) => void;
 type BoardToolbarToggleDescriptor = Extract<BoardToolbarControlDescriptor, { type: "toggle" }>;
 type BoardToolbarSelectDescriptor = Extract<BoardToolbarControlDescriptor, { type: "select" }>;
 type BoardToolbarSegmentedDescriptor = Extract<BoardToolbarControlDescriptor, { type: "segmented" }>;
 type BoardToolbarInputDescriptor = Extract<BoardToolbarControlDescriptor, { type: "input" }>;
 type BoardToolbarBreadcrumbDescriptor = Extract<BoardToolbarControlDescriptor, { type: "breadcrumb" }>;
-type ToolbarRecordView = BreadcrumbView | IconButtonView | ButtonView | SwitchView | SelectView<IListBoxItem> | SegmentedControlView | InputView;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return !!value && typeof value === "object" && !Array.isArray(value);
-}
-
-function optionalString(value: unknown): string | undefined {
-    return value === undefined ? undefined : typeof value === "string" ? value : undefined;
-}
-
-function optionalBoolean(value: unknown): boolean | undefined {
-    return value === undefined ? undefined : typeof value === "boolean" ? value : undefined;
-}
-
-function safeId(value: unknown): value is string {
-    return typeof value === "string" && SAFE_ID.test(value);
-}
-
-function normalizeIcon(value: unknown): BoardToolbarIcon | undefined {
-    if (!isRecord(value)) return undefined;
-    const keys = Object.keys(value);
-    const sourceKeys = keys.filter((key) => key !== "preserveColors");
-    if (sourceKeys.length !== 1 || !["name", "svg", "file"].includes(sourceKeys[0])) return undefined;
-    if (value.preserveColors !== undefined && typeof value.preserveColors !== "boolean") return undefined;
-    const preserveColors = value.preserveColors as boolean | undefined;
-    const source = sourceKeys[0];
-    if (typeof value[source] !== "string" || !value[source]) return undefined;
-    if (source === "name") return { name: value[source] as string };
-    return source === "svg"
-        ? { svg: value[source] as string, ...(preserveColors !== undefined ? { preserveColors } : {}) }
-        : { file: value[source] as string, ...(preserveColors !== undefined ? { preserveColors } : {}) };
-}
-
-function normalizeMenuItems(value: unknown, warning: ToolbarWarning): Array<{ id: string; label: string; disabled?: boolean }> | undefined {
-    if (!Array.isArray(value)) return undefined;
-    const seen = new Set<string>();
-    const items: Array<{ id: string; label: string; disabled?: boolean }> = [];
-    for (const item of value) {
-        if (!isRecord(item) || !safeId(item.id) || typeof item.label !== "string" || seen.has(item.id)) {
-            warning("Ignored an invalid or duplicate board toolbar menu item.");
-            continue;
-        }
-        seen.add(item.id);
-        items.push({ id: item.id, label: item.label, ...(typeof item.disabled === "boolean" ? { disabled: item.disabled } : {}) });
-    }
-    return items;
-}
-
-/**
- * Options of a `select` or `segmented` control. A patch does not name its type, so this accepts
- * the wider segmented shape; `normalizeToolbarControl` then applies the per-type rules (a select
- * option needs a label and drops icons; a segment needs a label or an icon).
- */
-function normalizeOptions(value: unknown, warning: ToolbarWarning): BoardToolbarSegment[] | undefined {
-    if (!Array.isArray(value)) return undefined;
-    const seen = new Set<string>();
-    const options: BoardToolbarSegment[] = [];
-    for (const option of value) {
-        const icon = isRecord(option) && option.icon !== undefined ? normalizeIcon(option.icon) : undefined;
-        if (!isRecord(option) || typeof option.value !== "string" || seen.has(option.value)
-            || option.label !== undefined && typeof option.label !== "string"
-            || option.title !== undefined && typeof option.title !== "string"
-            || option.disabled !== undefined && typeof option.disabled !== "boolean"
-            || option.icon !== undefined && !icon) {
-            warning("Ignored an invalid or duplicate board toolbar option.");
-            continue;
-        }
-        seen.add(option.value);
-        options.push({
-            value: option.value,
-            ...(option.label !== undefined ? { label: option.label as string } : {}),
-            ...(option.title !== undefined ? { title: option.title as string } : {}),
-            ...(icon ? { icon } : {}),
-            ...(option.disabled !== undefined ? { disabled: option.disabled as boolean } : {}),
-        });
-    }
-    return options;
-}
-
-export function normalizeToolbarControl(value: unknown, warning: ToolbarWarning): BoardToolbarControlDescriptor | undefined {
-    if (!isRecord(value) || !safeId(value.id) || typeof value.type !== "string" || !CONTROL_TYPES.has(value.type as BoardToolbarControlType)) {
-        warning("Ignored an invalid board toolbar control descriptor.");
-        return undefined;
-    }
-    const id = value.id;
-    const type = value.type as BoardToolbarControlType;
-    const common = {
-        id,
-        label: optionalString(value.label),
-        title: optionalString(value.title),
-        disabled: optionalBoolean(value.disabled),
-    };
-    if (value.label !== undefined && common.label === undefined
-        || value.title !== undefined && common.title === undefined
-        || value.disabled !== undefined && common.disabled === undefined) {
-        warning(`Ignored invalid fields on board toolbar control "${id}".`);
-        return undefined;
-    }
-    const icon = value.icon === undefined ? undefined : normalizeIcon(value.icon);
-    if (value.icon !== undefined && !icon) {
-        warning(`Ignored invalid icon on board toolbar control "${id}".`);
-        return undefined;
-    }
-    if (type === "button") {
-        if (value.placement !== undefined && value.placement !== "toolbar" && value.placement !== "start") {
-            warning(`Ignored board toolbar button "${id}" with an unknown placement; use "toolbar" or "start".`);
-            return undefined;
-        }
-        const placement = value.placement === "start" ? { placement: "start" as const } : {};
-        return { ...common, type, ...(icon ? { icon } : {}), ...placement };
-    }
-    if (type === "toggle") {
-        if (typeof value.value !== "boolean") {
-            warning(`Ignored board toolbar toggle "${id}" without a boolean value.`);
-            return undefined;
-        }
-        return { ...common, type, value: value.value, ...(icon ? { icon } : {}) };
-    }
-    if (type === "menu") {
-        const items = normalizeMenuItems(value.items, warning);
-        if (!items) {
-            warning(`Ignored board toolbar menu "${id}" without an items array.`);
-            return undefined;
-        }
-        if (value.placement !== undefined && value.placement !== "toolbar" && value.placement !== "board-menu" && value.placement !== "start") {
-            warning(`Ignored board toolbar menu "${id}" with an unknown placement; use "toolbar", "board-menu", or "start".`);
-            return undefined;
-        }
-        const placement = value.placement === "board-menu" || value.placement === "start"
-            ? { placement: value.placement as "board-menu" | "start" } : {};
-        return { ...common, type, items, ...(icon ? { icon } : {}), ...placement };
-    }
-    if (type === "select") {
-        const options = normalizeOptions(value.options, warning);
-        if (!options || typeof value.value !== "string") {
-            warning(`Ignored board toolbar select "${id}" without options and a string value.`);
-            return undefined;
-        }
-        const labelled = options.flatMap((option) => option.label === undefined ? [] : [{ value: option.value, label: option.label }]);
-        if (labelled.length !== options.length) warning(`Ignored board toolbar select options without a label on "${id}".`);
-        return { ...common, type, options: labelled, value: value.value };
-    }
-    if (type === "segmented") {
-        const options = normalizeOptions(value.options, warning);
-        if (!options || typeof value.value !== "string") {
-            warning(`Ignored board toolbar segmented control "${id}" without options and a string value.`);
-            return undefined;
-        }
-        const shown = options.filter((option) => option.label !== undefined || option.icon !== undefined);
-        if (shown.length !== options.length) warning(`Ignored segmented options without a label or icon on "${id}".`);
-        return { ...common, type, options: shown, value: value.value };
-    }
-    if (type === "breadcrumb") {
-        if (typeof value.rootLabel !== "string" || typeof value.value !== "string"
-            || value.separators !== undefined && (typeof value.separators !== "string" || !value.separators)) {
-            warning(`Ignored invalid board toolbar breadcrumb "${id}".`);
-            return undefined;
-        }
-        return { id, type, rootLabel: value.rootLabel, value: value.value,
-            separators: value.separators as string | undefined, title: common.title, disabled: common.disabled };
-    }
-    if (typeof value.value !== "string") {
-        warning(`Ignored board toolbar input "${id}" without a string value.`);
-        return undefined;
-    }
-    if (value.placeholder !== undefined && typeof value.placeholder !== "string") {
-        warning(`Ignored invalid placeholder on board toolbar input "${id}".`);
-        return undefined;
-    }
-    return { ...common, type, value: value.value, placeholder: optionalString(value.placeholder) };
-}
-
-export function normalizeToolbarControlSet(value: unknown, warning: ToolbarWarning): BoardToolbarControlDescriptor[] {
-    if (!Array.isArray(value)) {
-        warning("Ignored a non-array board toolbar control catalog.");
-        return [];
-    }
-    const controls: BoardToolbarControlDescriptor[] = [];
-    const seen = new Set<string>();
-    for (const entry of value) {
-        const control = normalizeToolbarControl(entry, warning);
-        if (!control) continue;
-        if (seen.has(control.id)) {
-            warning(`Ignored duplicate board toolbar control "${control.id}".`);
-            continue;
-        }
-        if (controls.length >= BOARD_TOOLBAR_CONTROL_LIMIT) {
-            warning(`Ignored board toolbar control "${control.id}" because only ${BOARD_TOOLBAR_CONTROL_LIMIT} controls can be rendered.`);
-            continue;
-        }
-        seen.add(control.id);
-        controls.push(control);
-    }
-    return controls;
-}
-
-export function normalizeToolbarControlPatches(value: unknown, warning: ToolbarWarning): BoardToolbarControlPatch[] {
-    if (!Array.isArray(value)) {
-        warning("Ignored a non-array board toolbar update.");
-        return [];
-    }
-    const patches: BoardToolbarControlPatch[] = [];
-    for (const entry of value) {
-        if (!isRecord(entry) || !safeId(entry.id)) {
-            warning("Ignored an invalid board toolbar update entry.");
-            continue;
-        }
-        if (entry.type !== undefined && (typeof entry.type !== "string" || !CONTROL_TYPES.has(entry.type as BoardToolbarControlType))) {
-            warning(`Ignored invalid type in board toolbar update for "${entry.id}".`);
-            continue;
-        }
-        if (entry.placement !== undefined) {
-            warning(`Ignored placement in board toolbar update for "${entry.id}".`);
-        }
-        const patch: BoardToolbarControlPatch = { id: entry.id };
-        for (const key of ["label", "title", "placeholder", "rootLabel", "separators"] as const) {
-            if (entry[key] !== undefined) {
-                if (typeof entry[key] !== "string" || key === "separators" && !entry[key]) {
-                    warning(`Ignored invalid ${key} in board toolbar update for "${entry.id}".`);
-                    continue;
-                }
-                patch[key] = entry[key];
-            }
-        }
-        if (entry.type !== undefined) patch.type = entry.type as BoardToolbarControlType;
-        if (entry.disabled !== undefined && typeof entry.disabled === "boolean") patch.disabled = entry.disabled;
-        if (entry.value !== undefined && (typeof entry.value === "boolean" || typeof entry.value === "string")) patch.value = entry.value;
-        if (entry.icon !== undefined) {
-            const icon = normalizeIcon(entry.icon);
-            if (icon) patch.icon = icon;
-            else warning(`Ignored invalid icon in board toolbar update for "${entry.id}".`);
-        }
-        if (entry.items !== undefined) patch.items = normalizeMenuItems(entry.items, warning) ?? [];
-        if (entry.options !== undefined) patch.options = normalizeOptions(entry.options, warning) ?? [];
-        patches.push(patch);
-    }
-    return patches;
-}
+type ToolbarRecordView =
+    | BreadcrumbView
+    | IconButtonView
+    | ButtonView
+    | SwitchView
+    | SelectView<IListBoxItem>
+    | SegmentedControlView
+    | InputView;
 
 function titleOf(descriptor: BoardToolbarControlDescriptor): string {
     return descriptor.title ?? descriptor.label ?? descriptor.id;
@@ -323,46 +81,6 @@ function menuItems(
     }));
 }
 
-function hasField(patch: BoardToolbarControlPatch, field: string): boolean {
-    return Object.prototype.hasOwnProperty.call(patch, field);
-}
-
-function mergePatch(
-    descriptor: BoardToolbarControlDescriptor,
-    patch: BoardToolbarControlPatch,
-    warning: ToolbarWarning,
-): BoardToolbarControlDescriptor | undefined {
-    if (patch.type !== undefined && patch.type !== descriptor.type) {
-        warning(`Ignored type change for board toolbar control "${descriptor.id}".`);
-        return undefined;
-    }
-    const breadcrumbFields = descriptor.type === "breadcrumb" ? [] : ["rootLabel", "separators"];
-    const forbidden = [...breadcrumbFields, ...(descriptor.type === "breadcrumb"
-        ? ["label", "icon", "items", "options", "placeholder"]
-        : descriptor.type === "button"
-        ? ["value", "items", "options", "placeholder"]
-        : descriptor.type === "toggle"
-            ? ["items", "options", "placeholder"]
-            : descriptor.type === "menu"
-                ? ["value", "options", "placeholder"]
-                : descriptor.type === "select" || descriptor.type === "segmented"
-                    ? ["items", "placeholder", "icon"]
-                    : ["items", "options", "icon"])];
-    if (forbidden.some((field) => hasField(patch, field))) {
-        warning(`Ignored type-incompatible fields in board toolbar update for "${descriptor.id}".`);
-    }
-    const next = { ...descriptor } as Record<string, unknown>;
-    for (const [key, value] of Object.entries(patch)) {
-        if (key === "id" || key === "type" || forbidden.includes(key)) continue;
-        if (value !== undefined) next[key] = value;
-    }
-    if (descriptor.type === "menu" && hasField(patch, "items")) next.items = patch.items;
-    if ((descriptor.type === "select" || descriptor.type === "segmented") && hasField(patch, "options")) next.options = patch.options;
-    if (descriptor.type === "input" && hasField(patch, "value")) next.value = patch.value;
-    if (descriptor.type === "toggle" && hasField(patch, "value")) next.value = patch.value;
-    return normalizeToolbarControl(next, warning);
-}
-
 interface FocusSnapshot {
     id?: string;
     element?: HTMLElement;
@@ -376,7 +94,7 @@ class ToolbarControlRecord {
     descriptor: BoardToolbarControlDescriptor;
     private readonly emit: (event: ToolbarAction) => void;
     private readonly boardRoot: string;
-    private readonly warning: ToolbarWarning;
+    private warning: ToolbarWarning;
     private readonly labelElement: HTMLSpanElement | undefined;
     private readonly iconHost: HTMLSpanElement | undefined;
     private iconRef: IconRef = createToolbarIconFallback();
@@ -438,7 +156,10 @@ class ToolbarControlRecord {
         } else {
             const button = new IconButtonView(this.buttonProps());
             this.view = button;
-            this.root = createPanelElement({ direction: "row", align: "center", gap: "xs", shrink: false }, [button.root]);
+            this.root = createPanelElement(
+                { direction: "row", align: "center", gap: "xs", shrink: false },
+                [button.root],
+            );
             if (this.labelElement) this.root.append(this.labelElement);
         }
     }
@@ -453,7 +174,8 @@ class ToolbarControlRecord {
     /** Whether `descriptor` can be shown by this record's view; otherwise the record is rebuilt. */
     accepts(descriptor: BoardToolbarControlDescriptor): boolean {
         return descriptor.type === this.descriptor.type && hasTextLabel(descriptor) === hasTextLabel(this.descriptor)
-            && inBoardMenu(descriptor) === inBoardMenu(this.descriptor) && atStart(descriptor) === atStart(this.descriptor);
+            && inBoardMenu(descriptor) === inBoardMenu(this.descriptor)
+            && atStart(descriptor) === atStart(this.descriptor);
     }
 
     /** Items this control adds to Persephone's … menu (a `placement: "board-menu"` menu only). */
@@ -477,22 +199,37 @@ class ToolbarControlRecord {
             this.syncBreadcrumbAttributes();
         } else if (this.view instanceof IconButtonView) this.view.update(this.buttonProps());
         else if (this.view instanceof ButtonView) this.view.update(this.textButtonProps());
-        else if (this.view instanceof SwitchView && descriptor.type === "toggle") this.view.update(this.switchProps(descriptor));
+        else if (this.view instanceof SwitchView && descriptor.type === "toggle") {
+            this.view.update(this.switchProps(descriptor));
+        }
         else if (this.view instanceof SelectView && descriptor.type === "select") {
             this.view.update(this.selectProps(descriptor));
         } else if (this.view instanceof SegmentedControlView && descriptor.type === "segmented") {
             this.view.update(this.segmentedProps(descriptor));
-        } else if (this.view instanceof InputView && descriptor.type === "input") this.view.update(this.inputProps(descriptor));
+        } else if (this.view instanceof InputView && descriptor.type === "input") {
+            this.view.update(this.inputProps(descriptor));
+        }
         if (this.labelElement) this.labelElement.textContent = descriptor.label ?? "";
         if (this.menu && descriptor.type === "menu") {
-            this.menu.update({ items: menuItems(descriptor, (id) => this.menuChanged(id)), placement: "bottom-start", offset: [0, 2], onClose: this.menuClosed });
+            this.menu.update({
+                items: menuItems(descriptor, (id) => this.menuChanged(id)),
+                placement: "bottom-start",
+                offset: [0, 2],
+                onClose: this.menuClosed,
+            });
         }
         this.startIconResolution();
     }
 
+    updateWarning(warning: ToolbarWarning): void {
+        this.warning = warning;
+    }
+
     focusTarget(): HTMLElement | undefined {
         if (this.view instanceof InputView) return this.view.inputElement;
-        if (this.view instanceof SelectView) return this.view.inputElement ?? this.view.root.querySelector<HTMLElement>("input");
+        if (this.view instanceof SelectView) {
+            return this.view.inputElement ?? this.view.root.querySelector<HTMLElement>("input");
+        }
         return this.view.root;
     }
 
@@ -585,7 +322,10 @@ class ToolbarControlRecord {
                 }
             }).catch((error: unknown) => {
                 if (!this.disposed && request === this.iconRequest) {
-                    this.warning(`Ignored icon of segment "${option.value}" on "${descriptor.id}": ${errMessage(error, "invalid icon")}.`);
+                    this.warning(
+                        `Ignored icon of segment "${option.value}" on "${descriptor.id}": `
+                            + `${errMessage(error, "invalid icon")}.`,
+                    );
                 }
             });
         }
@@ -624,7 +364,12 @@ class ToolbarControlRecord {
             else if (this.view instanceof ButtonView) this.view.update(this.textButtonProps());
             else if (this.iconHost) fillSlot(this.iconHost, resolved);
         }).catch((error: unknown) => {
-            if (!this.disposed && request === this.iconRequest) this.warning(`Ignored board toolbar icon for "${descriptor.id}": ${errMessage(error, "invalid icon")}.`);
+            if (!this.disposed && request === this.iconRequest) {
+                this.warning(
+                    `Ignored board toolbar icon for "${descriptor.id}": `
+                        + `${errMessage(error, "invalid icon")}.`,
+                );
+            }
         });
     }
 
@@ -696,7 +441,8 @@ class ToolbarControlRecord {
     };
 
     private readonly openMenu = (event: MouseEvent): void => {
-        if (this.descriptor.type !== "menu" || this.descriptor.disabled || !(event.currentTarget instanceof Element)) return;
+        if (this.descriptor.type !== "menu" || this.descriptor.disabled
+            || !(event.currentTarget instanceof Element)) return;
         this.menu?.dispose();
         this.menu = openMenu(event.currentTarget, {
             items: menuItems(this.descriptor, (id) => this.menuChanged(id)),
@@ -720,7 +466,7 @@ export class BoardToolbarControls extends VanillaView<{
 }> {
     private readonly model: BoardEditorModel;
     private readonly records = new Map<string, ToolbarControlRecord>();
-    private frameGeneration: number | undefined;
+    private previousOwner: BoardChromeOwner | undefined;
     /** Holds the `placement: "start"` controls; the toolbar places it before the text slot. */
     readonly startRoot = createPanelElement({
         name: "board-toolbar-start-controls", direction: "row", align: "center", gap: "sm", shrink: false,
@@ -740,13 +486,30 @@ export class BoardToolbarControls extends VanillaView<{
         this.breadcrumbRoot.style.display = "none";
     }
 
-    set(controls: readonly BoardToolbarControlDescriptor[], frameGeneration: number, warning: ToolbarWarning): void {
-        this.frameGeneration = frameGeneration;
+    protected onMount(): void {
+        this.bind(
+            this.model.chrome.state,
+            (state) => ({ owner: state.owner, catalog: state.toolbar }),
+            this.renderCatalog,
+        );
+    }
+
+    private readonly renderCatalog = (snapshot: {
+        owner: BoardChromeOwner | undefined;
+        catalog: BoardChromeCatalog<BoardToolbarControlDescriptor> | undefined;
+    }): void => {
+        if (this.previousOwner && !ownersEqual(this.previousOwner, snapshot.owner)) {
+            invalidateBoardToolbarIcons(this.model.boardRoot ?? "");
+        }
+        this.previousOwner = snapshot.owner;
+        const warning = snapshot.catalog?.warning ?? (() => {});
+        const controls = snapshot.catalog?.items ?? [];
         const previousFocus = this.captureFocus();
         const next = new Map<string, ToolbarControlRecord>();
         for (const descriptor of controls) {
             const existing = this.records.get(descriptor.id);
             if (existing && existing.accepts(descriptor)) {
+                existing.updateWarning(warning);
                 existing.updateDescriptor(descriptor);
                 next.set(descriptor.id, existing);
             } else {
@@ -755,42 +518,19 @@ export class BoardToolbarControls extends VanillaView<{
             }
         }
         for (const [id, record] of this.records) {
-            if (next.get(id) !== record && record.root.isConnected) this.disposeRecord(record);
+            if (next.get(id) !== record) this.disposeRecord(record);
         }
         this.records.clear();
         for (const [id, record] of next) {
             this.records.set(id, record);
+            record.root.hidden = inBoardMenu(record.descriptor);
             const host = atStart(record.descriptor) ? this.startRoot
                 : record.descriptor.type === "breadcrumb" ? this.breadcrumbRoot : this.root;
             host.append(record.root);
         }
         this.restoreFocus(previousFocus);
-        this.publishDeclarations();
-    }
-
-    updateCatalog(patches: readonly BoardToolbarControlPatch[], warning: ToolbarWarning): void {
-        const previousFocus = this.captureFocus();
-        for (const patch of patches) {
-            const record = this.records.get(patch.id);
-            if (!record) {
-                warning(`Ignored board toolbar update for unknown control "${patch.id}".`);
-                continue;
-            }
-            const next = mergePatch(record.descriptor, patch, warning);
-            if (!next) continue;
-            if (record.accepts(next)) {
-                record.updateDescriptor(next);
-            } else {
-                // Adding or removing a label switches between an icon button and a text button.
-                const replacement = this.createRecord(next, warning);
-                record.root.replaceWith(replacement.root);
-                this.disposeRecord(record);
-                this.records.set(patch.id, replacement);
-            }
-        }
-        this.restoreFocus(previousFocus);
-        this.publishDeclarations();
-    }
+        this.updateGroupVisibility();
+    };
 
     /** The board's own entries for Persephone's … menu, in declaration order. */
     boardMenuItems(): MenuItem[] {
@@ -813,24 +553,17 @@ export class BoardToolbarControls extends VanillaView<{
         record.root.remove();
     }
 
-    clear(frameGeneration: number): void {
-        if (this.frameGeneration !== frameGeneration) return;
+    private clearRecords(): void {
         for (const record of this.records.values()) {
             record.disposeResources();
             this.releaseChild(record.view);
             record.root.remove();
         }
         this.records.clear();
-        this.frameGeneration = undefined;
-        // The retiring frame's `{ file }` icons are cached by board root + path; drop them so a
-        // board that edited an icon on disk renders the new one after its reload.
-        invalidateBoardToolbarIcons(this.model.boardRoot ?? "");
-        this.model.clearToolbarControlsForFrame(frameGeneration);
-        this.publishDeclarations();
     }
 
     protected onDispose(): void {
-        if (this.frameGeneration !== undefined) this.clear(this.frameGeneration);
+        this.clearRecords();
     }
 
     private emit(event: ToolbarAction): void {
@@ -848,7 +581,11 @@ export class BoardToolbarControls extends VanillaView<{
                 id = recordId;
                 element = active;
                 if (active instanceof HTMLInputElement) {
-                    selection = { start: active.selectionStart, end: active.selectionEnd, direction: active.selectionDirection };
+                    selection = {
+                        start: active.selectionStart,
+                        end: active.selectionEnd,
+                        direction: active.selectionDirection,
+                    };
                 }
             }
             scroll.push(...record.captureScroll());
@@ -879,24 +616,15 @@ export class BoardToolbarControls extends VanillaView<{
         }
     }
 
-    private publishDeclarations(): void {
+    private updateGroupVisibility(): void {
         // An empty start group would still take a toolbar gap, so it is shown only with controls in it.
         this.startRoot.style.display = this.startRoot.childElementCount ? "" : "none";
         const hasBreadcrumbs = this.breadcrumbRoot.childElementCount > 0;
         this.breadcrumbRoot.style.display = hasBreadcrumbs ? "" : "none";
         this.onBreadcrumbVisibilityChange?.(hasBreadcrumbs);
-        if (this.frameGeneration === undefined) return;
-        // Board-menu items live inside Persephone's … menu, so they have no element of their own.
-        const declarations = [...this.records.values()].filter((record) => !inBoardMenu(record.descriptor)).map((record) => ({
-            name: `board-toolbar-control-${record.descriptor.id}`,
-            selector: `[data-name="board-toolbar-control-${record.descriptor.id}"]`,
-            purpose: `Locate the board toolbar ${record.descriptor.type} "${record.descriptor.label ?? record.descriptor.id}" control.`,
-            where: atStart(record.descriptor)
-                ? "board toolbar, at the left before the board text slot"
-                : record.descriptor.type === "breadcrumb"
-                    ? "board toolbar, after start controls and before normal controls"
-                    : "board toolbar, between the board text slot and Persephone controls",
-        }));
-        this.model.setLiveToolbarElementDeclarations(this.frameGeneration, declarations);
     }
+}
+
+function ownersEqual(left: BoardChromeOwner, right: BoardChromeOwner | undefined): boolean {
+    return left.token === right?.token && left.generation === right.generation;
 }

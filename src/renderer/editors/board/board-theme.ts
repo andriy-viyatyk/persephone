@@ -20,7 +20,7 @@ import { themeState } from "../../theme/theme-state";
 import { fontSize, gap, height, radius, spacing } from "../../uikit/tokens";
 import { mapScale } from "../../theme/token-vars";
 import { P_VAR_SOURCES } from "../../theme/p-vars";
-import type { BoardThemePalette } from "../../../ipc/board-bridge-channels";
+import type { BoardThemePalette } from "../../../ipc/board-bridge/boot";
 
 
 /** Resolve the current host theme into the board color palette. */

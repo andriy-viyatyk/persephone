@@ -2,7 +2,7 @@ import { EventChannel } from "../events/EventChannel";
 import { BoardRoot } from "../../../shared/board/board-root";
 import { getActiveLocale } from "../../../shared/i18n/active-locale";
 import { pseudoText } from "../../../shared/i18n/pseudo-text";
-import type { BoardI18nContext } from "../../../ipc/board-bridge-channels";
+import type { BoardI18nContext } from "../../../ipc/board-bridge/boot";
 import type { NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
 import { loadBoardI18n } from "./board-i18n";
 

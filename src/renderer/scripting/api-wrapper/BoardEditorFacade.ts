@@ -26,12 +26,19 @@ import type {
     IBrowserEvaluateOptions,
     IBrowserEvaluateFunction,
 } from "../../api/types/browser-editor";
-import { createRemoteProxy, parsePath, type IAiElement, type IAiElementDeclaration, type IAiMember, type IAiNodeShape, type IAiRemoteRequest, type IAiRemoteResponse, type IAiVisible, type IAiVisionDescriptor } from "ai-vision";
+import {
+    createRemoteProxy,
+    type IAiRemoteRequest,
+    type IAiRemoteResponse,
+    type IAiVisible,
+    type IAiVisionDescriptor,
+} from "ai-vision";
 import { ui } from "../../api/ui";
 import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import { BOARD_CDP_TAB } from "../../../ipc/api-types";
 import type { BoardEditorModel } from "../../editors/board/BoardEditorModel";
+import type { BoardAiVisionRegistration } from "../../editors/board/model/BoardAiVisionChannel";
 import type { ITargetTab } from "../../automation/types";
 import {
     clickElement,
@@ -70,102 +77,14 @@ import { appCallTimeout } from "../../api/ai-vision-call-timeout";
 import { isPositiveIntegerTimeout, resolveBoardCallTimeout } from "../../../shared/ai-vision-timeout";
 import type { IAiCallContext } from "../ai-vision/root";
 import { errMessage } from "../../../shared/utils";
+import {
+    APP_MEMBER,
+    BOARD_AUTOMATION_TAB_MEMBERS,
+    BOARD_ELEMENTS,
+    BOARD_HELP,
+    BOARD_MEMBERS,
+} from "./board-editor-facade-definitions";
 
-const BOARD_ELEMENTS: readonly IAiElementDeclaration[] = [
-    { name: "board-toolbar-explorer", purpose: "Locate the toolbar control that toggles the board's Explorer navigator.", where: "left edge of the board toolbar" },
-    { name: "board-toolbar-more", purpose: "Locate the … control whose menu holds Reload board, Open board log, and Board properties; those three items are menu entries, not toolbar controls, so they have no element names of their own. The facade action for reload is reload().", where: "right side of the board toolbar, before the editor switch" },
-    { name: "board-trust", purpose: "Locate the Trust board action in the untrusted placeholder.", where: "center of the untrusted board placeholder, when the board is untrusted" },
-];
-
-const BOARD_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete board editor id: board-view or board-editor:<root>." },
-    { name: "name", kind: "property", summary: "The board editor's registry display name." },
-    { name: "boardRoot", kind: "property", summary: "The board root path, or undefined before a board root is attached." },
-    { name: "folderPath", kind: "property", summary: "The absolute folder claimed by the board, or undefined for plain/file-only boards." },
-    { name: "boardName", kind: "property", summary: "The resolved board folder name, or undefined when the board is not found." },
-    { name: "renderState", kind: "property", summary: "Model-backed trusted, bundled, untrusted, or not-found state. A bundled board ships with the app and is permitted without being user-trusted." },
-    { name: "getManifest", kind: "method", signature: "getManifest(): Promise<IBoardManifest | undefined>", summary: "Read a copied board manifest snapshot, or undefined when it is absent or malformed." },
-    { name: "secondaryViews", kind: "property", summary: "Copied declared board-secondary panel records, or undefined when the board is unresolved." },
-    { name: "statusText", kind: "property", summary: "The model-backed board status text, or undefined when cleared or unresolved." },
-    { name: "busy", kind: "property", summary: "The model-backed busy flag, or undefined when the board is unresolved." },
-    { name: "working", kind: "property", summary: "The transient visual activity flag, or undefined when the board is unresolved." },
-    { name: "frameReady", kind: "property", summary: "Whether the mounted main board frame is registered and ready." },
-    { name: "contentHostError", kind: "property", summary: "The trusted content-host restore error, when present." },
-    { name: "reload", kind: "method", signature: "reload(): Promise<IBoardReloadResult>", summary: "Reload the board and report whether its main frame became ready.", caution: "unsaved changes prompt the user" },
-    { name: "dialogs", kind: "method", signature: "dialogs(options?: { tabId?: string }): Promise<{ dialogs: object[] }>", summary: "Read board dialog requests without accessing the blocked frame; dialogs are also visible in window.screen.snapshot()." },
-    { name: "handleDialog", kind: "method", signature: "handleDialog(accept: boolean, promptText?: string, options?: { tabId?: string }): Promise<void>", summary: "Accept or dismiss the pending JavaScript dialog in the selected board frame." },
-];
-
-const BOARD_AUTOMATION_TAB_MEMBERS: readonly IAiMember[] = [
-    { name: "tabs", kind: "property", summary: "List the board's main frame and declared secondary-view frames." },
-    { name: "activeTab", kind: "property", summary: "The selected board frame, or undefined when no frame is active." },
-    { name: "switchTab", kind: "method", signature: "switchTab(tabId: string): Promise<void>", summary: "Select the main frame or a declared board-secondary:<viewId> frame and wait until it is attachable." },
-];
-
-const APP_MEMBER: IAiMember = {
-    name: "app",
-    kind: "property",
-    node: true,
-    summary: "The trusted board-owned remote object model exposed through AiVision.",
-};
-
-const BOARD_HELP = `Access via pages[i].editor after narrowing editor.id to "board-view" or
-"board-editor:<root>". This facade describes board chrome, trust state, manifest metadata, reload,
-statusText, busy state, and declared secondary panels. It does not accept or return a trust decision:
-untrusted content remains restricted until the user answers the Trust-this-Board dialog, shown as
-"Trust this board?". The live dialog is dialogs[0]; its implementation is
-src/renderer/ui/dialogs/TrustBoardDialog.ts and its scripting adapter is
-src/renderer/scripting/ai-vision/dialogs/trust-board.ts. restricted() returns text only while
-renderState is "untrusted"; trusted and not-found boards are unrestricted, and not-found means an
-unavailable or empty board rather than a privacy boundary.
-
-getManifest() returns copied known metadata and never exposes the parsed manifest object.
-secondaryViews contains copied board-secondary:* declarations and current expansion state; sidebar
-expansion and closure belong to page.panels. statusText, busy, renderState, contentHostError, and
-frameReady are model-backed and never read from the footer or board iframe. reload() uses the shared
-model waiter and returns frameReady: false when a trusted frame times out or is disposed; untrusted
-and not-found boards return immediately with frameReady: false.
-
-When a trusted board registers an AiVision shape, app is its board-owned remote tree; use app.$help or helpSearch to discover it.
-
-Board content is rendered in a cross-origin iframe, and the shared automation members reach that
-content. Use snapshot() for the iframe's complete accessibility content and pass its returned refs
-as { ref: "..." }; plain strings are CSS selectors or text= locators. Quoted text matches exactly
-and case-sensitively after whitespace normalization; unquoted text matches a case-insensitive
-substring. Nested visible matches prefer the smallest element, and nth selects within those matches.
-The board page's own chrome--toolbar
-controls, the Trust-this-Board prompt, and secondary-view controls--is what elements names and
-highlight points at, not iframe content. Everything rendered inside the iframe is reachable only
-through snapshot() and its returned refs and never appears in elements; a board control absent from
-a snapshot belongs in elements, while iframe content absent from elements belongs in snapshot().
-
-tabs contains the main frame and declared board-secondary:<viewId> frames. Call switchTab(tabId)
-before driving a secondary view and wait for it to complete. Navigation and creating or closing
-tabs are not supported and are absent from this member list. Untrusted content remains restricted
-by the existing Trust-this-Board gate; trusted and not-found render states differ, and not-found
-is not a privacy grant. screenshot() returns the existing metadata-plus-image call result when
-available. As verified live by US-1335, snapshots contain no password or plain-text input values;
-evaluate() and existing value reads remain capable of exposing page data.
-
-click() and hover() use trusted CDP mouse input by default and retry actionability failures for up
-to 5 seconds. More than one visible selector match fails immediately; use a snapshot ref, narrow
-the selector, or pass a zero-based { nth } index among visible matches. Click accepts button,
-clickCount, modifiers, position, force, synthetic, nth, timeout and tabId; hover accepts position,
-modifiers, force, synthetic, nth, timeout and tabId. Hover sends one pointer move. Pass
-{ synthetic: true } for board code that needs legacy DOM-event behavior.
-
-Keyboard, fill, check, uncheck and clear use trusted CDP input by default. type() clears editable
-content before inserting; slowly sends mapped key events and submit presses Enter. select() is a
-programmatic native-select operation with untrusted input/change events; custom dropdowns use
-trusted click() + pressKey(). keyDown()/keyUp() keep modifier state across calls. Ctrl+C/V use the
-real OS clipboard; Persephone does not save or restore clipboard contents.
-
-drag() replays intercepted HTML5 drag data, and source and target must resolve in the same frame.
-fillForm() applies named type/select/check/uncheck fields sequentially and reports the first failing
-field. setInputFiles() assigns existing local files directly to hidden or visible file inputs; it
-does not open or intercept the native chooser. screenshot() supports element targets and PNG/JPEG;
-cross-origin frame refs are unsupported, and fullPage is unsupported for boards. evaluate() accepts
-JSON-safe args for functions and function-expression strings; arrow strings are invoked.`;
 
 export class BoardEditorFacade implements IAiVisible, IBoardEditor {
     constructor(
@@ -177,16 +96,13 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
 
     get aiVision(): IAiVisionDescriptor {
         const pageId = this.editor.page?.id;
-        const declarations = [
-            ...BOARD_ELEMENTS,
-            ...this.editor.getLiveToolbarElementDeclarations(),
-        ];
+        const declarations = [...BOARD_ELEMENTS, ...this.editor.chrome.getLiveToolbarElementDeclarations()];
         const elements = createElements(declarations, ui.highlightElement.bind(ui), {
             scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
             beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
             highlightOptions: { all: true },
         });
-        const registration = this.editor.getAiVisionRegistration();
+        const registration = this.editor.aiVision.getRegistration();
         const app = registration ? this.getAiVisionProxy(registration) : undefined;
         return {
             kind: "BoardEditor",
@@ -267,7 +183,11 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
     }
 
     /** Select a board option by CSS selector or explicit snapshot ref. */
-    async select(locator: IBrowserElementLocator, values: string | string[], options?: IBrowserSelectOptions): Promise<void> {
+    async select(
+        locator: IBrowserElementLocator,
+        values: string | string[],
+        options?: IBrowserSelectOptions,
+    ): Promise<void> {
         await ensureTargetReady(this.editor.target, options?.tabId);
         await selectOption(this.editor.target, resolveElementLocator(locator), values, options);
     }
@@ -336,12 +256,25 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
     /** Capture the selected board frame as PNG, or undefined when its session is unavailable. */
     async screenshot(options?: IBrowserScreenshotOptions): Promise<IBrowserScreenshot | undefined> {
         await ensureTargetReady(this.editor.target, options?.tabId);
-        return takeScreenshot(this.editor.target, options?.tabId, { ...options, host: "board", returnUndefinedIfUnavailable: true });
+        return takeScreenshot(this.editor.target, options?.tabId, {
+            ...options,
+            host: "board",
+            returnUndefinedIfUnavailable: true,
+        });
     }
 
-    async drag(source: IBrowserElementLocator, destination: IBrowserElementLocator, options?: IBrowserDragOptions): Promise<void> {
+    async drag(
+        source: IBrowserElementLocator,
+        destination: IBrowserElementLocator,
+        options?: IBrowserDragOptions,
+    ): Promise<void> {
         await ensureTargetReady(this.editor.target, options?.tabId);
-        await dragElements(this.editor.target, resolveElementLocator(source), resolveElementLocator(destination), options);
+        await dragElements(
+            this.editor.target,
+            resolveElementLocator(source),
+            resolveElementLocator(destination),
+            options,
+        );
     }
 
     async fillForm(fields: IBrowserFormField[]): Promise<void> {
@@ -365,11 +298,16 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
     }
 
     async dialogs(options?: TabOption): Promise<{ dialogs: Awaited<ReturnType<typeof boardDialogs>> }> {
-        return { dialogs: await boardDialogs(this.editor.id, options?.tabId ?? this.editor.activeTabId) };
+        return { dialogs: await boardDialogs(this.editor.id, options?.tabId ?? this.editor.frameRegistry.activeTabId) };
     }
 
     async handleDialog(accept: boolean, promptText?: string, options?: TabOption): Promise<void> {
-        await answerBoardDialog(this.editor.id, options?.tabId ?? this.editor.activeTabId, accept, promptText);
+        await answerBoardDialog(
+            this.editor.id,
+            options?.tabId ?? this.editor.frameRegistry.activeTabId,
+            accept,
+            promptText,
+        );
     }
 
     async consoleMessages(options?: TabOption & { since?: number; level?: IBrowserConsoleLevel }) {
@@ -427,7 +365,7 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
 
     get statusText(): string | undefined {
         if (!this.isResolvedBoard()) return undefined;
-        return this.editor.state.get().statusText || undefined;
+        return this.editor.chrome.state.get().statusText || undefined;
     }
 
     get busy(): boolean | undefined {
@@ -442,8 +380,9 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
 
     get frameReady(): boolean | undefined {
         if (!this.isResolvedBoard()) return undefined;
-        if (!this.editor.getFrame(BOARD_CDP_TAB)) return undefined;
-        return this.editor.loadedTabs.has(BOARD_CDP_TAB);
+        const registry = this.editor.frameRegistry;
+        if (!registry.hasFrame(BOARD_CDP_TAB)) return undefined;
+        return registry.isLoaded(BOARD_CDP_TAB);
     }
 
     get contentHostError(): string | undefined {
@@ -474,13 +413,17 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
 
     private restricted(): string | undefined {
         return this.renderState === "untrusted"
-            ? "This board's content is restricted until the user answers the Trust-this-Board dialog (shown as \"Trust this board?\"). The facade reports trust state but never grants trust or accepts a trust decision."
+            ? "This board's content is restricted until the user answers the Trust-this-Board dialog "
+                + "(shown as \"Trust this board?\"). The facade reports trust state but never grants trust "
+                + "or accepts a trust decision."
             : undefined;
     }
 
     private aiVisionProxy?: { token: number; value: IAiVisible };
 
-    private getAiVisionProxy(registration: NonNullable<ReturnType<BoardEditorModel["getAiVisionRegistration"]>>): IAiVisible {
+    private getAiVisionProxy(
+        registration: BoardAiVisionRegistration,
+    ): IAiVisible {
         if (this.aiVisionProxy?.token === registration.token) return this.aiVisionProxy.value;
         // The proxy is built from ONE registration's shape, so every request it later emits must be
         // checked against that registration's *remote* — a reload re-registers under a new
@@ -491,194 +434,55 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
         const incarnation = registration.incarnation;
         const value = createRemoteProxy(registration.shape, (request) => this.sendAiVision(request, incarnation), {
             restricted: () => this.restricted(),
-            onWarning: (message) => this.editor.appendAiVisionWarning(message),
-            onError: (error) => this.editor.appendAiVisionWarning(errMessage(error)),
+            onWarning: (message) => this.editor.aiVision.warn(message),
+            onError: (error) => this.editor.aiVision.warn(errMessage(error)),
         });
         this.aiVisionProxy = { token: registration.token, value };
         return value;
     }
 
     private async sendAiVision(request: IAiRemoteRequest, incarnation: number): Promise<IAiRemoteResponse> {
-        const current = this.editor.getAiVisionRegistration();
-        if (!current || current.incarnation !== incarnation) {
+        return this.editor.aiVision.request(request, incarnation, () => {
+            const timeout = resolveBoardCallTimeout(
+                isPositiveIntegerTimeout(this.callContext?.timeoutMs) ? this.callContext?.timeoutMs : undefined,
+                isPositiveIntegerTimeout(request.timeoutMs) ? request.timeoutMs : undefined,
+                appCallTimeout.explicit(),
+            );
+            const pageId = this.editor.page?.id;
+            const path = request.path || "<root>";
+            const agentPath = pageId
+                ? `pages[${JSON.stringify(pageId)}].editor.app.${path}`
+                : `app.${path}`;
+            const timeoutError = new Error(
+                `AiVision request timed out at level ${timeout.level} (${timeout.label}) for path `
+                    + `${JSON.stringify(agentPath)}.`,
+            );
             return {
-                ok: false,
-                error: "This board re-registered its AiVision model (a reload, or a second expose()). "
-                    + "Read pages[i].editor.app again to pick up the new one.",
-            };
-        }
-        const timeout = resolveBoardCallTimeout(
-            isPositiveIntegerTimeout(this.callContext?.timeoutMs) ? this.callContext?.timeoutMs : undefined,
-            isPositiveIntegerTimeout(request.timeoutMs) ? request.timeoutMs : undefined,
-            appCallTimeout.explicit(),
-        );
-        const pageId = this.editor.page?.id;
-        const path = request.path || "<root>";
-        const agentPath = pageId
-            ? `pages[${JSON.stringify(pageId)}].editor.app.${path}`
-            : `app.${path}`;
-        const timeoutError = new Error(
-            `AiVision request timed out at level ${timeout.level} (${timeout.label}) for path ${JSON.stringify(agentPath)}.`,
-        );
-        const route = this.resolveBoardElementRoute(request);
-        if (route.kind === "elements") {
-            return this.readElementsAcrossMountedViews(request, route.declarations, timeout);
-        }
-        return this.sendToViewAfterReady({ ...request, view: route.view }, route.view, timeout.ms, timeoutError);
-    }
-
-    private resolveBoardElementRoute(request: IAiRemoteRequest):
-        | { kind: "elements"; declarations: readonly BoardElementDeclaration[] }
-        | { kind: "view"; view: string } {
-        if (request.action === "ai:elements") {
-            const declarations = this.getBoardElementNode(request.path)?.elements;
-            if (!declarations) throw new Error(`AiVision elements are not available at ${JSON.stringify(request.path)}.`);
-            const boardDeclarations = declarations as readonly BoardElementDeclaration[];
-            this.validateElementViews(boardDeclarations);
-            return { kind: "elements", declarations: boardDeclarations };
-        }
-        if (request.action === "ai:highlight") {
-            const declaration = this.getBoardElementNode(request.path)?.elements
-                ?.find((element) => element.name === request.name) as BoardElementDeclaration | undefined;
-            if (!declaration) {
-                throw new Error(`Unknown AiVision element ${JSON.stringify(request.name ?? "")}.`);
-            }
-            const view = declaration.view ?? "main";
-            this.validateElementView(view);
-            return { kind: "view", view };
-        }
-        const view = request.view ?? "main";
-        this.validateElementView(view);
-        return { kind: "view", view };
-    }
-
-    private getBoardElementNode(path: string): IAiNodeShape | undefined {
-        let node = this.editor.getAiVisionRegistration()?.shape.root;
-        if (!node) return undefined;
-        try {
-            for (const segment of parsePath(path)) {
-                if (segment.type === "member") {
-                    node = node.members.find((member) => member.name === segment.name)?.node;
-                } else if (segment.type === "index") {
-                    node = node?.item;
-                } else {
-                    return undefined;
-                }
-                if (!node) return undefined;
-            }
-        } catch {
-            return undefined;
-        }
-        return node;
-    }
-
-    private validateElementViews(declarations: readonly BoardElementDeclaration[]): void {
-        for (const declaration of declarations) this.validateElementView(declaration.view ?? "main");
-    }
-
-    private validateElementView(view: string): void {
-        if (view === "main") return;
-        const known = (this.editor.state.get().secondaryViewDefs ?? []).some((definition) => definition.id === view);
-        if (!known) throw new Error(`Unknown board view '${view}'.`);
-    }
-
-    private async sendToViewAfterReady(
-        request: IAiRemoteRequest,
-        view: string,
-        timeoutMs: number,
-        timeoutError: Error,
-    ): Promise<IAiRemoteResponse> {
-        const deadline = Date.now() + timeoutMs;
-        if (view !== "main") {
-            await this.awaitBeforeDeadline(
-                this.editor.target.ensureReady(boardSecondaryPanelId(view)),
-                deadline,
+                timeoutMs: timeout.ms,
                 timeoutError,
-            );
-        }
-        const remaining = deadline - Date.now();
-        if (remaining <= 0) throw timeoutError;
-        return this.editor.requestAiVision(request, remaining, timeoutError);
-    }
-
-    private async readElementsAcrossMountedViews(
-        request: IAiRemoteRequest,
-        declarations: readonly BoardElementDeclaration[],
-        timeout: ReturnType<typeof resolveBoardCallTimeout>,
-    ): Promise<IAiRemoteResponse> {
-        const views = [...new Set(declarations.map((declaration) => declaration.view ?? "main"))];
-        const aggregateTimeoutError = new Error(
-            `AiVision elements aggregation timed out at level ${timeout.level} (${timeout.label}) while querying views: ${views.join(", ")}.`,
-        );
-        const deadline = Date.now() + timeout.ms;
-        const resultsByView = new Map<string, readonly IAiElement[]>();
-        const unqueriedViews = new Set<string>();
-        for (const view of views) {
-            const tabId = view === "main" ? BOARD_CDP_TAB : boardSecondaryPanelId(view);
-            if (view !== "main" && !this.editor.isAiVisionTransportReady(tabId)) {
-                unqueriedViews.add(view);
-                continue;
-            }
-            const remaining = deadline - Date.now();
-            if (remaining <= 0) throw aggregateTimeoutError;
-            const response = await this.editor.requestAiVision(
-                { ...request, view },
-                remaining,
-                aggregateTimeoutError,
-            );
-            if (!response.ok) return response;
-            if (!Array.isArray(response.result)) {
-                throw new Error(`AiVision elements response for view '${view}' was not an array.`);
-            }
-            resultsByView.set(view, response.result as readonly IAiElement[]);
-        }
-
-        const result = declarations.map((declaration) => {
-            const view = declaration.view ?? "main";
-            const frameResult = resultsByView.get(view)?.find((element) => element.name === declaration.name);
-            if (frameResult) return frameResult;
-            if (unqueriedViews.has(view)) {
-                return {
-                    name: declaration.name,
-                    purpose: declaration.purpose,
-                    ...(declaration.where !== undefined ? { where: declaration.where } : {}),
-                    selector: declaration.selector ?? `[data-name="${declaration.name}"]`,
-                    visible: false,
-                    visibilityNote: `View "${view}" is not mounted; it was not queried. highlight mounts it.`,
-                };
-            }
-            throw new Error(`AiVision element ${JSON.stringify(declaration.name)} was missing from view '${view}'.`);
+                aggregateTimeoutError: (views) => new Error(
+                    `AiVision elements aggregation timed out at level ${timeout.level} (${timeout.label}) `
+                        + `while querying views: ${views.join(", ")}.`,
+                ),
+            };
         });
-        return { ok: true, result };
-    }
-
-    private async awaitBeforeDeadline(
-        promise: Promise<void>,
-        deadline: number,
-        timeoutError: Error,
-    ): Promise<void> {
-        const remaining = deadline - Date.now();
-        if (remaining <= 0) throw timeoutError;
-        let timer: ReturnType<typeof setTimeout> | undefined;
-        try {
-            await Promise.race([
-                promise,
-                new Promise<never>((_, reject) => {
-                    timer = setTimeout(() => reject(timeoutError), remaining);
-                }),
-            ]);
-        } finally {
-            if (timer !== undefined) clearTimeout(timer);
-        }
     }
 }
 
 installAutomationActivity(BoardEditorFacade.prototype, [
     "snapshot", "click", "hover", "type", "select", "check", "uncheck", "clear", "pressKey", "keyDown", "keyUp",
-    "evaluate", "waitFor", "screenshot", "networkRequests", "waitForResponse", "consoleMessages", "pageErrors", "drag", "fillForm", "setInputFiles", "reload",
+    "evaluate",
+    "waitFor",
+    "screenshot",
+    "networkRequests",
+    "waitForResponse",
+    "consoleMessages",
+    "pageErrors",
+    "drag",
+    "fillForm",
+    "setInputFiles",
+    "reload",
 ], instance => (instance as unknown as { editor: BoardEditorModel }).editor.target);
-
-type BoardElementDeclaration = IAiElementDeclaration & { readonly view?: string };
 
 interface TabOption {
     tabId?: string;

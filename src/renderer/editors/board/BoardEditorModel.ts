@@ -1,4 +1,3 @@
-import { validateBoardPageStateKey, validateBoardPageStateValue } from "../../../shared/board/page-state-validation";
 import { EditorModel, type EditorOpenContext, type EditorStateBase } from "../base/EditorModel";
 import { editorRegistry } from "../base/editorRegistry";
 import { api } from "../../../ipc/renderer/api";
@@ -13,20 +12,19 @@ import { BoardGrant } from "../../../shared/board/board-grant";
 import { requestBoardTrust } from "../../api/boards/request-board-trust";
 import { queueLegacyBoardDeprecationNotice } from "./legacy-board-deprecation-notice";
 import { cleanForStorage } from "../../../shared/link-data";
-import { pipeFromLink, pipeFromPersistedSource } from "../../content/rebuild-pipe";
-import { createPipeFromDescriptor } from "../../content/registry";
-import { isBoardClaimedScheme, schemeOf } from "../../content/scheme-registry";
-import { contentTypeForPipe } from "../../content/board-pipe-utils";
-import { registerPipeResource, unregisterPipeResource } from "../../content/pipe-resource-server";
-import {
-    decodePersephoneBoardLink,
-    PERSEPHONE_BOARD_PREFIX,
-} from "../../content/persephone-board-link";
+import { pipeFromPersistedSource } from "../../content/rebuild-pipe";
+import { decodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { boardEditorId, customEditorRegistry } from "../../api/boards/custom-editor-registry";
 import { hostOwnsPipe } from "../../../shared/board/board-manifest-queries";
 import { isBoardFolder, readBoardManifest } from "../../api/boards/board-manifest-io";
-import { normalizeSecondaryViews, type BoardEditorKind, type NormalizedBoardManifest, type SecondaryViewDecl } from "../../../shared/board/board-manifest-schema";
-import { boardSecondaryPanelId } from "./board-secondary";
+import {
+    normalizeSecondaryViews,
+    type BoardEditorKind,
+    type NormalizedBoardManifest,
+    type SecondaryViewDecl,
+} from "../../../shared/board/board-manifest-schema";
+import { BoardFrameRegistry } from "./model/BoardFrameRegistry";
+import { BoardAiVisionChannel } from "./model/BoardAiVisionChannel";
 import { BoardTargetModel } from "./BoardTargetModel";
 import { createBoardGlyphElement } from "./board-glyph-element";
 import { createIconElement } from "../../uikit/shared/slots";
@@ -35,7 +33,6 @@ import { ui } from "../../api/ui";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 import { pagesModel } from "../../api/pages";
 import { errMessage } from "../../../shared/utils";
-import { KeyedSerialQueue } from "../../../shared/serial-queue";
 import { englishMessage, t } from "../../../shared/i18n/t";
 import type { MenuItem } from "../../uikit/Menu/index";
 import { invalidateBoardIcon } from "./board-icon-cache";
@@ -43,59 +40,15 @@ import { createBoardShortcut } from "./board-shortcut";
 import { markBoardBusy } from "../../api/boards/busy-boards";
 import type { IBoardHostEditor } from "../../api/boards/board-host-editor";
 import type { IState } from "../../core/state/state";
+import { BoardFrameChrome } from "./model/BoardFrameChrome";
+import { BoardSourceInbox } from "./model/BoardSourceInbox";
+import { BoardPageStateStore } from "./model/BoardPageStateStore";
+import { BoardContentResources } from "./model/BoardContentResources";
+import { boardSecondaryPanelId } from "./board-secondary";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import type { BoardSourceContext } from "../../../shared/board-source-context";
 import type { ILink } from "../../api/types/io.tree";
 import { findSourceProvider, navigateToSourceItem } from "../shared/source-context";
-import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
-
-export interface BoardToolbarElementDeclaration {
-    readonly name: string;
-    readonly purpose: string;
-    readonly where: string;
-    readonly selector: string;
-}
-
-export type BoardAiVisionRequestHandler = (
-    request: IAiRemoteRequest,
-    timeoutMs: number,
-    timeoutError: Error,
-) => Promise<IAiRemoteResponse>;
-
-export interface ContentResourceInfo {
-    readonly resourceId: string;
-    readonly size: number;
-    readonly contentType: string;
-    readonly filePath?: string;
-}
-
-interface ContentResource {
-    readonly pipe: IContentPipe;
-    readonly tabId: string;
-    readonly generation: number;
-}
-
-export interface BoardAiVisionRegistration {
-    readonly shape: IAiVisionShape;
-    readonly iframe: HTMLIFrameElement;
-    readonly generation: number;
-    /** Bumped on every registration, refreshes included — the cache key for a built proxy,
-     *  because a refresh means the shape itself changed and the proxy must be rebuilt. */
-    readonly token: number;
-    /** Bumped only when a *new* remote registers (a reload, or a second `expose()`), never by
-     *  `remote.refresh()`. This is what a request built against an earlier proxy is checked
-     *  against: a refresh leaves the same live handlers behind the same frame, so a request
-     *  already on the wire is still addressed correctly and must not be failed. */
-    readonly incarnation: number;
-    readonly request: BoardAiVisionRequestHandler;
-    readonly warning: (message: string) => void;
-}
-
-interface BoardAiVisionTransport {
-    readonly iframe: HTMLIFrameElement;
-    readonly generation: number;
-    readonly request: BoardAiVisionRequestHandler;
-}
 
 export interface BoardEditorState extends EditorStateBase {
     /** State-type discriminator. */
@@ -164,24 +117,11 @@ export interface BoardEditorState extends EditorStateBase {
     /** Content-host boards only: set when the content HOST fails to restore (file
      *  missing / unreadable), so the view shows a distinct empty state rather than a blank board. */
     contentHostError?: string;
-    /** Footer status text set via `persephone.setStatusText()`, e.g. a Todo board's
-     *  "N items" count. TRANSIENT — stripped in `getRestoreData()` and cleared in `restore()`
-     *  (like `busy`), so a persisted blob never resurrects a stale count; the board re-sets it on
-     *  load. Rendered by `BoardEditorView` in the `EditorStatusBarView` contributions slot (main-view footer only). */
-    statusText?: string;
-    /** Text shown in the main page toolbar. TRANSIENT — cleared on frame teardown, restore, and
-     *  model disposal; never included in durable restore data. */
-    toolbarText?: string;
-    /** Frame generation that owns `toolbarText`. TRANSIENT — independent from toolbar controls. */
-    toolbarTextFrameGeneration?: number;
     /** Prevents a restored board from handing a private claimed HTTP source back to the board. */
     sourceRestoreBlocked?: boolean;
     /** Muted state the board reported with `persephone.page.setMuted()`; the page tab draws its
      *  mute button from it (the same field the Video Player and Browser use). TRANSIENT. */
     pageMuted?: boolean;
-    /** Frame generation that asked for the page tab's mute button; the button shows while it is
-     *  set. TRANSIENT: cleared with the frame and on restore, never persisted. */
-    muteButtonFrameGeneration?: number;
 }
 
 export const getDefaultBoardEditorState = (): BoardEditorState => ({
@@ -227,131 +167,71 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
 
     /** Automation adapter for the `browser_*` MCP tools. Commands run in the host
      *  window and target the board through its `<iframe>`. */
-    readonly target = new BoardTargetModel(this);
-
-    private aiVisionRegistration: BoardAiVisionRegistration | undefined;
-    private aiVisionRegistrationToken = 0;
-    private aiVisionIncarnation = 0;
-    private reloadAwaitingRegistration = false;
-    private aiVisionDisposed = false;
-    private readonly aiVisionTransports = new Map<string, BoardAiVisionTransport>();
-    private readonly boardThemePreviewGenerations = new Map<string, number>();
-    private readonly contentResources = new Map<string, ContentResource>();
-    private readonly pendingSourceUrls: Array<{
-        sourceUrl: string;
-        privateSession: boolean;
-        context?: BoardSourceContext;
-    }> = [];
-    private readonly sourceSessionHandles = new Map<string, string>();
-    private readonly sourceSessionHandleTimers = new Map<string, ReturnType<typeof setTimeout>>();
-    private readonly pageStateQueues = new KeyedSerialQueue();
-    private boardStorageKeyPromise: Promise<string> | undefined;
-    /** Sources that arrived with a private session. They are never fetched on the default one. */
-    private readonly sessionBoundSources = new Set<string>();
-    private initialSourcePrivateSessionValue = false;
-    private sourceRestoreBlockedOnRestore = false;
-    private readonly pendingSourceListeners = new Set<() => void>();
-    private toolbarFrameGeneration: number | undefined;
-    private liveToolbarElements: readonly BoardToolbarElementDeclaration[] = [];
-    private statusBarFrameGeneration: number | undefined;
-    private liveStatusBarElements: readonly BoardToolbarElementDeclaration[] = [];
-    private saveRequestBoardId: string | undefined;
-    private saveRequestGeneration: number | undefined;
-    private saveHandlerId: number | undefined;
-    private requestBoardSave: ((discard?: boolean) => Promise<{ success: boolean; error?: string }>) | undefined;
+    readonly frameRegistry = new BoardFrameRegistry(() => this.state.get().secondaryViewDefs);
+    readonly target = new BoardTargetModel(this, this.frameRegistry);
+    readonly aiVision = new BoardAiVisionChannel({
+        frameRegistry: this.frameRegistry,
+        boardRoot: () => this.state.get().boardRoot,
+        ensureReady: (tabId) => this.target.ensureReady(tabId),
+    });
+    private disposed = false;
+    readonly chrome: BoardFrameChrome;
+    readonly contentResources: BoardContentResources;
+    readonly sourceInbox: BoardSourceInbox;
+    readonly pageStateStore: BoardPageStateStore;
     private releaseCancelled = false;
     private releaseError: string | undefined;
-
-    /** Live `<iframe>` elements for mounted board frames, keyed by automation tab id:
-     *  `"main"` and one `board-secondary:<viewId>` per open secondary view. Used for
-     *  automation focus; cleared on unmount and not persisted. */
-    readonly frames = new Map<string, HTMLIFrameElement>();
+    private chromeViewsAvailable = false;
 
     /** Track the theme overlay generation owned by one mounted board frame. */
     recordBoardThemePreview(boardId: string, generation: number): void {
-        this.boardThemePreviewGenerations.set(boardId, generation);
-    }
-
-    /** Retire and return the preview generation associated with a closing/reloaded frame. */
-    takeBoardThemePreviewGeneration(boardId: string): number | undefined {
-        const generation = this.boardThemePreviewGenerations.get(boardId);
-        this.boardThemePreviewGenerations.delete(boardId);
-        return generation;
+        this.chrome.recordBoardThemePreview(boardId, generation);
     }
 
     constructor(modelState: IState<BoardEditorState>) {
         super(modelState);
+        this.sourceInbox = new BoardSourceInbox({
+            getSource: () => ({ url: this.state.get().sourceLink?.url, filePath: this.state.get().filePath }),
+            blockRestore: () => this.state.update((state) => { state.sourceRestoreBlocked = true; }),
+        });
+        this.pageStateStore = new BoardPageStateStore({
+            editorId: this.id,
+            boardRoot: () => this.state.get().boardRoot,
+        });
+        this.contentResources = new BoardContentResources({
+            boardRoot: () => this.state.get().boardRoot,
+            inbox: this.sourceInbox,
+        });
+        this.chrome = new BoardFrameChrome({
+            canExposeDeclarations: () => {
+                const boardRoot = this.state.get().boardRoot;
+                return this.chromeViewsAvailable && !!this.page && this.page.mainEditorInstance === this && !!boardRoot
+                    && boardRegistry.isPermitted(boardRoot) && this.frameRegistry.hasFrame(BOARD_CDP_TAB);
+            },
+            setPageMuted: (muted) => this.setPageMutedProjection(muted),
+        });
         this.own(boardRegistry.subscribeMembership(() => {
             const boardRoot = this.state.get().boardRoot;
-            if (boardRoot && !boardRegistry.isPermitted(boardRoot)) this.clearAiVisionRegistration();
+            if (boardRoot && !boardRegistry.isPermitted(boardRoot)) this.aiVision.clearRegistration();
         }));
     }
 
-    /** Tab ids whose frame has finished loading AND registered for CDP in main
-     *  (BoardWebview's handleLoad, after `registerBoardFrame` resolves). This — NOT
-     *  `frames` — is the "attachable now" signal automation waits on: a
-     *  mounted-but-not-yet-registered frame would make `cdp-service` throw. */
-    readonly loadedTabs = new Set<string>();
+    setChromeViewsAvailable(available: boolean): void {
+        this.chromeViewsAvailable = available;
+    }
 
-    /** Active automation tab id — which frame the `browser_*` tools drive
-     *  (BoardTargetModel.switchTab / ensureReady). Defaults to the main frame, so a
-     *  single-frame board and the default automation path are unchanged. */
-    activeTabId = BOARD_CDP_TAB;
-
-    /** Remember the capability for a source while the board opens it. */
-    registerSourceSessionHandle(sourceUrl: string, sessionHandle?: string): void {
-        if (!sourceUrl || !sessionHandle) return;
-        const previousTimer = this.sourceSessionHandleTimers.get(sourceUrl);
-        if (previousTimer) clearTimeout(previousTimer);
-        this.sourceSessionHandles.set(sourceUrl, sessionHandle);
-        this.sessionBoundSources.add(sourceUrl);
-        if (sourceUrl === this.currentSourceUrl()) this.initialSourcePrivateSessionValue = true;
-        this.state.update((state) => {
-            state.sourceRestoreBlocked = true;
-        });
-        const timer = setTimeout(() => {
-            if (this.sourceSessionHandles.get(sourceUrl) !== sessionHandle) return;
-            this.sourceSessionHandles.delete(sourceUrl);
-            this.sourceSessionHandleTimers.delete(sourceUrl);
-        }, 5 * 60 * 1000);
-        this.sourceSessionHandleTimers.set(sourceUrl, timer);
+    private setPageMutedProjection(muted: boolean | undefined): void {
+        const previous = this.state.get().pageMuted;
+        this.state.update((state) => { state.pageMuted = muted; });
+        if (previous === muted) this.state.set({ ...this.state.get() });
     }
 
     acceptOpenContext(context: EditorOpenContext): void {
         if (context.mode === "register-session") {
-            this.registerSourceSessionHandle(context.sourceUrl, context.sessionHandle);
+            this.sourceInbox.registerSession(context.sourceUrl, context.sessionHandle);
             return;
         }
-        this.enqueueSourceUrl(context.sourceUrl, context.sessionHandle, context.sourceContext);
-    }
-
-    /** Queue a raw source identity for the main board frame. It is transient and never persisted. */
-    enqueueSourceUrl(sourceUrl: string, sessionHandle?: string, context?: BoardSourceContext): void {
-        if (!sourceUrl) return;
-        this.registerSourceSessionHandle(sourceUrl, sessionHandle);
-        this.pendingSourceUrls.push({ sourceUrl, privateSession: Boolean(sessionHandle), context });
-        // A live frame flushes immediately; a frame still loading flushes on load/handshake.
-        for (const listener of this.pendingSourceListeners) listener();
-    }
-
-    /** Notify the main board view when a source is queued. Returns the unsubscribe function. */
-    onPendingSourceUrl(listener: () => void): () => void {
-        this.pendingSourceListeners.add(listener);
-        return () => { this.pendingSourceListeners.delete(listener); };
-    }
-
-    isInitialSourcePrivateSession(): boolean {
-        const sourceUrl = this.currentSourceUrl();
-        return this.initialSourcePrivateSessionValue
-            || (sourceUrl !== undefined && this.sessionBoundSources.has(sourceUrl));
-    }
-
-    peekPendingSourceUrl(): {
-        sourceUrl: string;
-        privateSession: boolean;
-        context?: BoardSourceContext;
-    } | undefined {
-        return this.pendingSourceUrls[0];
+        this.sourceInbox.enqueue(context.sourceUrl, context.sessionHandle, context.sourceContext);
     }
 
     /** Initial sibling context persisted with the board's source link. */
@@ -378,7 +258,9 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         }
         const page = this.page;
         if (!page) throw new Error("The board page is unavailable.");
-        if (!findSourceProvider(page, sourceId)) throw new Error("The source panel for this board page is unavailable.");
+        if (!findSourceProvider(page, sourceId)) {
+            throw new Error("The source panel for this board page is unavailable.");
+        }
         const link: ILink = {
             id: item.id,
             title: item.title,
@@ -391,17 +273,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         await navigateToSourceItem(page, sourceLink, link);
     }
 
-    consumePendingSourceUrl(): void {
-        this.pendingSourceUrls.shift();
-    }
-
     setIframe(el: HTMLIFrameElement, tab: string = BOARD_CDP_TAB): void {
-        if (this.frames.get(tab) !== el) {
-            this.aiVisionTransports.delete(tab);
-            this.loadedTabs.delete(tab);
-            if (tab === BOARD_CDP_TAB) this.clearAiVisionRegistration();
-        }
-        this.frames.set(tab, el);
+        if (this.frameRegistry.setFrame(tab, el)) this.aiVision.detach(tab);
     }
 
     /** Clear only if it still matches — guards against a remount setting the new
@@ -409,152 +282,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
      *  if it was the active automation tab, falls back to the main frame so a stray
      *  command can't target a dead frame (a fresh switch/ensureReady re-mounts). */
     clearIframe(el: HTMLIFrameElement, tab: string = BOARD_CDP_TAB): void {
-        if (this.frames.get(tab) === el) {
-            if (tab === BOARD_CDP_TAB) this.clearAiVisionRegistration();
-            this.aiVisionTransports.delete(tab);
-            this.frames.delete(tab);
-            this.loadedTabs.delete(tab);
-            if (this.activeTabId === tab) this.activeTabId = BOARD_CDP_TAB;
-        }
-    }
-
-    setAiVisionTransport(
-        tab: string,
-        iframe: HTMLIFrameElement,
-        generation: number,
-        request: BoardAiVisionRequestHandler,
-    ): void {
-        const boardRoot = this.state.get().boardRoot;
-        if (!boardRoot || !boardRegistry.isPermitted(boardRoot) || this.frames.get(tab) !== iframe) return;
-        this.aiVisionTransports.set(tab, { iframe, generation, request });
-    }
-
-    isAiVisionTransportReady(tab: string): boolean {
-        const boardRoot = this.state.get().boardRoot;
-        const transport = this.aiVisionTransports.get(tab);
-        return !!boardRoot && boardRegistry.isPermitted(boardRoot)
-            && this.frames.get(tab) === transport?.iframe
-            && this.loadedTabs.has(tab);
-    }
-
-    setAiVisionRegistration(
-        shape: IAiVisionShape,
-        iframe: HTMLIFrameElement,
-        generation: number,
-        request: BoardAiVisionRequestHandler,
-        warning: (message: string) => void,
-        reason: "register" | "refresh" = "register",
-    ): boolean {
-        const boardRoot = this.state.get().boardRoot;
-        if (this.aiVisionDisposed || !boardRoot || !boardRegistry.isPermitted(boardRoot)
-            || this.frames.get(BOARD_CDP_TAB) !== iframe) return false;
-        const current = this.aiVisionRegistration;
-        // A refresh only keeps its incarnation when it really is the same live remote: same
-        // frame element, same webview generation. Anything else is a new remote.
-        const sameRemote = reason === "refresh" && current !== undefined
-            && current.iframe === iframe && current.generation === generation;
-        this.aiVisionRegistration = {
-            shape,
-            iframe,
-            generation,
-            token: ++this.aiVisionRegistrationToken,
-            incarnation: sameRemote ? current.incarnation : ++this.aiVisionIncarnation,
-            request,
-            warning,
-        };
-        return true;
-    }
-
-    clearAiVisionRegistration(): void {
-        this.aiVisionRegistration = undefined;
-    }
-
-    getAiVisionRegistration(): BoardAiVisionRegistration | undefined {
-        const boardRoot = this.state.get().boardRoot;
-        if (!this.aiVisionRegistration || !boardRoot || !boardRegistry.isPermitted(boardRoot)) {
-            if (this.aiVisionRegistration) this.clearAiVisionRegistration();
-            return undefined;
-        }
-        return this.aiVisionRegistration;
-    }
-
-    consumeReloadRegistration(): boolean {
-        if (!this.reloadAwaitingRegistration) return false;
-        this.reloadAwaitingRegistration = false;
-        return true;
-    }
-
-    appendAiVisionWarning(message: string): void {
-        this.aiVisionRegistration?.warning(message);
-    }
-
-    requestAiVision(
-        request: IAiRemoteRequest,
-        timeoutMs: number,
-        timeoutError: Error,
-    ): Promise<IAiRemoteResponse> {
-        const view = request.view;
-        if (view !== undefined && view !== "main") {
-            const knownView = (this.state.get().secondaryViewDefs ?? []).some((definition) => definition.id === view);
-            if (!knownView) return Promise.reject(new Error(`Unknown board view '${view}'.`));
-            const tab = boardSecondaryPanelId(view);
-            const transport = this.aiVisionTransports.get(tab);
-            const boardRoot = this.state.get().boardRoot;
-            if (!transport || this.frames.get(tab) !== transport.iframe || !boardRoot
-                || !boardRegistry.isPermitted(boardRoot)) {
-                return Promise.reject(new Error(`The board view '${view}' is unavailable or untrusted.`));
-            }
-            return transport.request(request, timeoutMs, timeoutError);
-        }
-        const registration = this.getAiVisionRegistration();
-        if (!registration) return Promise.reject(new Error("The board has no trusted AiVision root."));
-        if (this.frames.get(BOARD_CDP_TAB) !== registration.iframe) {
-            return Promise.reject(new Error("The board main frame is unavailable."));
-        }
-        return registration.request(request, timeoutMs, timeoutError);
-    }
-
-    /** The live frame for a tab (defaults to the active automation tab). */
-    getFrame(tab: string = this.activeTabId): HTMLIFrameElement | undefined {
-        return this.frames.get(tab);
-    }
-
-    /** Resolvers waiting for the NEXT `markFrameLoaded` of a tab — the deterministic
-     *  "reload finished" signal the reload call path awaits (a remounted frame's load +
-     *  CDP re-registration), so a snapshot right after refresh can't hit the stale frame. */
-    private frameLoadWaiters: Array<{ tab: string; resolve: (ok: boolean) => void }> = [];
-
-    /** Marked ready by BoardWebview once main holds this frame's CDP registration. */
-    markFrameLoaded(tab: string): void {
-        this.loadedTabs.add(tab);
-        this.frameLoadWaiters = this.frameLoadWaiters.filter((w) => {
-            if (w.tab !== tab) return true;
-            w.resolve(true);
-            return false;
-        });
-    }
-
-    /** Resolve `true` when the NEXT frame-load of `tab` completes (the frame is rendered
-     *  and CDP-attachable), or `false` on timeout / dispose. Register BEFORE triggering
-     *  the reload (`reloadBoard`) so the signal can't be missed. */
-    waitForFrameLoad(tab: string = BOARD_CDP_TAB, timeoutMs = 5000): Promise<boolean> {
-        return new Promise<boolean>((resolve) => {
-            const waiter = { tab, resolve };
-            this.frameLoadWaiters.push(waiter);
-            setTimeout(() => {
-                const i = this.frameLoadWaiters.indexOf(waiter);
-                if (i >= 0) {
-                    this.frameLoadWaiters.splice(i, 1);
-                    resolve(false);
-                }
-            }, timeoutMs);
-        });
-    }
-
-    /** The active tab's live frame (was a plain field; kept as a getter for callers
-     *  that don't care about the tab, e.g. the busy-keepalive teardown). */
-    get currentIframe(): HTMLIFrameElement | undefined {
-        return this.frames.get(this.activeTabId);
+        if (!this.frameRegistry.clearFrame(tab, el)) return;
+        this.aiVision.detach(tab);
     }
 
     /** Folder of the currently-shown board, or undefined when none is resolved. */
@@ -600,7 +329,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         ];
     }
 
-    // ── Busy retention  ──────────────────────────────────────────
+    // ── Busy retention ─────────────────────────
 
     /** Authoritative renderer-side busy holder. Set from the shim's `board:busy`
      *  post (via BoardWebview). Updates the reactive state (panel indicator),
@@ -619,7 +348,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         this.workingState.set(working);
     }
 
-    // ── Shared state  ──────────────────────────────────────────
+    // ── Shared state ───────────────────────────
 
     /** Monotonic shared-state version — stamped on every `state:sync` push so a
      *  frame ignores stale/out-of-order deliveries (seed-on-load vs init/set/merge). Instance
@@ -669,59 +398,9 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         return !!this.state.get().busy && !this.modified;
     }
 
-    /** Runtime-only save callback owned by the current main-frame generation. */
-    setSaveRequestHandler(
-        boardId: string,
-        generation: number,
-        handlerId: number | undefined,
-        request: ((discard?: boolean) => Promise<{ success: boolean; error?: string }>) | undefined,
-    ): void {
-        this.saveRequestBoardId = boardId;
-        this.saveRequestGeneration = generation;
-        this.saveHandlerId = handlerId;
-        this.requestBoardSave = request;
-    }
-
-    clearSaveRequestHandler(boardId: string, generation: number, handlerId?: number): void {
-        if (this.saveRequestBoardId !== boardId || this.saveRequestGeneration !== generation
-            || (handlerId !== undefined && this.saveHandlerId !== handlerId)) return;
-        this.saveRequestBoardId = undefined;
-        this.saveRequestGeneration = undefined;
-        this.saveHandlerId = undefined;
-        this.requestBoardSave = undefined;
-    }
-
-    private muteToggleHandler: (() => void) | undefined;
-
-    /** Shows the page tab's mute button in `muted` state (`null` removes it). A click on it runs
-     *  `onToggle`, which asks the board to flip its mute; the board then reports the new state. */
-    setBoardMuted(muted: boolean | null, frameGeneration: number, onToggle: () => void): void {
-        if (muted === null) {
-            this.clearMuteButtonForFrame(frameGeneration);
-            return;
-        }
-        this.muteToggleHandler = onToggle;
-        const s = this.state.get();
-        if (s.pageMuted === muted && s.muteButtonFrameGeneration === frameGeneration) return;
-        this.state.update((st) => {
-            st.pageMuted = muted;
-            st.muteButtonFrameGeneration = frameGeneration;
-        });
-    }
-
-    clearMuteButtonForFrame(frameGeneration: number): void {
-        if (this.state.get().muteButtonFrameGeneration !== frameGeneration) return;
-        this.muteToggleHandler = undefined;
-        this.state.update((s) => {
-            s.pageMuted = undefined;
-            s.muteButtonFrameGeneration = undefined;
-        });
-    }
-
     /** Read by the page tab: present only while the board has asked for the mute button. */
     get toggleMuteAll(): (() => void) | undefined {
-        if (this.state.get().muteButtonFrameGeneration === undefined) return undefined;
-        return this.muteToggleHandler;
+        return this.chrome.toggleMuteAll;
     }
 
     setBoardModified(modified: boolean): void {
@@ -737,11 +416,15 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         if (pageId) pagesModel.showPage(pageId);
         const choice = await ui.confirm(
             t("board.saveChangesConfirmation", { name: this.title }),
-            { title: t("board.saveChangesTitle"), buttons: [DialogButton.save, DialogButton.dontSave, DialogButton.cancel] },
+            {
+                title: t("board.saveChangesTitle"),
+                buttons: [DialogButton.save, DialogButton.dontSave, DialogButton.cancel],
+            },
         );
         if (choice === DialogButton.dontSave) {
             // Best effort: let the board drop page-scoped drafts it keeps for app restarts before teardown.
-            if (this.requestBoardSave) await this.requestBoardSave(true);
+            const saveRequest = this.chrome.saveRequest;
+            if (saveRequest) await saveRequest(true);
             this.setBoardModified(false);
             return true;
         }
@@ -751,11 +434,13 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         }
 
         try {
-            if (this.saveRequestBoardId === undefined || this.saveRequestGeneration === undefined
-                || this.saveHandlerId === undefined || !this.requestBoardSave) {
-                throw new Error("The board has no active Save handler. Reload the board to restore it, or choose Don't Save.");
+            const saveRequest = this.chrome.saveRequest;
+            if (!saveRequest) {
+                throw new Error(
+                    "The board has no active Save handler. Reload the board to restore it, or choose Don't Save.",
+                );
             }
-            const result = await this.requestBoardSave();
+            const result = await saveRequest();
             if (!result.success) throw new Error(result.error || "The board reported that saving failed.");
             this.setBoardModified(false);
             return true;
@@ -788,44 +473,6 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         return this.boardDisplayNameEnglish;
     }
 
-    private getBoardPageStateNamespace(): Promise<string> {
-        if (this.boardStorageKeyPromise) return this.boardStorageKeyPromise;
-        const boardRoot = this.boardRoot;
-        if (!boardRoot) return Promise.reject(new Error("Board page state requires a board root."));
-        const pending = api.getBoardStorageKey(boardRoot).then((boardKey) => {
-            if (!/^[0-9a-f]{64}$/.test(boardKey)) throw new Error("The host returned an invalid board storage key.");
-            return boardKey;
-        });
-        this.boardStorageKeyPromise = pending;
-        void pending.catch(() => {
-            if (this.boardStorageKeyPromise === pending) this.boardStorageKeyPromise = undefined;
-        });
-        return pending;
-    }
-
-    private enqueuePageStateOperation<T>(key: string, operation: (cacheName: string) => Promise<T>): Promise<T> {
-        validateBoardPageStateKey(key);
-        return this.getBoardPageStateNamespace().then((boardKey) => {
-            return this.pageStateQueues.run(`${boardKey}:${key}`, () => operation(`board-state-${boardKey}-${key}`));
-        });
-    }
-
-    /** Read one serialized page-scoped value owned by this board. */
-    getPageState(key: string): Promise<string | undefined> {
-        return this.enqueuePageStateOperation(key, (cacheName) => appFs.getCacheFile(this.id, cacheName));
-    }
-
-    /** Persist one serialized page-scoped value after validating its UTF-8 size. */
-    setPageState(key: string, value: string): Promise<void> {
-        validateBoardPageStateValue(value);
-        return this.enqueuePageStateOperation(key, (cacheName) => appFs.saveCacheFile(this.id, value, cacheName));
-    }
-
-    /** Remove one page-scoped value; a missing cache file is already removed. */
-    removePageState(key: string): Promise<void> {
-        return this.enqueuePageStateOperation(key, (cacheName) => appFs.deleteCacheFile(this.id, cacheName));
-    }
-
     /** Absolute folder claimed by this board, or undefined for plain/file-only boards. */
     get folderPath(): string | undefined {
         return this.state.get().folderPath;
@@ -852,58 +499,6 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
      * given. Returning it made the torrent board feed its own page URL to its resolver and raise
      * "Invalid torrent identifier" on every plain open, so that one scheme is filtered out here
      * rather than in each board. */
-    currentSourceUrl(): string | undefined {
-        const s = this.state.get();
-        if (this.sourceRestoreBlockedOnRestore) return undefined;
-        const url = s.sourceLink?.url ?? s.filePath;
-        if (url?.startsWith(PERSEPHONE_BOARD_PREFIX)) return undefined;
-        return url;
-    }
-
-    /** Publish host toolbar declarations only after the catalog DOM is consistent. */
-    setLiveToolbarElementDeclarations(
-        frameGeneration: number,
-        declarations: readonly BoardToolbarElementDeclaration[],
-    ): void {
-        const boardRoot = this.state.get().boardRoot;
-        if (!this.isMain || !boardRoot || !boardRegistry.isPermitted(boardRoot)) return;
-        this.toolbarFrameGeneration = frameGeneration;
-        this.liveToolbarElements = [...declarations];
-    }
-
-    /** Retire declarations belonging to one iframe generation. */
-    clearToolbarControlsForFrame(frameGeneration: number): void {
-        if (this.toolbarFrameGeneration !== frameGeneration) return;
-        this.toolbarFrameGeneration = undefined;
-        this.liveToolbarElements = [];
-    }
-
-    setLiveStatusBarElementDeclarations(
-        frameGeneration: number,
-        declarations: readonly BoardToolbarElementDeclaration[],
-    ): void {
-        const boardRoot = this.state.get().boardRoot;
-        if (!this.isMain || !boardRoot || !boardRegistry.isPermitted(boardRoot)) return;
-        this.statusBarFrameGeneration = frameGeneration;
-        this.liveStatusBarElements = [...declarations];
-    }
-
-    clearStatusBarItemsForFrame(frameGeneration: number): void {
-        if (this.statusBarFrameGeneration !== frameGeneration) return;
-        this.statusBarFrameGeneration = undefined;
-        this.liveStatusBarElements = [];
-    }
-
-    getLiveToolbarElementDeclarations(): readonly BoardToolbarElementDeclaration[] {
-        const boardRoot = this.state.get().boardRoot;
-        if (!this.page || this.page.mainEditorInstance !== this || !boardRoot
-            || !boardRegistry.isPermitted(boardRoot) || !this.frames.get(BOARD_CDP_TAB)) return [];
-        return [
-            ...(this.toolbarFrameGeneration === undefined ? [] : this.liveToolbarElements),
-            ...(this.statusBarFrameGeneration === undefined ? [] : this.liveStatusBarElements),
-        ];
-    }
-
     /** Manifest editor kind for this board's trusted association. */
     get editorKind(): BoardEditorKind {
         return "simple";
@@ -925,103 +520,6 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         if (host?.pipe) return host.pipe;
         if (this.pipe) return this.pipe;
         throw new Error("The content-host board has no live content pipe.");
-    }
-
-    async openContentResource(
-        link: string,
-        tabId: string,
-        generation: number,
-        signal?: AbortSignal,
-        boardNetworkPolicy?: import("../../../shared/board/board-grant").BoardNetworkPolicy,
-    ): Promise<ContentResourceInfo> {
-        if (signal?.aborted) throw new Error("The content resource request was cancelled.");
-        // Setup failures leave the handle available for a retry. Once setup succeeds, the provider
-        // retains it for its reads and the source map must no longer authorize another open.
-        const sourceSessionHandle = this.sourceSessionHandles.get(link);
-        const sessionHandle = sourceSessionHandle;
-        if (!sourceSessionHandle && this.sessionBoundSources.has(link)) {
-            throw new Error("The private session for this source has expired. Open the link again from its page.");
-        }
-        const boardRoot = this.state.get().boardRoot;
-        if (!boardRoot) throw new Error("The board root is unavailable.");
-        const scheme = schemeOf(link);
-        if (scheme && isBoardClaimedScheme(scheme) && !boardRegistry.grant(boardRoot)?.allows("service")) {
-            throw BoardGrant.deny("service");
-        }
-        let pipe = await pipeFromLink(link, { sessionHandle, boardNetworkPolicy });
-        try {
-            const descriptor = pipe.toDescriptor();
-            let filePath: string | undefined;
-            if (descriptor.provider.type === "http" && boardNetworkPolicy?.network === false) {
-                throw BoardGrant.deny("network");
-            }
-            if (descriptor.provider.type === "file") {
-                const configuredPath = descriptor.provider.config.path;
-                if (typeof configuredPath !== "string") throw new Error("The file provider did not expose an authorizable path.");
-                const canonicalPath = await api.authorizeBoardFilePath(boardRoot, configuredPath, "read");
-                descriptor.provider.config.path = canonicalPath;
-                for (const transformer of descriptor.transformers) {
-                    if (transformer.type === "archive" && transformer.config.archivePath === configuredPath) {
-                        transformer.config.archivePath = canonicalPath;
-                    }
-                }
-                pipe.dispose();
-                pipe = createPipeFromDescriptor(descriptor);
-                filePath = canonicalPath;
-            } else if (!["http", "data", "cache", "mneme", "guide"].includes(descriptor.provider.type)) {
-                if (!boardRegistry.grant(boardRoot)?.allows("service")) {
-                    throw BoardGrant.deny("service");
-                }
-                throw new Error("This registered content provider does not expose a path that can be authorized for board access.");
-            }
-            const stat = await pipe.stat({ signal });
-            if (signal?.aborted) throw new Error("The content resource request was cancelled.");
-            if (!stat.exists || stat.size === undefined || !Number.isFinite(stat.size) || stat.size < 0) {
-                throw new Error("The content provider did not report a usable resource size.");
-            }
-            let resourceId = `resource-${crypto.randomUUID()}`;
-            while (this.contentResources.has(resourceId)) resourceId = `resource-${crypto.randomUUID()}`;
-            this.contentResources.set(resourceId, { pipe, tabId, generation });
-            // Publish to the read path BEFORE returning, so the URL handed to the board is already
-            // serviceable — the board may fetch it on the next line.
-            registerPipeResource(resourceId, pipe, { kind: "board", boardRoot, hostedDocument: false });
-            if (sourceSessionHandle && this.sourceSessionHandles.get(link) === sourceSessionHandle) {
-                this.sourceSessionHandles.delete(link);
-                const timer = this.sourceSessionHandleTimers.get(link);
-                if (timer) clearTimeout(timer);
-                this.sourceSessionHandleTimers.delete(link);
-            }
-            return {
-                resourceId,
-                size: stat.size,
-                contentType: contentTypeForPipe(pipe),
-                ...(filePath ? { filePath } : {}),
-            };
-        } catch (error: unknown) {
-            pipe.dispose();
-            throw error;
-        }
-    }
-
-    getContentResourceIds(tabId?: string, generation?: number): string[] {
-        return [...this.contentResources.entries()]
-            .filter(([, resource]) => (tabId === undefined || resource.tabId === tabId)
-                && (generation === undefined || resource.generation === generation))
-            .map(([resourceId]) => resourceId);
-    }
-
-    releaseContentResource(resourceId: string): void {
-        const resource = this.contentResources.get(resourceId);
-        if (!resource) return;
-        this.contentResources.delete(resourceId);
-        resource.pipe.dispose();
-        void api.unregisterBoardPipeResource(resourceId);
-        unregisterPipeResource(resourceId);
-    }
-
-    releaseContentResources(tabId?: string, generation?: number): void {
-        const resourceIds = this.getContentResourceIds(tabId, generation);
-        for (const resourceId of resourceIds) this.releaseContentResource(resourceId);
     }
 
     /**
@@ -1125,8 +623,6 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
                 }
             }
         }
-        // `statusText` is transient footer chrome — never persist it, or a stale count
-        // would resurrect on restore before the board re-sets it. `undefined` is dropped by JSON.
         // `contentPath` is transient too: a persisted cache path would point at a file the cache may
         // have GC'd, and the source could have changed — `ensureContentPath` re-materializes.
         // `boardRoot` and `folderPath` are independent durable fields. Copy the claimed folder
@@ -1137,11 +633,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
             folderPath: s.folderPath,
             sourceLink: s.sourceLink ? cleanForStorage(s.sourceLink) : undefined,
             sharedState,
-            statusText: undefined,
-            toolbarText: undefined,
-            toolbarTextFrameGeneration: undefined,
             pageMuted: undefined,
-            muteButtonFrameGeneration: undefined,
             contentPath: undefined,
             sourceRestoreBlocked: s.sourceRestoreBlocked === true ? true : undefined,
             modified: false,
@@ -1180,7 +672,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
     private async applyManifestTitle(boardRoot: string, fallbackTitle: string): Promise<void> {
         const manifestName = (await readBoardManifest(boardRoot))?.name?.trim();
         this.boardDisplayNameEnglish = manifestName || fallbackTitle;
-        if (!manifestName || this.aiVisionDisposed) return;
+        if (!manifestName || this.disposed) return;
         const s = this.state.get();
         // Only replace a title this method owns — the fallback, or the manifest name it applied
         // earlier (the manifest may have been renamed since): a caller may have retitled the page.
@@ -1209,31 +701,12 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         const s = this.state.get();
         if (!s.boardRoot) throw new Error("legacy project-mode board editor — dropped on restore");
         if (s.modified) this.state.update((state) => { state.modified = false; });
-        this.sourceRestoreBlockedOnRestore = s.sourceRestoreBlocked === true;
+        this.sourceInbox.restore(s.sourceRestoreBlocked === true);
         // Busy is transient: processes never survive an app restart
         // (`will-quit` kills every child), so a persisted flag is always stale.
         if (s.busy) this.state.update((st) => { st.busy = false; });
-        // Footer status text is transient too — clear any value carried in from a
-        // pre-fix persisted blob, so a stale count never flashes before the board re-sets it.
-        if (s.statusText) this.state.update((st) => { st.statusText = undefined; });
-        // Toolbar text is transient page chrome too. Clear even a persisted empty string, and
-        // discard its frame owner because restore has no live frame generation to preserve.
-        if (s.toolbarText !== undefined || s.toolbarTextFrameGeneration !== undefined) {
-            this.state.update((st) => {
-                st.toolbarText = undefined;
-                st.toolbarTextFrameGeneration = undefined;
-            });
-        }
-        this.statusBarFrameGeneration = undefined;
-        this.liveStatusBarElements = [];
         // The tab mute button belongs to a live frame; the board asks for it again after loading.
-        this.muteToggleHandler = undefined;
-        if (s.pageMuted !== undefined || s.muteButtonFrameGeneration !== undefined) {
-            this.state.update((st) => {
-                st.pageMuted = undefined;
-                st.muteButtonFrameGeneration = undefined;
-            });
-        }
+        if (s.pageMuted !== undefined) this.state.update((st) => { st.pageMuted = undefined; });
         // Same for a materialized content path carried in from a pre-fix persisted blob: the cache
         // file is gone (or stale), so force a re-resolve on the next `ensureContentPath()`.
         if (s.contentPath) this.state.update((st) => { st.contentPath = undefined; });
@@ -1319,32 +792,6 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         this.deriveSecondaryPanels();
     }
 
-    /** Set the content-host footer status text (`persephone.setStatusText`). TRANSIENT —
-     *  not persisted; the board re-sets it on load. Rendered by `BoardEditorView` via the
-     *  `EditorStatusBarView` contributions slot (main-view footer only). */
-    setStatusText(text: string): void {
-        this.state.update((s) => { s.statusText = typeof text === "string" ? text : ""; });
-    }
-
-    /** Set transient main-frame page-toolbar text for one live board-frame generation.
-     *  The empty string is retained as an explicit board clear; the toolbar view renders it and
-     *  an unset value identically, as a blank slot — there is no board-path fallback. */
-    setToolbarTextForFrame(frameGeneration: number, text: string): void {
-        this.state.update((s) => {
-            s.toolbarTextFrameGeneration = frameGeneration;
-            s.toolbarText = typeof text === "string" ? text : "";
-        });
-    }
-
-    /** Clear page-toolbar text only when the retiring frame still owns it. */
-    clearToolbarTextForFrame(frameGeneration: number): void {
-        if (this.state.get().toolbarTextFrameGeneration !== frameGeneration) return;
-        this.state.update((s) => {
-            s.toolbarTextFrameGeneration = undefined;
-            s.toolbarText = undefined;
-        });
-    }
-
     /** A busy board that survived navigate-away had its derived `secondaryView`
      *  cleared by the base `beforeNavigateAway` while demoted — which is all the Pattern-A
      *  disposal of a NON-busy board needs (with no derived panels `contributesPanels()` is
@@ -1361,7 +808,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
     /** Select the board (its folder name) so it renders, or `undefined` to deselect
      *  (→ not-found). Single board, so `name` is always this board's own name. */
     selectBoard(name: string | undefined): void {
-        if (this.state.get().selectedBoard !== name) this.reloadAwaitingRegistration = false;
+        if (this.state.get().selectedBoard !== name) this.aiVision.resetReload();
         // `iconKey` drives the tab's icon refresh (it observes iconKey, not
         // selectedBoard) so the tab shows the board's icon.
         this.state.update((s) => {
@@ -1375,37 +822,27 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
      *  (`index.html` / `app.js` / CSS). Re-probes the board icon so a mid-session
      *  `icon.*` change shows on demand (no folder watcher — live refresh is
      *  intentionally dropped). Also invoked by the board editor's reload path. */
-    async reloadBoard(): Promise<void> {
-        if (!(await this.confirmRelease())) return;
-        const boardRoot = this.state.get().boardRoot;
-        if (boardRoot && !(await requestBoardTrust(boardRoot))) return;
-        if (boardRoot) invalidateBoardIcon(boardRoot);
-        this.reloadAwaitingRegistration = true;
-        this.clearAiVisionRegistration();
-        this.state.update((s) => { s.reloadToken++; });
-        this.refreshManifestTitle();
-    }
+    reloadBoard = (): void => { void this.runReloadAndWait(false); };
 
     /** Wait for the next attachable main board frame after a model-owned reload. */
     reloadAndWait(): Promise<{ frameReady: boolean; cancelled?: boolean }> {
-        return this.runReloadAndWait();
+        return this.runReloadAndWait(true);
     }
 
-    private async runReloadAndWait(): Promise<{ frameReady: boolean; cancelled?: boolean }> {
+    private async runReloadAndWait(reportReleaseError: boolean): Promise<{ frameReady: boolean; cancelled?: boolean }> {
         const released = await this.confirmRelease();
         if (!released) {
-            if (this.releaseError) throw new Error(this.releaseError);
+            if (reportReleaseError && this.releaseError) throw new Error(this.releaseError);
             return {
-                frameReady: this.getFrame(BOARD_CDP_TAB) !== undefined && this.loadedTabs.has(BOARD_CDP_TAB),
+                frameReady: this.frameRegistry.isFrameReady(BOARD_CDP_TAB),
                 cancelled: this.releaseCancelled || this.modified,
             };
         }
         const boardRoot = this.state.get().boardRoot;
         if (boardRoot && !(await requestBoardTrust(boardRoot))) return { frameReady: false };
-        const frameReady = this.waitForFrameLoad(BOARD_CDP_TAB);
+        const frameReady = this.frameRegistry.waitForFrameLoad(BOARD_CDP_TAB);
         if (boardRoot) invalidateBoardIcon(boardRoot);
-        this.reloadAwaitingRegistration = true;
-        this.clearAiVisionRegistration();
+        this.aiVision.beginReload();
         this.state.update((s) => { s.reloadToken++; });
         this.refreshManifestTitle();
         return { frameReady: await frameReady };
@@ -1430,27 +867,12 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
      *  `reapBoardOwner` tree-kills every job this board owner kept alive while busy —
      *  page close overrides busy ("page closed → kill anyway"). */
     override async dispose(): Promise<void> {
-        this.pendingSourceUrls.length = 0;
-        for (const timer of this.sourceSessionHandleTimers.values()) clearTimeout(timer);
-        this.sourceSessionHandles.clear();
-        this.sourceSessionHandleTimers.clear();
-        this.sessionBoundSources.clear();
-        this.pendingSourceListeners.clear();
-        this.toolbarFrameGeneration = undefined;
-        this.liveToolbarElements = [];
-        this.statusBarFrameGeneration = undefined;
-        this.liveStatusBarElements = [];
-        this.muteToggleHandler = undefined;
-        this.state.update((s) => {
-            s.pageMuted = undefined;
-            s.muteButtonFrameGeneration = undefined;
-            s.toolbarTextFrameGeneration = undefined;
-            s.toolbarText = undefined;
-        });
-        this.aiVisionDisposed = true;
+        this.sourceInbox.dispose();
+        this.chrome.dispose();
+        this.disposed = true;
+        this.aiVision.beginDispose();
         this.setWorking(false);
-        this.reloadAwaitingRegistration = false;
-        this.releaseContentResources();
+        this.contentResources.dispose();
         // A custom-editor board opened via openRawLink is handed a FileProvider pipe by the
         // open-handler — dispose it for hygiene. `ensureContentPath` may have read
         // it since; disposing is correct either way.
@@ -1464,12 +886,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         }
         markBoardBusy(this.id, undefined, false);
         void api.reapBoardOwner(this.id);
-        this.clearAiVisionRegistration();
-        this.aiVisionTransports.clear();
-        this.frames.clear();
-        this.loadedTabs.clear();
-        for (const w of this.frameLoadWaiters) w.resolve(false);
-        this.frameLoadWaiters.length = 0;
+        this.aiVision.dispose();
+        this.frameRegistry.dispose();
         void api.unregisterBoardFrame(this.id);
         await super.dispose();
     }

@@ -3,7 +3,7 @@ import { DownloadEntry, PublishedBoardsCatalog, UpdateCheckResult } from "../api
 import { EventApi, EventEndpoint, EventObject, McpStatus, MnemeStatus, type PathWatchEvent } from "../api-types";
 import type { ClipboardHistoryChanged, ClipboardStatus } from "../clipboard-ipc";
 import type { BoardServiceStatus } from "../module-service-channels";
-import type { BoardNotifyMsg } from "../board-bridge-channels";
+import type { BoardNotifyMsg } from "../board-bridge/port-protocol";
 
 class RendererEventObject<T> implements EventObject<T> {
     private subscribers: Array<(data: T) => void> = [];

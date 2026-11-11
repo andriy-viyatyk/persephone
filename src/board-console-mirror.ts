@@ -1,10 +1,11 @@
 import { errMessage } from "./shared/utils";
+import type { BoardToHostEvents } from "./ipc/board-bridge/frame-protocol";
 
 /** Install diagnostics that the board frame reports to its host renderer. */
-export function installBoardDiagnostics(hostPostTarget: string): void {
+export function installBoardDiagnostics(emit: <E extends "error" | "log">(name: E, payload: BoardToHostEvents[E]) => void): void {
     const postHostError = (message: string): void => {
         try {
-            window.parent.postMessage({ __persephone: "board:error", message }, hostPostTarget);
+            emit("error", { message });
         } catch {
             // parent gone — nothing to report to
         }
@@ -31,7 +32,7 @@ export function installBoardDiagnostics(hostPostTarget: string): void {
             original(...args);
             try {
                 const message = args.map(formatConsoleArg).join(" ").slice(0, 4000);
-                window.parent.postMessage({ __persephone: "board:log", level, message: `console.${level}: ${message}` }, hostPostTarget);
+                emit("log", { level, message: `console.${level}: ${message}` });
             } catch { /* parent gone */ }
         };
     };

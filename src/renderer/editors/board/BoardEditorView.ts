@@ -90,17 +90,13 @@ class BoardHostView extends VanillaView<BoardHostViewProps> {
         this.statusItems = new BoardStatusBarItems({
             model: props.model,
             onAction: (event, generation) => this.webview.sendStatusBarAction(event, generation),
-            onChange: () => this.footer?.update(this.footerProps(this.model.state.get().statusText ? this.statusElement ?? null : null)),
+            onChange: () => this.footer?.update(this.footerProps(
+                this.model.chrome.state.get().statusText ? this.statusElement ?? null : null,
+            )),
         });
         this.webview = new BoardWebview({
             model: props.model,
             boardRoot: props.boardRoot,
-            onToolbarSet: (controls, frameGeneration, warning) => this.toolbar.setToolbarControls(controls, frameGeneration, warning),
-            onToolbarUpdate: (patches, warning) => this.toolbar.updateToolbarControls(patches, warning),
-            onToolbarClear: (frameGeneration) => this.toolbar.clearToolbarControls(frameGeneration),
-            onStatusBarSet: (items, frameGeneration, warning) => this.statusItems.set(items, frameGeneration, warning),
-            onStatusBarUpdate: (patches, frameGeneration, warning) => this.statusItems.updateCatalog(patches, frameGeneration, warning),
-            onStatusBarClear: (frameGeneration) => this.statusItems.clear(frameGeneration),
         });
         this.toolbar = new BoardToolbarView({
             model: props.model,
@@ -135,7 +131,8 @@ class BoardHostView extends VanillaView<BoardHostViewProps> {
         this.footer = this.child(new EditorStatusBarView(this.footerProps(null)));
         this.root.append(this.footer.root);
         this.footer.mount();
-        this.bind(this.model.state, (state) => state.statusText, this.updateStatus);
+        this.bind(this.model.chrome.state, (state) => state.statusText, this.updateStatus);
+        this.model.setChromeViewsAvailable(true);
     }
 
     private async preflightWebview(): Promise<void> {
@@ -143,9 +140,8 @@ class BoardHostView extends VanillaView<BoardHostViewProps> {
         if (permitted && !this.isDisposed) this.webview.mount();
     }
 
-    protected onUpdate(): void {
-        // BoardWebview is intentionally not retargeted. The parent branch key
-        // gives it stable-key replacement semantics: a changed key gets a fresh board element.
+    protected onDispose(): void {
+        this.model.setChromeViewsAvailable(false);
     }
 
     private readonly updateStatus = (statusText: string | undefined): void => {
