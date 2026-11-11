@@ -1,6 +1,6 @@
 ---
 name: persephone-codex-dev
-description: The default way to do task work in the Persephone repo. Delegate investigation, planning, implementation, and the completion skills to Codex (Terra/high or Luna/high, picked by remaining plan limits; completion skills always Luna/high); Claude spends its budget on epic docs, reviewing Codex's plans, and fixing reported bugs. Use for any task big enough to need a document, and whenever the user says "use codex". Layers Persephone's delegation policy on top of the generic `codex-dev` skill, which owns the mechanics.
+description: The default way to do task work in the Persephone repo. Delegate investigation, planning, implementation, and the completion skills to Codex (planning on the policy pick, Terra/high or Luna/high by remaining plan limits; implementation and completion skills always Luna/high); Claude spends its budget on epic docs, reviewing Codex's plans, and fixing reported bugs. Use for any task big enough to need a document, and whenever the user says "use codex". Layers Persephone's delegation policy on top of the generic `codex-dev` skill, which owns the mechanics.
 allowed-tools: mcp__persephone__call, Read, Grep, Glob, Bash, Edit, Write
 ---
 
@@ -9,8 +9,11 @@ allowed-tools: mcp__persephone__call, Read, Grep, Glob, Bash, Edit, Write
 Codex does the reading and the typing. You do the thinking about whether the plan is
 right. That division exists because the user's Claude budget is scarce and their Codex
 budget is not. `codex-run.sh` picks the model from the plan's remaining limits:
-`gpt-6.1-terra` at medium effort while one more Terra run plus Luna for the rest still fits
-before each window's reset, otherwise `gpt-6-luna` at high effort (trial started 2026-11-03; see the `codex-dev` skill). The **completion skills** are the exception: always run them on Luna (step 6), so the Terra budget goes to planning and implementation. After each
+`gpt-6.1-terra` at high effort while one more Terra run plus Luna for the rest still fits
+before each window's reset, otherwise `gpt-6-luna` at high effort (trial started 2026-11-03; see the `codex-dev` skill).
+That policy pick is for **planning only** (steps 1 and 3). **Implementation (step 4) and the completion skills (step 6)
+always run on Luna** (`--luna`): user decision 2026-11-11. Luna implements a reviewed plan well and costs a fraction of
+Terra, so the Terra budget goes where judgment matters: investigation and the plan. After each
 task, tell the user the `usage:` / `limits:` lines the runs printed.
 
 **Target: you do 5–10% of the work.** If you are doing more, you are doing the wrong work.
@@ -218,7 +221,8 @@ sometimes right, and it has been right before.
 
 ### 4. Delegate implementation — in a fresh session
 
-Start a **new** run with the same working root and `-s workspace-write` — a fresh session has
+Start a **new** run with the same working root, `-s workspace-write` and **`--luna`** (implementation always runs on
+Luna/high; the reviewed plan carries the judgment) — a fresh session has
 none of session A's context, including its `doc/agents-common.md` read, so the read-it-first line
 goes back at the top of the prompt. Do not resume session A: by now it is near its context
 limit, and the corrected document on disk is the complete handoff.
