@@ -2,9 +2,9 @@ import {
     BOARD_TO_HOST_EVENTS_AFTER_LOAD, NO_REPLY, frameEvent, frameRequest, frameResponse, isBoardPortInit, readFrameEnvelope,
     type BoardPortInitMsg, type BoardToHostEvents, type BoardToHostRequests, type HostToBoardEvents, type HostToBoardRequests,
     type RequestParams, type RequestResult, type FrameResponseEnvelope,
-} from "./ipc/board-bridge/frame-protocol";
-import { PendingRequests, type RequestId } from "./shared/pending-requests";
-import { fromWireError, toWireError } from "./shared/wire-error";
+} from "../ipc/board-bridge/frame-protocol";
+import { PendingRequests, type RequestId } from "../shared/pending-requests";
+import { fromWireError, toWireError } from "../shared/wire-error";
 
 export interface HostFrameChannelOptions {
     readonly targetOrigin: string;

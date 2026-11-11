@@ -1,5 +1,5 @@
-import { errMessage } from "./shared/utils";
-import type { BoardToHostEvents } from "./ipc/board-bridge/frame-protocol";
+import { errMessage } from "../shared/utils";
+import type { BoardToHostEvents } from "../ipc/board-bridge/frame-protocol";
 
 /** Install diagnostics that the board frame reports to its host renderer. */
 export function installBoardDiagnostics(emit: <E extends "error" | "log">(name: E, payload: BoardToHostEvents[E]) => void): void {

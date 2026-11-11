@@ -1,3 +1,15 @@
+## EPIC-148 — Refactoring Phase 4.4: the board shim split
+
+Completed 2026-11-11. `src/board-shim.ts` is a 125-line composition root over 25 browser-only feature modules in
+`src/board-shim/`; the `window.persephone` keys, types and getters remain unchanged. The built IIFE decreased from
+204,045 to 197,798 bytes. Epic document: [EPIC-148](EPIC-148.md).
+
+- [x] **Shim primitives and folder (US-1857).** `SettledValue` and `Listeners` replace repeated state and callback handling; the handshake owns its own readiness gate.
+- [x] **`MainPortChannel` (US-1858).** One owner handles port requests, events, routing, replacement and disposal.
+- [x] **Host-side features (US-1859).** Frame-facing APIs and behaviors live in dedicated modules.
+- [x] **Port-side features and composition root (US-1860).** Main-port APIs live in dedicated modules; composition order is explicit.
+- [x] **Epic review.** `/review` removed one non-null assertion while preserving latest busy-state behavior; `/document` updated overview, key-files and folder-structure; `/userdoc` documented callback deduplication and pagehide rejection. No English catalog messages changed.
+
 ## EPIC-147 — Refactoring Phase 4.3: the typed port RPC and the main board bridge split
 
 Completed 2026-11-11. Roadmap Phase 4.3: the board↔main port contract is typed and `src/main/board-bridge.ts` is split

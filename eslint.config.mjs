@@ -283,6 +283,7 @@ function isExcludedI18nFile(filename) {
         || filename.includes("/src/renderer/api/types/")
         // The shim keeps English boot fallbacks and runtime errors; visible menu text is host-resolved.
         || filename.endsWith("/src/board-shim.ts")
+        || filename.includes("/src/board-shim/")
         // Settings catalog: descriptions, row labels, purposes and paths are agent-only (ai-vision).
         || filename.endsWith("/src/renderer/editors/settings/settings-catalog.ts")
         || /\/(?:test|tests|__tests__|stories)\//.test(filename)

@@ -835,6 +835,10 @@ The only Persephone-specific API a board sees is `window.persephone`. Everything
 Host requests can reject with an `Error` that has a readable `.message` and may also have a stable
 `.code`. If the user removes the board's trust while a request is in progress, the request rejects
 immediately with `code === "untrusted"` and the message `"This board is no longer trusted."`.
+Registering the same callback twice with one listener API creates one subscription; either returned
+unsubscribe function removes it. Main-port requests still pending when the board page closes or
+navigates away reject with `"The board page closed or navigated away."`, so handle that error where
+shutdown can interrupt your work.
 
 ### `persephone.execute(commandLine, options?)`
 

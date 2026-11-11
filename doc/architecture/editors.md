@@ -83,7 +83,7 @@ toast.
 
 The board shim and host renderer share the private frame protocol in
 `ipc/board-bridge/frame-protocol.ts`: typed per-direction request and event maps carried by `req`,
-`res`, and `evt` envelopes. `HostFrameChannel` in `src/board-host-frame-channel.ts` is the shim-side
+`res`, and `evt` envelopes. `HostFrameChannel` in `src/board-shim/board-host-frame-channel.ts` is the shim-side
 endpoint; `BoardFrameEndpoint` is the renderer-side endpoint and reuses `PendingRequests` and the
 shared wire-error conversion. The protocol is private to the shipped shim and renderer and does not
 change the public `window.persephone` contract.

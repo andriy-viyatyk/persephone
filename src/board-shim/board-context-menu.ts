@@ -1,6 +1,6 @@
-import type { BoardOpenRawLinkOptions, BoardRpcMethod, BoardPortParams, BoardPortResult, BoardToMainEvents } from "./ipc/board-bridge/port-protocol";
-import type { BoardHostTextId } from "./ipc/board-bridge/boot";
-import { errMessage } from "./shared/utils";
+import type { BoardOpenRawLinkOptions, BoardRpcMethod, BoardPortParams, BoardPortResult, BoardToMainEvents } from "../ipc/board-bridge/port-protocol";
+import type { BoardHostTextId } from "../ipc/board-bridge/boot";
+import { errMessage } from "../shared/utils";
 
 export interface BoardContextMenuBridge {
     fire(method: "notify", payload: BoardToMainEvents["notify"]): void;

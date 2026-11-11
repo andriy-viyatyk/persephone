@@ -13,9 +13,33 @@ persephone/
 │   ├── shared/             # Shared types, constants, cross-process helpers, board manifest/value objects and service-channel protocol, plus i18n runtime/catalogs
 │   ├── renderer.ts          # Async bootstrap; calls renderer/index.ts mount(container)
 │   ├── preload.ts          # Preload script (main renderer)
-│   ├── board-shim.ts       # Board bridge shim entry — browser IIFE inlined into board HTML; boot, host trust gate, MessagePort plumbing, window.persephone and AiVision remote registration
-│   ├── board-context-menu.ts # Browser-safe Board context menu, image and editable-field clipboard support
-│   └── board-console-mirror.ts # Browser-safe Board error and console warning/error reporting to the host frame
+│   ├── board-shim.ts       # Browser IIFE composition root; installs collaborators and assigns window.persephone
+│   ├── board-shim/          # Browser-only bridge channels, primitives, and window.persephone feature factories
+│   │   ├── primitives.ts    # SettledValue, listener fan-out, and descriptor-preserving API composition
+│   │   ├── main-port-channel.ts # Main MessagePort queue, RPC, routing, and teardown
+│   │   ├── board-host-frame-channel.ts # Typed host-frame endpoint and deferred outbound queue
+│   │   ├── page-api.ts      # Page lifecycle, save/discard, busy, mute, and voice-typing APIs
+│   │   ├── source-api.ts    # Source URL, file-path, source-event, and content APIs
+│   │   ├── host-content-api.ts # Content-host API
+│   │   ├── shared-state-api.ts # Shared board state and variables APIs
+│   │   ├── chrome-api.ts    # Toolbar, status bar, navigation, and chrome APIs
+│   │   ├── settings-api.ts  # Board settings API
+│   │   ├── themes-api.ts    # Theme, token, and graph-palette APIs
+│   │   ├── i18n-api.ts      # Board localization API
+│   │   ├── files-api.ts     # File, watch, project, and board-open APIs
+│   │   ├── service-api.ts   # Board service and provider APIs
+│   │   ├── capability-api.ts # Intent and capability APIs
+│   │   ├── fetch-api.ts    # Board fetch API and stream lifecycle
+│   │   ├── ai-vision-api.ts # AiVision exposure and remote lifecycle
+│   │   ├── storage-api.ts  # Storage, page state, and clipboard APIs
+│   │   ├── execute-api.ts  # Command execution APIs
+│   │   ├── bridge-actions-api.ts # Link, notification, and bridge actions
+│   │   ├── icons-api.ts    # Board icon resolution
+│   │   ├── dialogs.ts     # Synchronous board dialog calls
+│   │   ├── frame-behaviours.ts # Keyboard, link, overlay, context-menu, and diagnostics setup
+│   │   ├── service-port-inbox.ts # Early service-channel port buffering and delivery
+│   │   ├── board-context-menu.ts # Board-frame context menu and image/editable-field actions
+│   │   └── board-console-mirror.ts # Board errors and console warnings/errors sent to the host
 ├── launcher/               # Rust launcher (Named Pipe client)
 │   ├── src/main.rs
 │   ├── build.rs
