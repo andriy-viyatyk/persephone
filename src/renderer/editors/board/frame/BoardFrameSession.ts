@@ -153,9 +153,7 @@ export class BoardFrameSession {
             void api.appendBoardLog(this.boardRoot, "info", "----- board loaded -----").catch(() => { });
             for (const warning of boardI18n.warnings) this.log("warn", warning);
         }
-        this.portDeliveryUnsubscribe = api.onBoardPort((boardId, port) => {
-            // This is global: filter ownership before liveness so a disposed view only closes its own port.
-            if (boardId !== this.boardId) return;
+        this.portDeliveryUnsubscribe = api.onBoardPort(this.boardId, (port) => {
             if (!this.alive) {
                 port.close();
                 return;

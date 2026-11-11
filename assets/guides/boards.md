@@ -241,6 +241,8 @@ local caller ids use a hash instead of exposing the board path. Refuse with
 `channel.close({ code: "connection-refused", message: "..." })`. Cross-board channels keep the
 same bounds and lifecycle as `service.openChannel()` and close when either board loses the needed
 trust or grant. Boards using this API declare `minBridgeVersion: "1.42.0"`.
+When the board has no trusted `uses` grant for an interface, `services.list()` and `services.connect()`
+reject with code `permission-denied`; the explanatory grant message is preserved.
 For a streaming coding-agent provider and consumer protocol over this channel, see the normative
 [`agent.session` v1 contract](./agents/agent-session.md) (`guides.agents["agent-session"]`). The
 Agent Chat board uses this platform contract for its coding-agent sessions.
@@ -1086,6 +1088,9 @@ These handle in-app effects that `execute()` cannot express:
 | `persephone.trashFile(path)` | Move an authorized regular file to the OS Recycle Bin so it can be restored. Requires write access; folders are rejected. Added in board bridge `1.41.0`. |
 | `persephone.registerTypeScriptProject(root)` / `unregisterTypeScriptProject(root)` | Give Monaco pages editing `.ts`/`.tsx` files under a folder with a `tsconfig.json` project IntelliSense (relative imports, sibling files, project `.d.ts`, and typed JSON default imports when `resolveJsonModule` is enabled). Authorized like `listFolder`; lazy; released when the board closes or reloads, so register on every board load. Compiler options are not applied. Added in board bridge `1.47.0`. |
 
+The three native dialog methods require a board `fileSystem` grant. Without it, they reject with
+`permission-denied`; the existing grant explanation remains in the error message.
+
 `persephone.watch(path, callback, options?)` accepts `{ recursive?: boolean, debounceMs?: number }`; it watches the target folder's immediate entries by default, or descendants with `recursive: true`. Debounce defaults to 300 ms and accepts integers from 50 through 60000. Each callback receives `{ changes: [{ path, type }], rescan?, ended? }`; paths are absolute canonical paths and types are `created`, `changed`, or `deleted`. `rescan: true` means reload the watched scope; `ended` is `removed`, `error`, or `revoked`, after which the subscription is closed. The Promise resolves to an idempotent disposer. Folder watches use list permission and emit only that canonical folder or descendants; file watches use read permission and emit only that exact file. `fileSystem: false` may watch only the exact hosted document. Watches add no permission, end when the board port closes or access is revoked, and are limited to 64 per board. Errors use `invalid-argument`, `permission-denied`, `not-found`, or `too-many-watches`. A missing exact-file target returns `not-found` in v1; watch its containing folder to wait for a file to appear.
 
 With `fileSystem: "board"`, listing is limited to the board folder, folders picked in the current
@@ -1095,7 +1100,9 @@ not eligible, and the grant never includes the file's parent or siblings. Listin
 100,000 entries, recursion depth 32, and cursors expire after
 five minutes. Symlinks and junctions are skipped. Listing errors use stable codes including
 `permission-denied`, `invalid-argument`, `not-found`, `not-directory`, `too-many-entries`,
-`depth-limit`, `cursor-expired`, and `io-error`.
+`depth-limit`, `cursor-expired`, and `io-error`. A cursor from a disposed, replaced, or different
+board-port connection returns `invalid-argument: The folder cursor is invalid.`; checking it from
+another connection does not consume the cursor.
 
 Persephone also gives a board session read access to the exact local source files it delivers: the
 initial document, later `source.onOpen()` URLs, and local files in a delivered source context. This

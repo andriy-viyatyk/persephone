@@ -52,21 +52,15 @@ export type BoardEndpoint =
     | Endpoint.startModuleService
     | Endpoint.stopModuleService;
 
+async function getBoardHostService() {
+    return (await import("../../main/board-host/BoardHostService")).boardHostService;
+}
+
 /** Register Board lifecycle, bridge, automation, and catalog endpoints. Each
  * handler keeps its service dynamic import so Board infrastructure stays lazy. */
 export function initBoardHandlers(): void {
     bindEndpoint(Endpoint.registerBoard, async (event: IpcMainEvent, boardRoot: string, theme: BoardThemePalette, tokens: Record<string, string>, i18n: BoardI18nContext, hostText: BoardHostText): Promise<string> => {
-        const { registerBoard } = await import("../../main/board-protocol-service");
-        let hostOrigin = "";
-        try {
-            hostOrigin = new URL(event.sender.getURL()).origin;
-        } catch {
-            // Leave empty: the shim falls back to its parent-frame check.
-        }
-        const host = registerBoard(boardRoot, theme, tokens, i18n, hostText, hostOrigin);
-        const { ensureHostWired } = await import("../../main/board-bridge");
-        ensureHostWired(event.sender);
-        return host;
+        return (await getBoardHostService()).mount(event.sender, boardRoot, theme, tokens, i18n, hostText);
     });
     bindEndpoint(Endpoint.appendBoardLog, async (_event, boardRoot: string, level: BoardLogLevel, message: string): Promise<void> => {
         try {
@@ -82,35 +76,34 @@ export function initBoardHandlers(): void {
         return (await import("../../main/board-storage")).getBoardStorageKey(boardRoot);
     });
     bindEndpoint(Endpoint.unregisterBoard, async (_event, host: string): Promise<void> => {
-        (await import("../../main/board-protocol-service")).unregisterBoard(host);
+        (await getBoardHostService()).unregisterBoard(host);
     });
     bindEndpoint(Endpoint.updateBoardTheme, async (_event, theme: BoardThemePalette): Promise<void> => {
-        (await import("../../main/board-protocol-service")).updateAllBoardThemes(theme);
-        (await import("../../main/board-bridge")).pushThemeToBoards(theme);
+        (await getBoardHostService()).setTheme(theme);
     });
     bindEndpoint(Endpoint.requestBoardPort, async (event: IpcMainEvent, boardId: string, host: string, ownerId: string, hostedPath: string | null, token: string): Promise<void> => {
-        (await import("../../main/board-bridge")).createBoardPort(event.sender, boardId, host, ownerId, hostedPath, token);
+        (await getBoardHostService()).requestBoardPort(event.sender, boardId, host, ownerId, hostedPath, token);
     });
     bindEndpoint(Endpoint.updateBoardHostedPath, async (event: IpcMainEvent, boardId: string, token: string, hostedPath: string | null): Promise<boolean> => {
-        return (await import("../../main/board-bridge")).updateBoardHostedPath(event.sender, boardId, token, hostedPath);
+        return (await getBoardHostService()).updateBoardHostedPath(event.sender, boardId, token, hostedPath);
     });
     bindEndpoint(Endpoint.disposeBoardPort, async (_event, boardId: string): Promise<void> => {
-        (await import("../../main/board-bridge")).disposeBoardPort(boardId);
+        (await getBoardHostService()).disposeBoardPort(boardId);
     });
     bindEndpoint(Endpoint.setBoardBusy, async (_event, ownerId: string, busy: boolean): Promise<void> => {
-        (await import("../../main/board-bridge")).setBoardBusy(ownerId, busy);
+        (await getBoardHostService()).setBoardBusy(ownerId, busy);
     });
     bindEndpoint(Endpoint.setBoardCallTimeout, async (_event, timeoutMs: number): Promise<void> => {
-        (await import("../../main/board-bridge")).setBoardCallTimeout(timeoutMs);
+        (await getBoardHostService()).setBoardCallTimeout(timeoutMs);
     });
     bindEndpoint(Endpoint.reapBoardOwner, async (_event, ownerId: string): Promise<void> => {
-        (await import("../../main/board-bridge")).reapBoardOwner(ownerId);
+        (await getBoardHostService()).reapBoardOwner(ownerId);
     });
     bindEndpoint(Endpoint.registerBoardFrame, async (event: IpcMainEvent, boardId: string, boardHost: string, frameNonce?: string, tab: string = BOARD_CDP_TAB, title?: string, pageId?: string): Promise<void> => {
-        (await import("../../main/cdp-service")).registerBoardFrame(`${boardId}/${tab}`, event.sender, boardHost, frameNonce, title, pageId);
+        (await getBoardHostService()).registerBoardFrame(event.sender, boardId, boardHost, frameNonce, tab, title, pageId);
     });
     bindEndpoint(Endpoint.unregisterBoardFrame, async (_event, boardId: string, tab: string = BOARD_CDP_TAB, frameNonce?: string): Promise<void> => {
-        (await import("../../main/cdp-service")).unregisterBoardFrame(`${boardId}/${tab}`, frameNonce);
+        (await getBoardHostService()).unregisterBoardFrame(boardId, tab, frameNonce);
     });
     bindEndpoint(Endpoint.getPublishedBoards, async (_event, force?: boolean): Promise<PublishedBoardsResult> => {
         return (await import("../../main/published-boards-service")).publishedBoardsService.getPublishedBoards(force);

@@ -13,7 +13,7 @@ import * as boardLog from "./board-log";
 import { boardTrustService } from "./board-trust-service";
 import { boardFileAccess } from "./board-file-access";
 import { readBoardManifest } from "./board-manifest-reader";
-import { resolveBoardDialogFrame } from "./cdp-service";
+import { boardFrameRegistry } from "./board-host/BoardFrameRegistry";
 import { requestBoardDialog } from "./board-dialog-service";
 import { BoardRoot } from "../shared/board/board-root";
 import { boardHost } from "./board-root-hashes";
@@ -271,7 +271,7 @@ async function serveBoardDialog(request: Request, host: string): Promise<Respons
         if (!data) return new Response(null, { status: 400 });
         const source = new URL(data.url);
         if (source.protocol !== "board:" || source.host !== host || source.searchParams.get("v") !== data.nonce || (source.searchParams.get("view") ?? "main") !== data.view) return new Response(null, { status: 400 });
-        const frame = resolveBoardDialogFrame(host, data.nonce, data.view);
+        const frame = boardFrameRegistry.resolveDialogFrame(host, data.nonce, data.view);
         if (!frame) return new Response(null, { status: 404 });
         const result = await requestBoardDialog(frame.host, frame.key, { type: data.type, message: data.message, defaultPrompt: data.defaultPrompt, url: data.url, title: frame.title, pageId: frame.pageId }, request.signal);
         return new Response(JSON.stringify(result), { headers: { "Content-Type": "application/json" } });

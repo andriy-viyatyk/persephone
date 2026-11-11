@@ -1,11 +1,11 @@
 import { dialog } from "electron";
-import {
+import type {
     OpenFileDialogParams,
     OpenFolderDialogParams,
     SaveFileDialogParams,
-} from "../api-param-types";
-import { rememberDirFromPick, resolveDefaultPath } from "../../main/dialog-folder-memory";
-import { withNativeDialog } from "../../main/native-dialog-tracker";
+} from "../ipc/api-param-types";
+import { rememberDirFromPick, resolveDefaultPath } from "./dialog-folder-memory";
+import { withNativeDialog } from "./native-dialog-tracker";
 
 export async function showOpenFileDialog(
     browserWindow: Electron.BrowserWindow | undefined,

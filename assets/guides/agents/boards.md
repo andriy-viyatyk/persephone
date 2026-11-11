@@ -885,7 +885,9 @@ persephone.service.onShutdown(async ({ reason }) => closeResources(reason));
 its return value as the response. An early request with no handler gets
 `{ code: "service-handler-not-registered", message }`. Rejections preserve a non-empty
 `error.code` and readable message; `persephone.service.request()` rejects with an Error whose
-`.code` is available to the board. Entry import failure is logged and does not send `ready`.
+`.code` is available to the board. Calls that lack the board's `service` grant reject with
+`.code === "permission-denied"`; the error message remains the manifest grant explanation.
+Entry import failure is logged and does not send `ready`.
 Shutdown callbacks run sequentially in registration order, all are attempted, and any failure
 makes the host exit nonzero. The main process allows 2 seconds for shutdown. Do not register raw
 `process.parentPort` message listeners together with this API: raw mode takes ownership of
@@ -1297,6 +1299,12 @@ page. Persephone closes the tab the return created and leaves the tab the user w
 - `listFolder()` skips symlinks and junctions, limits recursive depth to 32, and expires cursors
   after five minutes. Stable error codes include `permission-denied`, `invalid-argument`, `not-found`,
   `not-directory`, `too-many-entries`, `depth-limit`, `cursor-expired`, and `io-error`. Persephone
+  returns `invalid-argument: The folder cursor is invalid.` when a cursor belongs to a disposed,
+  replaced, or different board-port connection; a lookup from another connection does not consume
+  the cursor. Persephone
+  also reports the stable `permission-denied` code for service-interface, service, dialog, and
+  board-folder grant denials; their existing descriptive messages are unchanged. Scoped file checks
+  still report their path-specific denial messages. Persephone
   grants session-only read access to exact local source files delivered to the board and to local
   items in delivered source contexts; this also lets `content.open()` read those files. It grants no
   writes. A `fileSystem: false` board cannot read context siblings.

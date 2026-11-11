@@ -40,9 +40,16 @@ import { BOARD_BRIDGE_VERSION } from "./shared/board-bridge-version";
 import { SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "./ipc/module-service-channels";
 import { createServiceChannel, domPort, type ServiceChannel, type ServiceChannelKind } from "./shared/service-channel";
 import type { BoardSourceContext } from "./shared/board-source-context";
-import { NO_REPLY, type BoardFetchHead, type BoardFetchInit, type BoardOpenContentRequest, type BoardToHostEvents } from "./ipc/board-bridge/frame-protocol";
+import {
+    NO_REPLY, frameEvent, frameRequest, readFrameEnvelope,
+    type BoardFetchHead, type BoardFetchInit, type BoardOpenContentRequest, type BoardToHostEvents,
+} from "./ipc/board-bridge/frame-protocol";
 import type { BoardBootContext, BoardHostTextId, BoardThemePalette } from "./ipc/board-bridge/boot";
-import type { BoardJsonValue, BoardFireMethod, BoardOpenRawLinkOptions, BoardJobInfo, BoardRpcMethod, BoardToMain, BoardWatchOptions, MainToBoard } from "./ipc/board-bridge/port-protocol";
+import type {
+    BoardCallRequest, BoardJsonValue, BoardFireMethod, BoardOpenRawLinkOptions, BoardJobInfo,
+    BoardRpcMethod, BoardPortParams, BoardPortResult, BoardToMain, BoardToMainEvents,
+    BoardWatchOptions, MainToBoardEvents,
+} from "./ipc/board-bridge/port-protocol";
 import type { BoardToolbarControlType } from "./ipc/board-bridge/ui-catalog";
 import type { BoardServiceStatus } from "./ipc/module-service-channels";
 import { BOARD_DIALOG_MAX_BYTES, BOARD_DIALOG_PATH, boardPipePagePath } from "./ipc/board-bridge/origin-routes";
@@ -443,11 +450,10 @@ let port: MessagePort | null = null;
 /** Outgoing messages queued until the port connects, then flushed in order. */
 const sendQueue: BoardToMain[] = [];
 /** Pending request/reply promises keyed by rpc id. */
-const pendingRpc = new PendingRequests<unknown>();
+const pendingRpc = new PendingRequests<unknown>({ timeoutError: () => new Error("persephone.call() timed out.") });
 const channelPortWaiters = new Map<string, { resolve: (port: MessagePort) => void; reject: (error: Error) => void }>();
 const earlyChannelPorts = new Map<string, MessagePort>();
 const activeServiceChannels = new Set<ServiceChannel>();
-const pendingCalls = new PendingRequests<unknown>({ timeoutError: () => new Error("persephone.call() timed out.") });
 // This is only a dead-port guard. It must exceed every host-side call limit, including the
 // public boards.callTimeoutMs maximum, so the host remains the single policy owner.
 const BOARD_CALL_DEAD_PORT_GUARD_MS = 2_147_000_000;
@@ -923,29 +929,35 @@ function post(msg: BoardToMain): void {
     else sendQueue.push(msg);
 }
 
-function rpc(method: BoardRpcMethod, args: unknown[]): Promise<unknown> {
-    const { id, promise } = pendingRpc.create();
-    try { post({ kind: "rpc", id, method, args }); }
-    catch (error: unknown) { pendingRpc.fail(id, error); }
+function rpc<M extends BoardRpcMethod>(method: M, ...params: BoardPortParams<M>): Promise<BoardPortResult<M>> {
+    const callTimeout = method === "call" ? BOARD_CALL_DEAD_PORT_GUARD_MS : undefined;
+    const { id, promise } = pendingRpc.create(callTimeout) as { id: number; promise: Promise<BoardPortResult<M>> };
+    try { post(frameRequest(id, method, params) as BoardToMain); }
+    catch (error: unknown) { pendingRpc.fail(id, method === "call" ? new Error(errMessage(error, "Persephone host is unavailable.")) : error); }
     return promise;
 }
 
-async function capabilityRpc<T>(method: BoardRpcMethod, args: unknown[]): Promise<T> {
-    const result = await rpc(method, args) as CapabilityClientResult<T>;
+type CapabilityRpcValue<M extends "capabilityList" | "capabilityProviders" | "capabilityGet" | "capabilityInvoke" | "capabilityCancel"> =
+    BoardPortResult<M> extends CapabilityClientResult<infer Value> ? Value : never;
+
+async function capabilityRpc<M extends "capabilityList" | "capabilityProviders" | "capabilityGet" | "capabilityInvoke" | "capabilityCancel">(
+    method: M, ...args: BoardPortParams<M>
+): Promise<CapabilityRpcValue<M>> {
+    const result = await rpc(method, ...args) as CapabilityClientResult<unknown>;
     if (result.ok === false) throw Object.assign(new Error(result.error.message), { code: result.error.code });
-    return result.value;
+    return result.value as CapabilityRpcValue<M>;
 }
 
 async function getCapabilityRpc(id: string, options?: CapabilityClientOptions) {
-    const provider = await capabilityRpc<CapabilityProvider | null>("capabilityGet", [id, options]);
+    const provider = await capabilityRpc("capabilityGet", id, options);
     if (!provider) return null;
     return createCapabilityProxy(provider, async (method, args) => {
         const request: CapabilityClientInvoke = { requestId: crypto.randomUUID(), key: { id: provider.id, version: provider.version, provider: provider.provider, handlerKey: provider.handlerKey }, method, args, filter: options?.filter };
-        const result = await capabilityRpc<unknown>("capabilityInvoke", [request]);
+        const result = await capabilityRpc("capabilityInvoke", request);
         if (provider.methods[method].kind === "channel") {
             let channel: ServiceChannel;
             try { channel = await waitForServiceChannel((result as { channelId: string }).channelId, "capability"); }
-            catch (error) { void capabilityRpc("capabilityCancel", [request.requestId]).catch((): void => undefined); throw error; }
+            catch (error) { void capabilityRpc("capabilityCancel", request.requestId).catch((): void => undefined); throw error; }
             if (id !== PLATFORM_AUDIO_CAPABILITY_ID || method !== "muteApp") return channel;
             let released = false;
             let pending: Promise<void> | undefined;
@@ -989,7 +1001,7 @@ function waitForServiceChannel(channelId: string, kind: ServiceChannelKind): Pro
 function openServiceChannel(openMessage: unknown): Promise<ServiceChannel> {
     try { structuredClone(openMessage); }
     catch (error) { return Promise.reject(Object.assign(new Error(errMessage(error, "Channel message is not structured-cloneable.")), { code: "rejected" })); }
-    return rpc("serviceOpenChannel", [openMessage]).then((value) => waitForServiceChannel(String(value), "service"));
+    return rpc("serviceOpenChannel", openMessage).then((value) => waitForServiceChannel(String(value), "service"));
 }
 
 window.addEventListener("pagehide", () => {
@@ -1016,8 +1028,7 @@ function call(path: string, options?: { args?: unknown[]; value?: unknown; maxLe
     if (options?.timeoutMs !== undefined && !isPositiveInteger(options.timeoutMs)) {
         return Promise.reject(new Error("persephone.call() options.timeoutMs must be a positive integer."));
     }
-    const { id, promise } = pendingCalls.create(BOARD_CALL_DEAD_PORT_GUARD_MS);
-    const request = {
+    const request: BoardCallRequest = {
         path,
         ...(options?.args !== undefined ? { args: options.args } : {}),
         ...(options && Object.prototype.hasOwnProperty.call(options, "value")
@@ -1026,12 +1037,8 @@ function call(path: string, options?: { args?: unknown[]; value?: unknown; maxLe
         ...(options?.maxLength !== undefined ? { maxLength: options.maxLength } : {}),
         ...(options?.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
     };
-    try {
-        post({ kind: "call", id, request });
-    } catch (error) {
-        pendingCalls.fail(id, new Error(errMessage(error, "Persephone host is unavailable.")));
-    }
-    return promise;
+    try { return rpc("call", request); }
+    catch (error) { return Promise.reject(new Error(errMessage(error, "Persephone host is unavailable."))); }
 }
 
 function isPositiveInteger(value: unknown): value is number {
@@ -1099,11 +1106,15 @@ function exposeAiVision(root: object): IAiVisionRemote {
 }
 
 function fire(method: BoardFireMethod, args: unknown[]): void {
-    post({ kind: "fire", method, args });
+    if (method === "notify") post(frameEvent("notify", {
+        message: String(args[0] ?? ""),
+        ...(args[1] !== undefined ? { type: args[1] as BoardToMainEvents["notify"]["type"] } : {}),
+        ...(args[2] === true ? { persistent: true } : {}),
+    }) as BoardToMain);
 }
 
 function requestOpenRawLink(href: string, options?: BoardOpenRawLinkOptions): Promise<void> {
-    const result = rpc("openRawLink", [href, options]) as Promise<void>;
+    const result = rpc("openRawLink", href, options);
     void result.catch(() => {});
     return result;
 }
@@ -1114,41 +1125,37 @@ function applyVars(vars: Record<string, string>): void {
     for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
 }
 
-function onPortMessage(data: MainToBoard): void {
+function onPortMessage(raw: unknown): void {
+    const data = readFrameEnvelope(raw);
     if (!data) return;
-    if (data.kind === "rpc-result") {
-        if (data.error != null) pendingRpc.fail(data.id, fromWireError(data.error));
-        else pendingRpc.settle(data.id, data.result);
+    if (data.__persephone === "res") {
+        if (typeof data.id !== "number") return;
+        if (data.ok === true) pendingRpc.settle(data.id, data.value);
+        else if (data.ok === false) pendingRpc.fail(data.id, fromWireError(data.error));
         return;
     }
-    if (data.kind === "call-result") {
-        if (typeof data.error === "string") {
-            pendingCalls.fail(data.id, new Error(data.error));
-        } else if (Object.prototype.hasOwnProperty.call(data, "result")) {
-            pendingCalls.settle(data.id, data.result);
-        } else {
-            pendingCalls.fail(data.id, new Error("Malformed persephone.call() response."));
-        }
-        return;
-    }
-    if (data.kind === "watch") {
-        const callback = watchCallbacks.get(data.watchId);
+    if (data.__persephone !== "evt") return;
+    if (data.name === "watch") {
+        const payload = data.payload as MainToBoardEvents["watch"];
+        const callback = watchCallbacks.get(payload.watchId);
         if (!callback) return;
-        try { callback(data.batch); }
+        try { callback(payload.batch); }
         catch (error: unknown) { console.error("persephone.watch callback error:", errMessage(error)); }
-        if (data.batch.ended) watchCallbacks.delete(data.watchId);
+        if (payload.batch.ended) watchCallbacks.delete(payload.watchId);
         return;
     }
-    if (data.kind === "runner") {
-        const jobId = (data.msg as { jobId: string }).jobId;
+    if ([RunnerChannel.stdout, RunnerChannel.stderr, RunnerChannel.exit, RunnerChannel.error].includes(data.name as RunnerChannel)) {
+        const runnerMessage = data.payload as MainToBoardEvents[RunnerChannel.stdout];
+        const jobId = runnerMessage.jobId;
         const h = runnerHandlers.get(jobId);
-        if (h) h(data.channel, data.msg);
+        if (h) h(data.name as RunnerInboundChannel, runnerMessage as RunnerInboundMsg);
         return;
     }
-    if (data.kind === "theme") {
+    if (data.name === "theme") {
+        const payload = data.payload as MainToBoardEvents["theme"];
         fileIconCache.clear();
         fileIconCacheGeneration++;
-        currentTheme = withGraphPalette(data.palette);
+        currentTheme = withGraphPalette(payload.palette);
         applyVars(currentTheme.vars);
         for (const cb of themeCbs) {
             try {
@@ -1168,7 +1175,6 @@ function attachPort(p: MessagePort): void {
         pendingRpc.failAll(bridgeReplaced);
         watchCallbacks.clear();
         failPendingBoardFetches(new Error("Persephone bridge was replaced."));
-        pendingCalls.failAll(bridgeReplaced);
         const capabilityBridgeReplaced = new BoardCapabilityError(
             "handler-closed",
             "Persephone bridge was replaced.",
@@ -1176,14 +1182,14 @@ function attachPort(p: MessagePort): void {
         rejectPendingCapabilityRequests(capabilityBridgeReplaced);
     }
     port = p;
-    p.onmessage = (ev: MessageEvent) => onPortMessage(ev.data as MainToBoard);
+    p.onmessage = (ev: MessageEvent) => onPortMessage(ev.data);
     p.onmessageerror = () => failPendingBoardFetches(new Error("Persephone bridge is unavailable."));
     // Flush queued outgoing messages in order.
     for (const msg of sendQueue) p.postMessage(msg);
     sendQueue.length = 0;
     // Tell main the bridge is live so its handshake watchdog stands
     // down. A board that paints but never reaches here is reported as "bridge dead".
-    p.postMessage({ kind: "connected" } as BoardToMain);
+    p.postMessage(frameEvent("connected", {}));
 }
 
 // One-time handshake: accept the transferred port only from the host renderer
@@ -1430,7 +1436,11 @@ window.addEventListener("auxclick", (e: MouseEvent) => {
     if (e.button === 1) routeExternalLinkClick(e);
 });
 
-installBoardContextMenu({ fire, rpc, hostText: resolveBoardHostText });
+installBoardContextMenu({
+    fire: (_method, payload) => fire("notify", [payload.message, payload.type, payload.persistent]),
+    rpc,
+    hostText: resolveBoardHostText,
+});
 
 // Host-overlay dismissal: a cross-origin board's inner clicks
 // don't bubble to the host, so an open Persephone menu/popover/command-palette wouldn't
@@ -1466,7 +1476,7 @@ function createHandle(
         {
             jobId,
             label: "persephone.execute",
-            send: (channel, msg) => post({ kind: "runner", channel, msg }),
+        send: (channel, msg) => post(frameEvent(channel, msg) as BoardToMain),
             subscribe: (deliver) => {
                 runnerHandlers.set(jobId, deliver);
                 return () => runnerHandlers.delete(jobId);
@@ -1739,9 +1749,9 @@ function createHandle(
     /** Discover granted providers and invoke legacy capability handlers. */
     capabilities: {
         list(): Promise<unknown> {
-            return capabilityRpc("capabilityList", []);
+            return capabilityRpc("capabilityList");
         },
-        providers(id: string): Promise<CapabilityProvider[]> { return capabilityRpc("capabilityProviders", [id]); },
+        providers(id: string): Promise<CapabilityProvider[]> { return capabilityRpc("capabilityProviders", id); },
         invoke(
             id: string,
             payload: unknown,
@@ -1763,7 +1773,7 @@ function createHandle(
     service: {
         /** Request the trusted board module service. The service starts lazily on first use. */
         request(message: unknown): Promise<unknown> {
-            return rpc("serviceRequest", [message]);
+            return rpc("serviceRequest", message);
         },
         /** Open a long-lived two-way channel to this board's lazily started service. */
         openChannel(openMessage: unknown): Promise<ServiceChannel> {
@@ -1772,23 +1782,23 @@ function createHandle(
         /** Read this board's service lifecycle without starting it. Resolves to undefined when
          * there is no supervisor record for the board. */
         status(): Promise<BoardServiceStatus | undefined> {
-            return rpc("serviceStatus", []) as Promise<BoardServiceStatus | undefined>;
+            return rpc("serviceStatus");
         },
         /** Stop this board's service without starting it when it is not already running. */
         stop(): Promise<void> {
-            return rpc("serviceStop", []) as Promise<void>;
+            return rpc("serviceStop");
         },
     },
 
     /** Cross-board service interfaces declared by this consumer board's trusted `uses` grant. */
     services: {
         list(interfaceId: string): Promise<Array<{ provider: string; title: string; version: number; boardName: string }>> {
-            return rpc("servicesList", [interfaceId]) as Promise<Array<{ provider: string; title: string; version: number; boardName: string }>>;
+            return rpc("servicesList", interfaceId);
         },
         connect(interfaceId: string, selector: { provider: string; version: number }, openMessage?: unknown): Promise<ServiceChannel> {
             try { structuredClone(openMessage); }
             catch (error) { return Promise.reject(Object.assign(new Error(errMessage(error, "Channel message is not structured-cloneable.")), { code: "rejected" })); }
-            return rpc("servicesConnect", [interfaceId, selector, openMessage]).then((value) => waitForServiceChannel(String(value), "service"));
+            return rpc("servicesConnect", interfaceId, selector, openMessage).then((value) => waitForServiceChannel(String(value), "service"));
         },
     },
 
@@ -1803,16 +1813,16 @@ function createHandle(
     /** Main-owned per-board JSON storage. Every call crosses the bridge; there is no local cache. */
     storage: {
         get(key: string): Promise<BoardJsonValue | undefined> {
-            return rpc("storageGet", [key]) as Promise<BoardJsonValue | undefined>;
+            return rpc("storageGet", key);
         },
         set(key: string, value: BoardJsonValue): Promise<void> {
-            return rpc("storageSet", [key, value]) as Promise<void>;
+            return rpc("storageSet", key, value);
         },
         delete(key: string): Promise<boolean> {
-            return rpc("storageDelete", [key]) as Promise<boolean>;
+            return rpc("storageDelete", key);
         },
         keys(): Promise<string[]> {
-            return rpc("storageKeys", []) as Promise<string[]>;
+            return rpc("storageKeys");
         },
     },
 
@@ -1847,27 +1857,27 @@ function createHandle(
     clipboard: {
         /** Put an image on the clipboard from its encoded bytes (PNG, JPEG, …). */
         writeImage(data: Uint8Array | ArrayBuffer): Promise<void> {
-            return rpc("clipboardWriteImage", [data]) as Promise<void>;
+            return rpc("clipboardWriteImage", data);
         },
         writeText(text: string): Promise<void> {
-            return rpc("clipboardWriteText", [text]) as Promise<void>;
+            return rpc("clipboardWriteText", text);
         },
     },
 
     openFileDialog(params?: unknown): Promise<string[] | undefined> {
-        return rpc("openFileDialog", [params ?? {}]) as Promise<string[] | undefined>;
+        return rpc("openFileDialog", params ?? {});
     },
 
     saveFileDialog(params?: unknown): Promise<string | undefined> {
-        return rpc("saveFileDialog", [params ?? {}]) as Promise<string | undefined>;
+        return rpc("saveFileDialog", params ?? {});
     },
 
     openFolderDialog(params?: unknown): Promise<string[] | undefined> {
-        return rpc("openFolderDialog", [params ?? {}]) as Promise<string[] | undefined>;
+        return rpc("openFolderDialog", params ?? {});
     },
 
     listFolder(path: string, options?: unknown): Promise<unknown> {
-        return rpc("listFolder", [path, options ?? {}]);
+        return rpc("listFolder", path, options ?? {});
     },
     /** Watch an authorized file or folder. The callback stays in this frame; only classified
      * batches cross the bridge. Call the returned disposer to stop receiving changes. */
@@ -1878,13 +1888,13 @@ function createHandle(
         if (watchIdCounter >= Number.MAX_SAFE_INTEGER) return Promise.reject(new Error("persephone.watch() exhausted its local watch ids."));
         const watchId = ++watchIdCounter;
         watchCallbacks.set(watchId, callback);
-        return rpc("watch", [watchId, path, options]).then(() => {
+        return rpc("watch", watchId, path, options).then(() => {
             let disposed = false;
             return () => {
                 if (disposed) return;
                 disposed = true;
                 watchCallbacks.delete(watchId);
-                void rpc("unwatch", [watchId]).catch((error: unknown) => {
+                void rpc("unwatch", watchId).catch((error: unknown) => {
                     console.warn("persephone.watch disposer failed:", errMessage(error));
                 });
             };
@@ -1893,10 +1903,10 @@ function createHandle(
             throw error;
         });
     },
-    rememberFolder(path: string): Promise<boolean> { return rpc("rememberFolder", [path]) as Promise<boolean>; },
-    rememberFile(path: string): Promise<boolean> { return rpc("rememberFile", [path]) as Promise<boolean>; },
+    rememberFolder(path: string): Promise<boolean> { return rpc("rememberFolder", path); },
+    rememberFile(path: string): Promise<boolean> { return rpc("rememberFile", path); },
     getFileAccess(path: string): Promise<{ read: boolean; write: boolean }> {
-        return rpc("getFileAccess", [path]) as Promise<{ read: boolean; write: boolean }>;
+        return rpc("getFileAccess", path);
     },
 
     /** Read a file. `encoding` picks what you get back: "utf8" (default) or "base64" give
@@ -1908,7 +1918,7 @@ function createHandle(
         path: string,
         options?: { encoding?: "utf8" | "base64" | "binary" },
     ): Promise<string | Uint8Array> {
-        return rpc("readFile", [path, options?.encoding]) as Promise<string | Uint8Array>;
+        return rpc("readFile", path, options?.encoding);
     },
 
     /** Write a file. With `encoding: "binary"`, `data` is a `Uint8Array` (or ArrayBuffer);
@@ -1918,29 +1928,29 @@ function createHandle(
         data: string | Uint8Array | ArrayBuffer,
         options?: { encoding?: "utf8" | "base64" | "binary" },
     ): Promise<void> {
-        return rpc("writeFile", [path, data, options?.encoding]) as Promise<void>;
+        return rpc("writeFile", path, data, options?.encoding);
     },
 
     /** Move a file to the OS Recycle Bin (bridge 1.41.0). Authorized like `writeFile`; rejects
      *  for a missing path or a folder. */
     trashFile(path: string): Promise<void> {
-        return rpc("trashFile", [path]) as Promise<void>;
+        return rpc("trashFile", path);
     },
 
     /** Register a TypeScript project folder (bridge 1.47.0) so Monaco pages editing its `.ts` files get
      *  project-aware IntelliSense. Authorized like `listFolder`; needs a `tsconfig.json` in `root`. */
     registerTypeScriptProject(root: string): Promise<void> {
-        return rpc("registerTypeScriptProject", [root]) as Promise<void>;
+        return rpc("registerTypeScriptProject", root);
     },
 
     /** Drop this frame's registration of a TypeScript project folder (bridge 1.47.0). */
     unregisterTypeScriptProject(root: string): Promise<void> {
-        return rpc("unregisterTypeScriptProject", [root]) as Promise<void>;
+        return rpc("unregisterTypeScriptProject", root);
     },
 
     /** Open a board folder this board can list; the target uses the normal user trust flow (bridge 1.48.0). */
     openBoard(folder: string): Promise<void> {
-        return rpc("openBoard", [folder]) as Promise<void>;
+        return rpc("openBoard", folder);
     },
 
     // ── Busy / surviving jobs ────────────────────────────────────────────────
@@ -2216,17 +2226,17 @@ function createHandle(
         write(data: string | Uint8Array): void;
         endStdin(): void;
     }>> {
-        const jobs = (await rpc("getJobs", [])) as BoardJobInfo[];
+        const jobs = await rpc("getJobs");
         return (jobs ?? []).map((j) => ({
             ...j,
             kill(signal?: string): void {
-                post({ kind: "runner", channel: RunnerChannel.kill, msg: { jobId: j.jobId, signal } });
+                post(frameEvent(RunnerChannel.kill, { jobId: j.jobId, signal }) as BoardToMain);
             },
             write(data: string | Uint8Array): void {
-                post({ kind: "runner", channel: RunnerChannel.stdin, msg: { jobId: j.jobId, data } });
+                post(frameEvent(RunnerChannel.stdin, { jobId: j.jobId, data }) as BoardToMain);
             },
             endStdin(): void {
-                post({ kind: "runner", channel: RunnerChannel.endStdin, msg: { jobId: j.jobId } });
+                post(frameEvent(RunnerChannel.endStdin, { jobId: j.jobId }) as BoardToMain);
             },
         }));
     },

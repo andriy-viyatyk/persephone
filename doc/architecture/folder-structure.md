@@ -998,7 +998,15 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── board-pipe-service.ts     # Main-side board pipe page/resource ownership and renderer range request correlation
 ├── board-pipe-range-reader.ts # Validates board-pipe ranges and reads bounded continuations for protocol and video-stream callers
 ├── board-file-access.ts     # Persisted/session file grants and authorization through shared path containment
-├── board-bridge.ts         # Per-board MessagePort bridge (manifest permissions enforced) — execute(), page-scoped call(), dialogs/readFile/writeFile, openRawLink/notify, theme push; busy-owner job retention (a busy board's jobs survive its unload, reaped on final teardown/page close/crash)
+├── board-bridge.ts         # Composition root for board ports, connection/retention owners, and RPC domains
+├── board-host/              # Main-side board host lifecycle and MessagePort collaborators
+│   ├── BoardHostService.ts  # Board mount/theme/port/frame lifecycle orchestration for IPC handlers
+│   ├── BoardFrameRegistry.ts # Mounted-frame identity and metadata used by dialogs, CDP and board pipes
+│   ├── BoardBridgeConnection.ts # Per-port watches, capability client, TypeScript projects, cursors, watchdog and disposal
+│   ├── BoardBridgeConnections.ts # Live connection index, host teardown, watch reservations and load reporting
+│   ├── BoardJobRetention.ts # Busy-owner job retention and per-sink/owner/host reaping
+│   └── rpc/                 # Typed RPC composition, dispatch/errors, and app/files/watch/services/capabilities/storage domains
+├── native-dialogs.ts       # Shared native open/save/folder dialog implementations used by IPC and board handlers
 ├── board-trust-service.ts # Main owner of trust mutations, refresh, current snapshots and subscriptions
 ├── module-service-supervisor.ts # Main orchestration for lazy utilityProcess services, derived-trust gating, requests, direct board channels, status, and teardown
 ├── module-service-record.ts # Per-service state and request/lease/channel records, generation checks, and utility-process cleanup
@@ -1060,7 +1068,7 @@ uses the same guard. Do not add a direct, unguarded `ipcMain` listener or handle
 │   ├── git-handlers.ts     # Lazy Git service Endpoint registrations
 │   ├── board-handlers.ts   # Lazy Board lifecycle, bridge, automation, and catalog Endpoint registrations
 │   ├── board-pipe-handlers.ts # Board-pipe page registration and renderer reply handlers
-│   ├── dialog-handlers.ts  # File dialog handlers — the single place all three native dialogs are opened (renderer app.fs and the board bridge both route here); wraps them in native-dialog tracking, resolves the starting folder, and records the pick
+│   ├── dialog-handlers.ts  # IPC endpoints for native file dialogs (dialog implementations live in main/native-dialogs.ts)
 │   ├── renderer-events.ts  # Events sent TO renderer
 │   └── window-handlers.ts  # Window management handlers
 └── renderer/               # Renderer process API

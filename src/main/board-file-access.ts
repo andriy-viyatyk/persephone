@@ -112,7 +112,9 @@ export class BoardFileAccessService {
 
     async requireDialogPermission(boardRoot: string): Promise<void> {
         const grant = await boardTrustService.getGrant(boardRoot);
-        if (!grant || grant.fileSystemMode() === false) throw BoardGrant.deny("fileSystem");
+        if (!grant || grant.fileSystemMode() === false) {
+            throw codedError("permission-denied", BoardGrant.deny("fileSystem").message);
+        }
     }
 
     async recordPickedPaths(boardRoot: string, values: string | string[] | undefined, folder: boolean): Promise<void> {

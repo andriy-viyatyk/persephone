@@ -12,7 +12,7 @@ import { electronStore } from "./e-store";
  * choice to the OS shell's own per-application history. Saving several files into one folder
  * then meant re-navigating there every time.
  *
- * Lives apart from `ipc/main/dialog-handlers` because the download handler sets a temporary
+ * Lives apart from `native-dialogs` because the download handler sets a temporary
  * path synchronously before opening its picker through the shared asynchronous dialog tracker.
  */
 

@@ -1,3 +1,15 @@
+## EPIC-147 — Refactoring Phase 4.3: the typed port RPC and the main board bridge split
+
+Completed 2026-11-11. Roadmap Phase 4.3: the board↔main port contract is typed and `src/main/board-bridge.ts` is split
+into single-job owners under `src/main/board-host/`. Plans by Codex Terra, reviewed against the roadmap guardrails;
+Codex Luna implemented. Epic document: [EPIC-147](EPIC-147.md).
+
+- [x] **Native dialogs, job retention and host service (US-1852).** Dialog helpers moved to `main/native-dialogs.ts`; `BoardJobRetention` owns job sinks and busy owners; `BoardHostService` owns the board host lifecycle endpoints.
+- [x] **Main `BoardFrameRegistry` (US-1853).** Board frame registrations moved out of `cdp-service`; the protocol service no longer imports CDP.
+- [x] **`BoardBridgeConnection` (US-1854).** One object per port with one `dispose()`; per-board `onBoardPort` in the renderer.
+- [x] **`BoardPortMethods` (US-1855).** Typed port contract, one correlator for `rpc` and `call`, declarative table permissions; gate denials carry `permission-denied`.
+- [x] **RPC handlers by domain (US-1856).** `board-host/rpc/` domain modules composed by a checked table; `board-bridge.ts` 1,233 → 140 lines.
+
 ## EPIC-146 — Refactoring Phase 4.1 and 4.2: the frame protocol and the board editor runtime split
 
 Completed 2026-11-11. Roadmap Phase 4.1 and 4.2: one direction-typed frame protocol between the board shim and the host

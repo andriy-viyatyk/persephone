@@ -4,6 +4,7 @@ import type { BoardSourceContext } from "../../shared/board-source-context";
 import type { RequestId } from "../../shared/pending-requests";
 import type { WireError } from "../../shared/wire-error";
 import type { IntentEnvelope } from "../capability-bus-channels";
+import type { BoardToMainEvents, MainToBoardEvents } from "./port-protocol";
 import type {
     BoardToolbarControlType,
     BoardToolbarControlDescriptor,
@@ -176,6 +177,18 @@ export function frameEvent<E extends keyof BoardToHostEvents>(
     name: E,
     payload: BoardToHostEvents[E],
 ): Extract<BoardToHostEnvelope, { __persephone: "evt"; name: E }>;
+export function frameEvent<E extends keyof BoardToMainEvents>(
+    name: E,
+    payload: BoardToMainEvents[E],
+): { __persephone: "evt"; name: E; payload: BoardToMainEvents[E] };
+export function frameEvent<E extends keyof MainToBoardEvents>(
+    name: E,
+    payload: MainToBoardEvents[E],
+): { __persephone: "evt"; name: E; payload: MainToBoardEvents[E] };
+export function frameEvent<Events extends Record<string, unknown>, E extends keyof Events & string>(
+    name: E,
+    payload: Events[E],
+): { __persephone: "evt"; name: E; payload: Events[E] };
 export function frameEvent(name: string, payload: unknown): FrameEventEnvelope;
 export function frameEvent(name: string, payload: unknown): FrameEventEnvelope { return { __persephone: "evt", name, payload }; }
 
@@ -186,17 +199,18 @@ export function readFrameEnvelope(data: unknown): FrameEnvelope | undefined {
     if (
         value.__persephone === "req" &&
         (typeof value.id === "string" || typeof value.id === "number") &&
-        typeof value.method === "string"
+        typeof value.method === "string" &&
+        Object.prototype.hasOwnProperty.call(value, "params")
     ) {
         return { __persephone: "req", id: value.id, method: value.method, params: value.params };
     }
     if (value.__persephone === "res" && (typeof value.id === "string" || typeof value.id === "number") && typeof value.ok === "boolean") {
-        if (value.ok === true) return { __persephone: "res", id: value.id, ok: true, value: value.value };
+        if (value.ok === true && Object.prototype.hasOwnProperty.call(value, "value")) return { __persephone: "res", id: value.id, ok: true, value: value.value };
         if (typeof value.error === "object" && value.error !== null) {
             return { __persephone: "res", id: value.id, ok: false, error: value.error as WireError };
         }
     }
-    if (value.__persephone === "evt" && typeof value.name === "string") {
+    if (value.__persephone === "evt" && typeof value.name === "string" && Object.prototype.hasOwnProperty.call(value, "payload")) {
         return { __persephone: "evt", name: value.name, payload: value.payload };
     }
     return undefined;

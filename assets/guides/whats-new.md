@@ -25,6 +25,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Board frame cleanup:** Requests fail immediately when board trust is removed, with an `untrusted`
   error. Reloading or changing grants clears that frame's toolbar, status, and mute contributions;
   pending AiVision calls end on reload. Closing a secondary view preserves the main view's items.
+- **Board bridge reliability:** Late messages or replies from a replaced board port are ignored,
+  stale folder cursors return `invalid-argument`, and service or dialog permission denials expose
+  the stable `permission-denied` code while keeping their existing messages.
 - **Settings help:** Hover over a **?** beside a setting or section, or focus it with Tab, to read
   its explanation. Press Escape to dismiss it. See [Settings](./screens/settings.md).
 

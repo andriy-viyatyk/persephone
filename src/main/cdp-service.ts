@@ -19,7 +19,7 @@
  *    session (the app UI) with no frame routing.
  */
 import { WebContents } from "electron";
-import { cancelBoardDialogs } from "./board-dialog-service";
+import { boardFrameRegistry, type BoardFrameRegistration } from "./board-host/BoardFrameRegistry";
 import {
     BrowserChannel,
     type CdpAttachOptions,
@@ -168,56 +168,6 @@ export function clearCdpTargetState(key: string): void {
     }
     targetStateKeys.delete(key);
     automationActivity.delete(key);
-}
-
-/**
- * Board frame registrations. Kept SEPARATE from the browser's
- * registrations: a board has no webContents of its own — it is a `board://<host>`
- * frame of the host window's webContents. We store the host wc + the board's
- * `board://` host, and lazily resolve (and cache) the board frame's flattened CDP
- * session so commands target the frame, not the host app. Keyed
- * `${boardEditorId}/${BOARD_CDP_TAB}`; set/cleared via the controller.
- */
-interface BoardReg {
-    /** The host window's webContents (the renderer that hosts the iframe). */
-    host: WebContents;
-    /** The board's `board://` URL host (a stable hash of the board root). */
-    boardHost: string;
-    /** The iframe document's `?v=` nonce (per-mount boardId). Disambiguates THIS tab's
-     *  frame from other tabs of the same board (same origin) and from the pre-reload
-     *  frame after a remount — origin alone is not unique. */
-    frameNonce?: string;
-    title?: string;
-    pageId?: string;
-    /** Cached flattened session for the board frame; cleared on reload/re-register. */
-    sessionId?: string;
-}
-const boardRegistrations = new Map<string, BoardReg>();
-
-export function resolveBoardDialogFrame(boardHost: string, frameNonce: string, view: string): { key: string; host: WebContents; title: string; pageId: string } | undefined {
-    const tab = view === "main" ? "main" : `board-secondary:${view}`;
-    const matches = [...boardRegistrations.entries()].filter(([key, registration]) =>
-        key.endsWith(`/${tab}`) && registration.boardHost === boardHost && registration.frameNonce === frameNonce && !registration.host.isDestroyed());
-    return matches.length === 1 ? { key: matches[0][0], host: matches[0][1].host, title: matches[0][1].title ?? "Board", pageId: matches[0][1].pageId ?? "" } : undefined;
-}
-
-export function registerBoardFrame(key: string, host: WebContents, boardHost: string, frameNonce?: string, title?: string, pageId?: string): void {
-    const previous = boardRegistrations.get(key);
-    if (previous && (previous.host !== host || previous.boardHost !== boardHost || previous.frameNonce !== frameNonce)) {
-        cancelBoardDialogs(key);
-    }
-    // Re-registration (e.g. a reload recreated the frame) invalidates the cached
-    // session — the OOPIF target id changes, so a stale session would be dead. The new
-    // `frameNonce` re-points resolution at the freshly-loaded frame.
-    boardRegistrations.set(key, { host, boardHost, frameNonce, title, pageId });
-}
-
-export function unregisterBoardFrame(key: string, frameNonce?: string): void {
-    const registration = boardRegistrations.get(key);
-    if (frameNonce !== undefined && registration?.frameNonce !== frameNonce) return;
-    cancelBoardDialogs(key);
-    boardRegistrations.delete(key);
-    clearCdpTargetState(key);
 }
 
 function ensureAttached(wc: WebContents): void {
@@ -439,7 +389,7 @@ async function armResponseWait(
     const requestedBytes = options.maxBodyBytes ?? 64 * 1024;
     if (typeof requestedBytes !== "number" || !Number.isFinite(requestedBytes) || requestedBytes < 0) throw new Error("maxBodyBytes must be a non-negative finite number.");
     const maxBodyBytes = Math.min(Math.floor(requestedBytes), 1024 * 1024);
-    const board = boardRegistrations.get(key);
+    const board = boardFrameRegistry.get(key);
     const wc = key === APP_WINDOW_CDP_KEY ? event.sender : board?.host ?? getWebContentsForPageEvents(key);
     if (!wc || wc.isDestroyed()) throw new Error("WebContents not found or destroyed");
     ensureAttached(wc);
@@ -590,7 +540,7 @@ async function ensureAiVisionBinding(
  * Mirrors the iframe-attach the snapshot code does, but at the host-wc level: find the
  * board frame among the host's CDP targets, then `attachToTarget({ flatten: true })`.
  */
-async function resolveBoardSession(reg: BoardReg): Promise<string | undefined> {
+async function resolveBoardSession(reg: BoardFrameRegistration): Promise<string | undefined> {
     if (reg.host.isDestroyed()) return undefined;
     ensureAttached(reg.host);
     if (reg.sessionId) return reg.sessionId;
@@ -748,7 +698,7 @@ async function pageEventsForSender(
         await enableDomain(event.sender, "Runtime");
         return state;
     }
-    const board = boardRegistrations.get(key);
+    const board = boardFrameRegistry.get(key);
     if (board) {
         let sessionId = await resolveBoardSession(board);
         if (!sessionId) throw new Error("Board frame not ready for CDP (still loading?)");
@@ -979,7 +929,7 @@ async function armNavigationWait(
  * frames. On a stale session (the frame reloaded) we re-resolve once.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function boardSend(reg: BoardReg, method: string, params: object | undefined, sessionId?: string): Promise<any> {
+async function boardSend(reg: BoardFrameRegistration, method: string, params: object | undefined, sessionId?: string): Promise<any> {
     if (reg.host.isDestroyed()) throw new Error("Board host window is gone");
     if (method === "Target.getTargets") return { targetInfos: [] };
 
@@ -1148,7 +1098,7 @@ export function initCdpHandlers(
     });
     guardedIpcHandle(BrowserChannel.armDragIntercept, async (event, key: string, sessionId?: string) => {
         const page = await pageEventsForSender(event, key);
-        if (boardRegistrations.has(key) && (page.sessionId || undefined) !== (sessionId || undefined)) {
+        if (boardFrameRegistry.has(key) && (page.sessionId || undefined) !== (sessionId || undefined)) {
             throw new Error("Drag interception session does not match the selected target.");
         }
         const token = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
@@ -1196,7 +1146,7 @@ export function initCdpHandlers(
                 return false;
             }
         }
-        const board = boardRegistrations.get(key);
+        const board = boardFrameRegistry.get(key);
         if (board) {
             if (board.host.isDestroyed()) return false;
             try {
@@ -1225,7 +1175,7 @@ export function initCdpHandlers(
             // never detach it — just leave it attached for the window's lifetime.
             return;
         }
-        const board = boardRegistrations.get(key);
+        const board = boardFrameRegistry.get(key);
         if (board) {
             // The host wc debugger is SHARED (other boards / future use); never detach
             // it for one board — just drop this board's cached frame session.
@@ -1264,7 +1214,7 @@ export function initCdpHandlers(
                 // frames inside the app) and their `f1-…` refs still resolve.
                 return wc.debugger.sendCommand(method, params, sessionId);
             }
-            const board = boardRegistrations.get(key);
+            const board = boardFrameRegistry.get(key);
             if (board) {
                 return boardSend(board, method, params, sessionId);
             }

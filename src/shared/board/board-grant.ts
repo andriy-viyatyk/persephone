@@ -36,6 +36,13 @@ export interface BoardGrantComparison {
 
 export type BoardGrantInput = BoardGrant | NormalizedBoardPermissions;
 
+export class BoardGrantDeniedError extends Error {
+    constructor(flag: string) {
+        super(`permission-denied: "${flag}" is not enabled in board-manifest.json`);
+        this.name = "Error";
+    }
+}
+
 const permissionRank: Record<string, number> = { false: 0, board: 1, internet: 1, full: 2 };
 
 function permissionJson(input: BoardGrantInput | undefined): string | undefined {
@@ -60,8 +67,8 @@ export class BoardGrant {
         return new BoardGrant(normalizePermissions(rawPermissions));
     }
 
-    static deny(flag: string): Error {
-        return new Error(`permission-denied: "${flag}" is not enabled in board-manifest.json`);
+    static deny(flag: string): BoardGrantDeniedError {
+        return new BoardGrantDeniedError(flag);
     }
 
     static same(a: BoardGrantInput | undefined, b: BoardGrantInput | undefined): boolean {

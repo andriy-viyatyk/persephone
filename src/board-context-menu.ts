@@ -1,10 +1,10 @@
-import type { BoardFireMethod, BoardOpenRawLinkOptions, BoardRpcMethod } from "./ipc/board-bridge/port-protocol";
+import type { BoardOpenRawLinkOptions, BoardRpcMethod, BoardPortParams, BoardPortResult, BoardToMainEvents } from "./ipc/board-bridge/port-protocol";
 import type { BoardHostTextId } from "./ipc/board-bridge/boot";
 import { errMessage } from "./shared/utils";
 
 export interface BoardContextMenuBridge {
-    fire(method: BoardFireMethod, args: unknown[]): void;
-    rpc(method: BoardRpcMethod, args: unknown[]): Promise<unknown>;
+    fire(method: "notify", payload: BoardToMainEvents["notify"]): void;
+    rpc<M extends BoardRpcMethod>(method: M, ...params: BoardPortParams<M>): Promise<BoardPortResult<M>>;
     hostText(id: BoardHostTextId, params?: { error?: string }): string;
 }
 
@@ -12,7 +12,7 @@ export interface BoardContextMenuBridge {
 /** Install Persephone's built-in board context menu. */
 export function installBoardContextMenu({ fire, rpc, hostText }: BoardContextMenuBridge): void {
     function requestOpenRawLink(href: string, options?: BoardOpenRawLinkOptions): Promise<void> {
-        const request = rpc("openRawLink", [href, options]) as Promise<void>;
+        const request = rpc("openRawLink", href, options);
         void request.catch(() => {});
         return request;
     }
@@ -66,7 +66,7 @@ export function installBoardContextMenu({ fire, rpc, hostText }: BoardContextMen
             }
             void requestOpenRawLink(href, { editor: "image-view" });
         } catch (e) {
-            fire("notify", [hostText("failedToOpenImage", { error: errMessage(e) }), "error"]);
+            fire("notify", { message: hostText("failedToOpenImage", { error: errMessage(e) }), type: "error" });
         }
     }
 
@@ -104,7 +104,7 @@ export function installBoardContextMenu({ fire, rpc, hostText }: BoardContextMen
             if (!blob) throw new Error("Could not encode the image.");
             await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
         } catch (e) {
-            fire("notify", [hostText("failedToCopyImage", { error: errMessage(e) }), "error"]);
+            fire("notify", { message: hostText("failedToCopyImage", { error: errMessage(e) }), type: "error" });
         }
     }
 
@@ -165,7 +165,7 @@ export function installBoardContextMenu({ fire, rpc, hostText }: BoardContextMen
                 }
             }
             if (!b64) throw new Error("Could not read the image.");
-            const path = (await rpc("saveFileDialog", [
+            const path = await rpc("saveFileDialog",
                 {
                     title: hostText("saveImageDialogTitle"),
                     defaultPath: suggestImageName(src, ext),
@@ -174,12 +174,12 @@ export function installBoardContextMenu({ fire, rpc, hostText }: BoardContextMen
                         { name: hostText("allFilesFileFilter"), extensions: ["*"] },
                     ],
                 },
-            ])) as string | undefined;
+            );
             if (!path) return; // cancelled
-            await rpc("writeFile", [path, b64, "base64"]);
-            fire("notify", [hostText("imageSaved"), "success"]);
+            await rpc("writeFile", path, b64, "base64");
+            fire("notify", { message: hostText("imageSaved"), type: "success" });
         } catch (e) {
-            fire("notify", [hostText("failedToSaveImage", { error: errMessage(e) }), "error"]);
+            fire("notify", { message: hostText("failedToSaveImage", { error: errMessage(e) }), type: "error" });
         }
     }
 
@@ -257,7 +257,7 @@ export function installBoardContextMenu({ fire, rpc, hostText }: BoardContextMen
             const text = await navigator.clipboard.readText();
             if (text) insertIntoEditable(el, text);
         } catch (e) {
-            fire("notify", [hostText("pasteFailed", { error: errMessage(e) }), "error"]);
+            fire("notify", { message: hostText("pasteFailed", { error: errMessage(e) }), type: "error" });
         }
     }
 

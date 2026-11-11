@@ -603,10 +603,10 @@ class ApiCalls implements Api {
     // Receive the per-board MessagePort delivered by main. Uses the ports-aware
     // preload listener (the typed event system drops `event.ports`). Returns an
     // unsubscribe fn.
-    onBoardPort = (cb: (boardId: string, port: MessagePort) => void): (() => void) => {
+    onBoardPort = (boardId: string, cb: (port: MessagePort) => void): (() => void) => {
         return window.electron.ipcRenderer.onPort(EventEndpoint.eBoardPort, (payload, ports) => {
-            const boardId = (payload as { boardId: string } | undefined)?.boardId;
-            if (boardId && ports[0]) cb(boardId, ports[0]);
+            const deliveredBoardId = (payload as { boardId: string } | undefined)?.boardId;
+            if (deliveredBoardId === boardId && ports[0]) cb(ports[0]);
         });
     };
 

@@ -8,7 +8,7 @@ import { app, clipboard, ClipboardItem, BrowserWindow, IpcMainEvent, nativeImage
 import { CaptureRect, CreateBoardShortcutRequest, Endpoint, EventEndpoint, McpStatus, MnemeStatus } from "../api-types";
 import { getAssetPath, getAppRootPath, getDataFolder } from "../../main/utils";
 import { getUiPreferences, setUiPreference } from "../../main/ui-preferences";
-import { showOpenFileDialog, showOpenFolderDialog, showSaveFileDialog } from "./dialog-handlers";
+import { showOpenFileDialog, showOpenFolderDialog, showSaveFileDialog } from "../../main/native-dialogs";
 import { getStartupInputs, windowReady } from "./window-handlers";
 import { DownloadEntry, OpenFileDialogParams, RecordingFinalizeRequest, RecordingRegion, RecordingSessionChunk, RuntimeVersions, SaveFileDialogParams, UpdateCheckResult, VideoStreamSessionConfig, VideoStreamSessionResult } from "../api-param-types";
 import { openWindows } from "../../main/open-windows";
