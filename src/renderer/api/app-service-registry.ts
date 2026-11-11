@@ -92,17 +92,9 @@ export const appServiceDescriptors = [
     }),
     defineService({
         key: "capabilities",
-        load: async (): Promise<IApp["capabilities"]> => (await import("./capabilities")).capabilities,
+        load: async (): Promise<IApp["capabilities"]> => (await import("./capabilities/CapabilitiesClient")).capabilities,
         initialize: async (): Promise<void> => {
-            const [{ registerCapabilityTransport }, { boardCapabilityTransport }] = await Promise.all([
-                import("./capability-bus"),
-                import("./board-capability-transport"),
-            ]);
-            registerCapabilityTransport(boardCapabilityTransport);
-            const { registerBoundOpenDispatch } = await import("./capabilities");
-            registerBoundOpenDispatch();
-            const { capabilityIndex } = await import("./capability-index");
-            await capabilityIndex.load();
+            await (await import("./capabilities/CapabilitiesClient")).capabilities.loadIndex();
         },
     }),
 ] as const satisfies readonly AppServiceDescriptorUnion[];

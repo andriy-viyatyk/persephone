@@ -374,7 +374,9 @@ not discover boards from the remote catalog.
 
 Discover and invoke capabilities supplied by Persephone or eligible Boards; see [Capabilities](../../agents/capabilities.md) for `app.capabilities.get`, providers and method kinds. Discovery is
 read-only and does not open a handler page. The new `get` method uses the same provider selection
-rules as Board `getCapability`; the legacy `invoke` wrapper retains its compatibility behavior. See
+rules as Board `getCapability`; it defaults to major version 1. An unpinned `invoke()` selects an
+eligible provider using `capabilities.preferredProviders` and can use any available major version.
+Pass `id@major` or `options.version` to pin it. See
 [Boards — capability handlers and in-memory intents](../../boards.md#capability-handlers-and-in-memory-intents)
 for the manifest and handler-side contract.
 
@@ -416,7 +418,7 @@ if (certificate) {
 |--------|---------|-------------|
 | `list()` | `readonly CapabilityInfo[]` | List all indexed platform and trusted-Board capability candidates. |
 | `handlers(id, filter?)` | `readonly CapabilityInfo[]` | List candidates for one id; `filter` may specify a MIME type with `{ mime }` or a content representation with `{ representation }`. |
-| `invoke(id, payload, options?)` | `Promise<unknown>` | Select and invoke a handler. Use `id@major` or `options.version` to pin a major version. |
+| `invoke(id, payload, options?)` | `Promise<unknown>` | Select and invoke an eligible handler. Without a version pin, provider preference and priority choose among available major versions; use `id@major` or `options.version` to pin one. |
 
 `invoke()` options are `version`, `filter: { mime, representation }`, `pageId`, `signal`, and `deadlineMs`.
 `pageId` preserves the originating page when an invocation is part of a page workflow;
@@ -427,9 +429,9 @@ capabilities normally return a page result; `diagram.edit` can instead return
 
 Failures reject with a typed capability error. Its `code` is one of `no-handler`, `untrusted`,
 `handler-closed`, `crashed`, `cancelled`, `timeout`, `cycle`, `payload-too-large`, `busy`, or
-`rejected`. A timeout rejects with `Capability invocation deadline elapsed.`. A timeout or
-cancellation stops waiting and sends a best-effort cancellation to the handler; it cannot stop work
-that the handler has already started.
+`rejected`. Error codes remain stable; limit errors use concise messages. A timeout or cancellation
+stops waiting and sends a best-effort cancellation to the handler; it cannot stop work that the
+handler has already started.
 
 ---
 

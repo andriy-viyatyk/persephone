@@ -143,8 +143,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 ├── api/                    # Object Model — application interfaces
 │   ├── app.ts              # Root App class (bootstrap orchestrator)
 │   ├── app-service-registry.ts # Descriptor table for lazy app services and optional initialization
-│   ├── capabilities.ts      # Built-in capability lookup and invocation (`app.capabilities`)
-│   ├── capability-index.ts  # MainSnapshotMirror for the capability registry index
+│   ├── capability-error.ts  # Shared renderer capability errors and normalization
+│   ├── capabilities/        # Script capability client, typed-RPC open server, handlers, validators, board dispatcher and index mirror
 │   ├── editor-categories.ts # EditorCategoriesModel; category setting and exclusive editor/board membership
 │   ├── creatable-items.ts   # Creatable-item registry for the Editors tree and new-page menu
 │   ├── ai-vision-call-timeout.ts # Session call-timeout setting owner
@@ -917,8 +917,12 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 ### Renderer registry and service modules
 
 The renderer API service table lives in `/src/renderer/api/app-service-registry.ts`; the root
-`App` class loads each descriptor and invokes its optional initializer. The built-in handoff
-surface is implemented by `/src/renderer/api/capabilities.ts` and typed by
+`App` class loads each descriptor and invokes its optional initializer. `app.capabilities` lives
+under `/src/renderer/api/capabilities/`: `CapabilitiesClient.ts` exposes the script API,
+`open-dispatch-server.ts` handles the typed main-to-renderer open RPC, and the sibling handler,
+validator, board-dispatcher and index-mirror modules own renderer-side work. Provider resolution,
+authorization, limits and invocation dispatch are owned by main's `CapabilityClient` and
+`CapabilityRouter`. The script contract is typed by
 `/src/renderer/api/types/capabilities.d.ts`.
 
 The content directory has three registry-facing modules: `registry.ts` owns provider and
@@ -934,8 +938,13 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ```
 /src/main/
 ├── main-setup.ts           # Application setup and window creation
+├── capability-client.ts    # Per-caller-owner capability list/get/invoke client
+├── capability-router.ts    # Main capability resolution, authorization, limits and dispatch
+├── capability-backend.ts   # Backend interface for capability method dispatch
+├── board-service-backend.ts # Board-service capability adapter
+├── audio-backend.ts        # Audio capability adapter
 ├── json-file-store.ts       # Validated JSON persistence with serialized atomic writes
-├── renderer-rpc.ts          # Typed main-to-renderer RPC client and request lifecycle
+├── renderer-rpc.ts          # Typed main-to-renderer RPC client, cancellation and request lifecycle
 ├── application-profile.ts  # Profile argument validation and main-process profile identity
 ├── windows-env.ts          # Windows env backfill — reconstructs missing standard folder/system vars (APPDATA, LOCALAPPDATA, ProgramFiles*, …) at startup so child processes get a full env even when the app was launched from a degraded shell; win32-only, backfill-only
 ├── open-window.ts          # Window creation, per-window voice-typing mode/shortcut/state routing, and captured-target text insertion

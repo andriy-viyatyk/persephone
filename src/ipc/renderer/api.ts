@@ -320,8 +320,7 @@ class ApiCalls implements Api {
     capabilityList = (asAgent?: boolean) => executeOnce<CapabilityClientResult<CapabilityProvider[]>>(Endpoint.capabilityList, asAgent);
     capabilityProviders = (id: string, asAgent?: boolean) => executeOnce<CapabilityClientResult<CapabilityProvider[]>>(Endpoint.capabilityProviders, id, asAgent);
     capabilityGet = (id: string, options?: CapabilityClientOptions) => executeOnce<CapabilityClientResult<CapabilityProvider | null>>(Endpoint.capabilityGet, id, options);
-    capabilityLegacyResolve = (id: string, options: { version?: number; filter?: CapabilityClientOptions["filter"] }) => executeOnce<CapabilityClientResult<import("../capability-bus-channels").CapabilityRegistration | null>>(Endpoint.capabilityLegacyResolve, id, options);
-    capabilityInvoke = (request: CapabilityClientInvoke) => executeOnce<CapabilityClientResult<CapabilityJson>>(Endpoint.capabilityInvoke, request);
+    capabilityInvoke = (request: CapabilityClientInvoke, context?: import("../capability-bus-channels").CapabilityInvokeContext) => executeOnce<CapabilityClientResult<CapabilityJson>>(Endpoint.capabilityInvoke, request, context);
     capabilityCancel = (requestId: string) => executeOnce<void>(Endpoint.capabilityCancel, requestId);
     getCapabilityIndex = async () => executeOnce<ReturnType<typeof import("../../main/capability-registry").capabilityRegistry.snapshot>>(Endpoint.getCapabilityIndex);
     setCapabilityPreferences = async (preferences: Record<string, string>) => executeOnce<void>(Endpoint.setCapabilityPreferences, preferences);

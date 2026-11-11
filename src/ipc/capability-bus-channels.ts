@@ -1,8 +1,4 @@
 import type { CapabilityErrorCode as ClientErrorCode, CapabilityMethod } from "../shared/capability-contract";
-import type { WireError } from "../shared/wire-error";
-
-export { MAX_INTENT_PAYLOAD_BYTES, MAX_INTENT_DEPTH, MAX_OUTSTANDING_INTENTS_PER_HANDLER } from "../shared/capability-limits";
-export { CAPABILITY_DEFAULT_TIMEOUT_MS as INTENT_DEADLINE_MS } from "../shared/capability-limits";
 
 export interface IntentEnvelope {
     id: string;
@@ -51,23 +47,16 @@ export interface BoundOpenDispatch {
     request: IntentRequest;
 }
 
-export interface BoundOpenSettlement {
-    requestId: string;
-    result?: unknown;
-    error?: WireError;
-}
-
-export interface CapabilityTransport {
-    /** Dispatch to a board handler; resolves when the board settles, rejects with a typed code. */
-    dispatch(registration: CapabilityRegistration, request: IntentRequest): Promise<unknown>;
-    /** Best-effort cancel for a request already dispatched. Never throws. */
-    cancel(registration: CapabilityRegistration, requestId: string): void;
-    /** The chain/depth currently in force for a page. A depth of 0 means idle. */
-    chainForPage(pageId: string | undefined): { chain: readonly string[]; depth: number };
-}
-
 export interface CapabilityKey { id: string; version: number; provider: string; handlerKey: string }
-export interface CapabilityClientOptions { version?: number; provider?: string; filter?: { mime?: string; representation?: string }; asAgent?: boolean }
+export interface CapabilityClientOptions {
+    version?: number;
+    provider?: string;
+    filter?: { mime?: string; representation?: string };
+    asAgent?: boolean;
+    /** Internal to app.capabilities.invoke: only open methods, any major unless version is given. */
+    forOpen?: boolean;
+}
+export interface CapabilityInvokeContext { parentRequestId?: string; deadlineMs?: number }
 export type CapabilityProvider = CapabilityKey & { name: string; origin: "board" | "platform"; title?: string; priority: number; accepts?: readonly string[]; representation?: string; methods: Readonly<Record<string, CapabilityMethod>> };
 export interface CapabilityClientInvoke { requestId: string; key: CapabilityKey; method: string; args: unknown[]; filter?: CapabilityClientOptions["filter"]; asAgent?: boolean }
 export type CapabilityClientResult<T> = { ok: true; value: T } | { ok: false; error: { code: ClientErrorCode; message: string } };

@@ -1,11 +1,11 @@
-import { api } from "../../ipc/renderer/api";
-import { EventEndpoint } from "../../ipc/api-types";
-import rendererEvents from "../../ipc/renderer/renderer-events";
-import { MainSnapshotMirror } from "../core/state/MainSnapshotMirror";
+import { api } from "../../../ipc/renderer/api";
+import { EventEndpoint } from "../../../ipc/api-types";
+import rendererEvents from "../../../ipc/renderer/renderer-events";
+import { MainSnapshotMirror } from "../../core/state/MainSnapshotMirror";
 
 export type CapabilityIndex = Awaited<ReturnType<typeof api.getCapabilityIndex>>;
 
-class CapabilityIndexMirror extends MainSnapshotMirror<CapabilityIndex | null> {
+export class CapabilityIndexMirror extends MainSnapshotMirror<CapabilityIndex | null> {
     constructor() { super(null); }
 
     protected fetch(): Promise<CapabilityIndex> { return api.getCapabilityIndex(); }
@@ -20,5 +20,3 @@ class CapabilityIndexMirror extends MainSnapshotMirror<CapabilityIndex | null> {
         return this.snapshot?.legacyRegistrations ?? [];
     }
 }
-
-export const capabilityIndex = new CapabilityIndexMirror();

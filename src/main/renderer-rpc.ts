@@ -10,6 +10,8 @@ import { guardedIpcOn } from "./ipc-sender-guard";
 import { onWebContentsGone } from "./webcontents-lifetime";
 
 const REQUEST_TIMEOUT_MS = 30_000;
+/** Pass when the caller owns the deadline and supplies a signal; undefined keeps the 30 s default. */
+export const RENDERER_REQUEST_NO_TIMEOUT = 0;
 export const RENDERER_REQUEST_TIMEOUT_MESSAGE = "Request timeout";
 
 export type RendererRpcTarget = { windowIndex?: number } | { webContents: WebContents };
@@ -37,6 +39,12 @@ function ensureReplyListener(): void {
     });
 }
 
+function sendCancel(webContents: WebContents, id: string): void {
+    try {
+        if (!webContents.isDestroyed()) webContents.send(RendererRpcChannel.cancel, id);
+    } catch { /* Renderer exited. */ }
+}
+
 function trackWebContents(webContents: WebContents): void {
     const id = webContents.id;
     if (webContentsDisposers.has(id)) return;
@@ -53,9 +61,14 @@ function trackWebContents(webContents: WebContents): void {
 
 export function hasRecentRendererRequest(windowMs = 5000): boolean {
     const now = Date.now();
-    return pendingRequests.some((meta) => now - meta.startedAt <= windowMs);
+    return pendingRequests.some((meta) => meta.method !== "capabilityOpen" && now - meta.startedAt <= windowMs);
 }
 
+/**
+ * `signal` aborts the request locally and tells the renderer handler to stop.
+ * `timeoutMs` defaults to 30 seconds; pass RENDERER_REQUEST_NO_TIMEOUT when the caller owns the
+ * deadline and supplies a signal.
+ */
 export async function requestRenderer<M extends RendererRpcMethod>(
     method: M,
     params: RendererRpcMethods[M]["params"],
@@ -98,7 +111,9 @@ export async function requestRenderer<M extends RendererRpcMethod>(
         pendingRequests.fail(id, sendError);
         throw sendError;
     }
-    const reply = await promise;
+    let reply: RendererRpcReply;
+    try { reply = await promise; }
+    catch (error: unknown) { sendCancel(webContents, id); throw error; }
     if (reply.ok === false) throw fromWireError(reply.error);
     return reply.result as RendererRpcMethods[M]["result"];
 }

@@ -1,4 +1,4 @@
-import type { CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientResult, CapabilityProvider } from "./capability-bus-channels";
+import type { CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientResult, CapabilityInvokeContext, CapabilityProvider } from "./capability-bus-channels";
 import type { CapabilityJson } from "../shared/capability-contract";
 import type { WireError } from "../shared/wire-error";
 import { PageDragData, PageDescriptor, WindowPages } from "../shared/types";
@@ -106,7 +106,6 @@ export enum Endpoint {
     capabilityList = "capabilityList",
     capabilityProviders = "capabilityProviders",
     capabilityGet = "capabilityGet",
-    capabilityLegacyResolve = "capabilityLegacyResolve",
     capabilityInvoke = "capabilityInvoke",
     capabilityCancel = "capabilityCancel",
     setCapabilityPreferences = "setCapabilityPreferences",
@@ -369,9 +368,8 @@ export type Api = {
     [Endpoint.setMainScriptsEnabled]: (enabled: boolean) => Promise<void>;
     [Endpoint.capabilityList]: (asAgent?: boolean) => Promise<CapabilityClientResult<CapabilityProvider[]>>;
     [Endpoint.capabilityProviders]: (id: string, asAgent?: boolean) => Promise<CapabilityClientResult<CapabilityProvider[]>>;
-    [Endpoint.capabilityLegacyResolve]: (id: string, options: { version?: number; filter?: CapabilityClientOptions["filter"] }) => Promise<CapabilityClientResult<import("./capability-bus-channels").CapabilityRegistration | null>>;
     [Endpoint.capabilityGet]: (id: string, options?: CapabilityClientOptions) => Promise<CapabilityClientResult<CapabilityProvider | null>>;
-    [Endpoint.capabilityInvoke]: (request: CapabilityClientInvoke) => Promise<CapabilityClientResult<CapabilityJson>>;
+    [Endpoint.capabilityInvoke]: (request: CapabilityClientInvoke, context?: CapabilityInvokeContext) => Promise<CapabilityClientResult<CapabilityJson>>;
     [Endpoint.capabilityCancel]: (requestId: string) => Promise<void>;
     [Endpoint.getCapabilityIndex]: () => Promise<ReturnType<typeof import("../main/capability-registry").capabilityRegistry.snapshot>>;
     [Endpoint.setCapabilityPreferences]: (preferences: Record<string, string>) => Promise<void>;
@@ -560,9 +558,6 @@ export enum EventEndpoint {
     eBoardSnapshotChanged = "eBoardSnapshotChanged",
     eCapabilityIndexSnapshot = "eCapabilityIndexSnapshot",
     eCapabilityIndexChanged = "eCapabilityIndexChanged",
-    eCapabilityOpen = "eCapabilityOpen",
-    eCapabilityOpenCancel = "eCapabilityOpenCancel",
-    eCapabilityOpenResult = "eCapabilityOpenResult",
     eSiteExtensionTrustChanged = "eSiteExtensionTrustChanged",
     ePathWatchBatch = "ePathWatchBatch",
     eVoiceTypingShortcut = "eVoiceTypingShortcut",

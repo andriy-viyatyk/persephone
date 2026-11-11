@@ -1,3 +1,15 @@
+## EPIC-145 — Refactoring Phase 3.4: one capability pipeline
+
+Completed 2026-11-11. Roadmap Phase 3.4: every capability invocation goes caller → `CapabilityClient` →
+`CapabilityRouter` → `CapabilityBackend` in main; the renderer keeps no limit code. Plans were written by Sonnet
+subagents and reviewed against the roadmap guardrails; Codex implemented. Epic document: [EPIC-145](EPIC-145.md).
+
+- [x] **RPC cancellation and capability open (US-1839).** The typed main→renderer RPC sends a cancel and gives handlers an `AbortSignal`, with a no-timeout mode; capability open is the `capabilityOpen` RPC method, so `eCapabilityOpen*` and `BoundOpenSettlement` are gone; one `PLATFORM_PAYLOAD_VALIDATORS` map.
+- [x] **`CapabilityClient` (US-1840).** `main/capability-client.ts` is the one front door (validation, duplicate ids, owner-death abort, error mapping) for the window IPC, the host channel, board pages and board services; `capabilityResult` left `ipc/main/`.
+- [x] **`CapabilityBackend` (US-1841).** Audio and board-service backends register in `main-setup.ts`; the router has no `mainOwnedAudio` branch and no dynamic import; the audio declarations live in `shared/platform-capabilities.ts`.
+- [x] **Invoke through main (US-1842).** `app.capabilities.invoke()` resolves with `capabilityGet` and invokes through main; `capability-bus.ts` and `capabilityLegacyResolve` are gone; window platform opens keep no size or outstanding cap; one renderer `toCapabilityError`.
+- [x] **Capabilities split (US-1843).** `api/capabilities/` holds the client, the lazy built-in open handlers, the open RPC server, the index mirror, the validators and `BoardCapabilityDispatcher`, which owns its own state; an ESLint zone keeps `ui/` out.
+
 ## EPIC-144 — Refactoring Phase 3.2, 3.3 and 3.5: the renderer board registry, board lifecycle and the board editor factory
 
 Completed 2026-11-11. Roadmap Phase 3.2, 3.3 and 3.5: one renderer owner of board state fed by one main snapshot, one

@@ -1,4 +1,4 @@
-import { CapabilityError } from "./capability-bus";
+import { CapabilityError } from "./capability-error";
 import { errMessage } from "../../shared/utils";
 import { t } from "../../shared/i18n/t";
 import type { CapabilityPageResult } from "./types/capabilities";

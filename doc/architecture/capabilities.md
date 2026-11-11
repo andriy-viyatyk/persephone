@@ -15,14 +15,21 @@ pipeline, but `ILinkData.target` does not name a capability.
 | Owner | Responsibility |
 | --- | --- |
 | [`src/main/capability-registry.ts`](../../src/main/capability-registry.ts) | Main-process platform and board provider index, snapshots and revision notifications. |
-| [`src/main/capability-router.ts`](../../src/main/capability-router.ts) | Caller visibility, resolution, provider binding, reauthorization and dispatch for `call`, board-service `channel`, platform `audio@1` channels and `open`. |
+| [`src/main/capability-client.ts`](../../src/main/capability-client.ts) | Per-owner list/get/invoke front door, request validation, duplicate-id tracking, cancellation and error mapping. |
+| [`src/main/capability-router.ts`](../../src/main/capability-router.ts) | Caller visibility, resolution, provider binding, reauthorization, limits and dispatch for `call`, `channel` and `open`. |
+| [`src/main/capability-backend.ts`](../../src/main/capability-backend.ts), [`board-service-backend.ts`](../../src/main/board-service-backend.ts) and [`audio-backend.ts`](../../src/main/audio-backend.ts) | Router backend contract and adapters for board services and audio. |
 | [`src/shared/service-channel.ts`](../../src/shared/service-channel.ts) and [`src/shared/service-channel-node.ts`](../../src/shared/service-channel-node.ts) | The one windowed-ack channel; host mirror in `assets/module-service-host.mjs`, checked by `check:contracts`. |
 | [`src/shared/capability-contract.ts`](../../src/shared/capability-contract.ts) and [`capability-limits.ts`](../../src/shared/capability-limits.ts) | Declaration normalization, legacy projection, shared method types and limits. |
 | [`src/shared/capability-client.ts`](../../src/shared/capability-client.ts) | Builds named-method proxies for clients. |
 | [`src/shared/platform-capabilities.ts`](../../src/shared/platform-capabilities.ts) | Metadata for platform providers backed by editor handlers. |
-| [`src/renderer/api/capabilities.ts`](../../src/renderer/api/capabilities.ts) | `app.capabilities` client, built-in open dispatch, and legacy renderer projection. |
+| [`src/renderer/api/capabilities/CapabilitiesClient.ts`](../../src/renderer/api/capabilities/CapabilitiesClient.ts) | `app.capabilities` client and legacy script result projection; invocation itself resolves and runs through main. |
+| [`src/renderer/api/capabilities/open-dispatch-server.ts`](../../src/renderer/api/capabilities/open-dispatch-server.ts), [`builtin-open-handlers.ts`](../../src/renderer/api/capabilities/builtin-open-handlers.ts) and [`platform-payload-validators.ts`](../../src/renderer/api/capabilities/platform-payload-validators.ts) | Typed-RPC open handler, lazily built editor handlers and platform payload validation. |
+| [`src/renderer/api/capabilities/BoardCapabilityDispatcher.ts`](../../src/renderer/api/capabilities/BoardCapabilityDispatcher.ts) | Renderer-owned board frame registration, intent reservations and FIFO dispatch. |
+| [`src/renderer/api/capabilities/capability-index.ts`](../../src/renderer/api/capabilities/capability-index.ts) | Renderer mirror of the main capability index. |
+| [`src/renderer/api/capability-error.ts`](../../src/renderer/api/capability-error.ts) | Renderer capability error normalization and user-facing error type. |
 | [`src/renderer/scripting/ai-vision/namespaces/capabilities.ts`](../../src/renderer/scripting/ai-vision/namespaces/capabilities.ts) | Agent discovery tree and named method calls. |
-| [`src/renderer/api/board-capability-transport.ts`](../../src/renderer/api/board-capability-transport.ts) | Legacy board intent delivery and lifecycle for renderer compatibility calls. |
+| [`src/ipc/renderer-rpc.ts`](../../src/ipc/renderer-rpc.ts), [`src/main/renderer-rpc.ts`](../../src/main/renderer-rpc.ts) and [`src/renderer/api/renderer-rpc.ts`](../../src/renderer/api/renderer-rpc.ts) | Typed main-to-renderer RPC, including capability-open cancellation and caller-owned no-timeout requests. |
+| [`src/ipc/capability-bus-channels.ts`](../../src/ipc/capability-bus-channels.ts) | Shared capability request, outcome and intent types used at IPC and board-frame boundaries. |
 | [`src/main/audio-service.ts`](../../src/main/audio-service.ts) and [`src/renderer/audio/audio-window.ts`](../../src/renderer/audio/audio-window.ts) | Main-owned `audio@1` channel lifecycle and the isolated hidden renderer that owns shared capture/playback resources. |
 | [`src/main/permission-policy-service.ts`](../../src/main/permission-policy-service.ts) | Frame-bound one-shot grants for hidden audio-window microphone and Windows loopback capture, separate from Transcript grants. |
 
@@ -67,7 +74,10 @@ Discovery is caller-scoped. A board page or service sees providers allowed by th
 only methods marked `agent: true`. Resolution matches the requested id and major version (default
 1), then optional MIME and representation filters. An explicit provider option pins a visible
 provider. Otherwise a saved provider preference is used when it remains eligible, then candidates
-sort by descending priority with platform winning an equal-priority tie.
+sort by descending priority with platform winning an equal-priority tie. The legacy
+`app.capabilities.invoke()` and board `persephone.capabilities.invoke()` wrappers may omit a major
+version; in that case they resolve any eligible major version using the same preference and
+ordering rules.
 
 `getCapability()` returns a proxy bound to the selected provider key. The key is looked up again
 in the current registry when a request arrives; main rechecks that the provider still exists, the
@@ -82,6 +92,33 @@ chosen by the board author and may be shared by multiple trusted boards. Provide
 authorize a caller by this id alone; use the authenticated capability grants and any provider-owned
 approval policy.
 
+## One invocation pipeline
+
+Every invocation enters main through a `CapabilityClient` owned by its caller: a window client is
+shared by platform IPC and board-host service-channel requests, a board page has a client bound to
+its frame, and each board service has its own client. The client validates request shape and ids,
+rejects duplicate active ids per owner, tracks cancellation and owner lifetime, and maps failures
+to the shared capability error codes. It then binds the requested provider through
+`CapabilityRouter`; the router rechecks current registration and authorization, applies the shared
+limits and cycle checks, and dispatches to a backend or renderer open handler.
+
+```text
+renderer / board / service caller
+  -> CapabilityClient
+  -> CapabilityRouter
+  -> CapabilityBackend (board-service | audio)
+                         or typed renderer RPC (open)
+```
+
+The router has no audio or service-supervisor special cases. `BoardServiceBackend` adapts service
+calls/channels, while `AudioBackend` adapts the audio service. For `open`, main sends a typed
+`capabilityOpen` RPC to the renderer selected for the caller. The renderer's
+`open-dispatch-server.ts` validates platform payloads and dispatches to a built-in editor handler
+or `BoardCapabilityDispatcher`. The RPC propagates cancellation to the renderer; its request has no
+second timeout because the router owns the deadline (`RENDERER_REQUEST_NO_TIMEOUT`). The renderer
+RPC's dedicated cancel channel replaces the former `eCapabilityOpen`, `eCapabilityOpenCancel` and
+`eCapabilityOpenResult` event sequence and its `BoundOpenSettlement` type.
+
 ## Method routing
 
 The main router sends each method kind to its owner:
@@ -90,7 +127,7 @@ The main router sends each method kind to its owner:
 | --- | --- | --- |
 | `call` | Main authorizes and sends a JSON request to the provider's board service through the module-service supervisor, or dispatches platform-owned audio device enumeration to the audio window. | JSON result from the provider. |
 | `channel` | Main opens a provider service channel or dispatches the platform-owned `audio@1` channel to its hidden audio window, then returns a bounded message channel to the caller. | Channel with ordered messages, acknowledgement-based backpressure and close reasons. |
-| `open` | Main authorizes and dispatches through the selected renderer, which runs a platform handler or sends a transient intent to the board page. | JSON result, optionally paired with the opened page id for agent calls. |
+| `open` | Main authorizes and sends a typed RPC to the selected renderer, which runs a platform handler or uses `BoardCapabilityDispatcher` to send a transient intent to the board page. | JSON result, optionally paired with the opened page id for agent calls. |
 
 Calls and channel setup inherit caller identity, cancellation, deadlines and request ancestry. A
 board service may call another provider only when its own `uses` grant permits that id/version.
@@ -164,10 +201,10 @@ cancellation remains the browser constraint for captures without that request. A
 timing has not been measured.
 
 For `open`, main binds the selected registration and sends the request to the renderer selected for
-the caller. The renderer validates platform-owned payloads where required and either invokes a
-built-in editor handler or passes a transient `IntentEnvelope` to
-[`board-capability-transport.ts`](../../src/renderer/api/board-capability-transport.ts). The
-transport opens a board in the caller's window or reuses a page for the same board root. A
+the caller through the typed renderer RPC. The renderer validates platform-owned payloads where
+required and either invokes a lazily constructed built-in editor handler or passes a transient
+`IntentEnvelope` to [`BoardCapabilityDispatcher`](../../src/renderer/api/capabilities/BoardCapabilityDispatcher.ts).
+The dispatcher opens a board in the caller's window or reuses a page for the same board root. A
 declaration with `alwaysOpensNewPage` always creates a fresh page. Routes to a page are reserved in
 FIFO order; only the head is sent, after the initial host handshake and frame readiness. The
 active request context is removed before the next one starts, so the frame handles one intent at a
@@ -182,11 +219,10 @@ message channel. `discardPage` is separate from the opaque result and discards o
 for that request. A late or duplicate settlement cannot settle a later request.
 
 ```text
-board page ─┐                       ┌─ call ──────> board service
-board service ── getCapability() ──> main registry/router ─ channel ─> board service
-app.capabilities ─┘                       │
-                                          └─ open ─> renderer ─> platform handler or board intent
-MCP call ─ capabilities["<id>"] ─> same authorized provider/method routing
+board / app / agent caller
+  -> owner CapabilityClient -> CapabilityRouter
+                              -> CapabilityBackend (call / channel)
+                              -> typed renderer RPC (open -> platform handler or board intent)
 ```
 
 ## Deadlines, cancellation, limits and errors
@@ -216,24 +252,28 @@ specific validation message before provider dispatch.
 
 Legacy APIs remain compatibility projections, not the unified provider API:
 
-- Board `persephone.capabilities.list()` and `invoke()` retain the legacy discovery shape and
-  renderer intent transport. Legacy invocation is trust-gated; it does not acquire the new
+- Board `persephone.capabilities.list()` and `invoke()` retain the legacy discovery and result
+  shapes. Invocation still crosses the main pipeline and is trust-gated; it does not acquire the new
   `getCapability()` caller-`uses` authorization semantics. `list()` now reads the main unified
   index and filters providers according to the board caller's grant.
 - Script `app.capabilities.list()` and `handlers(id)` remain synchronous legacy projections of
-  the main index. `app.capabilities.invoke()` keeps the legacy call signature and projects a board
+  the main index. `app.capabilities.invoke()` keeps the legacy call signature, resolves through
+  main, and projects a board
   outcome: a handler result without a page is returned raw; with a page id it adds `pageId` to an
   object result or returns `{ pageId }` for primitive, array or absent results. The board client
   preserves its legacy top-level `{ pageId, result }` outcome shape.
+  When no major version is pinned, this wrapper honors the eligible `capabilities.preferredProviders`
+  setting and may select any major version.
 - Legacy `persephone.services.list()` and `connect()` continue to expose their v1 service
   interfaces and streaming channels. Their discovery and wire protocol are not replaced by named
   capability methods; they continue to be governed by service trust and the v1 service contract.
 
-The old renderer modules `capability-bus.ts`, `board-capability-transport.ts` and
-`capability-bus-channels.ts` remain for compatibility wrappers and their legacy wire transport.
-Unified method lookup, caller authorization and dispatch are main-owned. Do not use the legacy
-handler index or its result projection as the contract for `getCapability()` proxies or agent
-calls.
+The former renderer `CapabilityBus` and `registerCapabilityTransport` injection are removed: the
+renderer no longer owns capability deadlines, payload limits, outstanding-call counters or cycle
+checks. `capability-bus-channels.ts` remains a shared type module for capability requests, outcomes
+and board intents; it is not a second invocation pipeline. Legacy wrappers are projections over the
+main-owned registry and router. Do not use their result projection as the contract for
+`getCapability()` proxies or agent calls.
 
 ## Well-known capability: `certificate.view`
 

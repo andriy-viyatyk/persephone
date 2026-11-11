@@ -1,7 +1,4 @@
-import { CAPABILITY_ERROR_CODES } from "../../shared/capability-constants";
-import type { CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientResult } from "../capability-bus-channels";
-import type { CapabilityErrorCode, CapabilityJson } from "../../shared/capability-contract";
-import { errMessage } from "../../shared/utils";
+import type { CapabilityClientInvoke, CapabilityClientOptions, CapabilityClientResult, CapabilityInvokeContext } from "../capability-bus-channels";
 import { BoardGrant } from "../../shared/board/board-grant";
 import { applicationProfileName } from "../../main/application-profile";
 import { t } from "../../shared/i18n/t";
@@ -19,12 +16,12 @@ import { WindowPages, PageDragData } from "../../shared/types";
 import { dragModel } from "../../main/drag-model";
 import { fileIconCache } from "../../main/fileIconCache";
 import { versionService } from "../../main/version-service";
-import { onWebContentsGone } from "../../main/webcontents-lifetime";
 import * as browserRegistration from "../../main/browser-registration";
 import { downloadService } from "../../main/download-service";
 import { setMainScriptsEnabled } from "../../main/mcp/ai-vision/main-script-gate";
 import { capabilityRegistry } from "../../main/capability-registry";
-import { capabilityRouter, publicCapabilityProvider } from "../../main/capability-router";
+import { capabilityRouter } from "../../main/capability-router";
+import { capabilityClientForWindow, capabilityResult, type CapabilityClient } from "../../main/capability-client";
 import { setWindowsSsoEnabled } from "../../main/windows-sso";
 import { startMcpHttpServer, stopMcpHttpServer, isMcpHttpServerRunning, getMcpUrl, getMcpClientCount } from "../../main/mcp-http-server";
 import { getPrivateMcpClientCount } from "../../main/mcp/private-session-endpoints";
@@ -75,73 +72,24 @@ import type { PathWatchEndpoint } from "./path-watch-handlers";
 
 let siteExtensionRuntime: string | null = null;
 
-const clientErrorCodes = new Set<CapabilityErrorCode>(CAPABILITY_ERROR_CODES);
-export const activeCapabilityRequests = new WeakMap<Electron.WebContents, Map<string, AbortController>>();
-
 function checkCapabilitySender(event: IpcMainEvent): void {
     if (event.senderFrame !== event.sender.mainFrame || !openWindows.findByWindow(BrowserWindow.fromWebContents(event.sender)!)) {
         throw Object.assign(new Error("Permission denied."), { code: "permission-denied" });
     }
 }
 
-export async function capabilityResult<T>(operation: () => T | Promise<T>): Promise<CapabilityClientResult<T>> {
-    try { return { ok: true, value: await operation() }; }
-    catch (error) {
-        const code = (error as { code?: unknown })?.code;
-        return { ok: false, error: { code: typeof code === "string" && clientErrorCodes.has(code as CapabilityErrorCode) ? code as CapabilityErrorCode : "rejected", message: errMessage(error) } };
-    }
+async function withWindowClient<T>(event: IpcMainEvent, use: (client: CapabilityClient) => Promise<CapabilityClientResult<T>>): Promise<CapabilityClientResult<T>> {
+    const admitted = await capabilityResult(() => checkCapabilitySender(event));
+    if ("error" in admitted) return admitted;
+    return use(capabilityClientForWindow(event.sender));
 }
 
 class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint | SiteExtensionEndpoint | PathWatchEndpoint> {
-    capabilityList = async (event: IpcMainEvent, asAgent?: boolean) => capabilityResult(() => {
-        checkCapabilitySender(event);
-        return capabilityRouter.list(asAgent ? { kind: "agent" } : { kind: "platform" }).map(publicCapabilityProvider);
-    });
-    capabilityProviders = async (event: IpcMainEvent, id: string, asAgent?: boolean) => capabilityResult(() => {
-        checkCapabilitySender(event);
-        return capabilityRouter.providers(asAgent ? { kind: "agent" } : { kind: "platform" }, id).map(publicCapabilityProvider);
-    });
-    capabilityGet = async (event: IpcMainEvent, id: string, options?: CapabilityClientOptions) => capabilityResult(() => {
-        checkCapabilitySender(event);
-        const bound = capabilityRouter.resolve(options?.asAgent ? { kind: "agent" } : { kind: "platform" }, id, options);
-        return bound ? publicCapabilityProvider(bound.registration) : null;
-    });
-    capabilityLegacyResolve = async (event: IpcMainEvent, id: string, options: { version?: number; filter?: CapabilityClientOptions["filter"] }) => capabilityResult(() => {
-        checkCapabilitySender(event);
-        return capabilityRouter.resolveLegacy(id, options);
-    });
-    capabilityInvoke = async (event: IpcMainEvent, request: CapabilityClientInvoke): Promise<CapabilityClientResult<CapabilityJson>> => capabilityResult(async () => {
-        checkCapabilitySender(event);
-        if (!request || typeof request.requestId !== "string" || !request.requestId || request.requestId.length > 256 || typeof request.method !== "string" || !Array.isArray(request.args)) {
-            throw Object.assign(new Error("Invalid capability request."), { code: "rejected" });
-        }
-        let active = activeCapabilityRequests.get(event.sender);
-        if (!active) { active = new Map(); activeCapabilityRequests.set(event.sender, active); }
-        if (active.has(request.requestId)) throw Object.assign(new Error("Duplicate capability request id."), { code: "rejected" });
-        const bound = capabilityRouter.bindKey(request.asAgent ? { kind: "agent" } : { kind: "platform" }, request.key, request.filter);
-        if (!bound || !bound.registration.methods[request.method] || bound.registration.methods[request.method].kind === "channel") {
-            throw Object.assign(new Error("Capability handler unavailable."), { code: "no-handler" });
-        }
-        const controller = new AbortController();
-        active.set(request.requestId, controller);
-        const closed = () => controller.abort();
-        const stop = onWebContentsGone(event.sender, closed);
-        try {
-            const invocation = capabilityRouter.createInvocationContext(bound, { signal: controller.signal, owner: event.sender, target: event.sender });
-            try {
-                return await capabilityRouter.invoke(bound, request.method, request.args, { invocation, target: event.sender }) as CapabilityJson;
-            } finally {
-                invocation.dispose();
-            }
-        } finally {
-            active.delete(request.requestId);
-            stop();
-        }
-    });
-    capabilityCancel = async (event: IpcMainEvent, requestId: string): Promise<void> => {
-        checkCapabilitySender(event);
-        if (typeof requestId === "string") activeCapabilityRequests.get(event.sender)?.get(requestId)?.abort();
-    };
+    capabilityList = (event: IpcMainEvent, asAgent?: boolean) => withWindowClient(event, (client) => client.list(asAgent));
+    capabilityProviders = (event: IpcMainEvent, id: string, asAgent?: boolean) => withWindowClient(event, (client) => client.providers(id, asAgent));
+    capabilityGet = (event: IpcMainEvent, id: string, options?: CapabilityClientOptions) => withWindowClient(event, (client) => client.get(id, options));
+    capabilityInvoke = (event: IpcMainEvent, request: CapabilityClientInvoke, context?: CapabilityInvokeContext) => withWindowClient(event, (client) => client.invoke(request, { methods: "value", ...(context ? { context } : {}) }));
+    capabilityCancel = async (event: IpcMainEvent, requestId: string): Promise<void> => { checkCapabilitySender(event); capabilityClientForWindow(event.sender).cancel(requestId); };
 
     getCapabilityIndex = async (event: IpcMainEvent) => {
         if (event.senderFrame !== event.sender.mainFrame || !openWindows.findByWindow(BrowserWindow.fromWebContents(event.sender)!)) throw new Error("permission-denied");
@@ -859,7 +807,6 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.capabilityGet, controllerInstance.capabilityGet);
     bindEndpoint(Endpoint.capabilityInvoke, controllerInstance.capabilityInvoke);
     bindEndpoint(Endpoint.capabilityCancel, controllerInstance.capabilityCancel);
-    bindEndpoint(Endpoint.capabilityLegacyResolve, controllerInstance.capabilityLegacyResolve);
     bindEndpoint(Endpoint.getCapabilityIndex, controllerInstance.getCapabilityIndex);
     bindEndpoint(Endpoint.setCapabilityPreferences, controllerInstance.setCapabilityPreferences);
     bindEndpoint(Endpoint.setWindowsSsoEnabled, controllerInstance.setWindowsSsoEnabled);

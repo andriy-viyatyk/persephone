@@ -1,26 +1,24 @@
-import { PLATFORM_AUDIO_CAPABILITY_ID, isCapabilityErrorCode } from "../shared/capability-constants";
+import { isCapabilityErrorCode } from "../shared/capability-constants";
 import { capabilityRegistry, type CapabilityRegistration } from "./capability-registry";
 import { randomUUID } from "node:crypto";
 import { MAX_INTENT_DEPTH, MAX_INTENT_PAYLOAD_BYTES, MAX_OUTSTANDING_INTENTS_PER_HANDLER } from "../shared/capability-limits";
 import type { CapabilityCallerIdentity, CapabilityJson } from "../shared/capability-contract";
-import type { CapabilityInvocationWireContext } from "../ipc/module-service-channels";
 import { errMessage } from "../shared/utils";
-import type { ServiceChannel } from "../shared/service-channel";
 import type { WebContents } from "electron";
 import type { ChannelDelivery } from "./channel-delivery";
 import { app, BrowserWindow } from "electron";
-import { guardedIpcOn } from "./ipc-sender-guard";
 import { openWindows } from "./open-windows";
-import { EventEndpoint } from "../ipc/api-types";
-import type { BoundOpenDispatch, BoundOpenSettlement, CapabilityOutcome, CapabilityKey, CapabilityProvider } from "../ipc/capability-bus-channels";
+import type { BoundOpenDispatch, CapabilityOutcome, CapabilityKey, CapabilityProvider } from "../ipc/capability-bus-channels";
 import { BoardRoot } from "../shared/board/board-root";
 import { boardRootDigest } from "./board-root-hashes";
-import { codedError } from "../shared/coded-error";
+import { codedError, isCoded } from "../shared/coded-error";
 import { onWebContentsGone } from "./webcontents-lifetime";
-import { PendingRequests } from "../shared/pending-requests";
+import { requestRenderer, RENDERER_REQUEST_NO_TIMEOUT } from "./renderer-rpc";
+import type { CapabilityBackend, OpenedCapabilityChannel } from "./capability-backend";
+import type { CapabilityBackendKind } from "../shared/platform-capabilities";
 
 export type CapabilityCaller = { kind: "platform" | "agent" } | { kind: "board-page" | "board-service"; provider: string };
-export interface CapabilityOptions { version?: number; provider?: string; filter?: { mime?: string; representation?: string } }
+export interface CapabilityOptions { version?: number; provider?: string; filter?: { mime?: string; representation?: string }; forOpen?: boolean }
 export interface BoundCapability { caller: CapabilityCaller; registration: CapabilityRegistration; filter?: CapabilityOptions["filter"] }
 export interface CapabilityCallContext {
     signal?: AbortSignal;
@@ -30,6 +28,7 @@ export interface CapabilityCallContext {
     owner?: WebContents;
     target?: WebContents;
     parentRequestId?: string;
+    deadlineMs?: number;
     originatingWindowId?: number;
     caller?: CapabilityCallerIdentity;
     invocation?: MainCapabilityInvocationContext;
@@ -49,7 +48,9 @@ export interface MainCapabilityInvocationContext {
     readonly dispose: () => void;
 }
 
-function checkedJson(value: unknown): CapabilityJson {
+export type ServiceOwnerTracker = (boardRoot: string, onClosed: () => void) => () => void;
+
+function checkedJson(value: unknown, maxBytes = MAX_INTENT_PAYLOAD_BYTES): CapabilityJson {
     const ancestors = new Set<object>();
     const visit = (item: unknown): void => {
         if (item === null || typeof item === "string" || typeof item === "boolean") return;
@@ -68,7 +69,7 @@ function checkedJson(value: unknown): CapabilityJson {
     try {
         visit(value);
         const serialized = JSON.stringify(value);
-        if (Buffer.byteLength(serialized, "utf8") > MAX_INTENT_PAYLOAD_BYTES) throw codedError("payload-too-large");
+        if (Buffer.byteLength(serialized, "utf8") > maxBytes) throw codedError("payload-too-large");
         return JSON.parse(serialized) as CapabilityJson;
     } catch (error) {
         if ((error as { code?: string })?.code === "payload-too-large") throw error;
@@ -76,25 +77,37 @@ function checkedJson(value: unknown): CapabilityJson {
     }
 }
 
+function toOpenError(error: unknown): Error {
+    const code = isCoded(error) ? error.code : undefined;
+    if (code && isCapabilityErrorCode(code)) return codedError(code, errMessage(error, code));
+    if (code === "window-unavailable") return codedError("handler-closed", errMessage(error, "handler-closed"));
+    return codedError("rejected", errMessage(error, "rejected"));
+}
+
 class CapabilityRouter {
     private preferences: Record<string, string> = {};
     private readonly handlerCounts = new Map<string, number>();
-    private readonly openRequests = new PendingRequests<unknown, { target: WebContents }, string>({
-        nextId: () => randomUUID(),
-        timeoutError: () => codedError("timeout"),
-        abortError: (reason) => reason ?? codedError("cancelled"),
-    });
     private readonly invocationContexts = new Map<string, MainCapabilityInvocationContext>();
+    private readonly backends = new Map<CapabilityBackendKind, CapabilityBackend>();
+    private serviceOwnerTracker: ServiceOwnerTracker | undefined;
 
-    constructor() {
-        guardedIpcOn(EventEndpoint.eCapabilityOpenResult, (event, settlement: BoundOpenSettlement) => {
-            if (!settlement || typeof settlement.requestId !== "string") return;
-            const accepted = (meta: { target: WebContents }) => meta.target === event.sender;
-            if (settlement.error) {
-                const code = isCapabilityErrorCode(settlement.error.code) ? settlement.error.code : "rejected";
-                this.openRequests.fail(settlement.requestId, codedError(code, typeof settlement.error.message === "string" ? settlement.error.message : code), accepted);
-            } else this.openRequests.settle(settlement.requestId, settlement.result, accepted);
-        });
+    registerBackend(kind: CapabilityBackendKind, backend: CapabilityBackend): void {
+        if (this.backends.has(kind)) throw new Error(`Capability backend "${kind}" is already registered.`);
+        this.backends.set(kind, backend);
+    }
+    setServiceOwnerTracker(tracker: ServiceOwnerTracker): void { this.serviceOwnerTracker = tracker; }
+    /** Lets a nested call that names `parentRequestId` inherit this call's lifetime and ancestry. */
+    trackInvocation(context: MainCapabilityInvocationContext & { requestId: string }): () => void {
+        this.invocationContexts.set(context.requestId, context);
+        return () => { this.invocationContexts.delete(context.requestId); };
+    }
+    private backendFor(registration: CapabilityRegistration): CapabilityBackend | undefined {
+        return registration.backend ? this.backends.get(registration.backend) : undefined;
+    }
+    private watchServiceOwner(invocation: MainCapabilityInvocationContext): (() => void) | undefined {
+        if (invocation.owner.kind !== "service") return undefined;
+        if (!this.serviceOwnerTracker) throw codedError("no-handler", "Capability service owner tracking is not registered.");
+        return this.serviceOwnerTracker(invocation.owner.boardRoot, () => invocation.controller.abort(codedError("handler-closed")));
     }
 
     setPreferences(value: Record<string, string>): void { this.preferences = { ...value }; }
@@ -171,8 +184,9 @@ class CapabilityRouter {
     }
     providers(caller: CapabilityCaller, id: string): CapabilityRegistration[] { return this.list(caller).filter((entry) => entry.id === id); }
     resolve(caller: CapabilityCaller, id: string, options: CapabilityOptions = {}): BoundCapability | null {
-        const visible = this.providers(caller, id);
-        let candidates = visible.filter((entry) => entry.version === (options.version ?? 1)
+        const visible = this.providers(caller, id).filter((entry) => !options.forOpen || entry.methods.open?.kind === "open");
+        const wantedVersion = options.version ?? (options.forOpen ? undefined : 1);
+        let candidates = visible.filter((entry) => (wantedVersion === undefined || entry.version === wantedVersion)
             && (!options.filter?.mime || !entry.accepts || entry.accepts.includes(options.filter.mime))
             && (!options.filter?.representation || !entry.representation || entry.representation === options.filter.representation));
         if (options.provider) {
@@ -187,14 +201,6 @@ class CapabilityRouter {
         const selected = candidates[0];
         const registration = selected && capabilityRegistry.snapshot().registrations.find((entry) => entry.handlerKey === selected.handlerKey && entry.provider === selected.provider);
         return registration ? { caller, registration, ...(options.filter ? { filter: { ...options.filter } } : {}) } : null;
-    }
-    resolveLegacy(id: string, options: { version?: number; filter?: CapabilityOptions["filter"] }): import("../ipc/capability-bus-channels").CapabilityRegistration | null {
-        if (options.version !== undefined && !Number.isInteger(options.version)) return null;
-        return capabilityRegistry.snapshot().legacyRegistrations.filter((entry) => entry.id === id
-            && (options.version === undefined || entry.version === options.version)
-            && (options.filter?.mime === undefined || entry.accepts === undefined || entry.accepts.includes(options.filter.mime))
-            && (options.filter?.representation === undefined || entry.representation === undefined || entry.representation === options.filter.representation))
-            .sort((a, b) => b.priority - a.priority || Number(b.origin === "platform") - Number(a.origin === "platform"))[0] ?? null;
     }
     bindKey(caller: CapabilityCaller, key: CapabilityKey, filter?: CapabilityOptions["filter"]): BoundCapability | null {
         if (!key || typeof key !== "object") return null;
@@ -226,7 +232,7 @@ class CapabilityRouter {
         if (!current || JSON.stringify(current) !== JSON.stringify(bound.registration) || !current.methods[method]) throw codedError("no-handler", "Capability handler unavailable.");
         return current;
     }
-    async invoke(bound: BoundCapability, method: string, args: unknown[], context: CapabilityCallContext = {}): Promise<CapabilityJson | ServiceChannel | { channelId: string; onClose: (listener: () => void) => () => void }> {
+    async invoke(bound: BoundCapability, method: string, args: unknown[], context: CapabilityCallContext = {}): Promise<CapabilityJson | OpenedCapabilityChannel> {
         const registration = this.authorize(bound, method);
         const invocation = context.invocation ?? this.createInvocationContext(bound, context);
         context = { ...context, invocation, signal: invocation.signal, chain: invocation.chain, depth: invocation.depth,
@@ -235,17 +241,14 @@ class CapabilityRouter {
         const declaration = registration.methods[method];
         if (declaration.kind === "channel") return this.invokeChannel(bound, method, args, context);
         if (declaration.kind === "open") return this.invokeOpen(bound, method, args, context);
-        const mainOwnedAudio = registration.origin === "platform" && registration.id === PLATFORM_AUDIO_CAPABILITY_ID && registration.handlerKey === "audio";
-        if (declaration.kind !== "call" || (registration.origin !== "board" && !mainOwnedAudio)) throw codedError("no-handler");
+        const backend = this.backendFor(registration);
+        if (declaration.kind !== "call" || !backend) throw codedError("no-handler");
         if (!Array.isArray(args)) throw codedError("rejected", "Arguments must be an array.");
         const jsonArgs = checkedJson(args) as CapabilityJson[];
         const chain = invocation.chain;
         if (invocation.depth + 1 > MAX_INTENT_DEPTH || chain.includes(registration.handlerKey)) throw codedError("cycle");
         const count = this.handlerCounts.get(registration.handlerKey) ?? 0;
         if (count >= MAX_OUTSTANDING_INTENTS_PER_HANDLER) throw codedError("busy");
-        const provider = capabilityRegistry.board(registration.provider);
-        if (!provider && !mainOwnedAudio) throw codedError("untrusted");
-        const caller = invocation.caller;
         const deadlineAt = Math.min(Date.now() + declaration.timeoutMs, context.deadlineAt ?? Infinity);
         if (deadlineAt <= Date.now()) throw codedError("timeout");
         if (context.signal?.aborted) throw codedError("cancelled");
@@ -266,48 +269,12 @@ class CapabilityRouter {
         });
         try {
             const operation = (async () => {
-                const { moduleServiceSupervisor } = await import("./module-service-supervisor");
-                if (mainOwnedAudio) {
-                    const untrackOwner = invocation.owner.kind === "service"
-                        ? moduleServiceSupervisor.trackServiceOwner(invocation.owner.boardRoot, () => controller.abort(codedError("handler-closed")))
-                        : undefined;
-                    try {
-                        const { audioService } = await import("./audio-service");
-                        return await audioService.callDevices(bound, method, jsonArgs, invocation, () => { this.authorize(bound, method); });
-                    } finally { untrackOwner?.(); invocation.dispose(); }
-                }
-                if (!provider) throw codedError("untrusted");
-                const requestId = randomUUID();
-                const callContext: MainCapabilityInvocationContext = {
-                    caller,
-                    owner: { kind: "service", boardRoot: provider.boardRoot },
-                    signal: controller.signal,
-                    controller,
-                    chain: [...chain, registration.handlerKey],
-                    depth: chain.length + 1,
-                    ...(invocation.originatingWindowId !== undefined ? { originatingWindowId: invocation.originatingWindowId } : {}),
-                    requestId,
-                    dispose: () => undefined,
-                };
-                this.invocationContexts.set(requestId, callContext);
-                const wireContext: CapabilityInvocationWireContext = {
-                    requestId,
-                    chain: [...chain, registration.handlerKey],
-                    depth: invocation.depth + 1,
-                    ...(invocation.originatingWindowId !== undefined ? { originatingWindowId: invocation.originatingWindowId } : {}),
-                };
-                const untrackOwner = invocation.owner.kind === "service"
-                    ? moduleServiceSupervisor.trackServiceOwner(invocation.owner.boardRoot, () => controller.abort(codedError("handler-closed")))
-                    : undefined;
-                return moduleServiceSupervisor.callCapability(provider.boardRoot, {
-                    kind: "capability-call", requestId, id: registration.id, version: registration.version,
-                    method, args: jsonArgs, caller, deadlineAt,
-                    context: wireContext,
-                }, controller.signal, () => { this.authorize(bound, method); }).finally(() => {
-                    untrackOwner?.();
-                    this.invocationContexts.delete(requestId);
-                    invocation.dispose();
-                });
+                let untrackOwner: (() => void) | undefined;
+                try {
+                    untrackOwner = this.watchServiceOwner(invocation);
+                    return await backend.call({ bound, registration, method, args: jsonArgs, invocation, deadlineAt,
+                        reauthorize: () => { this.authorize(bound, method); } });
+                } finally { untrackOwner?.(); invocation.dispose(); }
             })();
             const result = await Promise.race([operation, interrupted]);
             return checkedJson(result);
@@ -330,7 +297,8 @@ class CapabilityRouter {
     private async invokeOpen(bound: BoundCapability, method: string, args: unknown[], context: CapabilityCallContext): Promise<CapabilityJson> {
         const registration = this.authorize(bound, method);
         if (!Array.isArray(args) || args.length !== 1) throw codedError("rejected");
-        const payload = checkedJson(args[0]);
+        const unlimited = bound.caller.kind === "platform" && registration.origin === "platform";
+        const payload = checkedJson(args[0], unlimited ? Infinity : undefined);
         const values = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : undefined;
         const representation = values?.representation ?? (registration.id === "content.view" ? undefined : bound.filter?.representation);
         const mime = typeof values?.mimeType === "string" ? values.mimeType : typeof values?.mime === "string" ? values.mime : bound.filter?.mime;
@@ -343,7 +311,7 @@ class CapabilityRouter {
         const chain = invocation.chain;
         if (invocation.depth + 1 > MAX_INTENT_DEPTH || chain.includes(registration.handlerKey)) throw codedError("cycle");
         const count = this.handlerCounts.get(registration.handlerKey) ?? 0;
-        if (count >= MAX_OUTSTANDING_INTENTS_PER_HANDLER) throw codedError("busy");
+        if (!unlimited && count >= MAX_OUTSTANDING_INTENTS_PER_HANDLER) throw codedError("busy");
         const target = context.target ?? context.owner
             ?? (invocation.originatingWindowId !== undefined ? openWindows.getRendererByWindowId(invocation.originatingWindowId) : undefined)
             ?? (bound.caller.kind === "board-service" ? openWindows.getLastFocusedNormalRenderer() : undefined);
@@ -352,11 +320,10 @@ class CapabilityRouter {
         if (!target || !windowData?.rendererReady) throw codedError("no-handler");
         const board = registration.origin === "board" ? capabilityRegistry.board(registration.provider) : undefined;
         if (registration.origin === "board" && !board) throw codedError("untrusted");
-        const deadlineAt = Math.min(Date.now() + registration.methods[method].timeoutMs, context.deadlineAt ?? Infinity);
+        const deadlineAt = Math.min(Date.now() + (context.deadlineMs ?? registration.methods[method].timeoutMs), context.deadlineAt ?? Infinity);
         if (deadlineAt <= Date.now()) throw codedError("timeout");
         if (context.signal?.aborted || context.owner?.isDestroyed()) throw codedError("cancelled");
-        const { moduleServiceSupervisor } = await import("./module-service-supervisor");
-        const { id: requestId, promise } = this.openRequests.create(Math.max(0, deadlineAt - Date.now()), context.signal, { meta: { target } });
+        const requestId = randomUUID();
         const dispatch: BoundOpenDispatch = {
             registration: { id: registration.id, version: registration.version, priority: registration.priority,
                 handlerKey: registration.handlerKey, origin: registration.origin,
@@ -365,33 +332,39 @@ class CapabilityRouter {
                 ...(registration.alwaysOpensNewPage !== undefined ? { alwaysOpensNewPage: registration.alwaysOpensNewPage } : {}) },
             request: { requestId, id: registration.id, version: registration.version, payload, chain: [...chain], depth: invocation.depth, deadlineAt },
         };
-        const untrackOwner = invocation.owner.kind === "service"
-            ? moduleServiceSupervisor.trackServiceOwner(invocation.owner.boardRoot, () => invocation.controller.abort(codedError("handler-closed")))
-            : undefined;
         this.handlerCounts.set(registration.handlerKey, count + 1);
-        const cancel = () => this.openRequests.fail(requestId, context.signal?.reason ?? codedError("cancelled"));
-        const closed = () => this.openRequests.fail(requestId, codedError("handler-closed"));
-        const crashed = () => this.openRequests.fail(requestId, codedError("crashed"));
-        const unsubscribe = capabilityRegistry.onChange(() => { try { this.authorize(bound, method); } catch (error) { this.openRequests.fail(requestId, error); } });
+        const openAbort = new AbortController();
+        const abortOpen = (reason: unknown): void => openAbort.abort(reason);
+        const signal = context.signal ? AbortSignal.any([context.signal, openAbort.signal]) : openAbort.signal;
+        const cancel = () => abortOpen(codedError("cancelled"));
+        const closed = () => abortOpen(codedError("handler-closed"));
+        const crashed = () => abortOpen(codedError("crashed"));
+        const unsubscribe = capabilityRegistry.onChange(() => { try { this.authorize(bound, method); } catch (error) { abortOpen(error); } });
         const stopTarget = onWebContentsGone(target, (event) => (event === "destroyed" ? closed() : crashed()));
         const stopOwner = context.owner !== target && context.owner ? onWebContentsGone(context.owner, cancel) : undefined;
+        const deadlineTimer = setTimeout(() => abortOpen(codedError("timeout")), Math.max(0, deadlineAt - Date.now()));
         app.once("before-quit", cancel);
+        let untrackOwner: (() => void) | undefined;
+        this.invocationContexts.set(requestId, { caller: invocation.caller, owner: invocation.owner, signal, controller: invocation.controller,
+            chain: [...chain, registration.handlerKey], depth: invocation.depth + 1,
+            ...(invocation.originatingWindowId !== undefined ? { originatingWindowId: invocation.originatingWindowId } : {}),
+            requestId, dispose: () => undefined });
         try {
-            try { this.authorize(bound, method); target.send(EventEndpoint.eCapabilityOpen, dispatch); }
-            catch (error) { this.openRequests.fail(requestId, error); }
+            untrackOwner = this.watchServiceOwner(invocation);
             let outcome: CapabilityOutcome | undefined;
-            try { outcome = await promise as CapabilityOutcome | undefined; }
-            catch (error) {
-                try { if (!target.isDestroyed()) target.send(EventEndpoint.eCapabilityOpenCancel, requestId); } catch { /* Renderer exited. */ }
-                throw error;
-            }
+            try {
+                this.authorize(bound, method);
+                outcome = await requestRenderer("capabilityOpen", dispatch, { webContents: target }, RENDERER_REQUEST_NO_TIMEOUT, signal);
+            } catch (error) { throw toOpenError(error); }
             return checkedJson({ ...(typeof outcome?.pageId === "string" ? { pageId: outcome.pageId } : {}), result: outcome?.result ?? null });
         } finally {
+            clearTimeout(deadlineTimer);
             unsubscribe();
             stopTarget();
             stopOwner?.();
             app.removeListener("before-quit", cancel);
             untrackOwner?.();
+            this.invocationContexts.delete(requestId);
             invocation.dispose();
             const remaining = (this.handlerCounts.get(registration.handlerKey) ?? 1) - 1;
             if (remaining) this.handlerCounts.set(registration.handlerKey, remaining); else this.handlerCounts.delete(registration.handlerKey);
@@ -401,19 +374,14 @@ class CapabilityRouter {
     private async invokeChannel(bound: BoundCapability, method: string, args: unknown[], context: CapabilityCallContext) {
         const registration = this.authorize(bound, method);
         if (bound.caller.kind === "agent") throw codedError("permission-denied");
-        const mainOwnedAudio = registration.origin === "platform" && registration.id === PLATFORM_AUDIO_CAPABILITY_ID && registration.handlerKey === "audio";
-        if ((!mainOwnedAudio && registration.origin !== "board") || !Array.isArray(args) || args.length > 1) throw codedError("rejected");
-        if (mainOwnedAudio && method === "muteApp" && args.length !== 0) throw codedError("rejected");
+        const backend = this.backendFor(registration);
+        if (!backend || !Array.isArray(args) || args.length > 1) throw codedError("rejected");
+        backend.checkChannelArguments?.(method, args);
         const argument = args.length ? checkedJson(args[0]) : {};
         if (!argument || typeof argument !== "object" || Array.isArray(argument) || Object.hasOwn(argument, "type")) throw codedError("rejected");
         const invocation = context.invocation as MainCapabilityInvocationContext;
         const chain = invocation.chain;
         if (invocation.depth + 1 > MAX_INTENT_DEPTH || chain.includes(registration.handlerKey)) throw codedError("cycle");
-        const provider = registration.origin === "board" ? capabilityRegistry.board(registration.provider) : undefined;
-        if (registration.origin === "board" && !provider) throw codedError("untrusted");
-        const consumer = "provider" in bound.caller ? capabilityRegistry.board(bound.caller.provider) : undefined;
-        const caller = invocation.caller;
-        const owner = "provider" in bound.caller ? `${bound.caller.kind}:${bound.caller.provider}` : "platform";
         const controller = invocation.controller;
         const abort = () => controller.abort(codedError("cancelled"));
         const deadlineAt = Math.min(Date.now() + registration.methods[method].timeoutMs, context.deadlineAt ?? Infinity);
@@ -432,15 +400,8 @@ class CapabilityRouter {
             stopOwner?.();
         };
         try {
-            const opening = mainOwnedAudio
-                ? (await import("./audio-service")).audioService.openCapabilityChannel(
-                    bound, method, argument as Record<string, unknown>, invocation, context.channelDelivery,
-                    () => { this.authorize(bound, method); },
-                )
-                : (await import("./module-service-supervisor")).moduleServiceSupervisor.openCapabilityChannel(provider!.boardRoot, owner,
-                    bound.caller.kind === "board-service" ? consumer?.boardRoot : undefined, { ...argument, type: method },
-                    { interface: { id: registration.id, version: registration.version }, caller }, controller.signal,
-                    () => { this.authorize(bound, method); }, context.channelDelivery);
+            const opening = backend.openChannel({ bound, registration, method, argument: argument as Record<string, unknown>, invocation,
+                delivery: context.channelDelivery, reauthorize: () => { this.authorize(bound, method); } });
             const interrupted = new Promise<never>((_resolve, reject) => {
                 if (controller.signal.aborted) reject(controller.signal.reason);
                 else controller.signal.addEventListener("abort", () => reject(controller.signal.reason), { once: true });

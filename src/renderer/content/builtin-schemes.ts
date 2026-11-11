@@ -282,7 +282,7 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
     }
 
     if (data.target === "http.request.open") {
-        const { capabilities } = await import("../api/capabilities");
+        const { capabilities } = await import("../api/capabilities/CapabilitiesClient");
         const title = requestTitle(data.url);
         const payload = {
             url: data.url,
@@ -294,7 +294,7 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
         try {
             await capabilities.invoke("http.request.open", payload, { version: 1 });
         } catch (error: unknown) {
-            const { CapabilityError } = await import("../api/capability-bus");
+            const { CapabilityError } = await import("../api/capability-error");
             if (error instanceof CapabilityError && error.code === "no-handler") {
                 await notifyUser(
                     t("api.noRestClientRegistered"),

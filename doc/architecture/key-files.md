@@ -27,8 +27,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Shared request/reply correlation with timeout, abort and metadata-filtered settlement | `/src/shared/pending-requests.ts` |
 | Shared serialized asynchronous mutation queue | `/src/shared/serial-queue.ts` |
 | Shared error code and wire-error conversion helpers | `/src/shared/coded-error.ts`, `/src/shared/wire-error.ts` |
-| Typed main-to-renderer RPC method map and channels | `/src/ipc/renderer-rpc.ts` |
-| Main-to-renderer RPC request lifecycle (readiness, pending requests, timeout, renderer lifetime) | `/src/main/renderer-rpc.ts` |
+| Typed main-to-renderer RPC method map and channels (including capability open, cancel channel and no-timeout mode) | `/src/ipc/renderer-rpc.ts`, `/src/main/renderer-rpc.ts` |
+| Main-to-renderer RPC request lifecycle (readiness, pending requests, cancellation, timeout selection, renderer lifetime) | `/src/main/renderer-rpc.ts` |
 | Renderer RPC server and bootstrap | `/src/renderer/api/renderer-rpc.ts`, `/src/renderer/api/renderer-rpc-bootstrap.ts` |
 | Shared path containment check | `/src/shared/path-containment.ts` |
 | First-owner claim registry shared by main and renderer; callers normalize keys and clear claims by origin | `/src/shared/ownership-registry.ts` |
@@ -37,15 +37,19 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | App object model and renderer startup orchestration (services, pages, events, and launch-input dispatch) | `/src/renderer/api/app.ts` |
 | App service descriptor table | `/src/renderer/api/app-service-registry.ts`       |
 | Renderer UI Object Model service (dialogs, notifications, progress, highlights, and alert projection) | `/src/renderer/api/ui.ts` |
-| Built-in app capabilities (`app.capabilities`) | `/src/renderer/api/capabilities.ts`               |
+| App capabilities script client and legacy result projection | `/src/renderer/api/capabilities/CapabilitiesClient.ts` |
 | Renderer service-channel port routing (claim by channel ID, close unclaimed ports after 10 seconds) | `/src/renderer/api/service-channel-ports.ts` |
 | App window model (`app.window` actions, live display listing and window movement/fullscreen, menu bar, screen automation, and global mute inspection/release) | `/src/renderer/api/window.ts`, `/src/renderer/api/window-screen.ts` |
 | Unified capability architecture (registry, router, clients, agent surface and legacy projections) | `/doc/architecture/capabilities.md` |
 | Missing image/diagram capability feedback (user-facing no-handler messages) | `/src/renderer/api/capability-feedback.ts` |
-| Renderer capability clients, legacy projection and open dispatch | `/src/renderer/api/capabilities.ts` |
-| Legacy renderer capability lifecycle (legacy invoke request ids/deadlines, typed settlement, cancellation, page-chain cycle checks and teardown) | `/src/renderer/api/capability-bus.ts` |
-| Legacy capability wire transport and shared intent types | `/src/ipc/capability-bus-channels.ts` |
-| Board intent dispatch (caller-window page reuse/open, FIFO routes, frame readiness, cancellation and result assembly) | `/src/renderer/api/board-capability-transport.ts` |
+| Per-owner main capability invocation client (request validation, duplicate ids, cancellation, lifetime and errors) | `/src/main/capability-client.ts` |
+| Main capability router (resolution, authorization, limits and method dispatch) | `/src/main/capability-router.ts` |
+| Capability backend interface and board-service/audio adapters | `/src/main/capability-backend.ts`, `/src/main/board-service-backend.ts`, `/src/main/audio-backend.ts` |
+| Typed renderer capability-open handler and platform payload validators | `/src/renderer/api/capabilities/open-dispatch-server.ts`, `/src/renderer/api/capabilities/platform-payload-validators.ts` |
+| Lazy built-in capability open-handler table | `/src/renderer/api/capabilities/builtin-open-handlers.ts` |
+| Board open-intent dispatch (caller-window page reuse/open, FIFO routes, frame readiness, cancellation and result assembly) | `/src/renderer/api/capabilities/BoardCapabilityDispatcher.ts` |
+| Shared renderer capability error type and normalization | `/src/renderer/api/capability-error.ts` |
+| Shared capability IPC request, outcome and board intent types | `/src/ipc/capability-bus-channels.ts` |
 | Main capability registry (platform and eligible board provider index) | `/src/main/capability-registry.ts` |
 | Main capability authorization, resolution and routing | `/src/main/capability-router.ts` |
 | Main audio capability channel owner (authorization rechecks, hidden window lifecycle, per-caller channels and capture indicator count) | `/src/main/audio-service.ts`, `/src/main/audio-capture-state.ts` |
@@ -652,7 +656,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Host-managed board-service settings bridge (validates trust and service permission, reads effective settings, and relays changes to service processes) | `/src/renderer/api/board-service-settings.ts` |
 | Renderer-lifetime module-service status cache (snapshot hydration and status-event replacement for `boards.list()` and Board Info) | `/src/renderer/api/module-service-status.ts` |
 | Main-owned snapshot mirror base (broadcast-before-pull initialization and revision/stamp stale-snapshot guard) | `/src/renderer/core/state/MainSnapshotMirror.ts` |
-| Renderer capability index mirror | `/src/renderer/api/capability-index.ts` |
+| Renderer capability index mirror | `/src/renderer/api/capabilities/capability-index.ts` |
 | Renderer module-service status mirror | `/src/renderer/api/module-service-status.ts` |
 | Renderer published-board catalog mirror | `/src/renderer/api/boards/published-boards.ts` |
 | Renderer site-extension trust mirror | `/src/renderer/api/site-extension-trust.ts` |

@@ -287,13 +287,20 @@ filter?)` are synchronous legacy projections. The optional legacy `handlers` fil
 type or representation. Unified resolution can pin a provider and filter by MIME or
 representation; `content.view` is selected by the requested representation.
 
-Main resolves unified providers; open methods dispatch through the renderer, while service calls
-and channels route through main. Board open methods use caller-window routing, transient intents,
+Every invocation resolves and runs through main's `CapabilityClient` and `CapabilityRouter`;
+open methods then dispatch through the typed renderer RPC, while service calls and channels route
+through their main-process backends. Board opens use caller-window routing, transient intents,
 deadlines, typed failures, cycle checks and teardown settlement. A board handler reuses an open
 page for its root or opens one in the caller's window; routes to that page are FIFO and wait for
 frame readiness. A declaration with `alwaysOpensNewPage` always opens a fresh page. See
-[Capabilities](./capabilities.md) for routing and lifecycle details. Legacy `invoke()` remains
-available with its compatibility trust gate and script result projection.
+[Capabilities](./capabilities.md) for routing and lifecycle details.
+
+`app.capabilities.invoke(id, payload, options?)` keeps its legacy script signature and result
+projection, but it uses the same main pipeline. When `options.version` and a version suffix in
+`id` are both omitted, it honors the eligible `capabilities.preferredProviders` setting and may
+select any available major version. A declared `methods.open.timeoutMs` also governs these app
+opens. The result projection still adds `pageId` to object results or returns `{ pageId }` for
+primitive, array or absent results when a page was opened.
 
 The service is loaded through the same app-service descriptor table as the other `app.*` members.
 Its type contract is [`api/types/capabilities.d.ts`](../../src/renderer/api/types/capabilities.d.ts),

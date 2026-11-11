@@ -1,6 +1,5 @@
 import { editorRegistry } from "./base/editorRegistry";
 import { PLATFORM_CAPABILITIES } from "../../shared/platform-capabilities";
-import { seedPlatformCapabilities } from "../api/capabilities";
 import type {
     EditorCapabilityDeclaration,
     EditorDefinition,
@@ -229,7 +228,6 @@ for (const e of EDITORS) {
     });
 }
 
-seedPlatformCapabilities();
 
 // Warm the custom-editor registry while bootstrap joins this same
 // initialization before restoring pages. The fire-and-forget warm-up preserves the existing

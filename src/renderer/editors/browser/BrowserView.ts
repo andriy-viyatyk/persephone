@@ -2,7 +2,7 @@ import { PAGE_ZOOM_MIN, PAGE_ZOOM_MAX, PAGE_ZOOM_STEP } from "../../../shared/br
 const { ipcRenderer } = require("electron");
 import { EditorToolbarView } from "../base/EditorToolbarView";
 import { BrowserEditor } from "./BrowserEditor";
-import { capabilities } from "../../api/capabilities";
+import { capabilities } from "../../api/capabilities/CapabilitiesClient";
 import { ui } from "../../api/ui";
 import { certificatesToPem } from "../../api/certificate-view";
 import { errMessage } from "../../../shared/utils";

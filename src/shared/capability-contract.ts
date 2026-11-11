@@ -29,7 +29,8 @@ export function mergeCapabilityDeclarations(declarations: readonly BoardCapabili
     const merged: Array<BoardCapabilityDeclaration & { methods: Record<string, CapabilityMethod> }> = [];
     const legacyMetadata = new Set<BoardCapabilityDeclaration>();
     for (const source of declarations) {
-        let target = merged.find((item) => item.id === source.id && (item.version ?? 1) === (source.version ?? 1));
+        let target = merged.find((item) => item.id === source.id && (item.version ?? 1) === (source.version ?? 1)
+            && item.representation === source.representation);
         if (!target) {
             target = { ...source, methods: Object.create(null) as Record<string, CapabilityMethod> };
             merged.push(target);

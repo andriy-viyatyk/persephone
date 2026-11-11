@@ -287,8 +287,8 @@ and structured service errors. Bridge `1.21.0` adds optional `representation` to
 discovery and manifest declarations. A board declaring `content.view` must provide one non-empty
 representation per supported format and set `minBridgeVersion: "1.21.0"`. Capability requests to the same handler page are delivered
 one at a time in FIFO order; up to 32 active and queued requests can be outstanding for a handler.
-An expired deadline rejects with `Capability invocation deadline elapsed.` and sends a best-effort
-cancel. Bridge `1.19.0` added `persephone.intent.resolve(value, { discardPage: true })` (also
+A timeout rejects with code `timeout` and sends a best-effort cancel. Bridge `1.19.0` added
+`persephone.intent.resolve(value, { discardPage: true })` (also
 available on the request-bound `request.resolve`) for discarding a page created for a failed
 request, preserved the handler's exact value under `result` for board callers, and added the
 optional manifest capability field `alwaysOpensNewPage` to request a fresh handler page for every
@@ -578,16 +578,19 @@ const handlers = await persephone.capabilities.list();
 // Entries include id, version, provider, handlerKey, origin, priority and methods.
 ```
 
-The legacy `persephone.capabilities.invoke(id, payload, options?)` wrapper resolves by id; options may pin `version`
-or set `deadlineMs`. A board result is `{ pageId, result }` (the page id is optional for handlers
+The `persephone.capabilities.invoke(id, payload, options?)` wrapper resolves by id; without a version
+pin it honors `capabilities.preferredProviders` and may select any available major version. Set
+`version` to pin a major or `deadlineMs` to set a caller deadline. The selected declaration's
+`methods.open.timeoutMs` also applies to opens initiated by `app.capabilities.invoke()`. A board result
+is `{ pageId, result }` (the page id is optional for handlers
 that resolve without a page); `result` preserves the handler's exact value, including primitives,
 arrays, and empty objects. Handle the ten typed rejection codes as follows:
 
 Invocations to the same handler page are delivered serially in FIFO order: only one request is
 active in a frame, and later requests wait for it to settle or be cancelled. `busy` means the
-handler has reached the bus limit of 32 outstanding requests across its active and queued work.
-When a deadline expires, callers receive `Capability invocation deadline elapsed.` and the
-platform sends a best-effort cancel.
+handler has reached the 32-request limit across its active and queued work. Error codes are
+unchanged; limit errors use concise messages. When a deadline expires, the platform sends a
+best-effort cancel.
 
 | Code | Meaning to the caller |
 |---|---|
@@ -596,10 +599,10 @@ platform sends a best-effort cancel.
 | `handler-closed` | The handler page or frame closed before it settled. |
 | `crashed` | The handler frame errored or reloaded during the request. |
 | `cancelled` | The caller cancelled, its page closed, or the renderer is tearing down. |
-| `timeout` | The deadline elapsed; the caller receives `Capability invocation deadline elapsed.` and a best-effort cancel is sent. |
+| `timeout` | The deadline elapsed; a best-effort cancel is sent. |
 | `cycle` | The winning handler is already in the request chain or the depth limit was exceeded. |
 | `payload-too-large` | A board-bound inline payload exceeds 8 MiB. |
-| `busy` | The handler has reached the bus limit of 32 outstanding requests, including queued work. |
+| `busy` | The handler has reached the limit of 32 outstanding requests, including queued work. |
 | `rejected` | The handler called `reject()`, the payload could not be structured-cloned, or the transport failed without another code. |
 
 Timeout does not stop handler execution. An agent may retry, so a handler that needs idempotency
@@ -612,7 +615,7 @@ Scripts running in Persephone can discover or invoke the same indexed handlers t
 [`app.capabilities`](./scripting/api/app.md#capabilities). Board pages use the asynchronous
 `persephone.capabilities` bridge documented above.
 
-For new declarations and clients, see [Capabilities](./agents/capabilities.md); `app.capabilities.invoke()` remains a legacy wrapper.
+For new declarations and clients, see [Capabilities](./agents/capabilities.md); `app.capabilities.invoke()` keeps its compatibility signature while using the current provider selection rules.
 
 ---
 

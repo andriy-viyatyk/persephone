@@ -1,4 +1,4 @@
-import { isCapabilityErrorCode, type CapabilityErrorCode } from "../../../shared/capability-constants";
+import type { CapabilityErrorCode } from "../../../shared/capability-constants";
 import { BOARD_HOST_TEXT_CATALOG } from "../../../shared/board/host-text";
 import color from "../../theme/color";
 import { api } from "../../../ipc/renderer/api";
@@ -48,7 +48,7 @@ import type {
     BoardSaveResultMsg,
     BoardVarResultMsg,
 } from "../../../ipc/board-bridge-channels";
-import type { CapabilityOutcome, IntentRequest } from "../../../ipc/capability-bus-channels";
+import type { IntentRequest } from "../../../ipc/capability-bus-channels";
 import { resolveBoardNamespace } from "../../api/boards/board-namespace";
 import { resolveBoardVarRequest } from "../../api/board-vars/board-vars-bridge";
 import { t } from "../../../shared/i18n/t";
@@ -73,8 +73,9 @@ import { loadBoardI18n } from "../../api/boards/board-i18n";
 import { refreshBoardDisplayText } from "../../api/boards/board-display-text";
 import { getPreviewGeneration } from "../../theme/themes";
 import { errMessage } from "../../../shared/utils";
-import { CapabilityError } from "../../api/capability-bus";
-import { invokeCapabilityOutcome } from "../../api/capabilities";
+import { CapabilityError, toCapabilityError } from "../../api/capability-error";
+import { capabilities } from "../../api/capabilities/CapabilitiesClient";
+import { boardCapabilityDispatcher } from "../../api/capabilities/BoardCapabilityDispatcher";
 import { ui } from "../../api/ui";
 import { isProviderResolutionError } from "../../content/registry";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
@@ -82,14 +83,7 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { dismissOverlays } from "../../uikit/shared/overlayLayer";
 import "../../uikit/Panel/Panel.css";
 import { logBoardReloaded, logRemoteNotify, logShapeChanged } from "../../scripting/ai-vision/event-log";
-import {
-    registerBoardCapabilityFrame,
-    unregisterBoardCapabilityFrame,
-    markBoardCapabilityFrameReady,
-    failBoardCapabilityFrame,
-    takeInitialIntent,
-    type BoardCapabilityFrame,
-} from "../../api/board-capability-transport";
+import type { BoardCapabilityFrame } from "../../api/capabilities/BoardCapabilityDispatcher";
 import { app } from "../../api/app";
 import { settings } from "../../api/settings";
 import { boardNavigationReturnService } from "../../api/board-navigation-return";
@@ -788,7 +782,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const pipeUrlEnabled = this.props.model.pipeUrlEnabled;
         if (pageId) void api.registerBoardPipePage(pageId, host, this.props.boardRoot, this.props.model.pipeUrlEnabled);
         // Secondary views share the page id; only the main frame owns the page's intent handler.
-        const initialIntent = pageId && this.isMain ? takeInitialIntent(pageId) : undefined;
+        const initialIntent = pageId && this.isMain ? boardCapabilityDispatcher.takeInitialIntent(pageId) : undefined;
         const init: BoardPortInitMsg = {
             __persephoneInit: true,
             busy: !!this.props.model.state.get().busy,
@@ -819,11 +813,11 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             this.installVoiceTypingSettingsSubscription();
             if (this.capabilityFrame && this.capabilityFrame.generation === this.generation) {
                 this.capabilityFrame.ready = true;
-                markBoardCapabilityFrameReady(this.capabilityFrame.pageId, this.generation);
+                boardCapabilityDispatcher.markFrameReady(this.capabilityFrame.pageId, this.generation);
             }
             this.flushPendingSourceUrls();
         } catch (error: unknown) {
-            failBoardCapabilityFrame(
+            boardCapabilityDispatcher.failFrame(
                 pageId ?? "",
                 this.generation,
                 new CapabilityError("crashed", errMessage(error, "The board handshake failed.")),
@@ -877,7 +871,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 dispatch: this.dispatchCapabilityIntent,
                 cancel: this.cancelCapabilityIntent,
             };
-            registerBoardCapabilityFrame(this.capabilityFrame);
+            boardCapabilityDispatcher.registerFrame(this.capabilityFrame);
         }
         const contentHost = model.contentHost;
         const win = frame.contentWindow;
@@ -906,7 +900,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 const message = errMessage(error, "The board frame failed to register.");
                 this.rejectPendingCapability("crashed", message);
                 if (model.page?.id) {
-                    failBoardCapabilityFrame(model.page.id, generation, new CapabilityError("crashed", message));
+                    boardCapabilityDispatcher.failFrame(model.page.id, generation, new CapabilityError("crashed", message));
                 }
                 this.unregisterCapabilityFrame();
             }
@@ -1311,7 +1305,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
 
     private unregisterCapabilityFrame(): void {
         if (!this.capabilityFrame) return;
-        unregisterBoardCapabilityFrame(this.capabilityFrame.pageId, this.capabilityFrame);
+        boardCapabilityDispatcher.unregisterFrame(this.capabilityFrame.pageId, this.capabilityFrame);
         this.capabilityFrame = undefined;
     }
 
@@ -1329,7 +1323,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.rejectPendingCapability("crashed", "The board frame failed to load.");
         const pageId = this.props.model.page?.id;
         if (pageId) {
-            failBoardCapabilityFrame(pageId, this.generation, new CapabilityError("crashed", "The board frame failed to load."));
+            boardCapabilityDispatcher.failFrame(pageId, this.generation, new CapabilityError("crashed", "The board frame failed to load."));
         }
         this.unregisterCapabilityFrame();
     };
@@ -1404,42 +1398,23 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             if (!boardRegistry.isPermitted(this.props.boardRoot)) {
                 throw new CapabilityError("untrusted", "The board is no longer trusted.");
             }
-            const invocation = await invokeCapabilityOutcome(message.id, message.payload, {
+            const outcome = await capabilities.invokeOutcome(message.id, message.payload, {
                 ...(message.version === undefined ? {} : { version: message.version }),
                 pageId: model.page?.id,
                 deadlineMs: message.deadlineMs,
             });
-            const result = invocation.value;
-            if (invocation.origin === "board") {
-                const outcome = result as CapabilityOutcome;
-                reply = {
-                    __persephone: "capabilities:invoke:result",
-                    reqId: message.reqId,
-                    ...(typeof outcome.pageId === "string" ? { pageId: outcome.pageId } : {}),
-                    ...(Object.prototype.hasOwnProperty.call(outcome, "result") ? { result: outcome.result } : {}),
-                };
-            } else {
-                const publicResult = result as { pageId?: unknown } | null | undefined;
-                const hasPageId = !!publicResult && typeof publicResult === "object"
-                    && typeof publicResult.pageId === "string";
-                if (hasPageId) {
-                    const { pageId, ...handlerResult } = publicResult as Record<string, unknown>;
-                    const hasHandlerResult = Object.keys(handlerResult).length > 0;
-                    reply = {
-                        __persephone: "capabilities:invoke:result",
-                        reqId: message.reqId,
-                        pageId: pageId as string,
-                        ...(hasHandlerResult ? { result: handlerResult } : {}),
-                    };
-                } else {
-                    reply = { __persephone: "capabilities:invoke:result", reqId: message.reqId, result };
-                }
-            }
-        } catch (error: unknown) {
             reply = {
                 __persephone: "capabilities:invoke:result",
                 reqId: message.reqId,
-                error: capabilityError(error),
+                ...(typeof outcome.pageId === "string" ? { pageId: outcome.pageId } : {}),
+                ...(Object.prototype.hasOwnProperty.call(outcome, "result") ? { result: outcome.result } : {}),
+            };
+        } catch (error: unknown) {
+            const { code, message: errorMessage } = toCapabilityError(error, "The capability request failed.");
+            reply = {
+                __persephone: "capabilities:invoke:result",
+                reqId: message.reqId,
+                error: { code, message: errorMessage },
             };
         }
         this.replyToFrame(frame, generation, reply);
@@ -1713,10 +1688,4 @@ function warnUnknownAiVisionViews(
 
 interface IAiElementWithView {
     readonly view?: unknown;
-}
-
-function capabilityError(error: unknown): { code: CapabilityErrorCode; message: string } {
-    const value = error as { code?: unknown } | null;
-    const code = isCapabilityErrorCode(value?.code) ? value.code : "rejected";
-    return { code, message: errMessage(error, "The capability request failed.") };
 }

@@ -81,7 +81,7 @@ snapshot is restored with the page; runtime snapshots are transient. Bridge `1.3
 `persephone.locale.code` and board-pack `persephone.i18n.t()` / `has()`; boards using them must set
 `minBridgeVersion: "1.36.0"`. Bridge `1.20.0` delivers requests to each handler
 page one at a time in FIFO order, allows up to 32 active and queued requests per handler, and uses
-`Capability invocation deadline elapsed.` as the canonical timeout message. Bridge `1.19.0` adds
+`timeout` as the canonical timeout message from main. Bridge `1.19.0` adds
 `persephone.intent.resolve(value, { discardPage: true })` (also available on the request-bound
 `request.resolve`) for discarding a page created for a failed request, preserves the handler's exact
 value under `result` for board callers, and adds the optional manifest capability field
@@ -1009,7 +1009,9 @@ is reused. IDs cannot contain whitespace or `@`; use a vendor
 prefix for board-owned ids. Multiple boards can compete for one id. An explicit provider or the
 user's eligible `capabilities.preferredProviders` choice takes precedence; otherwise priority wins,
 platform handlers win ties, and trusted-board registration order breaks board ties. Discovery never
-opens a handler page.
+opens a handler page. For `persephone.capabilities.invoke()`, if neither the id nor options pins a
+major version, resolution can choose any eligible major version using the same provider preference
+and ordering. A declaration's `methods.open.timeoutMs` also bounds app-originated opens to it.
 `representation` is an open string. A `content.view` declaration requires a non-empty value; add
 one entry for every format the board supports and set `minBridgeVersion` to `1.21.0`. Other
 capability ids may omit it.
@@ -1087,10 +1089,10 @@ result is `{ pageId, result }`; `pageId` is optional when a handler resolves wit
 caller can receive these ten typed rejection codes:
 
 Requests to one handler page are delivered serially in FIFO order, with one active intent context
-in the frame. Additional requests wait for the active request to settle or be cancelled. `busy`
-means the bus has reached 32 outstanding requests for that handler, counting active and queued
-requests. A timeout rejects with `Capability invocation deadline elapsed.` and sends a best-effort
-cancel.
+in the frame. Additional requests wait for the active request to settle or be cancelled. Main
+enforces the 32-active-invocation per-handler cap; `busy` keeps its error code, with a concise
+message. Timeouts are owned by the main capability router, which sends a best-effort cancel to the
+renderer and board frame. The code is stable even when the error message is shorter.
 
 | Code | Meaning |
 |---|---|
@@ -1099,10 +1101,10 @@ cancel.
 | `handler-closed` | The handler page/frame closed before settlement. |
 | `crashed` | The handler frame errored or reloaded. |
 | `cancelled` | The caller cancelled, its page closed, or the renderer is tearing down. |
-| `timeout` | The caller receives `Capability invocation deadline elapsed.`; the platform sends best-effort cancel. |
+| `timeout` | The main-owned deadline elapsed; the platform sends best-effort cancel. |
 | `cycle` | The request would re-enter a handler in its chain or exceed the depth limit. |
 | `payload-too-large` | The board-bound inline payload is over 8 MiB. |
-| `busy` | The handler reached the bus limit of 32 outstanding requests, including queued work. |
+| `busy` | The handler reached the main-owned cap of 32 active invocations. |
 | `rejected` | The handler called `reject()`, the payload could not be structured-cloned, or another unclassified transport failure occurred. |
 
 Timeout does not stop the handler. An agent can retry, so idempotent work must key on

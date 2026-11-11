@@ -9,7 +9,7 @@ import type { BoardHostText, BoardI18nContext, BoardThemePalette } from "../boar
 import type { BoardSnapshot } from "../board-snapshot-channels";
 import type { BoardServiceStatus, ModuleServicePortResult } from "../module-service-channels";
 import { bindEndpoint } from "./endpoint-registry";
-import { activeCapabilityRequests, capabilityResult } from "./core-handlers";
+import { capabilityClientForWindow } from "../../main/capability-client";
 import { errMessage } from "../../shared/utils";
 
 export type BoardEndpoint =
@@ -143,24 +143,9 @@ export function initBoardHandlers(): void {
         const window = BrowserWindow.fromWebContents(event.sender);
         if (!window || !(await import("../../main/open-windows")).openWindows.findByWindow(window)) throw new Error("permission-denied");
         if (request && "kind" in request) {
-            const result = await capabilityResult(async () => {
-                const input = request.request;
-                if (request.kind !== "capability" || !input || typeof input.requestId !== "string" || !input.requestId || input.requestId.length > 256 || typeof input.method !== "string" || !Array.isArray(input.args)) throw Object.assign(new Error("Invalid capability request."), { code: "rejected" });
-                let active = activeCapabilityRequests.get(event.sender);
-                if (!active) { active = new Map(); activeCapabilityRequests.set(event.sender, active); }
-                if (active.has(input.requestId)) throw Object.assign(new Error("Duplicate capability request id."), { code: "rejected" });
-                const controller = new AbortController();
-                active.set(input.requestId, controller);
-                try {
-                    const { capabilityRouter } = await import("../../main/capability-router");
-                    const bound = capabilityRouter.bindKey({ kind: "platform" }, input.key, input.filter);
-                    if (!bound || bound.registration.methods[input.method]?.kind !== "channel") throw Object.assign(new Error("Capability handler unavailable."), { code: "no-handler" });
-                    const channel = await capabilityRouter.invoke(bound, input.method, input.args, { signal: controller.signal, owner: event.sender, target: event.sender, channelDelivery: { kind: "renderer", webContents: event.sender } });
-                    if (!channel || typeof channel !== "object" || !("channelId" in channel) || typeof channel.channelId !== "string") throw Object.assign(new Error("Capability channel unavailable."), { code: "no-handler" });
-                    return channel.channelId;
-                } finally { active.delete(input.requestId); }
-            });
-            return JSON.stringify(result);
+            const opened = await capabilityClientForWindow(event.sender).invoke(request.kind === "capability" ? request.request : undefined,
+                { methods: "channel", agentCallers: false, delivery: () => ({ kind: "renderer" as const, webContents: event.sender }) });
+            return JSON.stringify(opened.ok ? { ok: true, value: opened.value.channelId } : opened);
         }
         if (!request || !("interfaceId" in request) || typeof request.interfaceId !== "string" || typeof request.provider !== "string" || request.version !== 1) throw new TypeError("Invalid host service selector.");
         return (await import("../../main/module-service-supervisor")).moduleServiceSupervisor.connectHostServiceChannel(event.sender, request, request.openMessage);

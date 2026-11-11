@@ -1,11 +1,14 @@
 import type { HintMode } from "ai-vision";
 import type { BoardCallRequest } from "./board-bridge-channels";
 import type { BoardServiceSettingValue } from "./board-service-settings-channels";
+import type { BoundOpenDispatch, CapabilityOutcome } from "./capability-bus-channels";
 import type { WireError } from "../shared/wire-error";
 
 export const RendererRpcChannel = {
     request: "renderer-rpc:request",
     reply: "renderer-rpc:reply",
+    /** Main to renderer: the request id whose handler should stop (its signal aborts). No reply. */
+    cancel: "renderer-rpc:cancel",
 } as const;
 
 export type RendererRpcReply =
@@ -26,7 +29,8 @@ export interface McpCallParams {
 
 /** Renderer-only codes are method-not-found and invalid-params; main may also send timeout,
  * window-unavailable, and cancelled. Settings handlers may send untrusted, service-exited, and
- * service-error. Uncoded failures use the shared default error code. */
+ * service-error. `capabilityOpen` handlers may fail with any capability error code (from the board
+ * transport) or an uncoded error (validation); main maps them. Uncoded failures use the shared default error code. */
 export interface RendererRpcMethods {
     mcpCall: { params: McpCallParams; result: unknown };
     boardCall: { params: { ownerId: string; boardId: string; request: BoardCallRequest }; result: unknown };
@@ -39,6 +43,7 @@ export interface RendererRpcMethods {
     serviceSettingsGet: { params: { boardRoot: string; id: string }; result: BoardServiceSettingValue };
     serviceSettingsSubscribe: { params: { boardRoot: string; subscriptionId: string }; result: null };
     serviceSettingsUnsubscribe: { params: { boardRoot: string; subscriptionId: string }; result: null };
+    capabilityOpen: { params: BoundOpenDispatch; result: CapabilityOutcome };
 }
 
 export type RendererRpcMethod = keyof RendererRpcMethods;

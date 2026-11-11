@@ -145,10 +145,12 @@ initialization failures are recorded per service and reported after the pass; on
 does not prevent the remaining descriptors from being loaded. This generic path is why a service
 with startup work does not require a special case in `App` (the current example is `downloads`).
 
-`app.capabilities` is the renderer client for the unified capability system. A main-process
-registry and router unify board and platform providers; renderer open dispatch retains
-caller-window intent routing. Callers can request a page/editor without importing an editor module
-or duplicating page construction. The supported ids are `text.open`,
+`app.capabilities` is the renderer client for the unified capability system. Every call goes through
+a per-owner main `CapabilityClient` and the main `CapabilityRouter`, which resolves and authorizes
+the provider before dispatching to a board-service/audio backend or the typed main-to-renderer RPC
+for opens. The renderer owns only the open handler and caller-window board intent dispatch. Callers
+can request a page/editor without importing an editor module or duplicating page construction. The
+supported ids are `text.open`,
 `content.view` (with `svg`, `html`, `markdown`, `mermaid`, `grid`, or `log` representations),
 `image.edit`, and `diagram.edit`. Page-producing calls return a `pageId`; diagram editing may
 also return a conversion-failed result. The draw editor owns the image/diagram handlers, while
@@ -301,7 +303,7 @@ See [scripting.md](./scripting.md).
 - External AI agents (Claude Desktop, Claude Code) control persephone via a Streamable HTTP MCP server
 - Protocol: MCP over HTTP at `http://127.0.0.1:{port}/mcp` (default port 7865)
 - Main process: `mcp-http-server.ts` accepts connections using `@modelcontextprotocol/sdk`; the client instructions, 18 focused guide resources, and the single advertised tool live under `main/mcp/` as data plus one generic registrar.
-- Main-to-renderer requests use the typed RPC in `src/ipc/renderer-rpc.ts`, implemented by `src/main/renderer-rpc.ts` and `src/renderer/api/renderer-rpc.ts`. Its method map covers MCP `call` and board-host operations; the RPC owns readiness, pending-request correlation, timeout, and wire-error handling.
+- Main-to-renderer requests use the typed RPC in `src/ipc/renderer-rpc.ts`, implemented by `src/main/renderer-rpc.ts` and `src/renderer/api/renderer-rpc.ts`. Its method map covers MCP `call`, board-host operations and capability `open`; the RPC owns readiness, pending-request correlation, cancellation, timeout selection, and wire-error handling. Capability `open` uses the router's deadline and therefore selects the no-timeout mode.
 - The renderer's MCP `call` handler adapts requests to the MCP result shape and records MCP traffic in the request log. Board-host RPC methods use their own handlers and do not appear as MCP requests; they work independently of the optional MCP HTTP server.
 - The manifest advertises exactly one tool, `call`. Agent Tools are reached through the root-only
   `tools` node like every other capability: `tools.search` discovers tools, `tools.execute` runs

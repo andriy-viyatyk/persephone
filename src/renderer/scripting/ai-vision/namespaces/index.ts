@@ -2,7 +2,7 @@ import { boardVarsAdmin } from "../../../api/board-vars/admin-api";
 import { boards } from "../../../api/boards";
 import { siteExtensions } from "../../../api/site-extensions-agent";
 import { downloads } from "../../../api/downloads";
-import { capabilities } from "../../../api/capabilities";
+import { capabilities } from "../../../api/capabilities/CapabilitiesClient";
 import { editors } from "../../../api/editors";
 import { fs } from "../../../api/fs";
 import { menuFolders } from "../../../api/menu-folders";

@@ -20,6 +20,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
+- **Capability selection:** Unpinned `app.capabilities.invoke()` and board `persephone.capabilities.invoke()` calls honor `capabilities.preferredProviders` and can select any eligible major version. A board's declared `methods.open.timeoutMs` also applies when an app script opens it.
 - **Board lifecycle:** Disabling a bundled board makes its open pages unavailable until it is enabled again. Removing a board closes its pages and stops its service; renaming preserves its category pin and position.
 - **Settings help:** Hover over a **?** beside a setting or section, or focus it with Tab, to read
   its explanation. Press Escape to dismiss it. See [Settings](./screens/settings.md).

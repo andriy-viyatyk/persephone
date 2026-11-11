@@ -39,9 +39,15 @@ import { errMessage } from "../shared/utils";
 import { initPermissionPolicy } from "./permission-policy-service";
 import { shutdownPathWatchService } from "./path-watch-service";
 import { audioService } from "./audio-service";
+import { capabilityRouter } from "./capability-router";
+import { AudioBackend } from "./audio-backend";
+import { BoardServiceBackend } from "./board-service-backend";
 
 export function setupMainProcess() {
     audioService.initialize();
+    capabilityRouter.registerBackend("audio", new AudioBackend(audioService));
+    capabilityRouter.registerBackend("board-service", new BoardServiceBackend(moduleServiceSupervisor, capabilityRouter));
+    capabilityRouter.setServiceOwnerTracker((boardRoot, onClosed) => moduleServiceSupervisor.trackServiceOwner(boardRoot, onClosed));
     app.on("select-client-certificate", (event, webContents, _url, _list, callback) => {
         if (webContents === null) {
             event.preventDefault();

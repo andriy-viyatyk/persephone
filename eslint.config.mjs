@@ -768,6 +768,25 @@ export default tseslint.config(
             }],
         },
     },
+    {
+        files: ["src/renderer/api/capabilities/**/*.ts"],
+        rules: {
+            "import/no-restricted-paths": ["error", {
+                zones: [
+                    {
+                        target: "./src/renderer/api/capabilities",
+                        from: "./src/renderer/editors/board",
+                        message: "capabilities/ must not import editors/board/ (EPIC-145, roadmap §4.1).",
+                    },
+                    {
+                        target: "./src/renderer/api/capabilities",
+                        from: "./src/renderer/ui",
+                        message: "capabilities/ must not import ui/ (EPIC-145, roadmap §4.1).",
+                    },
+                ],
+            }],
+        },
+    },
 
     // C4-1: av-grid is reached only through uikit/DataGrid, so a later decision to vendor the
     // library's source changes one folder instead of every consumer.
