@@ -1,18 +1,19 @@
-import { MessageChannelMain, type MessagePortMain, type UtilityProcess, type WebContents } from "electron";
-import { EventEndpoint } from "../ipc/api-types";
+import { MessageChannelMain, type MessagePortMain, type WebContents } from "electron";
+import { EventEndpoint } from "../../ipc/api-types";
 import {
     LEASE_LOST_CODE,
     SERVICE_RENDERER_LEASE_TIMEOUT_MS,
     type RendererLeaseLostReason,
     type ServiceParentMessage,
-} from "../ipc/module-service-channels";
-import { errMessage } from "../shared/utils";
-import { ServiceError, type RendererLease, type ServiceRecord } from "./module-service-record";
-import { onWebContentsGone } from "./webcontents-lifetime";
+} from "../../ipc/module-service-channels";
+import { errMessage } from "../../shared/utils";
+import { ServiceError, type RendererLease, type ServiceRecord } from "./record";
+import { onWebContentsGone } from "../webcontents-lifetime";
+import type { ModuleServiceProcess } from "./process";
 
 export interface LeaseCallbacks {
-    getProcess: (record: ServiceRecord) => UtilityProcess | undefined;
-    postMessage: (process: UtilityProcess, message: ServiceParentMessage, ports?: MessagePortMain[]) => void;
+    getProcess: (record: ServiceRecord) => ModuleServiceProcess | undefined;
+    postMessage: (process: ModuleServiceProcess, message: ServiceParentMessage, ports?: MessagePortMain[]) => void;
 }
 
 export async function transferRendererLease(
@@ -27,7 +28,7 @@ export async function transferRendererLease(
     if (oldLease) failLease(record, oldLease, "superseded", callbacks, process);
 
     const { port1, port2 } = new MessageChannelMain();
-    const generation = record.generation;
+    const generation = process.generation;
     const leaseNonce = `${generation}:${++record.leaseCounter}`;
     let lease: RendererLease;
     const leasePromise = new Promise<void>((resolve, reject) => {
@@ -95,7 +96,7 @@ export function failLease(
     lease: RendererLease,
     reason: RendererLeaseLostReason,
     callbacks: LeaseCallbacks,
-    process: UtilityProcess | undefined = callbacks.getProcess(record),
+    process: ModuleServiceProcess | undefined = callbacks.getProcess(record),
 ): void {
     if (record.leases.get(lease.ownerId) !== lease) return;
     clearTimeout(lease.timer);

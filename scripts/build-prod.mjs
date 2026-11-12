@@ -6,6 +6,7 @@ import "./check-capability-contract.mjs";
  * package.json "main" field (.vite/build/main.js) works for both dev and prod.
  *
  * Output:
+ *   .vite/module-service-host/module-service-host.mjs - module-service utility process (Node ESM)
  *   .vite/build/main.js           – main process (CJS)
  *   .vite/build/preload.js        – preload script (CJS)
  *   .vite/build/preload-webview.js – webview preload (CJS)
@@ -30,6 +31,25 @@ const nodeExternals = [
 const nodeResolve = {
     conditions: ["node"],
 };
+
+function nodeEsmEntryConfig(name, input, outDir) {
+    return {
+        configFile: false,
+        resolve: nodeResolve,
+        ssr: { target: "node" },
+        build: {
+            ssr: true,
+            outDir,
+            emptyOutDir: true,
+            minify: false,
+            rollupOptions: {
+                input,
+                output: { format: "es", entryFileNames: `${name}.mjs`, inlineDynamicImports: true },
+                external: nodeExternals,
+            },
+        },
+    };
+}
 
 // ── 1. Main process ──────────────────────────────────────────────────
 
@@ -201,6 +221,12 @@ await build({
 // resolve to npm polyfill packages in node_modules — no special handling
 // needed. We do NOT externalize node builtins here (unlike main/preload)
 // because ESM bare imports like `import "fs"` would fail in Chromium.
+
+console.log("\n🔨 Building module-service-host...");
+await build(nodeEsmEntryConfig("module-service-host", "src/module-service-host/index.ts", ".vite/module-service-host"));
+
+console.log("\nBuilding node-script-host...");
+await build(nodeEsmEntryConfig("node-script-host", "src/node-script-host/index.ts", ".vite/node-script-host"));
 
 console.log("\n🔨 Building renderer...");
 await build({

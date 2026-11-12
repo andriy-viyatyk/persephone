@@ -11,6 +11,9 @@ import type { NormalizedBoardPermissions } from "../shared/board/board-permissio
 import type { BoardCapabilityDeclaration, CapabilityCallerIdentity, CapabilityErrorCode, CapabilityJson } from "../shared/capability-contract";
 import type { WireError } from "../shared/wire-error";
 import { CAPABILITY_DEFAULT_TIMEOUT_MS } from "../shared/capability-limits";
+import type { ProviderOperation } from "../shared/provider-operation-policy";
+export { PROVIDER_OPERATION_POLICY } from "../shared/provider-operation-policy";
+export type { ProviderOperation, ProviderOperationPolicy } from "../shared/provider-operation-policy";
 
 export const SERVICE_HANDSHAKE_TIMEOUT_MS = 5000;
 export const SERVICE_SHUTDOWN_TIMEOUT_MS = 2000;
@@ -18,6 +21,12 @@ export const SERVICE_RENDERER_LEASE_TIMEOUT_MS = 5000;
 export const SERVICE_QUIT_GATE_TIMEOUT_MS = 5000;
 export { MAX_OUTSTANDING_REQUESTS_PER_SERVICE, MAX_SERVICE_CHANNELS_PER_BOARD, MAX_SERVICE_CHANNELS_PER_SERVICE, MAX_SERVICE_CHANNEL_IN_FLIGHT, MAX_SERVICE_CHANNEL_MESSAGE_BYTES } from "../shared/capability-limits";
 export const SERVICE_REQUEST_DEADLINE_MS = CAPABILITY_DEFAULT_TIMEOUT_MS;
+export const HOST_SERVICE_CHANNEL_POLICIES = {
+    "speech.transcribe@1": { interfaceId: "speech.transcribe", version: 1, openTypes: ["describe", "transcribe"], ownerLabel: "voice-typing" },
+    "speech.synthesize@1": { interfaceId: "speech.synthesize", version: 1, openTypes: ["describe", "speak"], ownerLabel: "speech-synthesize" },
+    "speech.wake@1": { interfaceId: "speech.wake", version: 1, openTypes: ["describe", "enroll", "list", "delete", "listen"], ownerLabel: "speech-wake" },
+    "text.translate@1": { interfaceId: "text.translate", version: 1, openTypes: ["describe", "detect", "translate", "download"], ownerLabel: "text-translation" },
+} as const;
 /** How long an opened channel waits for its port to reach the board frame. */
 export { CAPABILITY_DEFAULT_TIMEOUT_MS as SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "../shared/capability-limits";
 
@@ -65,14 +74,6 @@ export type ServiceErrorPayload = WireError;
 export type ModuleServicePortResult = { ok: true } | { ok: false; error: ServiceErrorPayload };
 export interface ServiceHostConfig {
     capabilityCalls: Array<{ id: string; version: number; method: string }>;
-    serviceRequestDeadlineMs: number;
-    maxOutstandingRequestsPerService: number;
-    maxBufferedPipeBytes: number;
-    maxBoardPipeChunkBytes: number;
-    maxServiceChannelInFlight: number;
-    maxServiceChannelMessageBytes: number;
-    serviceChannelAckBatch: number;
-    providerRequestClasses: Record<ProviderOperation, "content-read" | "control">;
 }
 
 export interface CapabilityInvocationWireContext {
@@ -171,42 +172,6 @@ export type ServiceMainMessage =
     | { kind: "board-settings-subscribe"; requestId: string; subscriptionId: string }
     | { kind: "board-settings-unsubscribe"; requestId: string; subscriptionId: string }
     | { kind: "channel-ended"; channelId: string };
-
-export type ProviderOperation =
-    | "readBinary"
-    | "readRange"
-    | "writeBinary"
-    | "stat"
-    | "watchSubscribe"
-    | "watchUnsubscribe"
-    | "statusSubscribe"
-    | "statusUnsubscribe";
-
-export interface ProviderOperationPolicy {
-    /** End-to-end deadline, owned by the renderer client (`module-service.request`); absent =
-     *  unbounded, released only by cancellation. The host runs no provider timer. */
-    readonly deadlineMs?: number;
-    /** `content-read` is exempt from MAX_OUTSTANDING_REQUESTS_PER_SERVICE and counted as an
-     *  outstanding content read; `control` competes for that cap. */
-    readonly requestClass: "content-read" | "control";
-}
-
-/**
- * The provider-operation policy table is shared with the host through its `init` message,
- * because `assets/module-service-host.mjs` cannot import TypeScript.
- * Note `stat` is unbounded but still a
- * control request: it sits on content.open()'s eager-sizing path, but must not erode the cap.
- */
-export const PROVIDER_OPERATION_POLICY: Readonly<Record<ProviderOperation, ProviderOperationPolicy>> = {
-    readBinary: { requestClass: "content-read" },
-    readRange: { requestClass: "content-read" },
-    writeBinary: { deadlineMs: SERVICE_REQUEST_DEADLINE_MS, requestClass: "control" },
-    stat: { requestClass: "control" },
-    watchSubscribe: { deadlineMs: SERVICE_REQUEST_DEADLINE_MS, requestClass: "control" },
-    watchUnsubscribe: { deadlineMs: SERVICE_REQUEST_DEADLINE_MS, requestClass: "control" },
-    statusSubscribe: { deadlineMs: SERVICE_REQUEST_DEADLINE_MS, requestClass: "control" },
-    statusUnsubscribe: { deadlineMs: SERVICE_REQUEST_DEADLINE_MS, requestClass: "control" },
-};
 
 export interface ProviderRequest {
     kind: "provider";

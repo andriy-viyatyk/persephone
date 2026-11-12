@@ -1,5 +1,5 @@
 /** Shared request correlation for one-shot request/reply flows. This dependency-light module
- *  follows `shared/execute-handle.ts`; `assets/module-service-host.mjs` keeps a checked mirror. */
+ *  follows `shared/execute-handle.ts`. */
 export type RequestId = string | number;
 
 /** Default rejection for a timeout or an abort when a site does not supply its own error. */

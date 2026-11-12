@@ -91,8 +91,8 @@ application session.
 Packaged builds lock Electron fuses in `electron-builder.yml`: `RunAsNode`, `NODE_OPTIONS` (including
 `NODE_EXTRA_CA_CERTS`), and Node inspector arguments are disabled; embedded asar integrity validation
 and load-only-from-asar are enabled; and browser cookie encryption is enabled. Board Node scripts
-therefore run in an Electron utility process via `assets/node-script-host.mjs`, rather than
-relaunching the application executable as Node. Browser downloads are tagged with the Windows
+therefore run in an Electron utility process from the host built from `src/node-script-host/index.ts`,
+rather than relaunching the application executable as Node. Browser downloads are tagged with the Windows
 Mark-of-the-Web (`Zone.Identifier`) so Windows security features can identify internet-origin files.
 
 The main window uses a strict content security policy. HTML previews load through the separate
@@ -452,9 +452,11 @@ the resolved main-process UI locale as `PERSEPHONE_LOCALE`, set at spawn and upd
 host in place through the `locale-changed` parent control message when that effective locale changes.
 The host consumes this control message by updating `process.env.PERSEPHONE_LOCALE`; it is not sent
 to service callbacks and does not restart the service. The supervisor delegates
-per-service state and process cleanup to `module-service-record.ts`, ready/probe message routing to
-`module-service-handshake.ts`, per-window port lifecycle to `module-service-leases.ts`, and bounded
-failure accounting to `module-service-restart-budget.ts`. `board-trust-service.ts` loads
+service state and process lifecycle to `src/main/module-service/process.ts`, trust indexing to
+`src/main/module-service/trust-directory.ts`, channel delivery to
+`src/main/module-service/channel-broker.ts`, and settings, MCP endpoint, and capability
+requests to their adapters under `src/main/module-service/`. The facade keeps the public supervisor API.
+`board-trust-service.ts` loads
 the trust file before windows are restored, serializes trust mutations, and derives the service
 eligibility snapshot from trusted roots and bundled manifests. Service starts and port requests
 wait for this initial load. Main writes the trust file through a same-directory temporary file and
@@ -470,8 +472,8 @@ the page endpoint to the exact `BoardFrameSession` iframe. The service registers
 `info.page.boardId`, while cross-board opens add `info.interface` and descriptive `info.caller` fields.
 Both directions use the shared `ServiceChannel` protocol in `src/shared/service-channel.ts`, with
 ordered sequence numbers, cumulative acknowledgements, bounded in-flight delivery and a common
-wire-error shape. The Node utility-process adapter uses the same protocol rules; the host's checked
-JavaScript mirror lives in `assets/module-service-host.mjs`. Renderer-targeted ports are delivered
+wire-error shape. The Node utility-process host uses the shared Electron adapter in
+`src/shared/service-channel-node.ts`. Renderer-targeted ports are delivered
 by `channelId` through `src/renderer/api/service-channel-ports.ts`, while board-frame ports remain
 owned by their board views. The protocol rejects payloads over the 1 MiB serialized cap. Board frames
 have no Node integration, so page-to-service traffic is count-bounded only. Reload, service exit,

@@ -18,7 +18,7 @@ pipeline, but `ILinkData.target` does not name a capability.
 | [`src/main/capability-client.ts`](../../src/main/capability-client.ts) | Per-owner list/get/invoke front door, request validation, duplicate-id tracking, cancellation and error mapping. |
 | [`src/main/capability-router.ts`](../../src/main/capability-router.ts) | Caller visibility, resolution, provider binding, reauthorization, limits and dispatch for `call`, `channel` and `open`. |
 | [`src/main/capability-backend.ts`](../../src/main/capability-backend.ts), [`board-service-backend.ts`](../../src/main/board-service-backend.ts) and [`audio-backend.ts`](../../src/main/audio-backend.ts) | Router backend contract and adapters for board services and audio. |
-| [`src/shared/service-channel.ts`](../../src/shared/service-channel.ts) and [`src/shared/service-channel-node.ts`](../../src/shared/service-channel-node.ts) | The one windowed-ack channel; host mirror in `assets/module-service-host.mjs`, checked by `check:contracts`. |
+| [`src/shared/service-channel.ts`](../../src/shared/service-channel.ts) and [`src/shared/service-channel-node.ts`](../../src/shared/service-channel-node.ts) | The shared windowed-ack channel used by the board shim and typed module-service host. |
 | [`src/shared/capability-contract.ts`](../../src/shared/capability-contract.ts) and [`capability-limits.ts`](../../src/shared/capability-limits.ts) | Declaration normalization, legacy projection, shared method types and limits. |
 | [`src/shared/capability-client.ts`](../../src/shared/capability-client.ts) | Builds named-method proxies for clients. |
 | [`src/shared/platform-capabilities.ts`](../../src/shared/platform-capabilities.ts) | Metadata for platform providers backed by editor handlers. |

@@ -1,18 +1,18 @@
 import type {
     ServiceMainMessage,
     ServiceParentMessage,
-} from "../ipc/module-service-channels";
+} from "../../ipc/module-service-channels";
 import {
     MAX_OUTSTANDING_REQUESTS_PER_SERVICE,
     SERVICE_REQUEST_DEADLINE_MS,
-} from "../ipc/module-service-channels";
+} from "../../ipc/module-service-channels";
 import {
     createBoardStorageOperationContract,
     validateBoardStorageKey,
     validateBoardStorageValue,
     type JsonValue,
-} from "./board-storage";
-import { errMessage } from "../shared/utils";
+} from "../board-storage";
+import { errMessage } from "../../shared/utils";
 
 interface StorageContext {
     getBoardRoot: () => string;

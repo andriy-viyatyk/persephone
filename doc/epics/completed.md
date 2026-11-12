@@ -1,3 +1,18 @@
+## EPIC-149 — Refactoring Phase 4.5: the module-service host and supervisor split
+
+Completed 2026-11-12. Roadmap Phase 4.5 (BND-6, MAIN-1): the utility-process module-service host is typed TypeScript in
+`src/module-service-host/`, built as Node ESM and split by job; `src/main/module-service-supervisor.ts` is a thin facade
+over single-job collaborators in `src/main/module-service/` (1,402 → 725 lines). The board-service API and
+`BOARD_BRIDGE_VERSION` remain unchanged. Plans by Codex Terra, reviewed against the roadmap guardrails; Codex Luna
+implemented. Epic document: [EPIC-149](EPIC-149.md).
+
+- [x] **The host in TypeScript (US-1861).** `assets/module-service-host.mjs` became `src/module-service-host/`, built to `.vite/` and shipped as an unpacked resource; it imports the shared channel, correlator and error code, so the `check:contracts` mirror checks are gone.
+- [x] **The host split by job (US-1862).** Ten modules behind a composition root; one `MainRequestFamily` for settings, MCP and capability requests; the raw protocol isolated in `raw-protocol-compat.ts`; the node-script host typed with a shared protocol file.
+- [x] **Supervisor adapters (US-1863).** `src/main/module-service/` holds the moved helpers plus the board-settings, MCP-endpoint and capability-client adapters.
+- [x] **`ServiceTrustDirectory` and `ServiceChannelBroker` (US-1864).** One provider-eligibility rule and one channel delivery path.
+- [x] **`ModuleServiceProcess` (US-1865).** One object per spawned generation with a single dispatch table; `record.current` replaces generation checks.
+- [x] **Epic review.** `/review` found no architecture concerns; `/document` updated overview, folder-structure, key-files, capabilities and scripting; `/userdoc` needed no changes. No English catalog messages changed.
+
 ## EPIC-148 — Refactoring Phase 4.4: the board shim split
 
 Completed 2026-11-11. `src/board-shim.ts` is a 125-line composition root over 25 browser-only feature modules in

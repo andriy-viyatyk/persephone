@@ -592,7 +592,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Board RPC domains and dispatch (typed handler table assembled from app, file, watch, service, capability and storage domains; central permission and live-frame enforcement) | `/src/main/board-host/rpc/table.ts`, `/src/main/board-host/rpc/` |
 | Board TypeScript project bridge lifetime (authorizes registered project roots and releases each registration when its board port is disposed) | `/src/main/board-host/rpc/app.ts`, `/src/renderer/api/ts-project-registry.ts` |
 | Board file-access policy (canonical path validation and permission-scoped board/picked/full reads and writes, plus the exact hosted-document read exception) | `/src/main/board-file-access.ts` |
-| Node-script host (runs `persephone.executeNode()` scripts in an Electron utility process because packaged builds disable RunAsNode; supplies Node-style argv and fed stdin, and exits when work is idle) | `/assets/node-script-host.mjs` |
+| Node-script host (runs `persephone.executeNode()` scripts in an Electron utility process because packaged builds disable RunAsNode; supplies Node-style argv and fed stdin, and exits when work is idle) | `/src/node-script-host/index.ts` |
 | Board `call` routing (main port handler forwards the owner-scoped request to the hosting renderer; renderer rechecks trust and returns only a shaped JSON value, with an unbounded programmatic default unless the caller supplies `maxLength`) | `/src/main/board-host/rpc/app.ts`, `/src/renderer/api/mcp/board-call-command.ts`, `/src/ipc/board-bridge/port-protocol.ts` |
 | Board bridge contracts (boot context; typed board↔main RPC method params/results and event maps; frame request/event maps and envelopes; UI catalog and reserved board-origin routes) | `/src/ipc/board-bridge/boot.ts`, `/src/ipc/board-bridge/port-protocol.ts`, `/src/ipc/board-bridge/frame-protocol.ts`, `/src/ipc/board-bridge/ui-catalog.ts`, `/src/ipc/board-bridge/origin-routes.ts` |
 | Native open/save/folder dialogs shared by IPC handlers and board RPC handlers | `/src/main/native-dialogs.ts`, `/src/ipc/main/dialog-handlers.ts`, `/src/main/board-host/rpc/app.ts` |
@@ -661,19 +661,21 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Board trust subscriber wiring and consumer order | `/src/main/board-trust-subscribers.ts` |
 | Main-owned board trust mutations, refresh, current snapshot and subscriptions | `/src/main/board-trust-service.ts` |
 | Board file-access grants and authorization (persisted and session grants; shared path-containment policy) | `/src/main/board-file-access.ts` |
-| Module-service supervisor (main orchestration for lazy Electron `utilityProcess` services, derived-trust gating, ordinary requests, direct board channels and the reserved `speech.transcribe@1`, `speech.synthesize@1`, `speech.wake@1`, and `text.translate@1` host channels, locale propagation, status publication, and teardown) | `/src/main/module-service-supervisor.ts` |
+| Module-service supervisor facade (coordinates trusted service lifecycle, requests, channels, status publication, and teardown) | `/src/main/module-service-supervisor.ts`, `/src/main/module-service/` |
 | Typed main-process consumer port delivery and delivery owner selection | `/src/main/channel-delivery.ts` |
 | Private MCP session endpoint manager (lazy loopback listener, per-service bearer grants, bounded transport lifecycle, revocation, and private client count) | `/src/main/mcp/private-session-endpoints.ts` |
-| Module-service record and process cleanup primitives (per-service state, pending requests, renderer leases, board-frame channel ownership, generation checks, and synchronous utility-process tree cleanup) | `/src/main/module-service-record.ts` |
-| Module-service handshake and process-message routing (ready/probe deadline, generation-checked utility-process messages, and callbacks into supervisor-owned behavior) | `/src/main/module-service-handshake.ts` |
-| Module-service renderer leases (per-`WebContents` `MessagePort` transfer, attach acknowledgement, loss, and lifecycle cleanup) | `/src/main/module-service-leases.ts` |
-| Module-service restart policy (sliding failure window, bounded restart count, reset and freeze) | `/src/main/module-service-restart-budget.ts` |
+| Module-service process (one utility-process generation, including spawn, handshake, dispatch, logging, and exit) | `/src/main/module-service/process.ts` |
+| Module-service trust directory (trusted snapshot and indexed provider eligibility/discovery) | `/src/main/module-service/trust-directory.ts` |
+| Module-service channel broker (direct and capability channel delivery and cleanup) | `/src/main/module-service/channel-broker.ts` |
+| Module-service adapters (board settings, MCP endpoints, and capability clients) | `/src/main/module-service/board-settings-adapter.ts`, `/src/main/module-service/mcp-endpoint-adapter.ts`, `/src/main/module-service/capability-client-adapter.ts` |
+| Module-service record, renderer leases, and restart budget | `/src/main/module-service/record.ts`, `/src/main/module-service/leases.ts`, `/src/main/module-service/restart-budget.ts` |
 | Browser-download interception (main; consumes derived URL-mask claims at Electron's `will-download` boundary, stages bytes while an async Save As dialog is open, and writes Windows Mark-of-the-Web from the final redirected URL) | `/src/main/download-service.ts` |
 | Module-service protocol and lifecycle types (main/utility-process parent messages, per-renderer lease and per-board-channel messages, trust snapshots, status records, storage frames, and provider operation deadline/cap policy) | `/src/ipc/module-service-channels.ts` |
+| Node-script host parent-port protocol (shared marker, stdin message kinds, and message type) | `/src/ipc/node-script-host-protocol.ts` |
 | Board-service settings IPC channel and request/reply types | `/src/ipc/board-service-settings-channels.ts` |
 | Per-board JSON storage owner (root-hash folder, `store.json`, `board.json` sidecar, JSON validation/limits, lazy cache and per-board mutation queue shared by frames and services) | `/src/main/board-storage.ts` |
 | Board root digest derivation for storage keys | `/src/main/board-root-hashes.ts` |
-| Utility-process storage adapter (routes service storage requests through the main-owned board store and its mutation queue) | `/src/main/module-service-storage.ts` |
+| Utility-process storage adapter (routes service storage requests through the main-owned board store and its mutation queue) | `/src/main/module-service/storage.ts` |
 | Renderer module-service client (main-routed ordinary requests plus the optional host-renderer `MessagePort` lease; applies provider operation deadlines/caps and reacquires after lease loss) | `/src/renderer/api/module-service.ts` |
 | Host-managed board-service settings bridge (validates trust and service permission, reads effective settings, and relays changes to service processes) | `/src/renderer/api/board-service-settings.ts` |
 | Renderer-lifetime module-service status cache (snapshot hydration and status-event replacement for `boards.list()` and Board Info) | `/src/renderer/api/module-service-status.ts` |
@@ -690,4 +692,4 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Monaco project IntelliSense (file-backed model URIs, shared extra-library loading, change watching and page bindings) | `/src/renderer/editors/shared/monaco-project-intellisense.ts` |
 | Monaco project diagnostics (page-scoped syntactic and semantic marker lifecycle) | `/src/renderer/editors/shared/monaco-project-diagnostics.ts` |
 | Board page service-channel APIs (`persephone.service.openChannel()` and `persephone.services.list/connect()`, endpoint flow control, close handling, and pagehide cleanup) | `/src/board-shim/service-api.ts`, `/src/board-shim/service-port-inbox.ts`, `/src/board-shim/main-port-channel.ts` |
-| Static utility-process module-service host (injects board storage/settings and private MCP endpoint issuance, imports the board-relative ESM service entry, owns lifecycle, request replies, direct board channels, and live locale environment updates for host-API entries while preserving legacy raw-protocol ownership, and manages provider leases) | `/assets/module-service-host.mjs` |
+| Typed utility-process module-service host (composition root for lifecycle, main requests, provider dispatch, capabilities, and the board-service API) | `/src/module-service-host/index.ts`, `/src/module-service-host/` |

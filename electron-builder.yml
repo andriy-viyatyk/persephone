@@ -9,6 +9,8 @@ directories:
 files:
   - package.json
   - .vite/**/*
+  - "!.vite/module-service-host/**"
+  - "!.vite/node-script-host/**"
   - "!node_modules/**/{CHANGELOG.md,README.md,readme.md,LICENSE,license,LICENCE}"
   - "!node_modules/**/*.{ts,map}"
 
@@ -16,6 +18,10 @@ files:
 extraResources:
   - from: assets
     to: assets
+  - from: .vite/module-service-host/module-service-host.mjs
+    to: assets/module-service-host.mjs
+  - from: .vite/node-script-host/node-script-host.mjs
+    to: assets/node-script-host.mjs
 
 # Rust binaries sit next to the main exe (outside asar)
 extraFiles:

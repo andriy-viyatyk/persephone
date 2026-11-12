@@ -143,6 +143,32 @@ function searchWorkerConfig() {
     };
 }
 
+function nodeEsmEntryConfig(name, input, outDir) {
+    return {
+        configFile: false,
+        mode: "development",
+        resolve: { conditions: ["node"] },
+        ssr: { target: "node" },
+        build: {
+            ssr: true,
+            outDir,
+            emptyOutDir: false,
+            minify: false,
+            sourcemap: true,
+            watch: {},
+            rollupOptions: {
+                input,
+                output: {
+                    format: "es",
+                    entryFileNames: `${name}.mjs`,
+                    inlineDynamicImports: true,
+                },
+                external: nodeExternals,
+            },
+        },
+    };
+}
+
 // ── Electron process lifecycle ──────────────────────────────────────────────
 
 let electronProc = null;
@@ -252,6 +278,8 @@ process.on("SIGTERM", () => shutdown(0));
 
 // Clean stale build output once (concurrent watchers can't share emptyOutDir).
 rmSync(".vite/build", { recursive: true, force: true });
+rmSync(".vite/module-service-host", { recursive: true, force: true });
+rmSync(".vite/node-script-host", { recursive: true, force: true });
 
 console.log("\x1b[36m[dev]\x1b[0m Starting renderer dev server...");
 server = await createServer({
@@ -265,7 +293,7 @@ const devServerUrl = server.resolvedUrls?.local?.[0] ?? "http://localhost:5273/"
 const audioWindowUrl = new URL("audio.html", devServerUrl).href;
 console.log(`\x1b[36m[dev]\x1b[0m Renderer at ${devServerUrl}`);
 
-console.log("\x1b[36m[dev]\x1b[0m Building main / preload / board-shim / site-extension-runtime / search-worker (watch)...");
+console.log("\x1b[36m[dev]\x1b[0m Building main / preload / board-shim / site-extension-runtime / search-worker / module-service-host (watch)...");
 await Promise.all([
     watchBuild("main", mainConfig(devServerUrl, audioWindowUrl), { restartOnChange: true }),
     watchBuild("preload", preloadConfig({ preload: "src/preload.ts" }), { restartOnChange: true }),
@@ -278,6 +306,9 @@ await Promise.all([
     // search-worker is likewise re-read from disk per search in dev (getWorkerSource
     // only caches when packaged), so a rebuild needs no Electron restart either.
     watchBuild("search-worker", searchWorkerConfig(), { restartOnChange: false }),
+    // Each new service process reads the current external host entry from disk.
+    watchBuild("module-service-host", nodeEsmEntryConfig("module-service-host", "src/module-service-host/index.ts", ".vite/module-service-host"), { restartOnChange: false }),
+    watchBuild("node-script-host", nodeEsmEntryConfig("node-script-host", "src/node-script-host/index.ts", ".vite/node-script-host"), { restartOnChange: false }),
 ]);
 
 console.log("\x1b[36m[dev]\x1b[0m Launching Electron...");

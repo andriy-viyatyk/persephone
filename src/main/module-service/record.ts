@@ -1,10 +1,11 @@
 import { spawnSync } from "node:child_process";
 import type { MessagePortMain, UtilityProcess, WebContents } from "electron";
-import { errMessage } from "../shared/utils";
-import type { BoardServiceState } from "../ipc/module-service-channels";
-import type { ModuleServiceStorageAdapter } from "./module-service-storage";
-import type { RestartBudget } from "./module-service-restart-budget";
-import type { PendingRequests } from "../shared/pending-requests";
+import { errMessage } from "../../shared/utils";
+import type { BoardServiceState } from "../../ipc/module-service-channels";
+import type { ModuleServiceStorageAdapter } from "./storage";
+import type { RestartBudget } from "./restart-budget";
+import type { PendingRequests } from "../../shared/pending-requests";
+import type { ModuleServiceProcess } from "./process";
 
 export class ServiceError extends Error {
     constructor(readonly code: string, message = code) {
@@ -40,8 +41,8 @@ export interface ServiceRecord {
     startedAt?: number;
     restartBudget: RestartBudget;
     terminalFailure: boolean;
-    generation: number;
-    process?: UtilityProcess;
+    lastGeneration: number;
+    current?: ModuleServiceProcess;
     startPromise?: Promise<{ boardRoot: string; pid?: number; startedAt: number }>;
     stopPromise?: Promise<void>;
     cancelAttempt?: (error: ServiceError) => void;
@@ -52,10 +53,6 @@ export interface ServiceRecord {
     storageAdapter?: ModuleServiceStorageAdapter;
     leaseCounter: number;
     stopRequested: boolean;
-}
-
-export function isCurrent(record: ServiceRecord, process: UtilityProcess, generation: number): boolean {
-    return record.process === process && record.generation === generation;
 }
 
 /** A service that has been forked: still loading its module (`starting`) or past the handshake (`running`). */

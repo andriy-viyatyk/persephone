@@ -31,7 +31,8 @@ import {
     RunnerStdinMsg,
 } from "../ipc/runner-channels";
 import { errMessage } from "../shared/utils";
-import { getAssetPath } from "./utils";
+import { NODE_SCRIPT_END_STDIN_KIND, NODE_SCRIPT_MARKER, NODE_SCRIPT_STDIN_KIND, type NodeScriptHostMessage } from "../ipc/node-script-host-protocol";
+import { getNodeHostEntryPath } from "./utils";
 import { guardedIpcOn } from "./ipc-sender-guard";
 import { onWebContentsGone } from "./webcontents-lifetime";
 
@@ -294,7 +295,7 @@ export function startNodeJobTo(sink: JobSink, msg: RunnerStartMsg): void {
     const { jobId, command: script, opts } = msg;
     let child: UtilityProcess;
     try {
-        child = utilityProcess.fork(getAssetPath(NODE_SCRIPT_HOST), ["--persephone-node-script", script, ...(msg.args ?? [])], {
+        child = utilityProcess.fork(getNodeHostEntryPath(NODE_SCRIPT_HOST, "node-script-host"), [NODE_SCRIPT_MARKER, script, ...(msg.args ?? [])], {
             cwd: opts?.cwd,
             env: { ...process.env, ...(opts?.env ?? {}), NODE_NO_WARNINGS: "1" },
             stdio: "pipe",
@@ -306,8 +307,8 @@ export function startNodeJobTo(sink: JobSink, msg: RunnerStartMsg): void {
     }
     // Messages posted before the host starts may be lost, so stdin waits for "spawn".
     let spawned = false;
-    const pending: Array<{ kind: "stdin"; data: string | Uint8Array } | { kind: "end-stdin" }> = [];
-    const post = (message: (typeof pending)[number]) => {
+    const pending: NodeScriptHostMessage[] = [];
+    const post = (message: NodeScriptHostMessage): void => {
         if (spawned) child.postMessage(message);
         else pending.push(message);
     };
@@ -317,8 +318,8 @@ export function startNodeJobTo(sink: JobSink, msg: RunnerStartMsg): void {
     });
     const jobProcess: JobProcess = {
         get pid() { return child.pid; },
-        writeStdin: (data) => post({ kind: "stdin", data }),
-        endStdin: () => post({ kind: "end-stdin" }),
+        writeStdin: (data) => post({ kind: NODE_SCRIPT_STDIN_KIND, data }),
+        endStdin: () => post({ kind: NODE_SCRIPT_END_STDIN_KIND }),
         kill: () => { child.kill(); },
     };
     const job: Job = {

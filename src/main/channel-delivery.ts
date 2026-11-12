@@ -1,14 +1,19 @@
 import { EventEndpoint } from "../ipc/api-types";
 import type { ServiceParentMessage } from "../ipc/module-service-channels";
 import type { ServiceChannelDelivery, ServiceChannelTarget } from "../shared/service-channel-target";
-import type { MessagePortMain, UtilityProcess, WebContents } from "electron";
+import type { MessagePortMain, WebContents } from "electron";
+
+export interface ServiceProcessPort {
+    postMessage(message: ServiceParentMessage, ports?: MessagePortMain[]): void;
+    onExit(listener: () => void): () => void;
+}
 
 export type ChannelDelivery =
     | { kind: "board-frame"; webContents: WebContents; boardId: string }
     | { kind: "renderer"; webContents: WebContents }
-    | { kind: "service"; process: UtilityProcess; requestId: string };
+    | { kind: "service"; process: ServiceProcessPort; requestId: string };
 
-export function deliveryOwner(delivery: ChannelDelivery): WebContents | UtilityProcess {
+export function deliveryOwner(delivery: ChannelDelivery): WebContents | ServiceProcessPort {
     return delivery.kind === "service" ? delivery.process : delivery.webContents;
 }
 

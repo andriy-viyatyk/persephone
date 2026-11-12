@@ -11,6 +11,8 @@ persephone/
 │   ├── renderer/           # Native VanillaView frontend
 │   ├── ipc/                # IPC communication layer
 │   ├── shared/             # Shared types, constants, cross-process helpers, board manifest/value objects and service-channel protocol, plus i18n runtime/catalogs
+│   ├── module-service-host/ # Typed utility-process host, split into lifecycle, request, provider, capability, and service-API modules
+│   ├── node-script-host/    # Typed entry point for Node-style scripts executed in an Electron utility process
 │   ├── renderer.ts          # Async bootstrap; calls renderer/index.ts mount(container)
 │   ├── preload.ts          # Preload script (main renderer)
 │   ├── board-shim.ts       # Browser IIFE composition root; installs collaborators and assigns window.persephone
@@ -45,8 +47,8 @@ persephone/
 │   ├── build.rs
 │   └── Cargo.toml
 ├── scripts/                # Build scripts
-│   ├── dev.mjs             # Dev orchestrator (npm start) — Vite renderer dev server + HMR, Node-targeted main build, watch-builds main/preload/preload-webview/board-shim/search-worker, launches Electron with restart-on-change
-│   ├── build-prod.mjs      # Vite production build — Node-targeted main plus preload, preload-webview, renderer, board-shim, search-worker
+│   ├── dev.mjs             # Dev orchestrator (npm start) — Vite renderer dev server + HMR, Node-targeted main build, watch-builds main/preload/preload-webview/board-shim/search-worker/utility-process hosts, launches Electron with restart-on-change
+│   ├── build-prod.mjs      # Vite production build — Node-targeted main plus preload, preload-webview, renderer, board-shim, search-worker, and ESM utility-process hosts
 │   ├── build-board-lib.mjs # Manual Excalidraw vendor-graph snapshot generator (run only when its pinned version changes)
 │   ├── build-rest-client-lib.mjs # Build the REST Client board's committed CodeMirror browser module
 │   ├── i18n-check.mjs      # Bundle and run the language-pack validation command
@@ -66,7 +68,6 @@ persephone/
 │   │   ├── formats/        # Structured editor formats
 │   │   └── scripting/      # Scripting guide and API reference
 │   ├── board-base.css      # Shared board stylesheet copied into every board — theme defaults + the opt-in .p-* chrome layer
-│   ├── module-service-host.mjs # Utility-process host that injects storage/settings, imports the service entry, and owns lifecycle, request/channel, and private MCP session APIs
 │   ├── board-template/     # Starter files copied into every new blank board
 │   ├── board-template-header.md # Board-local header prepended to its generated CLAUDE.md
 │   ├── guides/agents/boards.md # Canonical board authoring guide; filtered into new blank boards
@@ -1032,13 +1033,19 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 │   └── rpc/                 # Typed RPC composition, dispatch/errors, and app/files/watch/services/capabilities/storage domains
 ├── native-dialogs.ts       # Shared native open/save/folder dialog implementations used by IPC and board handlers
 ├── board-trust-service.ts # Main owner of trust mutations, refresh, current snapshots and subscriptions
-├── module-service-supervisor.ts # Main orchestration for lazy utilityProcess services, derived-trust gating, requests, direct board channels, status, and teardown
-├── module-service-record.ts # Per-service state and request/lease/channel records, generation checks, and utility-process cleanup
-├── module-service-handshake.ts # Ready/probe handshake deadline and utility-process message routing
-├── module-service-leases.ts # Per-WebContents renderer MessagePort lease transfer, acknowledgement, and lifecycle cleanup
-├── module-service-restart-budget.ts # Sliding-window service failure count and bounded restart policy
+├── module-service-supervisor.ts # Thin facade for service lifecycle, requests, channels, trust, status, and teardown
+├── module-service/          # Main-process module-service collaborators
+│   ├── process.ts           # One spawned generation: fork, handshake, message dispatch, logging, and exit
+│   ├── trust-directory.ts   # Trusted-service snapshot and indexed provider lookup
+│   ├── channel-broker.ts    # Direct/capability channel delivery and cleanup
+│   ├── board-settings-adapter.ts # Renderer-backed service settings requests and subscriptions
+│   ├── capability-client-adapter.ts # Service capability client requests
+│   ├── mcp-endpoint-adapter.ts # Private MCP endpoint issuance
+│   ├── record.ts            # Per-service state and request/lease/channel records
+│   ├── leases.ts            # Per-WebContents renderer MessagePort lease lifecycle
+│   ├── restart-budget.ts    # Sliding-window service failure count and bounded restart policy
+│   └── storage.ts           # Adapter routing utility-process storage requests through the main board store
 ├── board-storage.ts        # Main-owned per-board JSON store under data/board-storage/<root-hash>, sidecar metadata, validation and per-board mutation queue
-├── module-service-storage.ts # Adapter routing utility-process storage requests through the main board store
 ├── cdp-service.ts          # CDP session service for call-path automation — attaches the debugger to webContents; board frames registered/resolved by their ?v= nonce
 ├── mneme-service.ts        # Mneme concerns on top of sidecar-process: port/config wiring and MnemeStatus broadcasts for the knowledge-base service
 ├── snip-service.ts         # Screen snip (spawns persephone-snip.exe, reads PNG from stdout; exports getSnipToolPath for clipboard services)

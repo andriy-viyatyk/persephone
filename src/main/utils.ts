@@ -48,6 +48,13 @@ export const getAssetPath = (...paths: string[]): string => {
     return path.join(resourcesPath, ...paths);
 };
 
+/** Resolve an external Node ESM host in both the dev and packaged layouts. */
+export function getNodeHostEntryPath(fileName: string, devDir: string): string {
+    return app.isPackaged
+        ? getAssetPath(fileName)
+        : path.join(__dirname, "..", devDir, fileName);
+}
+
 let dataFolder = undefined as string | undefined;
 export const getDataFolder = (): string => {
     if (dataFolder === undefined) {

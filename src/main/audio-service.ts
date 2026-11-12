@@ -1,7 +1,7 @@
 import { PLATFORM_AUDIO_CAPABILITY_ID } from "../shared/capability-constants";
 import { CONTROL_CHANNEL, ARM_CHANNEL, CLEAR_CHANNEL, OPEN_CHANNEL, CLOSE_CHANNEL } from "../ipc/audio-channels";
 import { globalMuteService } from "./global-mute-service";
-import { app, BrowserWindow, MessageChannelMain, type MessagePortMain, type UtilityProcess, type WebContents } from "electron";
+import { app, BrowserWindow, MessageChannelMain, type MessagePortMain, type WebContents } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { AUDIO_DEVICES_REQUEST, AUDIO_DEVICES_REPLY, AUDIO_SETTINGS_UPDATE, AUDIO_SETTINGS_GET, AUDIO_SETTINGS_DEVICES, AUDIO_STATUS, AUDIO_STATUS_GET, AUDIO_RETRY, type AudioDevice, type AudioDevicesReply, type AudioDevicesRequest } from "../ipc/audio-channels";
@@ -19,7 +19,7 @@ import type { BoundCapability, MainCapabilityInvocationContext } from "./capabil
 import { armAudioMicrophoneGrant, armAudioLoopbackGrant, clearAudioCaptureGrants, setAudioWindowTargetResolver } from "./permission-policy-service";
 import { setAudioCaptureCount } from "./audio-capture-state";
 import { guardedIpcHandle, guardedIpcOn } from "./ipc-sender-guard";
-import { deliverConsumerPort, deliveryOwner, type ChannelDelivery } from "./channel-delivery";
+import { deliverConsumerPort, deliveryOwner, type ChannelDelivery, type ServiceProcessPort } from "./channel-delivery";
 
 // Vite replaces this identifier in development and production builds.
 declare const AUDIO_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
@@ -29,7 +29,7 @@ interface ChannelRecord {
     bound: BoundCapability;
     source?: "microphone" | "computer";
     method: "capture" | "play";
-    owner: WebContents | UtilityProcess;
+    owner: WebContents | ServiceProcessPort;
     invocation: MainCapabilityInvocationContext;
     controller: AbortController;
     readyResolve: () => void;
@@ -266,9 +266,7 @@ class AudioService {
             const contents = owner as WebContents;
             record.removeOwnerListener = onWebContentsGone(contents, cancel);
         } else {
-            const utility = owner as UtilityProcess;
-            utility.once("exit", cancel);
-            record.removeOwnerListener = () => utility.removeListener("exit", cancel);
+            record.removeOwnerListener = owner.onExit(cancel);
         }
         let established = false;
         try {

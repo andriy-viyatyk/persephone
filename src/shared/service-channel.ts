@@ -9,7 +9,7 @@ import {
 import { errMessage } from "./utils";
 import type { WireError } from "./wire-error";
 
-// This follows the shared execute-handle boundary pattern. The host implementation is mirrored in assets/module-service-host.mjs.
+// This follows the shared execute-handle boundary pattern.
 export const SERVICE_CHANNEL_WIRE_KINDS = ["data", "ack", "close"] as const;
 export type ServiceChannelWire =
     | { kind: "data"; sequence: number; value: unknown }
