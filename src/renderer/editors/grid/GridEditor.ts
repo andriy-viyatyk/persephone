@@ -186,9 +186,6 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, void, GridQ
      *  becomes the single source of truth. */
     private _pendingLegacySettings: GridViewSettings | null = null;
 
-    /** Re-entry guard — set to the content we just serialized so the
-     *  host-content subscription's reparse handler skips its own echo. */
-    private _changedContent = "";
     private _maxRowId = 0;
 
     /**
@@ -337,16 +334,7 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, void, GridQ
 
         // Re-parse rows when host content mutates (script API write,
         // encryption decrypt, content pipe refresh).
-        this.registerHostSubscription(
-            host.state.subscribe(
-                (content) => {
-                    if (content !== this._changedContent) {
-                        this.reparseRows(content as string);
-                    }
-                },
-                (s) => s.content,
-            ),
-        );
+        this.subscribeHostContent((content) => this.reparseRows(content));
 
         // G17 — re-run the encryption gate when lock/unlock toggles. The
         // gate lives inside reparseRows; re-firing it on the current content
@@ -924,8 +912,7 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, void, GridQ
 
     onDataChanged = (): void => {
         const content = this.getContentToSave();
-        this._changedContent = content;
-        this._host?.changeContent(content, true);
+        this.writeToHost(content, true);
     };
 
     // ── Static helpers ──────────────────────────────────────────────────

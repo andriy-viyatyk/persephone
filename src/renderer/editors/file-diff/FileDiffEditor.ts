@@ -215,7 +215,7 @@ export class FileDiffEditor extends TextHostEditorModel<FileDiffEditorState> {
             if (st.from !== undefined) cur.from = st.from;
             if (st.to !== undefined) cur.to = st.to;
         });
-        if (d.host) this._pendingHost = d.host;
+        if (d.host) this.contentHostSlot.stash(d.host);
     }
 
     // ── Three-phase lifecycle ──────────────────────────────────────────

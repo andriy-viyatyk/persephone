@@ -1,3 +1,16 @@
+## EPIC-150 — Refactoring Phase 4.6: `ContentHostSlot`
+
+Completed 2026-11-12. Roadmap Phase 4.6 (EDC-1, BRD-9), the last item of Phase 4: the content-host holder that existed
+three times is one `ContentHostSlot` in `src/renderer/editors/base/content-host-slot.ts`, composed by
+`TextHostEditorModel` (now a thin adapter, 343 → 194 lines), the content-host board and Board Info. The board-facing
+API and `BOARD_BRIDGE_VERSION` are unchanged. Plans by Codex, reviewed against the roadmap guardrails; Codex Luna
+implemented, with review fixes recorded in the epic notes. Epic document: [EPIC-150](EPIC-150.md).
+
+- [x] **`ContentHostSlot` and the `TextHostEditorModel` adapter (US-1866).** The slot owns the host, the trait, transfer, the restore load sequence, the subscription registry, the echo guard and the settings mirror; the ten text editors are unchanged.
+- [x] **The content-host board composes the slot (US-1867).** `BoardEditorModel` gains no-op `applyBoardContent`/`saveBoardContent`/`subscribeBoardContent`; the bridge has no cast and no private echo filter; board listeners survive re-adoption and the guard is consumed once per change.
+- [x] **Board Info composes the slot; Grid uses the shared echo guard (US-1868).** Board Info keeps its tolerant transfer and restore policy; Grid's `_changedContent` is gone, so a genuine outside change back to Grid's last write is no longer dropped.
+- [x] **Epic review.** `/review` found no architecture concerns; `/document` updated editors.md, editor-guide.md and key-files; `/userdoc` needed no changes. No English catalog messages changed.
+
 ## EPIC-149 — Refactoring Phase 4.5: the module-service host and supervisor split
 
 Completed 2026-11-12. Roadmap Phase 4.5 (BND-6, MAIN-1): the utility-process module-service host is typed TypeScript in

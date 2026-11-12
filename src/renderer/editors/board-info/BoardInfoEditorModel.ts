@@ -1,10 +1,11 @@
 import { Subscription } from "../../core/state/events";
 import type { TComponentState } from "../../core/state/state";
 import { EditorModel, type EditorStateBase, type RestoreData } from "../base/EditorModel";
-import { CONTENT_HOST_TRAIT, type IContentHostTrait } from "../base/editor-traits";
+import { CONTENT_HOST_TRAIT } from "../base/editor-traits";
 import { editorRegistry } from "../base/editorRegistry";
-import type { EditorDescriptor, HostDescriptor } from "../../../shared/persistence";
+import type { EditorDescriptor } from "../../../shared/persistence";
 import { TextFileModel } from "../text/TextEditorModel";
+import { ContentHostSlot } from "../base/content-host-slot";
 import {
     boardEditorId,
     customEditorRegistry,
@@ -203,9 +204,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
 
     getIconElement = (): SVGElement | undefined => BoardColorIcon.createElement();
 
-    private _host: TextFileModel | null = null;
-    private _hostStateUnsub: (() => void) | null = null;
-    private _pendingHost: HostDescriptor | undefined = undefined;
+    private readonly contentHostSlot: ContentHostSlot<BoardInfoEditorState>;
     private _catalogSub: (() => void) | null = null;
     private _serviceStatusSub: (() => void) | null = null;
     /** installId of the in-flight download per catalog id (for Cancel). */
@@ -215,7 +214,11 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
 
     constructor(state: TComponentState<BoardInfoEditorState>) {
         super(state);
-        this.own(() => this._hostStateUnsub?.());
+        this.contentHostSlot = new ContentHostSlot(this, {
+            displayName: () => "Board Info",
+            resolveTitle: ({ hostTitle, filePath }) =>
+                hostTitle || (filePath ? fpBasename(filePath) : undefined),
+        });
         this.own(() => this._catalogSub?.());
         this.own(() => this._serviceStatusSub?.());
         this.own(boardRegistry.subscribe(() => {
@@ -242,42 +245,22 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
                 s.props.registrationIssues = issues.length > 0 ? [...issues] : undefined;
             });
         }));
-        const trait: IContentHostTrait = {
-            extractContentHost: (): TextFileModel => {
-                const host = this._host;
-                if (!host) throw new Error("Host already extracted from BoardInfoEditorModel");
-                this._hostStateUnsub?.();
-                this._hostStateUnsub = null;
-                this._host = null;
-                return host;
-            },
-        };
-        this.traits.add(CONTENT_HOST_TRAIT, trait);
     }
 
     // ── Host accessors / holder (mirrors BoardContentEditorModel) ────────
 
     override get contentHost(): TextFileModel | null {
-        return this._host;
+        return this.contentHostSlot.host;
     }
 
-    /** Adopt a host: wire host state → `descriptorChanged`, copy title/id, forward page. */
-    private adoptHost(host: TextFileModel): void {
-        this._host = host;
-        this._hostStateUnsub?.();
-        this._hostStateUnsub = host.state.subscribe(() => this.descriptorChanged.send(undefined));
-        const { filePath, title, id } = host.state.get();
-        this.state.update((s) => {
-            if (title) s.title = title;
-            else if (filePath) s.title = fpBasename(filePath);
-            if (id) s.id = id;
-        });
-        if (this.page) host.setPage(this.page);
+    /** Public slot-owner entry point used during transfer and restore. */
+    adoptHost(host: TextFileModel): void {
+        this.contentHostSlot.adopt(host);
     }
 
     override setPage(page: Parameters<EditorModel["setPage"]>[0]): void {
         super.setPage(page);
-        this._host?.setPage(page);
+        this.contentHostSlot.setPage(page);
     }
 
     /** Tolerant transfer: adopt the old editor's host if it has one; otherwise (host-less
@@ -291,27 +274,23 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             });
             return;
         }
-        const trait = oldEditor.traits.get(CONTENT_HOST_TRAIT);
-        if (!trait) {
-            // Host-less source (e.g. the built-in Archive viewer for a zip-based .xlsx / .docx /
-            // .pptx): it owns no shared content host to adopt, but it still knows the file. Capture
-            // the path in the `filePath` field so the install page can match catalog editors
-            // by file mask, the switch keeps showing the file's real built-in peer (e.g. "Archive |
-            // +"), and the tab keeps the file name instead of collapsing to "Install editor".
-            const fp = oldEditor.filePath;
-            if (fp) {
-                this.state.update((s) => {
-                    s.filePath = fp;
-                    s.title = fpBasename(fp);
-                });
-            }
-            return;
+        if (oldEditor.traits.get(CONTENT_HOST_TRAIT)) {
+            const host = this.contentHostSlot.transferFrom(oldEditor, { tolerant: true });
+            if (host) return;
         }
-        const host = trait.extractContentHost();
-
-        // Preserve the editor id across the host swap so editor-owned cache files remain associated.
-        this.state.update((s) => { s.id = oldEditor.id; });
-        this.adoptHost(host);
+        // Host-less source (e.g. the built-in Archive viewer for a zip-based .xlsx / .docx /
+        // .pptx): it owns no shared content host to adopt, but it still knows the file. Capture
+        // the path in the `filePath` field so the install page can match catalog editors
+        // by file mask, the switch keeps showing the file's real built-in peer (e.g. "Archive |
+        // +"), and the tab keeps the file name instead of collapsing to "Install editor".
+        const fp = oldEditor.filePath;
+        if (fp) {
+            this.state.update((s) => {
+                s.filePath = fp;
+                s.title = fpBasename(fp);
+            });
+        }
+        return;
     }
 
     // ── Switch-widget support ────────────────────────────────────────────
@@ -324,7 +303,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     /** Resolve Board Info's identity once: held host file, persisted folder, persisted file,
      *  then the existing file-shaped title fallback. */
     private currentSource(): BoardInfoSource {
-        const hostState = this._host?.state.get();
+        const hostState = this.contentHostSlot.host?.state.get();
         if (hostState?.filePath) return { path: hostState.filePath, kind: "file" };
         const state = this.state.get();
         if (state.folderPath) return { path: state.folderPath, kind: "folder" };
@@ -348,7 +327,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         // its properties page. The title fallback would otherwise offer a dead `Text | +` pair;
         // the return path is the page's "Open board" button.
         const state = this.state.get();
-        if (!this._host && !state.filePath) return [];
+        if (!this.contentHostSlot.host && !state.filePath) return [];
         const builtin = editorRegistry.resolveId(source.path) ?? "monaco";
         return [builtin, BOARD_INFO_EDITOR_ID];
     }
@@ -357,17 +336,14 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
 
     override async restore(): Promise<void> {
         await super.restore();
-        // Rebuild the adopted host across a restart (Concern 2A — lossless: the file returns).
         try {
-            if (!this._host && this._pendingHost) {
-                this._host = await TextFileModel.fromDescriptor(this._pendingHost);
-                if (!this._host.state.get().restored) await this._host.restore();
-                this.adoptHost(this._host);
-            }
+            // Only a persisted host is loaded here; a host already transferred in by switchFrom is kept as is
+            // (no second adopt, which would overwrite a title set by transitionPageToBoardInfo).
+            if (!this.contentHostSlot.host) await this.contentHostSlot.restore();
         } catch (err) {
             ui.notify(errMessage(err, "Failed to restore the file."), "error");
         }
-        this._pendingHost = undefined;
+        this.contentHostSlot.stash(undefined);
 
         if (this.mode === "properties") {
             await this.loadProperties();
@@ -563,7 +539,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         const root = this.state.get().props?.root ?? this.state.get().boardRoot;
         if (!root) return;
         const source = this.currentSource();
-        if (source.kind === "folder" || this._host || source.path !== this.title) {
+        if (source.kind === "folder" || this.contentHostSlot.host || source.path !== this.title) {
             // Content-host: lossless host transfer. Host-less simple board: the
             // captured `filePath` (this editor's `filePath`) lets `switchMainEditor` rebuild the
             // board over the file, returning to the file-viewing board rather than a plain board.
@@ -719,7 +695,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         this.installed.send(root); // resolves app.boards.installPublished's interactive flow
         if (source.kind === "folder") {
             await this.page?.switchMainEditor(boardEditorId(root));
-        } else if (this._host || source.path !== this.title) {
+        } else if (this.contentHostSlot.host || source.path !== this.title) {
             // File page ("+"): lossless host transfer into the board editor.
             await this.page?.switchMainEditor(boardEditorId(root));
         } else {
@@ -759,7 +735,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
      *  Triggered from the view (safe — the editor is mounted + attached by then). */
     shouldAutoSwitch(): boolean {
         const source = this.currentSource();
-        const hasFileSource = this._host !== null && source.path !== this.title;
+        const hasFileSource = this.contentHostSlot.host !== null && source.path !== this.title;
         return this.state.get().matches.length === 0
             && (source.kind === "folder" || hasFileSource);
     }
@@ -771,7 +747,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             if (id) await this.page?.switchMainEditor(id);
             return;
         }
-        if (this._host === null || source.path === this.title) return;
+        if (this.contentHostSlot.host === null || source.path === this.title) return;
         const id = editorRegistry.resolveId(source.path) ?? "monaco";
         await this.page?.switchMainEditor(id);
     }
@@ -779,15 +755,15 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     // ── Save / dirty (delegate to host) ──────────────────────────────────
 
     override get modified(): boolean {
-        return this._host?.modified ?? false;
+        return this.contentHostSlot.modified;
     }
 
     override async saveState(): Promise<void> {
-        await this._host?.saveState();
+        await this.contentHostSlot.saveState();
     }
 
     override async confirmRelease(closing?: boolean): Promise<boolean> {
-        return this._host ? this._host.confirmRelease(closing) : true;
+        return this.contentHostSlot.confirmRelease(closing);
     }
 
     // ── Persistence ──────────────────────────────────────────────────────
@@ -808,7 +784,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
                 installDir: s.installDir,
             } as Record<string, unknown>,
             // Persist the held host so a "+"-opened install returns its file across a restart.
-            host: this._host?.getDescriptor(),
+            host: this.contentHostSlot.descriptor(),
         };
     }
 
@@ -827,7 +803,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
                 if (st.installDir !== undefined) s.installDir = st.installDir;
             });
         }
-        if (data.host) this._pendingHost = data.host;
+        if (data.host) this.contentHostSlot.stash(data.host);
     }
 
     // ── Dispose ──────────────────────────────────────────────────────────
@@ -835,12 +811,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     override async dispose(): Promise<void> {
         this._catalogSub?.();
         this._catalogSub = null;
-        this._hostStateUnsub?.();
-        this._hostStateUnsub = null;
-        if (this._host) {
-            await this._host.dispose();
-            this._host = null;
-        }
+        await this.contentHostSlot.dispose();
         await super.dispose();
     }
 

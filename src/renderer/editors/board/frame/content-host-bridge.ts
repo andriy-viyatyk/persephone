@@ -9,13 +9,11 @@ import { errMessage } from "../../../../shared/utils";
 import { ui } from "../../../api/ui";
 import { isProviderResolutionError } from "../../../content/registry";
 import type { BoardEditorModel } from "../BoardEditorModel";
-import type { BoardContentEditorModel } from "../BoardContentEditorModel";
 import { resolveBoardFileIcons } from "../board-file-icons";
 import { BoardFrameSession, type BoardFrameStamp } from "./BoardFrameSession";
 import { BoardFrameEndpoint } from "./BoardFrameEndpoint";
 
 export class ContentHostBridge {
-    private lastBoardContent: string | undefined;
     private unsubscribe: (() => void) | undefined;
 
     constructor(
@@ -49,35 +47,31 @@ export class ContentHostBridge {
 
     setContent({ content }: BoardToHostEvents["content.set"]): void {
         const next = typeof content === "string" ? content : "";
-        this.lastBoardContent = next;
-        (this.model as BoardContentEditorModel).hostChangeContent?.(next);
+        this.model.applyBoardContent(next);
     }
 
     saveContent(): void {
-        (this.model as BoardContentEditorModel).hostSave?.();
-
+        this.model.saveBoardContent();
     }
 
     sendInitialContent(): void {
         const host = this.model.contentHost;
         if (!host) return;
         const { content, language } = host.state.get();
-        this.lastBoardContent = undefined;
         this.endpoint.emit("host.content", { content, language });
     }
 
     start(): void {
-        const host = this.model.contentHost;
-        if (!host) return;
-        this.unsubscribe = host.state.subscribe((content) => {
-            if (!this.session.isAlive || content === this.lastBoardContent) return;
-            this.endpoint.emit("host.content", { content: content as string, language: host.state.get().language });
-        }, (state) => state.content);
+        this.unsubscribe?.();
+        this.unsubscribe = this.model.subscribeBoardContent((content) => {
+            if (!this.session.isAlive) return;
+            const host = this.model.contentHost;
+            if (host) this.endpoint.emit("host.content", { content, language: host.state.get().language });
+        });
     }
 
     dispose(): void {
         this.unsubscribe?.();
         this.unsubscribe = undefined;
-
     }
 }

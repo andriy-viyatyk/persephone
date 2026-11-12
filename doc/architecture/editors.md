@@ -238,10 +238,10 @@ Editors expose their own lifecycle and release confirmation methods; `TDialogMod
 ## TextHostEditorModel Base Class
 
 Every text-bearing editor that wraps a `TextFileModel` host extends
-`TextHostEditorModel` (`/src/renderer/editors/base/TextHostEditorModel.ts`), a layer between
-`EditorModel` and the concrete editors (Monaco, Grid, Markdown, Mermaid, SVG, HTML,
-Link, Draw, EnvVars, FileDiff, LogView). It owns the host-adoption
-lifecycle those editors would otherwise each reimplement:
+`TextHostEditorModel` (`/src/renderer/editors/base/TextHostEditorModel.ts`), a thin adapter
+between `EditorModel` and the concrete editors (Monaco, Grid, Markdown, Mermaid, SVG, HTML,
+Link, Draw, EnvVars, FileDiff, LogView). It composes a `ContentHostSlot`
+(`/src/renderer/editors/base/content-host-slot.ts`), which owns the host-adoption lifecycle:
 
 - `CONTENT_HOST_TRAIT` registration (host transfer on editor switch), `switchFrom`,
   `restore` (with the fallback-to-empty-host error path), the public `adoptHost(host)`
@@ -268,6 +268,14 @@ installing the mirror, but the host value is authoritative once the slot exists.
 Editor uses this shape for `wordWrap`: it reads `editor.word-wrap` only for a newly shown page,
 then preserves the page-local choice across editor switches and restarts.
 
+The slot accepts owner options for title selection, editor-id stamping, fallback-host creation,
+and attach/extract/state-change hooks. This keeps the lifecycle shared while preserving the
+different title, restore, and host-state behaviors required by each owner. Board models compose
+the same slot directly because they must retain their own inheritance: `BoardContentEditorModel`
+adds the board's content-host error state and file-path fallback, while `BoardInfoEditorModel`
+uses a no-fallback, tolerant transfer and retains its host-less file/folder behavior. The slot
+does not import board code.
+
 Subclass hooks: `displayName` (error/notify strings), `adoptHost` override (call `super`
 first, then wire domain subscriptions / kick an in-adoption parse), `onHostAttached(host)`
 (initial load — runs on the switch, session-restore, and open-file paths; the open-file
@@ -276,10 +284,14 @@ after `adoptHost`. It does NOT run on a bare `adoptHost` or on `restore`'s error
 path), `onHostExtracted()` (clear domain refs when a successor extracts the host), and
 `untitledName()` (title fallback, e.g. `"untitled.link.json"`).
 
-The board editors do **not** extend it: `BoardContentEditorModel` already extends
+The board editors do not extend it: `BoardContentEditorModel` already extends
 `BoardEditorModel` (single inheritance), and `BoardInfoEditorModel` deliberately deviates
-from the standard lifecycle (optional host, tolerant `switchFrom`, no host `editor` stamp,
-no fallback host on restore failure). Both keep their own host plumbing.
+from the standard lifecycle. Both compose `ContentHostSlot` with owner-specific options rather
+than duplicating host transfer, persistence, subscriptions, and disposal. Board content changes
+cross the frame bridge through `BoardEditorModel` virtual methods; the content-host board
+implements those methods and uses the slot's guarded content subscription and write. Grid also
+uses `writeToHost` and `subscribeHostContent`, so editor writes and genuine external changes share
+the bounded exact-content echo guard.
 
 ## Editor icons
 
@@ -356,8 +368,9 @@ interface IContentHostTrait {
 }
 ```
 
-The transfer runs through the **new** editor's `switchFrom(oldEditor)` (implemented once in
-`TextHostEditorModel`): it reads the old editor's `CONTENT_HOST_TRAIT`, calls
+The transfer runs through the **new** editor's `switchFrom(oldEditor)` (implemented by
+`ContentHostSlot`, delegated to by `TextHostEditorModel` and composed by the board holders): it
+reads the old editor's `CONTENT_HOST_TRAIT`, calls
 `extractContentHost()` (which tears down the old editor's host subscriptions and detaches
 without disposing), preserves the old editor's `id` for cache-file continuity, then
 `adoptHost()`s the extracted host. Content, file path, modifications, I/O state, encryption

@@ -107,8 +107,11 @@ missing.
 
 ### Text-bearing editor (extends `TextHostEditorModel`)
 
-The base owns the entire host lifecycle (trait, `switchFrom`, `restore`, `adoptHost`,
-persistence, `confirmRelease`/`saveState`/`dispose`) — a subclass supplies only its domain:
+`TextHostEditorModel` is the adapter for ordinary text-bearing editors. It composes
+`ContentHostSlot` (`editors/base/content-host-slot.ts`), which owns the host lifecycle (trait,
+transfer, restore sequence, host subscriptions, persistence, `confirmRelease`/`saveState`/
+dispose). The adapter keeps the established subclass API, so a text-bearing subclass supplies
+only its domain:
 
 ```typescript
 // MyEditor.ts
@@ -151,6 +154,15 @@ adoption (the Mermaid/EnvVars pattern) need no hook. Clean up domain refs on swi
 `protected onHostExtracted()`. Custom subscriptions registered via
 `this.registerHostSubscription(unsub)` are torn down automatically on re-adopt, switch-away,
 and dispose.
+
+When an editor must extend a different base class, keep the host lifecycle in a composed
+`ContentHostSlot` instead of copying it. Supply owner options for any intentional differences in
+title selection, editor-id stamping, fallback host creation, or host-state reactions; request
+tolerant transfer at the call to `transferFrom` when the source may legitimately lack a host.
+Board content and Board Info are examples: both compose the slot, while preserving
+their distinct restore and host-less behavior. The slot is board-agnostic; board frame messages
+should reach board models through `BoardEditorModel` methods rather than casts into a specific
+subclass.
 
 The lifecycle hook order during a switch is:
 
@@ -423,7 +435,7 @@ the editor explicitly owns that panel. Do not register a replaced record view wi
 
 - **Simple viewer:** `/src/renderer/editors/image/` — read-only image viewer, no content host
 - **Text-bearing minimal:** `/src/renderer/editors/svg/` — read-only `VanillaView` preview over the host (`/src/renderer/editors/html/` adds an image-export capability)
-- **Text-bearing complex:** `/src/renderer/editors/grid/` — JSON/CSV grid editor with a native `DataGridView`, full edit/save flow, custom write-guard, and host-slot settings
+- **Text-bearing complex:** `/src/renderer/editors/grid/` — JSON/CSV grid editor with a native `DataGridView`, full edit/save flow, shared content echo guard, and host-slot settings
 - **Markdown renderer:** `/src/renderer/editors/markdown/` — native `TextChromeView` shell with a native body and hand-written HAST-to-DOM rendering
 - **No-host with sidebar:** `/src/renderer/editors/explorer/` — Explorer sidebar editor with no main content area
 - **Multi-process editor:** `/src/renderer/editors/browser/` — webview-based browser spanning three processes ([architecture doc](../architecture/browser-editor.md))

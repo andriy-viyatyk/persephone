@@ -161,6 +161,17 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
             : "board-view";
     }
 
+    /** Apply content written by a board frame when this board owns a content host. */
+    applyBoardContent(_content: string): void { }
+
+    /** Save content owned by a board frame when this board owns a content host. */
+    saveBoardContent(): void { }
+
+    /** Subscribe to content-host changes without exposing the concrete board model to the frame. */
+    subscribeBoardContent(_handler: (content: string) => void): (() => void) | undefined {
+        return undefined;
+    }
+
     noLanguage = true;
     skipSave = true;
     showBackgroundOrnament = true;
