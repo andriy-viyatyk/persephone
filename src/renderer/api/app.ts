@@ -1,21 +1,21 @@
 import { api } from "../../ipc/renderer/api";
-import ipcRendererEvents from "../../ipc/renderer/renderer-events";
-import type { PagesModel } from "./pages/PagesModel";
-import type { RendererEventsService } from "./internal/RendererEventsService";
 import { AppEvents } from "./events/AppEvents";
 import { createLinkData } from "../../shared/link-data";
-import type { IFetchOptions } from "./types/app";
-import { errMessage } from "../../shared/utils";
 import { t } from "../../shared/i18n/t";
+import type { IFetchOptions } from "./types/app";
+import type { LaunchInput } from "../../shared/launch-input";
+import { errMessage } from "../../shared/utils";
 import {
     appServiceDescriptors,
     type AppServiceKey,
     type AppServiceSurface,
 } from "./app-service-registry";
+import { runAppStartupPhase, type AppStartupContext } from "./app-startup";
+import type { PagesModel } from "./pages/PagesModel";
+import type { ILinkData } from "./types/io.link-data";
 
 // Note: IApp (.d.ts) is the script-facing interface for Monaco IntelliSense.
-// App class has additional internal methods (init, initServices, initPages, initEvents)
-// and uses rich internal types (PagesModel instead of IPageCollection).
+// App class has additional internal methods and rich internal types.
 class App {
     private _version = "";
     private _initialized = false;
@@ -23,8 +23,7 @@ class App {
     private _servicesInitialization: Promise<void> | undefined;
     private _pagesInitialized = false;
     private _eventsInitialized = false;
-    private _rendererEventsService?: RendererEventsService;
-
+    private _rendererEventsService?: { openLaunchInput(input: LaunchInput): Promise<void> };
     private readonly _serviceValues: Partial<
         Record<AppServiceKey, AppServiceSurface[AppServiceKey]>
     > = {};
@@ -32,7 +31,7 @@ class App {
         AppServiceKey,
         { phase: "load" | "initialize"; error: unknown }
     >();
-    private _pages = undefined as unknown as PagesModel;
+    private _pages: PagesModel | undefined;
     private _events = new AppEvents();
 
     constructor() {
@@ -48,6 +47,9 @@ class App {
     }
 
     get pages(): PagesModel {
+        if (!this._pages) {
+            throw new Error("Pages are not initialized");
+        }
         return this._pages;
     }
 
@@ -66,39 +68,33 @@ class App {
         );
     };
 
-    /**
-     * Initialize version. Called early in bootstrap (renderer.tsx).
-     * Not exposed to scripts.
-     */
     async init(): Promise<void> {
         if (this._initialized) return;
         this._initialized = true;
-
         this._version = await api.getAppVersion();
     }
 
-    /**
-     * Configure Monaco editor (themes, languages, keybindings, type definitions).
-     * Called early in bootstrap before services or editors load.
-     * Not exposed to scripts.
-     */
     async initSetup(): Promise<void> {
         if (this._setupInitialized) return;
         this._setupInitialized = true;
-
         const { initMonaco } = await import("./setup/configure-monaco");
         await initMonaco();
     }
 
-    /**
-     * Load interface wrappers via dynamic import().
-     * Must be called AFTER the main bundle has loaded (so stores are in the
-     * module cache). Called during renderer bootstrap before the initial UI is built.
-     * Not exposed to scripts.
-     */
+    /** Run the internal startup table from the composition root after locale and theme setup. */
+    async startup(rendererIndex: Promise<unknown>): Promise<void> {
+        const context = this._startupContext(rendererIndex);
+        await runAppStartupPhase("bootstrap", context);
+        await this.initServices();
+        await this.initPages();
+        await this.initEvents();
+        await runAppStartupPhase("deferred", context);
+        await runAppStartupPhase("before-mount", context);
+    }
+
     async initServices(): Promise<void> {
         if (!this._servicesInitialization) {
-            this._servicesInitialization = this._loadServices();
+            this._servicesInitialization = runAppStartupPhase("services", this._startupContext(Promise.resolve()));
         }
         await this._servicesInitialization;
     }
@@ -109,62 +105,18 @@ class App {
             try {
                 value = await descriptor.load();
             } catch (error) {
-                this._serviceFailures.set(descriptor.key, {
-                    phase: "load",
-                    error,
-                });
+                this._serviceFailures.set(descriptor.key, { phase: "load", error });
                 continue;
             }
 
             this._serviceValues[descriptor.key] = value;
-
-            if (descriptor.initialize) {
-                try {
-                    await descriptor.initialize(value as never);
-                } catch (error) {
-                    this._serviceFailures.set(descriptor.key, {
-                        phase: "initialize",
-                        error,
-                    });
-                }
+            if (!descriptor.initialize) continue;
+            try {
+                await descriptor.initialize(value as never);
+            } catch (error) {
+                this._serviceFailures.set(descriptor.key, { phase: "initialize", error });
             }
         }
-
-        const { load: loadUiPreferences } = await import("./ui-preferences");
-        await loadUiPreferences();
-        const { moduleServiceStatus } = await import("./module-service-status");
-        await moduleServiceStatus.load();
-        this._reportServiceFailures();
-
-        // Custom definitions and their shared-directory watcher must be ready before Settings mounts.
-        const [{ fs }, { settings }, { initCustomThemeStorage }] = await Promise.all([
-            import("./fs"),
-            import("./settings"),
-            import("./custom-theme-storage"),
-        ]);
-        await Promise.all([fs.wait(), settings.wait()]);
-        await initCustomThemeStorage();
-
-        // Subscribe the published-boards catalog model to main's broadcast and pull the
-        // initial catalog. Fire-and-forget — no view blocks on it, and a fetch
-        // failure is named but does not block startup (cached catalog / empty).
-        import("./boards/published-boards")
-            .then(({ publishedBoards }) => publishedBoards.load())
-            .catch((error: unknown) => this._reportBackgroundFailure("published-boards", error));
-
-        // Load the board install registry so update checks / "already installed" filters
-        // have data. Fire-and-forget; reconciles stale entries on load.
-        import("./boards/board-install-registry")
-            .then(({ boardInstallRegistry }) => boardInstallRegistry.load())
-            .catch((error: unknown) => this._reportBackgroundFailure("board-install-registry", error));
-
-        // Hydrate the Agent Tools registry so the `tools` call node can answer without
-        // initializing (and therefore mutating) it on a read. Fire-and-forget,
-        // like the two above: nothing blocks on it, and `registeredTools.isInitialized`
-        // lets the node fail closed until it lands.
-        import("./tools/registered-tools")
-            .then(({ registeredTools }) => registeredTools.ensureInitialized())
-            .catch((error: unknown) => this._reportBackgroundFailure("registered-tools", error));
     }
 
     private _reportServiceFailures(): void {
@@ -182,220 +134,47 @@ class App {
     }
 
     private _reportBackgroundFailure(name: string, error: unknown): void {
-        console.error(`[App] Background hydration "${name}" failed: ${errMessage(error)}`, error);
+        console.error(`[App] Startup entry "${name}" failed: ${errMessage(error)}`, error);
     }
 
-    /**
-     * Initialize pages. Called in bootstrap (renderer.tsx) after initServices().
-     * Ensures filesystem is ready, then restores persisted pages.
-     * Not exposed to scripts.
-     */
     async initPages(): Promise<void> {
         if (this._pagesInitialized) return;
         this._pagesInitialized = true;
-
-        // Ensure filesystem paths are initialized before restoring pages.
-        // Previously, a 100ms setTimeout in fs.ts worked around this race condition.
-        // With explicit bootstrap, we properly await readiness.
-        const { fs: appFs } = await import("./fs");
-        await appFs.wait();
-
-        // Listen for main-process requests before restoring pages: a restored board calls the bridge
-        // at once. Requests queue until initEvents() marks the handler ready.
-        const { initRendererRpc } = await import("./renderer-rpc-bootstrap");
-        initRendererRpc();
-
-        const { pages } = await import("./pages");
-        this._pages = pages;
-
-        await pages.persistence.init();
+        await runAppStartupPhase("before-pages", this._startupContext(Promise.resolve()));
     }
 
-    /** Dispatch launch inputs after the openRawLink pipeline has initialized. */
-    async openStartupInputs(): Promise<void> {
-        const rendererEventsService = this._rendererEventsService;
-        if (!rendererEventsService) {
-            throw new Error("Renderer events service is not initialized");
-        }
-
-        const startupInputs = await api.getStartupInputs();
-        for (const input of startupInputs) {
-            await rendererEventsService.openLaunchInput(input);
-        }
-        this._pages.checkEmptyPage();
-    }
-
-    /**
-     * Initialize event handlers. Called in bootstrap (renderer.tsx) after initPages().
-     * Subscribes to global events, keyboard shortcuts, IPC events, etc.
-     * Not exposed to scripts.
-     */
     async initEvents(): Promise<void> {
         if (this._eventsInitialized) return;
         this._eventsInitialized = true;
-        const services = this as unknown as AppServiceSurface;
-        const { siteExtensionTrust } = await import("./site-extension-trust");
-        siteExtensionTrust.start();
+        await runAppStartupPhase("events", this._startupContext(Promise.resolve()));
+    }
 
-        // The navigation-return registry owns the sole browser URL claim subscription.
-        // Initialize it after pages exist and before any browser or board view mounts.
-        const { initBoardNavigationReturn } = await import("./board-navigation-return");
-        initBoardNavigationReturn();
-
-        // Error/warning toasts reach the agent event feed, so an agent sees a failure it caused
-        // on its very next call instead of having to think to ask ui.alerts.list().
-        const { initAlertEventFeed } = await import("../scripting/ai-vision/alert-watch");
-        initAlertEventFeed();
-
-        // Register link pipeline handlers first — they're the fallback handlers
-        // (oldest in LIFO, run last). Scripts subscribe later and run first.
-        // Registration order: opener first (runs last in LIFO), then resolvers, then parsers.
-        const { registerOpenHandler } = await import("../content/open-handler");
-        const { registerResolvers } = await import("../content/resolvers");
-        const { registerRawLinkParsers } = await import("../content/parsers");
-        const { registerTreeContextMenuHandlers } = await import("../content/tree-context-menus");
-        registerOpenHandler();
-        registerResolvers();
-        registerRawLinkParsers();
-        registerTreeContextMenuHandlers();
-        const { initPipeResourceServer } = await import("../content/pipe-resource-server");
-        const { resolveBoardPagePipe } = await import("./boards/board-page-pipe");
-        initPipeResourceServer({ resolvePagePipe: resolveBoardPagePipe });
-
-        // Import and initialize all event services
-        const [
-            { GlobalEventService },
-            { KeyboardService },
-            { WindowStateService },
-            { RendererEventsService },
-            { initRendererRpc, markRendererRpcReady },
-        ] = await Promise.all([
-            import("./internal/GlobalEventService"),
-            import("./internal/KeyboardService"),
-            import("./internal/WindowStateService"),
-            import("./internal/RendererEventsService"),
-            import("./renderer-rpc-bootstrap"),
-        ]);
-
-        // Create service instances
-        const globalEvents = new GlobalEventService();
-        const keyboard = new KeyboardService();
-        const windowState = new WindowStateService();
-        const rendererEvents = new RendererEventsService();
-        this._rendererEventsService = rendererEvents;
-
-        // Initialize all services in parallel
-        await Promise.all([
-            globalEvents.init(),
-            keyboard.init(),
-            windowState.init(),
-            rendererEvents.init(),
-        ]);
-
-        // Initialize main-process request handling and start serving requests queued during startup.
-        initRendererRpc();
-        markRendererRpcReady();
-
-        // Ensure settings are loaded from disk before checking mcp.enabled
-        const { settings: settingsInstance, normalizeClipboardMaxItems } = await import("./settings");
-        await settingsInstance.wait();
-        api.setMainScriptsEnabled(!!services.settings.get("main.scripting.enabled"));
-        void api.setCapabilityPreferences(services.settings.get("capabilities.preferredProviders"));
-        void api.setWindowsSsoEnabled(!!services.settings.get("browser-windows-sso"));
-
-        // Defer MCP auto-start and autoload scripts to not block window rendering
-        setTimeout(async () => {
-            if (services.settings.get("mcp.enabled")) {
-                const port = services.settings.get("mcp.port") as number | undefined;
-                void api.setMcpEnabled(true, port || undefined).catch((error: unknown) => {
-                    services.ui.notify(t("api.mcpProfileStartFailed", { port: port || 7865, error: errMessage(error) }), "error");
-                });
-            }
-
-            // Auto-start Mneme if enabled. Toast only on failure here (success on every
-            // launch would be noisy); user-initiated toggles toast success below.
-            if (services.settings.get("mneme.enabled")) {
-                const mnemePort = services.settings.get("mneme.port") as number | undefined;
-                api.setMnemeEnabled(true, mnemePort || undefined).then((status) => {
-                    if (!status.running) {
-                        services.ui.notify(t("api.mnemeFailedToStart", { error: status.error ?? "unknown error" }), "error");
-                    }
-                });
-            }
-
-            const clipboardEnabled = !!services.settings.get("clipboard.enabled");
-            const clipboardMaxItems = normalizeClipboardMaxItems(
-                services.settings.get("clipboard.max-items"),
-            );
-            void api.setClipboardEnabled(clipboardEnabled, clipboardMaxItems).then((status) => {
-                if (clipboardEnabled && status.error) {
-                    services.ui.notify(t("api.clipboardTrackerFailedToStart", { error: status.error }), "error");
+    private _startupContext(rendererIndex: Promise<unknown>): AppStartupContext {
+        return {
+            rendererIndex,
+            init: () => this.init(),
+            initSetup: () => this.initSetup(),
+            loadAppServices: () => this._loadServices(),
+            reportServiceFailures: () => this._reportServiceFailures(),
+            reportBackgroundFailure: (name, error) => this._reportBackgroundFailure(name, error),
+            setPages: (pages) => { this._pages = pages; },
+            getPages: () => this.pages,
+            setRendererEventsService: (service) => { this._rendererEventsService = service; },
+            openStartupInput: (input) => {
+                if (!this._rendererEventsService) {
+                    throw new Error("Renderer events service is not initialized");
                 }
-            });
-
-            // Initialize the shared Mneme health model that drives the header
-            // indicator (and is read by the Mneme config editor).
-            try {
-                const { mnemeStatusModel } = await import("./mneme-status");
-                mnemeStatusModel.init();
-                const { mnemeConnection } = await import("./mneme-connection");
-                mnemeConnection.init();
-            } catch (error) {
-                console.error("Mneme status model init failed:", error);
-            }
-
-            // Load autoload scripts from Script Library
-            try {
-                const { autoloadService } = await import("./autoload-service");
-                await autoloadService.loadScripts();
-            } catch (error) {
-                console.error("Autoload scripts failed:", error);
-            }
-        }, 1500);
-
-        // App.initEvents() owns this process-lifetime wiring; it is not a view/model resource.
-        // Keep these subscriptions alive until the renderer process exits.
-        // Watch for mcp.enabled setting changes
-        services.settings.onChanged.subscribe(({ key, value }) => {
-            if (key === "capabilities.preferredProviders") void api.setCapabilityPreferences(value as Record<string, string>);
-            if (key === "main.scripting.enabled") {
-                api.setMainScriptsEnabled(!!value);
-            }
-            if (key === "browser-windows-sso") {
-                void api.setWindowsSsoEnabled(!!value);
-            }
-            if (key === "mcp.enabled") {
-                const port = services.settings.get("mcp.port") as number | undefined;
-                void api.setMcpEnabled(!!value, port || undefined).catch((error: unknown) => {
-                    services.ui.notify(t("api.mcpProfileStartFailed", { port: port || 7865, error: errMessage(error) }), "error");
-                });
-            }
-            if (key === "mneme.enabled") {
-                const mnemePort = services.settings.get("mneme.port") as number | undefined;
-                api.setMnemeEnabled(!!value, mnemePort || undefined).then((status) => {
-                    if (!value) return; // silent on intentional stop
-                    if (status.running) {
-                        services.ui.notify(t("api.mnemeStarted"), "success");
-                    } else {
-                        services.ui.notify(t("api.mnemeFailedToStart", { error: status.error ?? "unknown error" }), "error");
-                    }
-                });
-            }
-            if (key === "clipboard.enabled" || key === "clipboard.max-items") {
-                const clipboardEnabled = !!services.settings.get("clipboard.enabled");
-                const clipboardMaxItems = normalizeClipboardMaxItems(
-                    services.settings.get("clipboard.max-items"),
-                );
-                void api.setClipboardEnabled(clipboardEnabled, clipboardMaxItems);
-            }
-        });
-
-        // Toast unexpected Mneme exits (crash after a successful start).
-        ipcRendererEvents.eMnemeStatusChanged.subscribe((s) => {
-            if (s.error) {
-                services.ui.notify(t("api.mnemeExited", { error: s.error }), "error");
-            }
-        });
+                return this._rendererEventsService.openLaunchInput(input);
+            },
+            checkEmptyPage: () => this.pages.checkEmptyPage(),
+            notifyMnemeExited: (error) => {
+                const services = this as unknown as AppServiceSurface;
+                services.ui.notify(t("api.mnemeExited", { error }), "error");
+            },
+            openRawLink: async (link: ILinkData) => {
+                await this._events.openRawLink.sendAsync(link);
+            },
+        };
     }
 }
 

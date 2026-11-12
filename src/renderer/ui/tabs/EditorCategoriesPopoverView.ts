@@ -2,6 +2,8 @@ import { t } from "../../../shared/i18n/t";
 import { app } from "../../api/app";
 import { boardRegistry } from "../../api/boards/board-registry";
 import { settings } from "../../api/settings";
+import type { AppSettingsKey } from "../../api/settings-schema";
+import { uiPreferences } from "../../api/ui-preferences";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -61,7 +63,8 @@ export class EditorCategoriesPopoverView extends VanillaView<EditorCategoriesPop
         this.own(boardRegistry.subscribeMembership(this.refreshBoards));
         this.own(onBoardDisplayTextChanged(() => this.renderList()));
         this.own(subscribeBoardIconChanges(() => this.renderList()));
-        this.own(settings.onChanged.subscribe(({ key }) => { if (key === "editor-categories" || key === "browser-profiles") this.renderList(); }));
+        const settingsKeys = ["editor-categories", "browser-profiles"] as const satisfies readonly AppSettingsKey[];
+        for (const key of settingsKeys) this.own(settings.watch(key, () => this.renderList()));
         this.refreshBoards();
         this.renderList();
         queueMicrotask(() => filterView.inputElement.focus());
@@ -89,9 +92,10 @@ export class EditorCategoriesPopoverView extends VanillaView<EditorCategoriesPop
      * every update; the stylesheet also caps both at the window size.
      */
     private applyStoredSize(): void {
-        const size = settings.get("editor-categories-popover-size");
-        if (!size || !(size.width > 0) || !(size.height > 0)) return;
-        this.setSize(Math.max(size.width, MIN_WIDTH), Math.max(size.height, MIN_HEIGHT));
+        const width = uiPreferences.readNumber("editor-categories-popover-width");
+        const height = uiPreferences.readNumber("editor-categories-popover-height");
+        if (!width || !height || width <= 0 || height <= 0) return;
+        this.setSize(Math.max(width, MIN_WIDTH), Math.max(height, MIN_HEIGHT));
     }
 
     private setSize(width: number, height: number): void {
@@ -118,7 +122,8 @@ export class EditorCategoriesPopoverView extends VanillaView<EditorCategoriesPop
         const onEnd = (): void => {
             handle.removeEventListener("pointermove", onMove);
             handle.removeEventListener("lostpointercapture", onEnd);
-            settings.set("editor-categories-popover-size", { width: Math.round(width), height: Math.round(height) });
+            uiPreferences.write("editor-categories-popover-width", Math.round(width));
+            uiPreferences.write("editor-categories-popover-height", Math.round(height));
         };
         handle.addEventListener("pointermove", onMove);
         handle.addEventListener("lostpointercapture", onEnd);

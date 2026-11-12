@@ -2,7 +2,7 @@ import { globalKeyDown } from "../../core/state/events";
 import { pages } from "../pages";
 import { api } from "../../../ipc/renderer/api";
 import { appWindow } from "../window";
-import { cycleAppTheme } from "../cycle-app-theme";
+import { themeService } from "../theme-service";
 import { getGuideIndex, type GuideTreeNode } from "../../guides";
 import { getBoardGuideMountId } from "../../guides/board-guide-mounts";
 import { BOARD_GUIDES_PREFIX, BOARD_SELF_EDITOR_ID } from "../../../shared/guides/mounted-source";
@@ -141,7 +141,7 @@ export class KeyboardService {
             case "BracketLeft":
                 if (e.ctrlKey && e.altKey) {
                     e.preventDefault();
-                    cycleAppTheme(e.code === "BracketRight" ? 1 : -1);
+                    themeService.cycle(e.code === "BracketRight" ? 1 : -1);
                 }
                 break;
         }

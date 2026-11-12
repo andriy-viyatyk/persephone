@@ -13,7 +13,7 @@ persephone/
 │   ├── shared/             # Shared types, constants, cross-process helpers, board manifest/value objects and service-channel protocol, plus i18n runtime/catalogs
 │   ├── module-service-host/ # Typed utility-process host, split into lifecycle, request, provider, capability, and service-API modules
 │   ├── node-script-host/    # Typed entry point for Node-style scripts executed in an Electron utility process
-│   ├── renderer.ts          # Async bootstrap; calls renderer/index.ts mount(container)
+│   ├── renderer.ts          # Locale/NLS and synchronous theme preflight; app bootstrap and mount
 │   ├── preload.ts          # Preload script (main renderer)
 │   ├── board-shim.ts       # Browser IIFE composition root; installs collaborators and assigns window.persephone
 │   ├── board-shim/          # Browser-only bridge channels, primitives, and window.persephone feature factories
@@ -167,6 +167,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │
 ├── api/                    # Object Model — application interfaces
 │   ├── app.ts              # Root App class (bootstrap orchestrator)
+│   ├── app-startup.ts       # Ordered internal startup phases and sequencing constraints
 │   ├── app-service-registry.ts # Descriptor table for lazy app services and optional initialization
 │   ├── capability-error.ts  # Shared renderer capability errors and normalization
 │   ├── capabilities/        # Script capability client, typed-RPC open server, handlers, validators, board dispatcher, frame adapter, and index mirror
@@ -174,8 +175,11 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── creatable-items.ts   # Creatable-item registry for the Editors tree and new-page menu
 │   ├── ai-vision-call-timeout.ts # Session call-timeout setting owner
 │   ├── themes.ts           # Script/MCP application theme service (`app.themes`)
+│   ├── theme-service.ts     # Applies selected themes from settings changes
 │   ├── custom-theme-storage.ts # Validated custom theme persistence and cross-window watching
-│   ├── settings.ts         # ISettings implementation
+│   ├── settings.ts         # ISettings runtime store and typed subscriptions
+│   ├── settings-schema.ts  # Ordered setting defaults, normalization, options, ranges, and migrations
+│   ├── settings-effects.ts # Settings-driven process and feature side effects
 │   ├── board-settings/     # Board-declared settings catalog, persistence, and bridge-facing reads
 │   │   ├── BoardSettingsStore.ts       # Renderer-lifetime board-settings.json store and change notifications
 │   │   ├── board-settings-bridge.ts    # Effective reads/writes/resets and board-frame change delivery
@@ -885,6 +889,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   └── git-tree/           # GitTreeView.ts native history view and git submodels
 │
 ├── core/                   # Core Infrastructure
+│   ├── startup-environment.ts # Synchronous profile data-folder and appSettings.json reader
 │   ├── state/              # State management primitives
 │   │   ├── MainSnapshotMirror.ts # Revision-guarded renderer mirror for main-owned snapshots
 │   │   ├── state.ts        # TOneState, TComponentState, TGlobalState
@@ -931,6 +936,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── root.css            # Static #root geometry, before renderer mount
 │   ├── theme-state.ts      # Shared active-theme snapshot and subscriptions
 │   ├── token-vars.ts       # App token CSS-variable generation and installation
+│   ├── custom-theme-catalog.ts # Shared sync/async custom-theme file catalog and validation
 │   ├── custom-theme-types.ts # Saved theme schema and color derivation types
 │   ├── custom-theme.ts     # Custom theme validation, derivation, forking, and contrast reports
 │   ├── custom-theme-palette.ts # Per-token derivation recipes

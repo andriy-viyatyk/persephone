@@ -86,9 +86,8 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         );
         this.own(() => this.cancelReveal());
         this.setClipboardButton(settings.get("clipboard.enabled"));
-        this.own(settings.onChanged.subscribe(({ key, value }) => {
-            if (key !== "clipboard.enabled") return;
-            this.setClipboardButton(value === true);
+        this.own(settings.watch("clipboard.enabled", (enabled) => {
+            this.setClipboardButton(enabled === true);
             this.updateHeader(this.props);
         }));
         this.updateHeader(this.props);

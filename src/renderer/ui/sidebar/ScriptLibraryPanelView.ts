@@ -72,9 +72,7 @@ export class ScriptLibraryPanelView extends VanillaView<ScriptLibraryPanelProps>
             ),
         );
         this.child(this.setupButton).mount();
-        const subscription = settings.onChanged.subscribe(({ key }) => {
-            if (key === "script-library.path") this.refresh();
-        });
+        const subscription = settings.watch("script-library.path", () => this.refresh());
         this.own(subscription);
         this.refresh();
     }

@@ -35,6 +35,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Renderer Vite configuration (preserves Node `process.env` in renderer builds and sets the dev-server port/watch exclusions) | `/vite.renderer.config.ts` |
 | Excalidraw board library snapshot generator (manual, pinned-vendor copy plus dependency import-map scan and validation; not part of the Persephone build) | `/scripts/build-board-lib.mjs` |
 | App object model and renderer startup orchestration (services, pages, events, and launch-input dispatch) | `/src/renderer/api/app.ts` |
+| Ordered renderer startup phase table and sequencing constraints | `/src/renderer/api/app-startup.ts` |
 | App service descriptor table | `/src/renderer/api/app-service-registry.ts`       |
 | Renderer UI Object Model service (dialogs, notifications, progress, highlights, and alert projection) | `/src/renderer/api/ui.ts` |
 | App capabilities script client and legacy result projection | `/src/renderer/api/capabilities/CapabilitiesClient.ts` |
@@ -56,6 +57,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Global audio mute lease owner (composes board leases with local webContents mute state and applies effective mute across managed application contents) | `/src/main/global-mute-service.ts` |
 | Hidden audio renderer (shared PCM capture/playback, source subscriptions, gate and channel protocol) | `/src/renderer/audio/audio-window.ts`, `/src/renderer/ui/speech/ComputerAudioGate.ts`, `/src/renderer/ui/speech/PcmAudioCapture.ts` |
 | DTLN microphone cleaning pipeline, timestamped loopback alignment, and worker | `/src/renderer/ui/speech/DtlnAudioPipeline.ts`, `/src/renderer/ui/speech/DtlnEngine.ts`, `/src/renderer/ui/speech/LoopbackReference.ts`, `/src/renderer/ui/speech/dtln-cleaning-worker.ts`, `/src/renderer/ui/speech/microphone-cleaning-types.ts`, `/src/renderer/ui/speech/PcmAudioCapture.ts` |
+| Shared microphone-cleaning types, tuning defaults, range, and settings normalization | `/src/shared/microphone-cleaning-types.ts` |
 | Service channel protocol (data/ack/close, window, size rule, codes) | `/src/shared/service-channel.ts`, `/src/shared/service-channel-node.ts` |
 | Service-channel delivery target wire type and decoder guard | `/src/shared/service-channel-target.ts` |
 | Service channel port delivery and receiver ownership routing | `/src/main/channel-delivery.ts`, `/src/renderer/api/service-channel-ports.ts` |
@@ -125,10 +127,13 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Renderer path-watch client (local reference-counted subscriptions and opt-in folder recovery over IPC) | `/src/renderer/api/path-watch.ts` |
 | JSON parsing helpers (`tryParseJson<T>` parse-or-fall-back; `parseObject` / `parseJSON5`) | `/src/renderer/core/utils/parse-utils.ts` |
 | Toast-on-failure wrapper (`guard(label, fn, level?)` — the "try, notify, carry on" handler shape) | `/src/renderer/core/utils/guard.ts` |
-| App settings             | `/src/renderer/api/settings.ts`                   |
+| App settings runtime store and typed per-key subscriptions | `/src/renderer/api/settings.ts` |
+| App settings schema (ordered defaults, normalization, migrations, options and ranges) | `/src/renderer/api/settings-schema.ts` |
+| Settings side effects (MCP, Mneme, clipboard, scripting, capabilities, SSO, and microphone) | `/src/renderer/api/settings-effects.ts` |
 | Shared localization runtime (`t()`, English `englishMessage()`, deliberate-English `untranslated()`, pack validation/layering, pseudo-locale, and active locale) | `/src/shared/i18n/` |
 | English source-message catalog areas (common, settings, dialogs, shell, editors, menus, API, browser, board, Explorer, links, Git, Mneme, About, tools, UIKit, and Log View) | `/src/shared/i18n/en/` |
 | Renderer startup locale and language-pack loading (before first UI paint; installs localized UIKit defaults) | `/src/renderer/i18n/startup.ts` |
+| Synchronous startup environment (profile data folder and parsed `appSettings.json`) | `/src/renderer/core/startup-environment.ts` |
 | UIKit's standalone English defaults and app-supplied text overrides (`uikitText()` / `setUikitText()`) | `/src/renderer/uikit/shared/uikit-text.ts` |
 | Monaco widget message localization (explicit supported-language imports; awaited before Monaco modules load) | `/src/renderer/i18n/monaco-nls.ts`, `/src/renderer.ts` |
 | Localized presentation of app-owned page titles while stored/API titles remain English | `/src/renderer/ui/tabs/page-title.ts` |
@@ -371,7 +376,9 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Tree multi-selection gestures (opt-in `multiSelect`: Ctrl/Shift+click, Ctrl+A, Shift+Arrow/Home/End/PageUp/Down; the Tree stores NO selection — it derives the current set via `isSelected` per visible row, holds only a transient `anchorValue`, and emits the result through `onSelectionChange` for the consumer to store. Row visuals need nothing extra: N rows carry `[data-selected]`, one carries `[data-active]`) | `/src/renderer/uikit/Tree/TreeModel.ts` |
 | Color tokens             | `/src/renderer/theme/color.ts`                    |
 | Active theme state shared by React and non-React consumers (`themeState`; `{ id, isDark }`, synchronous `get`/`subscribe` path) | `/src/renderer/theme/theme-state.ts` |
-| Theme color resolution and startup application (`resolveColor`, theme cycling, synchronous initial theme and token installation) | `/src/renderer/theme/themes/index.ts` |
+| Theme registry, color resolution, preview and initial token installation | `/src/renderer/theme/themes/index.ts` |
+| Theme setting watcher and application service | `/src/renderer/api/theme-service.ts` |
+| Custom-theme catalog reading and validation (shared sync first-paint and async paths) | `/src/renderer/theme/custom-theme-catalog.ts` |
 | Custom theme file schema, validation, palette derivation, built-in forking, and contrast reports | `/src/renderer/theme/custom-theme-types.ts`, `/src/renderer/theme/custom-theme.ts`, `/src/renderer/theme/custom-theme-palette.ts`, `/src/renderer/theme/color-math.ts`, `/src/renderer/theme/theme-color-vars.ts` |
 | Saved custom theme persistence and change watching (validated theme files, serialized writes, and cross-window reload) | `/src/renderer/api/custom-theme-storage.ts` |
 | Script/MCP theme service (`app.themes`: discover, derive, preview, persist, and apply themes) | `/src/renderer/api/themes.ts`, `/src/renderer/api/types/themes.d.ts` |
@@ -704,3 +711,12 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Monaco project diagnostics (page-scoped syntactic and semantic marker lifecycle) | `/src/renderer/editors/shared/monaco-project-diagnostics.ts` |
 | Board page service-channel APIs (`persephone.service.openChannel()` and `persephone.services.list/connect()`, endpoint flow control, close handling, and pagehide cleanup) | `/src/board-shim/service-api.ts`, `/src/board-shim/service-port-inbox.ts`, `/src/board-shim/main-port-channel.ts` |
 | Typed utility-process module-service host (composition root for lifecycle, main requests, provider dispatch, capabilities, and the board-service API) | `/src/module-service-host/index.ts`, `/src/module-service-host/` |
+
+## Settings storage
+
+User-meaningful configuration belongs in `appSettings.json`; window and UI geometry belongs in
+`uiPreferences`. The editor-categories popover width and height are the only values moved from
+settings to UI preferences. MRU lists such as `tab-recent-languages` and default choices such as
+`browser-search-engine` remain settings because users and agents can inspect and edit them as
+configuration. The schema and migration live in `settings-schema.ts`; scalar preference access is
+owned by `ui-preferences.ts`.

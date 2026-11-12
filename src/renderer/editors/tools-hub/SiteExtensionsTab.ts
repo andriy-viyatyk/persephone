@@ -77,7 +77,7 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
 
         // The mirror follows main's broadcasts, so this also covers changes made in other windows.
         this.own(siteExtensionTrust.subscribeSnapshot(() => { void this.refresh(); }));
-        this.own(settings.onChanged.subscribe(({ key }) => { if (key === "site-extensions.path") void this.refresh(); }));
+        this.own(settings.watch("site-extensions.path", () => { void this.refresh(); }));
         void this.refresh();
     }
 

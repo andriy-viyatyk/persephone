@@ -88,9 +88,9 @@ export class VoiceTypingController {
             else if (event.action === "stop") this.stopSession(event.sessionId);
             else this.cancelSession(event.sessionId);
         });
-        this.settingsSubscription = settings.onChanged.subscribe(({ key }) => {
-            if (key === "voice-typing.shortcut" || key === "voice-typing.translate-shortcut") this.sendShortcutConfig();
-        });
+        const shortcutSettings = ["voice-typing.shortcut", "voice-typing.translate-shortcut"] as const;
+        const settingSubscriptions = shortcutSettings.map((key) => settings.watch(key, () => this.sendShortcutConfig()));
+        this.settingsSubscription = () => settingSubscriptions.forEach((dispose) => dispose());
         void api.setVoiceTypingState({ state: "idle" }).catch((error: unknown) => {
             ui.notify(errMessage(error, t("voiceTyping.failed")), "error");
         });

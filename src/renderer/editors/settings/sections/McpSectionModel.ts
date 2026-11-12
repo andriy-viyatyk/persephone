@@ -1,6 +1,7 @@
 import { TComponentModel } from "../../../core/state/model";
 import { toClipboard } from "../../../core/utils/utils";
 import { settings } from "../../../api/settings";
+import { settingRange } from "../../../api/settings-schema";
 import { api } from "../../../../ipc/renderer/api";
 import rendererEvents from "../../../../ipc/renderer/renderer-events";
 import { createDepsGate, type DepsGate } from "../../../uikit/shared/deps-gate";
@@ -117,13 +118,15 @@ export class McpSectionModel extends TComponentModel<McpSectionState, McpSection
 
     handlePortBlur = () => {
         const port = parseInt(this.state.get().portValue, 10);
-        if (port >= 1024 && port <= 65535) settings.set("mcp.port", port);
+        const range = settingRange("mcp.port");
+        if (port >= range.min && port <= range.max) settings.set("mcp.port", port);
         else this.setPortValue(String(this.props.mcpPort));
     };
 
     handleMnemePortBlur = () => {
         const port = parseInt(this.state.get().mnemePortValue, 10);
-        if (port >= 1024 && port <= 65535) settings.set("mneme.port", port);
+        const range = settingRange("mneme.port");
+        if (port >= range.min && port <= range.max) settings.set("mneme.port", port);
         else this.setMnemePortValue(String(this.props.mnemePort));
     };
 

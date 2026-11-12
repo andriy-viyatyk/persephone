@@ -90,10 +90,8 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
         super(state);
         this.noLanguage = true;
         this.skipSave = true;
-        this.own(settings.onChanged.subscribe(({ key }) => {
-            if (key === "clipboard.enabled") {
-                this.secondaryView = this.composeSecondaryView();
-            }
+        this.own(settings.watch("clipboard.enabled", () => {
+            this.secondaryView = this.composeSecondaryView();
         }));
         // Folder glyph for the "Explorer" sidebar panel — the same icon the
         // explorer tree shows for folders. Explorer is sidebar-only, so this

@@ -36,14 +36,15 @@ class BoardEnvStore {
     /** Path the current model was built for; null when no model. */
     private loadedPath: string | null = null;
     private parsed: BoardVarsFile = {};
+    private started = false;
 
-    constructor() {
+    start(): void {
+        if (this.started) return;
+        this.started = true;
         // This session singleton owns the setting listener for the renderer lifetime;
         // no view/model instance should dispose it.
         // Drop the model when the configured path changes so the next call reloads.
-        settings.onChanged.subscribe(({ key }) => {
-            if (key === "board-vars.file") this.reset();
-        });
+        settings.watch("board-vars.file", () => this.reset());
     }
 
     /** The path most recently resolved by `ensureLoaded()` — lets `persephone.var.show()` open

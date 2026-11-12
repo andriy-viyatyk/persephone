@@ -6,6 +6,7 @@ import { ui } from "../../api/ui";
 import { listBoardUpdates, runBoardUpdate } from "../../api/boards/board-updates";
 import { publishedBoards } from "../../api/boards/published-boards";
 import { settings } from "../../api/settings";
+import type { AppSettingsKey } from "../../api/settings-schema";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { buildBoardsTree, type BoardTreeNode } from "../../editors/board/boards-tree-build";
@@ -63,9 +64,8 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
         this.tree.mount();
         this.own(boardRegistry.subscribeMembership(this.refresh));
         this.own(publishedBoards.subscribeCatalog(this.refresh));
-        this.own(settings.onChanged.subscribe(({ key }) => {
-            if (key === "browser-profiles" || key === "editor-categories") this.refresh();
-        }));
+        const settingsKeys = ["browser-profiles", "editor-categories"] as const satisfies readonly AppSettingsKey[];
+        for (const key of settingsKeys) this.own(settings.watch(key, this.refresh));
         this.own(onBoardDisplayTextChanged(() => this.refresh()));
         void boardRegistry.load().then(this.refresh, this.refresh);
         this.refresh();

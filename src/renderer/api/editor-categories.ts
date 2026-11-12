@@ -1,4 +1,5 @@
-import { settings, type EditorCategory } from "./settings";
+import { settings } from "./settings";
+import type { EditorCategory } from "./settings-schema";
 import { boardRegistry, type BoardRegistryChange } from "./boards/board-registry";
 import { BoardRoot } from "../../shared/board/board-root";
 

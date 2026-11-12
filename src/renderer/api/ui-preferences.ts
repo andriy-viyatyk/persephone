@@ -11,6 +11,7 @@ export interface IUiPreferences {
 }
 
 let preferences: UiPreferences = {};
+let loadPromise: Promise<void> | undefined;
 
 function isUiPreferenceValue(value: unknown): value is UiPreferenceValue {
     return (
@@ -38,12 +39,14 @@ function validateSnapshot(value: unknown): UiPreferences {
     return snapshot;
 }
 
-export async function load(): Promise<void> {
-    try {
-        preferences = validateSnapshot(await api.getUiPreferences());
-    } catch {
+export function load(): Promise<void> {
+    if (loadPromise) return loadPromise;
+    loadPromise = api.getUiPreferences().then((snapshot) => {
+        preferences = validateSnapshot(snapshot);
+    }).catch(() => {
         preferences = {};
-    }
+    });
+    return loadPromise;
 }
 
 const readNumber = (key: string, min?: number, max?: number): number | undefined => {

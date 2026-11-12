@@ -189,9 +189,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
         this.own(onBoardDisplayTextChanged(() => {
             if (this.currentEditor) this.applyEditorProjection(this.projectEditorState(this.currentEditor));
         }));
-        this.languageSettingsSubscription = this.ownSubscription(settings.onChanged.subscribe(({ key }) => {
-            if (key === "tab-recent-languages") this.updateLanguageMenu();
-        }));
+        this.languageSettingsSubscription = this.ownSubscription(settings.watch("tab-recent-languages", () => this.updateLanguageMenu()));
         this.bind(
             this.props.model.state,
             (state) => ({ pinSide: state.pinSide, mainEditorId: state.mainEditorId, version: state.version }),

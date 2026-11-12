@@ -46,8 +46,7 @@ class MnemeConnectionService {
 
         // This shared connection service owns the process-lifetime setting and IPC
         // subscriptions; they must survive all individual Mneme views/models.
-        settings.onChanged.subscribe(({ key }: { key: string }) => {
-            if (key !== "mneme.enabled") return;
+        settings.watch("mneme.enabled", () => {
             this.enabled = !!settings.get("mneme.enabled");
             this.sync();
         });

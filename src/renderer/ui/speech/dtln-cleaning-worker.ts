@@ -1,7 +1,7 @@
 import { DtlnEngine } from "./DtlnEngine";
 import { errMessage } from "../../../shared/utils";
 import { SerialQueue } from "../../../shared/serial-queue";
-import type { MicrophoneCleaningOptions } from "./microphone-cleaning-types";
+import type { MicrophoneCleaningOptions } from "../../../shared/microphone-cleaning-types";
 
 const HOP = 128;
 let engine: DtlnEngine | undefined;

@@ -3,6 +3,7 @@ import { fs } from "./fs";
 import { DirectoryWatcher } from "../core/utils/file-watcher";
 import { fpJoin } from "../core/utils/file-path";
 import { buildCustomTheme, validateCustomThemeFile } from "../theme/custom-theme";
+import { customThemeCatalog, isSafeCustomThemeId } from "../theme/custom-theme-catalog";
 import type { CustomThemeFile } from "../theme/custom-theme-types";
 import type { ThemeDefinition } from "../theme/themes/types";
 import { replaceCustomThemes, getAvailableThemes } from "../theme/themes";
@@ -14,19 +15,14 @@ export interface SavedCustomTheme {
     theme: ThemeDefinition;
 }
 
-const SAFE_CUSTOM_ID = /^custom-[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const THEME_SUFFIX = ".theme.json";
 let themesDirectory = "";
 let directoryWatcher: DirectoryWatcher | undefined;
 let initialization: Promise<void> | undefined;
 let savedFiles = new Map<string, CustomThemeFile>();
 
-function isSafeCustomId(id: string): boolean {
-    return SAFE_CUSTOM_ID.test(id);
-}
-
 function pathFor(id: string): string {
-    if (!isSafeCustomId(id)) throw new Error(`Invalid custom theme id: ${id}`);
+    if (!isSafeCustomThemeId(id)) throw new Error(`Invalid custom theme id: ${id}`);
     return fpJoin(themesDirectory, `${id}${THEME_SUFFIX}`);
 }
 
@@ -39,40 +35,30 @@ export async function loadAll(): Promise<SavedCustomTheme[]> {
     await fs.wait();
     if (!themesDirectory) themesDirectory = fs.resolveDataPath("themes");
     await fs.mkdir(themesDirectory);
-    const entries = await fs.listDirWithTypes(themesDirectory);
-    const loaded: SavedCustomTheme[] = [];
-    for (const entry of entries) {
-        if (entry.isDirectory || !entry.name.endsWith(THEME_SUFFIX)) continue;
-        const filename = entry.name;
-        try {
-            const filePath = fpJoin(themesDirectory, filename);
-            const stat = await fs.stat(filePath);
-            if (!stat.exists || stat.isDirectory) continue;
-            const parsed: unknown = JSON.parse(await fs.read(filePath));
-            const result = validateCustomThemeFile(parsed);
-            if (!result.value) {
-                reportWarnings(filename, result.warnings);
-                continue;
+    const loaded = await customThemeCatalog.load(async () => {
+        const entries = await fs.listDirWithTypes(themesDirectory);
+        const files: Array<{ filename: string; content: string }> = [];
+        for (const entry of entries) {
+            if (entry.isDirectory || !entry.name.endsWith(THEME_SUFFIX)) continue;
+            try {
+                const filePath = fpJoin(themesDirectory, entry.name);
+                const stat = await fs.stat(filePath);
+                if (stat.exists && !stat.isDirectory) {
+                    files.push({ filename: entry.name, content: await fs.read(filePath) });
+                }
+            } catch (error) {
+                console.warn(`[Custom themes] Skipping unreadable ${entry.name}`, error);
             }
-            const id = result.value.id;
-            if (!isSafeCustomId(id) || filename !== `${id}${THEME_SUFFIX}`) {
-                console.warn(`[Custom themes] Skipping ${filename}: filename and safe theme id must match.`);
-                continue;
-            }
-            if (getAvailableThemes().some((theme) => theme.id === id && !theme.id.startsWith("custom-"))) {
-                console.warn(`[Custom themes] Skipping ${filename}: custom themes cannot replace built-in themes.`);
-                continue;
-            }
-            reportWarnings(filename, result.warnings);
-            loaded.push({ file: result.value, theme: buildCustomTheme(result.value) });
-        } catch (error) {
-            console.warn(`[Custom themes] Skipping unreadable ${filename}`, error);
         }
-    }
-    return loaded.sort((left, right) =>
-        left.theme.name.localeCompare(right.theme.name, undefined, { sensitivity: "base" }) ||
-        left.theme.id.localeCompare(right.theme.id)
-    );
+        return files;
+    });
+    return loaded.filter((item) => {
+        if (getAvailableThemes().some((theme) => theme.id === item.file.id && !theme.id.startsWith("custom-"))) {
+            console.warn(`[Custom themes] Skipping ${item.file.id}${THEME_SUFFIX}: custom themes cannot replace built-in themes.`);
+            return false;
+        }
+        return true;
+    });
 }
 
 async function reloadRegistry(): Promise<SavedCustomTheme[]> {
@@ -93,7 +79,7 @@ async function uniqueId(name: string): Promise<string> {
     const existing = new Set((await fs.listDir(themesDirectory))
         .filter((filename) => filename.endsWith(THEME_SUFFIX))
         .map((filename) => filename.slice(0, -THEME_SUFFIX.length))
-        .filter(isSafeCustomId));
+        .filter(isSafeCustomThemeId));
     const base = `custom-${slugify(name)}`;
     if (!existing.has(base)) return base;
     let suffix = 2;
@@ -105,7 +91,7 @@ function validateDraft(draft: CustomThemeDraft, id: string): SavedCustomTheme {
     const result = validateCustomThemeFile({ ...draft, id });
     reportWarnings(`${id}${THEME_SUFFIX}`, result.warnings);
     if (!result.value) throw new Error(result.warnings.join(" ") || "Invalid custom theme.");
-    if (!isSafeCustomId(result.value.id)) throw new Error("Custom theme id must be a safe slug.");
+    if (!isSafeCustomThemeId(result.value.id)) throw new Error("Custom theme id must be a safe slug.");
     return { file: result.value, theme: buildCustomTheme(result.value) };
 }
 
@@ -124,7 +110,7 @@ export async function saveCustomTheme(draft: CustomThemeDraft): Promise<SavedCus
     let id: string;
     if (draft.id !== undefined) {
         id = draft.id;
-        if (!isSafeCustomId(id)) throw new Error("Custom theme id must be a safe slug.");
+        if (!isSafeCustomThemeId(id)) throw new Error("Custom theme id must be a safe slug.");
         const existing = await loadAll();
         if (!existing.some((item) => item.file.id === id)) throw new Error(`Custom theme does not exist: ${id}`);
     } else {
@@ -153,7 +139,7 @@ export function getCustomThemeFile(id: string): CustomThemeFile | undefined {
 
 /** Delete one custom theme; persist the fallback only in this window when it was selected. */
 export async function deleteCustomTheme(id: string): Promise<void> {
-    if (!isSafeCustomId(id)) throw new Error("Built-in themes cannot be deleted.");
+    if (!isSafeCustomThemeId(id)) throw new Error("Built-in themes cannot be deleted.");
     const wasSelected = settings.theme === id;
     const filePath = pathFor(id);
     if (!(await fs.exists(filePath))) throw new Error(`Custom theme does not exist: ${id}`);

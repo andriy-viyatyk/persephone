@@ -1,4 +1,5 @@
-import { normalizeClipboardMaxItems, settings } from "../../../api/settings";
+import { settings } from "../../../api/settings";
+import { normalizeClipboardMaxItems, settingRange } from "../../../api/settings-schema";
 import { TComponentModel } from "../../../core/state/model";
 import { createDepsGate, type DepsGate } from "../../../uikit/shared/deps-gate";
 
@@ -42,7 +43,8 @@ export class ClipboardSectionModel extends TComponentModel<ClipboardSectionState
 
     handleMaxItemsBlur = (): void => {
         const value = Number(this.state.get().maxItemsValue);
-        if (Number.isInteger(value) && value >= 1 && value <= 1000) {
+        const range = settingRange("clipboard.max-items");
+        if (Number.isInteger(value) && value >= range.min && value <= range.max) {
             settings.set("clipboard.max-items", value);
         } else {
             this.setMaxItemsValue(String(normalizeClipboardMaxItems(this.props.clipboardMaxItems)));

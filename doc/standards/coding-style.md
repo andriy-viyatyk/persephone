@@ -318,8 +318,9 @@ const nodefs = require("fs");
 - `editors/base/folder-markers.ts` — synchronous local marker probe used by the folder matcher; path operations still go through `file-path`
 - `content/tree-providers/ArchiveTreeProvider.ts` — archive tree provider, uses `path.basename`/`path.extname` on plain filenames (not archive-aware path operations)
 - `library-require.ts` — custom `require()` transpiler that uses `fs.readFileSync` for module compilation
-- `themes/index.ts` — uses `fs.readFileSync` at startup before `app.fs` is initialized
-- `i18n/startup.ts` — reads the language setting and language packs synchronously before UI startup
+- `core/startup-environment.ts` — reads `appSettings.json` synchronously once before `app.fs` is initialized
+- `theme/custom-theme-catalog.ts` — `loadSync()` reads custom theme files before first paint and before `app.fs` is initialized
+- `i18n/startup.ts` — reads built-in and user language-pack directories synchronously before UI startup; settings are read only by `startup-environment.ts`
 - `src/main/path-watch-service.ts` — the sole owner of `fs.watch()`; renderer consumers subscribe through `src/renderer/api/path-watch.ts`
 - Other files that use `require("fs")` for low-level operations not covered by `app.fs` (e.g., `fs.createReadStream`)
 

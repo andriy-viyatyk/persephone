@@ -1,6 +1,6 @@
 const { ipcRenderer } = require("electron");
 import { settings } from "../../api/settings";
-import type { BrowserProfile } from "../../api/settings";
+import type { AppSettingsKey, BrowserProfile } from "../../api/settings-schema";
 import { ui } from "../../api/ui";
 import { BrowserNetworkChannel, proxyLabel } from "../../../ipc/browser-network-ipc";
 import type { BrowserNetwork, BrowserNetworkApplyResult } from "../../../ipc/browser-network-ipc";
@@ -51,16 +51,18 @@ export class BrowserProfileNetworkModel {
     private disposed = false;
 
     constructor(readonly model: BrowserEditorModel) {
-        this.disposables.add(settings.onChanged.subscribe(({ key }) => {
-            if (key !== "browser-profiles" && key !== "browser-default-network" && key !== "browser-incognito-network") return;
-            // Only a page that has been armed follows edits (a failed one too, so
-            // fixing the setting recovers it); one still being created arms itself
-            // with the current value anyway.
-            if (!this.armed) return;
-            void this.armProxy().catch((err: unknown) => {
-            ui.notify(t("browser.profileNetworkApplyFailed", { error: invokeErrorMessage(err) }), "error");
-            });
-        }));
+        const networkSettings = ["browser-profiles", "browser-default-network", "browser-incognito-network"] as const satisfies readonly AppSettingsKey[];
+        for (const key of networkSettings) {
+            this.disposables.add(settings.watch(key, () => {
+                // Only a page that has been armed follows edits (a failed one too, so
+                // fixing the setting recovers it); one still being created arms itself
+                // with the current value anyway.
+                if (!this.armed) return;
+                void this.armProxy().catch((err: unknown) => {
+                    ui.notify(t("browser.profileNetworkApplyFailed", { error: invokeErrorMessage(err) }), "error");
+                });
+            }));
+        }
     }
 
     private get applies(): boolean {

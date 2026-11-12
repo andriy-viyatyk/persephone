@@ -1,4 +1,4 @@
-import { settings } from "../../../api/settings";
+import { themeService } from "../../../api/theme-service";
 import { ui } from "../../../api/ui";
 import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
 import { app } from "../../../api/app";
@@ -6,7 +6,7 @@ import { deleteCustomTheme } from "../../../api/custom-theme-storage";
 import { isCapabilityErrorWithCode } from "../../../api/capability-feedback";
 import { errMessage } from "../../../../shared/utils";
 import { t } from "../../../../shared/i18n/t";
-import { applyTheme, getAvailableThemes } from "../../../theme/themes";
+import { getAvailableThemes } from "../../../theme/themes";
 import type { ThemeDefinition } from "../../../theme/themes/types";
 import { themeState } from "../../../theme/theme-state";
 import { applyPanelAttributes, resolvePanelAttributes } from "../../../uikit/Panel/panel-style";
@@ -265,8 +265,7 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
     }
 
     private handleThemeChange(themeId: string): void {
-        applyTheme(themeId);
-        settings.set("theme", themeId);
+        themeService.select(themeId);
     }
 
     private async handleThemeEdit(themeId: string): Promise<void> {

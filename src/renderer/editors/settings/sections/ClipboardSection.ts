@@ -1,4 +1,6 @@
-import { normalizeClipboardMaxItems, settings } from "../../../api/settings";
+import { settings } from "../../../api/settings";
+import { normalizeClipboardMaxItems } from "../../../api/settings-schema";
+import type { AppSettingsKey } from "../../../api/settings-schema";
 import { createComponentModelDriver, type ComponentModelDriver } from "../../../core/state/model";
 import { CheckboxView } from "../../../uikit/Checkbox/CheckboxView";
 import type { CheckboxProps } from "../../../uikit/Checkbox/CheckboxView";
@@ -69,13 +71,12 @@ export class ClipboardSectionView extends VanillaView<Record<string, never>> {
 
         driver.mount();
         this.bind(model.state, (state) => state, (state) => this.syncState(state));
-        const subscription = settings.onChanged.subscribe(({ key }) => {
-            if (key === "clipboard.enabled" || key === "clipboard.max-items") {
-                driver.update(this.currentProps());
-                this.syncState(model.state.get());
-            }
-        });
-        this.own(subscription);
+        const refresh = (): void => {
+            driver.update(this.currentProps());
+            this.syncState(model.state.get());
+        };
+        const settingsKeys = ["clipboard.enabled", "clipboard.max-items"] as const satisfies readonly AppSettingsKey[];
+        for (const key of settingsKeys) this.own(settings.watch(key, refresh));
     }
 
     protected onDispose(): void {

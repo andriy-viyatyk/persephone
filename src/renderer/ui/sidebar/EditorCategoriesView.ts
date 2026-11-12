@@ -2,6 +2,7 @@ import { t } from "../../../shared/i18n/t";
 import { showConfirmationDialog } from "../dialogs/ConfirmationDialog";
 import { DialogButton, dialogButton } from "../dialogs/dialog-buttons";
 import { settings } from "../../api/settings";
+import type { AppSettingsKey } from "../../api/settings-schema";
 import { app } from "../../api/app";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
@@ -48,7 +49,8 @@ export class EditorCategoriesView extends VanillaView<EditorCategoriesViewProps>
         });
         this.toolbar.append(button);
         this.root.append(this.toolbar);
-        this.own(settings.onChanged.subscribe(({ key }) => { if (key === "editor-categories" || key === "browser-profiles") this.render(); }));
+        const settingsKeys = ["editor-categories", "browser-profiles"] as const satisfies readonly AppSettingsKey[];
+        for (const key of settingsKeys) this.own(settings.watch(key, () => this.render()));
         this.own(boardRegistry.subscribeMembership(() => this.refreshBoards()));
         void boardRegistry.load().then(this.refreshBoards, this.refreshBoards);
         this.render();

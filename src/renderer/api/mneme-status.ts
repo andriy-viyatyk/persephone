@@ -58,9 +58,8 @@ class MnemeStatusModel {
 
         // The singleton health model owns these listeners for the renderer lifetime;
         // no config view/model should tear down the shared status indicator.
-        settings.onChanged.subscribe(({ key }: { key: string }) => {
-            if (key !== "mneme.enabled") return;
-            const enabled = !!settings.get("mneme.enabled");
+        settings.watch("mneme.enabled", (enabledValue) => {
+            const enabled = !!enabledValue;
             this.state.update((s) => { s.enabled = enabled; });
             // Re-arm the auto-open so a fresh enable can route to the config editor again.
             if (!enabled) this.autoOpenedConfig = false;

@@ -105,8 +105,7 @@ export class LanguageSectionView extends VanillaView<Record<string, never>> {
         this.select.mount();
         this.status = text("", { color: "light", size: "xs" });
         this.root.append(panel({ paddingBottom: "md" }, this.status));
-        this.own(settings.onChanged.subscribe(({ key }) => {
-            if (key !== "language") return;
+        this.own(settings.watch("language", () => {
             this.sync();
         }));
         void this.refreshPacks();

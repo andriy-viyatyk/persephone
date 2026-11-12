@@ -1,7 +1,8 @@
 import type { MessageKey } from "../../../shared/i18n/en";
+import type { AppSettingsKey } from "../../api/settings-schema";
 
 export interface SettingsCatalogRow {
-    readonly key: string;
+    readonly key: AppSettingsKey | "site-extensions";
     readonly label: string;
     readonly purpose: string;
     readonly where?: string;

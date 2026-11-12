@@ -43,8 +43,8 @@ class LibraryService extends TModel<LibraryServiceState> {
 
     constructor() {
         super(new TGlobalState(defaultState));
-        this.own(settings.onChanged.subscribe(({ key }) => {
-            if (key === "script-library.path" && this.initialized) {
+        this.own(settings.watch("script-library.path", () => {
+            if (this.initialized) {
                 this.deactivate();
                 this.activate();
             }
@@ -65,11 +65,6 @@ class LibraryService extends TModel<LibraryServiceState> {
 
     get allFiles(): string[] {
         return this.state.get().allFiles;
-    }
-
-    dispose(): void {
-        this.deactivate();
-        super.dispose();
     }
 
     // ── Private ──────────────────────────────────────────────────────────

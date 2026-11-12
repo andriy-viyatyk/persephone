@@ -11,7 +11,7 @@ import type { ServiceChannel } from "../../shared/service-channel";
 import { MAX_SERVICE_CHANNEL_MESSAGE_BYTES } from "../../shared/capability-limits";
 import { AUDIO_DEVICES_REQUEST, AUDIO_DEVICES_REPLY, AUDIO_SETTINGS_GET, AUDIO_SETTINGS_UPDATE, AUDIO_STATUS, AUDIO_RETRY, type AudioDevicesRequest, type AudioDevicesReply } from "../../ipc/audio-channels";
 import { microphoneDeviceId, resolveMicrophoneDevice } from "../ui/speech/microphone-device";
-import { MICROPHONE_TUNING, type MicrophoneNotch, type MicrophoneCleaningOptions } from "../ui/speech/microphone-cleaning-types";
+import { MICROPHONE_TUNING, type MicrophoneNotch, type MicrophoneCleaningOptions } from "../../shared/microphone-cleaning-types";
 import type { LoopbackLease } from "../ui/speech/LoopbackReference";
 
 const { ipcRenderer } = require("electron") as typeof import("electron");

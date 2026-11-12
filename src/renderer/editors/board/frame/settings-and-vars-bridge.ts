@@ -7,6 +7,7 @@ import { resolveBoardNamespace } from "../../../api/boards/board-namespace";
 import { resolveBoardVarRequest } from "../../../api/board-vars/board-vars-bridge";
 import { resolveBoardSettingsRequest, subscribeBoardSettings } from "../../../api/board-settings/board-settings-bridge";
 import { settings } from "../../../api/settings";
+import type { AppSettingsKey } from "../../../api/settings-schema";
 import { BoardFrameSession } from "./BoardFrameSession";
 import { BoardFrameEndpoint } from "./BoardFrameEndpoint";
 
@@ -15,7 +16,7 @@ type HostSettingsMessage = { [K in keyof HostToBoardEvents]: {
     payload: HostToBoardEvents[K]
 } }[keyof HostToBoardEvents];
 type HostSettingsPush = {
-    key: string;
+    key: AppSettingsKey;
     message: (value: unknown) => HostSettingsMessage | undefined
 };
 const hostSettingsPushes: readonly HostSettingsPush[] = [{
@@ -68,11 +69,11 @@ export class SettingsAndVarsBridge {
         this.hostSettingsUnsubscribe?.();
         const stamp = this.session.current();
         if (!stamp) return;
-        this.hostSettingsUnsubscribe = settings.onChanged.subscribe((change) => {
-            const entry = hostSettingsPushes.find((item) => item.key === change.key);
-            const message = entry?.message(change.value);
+        const subscriptions = hostSettingsPushes.map((entry) => settings.watch(entry.key, (value) => {
+            const message = entry.message(value);
             if (message) this.endpoint.emit(message.name, message.payload, { from: stamp });
-        });
+        }));
+        this.hostSettingsUnsubscribe = () => subscriptions.forEach((dispose) => dispose());
     }
 
     dispose(): void {

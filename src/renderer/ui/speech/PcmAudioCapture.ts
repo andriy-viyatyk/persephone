@@ -1,6 +1,6 @@
 import { DtlnAudioPipeline } from "./DtlnAudioPipeline";
 import { LoopbackReference, type LoopbackLease } from "./LoopbackReference";
-import type { MicrophoneCleaningOptions } from "./microphone-cleaning-types";
+import type { MicrophoneCleaningOptions } from "../../../shared/microphone-cleaning-types";
 import { errMessage } from "../../../shared/utils";
 
 const OUTPUT_SAMPLE_RATE = 16_000;

@@ -1,4 +1,5 @@
 import { settings } from "../../../api/settings";
+import type { AppSettingsKey } from "../../../api/settings-schema";
 import { TextareaView } from "../../../uikit/Textarea/TextareaView";
 import { t } from "../../../../shared/i18n/t";
 import type { TextareaProps } from "../../../uikit/Textarea/TextareaView";
@@ -45,11 +46,12 @@ export class FileSearchSectionView extends VanillaView<Record<string, never>> {
         this.root.append(this.excludeTextarea.root);
         this.excludeTextarea.mount();
 
-        const subscription = settings.onChanged.subscribe(({ key }) => {
-            if (key === "search-extensions") this.syncExtensions();
-            if (key === "search-exclude") this.syncExclude();
-        });
-        this.own(subscription);
+        const refreshSearch = (): void => {
+            this.syncExtensions();
+            this.syncExclude();
+        };
+        const settingsKeys = ["search-extensions", "search-exclude"] as const satisfies readonly AppSettingsKey[];
+        for (const key of settingsKeys) this.own(settings.watch(key, refreshSearch));
     }
 
     protected onDispose(): void {

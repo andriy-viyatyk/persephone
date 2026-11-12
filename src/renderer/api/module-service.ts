@@ -539,17 +539,6 @@ function activeContentReads(boardRoot: string): number {
     return clients.get(BoardRoot.from(boardRoot).key)?.activeContentReads ?? 0;
 }
 
-function dispose(): void {
-    portSubscription?.();
-    portSubscription = undefined;
-    for (const client of clients.values()) {
-        client.unsubscribeStatus();
-        client.disposed = true;
-        loseLease(client, "quit");
-    }
-    clients.clear();
-}
-
 export const moduleService = {
     acquire,
     request,
@@ -558,5 +547,4 @@ export const moduleService = {
     providerWritable,
     providerRangeReadable,
     activeContentReads,
-    dispose,
 };

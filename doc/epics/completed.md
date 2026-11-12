@@ -1,3 +1,19 @@
+## EPIC-155 — Refactoring Phase 5.5: settings schema, settings effects, theme startup and the startup phase table
+
+Completed 2026-11-13. Roadmap Phase 5.5 (CORE-7, CORE-8, CORE-9, EDT-3, PLAT-6, BND-14, decision D12): each setting is
+defined once in `api/settings-schema.ts`, consumers subscribe with a typed `settings.watch`, one effects table actuates
+settings, the theme has one startup reader and one apply direction, and renderer startup runs from one phase table in
+`api/app-startup.ts`. `settings.ts` 562 → 247 lines, `app.ts` 406 → 185, `theme/themes/index.ts` 205 → 117,
+`renderer.ts` 51 → 35. The settings file format and the script API are unchanged except that the popover size moved to
+`uiPreferences`. Plans by Codex, reviewed against the roadmap guardrails; Codex Luna implemented, with plan corrections
+recorded in the epic notes. Epic document: [EPIC-155](EPIC-155.md).
+
+- [x] **Settings schema (US-1887).** One ordered table owns each key's default, file comment, normaliser and view options/ranges; views read `settingDefault`/`settingOptions`/`settingRange`; migrations are an ordered list; microphone rules moved to `src/shared/`; `editor-categories-popover-size` moved to `uiPreferences` with a one-time migration.
+- [x] **`settings.watch` and the effects table (US-1888).** A typed per-key watch replaces 37 hand-filtered `onChanged` subscribers; `api/settings-effects.ts` owns main scripting, capability preferences, Windows SSO, MCP, Mneme, clipboard and the microphone publish, at startup and on change.
+- [x] **Theme startup (US-1889).** `core/startup-environment.ts` parses `appSettings.json` once (JSON5) for theme and i18n; `theme/custom-theme-catalog.ts` is the one custom-theme reader; `ThemeService` applies the `theme` setting, and `themes.apply` and both cycles only write it; `cycle-app-theme.ts` and the import-time theme side effect are gone.
+- [x] **Startup phase table (US-1890).** `api/app-startup.ts` lists every startup entry by phase in the old order; renderer RPC is initialised once; the board-window launch left `renderer.ts`; uncalled `dispose()` methods deleted; `overview.md`'s bootstrap section matches the table.
+- [x] **Epic review.** `/review` made the `app.pages` initialisation guard explicit; `/document` updated four architecture docs and `key-files.md` and recorded the settings storage rule; `/userdoc` needed no changes. No English catalog messages changed.
+
 ## EPIC-154 — Refactoring Phase 5.4: finish the host migration and slim `TextFileModel`
 
 Completed 2026-11-12. Roadmap Phase 5.4 (CORE-2 step 6, EDC-3, EDC-4): a page holds one editor shape, `EditorModel`

@@ -68,7 +68,9 @@ class HeaderQuickSettingsContentView extends VanillaView<HeaderQuickSettingsCont
             this.createSeparator(),
         );
         QUICK_SERVICE_ENTRIES.forEach((entry) => this.root.append(this.createServiceRow(entry)));
-        this.own(settings.onChanged.subscribe(this.onSettingChanged));
+        for (const entry of QUICK_SERVICE_ENTRIES) {
+            this.own(settings.watch(entry.key, () => this.syncServiceSwitches()));
+        }
         this.syncServiceSwitches();
         this.firstAction?.focus();
     }
@@ -190,10 +192,6 @@ class HeaderQuickSettingsContentView extends VanillaView<HeaderQuickSettingsCont
         this.serviceSwitches.push({ entry, view: switchView, onChange });
         return row;
     }
-
-    private readonly onSettingChanged = ({ key }: { key: string; value: unknown }): void => {
-        if (QUICK_SERVICE_ENTRIES.some((entry) => entry.key === key)) this.syncServiceSwitches();
-    };
 
     private syncServiceSwitches(): void {
         this.serviceSwitches.forEach(({ entry, view, onChange }) => {

@@ -1,6 +1,7 @@
 import { app } from "../../api/app";
 import { pages } from "../../api/pages";
-import { normalizeClipboardMaxItems, settings } from "../../api/settings";
+import { settings } from "../../api/settings";
+import { normalizeClipboardMaxItems } from "../../api/settings-schema";
 import { ui } from "../../api/ui";
 import { api } from "../../../ipc/renderer/api";
 import rendererEvents from "../../../ipc/renderer/renderer-events";

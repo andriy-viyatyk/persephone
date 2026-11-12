@@ -1,5 +1,5 @@
 import { settings } from "../../api/settings";
-import type { MicrophoneCleaningOptions } from "./microphone-cleaning-types";
+import type { MicrophoneCleaningOptions } from "../../../shared/microphone-cleaning-types";
 import { AUDIO_RETRY, AUDIO_STATUS } from "../../../ipc/audio-channels";
 import type { PcmAudioCapture } from "./PcmAudioCapture";
 import { microphoneDeviceId } from "./microphone-device";
@@ -19,9 +19,14 @@ export function reportMicrophoneStatus(mode: string, reason: string): void {
 }
 
 export function watchMicrophoneSettings(capture: PcmAudioCapture, stream: MediaStream): void {
-    capture.onStop(settings.onChanged.subscribe(({ key }) => {
-        if (key === "microphone.clean") void capture.reconfigureMicrophone(microphoneOptions(stream));
-        else if (key === "microphone.attenuation-db" || key === "microphone.notches") capture.updateCleaning(microphoneOptions(stream));
+    capture.onStop(settings.watch("microphone.clean", () => {
+        void capture.reconfigureMicrophone(microphoneOptions(stream));
+    }));
+    capture.onStop(settings.watch("microphone.attenuation-db", () => {
+        capture.updateCleaning(microphoneOptions(stream));
+    }));
+    capture.onStop(settings.watch("microphone.notches", () => {
+        capture.updateCleaning(microphoneOptions(stream));
     }));
     const { ipcRenderer } = require("electron") as typeof import("electron");
     const retry = (): void => capture.retryMicrophone(microphoneOptions(stream));

@@ -1,4 +1,3 @@
-import { profileDefaultPort, rendererProfileName } from "../../shared/application-profile";
 import { debounce } from "../../shared/utils";
 import { TGlobalState } from "../core/state/state";
 import { Subscription } from "../core/state/events";
@@ -6,89 +5,11 @@ import { parseJSON5 } from "../core/utils/parse-utils";
 import { createEchoGuard } from "../core/utils/echo-guard";
 import { fs } from "./fs";
 import { FileWatcher } from "../core/utils/file-watcher";
-import { applyThemePreservingPreview } from "../theme/themes";
-import { defaultSearchableExtensions, defaultMaxFileSize, defaultExcludePatterns } from "../../ipc/search-ipc";
 import { wrapSubscription } from "./internal";
-import type { BrowserNetwork } from "../../ipc/browser-network-ipc";
 import type { ISettings } from "./types/settings";
-import { normalizeVoiceTypingShortcut } from "../../shared/voice-typing-shortcut";
-import { MICROPHONE_TUNING, type MicrophoneNotch } from "../ui/speech/microphone-cleaning-types";
-import { AUDIO_SETTINGS_UPDATE } from "../../ipc/audio-channels";
-
+import { load as loadUiPreferences, uiPreferences } from "./ui-preferences";
+import { AppSettingsKey, AppSettingsState, SETTINGS_MIGRATIONS, defaultSettings, SETTINGS_SCHEMA, settingsComments } from "./settings-schema";
 // =============================================================================
-// Types
-// =============================================================================
-
-export interface BrowserProfile {
-    name: string;
-    color: string;
-    bookmarksFile?: string;
-    /** Network route for this profile's session. Missing = direct. */
-    network?: BrowserNetwork;
-}
-
-export interface EditorCategory {
-    id: string;
-    name: string;
-    items: string[];
-}
-
-export type AppSettingsKey =
-    | "tab-recent-languages"
-    | "language"
-    | "theme"
-    | "search-extensions"
-    | "search-exclude"
-    | "search-max-file-size"
-    | "browser-profiles"
-    | "browser-default-profile"
-    | "browser-default-bookmarks-file"
-    | "browser-default-network"
-    | "browser-incognito-network"
-    | "browser-incognito-bookmarks-file"
-    | "browser-windows-sso"
-    | "browser-search-engine"
-    | "browser-translate-target"
-    | "browser-private-search-engine"
-    | "link-open-behavior"
-    | "agent-tips.enabled"
-    | "mcp.enabled"
-    | "mcp.port"
-    | "clipboard.enabled"
-    | "clipboard.max-items"
-    | "main.scripting.enabled"
-    | "capabilities.preferredProviders"
-    | "mneme.enabled"
-    | "mneme.port"
-    | "script-library.path"
-    | "site-extensions.path"
-    | "editor-categories"
-    | "editor-categories-popover-size"
-    | "disabled-bundled-boards"
-    | "tor.exe-path"
-    | "tor.socks-port"
-    | "tor.bookmarks-file"
-    | "vlc-path"
-    | "terminal.command"
-    | "video-stream.port"
-    | "git.enabled"
-    | "window.close-to-tray"
-    | "editor.word-wrap"
-    | "board-vars.file"
-    | "boards.default-author"
-    | "voice-typing.shortcut"
-    | "voice-typing.translate-shortcut"
-    | "voice-typing.auto-stop-silence-ms"
-    | "voice-typing.auto-stop-inactivity-ms"
-    | "microphone.clean"
-    | "microphone.attenuation-db"
-    | "microphone.notches"
-    | "boards.excalidraw-library-migrated";
-
-// =============================================================================
-// State
-// =============================================================================
-
 const settingsFileName = "appSettings.json";
 
 /**
@@ -115,248 +36,19 @@ const settingsFileHeader = [
     "// Docs: https://github.com/andriy-viyatyk/persephone",
 ].join("\n");
 
-/**
- * Per-key comments written into the settings file above each key.
- *
- * Write them for a reader who is configuring the app from the file itself and cannot see the
- * Settings UI's labels, help text, or controls. State what the setting does, its accepted
- * values and default, and any behavior that a plain "set the value" mental model gets wrong
- * (a change that needs a toggle, a dependency on an external program, a security implication).
- */
-const settingsComments: Partial<Record<AppSettingsKey, string>> = {
-    "language": "Application language code. Use \"auto\" to follow the system's preferred languages, or a BCP-47 code such as \"uk\" or \"en-XA\". Changes apply after reloading windows. Default: auto.",
-    "tab-recent-languages":
-        "Languages recently chosen from a tab's language menu, most recent first.\nMaintained automatically; they sort to the top of that menu. Safe to trim or clear.",
-    "theme": "Application color theme. Applies as soon as this file is saved. Built-in ids and custom theme ids are accepted; custom choices are stored in the data/themes folder. Default: persephone.",
-    "search-extensions": "File extensions to include in file content search.\nAdd or remove extensions to customize which files are searchable.",
-    "search-exclude": "Folders and globs always skipped by file content search.\nA plain name skips any folder with that name; a glob (with / * ?) is matched against the path relative to the search root.\nNever applied to the search root itself — searching inside node_modules works, while nested ones are still skipped.",
-    "search-max-file-size": "Maximum file size (in bytes) for file content search.\nFiles larger than this are skipped. Default: 1048576 (1 MB).",
-    "browser-profiles": "Browser profiles — isolated sessions, each with its own cookies, storage, and cache.\nArray of profile objects. Use separate profiles to stay signed into several accounts\non the same site at once. A profile may carry \"network\" — same shape as \"browser-default-network\".",
-    "browser-default-profile": "Profile name used when opening a new browser tab.\nMust match a name in \"browser-profiles\". Empty string = the built-in default profile.",
-    "browser-default-bookmarks-file": "Absolute path to the .link.json file holding bookmarks for the default browser profile.\nIt is an ordinary Links-editor file and can be opened as a tab.",
-    "browser-default-network": "Network route for the built-in default browser profile (named profiles carry their own \"network\").\n{ \"kind\": \"direct\" } (default), or { \"kind\": \"proxy\", \"protocol\": \"socks5\" | \"http\", \"host\": \"127.0.0.1\", \"port\": 1080 }.\nA proxied profile never falls back to direct: when the proxy is unreachable its pages fail to load.\nWith SOCKS5 the proxy also resolves host names. localhost and link-local addresses always go direct.",
-    "browser-incognito-network": "Network route for Incognito browser pages — same shape as \"browser-default-network\".\nEach Incognito page has its own in-memory session; this route applies to every one of them.",
-    "browser-incognito-bookmarks-file": "Absolute path to the .link.json bookmarks file used in incognito mode.\nKept separate so incognito bookmarks never mix with the normal profile's.",
-    "browser-windows-sso": "Allow Windows single sign-on for Microsoft, work, and school accounts (Windows only).\nOn an Entra-joined device, browser profile pages send Windows' device sign-in proof to\nlogin.microsoftonline.com and login.live.com, as Edge and Chrome do, so company sign-in rules\nthat require a registered device accept the sign-in. Never applies to Incognito or Tor pages.",
-    "browser-search-engine": "Search engine preselected in new profile browser pages (the default and named profiles).\nMaintained automatically: the last engine picked in the URL bar of such a page.\nOne of: google, bing, duckduckgo, yahoo, ecosia, brave, startpage, qwant, baidu, perplexity, gibiru.\nDefault: google.",
-    "browser-translate-target": "Target language for browser page translation. Use \"app\" to follow the active application language, or a BCP-47 language code supported by a trusted text translation provider. Default: app.",
-    "browser-private-search-engine": "Search engine preselected in new Incognito and Tor browser pages — same values as\n\"browser-search-engine\", remembered separately from it. Default: google.",
-    "link-open-behavior": "Where external links open from editors.\nOne of: \"default-browser\" (the OS default browser), \"internal-browser\" (the nearest\nPersephone Browser tab). Default: default-browser.",
-    "agent-tips.enabled": "Allow optional, non-blocking suggestions to MCP agents.\nBoolean. Default: true. Changes take effect immediately.",
-    "mcp.enabled": "Enable the MCP (Model Context Protocol) HTTP server, so AI agents can drive Persephone.\nBoolean. Default: false. Setting it true here starts the server immediately — no restart.\nThe agent connects to http://127.0.0.1:<mcp.port>/mcp and should start with a bare call for the overview.\nThe server listens on loopback only and is never reachable from another machine.",
-    "mcp.port": "Port for the MCP HTTP server.\nNumber. Default: 7865; named application profiles (--profile): 7965 (+100).\nChanging this alone does NOT move a running server — set \"mcp.enabled\": false, save, then set it back to true.",
-    "clipboard.enabled": "Enable the clipboard history tracker.\nBoolean. Default: false. When enabled, clipboard content is recorded for the history feature.\nOccasionally-copied secrets may remain on disk in readable form.",
-    "clipboard.max-items": "Maximum number of clipboard history items to retain.\nOnly integers from 1 through 1000 are accepted; any other stored value falls back to 100.\nDefault: 100. This item count limits history retention, including content that may remain readable on disk.",
-    "main.scripting.enabled": "Allow call → main.script.execute to run code in Persephone's main process.\nBoolean. Default: on in development and off in packaged builds. Main-process code can freeze or crash the entire app.",
-    "mneme.enabled": "Enable Mneme, the local markdown knowledge base with full-text and semantic search.\nBoolean. Default: false. Persephone runs mneme.exe as a sidecar and connects over loopback HTTP.\nMneme exposes its OWN MCP server on \"mneme.port\" — separate from \"mcp.port\" above.",
-    "mneme.port": "Port for the Mneme HTTP (MCP) server.\nNumber. Default: 7700; named application profiles (--profile): 7800 (+100).\nChanging this alone does NOT move a running server — set \"mneme.enabled\": false, save, then set it back to true.",
-    "script-library.path": "Absolute path to the script library folder — saved scripts and reusable modules.\nEmpty means no library is linked; the Menu Bar's Script Library category then offers\nto pick one. Changing it here re-points the category immediately.",
-    "site-extensions.path": "Absolute path to the site extensions folder: one sub-folder per extension, each with\nmanifest.json and its script. Empty means the default, <userData>/data/site-extensions.\nChanging it revokes trust for every extension: each one in the new folder asks to be trusted again.\nPages that already ran an extension keep it until they reload or navigate.",
-    "editor-categories": "Ordered editor categories for the '+' new-page menu. Each entry has id, name, and item refs; Top is fixed first and Other is derived from eligible items not assigned to a category.",
-    "editor-categories-popover-size": "Size of the '+' new-page popover, saved when you resize it by its corner.\nObject { width, height } in pixels, or null for the default size. The popover never opens larger than the window.",
-    "disabled-bundled-boards": "Bundled boards disabled in Tools & Editors.\nArray of stable bundled board folder ids; changes apply live without restarting. Default: [].",
-    "capabilities.preferredProviders": "Preferred capability provider keys, indexed by capability id. Default: {}.",
-    "tor.exe-path": "Absolute path to tor.exe. Required for Browser (Tor) mode; empty disables it.\nGet it from the Tor Expert Bundle, or reuse the tor.exe inside a Tor Browser installation.",
-    "tor.socks-port": "SOCKS proxy port for Tor.\nNumber. Default: 9050; named application profiles (--profile): 9052.\nChange if the port is already in use on this machine.",
-    "tor.bookmarks-file": "Path to the .link.json bookmarks file for Browser (Tor) mode.",
-    "vlc-path": "Absolute path to vlc.exe, used for formats Chromium cannot decode (AVI, MKV, WMA).\nLeave empty to auto-detect C:\\Program Files\\VideoLAN\\VLC\\vlc.exe.",
-    "terminal.command": "Terminal launched by \"Open Terminal here\".\nCommand name or absolute path — pwsh, powershell, cmd, or wt.\nLeave empty to auto-detect on first use (pwsh -> powershell -> cmd).",
-    "video-stream.port": "Port for the local video streaming server, which serves media to the player and to VLC.\nNumber. Default: 7866; named application profiles (--profile): 7966 (+100).\nChange if the port is already in use.",
-    "git.enabled": "Enable Git integration — the Git Tree and Git Diff editors.\nBoolean. Default: false, and with it off Persephone performs no git activity at all.\nRequires git installed and on PATH. This is usually why a user cannot find git features.",
-    "window.close-to-tray": "Keep Persephone running in the notification tray after its last window is closed.\nBoolean. Default: true — closing the last window only hides it, and the app is\nrestored from the tray icon. Background services (MCP server, Mneme, the launcher\npipe that makes \"Open with persephone\" instant) stay up, which is the point.\nSet false to make closing the last window quit the app outright. The tray icon is\nstill there while the app runs; Quit from it always exits regardless of this setting.",
-    "editor.word-wrap": "Default word wrapping for newly shown Text Editor pages.\nBoolean. Default: false. This is read when a Text Editor page is first shown\nwithout saved page state; existing pages keep their own persisted choice.",
-    "board-vars.file": "Absolute path to the board environment-variables file (.env.json).\nHolds per-board variables and secrets, deliberately OUTSIDE board folders so a board\nfolder can be shared without its secrets. May be password-encrypted via the file's\nencryption menu, in which case its values cannot be read until the user unlocks it.",
-    "boards.default-author": "Default author written into manifests for boards created by Persephone.\nEmpty means newly created boards have no stable author until you set one.",
-    "voice-typing.shortcut": "Shortcut used to start and stop voice typing. Modifiers are written Ctrl, Alt, Shift, or Meta followed by one key; at least one modifier is required. Default: Alt+V.",
-    "voice-typing.translate-shortcut": "Shortcut used to start and stop voice typing with translation to English. Default: Alt+Shift+V.",
-    "voice-typing.auto-stop-silence-ms": "Stop voice typing and boards that take dictation after this many milliseconds of microphone silence once a committed speech segment exists and no utterance is pending. Allowed: 0 (off), 2000, 3000, 5000, 10000. Default: 0.",
-    "voice-typing.auto-stop-inactivity-ms": "Stop voice typing after this many milliseconds in which the transcription provider produced no new draft or committed text, measured from when recording started. Unlike the silence setting this ignores microphone level, so it still ends a session in a noisy room, or one in which nothing was ever said and so no committed segment exists for silence detection to arm on. Only applies to providers that support live transcription, because a provider without it sends no text until the session ends. The short values suit a fast machine, where a draft arrives within a second of speech; allow more on a slow one or when transcription runs on the CPU. Allowed: 0 (off), 2000, 3000, 4000, 5000, 10000, 15000, 30000. Default: 0.",
-    "microphone.clean": "Enable DTLN noise cleaning. A consumer requesting computer sound cancellation also enables DTLN noise removal when this is off. Default: true.",
-    "microphone.attenuation-db": "Maximum DTLN suppression by frame RMS in dB; 0 means unlimited. Default: 30. Applies whenever DTLN runs.",
-    "microphone.notches": "Device-specific resonance cuts keyed by resolved microphone device ID. Frequencies must be between 20 and 7999 Hz inclusive; invalid device profiles are discarded. Device IDs are stored locally and may change.",
-    "boards.excalidraw-library-migrated": "Bookkeeping: whether the pre-5.0.4 \"drawing.library-path\" has already been\noffered to the bundled Excalidraw board as its own \"library-path\" setting.\nBoolean. Set to true once that one-time import has run, so clearing the setting\nin Settings stays cleared instead of being re-imported on the next start.\nSet it back to false AND restart Persephone to run the import once more:\nthe import is attempted once per run, so clearing the flag alone changes nothing.",
-};
-
-/** Items in the Top category on a fresh install, in order. */
-export const DEFAULT_PINNED_EDITORS: readonly string[] = [
-    "open-folder", "open-file", "script-ts", "bundled-board:excalidraw", "grid-csv", "browser",
-];
-
-const defaultAppSettingsState = {
-    settings: {
-        "tab-recent-languages": ["plaintext"] as string[],
-        "language": "auto",
-        "theme": "persephone",
-        "search-extensions": defaultSearchableExtensions as string[],
-        "search-exclude": defaultExcludePatterns as string[],
-        "search-max-file-size": defaultMaxFileSize,
-        "browser-profiles": [] as BrowserProfile[],
-        "browser-default-profile": "",
-        "browser-default-bookmarks-file": "",
-        "browser-default-network": { kind: "direct" } as BrowserNetwork,
-        "browser-incognito-network": { kind: "direct" } as BrowserNetwork,
-        "browser-incognito-bookmarks-file": "",
-        "browser-windows-sso": false,
-        "browser-search-engine": "google",
-        "browser-translate-target": "app",
-        "browser-private-search-engine": "google",
-        "link-open-behavior": "default-browser" as "default-browser" | "internal-browser",
-        "agent-tips.enabled": true,
-        "mcp.enabled": false,
-        "mcp.port": profileDefaultPort(7865, rendererProfileName()),
-        "clipboard.enabled": false,
-        "clipboard.max-items": 100,
-        "main.scripting.enabled": import.meta.env.DEV,
-        "capabilities.preferredProviders": {} as Record<string, string>,
-        "mneme.enabled": false,
-        "mneme.port": profileDefaultPort(7700, rendererProfileName()),
-        "script-library.path": "",
-        "site-extensions.path": "",
-        "editor-categories": [{ id: "top", name: "", items: [...DEFAULT_PINNED_EDITORS] }] as EditorCategory[],
-        "editor-categories-popover-size": null as { width: number; height: number } | null,
-        "disabled-bundled-boards": [] as string[],
-        "tor.exe-path": "",
-        "tor.socks-port": rendererProfileName() ? 9052 : 9050,
-        "tor.bookmarks-file": "",
-        "vlc-path": "",
-        "terminal.command": "",
-        "video-stream.port": profileDefaultPort(7866, rendererProfileName()),
-        "git.enabled": false,
-        "window.close-to-tray": true,
-        "editor.word-wrap": false,
-        "board-vars.file": "",
-        "boards.default-author": "",
-        "voice-typing.shortcut": "Alt+V",
-        "voice-typing.translate-shortcut": "Alt+Shift+V",
-        "voice-typing.auto-stop-silence-ms": 0,
-        "voice-typing.auto-stop-inactivity-ms": 0,
-        "microphone.clean": true,
-        "microphone.attenuation-db": MICROPHONE_TUNING.attenuationDb as number,
-        "microphone.notches": {} as Record<string, MicrophoneNotch>,
-        "boards.excalidraw-library-migrated": false,
-    },
-};
-
-type AppSettingsState = typeof defaultAppSettingsState;
-
-export const MICROPHONE_NOTCH_FREQUENCY_RANGE = { min: 20, max: 7999 } as const;
-
-function normalizeMicrophoneSetting(key: string, value: unknown): unknown {
-    if (key === "microphone.clean") return typeof value === "boolean" ? value : true;
-    if (key === "microphone.attenuation-db") return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100 ? value : MICROPHONE_TUNING.attenuationDb;
-    if (key !== "microphone.notches") return value;
-    const result: Record<string, MicrophoneNotch> = Object.create(null) as Record<string, MicrophoneNotch>;
-    if (!value || typeof value !== "object" || Array.isArray(value)) return result;
-    for (const [id, raw] of Object.entries(value)) {
-        if (!id || id === "default" || !raw || typeof raw !== "object") continue;
-        const n = raw as Partial<MicrophoneNotch>;
-        if (typeof n.enabled === "boolean" && typeof n.frequency === "number" && n.frequency >= MICROPHONE_NOTCH_FREQUENCY_RANGE.min && n.frequency <= MICROPHONE_NOTCH_FREQUENCY_RANGE.max
-            && typeof n.q === "number" && n.q >= 0.1 && n.q <= 50 && typeof n.gainDb === "number" && n.gainDb >= -60 && n.gainDb <= 0) {
-            result[id] = { enabled: n.enabled, frequency: n.frequency, q: n.q, gainDb: n.gainDb };
-        }
-    }
-    return result;
-}
-
-export function normalizeClipboardMaxItems(value: unknown): number {
-    return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 1000
-        ? value
-        : 100;
-}
-
-export function normalizeVoiceTypingAutoStopSilence(value: unknown): number {
-    return typeof value === "number" && [0, 2000, 3000, 5000, 10000].includes(value) ? value : 0;
-}
-
-export function normalizeVoiceTypingAutoStopInactivity(value: unknown): number {
-    return typeof value === "number" && [0, 2000, 3000, 4000, 5000, 10000, 15000, 30000].includes(value) ? value : 0;
-}
-
-function normalizeCapabilityPreferences(value: unknown): Record<string, string> {
-    if (!value || typeof value !== "object" || Array.isArray(value) || Object.values(value).some((item) => typeof item !== "string")) return {};
-    return { ...value } as Record<string, string>;
-}
-
-/**
- * Value comparison for change detection on reload. Settings hold arrays and objects
- * (`browser-profiles`, `search-extensions`, `editor-categories`), and every reload re-parses the
- * file into fresh instances — so `!==` would report every one of them as changed on every
- * touch of the file, waking subscribers that reload the script library or reconnect Mneme.
- *
- * Structural values are compared by their JSON form, which is key-order sensitive: reordering
- * keys *within* an object value emits one spurious change, and the next reload agrees again.
- * That is cheap and self-correcting, unlike the alternative of firing on every reload.
- */
 function settingsValueEqual(a: unknown, b: unknown): boolean {
     if (a === b) return true;
     if (a === null || b === null || typeof a !== "object" || typeof b !== "object") return false;
     return JSON.stringify(a) === JSON.stringify(b);
 }
 
-function migrateLegacyPinnedEditors(value: unknown): string[] | undefined {
-    if (!Array.isArray(value)) return undefined;
-
-    let changed = false;
-    const migrated = value.map((entry) => {
-        if (entry !== "draw-view") return entry;
-        changed = true;
-        return "bundled-board:excalidraw";
-    });
-
-    return changed ? migrated as string[] : undefined;
-}
-
-function normalizeEditorCategories(value: unknown, legacyValue: unknown): EditorCategory[] {
-    const source = Array.isArray(value) ? value : [];
-    const seenIds = new Set<string>();
-    const seenItems = new Set<string>();
-    const categories: EditorCategory[] = [{ id: "top", name: "", items: [] }];
-    const topRaw = source.find((raw) => !!raw && typeof raw === "object" && (raw as Partial<EditorCategory>).id === "top");
-    const orderedSource = topRaw ? [topRaw, ...source.filter((raw) => raw !== topRaw)] : source;
-    let foundTop = Boolean(topRaw);
-    for (const raw of orderedSource) {
-        if (!raw || typeof raw !== "object") continue;
-        const category = raw as Partial<EditorCategory>;
-        if (category.id === "top") {
-            foundTop = true;
-            for (const item of Array.isArray(category.items) ? category.items : []) {
-                if (typeof item === "string" && !seenItems.has(item)) {
-                    seenItems.add(item);
-                    categories[0].items.push(item);
-                }
-            }
-            continue;
-        }
-        if (typeof category.id !== "string" || !category.id || seenIds.has(category.id)) continue;
-        seenIds.add(category.id);
-        const items: string[] = [];
-        for (const item of Array.isArray(category.items) ? category.items : []) {
-            if (typeof item !== "string" || seenItems.has(item)) continue;
-            seenItems.add(item);
-            items.push(item);
-        }
-        categories.push({ id: category.id, name: typeof category.name === "string" ? category.name : "", items });
-    }
-    if (!Array.isArray(value)) {
-        const migrated = migrateLegacyPinnedEditors(legacyValue);
-        categories[0].items = migrated ?? (Array.isArray(legacyValue)
-            ? legacyValue.filter((item): item is string => typeof item === "string")
-            : [...DEFAULT_PINNED_EDITORS]);
-    } else if (!foundTop) {
-        // A malformed category list still gets the documented defaults in its fixed Top group.
-        categories[0].items = [...DEFAULT_PINNED_EDITORS];
-    }
-    return categories;
-}
-
-// =============================================================================
 // Implementation
 // =============================================================================
 
 class Settings implements ISettings {
     readonly onChanged;
 
-    private readonly state = new TGlobalState(defaultAppSettingsState);
+    private readonly state = new TGlobalState({ settings: defaultSettings });
     private readonly _initPromise: Promise<void>;
     private fileWatcher: FileWatcher | undefined;
     private readonly echoGuard = createEchoGuard<string>();
@@ -364,14 +56,6 @@ class Settings implements ISettings {
     constructor() {
         this.onChanged = wrapSubscription(this._onChanged);
         this._initPromise = this.init();
-        void this._initPromise.then(() => this.publishMicrophoneSettings());
-    }
-
-    private publishMicrophoneSettings(): void {
-        const { ipcRenderer } = require("electron") as typeof import("electron");
-        ipcRenderer.send(AUDIO_SETTINGS_UPDATE, {
-            enabled: this.get("microphone.clean"), attenuationDb: this.get("microphone.attenuation-db"), notches: this.get("microphone.notches"),
-        });
     }
 
     /** Wait until settings are loaded from disk. */
@@ -404,20 +88,24 @@ class Settings implements ISettings {
         return this.state.get().settings[key as AppSettingsKey];
     }
 
+    watch<K extends AppSettingsKey>(
+        key: K,
+        callback: (value: AppSettingsState["settings"][K]) => void,
+    ): () => void {
+        return this._onChanged.subscribe((change) => {
+            if (change.key === key) callback(change.value as AppSettingsState["settings"][K]);
+        });
+    }
+
     set<K extends AppSettingsKey>(key: K, value: AppSettingsState["settings"][K]): void;
     set<T = unknown>(key: string, value: T): void;
     set(key: string, value: unknown): void {
-        if (key.startsWith("microphone.")) value = normalizeMicrophoneSetting(key, value);
-        if (key === "capabilities.preferredProviders") value = normalizeCapabilityPreferences(value);
-        if (key === "voice-typing.shortcut") value = normalizeVoiceTypingShortcut(value) ?? "Alt+V";
-        if (key === "voice-typing.translate-shortcut") value = normalizeVoiceTypingShortcut(value) ?? "Alt+Shift+V";
-        if (key === "voice-typing.auto-stop-silence-ms") value = normalizeVoiceTypingAutoStopSilence(value);
-        if (key === "voice-typing.auto-stop-inactivity-ms") value = normalizeVoiceTypingAutoStopInactivity(value);
+        const entry = SETTINGS_SCHEMA[key as AppSettingsKey];
+        if (entry && "normalize" in entry && entry.normalize && key !== "editor-categories") value = entry.normalize(value);
         this.state.update((s) => {
             (s.settings as Record<string, unknown>)[key] = value;
         });
         this._onChanged.send({ key, value });
-        if (key.startsWith("microphone.")) this.publishMicrophoneSettings();
         this.saveSettingsDebounced();
     }
 
@@ -432,6 +120,7 @@ class Settings implements ISettings {
     private readonly _onChanged = new Subscription<{ key: string; value: unknown }>();
 
     private init = async () => {
+        await loadUiPreferences();
         await fs.prepareDataFile(settingsFileName, "{}");
         this.fileWatcher = new FileWatcher(
             await fs.dataFileName(settingsFileName),
@@ -453,8 +142,8 @@ class Settings implements ISettings {
      * `emitChanges` is false for the initial load and true for watcher-triggered reloads.
      * The distinction matters: settings that merely get *read* (theme, paths, search config)
      * take effect from the state update alone, but settings that *do* something — starting the
-     * MCP server, the browser tools, Mneme — are actuated by subscribers to `onChanged`
-     * (see `App.initServices`). Without an emit here, editing `appSettings.json` on disk would
+     * MCP server, the browser tools, Mneme — are actuated by settings-change subscribers
+     * (see `settings-effects.ts`). Without an emit here, editing `appSettings.json` on disk would
      * flip the value and the Settings UI toggle while the server stayed down: it would look
      * like it worked. Editing the file is the one way an agent can turn MCP on *before* it has
      * MCP, so this path has to work.
@@ -468,38 +157,34 @@ class Settings implements ISettings {
         ) as Record<string, unknown> | undefined;
         if (content) {
             const previous = this.state.get().settings as Record<string, unknown>;
+            let migrationChanged = false;
+            const migrationContext = { uiPreferences, legacyPinnedEditors: undefined as unknown };
+            for (const migrate of SETTINGS_MIGRATIONS) {
+                migrationChanged = migrate(content, migrationContext) || migrationChanged;
+            }
             const newSettings = {
-                ...defaultAppSettingsState.settings,
+                ...defaultSettings,
                 ...content,
             };
-            newSettings["voice-typing.shortcut"] = normalizeVoiceTypingShortcut(newSettings["voice-typing.shortcut"]) ?? "Alt+V";
-            newSettings["voice-typing.translate-shortcut"] = normalizeVoiceTypingShortcut(newSettings["voice-typing.translate-shortcut"]) ?? "Alt+Shift+V";
-            newSettings["voice-typing.auto-stop-silence-ms"] = normalizeVoiceTypingAutoStopSilence(newSettings["voice-typing.auto-stop-silence-ms"]);
-            newSettings["voice-typing.auto-stop-inactivity-ms"] = normalizeVoiceTypingAutoStopInactivity(newSettings["voice-typing.auto-stop-inactivity-ms"]);
-            newSettings["microphone.clean"] = normalizeMicrophoneSetting("microphone.clean", newSettings["microphone.clean"]) as boolean;
-            newSettings["microphone.attenuation-db"] = normalizeMicrophoneSetting("microphone.attenuation-db", newSettings["microphone.attenuation-db"]) as number;
-            newSettings["microphone.notches"] = normalizeMicrophoneSetting("microphone.notches", newSettings["microphone.notches"]) as Record<string, MicrophoneNotch>;
-            const migratedSettings = newSettings as Record<string, unknown>;
-            for (const key of ["voice-assistant.enabled", "voice-assistant.microphone", "voice-assistant.silence-ms", "voice-assistant.threshold"]) delete migratedSettings[key];
-            newSettings["capabilities.preferredProviders"] = normalizeCapabilityPreferences(newSettings["capabilities.preferredProviders"]);
+            const normalizedSettings = newSettings as Record<string, unknown>;
+            const entries = Object.entries(SETTINGS_SCHEMA) as [AppSettingsKey, (typeof SETTINGS_SCHEMA)[AppSettingsKey]][];
+            for (const [key, entry] of entries) {
+                if (key === "editor-categories" || !("normalize" in entry) || !entry.normalize) continue;
+                normalizedSettings[key] = entry.normalize(normalizedSettings[key]);
+            }
             const categoriesAbsent = !Object.prototype.hasOwnProperty.call(content, "editor-categories");
             const rawCategories = content["editor-categories"];
-            const categories = normalizeEditorCategories(rawCategories, (content as Record<string, unknown>)["pinned-editors"]);
-            (newSettings as Record<string, unknown>)["editor-categories"] = categories;
-            const removedLegacyPinnedEditors = Object.prototype.hasOwnProperty.call(content, "pinned-editors");
-            delete (newSettings as Record<string, unknown>)["pinned-editors"];
+            const categories = SETTINGS_SCHEMA["editor-categories"].normalize(rawCategories, migrationContext.legacyPinnedEditors);
+            newSettings["editor-categories"] = categories;
             this.state.update((s) => {
-                s.settings = newSettings;
+                s.settings = newSettings as AppSettingsState["settings"];
             });
 
-            if (categoriesAbsent || removedLegacyPinnedEditors || JSON.stringify(categories) !== JSON.stringify(rawCategories)) {
+            if (migrationChanged || categoriesAbsent || JSON.stringify(categories) !== JSON.stringify(rawCategories)) {
                 this.saveSettingsDebounced();
             }
 
-            applyThemePreservingPreview(newSettings["theme"]);
-
             if (emitChanges) {
-                this.publishMicrophoneSettings();
                 const next = newSettings as Record<string, unknown>;
                 // Union of both key sets: a key deleted from the file reverts to its default,
                 // which is as much a change as an edited one.

@@ -3,7 +3,8 @@ import { TOneState } from "../../core/state/state";
 const { ipcRenderer } = require("electron");
 import { BrowserChannel } from "../../../ipc/browser-ipc";
 import { createIconElement } from "../../uikit/shared/slots";
-import { settings, BrowserProfile } from "../../api/settings";
+import { settings } from "../../api/settings";
+import type { BrowserProfile } from "../../api/settings-schema";
 import { BrowserBookmarks } from "./BrowserBookmarks";
 import { t } from "../../../shared/i18n/t";
 import type {

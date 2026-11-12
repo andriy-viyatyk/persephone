@@ -6,7 +6,6 @@ import { autoloadRunner } from "../scripting/AutoloadRunner";
  */
 export const autoloadService = {
     loadScripts: () => autoloadRunner.loadScripts(),
-    dispose: () => autoloadRunner.dispose(),
     markNeedsReload: () => autoloadRunner.markNeedsReload(),
     get isLoaded() { return autoloadRunner.isLoaded; },
     /** Reactive state — subscribe directly when a view needs live updates. */

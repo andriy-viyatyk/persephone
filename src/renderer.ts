@@ -3,49 +3,33 @@ import "./renderer/theme/style-layers.css";
 import "./renderer/i18n/startup";
 import { loadMonacoNls } from "./renderer/i18n/monaco-nls";
 import "./renderer/theme/root.css";
+import { customThemeCatalog } from "./renderer/theme/custom-theme-catalog";
+import { installThemeAtStartup } from "./renderer/theme/themes";
 
 async function bootstrap(): Promise<(container: HTMLElement) => () => void> {
     const nlsReady = loadMonacoNls();
     if (nlsReady) await nlsReady;
 
+    installThemeAtStartup(customThemeCatalog.loadSync().map((entry) => entry.theme));
+
     // Imported only after Monaco's messages are in place: these modules can pull in Monaco.
-    const [{ app }, { api }, { settings }] = await Promise.all([
+    const [{ app }, { api }] = await Promise.all([
         import("./renderer/api/app"),
         import("./ipc/renderer/api"),
         import("./renderer/api/settings"),
     ]);
-    const [cont] = await Promise.all([
-        import("./renderer/index"),
-        app.init(),
-        app.initSetup(),
-    ]);
-    await app.initServices();
-    await settings.wait();
-    const { boardRegistry } = await import("./renderer/api/boards/board-registry");
-    await boardRegistry.load();
-    await import("./renderer/api/editor-categories");
-    const { customEditorRegistry } = await import("./renderer/api/boards/custom-editor-registry");
-    await customEditorRegistry.ensureInitialized();
-    await app.initPages();
-    await app.initEvents();
-    const { appWindow } = await import("./renderer/api/window");
-    if (appWindow.boardRoot) {
-        const { encodePersephoneBoardLink } = await import("./renderer/content/persephone-board-link");
-        const { createLinkData } = await import("./shared/link-data");
-        await app.events.openRawLink.sendAsync(createLinkData(encodePersephoneBoardLink(appWindow.boardRoot)));
-        const { pages } = await import("./renderer/api/pages");
-        const launchedBoardPage = pages.boardPageRouter.findPageByBoardRoot(appWindow.boardRoot);
-        if (launchedBoardPage) pages.layout.markLockedBoardPage(launchedBoardPage, appWindow.boardRoot);
-    }
-    await app.openStartupInputs();
+    const rendererIndex = import("./renderer/index");
+    await app.startup(rendererIndex);
+    const cont = await rendererIndex;
+
     setTimeout(() => api.windowReady(), 0);
     return cont.mount;
 }
 
 async function startRenderer(): Promise<void> {
     const mount = await bootstrap();
-    const container = document.getElementById("root");
-    if (container) mount(container);
+    const root = document.getElementById("root");
+    if (root) mount(root);
 }
 
 void startRenderer();

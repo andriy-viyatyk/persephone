@@ -1,7 +1,7 @@
 import { pages } from "./pages";
 import { app } from "./app";
 import { fs } from "./fs";
-import { type BrowserProfile } from "./settings";
+import type { BrowserProfile } from "./settings-schema";
 import { encodePersephoneBoardLink } from "../content/persephone-board-link";
 import { createLinkData } from "../../shared/link-data";
 import { guard } from "../core/utils/guard";

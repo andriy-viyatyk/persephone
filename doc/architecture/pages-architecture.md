@@ -11,12 +11,18 @@ page lifecycle, action taxonomy, and internal submodel structure.
 ## 1. Window Bootstrap Lifecycle
 
 Main starts in `src/main.ts`: it parses and applies the optional profile, acquires the single-instance
-lock, and calls `setupMainProcess()` from `src/main/main-setup.ts`. The renderer imports locale
-startup before loading Monaco NLS, then imports the app, IPC API, and settings in parallel. It loads
-the renderer index while `app.init()` and `app.initSetup()` run; after that it initializes app
-services, waits for settings, synchronizes board trust, initializes the custom board editor registry,
-restores pages, and wires app events. Board-mode windows then open and lock their requested board
-page before startup inputs are dispatched.
+lock, and calls `setupMainProcess()` from `src/main/main-setup.ts`. The renderer loads locale and
+Monaco NLS first, then synchronously installs the saved theme before loading the app, IPC API, and
+settings. It starts one renderer-index import and passes its promise to `app.startup()`, whose
+bootstrap phase waits for that import together with `app.init()` and `app.initSetup()` before any
+services start. See [Bootstrap Sequence](overview.md#bootstrap-sequence) for the ordered startup
+table and its constraints.
+
+The remaining phases load app services and settings, initialize registries and the renderer RPC
+queue before restoring pages, then register and initialize event handlers before marking RPC ready.
+Independent background services remain non-blocking. A deferred callback starts Mneme status and
+connection plus autoload scripts after 1.5 seconds. Before mounting, board-mode windows open and
+lock their requested board page, then dispatch startup inputs.
 
 Bootstrap schedules `api.windowReady()` on a zero-delay timer and returns `renderer/index.ts`'
 `mount` callback. `startRenderer()` invokes that callback before the timer fires. The shell and editor
@@ -27,12 +33,14 @@ pages host board content in an iframe.
 graph TD
     M["main.ts: profile + single-instance lock"] --> S["setupMainProcess: security, services, IPC, window"]
     S --> R["renderer.ts: locale startup + Monaco NLS"]
-    R --> P["parallel imports: app, IPC API, settings"]
-    P --> I["renderer index import + app.init + app.initSetup"]
-    I --> V["app services + settings wait"]
-    V --> T["board trust sync + custom editor registry"]
-    T --> L["restore pages + wire app events"]
-    L --> B["optional board-mode page open and lock"]
+    R --> T["synchronous theme install"]
+    T --> P["parallel imports: app, IPC API, settings"]
+    P --> I["bootstrap barrier: renderer index + app.init + app.initSetup"]
+    I --> V["services phase: app services, settings and theme storage"]
+    V --> G["before-pages: registries + RPC queue + page restore"]
+    G --> L["events: handlers, event services, RPC ready"]
+    L --> D["deferred background startup scheduled for 1.5 seconds"]
+    D --> B["before-mount: optional board-mode page open and lock"]
     B --> O["dispatch startup inputs"]
     O --> W["schedule windowReady on zero-delay timer"]
     W --> C["return mount callback"]

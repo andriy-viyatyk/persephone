@@ -1,4 +1,6 @@
-import { settings, type BrowserProfile } from "../../../api/settings";
+import { settings } from "../../../api/settings";
+import { settingRange } from "../../../api/settings-schema";
+import type { BrowserProfile } from "../../../api/settings-schema";
 import type { BrowserNetwork } from "../../../../ipc/browser-network-ipc";
 import { ui } from "../../../api/ui";
 import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
@@ -140,7 +142,8 @@ export class BrowserProfilesSectionModel extends TComponentModel<BrowserProfiles
 
     handleTorPortBlur = () => {
         const port = parseInt(this.torPortValue, 10);
-        if (port >= 1024 && port <= 65535) settings.set("tor.socks-port", port);
+        const range = settingRange("tor.socks-port");
+        if (port >= range.min && port <= range.max) settings.set("tor.socks-port", port);
         else this.state.update((state) => { state.torPortValue = String(this.props.torSocksPort); });
     };
 

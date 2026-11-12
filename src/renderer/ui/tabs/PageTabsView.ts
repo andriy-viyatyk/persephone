@@ -2,6 +2,7 @@ import { t } from "../../../shared/i18n/t";
 import { app } from "../../api/app";
 import { pages } from "../../api/pages";
 import { settings } from "../../api/settings";
+import type { AppSettingsKey } from "../../api/settings-schema";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { fpBasename } from "../../core/utils/file-path";
@@ -110,13 +111,9 @@ export class PageTabsView extends VanillaView<object> {
             for (const subscription of this.pageLayoutSubscriptions.values()) subscription.release();
             this.pageLayoutSubscriptions.clear();
         });
-        const settingsSubscription = settings.onChanged.subscribe(({ key }) => {
-            if (
-                key === "browser-profiles"
-                || key === "editor-categories"
-            ) this.updateAddMenu();
-        });
-        this.own(settingsSubscription);
+        const settingsKeys = ["browser-profiles", "editor-categories"] as const satisfies readonly AppSettingsKey[];
+        const settingsSubscriptions = settingsKeys.map((key) => settings.watch(key, () => this.updateAddMenu()));
+        this.own(() => settingsSubscriptions.forEach((dispose) => dispose()));
         this.own(boardRegistry.subscribeMembership(() => this.updateAddMenu()));
         this.own(subscribeBoardIconChanges(() => this.updateAddMenu()));
         this.own(onBoardDisplayTextChanged((_root, reason) => {

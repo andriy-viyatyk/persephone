@@ -161,12 +161,11 @@ class BoardRegistry extends MainSnapshotMirror<IndexedBoardSnapshot> {
 
     protected subscribeToMain(): void {
         this.attach(rendererEvents[EventEndpoint.eBoardSnapshotChanged], (snapshot) => this.apply(indexSnapshot(snapshot)));
-        this.attach(settings.onChanged, ({ key }) => {
-            if (key !== "disabled-bundled-boards") return;
+        this.own(settings.watch("disabled-bundled-boards", () => {
             void api.setDisabledBundledBoards(settings.get("disabled-bundled-boards")).catch((error: unknown) => {
                 console.error(`Disabled bundled board setting sync failed: ${errMessage(error)}`);
             });
-        });
+        }));
     }
 
     private pushDisabledBundled(): Promise<void> {

@@ -1,4 +1,5 @@
-import { ECHO_TUNING, type MicrophoneCleaningOptions } from "./microphone-cleaning-types";
+import { ECHO_TUNING } from "./microphone-cleaning-types";
+import type { MicrophoneCleaningOptions } from "../../../shared/microphone-cleaning-types";
 import { errMessage } from "../../../shared/utils";
 
 /** Serial worker client with bounded in-flight hops and an unfiltered fallback. */

@@ -41,8 +41,7 @@ export function registerLibraryExtensions(getLibraryPath: () => string | undefin
     const originalJsHandler = require.extensions[".js"];
     let lastPath = getLibraryPath();
     let normalizedLibPath = lastPath ? fpResolve(lastPath) : undefined;
-    settings.onChanged.subscribe(({ key }) => {
-        if (key !== "script-library.path") return;
+    settings.watch("script-library.path", () => {
         lastPath = getLibraryPath();
         const nextPath = lastPath ? fpResolve(lastPath) : undefined;
         if (normalizedLibPath) clearLibraryRequireCache(normalizedLibPath);

@@ -1,4 +1,5 @@
-import { settings, type BrowserProfile } from "../../../api/settings";
+import { settings } from "../../../api/settings";
+import type { AppSettingsKey, BrowserProfile } from "../../../api/settings-schema";
 import type { BrowserNetwork } from "../../../../ipc/browser-network-ipc";
 import { fpBasename } from "../../../core/utils/file-path";
 import { createComponentModelDriver, type ComponentModelDriver } from "../../../core/state/model";
@@ -571,15 +572,21 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
 
         driver.mount();
 
-        const subscription = settings.onChanged.subscribe(({ key }) => {
+        const refresh = (key: AppSettingsKey): void => {
             if (key === "browser-windows-sso") this.windowsSso?.update(this.windowsSsoProps());
             if (key === "browser-translate-target") this.translateTarget?.update(this.translateTargetProps());
             if (this.isRelevantSetting(key)) {
                 driver.update(this.currentProps());
                 this.sync(model.state.get());
             }
-        });
-        this.own(subscription);
+        };
+        const settingsKeys = [
+            "browser-windows-sso", "browser-translate-target", "browser-profiles",
+            "browser-default-profile", "browser-default-bookmarks-file", "browser-default-network",
+            "browser-incognito-network", "browser-incognito-bookmarks-file", "tor.exe-path",
+            "tor.socks-port", "tor.bookmarks-file",
+        ] as const satisfies readonly AppSettingsKey[];
+        for (const key of settingsKeys) this.own(settings.watch(key, () => refresh(key)));
         this.profilesList.update(model.props.profiles);
         this.sync(model.state.get());
     }

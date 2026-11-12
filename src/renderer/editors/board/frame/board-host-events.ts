@@ -1,7 +1,7 @@
 import type { BoardToHostEvents } from "../../../../ipc/board-bridge/frame-protocol";
 import { errMessage } from "../../../../shared/utils";
 import { app } from "../../../api/app";
-import { cycleAppTheme } from "../../../api/cycle-app-theme";
+import { themeService } from "../../../api/theme-service";
 import { getPreviewGeneration } from "../../../theme/themes";
 import { dismissOverlays } from "../../../uikit/shared/overlayLayer";
 import type { BoardEditorModel } from "../BoardEditorModel";
@@ -31,7 +31,7 @@ export class BoardHostEvents {
 
     }
     cycle({ direction }: BoardToHostEvents["theme.cycle"]): void {
-        cycleAppTheme(direction === 1 ? 1 : -1);
+        themeService.cycle(direction === 1 ? 1 : -1);
 
     }
 

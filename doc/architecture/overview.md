@@ -197,12 +197,25 @@ acquires the single-instance lock, then calls `setupMainProcess()` from `src/mai
 Main setup establishes permission and protocol policy, initializes main-owned trust state, registers
 services and IPC handlers, and starts window creation when Electron is ready.
 
-The renderer imports locale startup synchronously, then loads Monaco's locale messages before
-dynamically importing modules that may load Monaco. It imports the app, IPC API, and settings in
-parallel; then imports the renderer index while `app.init()` and `app.initSetup()` run in parallel.
-After that it initializes app services, waits for settings, loads the renderer board snapshot and
-initializes the custom board editor registry, restores pages, and wires app events. If launched in board mode,
-it opens and locks the requested board page, then dispatches startup inputs. Finally it schedules
+After NLS is ready, the entry synchronously loads the custom theme catalog and installs the selected
+theme before importing the app, IPC API, and settings in parallel. It then starts one renderer-index
+import and passes that promise to `app.startup()`. The `bootstrap` row awaits renderer-index
+readiness together with `app.init()` and `app.initSetup()`; no services begin until all three finish.
+
+`src/renderer/api/app-startup.ts` owns the remaining ordered phases. `services` loads typed app
+services, UI preferences, module-service status, filesystem and settings readiness, BoardEnvStore's
+settings watcher, theme and custom-theme storage, then starts published boards, the board install
+registry, and registered tools as independent background work. `before-pages` waits for settings,
+loads board and editor registries, installs the renderer RPC request queue, and restores persisted
+pages. `events` registers trust, navigation, alert, and content handlers in order, initializes the
+four event services in parallel, marks renderer RPC ready, starts settings effects, and subscribes
+to Mneme exit notifications. The settings-effects helper applies immediate effects after settings
+load and keeps its own 1.5-second delay for MCP, Mneme, and clipboard effects. The separate
+`deferred` row schedules Mneme status and connection startup followed by autoload scripts after
+1.5 seconds; these failures are reported without blocking startup.
+
+The final `before-mount` phase opens and locks a requested board page when launched in board mode,
+then dispatches startup inputs sequentially and checks for an empty page. Bootstrap schedules
 `api.windowReady()` on a zero-delay timer and returns the renderer index's `mount` callback.
 `startRenderer()` invokes `mount(container)` as soon as bootstrap resolves, so the native shell is
 mounted before the scheduled `windowReady` call fires.

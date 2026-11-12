@@ -469,10 +469,17 @@ The Object Model (`/src/renderer/api/`) uses these primitives internally. Each A
 ```typescript
 // api/settings.ts — uses TGlobalState internally
 class Settings implements ISettings {
+    readonly onChanged;
     private _state = new TGlobalState<SettingsState>(defaults);
 
     get theme(): string { return this._state.get().theme; }
     set(key, value) { this._state.update(s => { s[key] = value; }); }
+
+    watch<K extends AppSettingsKey>(key: K, callback: (value: AppSettingsState["settings"][K]) => void): () => void {
+        return this.onChanged.subscribe(change => {
+            if (change.key === key) callback(change.value);
+        });
+    }
 }
 
 // api/pages/ — PagesModel extends TModel
@@ -486,6 +493,11 @@ class PagesModel extends TModel<PagesState> {
 Object Model interfaces (`app.settings`, `app.pages`) when available, not through raw state primitives.
 
 ### Settings actuation and the idempotency rule
+
+Use `settings.watch(key, callback)` when a consumer needs one known key. The callback receives
+that key's value type, and the returned function unsubscribes. `settings.onChanged` remains for
+consumers that need every setting; the `settings-effects.ts` table owns startup and change-time
+actuation for process-level effects.
 
 Settings live in a JSON5 file under the user-data folder, watched by a `FileWatcher`. A setting
 that merely gets *read* needs nothing beyond the state update; a setting that *does* something —
@@ -539,9 +551,7 @@ preferences are used only when a genuinely new page first creates its lazy layou
 ### Via Object Model
 
 ```typescript
-const release = app.settings.onChanged.subscribe(({ key, value }) => {
-    if (key === "theme") updateTheme(value);
-});
+const release = app.settings.watch("theme", (theme) => updateTheme(theme));
 ```
 
 ### Via Model State (direct)

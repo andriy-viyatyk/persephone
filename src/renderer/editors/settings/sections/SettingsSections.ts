@@ -1,5 +1,7 @@
 import { app } from "../../../api/app";
-import { MICROPHONE_NOTCH_FREQUENCY_RANGE, settings } from "../../../api/settings";
+import { settings } from "../../../api/settings";
+import { settingDefault, settingOptions, settingRange } from "../../../api/settings-schema";
+import type { AppSettingsKey } from "../../../api/settings-schema";
 import { ui } from "../../../api/ui";
 import { api } from "../../../../ipc/renderer/api";
 import { createComponentModelDriver, TComponentModel, type ComponentModelDriver } from "../../../core/state/model";
@@ -22,7 +24,7 @@ import { errMessage } from "../../../../shared/utils";
 import { t } from "../../../../shared/i18n/t";
 import { normalizeVoiceTypingShortcut, RIGHT_CTRL_SHORTCUT, SHIFT_RIGHT_CTRL_SHORTCUT, voiceTypingShortcutFromKeyboardEvent } from "../../../../shared/voice-typing-shortcut";
 import { AUDIO_SETTINGS_DEVICES, AUDIO_STATUS, AUDIO_STATUS_GET, AUDIO_RETRY, type AudioDevice } from "../../../../ipc/audio-channels";
-import { MICROPHONE_TUNING } from "../../../ui/speech/microphone-cleaning-types";
+import { MICROPHONE_TUNING } from "../../../../shared/microphone-cleaning-types";
 import "../../../uikit/Button/Button.css";
 import "../../../uikit/Checkbox/Checkbox.css";
 import "../../../uikit/Dot/Dot.css";
@@ -30,10 +32,8 @@ import "../../../uikit/IconButton/IconButton.css";
 import "../../../uikit/Input/Input.css";
 import "../../../uikit/Select/Select.css";
 
-const LINK_ITEMS: readonly { value: string; key: "settings.openDefaultOsBrowser" | "settings.openInternalBrowser" }[] = [
-    { value: "default-browser", key: "settings.openDefaultOsBrowser" },
-    { value: "internal-browser", key: "settings.openInternalBrowser" },
-];
+const LINK_ITEM_LABELS = ["settings.openDefaultOsBrowser", "settings.openInternalBrowser"] as const;
+const LINK_ITEMS = settingOptions("link-open-behavior").map((value, index) => ({ value, key: LINK_ITEM_LABELS[index] }));
 
 const TERMINAL_ITEMS: readonly { value: string; key: "settings.autoDetectTerminal" | "settings.powershell7" | "settings.windowsPowershell" | "settings.commandPrompt" | "settings.windowsTerminal" }[] = [
     { value: "", key: "settings.autoDetectTerminal" },
@@ -58,10 +58,7 @@ export class LinkBehaviorSectionView extends VanillaView<Record<string, never>> 
         host.append(this.select.root);
         this.select.mount();
         this.root.append(host);
-        const subscription = settings.onChanged.subscribe(({ key }) => {
-            if (key === "link-open-behavior") this.select?.update(this.selectProps());
-        });
-        this.own(subscription);
+        this.own(settings.watch("link-open-behavior", () => this.select?.update(this.selectProps())));
     }
 
     protected onDispose(): void {
@@ -93,10 +90,7 @@ export class WindowBehaviorSectionView extends VanillaView<Record<string, never>
         row.append(this.description.root);
         this.root.append(row);
         this.sync();
-        const subscription = settings.onChanged.subscribe(({ key }) => {
-            if (key === "window.close-to-tray") this.sync();
-        });
-        this.own(subscription);
+        this.own(settings.watch("window.close-to-tray", () => this.sync()));
     }
 
     protected onDispose(): void {
@@ -132,10 +126,7 @@ export class EditorBehaviorSectionView extends VanillaView<Record<string, never>
         row.append(this.checkbox.root);
         this.checkbox.mount();
         this.root.append(row);
-        const subscription = settings.onChanged.subscribe(({ key }) => {
-            if (key === "editor.word-wrap") this.checkbox?.update(this.checkboxProps());
-        });
-        this.own(subscription);
+        this.own(settings.watch("editor.word-wrap", () => this.checkbox?.update(this.checkboxProps())));
     }
 
     protected onDispose(): void {
@@ -242,13 +233,10 @@ export class GitIntegrationSectionView extends VanillaView<Record<string, never>
         this.own(() => this.statusSwap?.dispose());
         driver.mount();
         this.bind(model.state, (state) => state, (state) => this.sync(state));
-        const subscription = settings.onChanged.subscribe(({ key }) => {
-            if (key === "git.enabled") {
-                driver.update({ gitEnabled: settings.get("git.enabled") });
-                this.sync(model.state.get());
-            }
-        });
-        this.own(subscription);
+        this.own(settings.watch("git.enabled", () => {
+            driver.update({ gitEnabled: settings.get("git.enabled") });
+            this.sync(model.state.get());
+        }));
     }
 
     protected onDispose(): void {
@@ -298,8 +286,7 @@ export class BoardVarsSectionView extends VanillaView<Record<string, never>> {
         this.openButton.mount();
         this.root.append(row, openRow);
         this.sync();
-        const subscription = settings.onChanged.subscribe(({ key }) => { if (key === "board-vars.file") this.sync(); });
-        this.own(subscription);
+        this.own(settings.watch("board-vars.file", () => this.sync()));
     }
 
     protected onDispose(): void { this.valuePanel = undefined; this.row = undefined; this.unlinkButton = undefined; this.openButton = undefined; }
@@ -423,7 +410,7 @@ export class LibraryPathSectionView extends VanillaView<Record<string, never>> {
 export function createScriptLibrarySection(): LibraryPathSectionView {
     return new LibraryPathSectionView({}, {
         read: () => settings.get("script-library.path"),
-        subscribe: (listener) => settings.onChanged.subscribe(({ key }) => { if (key === "script-library.path") listener(); }),
+        subscribe: (listener) => settings.watch("script-library.path", listener),
         title: t("settings.groupTitleScriptLibrary"),
         description: t("settings.scriptLibraryDescription"),
         emptyText: t("settings.notLinked"),
@@ -491,13 +478,12 @@ export class VideoPlayerSectionView extends VanillaView<Record<string, never>> {
         driver.mount();
         this.sync();
         this.bind(model.state, (state) => state.portValue, () => this.input?.update(this.inputProps()));
-        const subscription = settings.onChanged.subscribe(({ key }) => {
-            if (key === "vlc-path" || key === "video-stream.port") {
-                driver.update({ videoStreamPort: settings.get("video-stream.port") });
-                this.sync();
-            }
-        });
-        this.own(subscription);
+        const refresh = (): void => {
+            driver.update({ videoStreamPort: settings.get("video-stream.port") });
+            this.sync();
+        };
+        const videoSettings = ["vlc-path", "video-stream.port"] as const satisfies readonly AppSettingsKey[];
+        for (const key of videoSettings) this.own(settings.watch(key, refresh));
     }
 
     protected onDispose(): void { this.driver = undefined; this.model = undefined; this.valuePanel = undefined; this.clearButton = undefined; this.input = undefined; }
@@ -540,7 +526,8 @@ export class VideoPlayerSectionView extends VanillaView<Record<string, never>> {
         const model = this.model;
         const value = model?.state.get().portValue ?? "";
         const port = parseInt(value, 10);
-        if (port >= 1024 && port <= 65535) settings.set("video-stream.port", port);
+        const range = settingRange("video-stream.port");
+        if (port >= range.min && port <= range.max) settings.set("video-stream.port", port);
         else model?.setPortValue(String(settings.get("video-stream.port")));
     }
 }
@@ -555,8 +542,7 @@ export class TerminalSectionView extends VanillaView<Record<string, never>> {
         const host = panel({ maxWidth: 360 });
         this.select = this.child(new SelectView(this.selectProps()));
         host.append(this.select.root); this.select.mount(); this.root.append(host);
-        const subscription = settings.onChanged.subscribe(({ key }) => { if (key === "terminal.command") this.select?.update(this.selectProps()); });
-        this.own(subscription);
+        this.own(settings.watch("terminal.command", () => this.select?.update(this.selectProps())));
     }
 
     protected onDispose(): void { this.select = undefined; }
@@ -589,7 +575,7 @@ export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, n
         const reset = this.child(new ButtonView({
             size: "sm",
             variant: "default",
-            onClick: () => settings.set("voice-typing.shortcut", "Alt+V"),
+            onClick: () => settings.set("voice-typing.shortcut", settingDefault("voice-typing.shortcut")),
             children: t("settings.voiceTypingResetShortcut"),
         }));
         row.append(reset.root);
@@ -603,7 +589,7 @@ export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, n
         const translateReset = this.child(new ButtonView({
             size: "sm",
             variant: "default",
-            onClick: () => settings.set("voice-typing.translate-shortcut", "Alt+Shift+V"),
+            onClick: () => settings.set("voice-typing.translate-shortcut", settingDefault("voice-typing.translate-shortcut")),
             children: t("settings.voiceTypingResetShortcut"),
         }));
         translateRow.append(translateReset.root);
@@ -619,19 +605,23 @@ export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, n
         inactivityRow.append(this.inactivitySelect.root);
         this.inactivitySelect.mount();
         this.root.append(row, translateRow, silenceRow, inactivityRow);
-        const subscription = settings.onChanged.subscribe(({ key }) => {
+        const refresh = (key: AppSettingsKey): void => {
             if (key === "voice-typing.shortcut") this.input?.update(this.inputProps());
             if (key === "voice-typing.translate-shortcut") this.translateInput?.update(this.translateInputProps());
             if (key === "voice-typing.auto-stop-silence-ms") this.silenceSelect?.update(this.silenceSelectProps());
             if (key === "voice-typing.auto-stop-inactivity-ms") this.inactivitySelect?.update(this.inactivitySelectProps());
-        });
-        this.own(subscription);
+        };
+        const voiceTypingSettings = [
+            "voice-typing.shortcut", "voice-typing.translate-shortcut",
+            "voice-typing.auto-stop-silence-ms", "voice-typing.auto-stop-inactivity-ms",
+        ] as const satisfies readonly AppSettingsKey[];
+        for (const key of voiceTypingSettings) this.own(settings.watch(key, () => refresh(key)));
     }
 
     protected onDispose(): void { this.input = undefined; this.translateInput = undefined; this.silenceSelect = undefined; this.inactivitySelect = undefined; }
 
     private inactivitySelectProps(): SelectViewProps<IListBoxItem> {
-        const values = [0, 2000, 3000, 4000, 5000, 10000, 15000, 30000];
+        const values = settingOptions("voice-typing.auto-stop-inactivity-ms");
         const items: IListBoxItem[] = values.map((value) => ({
             value,
             label: value === 0 ? t("settings.voiceTypingAutoStopOff") : t("settings.voiceTypingAutoStopSeconds", { seconds: value / 1000 }),
@@ -641,7 +631,7 @@ export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, n
     }
 
     private silenceSelectProps(): SelectViewProps<IListBoxItem> {
-        const values = [0, 2000, 3000, 5000, 10000];
+        const values = settingOptions("voice-typing.auto-stop-silence-ms");
         const items: IListBoxItem[] = values.map((value) => ({
             value,
             label: value === 0 ? t("settings.voiceTypingAutoStopOff") : t("settings.voiceTypingAutoStopSeconds", { seconds: value / 1000 }),
@@ -783,12 +773,10 @@ export class MicrophoneAudioSectionView extends VanillaView<Record<string, never
         this.root.append(retry.root);
         retry.mount();
 
-        this.own(settings.onChanged.subscribe(({ key }) => {
-            if (key === "microphone.clean") this.cleanCheckbox?.update(this.cleanProps());
-            else if (key === "microphone.attenuation-db") {
-                this.attenuationDraft = String(settings.get("microphone.attenuation-db"));
-                this.attenuationInput?.update(this.attenuationProps());
-            }
+        this.own(settings.watch("microphone.clean", () => this.cleanCheckbox?.update(this.cleanProps())));
+        this.own(settings.watch("microphone.attenuation-db", () => {
+            this.attenuationDraft = String(settings.get("microphone.attenuation-db"));
+            this.attenuationInput?.update(this.attenuationProps());
         }));
         void this.loadDevices();
     }
@@ -819,7 +807,8 @@ export class MicrophoneAudioSectionView extends VanillaView<Record<string, never
 
     private readonly onAttenuationBlur = (): void => {
         const value = Number(this.attenuationDraft);
-        if (this.attenuationDraft.trim() && Number.isFinite(value) && value >= 0 && value <= 100) {
+        const range = settingRange("microphone.attenuation-db");
+        if (this.attenuationDraft.trim() && Number.isFinite(value) && value >= range.min && value <= range.max) {
             settings.set("microphone.attenuation-db", value);
             return;
         }
@@ -875,10 +864,14 @@ export class MicrophoneAudioSectionView extends VanillaView<Record<string, never
         this.profileViews.push(enabled);
 
         const fields = panel({ direction: "row", align: "center", gap: "lg", paddingLeft: "xxl" });
+        const notchRange = settingRange("microphone.notches");
+        const frequencyRange = notchRange.frequency;
+        const qRange = notchRange.q;
+        const gainRange = notchRange.gainDb;
         for (const [key, title, min, max] of [
-            ["frequency", t("settings.microphoneFrequency"), MICROPHONE_NOTCH_FREQUENCY_RANGE.min, MICROPHONE_NOTCH_FREQUENCY_RANGE.max],
-            ["q", t("settings.microphoneQ"), 0.1, 50],
-            ["gainDb", t("settings.microphoneGain"), -60, 0],
+            ["frequency", t("settings.microphoneFrequency"), frequencyRange.min, frequencyRange.max],
+            ["q", t("settings.microphoneQ"), qRange.min, qRange.max],
+            ["gainDb", t("settings.microphoneGain"), gainRange.min, gainRange.max],
         ] as const) {
             let draft = String(current[key]);
             const props = (): InputProps => ({

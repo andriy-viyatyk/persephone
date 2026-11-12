@@ -1,4 +1,5 @@
 import { settings } from "../../../api/settings";
+import type { AppSettingsKey } from "../../../api/settings-schema";
 import { createComponentModelDriver, type ComponentModelDriver } from "../../../core/state/model";
 import { ColorizedCodeView } from "../../shared/ColorizedCodeView";
 import { ButtonView } from "../../../uikit/Button/ButtonView";
@@ -206,13 +207,14 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
         copyButton.mount();
         driver.mount();
         this.bind(model.state, (state) => state, (state) => this.syncState(state));
-        const subscription = settings.onChanged.subscribe(({ key }) => {
-            if (key === "agent-tips.enabled" || key === "mcp.enabled" || key === "mcp.port" || key === "main.scripting.enabled" || key === "mneme.enabled" || key === "mneme.port") {
-                driver.update(this.currentProps());
-                this.syncState(model.state.get());
-            }
-        });
-        this.own(subscription);
+        const refresh = (): void => {
+            driver.update(this.currentProps());
+            this.syncState(model.state.get());
+        };
+        const settingsKeys = [
+            "agent-tips.enabled", "mcp.enabled", "mcp.port", "main.scripting.enabled", "mneme.enabled", "mneme.port",
+        ] as const satisfies readonly AppSettingsKey[];
+        for (const key of settingsKeys) this.own(settings.watch(key, refresh));
     }
 
     protected onDispose(): void {

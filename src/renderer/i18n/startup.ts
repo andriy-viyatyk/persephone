@@ -1,4 +1,4 @@
-import { getStartupDataPath } from "../core/utils/startup-data-path";
+import { startupEnvironment } from "../core/startup-environment";
 import { parseJSON5 } from "../core/utils/parse-utils";
 import { fpJoin } from "../core/utils/file-path";
 import { errMessage } from "../../shared/utils";
@@ -45,17 +45,6 @@ function readDirectory(directory: string): LanguagePack[] {
     }
 }
 
-function readStartupLanguage(): string {
-    try {
-        const settingsPath = fpJoin(getStartupDataPath(), "appSettings.json");
-        const parsed = parseJSON5(nodeFs.readFileSync(settingsPath, "utf8")) as { settings?: { language?: unknown }; language?: unknown } | undefined;
-        const language = parsed?.settings?.language ?? parsed?.language;
-        return typeof language === "string" ? language : "auto";
-    } catch {
-        return "auto";
-    }
-}
-
 const PREFERRED_LANGUAGES_ARG = "--persephone-preferred-languages=";
 const LANGUAGES_DIR_ARG = "--persephone-languages-dir=";
 
@@ -77,9 +66,11 @@ function readStartupArguments(): { preferred: string[]; assetDirectory: string }
 
 const startupArguments = readStartupArguments();
 const builtInPacks = readDirectory(startupArguments.assetDirectory);
-const userPacks = readDirectory(fpJoin(getStartupDataPath(), "languages"));
+const userPacks = readDirectory(fpJoin(startupEnvironment.dataDirectory, "languages"));
 const allPacks = [...builtInPacks, ...userPacks];
-const requestedLocale = readStartupLanguage();
+const requestedLocale = typeof startupEnvironment.settings.language === "string"
+    ? startupEnvironment.settings.language
+    : "auto";
 const activeLocale = resolveLocale(requestedLocale, startupArguments.preferred, allPacks);
 const builtInPack = builtInPacks.find((pack) => pack.code.toLowerCase() === activeLocale.toLowerCase());
 const userPack = userPacks.find((pack) => pack.code.toLowerCase() === activeLocale.toLowerCase());

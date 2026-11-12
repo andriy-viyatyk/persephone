@@ -1,4 +1,5 @@
 import { settings } from "./settings";
+import { themeService } from "./theme-service";
 import { deleteCustomTheme, getCustomThemeFile, renameCustomTheme, saveCustomTheme } from "./custom-theme-storage";
 import type { ThemeDraft, CustomThemeFile, ThemeDefinition, IThemes } from "./types/themes";
 import {
@@ -115,8 +116,7 @@ export const themes: IThemes = {
     async apply(id: string): Promise<void> {
         const theme = getThemeById(id);
         if (!theme || id === "preview") throw new Error(`Theme does not exist: ${id}`);
-        applyTheme(id);
-        settings.set("theme", id);
+        themeService.select(id);
     },
 
     preview(themeDraft: ThemeDraft): ThemeDefinition {
