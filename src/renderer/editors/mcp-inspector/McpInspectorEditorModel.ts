@@ -172,7 +172,6 @@ export type McpPanelId = "info" | "tools" | "resources" | "prompts" | "history";
 
 export interface McpInspectorEditorState extends EditorStateBase {
     /** State-type discriminator. */
-    type: "mcpInspectorPage";
 
     // Connection config
     url: string;
@@ -204,7 +203,6 @@ export const getDefaultMcpInspectorEditorState = (): McpInspectorEditorState => 
     id: crypto.randomUUID(),
     title: untranslated("MCP Inspector"),
     modified: false,
-    type: "mcpInspectorPage",
     editor: "mcp-view",
 
     url: "",

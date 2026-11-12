@@ -315,7 +315,7 @@ The browser editor mounts a native `SecondaryViewsView` inside both `BlankPageLi
 **Key design points:**
 - `BrowserPanelHost` is **not** a `PageModel` — it has no tab identity or page lifecycle. It lives only for the lifetime of the browser editor that created it.
 - `sidebarMandatory` is permanently `true`. The bookmarks panel can never be closed via the ✕ button or toggle.
-- `mainEditorInstance` returns the bookmarks `LinkEditor`, so `linkEditor.isMain === true` — this satisfies `isMain`-gated features (e.g., showing save affordances).
+- `mainEditor` returns the bookmarks `LinkEditor`, so `linkEditor.isMain === true` — this satisfies `isMain`-gated features (e.g., showing save affordances).
 - The optional main-editor-navigation members of `IPageHost` (`switchMainEditor`, `promoteToMain`) are **omitted** — there is no main-editor navigation in the browser panel context.
 - Sidebar width is persisted in the browser's own state by subscribing to `onWidthChange` — not in `openFiles0.json`.
 - The host lives in `editors/browser/` (not `api/pages/`) to avoid an import cycle via `LinkEditor`.

@@ -247,7 +247,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         const firstPage = pages[0];
         if (firstPage.pinSide !== undefined) return;
         // Use the editor instance so isFreshEmpty() resolves correctly.
-        if (firstPage.mainEditorInstance?.isFreshEmpty?.() === true) {
+        if (firstPage.mainEditor?.isFreshEmpty?.() === true) {
             firstPage.close();
         }
     };

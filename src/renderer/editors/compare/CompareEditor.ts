@@ -1,5 +1,5 @@
 import * as monaco from "monaco-editor";
-import type { TextFileEditorModelState, TextFileModel } from "../text";
+import type { TextFileEditorModelState, TextFileModel } from "../content-host/TextFileModel";
 import { pages } from "../../api/pages";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";

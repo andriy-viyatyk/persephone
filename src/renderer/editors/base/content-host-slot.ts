@@ -7,7 +7,7 @@ import { TraitSet } from "../../core/traits/traits";
 import { Subscription } from "../../core/state/events";
 import { CONTENT_HOST_TRAIT, type IContentHostTrait } from "./editor-traits";
 import type { EditorModel, EditorRestoreOptions, EditorStateBase } from "./EditorModel";
-import { TextFileModel } from "../text/TextEditorModel";
+import { TextFileModel } from "../content-host/TextFileModel";
 
 export interface ContentHostSlotOwner<T extends EditorStateBase = EditorStateBase> {
     readonly editorId: string;

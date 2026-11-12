@@ -3,7 +3,7 @@ import { EditorModel, type EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
 import { ComponentQueue } from "../../core/state/ComponentQueue";
 import type { NavigationState } from "../base/navigation-state";
-import { TextFileModel } from "../text/TextEditorModel";
+import { TextFileModel } from "../content-host/TextFileModel";
 import { ui } from "../../api/ui";
 import { debounce, errMessage } from "../../../shared/utils";
 import { splitWithSeparators } from "../../core/utils/utils";
@@ -295,16 +295,8 @@ export class LinkEditor
         if (expandedPanel) this.setExpandedPanel(expandedPanel);
     }
 
-    /** Check if a model was opened via this LinkEditor's own UI (own-id
-     *  links, or panel clicks emitting `link-category` / `link-tag` /
-     *  `link-hostname`). Reads `sourceLink.sourceId` via
-     *  `EditorModel.getNavigationSourceId`, which checks both the editor's own
-     *  state AND its content host — so links opening in a no-host / legacy
-     *  non-text editor (e.g. the audio/video player, where `sourceLink` lives
-     *  on the editor's own state and there is no content host) keep the Link
-     *  panels instead of dropping them. */
     private _isOpenedFromMe(model: EditorModel): boolean {
-        return this.isOwnNavigationSourceId(model.getNavigationSourceId());
+        return this.isOwnNavigationSourceId(model.sourceLink?.sourceId);
     }
 
     /** True when a navigation `sourceId` originated from this LinkEditor's own
@@ -1107,7 +1099,7 @@ export class LinkEditor
      *  (sidebar-only, no main editor) would report `modified=false` and
      *  `page.close()` would skip the save prompt — the close loop reads
      *  `editor.modified` on each entry in `editors[]` and only the main-editor
-     *  branch goes through `unwrapToHost`. */
+     *  branch reads host-owned state through `contentHost`. */
     get modified(): boolean {
         return this._host ? this._host.modified : super.modified;
     }

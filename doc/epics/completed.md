@@ -1,3 +1,20 @@
+## EPIC-154 — Refactoring Phase 5.4: finish the host migration and slim `TextFileModel`
+
+Completed 2026-11-12. Roadmap Phase 5.4 (CORE-2 step 6, EDC-3, EDC-4): a page holds one editor shape, `EditorModel`
+answers `filePath`, `sourceLink`, `language`, `modified` and `displayTitle` itself, `state.type` is gone, and the text
+content host lives in `editors/content-host/`. `TextEditorModel.ts` 427 → `TextFileModel.ts` 380 lines,
+`ScriptPanel.ts` 336 → 90, `PageModel.ts` 883 → 854, `EditorModel.ts` 415 → 387. Page titles follow Save As; script
+panel F5 runs once; the run action honours the selection; closed-window MCP summaries report the editor id in `type`.
+Plans by Codex, reviewed against the roadmap guardrails; Codex Luna implemented, with plan corrections recorded in the
+epic notes. Epic document: [EPIC-154](EPIC-154.md).
+
+- [x] **Canonical getters on `EditorModel` (US-1882).** `filePath`, `sourceLink`, `language` read own state then the content host; `displayTitle` added; `getNavigationSourceId` and `sourceLinkFromEditor` are gone.
+- [x] **One editor shape (US-1883).** The factory returns `EditorModel`; `EditorOrHost`, `unwrapToHost` and `attachEditorToPage` are gone; `mainEditorInstance` → `mainEditor`; `modified` is host-first; the tab strip and Open Tabs subscribe to editor and host state.
+- [x] **`state.type` and `EditorType` deleted (US-1884).** A dated migration strips legacy `type` and maps `fileExplorer` → `explorer`.
+- [x] **Host and script panel moved (US-1885).** `editors/content-host/` holds `TextFileModel` and its IO, encryption and actions models; the script panel is in `editors/base/script-panel/`; the `text/` folder is gone.
+- [x] **Slim `TextFileModel` (US-1886).** `TextPageKeymap` owns Ctrl+S, Ctrl+Shift+S, F5 and Ctrl+Shift+F; script running and the script library moved to `scripting/`; navigation and selection go through traits; `IContentHost.ts` deleted; `encript` → `encrypt`.
+- [x] **Epic review.** `/review` replaced one non-null assertion; `/document` updated the architecture docs and diagrams; `/userdoc` updated the scripting `page` guide. No English catalog messages changed.
+
 ## EPIC-153 — Refactoring Phase 5.3: the open request, restore hooks and one `PagesModel` surface
 
 Completed 2026-11-12. Roadmap Phase 5.3 (CORE-4, CORE-5, CORE-6): an open request reaches its editor through one

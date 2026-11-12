@@ -39,7 +39,7 @@ class MonacoToolbarBitsView extends VanillaView<MonacoToolbarBitsProps> {
         super(props, createContentsRoot());
         this.model = props.model;
         this.transcript = this.child(new TranscriptToolbarContributionView({ controller: props.transcriptController }));
-        this.translate = this.child(new TranslateTextToolbarContributionView({ controller: props.translationController, model: props.model, language: props.model.contentHost?.state.get().language ?? "plaintext" }));
+        this.translate = this.child(new TranslateTextToolbarContributionView({ controller: props.translationController, model: props.model, language: props.model.language ?? "plaintext" }));
     }
 
     protected onMount(): void {

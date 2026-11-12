@@ -8,12 +8,11 @@ import { fs as appFs } from "../../api/fs";
 import type { MenuItem } from "../../uikit/Menu/index";
 import { textFileMenuItems } from "../shared/editor-menu-items";
 import { IEditorState, EditorView } from "../../../shared/types";
-import { ScriptPanelModel } from "./ScriptPanel";
+import { ScriptPanelModel } from "../base/script-panel/ScriptPanel";
 import { editorRegistry } from "../base/editorRegistry";
 import { TextFileEncryptionModel } from "./TextFileEncryptionModel";
 import { TextFileIOModel } from "./TextFileIOModel";
 import { TextFileActionsModel } from "./TextFileActionsModel";
-import type { IContentHost } from "../base/IContentHost";
 import type { HostDescriptor } from "../../../shared/persistence";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import type { IPageHost } from "../../api/pages/IPageHost";
@@ -35,7 +34,7 @@ export interface TextFileEditorModelState extends IEditorState {
     /** Editor-keyed view-state slot map. Each text-bearing editor that
      *  wraps this host reads + writes its own slot via
      *  `getEditorState<XxxSettings>(this.editorId)` /
-     *  `setEditorState<XxxSettings>(this.editorId, value)` from IContentHost.
+     *  `setEditorState<XxxSettings>(this.editorId, value)` from this host.
      *  Survives in-session editor switches (host outlives the editor) AND
      *  app restarts (rides host descriptor → `openFiles.txt`). */
     editorSettings?: Record<string, unknown>;
@@ -43,8 +42,7 @@ export interface TextFileEditorModelState extends IEditorState {
 
 export const getDefaultTextFileEditorModelState = (): TextFileEditorModelState => ({
     id: crypto.randomUUID(),
-    type: "textFile" as const,
-            title: untranslated("untitled"),
+    title: untranslated("untitled"),
     modified: false,
     filePath: undefined,
     editor: undefined,
@@ -59,7 +57,7 @@ export const getDefaultTextFileEditorModelState = (): TextFileEditorModelState =
     restored: false,
 });
 
-export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> implements IContentHost {
+export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> {
     // =========================================================================
     // Host-state plumbing (folded in from the former `editors/base/EditorModel.ts`).
     // =========================================================================
@@ -115,10 +113,6 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
         return this.state.get().id;
     }
 
-    get type(): string {
-        return this.state.get().type;
-    }
-
     get title(): string {
         return this.state.get().title;
     }
@@ -154,35 +148,11 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
     };
 
 
-    focusEditor(): void {
-        this.page?.mainEditorInstance?.focus();
-    }
-
-    revealLine(lineNumber: number): void {
-        const editor = this.page?.mainEditorInstance as unknown as { revealLine?: (n: number) => void } | undefined;
-        editor?.revealLine?.(lineNumber);
-    }
-
-    setHighlightText(text: string | undefined): void {
-        const editor = this.page?.mainEditorInstance as unknown as { setHighlightText?: (t: string | undefined) => void } | undefined;
-        editor?.setHighlightText?.(text);
-    }
-
-    /** Sync best-effort selection probe. MonacoEditor exposes async
-     *  `getSelectedText()` via its queue — callers needing selection-aware
-     *  behavior should prefer the async path on the editor. This sync
-     *  fallback returns "" for non-Monaco editors and for queue-async
-     *  contexts; consumers (e.g., `TextFileActionsModel.runScript`) interpret
-     *  "" as "no selection — run on full content," which is safe. */
-    getSelectedText(): string {
-        return "";
-    }
-
     // Submodels
     io = new TextFileIOModel(this);
     encryption = new TextFileEncryptionModel(this);
     actions = new TextFileActionsModel(this);
-    script = new ScriptPanelModel(this);
+    script = new ScriptPanelModel();
 
     // =========================================================================
     // Git repo detection 
@@ -251,7 +221,6 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
         }
         this.state.update((s) => {
             s.id = data.id || s.id;
-            s.type = data.type || s.type;
             s.title = data.title || s.title;
             s.modified = data.modified || s.modified;
             s.filePath = data.filePath || s.filePath;
@@ -268,7 +237,7 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
     };
 
 
-    /** IContentHost serialization. Builds a `HostDescriptor` so
+    /** Host serialization. Builds a `HostDescriptor` so
      *  `MonacoEditor.getRestoreData` can attach it as `host`. Strips
      *  runtime-only / security-sensitive fields (content lives in the cache
      *  file; password never persists; encrypted/restored/deleted are
@@ -277,7 +246,6 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
         const s = this.state.get();
         const metadata: Record<string, unknown> = {
             id: s.id,
-            type: s.type,
             title: s.title,
             modified: s.modified,
             language: s.language,
@@ -356,7 +324,6 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
     // IO delegates
     saveFile = (saveAs?: boolean) => this.io.saveFile(saveAs);
     renameFile = (newName: string) => this.io.renameFile(newName);
-    applyRenamedPath = (newPath: string) => this.io.applyRenamedPath(newPath);
 
     /** Prompt for a new file name, then rename. Moved off the page tab so the
      *  text-file context menu can be contributed by the host (`onGetMenuItems`). */
@@ -373,23 +340,19 @@ export class TextFileModel extends TDialogModel<TextFileEditorModelState, void> 
     };
 
     /** Context-menu items for any editor whose content host is this text-file
-     *  model (IContentHost.onGetMenuItems). The single home of the text-file
+     *  model. The single home of the text-file
      *  menu — Save / Save As / Rename / file-path items / encryption group. */
     onGetMenuItems = (): MenuItem[] => textFileMenuItems(this);
 
     // Encryption delegates
-    encript = (password: string) => this.encryption.encript(password);
+    encrypt = (password: string) => this.encryption.encrypt(password);
     encryptWithCurrentPassword = () => this.encryption.encryptWithCurrentPassword();
     decrypt = (password: string) => this.encryption.decrypt(password);
     showEncryptionDialog = (message?: string) => this.encryption.showEncryptionDialog(message);
     makeUnencrypted = () => this.encryption.makeUnencrypted();
-    alertEncryptionError = (err: Error) => this.encryption.alertEncryptionError(err);
 
     // Actions delegates
-    handleKeyDown = (e: KeyboardEvent) => this.actions.handleKeyDown(e);
     openSearchInNavPanel = () => this.actions.openSearchInNavPanel();
-    runScript = (all?: boolean) => this.actions.runScript(all);
-    runRelatedScript = (all?: boolean) => this.actions.runRelatedScript(all);
     confirmRelease = async (_closing?: boolean): Promise<boolean> => {
         return this.actions.confirmRelease();
     };
@@ -414,14 +377,4 @@ export function newTextFileModelFromState(
         ...state,
     };
     return new TextFileModel(new TComponentState(initialState));
-}
-
-/** Narrow an arbitrary editor handle to `TextFileModel` via the
- *  `state.type === "textFile"` discriminator. Callers should prefer
- *  accessing the host through the editor's `contentHost` getter when they
- *  have an `EditorModel` in hand. */
-export function isTextFileModel(model: unknown): model is TextFileModel {
-    if (!model || typeof model !== "object") return false;
-    const state = (model as { state?: { get?: () => { type?: string } } }).state;
-    return state?.get?.().type === "textFile";
 }

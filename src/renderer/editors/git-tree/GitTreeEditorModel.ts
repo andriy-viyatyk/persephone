@@ -27,7 +27,6 @@ import { englishMessage, t, untranslated } from "../../../shared/i18n/t";
 
 export interface GitTreeEditorState extends EditorStateBase {
     /** State-type discriminator. */
-    type: "gitTreePage";
     /** Absolute repo top-level (the parent of the `.git` folder). */
     repoRoot: string;
     /** Persisted grid column layout (width + order). Owner-held so the user's
@@ -73,12 +72,11 @@ function repoFolderName(repoRoot: string): string {
 
 export const getDefaultGitTreeEditorState = (): GitTreeEditorState => ({
     // Editor instance id — keys this editor in `page.editors[]` and is the
-    // cache-file prefix. MUST be non-empty (PageModel.mainEditorInstance treats
+    // cache-file prefix. MUST be non-empty (PageModel.mainEditor treats
     // a falsy id as "no main editor"). Per-instance UUID, like MCP Inspector.
     id: crypto.randomUUID(),
     title: untranslated(englishMessage("editors.gitTree")),
     modified: false,
-    type: "gitTreePage",
     editor: "git-tree",
     repoRoot: "",
 });
@@ -423,7 +421,7 @@ export class GitTreeEditorModel extends EditorModel<GitTreeEditorState> {
 
     /** Tree body visible ⟺ the Git Tree is the page's main editor. */
     private isTreeVisible(): boolean {
-        return this.page?.mainEditorInstance === this;
+        return this.page?.mainEditor === this;
     }
 
     /** A panel is the expanded one ⟺ it is the page's active (bare) panel id.
@@ -511,7 +509,7 @@ export class GitTreeEditorModel extends EditorModel<GitTreeEditorState> {
         const norm = (p?: string | null) => p?.replace(/\\/g, "/");
         // Skip redundant navigation. The file's diff is already the
         // page's main editor → nothing to do (also covers slow repeat clicks).
-        if (norm(this.page.mainEditorInstance?.getNavigatorTarget?.()?.filePath) === norm(absPath)) {
+        if (norm(this.page.mainEditor?.getNavigatorTarget?.()?.filePath) === norm(absPath)) {
             return;
         }
         // A navigation to this same path is already in flight → ignore the

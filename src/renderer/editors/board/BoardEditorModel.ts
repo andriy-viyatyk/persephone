@@ -52,7 +52,6 @@ import { findSourceProvider, navigateToSourceItem } from "../shared/source-conte
 
 export interface BoardEditorState extends EditorStateBase {
     /** State-type discriminator. */
-    type: "boardPage";
     /** EditorView id. */
     editor: "board-view";
     /** The board's OWN absolute root path — the folder that directly contains
@@ -129,7 +128,6 @@ export const getDefaultBoardEditorState = (): BoardEditorState => ({
     id: crypto.randomUUID(),
     title: englishMessage("board.editor"),
     modified: false,
-    type: "boardPage",
     editor: "board-view",
     selectedBoard: undefined,
     reloadToken: 0,
@@ -216,7 +214,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         this.chrome = new BoardFrameChrome({
             canExposeDeclarations: () => {
                 const boardRoot = this.state.get().boardRoot;
-                return this.chromeViewsAvailable && !!this.page && this.page.mainEditorInstance === this && !!boardRoot
+                return this.chromeViewsAvailable && !!this.page && this.page.mainEditor === this && !!boardRoot
                     && boardRegistry.isPermitted(boardRoot) && this.frameRegistry.hasFrame(BOARD_CDP_TAB);
             },
             setPageMuted: (muted) => this.setPageMutedProjection(muted),

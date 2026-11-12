@@ -106,7 +106,7 @@ export class BoardPageRouter implements PageOpenInterceptor {
     ): void {
         const sourceUrl = sourceLink?.url ?? pipe?.provider.sourceUrl ?? filePath;
         if (!sourceUrl || sourceUrl.startsWith(PERSEPHONE_BOARD_PREFIX)) return;
-        page.mainEditorInstance?.acceptOpenContext?.({
+        page.mainEditor?.acceptOpenContext?.({
             mode: "enqueue-source",
             sourceUrl,
             sessionHandle,
@@ -218,7 +218,7 @@ export class BoardPageRouter implements PageOpenInterceptor {
     findBoardRunPage = (boardRoot: string, reuseKey: string): PageModel | undefined => {
         const normalizedRoot = BoardRoot.from(boardRoot);
         return this.model.state.get().pages.find((page) => {
-            if (page.mainEditorInstance?.editorId !== "browser-view") return false;
+            if (page.mainEditor?.editorId !== "browser-view") return false;
             const owner = this.getRunPageOwner(page);
             return !!owner
                 && normalizedRoot.equals(owner.boardRoot)
@@ -259,7 +259,7 @@ export class BoardPageRouter implements PageOpenInterceptor {
         } else {
             await page.restore.ready;
             const { BrowserEditor } = await import("../../editors/browser/BrowserEditor");
-            const browser = page.mainEditorInstance;
+            const browser = page.mainEditor;
             if (!(browser instanceof BrowserEditor)) throw new Error("The owned Run page is no longer a Browser page.");
             const browserState = browser.state.get();
             const activeTab = browserState.tabs.find((tab) => tab.id === browserState.activeTabId);
@@ -281,7 +281,7 @@ export class BoardPageRouter implements PageOpenInterceptor {
             if (singleInstanceMasks !== undefined) {
                 return this.isFullPlayerBoardPage(page, boardRoot, singleInstanceMasks);
             }
-            const editor = page.mainEditorInstance as { boardRoot?: string } | null;
+            const editor = page.mainEditor as { boardRoot?: string } | null;
             return !!editor?.boardRoot && BoardRoot.from(editor.boardRoot).equals(boardRoot);
         });
     };
@@ -290,7 +290,7 @@ export class BoardPageRouter implements PageOpenInterceptor {
     findPagesByBoardRoot = (boardRoot?: string): PageModel[] => {
         const key = boardRoot === undefined ? undefined : BoardRoot.from(boardRoot).key;
         return this.model.state.get().pages.filter((page) => {
-            const host = asBoardHostEditor(page.mainEditorInstance);
+            const host = asBoardHostEditor(page.mainEditor);
             return !!host?.boardRoot && (key === undefined || BoardRoot.from(host.boardRoot).key === key);
         });
     };
@@ -301,7 +301,7 @@ export class BoardPageRouter implements PageOpenInterceptor {
         masks: readonly string[],
     ): boolean {
         if (!page) return false;
-        const editor = page.mainEditorInstance as { boardRoot?: string; filePath?: string } | null;
+        const editor = page.mainEditor as { boardRoot?: string; filePath?: string } | null;
         if (!editor?.boardRoot || !BoardRoot.from(editor.boardRoot).equals(boardRoot)) return false;
         const filePath = editor.filePath;
         return !filePath

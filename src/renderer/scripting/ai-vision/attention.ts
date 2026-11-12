@@ -140,7 +140,7 @@ function collectLogViewAttention(): string[] {
     const sections: string[] = [];
     const unresolvedKeys = new Set<string>();
     for (const page of pages.query.pages) {
-        const editor = page.mainEditorInstance;
+        const editor = page.mainEditor;
         if (!(editor instanceof LogViewEditor)) continue;
         for (const entry of editor.getEntriesSnapshot()) {
             if (!isDialogEntry(entry) || isDialogResolved(entry)) continue;

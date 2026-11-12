@@ -1,6 +1,6 @@
 import type { PagesModel } from "./PagesModel";
 import type { PageModel } from "./PageModel";
-import type { TextFileModel } from "../../editors/text";
+import type { EditorModel } from "../../editors/base";
 
 export class PagesLayoutModel {
     constructor(private model: PagesModel) {}
@@ -16,7 +16,7 @@ export class PagesLayoutModel {
     requireGroupedText = (
         pageId: string,
         suggestedLanguage?: string,
-    ): TextFileModel => {
+    ): EditorModel => {
         if (this.model.query.isRightPinned(pageId)) {
             throw new Error("Right-pinned pages cannot be grouped with text pages.");
         }
@@ -34,10 +34,11 @@ export class PagesLayoutModel {
         }
 
         const host = this.model.query.getTextFileHost(groupedPage.id);
-        if (!host) {
+        const editor = groupedPage.mainEditor;
+        if (!host || !editor) {
             throw new Error("requireGroupedText: failed to materialize text host");
         }
-        return host;
+        return editor;
     };
 
     markLockedBoardPage = (page: PageModel, boardRoot: string): void => {

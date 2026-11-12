@@ -31,7 +31,7 @@ export async function transitionPageToBoardInfo(
     page: PageModel,
     opts: { catalogId?: string; boardRoot?: string; title?: string } = {},
 ): Promise<void> {
-    const old = page.mainEditorInstance;
+    const old = page.mainEditor;
     const hostTrait = old?.traits.get(CONTENT_HOST_TRAIT);
     if (old && !hostTrait && !(await old.confirmRelease())) return; // simple/board-view veto
     const model = new BoardInfoEditorModel(

@@ -15,7 +15,6 @@ function restoreHubTab(value: unknown): HubTab {
 
 export interface ToolsHubEditorState extends EditorStateBase {
     /** State-type discriminator. */
-    type: "toolsHubPage";
     tab: HubTab;
 }
 
@@ -23,7 +22,6 @@ export const getDefaultToolsHubEditorState = (): ToolsHubEditorState => ({
     id: TOOLS_HUB_PAGE_ID,
     title: untranslated("Tools & Editors"),
     modified: false,
-    type: "toolsHubPage",
     editor: "tools-hub-view",
     tab: "editors",
 });

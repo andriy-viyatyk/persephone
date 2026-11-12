@@ -256,7 +256,7 @@ export class SecondaryViewsView extends VanillaView<SecondaryViewsProps> {
             noLanguage: panel.model.noLanguage,
             getIconElement: panel.model.getIconElement,
             language: panel.model.language,
-            title: panel.model.title,
+            title: panel.model.displayTitle,
         });
         const iconElement = editorIcon?.kind === "element" ? editorIcon.element : undefined;
         return { iconElement };

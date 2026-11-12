@@ -1,7 +1,7 @@
 import type { EditorStateBase, RestoreData } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
 import type { EditorDescriptor, HostDescriptor } from "../../../shared/persistence";
-import { TextFileModel } from "../text/TextEditorModel";
+import { TextFileModel } from "../content-host/TextFileModel";
 import { fpRelative } from "../../core/utils/file-path";
 import { GitTreeModel } from "../../components/git-tree";
 import { CompareIcon } from "../../theme/icons";
@@ -89,7 +89,7 @@ export class FileDiffEditor extends TextHostEditorModel<FileDiffEditorState> {
     /** Repo-relative path (forward-slashed for git), or undefined. */
     get relPath(): string | undefined {
         const root = this.repoRoot;
-        const filePath = this._host?.state.get().filePath;
+        const filePath = this.filePath;
         if (!root || !filePath) return undefined;
         return fpRelative(root, filePath).replace(/\\/g, "/");
     }

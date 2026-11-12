@@ -9,7 +9,7 @@ import {
     resolveEditorIdForFile,
 } from "../../api/boards/custom-editor-registry";
 import { BOARD_INFO_EDITOR_ID } from "../board-info/board-info-id";
-import type { TextFileModel } from "../text/TextEditorModel";
+import type { TextFileModel } from "../content-host/TextFileModel";
 import type { EditorModel } from "./EditorModel";
 import { editorRegistry } from "./editorRegistry";
 import { hostOwnsPipe } from "../../../shared/board/board-manifest-queries";
@@ -139,11 +139,10 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
 
     const host = getTextHost(model);
     const hostState = host?.state.get();
-    const editorState = model.state.get();
-    const filePath = hostState?.filePath ?? model.filePath;
+    const filePath = model.filePath;
     // An untitled page is an in-memory local source, not a non-local URL/archive.
     const local = !filePath || isPlainLocalPath(filePath);
-    const fileName = filePath ?? hostState?.title ?? editorState.title ?? "";
+    const fileName = filePath ?? model.displayTitle;
 
     // Boards claim a page by file name (`fileMasks`) or by CONTENT (`contentMasks`, — the
     // manifest counterpart of a built-in matcher's `detectsContent`). The content path is what lets
@@ -216,10 +215,7 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
 
 /** File identity used by the toolbar's catalog subscription. */
 export function getEditorSwitchFileName(model: EditorModel): string {
-    const host = getTextHost(model);
-    const hostState = host?.state.get();
-    const editorState = model.state.get();
-    return hostState?.filePath ?? model.filePath ?? hostState?.title ?? editorState.title ?? "";
+    return model.filePath ?? model.displayTitle;
 }
 
 function getTextHost(model: EditorModel): TextFileModel | null {

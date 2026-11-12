@@ -1,10 +1,16 @@
 import { withEditorGuideHelp } from "./editor-guide-help";
 import type { MonacoEditor } from "../../editors/monaco/MonacoEditor";
-import { isTextFileModel, type TextFileModel } from "../../editors/text/TextEditorModel";
+import type { TextFileModel } from "../../editors/content-host/TextFileModel";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { ui } from "../../api/ui";
 import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
+import { TEXT_NAVIGATION_TRAIT, TEXT_SELECTION_TRAIT } from "../../editors/base/editor-traits";
+import { runPageScript } from "../run-page-script";
+import { getAvailableScripts, openScriptInTab, saveScriptToLibrary, selectScript } from "../script-library-actions";
+import type { ScriptDropdownEntry } from "../script-library-actions";
+import { pages } from "../../api/pages";
+import { TComponentState } from "../../core/state/state";
 
 const TEXT_ELEMENTS = [
     { name: "text-compare-left", purpose: "Compare this text page with the left grouped page when the compare action is available.", where: "left side of the text toolbar, when comparison is available" },
@@ -111,11 +117,11 @@ export class TextEditorFacade implements IAiVisible {
     // ── Fire-and-forget commands (sync — queued until view mounts) ──────
 
     revealLine(lineNumber: number): void {
-        this.editor.revealLine(lineNumber);
+        this.editor.traits.get(TEXT_NAVIGATION_TRAIT)?.revealLine(lineNumber);
     }
 
     setHighlightText(text?: string): void {
-        this.editor.setHighlightText(text);
+        this.editor.traits.get(TEXT_NAVIGATION_TRAIT)?.setHighlightText(text);
     }
 
     openFind(): void {
@@ -137,7 +143,7 @@ export class TextEditorFacade implements IAiVisible {
     // ── View-context queries (async — queue.execute returns a Promise) ──
 
     async getSelectedText(): Promise<string> {
-        return this.editor.getSelectedText();
+        return this.editor.traits.get(TEXT_SELECTION_TRAIT)?.getSelectedText() ?? Promise.resolve("");
     }
 
     async getCursorPosition(): Promise<{ lineNumber: number; column: number }> {
@@ -196,11 +202,16 @@ export class TextEditorFacade implements IAiVisible {
 
     runScript(all?: boolean): Promise<void> {
         this.requireTextHost();
-        return this.editor.runScript(all);
+        return runPageScript(this.editor, { all, source: "page" });
     }
 
     runRelatedScript(all?: boolean): Promise<void> {
-        return this.requireTextHost().runRelatedScript(all);
+        const host = this.requireTextHost();
+        return runPageScript(this.editor, {
+            all,
+            source: "panel",
+            getPanelSelection: () => host.script.getSelectedText(),
+        });
     }
 
     get scriptPanelOpen(): boolean | undefined {
@@ -220,7 +231,9 @@ export class TextEditorFacade implements IAiVisible {
     }
 
     get scriptAvailableScripts(): string[] | undefined {
-        return this.textHost?.script.getAvailableScripts().map(script => script.entry?.path ?? script.value);
+        return this.textHost
+            ? getAvailableScripts(this.textHost.state.get().language || "").map((script) => script.entry?.path ?? script.value)
+            : undefined;
     }
 
     toggleScriptPanel(): void {
@@ -229,24 +242,43 @@ export class TextEditorFacade implements IAiVisible {
 
     async selectScript(scriptPath?: string): Promise<void> {
         const host = this.requireTextHost();
+        const availableScripts = getAvailableScripts(host.state.get().language || "");
         if (!scriptPath) {
-            await host.script.selectScript(null);
+            await selectScript(null, (update) => host.script.state.update(update));
             return;
         }
 
-        const entry = host.script.getAvailableScripts().find(script => script.entry?.path === scriptPath);
+        const entry = availableScripts.find((script) => script.entry?.path === scriptPath);
         if (!entry) {
             throw new Error(`Text editor action unavailable: script path not found: ${scriptPath}`);
         }
-        await host.script.selectScript(entry);
+        await selectScript(entry as ScriptDropdownEntry, (update) => host.script.state.update(update));
     }
 
     saveScript(): Promise<void> {
-        return this.requireTextHost().script.saveToLibrary();
+        const host = this.requireTextHost();
+        return saveScriptToLibrary(host.script.state.get(), host.state.get().language, (update) => {
+            host.script.state.update(update);
+        });
     }
 
     openScriptInTab(): Promise<void> {
-        return this.requireTextHost().script.openInTab();
+        const host = this.requireTextHost();
+        return openScriptInTab(host.script.state.get(), {
+            openPath: async (filePath, libraryRoot) => {
+                const page = await pages.openPath(filePath);
+                if (!page || !libraryRoot) return;
+                const { ExplorerEditor, getDefaultExplorerEditorState } = await import("../../editors/explorer");
+                const explorer = new ExplorerEditor(new TComponentState({
+                    ...getDefaultExplorerEditorState(),
+                    rootPath: libraryRoot,
+                }));
+                page.attach(explorer);
+                await explorer.restore();
+                page.ensureSecondaryViewsModel();
+            },
+            openLibraryRoot: (libraryRoot) => pages.lifecycle.addEmptyPageWithNavPanel(libraryRoot),
+        });
     }
 
     closeScriptPanel(): void {
@@ -255,8 +287,7 @@ export class TextEditorFacade implements IAiVisible {
     }
 
     private get textHost(): TextFileModel | null {
-        const host = this.editor.host;
-        return isTextFileModel(host) ? host : null;
+        return this.editor.host;
     }
 
     private requireTextHost(): TextFileModel {

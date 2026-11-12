@@ -438,8 +438,8 @@ Key rules:
 | `/src/renderer/api/types/io.pipe.d.ts` | `IContentPipe`, `IPipeDescriptor` type definitions |
 | `/src/renderer/api/types/io.provider.d.ts` | `IProvider`, `IProviderDescriptor` type definitions |
 | `/src/renderer/api/types/io.transformer.d.ts` | `ITransformer`, `ITransformerDescriptor` type definitions |
-| `/src/renderer/editors/text/TextFileIOModel.ts` | Dual-pipe model (primary + cache) |
-| `/src/renderer/editors/text/TextFileEncryptionModel.ts` | Clone-and-try encryption operations |
+| `/src/renderer/editors/content-host/TextFileIOModel.ts` | Dual-pipe model (primary + cache) |
+| `/src/renderer/editors/content-host/TextFileEncryptionModel.ts` | Clone-and-try encryption operations |
 | `/src/renderer/scripting/api-wrapper/IoNamespace.ts` | Script `io` namespace exposing pipe APIs |
 
 ## Related Documentation

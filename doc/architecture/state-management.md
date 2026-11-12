@@ -306,7 +306,7 @@ Located in `/src/renderer/editors/base/`. Every editor (Monaco, Grid, Markdown, 
 
 ### EditorModel\<TState\>
 
-Base class for editor instances. Owns the editor's own state, lifecycle, and (optionally) `TextFileModel` composition for text-bearing editors.
+Base class for editor instances. Owns the editor's own state and lifecycle, and exposes canonical `filePath`, `sourceLink`, `language`, and `displayTitle` getters. Text-bearing editors expose their `TextFileModel` through `contentHost`.
 
 ```typescript
 class GridEditor extends EditorModel<GridState> {
@@ -325,9 +325,9 @@ class GridEditor extends EditorModel<GridState> {
 
 **Text-bearing editors** compose a `TextFileModel` and expose `CONTENT_HOST_TRAIT` so the page-level switch helper can transfer host ownership between editor types without re-reading the file.
 
-### IContentHost
+### Text content host
 
-The retained content and settings interface is implemented by `TextFileModel`; consumers and host transfer use the concrete model:
+The retained content and settings model is `TextFileModel`; consumers and host transfer use the concrete model:
 
 - `TextFileModel` — file-backed (owns file I/O, encryption, pipe, cache)
 

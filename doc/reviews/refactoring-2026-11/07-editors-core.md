@@ -123,9 +123,9 @@ Second tier: four copies of the image-export toolbar and actions; hand-built vie
   - **`IContentHost` has one implementer and no consumer** that types against it; `EditorModel.contentHost` returns `TextFileModel`.
 - **Refactor:**
   1. **Move and rename.**
-     - `editors/text/` becomes `editors/content-host/`, with the file `TextFileModel.ts`, so the file name matches the class.
-     - `ScriptPanel.ts` and `ScriptPanelView.ts` become `editors/base/script-panel/`; it is chrome, used by `TextChromeView` and `BoardEditorView`.
-     - `paste-rich-text.ts` moves to `monaco/`.
+     - Completed by US-1885: `TextFileModel.ts` now lives in `editors/content-host/`, so the file name matches the class.
+     - Completed by US-1885: `ScriptPanel.ts` and `ScriptPanelView.ts` now live in `editors/base/script-panel/`; this is chrome used by `TextChromeView` and `BoardEditorView`.
+     - Completed by US-1885: `paste-rich-text.ts` now lives in `monaco/`.
   2. **One keymap.** A `TextPageKeymap` in `TextChromeView` handles Ctrl+S, Ctrl+Shift+S, F5 and Ctrl+Shift+F. Delete the handlers in `TextFileActionsModel.handleKeyDown` and `ScriptPanelModel.handleKeyDown`.
   3. **Script running moves to `scripting/`.** Add `runPageScript(editor, { all, source: "page" | "panel" })`. The selection comes from an optional `TEXT_SELECTION_TRAIT` that Monaco registers. Delete the `getSelectedText` stub and `TextFileActionsModel.runScript`.
   4. **Navigation goes to the editor, not the host.** Callers use a `TEXT_NAVIGATION_TRAIT` (`revealLine`, `setHighlightText`) on `page.mainEditorInstance`. Delete `host.revealLine`, `setHighlightText` and `focusEditor`.

@@ -2,8 +2,9 @@ import { TComponentState } from "../../core/state/state";
 import { settings } from "../../api/settings";
 import type { EditorStateBase, RestoreData } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
-import type { TextFileModel } from "../text/TextEditorModel";
+import type { TextFileModel } from "../content-host/TextFileModel";
 import { ComponentQueue, type ComponentQueueEvent } from "../../core/state/ComponentQueue";
+import { TEXT_NAVIGATION_TRAIT, TEXT_SELECTION_TRAIT } from "../base/editor-traits";
 
 export type MonacoQueueEvent =
     | { type: "revealLine"; line: number }
@@ -63,6 +64,15 @@ export class MonacoEditor extends TextHostEditorModel<
             MonacoQueueEvent,
             MonacoQueueRequest
         >;
+        this.traits.add(TEXT_SELECTION_TRAIT, {
+            hasSelection: () => this.state.get().hasSelection,
+            getSelectedText: () => this.getSelectedText(),
+        });
+        this.traits.add(TEXT_NAVIGATION_TRAIT, {
+            revealLine: (line) => this.revealLine(line),
+            setHighlightText: (text) => this.setHighlightText(text),
+            focus: () => this.focus(),
+        });
     }
 
     isFreshEmpty(): boolean {
@@ -169,28 +179,6 @@ export class MonacoEditor extends TextHostEditorModel<
 
     async replaceSelection(text: string): Promise<void> {
         await this.typedQueue.execute({ type: "replaceSelection", text });
-    }
-
-    /**
-     * Chrome F5 / Run-button entry point (walkthrough 20 / MO6). Materializes
-     * selection via the queue (async) then calls `host.actions.runScriptWith`
-     * with pre-fetched text + language. Host stays unaware of Monaco-specific
-     * selection mechanics.
-     */
-    async runScript(all = false): Promise<void> {
-        const host = this._host;
-        if (!host) return;
-        const { content, language } = host.state.get();
-        let scriptText = content;
-        if (!all) {
-            try {
-                const selected = await this.getSelectedText();
-                if (selected) scriptText = selected;
-            } catch {
-                // Queue disposed mid-run — fall through to whole-content run.
-            }
-        }
-        await host.actions.runScriptWith(scriptText, language ?? "");
     }
 
     // ── Persistence ─────────────────────────────────────────────────────

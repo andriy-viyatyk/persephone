@@ -7,7 +7,7 @@ import { recent } from "../../api/recent";
 import { getLanguageByExtension } from "../../core/utils";
 import { shell } from "../../api/shell";
 import { debounce, errMessage } from "../../../shared/utils";
-import type { TextFileModel } from "./TextEditorModel";
+import type { TextFileModel } from "./TextFileModel";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import { ContentPipe } from "../../content/ContentPipe";
 import { FileProvider } from "../../content/providers/FileProvider";

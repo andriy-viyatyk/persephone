@@ -1,6 +1,7 @@
 sequenceDiagram
     participant U as User
-    participant AM as TextFileActionsModel
+    participant KP as TextPageKeymap
+    participant RP as run-page-script
     participant SR as ScriptRunner
     participant SC as ScriptContext
     participant AW as AppWrapper
@@ -9,11 +10,12 @@ sequenceDiagram
     participant EM as EditorModel
     participant GP as Grouped Page
 
-    U->>AM: Press F5
-    AM->>AM: Determine script source
-    Note right of AM: Script panel open?<br/>→ run panel content<br/>JS file + no panel?<br/>→ run page content/selection
+    U->>KP: Press F5
+    KP->>RP: run page script
+    RP->>RP: Determine script source
+    Note right of RP: Script panel open?<br/>-> run panel content<br/>JS file + no panel?<br/>-> run page content/selection
 
-    AM->>SR: runWithResult(pageId, script, page)
+    RP->>SR: runWithResult(pageId, script, page)
     SR->>SC: new ScriptContext(page)
 
     rect rgb(232, 245, 233)
@@ -39,11 +41,11 @@ sequenceDiagram
 
         Note over PW,EM: Script accesses page.content
         SR->>PW: page.content (getter)
-        PW-->>SR: model.state.get().content
+        PW-->>SR: model.contentHost.state.get().content
 
         Note over PW,EM: Script reads page.editor
         SR->>PW: page.editor (getter)
-        PW->>F: facade for mainEditorInstance<br/>(GridEditorFacade here)
+        PW->>F: facade for mainEditor<br/>(GridEditorFacade here)
         Note right of F: Stateless wrapper —<br/>no acquire/release
         F-->>SR: IEditorFacade (id: "grid-json")
 
@@ -71,4 +73,4 @@ sequenceDiagram
     end
 
     SR->>GP: Write result to grouped page
-    SR-->>AM: result string
+    SR-->>RP: result string

@@ -11,14 +11,14 @@ import { pages } from "../pages";
  */
 export function getMcpLogViewEditor(): LogViewEditor | undefined {
     const page = pages.query.findPage("mcp-ui-log");
-    const editor = page?.mainEditorInstance;
+    const editor = page?.mainEditor;
     return editor instanceof LogViewEditor ? editor : undefined;
 }
 
 /** Get, focus, and return the fixed Log View used by MCP output in this renderer. Writes only. */
 export function getOrCreateMcpLogViewEditor(): LogViewEditor {
     const page = pages.standalonePages.requireTextPage("mcp-ui-log");
-    const editor = page.mainEditorInstance;
+    const editor = page.mainEditor;
     if (!(editor instanceof LogViewEditor)) {
         throw new Error("MCP log page is not a LogViewEditor");
     }

@@ -8,7 +8,6 @@ import { ContextMenuEvent } from "../../api/events/events";
 import { pages } from "../../api/pages";
 import { appWindow } from "../../api/window";
 import { settings } from "../../api/settings";
-import type { EditorOrHost } from "../../editors/base";
 import type { EditorModel } from "../../editors/base/EditorModel";
 import { BoardEditorModel } from "../../editors/board/BoardEditorModel";
 import { onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
@@ -120,7 +119,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
     private languageIconCleanup: (() => void) | undefined;
     private closeIconCleanup: (() => void) | undefined;
     private emptyIconCleanup: (() => void) | undefined;
-    private currentEditor: EditorOrHost | null = null;
+    private currentEditor: EditorModel | null = null;
     private projection: EditorProjection = emptyEditorProjection();
     private isActive = false;
     private isPopoverOpen = false;
@@ -257,15 +256,19 @@ export class PageTabView extends VanillaView<PageTabProps> {
         this.projection = emptyEditorProjection();
         if (editor) {
             this.projection = this.projectEditorState(editor);
-            this.editorUnsubscribe = this.ownSubscription(editor.state.subscribe(
-                () => this.applyEditorProjection(this.projectEditorState(editor)),
-            ));
+            const updateProjection = (): void => this.applyEditorProjection(this.projectEditorState(editor));
+            const editorUnsubscribe = editor.state.subscribe(updateProjection);
+            const hostUnsubscribe = editor.contentHost?.state.subscribe(updateProjection);
+            this.editorUnsubscribe = this.ownSubscription(() => {
+                editorUnsubscribe();
+                hostUnsubscribe?.();
+            });
         }
         this.updateView();
     }
 
     private syncWorkingSubscription(): void {
-        const editor = this.props.model.mainEditorInstance;
+        const editor = this.props.model.mainEditor;
         if (editor === this.workingEditor) return;
         this.workingUnsubscribe();
         this.workingEditor = editor;
@@ -286,9 +289,15 @@ export class PageTabView extends VanillaView<PageTabProps> {
         if (host) setPresence(host, "data-working", true);
     }
 
-    private projectEditorState(editor: EditorOrHost): EditorProjection {
-        const model = this.props.model.mainEditorInstance;
-        const state = editor.state.get() as EditorTabState & { boardRoot?: string; props?: { name?: string } };
+    private projectEditorState(editor: EditorModel): EditorProjection {
+        const model = this.props.model.mainEditor;
+        const hostState = editor.contentHost?.state.get() as EditorTabState | undefined;
+        const editorState = editor.state.get() as EditorTabState & { boardRoot?: string; props?: { name?: string } };
+        const state = {
+            ...editorState,
+            ...hostState,
+            title: editor.displayTitle,
+        } as EditorTabState & { boardRoot?: string; props?: { name?: string } };
         // Board Info in properties mode is titled with the board's English manifest name.
         if (state.editor === "board-info" && state.boardRoot && state.props?.name === state.title) {
             return selectEditorState(state, state.boardRoot);
@@ -299,7 +308,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
             && (editor.state.get() as EditorTabState).title === model.displayNameEnglish
             ? model.boardRoot
             : undefined;
-        return selectEditorState(editor.state.get() as EditorTabState, boardRoot);
+        return selectEditorState(state, boardRoot);
     }
 
     private applyEditorProjection(next: EditorProjection): void {
@@ -359,7 +368,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
         this.updateCloseIcon();
     }
 
-    private syncEditorKind(editor: EditorOrHost | null): void {
+    private syncEditorKind(editor: EditorModel | null): void {
         const noLanguage = Boolean(editor?.noLanguage);
         setPresence(this.emptyLanguage, "data-with-icon", Boolean(editor?.getIconElement));
         if (noLanguage) {
@@ -401,7 +410,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
         }
     }
 
-    private syncSoundButton(editor: EditorOrHost | null): void {
+    private syncSoundButton(editor: EditorModel | null): void {
         const toggleMuteAll = (editor as { toggleMuteAll?: () => void } | null)?.toggleMuteAll;
         const show = this.projection.anyTabAudible || this.projection.pageMuted || Boolean(toggleMuteAll);
         if (show && !this.soundButton) {
@@ -558,7 +567,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
 
     private handleContextMenu(event: MouseEvent): void {
         const page = this.props.model;
-        const editorInstance = page.mainEditorInstance;
+        const editorInstance = page.mainEditor;
         const ctxEvent = ContextMenuEvent.fromNativeEvent(event, "page-tab");
         const isRight = this.props.mode === "right";
         const isLeftPinned = page.pinSide === "left";

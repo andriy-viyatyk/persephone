@@ -3,7 +3,6 @@ import type { PageModel } from "../../api/pages/PageModel";
 import type { IPageHost } from "../../api/pages/IPageHost";
 import { editorRegistry } from "../../editors/base/editorRegistry";
 import type { EditorModel } from "../../editors/base/EditorModel";
-import { isTextFileModel, type TextFileModel } from "../../editors/text/TextEditorModel";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import { customEditorRegistry, isBoardEditorId } from "../../api/boards/custom-editor-registry";
 import type { BoardEditorModel } from "../../editors/board/BoardEditorModel";
@@ -64,7 +63,6 @@ import type { MnemeRootEditorModel } from "../../editors/mneme-root/MnemeRootEdi
 import type { AboutEditor } from "../../editors/about/AboutEditor";
 import { isArchiveFile, isArchivePath, isPlainLocalPath } from "../../core/utils/file-path";
 
-type EditorOrHost = EditorModel | TextFileModel;
 type EditorFacade =
     | TextEditorFacade | GridEditorFacade | LinkEditorFacade
     | MarkdownEditorFacade | AboutEditorFacade | SvgEditorFacade | HtmlEditorFacade | MermaidEditorFacade
@@ -168,7 +166,7 @@ interface IBrowserPrivacyState {
  */
 export class PageWrapper implements IAiVisible {
     constructor(
-        private readonly model: EditorOrHost | null,
+        private readonly model: EditorModel | null,
         private readonly releaseList: Array<() => void>,
         private readonly outputFlags?: ScriptOutputFlags,
         private readonly callContext?: IAiCallContext,
@@ -184,7 +182,7 @@ export class PageWrapper implements IAiVisible {
     private get mainEditor(): EditorModel | null {
         const pageId = this.page?.id;
         if (!pageId) return null;
-        return pages.query.findPage(pageId)?.mainEditorInstance ?? null;
+        return pages.query.findPage(pageId)?.mainEditor ?? null;
     }
 
     /** The empty id is meaningful: this page has no editor at all. Never fall back to "monaco"
@@ -202,22 +200,28 @@ export class PageWrapper implements IAiVisible {
 
     get id(): string { return this.page?.id ?? this.model?.id ?? ""; }
     get ready(): Promise<void> { return this.pageModel?.restore.ready ?? Promise.resolve(); }
-    get title(): string { return this.model?.title ?? "Empty"; }
+    get title(): string {
+        return this.model?.contentHost?.state.get().title ?? this.model?.title ?? "Empty";
+    }
     get modified(): boolean { return this.model?.modified ?? false; }
     get pinned(): boolean { return this.page?.pinned ?? false; }
     get pinSide(): "left" | "right" | undefined { return pages.query.findPage(this.id)?.pinSide; }
-    get filePath(): string | undefined { return this.model?.filePath; }
+    get filePath(): string | undefined {
+        return this.model?.contentHost
+            ? this.model.contentHost.filePath
+            : this.model?.filePath;
+    }
 
     /** The folder this page's Explorer is rooted at — Persephone's equivalent of a VS Code
      * workspace folder; undefined when the page has no Explorer or is browsing an archive. */
     get workspaceFolder(): string | undefined {
         const explorer = (this.page as PageModel | null)?.findExplorer?.();
         if (!explorer) return undefined;
-        const state = explorer.state.get() as { type?: string; rootPath?: string };
+        const state = explorer.state.get() as { rootPath?: string };
         const rootPath = state.rootPath;
         // Archive pages use the raw archive file as the Explorer root, so reject both archive
         // entries and archive files while retaining the required plain-local-path gate.
-        if (state.type !== "fileExplorer" || !rootPath || !isPlainLocalPath(rootPath)
+        if (!rootPath || !isPlainLocalPath(rootPath)
             || isArchivePath(rootPath) || isArchiveFile(rootPath)) {
             return undefined;
         }
@@ -225,24 +229,23 @@ export class PageWrapper implements IAiVisible {
     }
 
     get content(): string {
-        return this.model && isTextFileModel(this.model) ? this.model.state.get().content : "";
+        return this.model?.contentHost?.state.get().content ?? "";
     }
 
     get pipe(): IContentPipe | undefined {
-        const mainEditor = this.mainEditor;
-        const mainContentHost = (mainEditor as (EditorModel & { contentHost?: unknown }) | null)?.contentHost;
-        const host = this.model && isTextFileModel(this.model)
-            ? this.model
-            : isTextFileModel(mainContentHost) ? mainContentHost : undefined;
-        if (host) return host.pipe ?? undefined;
-        return mainEditor?.pipe ?? undefined;
+        const host = this.model?.contentHost;
+        return host ? host.pipe ?? undefined : this.mainEditor?.pipe ?? undefined;
     }
 
     set content(value: string) {
-        if (this.model && isTextFileModel(this.model)) this.model.changeContent(value);
+        this.model?.contentHost?.changeContent(value);
     }
 
-    get language(): string { return this.model?.state.get().language ?? ""; }
+    get language(): string {
+        return this.model?.contentHost
+            ? this.model.contentHost.state.get().language ?? ""
+            : this.model?.state.get().language ?? "";
+    }
 
     set language(value: string) {
         editorRegistry.assertKnownLanguage(value);
@@ -277,7 +280,9 @@ export class PageWrapper implements IAiVisible {
 
     // An editorless page has no editor to hold a script data bag. Hand back a fresh object so a
     // read or write is harmless rather than a TypeError mid-iteration; it does not persist.
-    get data(): Record<string, unknown> { return this.model?.scriptData ?? {}; }
+    get data(): Record<string, unknown> {
+        return this.model?.contentHost?.scriptData ?? this.model?.scriptData ?? {};
+    }
     get panels(): PagePanelsNode { return new PagePanelsNode(() => this.page); }
 
     get grouped(): PageWrapper {
@@ -375,7 +380,7 @@ export class PageWrapper implements IAiVisible {
         if (!this.model) {
             throw new Error(`Page ${JSON.stringify(this.id)} has no editor, so there is no script to run.`);
         }
-        const language = this.model.state.get().language ?? "";
+        const language = this.language;
         const { isScriptLanguage } = await import("../transpile");
         if (!isScriptLanguage(language)) throw new Error("runScript() is only available for javascript/typescript pages");
         const { scriptRunner } = await import("../ScriptRunner");
@@ -385,7 +390,7 @@ export class PageWrapper implements IAiVisible {
 
 class GroupedPageWrapper extends PageWrapper {
     constructor(
-        model: EditorOrHost | null,
+        model: EditorModel | null,
         releaseList: Array<() => void>,
         private readonly flags?: ScriptOutputFlags,
         callContext?: IAiCallContext,

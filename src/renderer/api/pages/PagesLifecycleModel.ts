@@ -4,7 +4,7 @@ import { EditorView, PageDescriptor } from "../../../shared/types";
 import { t } from "../../../shared/i18n/t";
 import { cleanForStorage } from "../../../shared/link-data";
 import type { ILinkData } from "../../../shared/link-data";
-import { newTextFileModel } from "../../editors/text";
+import { newTextFileModel } from "../../editors/content-host/TextFileModel";
 import { ExplorerEditor, getDefaultExplorerEditorState } from "../../editors/explorer";
 import { TComponentState } from "../../core/state/state";
 import { api } from "../../../ipc/renderer/api";
@@ -25,7 +25,7 @@ import type { IContentPipe } from "../../api/types/io.pipe";
 import { pipeFromPersistedSource, pipeFromSourcePath } from "../../content/rebuild-pipe";
 import { openImageForEdit } from "../capability-feedback";
 import {
-    attachEditorToPage,
+    createEditorFromContentHost,
     constructEditorFromFile,
     createEditorFromFile,
     createEditorFromFolder,
@@ -140,17 +140,15 @@ export class PagesLifecycleModel {
         options?: {
             filePath?: string;
             target?: string;
+            forceTextEditor?: boolean;
             sourceLink?: ILinkData;
             sessionHandle?: string;
         },
     ): Promise<void> => {
         if (page.isInert) return;
-        const failedEditor = page.mainEditorInstance;
+        const failedEditor = page.mainEditor;
         const filePath = options?.filePath ?? failedEditor?.filePath;
-        const host = failedEditor?.contentHost;
-        const sourceLink = options?.sourceLink
-            ?? host?.state.get().sourceLink as ILinkData | undefined
-            ?? failedEditor?.state.get().sourceLink as ILinkData | undefined;
+        const sourceLink = options?.sourceLink ?? failedEditor?.sourceLink;
         const target = options?.target ?? failedEditor?.editorId;
         const title = failedEditor?.title;
         if (failedEditor) {
@@ -179,9 +177,12 @@ export class PagesLifecycleModel {
                 unknownScheme: "file",
                 sessionHandle: options?.sessionHandle,
             });
-            const editorOrHost = await constructEditorFromFile(filePath ?? "", pipe, target, title);
-            if (sourceLink) editorOrHost.state.update((state) => { state.sourceLink = sourceLink; });
-            const editor = attachEditorToPage(editorOrHost);
+            const editor = await constructEditorFromFile(filePath ?? "", pipe, target, title, {
+                forceText: options?.forceTextEditor,
+            });
+            if (sourceLink) {
+                (editor.contentHost ?? editor).state.update((state) => { state.sourceLink = sourceLink; });
+            }
             await page.setMainEditor(editor);
             page.restore.start((signal) => editor.restore({ signal }));
         } catch (error) {
@@ -192,7 +193,7 @@ export class PagesLifecycleModel {
     addEmptyPage = (): PageModel => {
         const emptyFile = newTextFileModel("");
         emptyFile.restore();
-        return this.addPage(attachEditorToPage(emptyFile));
+        return this.addPage(createEditorFromContentHost(emptyFile));
     };
 
     addEmptyPageWithNavPanel = async (folderPath: string): Promise<PageModel> => {
@@ -241,7 +242,7 @@ export class PagesLifecycleModel {
             editorModel.changeContent(content);
         }
         editorModel.restore();
-        return this.addPage(attachEditorToPage(editorModel));
+        return this.addPage(createEditorFromContentHost(editorModel));
     };
 
     addDrawPage = async (dataUrl: string, title?: string): Promise<PageModel> => {
@@ -267,9 +268,9 @@ export class PagesLifecycleModel {
         editorModel.changeContent(content);
 
         const page = new PageModel();
-        const adapter = attachEditorToPage(editorModel);
-        adapter.secondaryView = ["link-category"];
-        page.attach(adapter);
+        const editor = createEditorFromContentHost(editorModel);
+        editor.secondaryView = ["link-category"];
+        page.attach(editor);
         page.ensureSecondaryViewsModel();
         page.expandPanel("link-category");
 
@@ -312,7 +313,7 @@ export class PagesLifecycleModel {
             if (existingPage.restore.state.get().status !== "ready") {
                 pipe?.dispose();
             } else {
-                const adopted = existingPage.mainEditorInstance?.onReopen?.(pipe) === true;
+                const adopted = existingPage.mainEditor?.onReopen?.(pipe) === true;
                 if (!adopted) pipe?.dispose();
             }
             // The document is already open — an anchor link into it is still a jump
@@ -324,7 +325,7 @@ export class PagesLifecycleModel {
                 });
             } else if (request.fragment) {
                 const reveal = (): void => {
-                    const editor = existingPage.mainEditorInstance;
+                    const editor = existingPage.mainEditor;
                     if (editor) applyOpenHints(existingPage, editor, request, { exit: "reuse" });
                 };
                 if (existingPage.restore.isRestoring) void existingPage.restore.ready.then(reveal, (): void => {});
@@ -333,9 +334,7 @@ export class PagesLifecycleModel {
             return existingPage;
         }
 
-        const requestedTarget = request.forceTextEditor || request.revealLine || request.highlightText
-            ? "monaco"
-            : request.target;
+        const requestedTarget = request.target;
 
         // A failed editor-module load rejects out of the editor factory's `createEditorFromFile`, and every
         // caller here reaches it from a user action (explorer click, link, drop). Left
@@ -353,13 +352,12 @@ export class PagesLifecycleModel {
                     pipe,
                     requestedTarget,
                     request.title,
+                    {
+                        forceText: !!(request.forceTextEditor || request.revealLine || request.highlightText),
+                        selectPreview: false,
+                    },
                 );
-                // TextFileModel is adapted into a TextHostEditorModel below; its file-open path
-                // opts in there. Every standalone model preserves restore-before-add and the
-                // guard's existing user-facing error handling.
-                const defersRestore = constructed instanceof EditorModel
-                    ? constructed.deferRestoreOnOpen
-                    : true;
+                const defersRestore = constructed.deferRestoreOnOpen;
                 if (!defersRestore) await constructed.restore();
                 return constructed;
             },
@@ -371,34 +369,31 @@ export class PagesLifecycleModel {
             return undefined;
         }
         if (request.folderPath !== undefined) pipe?.dispose();
-        // Honor an explicit content-host target (e.g. "file-diff") that isn't the
-        // file's natural editor, so a new-tab open lands on the requested editor —
-        // mirrors navigatePageTo's isExplicitHostTarget handling.
-        prepareOpenedEditor(editor, { ...request, target: requestedTarget }, { selectPreview: false });
-        const adapter = attachEditorToPage(editor);
-        registerOpenSession(adapter, request);
-        const page = adapter.deferRestoreOnOpen ? new PageModel() : undefined;
-        if (page && adapter.deferRestoreOnOpen) {
+        prepareOpenedEditor(editor, { ...request, target: requestedTarget });
+        registerOpenSession(editor, request);
+        const page = editor.deferRestoreOnOpen ? new PageModel() : undefined;
+        if (page && editor.deferRestoreOnOpen) {
             // Start the attempt synchronously so the inserted page is never rendered as an editor
             // before PageContentView observes its loading shell state. The async restore body runs
             // in the next microtask, after addPage attaches the editor and inserts the page.
             const retryOptions = {
                 filePath: request.filePath,
                 target: requestedTarget,
+                forceTextEditor: !!(request.forceTextEditor || request.revealLine || request.highlightText),
                 sourceLink: request.sourceLink,
                 sessionHandle: request.sessionHandle,
             };
-            page.restore.start((signal) => adapter.restore({ signal }));
+            page.restore.start((signal) => editor.restore({ signal }));
             page.restore.retry = () => this.retryOpen(page, retryOptions);
         }
-        const addedPage = this.addPage(adapter, page, options?.onPageCreated);
+        const addedPage = this.addPage(editor, page, options?.onPageCreated);
         const applyCurrentPageHints = (): void => {
             if (this.model.query.findPage(addedPage.id) !== addedPage) return;
-            const currentEditor = addedPage.mainEditorInstance;
+            const currentEditor = addedPage.mainEditor;
             if (!currentEditor) return;
             applyOpenHints(addedPage, currentEditor, request, { exit: "fresh", newPage: true });
         };
-        if (adapter.deferRestoreOnOpen) {
+        if (editor.deferRestoreOnOpen) {
             addedPage.restore.afterReady(applyCurrentPageHints);
         }
         else applyCurrentPageHints();
@@ -434,14 +429,14 @@ export class PagesLifecycleModel {
             const editor = await guard(t("api.failedToOpenNamedFile", { name: fpBasename(firstPath) }), () =>
                 createEditorFromFile(firstPath, pipe));
             if (!editor) { pipe?.dispose(); return; }
-            existingFirst = this.addPage(attachEditorToPage(editor));
+            existingFirst = this.addPage(editor);
         }
         if (!existingSecond) {
             const pipe = await pipeFromSourcePath(secondPath);
             const editor = await guard(t("api.failedToOpenNamedFile", { name: fpBasename(secondPath) }), () =>
                 createEditorFromFile(secondPath, pipe));
             if (!editor) { pipe?.dispose(); return; }
-            existingSecond = this.addPage(attachEditorToPage(editor));
+            existingSecond = this.addPage(editor);
         }
 
         this.model.layout.groupTabs(existingFirst.id, existingSecond.id, true);
@@ -489,7 +484,7 @@ export class PagesLifecycleModel {
     recoverPage = async (pageId: string): Promise<void> => {
         const placeholder = this.model.query.findPage(pageId);
         const recovery = placeholder?.recovery;
-        const editor = placeholder?.mainEditorInstance;
+        const editor = placeholder?.mainEditor;
         if (!placeholder || !recovery || !(editor instanceof RestoreFailedEditor) || editor.state.get().retrying || recovery.isInvalidated) return;
         editor.state.update((state) => { state.retrying = true; });
         const attempt = async (): Promise<void> => {
@@ -549,7 +544,7 @@ export class PagesLifecycleModel {
         if (targetIndex >= 0 && this.model.state.get().pages[targetIndex]?.isLockedBoardPage) targetIndex++;
 
         if (targetIndex === -1) {
-            this.addPage(page.mainEditorInstance, page);
+            this.addPage(page.mainEditor, page);
             this.model.closeFirstPageIfEmpty();
         } else {
             this.model.attachPage(page);

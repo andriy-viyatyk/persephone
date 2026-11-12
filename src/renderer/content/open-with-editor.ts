@@ -64,9 +64,9 @@ export async function openWithEditor(path: string, editorId: string): Promise<vo
     }
 
     pages.navigation.showPage(page.id);
-    if (page.mainEditorInstance?.editorId === editorId) return;
+    if (page.mainEditor?.editorId === editorId) return;
     await page.switchMainEditor(editorId);
-    if (page.mainEditorInstance?.editorId !== editorId) {
+    if (page.mainEditor?.editorId !== editorId) {
         void ui.notify(t("menus.currentPageEditorUnchanged"), "info");
     }
 }

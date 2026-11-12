@@ -1,6 +1,6 @@
 import type { EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
-import { TextFileModel } from "../text/TextEditorModel";
+import { TextFileModel } from "../content-host/TextFileModel";
 import { ui } from "../../api/ui";
 import { debounce, errMessage } from "../../../shared/utils";
 // Import directly from types.ts (not the api/board-vars barrel) — the barrel re-exports
@@ -85,11 +85,7 @@ export class EnvVarsEditor extends TextHostEditorModel<EnvVarsEditorState> {
 
         this.loadData(host.state.get().content ?? "");
 
-        // Consume the envNamespace hint — deliberately lands on the HOST's state, not
-        // this editor's own (freshly constructed) state; see EditorModel.getNavigationSourceId
-        // for the same gotcha in a different consumer. Applied after loadData so `data` is
-        // already populated.
-        const envNamespace = (host.state.get() as { sourceLink?: ILinkData }).sourceLink?.envNamespace;
+        const envNamespace = (this.sourceLink as ILinkData | undefined)?.envNamespace;
         if (envNamespace) this.focusNamespace(envNamespace);
     }
 

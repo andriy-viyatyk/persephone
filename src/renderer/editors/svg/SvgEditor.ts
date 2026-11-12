@@ -64,7 +64,7 @@ export class SvgEditor extends TextHostEditorModel<SvgEditorState, void, SvgQueu
         const content = this.requireSource("open in Drawing Editor");
         try {
             const dataUrl = `data:image/svg+xml;base64,${Buffer.from(content, "utf-8").toString("base64")}`;
-            const title = (this.host?.state.get().title || "SVG").replace(/\.svg$/i, "");
+            const title = (this.displayTitle || "SVG").replace(/\.svg$/i, "");
             await openImageForEdit({
                 dataUrl,
                 mimeType: "image/svg+xml",

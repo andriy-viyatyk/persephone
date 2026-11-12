@@ -116,7 +116,7 @@ await page.editorSwitches.switchTo("grid-json");
 `switchTo(id)` accepts any registered editor id on a file page; on a folder page, use an id present in
 `options` because the switch must be a currently available folder editor. A same-id call is a silent
 no-op. The operation awaits the switch and then verifies
-`mainEditorInstance.editorId`. If the call returns without switching, it throws a diagnostic that
+`page.editor.id`. If the call returns without switching, it throws a diagnostic that
 the release prompt may have been declined or the page may have no file to rebuild over. Unknown
 ids preserve the registry's existing rejection. The page toolbar is available as
 `page.editorSwitches.elements` with the `page-editor-switch` declaration.

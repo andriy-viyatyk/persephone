@@ -5,6 +5,8 @@ classDiagram
         +editorId: string
         +state: TOneState~TState~
         +traits: TraitSet
+        +contentHost: TextFileModel?
+        +filePath / sourceLink / language
         +page: IPageHost?
         +applyRestoreData(data)
         +switchFrom(oldEditor)*
@@ -18,38 +20,26 @@ classDiagram
         +dispose()
     }
 
-    class IContentHost {
-        <<interface>>
-        +id: string
-        +state: IState~IContentHostState~
-        +changeContent(content, byUser?)
-        +changeLanguage(language)
-        +getDescriptor(): HostDescriptor
-        +dispose()
-    }
-
     class IContentHostTrait {
         <<interface>>
         +extractContentHost(): TextFileModel
     }
 
     class TextFileModel {
-        implements IContentHost
         +pipe: IContentPipe
         +io: TextFileIOModel
         +encryption: TextFileEncryptionModel
     }
 
-    IContentHost <|.. TextFileModel
-
-    EditorModel <|-- MonacoEditor
-    EditorModel <|-- GridEditor
-    EditorModel <|-- MarkdownEditor
-    EditorModel <|-- SvgEditor
-    EditorModel <|-- HtmlEditor
-    EditorModel <|-- MermaidEditor
-    EditorModel <|-- LinkEditor
-    EditorModel <|-- LogViewEditor
+    EditorModel <|-- TextHostEditorModel
+    TextHostEditorModel <|-- MonacoEditor
+    TextHostEditorModel <|-- GridEditor
+    TextHostEditorModel <|-- MarkdownEditor
+    TextHostEditorModel <|-- SvgEditor
+    TextHostEditorModel <|-- HtmlEditor
+    TextHostEditorModel <|-- MermaidEditor
+    TextHostEditorModel <|-- LinkEditor
+    TextHostEditorModel <|-- LogViewEditor
     EditorModel <|-- BrowserEditorModel
     EditorModel <|-- ImageEditor
     EditorModel <|-- ArchiveEditor
@@ -60,14 +50,7 @@ classDiagram
     EditorModel <|-- SettingsEditor
     EditorModel <|-- StorybookEditorModel
 
-    MonacoEditor ..|> IContentHostTrait
-    GridEditor ..|> IContentHostTrait
-    MarkdownEditor ..|> IContentHostTrait
-    SvgEditor ..|> IContentHostTrait
-    HtmlEditor ..|> IContentHostTrait
-    MermaidEditor ..|> IContentHostTrait
-    LinkEditor ..|> IContentHostTrait
-    LogViewEditor ..|> IContentHostTrait
+    TextHostEditorModel ..|> IContentHostTrait
 
     MonacoEditor o-- TextFileModel : composes
     GridEditor o-- TextFileModel : composes

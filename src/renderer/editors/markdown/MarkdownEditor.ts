@@ -2,7 +2,7 @@ import { TComponentState } from "../../core/state/state";
 import type { EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
 import { ComponentQueue } from "../../core/state/ComponentQueue";
-import { TextFileModel } from "../text/TextEditorModel";
+import { TextFileModel } from "../content-host/TextFileModel";
 import type {
     MarkdownBodyState,
     MarkdownQueueEvent,

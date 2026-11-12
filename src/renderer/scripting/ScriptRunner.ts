@@ -1,5 +1,5 @@
 import type { AgentTipCollector } from "./ai-vision/agent-tip-collector";
-import { EditorOrHost } from "../editors/base";
+import type { EditorModel } from "../editors/base";
 import { pages } from "../api/pages";
 import type { ConsoleLogEntry, ScriptOutputFlags } from "./ScriptContext";
 import { settings } from "../api/settings";
@@ -25,7 +25,7 @@ class ScriptRunner extends ScriptRunnerBase {
     /**
      * MCP mode — creates context, captures console, cleans up, returns structured result.
      */
-    runWithCapture = async (script: string, page?: EditorOrHost, language?: string, tipCollector?: AgentTipCollector): Promise<McpScriptResult> => {
+    runWithCapture = async (script: string, page?: EditorModel, language?: string, tipCollector?: AgentTipCollector): Promise<McpScriptResult> => {
         const consoleLogs: ConsoleLogEntry[] = [];
         const result = await this.executeWithContext(script, page, consoleLogs, language, tipCollector);
         const isError = result instanceof Error;
@@ -44,7 +44,7 @@ class ScriptRunner extends ScriptRunnerBase {
     runWithResult = async (
         pageId: string,
         script: string,
-        page?: EditorOrHost,
+        page?: EditorModel,
         language?: string,
     ): Promise<string> => {
         const { result, outputFlags } = await this.executeWithContextAndFlags(script, page, undefined, language);
@@ -61,7 +61,7 @@ class ScriptRunner extends ScriptRunnerBase {
             });
         } else if (!outputSuppressed && pageId) {
             const groupedModel = pages.layout.requireGroupedText(pageId, textAndLang.language);
-            groupedModel.changeContent(textAndLang.text);
+            groupedModel.contentHost?.changeContent(textAndLang.text);
         }
 
         return textAndLang.text;
@@ -77,7 +77,7 @@ class ScriptRunner extends ScriptRunnerBase {
      */
     private async executeWithContext(
         script: string,
-        page?: EditorOrHost,
+        page?: EditorModel,
         consoleLogs?: ConsoleLogEntry[],
         language?: string,
         tipCollector?: AgentTipCollector,
@@ -92,7 +92,7 @@ class ScriptRunner extends ScriptRunnerBase {
      */
     private async executeWithContextAndFlags(
         script: string,
-        page?: EditorOrHost,
+        page?: EditorModel,
         consoleLogs?: ConsoleLogEntry[],
         language?: string,
         tipCollector?: AgentTipCollector,

@@ -48,7 +48,7 @@ A dedicated EditorModel subclass that is ONLY a secondary view — never becomes
 
 ```
 PageModel
-  ├── mainEditor: TextFileModel
+  ├── mainEditor: EditorModel (with a contentHost when text-backed)
   └── secondaryViews: [ExplorerEditor]  // separate instance
 ```
 

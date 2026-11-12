@@ -4,12 +4,22 @@ import type { EditorDescriptor } from "../../../shared/persistence";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import type { IPageHost } from "../../api/pages/IPageHost";
 import type { IState } from "../../core/state/state";
-import { TextFileModel, newTextFileModel } from "../text/TextEditorModel";
+import { TextFileModel, newTextFileModel } from "../content-host/TextFileModel";
 import { editorRegistry } from "./editorRegistry";
 import { fpBasename } from "../../core/utils/file-path";
 import { ui } from "../../api/ui";
 import { errMessage } from "../../../shared/utils";
 import { ContentHostSlot } from "./content-host-slot";
+
+/** Title rule shared by host adoption and `displayTitle`: host title, file name, current title, untitled. */
+function resolveTextHostDisplayTitle(
+    hostTitle: string | undefined,
+    filePath: string | undefined,
+    currentTitle: string,
+    untitledName: string,
+): string {
+    return hostTitle || (filePath ? fpBasename(filePath) : undefined) || currentTitle || untitledName;
+}
 
 /**
  * Base class for editors that wrap a `TextFileModel` content host.
@@ -43,8 +53,7 @@ export abstract class TextHostEditorModel<
             untitledName: () => this.untitledName(),
             createFallbackHost: () => newTextFileModel(""),
             resolveTitle: ({ hostTitle, filePath, currentTitle }) =>
-                hostTitle || (filePath ? fpBasename(filePath) : undefined)
-                    || currentTitle || this.untitledName(),
+                resolveTextHostDisplayTitle(hostTitle, filePath, currentTitle, this.untitledName()),
             onAttached: (host) => this.onHostAttached(host),
             onExtracted: () => this.onHostExtracted(),
         });
@@ -78,6 +87,11 @@ export abstract class TextHostEditorModel<
         return this.contentHostSlot.host;
     }
 
+    override get displayTitle(): string {
+        const hostState = this.contentHostSlot.host?.state.get();
+        return resolveTextHostDisplayTitle(hostState?.title, hostState?.filePath, this.title, this.untitledName());
+    }
+
     /** Host accessor for body, toolbar and facade consumption. */
     get host(): TextFileModel | null {
         return this.contentHostSlot.host;
@@ -91,7 +105,7 @@ export abstract class TextHostEditorModel<
     getNavigatorTarget(): { pipe?: IContentPipe | null; filePath?: string | null } | null {
         const host = this.contentHostSlot.host;
         if (!host) return null;
-        const { filePath } = host.state.get();
+        const filePath = this.filePath;
         const pipe = host.pipe;
         if (!pipe && !filePath) return {};
         return { pipe, filePath };

@@ -130,7 +130,7 @@ class BoardLifecycle {
         if (installEntry) await boardInstallRegistry.record({ ...installEntry, root: newRoot });
         invalidateBoardDisplayText(boardRoot);
         for (const page of matchingPages) {
-            const host = asBoardHostEditor(page.mainEditorInstance);
+            const host = asBoardHostEditor(page.mainEditor);
             if (!host?.boardRoot) continue;
             await app.events.openRawLink.sendAsync(createLinkData(encodePersephoneBoardLink(newRoot), {
                 pageId: page.id,
@@ -207,7 +207,7 @@ class BoardLifecycle {
  * Returns false only when the user cancels the unsaved-changes prompt.
  */
 async function releaseBoardFromPage(page: PageModel): Promise<boolean> {
-    const editor = page.mainEditorInstance;
+    const editor = page.mainEditor;
     if (!editor) return true;
     if (editor.modified && !(await editor.confirmRelease())) return false;
     page.detach(editor);

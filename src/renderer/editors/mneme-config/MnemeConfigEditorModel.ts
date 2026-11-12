@@ -27,7 +27,6 @@ import { t, untranslated } from "../../../shared/i18n/t";
 import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
 
 export interface MnemeConfigEditorState extends EditorStateBase {
-    type: "mnemeConfigPage";
     /** Live MCP connection state to the Mneme sidecar. */
     connectionStatus: McpConnectionStatus;
     errorMessage: string;
@@ -51,7 +50,6 @@ export const getDefaultMnemeConfigEditorState = (): MnemeConfigEditorState => ({
     id: crypto.randomUUID(),
     title: untranslated("Mneme"),
     modified: false,
-    type: "mnemeConfigPage",
     editor: "mneme-config",
     connectionStatus: "disconnected",
     errorMessage: "",

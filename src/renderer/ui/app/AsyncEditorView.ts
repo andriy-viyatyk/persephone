@@ -1,5 +1,5 @@
 import type { EditorViewModule, FileEditorView } from "../../editors/types";
-import type { EditorOrHost } from "../../editors/base";
+import type { EditorModel } from "../../editors/base";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { SpinnerView } from "../../uikit/Spinner/SpinnerView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -11,7 +11,7 @@ const moduleCache = new Map<string, EditorViewModule>();
 
 export interface AsyncEditorViewProps {
     getEditorModule: () => Promise<EditorViewModule>;
-    model: EditorOrHost;
+    model: EditorModel;
     cacheKey?: string;
 }
 
@@ -22,7 +22,7 @@ export class AsyncEditorView extends VanillaView<AsyncEditorViewProps> {
         { name: "async-editor-loading", flex: 1, align: "center", justify: "center" },
         [this.spinner.root],
     );
-    private vanillaView: VanillaView<{ model: EditorOrHost }> | undefined;
+    private vanillaView: VanillaView<{ model: EditorModel }> | undefined;
     private vanillaViewCtor: FileEditorView | undefined;
     private module: EditorViewModule | undefined;
     private errorView: NativeEditorErrorView | undefined;
@@ -94,7 +94,7 @@ export class AsyncEditorView extends VanillaView<AsyncEditorViewProps> {
         );
     }
 
-    private renderEditor(module: EditorViewModule, model: EditorOrHost): void {
+    private renderEditor(module: EditorViewModule, model: EditorModel): void {
         this.loadingPanel.remove();
         if (!this.editorHost.parentNode) this.root.append(this.editorHost);
 
@@ -113,7 +113,7 @@ export class AsyncEditorView extends VanillaView<AsyncEditorViewProps> {
         }
 
         this.disposeActiveResource();
-        let view: VanillaView<{ model: EditorOrHost }> | undefined;
+        let view: VanillaView<{ model: EditorModel }> | undefined;
         try {
             view = new module.View({ model });
             this.vanillaView = view;

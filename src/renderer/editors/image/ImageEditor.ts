@@ -26,9 +26,6 @@ function extToMime(ext: string): string {
 }
 
 export interface ImageEditorState extends EditorStateBase {
-    /** Discriminator — preserved for legacy `newEditorModelFromState`
-     *  routing and `EditorDescriptor.state.type` consumers. */
-    type: "imageFile";
     /** Source path / URL / archive-with-bang notation
      *  (`archive.zip!path/to.png`). */
     filePath?: string;
@@ -43,7 +40,6 @@ export const defaultImageEditorState: ImageEditorState = {
     id: "",
     title: "",
     modified: false,
-    type: "imageFile",
 };
 
 export function getDefaultImageEditorState(): ImageEditorState {

@@ -2,7 +2,7 @@ import { TComponentState } from "../../core/state/state";
 import { type EditorStateBase, type RestoreData } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
 import { ComponentQueue } from "../../core/state/ComponentQueue";
-import { TextFileModel } from "../text/TextEditorModel";
+import { TextFileModel } from "../content-host/TextFileModel";
 import {
     type CellEditEvent,
     type CellFocus,
@@ -919,7 +919,7 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, void, GridQ
 
     /** Heuristic CSV delimiter detection from the first 5 lines. Shared by
      *  `restore()` (session-restore path), `switchFrom()` (switch-in path),
-     *  and the open-file flow (`editors/editor-factory.ts`'s `attachEditorToPage`). */
+     *  and the open-file flow (`editors/editor-factory.ts`'s synchronous host construction). */
     static detectCsvDelimiter(content: string): string {
         const firstLine = content.split("\n").slice(0, 5).join("") || "";
         const delimiters = [",", ";", "\t", "|"];

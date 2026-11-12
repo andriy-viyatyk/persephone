@@ -8,7 +8,7 @@ import { EditorToolbarView } from "./EditorToolbarView";
 import { TextHostEditorModel } from "./TextHostEditorModel";
 import { customEditorRegistry } from "../../api/boards/custom-editor-registry";
 import { onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
-import { isTextFileModel, type TextFileEditorModelState, type TextFileModel } from "../text/TextEditorModel";
+import type { TextFileEditorModelState, TextFileModel } from "../content-host/TextFileModel";
 import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
 import {
     SegmentedControlView,
@@ -180,8 +180,7 @@ class NavPanelButtonView extends VanillaView<{ model: EditorModel }> {
     }
 
     private getTextHost(): TextFileModel | null {
-        const host = this.model.contentHost;
-        return isTextFileModel(host) ? host : null;
+        return this.model.contentHost;
     }
 
     private sync(): void {
@@ -271,8 +270,7 @@ export class SwitchWidgetView extends VanillaView<SwitchWidgetViewProps> {
     }
 
     private getTextHost(): TextFileModel | null {
-        const host = this.model.contentHost;
-        return isTextFileModel(host) ? host : null;
+        return this.model.contentHost;
     }
 
     private ensureHostSubscription(): void {

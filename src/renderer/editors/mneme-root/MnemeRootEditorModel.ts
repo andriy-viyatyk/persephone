@@ -35,7 +35,6 @@ export interface WikiSearchResult {
 
 export interface MnemeRootEditorState extends EditorStateBase {
     /** State-type discriminator. */
-    type: "mnemeRootPage";
     /** Absolute folder of the Mneme root (the parent of the clicked `.mneme`). */
     rootFolder: string;
     /** Resolved Mneme root name (e.g. "TestWiki"). Empty until resolved. */
@@ -99,7 +98,6 @@ export const getDefaultMnemeRootEditorState = (): MnemeRootEditorState => ({
     id: crypto.randomUUID(),
     title: untranslated("Mneme"),
     modified: false,
-    type: "mnemeRootPage",
     editor: "mneme-root",
     rootFolder: "",
     rootName: "",

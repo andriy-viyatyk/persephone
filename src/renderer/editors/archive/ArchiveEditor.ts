@@ -18,8 +18,6 @@ import type { MenuItem } from "../../uikit/Menu/index";
 import { filePathMenuItems } from "../shared/editor-menu-items";
 
 export interface ArchiveEditorState extends EditorStateBase {
-    /** State-type discriminator (used by `_openZipArchive` for de-dup). */
-    type: "archiveFile";
     /** Archive source URL (path to the archive file). */
     archiveUrl: string;
 }
@@ -28,7 +26,6 @@ export const defaultArchiveEditorState: ArchiveEditorState = {
     id: "",
     title: "",
     modified: false,
-    type: "archiveFile",
     archiveUrl: "",
 };
 
@@ -191,8 +188,7 @@ export class ArchiveEditor extends EditorModel<ArchiveEditorState> {
     onMainEditorChanged(newMainEditor: EditorModel | null): void {
         if (!newMainEditor || newMainEditor === this) return;
         if (this._isOpenedFromThisArchive(newMainEditor)) {
-            const url = (newMainEditor.state.get() as { sourceLink?: { url?: string } })
-                .sourceLink?.url ?? null;
+            const url = newMainEditor.sourceLink?.url ?? null;
             this.selectionState.update((s) => { s.selectedHref = url; });
             if (url && this.page?.activePanelId === "archive-tree") {
                 this.revealVersion.update((s) => { s.version++; });
@@ -215,12 +211,8 @@ export class ArchiveEditor extends EditorModel<ArchiveEditorState> {
         }
     }
 
-    /** Check if a model was opened from this archive via sourceLink. Reads the
-     *  source id from both the editor's own state and its content host (see
-     *  `EditorModel.getNavigationSourceId`) so navigation into a text editor
-     *  (e.g. Monaco) keeps the Archive panel instead of dropping it. */
     private _isOpenedFromThisArchive(model: EditorModel): boolean {
-        return model.getNavigationSourceId() === this.id;
+        return model.sourceLink?.sourceId === this.id;
     }
 
     /** Show in File Explorer / Copy File Path for the archive file. */

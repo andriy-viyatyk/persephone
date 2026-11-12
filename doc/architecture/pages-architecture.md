@@ -76,7 +76,7 @@ PageModel (one per tab — stable identity, never changes during navigation)
 ├── restore: PageRestore                // deferred restore attempt, readiness, state, typed retry
 ├── recovery?: RecoveryPlaceholder      // retained descriptor and cache protection after failed session restore
 ├── isInert                             // true while a recovery placeholder owns the page
-├── mainEditor: EditorOrHost | null     // content host projection; use mainEditorInstance for EditorModel
+├── mainEditor: EditorModel | null      // the actual editor instance
 ├── editors: EditorModel[]              // attached editors; panelEditors is the sidebar projection
 ├── secondaryViewsModel                 // sidebar open/close/width (model lives in api/pages)
 ├── activePanel: string                 // which panel is expanded
@@ -93,8 +93,11 @@ PageModel (one per tab — stable identity, never changes during navigation)
 
 EditorModel (the content inside a page — replaceable during navigation)
 ├── id: string                          // editor instance identity
-├── state: TOneState<IEditorState>      // editor state (content, language, filePath, pipe, etc.)
+├── editorId: string                    // registered editor identity
+├── state: TOneState<IEditorState>      // editor state; text content lives in contentHost
 ├── page: PageModel | null              // back-reference to containing page
+├── contentHost: TextFileModel | null   // file-backed content for text-bearing editors
+├── filePath / sourceLink / language    // canonical getters, host-backed where applicable
 ├── pipe: IContentPipe                  // content source
 ├── modified: boolean                   // has unsaved changes
 ├── setPage(page) / onMainEditorChanged() // lifecycle hooks
@@ -217,7 +220,7 @@ sidebar-only page invariant; an editorless page that never had a panel is not cl
 
 1. `page.close()` — on PageModel
 2. → `confirmSecondaryRelease()` — checks secondary views for unsaved changes
-3. → `mainEditor.confirmRelease()` — checks main editor (TextFileModel prompts save dialog)
+3. → `mainEditor.confirmRelease()` — checks the editor and its content host when present
 4. → `onClose()` — set by `attachPage()` in PagesModel
 5. → `detachPage(page)` — unsubscribes state listeners, clears `onClose`
 6. → `removePage(page)` — removes from `pages[]` and `ordered[]`

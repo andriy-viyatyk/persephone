@@ -2,7 +2,7 @@ import { TComponentState } from "../../core/state/state";
 import {
     TextFileModel,
     getDefaultTextFileEditorModelState,
-} from "../../editors/text/TextEditorModel";
+} from "../../editors/content-host/TextFileModel";
 import { shell } from "../shell";
 import { t } from "../../../shared/i18n/t";
 import { ui } from "../ui";

@@ -441,7 +441,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── base/               # Shared editor infrastructure
 │   │   ├── EditorModel.ts            # Abstract base class for all editors
 │   │   ├── TextHostEditorModel.ts    # Base for TextFileModel-wrapping editors — host-adoption lifecycle, subscription registry, content echo guard, host-settings mirror
-│   │   ├── IContentHost.ts           # Interface for text-content hosting (TextFileModel)
+│   │   ├── editor-traits.ts          # Content-host, text-selection, and text-navigation transfer contracts
 │   │   ├── editor-traits.ts          # CONTENT_HOST_TRAIT — owner-orchestrated editor switching
 │   │   ├── editor-matchers.ts        # Acceptance / resolution priority helpers
 │   │   ├── editorRegistry.ts         # Native editor registry — resolve, register, switch options
@@ -451,29 +451,28 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── EditorToolbarView.ts      # Native toolbar root used by individual editors
 │   │   ├── EditorStatusBarView.ts    # Shared editor status bar (footer): pipe status, provider, text-host parts
 │   │   ├── EditorStatusBar.css       # Status bar styles
-│   │   └── index.ts
-│   │
-│   ├── text/               # Text file content host (file I/O + encryption + script panel)
-│   │   ├── TextEditorModel.ts        # TextFileModel — file-backed IContentHost (state, file I/O, encryption)
-│   │   ├── TextFileIOModel.ts        # File I/O via content pipes (read/write/watch/cache)
-│   │   ├── TextFileActionsModel.ts   # Text actions (duplicate, transform)
-│   │   ├── TextFileEncryptionModel.ts # Encryption state machine
-│   │   ├── ScriptPanel.ts            # Script panel model
-│   │   ├── ScriptPanelView.ts        # Native inline script runner panel
-│   │   ├── paste-rich-text.ts        # Rich-text paste handler
-│   │   └── index.ts
-│   ├── monaco/             # Monaco text editor (text-bearing, IContentHost + TRAIT)
+│   │   ├── script-panel/
+│   │   │   ├── ScriptPanel.ts
+│   │   │   └── ScriptPanelView.ts
+│   │   ├── index.ts
+│   ├── content-host/       # File-backed content host (file I/O + encryption)
+│   │   ├── TextFileModel.ts           # File-backed content state and collaborators
+│   │   ├── TextFileIOModel.ts         # File I/O via content pipes (read/write/watch/cache)
+│   │   ├── TextFileActionsModel.ts    # Text actions (duplicate, transform)
+│   │   └── TextFileEncryptionModel.ts # Encryption state machine
+│   ├── monaco/             # Monaco text editor (text-bearing, content-host trait)
 │   │   ├── MonacoEditor.ts           # EditorModel subclass — composes TextFileModel, hosts Monaco
 │   │   ├── MonacoBodyView.ts         # Native Monaco body, project binding and per-page diagnostics
+│   │   ├── paste-rich-text.ts         # Rich-text paste handler
 │   │   └── index.ts
-│   ├── grid/               # JSON/CSV/JSONL grid editor (text-bearing, IContentHost + TRAIT)
+│   ├── grid/               # JSON/CSV/JSONL grid editor (text-bearing, content-host trait)
 │   │   ├── GridEditor.ts             # EditorModel — parsing, sort/filter/edit state
 │   │   ├── GridBodyView.ts            # Native DataGrid integration
 │   │   ├── components/               # Grid-specific components
 │   │   ├── utils/                    # Grid utilities
 │   │   ├── util.ts                   # Shared utility helpers
 │   │   └── index.ts
-│   ├── markdown/           # Markdown preview (text-bearing, IContentHost + TRAIT)
+│   ├── markdown/           # Markdown preview (text-bearing, content-host trait)
 │   │   ├── MarkdownEditor.ts         # EditorModel — search state, scroll, compact
 │   │   ├── MarkdownBodyModel.ts       # Narrow host/model contract shared with embedded guide rendering
 │   │   ├── MarkdownBodyView.ts        # Native body (search, minimap, scroll and host binding)
@@ -517,7 +516,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── network-log-links.ts      # Network log → ILink[] conversion
 │   │   ├── browser-pages.ts          # showBrowserPage / openUrlInBrowserTab — page opening; keeps the browser chunk out of startup
 │   │   └── index.ts
-│   ├── link-editor/        # Link collection editor (text-bearing, IContentHost + TRAIT)
+│   ├── link-editor/        # Link collection editor (text-bearing, content-host trait)
 │   │   ├── LinkEditor.ts             # EditorModel — links, categories, tags, filters
 │   │   ├── LinkBody.ts               # Native link body and branch ownership
 │   │   ├── LinkTreeProvider.ts       # ITreeProvider adapter over LinkEditor state; drag-drop import (files→links, links across windows)
@@ -541,20 +540,20 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── EditLinkDialog.ts       # Edit-link dialog model and registration
 │   │   ├── EditLinkDialogView.ts   # Native edit-link dialog view
 │   │   └── index.ts
-│   ├── svg/                # SVG preview (text-bearing, IContentHost + TRAIT)
+│   ├── svg/                # SVG preview (text-bearing, content-host trait)
 │   │   ├── SvgEditor.ts              # EditorModel — SVG state
 │   │   ├── SvgBodyView.ts             # Native preview body
 │   │   └── index.ts
-│   ├── html/               # HTML preview (text-bearing, IContentHost + TRAIT)
+│   ├── html/               # HTML preview (text-bearing, content-host trait)
 │   │   ├── HtmlEditor.ts             # EditorModel — HTML state
 │   │   ├── HtmlBodyView.ts            # Native sandboxed preview body
 │   │   └── index.ts
-│   ├── mermaid/            # Mermaid diagram preview (text-bearing, IContentHost + TRAIT)
+│   ├── mermaid/            # Mermaid diagram preview (text-bearing, content-host trait)
 │   │   ├── MermaidEditor.ts          # EditorModel — SVG URL, loading, error, light mode
 │   │   ├── MermaidBodyView.ts         # Native preview body
 │   │   ├── render-mermaid.ts         # Rendering utilities (shared with Markdown)
 │   │   └── index.ts
-│   ├── log-view/           # Log viewer (text-bearing, IContentHost + TRAIT)
+│   ├── log-view/           # Log viewer (text-bearing, content-host trait)
 │   │   ├── LogViewEditor.ts          # EditorModel — JSONL parsing, entry management
 │   │   ├── LogBodyView.ts             # Log viewer native view (MeasuredRowGrid + auto-scroll)
 │   │   ├── LogEntryWrapper.ts        # Cell root — subscribes to entries[index]
@@ -565,7 +564,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── logConstants.ts
 │   │   ├── items/                    # Dialog and output entry renderers (15 files)
 │   │   └── index.ts
-│   ├── env-vars/           # Environment variables editor (text-bearing, IContentHost + TRAIT)
+│   ├── env-vars/           # Environment variables editor (text-bearing, content-host trait)
 │   │   ├── EnvVarsEditor.ts           # EditorModel — namespace/profile selection
 │   │   ├── EnvVarsBodyView.ts         # Native environment-variable grid body
 │   │   ├── open-env-vars.ts          # openEnvVarsPage(namespace)
@@ -590,7 +589,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── compare/            # Diff editor (non-text, no trait)
 │   │   ├── CompareEditor.ts
 │   │   └── index.ts
-│   ├── file-diff/          # Git revision diff editor (text-bearing, IContentHost + TRAIT)
+│   ├── file-diff/          # Git revision diff editor (text-bearing, content-host trait)
 │   │   ├── FileDiffEditor.ts         # EditorModel — revision selection and diff state
 │   │   ├── FileDiffBodyModel.ts      # Diff content and revision state
 │   │   ├── FileDiffBodyView.ts       # Native diff body and Monaco host composition

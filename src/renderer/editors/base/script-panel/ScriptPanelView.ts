@@ -1,19 +1,25 @@
-import { t } from "../../../shared/i18n/t";
-import { libraryService } from "../../api/library-service";
-import { createPanelElement, applyPanelAttributes, resolvePanelAttributes } from "../../uikit/Panel/panel-style";
-import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
-import type { IconButtonProps } from "../../uikit/IconButton/IconButtonView";
-import { SelectView, type SelectViewProps } from "../../uikit/Select/SelectView";
-import { SpacerView } from "../../uikit/Spacer/SpacerView";
-import { SplitterView } from "../../uikit/Splitter/SplitterView";
-import type { SplitterProps } from "../../uikit/Splitter/SplitterView";
-import { VanillaView, type IOwnedView } from "../../uikit/shared/vanilla-view";
-import { EditorToolbarView } from "../base/EditorToolbarView";
-import { MonacoEditorHostView } from "../shared/MonacoEditorHostView";
-import type { TextFileModel } from "./TextEditorModel";
-import type { ScriptDropdownEntry, ScriptPanelModel, ScriptPanelState } from "./ScriptPanel";
-import "../../uikit/Panel/Panel.css";
-import "../../uikit/Splitter/Splitter.css";
+import { t } from "../../../../shared/i18n/t";
+import { libraryService } from "../../../api/library-service";
+import { pages } from "../../../api/pages";
+import { createPanelElement, applyPanelAttributes, resolvePanelAttributes } from "../../../uikit/Panel/panel-style";
+import { IconButtonView } from "../../../uikit/IconButton/IconButtonView";
+import type { IconButtonProps } from "../../../uikit/IconButton/IconButtonView";
+import { SelectView, type SelectViewProps } from "../../../uikit/Select/SelectView";
+import { SpacerView } from "../../../uikit/Spacer/SpacerView";
+import { SplitterView } from "../../../uikit/Splitter/SplitterView";
+import type { SplitterProps } from "../../../uikit/Splitter/SplitterView";
+import { VanillaView, type IOwnedView } from "../../../uikit/shared/vanilla-view";
+import { EditorToolbarView } from "../EditorToolbarView";
+import { MonacoEditorHostView } from "../../shared/MonacoEditorHostView";
+import type { TextFileModel } from "../../content-host/TextFileModel";
+import type { ScriptPanelModel, ScriptPanelState } from "./ScriptPanel";
+import { getAvailableScripts, getSelectedDropdownEntry, openScriptInTab, saveScriptToLibrary, selectScript } from "../../../scripting/script-library-actions";
+import type { ScriptDropdownEntry } from "../../../scripting/script-library-actions";
+import { runPageScript } from "../../../scripting/run-page-script";
+import * as monaco from "monaco-editor";
+import { TComponentState } from "../../../core/state/state";
+import "../../../uikit/Panel/Panel.css";
+import "../../../uikit/Splitter/Splitter.css";
 
 export interface ScriptPanelViewProps {
     model: TextFileModel;
@@ -46,6 +52,8 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
     private readonly branchViews: IOwnedView[] = [];
     private readonly modelBindings: (() => void)[] = [];
     private lastScriptState: ScriptPanelState | undefined;
+    private selectionReader: (() => string) | undefined;
+    private selectionListener: monaco.IDisposable | undefined;
 
     public constructor(props: ScriptPanelViewProps) {
         const root = createPanelElement({ direction: "row" });
@@ -57,7 +65,6 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
 
     protected onMount(): void {
         libraryService.ensureInitialized();
-        this.listen(this.root, "keydown", this.handleKeyDown);
         this.bindModel(this.model);
         this.bind(
             libraryService.state,
@@ -80,7 +87,7 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
     protected onDispose(): void {
         this.releaseModelBindings();
         this.branchRoot?.remove();
-        this.scriptModel.handleEditorWillUnmount();
+        this.clearSelectionReader();
         this.branchRoot = undefined;
         this.hostPanel = undefined;
         this.splitter = undefined;
@@ -181,7 +188,7 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
             initialValue: state.content,
             language: "typescript",
             onMount: (hostView) => {
-                this.scriptModel.handleEditorDidMount(hostView.getEditor());
+                this.setupSelectionReader(hostView.getEditor());
             },
             onChange: (value) => this.scriptModel.handleEditorChange(value),
             options: {
@@ -298,7 +305,7 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
                 : t("editors.runScriptShortcut", { shortcut: "F5" }),
             size: "sm",
             icon: "run",
-            onClick: () => this.model.runRelatedScript(),
+            onClick: () => { void this.runRelatedScript(); },
         };
     }
 
@@ -308,17 +315,19 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
             size: "sm",
             title: t("editors.runAllScript"),
             icon: "run-all",
-            onClick: () => this.model.runRelatedScript(true),
+            onClick: () => { void this.runRelatedScript(true); },
         };
     }
 
     private selectProps(): SelectViewProps<ScriptDropdownEntry> {
-        const availableScripts = this.scriptModel.getAvailableScripts();
+        const availableScripts = getAvailableScripts(this.model.state.get().language || "");
         return {
             name: "script-select",
             items: [UNSAVED_ENTRY, ...availableScripts],
-            value: this.scriptModel.getSelectedDropdownEntry(availableScripts) ?? UNSAVED_ENTRY,
-            onChange: (item) => this.scriptModel.selectScript(item),
+            value: getSelectedDropdownEntry(this.scriptModel.state.get(), availableScripts) ?? UNSAVED_ENTRY,
+            onChange: (item) => { void selectScript(item, (update) => {
+                this.scriptModel.state.update(update);
+            }); },
             size: "sm",
             minWidth: 120,
             maxWidth: 200,
@@ -332,7 +341,9 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
             size: "sm",
             icon: "save",
             disabled: !state.dirty,
-            onClick: () => { void this.scriptModel.saveToLibrary(); },
+            onClick: () => { void saveScriptToLibrary(this.scriptModel.state.get(), this.model.state.get().language, (update) => {
+                this.scriptModel.state.update(update);
+            }); },
         };
     }
 
@@ -342,7 +353,7 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
             title: t("editors.openInNewTab"),
             size: "sm",
             icon: "open-file",
-            onClick: () => { void this.scriptModel.openInTab(); },
+            onClick: () => { void this.openInTab(); },
         };
     }
 
@@ -356,9 +367,59 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
         };
     }
 
-    private readonly handleKeyDown = (event: KeyboardEvent): void => {
-        this.scriptModel.handleKeyDown(event);
-    };
+    private setupSelectionReader(editor: monaco.editor.IStandaloneCodeEditor): void {
+        this.clearSelectionReader();
+        const selectionReader = (): string => {
+            const selection = editor.getSelection();
+            if (!selection || selection.isEmpty()) return "";
+            return editor.getModel()?.getValueInRange(selection) || "";
+        };
+        this.selectionReader = selectionReader;
+        this.scriptModel.setSelectionReader(selectionReader);
+        this.selectionListener = editor.onDidChangeCursorSelection(() => {
+            const selection = editor.getSelection();
+            this.scriptModel.setHasSelection(Boolean(selection && !selection.isEmpty()));
+        });
+    }
+
+    private async runRelatedScript(all = false): Promise<void> {
+        const editor = this.model.page?.mainEditor;
+        if (!editor) return;
+        await runPageScript(editor, {
+            all,
+            source: "panel",
+            getPanelSelection: () => this.scriptModel.getSelectedText(),
+        });
+    }
+
+    private clearSelectionReader(): void {
+        this.selectionListener?.dispose();
+        this.selectionListener = undefined;
+        this.scriptModel.clearSelectionReader(this.selectionReader);
+        this.selectionReader = undefined;
+        this.scriptModel.setHasSelection(false);
+    }
+
+    private async openInTab(): Promise<void> {
+        await openScriptInTab(this.scriptModel.state.get(), {
+            openPath: async (filePath, libraryRoot) => {
+                const page = await pages.openPath(filePath);
+                if (!page || !libraryRoot) return;
+                const { ExplorerEditor, getDefaultExplorerEditorState } = await import("../../explorer");
+                const explorerState = new TComponentState({
+                    ...getDefaultExplorerEditorState(),
+                    rootPath: libraryRoot,
+                });
+                const explorer = new ExplorerEditor(explorerState);
+                page.attach(explorer);
+                await explorer.restore();
+                page.ensureSecondaryViewsModel();
+            },
+            openLibraryRoot: (libraryRoot) => {
+                pages.lifecycle.addEmptyPageWithNavPanel(libraryRoot);
+            },
+        });
+    }
 
     private registerBranchView<T extends IOwnedView>(view: T): T {
         const registered = this.child(view);
@@ -378,7 +439,7 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
             this.releaseBranchView(hostView);
             this.hostView = undefined;
         }
-        this.scriptModel.handleEditorWillUnmount();
+        this.clearSelectionReader();
 
         for (const view of this.branchViews.slice()) {
             this.releaseBranchView(view);

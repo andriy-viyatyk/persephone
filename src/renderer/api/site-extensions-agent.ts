@@ -149,7 +149,7 @@ async function reload(pageId: string): Promise<SiteExtensionReloadResult> {
     const [validPageId] = validateCallArguments("siteExtensions.reload", [pageId], RELOAD_ARGUMENTS, { maxArgs: 1 });
     if (typeof validPageId !== "string") throw new Error("Invalid page id.");
     const page = pages.query.findPage(validPageId);
-    const editor = page?.mainEditorInstance;
+    const editor = page?.mainEditor;
     if (!editor) return invalidResult("not-current");
     const { BrowserEditor } = await import("../editors/browser/BrowserEditor");
     if (!(editor instanceof BrowserEditor)) return invalidResult("not-current");

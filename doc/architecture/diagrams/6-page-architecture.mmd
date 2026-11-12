@@ -13,7 +13,8 @@ graph TD
 
     subgraph Editor["EditorModel (replaceable content)"]
         EM_ID["id: string"]
-        EM_STATE["state: IEditorState<br/>{type, content, language,<br/>filePath, pipe, editor, ...}"]
+        EM_STATE["state: EditorStateBase<br/>{title, modified,<br/>secondaryView, editor fields...}"]
+        EM_HOST["contentHost: TextFileModel | null<br/>(text content, file I/O, pipe)"]
         EM_PAGE["page: PageModel | null"]
         EM_SE_PROP["secondaryView: string[] | undefined"]
     end

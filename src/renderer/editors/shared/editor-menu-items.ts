@@ -3,7 +3,7 @@ import { createLinkData } from "../../../shared/link-data";
 import { toClipboard } from "../../core/utils/utils";
 import { createIconElement } from "../../uikit/shared/slots";
 import type { MenuItem } from "../../uikit/Menu/types";
-import type { TextFileModel } from "../text/TextEditorModel";
+import type { TextFileModel } from "../content-host/TextFileModel";
 import { t } from "../../../shared/i18n/t";
 
 /** HTML files that make sense to render in the browser instead of editing. */

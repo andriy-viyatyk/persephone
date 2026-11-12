@@ -3,6 +3,8 @@ import { api } from "../../../ipc/renderer/api";
 import { pages } from "../../api/pages";
 import { appWindow } from "../../api/window";
 import type { IEditorState, WindowPages } from "../../../shared/types";
+import type { PageModel } from "../../api/pages/PageModel";
+import type { EditorModel } from "../../editors/base";
 import { createFileTypeIconElement } from "../../components/icons/icon-elements";
 import { ListBoxView } from "../../uikit/ListBox/ListBoxView";
 import type { IListBoxItem, ListBoxProps } from "../../uikit/ListBox/types";
@@ -21,6 +23,19 @@ export interface OpenTabsListProps {
 interface OpenTabsListItem extends IListBoxItem {
     windowIndex: number;
     page?: Partial<IEditorState> & { boardRoot?: string; folderPath?: string };
+}
+
+/** The state fields a row renders. Selecting them keeps typing (content changes) from re-rendering the list. */
+function selectRowFields(state: Partial<IEditorState> & { boardRoot?: string; folderPath?: string; props?: unknown }) {
+    return {
+        title: state.title,
+        filePath: state.filePath,
+        folderPath: state.folderPath,
+        boardRoot: state.boardRoot,
+        language: state.language,
+        editor: state.editor,
+        props: state.props,
+    };
 }
 
 export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
@@ -54,6 +69,11 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
     private live = true;
     private readonly warmedBoardRoots = new Set<string>();
     private readonly boardManifests = new Map<string, NormalizedBoardManifest>();
+    private readonly pageSubscriptions = new Map<PageModel, {
+        editor: EditorModel | null;
+        host: EditorModel["contentHost"];
+        unsubscribe: () => void;
+    }>();
 
     public constructor(props: OpenTabsListProps) {
         const list = new ListBoxView<OpenTabsListItem>({
@@ -70,7 +90,10 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
 
     protected onMount(): void {
         this.child(this.list).mount();
-        this.bind(pages.state, (state) => state.pages, () => this.updateList());
+        this.bind(pages.state, (state) => state.pages, () => {
+            this.syncPageSubscriptions();
+            this.updateList();
+        });
         this.own(onBoardDisplayTextChanged((_root, reason) => {
             if (reason === "invalidate") this.warmedBoardRoots.clear();
             this.updateList();
@@ -78,8 +101,11 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
         this.previousOpen = this.props.open;
         void this.loadWindowPages();
         this.updateList();
+        this.syncPageSubscriptions();
         this.own(() => {
             this.live = false;
+            for (const subscription of this.pageSubscriptions.values()) subscription.unsubscribe();
+            this.pageSubscriptions.clear();
             if (this.duplicateTimer !== undefined) window.clearTimeout(this.duplicateTimer);
         });
     }
@@ -104,7 +130,13 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
         const currentWindowIndex = appWindow.windowIndex;
         const state = pages.state.get();
         const currentPages: OpenTabsListItem[] = state.pages.map((page) => {
-            const pageState = page.mainEditor?.state.get() ?? { title: page.title };
+            const editor = page.mainEditor;
+            const hostState = editor?.contentHost?.state.get();
+            const pageState = {
+                ...editor?.state.get(),
+                ...hostState,
+                title: page.title,
+            };
             const pageData = { ...pageState, id: page.id } as Partial<IEditorState> & { boardRoot?: string; folderPath?: string };
             return this.item(currentWindowIndex, pageData);
         });
@@ -135,6 +167,38 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
         this.listProps.items = items;
         this.listProps.activeIndex = this.activeIndex;
         this.list.update(this.listProps);
+    }
+
+    private syncPageSubscriptions(): void {
+        const currentPages = new Set(pages.state.get().pages);
+        for (const [page, subscription] of this.pageSubscriptions) {
+            if (currentPages.has(page)) continue;
+            subscription.unsubscribe();
+            this.pageSubscriptions.delete(page);
+        }
+        for (const page of currentPages) {
+            const editor = page.mainEditor;
+            const host = editor?.contentHost ?? null;
+            const existing = this.pageSubscriptions.get(page);
+            if (existing && editor === existing.editor && host === existing.host) continue;
+            existing?.unsubscribe();
+            const update = (): void => {
+                this.syncPageSubscriptions();
+                this.updateList();
+            };
+            const pageUnsubscribe = page.state.subscribe(() => {
+                this.syncPageSubscriptions();
+                this.updateList();
+            }, (state) => state.mainEditorId);
+            const editorUnsubscribe = editor?.state.subscribe(update, selectRowFields);
+            const hostUnsubscribe = host?.state.subscribe(update, selectRowFields);
+            const unsubscribe = (): void => {
+                pageUnsubscribe();
+                editorUnsubscribe?.();
+                hostUnsubscribe?.();
+            };
+            this.pageSubscriptions.set(page, { editor, host, unsubscribe });
+        }
     }
 
     private section(windowIndex: number): OpenTabsListItem {

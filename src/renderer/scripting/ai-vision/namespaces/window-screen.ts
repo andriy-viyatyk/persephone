@@ -76,7 +76,7 @@ function restrictedWindowScreen(): string | undefined {
         (page) => pages.query.isPageVisible(page.id),
     );
     for (const page of visiblePages) {
-        const editor = page.mainEditorInstance;
+        const editor = page.mainEditor;
         if (!editor || editor.editorId !== "browser-view") continue;
 
         const state = editor.state.get() as IBrowserAccessFlags;

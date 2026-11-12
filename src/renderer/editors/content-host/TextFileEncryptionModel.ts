@@ -1,9 +1,10 @@
 import { t } from "../../../shared/i18n/t";
 import { ui } from "../../api/ui";
 import { shell } from "../../api/shell";
-import type { TextFileModel } from "./TextEditorModel";
+import type { TextFileModel } from "./TextFileModel";
 import { DecryptTransformer } from "../../content/transformers/DecryptTransformer";
 import { errMessage } from "../../../shared/utils";
+import { TEXT_NAVIGATION_TRAIT } from "../base/editor-traits";
 
 export class TextFileEncryptionModel {
     constructor(private model: TextFileModel) {}
@@ -24,7 +25,7 @@ export class TextFileEncryptionModel {
      * Encrypt plaintext content — writes encrypted text to disk.
      * After: pipe has NO DecryptTransformer, content on disk is encrypted, page shows encrypted text.
      */
-    encript = async (password: string): Promise<void> => {
+    encrypt = async (password: string): Promise<void> => {
         if (this.encrypted) {
             ui.notify(t("editors.fileAlreadyEncrypted"), "warning");
             return;
@@ -70,7 +71,7 @@ export class TextFileEncryptionModel {
         const pipe = this.model.pipe;
         if (!pipe) {
             // Fallback: use old direct encryption
-            await this.encript(password);
+            await this.encrypt(password);
             return;
         }
 
@@ -156,9 +157,9 @@ export class TextFileEncryptionModel {
         if (mode === "decrypt") {
             await this.decrypt(password);
         } else {
-            await this.encript(password);
+            await this.encrypt(password);
         }
-        this.model.focusEditor();
+        this.model.page?.mainEditor?.traits.get(TEXT_NAVIGATION_TRAIT)?.focus();
     };
 
     /**

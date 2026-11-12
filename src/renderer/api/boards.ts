@@ -116,7 +116,7 @@ function mergeBoardSources(): BoardListingSource[] {
         addRoot(entry.root).installed ??= entry;
     }
     for (const page of app.pages.boardPageRouter.findPagesByBoardRoot()) {
-        const boardRoot = asBoardHostEditor(page.mainEditorInstance)?.boardRoot;
+        const boardRoot = asBoardHostEditor(page.mainEditor)?.boardRoot;
         if (!boardRoot) continue;
         addRoot(boardRoot).openPageIds.push(page.id);
     }

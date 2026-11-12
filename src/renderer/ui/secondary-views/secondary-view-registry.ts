@@ -1,11 +1,11 @@
-import type { EditorOrHost } from "../../editors/base";
+import type { EditorModel } from "../../editors/base";
 import type { IconName } from "../../theme/icon-registry";
 import type { VanillaViewCtor } from "../../uikit/shared/vanilla-view";
 import type { MessageKey } from "../../../shared/i18n/en";
 
 /** Props passed to secondary view sidebar components. */
 export interface SecondaryViewProps {
-    model: EditorOrHost;
+    model: EditorModel;
     /** The rendered panel's bare panel-id (e.g. "board-secondary:lists"). A component
      *  serving a prefix family (see `registerPrefix`) reads this to know WHICH view it
      *  is; single-id panels can ignore it. */

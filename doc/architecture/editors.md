@@ -18,9 +18,9 @@ modules into page-ready editor models.
 
 ## Editor Catalog
 
-28 editor classes (32 registered editor IDs — `GridEditor` serves three IDs). The `IContentHost?` column indicates whether the editor composes an `IContentHost` (text-bearing) — these can switch between each other on the same page. The `Trait?` column indicates whether the editor exposes `CONTENT_HOST_TRAIT` — these participate in owner-orchestrated switching.
+28 editor classes (32 registered editor IDs — `GridEditor` serves three IDs). The `Text host?` column indicates whether the editor exposes a `TextFileModel` through `contentHost`; these editors can switch between each other on the same page. The `Trait?` column indicates whether the editor exposes `CONTENT_HOST_TRAIT` — these participate in owner-orchestrated switching.
 
-| Editor ID | Class | File types | IContentHost? | Trait? |
+| Editor ID | Class | File types | Text host? | Trait? |
 |-----------|-------|------------|---------------|--------|
 | `monaco` | `MonacoEditor` | `*` (all — the fallback when nothing else claims the file) | ✓ | ✓ |
 | `grid-json` | `GridEditor` | `.json`, `.grid.json` | ✓ | ✓ |
@@ -59,7 +59,7 @@ modules into page-ready editor models.
 
 > **Board TypeScript projects:** A board can register an authorized folder containing `tsconfig.json` through `persephone.registerTypeScriptProject(root)`. The renderer registry records the root and selected project files; loading is lazy until a matching Monaco `.ts`/`.tsx` page opens. Those Monaco models use file URIs, project declarations are added as extra libraries, and watched file changes refresh IntelliSense. The project is released when its last Monaco page closes or the board bridge port is disposed. Diagnostics remain off globally; project pages expose a per-page toggle for syntactic and semantic markers. Compiler options are not applied, so these markers are not a full `tsc` run.
 
-> **Board Info editor:** `BoardInfoEditorModel` (`board-info`) is a single screen serving two modes — **install** (an uninstalled catalog board: a Download → Register two-step with byte progress) and **properties** (an installed board: info, a fetched-on-demand versions list for install/rollback, Uninstall/Unregister, Open board). It is a **host-capable holder**: like `BoardContentEditorModel` it adopts/yields `CONTENT_HOST_TRAIT` without ever rendering the content, so switching `Text ↔ + ↔ content-host board` on a file page transfers the same content host with no reload or data loss (hence the "holder" entry in the table — it exposes the trait but composes no `IContentHost` of its own). It is reached from the `"+"` editor-switch entry (which maps to this editor id, so selection is an ordinary `switchMainEditor`), the board toolbar's **… → Board properties** menu item, the Tools & Editors hub, and the update toast. `openBoardInfo(page, opts)` replaces a page's editor in place; `openBoardInfoPage(opts)` opens a new page. When the outgoing editor is a **simple** board (or a plain `board-view`) it holds no transferable host, so `openBoardInfo` instead captures that editor's `filePath` into the Board Info state; `currentFileName()` prefers it, so the editor-switch still offers the file's real built-in peers plus the board, and **Open board** switches back to the file-viewing board rather than opening a bare one. When an outgoing editor exists without a content host, the transition calls `confirmRelease()` and leaves it installed if release is declined; a host-bearing source transfers without a release prompt because its content remains live. (A content-host source needs none of this — the transferred host already carries the file.) Install trusts nothing — registration is the separate `showTrustBoardDialog` consent step.
+> **Board Info editor:** `BoardInfoEditorModel` (`board-info`) is a single screen serving two modes — **install** (an uninstalled catalog board: a Download -> Register two-step with byte progress) and **properties** (an installed board: info, a fetched-on-demand versions list for install/rollback, Uninstall/Unregister, Open board). It is a **host-capable holder**: like `BoardContentEditorModel` it adopts/yields `CONTENT_HOST_TRAIT` without ever rendering the content, so switching between text, Board Info, and a content-host board transfers the same content host with no reload or data loss. It is reached from the `"+"` editor-switch entry (which maps to this editor id, so selection is an ordinary `switchMainEditor`), the board toolbar's **… -> Board properties** menu item, the Tools & Editors hub, and the update toast. `openBoardInfo(page, opts)` replaces a page's editor in place; `openBoardInfoPage(opts)` opens a new page. When the outgoing editor is a **simple** board (or a plain `board-view`) it holds no transferable host, so `openBoardInfo` instead captures that editor's `filePath` into the Board Info state; `currentFileName()` prefers it, so the editor-switch still offers the file's real built-in peers plus the board, and **Open board** switches back to the file-viewing board rather than opening a bare one. When an outgoing editor exists without a content host, the transition calls `confirmRelease()` and leaves it installed if release is declined; a host-bearing source transfers without a release prompt because its content remains live. (A content-host source needs none of this; the transferred host already carries the file.) Install trusts nothing — registration is the separate `showTrustBoardDialog` consent step.
 
 > **Published Boards catalog:** boards published to the `andriy-viyatyk/persephone-boards` GitHub repo are discoverable and installable in-app. The main-process `published-boards-service.ts` fetches the raw `boards-manifest.json` (24h-gated, cached for offline, `isSafeBoardId`-guarded against traversal ids), the renderer `published-boards.ts` model holds it reactively, and `board-install.ts` / `board-install-registry.ts` / `board-updates.ts` perform the sha256-verified download → extract → registry-record install, in-place folder-swap updates/rollbacks (never destroying a working board), and update detection. The **Tools & Editors hub** (`editors/tools-hub/`, `tools-hub-view`) — a full-page counterpart to the sidebar panel, a singleton page keyed by a fixed `PageModel` id — browses the catalog in its "Search boards" tab. Every install/properties action opens the Board Info editor above; nothing is ever trusted without the user's dialog click.
 >
@@ -192,12 +192,17 @@ model references. This applies to single-editor models and diff original / modif
 ## EditorModel Base Class
 
 ```typescript
-abstract class EditorModel<TState extends IEditorState = IEditorState> {
+abstract class EditorModel<TState extends EditorStateBase = EditorStateBase> {
     readonly id: string;
     readonly editorId: string;          // e.g. "grid-json", "image-view"
     readonly state: TOneState<TState>;
     readonly traits: TraitSet;
     readonly queue: ComponentQueue;
+    readonly contentHost: TextFileModel | null;
+    readonly filePath: string | undefined;
+    readonly sourceLink: StoredLinkData | undefined;
+    readonly language: string | undefined;
+    readonly displayTitle: string;
     page: IPageHost | null;             // back-reference, set via setPage()
 
     // Lifecycle (three-phase)
@@ -215,7 +220,7 @@ abstract class EditorModel<TState extends IEditorState = IEditorState> {
                                         // spawned processes must outlive its iframe)
 
     // Persistence
-    getDescriptor(): HostDescriptor;
+    getRestoreData(): EditorDescriptor;
     confirmRelease(closing?: boolean): Promise<boolean>;
     dispose(): void;
 
@@ -333,7 +338,7 @@ onGetMenuItems(): MenuItem[] {           // EditorModel default
 }
 ```
 
-`PageTabView.handleContextMenu` appends `mainEditorInstance.onGetMenuItems()` after the tab-level items and stamps `startGroup: true` on the first contributed item, so the tab owns the divider between the two tiers.
+`PageTabView.handleContextMenu` appends `mainEditor.onGetMenuItems()` after the tab-level items and stamps `startGroup: true` on the first contributed item, so the tab owns the divider between the two tiers.
 
 The default routes to the content host, which is the extensibility seam:
 
@@ -346,9 +351,9 @@ The menu items themselves live in [`editors/shared/editor-menu-items.ts`](../../
 - `textFileMenuItems(host)` — Save / Save As / Rename / file-path items / encryption group. The single home of the text-file menu; `TextFileModel.onGetMenuItems()` returns it, and `TextFileModel` owns `promptRename()` (the rename dialog).
 - `filePathMenuItems(filePath)` — Show in File Explorer + Copy File Path. Reusable by any editor with an on-disk path (the text host, plus standalone Image / Archive editors). Disabled (not hidden) when the path is absent.
 
-## IContentHost
+## Text content host
 
-`IContentHost` and `IContentHostState` describe the retained content and settings surface implemented by `TextFileModel`. It owns file I/O, encryption and the content pipe, including cache-backed auto-save.
+`TextFileModel` owns retained content and settings, file I/O, encryption and the content pipe, including cache-backed auto-save. `EditorModel.contentHost` exposes it for text-bearing editors.
 
 Text-bearing editors hold a `TextFileModel` through `contentHost`. The trait transfers that same model between editors without re-reading or disposing it.
 
@@ -728,7 +733,7 @@ Every editor follows this pattern:
 
 ## Editor Switching
 
-Text-bearing editors (those with `IContentHost` + `CONTENT_HOST_TRAIT`) support switching views (e.g., JSON text ↔ Grid view):
+Text-bearing editors (those with `contentHost` + `CONTENT_HOST_TRAIT`) support switching views (e.g., JSON text -> Grid view):
 
 ```typescript
 // Get available switch options for current language and optional file path

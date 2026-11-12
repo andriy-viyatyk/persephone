@@ -17,15 +17,9 @@ import { matchesFileMask } from "../../../shared/board/board-masks";
 import type { ILinkData } from "../../../shared/link-data";
 import type { BoardEditorKind } from "../../../shared/board/board-manifest-schema";
 import {
-    attachEditorToPage,
     createEditorFromFile,
     createEditorFromFolder,
 } from "../editor-factory";
-
-function sourceLinkFromEditor(editor: EditorModel): ILinkData | undefined {
-    return (editor.state.get() as { sourceLink?: ILinkData }).sourceLink
-        ?? editor.contentHost?.state.get().sourceLink;
-}
 
 async function boardSwitchSourceLink(
     page: PageModel,
@@ -34,7 +28,7 @@ async function boardSwitchSourceLink(
     filePath: string,
 ): Promise<ILinkData | undefined> {
     const board = customEditorRegistry.findByEditorId(newEditorId);
-    const sourceLink = sourceLinkFromEditor(oldEditor);
+    const sourceLink = oldEditor.sourceLink;
     if (!board || !sourceLink || !["explorer", "link-category", "link-tag"].includes(sourceLink.sourceId ?? "")) {
         return undefined;
     }
@@ -81,25 +75,22 @@ async function rebuildEditorOverFile(
     const built = await guard(`Failed to open ${fpBasename(filePath)}`, () =>
         createEditorFromFile(filePath, undefined, newEditorId));
     if (!built) return;
-    if (
-        built.state.get().type === "textFile"
-        && parseBoardEditorId(newEditorId) === null
-    ) {
-        built.state.update((s) => {
+    if (built.contentHost && parseBoardEditorId(newEditorId) === null) {
+        built.contentHost.state.update((s) => {
             (s as { editor?: string }).editor = newEditorId;
         });
     }
     if (sourceLink) {
-        built.state.update((state) => { state.sourceLink = sourceLink; });
+        (built.contentHost ?? built).state.update((state) => { state.sourceLink = sourceLink; });
     }
-    await page.setMainEditor(attachEditorToPage(built));
+    await page.setMainEditor(built);
 }
 
 export async function switchMainEditor(
     page: PageModel,
     newEditorId: string,
 ): Promise<void> {
-    const oldEditor = page.mainEditorInstance;
+    const oldEditor = page.mainEditor;
     if (!oldEditor) return;
     if (oldEditor.editorId === newEditorId) return;
 
@@ -111,8 +102,7 @@ export async function switchMainEditor(
     //
     //  - the board branch below would dispose-and-rebuild it over the file. `board-info` declares
     //    `hasContentHost`, so the rebuild produces a bare text host and the factory's
-    //    `attachEditorToPage` then
-    //    throws "does not wrap a text host". The toolbar floats that promise, so the "+" click did
+    //    content-host construction then fails. The toolbar floats that promise, so the "+" click did
     //    nothing at all whenever the outgoing editor was a SIMPLE board (a content-host board took
     //    the host-transfer branch and worked, which is why this only showed up with boards like the
     //    PDF viewer).
@@ -205,9 +195,7 @@ export async function switchMainEditor(
                 ? newBoardKind === "content-host"
                 : !!editorRegistry.getById(newEditorId)?.hasContentHost;
 
-        const filePath =
-            oldEditor.contentHost?.filePath
-            ?? oldEditor.filePath;
+        const filePath = oldEditor.filePath;
         const sourceLink = newBoardRoot !== null && filePath
             ? await boardSwitchSourceLink(page, oldEditor, newEditorId, filePath)
             : undefined;
@@ -216,9 +204,7 @@ export async function switchMainEditor(
             // Host-transfer switch — no reload, no confirmRelease (nothing is lost).
             let newEditor: EditorModel;
             if (newBoardRoot !== null) {
-                const filePath =
-                    oldEditor.contentHost?.filePath
-                    ?? oldEditor.filePath;
+                const filePath = oldEditor.filePath;
                 newEditor = (await (await import("../board")).createBoardEditor({
                     kind: "file",
                     boardRoot: newBoardRoot,

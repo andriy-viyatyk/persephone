@@ -236,7 +236,7 @@ Secondary themes:
 - **Priority:** P2
 - **Effort:** S
 - **Where:**
-  - `src/renderer/components/pipe-status/` (6 files, 529 lines). `page-pipe.ts:3-5` imports `editors/base/EditorModel`, `editors/base/TextHostEditorModel` and `editors/text/TextEditorModel`, while `editors/base/EditorStatusBarView.ts:4-5` imports `components/pipe-status`.
+  - `src/renderer/components/pipe-status/` (6 files, 529 lines). `page-pipe.ts:3-5` imports `editors/base/EditorModel`, `editors/base/TextHostEditorModel` and `editors/content-host/TextEditorModel`, while `editors/base/EditorStatusBarView.ts:4-5` imports `components/pipe-status`.
   - Docs that omit `pipe-status`: `doc/standards/uikit-vs-components-split.md:20-28`, `doc/standards/component-guide.md:13`, `src/renderer/components/CLAUDE.md`.
   - `components/icons/language-icon-resolver.ts:64-69` and `icon-elements.ts:2` → `editors/board/*`.
   - `components/tree-provider/{item-crud-actions,os-clipboard,plural-actions,tree-drop-actions}.ts` → `ui/dialogs/dialog-buttons`.

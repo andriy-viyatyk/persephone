@@ -1,8 +1,5 @@
 import type { IContentPipe } from "../../api/types/io.pipe";
 import type { PageModel } from "../../api/pages/PageModel";
-import { EditorModel } from "../../editors/base/EditorModel";
-import { TextHostEditorModel } from "../../editors/base/TextHostEditorModel";
-import { isTextFileModel } from "../../editors/text/TextEditorModel";
 
 /**
  * Follows the pipe that represents a page's content: the text host's pipe for text and
@@ -15,12 +12,8 @@ export function subscribePagePipe(page: PageModel, onPipe: (pipe: IContentPipe |
     const rebind = (): void => {
         releaseOwner?.();
         releaseOwner = undefined;
-        const editor = page.mainEditorInstance;
-        const owner = isTextFileModel(editor)
-            ? editor
-            : editor instanceof TextHostEditorModel && isTextFileModel(editor.contentHost)
-                ? editor.contentHost
-                : editor instanceof EditorModel ? editor : null;
+        const editor = page.mainEditor;
+        const owner = editor?.contentHost ?? editor;
         if (!owner) {
             onPipe(null);
             return;

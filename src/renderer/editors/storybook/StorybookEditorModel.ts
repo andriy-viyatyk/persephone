@@ -14,7 +14,6 @@ export type PreviewBackground = "default" | "light" | "dark";
 
 export interface StorybookEditorState extends EditorStateBase {
     /** State-type discriminator. */
-    type: "storybookPage";
     selectedStoryId: string;
     propValues: Record<string, unknown>;
     previewBackground: PreviewBackground;
@@ -28,7 +27,6 @@ export const getDefaultStorybookEditorState = (): StorybookEditorState => {
         id: STORYBOOK_PAGE_ID,
         title: untranslated("Storybook"),
         modified: false,
-        type: "storybookPage",
         editor: "storybook-view",
         selectedStoryId: first?.id ?? "",
         propValues: first ? buildInitialProps(first) : {},

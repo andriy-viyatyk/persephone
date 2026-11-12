@@ -3,7 +3,7 @@ flowchart LR
 
     REG --> |"Query all editors'<br/>accepts()"| BEST["Best Match<br/><i>highest priority wins</i>"]
 
-    BEST --> |"hasContentHost:<br/>true (text-bearing)"| TB["EditorModel subclass<br/><i>composes TextFileModel</i><br/><i>extracts on switch via trait</i>"]
+    BEST --> |"hasContentHost:<br/>true (text-bearing)"| TB["TextHostEditorModel subclass<br/><i>exposes contentHost</i><br/><i>extracts on switch via trait</i>"]
     BEST --> |"hasContentHost:<br/>false"| NT["EditorModel subclass<br/><i>standalone, no host</i>"]
     BEST --> |"no match<br/>(priority 0)"| MONACO["MonacoEditor<br/><i>default text editor</i>"]
 

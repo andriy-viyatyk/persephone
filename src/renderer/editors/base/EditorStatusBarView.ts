@@ -13,7 +13,7 @@ import { SpacerView } from "../../uikit/Spacer/SpacerView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { EditorModel } from "./EditorModel";
 import { EditorToolbarView } from "./EditorToolbarView";
-import type { TextFileModel } from "../text/TextEditorModel";
+import type { TextFileModel } from "../content-host/TextFileModel";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Divider/Divider.css";
 import "../../uikit/Spacer/Spacer.css";

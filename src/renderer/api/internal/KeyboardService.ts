@@ -149,7 +149,7 @@ export class KeyboardService {
 }
 
 export async function openFocusedGuideOrContents(): Promise<void> {
-    const editorInstance = pages.query.focusedPage?.mainEditorInstance;
+    const editorInstance = pages.query.focusedPage?.mainEditor;
     const editorId = editorInstance?.editorId;
     // A board page (plain `board-view` or a custom-editor `board-editor:<root>`) exposes the board
     // folder it renders; that is what maps onto the board's own guide branch.
@@ -173,7 +173,7 @@ export async function openFocusedGuideOrContents(): Promise<void> {
 
     await pages.standalonePages.show("about-page").then((): undefined => undefined);
     const { AboutEditor } = await import("../../editors/about");
-    const editor = pages.query.activePage?.mainEditorInstance;
+    const editor = pages.query.activePage?.mainEditor;
     if (!(editor instanceof AboutEditor)) {
         throw new Error("About page did not expose an AboutEditor after opening.");
     }

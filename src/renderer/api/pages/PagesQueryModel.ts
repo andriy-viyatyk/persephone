@@ -1,6 +1,6 @@
 import type { PagesModel } from "./PagesModel";
 import type { PageModel } from "./PageModel";
-import type { TextFileModel } from "../../editors/text";
+import type { TextFileModel } from "../../editors/content-host/TextFileModel";
 import { fileIdentity } from "../../core/utils/file-path";
 
 /**
@@ -34,7 +34,7 @@ export class PagesQueryModel {
         if (!filePath) return undefined;
         const identity = fileIdentity(filePath);
         return this.model.state.get().pages.find((p) => {
-            const main = p.mainEditor as { filePath?: string } | null;
+            const main = p.mainEditor;
             if (!main?.filePath) return false;
             const mainIdentity = fileIdentity(main.filePath);
             return mainIdentity === identity;
@@ -111,7 +111,7 @@ export class PagesQueryModel {
      */
     getTextFileHost = (pageId: string): TextFileModel | null => {
         const page = this.findPage(pageId);
-        const main = page?.mainEditorInstance;
+        const main = page?.mainEditor;
         if (!main) return null;
         return main.contentHost;
     };

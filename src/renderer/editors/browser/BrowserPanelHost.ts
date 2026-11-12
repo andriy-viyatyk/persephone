@@ -28,7 +28,7 @@ const defaultPageState: IPageState = {
  * Differences from `PageModel`:
  *  - The sidebar is always mandatory-open (`sidebarMandatory: true`); `open`
  *    never toggles and is never persisted.
- *  - The embedded Link editor IS the host's main content — `mainEditorInstance`
+ *  - The embedded Link editor IS the host's main content — `mainEditor`
  *    returns it, so `linkEditor.isMain === true` (Concern D). The main-editor
  *    SWAP members (`switchMainEditor` / `promoteToMain`) are omitted —
  *    there is no main-editor navigation in the browser.
@@ -90,7 +90,7 @@ export class BrowserPanelHost implements IPageHost {
     }
 
     /** The embedded Link editor is the host's main content ⇒ `isMain === true`. */
-    get mainEditorInstance(): EditorModel | null {
+    get mainEditor(): EditorModel | null {
         return this._editor;
     }
 

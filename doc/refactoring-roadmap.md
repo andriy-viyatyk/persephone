@@ -159,7 +159,7 @@ any process.
 | `api/pages/PageModel.ts` | 1,061 | Tab container, restore state machine, recovery placeholder, board ownership, `any` shims. | CORE-2 |
 | `ipc/main/core-handlers.ts` | 899 | Business logic in the IPC layer (shortcuts, display moves, capability invoke). | BND-8 |
 | `editors/settings/sections/SettingsSections.ts` | 912 | 18 hand-written sections with no field framework. | EDT-1 |
-| `editors/text/TextEditorModel.ts` (`TextFileModel`) | 481 | IO, script panel with a raw Monaco reference, shortcuts, script running, navigation. Sits in a misnamed folder. | EDC-3 |
+| `editors/content-host/TextFileModel.ts` (`TextFileModel`) | 481 | IO, script panel with a raw Monaco reference, shortcuts, script running, navigation. Moved from the misnamed `editors/text/` folder in US-1885. | EDC-3 |
 | `ui/voice-typing/VoiceTypingController.ts` | 615 | IPC, settings, protocol parsing, audio capture, text reconciliation and an auto-stop heuristic. | SHL-2 |
 
 ### 2.4 The documented layer rules are not true

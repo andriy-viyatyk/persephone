@@ -1,7 +1,7 @@
 const fs = require("fs");
 import { debounce } from "../../../shared/utils";
 import { TComponentState } from "../../core/state/state";
-import { TextFileModel, getDefaultTextFileEditorModelState } from "../text/TextEditorModel";
+import { TextFileModel, getDefaultTextFileEditorModelState } from "../content-host/TextFileModel";
 import { LinkEditor, defaultLinkEditorState } from "../link-editor";
 import { LinkItem } from "../link-editor/linkTypes";
 import { BrowserPanelHost } from "./BrowserPanelHost";
@@ -56,7 +56,7 @@ export class BrowserBookmarks {
             if (!ok) return false; // wrong password
         }
 
-        // BR-IMPL2 — construct-then-adoptHost. Mirrors the editor factory's attachEditorToPage
+        // BR-IMPL2 — construct-then-adoptHost. Mirrors the editor factory's synchronous host path
         // pattern from Todo / Rest Client. LinkEditor adopts the
         // already-restored host (no re-read) and parses the initial content
         // inline via loadData.

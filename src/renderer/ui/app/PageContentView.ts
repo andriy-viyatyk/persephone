@@ -1,6 +1,6 @@
 import type { EditorModel } from "../../editors/base/EditorModel";
 import { CompareEditor } from "../../editors/compare/CompareEditor";
-import type { TextFileModel } from "../../editors/text/TextEditorModel";
+import type { TextFileModel } from "../../editors/content-host/TextFileModel";
 import { pages } from "../../api/pages";
 import type { PageModel } from "../../api/pages/PageModel";
 import { SecondaryViewsView } from "../secondary-views/SecondaryViewsView";
@@ -102,7 +102,7 @@ export class PageContentView extends VanillaView<PageContentProps> {
         }
         this.clearCompare();
         this.syncSecondary(page);
-        this.syncContent(page.mainEditorInstance);
+        this.syncContent(page.mainEditor);
     }
 
     private syncSecondary(page: PageModel): void {

@@ -9,7 +9,6 @@ export { SETTINGS_PAGE_ID } from "./settings-page-id";
 
 export interface SettingsEditorState extends EditorStateBase {
     /** State-type discriminator. */
-    type: "settingsPage";
 }
 
 export const getDefaultSettingsEditorState = (): SettingsEditorState => ({
@@ -17,7 +16,6 @@ export const getDefaultSettingsEditorState = (): SettingsEditorState => ({
     // Stored and script-facing title stays English; the tab translates it (ui/tabs/page-title.ts).
     title: englishMessage("settings.pageTitle"),
     modified: false,
-    type: "settingsPage",
     editor: "settings-view",
 });
 

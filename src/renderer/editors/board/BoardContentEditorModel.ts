@@ -4,7 +4,7 @@ import type { EditorDescriptor } from "../../../shared/persistence";
 import { editorRegistry } from "../base/editorRegistry";
 import { fpBasename } from "../../core/utils/file-path";
 import { ui } from "../../api/ui";
-import { TextFileModel, newTextFileModel } from "../text/TextEditorModel";
+import { TextFileModel, newTextFileModel } from "../content-host/TextFileModel";
 import { BoardEditorModel, type BoardEditorState } from "./BoardEditorModel";
 import { boardEditorId } from "../../api/boards/custom-editor-registry";
 import { errMessage } from "../../../shared/utils";
@@ -17,7 +17,7 @@ interface BoardContentListener {
 
 /**
  * Content-host board. A board that edits a file through Persephone's content host Ã¢â‚¬â€
- * the same `TextFileModel` (`IContentHost`) that backs Monaco / Grid. Persephone owns
+ * the same `TextFileModel` that backs Monaco / Grid. Persephone owns
  * the pipe, encoding, encryption, auto-save cache, and dirty state; the board works with
  * the content over the `persephone.host.*` bridge.
  */

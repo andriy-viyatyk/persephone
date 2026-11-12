@@ -9,14 +9,14 @@ import type {
 import type {
     TextFileEditorModelState,
     TextFileModel,
-} from "../text/TextEditorModel";
+} from "../content-host/TextFileModel";
 import {
     MonacoEditorHostView,
     type MonacoEditorHostProps,
 } from "../shared/MonacoEditorHostView";
 import { api } from "../../../ipc/renderer/api";
 import { isFocusInSidebar } from "../../core/utils/focus-utils";
-import { convertHtmlToMarkdown, readClipboardHtml } from "../text/paste-rich-text";
+import { convertHtmlToMarkdown, readClipboardHtml } from "./paste-rich-text";
 import { bindProjectPage, projectModelUri, type ProjectPageBinding } from "../shared/monaco-project-intellisense";
 import { attachDiagnostics } from "../shared/monaco-project-diagnostics";
 import { createPanelElement } from "../../uikit/Panel/panel-style";

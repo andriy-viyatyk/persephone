@@ -119,7 +119,7 @@ export async function createBoardEditor(
         const { BoardContentEditorModel } = await import("./BoardContentEditorModel");
         const contentModel = new BoardContentEditorModel(new TComponentState(getDefaultBoardEditorState()));
         if (spec.host === "new") {
-            const { newTextFileModel } = await import("../text");
+            const { newTextFileModel } = await import("../content-host/TextFileModel");
             contentModel.adoptHost(newTextFileModel(spec.filePath));
         }
         model = contentModel;

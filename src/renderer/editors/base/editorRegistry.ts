@@ -1,6 +1,6 @@
 import type { EditorModel } from "./EditorModel";
 import type { EditorDescriptor } from "../../../shared/persistence";
-import type { TextFileModel } from "../text/TextEditorModel";
+import type { TextFileModel } from "../content-host/TextFileModel";
 import type { VanillaViewCtor } from "../../uikit/shared/vanilla-view";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
 import type { ContentRepresentation } from "../../api/types/capabilities";
@@ -77,7 +77,7 @@ export interface EditorDefinition {
      *  their format by marker. Built from `match` via `makeAccepts`. */
     accepts(input: AcceptanceInput): number;
 
-    /** Whether this editor wraps an `IContentHost`. Drives the open-file
+    /** Whether this editor wraps a text content host. Drives the open-file
      *  flow: if true, the caller creates a host first and inherits it into
      *  the new editor via `switchFrom` / `applyRestoreData`.
      *
@@ -333,7 +333,7 @@ class EditorRegistry {
     }
 
     /** Synchronous `createEditor` against the module cache. Exists for the
-     *  construction paths that cannot await — the editor factory's `attachEditorToPage` sits under
+     *  construction paths that cannot await — the editor factory's synchronous host path sits under
      *  sync public APIs (`addEditorPage`, `openLinks`, `page.grouped`).
      *  Content-host modules are preloaded at startup
      *  (`preloadContentHostModules`), so a miss only happens in the first
@@ -359,7 +359,7 @@ class EditorRegistry {
     }
 
     /** Warm the module cache for every content-host editor so the synchronous
-     *  construction path (the editor factory's `attachEditorToPage`) can build any text-host editor
+     *  construction path (the editor factory's synchronous host path) can build any text-host editor
      *  without awaiting. Fire-and-forget per module; a load failure is logged
      *  here and surfaces to the user on first real use. */
     preloadContentHostModules(): void {

@@ -1,5 +1,3 @@
-export type EditorType = "textFile" | "imageFile" | "aboutPage" | "settingsPage" | "browserPage" | "mcpInspectorPage" | "mnemeConfigPage" | "categoryPage" | "archiveFile" | "fileExplorer" | "videoPage" | "storybookPage" | "gitTreePage" | "mnemeRootPage" | "boardPage" | "toolsetPage" | "boardInfoPage" | "toolsHubPage";
-
 // `EditorView` lives in the public script-API types because that file is the
 // one copied verbatim into `assets/editor-types/` for Monaco IntelliSense in
 // user scripts — it must stay self-contained. Re-export here so main + renderer
@@ -11,7 +9,6 @@ import type { StoredLinkData } from "../renderer/api/types/io.link-data";
 
 export interface IEditorState {
     id: string,
-    type: EditorType,
     title: string,
     modified: boolean,
     language?: string,

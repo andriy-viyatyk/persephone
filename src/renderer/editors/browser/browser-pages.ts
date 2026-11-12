@@ -132,7 +132,7 @@ export async function openUrlInBrowserTab(
     const activeIndex = activePage ? pages.indexOf(activePage) : -1;
 
     const matchesBrowser = (page: PageModel) => {
-        const editor = page.mainEditorInstance;
+        const editor = page.mainEditor;
         if (!(editor instanceof BrowserEditor)) return false;
         // A board's Run page shows that board's built app; other links never land in it.
         if (model.boardPageRouter.getRunPageOwner(page)) return false;
@@ -159,7 +159,7 @@ export async function openUrlInBrowserTab(
 
     const addTabToPage = (index: number): string | undefined => {
         const page = pages[index];
-        const editor = page.mainEditorInstance;
+        const editor = page.mainEditor;
         if (!(editor instanceof BrowserEditor)) return undefined;
         const tabs = editor.state.get().tabs;
         if (tabs?.length === 1 && tabs[0].url === "about:blank") {

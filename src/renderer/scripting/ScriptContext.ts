@@ -1,5 +1,5 @@
 import type { IAiCallContext } from "./ai-vision/root";
-import { EditorOrHost } from "../editors/base";
+import type { EditorModel } from "../editors/base";
 import { pages } from "../api/pages";
 import { AppWrapper } from "./api-wrapper/AppWrapper";
 import { PageWrapper } from "./api-wrapper/PageWrapper";
@@ -67,7 +67,7 @@ export class ScriptContext {
     // Stack-based ui getter
     private previousUiDescriptor: PropertyDescriptor | undefined;
 
-    constructor(page?: EditorOrHost, consoleLogs?: ConsoleLogEntry[], libraryPath?: string, callContext?: IAiCallContext) {
+    constructor(page?: EditorModel, consoleLogs?: ConsoleLogEntry[], libraryPath?: string, callContext?: IAiCallContext) {
         // consoleLogs is only passed for MCP-originated runs (script.execute, `call`) — that is the
         // provenance signal: browser pages such a run opens are "opened by agent".
         const isMcp = !!consoleLogs;
@@ -192,7 +192,7 @@ export class ScriptContext {
 // =============================================================================
 
 function initializeUiFacade(
-    page: EditorOrHost | undefined,
+    page: EditorModel | undefined,
     _releaseList: Array<() => void>,
     outputFlags: ScriptOutputFlags,
     isMcp = false,

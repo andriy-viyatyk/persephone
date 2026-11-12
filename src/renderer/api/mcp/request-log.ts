@@ -33,7 +33,7 @@ export function logIncomingRequest(
     }
 
     const logPage = pages.query.findPage("mcp-server-log");
-    const logEditor = logPage?.mainEditorInstance;
+    const logEditor = logPage?.mainEditor;
     if (logEditor instanceof LogViewEditor) {
         logEditor.addEntry("output.mcp-request", requestHistory[requestHistory.length - 1]);
     }
@@ -42,7 +42,7 @@ export function logIncomingRequest(
 /** Show the MCP server request log page (creates if needed, backfills history). */
 export async function showMcpRequestLog(): Promise<void> {
     const page = await pages.standalonePages.requireTextPage("mcp-server-log");
-    const editor = page.mainEditorInstance;
+    const editor = page.mainEditor;
     if (!(editor instanceof LogViewEditor)) return;
 
     if (editor.entryCount === 0 && requestHistory.length > 0) {

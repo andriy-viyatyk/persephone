@@ -4,7 +4,7 @@ import { EditorModel, type EditorStateBase, type RestoreData } from "../base/Edi
 import { CONTENT_HOST_TRAIT } from "../base/editor-traits";
 import { editorRegistry } from "../base/editorRegistry";
 import type { EditorDescriptor } from "../../../shared/persistence";
-import { TextFileModel } from "../text/TextEditorModel";
+import { TextFileModel } from "../content-host/TextFileModel";
 import { ContentHostSlot } from "../base/content-host-slot";
 import {
     boardEditorId,
@@ -121,7 +121,6 @@ export interface BoardPropsInfo {
 }
 
 export interface BoardInfoEditorState extends EditorStateBase {
-    type: "boardInfoPage";
     editor: "board-info";
     title: string;
     /** Explicit openers: hub, update toast, or Properties action. Absent for a plus-button
@@ -151,7 +150,6 @@ export const getDefaultBoardInfoEditorState = (): BoardInfoEditorState => ({
     id: crypto.randomUUID(),
     title: englishMessage("board.infoInstallTitle"),
     modified: false,
-    type: "boardInfoPage",
     editor: "board-info",
     matches: [],
     installUi: {},
@@ -253,6 +251,11 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         return this.contentHostSlot.host;
     }
 
+    override get displayTitle(): string {
+        const host = this.contentHostSlot.host?.state.get();
+        return host?.title || (host?.filePath ? fpBasename(host.filePath) : undefined) || this.title;
+    }
+
     /** Public slot-owner entry point used during transfer and restore. */
     adoptHost(host: TextFileModel): void {
         this.contentHostSlot.adopt(host);
@@ -303,12 +306,12 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     /** Resolve Board Info's identity once: held host file, persisted folder, persisted file,
      *  then the existing file-shaped title fallback. */
     private currentSource(): BoardInfoSource {
-        const hostState = this.contentHostSlot.host?.state.get();
-        if (hostState?.filePath) return { path: hostState.filePath, kind: "file" };
+        const hostFilePath = this.contentHost?.filePath;
+        if (hostFilePath) return { path: hostFilePath, kind: "file" };
         const state = this.state.get();
         if (state.folderPath) return { path: state.folderPath, kind: "folder" };
         if (state.filePath) return { path: state.filePath, kind: "file" };
-        return { path: hostState?.title ?? this.title, kind: "file" };
+        return { path: this.displayTitle, kind: "file" };
     }
 
     private currentFileName(): string {
@@ -539,7 +542,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         const root = this.state.get().props?.root ?? this.state.get().boardRoot;
         if (!root) return;
         const source = this.currentSource();
-        if (source.kind === "folder" || this.contentHostSlot.host || source.path !== this.title) {
+        if (source.kind === "folder" || this.contentHostSlot.host || source.path !== this.displayTitle) {
             // Content-host: lossless host transfer. Host-less simple board: the
             // captured `filePath` (this editor's `filePath`) lets `switchMainEditor` rebuild the
             // board over the file, returning to the file-viewing board rather than a plain board.
@@ -695,7 +698,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         this.installed.send(root); // resolves app.boards.installPublished's interactive flow
         if (source.kind === "folder") {
             await this.page?.switchMainEditor(boardEditorId(root));
-        } else if (this.contentHostSlot.host || source.path !== this.title) {
+        } else if (this.contentHostSlot.host || source.path !== this.displayTitle) {
             // File page ("+"): lossless host transfer into the board editor.
             await this.page?.switchMainEditor(boardEditorId(root));
         } else {
@@ -735,7 +738,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
      *  Triggered from the view (safe — the editor is mounted + attached by then). */
     shouldAutoSwitch(): boolean {
         const source = this.currentSource();
-        const hasFileSource = this.contentHostSlot.host !== null && source.path !== this.title;
+        const hasFileSource = this.contentHostSlot.host !== null && source.path !== this.displayTitle;
         return this.state.get().matches.length === 0
             && (source.kind === "folder" || hasFileSource);
     }
@@ -747,7 +750,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             if (id) await this.page?.switchMainEditor(id);
             return;
         }
-        if (this.contentHostSlot.host === null || source.path === this.title) return;
+        if (this.contentHostSlot.host === null || source.path === this.displayTitle) return;
         const id = editorRegistry.resolveId(source.path) ?? "monaco";
         await this.page?.switchMainEditor(id);
     }

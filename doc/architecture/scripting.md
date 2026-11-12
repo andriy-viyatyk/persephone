@@ -607,7 +607,7 @@ The script panel toolbar includes a **script selector dropdown** (Select) and a 
 
 **State:** `ScriptPanelState` includes `selectedScript: string | null` (file path) and `dirty: boolean` (modification indicator). Both are persisted to cache and restored on app restart.
 
-- Implementation: `/src/renderer/editors/text/ScriptPanel.ts` (ScriptPanelModel) and `ScriptPanelView.ts` (native view)
+- Implementation: `/src/renderer/editors/base/script-panel/ScriptPanel.ts` (ScriptPanelModel) and `ScriptPanelView.ts` (native view); library selection and save actions live in `/src/renderer/scripting/script-library-actions.ts`
 
 ### Library Setup Wizard
 
@@ -829,8 +829,8 @@ class PageWrapper {
 
     // Page identity remains available even when model is null
     get id(): string { return page?.id ?? model?.id ?? ""; }
-    get content(): string { return model && isTextFileModel(model) ? model.state.get().content : ""; }
-    set content(v: string) { if (model && isTextFileModel(model)) model.changeContent(v); }
+    get content(): string { return model?.contentHost?.state.get().content ?? ""; }
+    set content(v: string) { model?.contentHost?.changeContent(v); }
 
     // Grouped page auto-creation (returns GroupedPageWrapper)
     get grouped(): PageWrapper {
@@ -1247,8 +1247,8 @@ When output is suppressed and the script throws an error, the error is displayed
 
 | Trigger | Location | Language | What Runs |
 |---------|----------|----------|-----------|
-| F5 (script panel open) | `TextFileActionsModel` | Always `"typescript"` | Script panel content |
-| F5 (script panel closed, JS/TS file) | `TextFileActionsModel` | From page state | Page content (or selection) |
+| F5 (script panel open) | `TextPageKeymap` -> `run-page-script.ts` | Always `"typescript"` | Script panel content |
+| F5 (script panel closed, JS/TS file) | `TextPageKeymap` -> `run-page-script.ts` | From editor language | Page content (or selection) |
 | Run button (script panel) | `ScriptPanelView.ts` | Always `"typescript"` | Script panel content |
 | MCP `script.execute` | `mcp-call-rpc.ts` | Caller-specified (optional) | Script from an MCP call path |
 | Autoload (window open) | `AutoloadRunner.ts` | Determined by file extension | Registration scripts from `library/autoload/` |

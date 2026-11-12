@@ -15,7 +15,6 @@ import { ui } from "../../api/ui";
 import { englishMessage, t } from "../../../shared/i18n/t";
 
 export interface ToolsetEditorState extends EditorStateBase {
-    type: "toolsetPage";
     editor: "toolset-view";
     /** The toolset's OWN absolute root path — the folder that contains `tools-manifest.json`.
      *  Always set for a live toolset; absent only in legacy/broken persisted state, which
@@ -35,7 +34,6 @@ export const getDefaultToolsetEditorState = (): ToolsetEditorState => ({
     id: crypto.randomUUID(),
     title: englishMessage("board.agentTool"),
     modified: false,
-    type: "toolsetPage",
     editor: "toolset-view",
     manifest: null,
 });

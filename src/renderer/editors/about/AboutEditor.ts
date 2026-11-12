@@ -9,14 +9,12 @@ export { ABOUT_PAGE_ID } from "./about-page-id";
 
 export interface AboutEditorState extends EditorStateBase {
     /** State-type discriminator. */
-    type: "aboutPage";
 }
 
 export const getDefaultAboutEditorState = (): AboutEditorState => ({
     id: ABOUT_PAGE_ID,
     title: englishMessage("editors.about"),
     modified: false,
-    type: "aboutPage",
     editor: "about-view",
 });
 

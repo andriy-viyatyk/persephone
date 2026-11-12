@@ -1,12 +1,9 @@
-import type { EditorModel, EditorOrHost } from "../../editors/base";
-import { editorRegistry, isExplicitHostTarget } from "../../editors/base/editorRegistry";
-import type { EditorView } from "../../../shared/types";
+import type { EditorModel } from "../../editors/base";
 import { cleanForStorage } from "../../../shared/link-data";
 import type { ILinkData, StoredLinkData } from "../../../shared/link-data";
 import type { ILinkDiffRevision } from "../types/io.link-data";
 import type { PageModel } from "./PageModel";
-import { fpExtname } from "../../core/utils/file-path";
-import { getLanguageByExtension } from "../../core/utils/language-mapping";
+import { TEXT_NAVIGATION_TRAIT } from "../../editors/base/editor-traits";
 
 export interface PageOpenRequest {
     filePath?: string;
@@ -53,33 +50,22 @@ export function createPageOpenRequest(data: ILinkData, logicalPath: string): Pag
 }
 
 export function prepareOpenedEditor(
-    editorOrHost: EditorOrHost,
+    editor: EditorModel,
     request: PageOpenRequest,
-    options: { selectPreview: boolean },
 ): void {
     if (request.sourceLink || request.title) {
-        editorOrHost.state.update((state) => {
+        const stateOwner = editor.contentHost ?? editor;
+        stateOwner.state.update((state) => {
             if (request.sourceLink) state.sourceLink = request.sourceLink;
             if (request.title) state.title = request.title;
         });
     }
-    const forceText = request.forceTextEditor || !!request.revealLine || !!request.highlightText;
-    if (editorOrHost.state.get().type === "textFile" && request.filePath) {
-        const target = forceText ? "monaco" : request.target;
-        if (target && isExplicitHostTarget(target, request.filePath)) {
-            editorOrHost.state.update((state) => { state.editor = target as EditorView; });
-        } else if (options.selectPreview && !forceText) {
-            const languageId = getLanguageByExtension(fpExtname(request.filePath).toLowerCase())?.id ?? "plaintext";
-            const preview = editorRegistry.getPreviewEditor(languageId, request.filePath);
-            if (preview) editorOrHost.state.update((state) => { state.editor = preview as EditorView; });
-        }
-    }
 }
 
-export function registerOpenSession(adapter: EditorModel, request: PageOpenRequest): void {
+export function registerOpenSession(editor: EditorModel, request: PageOpenRequest): void {
     const sourceUrl = request.sourceUrl ?? request.sourceLink?.url ?? request.filePath;
     if (!request.sessionHandle || !sourceUrl) return;
-    adapter.acceptOpenContext?.({
+    editor.acceptOpenContext?.({
         mode: "register-session",
         sourceUrl,
         sessionHandle: request.sessionHandle,
@@ -97,9 +83,9 @@ export function applyOpenHints(
     }
     if (request.fragment) editor.revealFragment?.(request.fragment);
     if (context.exit === "fresh" || context.exit === "reveal") {
-        const host = editor.contentHost;
-        if (request.revealLine) host?.revealLine(request.revealLine);
-        if (request.highlightText) host?.setHighlightText(request.highlightText);
+        const navigation = editor.traits.get(TEXT_NAVIGATION_TRAIT);
+        if (request.revealLine) navigation?.revealLine(request.revealLine);
+        if (request.highlightText) navigation?.setHighlightText(request.highlightText);
     }
     if (context.exit === "fresh" && context.newPage && (request.diffFrom || request.diffTo)) {
         const panelId = editor.secondaryView?.[0];

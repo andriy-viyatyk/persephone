@@ -2,7 +2,7 @@ import { TComponentState } from "../../core/state/state";
 import type { EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
 import { ComponentQueue } from "../../core/state/ComponentQueue";
-import { TextFileModel } from "../text/TextEditorModel";
+import { TextFileModel } from "../content-host/TextFileModel";
 import { themeState } from "../../theme/theme-state";
 import { renderMermaid } from "./render-mermaid";
 import type { IImageExport } from "../base/IImageExport";
@@ -202,7 +202,7 @@ export class MermaidEditor
         try {
             const svgText = decodeURIComponent(svgUrl.replace("data:image/svg+xml,", ""));
             const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svgText, "utf-8").toString("base64")}`;
-            const title = (this.host?.state.get().title || "Mermaid").replace(/\.\w+$/, "");
+            const title = (this.displayTitle || "Mermaid").replace(/\.\w+$/, "");
             await openImageForEdit({
                 dataUrl,
                 mimeType: "image/svg+xml",
@@ -219,7 +219,7 @@ export class MermaidEditor
         if (!source) {
             throw new Error("Mermaid preview cannot convert to Excalidraw because the source is empty or unavailable.");
         }
-        const title = (this.host?.state.get().title || "Mermaid").replace(/\.\w+$/, "") + ".excalidraw";
+        const title = (this.displayTitle || "Mermaid").replace(/\.\w+$/, "") + ".excalidraw";
         let result: DiagramEditResult;
         try {
             result = await app.capabilities.invoke("diagram.edit", { source, title });

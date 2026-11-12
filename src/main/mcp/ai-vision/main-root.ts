@@ -35,7 +35,7 @@ const WINDOW_MEMBERS: readonly IAiMember[] = [
     { name: "status", kind: "property", summary: "\"open\" or \"closed\" (a closed window keeps its pages and can be reopened)." },
     { name: "pageCount", kind: "property", summary: "Number of pages the window holds (persisted state)." },
     { name: "activePageId", kind: "property", summary: "Id of the window's active page." },
-    { name: "pages", kind: "property", summary: "The window's pages. Open window: the live Pages collection (windows[i].pages[0].content works). Closed window: summaries from persisted state (id, title, type, editor, filePath) — open() it to get the live collection. `type` appears only here: a persisted page may have no `editor` recorded, so `type` is the fallback classifier. On an open window use `editor`, which is the actionable one." },
+    { name: "pages", kind: "property", summary: "The window's pages. Open window: the live Pages collection (windows[i].pages[0].content works). Closed window: summaries from persisted state (id, title, type, editor, filePath) — open() it to get the live collection. `type` contains the editor registry ID (`editorId`); on an open window use `editor`, which is the actionable one." },
     { name: "open", kind: "method", signature: "open()", summary: "Open (or reopen) this window with its persisted pages, and focus it." },
     { name: "focus", kind: "method", signature: "focus()", summary: "Bring an open window to the front." },
     { name: "nativeDialog", kind: "property", node: true, summary: "Open native dialog state; dismiss cancels it." },
@@ -55,7 +55,6 @@ windows[1].helpSearch(...). A path without the prefix targets the main (first op
 
 interface IPersistedPageState {
     title?: string;
-    type?: string;
     editor?: string;
     language?: string;
     filePath?: string;
@@ -97,7 +96,7 @@ export class WindowNode implements IAiVisible {
             return {
                 id: p.id,
                 title: state.title ?? "Empty",
-                type: state.type,
+                type: main?.editorId,
                 editor: state.editor,
                 language: state.language,
                 filePath: state.filePath,

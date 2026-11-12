@@ -6,7 +6,7 @@ import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import type { ButtonProps } from "../../uikit/Button/ButtonView";
-import type { TextFileEditorModelState } from "../text/TextEditorModel";
+import type { TextFileEditorModelState } from "../content-host/TextFileModel";
 import { MonacoDiffEditorHostView } from "../shared/MonacoDiffEditorHostView";
 import { t } from "../../../shared/i18n/t";
 import {

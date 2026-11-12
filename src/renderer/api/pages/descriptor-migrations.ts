@@ -61,17 +61,26 @@ export function normalizePinSide(desc: Pick<PageDescriptor, "pinSide" | "pinned"
     return desc.pinned ? "left" : undefined;
 }
 
-/** Added 2026-04-03: a host-less descriptor marked `type: "fileExplorer"` is the Explorer editor. */
-export function migrateLegacyExplorerId(descriptor: EditorDescriptor): EditorDescriptor {
-    if (descriptor.host || descriptor.editorId === "explorer" || descriptor.state.type !== "fileExplorer") {
-        return descriptor;
-    }
-    return { ...descriptor, editorId: "explorer" };
+/** Added 2026-11-12: move legacy editor/host state types to descriptor identity, then discard them. */
+export function migrateLegacyEditorStateType(descriptor: EditorDescriptor): EditorDescriptor {
+    const state = { ...descriptor.state };
+    const legacyType = state.type;
+    delete state.type;
+
+    const host = descriptor.host
+        ? { ...descriptor.host, state: { ...descriptor.host.state } }
+        : undefined;
+    if (host) delete host.state.type;
+
+    const editorId = !descriptor.host && descriptor.editorId !== "explorer" && legacyType === "fileExplorer"
+        ? "explorer"
+        : descriptor.editorId;
+    return { ...descriptor, editorId, state, ...(host ? { host } : {}) };
 }
 
 export async function normalizePageDescriptor(desc: PageDescriptor): Promise<PageDescriptor> {
     const withBoardIds = (await Promise.all(desc.editors.map(migratePersistedBoardRootsAndIds)))
-        .map(migrateLegacyExplorerId);
+        .map(migrateLegacyEditorStateType);
     const withEditorMigrations = { ...desc, editors: withBoardIds };
     return migratePersistedBoardLinks(withEditorMigrations);
 }

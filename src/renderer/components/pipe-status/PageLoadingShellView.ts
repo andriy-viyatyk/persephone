@@ -78,7 +78,7 @@ export class PageLoadingShellView extends VanillaView<PageLoadingShellViewProps>
 
     private refresh(): void {
         const state = this.props.page.restore.state.get();
-        const editor = this.props.page.mainEditorInstance;
+        const editor = this.props.page.mainEditor;
         const host = editor?.contentHost as unknown as { pipe?: IContentPipe } | null | undefined;
         const pipe = host?.pipe ?? editor?.pipe ?? null;
         if (pipe !== this.boundPipe) {

@@ -1,7 +1,7 @@
 import { t } from "../../../shared/i18n/t";
 import { pages } from "../../api/pages";
 import { ui } from "../../api/ui";
-import type { EditorModel, EditorStateBase } from "./EditorModel";
+import type { EditorModel } from "./EditorModel";
 import { EditorStatusBarView } from "./EditorStatusBarView";
 import { PageToolbarView } from "./PageToolbarView";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
@@ -11,9 +11,12 @@ import { fillSlot, type SlotContent } from "../../uikit/shared/fill-slot";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { isScriptLanguage } from "../../scripting/transpile";
 import type { PageModel } from "../../api/pages/PageModel";
-import type { TextFileModel } from "../text/TextEditorModel";
-import { ScriptPanelView } from "../text/ScriptPanelView";
+import type { TextFileModel } from "../content-host/TextFileModel";
+import { ScriptPanelView } from "./script-panel/ScriptPanelView";
 import "../../uikit/Panel/Panel.css";
+import { TEXT_SELECTION_TRAIT } from "./editor-traits";
+import { TextPageKeymap } from "./TextPageKeymap";
+import { runPageScript } from "../../scripting/run-page-script";
 
 export interface TextChromeViewProps {
     model: EditorModel;
@@ -23,16 +26,8 @@ export interface TextChromeViewProps {
     footerContributions?: SlotContent;
 }
 
-interface ScriptRunner {
-    runScript(all?: boolean): Promise<void>;
-}
-
-function hasScriptRunner(model: EditorModel): model is EditorModel & ScriptRunner {
-    return "runScript" in model && typeof model.runScript === "function";
-}
-
-function selectHasSelection(state: EditorStateBase): boolean {
-    return "hasSelection" in state && state.hasSelection === true;
+function selectHasSelection(model: EditorModel): boolean {
+    return model.traits.get(TEXT_SELECTION_TRAIT)?.hasSelection() ?? false;
 }
 
 function createContentsPart(part: string): HTMLSpanElement {
@@ -127,7 +122,7 @@ class RunButtonsView extends VanillaView<{ model: EditorModel; host: TextFileMod
         this.root.dataset.part = "text-run-buttons";
         this.root.style.display = "contents";
         this.bind(this.host.state, (state) => state.language, () => this.sync());
-        this.bind(this.model.state, selectHasSelection, () => this.sync());
+        this.bind(this.model.state, () => selectHasSelection(this.model), () => this.sync());
     }
 
     protected onUpdate(props: { model: EditorModel; host: TextFileModel }): void {
@@ -143,13 +138,13 @@ class RunButtonsView extends VanillaView<{ model: EditorModel; host: TextFileMod
 
     private sync(): void {
         const visible = isScriptLanguage(this.host.state.get().language)
-            && hasScriptRunner(this.model);
+            && this.model.traits.get(TEXT_SELECTION_TRAIT) !== undefined;
         if (!visible) {
             this.removeRunButtons();
             return;
         }
 
-        const hasSelection = selectHasSelection(this.model.state.get());
+        const hasSelection = selectHasSelection(this.model);
         const runButtonProps: IconButtonProps = {
             name: "text-run-script",
             size: "sm",
@@ -195,7 +190,7 @@ class RunButtonsView extends VanillaView<{ model: EditorModel; host: TextFileMod
     }
 
     private runScript(all?: boolean): void {
-        if (hasScriptRunner(this.model)) void this.model.runScript(all);
+        void runPageScript(this.model, { all, source: "page" });
     }
 }
 
@@ -253,6 +248,7 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
     private model: EditorModel;
     private host: TextFileModel | null = null;
     private branchActive = false;
+    private keymap: TextPageKeymap | undefined;
     private focusTimer: ReturnType<typeof setTimeout> | undefined;
 
     private pageToolbar: PageToolbarView | undefined;
@@ -325,6 +321,7 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
         this.runButtons = undefined;
         this.showResourcesButton = undefined;
         this.scriptPanel = undefined;
+        this.keymap = undefined;
         this.footer = undefined;
         this.childrenHost = undefined;
         this.toolbarContent = undefined;
@@ -339,6 +336,7 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
 
         this.host = host;
         this.branchActive = true;
+        this.keymap = new TextPageKeymap(this.model);
 
         const toolbarContent = createContentsPart("text-toolbar-content");
         const rightContent = createContentsPart("text-toolbar-right");
@@ -427,6 +425,7 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
 
     private releaseBranch(): void {
         this.branchActive = false;
+        this.keymap = undefined;
         this.clearFocusTimer();
         this.releaseSlotResources();
 
@@ -484,14 +483,7 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
     };
 
     private readonly handleRootKeyDown = (event: KeyboardEvent): void => {
-        if (event.code === "F5" && !this.host?.script.state.get().open) {
-            if (hasScriptRunner(this.model)) {
-                event.preventDefault();
-                void this.model.runScript();
-                return;
-            }
-        }
-        this.host?.handleKeyDown(event);
+        this.keymap?.handleKeyDown(event);
     };
 }
 

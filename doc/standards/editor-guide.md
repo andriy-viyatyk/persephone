@@ -14,7 +14,7 @@ Three questions decide the shape of your editor:
 
 1. **Does it work on editable text content?** (e.g. JSON, CSV, Markdown — yes; PDF, Image, Browser — no)
    - **Yes** → extend `TextHostEditorModel` (`editors/base/TextHostEditorModel.ts`). It composes
-     the `TextFileModel` host (the sole `IContentHost` implementation), registers `CONTENT_HOST_TRAIT` (so the editor participates in
+     the `TextFileModel` content host, registers `CONTENT_HOST_TRAIT` (so the editor participates in
      switching automatically), and owns the whole host lifecycle. Skip to step 2.
    - **No** → extend `EditorModel` directly; your editor stores its own state. Skip to "Step 1:
      Folder structure" below.
@@ -45,7 +45,7 @@ Three questions decide the shape of your editor:
 
 ## Step 2: Implement the EditorModel Subclass
 
-### Non-text editor (no `IContentHost`)
+### Non-text editor (no content host)
 
 ```typescript
 // MyEditor.ts
@@ -116,7 +116,7 @@ only its domain:
 ```typescript
 // MyEditor.ts
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
-import { TextFileModel } from "../text/TextEditorModel";
+import { TextFileModel } from "../content-host/TextFileModel";
 
 export class MyEditor extends TextHostEditorModel<MyEditorState> {
     readonly editorId = "my-view";
@@ -373,7 +373,7 @@ Two unions live in the shared/public type surface; update both as applicable whe
 
 - **`EditorView`** (the editor ID union — required for any new editor with a new ID). Canonical site: `/src/renderer/api/types/common.d.ts`. Add the new ID to the union there. `/src/shared/types.ts` re-exports `EditorView` from this file, so internal code keeps working transparently. The Vite `editorTypesPlugin` (configured in `/vite.renderer.config.ts`) auto-copies `.d.ts` files from `src/renderer/api/types/` to `assets/editor-types/` on `npm start` / `npm run dist` — never hand-edit `assets/editor-types/`. Adding the ID gives TypeScript-typed scripts autocomplete + typo detection for the new editor on `page.editor.id`, `app.editors.getById()`, `app.pages.addEditorPage()`, and `ISwitchOptions.options`.
 
-- **`EditorType`** (the page-kind union — rare; only when a brand-new page type is added, e.g. a "Settings" page). Defined in `/src/shared/types.ts`.
+- Page descriptors identify the registered editor through `editorId`; session compatibility for old `type` values is handled by the dated descriptor migration in `api/pages/descriptor-migrations.ts`.
 
 ## Step 7: Optional — Add a Scripting Facade
 

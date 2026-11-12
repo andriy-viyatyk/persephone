@@ -10,8 +10,7 @@ import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache"
 import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
 import { readBoardManifest } from "../../api/boards/board-manifest-io";
 import { type NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
-import { isTextFileModel } from "../../editors/text";
-import type { EditorOrHost } from "../../editors/base";
+import type { EditorModel } from "../../editors/base";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { SplitButtonView } from "../../uikit/SplitButton/SplitButtonView";
 import { PopoverView } from "../../uikit/Popover/PopoverView";
@@ -37,7 +36,7 @@ interface TabProjection {
 
 interface PageLayoutSubscription {
     page: PageModel;
-    editor: EditorOrHost | null;
+    editor: EditorModel | null;
     release: () => void;
 }
 
@@ -206,9 +205,18 @@ export class PageTabsView extends VanillaView<object> {
                 () => this.refreshTabLayout(),
                 (state) => ({ pinSide: state.pinSide, mainEditorId: state.mainEditorId, version: state.version }),
             );
+            const updateLayout = (): void => this.refreshTabLayout();
             const editorState = editor?.state as unknown as IState<{ encrypted?: boolean; password?: unknown }> | undefined;
             const editorUnsubscribe = editorState?.subscribe(
-                () => this.refreshTabLayout(),
+                updateLayout,
+                (state) => ({
+                    encrypted: state.encrypted === true,
+                    decrypted: state.password !== undefined,
+                }),
+            );
+            const hostState = editor?.contentHost?.state as unknown as IState<{ encrypted?: boolean; password?: unknown }> | undefined;
+            const hostUnsubscribe = hostState?.subscribe(
+                updateLayout,
                 (state) => ({
                     encrypted: state.encrypted === true,
                     decrypted: state.password !== undefined,
@@ -220,6 +228,7 @@ export class PageTabsView extends VanillaView<object> {
                 release: () => {
                     pageUnsubscribe();
                     editorUnsubscribe?.();
+                    hostUnsubscribe?.();
                 },
             });
         }
@@ -235,10 +244,8 @@ export class PageTabsView extends VanillaView<object> {
                 continue;
             }
             if (!candidate.pinned) continue;
-            const editor = candidate.mainEditor;
-            const encrypted = Boolean(
-                editor && isTextFileModel(editor) && (editor.encrypted || editor.decrypted),
-            );
+            const host = candidate.mainEditor?.contentHost;
+            const encrypted = Boolean(host && (host.encrypted || host.decrypted));
             left += (encrypted ? pinnedTabEncryptedWidth : pinnedTabWidth) + 2;
         }
         return left;

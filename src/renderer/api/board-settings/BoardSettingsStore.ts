@@ -2,7 +2,7 @@ import { TComponentState } from "../../core/state/state";
 import {
     TextFileModel,
     getDefaultTextFileEditorModelState,
-} from "../../editors/text/TextEditorModel";
+} from "../../editors/content-host/TextFileModel";
 import { errMessage } from "../../../shared/utils";
 import { fs } from "../fs";
 import { isBoardSettingValue } from "../../../shared/board/board-settings-declarations";

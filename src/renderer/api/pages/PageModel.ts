@@ -1,6 +1,6 @@
 import { TOneState } from "../../core/state/state";
 import { afterDispatch } from "../../core/state/dispatch";
-import type { EditorModel, EditorOrHost } from "../../editors/base";
+import type { EditorModel } from "../../editors/base";
 import {
     explorerRootForPanels,
     autoInitExplorer,
@@ -31,18 +31,6 @@ import { RecoveryPlaceholder } from "./RecoveryPlaceholder";
 
 interface PageModelOptions {
     seedSecondaryViewsWidth?: boolean;
-}
-
-/** Unwrap a text-bearing editor to its TextFileModel host, so legacy consumers
- *  (tab strip, OpenTabsList, PageTabs) see `filePath` / `language` / `encrypted`
- *  on the host directly. Non-text-bearing editors are returned as-is. */
-function unwrapToHost(editor: EditorModel | null): EditorOrHost | null {
-    if (!editor) return null;
-    const host = (editor as { contentHost?: { type?: string } | null }).contentHost;
-    if (host && host.type === "textFile") {
-        return host as unknown as EditorOrHost;
-    }
-    return editor;
 }
 
 /** Reactive page-level state — UI subscribes to this for repaint on page changes. */
@@ -227,16 +215,6 @@ export class PageModel implements IPageHost {
 
     // ── Derived getters ───────────────────────────────────────────────
 
-    /** Main editor with content-host unwrap: text-bearing editors return their
-     *  `TextFileModel` host so consumers reading `filePath` / `language` /
-     *  `encrypted` / `modified` (tab strip, OpenTabsList) work uniformly with
-     *  no-host editors that return the editor instance itself.
-     *  Use `mainEditorInstance` when an `instanceof EditorModel` check or
-     *  access to editor-specific fields (`editorId`, `contentHost`) is needed. */
-    get mainEditor(): EditorOrHost | null {
-        return unwrapToHost(this.mainEditorInstance);
-    }
-
     set mainEditor(editor: EditorModel | null) {
         if (this.isInert) return;
         if (editor && !this.editors.includes(editor)) {
@@ -246,17 +224,13 @@ export class PageModel implements IPageHost {
         this.state.update((s) => { s.mainEditorId = editor?.id ?? null; });
     }
 
-    /** Raw editor instance (no host unwrap). Used by callers that need
-     *  `instanceof` checks against concrete editor classes or access to
-     *  editor-specific fields like `editorId` and `contentHost`. */
-    get mainEditorInstance(): EditorModel | null {
+    /** Main editor instance. Host-owned content remains available through `contentHost`. */
+    get mainEditor(): EditorModel | null {
         if (!this._mainEditorId) return null;
         return this.editors.find((e) => e.id === this._mainEditorId) ?? null;
     }
 
-    /** Find an editor already attached to this page whose backing file is
-     *  `filePath`. Text-bearing editors are unwrapped to their content host
-     *  (where `filePath` lives), matching the property `mainEditor` exposes.
+    /** Find an editor already attached to this page whose backing file is `filePath`.
      *  Lets navigation promote an existing editor (e.g. a modified Link editor
      *  surviving as a sidebar panel) back to main instead of building a
      *  duplicate. */
@@ -264,9 +238,7 @@ export class PageModel implements IPageHost {
         if (!filePath) return null;
         return (
             this.editors.find(
-                (e) =>
-                    (unwrapToHost(e) as { filePath?: string } | null)?.filePath ===
-                    filePath,
+                (e) => e.filePath === filePath,
             ) ?? null
         );
     }
@@ -319,7 +291,7 @@ export class PageModel implements IPageHost {
 
     /** Display title — delegates to mainEditor, or "Empty" for empty pages. */
     get title(): string {
-        return this.mainEditorInstance?.title ?? "Empty";
+        return this.mainEditor?.displayTitle ?? "Empty";
     }
 
     /** Aggregate modified flag: true if any editor in `editors[]` is modified. */
@@ -335,12 +307,11 @@ export class PageModel implements IPageHost {
 
     /** Sidebar is closeable only when the Explorer is the *sole* panel
      *  contributor. Any other secondary view (Link/Archive/Todo/…
-     *  panels) makes it mandatory and non-closeable. Discriminates on the same
-     *  `type === "fileExplorer"` marker as `findExplorer()`. */
+     *  panels) makes it mandatory and non-closeable. */
     get sidebarMandatory(): boolean {
         return this.editors.some(
             (e) => e.contributesPanels()
-                && (e.state.get() as { type?: string }).type !== "fileExplorer",
+                && e.editorId !== "explorer",
         );
     }
 
@@ -472,7 +443,7 @@ export class PageModel implements IPageHost {
      */
     async setMainEditor(newEditor: EditorModel | null): Promise<void> {
         if (this.isInert) return;
-        const oldMain = this.mainEditorInstance;
+        const oldMain = this.mainEditor;
         if (oldMain && newEditor && oldMain !== newEditor) {
             oldMain.beforeNavigateAway(newEditor);
         }
@@ -528,7 +499,7 @@ export class PageModel implements IPageHost {
      * wasn't opened from its archive.
      */
     notifyMainEditorChanged(): void {
-        const main = this.mainEditorInstance;
+        const main = this.mainEditor;
         for (const editor of [...this.editors]) {
             if (editor === main) continue;
             editor.onMainEditorChanged(main);
@@ -651,12 +622,12 @@ export class PageModel implements IPageHost {
             this.hadPanels = true;
             return;
         }
-        if (!this.hadPanels || this.mainEditorInstance || this.emptyPanelCloseScheduled) return;
+        if (!this.hadPanels || this.mainEditor || this.emptyPanelCloseScheduled) return;
 
         this.emptyPanelCloseScheduled = true;
         afterDispatch(() => {
             this.emptyPanelCloseScheduled = false;
-            if (this.mainEditorInstance || this.composedPanels().length) return;
+            if (this.mainEditor || this.composedPanels().length) return;
             void this.close();
         });
     }
@@ -701,7 +672,7 @@ export class PageModel implements IPageHost {
     /** Find the Explorer in editors[]. */
     findExplorer(): EditorModel | undefined {
         return this.editors.find(
-            (m) => (m.state.get() as { type?: string }).type === "fileExplorer",
+            (m) => m.editorId === "explorer",
         );
     }
 

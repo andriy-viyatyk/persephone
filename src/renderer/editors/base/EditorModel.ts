@@ -5,11 +5,11 @@ import { Subscription } from "../../core/state/events";
 import { TOneState } from "../../core/state/state";
 import { ComponentQueue, ComponentQueueEvent } from "../../core/state/ComponentQueue";
 import type { EditorDescriptor, HostDescriptor } from "../../../shared/persistence";
-import type { TextFileModel } from "../text/TextEditorModel";
+import type { TextFileModel } from "../content-host/TextFileModel";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import type { IPageHost } from "../../api/pages/IPageHost";
 import type { IEditorState } from "../../../shared/types";
-import type { ILinkData } from "../../../shared/link-data";
+import type { ILinkData, StoredLinkData } from "../../../shared/link-data";
 import type { ILinkDiffRevision } from "../../api/types/io.link-data";
 import type { BoardSourceContext } from "../../../shared/board-source-context";
 import type { MenuItem } from "../../uikit/Menu/index";
@@ -55,7 +55,7 @@ export abstract class EditorModel<
      *  "grid-json", "image-view", …). Used by `editorRegistry.createEditor` to
      *  pick the class, by `PageModel.switchMainEditor` short-circuit, by
      *  the switch widget's "current" highlight, and by persistence
-     *  (`EditorDescriptor.editorId`). Replaces today's `state.type` discriminator. */
+     *  (`EditorDescriptor.editorId`), which replaces the legacy state discriminator. */
     abstract readonly editorId: string;
 
     /** Fresh file opens may insert this editor before its source restore settles. */
@@ -239,28 +239,30 @@ export abstract class EditorModel<
 
     get id(): string { return this.state.get().id; }
     get title(): string { return this.state.get().title; }
-    get modified(): boolean { return this.state.get().modified; }
+    get modified(): boolean { return this.contentHost?.modified ?? this.state.get().modified; }
 
     /** True if this editor is its host's main (content-area) editor. Default
      *  derivation; a Browser host's embedded Link editor will hardcode this in
      *. NOT reactive on its own — a view that must re-render on
      *  promote/demote subscribes to `editor.page?state`. */
     get isMain(): boolean {
-        return this.page?.mainEditorInstance === this;
+        return this.page?.mainEditor === this;
     }
 
 
     get filePath(): string | undefined {
-        return (this.state.get() as { filePath?: string }).filePath;
+        return this.state.get().filePath ?? this.contentHost?.state.get().filePath;
+    }
+
+    get sourceLink(): StoredLinkData | undefined {
+        return this.state.get().sourceLink ?? this.contentHost?.state.get().sourceLink;
     }
 
     get language(): string | undefined {
-        return (this.state.get() as { language?: string }).language;
+        return this.state.get().language ?? this.contentHost?.state.get().language;
     }
 
-    get type(): string | undefined {
-        return (this.state.get() as { type?: string }).type;
-    }
+    get displayTitle(): string { return this.title; }
 
     /** Optional language change — base no-op; per-editor subclasses override
      *  when the editor reacts to language changes. */
@@ -289,42 +291,8 @@ export abstract class EditorModel<
         return this.contentHost?.onGetMenuItems() ?? [];
     }
 
-    // ── Navigation-source accessor (sidebar-owning navigation survival) ───
-
-    /** Resolve the navigation `sourceLink.sourceId` set by `navigatePageTo`,
-     *  used by sidebar-owning editors (Archive / Link) to decide whether to
-     *  survive a main-editor swap. `navigatePageTo` writes `sourceLink` onto
-     *  the legacy editor's state BEFORE wrap, so the location depends on the
-     *  new main editor's topology:
-     *
-     *   - text editors (Monaco, Grid, …) adopt that state as their content
-     *     host — `sourceLink` is on `contentHost.state`, NOT the editor's
-     *     own state (which is a fresh editor-shaped state).
-     *   - no-host editors (PDF, Image, Browser, Archive) keep `sourceLink`
-     *     on the editor's OWN state, and have no content host.
-     *
-     *  Check own state first, then fall back to the content host, so neither
-     *  topology is missed. (Reading only one location was the cause of the
-     *  panel-disappears-on-navigate bug for Archive→text and Link→player.) */
-    getNavigationSourceId(): string | undefined {
-        const own = (this.state.get() as { sourceLink?: { sourceId?: string } })
-            .sourceLink?.sourceId;
-        if (own) return own;
-        return (this.contentHost?.state.get() as { sourceLink?: { sourceId?: string } } | undefined)
-            ?.sourceLink?.sourceId;
-    }
-
-    // ── Navigator-target accessor (walkthrough 09 / PT5 / B3) ─────────────
-
-    /** What the page-level NavPanel button should toggle when clicked.
-     *
-     *  - `null` (default): no NavPanel button.
-     *  - `{}` (empty target): always render, just toggle visibility.
-     *  - `{ pipe?, filePath? }`: gate via `page.canOpenNavigator(pipe, filePath)`,
-     *     initialize an Explorer panel from the file's folder if none exists.
-     *
-     *  Replaces six inline per-editor IconButton blocks with a single
-     *  declarative read at the toolbar. */
+    /** What the page-level NavPanel button should toggle. `null` hides it; an empty target shows
+     *  it without an initial file, while a populated target can initialize Explorer. */
     getNavigatorTarget(): { pipe?: IContentPipe | null; filePath?: string | null } | null {
         return null;
     }
@@ -403,7 +371,7 @@ export abstract class EditorModel<
 
     /** Subclasses MUST call `super.dispose()` so the component queue drops
      *  any pending events. Text-bearing editors ALSO dispose their
-     *  `IContentHost` IFF it was not extracted via `CONTENT_HOST_TRAIT`.
+     *  its content host iff it was not extracted via `CONTENT_HOST_TRAIT`.
      *
      *  Cache cleanup is NOT done here — the page tracks "id release" and
      *  calls `fs.deleteCacheFiles(editor.id)` when the id is not transferred

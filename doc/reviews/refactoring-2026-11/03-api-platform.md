@@ -134,7 +134,7 @@ The three biggest problems:
   - Dependency rule: `doc/architecture/overview.md:235,241` ("api/ … imports core/, uses IPC"; "Lower layers must NOT import from higher layers")
   - board domain in editors: `src/renderer/api/boards.ts:10-13,69,91,96,313,322-367,411,613`; `board-install-registry.ts:19`; `board-install.ts:13,20,247`; `board-namespace.ts:1-2`; `board-service-settings.ts:4-5`; `published-boards.ts:16-21`; `capability-bus.ts:15`
   - api constructing an editor: `src/renderer/api/boards.ts:578-590` duplicates `src/renderer/editors/board-info/open-board-info.ts:60-69` and needs `as unknown as EditorModel`
-  - editor models used as file IO in api stores: `src/renderer/api/board-settings/BoardSettingsStore.ts:2-5,120-139`, `src/renderer/api/board-vars/BoardEnvStore.ts:2-5,74-85` (both `TextFileModel` from `editors/text`)
+  - editor models used as file IO in api stores: `src/renderer/api/board-settings/BoardSettingsStore.ts:2-5,120-139`, `src/renderer/api/board-vars/BoardEnvStore.ts:2-5,74-85` (both `TextFileModel` from `editors/content-host`)
   - scripting in api: `src/renderer/api/mcp/board-call-command.ts:3-5,13` (`ScriptContext`, `resolveAiCall`, `BoardEditorModel`); `src/renderer/api/library-service.ts:4`; `src/renderer/api/autoload-service.ts:1`; `src/renderer/api/internal/GlobalEventService.ts:1,5`
   - automation in api: `src/renderer/api/window-screen.ts:23-52`
   - editor infra in api: `src/renderer/api/mneme-connection.ts:5-9` (`McpConnectionManager` from `editors/mcp-inspector`), `src/renderer/api/mneme-status.ts:6`, `src/renderer/api/capabilities.ts:21`
@@ -152,7 +152,7 @@ The three biggest problems:
      the model. Delete the hand-built `BoardInfoEditorModel` in `boards.ts:578-590`.
   3. Replace `TextFileModel` in both stores with a small `api/watched-json-file.ts`. It reads through `fs`, watches
      through `path-watch`, and optionally decrypts through `shell.encryption`. It needs no editor state.
-  4. Move `api/setup/` and `ts-project-*.ts` to `src/renderer/editors/text/monaco/` (or `src/renderer/monaco/`).
+  4. Move `api/setup/` and `ts-project-*.ts` to `src/renderer/editors/content-host/monaco/` (or `src/renderer/monaco/`).
      `App.initSetup` keeps a dynamic import.
   5. Move `McpConnectionManager` to `src/renderer/core/mcp/` or `src/shared/`. Move `mnemeTypes` parsing next to
      `mneme-status`.

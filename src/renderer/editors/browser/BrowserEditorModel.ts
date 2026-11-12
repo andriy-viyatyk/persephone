@@ -278,7 +278,6 @@ export const getDefaultBrowserPageState = (): BrowserEditorState => {
     const tab = createTab();
     return {
         ...getDefaultEditorModelState(),
-        type: "browserPage",
         title: englishMessage("editors.browser"),
         editor: "browser-view",
         url: DEFAULT_URL,

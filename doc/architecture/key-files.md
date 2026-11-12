@@ -265,8 +265,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Editor base class        | `/src/renderer/editors/base/EditorModel.ts`       |
 | Text-host editor adapter (preserves the subclass API for ordinary text-bearing editors and delegates host lifecycle to `ContentHostSlot`; subclass hooks: `displayName`, `adoptHost`, `onHostAttached`, `onHostExtracted`, `untitledName`) | `/src/renderer/editors/base/TextHostEditorModel.ts` |
 | Content-host owner slot (owns host transfer, restore sequence, subscriptions, echo guard, settings mirror, persistence, release/save/dispose; configured through owner options and used by text and board editors) | `/src/renderer/editors/base/content-host-slot.ts` |
-| Content host interface (implemented by TextFileModel)   | `/src/renderer/editors/base/IContentHost.ts`      |
-| Content host trait       | `/src/renderer/editors/base/editor-traits.ts`     |
+| Editor traits (content-host, text-selection, and text-navigation transfer contracts) | `/src/renderer/editors/base/editor-traits.ts` |
 | Native text-host chrome (toolbar, focus/key handling, script panel, footer, overlay, and DOM slot projection) | `/src/renderer/editors/base/TextChromeView.ts` |
 | Page toolbar native view and shared editor-switch projection (NavPanel, editor switch, toolbar slots, and toolbar/node option parity) | `/src/renderer/editors/base/PageToolbarView.ts`, `/src/renderer/editors/base/editor-switch-options.ts` |
 | Native editor toolbar view | `/src/renderer/editors/base/EditorToolbarView.ts` |
@@ -280,8 +279,11 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Page-tab context-menu builders (`textFileMenuItems` / `filePathMenuItems` / `openInBrowserMenuItems` — "Open in Browser" for HTML files via `target: "browser"`; consumed via `EditorModel.onGetMenuItems()`) | `/src/renderer/editors/shared/editor-menu-items.ts` |
 | Monaco widget hosts (VanillaView owners for single and diff Monaco widgets; imperative content writes, model ownership, file-backed project URIs and deferred disposal) | `/src/renderer/editors/shared/MonacoEditorHostView.ts`, `/src/renderer/editors/shared/MonacoDiffEditorHostView.ts` |
 | Monaco host geometry (separate root classes and flex-child width rules for single and diff widgets) | `/src/renderer/editors/shared/MonacoEditorHostView.css`, `/src/renderer/editors/shared/MonacoDiffEditorHostView.css` |
-| Text editor model        | `/src/renderer/editors/text/TextEditorModel.ts`   |
-| Script panel model and native view | `/src/renderer/editors/text/ScriptPanel.ts`, `/src/renderer/editors/text/ScriptPanelView.ts` |
+| Content host model       | `/src/renderer/editors/content-host/TextFileModel.ts`   |
+| Text file content actions | `/src/renderer/editors/content-host/TextFileActionsModel.ts` |
+| Script panel model and native view | `/src/renderer/editors/base/script-panel/ScriptPanel.ts`, `/src/renderer/editors/base/script-panel/ScriptPanelView.ts` |
+| Text editor keymap (F5 script execution) | `/src/renderer/editors/base/TextPageKeymap.ts` |
+| Page script execution and script-library actions | `/src/renderer/scripting/run-page-script.ts`, `/src/renderer/scripting/script-library-actions.ts` |
 | Monaco editor            | `/src/renderer/editors/monaco/MonacoEditor.ts`    |
 | Monaco editor body (native `VanillaView`, host lifecycle, project binding and per-page diagnostics) | `/src/renderer/editors/monaco/MonacoBodyView.ts` |
 | Monaco editor view, word-wrap and project-diagnostics toolbar contributions | `/src/renderer/editors/monaco/index.ts` |

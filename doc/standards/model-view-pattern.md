@@ -464,10 +464,10 @@ Projection is not permission to substitute a convenient stored field for a deriv
 proof. The pilot's `PageTabsView` projection (`PageTabsView.ts:172-178`) uses the stored
 `state.encrypted` flag while the effective
 `TextFileEncryptionModel.encrypted` value is derived from content
-([`TextFileEncryptionModel.ts:10-15`](../../src/renderer/editors/text/TextFileEncryptionModel.ts#L10-L15)).
+([`TextFileEncryptionModel.ts:10-15`](../../src/renderer/editors/content-host/TextFileEncryptionModel.ts#L10-L15)).
 That substitution is safe only while a write path maintains the invariant. Here,
-`TextEditorModel.changeContent()` writes `state.encrypted` from the new content at line 276
-([`TextEditorModel.ts:272-278`](../../src/renderer/editors/text/TextEditorModel.ts#L272-L278)).
+`TextFileModel.changeContent()` writes `state.encrypted` from the new content at line 276
+([`TextFileModel.ts:272-278`](../../src/renderer/editors/content-host/TextFileModel.ts#L272-L278)).
 Any projection that relies on such an invariant must cite the maintaining write path at the
 projection site; otherwise it can silently stop updating or report the wrong derived value.
 

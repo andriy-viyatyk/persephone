@@ -31,7 +31,6 @@ import type { VideoStreamSessionConfig } from "../../../ipc/api-param-types";
 
 export interface VideoEditorState extends EditorStateBase {
     /** State-type discriminator. */
-    type: "videoPage";
     /** Raw video URL as entered by user (file path or HTTP URL). */
     url: string;
     /** Raw text as typed by user (may be a cURL command). */
@@ -71,7 +70,6 @@ export const getDefaultVideoEditorState = (): VideoEditorState => ({
     id: crypto.randomUUID(),
     title: englishMessage("editors.videoPlayer"),
     modified: false,
-    type: "videoPage",
     editor: "video-view",
     url: "",
     inputText: "",

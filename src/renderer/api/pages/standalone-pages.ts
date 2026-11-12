@@ -2,10 +2,10 @@ import { t } from "../../../shared/i18n/t";
 import type { EditorView } from "../../../shared/types";
 import { editorRegistry } from "../../editors/base/editorRegistry";
 import { ExplorerEditor, getDefaultExplorerEditorState } from "../../editors/explorer";
-import { newTextFileModel } from "../../editors/text";
+import { newTextFileModel } from "../../editors/content-host/TextFileModel";
 import { TComponentState } from "../../core/state/state";
 import { guard } from "../../core/utils/guard";
-import { attachEditorToPage } from "../../editors/editor-factory";
+import { createEditorFromContentHost } from "../../editors/editor-factory";
 import type { PagesModel } from "./PagesModel";
 import type { PageModel } from "./PageModel";
 import { ABOUT_PAGE_ID } from "../../editors/about/about-page-id";
@@ -47,7 +47,7 @@ export class StandalonePages {
             afterShow: async (page, options) => {
                 if (!options.atContents) return;
                 const { AboutEditor } = await import("../../editors/about");
-                const editor = page.mainEditorInstance;
+                const editor = page.mainEditor;
                 if (editor instanceof AboutEditor) editor.resetGuideBrowser();
             },
         }],
@@ -69,7 +69,7 @@ export class StandalonePages {
             afterShow: async (page, options) => {
                 if (!options.tab) return;
                 const { ToolsHubEditor } = await import("../../editors/tools-hub");
-                const editor = page.mainEditorInstance;
+                const editor = page.mainEditor;
                 if (editor instanceof ToolsHubEditor) editor.setTab(options.tab);
             },
         }],
@@ -141,7 +141,7 @@ export class StandalonePages {
             ) as EditorView;
         });
         editorModel.restore();
-        return this.model.lifecycle.addPage(attachEditorToPage(editorModel), this.createPage(id));
+        return this.model.lifecycle.addPage(createEditorFromContentHost(editorModel), this.createPage(id));
     }
 
     async show(

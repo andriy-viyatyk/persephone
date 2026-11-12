@@ -23,7 +23,6 @@ import {
 } from "../../content/tree-providers/tree-provider-link";
 
 export interface CategoryEditorModelState extends EditorStateBase {
-    type: "categoryPage";
 }
 
 export function getDefaultCategoryEditorModelState(): CategoryEditorModelState {
@@ -31,7 +30,6 @@ export function getDefaultCategoryEditorModelState(): CategoryEditorModelState {
         id: crypto.randomUUID(),
         title: "",
         modified: false,
-        type: "categoryPage",
         filePath: "",
     };
 }

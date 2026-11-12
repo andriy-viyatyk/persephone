@@ -1,9 +1,9 @@
 import type { PagesModel } from "./PagesModel";
 import type { PageModel } from "./PageModel";
-import type { EditorOrHost } from "../../editors/base";
+import type { EditorModel } from "../../editors/base";
 import type { ILinkData } from "../../../shared/link-data";
 import type { IContentPipe } from "../types/io.pipe";
-import { newTextFileModel } from "../../editors/text";
+import { newTextFileModel } from "../../editors/content-host/TextFileModel";
 import { isFocusInSidebar } from "../../core/utils/focus-utils";
 import { fileIdentity, fpBasename, isVirtualPath } from "../../core/utils/file-path";
 import { fs as appFs } from "../fs";
@@ -13,7 +13,7 @@ import { t } from "../../../shared/i18n/t";
 import { applyOpenHints, prepareOpenedEditor, registerOpenSession } from "./open-request";
 import type { PageOpenRequest } from "./open-request";
 import {
-    attachEditorToPage,
+    createEditorFromContentHost,
     createEditorFromFile,
     createEditorFromFolder,
 } from "../../editors/editor-factory";
@@ -25,8 +25,8 @@ import {
 //   1. confirmLeaveCurrentEditor  — "save changes?" unless the editor survives
 //   2. reuseNavigationTarget      — per-page singleton promotion (Git Tree)
 //   3. reuseEditorForFile         — same-file editor lingering as a panel
-//   4. buildEditor                — fresh build with missing-file/error fallbacks
-//   5. prepareOpenedEditor        — preview editor vs explicit host target
+//   4. buildEditor                — fresh build (preview editor vs explicit host target) with fallbacks
+//   5. prepareOpenedEditor        — source link and title on the content owner
 //   6. attach + post-attach       — diff revisions, fragment, reveal/highlight
 //   7. finishNavigation           — show/focus-unless-sidebar/save (shared exit)
 // ============================================================================
@@ -54,17 +54,15 @@ function sameFileIdentity(first: string, second: string): boolean {
  *  nothing is being discarded. A Link editor navigating to one of its own
  *  links, or any modified Link editor, stays on the page. The prompt
  *  still fires on a genuine close (separate path).
- *  The survives check reads `mainEditorInstance` (the EditorModel subclass
- *  that carries the override); `confirmRelease` is intentionally called on
- *  the unwrapped host so it routes to the host's save dialog for text-bearing
- *  editors, matching the pre-existing pattern. */
+ *  The survives check reads the page's editor. `confirmRelease` delegates to
+ *  its content host when needed, so the editor lifecycle owns the save prompt. */
 async function confirmLeaveCurrentEditor(
     page: PageModel,
     options?: NavigatePageToOptions,
 ): Promise<boolean> {
     const oldEditor = page.mainEditor;
     const survives =
-        page.mainEditorInstance?.survivesNavigation(options?.sourceLink) ?? false;
+        page.mainEditor?.survivesNavigation(options?.sourceLink) ?? false;
     if (oldEditor && !survives) {
         const released = await oldEditor.confirmRelease();
         if (!released) return false;
@@ -89,7 +87,7 @@ async function reuseNavigationTarget(
         (e) => e.matchesNavigationTarget?.(navTarget, newFilePath),
     );
     if (!existing) return false;
-    if (page.mainEditorInstance !== existing) {
+    if (page.mainEditor !== existing) {
         await page.setMainEditor(existing);
     }
     existing.onNavigationReuse?.();
@@ -114,7 +112,7 @@ async function reuseEditorForFile(
     const existingForFile = page.findEditorByFilePath(newFilePath);
     if (
         !existingForFile ||
-        existingForFile === page.mainEditorInstance ||
+        existingForFile === page.mainEditor ||
         (navTarget && existingForFile.editorId !== navTarget)
     ) {
         return false;
@@ -130,15 +128,16 @@ async function reuseEditorForFile(
 async function buildEditor(
     newFilePath: string,
     options?: NavigatePageToOptions,
-): Promise<EditorOrHost> {
+): Promise<EditorModel> {
     if (!isVirtualPath(newFilePath) && !(await appFs.exists(newFilePath))) {
         ui.notify(t("api.fileNotFound", { name: fpBasename(newFilePath) }), "error");
-        const textFileModel = newTextFileModel("");
-        textFileModel.state.update((s) => {
+        const host = newTextFileModel("");
+        host.state.update((s) => {
             s.title = fpBasename(newFilePath);
         });
-        await textFileModel.restore();
-        return textFileModel;
+        const editor = createEditorFromContentHost(host);
+        await host.restore();
+        return editor;
     }
     if (options?.folderPath !== undefined) {
         if (!options.target) throw new Error("Folder editor link has no target editor.");
@@ -158,15 +157,20 @@ async function buildEditor(
             options?.pipe,
             options?.target,
             options?.title,
+            {
+                forceText: !!(options?.forceTextEditor || options?.revealLine || options?.highlightText),
+                selectPreview: true,
+            },
         );
     } catch (err) {
         ui.notify(
             t("api.failedToOpenNamedFileWithError", { name: fpBasename(newFilePath), error: errMessage(err) }),
             "error",
         );
-        const textFileModel = newTextFileModel("");
-        await textFileModel.restore();
-        return textFileModel;
+        const host = newTextFileModel("");
+        const editor = createEditorFromContentHost(host);
+        await host.restore();
+        return editor;
     }
 }
 
@@ -187,16 +191,16 @@ export async function navigatePageTo(
         sourceLink: options?.sourceLink,
     };
 
-    const currentFilePath = (page.mainEditor as { filePath?: string } | null)?.filePath;
+    const currentFilePath = page.mainEditor?.filePath;
     const needsReveal = !!(request.revealLine || request.highlightText);
     if (needsReveal && currentFilePath
         && sameFileIdentity(currentFilePath, newFilePath)) {
-        if (page.mainEditorInstance?.editorId !== "monaco") {
+        if (page.mainEditor?.editorId !== "monaco") {
             await page.switchMainEditor("monaco");
         }
-        const textHost = page.mainEditorInstance?.contentHost;
+        const textHost = page.mainEditor?.contentHost;
         if (!textHost) return false;
-        const editor = page.mainEditorInstance;
+        const editor = page.mainEditor;
         if (editor) applyOpenHints(page, editor, request, { exit: "reveal" });
         finishNavigation(model, page);
         return true;
@@ -205,27 +209,24 @@ export async function navigatePageTo(
     if (!(await confirmLeaveCurrentEditor(page, options))) return false;
 
     if (await reuseNavigationTarget(model, page, newFilePath, options)) {
-        const editor = page.mainEditorInstance;
+        const editor = page.mainEditor;
         if (editor) applyOpenHints(page, editor, request, { exit: "reuse" });
         finishNavigation(model, page);
         return true;
     }
     if (await reuseEditorForFile(model, page, newFilePath, options)) {
-        const editor = page.mainEditorInstance;
+        const editor = page.mainEditor;
         if (editor) applyOpenHints(page, editor, request, { exit: "reuse" });
         finishNavigation(model, page);
         return true;
     }
 
-    // Build the editor or text host, deferring adapter attachment until after the
-    // post-restore mutations that need the underlying TextFileModel API).
-    const editorOrHost = await buildEditor(newFilePath, options);
-    prepareOpenedEditor(editorOrHost, request, { selectPreview: true });
+    const editor = await buildEditor(newFilePath, options);
+    prepareOpenedEditor(editor, request);
 
-    const adapter = attachEditorToPage(editorOrHost);
-    await page.setMainEditor(adapter);
-    registerOpenSession(adapter, request);
-    applyOpenHints(page, adapter, request, { exit: "fresh", newPage: false });
+    await page.setMainEditor(editor);
+    registerOpenSession(editor, request);
+    applyOpenHints(page, editor, request, { exit: "fresh", newPage: false });
 
     finishNavigation(model, page);
     return true;

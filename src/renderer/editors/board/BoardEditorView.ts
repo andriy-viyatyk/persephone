@@ -11,14 +11,15 @@ import { BoardWebview } from "./BoardWebview";
 import { boardRegistry } from "../../api/boards/board-registry";
 import { requestBoardTrust } from "../../api/boards/request-board-trust";
 import { BoardToolbarView } from "./BoardToolbar";
-import { ScriptPanelView } from "../text/ScriptPanelView";
+import { ScriptPanelView } from "../base/script-panel/ScriptPanelView";
 import { EditorStatusBarView } from "../base/EditorStatusBarView";
-import type { TextFileModel } from "../text/TextEditorModel";
+import type { TextFileModel } from "../content-host/TextFileModel";
 import { spacing } from "../../uikit/tokens";
 import { BoardStatusBarItems } from "./BoardStatusBarItems";
 import { t } from "../../../shared/i18n/t";
 import { appWindow } from "../../api/window";
 import { BoardRoot } from "../../../shared/board/board-root";
+import { TextPageKeymap } from "../base/TextPageKeymap";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 
@@ -74,6 +75,7 @@ class BoardHostView extends VanillaView<BoardHostViewProps> {
     private readonly webview: BoardWebview;
     private readonly host: TextFileModel | null;
     private readonly statusItems: BoardStatusBarItems;
+    private readonly keymap: TextPageKeymap;
     private scriptPanel: ScriptPanelView | undefined;
     private footer: EditorStatusBarView | undefined;
     private statusElement: HTMLSpanElement | undefined;
@@ -87,6 +89,7 @@ class BoardHostView extends VanillaView<BoardHostViewProps> {
         }));
         this.model = props.model;
         this.host = props.model.contentHost;
+        this.keymap = new TextPageKeymap(props.model, true);
         this.statusItems = new BoardStatusBarItems({
             model: props.model,
             onAction: (event, generation) => this.webview.sendStatusBarAction(event, generation),
@@ -105,6 +108,7 @@ class BoardHostView extends VanillaView<BoardHostViewProps> {
     }
 
     protected onMount(): void {
+        this.listen(this.root, "keydown", this.keymap.handleKeyDown);
         const toolbar = this.child(this.toolbar);
         const webviewWrap = createPanelElement({
             name: "board-webview-wrap",

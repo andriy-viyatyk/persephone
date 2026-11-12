@@ -1,5 +1,5 @@
 import type { TOneState } from "../../core/state/state";
-import type { EditorModel, EditorOrHost } from "../../editors/base";
+import type { EditorModel } from "../../editors/base";
 import type { IContentPipe } from "../types/io.pipe";
 import type { ISecondaryViewsState, SecondaryViewsModel } from "./SecondaryViewsModel";
 import type { IPageState } from "./PageModel";
@@ -55,8 +55,7 @@ export interface IPageHost {
     //    member below has a live `editor.page?.…` caller. `setMainEditor`/`close`
     //    were trimmed — they are only ever called via the concrete `pages` model,
     //    never through `editor.page`. ──
-    mainEditor?: EditorOrHost | null;
-    mainEditorInstance?: EditorModel | null;
+    mainEditor: EditorModel | null;
     switchMainEditor?(newEditorId: string): Promise<void>;
     promoteToMain?(editor: EditorModel): Promise<void>;
 }
