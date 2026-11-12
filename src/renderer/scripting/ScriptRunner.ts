@@ -1,6 +1,6 @@
 import type { AgentTipCollector } from "./ai-vision/agent-tip-collector";
 import { EditorOrHost } from "../editors/base";
-import { pagesModel } from "../api/pages";
+import { pages } from "../api/pages";
 import type { ConsoleLogEntry, ScriptOutputFlags } from "./ScriptContext";
 import { settings } from "../api/settings";
 import { convertToText } from "./script-utils";
@@ -60,7 +60,7 @@ class ScriptRunner extends ScriptRunnerBase {
                 });
             });
         } else if (!outputSuppressed && pageId) {
-            const groupedModel = pagesModel.requireGroupedText(pageId, textAndLang.language);
+            const groupedModel = pages.layout.requireGroupedText(pageId, textAndLang.language);
             groupedModel.changeContent(textAndLang.text);
         }
 

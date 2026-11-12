@@ -1,5 +1,5 @@
 import { globalKeyDown } from "../../core/state/events";
-import { pagesModel } from "../pages";
+import { pages } from "../pages";
 import { api } from "../../../ipc/renderer/api";
 import { appWindow } from "../window";
 import { cycleAppTheme } from "../cycle-app-theme";
@@ -99,9 +99,9 @@ export class KeyboardService {
             case "Tab":
                 if (e.ctrlKey) {
                     e.preventDefault();
-                    pagesModel.closePopover();
-                    if (e.shiftKey) pagesModel.showPrevious();
-                    else pagesModel.showNext();
+                    pages.closePopover();
+                    if (e.shiftKey) pages.navigation.showPrevious();
+                    else pages.navigation.showNext();
                 }
                 break;
 
@@ -109,9 +109,9 @@ export class KeyboardService {
             case "KeyW":
                 if (e.ctrlKey) {
                     e.preventDefault();
-                    const focusedPage = pagesModel.query.focusedPage;
-                    if (focusedPage && pagesModel.query.isRightPinned(focusedPage.id)) {
-                        pagesModel.closePopover();
+                    const focusedPage = pages.query.focusedPage;
+                    if (focusedPage && pages.query.isRightPinned(focusedPage.id)) {
+                        pages.closePopover();
                     } else if (focusedPage) {
                         focusedPage.close();
                     }
@@ -125,7 +125,7 @@ export class KeyboardService {
                         api.openNewWindow();
                     } else if (!appWindow.isBoardMode) {
                         // Board windows open only the board's own pages.
-                        pagesModel.addEmptyPage();
+                        pages.lifecycle.addEmptyPage();
                     }
                 }
                 break;
@@ -133,7 +133,7 @@ export class KeyboardService {
             case "KeyO":
                 if (e.ctrlKey) {
                     e.preventDefault();
-                    pagesModel.openFileWithDialog();
+                    pages.openFileWithDialog();
                 }
                 break;
 
@@ -149,7 +149,7 @@ export class KeyboardService {
 }
 
 export async function openFocusedGuideOrContents(): Promise<void> {
-    const editorInstance = pagesModel.query.focusedPage?.mainEditorInstance;
+    const editorInstance = pages.query.focusedPage?.mainEditorInstance;
     const editorId = editorInstance?.editorId;
     // A board page (plain `board-view` or a custom-editor `board-editor:<root>`) exposes the board
     // folder it renders; that is what maps onto the board's own guide branch.
@@ -167,13 +167,13 @@ export async function openFocusedGuideOrContents(): Promise<void> {
     }
 
     if (!guidePath) {
-        await pagesModel.showAboutPage({ atContents: true });
+        await pages.standalonePages.show("about-page", { atContents: true }).then((): undefined => undefined);
         return;
     }
 
-    await pagesModel.showAboutPage();
+    await pages.standalonePages.show("about-page").then((): undefined => undefined);
     const { AboutEditor } = await import("../../editors/about");
-    const editor = pagesModel.activePage?.mainEditorInstance;
+    const editor = pages.query.activePage?.mainEditorInstance;
     if (!(editor instanceof AboutEditor)) {
         throw new Error("About page did not expose an AboutEditor after opening.");
     }

@@ -53,7 +53,7 @@ export interface IPageHost {
     // ── OPTIONAL — main-editor navigation (a Browser host omits these).
     //    Membership is final after Link exercised the full surface: every
     //    member below has a live `editor.page?.…` caller. `setMainEditor`/`close`
-    //    were trimmed — they are only ever called via the concrete `pagesModel`,
+    //    were trimmed — they are only ever called via the concrete `pages` model,
     //    never through `editor.page`. ──
     mainEditor?: EditorOrHost | null;
     mainEditorInstance?: EditorModel | null;

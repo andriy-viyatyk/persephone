@@ -1,4 +1,4 @@
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import type { IPageHost } from "../../api/pages/IPageHost";
 import { ui } from "../../api/ui";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
@@ -31,7 +31,7 @@ export class PageTabNode implements IAiVisible {
 
     private get page() {
         const host = this.hostProvider();
-        return host ? pagesModel.findPage(host.id) : undefined;
+        return host ? pages.query.findPage(host.id) : undefined;
     }
 
     get title(): string {
@@ -53,7 +53,7 @@ export class PageTabNode implements IAiVisible {
     get active(): boolean {
         const page = this.page;
         if (!page) return false;
-        const state = pagesModel.state.get();
+        const state = pages.state.get();
         const activeId = state.ordered[state.ordered.length - 1]?.id;
         const groupedId = activeId
             ? state.leftRight.get(activeId) ?? state.rightLeft.get(activeId)

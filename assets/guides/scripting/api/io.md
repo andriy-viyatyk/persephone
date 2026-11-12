@@ -276,12 +276,27 @@ The pipe is the primary abstraction for reading and writing content. Returned by
 | Property | Type | Description |
 |----------|------|-------------|
 | `provider` | `IProvider` | The root data source. Read-only. |
+| `logicalPath` | `string` | The full source path for the content. For an archive entry, this includes the archive and entry paths. Read-only. |
+| `logicalPathFor(sourcePath)` | `string` | Return the logical path using another provider source path. For archive pipes, the entry path is preserved. |
 | `transformers` | `ITransformer[]` | Ordered list of transformers. Read-only. |
 | `writable` | `boolean` | True if the full chain (provider + all transformers) supports writing. Read-only. |
 | `displayName` | `string` | Human-readable name (filename, URL, etc.). Read-only. |
 | `encoding` | `string?` | Detected text encoding after the first `readText()` call (e.g., `"utf-8"`, `"utf-16le"`). Read-only. |
 | `stages` | `ReadonlyArray<IPipeStage>` | Provider followed by transformers in read order, with each stage's role, type, display name, and optional status. Read-only snapshots. |
 | `summary` | `IPipeStageStatus \| undefined` | Current aggregate status: an error takes priority; otherwise the most recently updated stage status. |
+
+For example, `logicalPath` for a pipe reading `data/summary.csv` from
+`C:/reports/archive.zip` is `C:/reports/archive.zip!/data/summary.csv`. `logicalPathFor()` is useful
+when you need the same content location under a renamed source file:
+
+```javascript
+const pipe = io.createPipe(
+    new io.FileProvider("C:/reports/archive.zip"),
+    new io.ArchiveTransformer("C:/reports/archive.zip", "data/summary.csv"),
+);
+console.log(pipe.logicalPath);
+console.log(pipe.logicalPathFor("C:/reports/renamed.zip"));
+```
 
 Each status has a `state` (`idle`, `connecting`, `active`, `done`, or `error`) and may include
 `text`, `detail`, byte `progress` (`loaded` and optional `total`), and `rate` in bytes per second.

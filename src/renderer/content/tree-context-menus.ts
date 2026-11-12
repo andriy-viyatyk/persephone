@@ -57,8 +57,8 @@ export function registerTreeContextMenuHandlers(): void {
                     label: t("shell.openInNewTab"),
                     icon: "open-file",
                     onClick: async () => {
-                        const { pagesModel } = await import("../api/pages");
-                        pagesModel.addEmptyPageWithNavPanel(item.href);
+                        const { pages } = await import("../api/pages");
+                        pages.lifecycle.addEmptyPageWithNavPanel(item.href);
                     },
                 },
             );
@@ -86,8 +86,8 @@ export function registerTreeContextMenuHandlers(): void {
                     label: t("shell.openInNewWindow"),
                     icon: "new-window",
                     onClick: async () => {
-                        const { pagesModel } = await import("../api/pages");
-                        pagesModel.openPathInNewWindow(item.href);
+                        const { pages } = await import("../api/pages");
+                        pages.lifecycle.openPathInNewWindow(item.href);
                     },
                 },
                 {

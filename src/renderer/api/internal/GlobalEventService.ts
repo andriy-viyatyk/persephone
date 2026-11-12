@@ -6,7 +6,7 @@ import { scriptRunner } from "../../scripting/ScriptRunner";
 import { fs } from "../fs";
 import { appWindow } from "../window";
 import { RendererEvent } from "../../../ipc/api-types";
-import { pagesModel } from "../pages";
+import { pages } from "../pages";
 import {
     getClipboardImageFile,
     getClipboardRichHtml,
@@ -190,7 +190,7 @@ export class GlobalEventService {
             }
             const links = await expandDroppedPaths(filePaths);
             if (links.length > 0) {
-                pagesModel.openLinks(links);
+                pages.lifecycle.openLinks(links);
             }
         });
     };

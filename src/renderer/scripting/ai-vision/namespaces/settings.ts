@@ -1,4 +1,4 @@
-import { pagesModel } from "../../../api/pages";
+import { pages } from "../../../api/pages";
 import { ui } from "../../../api/ui";
 import type { BrowserProfile } from "../../../api/settings";
 import type { ISettings } from "../../../api/types/settings";
@@ -99,7 +99,7 @@ function waitForSettingsSection(selector: string): Promise<void> {
 }
 
 const highlightSettingsElement = async (selector: string, message?: string) => {
-    await pagesModel.showSettingsPage();
+    await pages.standalonePages.show("settings-page").then((): undefined => undefined);
     await waitForSettingsSection(selector);
     const result = await ui.highlightElement(selector, message);
     if (!result.found) {

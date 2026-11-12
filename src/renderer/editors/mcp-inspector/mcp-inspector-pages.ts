@@ -16,7 +16,7 @@ export async function showMcpInspectorPage(
             if (options.name) state.connectionName = options.name;
         });
     }
-    model.addPage(editor);
+    model.lifecycle.addPage(editor);
     // Auto-connect (HTTP transport is the default state) — fire-and-forget so
     // the page opens immediately and shows the "connecting" state itself.
     if (options?.autoConnect && options.url) void editor.connect();

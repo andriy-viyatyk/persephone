@@ -261,6 +261,16 @@ export function fpNormalizeForCompare(filePath: string): string {
     return process.platform === "win32" ? resolved.toLowerCase() : resolved;
 }
 
+/** True for the URL and data values treated as virtual by page navigation. */
+export function isVirtualPath(path: string): boolean {
+    return path.includes("://") || path.startsWith("data:");
+}
+
+/** Return the stable key used to compare file paths across open pages. */
+export function fileIdentity(path: string): string {
+    return isVirtualPath(path) ? path : fpNormalizeForCompare(path);
+}
+
 /** True when `child` equals or lies under `parent`; `{ allowSame: false }` accepts only descendants. */
 export function fpIsInside(parent: string, child: string, options?: PathContainmentOptions): boolean {
     return isKeyInside(fpNormalizeForCompare(parent), fpNormalizeForCompare(child), options);

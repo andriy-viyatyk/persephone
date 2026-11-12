@@ -1,5 +1,5 @@
 import { app } from "../../api/app";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { normalizeClipboardMaxItems, settings } from "../../api/settings";
 import { ui } from "../../api/ui";
 import { api } from "../../../ipc/renderer/api";
@@ -137,7 +137,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             name: "clipboard-open-settings",
             size: "sm",
             children: t("shell.openQuickSettings"),
-            onClick: () => { void pagesModel.showSettingsPage(); },
+            onClick: () => { void pages.standalonePages.show("settings-page").then((): undefined => undefined); },
         }));
 
         this.list = this.child(new ListBoxView<ClipboardListItem>(this.listProps()));
@@ -482,7 +482,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             if (pageId) {
                 await app.events.openRawLink.sendAsync(createLinkData(path, { pageId }));
             } else {
-                await app.pages.openFile(path);
+                await app.pages.openPath(path);
             }
         } catch (error: unknown) {
         void ui.notify(t("explorer.failedOpenClipboardItem", { error: errMessage(error) }), "error");

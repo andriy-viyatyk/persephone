@@ -42,9 +42,7 @@ export class PagesLayoutModel {
 
     markLockedBoardPage = (page: PageModel, boardRoot: string): void => {
         page.setLockedBoardRoot(boardRoot);
-        this.model.state.update((state) => {
-            state.pages = this.sortByPinSide(state.pages);
-        });
+        this.model.setPageArrays({ pages: this.sortByPinSide(this.model.state.get().pages) });
     };
 
     moveTab = (fromId: string, toId: string) => {
@@ -66,9 +64,7 @@ export class PagesLayoutModel {
         const newPages = [...pages];
         const [moved] = newPages.splice(fromIndex, 1);
         newPages.splice(toIndex, 0, moved);
-        this.model.state.update((s) => {
-            s.pages = newPages;
-        });
+        this.model.setPageArrays({ pages: newPages });
         this.fixGrouping();
         this.model.persistence.saveStateDebounced();
         if (moved.pinSide !== "right") this.model.onFocus.send(moved);
@@ -118,10 +114,13 @@ export class PagesLayoutModel {
             insertionIndex = firstRightIndex < 0 ? remainingPages.length : firstRightIndex;
         }
         remainingPages.splice(insertionIndex, 0, page);
-        this.model.state.update((s) => {
-            s.pages = remainingPages;
-            if (side === "right") s.ordered = s.ordered.filter((candidate) => candidate !== page);
-            else if (wasRightPinned) s.ordered.push(page);
+        const ordered = this.model.state.get().ordered;
+        const nextOrdered = side === "right"
+            ? ordered.filter((candidate) => candidate !== page)
+            : wasRightPinned ? [...ordered, page] : undefined;
+        this.model.setPageArrays({
+            pages: remainingPages,
+            ...(nextOrdered ? { ordered: nextOrdered } : {}),
         });
         if (wasRightPinned && side !== "right") {
             this.model.onShow.send(page);

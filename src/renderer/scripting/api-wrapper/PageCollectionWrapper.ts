@@ -131,7 +131,7 @@ export class PageCollectionWrapper implements IAiVisible {
             children: () => this.aiChildren(),
             index: (key) => {
                 if (typeof key === "number") {
-                    const page = this.pages.pages[key];
+                    const page = this.pages.query.pages[key];
                     markPageAttended(page?.id);
                     return this.all[key];
                 }
@@ -140,14 +140,14 @@ export class PageCollectionWrapper implements IAiVisible {
             summarize: () => ({
                 kind: "Pages",
                 count: this.all.length,
-                activePageId: this.pages.activePage?.id ?? null,
+                activePageId: this.pages.query.activePage?.id ?? null,
                 popoverPageId: this.pages.popoverPageId ?? null,
             }),
         };
     }
 
     private aiChildren(): IAiChild[] {
-        const activeId = this.pages.activePage?.id;
+        const activeId = this.pages.query.activePage?.id;
         const popoverId = this.pages.popoverPageId;
         const children: IAiChild[] = [
             { segment: ".compare", kind: this.compare.aiVision.kind, summary: "active compare pairs and compare-mode controls" },
@@ -201,13 +201,13 @@ export class PageCollectionWrapper implements IAiVisible {
      *  user's tab strip, shifted every numeric index past the hidden page, and made
      *  `closePage` refuse an id the user can close with one click. */
     get all(): PageWrapper[] {
-        return this.pages.pages.map((p) => new PageWrapper(
+        return this.pages.query.pages.map((p) => new PageWrapper(
             p.mainEditor ?? null, this.releaseList, undefined, this.callContext, p,
         ));
     }
 
     get activePage(): PageWrapper | undefined {
-        const page = this.pages.activePage;
+        const page = this.pages.query.activePage;
         markPageAttended(page?.id);
         return this.wrap(page);
     }
@@ -218,31 +218,31 @@ export class PageCollectionWrapper implements IAiVisible {
     }
 
     get groupedPage(): PageWrapper | undefined {
-        return this.wrap(this.pages.groupedPage);
+        return this.wrap(this.pages.query.groupedPage);
     }
 
     findPage(pageId: string): PageWrapper | undefined {
-        const page = this.pages.findPage(pageId);
+        const page = this.pages.query.findPage(pageId);
         markPageAttended(page?.id);
         return this.wrap(page);
     }
 
     getGroupedPage(withPageId: string): PageWrapper | undefined {
-        return this.wrap(this.pages.getGroupedPage(withPageId));
+        return this.wrap(this.pages.query.getGroupedPage(withPageId));
     }
 
     isLastPage(pageId?: string): boolean {
-        return this.pages.isLastPage(pageId);
+        return this.pages.query.isLastPage(pageId);
     }
 
     isGrouped(pageId: string): boolean {
-        return this.pages.isGrouped(pageId);
+        return this.pages.query.isGrouped(pageId);
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────
 
     async openFile(filePath: string): Promise<PageWrapper | undefined> {
-        const page = await this.pages.openFile(filePath);
+        const page = await this.pages.openPath(filePath);
         return this.wrap(page);
     }
 
@@ -251,7 +251,7 @@ export class PageCollectionWrapper implements IAiVisible {
         validateCallArguments("pages.closePage", [pageId], [
             choiceRule("pageId", openPageIds, 'pages.closePage("<open-page-id>")', { expectedType: "string" }),
         ]);
-        return this.pages.closePage(pageId as string);
+        return this.pages.lifecycle.closePage(pageId as string);
     }
 
     openFileWithDialog(): Promise<void> {
@@ -268,11 +268,11 @@ export class PageCollectionWrapper implements IAiVisible {
         },
     ): Promise<boolean> {
         markPageAttended(pageId);
-        return this.pages.navigatePageTo(pageId, newFilePath, options);
+        return this.pages.lifecycle.navigatePageTo(pageId, newFilePath, options);
     }
 
     addEmptyPage(): PageWrapper {
-        const page = this.pages.addEmptyPage();
+        const page = this.pages.lifecycle.addEmptyPage();
         return this.wrap(page);
     }
 
@@ -282,12 +282,12 @@ export class PageCollectionWrapper implements IAiVisible {
         title: string,
         content?: string,
     ): PageWrapper {
-        const page = this.pages.addEditorPage(editor, language, title, content);
+        const page = this.pages.lifecycle.addEditorPage(editor, language, title, content);
         return this.wrap(page);
     }
 
     async addDrawPage(dataUrl: string, title?: string): Promise<PageWrapper> {
-        const page = await this.pages.addDrawPage(dataUrl, title);
+        const page = await this.pages.lifecycle.addDrawPage(dataUrl, title);
         return this.wrap(page);
     }
 
@@ -295,7 +295,7 @@ export class PageCollectionWrapper implements IAiVisible {
         links: (ILink | string)[],
         title?: string,
     ): PageWrapper {
-        const page = this.pages.openLinks(links, title);
+        const page = this.pages.lifecycle.openLinks(links, title);
         return this.wrap(page);
     }
 
@@ -303,15 +303,15 @@ export class PageCollectionWrapper implements IAiVisible {
         firstPath: string;
         secondPath: string;
     }): Promise<void> {
-        return this.pages.openDiff(params);
+        return this.pages.lifecycle.openDiff(params);
     }
 
     showAboutPage(): Promise<void> {
-        return this.pages.showAboutPage();
+        return this.pages.standalonePages.show("about-page").then((): undefined => undefined);
     }
 
     showSettingsPage(): Promise<void> {
-        return this.pages.showSettingsPage();
+        return this.pages.standalonePages.show("settings-page").then((): undefined => undefined);
     }
 
     showMcpInspectorPage(options?: { url?: string }): Promise<void> {
@@ -319,11 +319,11 @@ export class PageCollectionWrapper implements IAiVisible {
     }
 
     showMnemeConfigPage(): Promise<void> {
-        return this.pages.showMnemeConfigPage();
+        return this.pages.standalonePages.show("mneme-config-page").then((): undefined => undefined);
     }
 
     showToolsHubPage(options?: { tab?: HubTab }): Promise<void> {
-        return this.pages.showToolsHubPage(options);
+        return this.pages.standalonePages.show("tools-hub-page", options).then((): undefined => undefined);
     }
 
     showBrowserPage(options?: {
@@ -374,28 +374,28 @@ export class PageCollectionWrapper implements IAiVisible {
     // ── Navigation ────────────────────────────────────────────────────
 
     showPage(pageId: string): void {
-        // `pagesModel.showPage` ignores an id it does not know, so a mistyped or stale page id
+        // `pages.navigation.showPage` ignores an id it does not know, so a mistyped or stale page id
         // used to return quietly and leave a different page active — the caller then acted on
         // the wrong page believing it had switched. Refuse instead, and name the ids that exist:
         // a guessed value must never be accepted silently.
-        if (!this.pages.findPage(pageId)) {
+        if (!this.pages.query.findPage(pageId)) {
             const known = this.all.map(page => page.id).join(", ");
             throw new Error(
                 `No page with id ${JSON.stringify(pageId)}. Open page ids are: ${known || "(none)"}.`,
             );
         }
         markPageAttended(pageId);
-        withAgentNavigation(() => this.pages.showPage(pageId));
+        withAgentNavigation(() => this.pages.navigation.showPage(pageId));
     }
 
-    // Suppressed like `showPage`: these reach `pagesModel.showPage` by another route, so without
+    // Suppressed like `showPage`: these reach `pages.navigation.showPage` by another route, so without
     // the wrapper the agent's own tab-stepping would come back to it as an activation event.
     showNext(): void {
-        withAgentNavigation(() => this.pages.showNext());
+        withAgentNavigation(() => this.pages.navigation.showNext());
     }
 
     showPrevious(): void {
-        withAgentNavigation(() => this.pages.showPrevious());
+        withAgentNavigation(() => this.pages.navigation.showPrevious());
     }
 
     openPopover(pageId: string): void {
@@ -409,22 +409,22 @@ export class PageCollectionWrapper implements IAiVisible {
     // ── Layout ────────────────────────────────────────────────────────
 
     moveTab(fromId: string, toId: string): void {
-        this.pages.moveTab(fromId, toId);
+        this.pages.layout.moveTab(fromId, toId);
     }
 
     pinTab(pageId: string, side?: "left" | "right"): void {
-        this.pages.pinTab(pageId, side);
+        this.pages.layout.pinTab(pageId, side);
     }
 
     unpinTab(pageId: string): void {
-        this.pages.unpinTab(pageId);
+        this.pages.layout.unpinTab(pageId);
     }
 
     group(leftPageId: string, rightPageId: string): void {
-        this.pages.group(leftPageId, rightPageId);
+        this.pages.layout.group(leftPageId, rightPageId);
     }
 
     ungroup(pageId: string): void {
-        this.pages.ungroup(pageId);
+        this.pages.layout.ungroup(pageId);
     }
 }

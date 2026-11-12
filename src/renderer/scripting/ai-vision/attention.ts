@@ -1,6 +1,6 @@
 import { errMessage } from "../../../shared/utils";
 import type { ICallRequest, ICallResult } from "ai-vision";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { LogViewEditor } from "../../editors/log-view";
 import { isDialogEntry, isDialogResolved } from "../../editors/log-view/logTypes";
 import { dialogsState } from "../../ui/dialogs/DialogsView";
@@ -139,7 +139,7 @@ export function collectAttention(): { text: string } | undefined {
 function collectLogViewAttention(): string[] {
     const sections: string[] = [];
     const unresolvedKeys = new Set<string>();
-    for (const page of pagesModel.pages) {
+    for (const page of pages.query.pages) {
         const editor = page.mainEditorInstance;
         if (!(editor instanceof LogViewEditor)) continue;
         for (const entry of editor.getEntriesSnapshot()) {

@@ -369,7 +369,7 @@ export { Input } from './Input';
 
 // 3. Relative imports - parents first
 import { Button } from '../../uikit/Button/Button';
-import { pagesModel } from '../../api/pages';
+import { pages } from '../../api/pages';
 
 // 4. Relative imports - siblings/children
 import { MyHelper } from './MyHelper';

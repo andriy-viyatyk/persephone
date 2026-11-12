@@ -1,6 +1,6 @@
 import { t } from "../../../shared/i18n/t";
 import { api } from "../../../ipc/renderer/api";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { menuFolders, type MenuFolder } from "../../api/menu-folders";
 import {
     getMenuBarSourceFolders,
@@ -437,7 +437,7 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
      */
     private openFolderPathInTab(folderPath: string | undefined): void {
         if (!folderPath) return;
-        void pagesModel.addEmptyPageWithNavPanel(folderPath);
+        void pages.lifecycle.addEmptyPageWithNavPanel(folderPath);
         this.props.onClose?.();
     }
 
@@ -564,7 +564,7 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
 
     private async openFile(): Promise<void> {
         this.props.onClose?.();
-        pagesModel.openFileWithDialog();
+        pages.openFileWithDialog();
     }
 
     private async newWindow(): Promise<void> {
@@ -573,13 +573,13 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
     }
 
     private openSettings(): void {
-        pagesModel.showSettingsPage();
+        pages.standalonePages.show("settings-page").then((): undefined => undefined);
         this.props.onClose?.();
     }
 
     private openAbout(): void {
         this.props.onClose?.();
-        pagesModel.showAboutPage();
+        pages.standalonePages.show("about-page").then((): undefined => undefined);
     }
 
     private onContentKeyDown(event: KeyboardEvent): void {

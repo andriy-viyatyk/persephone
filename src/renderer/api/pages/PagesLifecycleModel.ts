@@ -4,19 +4,20 @@ import { EditorView, PageDescriptor } from "../../../shared/types";
 import { t } from "../../../shared/i18n/t";
 import { cleanForStorage } from "../../../shared/link-data";
 import type { ILinkData } from "../../../shared/link-data";
-import type { ILinkDiffRevision } from "../types/io.link-data";
 import { newTextFileModel } from "../../editors/text";
 import { ExplorerEditor, getDefaultExplorerEditorState } from "../../editors/explorer";
 import { TComponentState } from "../../core/state/state";
 import { api } from "../../../ipc/renderer/api";
 import { recent } from "../recent";
-import { editorRegistry, isExplicitHostTarget } from "../../editors/base/editorRegistry";
+import { editorRegistry } from "../../editors/base/editorRegistry";
 import { PageModel } from "./PageModel";
 import { navigatePageTo, type NavigatePageToOptions } from "./PageNavigator";
 import { guard } from "../../core/utils/guard";
 import { errMessage } from "../../../shared/utils";
 import { RestoreFailedEditor } from "../../editors/restore-failed/RestoreFailedEditor";
 import { fpBasename } from "../../core/utils/file-path";
+import { applyOpenHints, prepareOpenedEditor, registerOpenSession } from "./open-request";
+import type { PageOpenRequest } from "./open-request";
 
 import type { ILink } from "../../api/types/io.tree";
 import { buildLinkEditorContent } from "../../editors/link-editor/link-open";
@@ -30,17 +31,9 @@ import {
     createEditorFromFolder,
 } from "../../editors/editor-factory";
 
-export interface OpenFileOptions {
+export interface OpenFileOptions extends Omit<PageOpenRequest, "sourceLink"> {
     sourceLink?: ILinkData;
-    target?: string;
-    folderPath?: string;
-    diffFrom?: ILinkDiffRevision;
-    diffTo?: ILinkDiffRevision;
-    revealLine?: number;
-    highlightText?: string;
-    fragment?: string;
     onPageCreated?: (page: PageModel) => void;
-    sessionHandle?: string;
 }
 
 export type OpenInterceptorOutcome<TOptions> =
@@ -296,6 +289,18 @@ export class PagesLifecycleModel {
         const intercepted = await this.interceptOpenFile({ filePath, pipe, options });
         if (intercepted.kind === "take") return intercepted.page;
         options = intercepted.options ?? options;
+        const request: PageOpenRequest = {
+            ...options,
+            filePath: options?.filePath ?? filePath,
+            title: options?.title ?? options?.sourceLink?.title,
+            sourceUrl: options?.sourceUrl ?? options?.sourceLink?.url ?? pipe?.provider.sourceUrl ?? filePath,
+            sourceLink: options?.sourceLink
+                ? cleanForStorage({
+                    ...options.sourceLink,
+                    pipeDescriptor: options.sourceLink.pipeDescriptor ?? pipe?.toDescriptor(),
+                })
+                : undefined,
+        };
         // Existing-page dedupe is deliberately left intact: an already-
         // open file just activates its page and the diff metadata is dropped.
         // "Open in new Tab" preselection therefore applies only on a fresh open.
@@ -312,24 +317,25 @@ export class PagesLifecycleModel {
             }
             // The document is already open — an anchor link into it is still a jump
             // request, so honor the fragment on the live editor.
-            if (options?.fragment) {
-                const reveal: () => void = () => existingPage.mainEditorInstance?.revealFragment?.(options.fragment as string);
-                if (existingPage.restore.isRestoring) void existingPage.restore.ready.then(reveal, (): void => {});
-                else reveal();
-            }
-            if (options?.revealLine || options?.highlightText) {
+            if (request.revealLine || request.highlightText) {
                 await navigatePageTo(this.model, existingPage.id, filePath as string, {
-                    revealLine: options.revealLine,
-                    highlightText: options.highlightText,
+                    ...request,
                     forceTextEditor: true,
                 });
+            } else if (request.fragment) {
+                const reveal = (): void => {
+                    const editor = existingPage.mainEditorInstance;
+                    if (editor) applyOpenHints(existingPage, editor, request, { exit: "reuse" });
+                };
+                if (existingPage.restore.isRestoring) void existingPage.restore.ready.then(reveal, (): void => {});
+                else reveal();
             }
             return existingPage;
         }
 
-        const requestedTarget = options?.revealLine || options?.highlightText
+        const requestedTarget = request.forceTextEditor || request.revealLine || request.highlightText
             ? "monaco"
-            : options?.target;
+            : request.target;
 
         // A failed editor-module load rejects out of the editor factory's `createEditorFromFile`, and every
         // caller here reaches it from a user action (explorer click, link, drop). Left
@@ -337,16 +343,16 @@ export class PagesLifecycleModel {
         // nothing at all — shape, one path over. `undefined` is already this
         // method's "did not open" answer, so no caller changes.
         const editor = await guard(
-            t("api.failedToOpenNamedFile", { name: fpBasename(filePath ?? options?.folderPath ?? "folder") }),
+            t("api.failedToOpenNamedFile", { name: fpBasename(filePath ?? request.folderPath ?? "folder") }),
             async () => {
-                if (options?.folderPath !== undefined) {
-                    return createEditorFromFolder(options.target ?? "", options.folderPath);
+                if (request.folderPath !== undefined) {
+                    return createEditorFromFolder(request.target ?? "", request.folderPath);
                 }
                 const constructed = await constructEditorFromFile(
                     filePath as string,
                     pipe,
                     requestedTarget,
-                    options?.sourceLink?.title,
+                    request.title,
                 );
                 // TextFileModel is adapted into a TextHostEditorModel below; its file-open path
                 // opts in there. Every standalone model preserves restore-before-add and the
@@ -364,79 +370,42 @@ export class PagesLifecycleModel {
             pipe?.dispose();
             return undefined;
         }
-        if (options?.folderPath !== undefined) pipe?.dispose();
-        if (options?.sourceLink) {
-            const sourceLink = cleanForStorage({
-                ...options.sourceLink,
-                pipeDescriptor: options.sourceLink.pipeDescriptor ?? pipe?.toDescriptor(),
-            });
-            editor.state.update((s) => { s.sourceLink = sourceLink; });
-        }
+        if (request.folderPath !== undefined) pipe?.dispose();
         // Honor an explicit content-host target (e.g. "file-diff") that isn't the
         // file's natural editor, so a new-tab open lands on the requested editor —
         // mirrors navigatePageTo's isExplicitHostTarget handling.
-        const explicitTarget = requestedTarget;
-        if (
-            editor.state.get().type === "textFile" &&
-            filePath !== undefined && isExplicitHostTarget(explicitTarget, filePath)
-        ) {
-            editor.state.update((s) => { s.editor = explicitTarget as EditorView; });
-        }
+        prepareOpenedEditor(editor, { ...request, target: requestedTarget }, { selectPreview: false });
         const adapter = attachEditorToPage(editor);
-        if (options?.sessionHandle) {
-            const sourceUrl = options.sourceLink?.url ?? filePath;
-            if (sourceUrl) {
-                adapter.acceptOpenContext?.({
-                    mode: "register-session",
-                    sourceUrl,
-                    sessionHandle: options.sessionHandle,
-                });
-            }
-        }
+        registerOpenSession(adapter, request);
         const page = adapter.deferRestoreOnOpen ? new PageModel() : undefined;
         if (page && adapter.deferRestoreOnOpen) {
             // Start the attempt synchronously so the inserted page is never rendered as an editor
             // before PageContentView observes its loading shell state. The async restore body runs
             // in the next microtask, after addPage attaches the editor and inserts the page.
             const retryOptions = {
-                filePath,
+                filePath: request.filePath,
                 target: requestedTarget,
-                sourceLink: editor.state.get().sourceLink as ILinkData | undefined,
-                sessionHandle: options?.sessionHandle,
+                sourceLink: request.sourceLink,
+                sessionHandle: request.sessionHandle,
             };
             page.restore.start((signal) => adapter.restore({ signal }));
             page.restore.retry = () => this.retryOpen(page, retryOptions);
         }
         const addedPage = this.addPage(adapter, page, options?.onPageCreated);
-        const currentPage = addedPage;
-        // Apply caller-chosen diff revisions to a freshly-built File Diff editor
-        // (no-op for any other editor type / when no revisions given).
-        const applyOpenHints = (): void => {
-            if (this.model.query.findPage(currentPage.id) !== currentPage) return;
-            const currentEditor = currentPage.mainEditorInstance;
+        const applyCurrentPageHints = (): void => {
+            if (this.model.query.findPage(addedPage.id) !== addedPage) return;
+            const currentEditor = addedPage.mainEditorInstance;
             if (!currentEditor) return;
-            (currentEditor as { applyDiffRevisions?: (f?: ILinkDiffRevision, t?: ILinkDiffRevision) => void })
-                .applyDiffRevisions?.(options?.diffFrom, options?.diffTo);
-            // The editor's view may not be mounted yet; implementations queue the anchor request.
-            if (options?.fragment) currentEditor.revealFragment?.(options.fragment);
-            const textHost = currentEditor.contentHost;
-            if (options?.revealLine) textHost?.revealLine(options.revealLine);
-            if (options?.highlightText) textHost?.setHighlightText(options.highlightText);
-            // A preselected comparison is a File Diff; expand its registered first panel instead
-            // of hardcoding the panel id here.
-            if (options?.diffFrom || options?.diffTo) {
-                const panelId = currentEditor.secondaryView?.[0];
-                if (panelId) currentPage.expandPanel(panelId);
-            }
+            applyOpenHints(addedPage, currentEditor, request, { exit: "fresh", newPage: true });
         };
         if (adapter.deferRestoreOnOpen) {
-            currentPage.restore.afterReady(applyOpenHints);
+            addedPage.restore.afterReady(applyCurrentPageHints);
         }
-        else applyOpenHints();
+        else applyCurrentPageHints();
         if (filePath) recent.add(filePath);
 
         this.model.closeFirstPageIfEmpty();
-        return currentPage;
+        return addedPage;
     };
 
     closePage = async (pageId: string): Promise<boolean> => {

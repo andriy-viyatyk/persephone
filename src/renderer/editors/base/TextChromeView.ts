@@ -1,5 +1,5 @@
 import { t } from "../../../shared/i18n/t";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { ui } from "../../api/ui";
 import type { EditorModel, EditorStateBase } from "./EditorModel";
 import { EditorStatusBarView } from "./EditorStatusBarView";
@@ -55,7 +55,7 @@ class CompareButtonView extends VanillaView<{ model: EditorModel }> {
         this.root.dataset.part = "text-compare";
         this.root.style.display = "contents";
         this.bind(
-            pagesModel.state,
+            pages.state,
             (state) => ({ leftRight: state.leftRight, rightLeft: state.rightLeft }),
             () => this.sync(),
         );
@@ -73,12 +73,12 @@ class CompareButtonView extends VanillaView<{ model: EditorModel }> {
     private sync(): void {
         const ownerPage = this.model.page;
         const leftGroupedPage = ownerPage
-            ? pagesModel.getLeftGroupedPage(ownerPage.id)
+            ? pages.query.getLeftGroupedPage(ownerPage.id)
             : undefined;
         const visible = Boolean(
             ownerPage
             && leftGroupedPage
-            && pagesModel.canCompare(leftGroupedPage.id, ownerPage.id),
+            && pages.query.canCompare(leftGroupedPage.id, ownerPage.id),
         );
 
         if (!visible) {
@@ -107,7 +107,7 @@ class CompareButtonView extends VanillaView<{ model: EditorModel }> {
 
     private readonly handleClick = (): void => {
         const ownerPage = this.model.page;
-        if (ownerPage) pagesModel.enterCompareMode(ownerPage.id);
+        if (ownerPage) pages.layout.enterCompareMode(ownerPage.id);
     };
 }
 
@@ -288,7 +288,7 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
         this.buildBranch(this.props.model.contentHost);
         this.own(() => this.releaseSlotResources());
         this.listen(this.root, "keydown", this.handleRootKeyDown);
-        const focusSubscription = pagesModel.onFocus.subscribe(this.handlePageFocus);
+        const focusSubscription = pages.onFocus.subscribe(this.handlePageFocus);
         this.own(() => {
             this.clearFocusTimer();
             focusSubscription();
@@ -506,5 +506,5 @@ async function showHtmlResources(host: TextFileModel): Promise<void> {
         ui.notify(t("editors.noResourcesFoundInHtml"), "info");
         return;
     }
-    pagesModel.openLinks(links, (title || "HTML") + " — Resources");
+    pages.lifecycle.openLinks(links, (title || "HTML") + " — Resources");
 }

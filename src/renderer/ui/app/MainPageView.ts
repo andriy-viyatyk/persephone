@@ -11,7 +11,7 @@ import { themeState } from "../../theme/theme-state";
 import { app } from "../../api/app";
 import { autoloadService } from "../../api/autoload-service";
 import { mnemeStatusModel } from "../../api/mneme-status";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { windowRecording, type WindowRecordingState } from "../../api/window-recording";
 import type { RecordingRegion } from "../../../ipc/api-param-types";
 import { showMcpRequestLog } from "../../api/mcp/request-log";
@@ -41,7 +41,7 @@ async function runSnip(hideWindows: boolean): Promise<void> {
         if (!dataUrl) return;
         const blob = await (await fetch(dataUrl)).blob();
         const blobUrl = URL.createObjectURL(blob);
-        await pagesModel.openImageInNewTab(blobUrl, "Snip");
+        await pages.openImageInNewTab(blobUrl, "Snip");
     } catch (error) {
         app.ui.notify(t("shell.snipFailed", { product: englishMessage("shell.snipProduct"), error: errMessage(error) } as never), "error");
     }
@@ -369,7 +369,7 @@ export class MainPageView extends VanillaView<object> {
                 ? t("shell.mnemeActive", { product: englishMessage("shell.mneme") } as never)
                 : t("shell.mnemeNoEmbedding", { product: englishMessage("shell.mneme") } as never))
             : t("shell.mnemeEnabledStopped", { product: englishMessage("shell.mneme") } as never);
-        this.mnemeIndicator.onclick = () => pagesModel.showMnemeConfigPage();
+        this.mnemeIndicator.onclick = () => pages.standalonePages.show("mneme-config-page").then((): undefined => undefined);
         const dot = document.createElement("span");
         dot.className = `mneme-dot ${dotClass}`;
         this.mnemeIndicator.replaceChildren(dot, document.createTextNode(" Mneme"));

@@ -8,7 +8,7 @@ import {
 import type { IAiHostSignal, IAiVisionShape } from "ai-vision";
 import type { MenuItem } from "../../uikit/Menu";
 import { app } from "../../api/app";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { ui } from "../../api/ui";
 
 import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
@@ -1228,11 +1228,11 @@ ${source}
         if (doc.runVersion !== runVersion || !this.isActionDocumentCurrent(tabId, doc, true)) return { status: "not-current" };
         if (result.kind === "message") { ui.notify(result.text, "info"); return { status: "message", text: result.text }; }
         if (result.kind === "url") { await app.openRawLink(result.url); return { status: "opened" }; }
-        if (result.kind === "links") { pagesModel.openLinks(result.items.map(item => ({ title: item.title, href: item.url, category: "", tags: [] as string[], isDirectory: false })), result.title); return { status: "opened" }; }
+        if (result.kind === "links") { pages.lifecycle.openLinks(result.items.map(item => ({ title: item.title, href: item.url, category: "", tags: [] as string[], isDirectory: false })), result.title); return { status: "opened" }; }
         if (result.kind === "text") {
             const formats = { markdown: ["md-view", "markdown"], json: ["grid-json", "json"], csv: ["grid-csv", "csv"], plain: ["monaco", "plaintext"] } as const;
             const [editor, language] = formats[result.format];
-            pagesModel.addEditorPage(editor, language, result.title, result.content); return { status: "opened" };
+            pages.lifecycle.addEditorPage(editor, language, result.title, result.content); return { status: "opened" };
         }
         if (result.items.length > 1) {
             const token = crypto.randomUUID();
@@ -1244,7 +1244,7 @@ ${source}
     }
 
     private async openActionVideo(tabId: string, doc: NonNullable<ReturnType<typeof this.actionDocuments.get>>, runVersion: number, item: Extract<SiteActionResult, { kind: "video" }>["items"][number]): Promise<SiteActionOutcome> {
-        const opened = await pagesModel.openSiteActionVideo({ url: item.url, method: "GET", body: "", headers: item.headers ?? {} }, () => doc.runVersion === runVersion && this.isActionDocumentCurrent(tabId, doc, true));
+        const opened = await pages.openSiteActionVideo({ url: item.url, method: "GET", body: "", headers: item.headers ?? {} }, () => doc.runVersion === runVersion && this.isActionDocumentCurrent(tabId, doc, true));
         return { status: opened ? "opened" : "not-current" };
     }
 
@@ -1371,7 +1371,7 @@ ${source}
             return;
         }
 
-        pagesModel.openLinks(links, title + " \u2014 Resources");
+        pages.lifecycle.openLinks(links, title + " \u2014 Resources");
     };
 }
 

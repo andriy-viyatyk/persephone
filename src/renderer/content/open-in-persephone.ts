@@ -21,10 +21,10 @@ export function canOpenInPersephone(filePath: string): boolean {
 /** Open a local file in a Persephone tab with its default editor or board, or show the tab that
  *  already has it open. */
 export async function openInPersephone(filePath: string): Promise<void> {
-    const { pagesModel } = await import("../api/pages");
-    const page = pagesModel.query.findPageByFilePath(filePath);
+    const { pages } = await import("../api/pages");
+    const page = pages.query.findPageByFilePath(filePath);
     if (page) {
-        pagesModel.navigation.showPage(page.id);
+        pages.navigation.showPage(page.id);
         return;
     }
     const { app } = await import("../api/app");

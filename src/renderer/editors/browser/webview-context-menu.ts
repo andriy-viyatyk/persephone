@@ -1,7 +1,7 @@
 const { ipcRenderer } = require("electron");
 import { BrowserChannel } from "../../../ipc/browser-ipc";
 import { app } from "../../api/app";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { ui } from "../../api/ui";
 import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 import type { MenuItem } from "../../uikit/Menu";
@@ -149,7 +149,7 @@ export async function showBrowserContextMenu({
                         ui.notify(t("browser.secureRouteImageFailed"), "warning");
                         return;
                     }
-                    pagesModel.openImageInNewTab(srcURL, undefined, sessionHandle);
+                    pages.openImageInNewTab(srcURL, undefined, sessionHandle);
                 },
             });
             items.push({

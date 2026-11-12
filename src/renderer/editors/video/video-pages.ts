@@ -14,7 +14,7 @@ export async function openSiteActionVideo(
         await editor.dispose();
         return false;
     }
-    model.addPage(editor);
+    model.lifecycle.addPage(editor);
     await editor.submitValidatedRequest(request);
     return true;
 }

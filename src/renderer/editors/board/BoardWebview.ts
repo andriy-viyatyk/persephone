@@ -1,5 +1,5 @@
 import color from "../../theme/color";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { CapabilityError } from "../../api/capability-error";
 import { isFocusInSidebar } from "../../core/utils/focus-utils";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
@@ -80,7 +80,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
 
     private getPageVisibility(): boolean {
         const pageId = this.props.model.page?.id;
-        return pageId ? pagesModel.query.isPageVisible(pageId) : false;
+        return pageId ? pages.query.isPageVisible(pageId) : false;
     }
 
     private focusFrame(): void {

@@ -3,7 +3,7 @@ import type { LinkItem, LinkEditorData } from "./linkTypes";
 import { fpBasename } from "../../core/utils/file-path";
 
 // Deliberately dependency-light (types + fpBasename only): the sync public API
-// `pagesModel.openLinks` imports this statically, so it must not pull the
+// `pages.lifecycle.openLinks` imports this statically, so it must not pull the
 // link-editor chunk (linkTypes' side-effect import of linkTraits) at startup.
 
 function normalizeLinksTitle(title?: string): string {

@@ -1,3 +1,18 @@
+## EPIC-153 — Refactoring Phase 5.3: the open request, restore hooks and one `PagesModel` surface
+
+Completed 2026-11-12. Roadmap Phase 5.3 (CORE-4, CORE-5, CORE-6): an open request reaches its editor through one
+request type and one hint function, each editor module restores its own saved descriptors, and `PagesModel` has one
+public surface. `PagesModel.ts` 390 → 296 lines, `PagesPersistenceModel.ts` 469 → 271, `PageNavigator.ts` 320 → 232,
+`PagesLifecycleModel.ts` 689 → 658. The script names on `app.pages` and the persisted descriptors are unchanged; `io`
+pipes gain `logicalPath`/`logicalPathFor`. Plans by Codex, reviewed against the roadmap guardrails; Codex Luna
+implemented, with plan corrections recorded in the epic notes. Epic document: [EPIC-153](EPIC-153.md).
+
+- [x] **`fileIdentity` and the pipe's `logicalPath` (US-1878).** One file-identity rule in `core/utils/file-path.ts`; archive entry paths are built only by the pipe, and the four outside readers of the archive transformer's config are gone.
+- [x] **`PageOpenRequest` and one `applyOpenHints` (US-1879).** `api/pages/open-request.ts` builds the request once; `prepareOpenedEditor`, `registerOpenSession` and `applyOpenHints` (keyed on the open exit) replace the duplicated hint code; `applyDiffRevisions` is a declared editor member; the optional-options read (roadmap issue 18) is gone.
+- [x] **Editor-module restore hooks (US-1880).** `restoreFromDescriptor` on editor modules (board, Board Info, Explorer, restore-failed) with a registry default keyed on the descriptor's `host`; `NO_HOST_EDITOR_IDS` is gone; dated migrations in `api/pages/descriptor-migrations.ts`.
+- [x] **One `PagesModel` surface (US-1881).** The forwarding delegates and the `pagesModel` alias are gone; callers use the owning submodel; the Layer-1 opener is `pages.openPath`; page arrays are written only through `setPageArrays`.
+- [x] **Epic review.** `/review` found nothing; `/document` updated seven developer docs; `/userdoc` documented the new pipe members in the scripting `io` guide. No English catalog messages changed.
+
 ## EPIC-152 — Refactoring Phase 5.2: the `PageModel` split
 
 Completed 2026-11-12. Roadmap Phase 5.2 (CORE-2 steps 1–5 and 7): `PageModel.ts` shrinks from 1,045 to 883 lines and

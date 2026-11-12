@@ -205,13 +205,12 @@ export class BoardPageRouter implements PageOpenInterceptor {
         const page = await this.model.lifecycle.openFile(pipe.provider.sourceUrl, pipe, {
             sourceLink,
             target: "board-view",
+            title,
             onPageCreated,
         });
         if (!page) {
             throw new Error(`The capability handler board did not open: ${boardRoot}`);
         }
-        // Preserve the request title for both bundled and ordinary board pages.
-        if (title) page.mainEditor?.state.update((state) => { state.title = title; });
         return page;
     };
 

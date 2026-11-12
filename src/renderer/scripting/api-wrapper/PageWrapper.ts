@@ -1,4 +1,4 @@
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import type { PageModel } from "../../api/pages/PageModel";
 import type { IPageHost } from "../../api/pages/IPageHost";
 import { editorRegistry } from "../../editors/base/editorRegistry";
@@ -184,7 +184,7 @@ export class PageWrapper implements IAiVisible {
     private get mainEditor(): EditorModel | null {
         const pageId = this.page?.id;
         if (!pageId) return null;
-        return pagesModel.findPage(pageId)?.mainEditorInstance ?? null;
+        return pages.query.findPage(pageId)?.mainEditorInstance ?? null;
     }
 
     /** The empty id is meaningful: this page has no editor at all. Never fall back to "monaco"
@@ -205,7 +205,7 @@ export class PageWrapper implements IAiVisible {
     get title(): string { return this.model?.title ?? "Empty"; }
     get modified(): boolean { return this.model?.modified ?? false; }
     get pinned(): boolean { return this.page?.pinned ?? false; }
-    get pinSide(): "left" | "right" | undefined { return pagesModel.findPage(this.id)?.pinSide; }
+    get pinSide(): "left" | "right" | undefined { return pages.query.findPage(this.id)?.pinSide; }
     get filePath(): string | undefined { return this.model?.filePath; }
 
     /** The folder this page's Explorer is rooted at — Persephone's equivalent of a VS Code
@@ -282,8 +282,8 @@ export class PageWrapper implements IAiVisible {
 
     get grouped(): PageWrapper {
         const pageId = this.id;
-        const groupedPage = pagesModel.getGroupedPage(pageId);
-        const editor = groupedPage?.mainEditor ?? pagesModel.requireGroupedText(pageId);
+        const groupedPage = pages.query.getGroupedPage(pageId);
+        const editor = groupedPage?.mainEditor ?? pages.layout.requireGroupedText(pageId);
         return new GroupedPageWrapper(editor, this.releaseList, this.outputFlags, this.callContext);
     }
 
@@ -328,8 +328,8 @@ export class PageWrapper implements IAiVisible {
             summary: "the primary content pipe's read-only stage status",
         });
         const pageId = this.id;
-        if (pagesModel.isGrouped(pageId)) {
-            const grouped = pagesModel.getGroupedPage(pageId);
+        if (pages.query.isGrouped(pageId)) {
+            const grouped = pages.query.getGroupedPage(pageId);
             if (grouped) children.push({ segment: ".grouped", kind: "Page", summary: `grouped beside this page: "${grouped.title}"` });
         }
         return children;
@@ -341,7 +341,7 @@ export class PageWrapper implements IAiVisible {
         const summary: Record<string, unknown> = {
             kind: "Page", id: this.id, title: this.title, editor: editorId || null,
             language: this.language, filePath: this.filePath, modified: this.modified,
-            pinSide: this.pinSide, pinned: this.pinned, active: pagesModel.activePage?.id === this.id,
+            pinSide: this.pinSide, pinned: this.pinned, active: pages.query.activePage?.id === this.id,
         };
         if (workspaceFolder) summary.workspaceFolder = workspaceFolder;
         if (!editorId) {

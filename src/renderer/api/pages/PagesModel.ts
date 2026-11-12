@@ -2,14 +2,9 @@ import { Subscription } from "../../core/state/events";
 import { afterDispatch } from "../../core/state/dispatch";
 import { TModel } from "../../core/state/model";
 import { TGlobalState } from "../../core/state/state";
-import type { EditorModel } from "../../editors/base";
-import type { HubTab } from "../../editors/tools-hub";
-import { EditorView, PageDescriptor } from "../../../shared/types";
 import { createLinkData } from "../../../shared/link-data";
 import { fpIsAbsolute, fpResolve, isPlainLocalPath } from "../../core/utils/file-path";
-import type { ILink } from "../types/io.tree";
 import { PageModel } from "./PageModel";
-import type { NavigatePageToOptions } from "./PageNavigator";
 
 import { PagesQueryModel } from "./PagesQueryModel";
 import { PagesNavigationModel } from "./PagesNavigationModel";
@@ -195,6 +190,13 @@ export class PagesModel extends TModel<OpenFilesState> {
         });
     };
 
+    setPageArrays = (next: { pages?: PageModel[]; ordered?: PageModel[] }): void => {
+        this.state.update((state) => {
+            if (next.pages !== undefined) state.pages = next.pages;
+            if (next.ordered !== undefined) state.ordered = next.ordered;
+        });
+    };
+
     handleActivePageRemoved = (wasActive: boolean) => {
         if (!wasActive) return;
         if (!this.query.activePage) this.lifecycle.addEmptyPage();
@@ -250,54 +252,9 @@ export class PagesModel extends TModel<OpenFilesState> {
         }
     };
 
-    // ── Public API delegates ─────────────────────────────────────────
+    // ── Lazy-loading entrypoints ─────────────────────────────────────
 
-    // Query delegates
-    get activePage() {
-        return this.query.activePage;
-    }
-    get groupedPage() {
-        return this.query.groupedPage;
-    }
-    findPage = (pageId?: string) => this.query.findPage(pageId);
-    getGroupedPage = (withPageId: string) =>
-        this.query.getGroupedPage(withPageId);
-    getLeftGroupedPage = (withPageId: string) =>
-        this.query.getLeftGroupedPage(withPageId);
-    isLastPage = (pageId?: string) => this.query.isLastPage(pageId);
-    isGrouped = (pageId: string) => this.query.isGrouped(pageId);
-    isRightPinned = (pageId: string) => this.query.isRightPinned(pageId);
-    canCompare = (leftId: string, rightId: string) =>
-        this.query.canCompare(leftId, rightId);
-    isInCompareMode = (pageId: string) => this.query.isInCompareMode(pageId);
-    getTextFileHost = (pageId: string) => this.query.getTextFileHost(pageId);
-    get pages() {
-        return this.query.pages;
-    }
-
-    // Navigation delegates
-    showPage = (pageId?: string) => this.navigation.showPage(pageId);
-    showNext = () => this.navigation.showNext();
-    showPrevious = () => this.navigation.showPrevious();
-    focusPage = (page: PageModel) => this.navigation.focusPage(page);
-
-    // Lifecycle delegates
-    addPage = (editor: EditorModel | null, existingPage?: PageModel) =>
-        this.lifecycle.addPage(editor, existingPage);
-    addEmptyPage = () => this.lifecycle.addEmptyPage();
-    addEmptyPageWithNavPanel = (folderPath: string) =>
-        this.lifecycle.addEmptyPageWithNavPanel(folderPath);
-    addEditorPage = (editor: EditorView, language: string, title: string, content?: string) =>
-        this.lifecycle.addEditorPage(editor, language, title, content);
-    addBundledBoardPage = (
-        boardRoot: string,
-        options?: { title?: string; onPageCreated?: (page: PageModel) => void },
-    ) => this.boardPageRouter.addBundledBoardPage(boardRoot, options);
-    addDrawPage = (dataUrl: string, title?: string) =>
-        this.lifecycle.addDrawPage(dataUrl, title);
-    openLinks = (links: (ILink | string)[], title?: string) =>
-        this.lifecycle.openLinks(links, title);
-    openFile = async (filePath?: string) => {
+    openPath = async (filePath?: string) => {
         if (!filePath) return undefined;
         const { app } = await import("../app");
         const normalizedPath = isPlainLocalPath(filePath) && fpIsAbsolute(filePath) ? fpResolve(filePath) : filePath;
@@ -314,33 +271,8 @@ export class PagesModel extends TModel<OpenFilesState> {
         await page?.restore.ready;
         return page;
     };
-    closePage = (pageId: string) => this.lifecycle.closePage(pageId);
     openFileWithDialog = async () => (await import("../../ui/dialogs/OpenFileCommands")).openFileWithDialog();
     openFileFromDialog = async () => (await import("../../ui/dialogs/OpenFileCommands")).openFileFromDialog();
-    openDiff = (
-        params: { firstPath: string; secondPath: string } | undefined
-    ) => this.lifecycle.openDiff(params);
-    navigatePageTo = (
-        pageId: string,
-        newFilePath: string,
-        options?: NavigatePageToOptions,
-    ) => this.lifecycle.navigatePageTo(pageId, newFilePath, options);
-    closeToTheRight = (pageId: string) =>
-        this.lifecycle.closeToTheRight(pageId);
-    closeOtherPages = (pageId: string) =>
-        this.lifecycle.closeOtherPages(pageId);
-    movePageIn = (data?: {
-        page: PageDescriptor;
-        targetPageId: string | undefined;
-    }) => this.lifecycle.movePageIn(data);
-    movePageOut = (pageId?: string) => this.lifecycle.movePageOut(pageId);
-    duplicatePage = (pageId: string) => this.lifecycle.duplicatePage(pageId);
-    openPathInNewWindow = (filePath: string) =>
-        this.lifecycle.openPathInNewWindow(filePath);
-    requireGroupedText = (pageId: string, suggestedLanguage?: string) =>
-        this.layout.requireGroupedText(pageId, suggestedLanguage);
-    showAboutPage = (options?: { atContents?: boolean }) => this.standalonePages.show("about-page", options).then((): undefined => undefined);
-    showSettingsPage = () => this.standalonePages.show("settings-page").then((): undefined => undefined);
     showBrowserPage = (options?: {
         profileName?: string;
         incognito?: boolean;
@@ -349,12 +281,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         openedByAgent?: boolean;
     }) => import("../../editors/browser/browser-pages").then(({ showBrowserPage }) => showBrowserPage(this, options));
     showMcpInspectorPage = (options?: { url?: string; name?: string; autoConnect?: boolean }) => import("../../editors/mcp-inspector/mcp-inspector-pages").then(({ showMcpInspectorPage }): Promise<void> => showMcpInspectorPage(this, options));
-    showClipboardPage = () => this.standalonePages.show("clipboard-page").then((): undefined => undefined);
-    showMnemeConfigPage = () => this.standalonePages.show("mneme-config-page").then((): undefined => undefined);
-    showStorybookPage = () => this.standalonePages.show("storybook-page").then((): undefined => undefined);
-    showToolsHubPage = (opts?: { tab?: HubTab }) => this.standalonePages.show("tools-hub-page", opts).then((): undefined => undefined);
     openSiteActionVideo = (request: import("../../core/utils/curl-parser").ParsedHttpRequest, isCurrent: () => boolean) => import("../../editors/video/video-pages").then(({ openSiteActionVideo }): Promise<boolean> => openSiteActionVideo(this, request, isCurrent));
-    showVideoPlayerPage = () => this.standalonePages.show("video-player").then((): undefined => undefined);
     openImageInNewTab = (imageUrl: string, title?: string, sessionHandle?: string) => import("../../editors/image/image-pages").then(({ openImageInNewTab }): Promise<void> => openImageInNewTab(this, imageUrl, title, sessionHandle));
     openUrlInBrowserTab = (
         url: string,
@@ -366,25 +293,4 @@ export class PagesModel extends TModel<OpenFilesState> {
         }
     ) => import("../../editors/browser/browser-pages").then(({ openUrlInBrowserTab }) => openUrlInBrowserTab(this, url, options));
 
-    // Layout delegates
-    moveTab = (fromId: string, toId: string) =>
-        this.layout.moveTab(fromId, toId);
-    pinTab = (pageId: string, side: "left" | "right" = "left") =>
-        this.layout.pinTab(pageId, side);
-    unpinTab = (pageId: string) => this.layout.unpinTab(pageId);
-    group = (leftPageId: string, rightPageId: string) =>
-        this.layout.group(leftPageId, rightPageId);
-    ungroup = (pageId: string) => this.layout.ungroup(pageId);
-    groupTabs = (
-        pageId1: string,
-        pageId2: string,
-        enforceAdjacency = false
-    ) => this.layout.groupTabs(pageId1, pageId2, enforceAdjacency);
-    enterCompareMode = (pageId: string) => this.layout.enterCompareMode(pageId);
-    exitCompareMode = (pageId: string) => this.layout.exitCompareMode(pageId);
-
-    // Persistence delegates
-    saveState = () => this.persistence.saveState();
-    saveStateDebounced = () => this.persistence.saveStateDebounced();
-    init = () => this.persistence.init();
 }

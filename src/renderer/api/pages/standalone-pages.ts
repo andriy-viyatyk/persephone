@@ -90,7 +90,7 @@ export class StandalonePages {
                     if (explorer instanceof ExplorerEditor) await explorer.restore();
                     page.ensureSecondaryViewsModel();
                     page.expandPanel("clipboard");
-                    return model.addPage(null, page);
+                    return model.lifecycle.addPage(null, page);
                 },
             },
             afterShow: (page) => {
@@ -141,7 +141,7 @@ export class StandalonePages {
             ) as EditorView;
         });
         editorModel.restore();
-        return this.model.addPage(attachEditorToPage(editorModel), this.createPage(id));
+        return this.model.lifecycle.addPage(attachEditorToPage(editorModel), this.createPage(id));
     }
 
     async show(
@@ -163,7 +163,7 @@ export class StandalonePages {
                 async () => {
                     if (entry.build.kind === "custom") return entry.build.build(this.model);
                     const editor = await editorRegistry.createEditor(entry.build.editorId);
-                    return this.model.addPage(editor, this.createPage(isVideoPlayer ? undefined : entry.id));
+                    return this.model.lifecycle.addPage(editor, this.createPage(isVideoPlayer ? undefined : entry.id));
                 },
             );
         }

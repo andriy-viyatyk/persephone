@@ -208,7 +208,7 @@ class App {
         const { pages } = await import("./pages");
         this._pages = pages;
 
-        await pages.init();
+        await pages.persistence.init();
     }
 
     /** Dispatch launch inputs after the openRawLink pipeline has initialized. */

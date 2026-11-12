@@ -23,15 +23,15 @@ interface ComparePairIds {
 }
 
 export class CompareModeNode implements IAiVisible {
-    constructor(private readonly pagesModel: PagesModel) {}
+    constructor(private readonly pages: PagesModel) {}
 
     get pairs(): readonly IComparePair[] {
-        const state = this.pagesModel.state.get();
+        const state = this.pages.state.get();
         const pairs: IComparePair[] = [];
         for (const leftPageId of state.compareGroups) {
             const rightPageId = state.leftRight.get(leftPageId);
-            const leftPage = this.pagesModel.findPage(leftPageId);
-            const rightPage = rightPageId ? this.pagesModel.findPage(rightPageId) : undefined;
+            const leftPage = this.pages.query.findPage(leftPageId);
+            const rightPage = rightPageId ? this.pages.query.findPage(rightPageId) : undefined;
             if (!leftPage || !rightPage || !rightPageId) continue;
             const leftFilePath = leftPage.mainEditor?.filePath;
             const rightFilePath = rightPage.mainEditor?.filePath;
@@ -55,13 +55,13 @@ export class CompareModeNode implements IAiVisible {
                 + `resolved as ${JSON.stringify(pair.resolvedPageId)}: no grouped pair exists.`,
             );
         }
-        if (!this.pagesModel.query.canCompare(pair.leftPageId, pair.rightPageId)) {
+        if (!this.pages.query.canCompare(pair.leftPageId, pair.rightPageId)) {
             throw new Error(
                 `Cannot enter compare mode for pages ${JSON.stringify(pair.leftPageId)} and `
                 + `${JSON.stringify(pair.rightPageId)}: the grouped pair is not comparable.`,
             );
         }
-        if (!this.pagesModel.enterCompareMode(pageId)) {
+        if (!this.pages.layout.enterCompareMode(pageId)) {
             throw new Error(
                 `Cannot enter compare mode for pages ${JSON.stringify(pair.leftPageId)} and `
                 + `${JSON.stringify(pair.rightPageId)}: compare entry failed after preflight.`,
@@ -77,13 +77,13 @@ export class CompareModeNode implements IAiVisible {
                 + `resolved as ${JSON.stringify(pair.resolvedPageId)}: no grouped pair exists.`,
             );
         }
-        if (!this.pagesModel.query.isInCompareMode(pair.resolvedPageId).active) {
+        if (!this.pages.query.isInCompareMode(pair.resolvedPageId).active) {
             throw new Error(
                 `Cannot exit compare mode for pages ${JSON.stringify(pair.leftPageId)} and `
                 + `${JSON.stringify(pair.rightPageId)}: compare mode is inactive.`,
             );
         }
-        this.pagesModel.exitCompareMode(pageId);
+        this.pages.layout.exitCompareMode(pageId);
     }
 
     get aiVision(): IAiVisionDescriptor {
@@ -107,8 +107,8 @@ export class CompareModeNode implements IAiVisible {
     }
 
     private resolvePair(pageId: string): ComparePairIds {
-        const state = this.pagesModel.state.get();
-        const resolvedPageId = this.pagesModel.query.findPage(pageId)?.id ?? pageId;
+        const state = this.pages.state.get();
+        const resolvedPageId = this.pages.query.findPage(pageId)?.id ?? pageId;
         const rightPageId = state.leftRight.get(resolvedPageId);
         if (rightPageId) return { resolvedPageId, leftPageId: resolvedPageId, rightPageId };
         const leftPageId = state.rightLeft.get(resolvedPageId);
@@ -117,9 +117,9 @@ export class CompareModeNode implements IAiVisible {
     }
 
     private activePair(): { leftPageId: string; rightPageId: string } | undefined {
-        const activePageId = this.pagesModel.activePage?.id;
+        const activePageId = this.pages.query.activePage?.id;
         if (!activePageId) return undefined;
-        const state = this.pagesModel.state.get();
+        const state = this.pages.state.get();
         if (state.compareGroups.has(activePageId)) {
             const rightPageId = state.leftRight.get(activePageId);
             if (rightPageId) return { leftPageId: activePageId, rightPageId };

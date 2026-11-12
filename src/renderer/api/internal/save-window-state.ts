@@ -1,4 +1,4 @@
-import { pagesModel } from "../pages";
+import { pages } from "../pages";
 import { windowRecording } from "../window-recording";
 import { appWindow } from "../window";
 
@@ -10,6 +10,6 @@ export async function saveWindowStateForShutdown(): Promise<void> {
         await windowRecording.cancel();
     }
     if (appWindow.isBoardMode) return;
-    await Promise.all(pagesModel.state.get().pages.map((model) => model.saveState()));
-    await pagesModel.saveState();
+    await Promise.all(pages.state.get().pages.map((model) => model.saveState()));
+    await pages.persistence.saveState();
 }

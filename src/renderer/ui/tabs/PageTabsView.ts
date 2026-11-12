@@ -1,6 +1,6 @@
 import { t } from "../../../shared/i18n/t";
 import { app } from "../../api/app";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { settings } from "../../api/settings";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
@@ -77,7 +77,7 @@ export class PageTabsView extends VanillaView<object> {
             size: "md",
             title: t("shell.addPageCtrlN", { shortcut: "Ctrl+N" }),
             icon: "plus",
-            onClick: () => pagesModel.addEmptyPage(),
+            onClick: () => pages.lifecycle.addEmptyPage(),
             menuTitle: "New editor page",
             items: [],
             onOpenMenu: (anchor) => this.openCategoryPopover(anchor),
@@ -125,7 +125,7 @@ export class PageTabsView extends VanillaView<object> {
             this.updateAddMenu();
         }));
         this.bind(
-            pagesModel.state,
+            pages.state,
             (state): TabProjection => ({
                 pages: state.pages,
                 activeId: state.ordered[state.ordered.length - 1]?.id,
@@ -163,8 +163,8 @@ export class PageTabsView extends VanillaView<object> {
     }
 
     private updateTabs(projection: TabProjection): void {
-        const mainPages = projection.pages.filter((page) => !pagesModel.query.isRightPinned(page.id));
-        const rightPageCount = projection.pages.filter((page) => pagesModel.query.isRightPinned(page.id)).length;
+        const mainPages = projection.pages.filter((page) => !pages.query.isRightPinned(page.id));
+        const rightPageCount = projection.pages.filter((page) => pages.query.isRightPinned(page.id)).length;
         if (appWindow.isBoardMode) {
             mainPages.sort((left, right) => Number(right.isLockedBoardPage) - Number(left.isLockedBoardPage));
             this.root.toggleAttribute("data-board-single", mainPages.length <= 1 && rightPageCount === 0);
@@ -177,9 +177,9 @@ export class PageTabsView extends VanillaView<object> {
     }
 
     private refreshTabLayout(): void {
-        const state = pagesModel.state.get();
-        const mainPages = state.pages.filter((page) => !pagesModel.query.isRightPinned(page.id));
-        const rightPageCount = state.pages.filter((page) => pagesModel.query.isRightPinned(page.id)).length;
+        const state = pages.state.get();
+        const mainPages = state.pages.filter((page) => !pages.query.isRightPinned(page.id));
+        const rightPageCount = state.pages.filter((page) => pages.query.isRightPinned(page.id)).length;
         if (appWindow.isBoardMode) {
             mainPages.sort((left, right) => Number(right.isLockedBoardPage) - Number(left.isLockedBoardPage));
             this.root.toggleAttribute("data-board-single", mainPages.length <= 1 && rightPageCount === 0);
@@ -366,14 +366,14 @@ export class PageTabsView extends VanillaView<object> {
         items.push({
             label: t("shell.showAll"),
             startGroup: true,
-            onClick: () => void pagesModel.showToolsHubPage(),
+            onClick: () => void pages.standalonePages.show("tools-hub-page").then((): undefined => undefined),
         });
         this.addButton.update({
             name: "page-tabs-add",
             size: "md",
             title: t("shell.addPageCtrlN", { shortcut: "Ctrl+N" }),
             icon: "plus",
-            onClick: () => pagesModel.addEmptyPage(),
+            onClick: () => pages.lifecycle.addEmptyPage(),
             menuTitle: "New editor page",
             items,
             onOpenMenu: (anchor) => this.openCategoryPopover(anchor),

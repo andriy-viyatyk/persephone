@@ -6,5 +6,3 @@ import { PagesModel } from "./pages/PagesModel";
  */
 export const pages = new PagesModel();
 
-/** Backward-compatible alias during migration. Consumers can import { pagesModel }. */
-export { pages as pagesModel };

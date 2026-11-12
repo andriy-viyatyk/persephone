@@ -10,6 +10,7 @@ import type { IContentPipe } from "../../api/types/io.pipe";
 import type { IPageHost } from "../../api/pages/IPageHost";
 import type { IEditorState } from "../../../shared/types";
 import type { ILinkData } from "../../../shared/link-data";
+import type { ILinkDiffRevision } from "../../api/types/io.link-data";
 import type { BoardSourceContext } from "../../../shared/board-source-context";
 import type { MenuItem } from "../../uikit/Menu/index";
 
@@ -352,6 +353,9 @@ export abstract class EditorModel<
      *  register a private-session handle for a new page or enqueue a source
      *  delivered to an existing page. This context is never persisted. */
     acceptOpenContext?(context: EditorOpenContext): void;
+
+    /** Optional. Apply caller-selected revisions when opening a comparison editor. */
+    applyDiffRevisions?(from?: ILinkDiffRevision, to?: ILinkDiffRevision): void;
 
     // ── In-document anchor navigation  ────────────────────────────
 

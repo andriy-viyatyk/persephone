@@ -1,7 +1,7 @@
 import type { PagesModel } from "./PagesModel";
 import type { PageModel } from "./PageModel";
 import type { TextFileModel } from "../../editors/text";
-import { fpNormalizeForCompare } from "../../core/utils/file-path";
+import { fileIdentity } from "../../core/utils/file-path";
 
 /**
  * PagesQueryModel — Read-only queries on the page collection.
@@ -32,15 +32,11 @@ export class PagesQueryModel {
      *  file already open in a tab?" dedupe used by open/diff flows). */
     findPageByFilePath = (filePath?: string): PageModel | undefined => {
         if (!filePath) return undefined;
-        const identity = filePath.includes("://") || filePath.startsWith("data:")
-            ? filePath
-            : fpNormalizeForCompare(filePath);
+        const identity = fileIdentity(filePath);
         return this.model.state.get().pages.find((p) => {
             const main = p.mainEditor as { filePath?: string } | null;
             if (!main?.filePath) return false;
-            const mainIdentity = main.filePath.includes("://") || main.filePath.startsWith("data:")
-                ? main.filePath
-                : fpNormalizeForCompare(main.filePath);
+            const mainIdentity = fileIdentity(main.filePath);
             return mainIdentity === identity;
         });
     };

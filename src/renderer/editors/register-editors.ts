@@ -228,6 +228,9 @@ for (const e of EDITORS) {
     });
 }
 
+editorRegistry.registerRestoreOnly("explorer", async () => (await import("./explorer")).explorerRestoreModule);
+editorRegistry.registerRestoreOnly("draw-view", async () => (await import("./board")).boardModule);
+
 
 // Warm the custom-editor registry while bootstrap joins this same
 // initialization before restoring pages. The fire-and-forget warm-up preserves the existing

@@ -1,4 +1,4 @@
-import { pagesModel } from "../../../api/pages";
+import { pages } from "../../../api/pages";
 import type { IBrowserAccessFlags } from "../../../editors/browser/agent-access";
 import { BROWSER_AUTOMATION_MEMBERS } from "../browser-automation-members";
 import type { IAiMember, IAiVisionDescriptor } from "ai-vision";
@@ -72,8 +72,8 @@ const WINDOW_COORDINATE_MEMBERS: readonly IAiMember[] = [
 const recordingHelp = `Recording is video-only and captures Persephone's current window. start({ region: "window" | "page" | "editor", openPlayer?, hideStatusChrome? }) begins immediately; hideStatusChrome: true omits recording controls and the MCP indicator, restoring their prior visibility on stop, cancel, and errors. pause() and resume() control the same recording shown in the app header. stop() returns { path, durationMs, mimeType, width, height, stoppedBy }. The file stays in a temporary recordings folder for seven days unless saved or discarded; copy the returned path elsewhere to retain it. Set openPlayer: true to open the built-in player; closing that player page without Save as… deletes the file. A user stop remains retrievable by a later stop() call until another recording starts.`;
 
 function restrictedWindowScreen(): string | undefined {
-    const visiblePages = pagesModel.state.get().pages.filter(
-        (page) => pagesModel.query.isPageVisible(page.id),
+    const visiblePages = pages.state.get().pages.filter(
+        (page) => pages.query.isPageVisible(page.id),
     );
     for (const page of visiblePages) {
         const editor = page.mainEditorInstance;

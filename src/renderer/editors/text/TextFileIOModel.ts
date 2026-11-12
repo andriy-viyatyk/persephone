@@ -224,11 +224,7 @@ export class TextFileIOModel {
     applyRenamedPath = async (newSourcePath: string, movedPipe?: IContentPipe) => {
         const currentPipe = this.model.pipe;
         const oldPath = this.model.state.get().filePath;
-        const archiveEntry = currentPipe?.transformers.find(transformer => transformer.type === "archive")
-            ?.config.entryPath;
-        const newFilePath = typeof archiveEntry === "string"
-            ? `${newSourcePath}!${archiveEntry}`
-            : newSourcePath;
+        const newFilePath = currentPipe?.logicalPathFor(newSourcePath) ?? newSourcePath;
         const newPipe = movedPipe ?? (currentPipe
             ? currentPipe.cloneForMovedSource(newSourcePath)
             : new ContentPipe(new FileProvider(newSourcePath)));

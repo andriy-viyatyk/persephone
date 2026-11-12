@@ -491,6 +491,11 @@ otherwise the most recently updated stage status. Stages report progress in byte
 per second. Subscribe with `pipe.onStatusChange(() => ...)` and call the returned disposer when the
 observer is no longer needed. Status is not persisted in the pipe descriptor.
 
+`pipe.logicalPath` returns the source path, including `!entry/path` for a non-empty archive entry.
+For archive-root pipes with an empty entry it returns the provider source path without a trailing
+`!`. `pipe.logicalPathFor(sourcePath)` applies the same rule to another source path, which is useful
+when calculating a logical path after moving a source.
+
 The active page's primary pipe is also available as `page.pipe` when it has one. For example:
 
 ```javascript
@@ -829,8 +834,8 @@ class PageWrapper {
 
     // Grouped page auto-creation (returns GroupedPageWrapper)
     get grouped(): PageWrapper {
-        let grouped = pagesModel.getGroupedPage(this.model.id);
-        if (!grouped) grouped = pagesModel.requireGroupedText(this.model.id);
+        let grouped = pages.query.getGroupedPage(this.model.id);
+        if (!grouped) grouped = pages.layout.requireGroupedText(this.model.id);
         return new GroupedPageWrapper(grouped, this.releaseList, this.outputFlags);
     }
 

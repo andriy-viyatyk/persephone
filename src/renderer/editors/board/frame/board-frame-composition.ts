@@ -1,4 +1,4 @@
-import { pagesModel } from "../../../api/pages";
+import { pages } from "../../../api/pages";
 import { BoardCapabilityFrameAdapter } from "../../../api/capabilities/board-capability-frame-adapter";
 import { CapabilityError } from "../../../api/capability-error";
 import type { BoardEditorModel } from "../BoardEditorModel";
@@ -148,7 +148,7 @@ export class BoardFrameComposition {
 
     async start(): Promise<void> {
         this.subscriptions.push(this.endpoint.listen());
-        if (this.options.isMain) this.subscriptions.push(pagesModel.onFocus.subscribe((page) => {
+        if (this.options.isMain) this.subscriptions.push(pages.onFocus.subscribe((page) => {
             if (!this.session.isAlive || page !== this.options.model.page) return;
             if (this.focusTimer !== undefined) clearTimeout(this.focusTimer);
             this.focusTimer = setTimeout(() => {
@@ -157,7 +157,7 @@ export class BoardFrameComposition {
             }, 200);
         }));
         this.lastPageVisibility = this.options.getPageVisibility();
-        this.subscriptions.push(pagesModel.state.subscribe(() => {
+        this.subscriptions.push(pages.state.subscribe(() => {
             const visible = this.options.getPageVisibility();
             if (this.lastPageVisibility === visible) return;
             this.lastPageVisibility = visible;

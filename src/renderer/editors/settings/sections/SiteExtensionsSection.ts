@@ -4,7 +4,7 @@ import { t } from "../../../../shared/i18n/t";
 import { siteExtensionStore } from "../../../api/site-extensions";
 import { siteExtensionTrust } from "../../../api/site-extension-trust";
 import { settings } from "../../../api/settings";
-import { pagesModel } from "../../../api/pages";
+import { pages } from "../../../api/pages";
 import { fs } from "../../../api/fs";
 import { ui } from "../../../api/ui";
 import { ButtonView } from "../../../uikit/Button/ButtonView";
@@ -40,7 +40,7 @@ export class SiteExtensionsSectionView extends VanillaView<Record<string, never>
         this.openButton = this.child(new ButtonView({
             name: "site-extensions-open", variant: "ghost", size: "sm", background: "light",
             children: t("settings.siteExtensionsOpenList"),
-            onClick: () => void pagesModel.showToolsHubPage({ tab: "site-extensions" }),
+            onClick: () => void pages.standalonePages.show("tools-hub-page", { tab: "site-extensions" }).then((): undefined => undefined),
         }));
         this.folderValue.dataset.name = "site-extensions-folder";
         this.summary.dataset.name = "site-extensions-summary";

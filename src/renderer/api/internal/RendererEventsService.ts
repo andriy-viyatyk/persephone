@@ -1,5 +1,5 @@
 import rendererEvents from "../../../ipc/renderer/renderer-events";
-import { pagesModel } from "../pages";
+import { pages } from "../pages";
 import { app } from "../app";
 import { createLinkData } from "../../../shared/link-data";
 import { appWindow, signalReadyToQuit } from "../window";
@@ -18,14 +18,14 @@ import { t } from "../../../shared/i18n/t";
 
 /**
  * Renderer IPC events service.
- * Subscribes to IPC events and delegates to pagesModel methods.
+ * Subscribes to IPC events and delegates to pages methods.
  * Will be updated in to delegate to app.pages instead.
  */
 export class RendererEventsService {
     async init(): Promise<void> {
         // App.initEvents() owns these process-lifetime IPC subscriptions; no view/model
         // owns the application event bus wiring.
-        // Page operations (currently delegates to pagesModel)
+        // Page operations (currently delegates to pages)
         rendererEvents.eOpenFile.subscribe((filePath) =>
             this.openLaunchInput({ kind: "file", path: filePath }),
         );
@@ -75,7 +75,7 @@ export class RendererEventsService {
                 return;
             case "diff":
                 await guard(t("api.failedToOpenDiff"), () =>
-                    pagesModel.openDiff({
+                    pages.lifecycle.openDiff({
                         firstPath: input.firstPath,
                         secondPath: input.secondPath,
                     }),
@@ -84,15 +84,15 @@ export class RendererEventsService {
     };
 
     private handleShowPage = async (pageId: string) => {
-        await guard(t("api.failedToShowPage"), () => pagesModel.showPage(pageId));
+        await guard(t("api.failedToShowPage"), () => pages.navigation.showPage(pageId));
     };
 
     private handleMovePageIn = async (data: { page: PageDescriptor; targetPageId: string | undefined } | undefined) => {
-        await guard(t("api.failedToMovePage"), () => pagesModel.movePageIn(data));
+        await guard(t("api.failedToMovePage"), () => pages.lifecycle.movePageIn(data));
     };
 
     private handleMovePageOut = async (pageId: string) => {
-        await guard(t("api.failedToMovePage"), () => pagesModel.movePageOut(pageId));
+        await guard(t("api.failedToMovePage"), () => pages.lifecycle.movePageOut(pageId));
     };
 
     private handleOpenUrl = async (event: { url: string; boardRoot?: string; unattributedPopup?: boolean }) => {
@@ -130,11 +130,11 @@ export class RendererEventsService {
 
     private handleBeforeQuit = async () => {
         if (appWindow.isBoardMode) {
-            const pages = pagesModel.state.get().pages.filter((page) => page.pinSide !== "right");
+            const nonRightPages = pages.state.get().pages.filter((page) => page.pinSide !== "right");
             // A save prompt waits for the user; without this, main's 2-second unresponsive-renderer
             // timer destroys the window while the dialog is still open.
-            if (pages.some((page) => page.needsReleaseConfirmation)) appWindow.resolveWindowClose("prompting");
-            for (const page of pages) {
+            if (nonRightPages.some((page) => page.needsReleaseConfirmation)) appWindow.resolveWindowClose("prompting");
+            for (const page of nonRightPages) {
                 if (!(await page.confirmRelease())) {
                     appWindow.resolveWindowClose("cancel");
                     return;
@@ -176,7 +176,7 @@ export class RendererEventsService {
                 "info",
             );
             if (closeResult === "clicked") {
-                pagesModel.showAboutPage();
+                pages.standalonePages.show("about-page").then((): undefined => undefined);
             }
         }
     };

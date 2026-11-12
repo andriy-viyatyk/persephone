@@ -13,6 +13,7 @@ import {
     MIN_WIDTH,
     SECONDARY_VIEWS_WIDTH_KEY,
     SecondaryViewsModel,
+    resolveActivePanel,
     ISecondaryViewsState,
 } from "./SecondaryViewsModel";
 import type { IPageHost } from "./IPageHost";
@@ -629,15 +630,19 @@ export class PageModel implements IPageHost {
         this._enforceEmptyPanelPageClose();
     }
 
-    private composedPanels(): { key: string; panelId: string }[] {
-        const panels: { key: string; panelId: string }[] = [];
-        for (const editor of this.panelEditors) {
-            const views = (editor.state.get() as { secondaryView?: string[] }).secondaryView ?? [];
-            for (const panelId of views) {
-                panels.push({ key: panelKey(editor.id, panelId), panelId });
-            }
-        }
-        return panels;
+    composedPanels(): { key: string; panelId: string }[] {
+        return this.panelEditors.flatMap((editor) =>
+            ((editor.state.get() as { secondaryView?: string[] }).secondaryView ?? [])
+                .map((panelId) => ({ key: panelKey(editor.id, panelId), panelId })),
+        );
+    }
+
+    applySidebarDescriptor(descriptor: NonNullable<PageDescriptor["sidebar"]>): void {
+        const nav = this.ensureSecondaryViewsModel();
+        nav.setStateQuiet({ open: descriptor.open, width: descriptor.width });
+        const panels = this.composedPanels();
+        this.activePanel = resolveActivePanel(descriptor.activePanel, panels);
+        if (!panels.length) nav.setStateQuiet({ open: false, activePanel: "" });
     }
 
     private _enforceEmptyPanelPageClose(): void {
@@ -668,13 +673,8 @@ export class PageModel implements IPageHost {
         const panels = this.composedPanels();
         if (!panels.length) return; // no panels — nothing to keep expanded
 
-        const active = parsePanelKey(this.activePanel);
-        const resolves = active.editorId
-            ? panels.some((p) => p.key === this.activePanel)
-            : panels.some((p) => p.panelId === active.panelId);
-        if (resolves) return;
-
-        this.setActivePanel(panels[0].key);
+        const resolved = resolveActivePanel(this.activePanel, panels);
+        if (resolved !== this.activePanel) this.setActivePanel(resolved);
     }
 
     /** Auto-create an Explorer alongside a mandatory sidebar (implementation in

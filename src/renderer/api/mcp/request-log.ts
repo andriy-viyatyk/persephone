@@ -1,4 +1,4 @@
-import { pagesModel } from "../pages";
+import { pages } from "../pages";
 import { LogViewEditor } from "../../editors/log-view";
 import type { McpRequestEntry } from "../../editors/log-view/logTypes";
 
@@ -32,7 +32,7 @@ export function logIncomingRequest(
         requestHistory.splice(0, requestHistory.length - MAX_REQUEST_LOG_ENTRIES);
     }
 
-    const logPage = pagesModel.findPage("mcp-server-log");
+    const logPage = pages.query.findPage("mcp-server-log");
     const logEditor = logPage?.mainEditorInstance;
     if (logEditor instanceof LogViewEditor) {
         logEditor.addEntry("output.mcp-request", requestHistory[requestHistory.length - 1]);
@@ -41,7 +41,7 @@ export function logIncomingRequest(
 
 /** Show the MCP server request log page (creates if needed, backfills history). */
 export async function showMcpRequestLog(): Promise<void> {
-    const page = await pagesModel.standalonePages.requireTextPage("mcp-server-log");
+    const page = await pages.standalonePages.requireTextPage("mcp-server-log");
     const editor = page.mainEditorInstance;
     if (!(editor instanceof LogViewEditor)) return;
 

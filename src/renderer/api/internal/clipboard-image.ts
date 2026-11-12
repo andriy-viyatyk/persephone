@@ -1,4 +1,4 @@
-import { pagesModel } from "../pages";
+import { pages } from "../pages";
 import { app } from "../app";
 import { guard } from "../../core/utils/guard";
 import { englishMessage, t } from "../../../shared/i18n/t";
@@ -112,7 +112,7 @@ function isPasteIntoEditableOrGrid(e: ClipboardEvent): boolean {
 
 /** Open a pasted image file in a new Image viewer tab. */
 export function openPastedImage(file: File): void {
-    pagesModel.openImageInNewTab(URL.createObjectURL(file), "Pasted image");
+    pages.openImageInNewTab(URL.createObjectURL(file), "Pasted image");
 }
 
 /** Open pasted clipboard HTML in a new HTML viewer tab. */
@@ -124,6 +124,6 @@ export function openPastedHtml(html: string): void {
             language: "html",
             title: englishMessage("api.pastedHtml"),
         });
-        pagesModel.showPage(pageId);
+        pages.navigation.showPage(pageId);
     });
 }

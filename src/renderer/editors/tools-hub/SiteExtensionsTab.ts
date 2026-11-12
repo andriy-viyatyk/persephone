@@ -1,4 +1,4 @@
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
 import { siteExtensionStore, type SiteExtensionListing } from "../../api/site-extensions";
@@ -56,7 +56,7 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
         }));
         const openRoot = this.child(new IconButtonView({
             name: "site-extensions-open-root", size: "sm", icon: "folder-open", title: t("tools.openSiteExtensionsFolder"),
-            onClick: () => void this.perform(async () => { await pagesModel.addEmptyPageWithNavPanel(await siteExtensionStore.getRoot()); }),
+            onClick: () => void this.perform(async () => { await pages.lifecycle.addEmptyPageWithNavPanel(await siteExtensionStore.getRoot()); }),
         }));
         const description = createPanelElement({ flex: 1, paddingLeft: "md" }, [createTextElement(
             t("tools.siteExtensionsDescription"),
@@ -161,7 +161,7 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
             header.append(createTextElement(t("tools.notTrusted"), { color: "light", size: "xs" }));
         }
         if (listing) {
-            this.addButton(header, `site-extension-open-folder-${entry.id}`, t("tools.openFolder"), async () => { await pagesModel.addEmptyPageWithNavPanel(await siteExtensionFolder(entry.id)); });
+            this.addButton(header, `site-extension-open-folder-${entry.id}`, t("tools.openFolder"), async () => { await pages.lifecycle.addEmptyPageWithNavPanel(await siteExtensionFolder(entry.id)); });
         }
         if (listing || entry.grant) {
             this.addRowView(header, new IconButtonView({

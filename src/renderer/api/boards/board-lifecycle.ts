@@ -10,7 +10,7 @@ import { fpBasename, fpDirname, fpJoin } from "../../core/utils/file-path";
 import { app } from "../app";
 import { editorCategories } from "../editor-categories";
 import { fs } from "../fs";
-import { pagesModel } from "../pages";
+import { pages } from "../pages";
 import type { PageModel } from "../pages/PageModel";
 import { ui } from "../ui";
 import { boardInstallRegistry } from "./board-install-registry";
@@ -41,7 +41,7 @@ class BoardLifecycle {
      *  their prompt). A page left with no editor at all closes; a page that keeps another editor
      *  (an Explorer panel, for example) stays open and shows its empty state. */
     async releasePages(root: string): Promise<boolean> {
-        for (const page of pagesModel.boardPageRouter.findPagesByBoardRoot(root)) {
+        for (const page of pages.boardPageRouter.findPagesByBoardRoot(root)) {
             if (!(await releaseBoardFromPage(page))) return false;
             if (page.editors.length === 0) await page.close();
         }
@@ -116,7 +116,7 @@ class BoardLifecycle {
         const wasTrusted = boardRegistry.isTrusted(boardRoot);
         await boardInstallRegistry.load();
         const installEntry = boardInstallRegistry.getByRoot(boardRoot);
-        const pages = pagesModel.boardPageRouter.findPagesByBoardRoot(boardRoot);
+        const matchingPages = pages.boardPageRouter.findPagesByBoardRoot(boardRoot);
 
         await api.stopModuleService(boardRoot);
         await renameReleasedFolder(boardRoot, newRoot);
@@ -129,7 +129,7 @@ class BoardLifecycle {
         }
         if (installEntry) await boardInstallRegistry.record({ ...installEntry, root: newRoot });
         invalidateBoardDisplayText(boardRoot);
-        for (const page of pages) {
+        for (const page of matchingPages) {
             const host = asBoardHostEditor(page.mainEditorInstance);
             if (!host?.boardRoot) continue;
             await app.events.openRawLink.sendAsync(createLinkData(encodePersephoneBoardLink(newRoot), {
@@ -173,22 +173,22 @@ class BoardLifecycle {
             void ui.notify(t(BUSY_KEY[action]), "warning");
             return false;
         }
-        const pages = pagesModel.boardPageRouter.findPagesByBoardRoot(root);
-        if (pages.length && !consented) {
-            const choice = await ui.confirm(t(OPEN_KEY[action], { count: pages.length }), {
+        const matchingPages = pages.boardPageRouter.findPagesByBoardRoot(root);
+        if (matchingPages.length && !consented) {
+            const choice = await ui.confirm(t(OPEN_KEY[action], { count: matchingPages.length }), {
                 title: t("api.boardOpenTitle"),
                 buttons: [CLOSE_BOARD_AND_CONTINUE, CANCEL],
             });
             if (choice !== CLOSE_BOARD_AND_CONTINUE) return false;
         }
-        for (const page of pages) {
+        for (const page of matchingPages) {
             if (!(await releaseBoardFromPage(page))) return false;
         }
         return true;
     }
 
     private isIdle(root: string): boolean {
-        return !isBoardRootBusy(root) && pagesModel.boardPageRouter.findPagesByBoardRoot(root).length === 0;
+        return !isBoardRootBusy(root) && pages.boardPageRouter.findPagesByBoardRoot(root).length === 0;
     }
 }
 

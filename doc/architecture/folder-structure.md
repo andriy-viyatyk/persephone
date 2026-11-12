@@ -1136,7 +1136,7 @@ service.
 
 ```typescript
 // Direct imports preferred — avoid barrel imports that cause circular deps
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { app } from "../../api/app";
 
 // Specific component imports — UIKit primitives

@@ -1,4 +1,4 @@
-import { pagesModel } from "./pages";
+import { pages } from "./pages";
 import { app } from "./app";
 import { fs } from "./fs";
 import { type BrowserProfile } from "./settings";
@@ -65,7 +65,7 @@ const staticItems: CreatableItem[] = [
                 const picked = await fs.showFolderDialog({ title: t("shell.openFolderInExplorer") });
                 const folder = picked?.[0];
                 if (!folder) return;
-                await pagesModel.addEmptyPageWithNavPanel(folder);
+                await pages.lifecycle.addEmptyPageWithNavPanel(folder);
             })();
         },
         category: "tool",
@@ -75,7 +75,7 @@ const staticItems: CreatableItem[] = [
         labelKey: "shell.openFile",
         label: englishMessage("shell.openFile"),
         createIcon: () => createIconElement("open-file"),
-        create: () => { void pagesModel.openFileFromDialog(); },
+        create: () => { void pages.openFileFromDialog(); },
         category: "tool",
     },
     {
@@ -83,7 +83,7 @@ const staticItems: CreatableItem[] = [
         labelKey: "shell.openUrl",
         label: englishMessage("shell.openUrl"),
         createIcon: () => createIconElement("open-file"),
-        create: () => { void pagesModel.openFileWithDialog(); },
+        create: () => { void pages.openFileWithDialog(); },
         category: "tool",
     },
     {
@@ -91,7 +91,7 @@ const staticItems: CreatableItem[] = [
         labelKey: "shell.clipboard",
         label: englishMessage("shell.clipboard"),
         createIcon: () => createIconElement("paste"),
-        create: () => { void pagesModel.showClipboardPage(); },
+        create: () => { void pages.standalonePages.show("clipboard-page").then((): undefined => undefined); },
         category: "tool",
     },
     {
@@ -99,7 +99,7 @@ const staticItems: CreatableItem[] = [
         labelKey: "shell.textScriptJs",
         label: englishMessage("shell.textScriptJs"),
         createIcon: () => JavascriptIcon.createElement(),
-        create: () => pagesModel.addEditorPage("monaco", "javascript", "untitled.js"),
+        create: () => pages.lifecycle.addEditorPage("monaco", "javascript", "untitled.js"),
         category: "editor",
     },
     {
@@ -107,7 +107,7 @@ const staticItems: CreatableItem[] = [
         labelKey: "shell.textScriptTs",
         label: englishMessage("shell.textScriptTs"),
         createIcon: () => TypescriptIcon.createElement(),
-        create: () => pagesModel.addEditorPage("monaco", "typescript", "untitled.ts"),
+        create: () => pages.lifecycle.addEditorPage("monaco", "typescript", "untitled.ts"),
         category: "editor",
     },
     {
@@ -115,7 +115,7 @@ const staticItems: CreatableItem[] = [
         labelKey: "editors.gridJson",
         label: englishMessage("editors.gridJson"),
         createIcon: () => GridIcon.createElement(),
-        create: () => pagesModel.addEditorPage("grid-json", "json", "untitled.grid.json"),
+        create: () => pages.lifecycle.addEditorPage("grid-json", "json", "untitled.grid.json"),
         category: "editor",
     },
     {
@@ -123,7 +123,7 @@ const staticItems: CreatableItem[] = [
         labelKey: "editors.gridCsv",
         label: englishMessage("editors.gridCsv"),
         createIcon: () => GridIcon.createElement(),
-        create: () => pagesModel.addEditorPage("grid-csv", "csv", "untitled.grid.csv"),
+        create: () => pages.lifecycle.addEditorPage("grid-csv", "csv", "untitled.grid.csv"),
         category: "editor",
     },
     {
@@ -131,7 +131,7 @@ const staticItems: CreatableItem[] = [
         labelKey: "editors.links",
         label: englishMessage("editors.links"),
         createIcon: () => LinkIcon.createElement(),
-        create: () => pagesModel.addEditorPage("link-view", "json", "untitled.link.json"),
+        create: () => pages.lifecycle.addEditorPage("link-view", "json", "untitled.link.json"),
         category: "editor",
     },
     {
@@ -139,7 +139,7 @@ const staticItems: CreatableItem[] = [
         labelKey: "editors.browser",
         label: englishMessage("editors.browser"),
         createIcon: () => createIconElement("globe", { color: DEFAULT_BROWSER_COLOR }),
-        create: () => { pagesModel.showBrowserPage(); },
+        create: () => { pages.showBrowserPage(); },
         category: "tool",
     },
     {
@@ -147,7 +147,7 @@ const staticItems: CreatableItem[] = [
         labelKey: "shell.browserIncognito",
         label: englishMessage("shell.browserIncognito"),
         createIcon: () => IncognitoIcon.createElement(),
-        create: () => { pagesModel.showBrowserPage({ incognito: true }); },
+        create: () => { pages.showBrowserPage({ incognito: true }); },
         category: "tool",
     },
     {
@@ -155,7 +155,7 @@ const staticItems: CreatableItem[] = [
         labelKey: "shell.browserTor",
         label: englishMessage("shell.browserTor"),
         createIcon: () => TorIcon.createElement(),
-        create: () => { pagesModel.showBrowserPage({ tor: true }); },
+        create: () => { pages.showBrowserPage({ tor: true }); },
         category: "tool",
     },
     {
@@ -163,7 +163,7 @@ const staticItems: CreatableItem[] = [
         labelKey: "editors.mcpInspector",
         label: englishMessage("editors.mcpInspector"),
         createIcon: () => createIconElement("mcp"),
-        create: () => { pagesModel.showMcpInspectorPage(); },
+        create: () => { pages.showMcpInspectorPage(); },
         category: "tool",
     },
     {
@@ -171,7 +171,7 @@ const staticItems: CreatableItem[] = [
         labelKey: "editors.mneme",
         label: englishMessage("editors.mneme"),
         createIcon: () => createIconElement("memory", { color: MEMORY_ICON_COLOR }),
-        create: () => { pagesModel.showMnemeConfigPage(); },
+        create: () => { pages.standalonePages.show("mneme-config-page").then((): undefined => undefined); },
         category: "tool",
     },
     {
@@ -179,7 +179,7 @@ const staticItems: CreatableItem[] = [
         labelKey: "editors.storybook",
         label: englishMessage("editors.storybook"),
         createIcon: () => createIconElement("storybook"),
-        create: () => { pagesModel.showStorybookPage(); },
+        create: () => { pages.standalonePages.show("storybook-page").then((): undefined => undefined); },
         category: "tool",
     },
     {
@@ -187,7 +187,7 @@ const staticItems: CreatableItem[] = [
         labelKey: "editors.videoPlayer",
         label: englishMessage("editors.videoPlayer"),
         createIcon: () => createIconElement("player", { color: DEFAULT_BROWSER_COLOR }),
-        create: () => pagesModel.showVideoPlayerPage(),
+        create: () => pages.standalonePages.show("video-player").then((): undefined => undefined),
         category: "tool" as const,
     },
 ];
@@ -205,7 +205,7 @@ export function getCreatableItems(
         labelParams: { profile: profile.name },
         label: englishMessage("shell.browserProfile", { profile: profile.name }),
         createIcon: () => createIconElement("globe", { color: profile.color }),
-        create: () => { pagesModel.showBrowserPage({ profileName: profile.name }); },
+        create: () => { pages.showBrowserPage({ profileName: profile.name }); },
         category: "tool" as const,
     }));
 
@@ -220,7 +220,7 @@ export function getCreatableItems(
                 create: () => {
                     void guard(`Failed to create ${label}`, async () => {
                         if (association?.editorKind === "content-host") {
-                            await pagesModel.addBundledBoardPage(board.root);
+                            await pages.boardPageRouter.addBundledBoardPage(board.root);
                             return;
                         }
                         await app.events.openRawLink.sendAsync(

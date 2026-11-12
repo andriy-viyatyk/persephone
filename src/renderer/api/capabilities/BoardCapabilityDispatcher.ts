@@ -5,7 +5,7 @@ import {
     type IntentRequest,
 } from "../../../ipc/capability-bus-channels";
 import { CapabilityError, toCapabilityError } from "../capability-error";
-import { pagesModel } from "../pages";
+import { pages } from "../pages";
 import type { PageModel } from "../pages/PageModel";
 
 export interface BoardCapabilityFrame {
@@ -110,13 +110,13 @@ class BoardCapabilityDispatcher {
         const rootKey = BoardRoot.from(root).key;
         const producesPage = registration.alwaysOpensNewPage === true;
         let reservation = producesPage ? undefined : this.reservationsByRoot.get(rootKey);
-        const existingPage = !producesPage && !reservation ? pagesModel.boardPageRouter.findPagesByBoardRoot(root)[0] : undefined;
+        const existingPage = !producesPage && !reservation ? pages.boardPageRouter.findPagesByBoardRoot(root)[0] : undefined;
         if (!reservation) {
             reservation = this.createReservation(rootKey, root);
             if (!producesPage) this.reservationsByRoot.set(rootKey, reservation);
             if (existingPage) {
                 this.bindPage(reservation, existingPage);
-                pagesModel.navigation.showPage(existingPage.id);
+                pages.navigation.showPage(existingPage.id);
             }
             else this.openReservation(reservation, route);
         }
@@ -157,7 +157,7 @@ class BoardCapabilityDispatcher {
 
     private openReservation(reservation: PageReservation, opener: DispatchRoute): void {
         reservation.opening = true;
-        void pagesModel.boardPageRouter.openBoardHandlerPage(
+        void pages.boardPageRouter.openBoardHandlerPage(
             reservation.root,
             capabilityTitle(opener.registration, opener.request),
             (page) => {

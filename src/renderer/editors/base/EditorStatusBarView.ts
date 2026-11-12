@@ -116,7 +116,7 @@ export class EditorStatusBarView extends VanillaView<EditorStatusBarViewProps> {
         content.append(contributionsHost);
 
         const pageId = this.props.model.page?.id;
-        const page = pageId ? app.pages.findPage(pageId) : undefined;
+        const page = pageId ? app.pages.query.findPage(pageId) : undefined;
         if (page) {
             const status = this.child(new PagePipeStatusView({ page }));
             content.append(status.root);

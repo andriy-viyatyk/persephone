@@ -134,11 +134,7 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
         const currentPipe = this.pipe;
         if (!currentPipe) return;
         const oldFilePath = this.state.get().filePath;
-        const archiveEntry = currentPipe.transformers.find(transformer => transformer.type === "archive")
-            ?.config.entryPath;
-        const newFilePath = typeof archiveEntry === "string"
-            ? `${newSourcePath}!${archiveEntry}`
-            : newSourcePath;
+        const newFilePath = currentPipe.logicalPathFor(newSourcePath);
         this.pipeWatch?.();
         this.recoveryWatch?.();
         this.moveWatch?.();

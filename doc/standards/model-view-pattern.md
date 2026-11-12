@@ -376,7 +376,7 @@ render pass for pushing current data through every descendant.
 
 [`PageContentView`](../../src/renderer/ui/app/PageContentView.ts) is the worked reference. It takes
 only `{ pageId }` as construction-time configuration, finds the page, and subscribes to
-`pagesModel` itself. A parent may retain a slot or other structural identity while the child owns
+the `pages` model itself. A parent may retain a slot or other structural identity while the child owns
 the live subscription for the data it renders. If a child cannot subscribe to a model, expose the
 smallest targeted setter needed for that live value rather than rebuilding a props object and
 calling `update()` for every state dispatch.

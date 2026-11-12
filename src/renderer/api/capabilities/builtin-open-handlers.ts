@@ -3,7 +3,7 @@ import type { EditorView } from "../../../shared/types";
 import type { CapabilityId, CapabilityPageResult, ContentRepresentation } from "../types/capabilities";
 import type { CapabilityRegistration } from "../../../ipc/capability-bus-channels";
 import { editorRegistry, type EditorCapabilityDeclaration } from "../../editors/base/editorRegistry";
-import { pagesModel } from "../pages";
+import { pages } from "../pages";
 import { ui } from "../ui";
 import { payloadRecord, payloadString } from "./platform-payload-validators";
 
@@ -34,7 +34,7 @@ function createPageHandler(
             );
         }
 
-        const page = pagesModel.addEditorPage(editorId as EditorView, language, title, content);
+        const page = pages.lifecycle.addEditorPage(editorId as EditorView, language, title, content);
         return { pageId: page.id };
     };
 }

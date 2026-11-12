@@ -78,8 +78,8 @@ export async function openLinkInBrowser(data: ILinkData): Promise<void> {
     const openInBrowser = data.target === "browser";
 
     if (data.browserPageId) {
-        const { pagesModel } = await import("../api/pages");
-        const page = pagesModel.query.findPage(data.browserPageId);
+        const { pages } = await import("../api/pages");
+        const page = pages.query.findPage(data.browserPageId);
         const editor = page?.mainEditor;
         if (editor && "navigate" in editor && "addTab" in editor) {
             const tabMode = data.browserTabMode ?? "addTab";
@@ -95,21 +95,21 @@ export async function openLinkInBrowser(data: ILinkData): Promise<void> {
     if (browserMode === "os-default") {
         await launchExternal(data);
     } else if (browserMode === "incognito") {
-        const { pagesModel } = await import("../api/pages");
-        await pagesModel.openUrlInBrowserTab(data.url, { incognito: true });
+        const { pages } = await import("../api/pages");
+        await pages.openUrlInBrowserTab(data.url, { incognito: true });
     } else if (browserMode?.startsWith("profile:")) {
         const profileName = browserMode.slice("profile:".length);
-        const { pagesModel } = await import("../api/pages");
-        await pagesModel.openUrlInBrowserTab(data.url, { profileName });
+        const { pages } = await import("../api/pages");
+        await pages.openUrlInBrowserTab(data.url, { profileName });
     } else if (browserMode === "internal") {
-        const { pagesModel } = await import("../api/pages");
-        await pagesModel.openUrlInBrowserTab(data.url, { external: true });
+        const { pages } = await import("../api/pages");
+        await pages.openUrlInBrowserTab(data.url, { external: true });
     } else {
         const { settings } = await import("../api/settings");
         const behavior = settings.get("link-open-behavior");
         if (behavior === "internal-browser" || openInBrowser) {
-            const { pagesModel } = await import("../api/pages");
-            await pagesModel.openUrlInBrowserTab(data.url, { external: openInBrowser });
+            const { pages } = await import("../api/pages");
+            await pages.openUrlInBrowserTab(data.url, { external: openInBrowser });
         } else {
             await launchExternal(data);
         }
@@ -121,8 +121,8 @@ async function launchExternal(data: ILinkData): Promise<void> {
     const decision = await externalLaunchDecision(data);
     if (decision === "deny") return;
     if (decision === "internal") {
-        const { pagesModel } = await import("../api/pages");
-        await pagesModel.openUrlInBrowserTab(data.url, { external: true });
+        const { pages } = await import("../api/pages");
+        await pages.openUrlInBrowserTab(data.url, { external: true });
         return;
     }
     const { shell } = await import("../api/shell");

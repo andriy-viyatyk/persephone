@@ -29,7 +29,7 @@ import { CapabilityError, noHandlerError, toCapabilityError } from "../capabilit
 import { serviceChannelPorts } from "../service-channel-ports";
 import { CapabilityIndexMirror } from "./capability-index";
 import { boardCapabilityDispatcher } from "./BoardCapabilityDispatcher";
-import { pagesModel } from "../pages";
+import { pages } from "../pages";
 import { contentViewRepresentation } from "./platform-payload-validators";
 
 function matchesFilter(registration: CapabilityRegistration, filter?: CapabilityHandlerFilter): boolean {
@@ -96,7 +96,7 @@ function watchCaller(opts: CapabilityInvokeOptions | undefined, cancel: () => vo
             stops.push(() => opts.signal?.removeEventListener("abort", cancel));
         }
     }
-    const page = opts?.pageId ? pagesModel.findPage(opts.pageId) : undefined;
+    const page = opts?.pageId ? pages.query.findPage(opts.pageId) : undefined;
     if (page) stops.push(page.disposed.subscribe(cancel));
     return () => stops.forEach((stop) => stop());
 }

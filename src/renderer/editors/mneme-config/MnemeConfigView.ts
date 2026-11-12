@@ -7,7 +7,7 @@ import { DotView } from "../../uikit/Dot/DotView";
 import type { DotColor } from "../../uikit/Dot/DotView";
 import { EditorToolbarView } from "../base/EditorToolbarView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import type { EditorModel } from "../base";
 import { MnemeConfigEditorModel, type MnemeConfigEditorState } from "./MnemeConfigEditorModel";
 import { isModelReady } from "./mnemeTypes";
@@ -37,7 +37,7 @@ class StoppedConfigView extends VanillaView<StoppedConfigProps> {
     protected onMount(): void {
         const dot = this.child(new DotView({ size: "md", color: "neutral" }));
         this.start = this.child(new ButtonView({ name: "mneme-start", variant: "primary", children: t("mneme.start", { product: untranslated("Mneme") }), onClick: () => { void this.props.model.restartMneme(); } }));
-        this.settings = this.child(new ButtonView({ name: "mneme-open-settings", children: t("mneme.openSettings"), onClick: () => { void pagesModel.showSettingsPage(); } }));
+        this.settings = this.child(new ButtonView({ name: "mneme-open-settings", children: t("mneme.openSettings"), onClick: () => { void pages.standalonePages.show("settings-page").then((): undefined => undefined); } }));
         const actions = createPanelElement({ direction: "row", gap: "sm" }); actions.append(this.start.root, this.settings.root);
         this.root.append(dot.root, createTextElement(t("mneme.notRunning", { product: untranslated("Mneme") }), { size: "lg", color: "light" }), createTextElement(t("mneme.disabledOrNotStarted", { product: untranslated("Mneme") }), { size: "md", color: "light" }), actions);
         dot.mount(); this.start.mount(); this.settings.mount();

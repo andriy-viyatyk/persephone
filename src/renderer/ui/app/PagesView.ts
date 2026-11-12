@@ -1,5 +1,5 @@
 import { AppPageManagerView, type AppPageManagerProps } from "../../components/page-manager/AppPageManagerView";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import type { OpenFilesState } from "../../api/pages/PagesModel";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { PageContentView } from "./PageContentView";
@@ -22,11 +22,11 @@ export class PagesView extends VanillaView<object> {
     };
     private readonly onPopoverWindowBlur = (): void => this.scheduleActiveElementCheck();
     private readonly onPopoverKeyDown = (event: KeyboardEvent): void => {
-        if (event.key === "Escape" && !event.defaultPrevented) pagesModel.closePopover();
+        if (event.key === "Escape" && !event.defaultPrevented) pages.closePopover();
     };
 
     public constructor(props: object) {
-        const projection = PagesView.selectState(pagesModel.state.get());
+        const projection = PagesView.selectState(pages.state.get());
         const manager = new AppPageManagerView(PagesView.managerProps(projection));
         super(props, manager.root);
         this.manager = this.child(manager);
@@ -36,7 +36,7 @@ export class PagesView extends VanillaView<object> {
     protected onMount(): void {
         this.manager.mount();
         this.bind(
-            pagesModel.state,
+            pages.state,
             PagesView.selectState,
             (projection) => this.applyProjection(projection),
         );
@@ -57,7 +57,7 @@ export class PagesView extends VanillaView<object> {
     private static managerProps(projection: PagesProjection): AppPageManagerProps {
         const activePage = projection.ordered[projection.ordered.length - 1];
         const groupedActiveId = activePage
-            ? pagesModel.query.getGroupedPage(activePage.id)?.id
+            ? pages.query.getGroupedPage(activePage.id)?.id
             : undefined;
         return {
             pageIds: projection.pages.map((page) => page.id),
@@ -66,17 +66,17 @@ export class PagesView extends VanillaView<object> {
             grouping: projection.leftRight,
             compareModeIds: projection.compareGroups,
             rightPinnedIds: new Set(projection.pages
-                .filter((page) => pagesModel.query.isRightPinned(page.id))
+                .filter((page) => pages.query.isRightPinned(page.id))
                 .map((page) => page.id)),
             popoverId: projection.popoverPageId,
-            getPopoverSize: (id) => pagesModel.state.get().pages.find((page) => page.id === id)?.popoverSize,
+            getPopoverSize: (id) => pages.state.get().pages.find((page) => page.id === id)?.popoverSize,
             onPopoverResize: (id, size) => PagesView.savePopoverSize(id, size),
             pageView: PageContentView,
         };
     }
 
     private static savePopoverSize(id: string, size: PagePopoverSize): void {
-        const page = pagesModel.state.get().pages.find((candidate) => candidate.id === id);
+        const page = pages.state.get().pages.find((candidate) => candidate.id === id);
         if (page) page.popoverSize = size;
     }
 
@@ -90,8 +90,8 @@ export class PagesView extends VanillaView<object> {
         if (previousPopoverId === nextPopoverId) return;
         const focusedPage = nextPopoverId
             ? projection.pages.find((page) => page.id === nextPopoverId)
-            : pagesModel.query.activePage;
-        if (focusedPage) pagesModel.onFocus.send(focusedPage);
+            : pages.query.activePage;
+        if (focusedPage) pages.onFocus.send(focusedPage);
     }
 
     private setPopoverListeners(active: boolean): void {
@@ -124,7 +124,7 @@ export class PagesView extends VanillaView<object> {
             : undefined;
         const rightPageTabs = appRoot.querySelector('[data-name="right-page-tabs"]');
         if (popoverSlot?.contains(target) || rightPageTabs?.contains(target)) return;
-        pagesModel.closePopover();
+        pages.closePopover();
     }
 
     private scheduleActiveElementCheck(): void {

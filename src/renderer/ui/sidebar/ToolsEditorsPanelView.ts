@@ -1,5 +1,5 @@
 import { t } from "../../../shared/i18n/t";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { SegmentedControlView, type SegmentedControlProps } from "../../uikit/SegmentedControl/SegmentedControlView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -78,7 +78,7 @@ export class ToolsEditorsPanelView extends VanillaView<ToolsEditorsPanelProps> {
     }
 
     private openInNewTab(): void {
-        void pagesModel.showToolsHubPage({ tab: panelTabToHubTab(this.tab) });
+        void pages.standalonePages.show("tools-hub-page", { tab: panelTabToHubTab(this.tab) }).then((): undefined => undefined);
         this.props.onClose?.();
     }
 }

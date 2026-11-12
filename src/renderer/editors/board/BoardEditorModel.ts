@@ -31,7 +31,7 @@ import { createIconElement } from "../../uikit/shared/slots";
 import { app } from "../../api/app";
 import { ui } from "../../api/ui";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { errMessage } from "../../../shared/utils";
 import { englishMessage, t } from "../../../shared/i18n/t";
 import type { MenuItem } from "../../uikit/Menu/index";
@@ -327,7 +327,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
                 id: "open-board-folder",
                 label: t("shell.openBoardFolder"),
                 icon: createIconElement("folder-open"),
-                onClick: () => { if (boardRoot) void app.pages.openFile(boardRoot); },
+                onClick: () => { if (boardRoot) void app.pages.openPath(boardRoot); },
                 disabled: !boardRoot,
             },
             {
@@ -424,7 +424,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         this.releaseError = undefined;
         if (!this.modified) return true;
         const pageId = this.page?.id;
-        if (pageId) pagesModel.showPage(pageId);
+        if (pageId) pages.navigation.showPage(pageId);
         const choice = await ui.confirm(
             t("board.saveChangesConfirmation", { name: this.title }),
             {

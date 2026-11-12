@@ -1,5 +1,4 @@
 import type { PagesModel } from "./PagesModel";
-import { IEditorState } from "../../../shared/types";
 import type {
     PageDescriptor,
     WindowState,
@@ -14,96 +13,13 @@ import { RestoreFailedEditor } from "../../editors/restore-failed/RestoreFailedE
 import {
     ExplorerEditor,
     getDefaultExplorerEditorState,
-    type ExplorerEditorState,
 } from "../../editors/explorer";
 import { TComponentState } from "../../core/state/state";
 import { appWindow } from "../window";
 import { fs as appFs } from "../fs";
-import { panelKey, parsePanelKey } from "./panel-key";
-import type { BoardEditorState } from "../../editors/board";
-import {
-    customEditorRegistry,
-    resolveBoardEditorId,
-} from "../boards/custom-editor-registry";
-import { boardRegistry } from "../boards/board-registry";
-import {
-    decodePersephoneBoardLink,
-    encodePersephoneBoardLink,
-} from "../../content/persephone-board-link";
 import { PageModel } from "./PageModel";
 import { RecoveryPlaceholder } from "./RecoveryPlaceholder";
-import { BOARD_INFO_EDITOR_ID } from "../../editors/board-info/board-info-id";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-async function repairBoardLink(value: unknown): Promise<unknown> {
-    if (typeof value !== "string") return value;
-    const decoded = decodePersephoneBoardLink(value);
-    if (!decoded) return value;
-
-    const currentRoot = await boardRegistry.resolvePersistedRoot(decoded.boardRoot);
-    return currentRoot === undefined ? value : encodePersephoneBoardLink(currentRoot);
-}
-
-async function normalizeEditorDescriptor(
-    descriptor: PageDescriptor["editors"][number],
-): Promise<PageDescriptor["editors"][number]> {
-    const state = { ...descriptor.state };
-    const persistedBoardRoot = typeof state.boardRoot === "string"
-        ? state.boardRoot
-        : undefined;
-    const currentBoardRoot = persistedBoardRoot === undefined
-        ? undefined
-        : await boardRegistry.resolvePersistedRoot(persistedBoardRoot);
-    if (currentBoardRoot !== undefined) state.boardRoot = currentBoardRoot;
-
-    const sourceLink = state.sourceLink;
-    if (isRecord(sourceLink)) {
-        const normalizedSourceLink = { ...sourceLink };
-        if ("href" in sourceLink) {
-            normalizedSourceLink.href = await repairBoardLink(sourceLink.href);
-        }
-        if ("url" in sourceLink) {
-            normalizedSourceLink.url = await repairBoardLink(sourceLink.url);
-        }
-        state.sourceLink = normalizedSourceLink;
-    }
-
-    if (typeof state.editor === "string") {
-        state.editor = await resolveBoardEditorId(state.editor);
-    }
-
-    const editorId = await resolveBoardEditorId(descriptor.editorId);
-    return {
-        ...descriptor,
-        editorId,
-        state,
-    };
-}
-
-async function normalizePageDescriptor(desc: PageDescriptor): Promise<PageDescriptor> {
-    return {
-        ...desc,
-        editors: await Promise.all(desc.editors.map(normalizeEditorDescriptor)),
-        navBack: desc.navBack
-            ? await Promise.all(desc.navBack.map(async (entry) => ({
-                ...entry,
-                href: String(await repairBoardLink(entry.href)),
-            })))
-            : undefined,
-    };
-}
-
-/**
- * EditorIds of NO-HOST editors that restore via
- * `editorRegistry.createEditor` + `Object.assign(state, d.state)` (no host
- * descriptor). Editors with a host take the `if (d.host)` branch; Explorer
- * is constructed directly (not in `editorRegistry`).
- */
-const NO_HOST_EDITOR_IDS = new Set([
-    "browser-view",       "image-view",       "archive-view",       "video-view",         "settings-view",      "about-view",         "mcp-view",           "mneme-config",       "mneme-root",         "storybook-view",     "category-view",      "git-tree",           "toolset-view",       "tools-hub-view",  ]);
+import { normalizePageDescriptor, normalizePinSide } from "./descriptor-migrations";
 
 type RestoreAttempt = { kind: "restored"; page: PageModel } | { kind: "invalid" } | { kind: "failed"; error: unknown };
 
@@ -158,7 +74,7 @@ export class PagesPersistenceModel {
 
     createRestoreFailedPage = (descriptor: PageDescriptor, error: unknown): PageModel => {
         const page = new PageModel(descriptor.id);
-        page.pinSide = descriptor.pinSide === "left" || descriptor.pinSide === "right" ? descriptor.pinSide : descriptor.pinned ? "left" : undefined;
+        page.pinSide = normalizePinSide(descriptor);
         const main = descriptor.editors.find((editor) => editor.id === descriptor.mainEditorId);
         const candidate = main?.host?.state.title ?? main?.state.title;
         const title = typeof candidate === "string" && candidate ? candidate : t("editors.restoreFailedTitle");
@@ -200,9 +116,7 @@ export class PagesPersistenceModel {
         page = new PageModel(desc.id, {
             seedSecondaryViewsWidth: options.seedSecondaryViewsWidth ?? false,
         });
-        page.pinSide = desc.pinSide === "left" || desc.pinSide === "right"
-            ? desc.pinSide
-            : desc.pinned ? "left" : undefined;
+        page.pinSide = normalizePinSide(desc);
         // Pixel sizes only; a value of 1 or less is a fraction saved by an earlier build and is dropped.
         const popoverSize = desc.popoverSize;
         page.popoverSize = popoverSize
@@ -212,105 +126,17 @@ export class PagesPersistenceModel {
             ? { width: popoverSize.width, height: popoverSize.height, ...(popoverSize.fullHeight === true ? { fullHeight: true } : {}) }
             : undefined;
         page.seedNavBack(desc.navBack);
-        let invalidFolderBoard: { editorId: string; folderPath: string } | undefined;
+        const folderFallbacks: { sourceEditorId: string; folderPath: string }[] = [];
 
         const editors = await Promise.all(
             desc.editors.map(async (d) => {
                 try {
-                    // A demoted busy Board persisted at shutdown must not resurrect
-                    //: busy is transient (its processes died with the app),
-                    // so a non-main board descriptor would restore as an invisible
-                    // zombie handle. Boards restore only as the main editor.
-                    if ((d.editorId === "board-view" || d.editorId === "draw-view") && d.id !== desc.mainEditorId) {
-                        return null;
-                    }
-                    const boardState = d.state as Partial<BoardEditorState>;
-                    const folderPath = boardState.folderPath;
-                    const hasPersistedFolderClaim =
-                        d.editorId === "board-view" && folderPath !== undefined;
-                    if (hasPersistedFolderClaim && typeof folderPath === "string") {
-                        invalidFolderBoard = { editorId: d.id, folderPath };
-                        await customEditorRegistry.ensureInitialized();
-                        const boardRoot = boardState.boardRoot;
-                        const current = boardRoot && folderPath
-                            ? customEditorRegistry.findFolderClaim(boardRoot, folderPath)
-                            : undefined;
-                        if (!current) return null;
-                        invalidFolderBoard = undefined;
-                    }
-                    if (d.editorId === "board-view" || d.editorId === "draw-view") {
-                        const { createBoardEditor } = await import("../../editors/board");
-                        const model = await createBoardEditor({ kind: "restore", descriptor: d });
-                        if (!model) return null;
-                        constructed.push(model);
-                        await model.restore();
-                        return model;
-                    }
-                    if (d.editorId === BOARD_INFO_EDITOR_ID) {
-                        const { editorRegistry } = await import(
-                            "../../editors/base"
-                        );
-                        const editor = await editorRegistry.createEditor(d.editorId, d.id);
-                        constructed.push(editor);
-                        editor.applyRestoreData(
-                            d as unknown as Parameters<typeof editor.applyRestoreData>[0],
-                        );
-                        await editor.restore();
-                        return editor;
-                    }
-                    if (d.editorId === "restore-failed") return null;
-                    if (d.host && !editorRegistry.getById(d.editorId)) return null;
-                    if (d.host) {
-                        const { editorRegistry } = await import(
-                            "../../editors/base"
-                        );
-                        const editor = await editorRegistry.createEditor(d.editorId, d.id);
-                        constructed.push(editor);
-                        editor.applyRestoreData(d as unknown as Parameters<typeof editor.applyRestoreData>[0]);
-                        await editor.restore();
-                        return editor;
-                    }
-                    if (
-                        d.editorId === "explorer"
-                        || (d.state as { type?: string }).type === "fileExplorer"
-                    ) {
-                        const explorerState = new TComponentState({
-                            ...getDefaultExplorerEditorState(),
-                            ...(d.state as Partial<ExplorerEditorState>),
-                            id: d.id,
-                        });
-                        const explorer = new ExplorerEditor(explorerState);
-                        constructed.push(explorer);
-                        explorer.applyRestoreData(d.state as unknown as Parameters<typeof explorer.applyRestoreData>[0]);
-                        await explorer.restore();
-                        return explorer;
-                    }
-                    if (NO_HOST_EDITOR_IDS.has(d.editorId)) {
-                        const { editorRegistry } = await import(
-                            "../../editors/base"
-                        );
-                        const editor = await editorRegistry.createEditor(d.editorId, d.id);
-                        constructed.push(editor);
-                        editor.state.update((s) => {
-                            Object.assign(s as object, d.state);
-                            // Guarantee a non-empty id. A blank id (from a
-                            // previously-corrupted descriptor) breaks id-based
-                            // dedup and lets duplicate editors/panels accumulate
-                            // This preserves the regression fix.
-                            (s as { id: string }).id =
-                                d.id || (s as { id?: string }).id || crypto.randomUUID();
-                        });
-                        editor.applyRestoreData(
-                            d.state as unknown as Parameters<typeof editor.applyRestoreData>[0],
-                        );
-                        await editor.restore();
-                        return editor;
-                    }
-                    console.warn(
-                        `[restore] unrecognized editor descriptor for "${d.editorId}" in page ${desc.id}: ` +
-                        `no host field, not in NO_HOST_EDITOR_IDS, not Explorer.`,
-                    );
-                    return null;
+                    const editor = await editorRegistry.restoreFromDescriptor(d, {
+                        mainEditorId: desc.mainEditorId,
+                        requestFolderFallback: (request) => folderFallbacks.push(request),
+                    });
+                    if (editor) constructed.push(editor);
+                    return editor;
                 } catch (err) {
                     console.warn(
                         `[restore] editor ${d.editorId} in page ${desc.id}:`,
@@ -328,31 +154,31 @@ export class PagesPersistenceModel {
             if (editor) page.attach(editor);
         }
 
-        if (invalidFolderBoard) {
+        const folderFallback = folderFallbacks[0];
+        if (folderFallback) {
             if (!page.findExplorer()) {
                 const explorer = new ExplorerEditor(new TComponentState({
                     ...getDefaultExplorerEditorState(),
-                    rootPath: invalidFolderBoard.folderPath,
+                    rootPath: folderFallback.folderPath,
                 }));
                 constructed.push(explorer);
                 page.attach(explorer);
                 await explorer.restore();
             }
 
-            const { editorRegistry } = await import("../../editors/base/editorRegistry");
             const { buildFolderCategoryLink, CategoryEditorModel } = await import(
                 "../../editors/category/CategoryEditorModel"
             );
             const category = await editorRegistry.createEditor(
                 "category-view",
-                invalidFolderBoard.editorId,
+                folderFallback.sourceEditorId,
             );
             constructed.push(category);
             if (!(category instanceof CategoryEditorModel)) {
                 throw new Error("Folder View fallback created an unexpected editor.");
             }
             category.initFromLink(
-                buildFolderCategoryLink(page, invalidFolderBoard.folderPath),
+                buildFolderCategoryLink(page, folderFallback.folderPath),
             );
             await category.restore();
             page.attach(category);
@@ -366,25 +192,7 @@ export class PagesPersistenceModel {
         }
 
         if (desc.sidebar) {
-            const nav = page.ensureSecondaryViewsModel();
-            nav.setStateQuiet({
-                open: desc.sidebar.open,
-                width: desc.sidebar.width,
-            });
-             // `activePanel` may be composite (`${editorId}:${panelId}`)
-            // or a bare seed/legacy id. Validate by the parsed panel id, and —
-            // when composite — require the named editor to still exist.
-            const panel = desc.sidebar.activePanel;
-            const { editorId, panelId } = parsePanelKey(panel);
-            const composedPanels = page.panelEditors.flatMap((editor) =>
-                (editor.secondaryView ?? []).map((id) => ({ key: panelKey(editor.id, id), panelId: id }))
-            );
-            const valid = editorId
-                ? composedPanels.some((p) => p.key === panel)
-                : composedPanels.some((p) => p.panelId === panelId);
-            const firstPanel = composedPanels[0]?.key ?? "";
-            page.activePanel = firstPanel ? (valid ? panel : firstPanel) : "";
-            if (!firstPanel) nav.setStateQuiet({ open: false, activePanel: "" });
+            page.applySidebarDescriptor(desc.sidebar);
         }
 
         if (page.editors.length === 0) {
@@ -426,10 +234,7 @@ export class PagesPersistenceModel {
         for (const p of models) this.model.attachPage(p);
 
         const pagesByZone = this.model.layout.sortByPinSide(models);
-        this.model.state.update((s) => {
-            s.pages = pagesByZone;
-            s.ordered = [];
-        });
+        this.model.setPageArrays({ pages: pagesByZone, ordered: [] });
 
         const nonRight = pagesByZone.filter((page) => !this.model.query.isRightPinned(page.id));
         const normal = nonRight.filter((page) => page.pinSide === undefined);
@@ -438,7 +243,7 @@ export class PagesPersistenceModel {
         const orderedModels = active
             ? [...nonRight.filter((page) => page !== active), active]
             : [];
-        this.model.state.update((s) => { s.ordered = orderedModels; });
+        this.model.setPageArrays({ ordered: orderedModels });
 
         if (data.groupings && Array.isArray(data.groupings)) {
             data.groupings.forEach((el) => {
@@ -464,6 +269,3 @@ export class PagesPersistenceModel {
         }
     };
 }
-
-// Re-export IEditorState so existing barrel-importers stay green.
-export type { IEditorState };

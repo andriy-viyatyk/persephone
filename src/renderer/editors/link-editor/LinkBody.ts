@@ -458,8 +458,8 @@ export class LinkBodyView extends VanillaView<{ model: LinkEditor }> {
                     label: t("links.openImageNewTab"),
                     icon: "open-file",
                     onClick: async () => {
-                        const { pagesModel } = await import("../../api/pages");
-                        pagesModel.openImageInNewTab(imageUrl);
+                        const { pages } = await import("../../api/pages");
+                        pages.openImageInNewTab(imageUrl);
                     },
                 },
             );

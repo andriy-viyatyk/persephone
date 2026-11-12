@@ -191,11 +191,11 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     }
 
     /** Concrete `PageModel` for this editor's page. `this.page` is the trimmed `IPageHost`, which
-     *  omits `setMainEditor` (it is only ever called via the concrete `pagesModel`), so resolve it
+     *  omits `setMainEditor` (it is only ever called via the concrete pages model), so resolve it
      *  here for the unload-to-empty-page path. */
     private get pageModel() {
         const id = this.page?.id;
-        return id ? app.pages.pages.find((p) => p.id === id) : undefined;
+        return id ? app.pages.query.pages.find((p) => p.id === id) : undefined;
     }
 
     noLanguage = true;

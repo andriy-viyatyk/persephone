@@ -2,7 +2,7 @@
  * `persephone.openContent(...)` orchestration — the renderer-side entry point
  * the content-open bridge calls for a board's `board:openContent` request.
  *
- * This is the board equivalent of `pagesModel.addEditorPage(editor, language, title, content)`: the
+ * This is the board equivalent of `pages.addEditorPage(editor, language, title, content)`: the
  * five Force Graph features that create an in-memory page in ANOTHER editor (Open as markdown, Open
  * in grid, Extract, Extract with children, Open in Drawing) have no board-side expression otherwise,
  * because `openRawLink` opens a *href* and would need a `data:` URL that cannot carry a large graph.
@@ -20,7 +20,7 @@
  * editor), whose messages are forwarded to the board verbatim — a board author debugging a typo sees
  * the same text a script author would.
  */
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { errMessage } from "../../../shared/utils";
 import type { BoardOpenContentRequest } from "../../../ipc/board-bridge/frame-protocol";
 import type { EditorView } from "../../../shared/types";
@@ -82,7 +82,7 @@ export function resolveBoardOpenContent(
     const title = (rawTitle || "untitled").slice(0, MAX_TITLE_CHARS);
 
     try {
-        const page = pagesModel.addEditorPage(editor as EditorView, language, title, content);
+        const page = pages.lifecycle.addEditorPage(editor as EditorView, language, title, content);
         return { pageId: page.id };
     } catch (error) {
         return { error: errMessage(error, "openContent() failed.") };

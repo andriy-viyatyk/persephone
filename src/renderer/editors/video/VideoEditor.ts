@@ -18,7 +18,7 @@ import { api } from "../../../ipc/renderer/api";
 import { settings } from "../../api/settings";
 import { ui } from "../../api/ui";
 import { app } from "../../api/app";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { fpBasename, fpDirname, fpNormalizeForCompare, isPlainLocalPath } from "../../core/utils/file-path";
 import { errMessage } from "../../../shared/utils";
 import { pipeFromLink, pipeFromPersistedSource, UnresolvableLinkError } from "../../content/rebuild-pipe";
@@ -138,7 +138,7 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         await app.fs.delete(this.filePath);
         const { windowRecording } = await import("../../api/window-recording");
         windowRecording.clearLast(this.filePath);
-        const page = this.page ? pagesModel.query.findPage(this.page.id) : undefined;
+        const page = this.page ? pages.query.findPage(this.page.id) : undefined;
         await page?.close();
     };
 
@@ -401,7 +401,7 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
     private async deleteUnsavedRecording(filePath: string): Promise<void> {
         // A duplicated tab may still be playing the same recording.
         const target = fpNormalizeForCompare(filePath);
-        const stillOpen = pagesModel.state.get().pages.some((page) => page.editors.some((editor) =>
+        const stillOpen = pages.state.get().pages.some((page) => page.editors.some((editor) =>
             editor !== this && editor instanceof VideoEditor && editor.filePath !== undefined
             && fpNormalizeForCompare(editor.filePath) === target));
         if (stillOpen) return;

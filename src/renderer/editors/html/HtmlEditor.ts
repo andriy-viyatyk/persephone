@@ -8,7 +8,7 @@ import { FileProvider } from "../../content/providers/FileProvider";
 import { HttpProvider } from "../../content/providers/HttpProvider";
 import { toFileUrl } from "../../content/link-utils";
 import { ui } from "../../api/ui";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { api } from "../../../ipc/renderer/api";
 import { blobToDataUrl, copyPngBlobToClipboard } from "../shared/image-export";
 import type { IImageExport } from "../base/IImageExport";
@@ -154,7 +154,7 @@ export class HtmlEditor extends TextHostEditorModel<HtmlEditorState, void, HtmlQ
     /** Open the captured PNG in the Image viewer (new page). */
     openInImageView(): Promise<void> {
         return this.withCapture((blob) => {
-            pagesModel.openImageInNewTab(URL.createObjectURL(blob));
+            pages.openImageInNewTab(URL.createObjectURL(blob));
         }, "Failed to open image");
     }
 

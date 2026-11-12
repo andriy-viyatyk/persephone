@@ -1,6 +1,6 @@
 import type { IAiCallContext } from "./ai-vision/root";
 import { EditorOrHost } from "../editors/base";
-import { pagesModel } from "../api/pages";
+import { pages } from "../api/pages";
 import { AppWrapper } from "./api-wrapper/AppWrapper";
 import { PageWrapper } from "./api-wrapper/PageWrapper";
 import { UiFacade } from "./api-wrapper/UiFacade";
@@ -96,7 +96,7 @@ export class ScriptContext {
 
         const ensureFacade = () => {
             // Re-create facade if Log View page was closed by the user
-            if (uiFacade && uiLogPageId && !pagesModel.findPage(uiLogPageId)) {
+            if (uiFacade && uiLogPageId && !pages.query.findPage(uiLogPageId)) {
                 uiFacade = undefined;
                 uiLogPageId = undefined;
             }
@@ -197,12 +197,12 @@ function initializeUiFacade(
     outputFlags: ScriptOutputFlags,
     isMcp = false,
 ): { facade: UiFacade; pageId: string } {
-    const wasPresent = !!pagesModel.findPage("mcp-ui-log");
+    const wasPresent = !!pages.query.findPage("mcp-ui-log");
     const logEditor = getOrCreateMcpLogViewEditor();
     const logPageId = logEditor.page?.id ?? "mcp-ui-log";
 
     if (page && !wasPresent) {
-        pagesModel.groupTabs(page.page?.id ?? page.id, logPageId, false);
+        pages.layout.groupTabs(page.page?.id ?? page.id, logPageId, false);
     }
 
     // SF2 + LV9 — acquireViewModelSync + releaseList.push retire entirely

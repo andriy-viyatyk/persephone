@@ -411,7 +411,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
                 id: "open-board-folder",
                 label: t("shell.openBoardFolder"),
                 icon: createIconElement("folder-open", { width: 14, height: 14 }),
-                onClick: () => { void app.pages.openFile(root); },
+                onClick: () => { void app.pages.openPath(root); },
             },
             {
                 id: "create-board-shortcut",

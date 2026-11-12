@@ -251,7 +251,7 @@ export class TranslateTextPageController {
                 : spans;
             const content = reconstructTranslation(selectedSource, relativeSpans, translated);
             const languageName = displayName(chosen.value.target);
-            app.pages.addEditorPage("monaco", snapshot.language, `${snapshot.title} (${languageName})`, content);
+            app.pages.lifecycle.addEditorPage("monaco", snapshot.language, `${snapshot.title} (${languageName})`, content);
             if (failed) void ui.notify(t("translation.partialFailure", { count: failed }), "warning");
             model.close("done");
             this.activeDialog = undefined;

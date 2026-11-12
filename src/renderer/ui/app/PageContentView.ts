@@ -1,7 +1,7 @@
 import type { EditorModel } from "../../editors/base/EditorModel";
 import { CompareEditor } from "../../editors/compare/CompareEditor";
 import type { TextFileModel } from "../../editors/text/TextEditorModel";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import type { PageModel } from "../../api/pages/PageModel";
 import { SecondaryViewsView } from "../secondary-views/SecondaryViewsView";
 import { afterDispatch } from "../../core/state/dispatch";
@@ -36,7 +36,7 @@ export class PageContentView extends VanillaView<PageContentProps> {
 
     protected onMount(): void {
         this.own(() => { this.live = false; });
-        this.own(pagesModel.state.subscribe(
+        this.own(pages.state.subscribe(
             () => this.sync(),
             (state) => ({
                 pages: state.pages,
@@ -63,7 +63,7 @@ export class PageContentView extends VanillaView<PageContentProps> {
 
     private sync(): void {
         if (!this.live) return;
-        const page = pagesModel.query.findPage(this.props.pageId) ?? undefined;
+        const page = pages.query.findPage(this.props.pageId) ?? undefined;
         if (page !== this.page) {
             this.pageSubscription?.();
             this.pageSubscription = page ? this.ownSubscription(page.state.subscribe(() => this.sync())) : undefined;
@@ -81,7 +81,7 @@ export class PageContentView extends VanillaView<PageContentProps> {
             this.clearSecondary();
             return;
         }
-        const compareInfo = pagesModel.query.isInCompareMode(page.id);
+        const compareInfo = pages.query.isInCompareMode(page.id);
         if (page.restore.state.get().status !== "ready") {
             this.clearCompare();
             this.clearSecondary();
@@ -93,8 +93,8 @@ export class PageContentView extends VanillaView<PageContentProps> {
             this.clearContent();
             this.clearSecondary();
             if (compareInfo.leftId === page.id && compareInfo.rightId) {
-                const leftHost = pagesModel.query.getTextFileHost(compareInfo.leftId);
-                const rightHost = pagesModel.query.getTextFileHost(compareInfo.rightId);
+                const leftHost = pages.query.getTextFileHost(compareInfo.leftId);
+                const rightHost = pages.query.getTextFileHost(compareInfo.rightId);
                 if (leftHost && rightHost) this.updateCompare(leftHost, rightHost, compareInfo.leftId);
                 else this.clearCompare();
             } else this.clearCompare();

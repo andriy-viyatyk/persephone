@@ -1,4 +1,5 @@
 import type { EditorModel } from "./EditorModel";
+import type { EditorDescriptor } from "../../../shared/persistence";
 import type { TextFileModel } from "../text/TextEditorModel";
 import type { VanillaViewCtor } from "../../uikit/shared/vanilla-view";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
@@ -18,6 +19,8 @@ export interface AcceptanceInput {
 type EditorModuleCommon = {
     /** Factory for a new editor instance. */
     createEditor(): EditorModel;
+    /** Restore one persisted descriptor owned by this editor module. */
+    restoreFromDescriptor?(descriptor: EditorDescriptor, context: EditorRestoreContext): Promise<EditorModel | null>;
     /** File-open factory for standalone (no-host) editors whose construction
      *  depends on the opened path — decoding a link (git-tree, mneme-root,
      *  board, toolset, category), seeding path-derived state (image, video),
@@ -28,6 +31,16 @@ type EditorModuleCommon = {
      *  the Explorer-named directory rather than an encoded link. */
     newEditorModelForFolder?(anchorFolder: string): Promise<EditorModel>;
 };
+
+export interface EditorRestoreContext {
+    mainEditorId: string | null;
+    /** Ask the page to add a folder view rooted at this path. */
+    requestFolderFallback(request: { sourceEditorId: string; folderPath: string }): void;
+}
+
+export interface EditorRestoreModule {
+    restoreFromDescriptor?: (descriptor: EditorDescriptor, context: EditorRestoreContext) => Promise<EditorModel | null>;
+}
 
 export type EditorModule = EditorModuleCommon & {
     View: VanillaViewCtor<{ model: EditorModel }>;
@@ -93,6 +106,8 @@ export interface EditorDefinition {
 class EditorRegistry {
     private definitions = new Map<string, EditorDefinition>();
     private modules = new Map<string, EditorModule>();
+    private restoreOnlyLoaders = new Map<string, () => Promise<EditorRestoreModule>>();
+    private restoreOnlyModules = new Map<string, EditorRestoreModule>();
 
     register(def: EditorDefinition): void {
         this.definitions.set(def.id, def);
@@ -104,6 +119,70 @@ class EditorRegistry {
 
     getAll(): EditorDefinition[] {
         return Array.from(this.definitions.values());
+    }
+
+    registerRestoreOnly(id: string, loadModule: () => Promise<EditorRestoreModule>): void {
+        this.restoreOnlyLoaders.set(id, loadModule);
+    }
+
+    async getModuleForRestore(id: string): Promise<EditorRestoreModule | undefined> {
+        if (this.definitions.has(id)) return this.loadModule(id);
+        let module = this.restoreOnlyModules.get(id);
+        if (module) return module;
+        const loader = this.restoreOnlyLoaders.get(id);
+        if (!loader) return undefined;
+        module = await loader();
+        this.restoreOnlyModules.set(id, module);
+        return module;
+    }
+
+    async restoreFromDescriptor(
+        descriptor: EditorDescriptor,
+        context: EditorRestoreContext,
+    ): Promise<EditorModel | null> {
+        const module = await this.getModuleForRestore(descriptor.editorId);
+        if (!module) {
+            if (descriptor.host) return null;
+            console.warn(`Unrecognized editor descriptor: ${descriptor.editorId}`);
+            return null;
+        }
+        if (module.restoreFromDescriptor) {
+            return module.restoreFromDescriptor(descriptor, context);
+        }
+
+        const definition = this.definitions.get(descriptor.editorId);
+        if (descriptor.host) {
+            if (!definition) return null;
+            const editor = await this.createEditor(descriptor.editorId, descriptor.id);
+            try {
+                editor.applyRestoreData(descriptor as unknown as Parameters<typeof editor.applyRestoreData>[0]);
+                await editor.restore();
+                return editor;
+            } catch (error) {
+                await editor.dispose();
+                throw error;
+            }
+        }
+        if (definition && !definition.hasContentHost) {
+            const editor = await this.createEditor(descriptor.editorId, descriptor.id);
+            try {
+                editor.state.update((state) => {
+                    Object.assign(state as object, descriptor.state);
+                    (state as { id: string }).id =
+                        descriptor.id || (state as { id?: string }).id || crypto.randomUUID();
+                });
+                editor.applyRestoreData(
+                    descriptor.state as unknown as Parameters<typeof editor.applyRestoreData>[0],
+                );
+                await editor.restore();
+                return editor;
+            } catch (error) {
+                await editor.dispose();
+                throw error;
+            }
+        }
+        console.warn(`Unrecognized editor descriptor: ${descriptor.editorId}`);
+        return null;
     }
 
     /** The language IDs accepted by Monaco and the built-in language-aware editors. */

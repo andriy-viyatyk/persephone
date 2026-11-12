@@ -1,6 +1,6 @@
 import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { HtmlEditor, defaultHtmlEditorState } from "./HtmlEditor";
 import { HtmlBodyView } from "./HtmlBodyView";
 import { TextChromeView } from "../base/TextChromeView";
@@ -116,7 +116,7 @@ class HtmlToolbarBitsView extends VanillaView<{ model: HtmlEditor }> {
 
     private readonly handleBrowserClick = (): void => {
         const url = this.model.browserUrl();
-        if (url) void pagesModel.openUrlInBrowserTab(url);
+        if (url) void pages.openUrlInBrowserTab(url);
     };
 
     private copyButtonProps(disabled = this.model.state.get().capturing ?? false): IconButtonViewProps {

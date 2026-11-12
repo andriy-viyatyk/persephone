@@ -90,7 +90,7 @@ class MnemeStatusModel {
      *  by the fixed config page id). Fire-and-forget; lazy import avoids a startup
      *  import cycle. */
     private openConfigEditor(): void {
-        void import("./pages").then(({ pagesModel }) => pagesModel.showMnemeConfigPage());
+        void import("./pages").then(({ pages }) => pages.standalonePages.show("mneme-config-page").then((): undefined => undefined));
     }
 
     private applySidecar(running: boolean, url: string): void {

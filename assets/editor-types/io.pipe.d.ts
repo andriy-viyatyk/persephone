@@ -34,6 +34,10 @@ export interface IPipeStage {
 export interface IContentPipe {
     /** The root provider (data source). */
     readonly provider: IProvider;
+    /** Full source path, including an archive entry when this pipe reads one. */
+    readonly logicalPath: string;
+    /** Return this pipe's logical path using another provider source path. */
+    logicalPathFor(sourcePath: string): string;
     /** Ordered list of transformers applied after reading. */
     readonly transformers: ReadonlyArray<ITransformer>;
     /** Provider followed by transformers, each with a read-only status snapshot. */

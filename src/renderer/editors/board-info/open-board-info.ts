@@ -71,6 +71,6 @@ export async function openBoardInfoPage(
         new TComponentState({ ...getDefaultBoardInfoEditorState(), ...opts }),
     );
     await model.restore();
-    const page = app.pages.addPage(model as unknown as EditorModel);
+    const page = app.pages.lifecycle.addPage(model as unknown as EditorModel);
     return { pageId: page.id, onInstalled: (listener) => model.installed.subscribe(listener) };
 }

@@ -332,7 +332,7 @@ page slot, where the compare surface is mounted.
 
 ## 4. Internal Submodel Architecture
 
-The pages system uses category-based decomposition. `PagesModel` owns shared state, composes five page submodels, and exposes the flat page API. Editor construction, fixed-ID pages, and board-specific routing are separate collaborators so lifecycle code can stay generic.
+The pages system uses category-based decomposition. `PagesModel` owns shared state, composes five page submodels, and exposes those collaborators by category. Callers use `query`, `navigation`, `lifecycle`, `layout`, or `persistence` for page operations. `PagesModel` keeps the lazy-loading UI/editor entrypoints so their code-split boundaries stay centralized. Editor construction, fixed-ID pages, and board-specific routing are separate collaborators so lifecycle code can stay generic.
 
 ```mermaid
 graph TD
@@ -344,7 +344,7 @@ graph TD
     Base --> Persist["PagesPersistenceModel<br/>save, restore"]
     Base --> Query["PagesQueryModel<br/>find, getActive, getGrouped"]
 
-    Base -->|delegates| IPC["IPageCollection<br/>(Public Interface)"]
+    Base -->|composes| IPC["IPageCollection wrapper<br/>(Public Script Interface)"]
 
     LC -->|constructs editors| EF["editor-factory.ts"]
     LC -->|generic open hooks| BI["BoardPageRouter<br/>open interceptor"]
@@ -374,14 +374,14 @@ graph TD
 
 | Submodel | File | Responsibility |
 |----------|------|----------------|
-| Base | [`PagesModel.ts`](../../src/renderer/api/pages/PagesModel.ts) | Shared state (`pages[]`, `ordered[]`, `groupings`), core helpers |
+| Base | [`PagesModel.ts`](../../src/renderer/api/pages/PagesModel.ts) | Shared state (`pages[]`, `ordered[]`, `groupings`), subscription ownership, core helpers, and the shared page-array mutation primitives |
 | Lifecycle | [`PagesLifecycleModel.ts`](../../src/renderer/api/pages/PagesLifecycleModel.ts) | create and open pages, close pages, navigate, transfer and duplicate pages; invokes generic open interceptors |
 | Navigation | [`PagesNavigationModel.ts`](../../src/renderer/api/pages/PagesNavigationModel.ts) | show, showNext, showPrev |
 | Layout | [`PagesLayoutModel.ts`](../../src/renderer/api/pages/PagesLayoutModel.ts) | moveTab, pin by side/unpin, group/ungroup |
 | Persistence | [`PagesPersistenceModel.ts`](../../src/renderer/api/pages/PagesPersistenceModel.ts) | save/restore window state to disk |
 | Query | [`PagesQueryModel.ts`](../../src/renderer/api/pages/PagesQueryModel.ts) | find (by any ID: page, mainEditor, or secondary), findPageByFilePath, activePage, focusedPage, getGrouped, isLastPage |
 
-`PagesModel` owns page-array mutation primitives (`insertPage`, `replacePage`, and `removePage`) so submodels do not directly implement insert, recovery replacement, or removal in the shared arrays. `PagesLayoutModel` owns ordering, grouping, and compare-mode cleanup; persistence owns bulk restore. `PageModel` emits `mainEditorChanged` after editor notifications only when a non-null main editor is selected. `PagesModel.attachPage()` owns the subscription and releases it on detach and shutdown. The layout exits compare mode when the changed page is in an active compare pair and no longer has a text-file host; clearing the main editor does not emit the event.
+`PagesModel` is the only writer of the shared `pages` and `ordered` arrays. Its `insertPage`, `replacePage`, `removePage`, and `setPageArrays` primitives centralize insertion, recovery replacement, removal, ordering, pinning, and restore writes. `PagesLayoutModel` owns grouping and compare-mode state; persistence owns restore sequencing and uses the shared array primitive. `PageModel` emits `mainEditorChanged` after editor notifications only when a non-null main editor is selected. `PagesModel.attachPage()` owns the subscription and releases it on detach and shutdown. The layout exits compare mode when the changed page is in an active compare pair and no longer has a text-file host; clearing the main editor does not emit the event.
 
 Editor construction is centralized in [`editor-factory.ts`](../../src/renderer/editors/editor-factory.ts), which supplies the lifecycle and navigation collaborators. Fixed-ID page construction and reuse live in [`standalone-pages.ts`](../../src/renderer/api/pages/standalone-pages.ts). [`BoardPageRouter`](../../src/renderer/api/boards/board-page-router.ts) owns board-specific lookup and open routing and registers with the lifecycle through its generic interceptor interface.
 
@@ -410,10 +410,10 @@ as named steps (the lifecycle keeps a one-line delegate), and
 `showBrowserPage` / `openUrlInBrowserTab` beside the browser editor — reached via dynamic
 import so the startup-loaded pages model never statically imports the browser chunk.
 
-`PagesModel` forwards the composed submodels' public operations. Exported as a singleton:
+`PagesModel` exposes its composed submodels as the internal owner surface. Callers use the relevant grouping; the singleton is exported as:
 
 ```typescript
-import { pagesModel } from "../api/pages";
+import { pages } from "../api/pages";
 ```
 
 ---
@@ -423,11 +423,11 @@ import { pagesModel } from "../api/pages";
 ### Public (in `IPageCollection`, exposed to scripts)
 
 - Queries: `all`, `activePage`, `popoverPage`, `groupedPage`, `compare`, `logView`, `findPage()`, `getGroupedPage()`, `isLastPage()`, `isGrouped()`.
-- Lifecycle and openers: `openFile()`, `closePage()`, `openFileWithDialog()`, `navigatePageTo()`, `addEmptyPage()`, `addEditorPage()`, `addDrawPage()`, `openLinks()`, `openDiff()`, `showAboutPage()`, `showSettingsPage()`, `showMcpInspectorPage()`, `showMnemeConfigPage()`, `showToolsHubPage()`, `showBrowserPage()`, and `openUrlInBrowserTab()` (plus `openUrl()`). `openFile(filePath)` accepts files and folders and returns the opened page when the path resolves. A folder produces an editorless page with an Explorer rooted at that folder; because that page has no file path, `PagesModel.openFile()` uses the resolver's ephemeral `ILinkData.openedPageId` to return it.
+- Lifecycle and openers: `PageCollectionWrapper` keeps the script methods `openFile()`, `closePage()`, `openFileWithDialog()`, `navigatePageTo()`, `addEmptyPage()`, `addEditorPage()`, `addDrawPage()`, `openLinks()`, `openDiff()`, `showAboutPage()`, `showSettingsPage()`, `showMcpInspectorPage()`, `showMnemeConfigPage()`, `showToolsHubPage()`, `showBrowserPage()`, and `openUrlInBrowserTab()` (plus `openUrl()`). Its `openFile(filePath)` delegates to the collection's Layer 1 `openPath(filePath)`, accepts files and folders, and returns the opened page when the path resolves. A folder produces an editorless page with an Explorer rooted at that folder; because that page has no file path, `PagesModel.openPath()` uses the resolver's ephemeral `ILinkData.openedPageId` to return it.
 - Navigation: `showPage()`, `openPopover()`, `closePopover()`, `showNext()`, `showPrevious()`.
 - Layout: `moveTab()`, `pinTab(side)`, `unpinTab()`, `group()`, `ungroup()`.
 
-These public method names remain delegates on `PagesModel`; submodel ownership is an implementation detail and does not change the script API.
+These public method names remain on `PageCollectionWrapper`; its backing model calls the owning submodel directly. The internal `PagesModel` surface has no flat forwards to those operations.
 
 ### Internal (not in .d.ts, private implementation)
 

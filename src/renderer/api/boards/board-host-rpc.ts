@@ -10,7 +10,7 @@ import { getPreviewGeneration } from "../../theme/themes";
 import { app } from "../app";
 import { asBoardHostEditor } from "./board-host-editor";
 import { boardRegistry } from "./board-registry";
-import { pagesModel } from "../pages";
+import { pages } from "../pages";
 import { tsProjectRegistry } from "../ts-project-registry";
 import { createLinkData } from "../../../shared/link-data";
 import { t } from "../../../shared/i18n/t";
@@ -52,7 +52,7 @@ function cloneJson(value: unknown): unknown {
 }
 
 function resolveBoardHost(ownerId: string) {
-    const page = pagesModel.findPage(ownerId);
+    const page = pages.query.findPage(ownerId);
     if (!page) throw new Error("The Board's hosting page is no longer open.");
     const boardEditor = page.editors.find((editor) => editor.id === ownerId);
     const boardRoot = (boardEditor?.state.get() as { boardRoot?: unknown } | undefined)?.boardRoot;
@@ -162,11 +162,11 @@ export function registerBoardHostRpc(server: RendererRpcServer): void {
         try {
             if (editor === "image-view" && target.startsWith("data:image/")) {
                 const blob = await (await fetch(target)).blob();
-                await pagesModel.openImageInNewTab(URL.createObjectURL(blob), "Image");
+                await pages.openImageInNewTab(URL.createObjectURL(blob), "Image");
                 return null;
             }
             if (editor === "browser-view" && reuseKey !== undefined) {
-                await pagesModel.boardPageRouter.openBoardRunPage(boardRoot, reuseKey, target);
+                await pages.boardPageRouter.openBoardRunPage(boardRoot, reuseKey, target);
                 return null;
             }
             await app.events.openRawLink.sendAsync(createLinkData(target, {

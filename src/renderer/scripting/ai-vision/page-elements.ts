@@ -1,4 +1,4 @@
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { withAgentNavigation } from "./page-attention";
 
 const PAGE_LAYOUT_ATTEMPTS = 120;
@@ -36,6 +36,6 @@ function waitForPageSlot(pageId: string): Promise<void> {
 
 /** Activate one page and wait until its retained slot has a rendered rectangle. */
 export async function activatePageAndWaitForLayout(pageId: string): Promise<void> {
-    withAgentNavigation(() => pagesModel.showPage(pageId));
+    withAgentNavigation(() => pages.navigation.showPage(pageId));
     await waitForPageSlot(pageId);
 }

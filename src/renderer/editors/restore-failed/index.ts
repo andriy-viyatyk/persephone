@@ -6,4 +6,5 @@ import { t } from "../../../shared/i18n/t";
 export const restoreFailedModule: EditorModule = {
     createEditor: () => new RestoreFailedEditor(crypto.randomUUID(), t("editors.restoreFailedTitle"), ""),
     View: RestoreFailedView,
+    restoreFromDescriptor: async () => null,
 };

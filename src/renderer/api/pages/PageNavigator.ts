@@ -1,19 +1,17 @@
 import type { PagesModel } from "./PagesModel";
 import type { PageModel } from "./PageModel";
-import type { EditorModel, EditorOrHost } from "../../editors/base";
-import type { EditorView } from "../../../shared/types";
+import type { EditorOrHost } from "../../editors/base";
 import type { ILinkData } from "../../../shared/link-data";
-import type { ILinkDiffRevision } from "../types/io.link-data";
 import type { IContentPipe } from "../types/io.pipe";
-import { newTextFileModel, TextFileModel } from "../../editors/text";
-import { editorRegistry, isExplicitHostTarget } from "../../editors/base/editorRegistry";
-import { getLanguageByExtension } from "../../core/utils/language-mapping";
+import { newTextFileModel } from "../../editors/text";
 import { isFocusInSidebar } from "../../core/utils/focus-utils";
-import { fpBasename, fpExtname, fpNormalizeForCompare } from "../../core/utils/file-path";
+import { fileIdentity, fpBasename, isVirtualPath } from "../../core/utils/file-path";
 import { fs as appFs } from "../fs";
 import { ui } from "../ui";
 import { errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
+import { applyOpenHints, prepareOpenedEditor, registerOpenSession } from "./open-request";
+import type { PageOpenRequest } from "./open-request";
 import {
     attachEditorToPage,
     createEditorFromFile,
@@ -28,24 +26,14 @@ import {
 //   2. reuseNavigationTarget      — per-page singleton promotion (Git Tree)
 //   3. reuseEditorForFile         — same-file editor lingering as a panel
 //   4. buildEditor                — fresh build with missing-file/error fallbacks
-//   5. applyEditorSelection       — preview editor vs explicit host target
+//   5. prepareOpenedEditor        — preview editor vs explicit host target
 //   6. attach + post-attach       — diff revisions, fragment, reveal/highlight
 //   7. finishNavigation           — show/focus-unless-sidebar/save (shared exit)
 // ============================================================================
 
-export interface NavigatePageToOptions {
-    revealLine?: number;
-    highlightText?: string;
-    fragment?: string;
-    forceTextEditor?: boolean;
+export interface NavigatePageToOptions extends Omit<PageOpenRequest, "sourceLink"> {
     sourceLink?: ILinkData;
     pipe?: IContentPipe;
-    sessionHandle?: string;
-    target?: string;
-    folderPath?: string;
-    title?: string;
-    diffFrom?: ILinkDiffRevision;
-    diffTo?: ILinkDiffRevision;
 }
 
 /** Shared exit for every successful navigation path: repaint, focus (unless
@@ -58,10 +46,7 @@ function finishNavigation(model: PagesModel, page: PageModel): void {
 }
 
 function sameFileIdentity(first: string, second: string): boolean {
-    const identity = (value: string) => value.includes("://") || value.startsWith("data:")
-        ? value
-        : fpNormalizeForCompare(value);
-    return identity(first) === identity(second);
+    return fileIdentity(first) === fileIdentity(second);
 }
 
 /** Skip the "save changes?" prompt when the current main editor will survive
@@ -108,8 +93,6 @@ async function reuseNavigationTarget(
         await page.setMainEditor(existing);
     }
     existing.onNavigationReuse?.();
-    if (options?.fragment) existing.revealFragment?.(options.fragment);
-    finishNavigation(model, page);
     return true;
 }
 
@@ -139,8 +122,6 @@ async function reuseEditorForFile(
     options?.pipe?.dispose();
     await page.setMainEditor(existingForFile);
     existingForFile.onNavigationReuse?.();
-    if (options?.fragment) existingForFile.revealFragment?.(options.fragment);
-    finishNavigation(model, page);
     return true;
 }
 
@@ -150,9 +131,7 @@ async function buildEditor(
     newFilePath: string,
     options?: NavigatePageToOptions,
 ): Promise<EditorOrHost> {
-    const isVirtualPath =
-        newFilePath.includes("://") || newFilePath.startsWith("data:");
-    if (!isVirtualPath && !(await appFs.exists(newFilePath))) {
+    if (!isVirtualPath(newFilePath) && !(await appFs.exists(newFilePath))) {
         ui.notify(t("api.fileNotFound", { name: fpBasename(newFilePath) }), "error");
         const textFileModel = newTextFileModel("");
         textFileModel.state.update((s) => {
@@ -191,37 +170,6 @@ async function buildEditor(
     }
 }
 
-/** Choose the editor a fresh text-host build opens in: an explicit,
- *  non-default content-host target (e.g. "file-diff", which is never the
- *  natural default for a file) must win over the language preview editor.
- *  Normal opens carry target === resolveId, so they fall through to the
- *  preview editor exactly as before. */
-function applyEditorSelection(
-    editorOrHost: EditorOrHost,
-    newFilePath: string,
-    options?: NavigatePageToOptions,
-): void {
-    const ext = fpExtname(newFilePath).toLowerCase();
-    const lang = getLanguageByExtension(ext);
-    const languageId = lang?.id || "plaintext";
-    const explicitTarget = options?.target;
-    if (isExplicitHostTarget(explicitTarget, newFilePath)) {
-        editorOrHost.state.update((s) => {
-            s.editor = explicitTarget as EditorView;
-        });
-    } else {
-        const previewEditor = editorRegistry.getPreviewEditor(
-            languageId,
-            newFilePath,
-        );
-        if (previewEditor) {
-            editorOrHost.state.update((s) => {
-                s.editor = previewEditor as EditorView;
-            });
-        }
-    }
-}
-
 export async function navigatePageTo(
     model: PagesModel,
     pageId: string,
@@ -231,9 +179,16 @@ export async function navigatePageTo(
     const page = model.query.findPage(pageId);
     if (!page || page.isInert) return false;
     await page.restore.ready;
+    const request: PageOpenRequest = {
+        ...options,
+        filePath: newFilePath,
+        title: options?.title ?? options?.sourceLink?.title,
+        sourceUrl: options?.sourceUrl ?? options?.sourceLink?.url ?? options?.pipe?.provider.sourceUrl ?? newFilePath,
+        sourceLink: options?.sourceLink,
+    };
 
     const currentFilePath = (page.mainEditor as { filePath?: string } | null)?.filePath;
-    const needsReveal = !!(options?.revealLine || options?.highlightText);
+    const needsReveal = !!(request.revealLine || request.highlightText);
     if (needsReveal && currentFilePath
         && sameFileIdentity(currentFilePath, newFilePath)) {
         if (page.mainEditorInstance?.editorId !== "monaco") {
@@ -241,8 +196,8 @@ export async function navigatePageTo(
         }
         const textHost = page.mainEditorInstance?.contentHost;
         if (!textHost) return false;
-        if (options?.revealLine) textHost.revealLine(options.revealLine);
-        if (options?.highlightText) textHost.setHighlightText(options.highlightText);
+        const editor = page.mainEditorInstance;
+        if (editor) applyOpenHints(page, editor, request, { exit: "reveal" });
         finishNavigation(model, page);
         return true;
     }
@@ -250,70 +205,27 @@ export async function navigatePageTo(
     if (!(await confirmLeaveCurrentEditor(page, options))) return false;
 
     if (await reuseNavigationTarget(model, page, newFilePath, options)) {
+        const editor = page.mainEditorInstance;
+        if (editor) applyOpenHints(page, editor, request, { exit: "reuse" });
+        finishNavigation(model, page);
         return true;
     }
     if (await reuseEditorForFile(model, page, newFilePath, options)) {
+        const editor = page.mainEditorInstance;
+        if (editor) applyOpenHints(page, editor, request, { exit: "reuse" });
+        finishNavigation(model, page);
         return true;
     }
 
     // Build the editor or text host, deferring adapter attachment until after the
     // post-restore mutations that need the underlying TextFileModel API).
     const editorOrHost = await buildEditor(newFilePath, options);
-
-    if (options?.sourceLink || options?.title) {
-        editorOrHost.state.update((s) => {
-            if (options.sourceLink) s.sourceLink = options.sourceLink;
-            if (options.title) s.title = options.title;
-        });
-    }
-
-    const isTextFile = editorOrHost.state.get().type === "textFile";
-    const skipPreview = !!(
-        options?.forceTextEditor ||
-        options?.revealLine ||
-        options?.highlightText
-    );
-    if (isTextFile && !skipPreview) {
-        applyEditorSelection(editorOrHost, newFilePath, options);
-    }
+    prepareOpenedEditor(editorOrHost, request, { selectPreview: true });
 
     const adapter = attachEditorToPage(editorOrHost);
     await page.setMainEditor(adapter);
-
-    if (options?.sessionHandle) {
-        const sourceUrl = options.sourceLink?.url ?? options.pipe?.provider.sourceUrl ?? newFilePath;
-        if (sourceUrl) {
-            adapter.acceptOpenContext?.({
-                mode: "register-session",
-                sourceUrl,
-                sessionHandle: options.sessionHandle,
-            });
-        }
-    }
-
-    // Apply caller-chosen diff revisions to the freshly-built File Diff editor
-    // (no-op for any other editor type / when no revisions given). The
-    // reuseNavigationTarget path returned earlier, so this only ever runs on
-    // a fresh build.
-    (adapter as EditorModel as {
-        applyDiffRevisions?: (f?: ILinkDiffRevision, t?: ILinkDiffRevision) => void;
-    }).applyDiffRevisions?.(options?.diffFrom, options?.diffTo);
-
-    // Anchor target from the opening link. Deliberately NOT part of skipPreview
-    // above: revealLine / highlightText force the Monaco text editor, while a
-    // fragment must keep the language preview editor (e.g. md-view).
-    if (options?.fragment) adapter.revealFragment?.(options.fragment);
-
-    // revealLine / highlightText apply after the editor has mounted.
-    if (isTextFile && skipPreview) {
-        const textFileModel = editorOrHost as unknown as TextFileModel;
-        if (options?.revealLine) {
-            textFileModel.revealLine(options.revealLine);
-        }
-        if (options?.highlightText) {
-            textFileModel.setHighlightText(options.highlightText);
-        }
-    }
+    registerOpenSession(adapter, request);
+    applyOpenHints(page, adapter, request, { exit: "fresh", newPage: false });
 
     finishNavigation(model, page);
     return true;

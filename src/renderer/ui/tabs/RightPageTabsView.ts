@@ -1,4 +1,4 @@
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { TraitTypeId, getTraitDragData } from "../../core/traits";
 import { KeyedList } from "../../uikit/shared/keyed-list";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -30,11 +30,11 @@ export class RightPageTabsView extends VanillaView<object> {
         this.listen(this.root, "dragover", (event) => this.handleDragOver(event));
         this.own(() => this.tabs.dispose());
         this.bind(
-            pagesModel.state,
+            pages.state,
             (state) => state.pages,
-            (pages) => {
-                const rightPages = pages.filter((page) => pagesModel.query.isRightPinned(page.id));
-                const mainCount = pages.length - rightPages.length;
+            (pageModels) => {
+                const rightPages = pageModels.filter((page) => pages.query.isRightPinned(page.id));
+                const mainCount = pageModels.length - rightPages.length;
                 if (appWindow.isBoardMode) this.root.toggleAttribute("data-board-tabs-hidden", mainCount <= 1 && rightPages.length === 0);
                 this.tabs.update(rightPages);
             },
@@ -63,7 +63,7 @@ export class RightPageTabsView extends VanillaView<object> {
         const payload = getTraitDragData(event.dataTransfer);
         if (payload?.typeId !== TraitTypeId.PageTab) return;
         const sourceId = (payload.data as { key: string }).key;
-        if (!pagesModel.query.isRightPinned(sourceId)) return;
+        if (!pages.query.isRightPinned(sourceId)) return;
         event.preventDefault();
         event.dataTransfer.dropEffect = "move";
     }
@@ -72,10 +72,10 @@ export class RightPageTabsView extends VanillaView<object> {
         const payload = getTraitDragData(event.dataTransfer);
         if (payload?.typeId !== TraitTypeId.PageTab) return;
         const sourceId = (payload.data as { key: string }).key;
-        if (pagesModel.query.isRightPinned(sourceId)) {
+        if (pages.query.isRightPinned(sourceId)) {
             const target = this.root.querySelector<HTMLElement>("[data-type=\"page-tab\"]:last-child");
             const targetId = target?.dataset.pageId;
-            if (targetId && targetId !== sourceId) pagesModel.moveTab(sourceId, targetId);
+            if (targetId && targetId !== sourceId) pages.layout.moveTab(sourceId, targetId);
         }
         event.preventDefault();
         event.stopPropagation();

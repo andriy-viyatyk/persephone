@@ -28,7 +28,7 @@ export async function openEnvVarsPage(namespace: string): Promise<void> {
         }),
     );
 
-    const { pagesModel } = await import("../../api/pages");
-    const page = pagesModel.query.findPageByFilePath(path);
+    const { pages } = await import("../../api/pages");
+    const page = pages.query.findPageByFilePath(path);
     (page?.mainEditorInstance as unknown as EnvVarsEditor | undefined)?.focusNamespace(namespace);
 }

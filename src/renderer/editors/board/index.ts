@@ -9,7 +9,7 @@ import {
 } from "./BoardEditorModel";
 import { BoardStreamEditorModel } from "./BoardStreamEditorModel";
 import { BoardEditorView } from "./BoardEditorView";
-import type { EditorModule } from "../base/editorRegistry";
+import type { EditorModule, EditorRestoreContext } from "../base/editorRegistry";
 import type { EditorModel } from "../base/EditorModel";
 import type { EditorDescriptor } from "../../../shared/persistence";
 import type { BoardEditorKind } from "../../../shared/board/board-manifest-schema";
@@ -21,6 +21,7 @@ export type BoardEditorSpec =
     | { kind: "restore"; descriptor: EditorDescriptor };
 
 function stripLegacyBoardChromeState(state: unknown): Record<string, unknown> {
+    // Added 2026-11-11: discard retired board-owned frame/chrome state during restore.
     if (!state || typeof state !== "object" || Array.isArray(state)) return {};
     const sanitized = { ...(state as Record<string, unknown>) };
     delete sanitized.statusText;
@@ -45,6 +46,7 @@ export async function createBoardEditor(
         const sanitizedState = stripLegacyBoardChromeState(descriptor.state);
         const sanitizedDescriptor = { ...descriptor, state: sanitizedState };
         if (descriptor.editorId === "draw-view") {
+            // Added 2026-09-25; moved into this module on 2026-11-11.
             await boardRegistry.load();
             const excalidraw = boardRegistry.bundled().find((board) => board.id === "excalidraw");
             if (!excalidraw || excalidraw.manifest.association?.editorKind !== "content-host") return null;
@@ -143,6 +145,38 @@ function createPlainBoardEditorWithState(
 export const boardModule: EditorModule = {
     createEditor: createPlainBoardEditor,
     View: BoardEditorView,
+    restoreFromDescriptor: async (descriptor, context: EditorRestoreContext) => {
+        if (
+            (descriptor.editorId === "board-view" || descriptor.editorId === "draw-view") &&
+            descriptor.id !== context.mainEditorId
+        ) {
+            return null;
+        }
+
+        const boardState = descriptor.state as Partial<ReturnType<typeof getDefaultBoardEditorState>>;
+        const folderPath = boardState.folderPath;
+        if (descriptor.editorId === "board-view" && folderPath !== undefined && typeof folderPath === "string") {
+            await customEditorRegistry.ensureInitialized();
+            const boardRoot = boardState.boardRoot;
+            const claim = boardRoot && folderPath
+                ? customEditorRegistry.findFolderClaim(boardRoot, folderPath)
+                : undefined;
+            if (!claim) {
+                context.requestFolderFallback({ sourceEditorId: descriptor.id, folderPath });
+                return null;
+            }
+        }
+
+        const editor = await createBoardEditor({ kind: "restore", descriptor });
+        if (!editor) return null;
+        try {
+            await editor.restore();
+            return editor;
+        } catch (error) {
+            await editor.dispose();
+            throw error;
+        }
+    },
     newEditorModel: async (filePath?: string) => {
         const link = filePath ? decodePersephoneBoardLink(filePath) : undefined;
         const model = link

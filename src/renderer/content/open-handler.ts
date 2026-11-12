@@ -1,7 +1,6 @@
 import { app } from "../api/app";
-import { pagesModel } from "../api/pages";
-import { buildArchivePath } from "../core/utils/file-path";
-import { cleanForStorage } from "../../shared/link-data";
+import { pages } from "../api/pages";
+import { createPageOpenRequest } from "../api/pages/open-request";
 
 /**
  * Register Layer 3 handler on openContent.
@@ -14,37 +13,17 @@ import { cleanForStorage } from "../../shared/link-data";
  */
 export function registerOpenHandler(): void {
     app.events.openContent.subscribe(async (data) => {
-        // Reconstruct full file path from pipe (provider + transformers).
-        // For archive pipes: FileProvider("C:/data.zip") + ArchiveTransformer("readme.txt")
-        //   → "C:/data.zip!readme.txt"
-        let filePath = data.pipe.provider.sourceUrl;
-        const zipTransformer = data.pipe.transformers.find((t) => t.type === "archive");
-        if (zipTransformer) {
-            const entryPath = zipTransformer.config.entryPath as string | undefined;
-            if (entryPath) {
-                filePath = buildArchivePath(filePath, entryPath);
-            }
-        }
+        const filePath = data.pipe.logicalPath;
         const pageId = data.pageId;
-        const sourceLink = cleanForStorage(data);
-        sourceLink.url = filePath;
+        const request = createPageOpenRequest(data, filePath);
 
         if (pageId) {
             // Navigate existing page to the new file — pass pipe through
             // On success the page owns the pipe; on error we must dispose it
             try {
-                const navigated = await pagesModel.lifecycle.navigatePageTo(pageId, filePath, {
-                    revealLine: data.revealLine,
-                    highlightText: data.highlightText,
-                    fragment: data.fragment,
-                    title: data.title,
-                    sourceLink,
+                const navigated = await pages.lifecycle.navigatePageTo(pageId, filePath, {
+                    ...request,
                     pipe: data.pipe,
-                    target: data.target,
-                    folderPath: data.folderPath,
-                    sessionHandle: data.sessionHandle,
-                    diffFrom: data.diffFrom,
-                    diffTo: data.diffTo,
                 });
                 if (!navigated || data.folderPath !== undefined) data.pipe.dispose();
             } catch (err) {
@@ -55,25 +34,9 @@ export function registerOpenHandler(): void {
             // Open file in new or existing tab — pass pipe through
             // On success the page owns the pipe; on error we must dispose it
             try {
-                const page = await pagesModel.lifecycle.openFile(filePath, data.pipe, {
-                    sourceLink,
-                    fragment: data.fragment,
-                    target: data.target,
-                    folderPath: data.folderPath,
-                    diffFrom: data.diffFrom,
-                    diffTo: data.diffTo,
-                    revealLine: data.revealLine,
-                    highlightText: data.highlightText,
-                    sessionHandle: data.sessionHandle,
-                });
+                const page = await pages.lifecycle.openFile(filePath, data.pipe, request);
                 if (page && (data.waitForPageReady || data.sourceId === "app-api")) {
                     await page.restore.ready;
-                }
-                const title = data.title;
-                if (page && title) {
-                    page.mainEditor?.state.update((state) => {
-                        state.title = title;
-                    });
                 }
             } catch (err) {
                 data.pipe.dispose();

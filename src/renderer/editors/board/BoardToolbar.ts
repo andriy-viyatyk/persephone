@@ -206,7 +206,7 @@ export class BoardToolbarView extends VanillaView<{
 
     private async openProperties(): Promise<void> {
         const id = this.model.page?.id;
-        const page = id ? app.pages.pages.find((candidate) => candidate.id === id) : undefined;
+        const page = id ? app.pages.query.pages.find((candidate) => candidate.id === id) : undefined;
         if (page) await openBoardInfo(page, { boardRoot: this.boardRoot });
     }
 

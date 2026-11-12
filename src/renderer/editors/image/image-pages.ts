@@ -23,7 +23,7 @@ export async function openImageInNewTab(
         );
     }
     await editor.restore();
-    model.addPage(editor);
+    model.lifecycle.addPage(editor);
 
     if (imageUrl.startsWith("blob:")) void editor.cacheBlobUrl(imageUrl);
 }

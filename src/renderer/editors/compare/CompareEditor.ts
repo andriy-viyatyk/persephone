@@ -1,6 +1,6 @@
 import * as monaco from "monaco-editor";
 import type { TextFileEditorModelState, TextFileModel } from "../text";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { createToolbarElement } from "../../uikit/Toolbar/toolbar-style";
@@ -79,7 +79,7 @@ export class CompareEditor extends VanillaView<CompareEditorProps> {
             size: "sm",
             title: t("git.exitCompareMode"),
             icon: "compare",
-            onClick: () => pagesModel.exitCompareMode(this.leftPageId),
+            onClick: () => pages.layout.exitCompareMode(this.leftPageId),
         }));
         this.diffHost = this.child(new MonacoDiffEditorHostView({
             options: {

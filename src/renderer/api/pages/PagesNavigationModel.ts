@@ -16,9 +16,7 @@ export class PagesNavigationModel {
             return;
         }
         if (page && page !== ordered[ordered.length - 1]) {
-            this.model.state.update((s) => {
-                s.ordered = [...s.ordered.filter((p) => p !== page), page];
-            });
+            this.model.setPageArrays({ ordered: [...ordered.filter((p) => p !== page), page] });
             this.model.persistence.saveStateDebounced();
             this.model.onShow.send(page);
             this.model.onFocus.send(page);

@@ -9,7 +9,7 @@ import {
 import { ComponentQueue } from "../../core/state/ComponentQueue";
 import type { EditorDescriptor } from "../../../shared/persistence";
 import { globalKeyDown } from "../../core/state/events";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { IncognitoIcon, TorIcon } from "../../theme/language-icons";
 import { GlobeIcon } from "../../theme/icons";
 import { settings, BrowserProfile } from "../../api/settings";
@@ -282,7 +282,7 @@ export class BrowserEditor extends EditorModel<
     /** Handle global keyboard shortcuts when this browser page is focused. */
     private handleGlobalKeyDown = (e: KeyboardEvent) => {
         if (e.defaultPrevented) return;
-        if (pagesModel.query.focusedPage !== this.page) return;
+        if (pages.query.focusedPage !== this.page) return;
 
         const keyLower = e.key.toLowerCase();
 

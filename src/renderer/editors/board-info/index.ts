@@ -10,6 +10,17 @@ export const boardInfoModule: EditorModule = {
     createEditor: () =>
         new BoardInfoEditorModel(new TComponentState(getDefaultBoardInfoEditorState())),
     View: BoardInfoEditorView,
+    restoreFromDescriptor: async (descriptor) => {
+        const editor = boardInfoModule.createEditor();
+        try {
+            editor.applyRestoreData(descriptor as unknown as Parameters<typeof editor.applyRestoreData>[0]);
+            await editor.restore();
+            return editor;
+        } catch (error) {
+            await editor.dispose();
+            throw error;
+        }
+    },
 };
 
 export { BoardInfoEditorModel, getDefaultBoardInfoEditorState } from "./BoardInfoEditorModel";

@@ -1,6 +1,6 @@
 import { t } from "../../../shared/i18n/t";
 import { fpBasename } from "../../core/utils/file-path";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { recent } from "../../api/recent";
 import { app } from "../../api/app";
 import { createLinkData } from "../../../shared/link-data";
@@ -92,7 +92,7 @@ export class RecentFileListView extends VanillaView<RecentFileListProps> {
             {
                 label: t("shell.openInNewWindow"),
                 icon: createIconElement("new-window"),
-                onClick: () => pagesModel.openPathInNewWindow(item.filePath),
+                onClick: () => pages.lifecycle.openPathInNewWindow(item.filePath),
                 invisible: item.isFolder,
             },
             {

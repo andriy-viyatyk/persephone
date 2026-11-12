@@ -1,6 +1,6 @@
 import { t } from "../../../shared/i18n/t";
 import { api } from "../../../ipc/renderer/api";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { appWindow } from "../../api/window";
 import type { IEditorState, WindowPages } from "../../../shared/types";
 import { createFileTypeIconElement } from "../../components/icons/icon-elements";
@@ -31,7 +31,7 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
         this.updateList();
     };
     private readonly isListItemSelected = (item: OpenTabsListItem): boolean =>
-        item.page?.id === pagesModel.activePage?.id;
+        item.page?.id === pages.query.activePage?.id;
     private readonly getListItemTooltip = (item: OpenTabsListItem): string | undefined =>
         item.page?.filePath;
     private readonly listProps: ListBoxProps<OpenTabsListItem> = {
@@ -70,7 +70,7 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
 
     protected onMount(): void {
         this.child(this.list).mount();
-        this.bind(pagesModel.state, (state) => state.pages, () => this.updateList());
+        this.bind(pages.state, (state) => state.pages, () => this.updateList());
         this.own(onBoardDisplayTextChanged((_root, reason) => {
             if (reason === "invalidate") this.warmedBoardRoots.clear();
             this.updateList();
@@ -102,7 +102,7 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
 
     private updateList(): void {
         const currentWindowIndex = appWindow.windowIndex;
-        const state = pagesModel.state.get();
+        const state = pages.state.get();
         const currentPages: OpenTabsListItem[] = state.pages.map((page) => {
             const pageState = page.mainEditor?.state.get() ?? { title: page.title };
             const pageData = { ...pageState, id: page.id } as Partial<IEditorState> & { boardRoot?: string; folderPath?: string };
@@ -181,7 +181,7 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
     private onClick(item: OpenTabsListItem): void {
         if (!item.page?.id) return;
         if (item.windowIndex === appWindow.windowIndex) {
-            pagesModel.showPage(item.page.id);
+            pages.navigation.showPage(item.page.id);
             return;
         }
         void api.showWindowPage(item.windowIndex, item.page.id);

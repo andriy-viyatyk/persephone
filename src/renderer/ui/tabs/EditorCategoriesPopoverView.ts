@@ -14,7 +14,7 @@ import { fpBasename } from "../../core/utils/file-path";
 import { buildBoardsTree } from "../../editors/board/boards-tree-build";
 import { boardDisplayText, boardMetadataKeys, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
 import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { InputView } from "../../uikit/Input/InputView";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import "./EditorCategoriesPopoverView.css";
@@ -50,7 +50,7 @@ export class EditorCategoriesPopoverView extends VanillaView<EditorCategoriesPop
             name: "editor-category-show-all",
             size: "sm",
             children: t("shell.editorCategoryShowAll"),
-            onClick: () => { void pagesModel.showToolsHubPage({ tab: "editors" }); this.props.onClose(); },
+            onClick: () => { void pages.standalonePages.show("tools-hub-page", { tab: "editors" }).then((): undefined => undefined); this.props.onClose(); },
         }));
         showAll.mount();
         this.header.append(filterView.root, showAll.root);

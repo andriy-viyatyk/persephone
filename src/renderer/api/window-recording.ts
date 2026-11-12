@@ -1,5 +1,5 @@
 import { app } from "./app";
-import { pagesModel } from "./pages";
+import { pages } from "./pages";
 import { errMessage } from "../../shared/utils";
 import { t } from "../../shared/i18n/t";
 import { api } from "../../ipc/renderer/api";
@@ -51,7 +51,7 @@ class WindowRecordingModel {
     private readonly listeners = new Set<(state: WindowRecordingState) => void>();
     private timer: ReturnType<typeof setInterval> | undefined;
     // Subscribed per page/editor session, never at module load: this module is reached from `app`
-    // (app → window → window-screen), so `pagesModel` may not be initialized yet at that point.
+    // (app → window → window-screen), so `pages` may not be initialized yet at that point.
     private pageStateUnsubscribe: (() => void) | undefined;
 
     get state(): WindowRecordingState {
@@ -72,7 +72,7 @@ class WindowRecordingModel {
         let target: HTMLElement | undefined;
         let pageId: string | undefined;
         if (region !== "window") {
-            const page = pagesModel.query.activePage;
+            const page = pages.query.activePage;
             if (!page) throw new Error("There is no active page to record.");
             pageId = page.id;
             const slot = document.querySelector<HTMLElement>(`[data-name="page-slot"][data-page-id="${CSS.escape(pageId)}"]`);
@@ -131,7 +131,7 @@ class WindowRecordingModel {
             }
             this.current = { id: capture.recordingId, region, openPlayer, pageId, target, media, output, video, canvas, width, height, chunkWrites: Promise.resolve(), elapsedMs: 0 };
             if (video && canvas) this.startFramePump(this.current);
-            if (region !== "window") this.pageStateUnsubscribe = pagesModel.state.subscribe(() => this.checkBoundTarget());
+            if (region !== "window") this.pageStateUnsubscribe = pages.state.subscribe(() => this.checkBoundTarget());
             this.setState({ status: "ready", elapsedMs: 0, region });
         } catch (error: unknown) {
             this.current = undefined;
@@ -262,7 +262,7 @@ class WindowRecordingModel {
         this.current = undefined;
         this.unwatchPages();
         this.setState({ status: "idle", elapsedMs: 0, last: result });
-        if (session.openPlayer) await pagesModel.openFile(path);
+        if (session.openPlayer) await pages.openPath(path);
         return result;
     }
 
@@ -308,7 +308,7 @@ class WindowRecordingModel {
 
     private checkBoundTarget(): void {
         const session = this.current;
-        if (session?.region !== "window" && session?.pageId && !pagesModel.query.findPage(session.pageId)) {
+        if (session?.region !== "window" && session?.pageId && !pages.query.findPage(session.pageId)) {
             if (session.recorder) void this.stop("page-closed").catch((_error: unknown): void => undefined);
             else void this.cancel();
         }

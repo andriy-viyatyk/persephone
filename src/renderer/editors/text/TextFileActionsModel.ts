@@ -1,7 +1,7 @@
 import { t } from "../../../shared/i18n/t";
 import { ui } from "../../api/ui";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { scriptRunner } from "../../scripting/ScriptRunner";
 import { isScriptLanguage } from "../../scripting/transpile";
 
@@ -81,7 +81,7 @@ export class TextFileActionsModel {
             return true;
         }
 
-        pagesModel.showPage(this.model.state.get().id);
+        pages.navigation.showPage(this.model.state.get().id);
         const confirmBt = await ui.confirm(
             t("editors.doYouWantToSaveChanges", { title }),
             { title: t("editors.unsavedChanges"), buttons: [DialogButton.save, DialogButton.dontSave, DialogButton.cancel] },

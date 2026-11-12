@@ -1,5 +1,5 @@
 import { LogViewEditor } from "../../editors/log-view";
-import { pagesModel } from "../pages";
+import { pages } from "../pages";
 
 /**
  * Resolve the fixed MCP Log View if it already exists, WITHOUT creating or focusing it.
@@ -10,14 +10,14 @@ import { pagesModel } from "../pages";
  * `helpSearch(...)` call opened and focused the Log View page as a side effect of a search.
  */
 export function getMcpLogViewEditor(): LogViewEditor | undefined {
-    const page = pagesModel.findPage("mcp-ui-log");
+    const page = pages.query.findPage("mcp-ui-log");
     const editor = page?.mainEditorInstance;
     return editor instanceof LogViewEditor ? editor : undefined;
 }
 
 /** Get, focus, and return the fixed Log View used by MCP output in this renderer. Writes only. */
 export function getOrCreateMcpLogViewEditor(): LogViewEditor {
-    const page = pagesModel.standalonePages.requireTextPage("mcp-ui-log");
+    const page = pages.standalonePages.requireTextPage("mcp-ui-log");
     const editor = page.mainEditorInstance;
     if (!(editor instanceof LogViewEditor)) {
         throw new Error("MCP log page is not a LogViewEditor");

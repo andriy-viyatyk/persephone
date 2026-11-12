@@ -1,5 +1,5 @@
 import { app } from "../../api/app";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { createLinkData } from "../../../shared/link-data";
 import {
     applyPanelAttributes,
@@ -357,7 +357,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
         const model = this.model;
         if (!model.page) return;
         const generation = this.lifecycleGeneration;
-        this.pageFocusSubscription = this.ownSubscription(pagesModel.onFocus.subscribe((page) => {
+        this.pageFocusSubscription = this.ownSubscription(pages.onFocus.subscribe((page) => {
             if (!this.isCurrent(model, generation) || page !== model.page) return;
             Promise.resolve().then(() => {
                 if (!this.isCurrent(model, generation)) return;

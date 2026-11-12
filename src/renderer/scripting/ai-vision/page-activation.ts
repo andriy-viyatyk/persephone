@@ -1,4 +1,4 @@
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { logPageActivated } from "./event-log";
 import {
     isAgentNavigating,
@@ -15,18 +15,18 @@ import {
  * positive on an ordinary user action.
  */
 function staysVisibleBeside(previousPageId: string, activePageId: string): boolean {
-    return pagesModel.getGroupedPage(activePageId)?.id === previousPageId;
+    return pages.query.getGroupedPage(activePageId)?.id === previousPageId;
 }
 
 /** Watch active-page changes and report switches relevant to the agent. */
 export function installPageActivationEvents(): () => void {
     resetPageAttention();
-    let rememberedPageId = pagesModel.activePage?.id;
-    const unsubscribe = pagesModel.onShow.subscribe(() => {
-        const activePageId = pagesModel.activePage?.id;
+    let rememberedPageId = pages.query.activePage?.id;
+    const unsubscribe = pages.onShow.subscribe(() => {
+        const activePageId = pages.query.activePage?.id;
         if (activePageId === rememberedPageId) return;
 
-        prunePageAttention(pagesModel.pages.map((page) => page.id));
+        prunePageAttention(pages.query.pages.map((page) => page.id));
         const previousPageId = rememberedPageId;
         rememberedPageId = activePageId;
 

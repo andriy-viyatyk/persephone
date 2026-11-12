@@ -1,4 +1,18 @@
 import { TComponentState } from "../../core/state/state";
+import { parsePanelKey } from "./panel-key";
+
+export interface ComposedPanel {
+    key: string;
+    panelId: string;
+}
+
+export function resolveActivePanel(activePanel: string, panels: readonly ComposedPanel[]): string {
+    const { editorId, panelId } = parsePanelKey(activePanel);
+    const resolves = editorId
+        ? panels.some((panel) => panel.key === activePanel)
+        : panels.some((panel) => panel.panelId === panelId);
+    return resolves ? activePanel : panels[0]?.key ?? "";
+}
 
 // =============================================================================
 // Types

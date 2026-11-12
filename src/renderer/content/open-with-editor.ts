@@ -1,7 +1,7 @@
 import type { MenuItem } from "../core/events/context-menu";
 import { app } from "../api/app";
 import { ui } from "../api/ui";
-import { pagesModel } from "../api/pages";
+import { pages } from "../api/pages";
 import { getFileOpenEditorOptions } from "../editors/base/editor-switch-options";
 import { parseBoardEditorId } from "../api/boards/custom-editor-registry";
 import { createBoardGlyphElement } from "../editors/board/board-glyph-element";
@@ -57,13 +57,13 @@ export async function openWithEditor(path: string, editorId: string): Promise<vo
         return;
     }
 
-    const page = pagesModel.query.findPageByFilePath(path);
+    const page = pages.query.findPageByFilePath(path);
     if (!page) {
         await app.openRawLink(path, { editor: editorId });
         return;
     }
 
-    pagesModel.navigation.showPage(page.id);
+    pages.navigation.showPage(page.id);
     if (page.mainEditorInstance?.editorId === editorId) return;
     await page.switchMainEditor(editorId);
     if (page.mainEditorInstance?.editorId !== editorId) {

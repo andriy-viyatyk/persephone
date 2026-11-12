@@ -246,7 +246,7 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
         const items: MenuItem[] = [];
         if (update) items.push({ label: t("shell.updateBoard", { version: update.latestVersion }), onClick: () => { void runBoardUpdate(update).then(this.refresh); } });
         items.push({ label: t("shell.copyBoardPath"), onClick: () => toClipboard(root) });
-        items.push({ label: t("shell.openBoardFolder"), onClick: () => { void app.pages.openFile(root); } });
+        items.push({ label: t("shell.openBoardFolder"), onClick: () => { void app.pages.openPath(root); } });
         items.push({
             id: "create-board-shortcut",
             label: t("shell.createBoardShortcut"),

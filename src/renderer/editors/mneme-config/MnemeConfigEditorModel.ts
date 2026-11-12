@@ -188,8 +188,8 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
     openInMcpInspector = async (): Promise<void> => {
         const url = this.state.get().url || (await api.getMnemeStatus()).url;
         if (!url) return;
-        const { pagesModel } = await import("../../api/pages");
-        await pagesModel.showMcpInspectorPage({ url, name: "Mneme", autoConnect: true });
+        const { pages } = await import("../../api/pages");
+        await pages.showMcpInspectorPage({ url, name: "Mneme", autoConnect: true });
     };
 
     /** Open the Mneme Root (Search) editor for a root, by its on-disk folder.

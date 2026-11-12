@@ -9,7 +9,7 @@ import {
 } from "../../api/tools/tools-manifest";
 import { TOOLS_EXECUTION_LOG_FILE } from "../../api/tools/tool-log";
 import { registeredTools } from "../../api/tools/registered-tools";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
 import { englishMessage, t } from "../../../shared/i18n/t";
@@ -126,7 +126,7 @@ export class ToolsetEditorModel extends EditorModel<ToolsetEditorState> {
     /** Open this toolset's root in an Explorer page when the root is resolved. */
     async openFolder(): Promise<void> {
         const root = this.state.get().toolsetRoot;
-        if (root) await pagesModel.addEmptyPageWithNavPanel(root);
+        if (root) await pages.lifecycle.addEmptyPageWithNavPanel(root);
     }
 
     /** Open this toolset's execution log when it exists. */
@@ -137,6 +137,6 @@ export class ToolsetEditorModel extends EditorModel<ToolsetEditorState> {
             ui.notify(t("board.noSavedExecutionLog"), "info");
             return;
         }
-        void pagesModel.openFile(logPath);
+        void pages.openPath(logPath);
     }
 }

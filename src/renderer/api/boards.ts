@@ -415,7 +415,7 @@ export const boards: IBoards = {
             };
             const installedUnsub = handle.onInstalled((root) => settle(root));
             const pagesUnsub = app.pages.state.subscribe(() => {
-                if (!app.pages.pages.some((p) => p.id === handle.pageId)) settle(undefined);
+                if (!app.pages.query.pages.some((p) => p.id === handle.pageId)) settle(undefined);
             });
         });
     },

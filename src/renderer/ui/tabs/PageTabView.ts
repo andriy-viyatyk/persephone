@@ -5,7 +5,7 @@ import type { PageDragData } from "../../../shared/types";
 import { parseObject } from "../../core/utils/parse-utils";
 import { decodeCategoryLink } from "../../content/tree-providers/tree-provider-link";
 import { ContextMenuEvent } from "../../api/events/events";
-import { pagesModel } from "../../api/pages";
+import { pages } from "../../api/pages";
 import { appWindow } from "../../api/window";
 import { settings } from "../../api/settings";
 import type { EditorOrHost } from "../../editors/base";
@@ -203,7 +203,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
             },
         );
         this.bind(
-            pagesModel.state,
+            pages.state,
             (state) => {
                 const activeId = state.ordered[state.ordered.length - 1]?.id;
                 const groupedId = activeId
@@ -313,7 +313,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
         this.root.dataset.pageId = page.id;
         this.root.dataset.mode = this.props.mode;
         const pinned = page.pinned;
-        const textHost = pagesModel.getTextFileHost(page.id);
+        const textHost = pages.query.getTextFileHost(page.id);
         const encrypted = Boolean(textHost?.encrypted);
         const decrypted = Boolean(textHost?.decrypted);
         const hasEncryption = encrypted || decrypted;
@@ -482,7 +482,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
 
     private onLanguageClick(event: MouseEvent): void {
         if (this.props.mode === "right") return;
-        // Capture BEFORE `showPage`. `pagesModel.showPage` notifies synchronously, which runs this
+        // Capture BEFORE `showPage`. `pages.showPage` notifies synchronously, which runs this
         // view's own active-state binding and flips `this.isActive` to true mid-handler — so reading
         // it afterwards always says "active" and the menu opens on the very first click. A tab must
         // be activated first and only reveal its buttons on a second click, which is why pinned tabs
@@ -494,7 +494,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
             return;
         }
         const pageId = this.props.model.id;
-        pagesModel.showPage(pageId);
+        pages.navigation.showPage(pageId);
         if (!wasActive) return;
         this.focusedBeforeLanguageMenu = document.activeElement instanceof HTMLElement
             ? document.activeElement
@@ -572,22 +572,22 @@ export class PageTabView extends VanillaView<PageTabProps> {
             menuItems.push({
                 label: t("shell.unpin"),
                 id: "page-tab-unpin",
-                onClick: () => pagesModel.unpinTab(page.id),
+                onClick: () => pages.layout.unpinTab(page.id),
             });
             menuItems.push({
                 label: t(isRight ? "shell.pinTabToLeft" : "shell.pinTabToRight"),
                 id: isRight ? "page-tab-pin-to-left" : "page-tab-pin-to-right",
-                onClick: () => pagesModel.pinTab(page.id, isRight ? "left" : "right"),
+                onClick: () => pages.layout.pinTab(page.id, isRight ? "left" : "right"),
             });
         } else if (!page.isInert) {
             menuItems.push({
                 label: t("shell.pinTabToLeft"),
                 id: "page-tab-pin-to-left",
-                onClick: () => pagesModel.pinTab(page.id, "left"),
+                onClick: () => pages.layout.pinTab(page.id, "left"),
             }, {
                 label: t("shell.pinTabToRight"),
                 id: "page-tab-pin-to-right",
-                onClick: () => pagesModel.pinTab(page.id, "right"),
+                onClick: () => pages.layout.pinTab(page.id, "right"),
             });
         }
         if (!isRight && !page.pinned) {
@@ -601,8 +601,8 @@ export class PageTabView extends VanillaView<PageTabProps> {
             menuItems.push({
                 label: t("shell.closeOtherTabs"),
                 id: "page-tab-close-other",
-                disabled: pagesModel.state.get().pages.length <= 1,
-                onClick: () => pagesModel.closeOtherPages(page.id),
+                disabled: pages.state.get().pages.length <= 1,
+                onClick: () => pages.lifecycle.closeOtherPages(page.id),
                 startGroup: page.pinned,
             });
         }
@@ -611,8 +611,8 @@ export class PageTabView extends VanillaView<PageTabProps> {
                 {
                     label: t("shell.closeTabsToTheRight"),
                     id: "page-tab-close-to-right",
-                    disabled: pagesModel.isLastPage(page.id),
-                    onClick: () => pagesModel.closeToTheRight(page.id),
+                    disabled: pages.query.isLastPage(page.id),
+                    onClick: () => pages.lifecycle.closeToTheRight(page.id),
                 },
                 {
                     label: t("shell.openInNewWindow"),
@@ -626,7 +626,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
             label: t("shell.duplicateTab"),
             id: "page-tab-duplicate",
             icon: createIconElement("duplicate"),
-            onClick: () => pagesModel.duplicatePage(page.id),
+            onClick: () => pages.lifecycle.duplicatePage(page.id),
             startGroup: page.pinned,
         });
         const editorItems = editorInstance?.onGetMenuItems() ?? [];
@@ -688,13 +688,13 @@ export class PageTabView extends VanillaView<PageTabProps> {
         const payload = getTraitDragData(event.dataTransfer);
         if (payload?.typeId !== TraitTypeId.PageTab) return;
         const sourceId = (payload.data as { key: string }).key;
-        if (pagesModel.query.findPage(sourceId)?.isLockedBoardPage) {
+        if (pages.query.findPage(sourceId)?.isLockedBoardPage) {
             event.preventDefault();
             event.stopPropagation();
             return;
         }
-        if (sourceId !== targetId && (this.props.mode !== "right" || pagesModel.query.isRightPinned(sourceId))) {
-            pagesModel.moveTab(sourceId, targetId);
+        if (sourceId !== targetId && (this.props.mode !== "right" || pages.query.isRightPinned(sourceId))) {
+            pages.layout.moveTab(sourceId, targetId);
         }
         event.preventDefault();
         event.stopPropagation();
@@ -726,8 +726,8 @@ export class PageTabView extends VanillaView<PageTabProps> {
         const page = this.props.model;
         if (page.isLockedBoardPage) return;
         if (this.isGrouped) {
-            pagesModel.ungroup(page.id);
-            pagesModel.showPage(page.id);
+            pages.layout.ungroup(page.id);
+            pages.navigation.showPage(page.id);
         } else {
             page.close();
         }
@@ -737,18 +737,18 @@ export class PageTabView extends VanillaView<PageTabProps> {
         const pageId = this.props.model.id;
         if (this.props.mode === "right") {
             if (event.ctrlKey) return;
-            pagesModel.togglePopover(pageId);
+            pages.togglePopover(pageId);
             return;
         }
         if (event.ctrlKey) {
-            const activeId = pagesModel.activePage?.id;
-            if (activeId !== pageId) pagesModel.groupTabs(activeId, pageId, true);
+            const activeId = pages.query.activePage?.id;
+            if (activeId !== pageId) pages.layout.groupTabs(activeId, pageId, true);
         }
-        pagesModel.showPage(pageId);
+        pages.navigation.showPage(pageId);
     }
 
     private encryptionClick(): void {
-        const textHost = pagesModel.getTextFileHost(this.props.model.id);
+        const textHost = pages.query.getTextFileHost(this.props.model.id);
         if (textHost?.encrypted) textHost.showEncryptionDialog();
         else if (textHost?.decrypted) textHost.encryptWithCurrentPassword();
     }

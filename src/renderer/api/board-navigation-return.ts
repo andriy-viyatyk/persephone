@@ -1,5 +1,5 @@
 import { frameEvent } from "../../ipc/board-bridge/frame-protocol";
-import { pagesModel } from "./pages";
+import { pages } from "./pages";
 import { browserUrlChanged, type BrowserUrlEvent } from "../core/state/events";
 import type { IBoardHostEditor } from "./boards/board-host-editor";
 
@@ -205,8 +205,8 @@ class BoardNavigationReturnService {
         }
 
         if (claim.boardOwner && !this.isBoardOwnerCurrent(claim.boardOwner)) return;
-        if (claim.pageId && !pagesModel.findPage(claim.pageId)) return;
-        if (claim.pageId) pagesModel.showPage(claim.pageId);
+        if (claim.pageId && !pages.query.findPage(claim.pageId)) return;
+        if (claim.pageId) pages.navigation.showPage(claim.pageId);
         try {
             claim.deliver(parseReturnEvent(event.url));
         } catch (error: unknown) {

@@ -5,6 +5,7 @@ import { createProviderFromDescriptor } from "./registry";
 import { decodeBuffer, encodeString } from "../core/utils/text-encoding";
 import { FileProvider } from "./providers/FileProvider";
 import { ArchiveTransformer } from "./transformers/ArchiveTransformer";
+import { buildArchivePath } from "../core/utils/file-path";
 
 /**
  * ContentPipe — chains a provider with an ordered list of transformers.
@@ -28,6 +29,20 @@ export class ContentPipe implements IContentPipe {
         this.provider = provider;
         this._transformers = [...transformers];
         this._encoding = encoding;
+    }
+
+    /** Full source path, including an archive entry when this pipe reads one. */
+    get logicalPath(): string {
+        return this.logicalPathFor(this.provider.sourceUrl);
+    }
+
+    /** Return this pipe's logical path using another provider source path. */
+    logicalPathFor(sourcePath: string): string {
+        const archive = this._transformers.find((transformer) => transformer.type === "archive");
+        const entryPath = archive?.config.entryPath;
+        return typeof entryPath === "string" && entryPath.length > 0
+            ? buildArchivePath(sourcePath, entryPath)
+            : sourcePath;
     }
 
     /** Detected content encoding after first readText(). Persisted in descriptor. */

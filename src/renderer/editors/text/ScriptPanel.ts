@@ -307,14 +307,14 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
 
     /** Open selected script (or empty page) in a new tab with NavigationPanel rooted at script-panel/. */
     openInTab = async () => {
-        const { pagesModel } = await import("../../api/pages");
+        const { pages } = await import("../../api/pages");
 
         const libraryPath = settings.get("script-library.path");
         const scriptPanelDir = libraryPath ? fpJoin(libraryPath, "script-panel") : "";
         const { selectedScript } = this.state.get();
 
         if (selectedScript && await fs.exists(selectedScript)) {
-            const page = await pagesModel.openFile(selectedScript);
+            const page = await pages.openPath(selectedScript);
             if (page && scriptPanelDir) {
                 const { ExplorerEditor, getDefaultExplorerEditorState } =
                     await import("../explorer");
@@ -330,7 +330,7 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
             }
         } else if (scriptPanelDir) {
             // No selected script — open empty page with NavPanel
-            pagesModel.addEmptyPageWithNavPanel(scriptPanelDir);
+            pages.lifecycle.addEmptyPageWithNavPanel(scriptPanelDir);
         }
     };
 }

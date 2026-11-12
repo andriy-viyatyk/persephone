@@ -30,9 +30,9 @@ export function registerResolvers(): void {
         if (!data.url.includes("://") && !isArchivePath(data.url)) {
             const stat = await app.fs.stat(data.url);
             if (stat.isDirectory) {
-                const { pagesModel } = await import("../api/pages");
-                const folderPage = await pagesModel.addEmptyPageWithNavPanel(data.url);
-                pagesModel.closeFirstPageIfEmpty();
+                const { pages } = await import("../api/pages");
+                const folderPage = await pages.lifecycle.addEmptyPageWithNavPanel(data.url);
+                pages.closeFirstPageIfEmpty();
                 data.openedPageId = folderPage.id;
                 data.handled = true;
                 return;

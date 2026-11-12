@@ -300,7 +300,7 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
 
         if (isCapabilityErrorWithCode(error, "no-handler")) {
             try {
-                await app.pages.showToolsHubPage({ tab: "search" });
+                await app.pages.standalonePages.show("tools-hub-page", { tab: "search" }).then((): undefined => undefined);
             } catch (navigationError) {
                 ui.notify(t("settings.themeToolsNavigationFailed", { error: errMessage(navigationError) }), "error");
             }
