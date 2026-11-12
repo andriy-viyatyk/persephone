@@ -13,6 +13,7 @@ Overview of all active and planned epics and tasks.
 ## Planned
 
 - *(no epic)*
+  - [ ] [US-1873: Board docs — folder-editor boards and in-page navigation](tasks/US-1873-board-docs-folder-editor-navigation/README.md)
 
 ## Scheduled
 
