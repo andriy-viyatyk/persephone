@@ -41,7 +41,7 @@ class BoardLifecycle {
      *  their prompt). A page left with no editor at all closes; a page that keeps another editor
      *  (an Explorer panel, for example) stays open and shows its empty state. */
     async releasePages(root: string): Promise<boolean> {
-        for (const page of pagesModel.query.findPagesByBoardRoot(root)) {
+        for (const page of pagesModel.boardPageRouter.findPagesByBoardRoot(root)) {
             if (!(await releaseBoardFromPage(page))) return false;
             if (page.editors.length === 0) await page.close();
         }
@@ -116,7 +116,7 @@ class BoardLifecycle {
         const wasTrusted = boardRegistry.isTrusted(boardRoot);
         await boardInstallRegistry.load();
         const installEntry = boardInstallRegistry.getByRoot(boardRoot);
-        const pages = pagesModel.query.findPagesByBoardRoot(boardRoot);
+        const pages = pagesModel.boardPageRouter.findPagesByBoardRoot(boardRoot);
 
         await api.stopModuleService(boardRoot);
         await renameReleasedFolder(boardRoot, newRoot);
@@ -173,7 +173,7 @@ class BoardLifecycle {
             void ui.notify(t(BUSY_KEY[action]), "warning");
             return false;
         }
-        const pages = pagesModel.query.findPagesByBoardRoot(root);
+        const pages = pagesModel.boardPageRouter.findPagesByBoardRoot(root);
         if (pages.length && !consented) {
             const choice = await ui.confirm(t(OPEN_KEY[action], { count: pages.length }), {
                 title: t("api.boardOpenTitle"),
@@ -188,7 +188,7 @@ class BoardLifecycle {
     }
 
     private isIdle(root: string): boolean {
-        return !isBoardRootBusy(root) && pagesModel.query.findPagesByBoardRoot(root).length === 0;
+        return !isBoardRootBusy(root) && pagesModel.boardPageRouter.findPagesByBoardRoot(root).length === 0;
     }
 }
 

@@ -899,7 +899,7 @@ export class PageModel implements IPageHost {
 
     /**
      * Close this page (tab). Iterates panel-contributing editors first, then
-     * the main editor (walkthrough 03 / ). Cancellation on any modified
+     * the main editor. Cancellation on any modified
      * editor aborts the close while leaving the page visible.
      */
     async close(): Promise<boolean> {
@@ -961,8 +961,7 @@ export class PageModel implements IPageHost {
     // ── Persistence ──────────────────────────────────────────────────
 
     /**
-     * Build the page's serialized descriptor (walkthrough 04 / +
-     * walkthrough 08 / ). Consumed by PagesPersistenceModel.saveState,
+     * Build the page's serialized descriptor. Consumed by PagesPersistenceModel.saveState,
      * PageTab.getDragData, and PagesLifecycleModel.duplicatePage.
      */
     getDescriptor(): PageDescriptor {

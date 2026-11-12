@@ -1,7 +1,8 @@
 import { EditorModel, type EditorStateBase } from "../base/EditorModel";
 import { untranslated } from "../../../shared/i18n/t";
+import { TOOLS_HUB_PAGE_ID } from "./tools-hub-page-id";
 
-export const TOOLS_HUB_PAGE_ID = "tools-hub-page";
+export { TOOLS_HUB_PAGE_ID } from "./tools-hub-page-id";
 
 /** Which content tab the hub shows. Persisted in editor state (survives restart). */
 export type HubTab = "editors" | "search" | "tools" | "site-extensions";

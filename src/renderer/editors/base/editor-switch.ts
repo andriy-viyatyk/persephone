@@ -16,6 +16,11 @@ import { captureBoardSourceContext } from "../shared/source-context";
 import { matchesFileMask } from "../../../shared/board/board-masks";
 import type { ILinkData } from "../../../shared/link-data";
 import type { BoardEditorKind } from "../../../shared/board/board-manifest-schema";
+import {
+    attachEditorToPage,
+    createEditorFromFile,
+    createEditorFromFolder,
+} from "../editor-factory";
 
 function sourceLinkFromEditor(editor: EditorModel): ILinkData | undefined {
     return (editor.state.get() as { sourceLink?: ILinkData }).sourceLink
@@ -52,8 +57,8 @@ function isFolderEditor(editor: EditorModel): boolean {
 // editor-switch — the switch-widget "open this file in editor X" transition.
 //
 // Extracted from PageModel so the page model holds page state only; PageModel
-// keeps a thin dynamic-import delegate. The pages model is reached via dynamic
-// import (child→parent) exactly as the original code did from PageModel.
+// keeps a thin dynamic-import delegate. Editor construction comes directly
+// from the editor factory without reaching back into the pages layer.
 // ============================================================================
 
 /** Shared dispose-and-rebuild path: confirm release of the old editor, rebuild
@@ -69,14 +74,12 @@ async function rebuildEditorOverFile(
 ): Promise<void> {
     const released = await oldEditor.confirmRelease();
     if (!released) return; // Cancel → stay on the current editor
-    const { pagesModel } = await import("../../api/pages");
-    const { attachEditorToPage } = await import("../../api/pages/PagesLifecycleModel");
     // A failed module load for the target editor rejects here. Unguarded, the user
     // answered the release prompt and then nothing happened at all ('s shape).
     // `confirmRelease` is a predicate and disposes nothing, so aborting leaves the
     // existing editor installed and usable — the toast explains why it stayed.
     const built = await guard(`Failed to open ${fpBasename(filePath)}`, () =>
-        pagesModel.lifecycle.createEditorFromFile(filePath, undefined, newEditorId));
+        createEditorFromFile(filePath, undefined, newEditorId));
     if (!built) return;
     if (
         built.state.get().type === "textFile"
@@ -107,7 +110,8 @@ export async function switchMainEditor(
     // otherwise claim it:
     //
     //  - the board branch below would dispose-and-rebuild it over the file. `board-info` declares
-    //    `hasContentHost`, so the rebuild produces a bare text host and `attachEditorToPage` then
+    //    `hasContentHost`, so the rebuild produces a bare text host and the factory's
+    //    `attachEditorToPage` then
     //    throws "does not wrap a text host". The toolbar floats that promise, so the "+" click did
     //    nothing at all whenever the outgoing editor was a SIMPLE board (a content-host board took
     //    the host-transfer branch and worked, which is why this only showed up with boards like the
@@ -149,8 +153,7 @@ export async function switchMainEditor(
         }
 
         if (parseBoardEditorId(newEditorId) !== null) {
-            const { pagesModel } = await import("../../api/pages");
-            const next = await pagesModel.lifecycle.createEditorFromFolder(
+            const next = await createEditorFromFolder(
                 newEditorId,
                 anchorFolder,
             );

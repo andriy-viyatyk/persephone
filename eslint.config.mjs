@@ -755,7 +755,6 @@ export default tseslint.config(
         files: ["src/renderer/api/**/*.ts"],
         ignores: [
             // Exceptions E1-E3 are documented in doc/tasks/US-1824-api-boards-move/README.md.
-            "src/renderer/api/pages/PagesLifecycleModel.ts",
             "src/renderer/api/pages/PagesPersistenceModel.ts",
             "src/renderer/api/boards.ts",
         ],

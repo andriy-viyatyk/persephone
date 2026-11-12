@@ -1,11 +1,7 @@
 import type { PagesModel } from "./PagesModel";
 import type { PageModel } from "./PageModel";
 import type { TextFileModel } from "../../editors/text";
-import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
-import { PERSEPHONE_BOARD_PREFIX } from "../../content/persephone-board-link";
-import { matchesFileMask } from "../../../shared/board/board-masks";
-import { BoardRoot } from "../../../shared/board/board-root";
-import { asBoardHostEditor } from "../boards/board-host-editor";
+import { fpNormalizeForCompare } from "../../core/utils/file-path";
 
 /**
  * PagesQueryModel — Read-only queries on the page collection.
@@ -47,59 +43,6 @@ export class PagesQueryModel {
                 : fpNormalizeForCompare(main.filePath);
             return mainIdentity === identity;
         });
-    };
-
-    /** Find the Browser page transiently owned by one board Run key. */
-    findBoardRunPage = (boardRoot: string, reuseKey: string): PageModel | undefined => {
-        const normalizedRoot = BoardRoot.from(boardRoot);
-        return this.model.state.get().pages.find((page) => {
-            if (page.mainEditorInstance?.editorId !== "browser-view") return false;
-            const owner = page.getBoardRunOwner();
-            return !!owner
-                && normalizedRoot.equals(owner.boardRoot)
-                && owner.reuseKey === reuseKey;
-        });
-    };
-
-    /** Find the most recently shown page for a board in this renderer window. */
-    findPageByBoardRoot = (
-        boardRoot?: string,
-        singleInstanceMasks?: readonly string[],
-    ): PageModel | undefined => {
-        if (!boardRoot) return undefined;
-        const { ordered } = this.model.state.get();
-        return [...ordered].reverse().find((page) => {
-            if (singleInstanceMasks !== undefined) {
-                return this.isFullPlayerBoardPage(page, boardRoot, singleInstanceMasks);
-            }
-            const editor = page.mainEditorInstance as { boardRoot?: string } | null;
-            return !!editor?.boardRoot
-                && BoardRoot.from(editor.boardRoot).equals(boardRoot);
-        });
-    };
-
-    /** Open pages whose MAIN editor runs a board (or the board at `boardRoot` when supplied), in tab order. */
-    findPagesByBoardRoot = (boardRoot?: string): PageModel[] => {
-        const key = boardRoot === undefined ? undefined : BoardRoot.from(boardRoot).key;
-        return this.model.state.get().pages.filter((page) => {
-            const host = asBoardHostEditor(page.mainEditorInstance);
-            return !!host?.boardRoot && (key === undefined || BoardRoot.from(host.boardRoot).key === key);
-        });
-    };
-
-    isFullPlayerBoardPage = (
-        page: PageModel | undefined,
-        boardRoot: string,
-        masks: readonly string[],
-    ): boolean => {
-        if (!page) return false;
-        const editor = page.mainEditorInstance as { boardRoot?: string; filePath?: string } | null;
-        if (!editor?.boardRoot
-            || !BoardRoot.from(editor.boardRoot).equals(boardRoot)) return false;
-        const filePath = editor.filePath;
-        return !filePath
-            || filePath.startsWith(PERSEPHONE_BOARD_PREFIX)
-            || masks.some((mask) => matchesFileMask(fpBasename(filePath), mask));
     };
 
     get activePage(): PageModel | undefined {
@@ -163,7 +106,7 @@ export class PagesQueryModel {
         return this.model.state.get().pages;
     }
 
-    // ── Compare-mode helpers (walkthrough 06 / CK3, CK5, GK2) ──────────
+    // ── Compare-mode helpers ──────────────────────────────────────────
 
     /**
      * Returns the page's TextFileModel host (the actual content-bearing model

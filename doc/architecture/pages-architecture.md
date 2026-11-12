@@ -307,19 +307,23 @@ page slot, where the compare surface is mounted.
 
 ## 4. Internal Submodel Architecture
 
-The pages system uses category-based decomposition. `PagesModel` holds shared state, composes 5 submodels for specific operation categories, and delegates all public methods through a flat API.
+The pages system uses category-based decomposition. `PagesModel` owns shared state, composes five page submodels, and exposes the flat page API. Editor construction, fixed-ID pages, and board-specific routing are separate collaborators so lifecycle code can stay generic.
 
 ```mermaid
 graph TD
     Base["PagesModel<br/>(Base State + Core)"]
 
-    Base --> LC["PagesLifecycleModel<br/>create, open, close, navigate"]
+    Base --> LC["PagesLifecycleModel<br/>create, open, close, navigate, transfer"]
     Base --> Nav["PagesNavigationModel<br/>show, showNext, showPrev"]
     Base --> Lay["PagesLayoutModel<br/>move, pin, group, ungroup"]
     Base --> Persist["PagesPersistenceModel<br/>save, restore"]
     Base --> Query["PagesQueryModel<br/>find, getActive, getGrouped"]
 
     Base -->|delegates| IPC["IPageCollection<br/>(Public Interface)"]
+
+    LC -->|constructs editors| EF["editor-factory.ts"]
+    LC -->|generic open hooks| BI["BoardPageRouter<br/>open interceptor"]
+    Base --> SP["StandalonePages<br/>fixed-ID page registry"]
 
     Base -->|state| S["OpenFilesState<br/>pages[], ordered[], groupings"]
     LC -->|uses| S
@@ -334,6 +338,9 @@ graph TD
     style Lay fill:#f3e5f5
     style Persist fill:#f3e5f5
     style Query fill:#f3e5f5
+    style EF fill:#e8f5e9
+    style BI fill:#e8f5e9
+    style SP fill:#e8f5e9
     style IPC fill:#e1f5ff
     style S fill:#ffe0b2
 ```
@@ -343,11 +350,15 @@ graph TD
 | Submodel | File | Responsibility |
 |----------|------|----------------|
 | Base | [`PagesModel.ts`](../../src/renderer/api/pages/PagesModel.ts) | Shared state (`pages[]`, `ordered[]`, `groupings`), core helpers |
-| Lifecycle | [`PagesLifecycleModel.ts`](../../src/renderer/api/pages/PagesLifecycleModel.ts) | create, open, close, navigate, movePageIn/Out |
+| Lifecycle | [`PagesLifecycleModel.ts`](../../src/renderer/api/pages/PagesLifecycleModel.ts) | create and open pages, close pages, navigate, transfer and duplicate pages; invokes generic open interceptors |
 | Navigation | [`PagesNavigationModel.ts`](../../src/renderer/api/pages/PagesNavigationModel.ts) | show, showNext, showPrev |
 | Layout | [`PagesLayoutModel.ts`](../../src/renderer/api/pages/PagesLayoutModel.ts) | moveTab, pin by side/unpin, group/ungroup |
 | Persistence | [`PagesPersistenceModel.ts`](../../src/renderer/api/pages/PagesPersistenceModel.ts) | save/restore window state to disk |
 | Query | [`PagesQueryModel.ts`](../../src/renderer/api/pages/PagesQueryModel.ts) | find (by any ID: page, mainEditor, or secondary), findPageByFilePath, activePage, focusedPage, getGrouped, isLastPage |
+
+`PagesModel` owns page-array mutation primitives (`insertPage`, `replacePage`, and `removePage`) so submodels do not directly implement insert, recovery replacement, or removal in the shared arrays. `PagesLayoutModel` owns ordering and grouping changes; persistence owns bulk restore.
+
+Editor construction is centralized in [`editor-factory.ts`](../../src/renderer/editors/editor-factory.ts), which supplies the lifecycle and navigation collaborators. Fixed-ID page construction and reuse live in [`standalone-pages.ts`](../../src/renderer/api/pages/standalone-pages.ts). [`BoardPageRouter`](../../src/renderer/api/boards/board-page-router.ts) owns board-specific lookup and open routing and registers with the lifecycle through its generic interceptor interface.
 
 Folder boards are the persistence exception among no-host board pages. Their descriptor keeps the
 stable `board-view` editor id but stores the installed `boardRoot` and claimed `folderPath` as
@@ -384,24 +395,26 @@ import { pagesModel } from "../api/pages";
 
 ## 5. Internal vs. Public Operations
 
-### Public (in IPageCollection, exposed to scripts)
+### Public (in `IPageCollection`, exposed to scripts)
 
-- `all`, `activePage`, `popoverPage`, `find()`, `getGrouped()` — queries
-- `openFile()`, `addEmpty()`, `addEditor()` — lifecycle. `openFile(filePath)` accepts files and folders and returns the opened page when the path resolves. A folder produces an editorless page with an Explorer rooted at that folder; because that page has no file path, `PagesModel.openFile()` uses the resolver's ephemeral `ILinkData.openedPageId` to return it.
-- `show()`, `showNext()`, `showPrevious()`, `openPopover()`, `closePopover()` — navigation and popover visibility
-- `moveTab()`, `pinTab(side)`, `unpinTab()`, `group()`, `ungroup()` — layout
+- Queries: `all`, `activePage`, `popoverPage`, `groupedPage`, `compare`, `logView`, `findPage()`, `getGroupedPage()`, `isLastPage()`, `isGrouped()`.
+- Lifecycle and openers: `openFile()`, `closePage()`, `openFileWithDialog()`, `navigatePageTo()`, `addEmptyPage()`, `addEditorPage()`, `addDrawPage()`, `openLinks()`, `openDiff()`, `showAboutPage()`, `showSettingsPage()`, `showMcpInspectorPage()`, `showMnemeConfigPage()`, `showToolsHubPage()`, `showBrowserPage()`, and `openUrlInBrowserTab()` (plus `openUrl()`). `openFile(filePath)` accepts files and folders and returns the opened page when the path resolves. A folder produces an editorless page with an Explorer rooted at that folder; because that page has no file path, `PagesModel.openFile()` uses the resolver's ephemeral `ILinkData.openedPageId` to return it.
+- Navigation: `showPage()`, `openPopover()`, `closePopover()`, `showNext()`, `showPrevious()`.
+- Layout: `moveTab()`, `pinTab(side)`, `unpinTab()`, `group()`, `ungroup()`.
+
+These public method names remain delegates on `PagesModel`; submodel ownership is an implementation detail and does not change the script API.
 
 ### Internal (not in .d.ts, private implementation)
 
 - `movePageIn()` / `movePageOut()` — multi-window drag-drop (IPC-driven)
 - `attachPage(page)` — subscribes to page state changes for auto-save, sets `onClose` callback that runs the dispose chain (`detachPage` → `removePage` → `dispose`)
 - `detachPage(page)` — unsubscribes and clears `onClose` WITHOUT disposing. Used by `movePageOut()` (multi-window transfer) and `navigatePageTo()` to preserve page resources
-- `removePage(page)` — removes from `pages[]` and `ordered[]` arrays
+- `insertPage(page, options?)`, `replacePage(old, recovered)`, and `removePage(page, options?)` — the only page-collection primitives for inserting, recovering/replacing, and removing entries from `pages[]` and `ordered[]`
 - `fixGrouping()` — invariant repair
 - `checkEmptyPage()` — auto-create empty page when last one closes
 - `addEmptyPageWithNavPanel(folderPath)` — creates a PageModel with `mainEditor = null` and an initialized sidebar (Explorer panel). Used by sidebar double-click, archive browsing, the "Open Folder" menu, the "Open Folder" item in the Tools & Editors list, the folder-tree context menu, opening a link that points to a directory, and a folder path arriving from the command line or Explorer's "Open with persephone" folder context menu. The page renders just the sidebar with an empty content area.
-- `showClipboardPage()` — reuses or creates the fixed-ID editorless Clipboard singleton with an Explorer host whose persisted composition contains only the Clipboard panel.
-- `openLinks(links, title?)` — creates a link collection page. A `LinkEditor` with `.link.json` content is added as a Pattern A secondary view (never mainEditor). The Categories panel appears in the sidebar; clicking a link navigates the page's main area to that file. Accepts `(ILink | string)[]` — strings are converted to LinkItems with auto-generated titles.
+- `standalonePages.show(id, options?)` and `standalonePages.requireTextPage(id)` — internal registry operations for fixed-ID pages. The registry handles deduplication, lazy editor construction, and per-page `afterShow` actions; the two MCP log pages use the synchronous text-host accessor.
+- `registerOpenInterceptor(interceptor)` — generic lifecycle extension point used by board routing. Interceptors can take an open/navigation request or pass it onward with rewritten options.
 - `save()` / `restore()` — persistence (called by bootstrap, not by scripts)
 - Submodel instances — private composition detail
 
@@ -444,37 +457,27 @@ When a tab is dragged to another window:
 
 **Implementation:** [`/src/main/open-windows.ts`](../../src/main/open-windows.ts) (main process), [`/src/main/drag-model.ts`](../../src/main/drag-model.ts) (debouncing), [`PagesLifecycleModel.ts`](../../src/renderer/api/pages/PagesLifecycleModel.ts) (renderer), [`PageTabView.ts`](../../src/renderer/ui/tabs/PageTabView.ts) (drag handlers)
 
-## 8. Well-Known Pages
+## 8. Standalone Pages
 
-Some pages are **singletons** — they should exist as a single instance and be found by a stable ID rather than a random UUID. The well-known pages system provides this.
+Fixed-ID standalone page entries use stable persisted IDs, so repeated opens and session restore resolve to the same tab. [`StandalonePages`](../../src/renderer/api/pages/standalone-pages.ts) is the single registry for these entries and for the repeatable video player page. Each entry specifies an editor ID, a text-host configuration, or a custom page builder, and may define an `afterShow` action for both newly created and reused pages. Editor modules remain lazy-loaded; the registry's IDs come from small ID modules rather than loading editor chunks at startup.
 
-**Source:** [`/src/renderer/api/pages/well-known-pages.ts`](../../src/renderer/api/pages/well-known-pages.ts)
+Use `standalonePages.show(id, options?)` for fixed-ID editor and custom pages. It reuses the page if present, otherwise creates it within the guarded editor-open path, then runs its optional `afterShow` action. `requireTextPage(id)` synchronously returns or creates the two text-host log pages. Persisted IDs are part of the page descriptor contract and must remain stable.
 
-### How it works
+### Registered standalone page entries
 
-1. **Registry:** Well-known pages are defined in `well-known-pages.ts` with a fixed ID, editor, language, and title:
-   ```typescript
-   registerWellKnownPage({
-       id: "mcp-ui-log",
-       editor: "log-view",
-       language: "jsonl",
-       title: "MCP Log",
-   });
-   ```
+The registry key is shown below; for singleton entries it is also the persisted page ID. The video player uses the same registry builder but intentionally creates a fresh page per open.
 
-2. **Get-or-create:** Use `pagesModel.requireWellKnownPage(id)` to get the page:
-   - If a page with this ID exists → focuses and returns it
-   - If not → creates a new page with the predefined config and the well-known ID (not a UUID)
-   - The existing `addPage()` deduplication ensures no duplicates
-
-3. **Session restore:** Well-known pages are persisted with their fixed ID. On restore, they're recreated with the same ID. Next `requireWellKnownPage()` call finds the restored page.
-
-### Current well-known pages
-
-| ID | Editor | Purpose |
-|----|--------|---------|
+| Registry key / persisted ID | Editor or builder | Purpose |
+|----|--------------------------|---------|
+| `about-page` | `about-view` | About and guides; `atContents` resets the guide browser when requested |
+| `settings-page` | `settings-view` | Settings |
+| `mneme-config-page` | `mneme-config` | Mneme configuration |
+| `storybook-page` | `storybook-view` | Storybook |
+| `tools-hub-page` | `tools-hub-view` | Tools & Editors; can select a tab after showing |
+| `clipboard-page` | custom Explorer page | Clipboard panel in an editorless page |
 | `mcp-ui-log` | `log-view` | MCP Log page — shared by `pages.logView` and script `ui` |
-| `mcp-server-log` | `log-view` | MCP server incoming request log — logs every incoming MCP command with method, params, result, error, duration. Capped at 200 entries. Opened by clicking the MCP indicator in the title bar. |
+| `mcp-server-log` | `log-view` | MCP server incoming request log; opened from the MCP indicator |
+| `video-player` | `video-view` | Repeatable video player page; each open creates a fresh page |
 
 The `pages.logView` collection property is the non-blocking object-model path to `mcp-ui-log`.
 It reuses the page's `LogViewEditor` and accepts the same normalized entry forms as script `ui`,
@@ -482,24 +485,7 @@ but returns from `push()` immediately with entry and dialog IDs. Inline dialogs 
 Log View for the user to answer; `dialogResult(id)` distinguishes an unresolved dialog from its
 resolved entry. Agents use this non-blocking path through `call`.
 
-### Standalone singleton pages
-
-About, Settings, Mneme Config, Storybook, and Tools & Editors pages use a similar pattern with
-hardcoded IDs directly in their modules:
-- `ABOUT_PAGE_ID = "about-page"` in `AboutEditor.ts`
-- `SETTINGS_PAGE_ID = "settings-page"` in `SettingsPage.ts`
-
-These work as singletons through the same `addPage()` deduplication. Each `showXPage()` method
-passes a lazy page-ID loader to the lifecycle model, which resolves it and constructs the editor
-inside one `guard(...)` call. This keeps failures in either the editor module import or
-`editorRegistry.createEditor()` on the same user-visible failure path. A failed standalone open
-therefore leaves the page list unchanged and reports the failure as a notification; the helper's
-result is `undefined` in that case, so callers must check before using the page.
-
-The page-ID loader is intentional: the ID constant often lives in the same lazily loaded module as
-the editor, and importing it before entering the guard would leave that first failure unreported.
-
-The About singleton also owns a runtime guide-browser location. Its left version card remains
+The About page also owns a runtime guide-browser location. Its left version card remains
 stable while the right pane switches between the guide contents tree and a selected guide. Plain
 `showAboutPage()` reuses the existing About page and preserves that browser location; the explicit
 `showAboutPage({ atContents: true })` entry point resets it to the contents tree. The browser's
@@ -507,13 +493,12 @@ guide history and agent-guide filter are runtime state rather than persisted pag
 `about-view` scripting facade exposes `open`, `back`, `current`, `elements`, and `highlight` for
 this fixed page; opening a guide in a tab uses the normal content pipeline.
 
-The Clipboard entry in Tools & Editors uses a separate fixed-ID singleton page rather than the
-well-known editor registry. `showClipboardPage()` reuses and shows that page when it exists;
-otherwise it creates an editorless page with an Explorer host configured with persisted
-`hideExplorer` and `clipboardOpen`, then expands the Clipboard panel. Closing that only panel
-invokes the general editorless sidebar-page auto-close rule described above.
+The Clipboard page is a custom entry in the same registry. It creates an editorless page with an
+Explorer host configured with persisted `hideExplorer` and `clipboardOpen`, then expands the
+Clipboard panel. Its `afterShow` action opens the panel on both new and reused pages. Closing that
+only panel invokes the general editorless sidebar-page auto-close rule described above.
 
-### When to use well-known pages
+### Fixed-ID page rules
 
 Use this pattern when:
 - A page should be a **singleton** (one instance at a time)
@@ -524,13 +509,10 @@ Do NOT use for:
 - User-created pages (scripts, file open) — these should have unique UUIDs
 - Pages that can be opened multiple times (browser tabs, text files)
 
-### Adding a new well-known page
-
-1. Add a `registerWellKnownPage()` call in `well-known-pages.ts`
-2. Use `await pagesModel.requireWellKnownPage("your-id")` wherever you need the page
-3. No other changes needed — `addPage()` handles deduplication automatically
-
-**Note:** `requireWellKnownPage` is an internal API — not exposed to scripts or MCP call paths.
+To add a fixed-ID page, add an entry and its stable ID to `standalone-pages.ts` (or a small ID
+module when an editor owns that persisted ID), then expose or call the appropriate `PagesModel`
+delegate. Do not put fixed-page catalogue logic in the lifecycle model. Registry operations are
+internal; public page methods remain the stable interface for UI and script callers.
 
 ---
 
@@ -554,7 +536,9 @@ This is enforced in `_enforceMandatoryOpen()`, called whenever panel editors att
 
 ### Navigation pattern
 
-Before ordinary page navigation, `PagesLifecycleModel.navigatePageTo()` checks whether the target resolves to a board whose normalized manifest declares `singleInstance: true`. If `singleInstanceMasks` is present, only claimed file names matching those masks use the singleton; other claimed files open in ordinary pages. If a matching singleton board page already exists, the lifecycle activates it, delivers the source URL and optional transient session handle through the editor's typed `acceptOpenContext` hook, disposes the incoming pipe, and returns success without replacing the page selected by `pageId`. Otherwise navigation continues through `PageNavigator` below. The same lifecycle route is used by `openFile()`, so singleton board opens converge whether they arrive as new-page opens or page-id navigation requests.
+Board-specific opens are owned by [`BoardPageRouter`](../../src/renderer/api/boards/board-page-router.ts), registered when `PagesModel` is constructed. `PagesLifecycleModel` exposes a generic open-interceptor list; before ordinary `openFile()` deduplication and before `PageNavigator`, it gives interceptors the request. An interceptor can take the request or continue with rewritten options. The router uses this hook for single-instance routing on both open and navigate requests, preserving the established ordering and keeping board rules out of the lifecycle.
+
+For a board whose normalized manifest declares `singleInstance: true`, matching claimed file names (when `singleInstanceMasks` is present) route to one page per renderer window. A matching existing page receives the source URL and optional transient session handle through the editor's typed `acceptOpenContext` hook; the incoming pipe is disposed and navigation does not replace the page selected by the caller. The router also owns bundled-board page creation, capability-handler pages, board Run pages and board-specific page queries. Other requests continue through the normal page lifecycle.
 
 In `navigatePageTo()` ([`PageNavigator.ts`](../../src/renderer/api/pages/PageNavigator.ts) — each step below is a named function there):
 

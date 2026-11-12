@@ -110,7 +110,7 @@ class BoardCapabilityDispatcher {
         const rootKey = BoardRoot.from(root).key;
         const producesPage = registration.alwaysOpensNewPage === true;
         let reservation = producesPage ? undefined : this.reservationsByRoot.get(rootKey);
-        const existingPage = !producesPage && !reservation ? pagesModel.query.findPagesByBoardRoot(root)[0] : undefined;
+        const existingPage = !producesPage && !reservation ? pagesModel.boardPageRouter.findPagesByBoardRoot(root)[0] : undefined;
         if (!reservation) {
             reservation = this.createReservation(rootKey, root);
             if (!producesPage) this.reservationsByRoot.set(rootKey, reservation);
@@ -157,7 +157,7 @@ class BoardCapabilityDispatcher {
 
     private openReservation(reservation: PageReservation, opener: DispatchRoute): void {
         reservation.opening = true;
-        void pagesModel.lifecycle.openBoardHandlerPage(
+        void pagesModel.boardPageRouter.openBoardHandlerPage(
             reservation.root,
             capabilityTitle(opener.registration, opener.request),
             (page) => {

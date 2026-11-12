@@ -254,7 +254,7 @@ class EditorRegistry {
     }
 
     /** Synchronous `createEditor` against the module cache. Exists for the
-     *  construction paths that cannot await — `attachEditorToPage` sits under
+     *  construction paths that cannot await — the editor factory's `attachEditorToPage` sits under
      *  sync public APIs (`addEditorPage`, `openLinks`, `page.grouped`).
      *  Content-host modules are preloaded at startup
      *  (`preloadContentHostModules`), so a miss only happens in the first
@@ -282,7 +282,7 @@ class EditorRegistry {
     }
 
     /** Warm the module cache for every content-host editor so the synchronous
-     *  construction path (`attachEditorToPage`) can build any text-host editor
+     *  construction path (the editor factory's `attachEditorToPage`) can build any text-host editor
      *  without awaiting. Fire-and-forget per module; a load failure is logged
      *  here and surfaces to the user on first real use. */
     preloadContentHostModules(): void {

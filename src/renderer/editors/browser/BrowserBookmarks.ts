@@ -56,7 +56,7 @@ export class BrowserBookmarks {
             if (!ok) return false; // wrong password
         }
 
-        // BR-IMPL2 — construct-then-adoptHost. Mirrors the attachEditorToPage
+        // BR-IMPL2 — construct-then-adoptHost. Mirrors the editor factory's attachEditorToPage
         // pattern from Todo / Rest Client. LinkEditor adopts the
         // already-restored host (no re-read) and parses the initial content
         // inline via loadData.

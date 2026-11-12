@@ -14,6 +14,11 @@ import { fs as appFs } from "../fs";
 import { ui } from "../ui";
 import { errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
+import {
+    attachEditorToPage,
+    createEditorFromFile,
+    createEditorFromFolder,
+} from "../../editors/editor-factory";
 
 // ============================================================================
 // PageNavigator — navigate an existing page to a new file.
@@ -142,7 +147,6 @@ async function reuseEditorForFile(
 /** Build the new editor, falling back to an empty text page on a missing
  *  file or a build failure (with a toast either way). */
 async function buildEditor(
-    model: PagesModel,
     newFilePath: string,
     options?: NavigatePageToOptions,
 ): Promise<EditorOrHost> {
@@ -150,17 +154,17 @@ async function buildEditor(
         newFilePath.includes("://") || newFilePath.startsWith("data:");
     if (!isVirtualPath && !(await appFs.exists(newFilePath))) {
         ui.notify(t("api.fileNotFound", { name: fpBasename(newFilePath) }), "error");
-        const legacy = newTextFileModel("");
-        legacy.state.update((s) => {
+        const textFileModel = newTextFileModel("");
+        textFileModel.state.update((s) => {
             s.title = fpBasename(newFilePath);
         });
-        await legacy.restore();
-        return legacy;
+        await textFileModel.restore();
+        return textFileModel;
     }
     if (options?.folderPath !== undefined) {
         if (!options.target) throw new Error("Folder editor link has no target editor.");
         try {
-            return await model.lifecycle.createEditorFromFolder(
+            return await createEditorFromFolder(
                 options.target,
                 options.folderPath,
             );
@@ -170,7 +174,7 @@ async function buildEditor(
         }
     }
     try {
-        return await model.lifecycle.createEditorFromFile(
+        return await createEditorFromFile(
             newFilePath,
             options?.pipe,
             options?.target,
@@ -181,9 +185,9 @@ async function buildEditor(
             t("api.failedToOpenNamedFileWithError", { name: fpBasename(newFilePath), error: errMessage(err) }),
             "error",
         );
-        const legacy = newTextFileModel("");
-        await legacy.restore();
-        return legacy;
+        const textFileModel = newTextFileModel("");
+        await textFileModel.restore();
+        return textFileModel;
     }
 }
 
@@ -193,7 +197,7 @@ async function buildEditor(
  *  Normal opens carry target === resolveId, so they fall through to the
  *  preview editor exactly as before. */
 function applyEditorSelection(
-    legacy: EditorOrHost,
+    editorOrHost: EditorOrHost,
     newFilePath: string,
     options?: NavigatePageToOptions,
 ): void {
@@ -202,7 +206,7 @@ function applyEditorSelection(
     const languageId = lang?.id || "plaintext";
     const explicitTarget = options?.target;
     if (isExplicitHostTarget(explicitTarget, newFilePath)) {
-        legacy.state.update((s) => {
+        editorOrHost.state.update((s) => {
             s.editor = explicitTarget as EditorView;
         });
     } else {
@@ -211,7 +215,7 @@ function applyEditorSelection(
             newFilePath,
         );
         if (previewEditor) {
-            legacy.state.update((s) => {
+            editorOrHost.state.update((s) => {
                 s.editor = previewEditor as EditorView;
             });
         }
@@ -252,31 +256,28 @@ export async function navigatePageTo(
         return true;
     }
 
-    // Build legacy editor (with adapter wrap deferred until after the
+    // Build the editor or text host, deferring adapter attachment until after the
     // post-restore mutations that need the underlying TextFileModel API).
-    const legacy = await buildEditor(model, newFilePath, options);
+    const editorOrHost = await buildEditor(newFilePath, options);
 
     if (options?.sourceLink || options?.title) {
-        legacy.state.update((s) => {
+        editorOrHost.state.update((s) => {
             if (options.sourceLink) s.sourceLink = options.sourceLink;
             if (options.title) s.title = options.title;
         });
     }
 
-    const isTextFile = legacy.state.get().type === "textFile";
+    const isTextFile = editorOrHost.state.get().type === "textFile";
     const skipPreview = !!(
         options?.forceTextEditor ||
         options?.revealLine ||
         options?.highlightText
     );
     if (isTextFile && !skipPreview) {
-        applyEditorSelection(legacy, newFilePath, options);
+        applyEditorSelection(editorOrHost, newFilePath, options);
     }
 
-    // Dynamic import mirrors PageModel's usage — attachEditorToPage lives in
-    // PagesLifecycleModel, which statically imports this module.
-    const { attachEditorToPage } = await import("./PagesLifecycleModel");
-    const adapter = attachEditorToPage(legacy);
+    const adapter = attachEditorToPage(editorOrHost);
     await page.setMainEditor(adapter);
 
     if (options?.sessionHandle) {
@@ -305,12 +306,12 @@ export async function navigatePageTo(
 
     // revealLine / highlightText apply after the editor has mounted.
     if (isTextFile && skipPreview) {
-        const tfm = legacy as unknown as TextFileModel;
+        const textFileModel = editorOrHost as unknown as TextFileModel;
         if (options?.revealLine) {
-            tfm.revealLine(options.revealLine);
+            textFileModel.revealLine(options.revealLine);
         }
         if (options?.highlightText) {
-            tfm.setHighlightText(options.highlightText);
+            textFileModel.setHighlightText(options.highlightText);
         }
     }
 

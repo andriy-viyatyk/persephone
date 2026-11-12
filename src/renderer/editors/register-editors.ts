@@ -235,7 +235,7 @@ for (const e of EDITORS) {
 void customEditorRegistry.ensureInitialized();
 
 // Warm the content-host editor modules so the synchronous construction path
-// (`attachEditorToPage` under the sync public APIs `addEditorPage` / `openLinks` /
+// (the editor factory's `attachEditorToPage` under the sync public APIs `addEditorPage` / `openLinks` /
 // `page.grouped`) can build any text-host editor from the registry's module cache.
 // Fire-and-forget: the chunks load in the background right after registration.
 editorRegistry.preloadContentHostModules();

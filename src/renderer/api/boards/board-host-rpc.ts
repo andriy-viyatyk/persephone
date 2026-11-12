@@ -166,7 +166,7 @@ export function registerBoardHostRpc(server: RendererRpcServer): void {
                 return null;
             }
             if (editor === "browser-view" && reuseKey !== undefined) {
-                await pagesModel.lifecycle.openBoardRunPage(boardRoot, reuseKey, target);
+                await pagesModel.boardPageRouter.openBoardRunPage(boardRoot, reuseKey, target);
                 return null;
             }
             await app.events.openRawLink.sendAsync(createLinkData(target, {

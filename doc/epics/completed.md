@@ -1,3 +1,17 @@
+## EPIC-151 — Refactoring Phase 5.1: the `PagesLifecycleModel` split
+
+Completed 2026-11-12. Roadmap Phase 5.1 (CORE-1), the first item of Phase 5: `PagesLifecycleModel.ts` shrinks from
+1,346 to 692 lines and keeps only the page lifecycle. Editor construction, board routing, the fixed-page catalogue and
+the page-array writes each have one owner. The script API and persisted page ids are unchanged. Plans by Codex,
+reviewed against the roadmap guardrails; Codex Luna implemented, with plan corrections recorded in the epic notes.
+Epic document: [EPIC-151](EPIC-151.md).
+
+- [x] **The editor factory (US-1869).** `editors/editor-factory.ts` owns `attachEditorToPage` and every editor build; the two `await import("…/PagesLifecycleModel")` cycle workarounds in `PageNavigator` and `editor-switch` are gone.
+- [x] **The board page router and the open interceptor (US-1870).** `api/boards/board-page-router.ts` owns single-instance routing, bundled and handler board pages, the Run page and the board page queries; it registers on a generic `registerOpenInterceptor` hook in the `PagesModel` constructor. `PagesLifecycleModel.ts` left the US-1824 lint exemption list.
+- [x] **The standalone-pages registry (US-1871).** `api/pages/standalone-pages.ts` (`show`, `requireTextPage`) replaces `well-known-pages.ts`, the lazy page-id loaders and `CLIPBOARD_PAGE_ID`; page ids live in tiny id files; the MCP inspector, image and video openers moved to their editors without casts.
+- [x] **`PagesModel` mutation primitives and the lifecycle cleanup (US-1872).** `insertPage`, `replacePage` and `removePage` options own every page-array insert, replace and remove; one `closePages` loop; the file dialogs moved to `ui/dialogs/OpenFileCommands.ts`; migration leftovers and `legacy` names removed.
+- [x] **Epic review.** `/review` found no required fixes; `/document` updated pages-architecture.md, key-files.md and four adjacent architecture docs; `/userdoc` needed no changes. No English catalog messages changed.
+
 ## EPIC-150 — Refactoring Phase 4.6: `ContentHostSlot`
 
 Completed 2026-11-12. Roadmap Phase 4.6 (EDC-1, BRD-9), the last item of Phase 4: the content-host holder that existed

@@ -6,8 +6,9 @@ import { StorybookIcon } from "../../theme/icons";
 import { ALL_STORIES, findStory } from "./storyRegistry";
 import { Story, PropDef } from "./storyTypes";
 import { untranslated } from "../../../shared/i18n/t";
+import { STORYBOOK_PAGE_ID } from "./storybook-page-id";
 
-export const STORYBOOK_PAGE_ID = "storybook-page";
+export { STORYBOOK_PAGE_ID } from "./storybook-page-id";
 
 export type PreviewBackground = "default" | "light" | "dark";
 

@@ -66,11 +66,13 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Platform capability provider metadata | `/src/shared/platform-capabilities.ts` |
 | Agent capability discovery and method nodes | `/src/renderer/scripting/ai-vision/namespaces/capabilities.ts` |
 | Main-owned scalar UI preferences and renderer cache (snapshot load, synchronous reads, best-effort writes) | `/src/main/ui-preferences.ts`, `/src/renderer/api/ui-preferences.ts` |
-| Page/tab management      | `/src/renderer/api/pages/PagesModel.ts`           |
+| Page/tab management (shared page arrays and state; mutation primitives; public API delegates; router and standalone-page composition) | `/src/renderer/api/pages/PagesModel.ts` |
 | Page container (tab; sidebar composition, composite active-panel fallback, automatic close of editorless pages whose last panel is removed, media-pipe owner readiness, and deferred restore readiness/cancellation) | `/src/renderer/api/pages/PageModel.ts` |
 | Editor↔owner contract    | `/src/renderer/api/pages/IPageHost.ts`            |
-| Well-known pages         | `/src/renderer/api/pages/well-known-pages.ts`     |
-| Page creation/opening (including capability-handler board opening, the fixed-ID Clipboard sidebar singleton, existing-page reopen pipe ownership, and board-owned Run Browser pages) | `/src/renderer/api/pages/PagesLifecycleModel.ts` |
+| Fixed-ID standalone page registry (lazy editor/custom page builders, text-host log pages, stable persisted IDs and after-show actions) | `/src/renderer/api/pages/standalone-pages.ts` |
+| Page creation/opening, generic open-interceptor registration and dispatch, close, transfer, duplicate, retry and lifecycle coordination | `/src/renderer/api/pages/PagesLifecycleModel.ts` |
+| Editor construction (text-host attachment, editor-by-id/file/folder creation, Monaco synchronous floor and board editor routing) | `/src/renderer/editors/editor-factory.ts` |
+| Board page routing (single-instance interception, source-context handoff, bundled board pages, capability-handler pages, Run pages and board queries) | `/src/renderer/api/boards/board-page-router.ts` |
 | Window session save/restore (`openFiles{windowIndex}.json`; restore save gate; legacy `draw-view` descriptors are normalized to the bundled board with renderable board-selection state; every `board-info` descriptor restores through its registered editor with optional host data; folder-board descriptors retain independent `boardRoot`/`folderPath` and revalidate the trusted claim before construction; bundled board roots are repaired by stable board id when an install path changes; persisted active panels are validated against composed composite keys and fall back to the first panel) | `/src/renderer/api/pages/PagesPersistenceModel.ts` |
 | Failed persisted-page restore placeholder and retry/close recovery | `/src/renderer/editors/restore-failed/` |
 | Page navigation (`navigatePageTo` as named steps: confirm-release-unless-survives, singleton-target reuse, normalized same-file reuse and reveal, build with missing-file/error fallbacks, preview-vs-explicit-target selection, shared show/focus-unless-sidebar/save exit) | `/src/renderer/api/pages/PageNavigator.ts` |
@@ -517,7 +519,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Board trust request flow (short-circuits bundled and already-trusted roots; preflights normalized permission and service-use grant changes, supplies manifest disclosure, checks namespace collisions, and writes trust only after user acceptance) | `/src/renderer/api/boards/request-board-trust.ts` |
 | Shared board shortcut creation core and UI notification wrapper | `/src/renderer/editors/board/board-shortcut.ts` |
 | Board lifecycle script types (`IBoards`) | `/src/renderer/api/types/boards.d.ts` |
-| Single-instance board routing (normalized manifest declaration; lifecycle routes matching opens to one page per renderer window and delivers source context through the typed editor hook) | `/src/shared/board/board-manifest-schema.ts`, `/src/renderer/api/pages/PagesLifecycleModel.ts`, `/src/renderer/editors/base/EditorModel.ts` |
+| Single-instance board declaration and typed source-context delivery contract | `/src/shared/board/board-manifest-schema.ts`, `/src/renderer/api/boards/board-page-router.ts`, `/src/renderer/editors/base/EditorModel.ts` |
 | Board manifest file I/O (board identity detection, parse through shared schema, creation and update) | `/src/renderer/api/boards/board-manifest-io.ts` |
 | Board language-pack loading and validation (active/base/default fallback, placeholder checks against the default pack, `en-XA` pseudo-text, and registration-time locale/table context) | `/src/renderer/api/boards/board-i18n.ts` |
 | Local board manifest display-text cache (`manifest.*` translations loaded from board packs, with refresh/invalidation events and English fallback) | `/src/renderer/api/boards/board-display-text.ts` |

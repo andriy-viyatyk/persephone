@@ -41,7 +41,7 @@ export function logIncomingRequest(
 
 /** Show the MCP server request log page (creates if needed, backfills history). */
 export async function showMcpRequestLog(): Promise<void> {
-    const page = await pagesModel.requireWellKnownPage("mcp-server-log");
+    const page = await pagesModel.standalonePages.requireTextPage("mcp-server-log");
     const editor = page.mainEditorInstance;
     if (!(editor instanceof LogViewEditor)) return;
 

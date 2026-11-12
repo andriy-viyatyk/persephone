@@ -1,8 +1,37 @@
 import type { PagesModel } from "./PagesModel";
 import type { PageModel } from "./PageModel";
+import type { TextFileModel } from "../../editors/text";
 
 export class PagesLayoutModel {
     constructor(private model: PagesModel) {}
+
+    /** Use `getTextFileHost` to discriminate text-bearing partner pages. */
+    requireGroupedText = (
+        pageId: string,
+        suggestedLanguage?: string,
+    ): TextFileModel => {
+        if (this.model.query.isRightPinned(pageId)) {
+            throw new Error("Right-pinned pages cannot be grouped with text pages.");
+        }
+        let groupedPage = this.model.query.getGroupedPage(pageId);
+        if (groupedPage && !this.model.query.getTextFileHost(groupedPage.id)) {
+            this.ungroup(pageId);
+            groupedPage = undefined;
+        }
+
+        if (!groupedPage) {
+            groupedPage = this.model.lifecycle.addEmptyPage();
+            this.groupTabs(pageId, groupedPage.id, false);
+            const host = this.model.query.getTextFileHost(groupedPage.id);
+            host?.changeLanguage(suggestedLanguage);
+        }
+
+        const host = this.model.query.getTextFileHost(groupedPage.id);
+        if (!host) {
+            throw new Error("requireGroupedText: failed to materialize text host");
+        }
+        return host;
+    };
 
     markLockedBoardPage = (page: PageModel, boardRoot: string): void => {
         page.setLockedBoardRoot(boardRoot);
@@ -239,7 +268,7 @@ export class PagesLayoutModel {
         });
     };
 
-    // ── Compare mode (walkthrough 06 / CK4) ────────────────────────────
+    // ── Compare mode ──────────────────────────────────────────────────
 
     /**
      * Activate compare mode for the pair containing `pageId`. Accepts either

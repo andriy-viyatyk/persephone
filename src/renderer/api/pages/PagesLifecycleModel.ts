@@ -1,389 +1,111 @@
 import type { PagesModel } from "./PagesModel";
 import { EditorModel } from "../../editors/base";
-import type { EditorOrHost } from "../../editors/base";
 import { EditorView, PageDescriptor } from "../../../shared/types";
 import { t } from "../../../shared/i18n/t";
-import { cleanForStorage, createLinkData } from "../../../shared/link-data";
+import { cleanForStorage } from "../../../shared/link-data";
 import type { ILinkData } from "../../../shared/link-data";
 import type { ILinkDiffRevision } from "../types/io.link-data";
-import {
-    newTextFileModel,
-    TextFileModel,
-} from "../../editors/text";
-import { MonacoEditor, defaultMonacoEditorState } from "../../editors/monaco/MonacoEditor";
-import { TextHostEditorModel } from "../../editors/base/TextHostEditorModel";
+import { newTextFileModel } from "../../editors/text";
 import { ExplorerEditor, getDefaultExplorerEditorState } from "../../editors/explorer";
 import { TComponentState } from "../../core/state/state";
 import { api } from "../../../ipc/renderer/api";
 import { recent } from "../recent";
 import { editorRegistry, isExplicitHostTarget } from "../../editors/base/editorRegistry";
-import {
-    resolveEditorIdForFile,
-    parseBoardEditorId,
-    resolveBoardEditorId,
-    boardEditorId,
-    customEditorRegistry,
-} from "../boards/custom-editor-registry";
-import {
-    decodePersephoneBoardLink,
-    encodePersephoneBoardLink,
-    PERSEPHONE_BOARD_PREFIX,
-} from "../../content/persephone-board-link";
-import { readBoardManifest } from "../boards/board-manifest-io";
-import { matchesFileMask, untitledFileNameForMasks } from "../../../shared/board/board-masks";
-import { type NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
-import type { HubTab } from "../../editors/tools-hub";
 import { PageModel } from "./PageModel";
 import { navigatePageTo, type NavigatePageToOptions } from "./PageNavigator";
 import { guard } from "../../core/utils/guard";
 import { errMessage } from "../../../shared/utils";
 import { RestoreFailedEditor } from "../../editors/restore-failed/RestoreFailedEditor";
-import { fpBasename, fpExtname } from "../../core/utils/file-path";
-import { BoardRoot } from "../../../shared/board/board-root";
-import { getLanguageByExtension } from "../../core/utils/language-mapping";
+import { fpBasename } from "../../core/utils/file-path";
 
 import type { ILink } from "../../api/types/io.tree";
 import { buildLinkEditorContent } from "../../editors/link-editor/link-open";
-import { getWellKnownPageDef } from "./well-known-pages";
 import type { IContentPipe } from "../../api/types/io.pipe";
-import { ContentPipe } from "../../content/ContentPipe";
-import { HttpProvider } from "../../content/providers/HttpProvider";
 import { pipeFromPersistedSource, pipeFromSourcePath } from "../../content/rebuild-pipe";
 import { openImageForEdit } from "../capability-feedback";
-import { captureBoardSourceContext } from "../../editors/shared/source-context";
-import type { BoardSourceContext } from "../../../shared/board-source-context";
+import {
+    attachEditorToPage,
+    constructEditorFromFile,
+    createEditorFromFile,
+    createEditorFromFolder,
+} from "../../editors/editor-factory";
 
-const CLIPBOARD_PAGE_ID = "clipboard-page";
-
-/** Attach an `EditorModel` or `TextFileModel` host to a `PageModel`.
- *  - `EditorModel` input: returned unchanged.
- *  - `TextFileModel` host input: construct a fresh editor over the host
- *    driven by `state.editor` (e.g. "monaco", "grid-json", "md-view", …) and
- *    return it. */
-export function attachEditorToPage(legacy: EditorOrHost): EditorModel {
-    if (legacy instanceof EditorModel) {
-        return legacy as unknown as EditorModel;
-    }
-
-    const legacyState = legacy.state.get() as { type?: string; editor?: string };
-    if (legacyState.type !== "textFile") {
-        throw new Error(
-            `attachEditorToPage: no mapping for editor id "${legacyState.editor ?? "monaco"}" (type "${legacyState.type ?? "?"}").`,
-        );
-    }
-    const host = legacy as TextFileModel;
-    const targetEditorId = legacyState.editor || "monaco";
-    const id = host.state.get().id || crypto.randomUUID();
-
-    // Monaco is the guaranteed-synchronous floor: the startup empty page and
-    // `requireGroupedText` build it before the registry's content-host module
-    // preload can be assumed complete, so it stays a static construction.
-    if (targetEditorId === "monaco") {
-        const monaco = new MonacoEditor(
-            new TComponentState({ ...defaultMonacoEditorState, id }),
-        );
-        monaco.adoptHost(host);
-        return monaco;
-    }
-
-    // Every other text-host editor comes from the registry's module cache
-    // (warmed at startup by `preloadContentHostModules` — construction here
-    // must stay synchronous, see `createEditorSync`).
-    const editor = editorRegistry.createEditorSync(targetEditorId, id);
-    if (!(editor instanceof TextHostEditorModel)) {
-        throw new Error(
-            `attachEditorToPage: editor "${targetEditorId}" does not wrap a text host.`,
-        );
-    }
-    editor.adoptHost(host);
-    // adoptHost only wires subscriptions — open-file callers have already
-    // invoked host.restore(), so trigger the same initial parse/load the
-    // switch and session-restore paths get via onHostAttached (no-op for
-    // editors that parse inside adoptHost, e.g. env-vars).
-    editor.bootstrapFromHost();
-    return editor;
+export interface OpenFileOptions {
+    sourceLink?: ILinkData;
+    target?: string;
+    folderPath?: string;
+    diffFrom?: ILinkDiffRevision;
+    diffTo?: ILinkDiffRevision;
+    revealLine?: number;
+    highlightText?: string;
+    fragment?: string;
+    onPageCreated?: (page: PageModel) => void;
+    sessionHandle?: string;
 }
 
-/** Module-private alias preserved for the existing call sites below. */
-const wrap = attachEditorToPage;
+export type OpenInterceptorOutcome<TOptions> =
+    | { kind: "take"; page: PageModel }
+    | { kind: "continue"; options?: TOptions };
 
-/** Compare a board Run target (a Windows path or a URL) with a Browser tab URL. */
-function runUrlKey(value: string): string {
-    let href = value.trim();
-    if (/^[a-zA-Z]:[\\/]/.test(href) || href.startsWith("\\\\")) {
-        const { pathToFileURL } = require("url") as typeof import("url");
-        href = pathToFileURL(href).href;
-    }
-    try {
-        const url = new URL(href);
-        url.protocol = url.protocol.toLowerCase();
-        url.hostname = url.hostname.toLowerCase();
-        if (url.protocol === "file:") url.pathname = url.pathname.toLowerCase();
-        return url.href;
-    } catch {
-        return href;
-    }
+export interface PageOpenInterceptor {
+    onOpenFile?(request: {
+        filePath?: string;
+        pipe?: IContentPipe;
+        options?: OpenFileOptions;
+    }): Promise<OpenInterceptorOutcome<OpenFileOptions>>;
+    onNavigatePageTo?(request: {
+        pageId: string;
+        newFilePath: string;
+        options?: NavigatePageToOptions;
+    }): Promise<OpenInterceptorOutcome<NavigatePageToOptions>>;
 }
 
 export class PagesLifecycleModel {
+    private readonly openInterceptors: PageOpenInterceptor[] = [];
+
     constructor(private model: PagesModel) {}
 
-    resolveBoardRootForOpen(target?: string, filePath?: string): string | undefined {
-        const boardRoot = target ? parseBoardEditorId(target) : null;
-        if (boardRoot !== null) return boardRoot;
-        if (target !== "board-view" || !filePath) return undefined;
-        return decodePersephoneBoardLink(filePath)?.boardRoot;
+    registerOpenInterceptor(interceptor: PageOpenInterceptor): () => void {
+        this.openInterceptors.push(interceptor);
+        return () => {
+            const index = this.openInterceptors.indexOf(interceptor);
+            if (index !== -1) this.openInterceptors.splice(index, 1);
+        };
     }
 
-    private enqueueBoardSource(
-        page: PageModel,
-        filePath: string | undefined,
-        pipe: IContentPipe | undefined,
-        sourceLink: ILinkData | undefined,
-        sessionHandle?: string,
-    ): void {
-        const sourceUrl = sourceLink?.url ?? pipe?.provider.sourceUrl ?? filePath;
-        if (!sourceUrl || sourceUrl.startsWith(PERSEPHONE_BOARD_PREFIX)) return;
-        page.mainEditorInstance?.acceptOpenContext?.({
-            mode: "enqueue-source",
-            sourceUrl,
-            sessionHandle,
-            sourceContext: sourceLink?.sourceContext,
-        });
+    private async interceptOpenFile(request: {
+        filePath?: string;
+        pipe?: IContentPipe;
+        options?: OpenFileOptions;
+    }): Promise<OpenInterceptorOutcome<OpenFileOptions>> {
+        let options = request.options;
+        for (const interceptor of this.openInterceptors) {
+            if (!interceptor.onOpenFile) continue;
+            const outcome = await interceptor.onOpenFile({ ...request, options });
+            if (outcome.kind === "take") return outcome;
+            options = outcome.options ?? options;
+        }
+        return { kind: "continue", options };
     }
 
-    /** Route an open to an existing single-instance board page in this window. */
-    private async openSingleInstanceBoard(
-        filePath: string | undefined,
-        pipe: IContentPipe | undefined,
-        options?: {
-            sourceLink?: ILinkData;
-            target?: string;
-            sessionHandle?: string;
-            normalizedManifest?: NormalizedBoardManifest | null;
-            preferredPageId?: string;
-        },
-    ): Promise<PageModel | undefined> {
-        const boardRoot = this.resolveBoardRootForOpen(options?.target, filePath);
-        const normalizedManifest = options && Object.prototype.hasOwnProperty.call(options, "normalizedManifest")
-            ? options.normalizedManifest
-            : boardRoot ? await readBoardManifest(boardRoot) : null;
-        if (!boardRoot || normalizedManifest?.singleInstance !== true) return undefined;
-
-        const masks = normalizedManifest.singleInstanceMasks;
-        const preferredPage = masks !== undefined && options?.preferredPageId
-            ? this.model.query.findPage(options.preferredPageId)
-            : undefined;
-        const preferredIsFullPlayer = masks !== undefined
-            && this.model.query.isFullPlayerBoardPage(preferredPage, boardRoot, masks);
-        const isBoardOpen = !filePath || filePath.startsWith(PERSEPHONE_BOARD_PREFIX);
-        const matchesMask = !!filePath
-            && masks?.some((mask) => matchesFileMask(fpBasename(filePath), mask));
-        if (masks !== undefined && !isBoardOpen && !matchesMask && !preferredIsFullPlayer) return undefined;
-
-        const existingPage = preferredIsFullPlayer
-            ? preferredPage
-            : this.model.query.findPageByBoardRoot(boardRoot, masks);
-        if (!existingPage) return undefined;
-
-        this.model.navigation.showPage(existingPage.id);
-        this.enqueueBoardSource(existingPage, filePath, pipe, options?.sourceLink, options?.sessionHandle);
-        pipe?.dispose();
-        return existingPage;
+    private async interceptNavigatePageTo(request: {
+        pageId: string;
+        newFilePath: string;
+        options?: NavigatePageToOptions;
+    }): Promise<OpenInterceptorOutcome<NavigatePageToOptions>> {
+        let options = request.options;
+        for (const interceptor of this.openInterceptors) {
+            if (!interceptor.onNavigatePageTo) continue;
+            const outcome = await interceptor.onNavigatePageTo({ ...request, options });
+            if (outcome.kind === "take") return outcome;
+            options = outcome.options ?? options;
+        }
+        return { kind: "continue", options };
     }
 
     // ── Pipe helpers ──────────────────────────────────────────────────
 
-    private async createPipeFromPath(path: string): Promise<IContentPipe> {
-        return pipeFromSourcePath(path);
-    }
-
-
-    private newEditorModel = async (filePath?: string): Promise<EditorOrHost> => {
-        // Merged resolution (built-in registry + trusted file-associated boards).
-        const targetId = resolveEditorIdForFile(filePath) ?? "monaco";
-        return this.buildEditorById(targetId, filePath);
-    };
-
-    private newEditorModelByTarget = async (
-        filePath: string,
-        target: string,
-    ): Promise<EditorOrHost> => {
-        return this.buildEditorById(target, filePath);
-    };
-
-    /** Construct an editor for an editor id + optional file path. Text-bearing
-     *  editors get a fresh TextFileModel host; no-host editors go through their
-     *  standalone shim. */
-    private buildEditorById = async (
-        editorId: string,
-        filePath?: string,
-        folderPath?: string,
-    ): Promise<EditorOrHost> => {
-        editorId = await resolveBoardEditorId(editorId);
-        // Custom-editor board: a `board-editor:<root>` id has no static
-        // registry def, so branch BEFORE the `!def` text fallback (which would else
-        // open the file silently as text). Build the board initialized with the file
-        // it edits (→ persephone.getFilePath()).
-        const boardRoot = parseBoardEditorId(editorId);
-        if (boardRoot !== null) {
-            const { createBoardEditor } = await import("../../editors/board");
-            return (await createBoardEditor(folderPath !== undefined
-                ? { kind: "folder", boardRoot, folderPath }
-                : { kind: "file", boardRoot, filePath, host: "new" })) as unknown as EditorOrHost;
-        }
-        const def = editorRegistry.getById(editorId);
-        if (!def || def.hasContentHost) {
-            // Text-bearing or unknown — build a TextFileModel host.
-            // `attachEditorToPage` picks the editor class based on
-            // state.editor (set by `getPreviewEditor` in navigatePageTo,
-            // or by `resolveId` for fresh file opens).
-            return newTextFileModel(filePath) as unknown as EditorOrHost;
-        }
-        // No-host editor: modules that open from a file path (image, archive,
-        // video, category, git-tree, mneme-root, board, toolset) declare
-        // `newEditorModel`; a no-host id without it (browser, settings, …) is
-        // never a file-open target and falls back to a Monaco text host.
-        const module = await editorRegistry.getModule(editorId);
-        if (module.newEditorModel) {
-            return (await module.newEditorModel(filePath)) as unknown as EditorOrHost;
-        }
-        return newTextFileModel(filePath) as unknown as EditorOrHost;
-    };
-
-    // ── Core page operations ─────────────────────────────────────────
-
-    createEditorFromFile = async (
-        filePath: string,
-        pipe?: IContentPipe,
-        target?: string,
-        title?: string,
-    ): Promise<EditorOrHost> => {
-        const editor = await this.constructEditorFromFile(filePath, pipe, target, title);
-        await editor.restore();
-        return editor;
-    };
-
-    private constructEditorFromFile = async (
-        filePath: string,
-        pipe?: IContentPipe,
-        target?: string,
-        title?: string,
-    ): Promise<EditorOrHost> => {
-        const editor = target
-            ? await this.newEditorModelByTarget(filePath, target)
-            : await this.newEditorModel(filePath);
-        // A content-host board owns its content on the adopted HOST, not on the
-        // board's own state — so pipe assignment and the pre-restore language reset must
-        // target the host. A bare TextFileModel host has no `contentHost` accessor, so
-        // `host` is null and everything falls through to the editor itself (unchanged for
-        // every text editor and the simple board, whose never-read pipe is disposed on dispose).
-        const host = (editor as EditorModel).contentHost;
-        if (pipe) {
-            if (host) {
-                (host as unknown as TextFileModel).setPipe(pipe);
-            } else {
-                editor.pipe = pipe;
-            }
-        }
-        // Reset language to "" on whichever object carries the content state so restore()
-        // re-derives it from the file extension (its `s.language || getLanguageByExtension(ext)`
-        // guard only falls through when language is falsy — the default "plaintext" is truthy).
-        // For a content-host board the language lives on the host, not the board's state.
-        (host ?? editor).state.update((s) => {
-            s.language = "";
-        });
-        const shouldSeedDefaultTitle = !(editor instanceof EditorModel) || editor.deferRestoreOnOpen;
-        const seededTitle = title || (shouldSeedDefaultTitle ? fpBasename(filePath) : undefined);
-        if (seededTitle) {
-            editor.state.update((s) => { s.title = seededTitle; });
-            if (host) host.state.update((s) => { (s as unknown as { title: string }).title = seededTitle; });
-        }
-        return editor;
-    };
-
-    /** Construct and restore a trusted board for a claimed folder. */
-    createEditorFromFolder = async (
-        editorId: string,
-        folderPath: string,
-    ): Promise<EditorOrHost> => {
-        if (parseBoardEditorId(editorId) === null) {
-            throw new Error(`Invalid folder board editor id: ${editorId}`);
-        }
-        const editor = await this.buildEditorById(editorId, undefined, folderPath);
-        await editor.restore();
-        return editor;
-    };
-
-    /** Create a new untitled content-host page for an enabled bundled board. */
-    addBundledBoardPage = async (
-        boardRoot: string,
-        options?: { title?: string; onPageCreated?: (page: PageModel) => void },
-    ): Promise<PageModel> => {
-        const editorId = boardEditorId(boardRoot);
-        const normalizedManifest = await readBoardManifest(boardRoot);
-        const match = customEditorRegistry.findByRoot(boardRoot);
-        if (!match || match.origin !== "bundled" || match.editorKind !== "content-host") {
-            throw new Error(`Bundled board is not an enabled content-host editor: ${boardRoot}`);
-        }
-        const existingPage = await this.openSingleInstanceBoard(undefined, undefined, {
-            target: editorId,
-            normalizedManifest,
-        });
-        if (existingPage) return existingPage;
-
-        const fileName = untitledFileNameForMasks(normalizedManifest?.fileMasks);
-        const language = getLanguageByExtension(fpExtname(fileName))?.id ?? "plaintext";
-        const title = options?.title ?? fileName;
-        const editor = await this.buildEditorById(editorId);
-        const host = (editor as EditorModel).contentHost;
-        if (!host) throw new Error(`Bundled board did not create a content host: ${boardRoot}`);
-        host.state.update((state) => {
-            state.language = language;
-            state.title = title;
-        });
-        (editor as EditorModel).state.update((state) => {
-            state.title = title;
-        });
-        await editor.restore();
-        return this.addPage(editor as EditorModel, undefined, options?.onPageCreated);
-    };
-
-    /** Open the trusted capability handler board in this renderer and return its page. */
-    openBoardHandlerPage = async (
-        boardRoot: string,
-        title: string,
-        onPageCreated: (page: PageModel) => void,
-    ): Promise<PageModel> => {
-        const entry = customEditorRegistry.findByRoot(boardRoot);
-        const bundledContentHost = entry?.origin === "bundled" && entry.editorKind === "content-host";
-        if (bundledContentHost) {
-            return this.addBundledBoardPage(boardRoot, { title, onPageCreated });
-        }
-
-        const url = encodePersephoneBoardLink(boardRoot);
-        const pipe = await pipeFromSourcePath(url);
-        const data = createLinkData(url, {
-            sourceId: "app-api",
-            target: "board-view",
-        });
-        data.url = url;
-        data.pipeDescriptor = pipe.toDescriptor();
-        const sourceLink = cleanForStorage(data);
-        const page = await this.openFile(pipe.provider.sourceUrl, pipe, {
-            sourceLink,
-            target: "board-view",
-            onPageCreated,
-        });
-        if (!page) {
-            throw new Error(`The capability handler board did not open: ${boardRoot}`);
-        }
-        // Title the page by its request, as the bundled path above does. A plain board page is
-        // otherwise titled by the manifest name, which `applyManifestTitle` sets only while the
-        // title is still its own fallback, so this title is not overwritten later.
-        if (title) page.mainEditor?.state.update((state) => { state.title = title; });
-        return page;
-    };
+    // Core page operations
 
     /**
      * Add an editor to the page collection.
@@ -414,11 +136,7 @@ export class PagesLifecycleModel {
 
         this.model.attachPage(page);
 
-        const insertionIndex = this.model.query.getFirstRightPinnedIndex();
-        this.model.state.update((s) => {
-            s.pages.splice(insertionIndex, 0, page);
-            if (page.pinSide !== "right") s.ordered.push(page);
-        });
+        this.model.insertPage(page);
         this.model.persistence.saveState();
 
         return page;
@@ -468,9 +186,9 @@ export class PagesLifecycleModel {
                 unknownScheme: "file",
                 sessionHandle: options?.sessionHandle,
             });
-            const editorOrHost = await this.constructEditorFromFile(filePath ?? "", pipe, target, title);
+            const editorOrHost = await constructEditorFromFile(filePath ?? "", pipe, target, title);
             if (sourceLink) editorOrHost.state.update((state) => { state.sourceLink = sourceLink; });
-            const editor = wrap(editorOrHost);
+            const editor = attachEditorToPage(editorOrHost);
             await page.setMainEditor(editor);
             page.startRestore((signal) => editor.restore({ signal }));
             const applyHints = page.getTransient<() => void>("applyOpenHints");
@@ -483,7 +201,7 @@ export class PagesLifecycleModel {
     addEmptyPage = (): PageModel => {
         const emptyFile = newTextFileModel("");
         emptyFile.restore();
-        return this.addPage(wrap(emptyFile));
+        return this.addPage(attachEditorToPage(emptyFile));
     };
 
     addEmptyPageWithNavPanel = async (folderPath: string): Promise<PageModel> => {
@@ -497,30 +215,6 @@ export class PagesLifecycleModel {
         await explorer.restore();
         page.ensureSecondaryViewsModel();
         return this.addPage(null, page);
-    };
-
-    showClipboardPage = async (): Promise<void> => {
-        const existing = this.model.query.findPage(CLIPBOARD_PAGE_ID);
-        if (existing) {
-            this.model.navigation.showPage(existing.id);
-            const explorer = existing.findExplorer();
-            if (explorer instanceof ExplorerEditor) explorer.openClipboard();
-            return;
-        }
-
-        const page = new PageModel(CLIPBOARD_PAGE_ID);
-        const state = new TComponentState({
-            ...getDefaultExplorerEditorState(),
-            rootPath: "",
-            hideExplorer: true,
-            clipboardOpen: true,
-        });
-        const explorer = new ExplorerEditor(state);
-        page.attach(explorer);
-        await explorer.restore();
-        page.ensureSecondaryViewsModel();
-        page.expandPanel("clipboard");
-        this.addPage(null, page);
     };
 
     addEditorPage = (
@@ -556,32 +250,7 @@ export class PagesLifecycleModel {
             editorModel.changeContent(content);
         }
         editorModel.restore();
-        return this.addPage(wrap(editorModel));
-    };
-
-    requireWellKnownPage = (id: string): PageModel => {
-        const existing = this.model.query.findPage(id);
-        if (existing) {
-            this.model.navigation.showPage(id);
-            return existing;
-        }
-
-        const def = getWellKnownPageDef(id);
-        if (!def) throw new Error(`Unknown well-known page ID: "${id}"`);
-
-        const editorModel = newTextFileModel("");
-        editorModel.state.update((s) => {
-            s.id = id;
-            s.title = def.title;
-            s.language = def.language;
-            s.editor = editorRegistry.validateForLanguage(
-                def.editor as EditorView,
-                def.language,
-            ) as EditorView;
-        });
-        editorModel.restore();
-        const page = new PageModel(id);
-        return this.addPage(wrap(editorModel), page);
+        return this.addPage(attachEditorToPage(editorModel));
     };
 
     addDrawPage = async (dataUrl: string, title?: string): Promise<PageModel> => {
@@ -607,7 +276,7 @@ export class PagesLifecycleModel {
         editorModel.changeContent(content);
 
         const page = new PageModel();
-        const adapter = wrap(editorModel);
+        const adapter = attachEditorToPage(editorModel);
         adapter.secondaryView = ["link-category"];
         page.addSecondaryView(adapter);
         page.ensureSecondaryViewsModel();
@@ -623,22 +292,12 @@ export class PagesLifecycleModel {
     openFile = async (
         filePath?: string,
         pipe?: IContentPipe,
-        options?: {
-            sourceLink?: ILinkData;
-            target?: string;
-            folderPath?: string;
-            diffFrom?: ILinkDiffRevision;
-            diffTo?: ILinkDiffRevision;
-            revealLine?: number;
-            highlightText?: string;
-            fragment?: string;
-            onPageCreated?: (page: PageModel) => void;
-            sessionHandle?: string;
-        },
+        options?: OpenFileOptions,
     ): Promise<PageModel | undefined> => {
         if (!filePath && options?.folderPath === undefined) return undefined;
-        const singletonPage = await this.openSingleInstanceBoard(filePath, pipe, options);
-        if (singletonPage) return singletonPage;
+        const intercepted = await this.interceptOpenFile({ filePath, pipe, options });
+        if (intercepted.kind === "take") return intercepted.page;
+        options = intercepted.options ?? options;
         // Existing-page dedupe is deliberately left intact: an already-
         // open file just activates its page and the diff metadata is dropped.
         // "Open in new Tab" preselection therefore applies only on a fresh open.
@@ -674,7 +333,7 @@ export class PagesLifecycleModel {
             ? "monaco"
             : options?.target;
 
-        // A failed editor-module load rejects out of `createEditorFromFile`, and every
+        // A failed editor-module load rejects out of the editor factory's `createEditorFromFile`, and every
         // caller here reaches it from a user action (explorer click, link, drop). Left
         // unguarded the rejection escaped into an un-awaited promise and the click did
         // nothing at all — shape, one path over. `undefined` is already this
@@ -683,9 +342,9 @@ export class PagesLifecycleModel {
             t("api.failedToOpenNamedFile", { name: fpBasename(filePath ?? options?.folderPath ?? "folder") }),
             async () => {
                 if (options?.folderPath !== undefined) {
-                    return this.createEditorFromFolder(options.target ?? "", options.folderPath);
+                    return createEditorFromFolder(options.target ?? "", options.folderPath);
                 }
-                const constructed = await this.constructEditorFromFile(
+                const constructed = await constructEditorFromFile(
                     filePath as string,
                     pipe,
                     requestedTarget,
@@ -702,7 +361,7 @@ export class PagesLifecycleModel {
             },
         );
         if (!editor) {
-            // `createEditorFromFile` assigns the pipe to the editor it builds; that
+            // The factory's `createEditorFromFile` assigns the pipe to the editor it builds; that
             // editor is being discarded, so the pipe would otherwise leak.
             pipe?.dispose();
             return undefined;
@@ -725,7 +384,7 @@ export class PagesLifecycleModel {
         ) {
             editor.state.update((s) => { s.editor = explicitTarget as EditorView; });
         }
-        const adapter = wrap(editor);
+        const adapter = attachEditorToPage(editor);
         if (options?.sessionHandle) {
             const sourceUrl = options.sourceLink?.url ?? filePath;
             if (sourceUrl) {
@@ -789,28 +448,6 @@ export class PagesLifecycleModel {
         return await page.close();
     };
 
-    openFileWithDialog = async () => {
-        const { showOpenUrlDialog } = await import("../../ui/dialogs/OpenUrlDialog");
-        const result = await showOpenUrlDialog();
-        if (!result) return;
-
-        if (result.type === "url") {
-            await this.sendOpenRawLink(result.value);
-        } else if (result.type === "file") {
-            await this.openFileFromDialog();
-        }
-    };
-
-    openFileFromDialog = async () => {
-        const filePaths = await api.showOpenFileDialog({
-            title: t("dialogs.openUrlFile"),
-            multiSelections: false,
-        });
-        if (filePaths && filePaths.length > 0) {
-            await this.sendOpenRawLink(filePaths[0]);
-        }
-    };
-
     /**
      * Open two files side-by-side in compare mode by grouping the pages and
      * entering compare mode.
@@ -827,18 +464,18 @@ export class PagesLifecycleModel {
         // Either side can fail to build; report and abort rather than grouping a
         // half-built comparison state.
         if (!existingFirst) {
-            const pipe = await this.createPipeFromPath(firstPath);
+            const pipe = await pipeFromSourcePath(firstPath);
             const editor = await guard(t("api.failedToOpenNamedFile", { name: fpBasename(firstPath) }), () =>
-                this.createEditorFromFile(firstPath, pipe));
+                createEditorFromFile(firstPath, pipe));
             if (!editor) { pipe?.dispose(); return; }
-            existingFirst = this.addPage(wrap(editor));
+            existingFirst = this.addPage(attachEditorToPage(editor));
         }
         if (!existingSecond) {
-            const pipe = await this.createPipeFromPath(secondPath);
+            const pipe = await pipeFromSourcePath(secondPath);
             const editor = await guard(t("api.failedToOpenNamedFile", { name: fpBasename(secondPath) }), () =>
-                this.createEditorFromFile(secondPath, pipe));
+                createEditorFromFile(secondPath, pipe));
             if (!editor) { pipe?.dispose(); return; }
-            existingSecond = this.addPage(wrap(editor));
+            existingSecond = this.addPage(attachEditorToPage(editor));
         }
 
         this.model.layout.groupTabs(existingFirst.id, existingSecond.id, true);
@@ -849,94 +486,40 @@ export class PagesLifecycleModel {
     // ── Navigation within a page ─────────────────────────────────────
 
     /** Delegates to the named-steps implementation in ./PageNavigator.ts. */
-    navigatePageTo = (
+    navigatePageTo = async (
         pageId: string,
         newFilePath: string,
         options?: NavigatePageToOptions,
-    ): Promise<boolean> => this.navigatePageToWithSingletonRouting(pageId, newFilePath, options);
-
-    private async navigatePageToWithSingletonRouting(
-        pageId: string,
-        newFilePath: string,
-        options?: NavigatePageToOptions,
-    ): Promise<boolean> {
-        const resolvedTarget = options?.target ?? (resolveEditorIdForFile(newFilePath) ?? "monaco");
-        const boardRoot = parseBoardEditorId(resolvedTarget);
-        const board = boardRoot === null
-            ? undefined
-            : customEditorRegistry.findByRoot(boardRoot);
-        let sourceContext: BoardSourceContext | undefined;
-        const sourcePage = this.model.query.findPage(pageId);
-        if (board && sourcePage && options?.sourceLink) {
-            const sourceLink = options.sourceLink;
-            const currentHref = sourceLink.url ?? sourceLink.href ?? newFilePath;
-            sourceContext = await captureBoardSourceContext({
-                page: sourcePage,
-                sourceLink,
-                currentHref,
-                include: (item) => board.fileMasks.length === 0
-                    || board.fileMasks.some((mask) => matchesFileMask(fpBasename(item.href), mask)),
-            });
-        }
-        const routedOptions = board
-            ? {
-                ...options,
-                target: resolvedTarget,
-                preferredPageId: pageId,
-                ...(options?.sourceLink
-                    ? { sourceLink: { ...options.sourceLink, sourceContext } }
-                    : {}),
-            }
-            : options;
-        const singletonPage = await this.openSingleInstanceBoard(newFilePath, options?.pipe, routedOptions);
-        if (singletonPage) return true;
-        return navigatePageTo(this.model, pageId, newFilePath, routedOptions);
+    ): Promise<boolean> => {
+        const intercepted = await this.interceptNavigatePageTo({ pageId, newFilePath, options });
+        if (intercepted.kind === "take") return true;
+        return navigatePageTo(this.model, pageId, newFilePath, intercepted.options ?? options);
     }
 
     // ── Closing ──────────────────────────────────────────────────────
 
-    closeToTheRight = async (pageId: string) => {
+    private closePages = async (predicate: (page: PageModel, index: number) => boolean) => {
         const { pages } = this.model.state.get();
-        const pagesToClose = [];
-        for (let i = pages.length - 1; i >= 0; i--) {
-            if (pages[i].id === pageId) {
-                break;
-            }
-            if (!pages[i].isLockedBoardPage && pages[i].pinSide === undefined) {
-                pagesToClose.push(pages[i]);
-            }
-        }
+        const pagesToClose = pages.filter(predicate).reverse();
         for (const page of pagesToClose) {
-            const closed = await page.close();
-            if (!closed) {
-                break;
-            }
+            if (!(await page.close())) break;
         }
     };
 
-    closeOtherPages = async (pageId: string) => {
+    closeToTheRight = async (pageId: string) => {
         const { pages } = this.model.state.get();
-        const pagesToClose = [];
-        for (let i = pages.length - 1; i >= 0; i--) {
-            if (pages[i].id !== pageId && !pages[i].isLockedBoardPage && pages[i].pinSide === undefined) {
-                pagesToClose.push(pages[i]);
-            }
-        }
-        for (const page of pagesToClose) {
-            const closed = await page.close();
-            if (!closed) {
-                break;
-            }
-        }
+        const anchorIndex = pages.findIndex((page) => page.id === pageId);
+        return this.closePages((page, index) =>
+            index > anchorIndex && !page.isLockedBoardPage && page.pinSide === undefined,
+        );
     };
+
+    closeOtherPages = async (pageId: string) => this.closePages((page) =>
+        page.id !== pageId && !page.isLockedBoardPage && page.pinSide === undefined,
+    );
 
     // ── Multi-window operations ──────────────────────────────────────
 
-    /**
-     * Receive a page transferred from another window. Delegate to
-     * `PagesPersistenceModel.restorePage` for the shared restore
-     * pathway; this method only does the target-window-side splice + activate.
-     */
     retryRestore = async (pageId: string): Promise<void> => {
         const placeholder = this.model.query.findPage(pageId);
         const descriptor = placeholder?.retainedDescriptor;
@@ -962,10 +545,7 @@ export class PagesLifecycleModel {
                 const active = this.model.query.activePage === placeholder;
                 this.model.detachPage(placeholder);
                 this.model.attachPage(recovered);
-                this.model.state.update((state) => {
-                    state.pages = state.pages.map((page) => page === placeholder ? recovered : page);
-                    state.ordered = state.ordered.map((page) => page === placeholder ? recovered : page);
-                });
+                this.model.replacePage(placeholder, recovered);
                 placeholder.releaseRecoveryProtection();
                 placeholder.recoveryRetry = undefined;
                 await placeholder.dispose();
@@ -1011,10 +591,7 @@ export class PagesLifecycleModel {
                 targetIndex,
                 this.model.query.getFirstRightPinnedIndex(),
             );
-            this.model.state.update((s) => {
-                s.pages.splice(insertionIndex, 0, page);
-                s.ordered.push(page);
-            });
+            this.model.insertPage(page, { at: insertionIndex });
             this.model.layout.fixGrouping();
             this.model.persistence.saveStateDebounced();
         }
@@ -1037,11 +614,7 @@ export class PagesLifecycleModel {
         const closeWindow = this.model.state.get().pages.length === 1;
 
         if (closeWindow) {
-            this.model.state.update((s) => {
-                s.pages = s.pages.filter((p) => p !== page);
-                s.ordered = s.ordered.filter((p) => p !== page);
-            });
-            this.model.persistence.saveStateDebounced();
+            this.model.removePage(page, { save: "debounced", ensureActivePage: false });
             api.closeWindow();
         } else {
             this.model.detachPage(page);
@@ -1102,24 +675,12 @@ export class PagesLifecycleModel {
         });
         if (newPage) {
             this.model.attachPage(newPage);
-            const insertionIndex = this.model.query.getFirstRightPinnedIndex();
-            this.model.state.update((s) => {
-                s.pages.splice(insertionIndex, 0, newPage);
-                s.ordered.push(newPage);
-            });
+            this.model.insertPage(newPage);
             this.model.layout.groupTabs(pageId, newPage.id, false);
         }
     };
 
     // ── URL handling ─────────────────────────────────────────────────
-
-    /** Dispatch a raw href into the content pipeline (Layer 1 entry point).
-     *  Single implementation behind the distinct main-process subscription
-     *  points and the open dialogs. */
-    private sendOpenRawLink = async (href: string) => {
-        const { app: appInstance } = await import("../app");
-        await appInstance.events.openRawLink.sendAsync(createLinkData(href));
-    };
 
     openPathInNewWindow = (filePath: string) => {
         if (!filePath) return;
@@ -1128,219 +689,4 @@ export class PagesLifecycleModel {
 
     // ── Grouped text helper ──────────────────────────────────────────
 
-    /** Use `getTextFileHost` to discriminate text-bearing partner pages. */
-    requireGroupedText = (
-        pageId: string,
-        suggestedLanguage?: string,
-    ): TextFileModel => {
-        if (this.model.query.isRightPinned(pageId)) {
-            throw new Error("Right-pinned pages cannot be grouped with text pages.");
-        }
-        let groupedPage = this.model.query.getGroupedPage(pageId);
-        if (groupedPage && !this.model.query.getTextFileHost(groupedPage.id)) {
-            this.model.layout.ungroup(pageId);
-            groupedPage = undefined;
-        }
-
-        if (!groupedPage) {
-            groupedPage = this.addEmptyPage();
-            this.model.layout.groupTabs(
-                pageId,
-                groupedPage.id,
-                false,
-            );
-            const host = this.model.query.getTextFileHost(groupedPage.id);
-            host?.changeLanguage(suggestedLanguage);
-        }
-
-        const host = this.model.query.getTextFileHost(groupedPage.id);
-        if (!host) {
-            throw new Error("requireGroupedText: failed to materialize text host");
-        }
-        return host;
-    };
-
-    // ── Page-actions (from old page-actions.ts) ──────────────────────
-
-    /** Create a no-host editor by registry id on a (possibly fixed-id) page.
-     *  `addPage` dedupes by page id, so a second call with the same fixed id
-     *  focuses the existing singleton instead of duplicating it. */
-    /**
-     * Open a standalone editor page, reporting a failed module load to the user.
-     *
-     * `createEditor` loads the editor module before it can build the model, so a
-     * module that fails to load rejects *here* — before `AsyncEditorView` exists to
-     * show the error. Without the guard the rejection escaped into every caller's
-     * un-awaited promise and the user got no page, no message and nothing logged:
-     * clicking the entry simply did nothing. Returns `undefined` on
-     * failure, so callers that use the page must check it.
-     */
-    private showEditorPage = async (
-        editorId: string,
-        pageId?: string | (() => Promise<string>),
-    ): Promise<PageModel | undefined> =>
-        guard(t("api.failedToOpenEditor", { editorId }), async () => {
-            // Resolved inside the guard on purpose: each caller's page-id constant
-            // comes from the editor's own module, so that import fails for exactly
-            // the same reasons `createEditor` does — and it runs first. Guarding
-            // only `createEditor` would leave the dominant path silent.
-            const resolvedId = typeof pageId === "function" ? await pageId() : pageId;
-            const model = await editorRegistry.createEditor(editorId);
-            return this.addPage(model, resolvedId ? new PageModel(resolvedId) : undefined);
-        });
-
-    showAboutPage = async (options?: { atContents?: boolean }): Promise<void> => {
-        const page = await this.showEditorPage("about-view", async () => (await import("../../editors/about")).ABOUT_PAGE_ID);
-        if (!options?.atContents || !page) return;
-
-        const { AboutEditor } = await import("../../editors/about");
-        const editor = page.mainEditorInstance;
-        if (editor instanceof AboutEditor) editor.resetGuideBrowser();
-    };
-
-    showSettingsPage = async (): Promise<void> => {
-        await this.showEditorPage("settings-view", async () => (await import("../../editors/settings")).SETTINGS_PAGE_ID);
-    };
-
-    showMnemeConfigPage = async (): Promise<void> => {
-        await this.showEditorPage("mneme-config", async () => (await import("../../editors/mneme-config")).MNEME_CONFIG_PAGE_ID);
-    };
-
-    /** Browser opening lives in editors/browser/browser-pages.ts so this
-     *  startup-loaded module carries no static import of the browser chunk. */
-    showBrowserPage = async (options?: {
-        profileName?: string;
-        incognito?: boolean;
-        tor?: boolean;
-        url?: string;
-        openedByAgent?: boolean;
-    }): Promise<PageModel | undefined> => {
-        const { showBrowserPage } = await import(
-            "../../editors/browser/browser-pages"
-        );
-        return showBrowserPage(this.model, options);
-    };
-
-    /** Open and reuse a transient Browser page owned by a board and its reuse key. */
-    openBoardRunPage = async (boardRoot: string, reuseKey: string, url: string): Promise<void> => {
-        const normalizedKey = reuseKey.trim();
-        if (!normalizedKey || normalizedKey.length > 256) {
-            throw new Error("openRawLink reuseKey must be 1–256 non-whitespace characters.");
-        }
-        const normalizedRoot = BoardRoot.from(boardRoot).key;
-        let page = this.model.query.findBoardRunPage(boardRoot, normalizedKey);
-        if (!page) {
-            page = await this.showBrowserPage({ url });
-            if (!page) throw new Error("Could not create the board Run page.");
-            page.setBoardRunOwner({
-                boardRoot: normalizedRoot,
-                reuseKey: normalizedKey,
-                url,
-            });
-            await page.ready;
-        } else {
-            await page.ready;
-            const { BrowserEditor } = await import("../../editors/browser/BrowserEditor");
-            const browser = page.mainEditorInstance;
-            if (!(browser instanceof BrowserEditor)) throw new Error("The owned Run page is no longer a Browser page.");
-            // Reload only when the tab on screen already shows this app; the user may have switched
-            // tabs or navigated away, and then the Run must bring the app back instead.
-            const browserState = browser.state.get();
-            const activeTab = browserState.tabs.find((tab) => tab.id === browserState.activeTabId);
-            if (activeTab && runUrlKey(activeTab.url) === runUrlKey(url)) browser.webview.hardReload();
-            else browser.navigate(url);
-            page.setBoardRunOwner({ boardRoot: normalizedRoot, reuseKey: normalizedKey, url });
-        }
-        this.model.navigation.showPage(page.id);
-    };
-
-    showMcpInspectorPage = async (
-        options?: { url?: string; name?: string; autoConnect?: boolean },
-    ): Promise<void> => {
-        const model = await editorRegistry.createEditor("mcp-view");
-        if (options?.url || options?.name) {
-            model.state.update((s) => {
-                const cs = s as unknown as { url?: string; connectionName?: string };
-                if (options.url) cs.url = options.url;
-                if (options.name) cs.connectionName = options.name;
-            });
-        }
-        this.addPage(model);
-        // Auto-connect (HTTP transport is the default state) — fire-and-forget so
-        // the page opens immediately and shows the "connecting" state itself.
-        if (options?.autoConnect && options?.url) {
-            void (model as unknown as { connect?: () => Promise<void> }).connect?.();
-        }
-    };
-
-    showStorybookPage = async (): Promise<void> => {
-        await this.showEditorPage("storybook-view", async () => (await import("../../editors/storybook")).STORYBOOK_PAGE_ID);
-    };
-
-    showToolsHubPage = async (opts?: { tab?: HubTab }): Promise<void> => {
-        // showEditorPage dedupes by id → returns the existing hub page if already
-        // open; set the tab on whichever editor actually ends up live (new or existing).
-        const result = await this.showEditorPage("tools-hub-view", async () => (await import("../../editors/tools-hub")).TOOLS_HUB_PAGE_ID);
-        if (result && opts?.tab) {
-            const editor = result.mainEditorInstance as unknown as { setTab?: (t: HubTab) => void };
-            editor.setTab?.(opts.tab);
-        }
-    };
-
-    openSiteActionVideo = async (
-        request: import("../../core/utils/curl-parser").ParsedHttpRequest,
-        isCurrent: () => boolean,
-    ): Promise<boolean> => {
-        const editor = await editorRegistry.createEditor("video-view");
-        if (!isCurrent()) { await editor.dispose(); return false; }
-        this.addPage(editor);
-        await (editor as import("../../editors/video/VideoEditor").VideoEditor).submitValidatedRequest(request);
-        return true;
-    };
-
-    showVideoPlayerPage = async (): Promise<void> => {
-        await this.showEditorPage("video-view");
-    };
-
-    /**
-     * `sessionHandle` comes from a Tor or proxied browser page: the image
-     * is then read only through that page's session, so it is not shown by URL
-     * (an `<img src>` in this renderer would fetch it direct) but from the bytes.
-     */
-    openImageInNewTab = async (imageUrl: string, title?: string, sessionHandle?: string): Promise<void> => {
-        const imgModule = await import("../../editors/image");
-        const imgModel = await editorRegistry.createEditor("image-view");
-        imgModel.state.update((s) => {
-            const is = s as unknown as { title: string; url?: string };
-            is.title =
-                title || imageUrl.split("/").pop()?.split("?")[0] || "Image";
-            if (!sessionHandle) is.url = imageUrl;
-        });
-        if (/^https?:\/\//i.test(imageUrl)) {
-            imgModel.pipe = new ContentPipe(
-                new HttpProvider(imageUrl, sessionHandle ? { sessionHandle } : undefined),
-            );
-        }
-        await imgModel.restore();
-        this.addPage(imgModel);
-
-        if (imageUrl.startsWith("blob:") && imgModel instanceof imgModule.ImageEditorModel) {
-            imgModel.cacheBlobUrl(imageUrl);
-        }
-    };
-
-    openUrlInBrowserTab = async (
-        url: string,
-        options?: {
-            incognito?: boolean;
-            profileName?: string;
-            external?: boolean;
-            openedByAgent?: boolean;
-        },
-    ): Promise<string | undefined> => {
-        const { openUrlInBrowserTab } = await import(
-            "../../editors/browser/browser-pages"
-        );
-        return openUrlInBrowserTab(this.model, url, options);
-    };
 }

@@ -3,8 +3,9 @@ import {
     type EditorStateBase,
 } from "../base/EditorModel";
 import { englishMessage } from "../../../shared/i18n/t";
+import { ABOUT_PAGE_ID } from "./about-page-id";
 
-export const ABOUT_PAGE_ID = "about-page";
+export { ABOUT_PAGE_ID } from "./about-page-id";
 
 export interface AboutEditorState extends EditorStateBase {
     /** State-type discriminator. */

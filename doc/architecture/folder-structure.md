@@ -201,6 +201,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── mcp-call-rpc.ts # MCP call RPC handler; creates a ScriptContext and resolves AiVision
 │   │   └── request-log.ts  # Bounded MCP request history and server-log page integration
 │   ├── boards/board-host-rpc.ts # Typed board-call/theme/open and TS-project RPC handlers
+│   ├── boards/board-page-router.ts # Board-specific page open interception, routing and queries
 │   ├── tools/              # Internal Agent Tools registry and plain typed operations
 │   │   ├── tool-search.ts  # Search registered tools
 │   │   └── toolset-operations.ts # Refresh and create/register toolsets
@@ -239,14 +240,14 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── PageModel.ts            # Tab container — sidebar, secondary views, mainEditor lifecycle
 │   │   ├── IPageHost.ts            # IPageHost interface — editor↔owner contract (PageModel + BrowserPanelHost)
 │   │   ├── PagesModel.ts           # Base: state, subscriptions, composes submodels
-│   │   ├── PagesQueryModel.ts      # Queries: page lookup, normalized file identity, board Run ownership
+│   │   ├── PagesQueryModel.ts      # Queries: page lookup and normalized file identity
 │   │   ├── PagesNavigationModel.ts # Navigation: show, focus, next/prev
-│   │   ├── PagesLifecycleModel.ts  # Lifecycle: create, close, empty page, board-owned Run page reuse
+│   │   ├── PagesLifecycleModel.ts  # Lifecycle: create/open/close, transfer, retry; generic open interceptors
+│   │   ├── standalone-pages.ts     # Fixed-ID page registry and custom page builders
 │   │   ├── PageNavigator.ts        # navigatePageTo — named steps, same-file reveal, existing page navigation
 │   │   ├── NavBackStack.ts         # Markdown back-nav stack owned by the page (persisted)
 │   │   ├── PagesLayoutModel.ts     # Layout: grouping (side-by-side)
-│   │   ├── PagesPersistenceModel.ts # Persistence: save/restore, debounced
-│   │   └── well-known-pages.ts     # Singleton page definitions (MCP Log, etc.)
+│   │   └── PagesPersistenceModel.ts # Persistence: save/restore, debounced
 │   │
 │   ├── internal/           # Event services (init-only, not public API)
 │   │   ├── GlobalEventService.ts    # contextmenu, dragover, drop, paste (image capture; rich HTML bubble fallback with handled/editable/grid stand-downs), unhandled rejections
@@ -434,6 +435,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │       └── secondary-view-registry.ts # Registry: panel ID → native view loader
 │
 ├── editors/                # Editor Implementations — each editor is an EditorModel subclass
+│   ├── editor-factory.ts   # Shared editor construction for pages and navigation
 │   ├── base/               # Shared editor infrastructure
 │   │   ├── EditorModel.ts            # Abstract base class for all editors
 │   │   ├── TextHostEditorModel.ts    # Base for TextFileModel-wrapping editors — host-adoption lifecycle, subscription registry, content echo guard, host-settings mirror

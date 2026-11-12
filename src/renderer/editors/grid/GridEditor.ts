@@ -919,7 +919,7 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, void, GridQ
 
     /** Heuristic CSV delimiter detection from the first 5 lines. Shared by
      *  `restore()` (session-restore path), `switchFrom()` (switch-in path),
-     *  and the open-file flow (`PagesLifecycleModel.attachEditorToPage`). */
+     *  and the open-file flow (`editors/editor-factory.ts`'s `attachEditorToPage`). */
     static detectCsvDelimiter(content: string): string {
         const firstLine = content.split("\n").slice(0, 5).join("") || "";
         const delimiters = [",", ";", "\t", "|"];

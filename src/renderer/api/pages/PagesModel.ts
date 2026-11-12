@@ -16,6 +16,8 @@ import { PagesNavigationModel } from "./PagesNavigationModel";
 import { PagesPersistenceModel } from "./PagesPersistenceModel";
 import { PagesLayoutModel } from "./PagesLayoutModel";
 import { PagesLifecycleModel } from "./PagesLifecycleModel";
+import { StandalonePages } from "./standalone-pages";
+import { BoardPageRouter } from "../boards/board-page-router";
 import { api } from "../../../ipc/renderer/api";
 import { invalidatePagePipe } from "../../content/pipe-resource-server";
 
@@ -26,7 +28,7 @@ const defaultOpenFilesState = {
     ordered: [] as PageModel[],
     leftRight: new Map<string, string>(),
     rightLeft: new Map<string, string>(),
-    /** Compare-mode flag set keyed by left page id (walkthrough 06 / CK1). */
+    /** Compare-mode flag set keyed by left page id. */
     compareGroups: new Set<string>(),
     /** Transient page currently shown by the right-pin popover. */
     popoverPageId: undefined as string | undefined,
@@ -48,6 +50,8 @@ export class PagesModel extends TModel<OpenFilesState> {
     readonly persistence: PagesPersistenceModel;
     readonly layout: PagesLayoutModel;
     readonly lifecycle: PagesLifecycleModel;
+    readonly boardPageRouter: BoardPageRouter;
+    readonly standalonePages: StandalonePages;
 
     constructor() {
         super(new TGlobalState(defaultOpenFilesState));
@@ -63,6 +67,9 @@ export class PagesModel extends TModel<OpenFilesState> {
         this.layout = new PagesLayoutModel(this);
         this.navigation = new PagesNavigationModel(this);
         this.lifecycle = new PagesLifecycleModel(this);
+        this.standalonePages = new StandalonePages(this, (id) => new PageModel(id));
+        this.boardPageRouter = new BoardPageRouter(this);
+        this.lifecycle.registerOpenInterceptor(this.boardPageRouter);
     }
 
     // ── Internal methods (shared across submodels) ───────────────────
@@ -121,12 +128,14 @@ export class PagesModel extends TModel<OpenFilesState> {
     };
 
     /**
-     * Remove a page from `pages[]` / `ordered[]`. Does NOT dispose the page —
-     * `detachPage` cleared `onClose`, and the cross-window transfer path
-     * This relies on the exactly-two-pages invariant. It drops the compareGroups entry
-     * for the pair.
+     * Remove a page from collection state and repair grouping. Does not dispose the page;
+     * callers own detachment and disposal. By default, persist immediately and replace the
+     * active page when needed.
      */
-    removePage = (page: PageModel) => {
+    removePage = (
+        page: PageModel,
+        options?: { save?: "immediate" | "debounced"; ensureActivePage?: boolean },
+    ) => {
         const isActivePage = this.query.activePage === page;
         // Identify the leftId of the pair (if any) before removal.
         const state = this.state.get();
@@ -155,8 +164,31 @@ export class PagesModel extends TModel<OpenFilesState> {
             }
         });
         this.layout.fixGrouping();
-        this.persistence.saveState();
-        this.handleActivePageRemoved(isActivePage);
+        if (options?.save === "debounced") this.persistence.saveStateDebounced();
+        else this.persistence.saveState();
+        if (options?.ensureActivePage !== false) this.handleActivePageRemoved(isActivePage);
+    };
+
+    insertPage = (page: PageModel, options?: { at?: number }): void => {
+        const pages = this.state.get().pages;
+        const firstRightPinnedIndex = this.query.getFirstRightPinnedIndex();
+        const requestedIndex = options?.at ?? firstRightPinnedIndex;
+        const insertionIndex = Math.max(0, Math.min(requestedIndex, firstRightPinnedIndex, pages.length));
+
+        this.state.update((state) => {
+            state.pages.splice(insertionIndex, 0, page);
+            if (page.pinSide !== "right") state.ordered.push(page);
+        });
+    };
+
+    replacePage = (old: PageModel, recovered: PageModel): void => {
+        this.state.update((state) => {
+            const pageIndex = state.pages.indexOf(old);
+            if (pageIndex !== -1) state.pages[pageIndex] = recovered;
+
+            const orderedIndex = state.ordered.indexOf(old);
+            if (orderedIndex !== -1) state.ordered[orderedIndex] = recovered;
+        });
     };
 
     handleActivePageRemoved = (wasActive: boolean) => {
@@ -256,7 +288,7 @@ export class PagesModel extends TModel<OpenFilesState> {
     addBundledBoardPage = (
         boardRoot: string,
         options?: { title?: string; onPageCreated?: (page: PageModel) => void },
-    ) => this.lifecycle.addBundledBoardPage(boardRoot, options);
+    ) => this.boardPageRouter.addBundledBoardPage(boardRoot, options);
     addDrawPage = (dataUrl: string, title?: string) =>
         this.lifecycle.addDrawPage(dataUrl, title);
     openLinks = (links: (ILink | string)[], title?: string) =>
@@ -279,8 +311,8 @@ export class PagesModel extends TModel<OpenFilesState> {
         return page;
     };
     closePage = (pageId: string) => this.lifecycle.closePage(pageId);
-    openFileWithDialog = () => this.lifecycle.openFileWithDialog();
-    openFileFromDialog = () => this.lifecycle.openFileFromDialog();
+    openFileWithDialog = async () => (await import("../../ui/dialogs/OpenFileCommands")).openFileWithDialog();
+    openFileFromDialog = async () => (await import("../../ui/dialogs/OpenFileCommands")).openFileFromDialog();
     openDiff = (
         params: { firstPath: string; secondPath: string } | undefined
     ) => this.lifecycle.openDiff(params);
@@ -302,28 +334,24 @@ export class PagesModel extends TModel<OpenFilesState> {
     openPathInNewWindow = (filePath: string) =>
         this.lifecycle.openPathInNewWindow(filePath);
     requireGroupedText = (pageId: string, suggestedLanguage?: string) =>
-        this.lifecycle.requireGroupedText(pageId, suggestedLanguage);
-    requireWellKnownPage = (id: string) => this.lifecycle.requireWellKnownPage(id);
-    showAboutPage = (options?: { atContents?: boolean }) => this.lifecycle.showAboutPage(options);
-    showSettingsPage = () => this.lifecycle.showSettingsPage();
+        this.layout.requireGroupedText(pageId, suggestedLanguage);
+    showAboutPage = (options?: { atContents?: boolean }) => this.standalonePages.show("about-page", options).then((): undefined => undefined);
+    showSettingsPage = () => this.standalonePages.show("settings-page").then((): undefined => undefined);
     showBrowserPage = (options?: {
         profileName?: string;
         incognito?: boolean;
         tor?: boolean;
         url?: string;
         openedByAgent?: boolean;
-    }) => this.lifecycle.showBrowserPage(options);
-    showMcpInspectorPage = (options?: { url?: string; name?: string; autoConnect?: boolean }) =>
-        this.lifecycle.showMcpInspectorPage(options);
-    showClipboardPage = () => this.lifecycle.showClipboardPage();
-    showMnemeConfigPage = () => this.lifecycle.showMnemeConfigPage();
-    showStorybookPage = () => this.lifecycle.showStorybookPage();
-    showToolsHubPage = (opts?: { tab?: HubTab }) => this.lifecycle.showToolsHubPage(opts);
-    openSiteActionVideo = (request: import("../../core/utils/curl-parser").ParsedHttpRequest, isCurrent: () => boolean) =>
-        this.lifecycle.openSiteActionVideo(request, isCurrent);
-    showVideoPlayerPage = () => this.lifecycle.showVideoPlayerPage();
-    openImageInNewTab = (imageUrl: string, title?: string, sessionHandle?: string) =>
-        this.lifecycle.openImageInNewTab(imageUrl, title, sessionHandle);
+    }) => import("../../editors/browser/browser-pages").then(({ showBrowserPage }) => showBrowserPage(this, options));
+    showMcpInspectorPage = (options?: { url?: string; name?: string; autoConnect?: boolean }) => import("../../editors/mcp-inspector/mcp-inspector-pages").then(({ showMcpInspectorPage }): Promise<void> => showMcpInspectorPage(this, options));
+    showClipboardPage = () => this.standalonePages.show("clipboard-page").then((): undefined => undefined);
+    showMnemeConfigPage = () => this.standalonePages.show("mneme-config-page").then((): undefined => undefined);
+    showStorybookPage = () => this.standalonePages.show("storybook-page").then((): undefined => undefined);
+    showToolsHubPage = (opts?: { tab?: HubTab }) => this.standalonePages.show("tools-hub-page", opts).then((): undefined => undefined);
+    openSiteActionVideo = (request: import("../../core/utils/curl-parser").ParsedHttpRequest, isCurrent: () => boolean) => import("../../editors/video/video-pages").then(({ openSiteActionVideo }): Promise<boolean> => openSiteActionVideo(this, request, isCurrent));
+    showVideoPlayerPage = () => this.standalonePages.show("video-player").then((): undefined => undefined);
+    openImageInNewTab = (imageUrl: string, title?: string, sessionHandle?: string) => import("../../editors/image/image-pages").then(({ openImageInNewTab }): Promise<void> => openImageInNewTab(this, imageUrl, title, sessionHandle));
     openUrlInBrowserTab = (
         url: string,
         options?: {
@@ -332,7 +360,7 @@ export class PagesModel extends TModel<OpenFilesState> {
             external?: boolean;
             openedByAgent?: boolean;
         }
-    ) => this.lifecycle.openUrlInBrowserTab(url, options);
+    ) => import("../../editors/browser/browser-pages").then(({ openUrlInBrowserTab }) => openUrlInBrowserTab(this, url, options));
 
     // Layout delegates
     moveTab = (fromId: string, toId: string) =>

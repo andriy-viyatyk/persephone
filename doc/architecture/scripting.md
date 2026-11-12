@@ -197,13 +197,13 @@ for (const item of largeArray) {
 
 **Key behaviors:**
 - Accessing `ui` auto-creates a Log View page grouped with the source page (or standalone if no page context)
-- For MCP scripts (`runWithCapture`), `ui` uses the well-known MCP Log page (`mcp-ui-log`) — the same page as `pages.logView`. See [pages-architecture.md § Well-Known Pages](pages-architecture.md#8-well-known-pages)
+- For MCP scripts (`runWithCapture`), `ui` uses the standalone MCP Log page (`mcp-ui-log`) — the same page as `pages.logView`. See [pages-architecture.md § Standalone Pages](pages-architecture.md#8-standalone-pages)
 - Accessing `ui` sets `groupedContentWritten = true`, suppressing default script output
 - Re-running a script reuses the existing grouped Log View (appends with separator)
 - Dialog results are always objects — `button` is `undefined` if canceled (page closed while pending)
 - Log View page title uses datetime format: `"2026-03-10 12:24.log.jsonl"`
 
-**Implementation:** `UiFacade` wraps the `LogViewEditor` instance for the well-known MCP Log page (or a script-grouped Log View page). The editor module is loaded on demand via the `editorRegistry`; the `LogViewEditor` instance is reused across `ui` calls within a script's lifetime.
+**Implementation:** `UiFacade` wraps the `LogViewEditor` instance for the standalone MCP Log page (or a script-grouped Log View page). The editor module is loaded on demand via the `editorRegistry`; the `LogViewEditor` instance is reused across `ui` calls within a script's lifetime.
 
 ### `app` — Application Object
 
@@ -739,7 +739,7 @@ either side and throw diagnostics when grouping, comparability, or active compar
 Its two page-scoped controls are implemented by `/src/renderer/scripting/ai-vision/page-compare.ts`.
 
 `pages.logView` is the page-collection node for the fixed `mcp-ui-log` Log View. It returns the
-same `LogViewEditorFacade` used by a `log-view` page's `page.editor`, resolving the well-known page
+same `LogViewEditorFacade` used by a `log-view` page's `page.editor`, resolving the standalone page
 if it exists. **Reading never creates it** — the facade's host-backed state reads as `undefined`
 until the page exists, and only a write (`push`, `clear`, `toggleTimestamps`) get-or-creates and
 focuses it. That asymmetry is deliberate: `helpSearch` walks every `node: true` property and every
