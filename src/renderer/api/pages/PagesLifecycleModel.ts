@@ -121,11 +121,11 @@ export class PagesLifecycleModel {
         const page = existingPage ?? new PageModel();
         if (editor && !page.mainEditor) {
             page.attach(editor);
-            page.setMainEditorId(editor.id);
+            page.assignMain(editor.id);
         }
 
         // Callbacks can inspect the attached editor identity synchronously. Content-dependent
-        // callback work must await page.ready when an editor opted into deferred restore.
+        // callback work must await page.restore.ready when an editor opted into deferred restore.
         onPageCreated?.(page);
 
         const existingById = this.model.query.findPage(page.id);
@@ -142,7 +142,7 @@ export class PagesLifecycleModel {
         return page;
     };
 
-    retryPageRestore = async (
+    retryOpen = async (
         page: PageModel,
         options?: {
             filePath?: string;
@@ -151,7 +151,7 @@ export class PagesLifecycleModel {
             sessionHandle?: string;
         },
     ): Promise<void> => {
-        if (page.retainedDescriptor) return;
+        if (page.isInert) return;
         const failedEditor = page.mainEditorInstance;
         const filePath = options?.filePath ?? failedEditor?.filePath;
         const host = failedEditor?.contentHost;
@@ -190,11 +190,9 @@ export class PagesLifecycleModel {
             if (sourceLink) editorOrHost.state.update((state) => { state.sourceLink = sourceLink; });
             const editor = attachEditorToPage(editorOrHost);
             await page.setMainEditor(editor);
-            page.startRestore((signal) => editor.restore({ signal }));
-            const applyHints = page.getTransient<() => void>("applyOpenHints");
-            if (applyHints) void page.ready.then(applyHints, (): void => {});
+            page.restore.start((signal) => editor.restore({ signal }));
         } catch (error) {
-            page.startRestore(async () => { throw error; });
+            page.restore.start(async () => { throw error; });
         }
     };
 
@@ -278,7 +276,7 @@ export class PagesLifecycleModel {
         const page = new PageModel();
         const adapter = attachEditorToPage(editorModel);
         adapter.secondaryView = ["link-category"];
-        page.addSecondaryView(adapter);
+        page.attach(adapter);
         page.ensureSecondaryViewsModel();
         page.expandPanel("link-category");
 
@@ -306,7 +304,7 @@ export class PagesLifecycleModel {
             : undefined;
         if (existingPage) {
             this.model.navigation.showPage(existingPage.id);
-            if (existingPage.state.get().restoreStatus !== "ready") {
+            if (existingPage.restore.state.get().status !== "ready") {
                 pipe?.dispose();
             } else {
                 const adopted = existingPage.mainEditorInstance?.onReopen?.(pipe) === true;
@@ -316,7 +314,7 @@ export class PagesLifecycleModel {
             // request, so honor the fragment on the live editor.
             if (options?.fragment) {
                 const reveal: () => void = () => existingPage.mainEditorInstance?.revealFragment?.(options.fragment as string);
-                if (existingPage.isRestoring) void existingPage.ready.then(reveal, (): void => {});
+                if (existingPage.restore.isRestoring) void existingPage.restore.ready.then(reveal, (): void => {});
                 else reveal();
             }
             if (options?.revealLine || options?.highlightText) {
@@ -406,8 +404,8 @@ export class PagesLifecycleModel {
                 sourceLink: editor.state.get().sourceLink as ILinkData | undefined,
                 sessionHandle: options?.sessionHandle,
             };
-            page.startRestore((signal) => adapter.restore({ signal }));
-            page.setTransient("retryRestore", () => this.retryPageRestore(page, retryOptions));
+            page.restore.start((signal) => adapter.restore({ signal }));
+            page.restore.retry = () => this.retryOpen(page, retryOptions);
         }
         const addedPage = this.addPage(adapter, page, options?.onPageCreated);
         const currentPage = addedPage;
@@ -432,8 +430,7 @@ export class PagesLifecycleModel {
             }
         };
         if (adapter.deferRestoreOnOpen) {
-            currentPage.setTransient("applyOpenHints", applyOpenHints);
-            void currentPage.ready.then(applyOpenHints, (): void => {});
+            currentPage.restore.afterReady(applyOpenHints);
         }
         else applyOpenHints();
         if (filePath) recent.add(filePath);
@@ -520,15 +517,15 @@ export class PagesLifecycleModel {
 
     // ── Multi-window operations ──────────────────────────────────────
 
-    retryRestore = async (pageId: string): Promise<void> => {
+    recoverPage = async (pageId: string): Promise<void> => {
         const placeholder = this.model.query.findPage(pageId);
-        const descriptor = placeholder?.retainedDescriptor;
+        const recovery = placeholder?.recovery;
         const editor = placeholder?.mainEditorInstance;
-        if (!placeholder || !descriptor || !(editor instanceof RestoreFailedEditor) || editor.state.get().retrying || placeholder.recoveryInvalidated) return;
+        if (!placeholder || !recovery || !(editor instanceof RestoreFailedEditor) || editor.state.get().retrying || recovery.isInvalidated) return;
         editor.state.update((state) => { state.retrying = true; });
         const attempt = async (): Promise<void> => {
             try {
-                const result = await this.model.persistence.constructPage(descriptor);
+                const result = await this.model.persistence.constructPage(recovery.descriptor);
                 if (result.kind !== "restored") {
                     editor.state.update((state) => {
                         state.error = result.kind === "failed"
@@ -538,7 +535,7 @@ export class PagesLifecycleModel {
                     return;
                 }
                 const recovered = result.page;
-                if (placeholder.recoveryInvalidated || this.model.query.findPage(pageId) !== placeholder) {
+                if (recovery.isInvalidated || this.model.query.findPage(pageId) !== placeholder) {
                     await recovered.dispose();
                     return;
                 }
@@ -546,8 +543,8 @@ export class PagesLifecycleModel {
                 this.model.detachPage(placeholder);
                 this.model.attachPage(recovered);
                 this.model.replacePage(placeholder, recovered);
-                placeholder.releaseRecoveryProtection();
-                placeholder.recoveryRetry = undefined;
+                recovery.releaseCacheProtection();
+                recovery.clearRetry();
                 await placeholder.dispose();
                 this.model.persistence.saveStateDebounced();
                 if (active) {
@@ -561,8 +558,8 @@ export class PagesLifecycleModel {
             }
         };
         const promise = attempt();
-        placeholder.recoveryRetry = promise;
-        try { await promise; } finally { if (placeholder.recoveryRetry === promise) placeholder.recoveryRetry = undefined; }
+        recovery.trackRetry(promise);
+        try { await promise; } finally { recovery.clearRetry(promise); }
     };
 
     movePageIn = async (data?: {
@@ -604,7 +601,7 @@ export class PagesLifecycleModel {
         // Recovery descriptors own cache protection in this renderer. Until the
         // destination acknowledges ownership, transferring one could expose its
         // cache to source-window cleanup.
-        if (page.retainedDescriptor) return;
+        if (page.isInert) return;
         if (this.model.popoverPageId === page.id) this.model.closePopover();
         if (this.model.query.isRightPinned(page.id)) {
             throw new Error("Right-pinned pages cannot be moved between windows.");
@@ -645,7 +642,7 @@ export class PagesLifecycleModel {
         if (page && this.model.query.isRightPinned(page.id)) {
             throw new Error("Right-pinned pages cannot be duplicated.");
         }
-        if (!page?.mainEditor || page.retainedDescriptor) return;
+        if (!page?.mainEditor || page.isInert) return;
 
         const sourceDesc = page.getDescriptor();
         // Fresh ids: page + each editor. Re-point mainEditorId to the new editor id.

@@ -17,6 +17,7 @@ export interface PageContentProps { pageId: string; }
 export class PageContentView extends VanillaView<PageContentProps> {
     private page: PageModel | undefined;
     private pageSubscription: (() => void) | undefined;
+    private restoreSubscription: (() => void) | undefined;
     private navSubscription: (() => void) | undefined;
     private navModel: PageModel["secondaryViewsModel"];
     private secondaryView: SecondaryViewsView | undefined;
@@ -49,8 +50,10 @@ export class PageContentView extends VanillaView<PageContentProps> {
 
     protected onDispose(): void {
         this.pageSubscription?.();
+        this.restoreSubscription?.();
         this.navSubscription?.();
         this.pageSubscription = undefined;
+        this.restoreSubscription = undefined;
         this.navSubscription = undefined;
         this.clearCompare();
         this.clearLoadingShell();
@@ -64,6 +67,8 @@ export class PageContentView extends VanillaView<PageContentProps> {
         if (page !== this.page) {
             this.pageSubscription?.();
             this.pageSubscription = page ? this.ownSubscription(page.state.subscribe(() => this.sync())) : undefined;
+            this.restoreSubscription?.();
+            this.restoreSubscription = page ? this.ownSubscription(page.restore.state.subscribe(() => this.sync())) : undefined;
             this.navSubscription?.();
             this.navSubscription = undefined;
             this.navModel = undefined;
@@ -77,7 +82,7 @@ export class PageContentView extends VanillaView<PageContentProps> {
             return;
         }
         const compareInfo = pagesModel.query.isInCompareMode(page.id);
-        if (page.state.get().restoreStatus !== "ready") {
+        if (page.restore.state.get().status !== "ready") {
             this.clearCompare();
             this.clearSecondary();
             this.syncLoadingShell(page);
@@ -216,10 +221,7 @@ export class PageContentView extends VanillaView<PageContentProps> {
         this.loadingShell = new PageLoadingShellView({
             page,
             onClose: () => { void page.close(); },
-            onRetry: () => {
-                const retry = page.getTransient<() => Promise<void>>("retryRestore");
-                void (retry ? retry() : pagesModel.lifecycle.retryPageRestore(page));
-            },
+            onRetry: () => { void page.restore.retry?.(); },
         });
         this.loadingShellPageId = page.id;
         this.contentRoot = this.loadingShell.root;

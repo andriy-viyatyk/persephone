@@ -2,7 +2,7 @@
 
 How sidebar panels work in Persephone. Covers registration, lifecycle hooks, navigation survival, rendering, persistence, and how to add new secondary views.
 
-**Source code:** [`PageModel.ts`](../../src/renderer/api/pages/PageModel.ts), [`EditorModel.ts`](../../src/renderer/editors/base/EditorModel.ts), [`SecondaryViewsView.ts`](../../src/renderer/ui/secondary-views/SecondaryViewsView.ts), and the native secondary-view registry.
+**Source code:** [`PageModel.ts`](../../src/renderer/api/pages/PageModel.ts), [`SecondaryViewsModel.ts`](../../src/renderer/api/pages/SecondaryViewsModel.ts), [`panel-key.ts`](../../src/renderer/api/pages/panel-key.ts), [`EditorModel.ts`](../../src/renderer/editors/base/EditorModel.ts), [`SecondaryViewsView.ts`](../../src/renderer/ui/secondary-views/SecondaryViewsView.ts), and the native secondary-view registry.
 
 ---
 
@@ -36,7 +36,7 @@ model.secondaryView = ["explorer", "search"]; // multiple panels
 model.secondaryView = undefined;
 ```
 
-**Internally**, the setter only updates state; PageModel observes attached editor state. `addSecondaryView` attaches an editor and `removeSecondaryView` detaches and disposes it.
+**Internally**, the setter only updates state; PageModel observes attached editor state. `PageModel.attach(editor)` adds an editor to the page's typed `editors[]` membership. `PageModel.releaseEditor(editor, { dispose })` detaches it before optionally disposing it. The page-owned sidebar state model and composite-key helpers live under `api/pages/`; the native views and registry stay under `ui/secondary-views/`.
 
 ---
 
@@ -90,7 +90,7 @@ EditorModel provides lifecycle hooks that PageModel calls at specific moments:
 
 | Hook | Called by | When | Base behavior | Override for |
 |------|-----------|------|---------------|-------------|
-| `setPage(page)` | `addSecondaryView()`, `setMainEditor()` | Model attached to / detached from a page | Stores reference | Registration (e.g., ArchiveEditorModel sets `secondaryView` here) |
+| `setPage(page)` | `attach()`, `setMainEditor()` | Model attached to / detached from a page | Stores reference | Registration (e.g., ArchiveEditorModel sets `secondaryView` here) |
 | `beforeNavigateAway(newEditor)` | `setMainEditor()` | Old mainEditor is about to be replaced | Clears `secondaryView` (remove self) | Conditional survival (check `newEditor.sourceLink`) |
 | `onMainEditorChanged(newMainEditor)` | `notifyMainEditorChanged()` | After mainEditor was replaced | No-op | Respond to new content: highlight file in tree, clear selection, or remove self |
 | `onPanelExpanded(panelId)` | `setActivePanel()` | A panel belonging to this model was expanded | No-op | Deferred reveal (scroll to highlighted item); sync derived state from the active panel |
@@ -134,35 +134,27 @@ When user navigates to a new file (`navigatePageTo()`):
 
 ## 4b. Promote / Demote Flow
 
-A secondary view can be toggled into the main editor role (and back) via `promoteSecondaryToMain(model)`:
+A secondary view can be toggled into the main editor role (and back) via `promoteToMain(model)`:
 
 **Promote** (secondary → main):
 ```
-1. page.promoteSecondaryToMain(model)  // model is in secondaryViews[], not mainEditor
+1. page.promoteToMain(model)           // model is attached but is not mainEditor
    └── page.setMainEditor(model)       // standard navigation lifecycle
        ├── oldEditor.beforeNavigateAway(model)
        │   └── base: this.secondaryView = undefined → removed from sidebar → disposed
-       ├── model becomes mainEditor AND stays in secondaryViews[] (Pattern B)
+       ├── model becomes mainEditor and stays attached if it still contributes panels
        ├── notifyMainEditorChanged()
-       └── pagesModel.resubscribeEditor(page)
 ```
 
 **Demote** (main → secondary-only):
 ```
-1. page.promoteSecondaryToMain(model)  // model IS mainEditor
-   ├── this._mainEditor = null         // clear without dispose (model stays as secondary)
+1. page.promoteToMain(model)           // model IS mainEditor
+   ├── this._mainEditorId = null       // clear without disposing the attached model
    ├── state.mainEditorId = null       // subscribers update the UI: content area becomes empty
    ├── notifyMainEditorChanged()       // secondaries notified with null
-   ├── queueMicrotask: restore panels if promoted-from-secondary
-   │   ├── If _prePromotePanels saved → restore pre-promote panel list
-   │   └── If no saved panels (was originally main, Pattern B) → leave panels as-is
-   │       (secondary-view model/view lifecycle manages its own panel list)
-   └── pagesModel.resubscribeEditor(page)
 ```
 
-The demote path does NOT call `setMainEditor(null)` — that would dispose the model. Instead it directly clears the reference, keeping the model alive in `secondaryViews[]`.
-
-**Panel save/restore:** When promoting, the current panel list is saved as `_prePromotePanels`. On demote, if saved panels exist (model was promoted from secondary), they are restored. For Pattern B (model was originally the main editor, no saved panels), panels are left unchanged — the secondary-view model/view lifecycle (e.g., `LinkCategorySecondaryView`) manages the panel list through its model subscription. The `queueMicrotask` lets the demotion complete before the restoration work runs.
+`promoteToMain` uses the same `setMainEditor` lifecycle for both directions. An editor that remains a panel contributor stays attached after promotion; demoting the current main clears its main role while leaving its membership to the editor's panel contribution.
 
 ---
 
@@ -174,13 +166,13 @@ The demote path does NOT call `setMainEditor(null)` — that would dispose the m
 
 **Close — two semantics:**
 - **Hide the panel only** (default): the close handler clears `model.secondaryView = undefined`, removing its panel contribution (without disposing). The standard pattern for user-closeable panels.
-- **Remove the whole Pattern B editor** (`page.removeSecondaryView(model)`): detaches *and disposes* the model. Because `detach()` clears `mainEditorId` when the editor was also the main, this leaves the page empty if the editor was main, and leaves a different main untouched otherwise. Used by `ArchiveSecondaryView` and by `GitTreeEditorModel.requestClose()` (the Git Tree "x"). The Git Tree "x" is intentionally **unconditional** (unlike `ArchiveSecondaryView`, which hides its "x" while it is the main), because the empty-page outcome is the intended behavior.
+- **Remove the whole Pattern B editor** (`page.releaseEditor(model, { dispose: true })`): detaches before disposing the model. Because `detach()` clears `mainEditorId` when the editor was also main, this leaves the page empty if the editor was main, and leaves a different main untouched otherwise. Used by `ArchiveSecondaryView` and by `GitTreeEditorModel.requestClose()` (the Git Tree "x"). The Git Tree "x" is intentionally **unconditional** (unlike Archive's, which hides its "x" while the editor is main), because the empty-page outcome is the intended behavior.
 
 ---
 
 ## 5a. Composite Panel Keys
 
-**Source:** [`panel-key.ts`](../../src/renderer/ui/secondary-views/panel-key.ts)
+**Source:** [`panel-key.ts`](../../src/renderer/api/pages/panel-key.ts)
 
 A panel id (`"git-changes"`, `"archive-tree"`) names a panel **type** — the registry key. It is **not** unique within a page: two models can contribute the same type. The canonical case is two open git repositories, each contributing a `"git-changes"` panel. The sidebar must render **all** of them — uniqueness restriction does not belong in the render layer.
 
@@ -190,7 +182,7 @@ A *rendered* panel's identity is therefore the **composite** of its owning edito
 panelKey(editorId, panelId) → `${editorId}::${panelId}`
 ```
 
-Editor ids are UUIDs and panel-type ids are kebab-case, so `"::"` is an unambiguous separator. `panel-key.ts` exposes `panelKey()`, `parsePanelKey()` (a bare id with no separator parses to `{ editorId: "", panelId }`), `panelIdOf()`, and `isCompositePanelKey()`.
+Editor ids are UUIDs and panel-type ids are kebab-case, so `"::"` is an unambiguous separator. `panel-key.ts` exposes `panelKey()`, `parsePanelKey()` (a bare id with no separator parses to `{ editorId: "", panelId }`), `panelIdOf()`, and `isCompositePanelKey()`. These page API helpers are imported from `api/pages/`; the native views and registry remain under `ui/secondary-views/`.
 
 **Bare vs. composite — the split:**
 
@@ -308,9 +300,10 @@ For Pattern B (mainEditor in secondaryViews[]), the model may be disposed twice 
 
 | Method | Description |
 |--------|-------------|
-| `addSecondaryView(model)` | Adds model to array, calls `model.setPage(this)`, bumps version. If model is already registered, still bumps version (panel list may have changed). |
-| `removeSecondaryView(model)` | Removes, disposes, falls back `activePanel` if needed |
-| `promoteSecondaryToMain(model)` | Toggle: if model is secondary-only → promotes to mainEditor (old main goes through `setMainEditor` lifecycle); if model IS mainEditor → demotes (clears mainEditor to null, model stays as secondary). Calls `resubscribeEditor` for persistence. |
+| `attach(editor)` | Adds an editor to typed `editors[]` membership, calls `editor.setPage(this)`, and subscribes to its panel declaration. |
+| `releaseEditor(editor, { dispose })` | Detaches the editor and optionally disposes it after detachment. |
+| `promoteToMain(editor)` | Toggle: promotes an attached editor through `setMainEditor`; if it is already main, clears the main role while preserving its attachment. |
+| `assignMain(id)` | Assigns the persisted main-editor ID while restoring a page descriptor. |
 | `confirmSecondaryRelease()` | Iterates modified secondaries, prompts user via `confirmRelease()` |
 | `restoreSecondaryViews(ownerEditor)` | Restores from `pendingSecondaryDescriptors`, deduplicates against owner |
 | `notifyMainEditorChanged()` | Propagates main editor change, cleans up models that cleared themselves |
@@ -319,8 +312,6 @@ For Pattern B (mainEditor in secondaryViews[]), the model may be disposed twice 
 | `activePanel` / `activePanelId` | `activePanel` = composite key of the expanded panel; `activePanelId` = its **bare** panel-type id (for "is panel X expanded" checks). See §5a. |
 | `findExplorer()` | Returns the ExplorerEditor from secondaryViews (if any) |
 | `createExplorer(rootPath)` | Creates ExplorerEditor, adds to secondaryViews |
-| `getTransient<T>(key)` | Read a transient (non-persisted) runtime value by key. Returns undefined if not set. |
-| `setTransient(key, value)` | Write a transient runtime value. Pass undefined to delete. Cleared on page close / app restart. |
 
 ---
 
@@ -362,7 +353,7 @@ and lookup read existing page state only and never create a sidebar or an absent
 | `ArchiveEditorModel` | `["archive-tree"]` | B (mainEditor) | Survives if new editor was opened from this archive | `_openArchive()` in PagesLifecycleModel |
 | `LinkEditor` (links) | `["link-category", "link-tags", "link-hostnames"]` (always all 3) | B (mainEditor) | Survives own-link navigation (`sourceId` = editor id / `link-category` / `link-tag` / `link-hostname`) **or while modified** (a dirty collection survives any navigation so unsaved work is never lost); otherwise removed on external navigation. Overrides `beforeNavigateAway` / `onMainEditorChanged`; the same `modified \|\| own-source` predicate drives `survivesNavigation` (skips the save-prompt). | `adoptHost()` sets `secondaryView = LINK_PANELS` |
 | `LinkEditor` (browser bookmarks) | `["link-category", "link-tags", "link-hostnames"]` | B — hosted on `BrowserPanelHost` (not `PageModel`) | Always present while the browser page is open; sidebar is mandatory-open. | `BrowserPanelHost.attach()` — called by `BrowserEditorModel` during bookmarks init |
-| `GitTreeEditorModel` | `["git-changes"]` (label "Git") | B (mainEditor) | **Unconditional survival** — `beforeNavigateAway()` is a no-op, so the panel stays when clicking a changed file or a ref opens its Git Diff (the editor becomes secondary-only). Sole removal path is the panel's manual "x" → `requestClose()` → `page.removeSecondaryView(this)` (tears down the whole editor). Also a per-page navigation-singleton (`matchesNavigationTarget` / `onNavigationReuse`): re-navigating to the same repo reuses this instance instead of stacking duplicates. See [Git Tree panel](#git-tree-panel) below for behavior. | `setPage()` sets `secondaryView = ["git-changes"]` on attach (unconditionally, so a session that persisted an older multi-panel array is migrated) |
+| `GitTreeEditorModel` | `["git-changes"]` (label "Git") | B (mainEditor) | **Unconditional survival** — `beforeNavigateAway()` is a no-op, so the panel stays when clicking a changed file or a ref opens its Git Diff (the editor becomes secondary-only). Sole removal path is the panel's manual "x" → `requestClose()` → `page.releaseEditor(this, { dispose: true })` (tears down the whole editor). Also a per-page navigation-singleton (`matchesNavigationTarget` / `onNavigationReuse`): re-navigating to the same repo reuses this instance instead of stacking duplicates. See [Git Tree panel](#git-tree-panel) below for behavior. | `setPage()` sets `secondaryView = ["git-changes"]` on attach (unconditionally, so a session that persisted an older multi-panel array is migrated) |
 | `FileDiffEditor` | `["git-diff-revisions"]` (label "File History") | B (mainEditor) | **Removed on navigation AND editor-switch** — uses the **default** `beforeNavigateAway` (clears `secondaryView`), so the "File History" panel disappears when the page navigates to another file or when the Git Diff is switched back to the Text Editor. The deliberate **opposite** of `GitTreeEditorModel`'s unconditional survival (the panel is meaningful only while its Git Diff is the main editor). | `adoptHost()` sets `secondaryView = ["git-diff-revisions"]` |
 | `BoardEditorModel` (+ subclasses) | `["board-secondary:<viewId>", …]` (declared) | Board (see note) | Removed on navigation — base `beforeNavigateAway` clears the derived list; `secondaryViewDefs` is retained so a re-promoted **busy** board re-derives its panels (`onNavigationReuse()`) | Derived from `board-manifest.json` `secondaryViews` and/or `persephone.setSecondaryViews([...])` at runtime |
 
@@ -556,7 +547,7 @@ A title-only panel supplies only `headerHost`, `iconElement`, and `title`. Condi
 
 `SecondaryViewProps` also carries `expanded` — `true` when this panel is the one currently expanded in the stack, `false` when it is collapsed to a header strip. Panels stay mounted while collapsed (`alwaysRenderContent`), and the native header remains synchronized, so actions that only make sense while the body is visible should be omitted when `expanded === false`. This does not gate the show-main zone: keep `onShowMain` supplied while collapsed so the chevron remains available.
 
-To add a standardized "show main view" button at the right edge, pass `onShowMain` (a callback that calls `page.promoteSecondaryToMain(model)` or an editor-specific equivalent) and optionally `showMainActive` (blue-tints the chevron when the editor is already main) and `showMainTitle` (tooltip override). The zone is always rendered when `onShowMain` is provided — never hidden, even when already main:
+To add a standardized "show main view" button at the right edge, pass `onShowMain` (a callback that calls `page.promoteToMain(model)` or an editor-specific equivalent) and optionally `showMainActive` (blue-tints the chevron when the editor is already main) and `showMainTitle` (tooltip override). The zone is always rendered when `onShowMain` is provided — never hidden, even when already main:
 
 ```typescript
 this.header.update({
@@ -574,7 +565,7 @@ this.header.update({
 **For Pattern A** — create the model and add it:
 ```typescript
 const myModel = new MySecondaryModel();
-page.addSecondaryView(myModel);
+page.attach(myModel);
 // Or let the model self-register via setPage → this.secondaryView = [...]
 ```
 

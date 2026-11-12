@@ -5,6 +5,13 @@ import type { TextFileModel } from "../../editors/text";
 export class PagesLayoutModel {
     constructor(private model: PagesModel) {}
 
+    onMainEditorChanged = (page: PageModel): void => {
+        const inPair = this.model.query.isInCompareMode(page.id);
+        if (inPair.active && !this.model.query.getTextFileHost(page.id)) {
+            this.exitCompareMode(page.id);
+        }
+    };
+
     /** Use `getTextFileHost` to discriminate text-bearing partner pages. */
     requireGroupedText = (
         pageId: string,
@@ -90,7 +97,7 @@ export class PagesLayoutModel {
         const pageIndex = pages.findIndex((p) => p.id === pageId);
         if (pageIndex === -1) return;
         const page = pages[pageIndex];
-        if (page.isLockedBoardPage || page.retainedDescriptor) return;
+        if (page.isLockedBoardPage || page.isInert) return;
         if (page.pinSide === side) return;
         const wasRightPinned = this.model.query.isRightPinned(pageId);
         if (side === "right" && this.model.query.isGrouped(pageId)) this.ungroup(pageId);

@@ -72,12 +72,17 @@ main editor is absent.
 ```
 PageModel (one per tab — stable identity, never changes during navigation)
 ├── id: string                          // stable UUID — tab key, cache key
-├── state: TOneState<IPageState>        // reactive: { pinSide, popoverSize, hasSidebar, mainEditorId, restoreStatus }
-├── ready: Promise<void>                 // current deferred restore attempt
-├── mainEditor: EditorModel | null      // the content (swapped during navigation)
-├── secondaryViews: EditorModel[]     // sidebar panels (ExplorerEditor, ArchiveEditorModel, etc.)
-├── secondaryViewsModel                  // sidebar open/close/width
+├── state: TOneState<IPageState>        // tab/layout fields and editor membership version
+├── restore: PageRestore                // deferred restore attempt, readiness, state, typed retry
+├── recovery?: RecoveryPlaceholder      // retained descriptor and cache protection after failed session restore
+├── isInert                             // true while a recovery placeholder owns the page
+├── mainEditor: EditorOrHost | null     // content host projection; use mainEditorInstance for EditorModel
+├── editors: EditorModel[]              // attached editors; panelEditors is the sidebar projection
+├── secondaryViewsModel                 // sidebar open/close/width (model lives in api/pages)
 ├── activePanel: string                 // which panel is expanded
+├── releaseEditor(editor, { dispose })  // detach, then optionally dispose
+├── promoteToMain(editor)               // toggle an attached editor into or out of the main role
+├── assignMain(id)                      // assign persisted main-editor identity during restore
 ├── findExplorer() / createExplorer()   // ExplorerEditor helpers
 ├── findEditorByFilePath(path)          // existing editor on this page for a file (navigation reuse)
 ├── ensurePipeOwner()                   // await renderer ownership before a pipe-backed media session
@@ -101,7 +106,27 @@ EditorModel (the content inside a page — replaceable during navigation)
 └── getRestoreData() / applyRestoreData() // serialization
 ```
 
-**Source:** [`PageModel.ts`](../../src/renderer/api/pages/PageModel.ts), [`EditorModel.ts`](../../src/renderer/editors/base/EditorModel.ts)
+**Source:** [`PageModel.ts`](../../src/renderer/api/pages/PageModel.ts), [`PageRestore.ts`](../../src/renderer/api/pages/PageRestore.ts), [`RecoveryPlaceholder.ts`](../../src/renderer/api/pages/RecoveryPlaceholder.ts), [`EditorModel.ts`](../../src/renderer/editors/base/EditorModel.ts)
+
+`PageModel` owns page identity, attached editor membership, the main-editor selection, navigation-related page context,
+secondary-view state, and the page descriptor. Restore attempts and failed-session recovery are separate collaborators:
+`PageRestore` owns deferred restore status, its `ready` promise, cancellation, attempt identity, the typed Retry
+callback, and hooks that run after successful restore; `RecoveryPlaceholder` owns the retained descriptor, retry
+coordination, close authorization, and cache-file protection. The page exposes `restore` and optional `recovery`.
+`isInert` is true whenever recovery is present; collection, tab, and navigation entry points use that single
+predicate to keep a failed-restoration placeholder from being edited, moved, or pinned. Its descriptor remains
+available through `recovery.descriptor` and `getDescriptor()` so the placeholder can survive another restart.
+
+There are two distinct retry operations. `PagesLifecycleModel.retryOpen(page, options)` rebuilds content after a
+deferred open failed and is installed as `page.restore.retry` for the loading shell. `PagesLifecycleModel.recoverPage`
+reconstructs a page from `page.recovery.descriptor` after session restore failed; `RestoreFailedEditor` invokes this
+path. The former retries an editor restore on an existing page, while the latter replaces the recovery placeholder.
+`PageWrapper.ready` remains the script-facing readiness name and forwards to `page.restore.ready`.
+
+`PageModel`'s attached-editor operations are typed: `releaseEditor(editor, { dispose })` detaches before optionally
+disposing, `promoteToMain(editor)` toggles an attached editor into or out of the main role, and `assignMain(id)` sets
+the persisted main-editor identity during reconstruction. There is no string-keyed transient store on the page.
+Board Run ownership is kept by `BoardPageRouter`; the page retains the typed `lockedBoardRoot` layout field.
 
 `PagesModel.attachPage()` installs the page's media-pipe owner registrar; `detachPage()` and
 `PageModel.dispose()` clear it. An editor may ask for ownership while a restored or transferred
@@ -165,14 +190,14 @@ descriptors rather than restored sidebar state.
 - **Created:** `new PageModel()` + `page.mainEditor = editor` + `editor.setPage(page)` (or `mainEditor = null` for empty pages with sidebar only)
 - **Initialized:** `editor.restore()` loads content; `page.restoreSidebar()` loads sidebar from cache
 - **Deferred restore:** editors may opt in through `deferRestoreOnOpen`. Fresh file opens then add
-  the page immediately and start restore asynchronously; `page.ready` settles when that attempt
+  the page immediately and start restore asynchronously; `page.restore.ready` settles when that attempt
   completes. Await it before work that depends on restored content. It rejects on restore failure
   or cancellation. Editors that do not opt in preserve restore-before-add behavior.
-- **Loading UI:** while `restoreStatus` is `loading`, `PageContentView` shows a loading shell with
+- **Loading UI:** while `page.restore.state.status` is `loading`, `PageContentView` shows a loading shell with
   pipe stage status. For a fresh deferred open, the tile's close icon cancels its restore; an error
   replaces the loading message with the failure and offers Retry. A persisted page that fails
-  restoration instead keeps its tab and descriptor behind a recovery placeholder, with Retry and
-  Close actions. The intended editor is shown after restore succeeds.
+  restoration instead keeps its tab and descriptor behind `page.recovery`, with Retry and Close
+  actions. The intended editor is shown after restore succeeds.
 - **Pipe status badge:** while a pipe reports connecting/active work, the editor status bar
   (`EditorStatusBarView`, the footer) shows its status and any known byte progress. Successful reads show a brief completion label; errors remain
   visible until dismissed. Opening the badge's popover shows the provider and transformer stages
@@ -356,7 +381,7 @@ graph TD
 | Persistence | [`PagesPersistenceModel.ts`](../../src/renderer/api/pages/PagesPersistenceModel.ts) | save/restore window state to disk |
 | Query | [`PagesQueryModel.ts`](../../src/renderer/api/pages/PagesQueryModel.ts) | find (by any ID: page, mainEditor, or secondary), findPageByFilePath, activePage, focusedPage, getGrouped, isLastPage |
 
-`PagesModel` owns page-array mutation primitives (`insertPage`, `replacePage`, and `removePage`) so submodels do not directly implement insert, recovery replacement, or removal in the shared arrays. `PagesLayoutModel` owns ordering and grouping changes; persistence owns bulk restore.
+`PagesModel` owns page-array mutation primitives (`insertPage`, `replacePage`, and `removePage`) so submodels do not directly implement insert, recovery replacement, or removal in the shared arrays. `PagesLayoutModel` owns ordering, grouping, and compare-mode cleanup; persistence owns bulk restore. `PageModel` emits `mainEditorChanged` after editor notifications only when a non-null main editor is selected. `PagesModel.attachPage()` owns the subscription and releases it on detach and shutdown. The layout exits compare mode when the changed page is in an active compare pair and no longer has a text-file host; clearing the main editor does not emit the event.
 
 Editor construction is centralized in [`editor-factory.ts`](../../src/renderer/editors/editor-factory.ts), which supplies the lifecycle and navigation collaborators. Fixed-ID page construction and reuse live in [`standalone-pages.ts`](../../src/renderer/api/pages/standalone-pages.ts). [`BoardPageRouter`](../../src/renderer/api/boards/board-page-router.ts) owns board-specific lookup and open routing and registers with the lifecycle through its generic interceptor interface.
 

@@ -578,12 +578,12 @@ export class GitTreeEditorModel extends EditorModel<GitTreeEditorState> {
     }
 
     /** Manual close: the Changes panel "x" removes this whole editor.
-     *  `removeSecondaryView` detaches us — clearing the page's main editor when
+     *  `releaseEditor` detaches us — clearing the page's main editor when
      *  we ARE the main (→ empty page) and leaving a Git Diff main untouched when
      *  we are only the secondary panel — then disposes us exactly once. Mirrors
      *  the close path in `ArchiveSecondaryView`. */
     async requestClose(): Promise<void> {
-        await this.page?.removeSecondaryView(this);
+        await this.page?.releaseEditor(this, { dispose: true });
     }
 
     async dispose(): Promise<void> {

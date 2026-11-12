@@ -15,9 +15,9 @@ import {
 import { createIconElement } from "../../uikit/shared/slots";
 import { guard } from "../../core/utils/guard";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import type { SecondaryViewsModel } from "./SecondaryViewsModel";
+import type { SecondaryViewsModel } from "../../api/pages/SecondaryViewsModel";
 import { LazySecondaryViewView } from "./LazySecondaryViewView";
-import { isCompositePanelKey, panelKey } from "./panel-key";
+import { isCompositePanelKey, panelKey } from "../../api/pages/panel-key";
 import { secondaryViewRegistry } from "./secondary-view-registry";
 import { sameItems } from "../../core/utils/utils";
 

@@ -229,8 +229,8 @@ export async function navigatePageTo(
     options?: NavigatePageToOptions,
 ): Promise<boolean> {
     const page = model.query.findPage(pageId);
-    if (!page || page.retainedDescriptor) return false;
-    await page.ready;
+    if (!page || page.isInert) return false;
+    await page.restore.ready;
 
     const currentFilePath = (page.mainEditor as { filePath?: string } | null)?.filePath;
     const needsReveal = !!(options?.revealLine || options?.highlightText);

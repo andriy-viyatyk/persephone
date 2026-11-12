@@ -1,7 +1,7 @@
 import type { TOneState } from "../../core/state/state";
 import type { EditorModel, EditorOrHost } from "../../editors/base";
 import type { IContentPipe } from "../types/io.pipe";
-import type { ISecondaryViewsState, SecondaryViewsModel } from "../../ui/secondary-views/SecondaryViewsModel";
+import type { ISecondaryViewsState, SecondaryViewsModel } from "./SecondaryViewsModel";
 import type { IPageState } from "./PageModel";
 import type { NavEntry } from "../../../shared/persistence";
 
@@ -10,7 +10,7 @@ import type { NavEntry } from "../../../shared/persistence";
  * implements it in full; a future `BrowserPanelHost` implements the
  * required members and omits the optional main-editor-navigation group.
  *
- * The required core (identity, reactive state, panels/sidebar, transient store)
+ * The required core (identity, reactive state, panels/sidebar)
  * is shared by every host. The optional members are main-editor navigation — a
  * host that never swaps a main editor (e.g. the Browser empty page) omits them,
  * and call sites reach them through optional chaining (`editor.page?.foo?.()`).
@@ -39,12 +39,7 @@ export interface IPageHost {
     ensureSecondaryViewsModel(): SecondaryViewsModel;
     canOpenNavigator(pipe?: IContentPipe | null, filePath?: string): boolean;
     toggleNavigator(pipe?: IContentPipe | null, filePath?: string): Promise<void>;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    removeSecondaryView(editor: any): Promise<void>;
-
-    // transient store (survives navigation, cleared on close)
-    getTransient<T>(key: string): T | undefined;
-    setTransient(key: string, value: unknown): void;
+    releaseEditor(editor: EditorModel, options: { dispose: boolean }): Promise<void>;
 
     // Markdown in-page back-navigation history 
     pushNavBack(entry: NavEntry): void;
@@ -63,6 +58,5 @@ export interface IPageHost {
     mainEditor?: EditorOrHost | null;
     mainEditorInstance?: EditorModel | null;
     switchMainEditor?(newEditorId: string): Promise<void>;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    promoteSecondaryToMain?(editor: any): Promise<void>;
+    promoteToMain?(editor: EditorModel): Promise<void>;
 }

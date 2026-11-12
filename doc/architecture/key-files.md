@@ -67,10 +67,14 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Agent capability discovery and method nodes | `/src/renderer/scripting/ai-vision/namespaces/capabilities.ts` |
 | Main-owned scalar UI preferences and renderer cache (snapshot load, synchronous reads, best-effort writes) | `/src/main/ui-preferences.ts`, `/src/renderer/api/ui-preferences.ts` |
 | Page/tab management (shared page arrays and state; mutation primitives; public API delegates; router and standalone-page composition) | `/src/renderer/api/pages/PagesModel.ts` |
-| Page container (tab; sidebar composition, composite active-panel fallback, automatic close of editorless pages whose last panel is removed, media-pipe owner readiness, and deferred restore readiness/cancellation) | `/src/renderer/api/pages/PageModel.ts` |
-| Editor↔owner contract    | `/src/renderer/api/pages/IPageHost.ts`            |
+| Page container (tab; typed editor membership and sidebar composition, inert recovery guard, media-pipe owner readiness, and page-level restore/recovery collaborators) | `/src/renderer/api/pages/PageModel.ts` |
+| Deferred page restore attempts (status, cancellation, readiness, typed retry callback and after-ready hooks) | `/src/renderer/api/pages/PageRestore.ts` |
+| Failed session-restore placeholder (retained descriptor, retry/close coordination and cache protection) | `/src/renderer/api/pages/RecoveryPlaceholder.ts` |
+| Reactive sidebar layout model (open state, width and active panel) | `/src/renderer/api/pages/SecondaryViewsModel.ts` |
+| Composite panel-key construction and parsing | `/src/renderer/api/pages/panel-key.ts` |
+| Typed editor↔page host contract (editor membership, sidebar operations and optional main-editor navigation) | `/src/renderer/api/pages/IPageHost.ts` |
 | Fixed-ID standalone page registry (lazy editor/custom page builders, text-host log pages, stable persisted IDs and after-show actions) | `/src/renderer/api/pages/standalone-pages.ts` |
-| Page creation/opening, generic open-interceptor registration and dispatch, close, transfer, duplicate, retry and lifecycle coordination | `/src/renderer/api/pages/PagesLifecycleModel.ts` |
+| Page creation/opening, generic open-interceptor registration and dispatch, close, transfer, duplicate, deferred-open retry (`retryOpen`) and recovery-placeholder rebuild (`recoverPage`) | `/src/renderer/api/pages/PagesLifecycleModel.ts` |
 | Editor construction (text-host attachment, editor-by-id/file/folder creation, Monaco synchronous floor and board editor routing) | `/src/renderer/editors/editor-factory.ts` |
 | Board page routing (single-instance interception, source-context handoff, bundled board pages, capability-handler pages, Run pages and board queries) | `/src/renderer/api/boards/board-page-router.ts` |
 | Window session save/restore (`openFiles{windowIndex}.json`; restore save gate; legacy `draw-view` descriptors are normalized to the bundled board with renderable board-selection state; every `board-info` descriptor restores through its registered editor with optional host data; folder-board descriptors retain independent `boardRoot`/`folderPath` and revalidate the trusted claim before construction; bundled board roots are repaired by stable board id when an install path changes; persisted active panels are validated against composed composite keys and fall back to the first panel) | `/src/renderer/api/pages/PagesPersistenceModel.ts` |
@@ -249,7 +253,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Secondary view registry (single native `VanillaView` panel loader; exact and prefix resolution) | `/src/renderer/ui/secondary-views/secondary-view-registry.ts` |
 | Clipboard secondary view (flavour-resolved row icons, preview/time badge and hover/focus Copy controls, persistent selection, panel-owned arrow navigation with serialized host opens, disabled-state controls, native open/remove/clear actions, listener health and restart) | `/src/renderer/editors/explorer/ClipboardSecondaryView.ts` |
 | Clipboard row time formatter (local-calendar badge and tooltip text for today and older captures) | `/src/renderer/editors/explorer/clipboard-date.ts` |
-| Composite panel keys (sidebar) | `/src/renderer/ui/secondary-views/panel-key.ts` |
+| Native sidebar view host (layout/model state and composite panel-key helpers are in `api/pages/`) | `/src/renderer/ui/secondary-views/SecondaryViewsView.ts`, `/src/renderer/ui/secondary-views/secondary-view-registry.ts` |
 | Native shared sidebar panel header (DOM title/badge/actions adoption, `data-part="header-buttons"` action protection, show-main control, and late `headerHost` reparenting) | `/src/renderer/ui/secondary-views/SideBarPanelHeaderView.ts` |
 | Native secondary-panel loader (cancellable dynamic import, vanilla panel mount, semantic error host, and explicit retirement cleanup) | `/src/renderer/ui/secondary-views/LazySecondaryViewView.ts` |
 | Native sidebar/menu views (Menu Bar, panels, lists, pinned rail, and folder rows) | `/src/renderer/ui/sidebar/*View.ts` |

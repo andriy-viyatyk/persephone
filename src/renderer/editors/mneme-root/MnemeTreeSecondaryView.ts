@@ -246,6 +246,6 @@ export default class MnemeTreeSecondaryView extends VanillaView<SecondaryViewPro
 
     private readonly showMain = (): void => {
         const model = this.mnemeModel;
-        if (!model.isMain) void model.page?.promoteSecondaryToMain?.(model);
+        if (!model.isMain) void model.page?.promoteToMain?.(model);
     };
 }

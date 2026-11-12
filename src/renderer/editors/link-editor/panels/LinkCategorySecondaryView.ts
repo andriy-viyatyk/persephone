@@ -109,7 +109,7 @@ export default class LinkCategorySecondaryView extends VanillaView<SecondaryView
 
     private readonly showMain = (): void => {
         const editor = this.editor;
-        if (editor && !editor.isMain) editor.page?.promoteSecondaryToMain?.(editor);
+        if (editor && !editor.isMain) editor.page?.promoteToMain?.(editor);
     };
 
     private updateHeader(): void {

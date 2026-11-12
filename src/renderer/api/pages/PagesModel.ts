@@ -100,11 +100,15 @@ export class PagesModel extends TModel<OpenFilesState> {
             reconcileEditorSubs();
             this.persistence.saveStateDebounced();
         });
+        const mainEditorChangedUnsub = page.mainEditorChanged.subscribe(() => {
+            this.layout.onMainEditorChanged(page);
+        });
 
         this.pageSubscriptions.set(pageId, () => {
             for (const unsub of editorSubs.values()) unsub();
             editorSubs.clear();
             pageUnsub();
+            mainEditorChangedUnsub();
         });
 
         page.onClose = () => {
@@ -307,7 +311,7 @@ export class PagesModel extends TModel<OpenFilesState> {
             ?? (data.openedPageId
                 ? this.query.findPage(data.openedPageId)
                 : undefined);
-        await page?.ready;
+        await page?.restore.ready;
         return page;
     };
     closePage = (pageId: string) => this.lifecycle.closePage(pageId);

@@ -19,7 +19,7 @@ import {
 import { TComponentState } from "../../core/state/state";
 import { appWindow } from "../window";
 import { fs as appFs } from "../fs";
-import { panelKey, parsePanelKey } from "../../ui/secondary-views/panel-key";
+import { panelKey, parsePanelKey } from "./panel-key";
 import type { BoardEditorState } from "../../editors/board";
 import {
     customEditorRegistry,
@@ -31,6 +31,7 @@ import {
     encodePersephoneBoardLink,
 } from "../../content/persephone-board-link";
 import { PageModel } from "./PageModel";
+import { RecoveryPlaceholder } from "./RecoveryPlaceholder";
 import { BOARD_INFO_EDITOR_ID } from "../../editors/board-info/board-info-id";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -165,11 +166,11 @@ export class PagesPersistenceModel {
         let id = crypto.randomUUID();
         while (originalIds.has(id.toLowerCase())) id = crypto.randomUUID();
         const editor = new RestoreFailedEditor(id, title, errMessage(error, t("editors.restoreFailedTitle")));
-        editor.retry = () => this.model.lifecycle.retryRestore(page.id);
+        editor.retry = () => this.model.lifecycle.recoverPage(page.id);
         editor.closePage = () => page.close();
         page.attach(editor);
         page.mainEditor = editor;
-        page.retainDescriptor(descriptor);
+        page.recovery = new RecoveryPlaceholder(descriptor);
         return page;
     };
 
@@ -361,7 +362,7 @@ export class PagesPersistenceModel {
             desc.mainEditorId &&
             page.editors.some((e) => e.id === desc.mainEditorId)
         ) {
-            page.setMainEditorId(desc.mainEditorId);
+            page.assignMain(desc.mainEditorId);
         }
 
         if (desc.sidebar) {

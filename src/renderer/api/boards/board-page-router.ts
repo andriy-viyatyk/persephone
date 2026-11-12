@@ -28,9 +28,22 @@ interface BoardOpenOptions extends OpenFileOptions {
     preferredPageId?: string;
 }
 
+/** Runtime-only ownership data for a board's reusable Browser Run page. */
+export interface BoardRunPageOwner {
+    boardRoot: string;
+    reuseKey: string;
+    url: string;
+}
+
 /** Owns board-specific routing and board page lookup within a PagesModel. */
 export class BoardPageRouter implements PageOpenInterceptor {
+    private readonly runPageOwners = new WeakMap<PageModel, BoardRunPageOwner>();
+
     constructor(private readonly model: PagesModel) {}
+
+    getRunPageOwner(page: PageModel): BoardRunPageOwner | undefined {
+        return this.runPageOwners.get(page);
+    }
 
     onOpenFile = async (request: {
         filePath?: string;
@@ -207,7 +220,7 @@ export class BoardPageRouter implements PageOpenInterceptor {
         const normalizedRoot = BoardRoot.from(boardRoot);
         return this.model.state.get().pages.find((page) => {
             if (page.mainEditorInstance?.editorId !== "browser-view") return false;
-            const owner = page.getBoardRunOwner();
+            const owner = this.getRunPageOwner(page);
             return !!owner
                 && normalizedRoot.equals(owner.boardRoot)
                 && owner.reuseKey === reuseKey;
@@ -242,10 +255,10 @@ export class BoardPageRouter implements PageOpenInterceptor {
         if (!page) {
             page = await this.model.showBrowserPage({ url });
             if (!page) throw new Error("Could not create the board Run page.");
-            page.setBoardRunOwner({ boardRoot: normalizedRoot, reuseKey: normalizedKey, url });
-            await page.ready;
+            this.runPageOwners.set(page, { boardRoot: normalizedRoot, reuseKey: normalizedKey, url });
+            await page.restore.ready;
         } else {
-            await page.ready;
+            await page.restore.ready;
             const { BrowserEditor } = await import("../../editors/browser/BrowserEditor");
             const browser = page.mainEditorInstance;
             if (!(browser instanceof BrowserEditor)) throw new Error("The owned Run page is no longer a Browser page.");
@@ -253,7 +266,7 @@ export class BoardPageRouter implements PageOpenInterceptor {
             const activeTab = browserState.tabs.find((tab) => tab.id === browserState.activeTabId);
             if (activeTab && this.runUrlKey(activeTab.url) === this.runUrlKey(url)) browser.webview.hardReload();
             else browser.navigate(url);
-            page.setBoardRunOwner({ boardRoot: normalizedRoot, reuseKey: normalizedKey, url });
+            this.runPageOwners.set(page, { boardRoot: normalizedRoot, reuseKey: normalizedKey, url });
         }
         this.model.navigation.showPage(page.id);
     };

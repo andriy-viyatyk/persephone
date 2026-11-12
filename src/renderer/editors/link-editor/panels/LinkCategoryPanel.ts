@@ -120,7 +120,7 @@ export class LinkCategoryPanelView extends VanillaView<LinkCategoryPanelProps> {
         const editor = this.props.vm;
         if (item.isDirectory) {
             editor.setSelectedCategory(item.href);
-            if (!editor.isMain) editor.page?.promoteSecondaryToMain?.(editor);
+            if (!editor.isMain) editor.page?.promoteToMain?.(editor);
         } else {
             editor.openLinkFromPanel(item, "link-category");
         }

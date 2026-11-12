@@ -56,7 +56,7 @@ export class PageLoadingShellView extends VanillaView<PageLoadingShellViewProps>
         this.tile.append(this.closeButton.root, this.message, actions);
         this.root.append(this.tile);
         this.closeButton.mount();
-        this.releasePage = this.props.page.state.subscribe(() => this.refresh());
+        this.releasePage = this.props.page.restore.state.subscribe(() => this.refresh());
         this.own(this.releasePage);
         this.refresh();
     }
@@ -65,7 +65,7 @@ export class PageLoadingShellView extends VanillaView<PageLoadingShellViewProps>
         this.releasePage?.();
         this.releasePipe?.();
         this.boundPipe = null;
-        this.releasePage = props.page.state.subscribe(() => this.refresh());
+        this.releasePage = props.page.restore.state.subscribe(() => this.refresh());
         this.refresh();
     }
 
@@ -77,7 +77,7 @@ export class PageLoadingShellView extends VanillaView<PageLoadingShellViewProps>
     }
 
     private refresh(): void {
-        const state = this.props.page.state.get();
+        const state = this.props.page.restore.state.get();
         const editor = this.props.page.mainEditorInstance;
         const host = editor?.contentHost as unknown as { pipe?: IContentPipe } | null | undefined;
         const pipe = host?.pipe ?? editor?.pipe ?? null;
@@ -87,11 +87,11 @@ export class PageLoadingShellView extends VanillaView<PageLoadingShellViewProps>
             this.releasePipe = pipe?.onStatusChange(() => this.refresh()) ?? undefined;
         }
         if (!this.tile || !this.message || !this.retryButton) return;
-        const isError = state.restoreStatus === "error";
+        const isError = state.status === "error";
         this.root.dataset.state = isError ? "error" : "loading";
         this.root.setAttribute("aria-busy", String(!isError));
         this.message.textContent = isError
-            ? state.restoreError ?? t("menus.unableToLoadContentPeriod")
+            ? state.error ?? t("menus.unableToLoadContentPeriod")
             : t("common.loading");
         this.retryButton.hidden = !isError;
         if (this.actions) this.actions.hidden = !isError;

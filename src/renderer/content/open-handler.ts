@@ -67,7 +67,7 @@ export function registerOpenHandler(): void {
                     sessionHandle: data.sessionHandle,
                 });
                 if (page && (data.waitForPageReady || data.sourceId === "app-api")) {
-                    await page.ready;
+                    await page.restore.ready;
                 }
                 const title = data.title;
                 if (page && title) {

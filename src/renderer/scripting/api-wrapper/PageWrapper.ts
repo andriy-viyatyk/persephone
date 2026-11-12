@@ -201,7 +201,7 @@ export class PageWrapper implements IAiVisible {
     get hasEditor(): boolean { return !!this.model || !!this.mainEditor; }
 
     get id(): string { return this.page?.id ?? this.model?.id ?? ""; }
-    get ready(): Promise<void> { return this.pageModel?.ready ?? Promise.resolve(); }
+    get ready(): Promise<void> { return this.pageModel?.restore.ready ?? Promise.resolve(); }
     get title(): string { return this.model?.title ?? "Empty"; }
     get modified(): boolean { return this.model?.modified ?? false; }
     get pinned(): boolean { return this.page?.pinned ?? false; }

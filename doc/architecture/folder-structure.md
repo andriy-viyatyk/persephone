@@ -237,8 +237,12 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   └── tool-scaffold.ts    # createToolset(name, dir) — copy tool-template + patch manifest name (trust-free; NOT on app/scripts)
 │   │
 │   ├── pages/              # Page collection — composed submodels
-│   │   ├── PageModel.ts            # Tab container — sidebar, secondary views, mainEditor lifecycle
+│   │   ├── PageModel.ts            # Tab container — editor membership, sidebar and main editor; restore/recovery collaborators
 │   │   ├── IPageHost.ts            # IPageHost interface — editor↔owner contract (PageModel + BrowserPanelHost)
+│   │   ├── PageRestore.ts          # Deferred restore state, cancellation, readiness and typed retry
+│   │   ├── RecoveryPlaceholder.ts  # Failed-restore descriptor, retry/close coordination and cache protection
+│   │   ├── SecondaryViewsModel.ts  # Reactive sidebar layout state (open, width, activePanel)
+│   │   ├── panel-key.ts            # Composite panel-key helpers (`${editorId}::${panelId}`)
 │   │   ├── PagesModel.ts           # Base: state, subscriptions, composes submodels
 │   │   ├── PagesQueryModel.ts      # Queries: page lookup and normalized file identity
 │   │   ├── PagesNavigationModel.ts # Navigation: show, focus, next/prev
@@ -246,7 +250,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── standalone-pages.ts     # Fixed-ID page registry and custom page builders
 │   │   ├── PageNavigator.ts        # navigatePageTo — named steps, same-file reveal, existing page navigation
 │   │   ├── NavBackStack.ts         # Markdown back-nav stack owned by the page (persisted)
-│   │   ├── PagesLayoutModel.ts     # Layout: grouping (side-by-side)
+│   │   ├── PagesLayoutModel.ts     # Layout: grouping, pinning and compare-mode cleanup
 │   │   └── PagesPersistenceModel.ts # Persistence: save/restore, debounced
 │   │
 │   ├── internal/           # Event services (init-only, not public API)
@@ -427,11 +431,9 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   └── index.ts
 │   └── secondary-views/    # SecondaryViews — native controlled panel host
 │       ├── SecondaryViewsView.ts    # Native panel host; owns the header element (headerHost)
-│       ├── SecondaryViewsModel.ts   # Reactive state (open, width, activePanel)
 │       ├── LazySecondaryViewView.ts  # Native dynamic panel loader (vanilla arm)
 │       ├── SideBarPanelHeaderView.ts # React-free DOM header factory
 │       ├── SideBarPanelHeader.css   # Static panel-header styles
-│       ├── panel-key.ts             # Composite panel keys (`${editorId}::${panelId}`)
 │       └── secondary-view-registry.ts # Registry: panel ID → native view loader
 │
 ├── editors/                # Editor Implementations — each editor is an EditorModel subclass

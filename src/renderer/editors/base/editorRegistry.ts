@@ -272,9 +272,7 @@ class EditorRegistry {
         const editor = module.createEditor();
         // Modules construct with the default state's empty id — only a real
         // instance id may be stamped. An empty string must NOT clobber state:
-        // a falsy id breaks all id-based dedup downstream (panel keys,
-        // addSecondaryView), causing duplicate editors to accumulate
-        // This prevents the regression from recurring.
+        // downstream panel keys use editor ids as stable identity.
         if (instanceId) {
             editor.state.update((s) => { s.id = instanceId; });
         }

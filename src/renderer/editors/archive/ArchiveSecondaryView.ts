@@ -138,7 +138,7 @@ export default class ArchiveSecondaryView extends VanillaView<SecondaryViewProps
     private readonly onCloseClick = (event: MouseEvent): void => {
         event.stopPropagation();
         const archiveModel = this.archiveModel;
-        archiveModel?.page?.removeSecondaryView(archiveModel);
+        archiveModel?.page?.releaseEditor(archiveModel, { dispose: true });
     };
 
     private scheduleReveal(version: number): void {

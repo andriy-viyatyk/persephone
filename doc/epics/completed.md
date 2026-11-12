@@ -1,3 +1,17 @@
+## EPIC-152 — Refactoring Phase 5.2: the `PageModel` split
+
+Completed 2026-11-12. Roadmap Phase 5.2 (CORE-2 steps 1–5 and 7): `PageModel.ts` shrinks from 1,045 to 883 lines and
+keeps the tab container. Restore, recovery, board ownership and compare-mode rules each have one owner, and `api/pages`
+no longer imports `ui/` statically. The script API and persisted descriptors are unchanged. Plans by Codex, reviewed
+against the roadmap guardrails; Codex Luna implemented, with plan corrections recorded in the epic notes. Epic
+document: [EPIC-152](EPIC-152.md).
+
+- [x] **`PageRestore` and the open retry (US-1874).** `page.restore` owns the restore attempt, its status, a typed `retry` and persistent `afterReady` hooks for open hints; the `"retryRestore"`/`"applyOpenHints"` strings are gone; `retryPageRestore` → `retryOpen`.
+- [x] **`RecoveryPlaceholder` and the `isInert` guard (US-1875).** `page.recovery` owns the retained descriptor, cache protection, retry tracking and close authorisation; every outside guard is `page.isInert`; `retryRestore` → `recoverPage`.
+- [x] **Typed slots and typed members (US-1876).** The string-keyed page store is gone; the board Run owner lives in `BoardPageRouter`'s `WeakMap`; `lockedBoardRoot` is a typed field; `releaseEditor`, `promoteToMain`, `assignMain` and `attach` replace the `any` shims, and `IPageHost` has no `any`.
+- [x] **Compare-mode cleanup and the `ui/` imports (US-1877).** `PagesLayoutModel` exits compare mode on the page's `mainEditorChanged` event; the recovery close confirmation goes through `ui.confirm`; `SecondaryViewsModel` and `panel-key` moved to `api/pages/`.
+- [x] **Epic review.** `/review` found nothing; `/document` updated pages-architecture.md, key-files.md and four adjacent architecture docs; `/userdoc` needed no changes. No English catalog messages changed.
+
 ## EPIC-151 — Refactoring Phase 5.1: the `PagesLifecycleModel` split
 
 Completed 2026-11-12. Roadmap Phase 5.1 (CORE-1), the first item of Phase 5: `PagesLifecycleModel.ts` shrinks from

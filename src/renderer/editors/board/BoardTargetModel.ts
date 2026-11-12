@@ -1,7 +1,7 @@
 import type { IBrowserTarget, IInputPoint, ITargetTab } from "../../automation/types";
 import { CdpSession } from "../../automation/CdpSession";
 import { BOARD_CDP_TAB } from "../../../ipc/api-types";
-import { panelKey } from "../../ui/secondary-views/panel-key";
+import { panelKey } from "../../api/pages/panel-key";
 import { boardSecondaryPanelId, parseBoardSecondaryPanelId } from "./board-secondary";
 import type { BoardFrameRegistry } from "./model/BoardFrameRegistry";
 import type { BoardEditorModel } from "./BoardEditorModel";

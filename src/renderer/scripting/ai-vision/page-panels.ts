@@ -6,7 +6,7 @@ import { GitTreeEditorModel } from "../../editors/git-tree/GitTreeEditorModel";
 import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "./page-elements";
 import { ui } from "../../api/ui";
-import { isCompositePanelKey, panelKey } from "../../ui/secondary-views/panel-key";
+import { isCompositePanelKey, panelKey } from "../../api/pages/panel-key";
 import { secondaryViewRegistry } from "../../ui/secondary-views/secondary-view-registry";
 import type { IAiChild, IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import type { IPagePanel } from "../../api/types/page-panels";

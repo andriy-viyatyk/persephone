@@ -135,7 +135,7 @@ export async function openUrlInBrowserTab(
         const editor = page.mainEditorInstance;
         if (!(editor instanceof BrowserEditor)) return false;
         // A board's Run page shows that board's built app; other links never land in it.
-        if (page.getBoardRunOwner()) return false;
+        if (model.boardPageRouter.getRunPageOwner(page)) return false;
         const pageState = editor.state.get();
         if (options?.incognito) {
             // An agent never adds its tab to the user's private page (it could not see it anyway);

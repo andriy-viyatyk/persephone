@@ -2,9 +2,9 @@ import { TOneState } from "../../core/state/state";
 import type { EditorModel } from "../base";
 import type { IPageHost } from "../../api/pages/IPageHost";
 import type { IPageState } from "../../api/pages/PageModel";
-import { SecondaryViewsModel, ISecondaryViewsState } from "../../ui/secondary-views/SecondaryViewsModel";
+import { SecondaryViewsModel, ISecondaryViewsState } from "../../api/pages/SecondaryViewsModel";
 import { panelExpanded } from "../../core/state/events";
-import { panelKey, panelIdOf, isCompositePanelKey } from "../../ui/secondary-views/panel-key";
+import { panelKey, panelIdOf, isCompositePanelKey } from "../../api/pages/panel-key";
 import type { LinkEditor } from "../link-editor";
 import { DisposableStore } from "../../core/utils/DisposableStore";
 
@@ -15,7 +15,6 @@ const defaultPageState: IPageState = {
     version: 0,
     hasSidebar: false,
     navBackCount: 0,
-    restoreStatus: "ready",
 };
 
 /**
@@ -31,7 +30,7 @@ const defaultPageState: IPageState = {
  *    never toggles and is never persisted.
  *  - The embedded Link editor IS the host's main content — `mainEditorInstance`
  *    returns it, so `linkEditor.isMain === true` (Concern D). The main-editor
- *    SWAP members (`switchMainEditor` / `promoteSecondaryToMain`) are omitted —
+ *    SWAP members (`switchMainEditor` / `promoteToMain`) are omitted —
  *    there is no main-editor navigation in the browser.
  *  - No Explorer auto-init (PageModel's mandatory-sidebar Explorer seeding is
  *    Page-only — the bookmarks sidebar shows only the three Link panels).
@@ -54,7 +53,6 @@ export class BrowserPanelHost implements IPageHost {
     private readonly subscriptions = new DisposableStore();
     private _activePanel = "link-category";
     private _pendingWidth: number | undefined = undefined;
-    private _transient = new Map<string, unknown>();
 
     // ── Membership ────────────────────────────────────────────────────────
 
@@ -75,7 +73,7 @@ export class BrowserPanelHost implements IPageHost {
 
     /** No-op: the browser never removes the bookmarks panel editor (kept to
      *  satisfy `IPageHost`). */
-    async removeSecondaryView(): Promise<void> {}
+    async releaseEditor(_editor: EditorModel, _options: { dispose: boolean }): Promise<void> {}
 
     // ── Derived getters ─────────────────────────────────────────────────────
 
@@ -182,15 +180,6 @@ export class BrowserPanelHost implements IPageHost {
     async toggleNavigator(): Promise<void> {}
 
     // ── Transient store ───────────────────────────────────────────────────────
-
-    getTransient<T>(key: string): T | undefined {
-        return this._transient.get(key) as T | undefined;
-    }
-
-    setTransient(key: string, value: unknown): void {
-        if (value === undefined) this._transient.delete(key);
-        else this._transient.set(key, value);
-    }
 
     // ── Markdown back-navigation (inert — the browser has no main-editor nav) ──
 

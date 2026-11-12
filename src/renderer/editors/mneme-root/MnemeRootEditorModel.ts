@@ -190,7 +190,7 @@ export class MnemeRootEditorModel extends EditorModel<MnemeRootEditorState> {
 
     /** Manual close (the panel "x"): detach + dispose this editor only. */
     async requestClose(): Promise<void> {
-        await this.page?.removeSecondaryView(this);
+        await this.page?.releaseEditor(this, { dispose: true });
     }
 
     /** Seed rootFolder + provisional title from a decoded `mneme-folder://` link,

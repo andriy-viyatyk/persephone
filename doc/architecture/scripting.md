@@ -503,7 +503,8 @@ if (pipe) {
 ```
 
 `page.ready` resolves when the current restore attempt completes. Await it before reading content
-from an editor that defers restore on open; it rejects when restore fails or is cancelled.
+from an editor that defers restore on open; it rejects when restore fails or is cancelled. The
+script facade keeps this public name and forwards it to the page model's `restore.ready` promise.
 
 Provider registrations carry an origin. Factories registered by scripts are wrapped so the first
 descriptor construction checks the returned object for the required provider members and caches the
