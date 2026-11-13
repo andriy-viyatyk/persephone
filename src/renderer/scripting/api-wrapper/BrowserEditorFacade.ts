@@ -1,7 +1,7 @@
 import { settings } from "../../api/settings";
 import { withEditorGuideHelp } from "./editor-guide-help";
-import type { BrowserEditorModel } from "../../editors/browser/BrowserEditorModel";
-import type { BrowserAiVisionRegistration } from "../../editors/browser/BrowserEditor";
+import type { BrowserEditor } from "../../editors/browser/BrowserEditor";
+import { BrowserPageRemoteTimeoutError, type BrowserAiVisionRegistration } from "../../editors/browser/BrowserPageRemote";
 import {
     clickElement,
     checkElement,
@@ -42,8 +42,8 @@ import {
     waitForResponse as waitForResponseOperation,
 } from "../../automation/operations";
 import type { WaitMode } from "../../automation/operations";
-import { createRemoteProxy, STALE_REMOTE_SHAPE_MESSAGE, type IAiElementDeclaration, type IAiMember, type IAiNodeShape, type IAiRemoteRequest, type IAiRemoteResponse, type IAiVisible, type IAiVisionDescriptor, type IAiVisionShape } from "ai-vision";
-import type { IBrowserActionOptions, IBrowserClickOptions, IBrowserElementLocator, IBrowserHoverOptions, IBrowserKeyboardOptions, IBrowserNetworkRequest, IBrowserNetworkRequestsOptions, IBrowserResponse, IBrowserResponseWaitOptions, IBrowserScreenshot, IBrowserScreenshotOptions, IBrowserSelectOptions, IBrowserTab, IBrowserTypeOptions, IBrowserDialogPolicy, IBrowserConsoleLevel, IBrowserDragOptions, IBrowserFormField, IBrowserViewportOptions, IBrowserEvaluateOptions, IBrowserEvaluateFunction } from "../../api/types/browser-editor";
+import { createRemoteProxy, type IAiElementDeclaration, type IAiMember, type IAiNodeShape, type IAiVisible, type IAiVisionDescriptor, type IAiVisionShape } from "ai-vision";
+import type { IBrowserActionOptions, IBrowserClickOptions, IBrowserEditor, IBrowserElementLocator, IBrowserHoverOptions, IBrowserKeyboardOptions, IBrowserNetworkRequest, IBrowserNetworkRequestsOptions, IBrowserResponse, IBrowserResponseWaitOptions, IBrowserScreenshot, IBrowserScreenshotOptions, IBrowserSelectOptions, IBrowserTab, IBrowserTypeOptions, IBrowserDialogPolicy, IBrowserConsoleLevel, IBrowserDragOptions, IBrowserFormField, IBrowserViewportOptions, IBrowserEvaluateOptions, IBrowserEvaluateFunction } from "../../api/types/browser-editor";
 import { ui } from "../../api/ui";
 import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
@@ -51,7 +51,6 @@ import { BROWSER_AUTOMATION_MEMBERS } from "../ai-vision/browser-automation-memb
 import { appCallTimeout } from "../../api/ai-vision-call-timeout";
 import { isPositiveIntegerTimeout, resolveBoardCallTimeout } from "../../../shared/ai-vision-timeout";
 import type { IAiCallContext } from "../ai-vision/root";
-import { errMessage } from "../../../shared/utils";
 import type { NavigationWaitOptions, NavigationWaitResult } from "../../../ipc/browser-ipc";
 import { agentMayAccessBrowserPage, privateBrowserRefusal } from "../../editors/browser/agent-access";
 import { BrowserChannel } from "../../../ipc/browser-ipc";
@@ -195,30 +194,39 @@ for functions and function-expression strings; arrow strings are invoked. setVie
 clearViewport() are browser-only and emulate page metrics inside the existing webview box.`;
 
 /**
- * Safe facade around BrowserEditorModel for script access.
+ * Safe facade around BrowserEditor for script access.
  * Implements the IBrowserEditor interface from api/types/browser-editor.d.ts.
  *
  * - Direct model wrap (no ViewModel acquisition, no ref-counting)
  * - Exposes navigation, automation, and tab management methods
  * - All automation methods accept optional { tabId } to target specific tabs
  */
-export class BrowserEditorFacade implements IAiVisible {
+export class BrowserEditorFacade implements IAiVisible, IBrowserEditor {
     constructor(
-        private readonly model: BrowserEditorModel,
-        readonly id: string,
+        private readonly model: BrowserEditor,
+        readonly id: "browser-view",
         readonly name: string,
         private readonly callContext?: IAiCallContext,
     ) {}
 
+    private agentAccessRefusal(): string | undefined {
+        const state = this.model.state.get();
+        return agentMayAccessBrowserPage(state) ? undefined : privateBrowserRefusal(state);
+    }
+
+    private requireAgentAccess(): void {
+        const refusal = this.agentAccessRefusal();
+        if (refusal) throw new Error(refusal);
+    }
+
     private fullscreenKey(options?: { tabId?: string }): string {
         if (options !== undefined && (!options || typeof options !== "object" || Array.isArray(options)
             || (options.tabId !== undefined && typeof options.tabId !== "string"))) throw new Error("Invalid browser tab options");
+        this.requireAgentAccess();
         const state = this.model.state.get();
-        if (!agentMayAccessBrowserPage(state)) throw new Error(privateBrowserRefusal(state, "call"));
         const tabId = options?.tabId ?? state.activeTabId;
         if (!tabId || tabId !== state.activeTabId || !state.tabs.some(tab => tab.id === tabId)) throw new Error("Browser tab must be active and visible");
-        const webview = this.model.webview.webviewRefs.get(tabId);
-        if (!webview?.isConnected || !webview.getClientRects().length || !webview.offsetWidth || !webview.offsetHeight) {
+        if (!this.model.webview.isVisible(tabId)) {
             throw new Error("Browser tab is hidden or unavailable");
         }
         return `${this.model.id}/${tabId}`;
@@ -252,7 +260,7 @@ export class BrowserEditorFacade implements IAiVisible {
             beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
             highlightOptions: { all: true },
         });
-        const registration = this.model.getAiVisionRegistration();
+        const registration = this.model.pageRemote.getRegistration();
         const app = registration ? this.getAiVisionProxy(registration) : undefined;
         return {
             kind: "BrowserEditor",
@@ -289,162 +297,52 @@ export class BrowserEditorFacade implements IAiVisible {
     }
 
     private getAiVisionProxy(registration: BrowserAiVisionRegistration): IAiVisible {
-        const token = `${registration.internalTabId}:${registration.generation}:${registration.token}:${this.model.getAiVisionBindingVersion()}`;
+        const token = `${registration.internalTabId}:${registration.generation}:${registration.token}:${this.model.pageRemote.getBindingVersion()}`;
         if (this.aiVisionProxy?.token === token) return this.aiVisionProxy.value;
         const value = createRemoteProxy(
             labelPageShape(registration.shape),
-            (request) => this.sendAiVision(request, registration),
+            (request) => {
+                const timeout = resolveBoardCallTimeout(
+                    isPositiveIntegerTimeout(this.callContext?.timeoutMs) ? this.callContext.timeoutMs : undefined,
+                    isPositiveIntegerTimeout(request.timeoutMs) ? request.timeoutMs : undefined,
+                    appCallTimeout.explicit(),
+                );
+                const pageId = this.model.page?.id;
+                const path = request.path || "<root>";
+                const agentPath = pageId
+                    ? `pages[${JSON.stringify(pageId)}].editor.app.${path}`
+                    : `app.${path}`;
+                const timeoutError = new Error(
+                    `AiVision request timed out at level ${timeout.level} (${timeout.label}) for path ${JSON.stringify(agentPath)}.`,
+                );
+                return this.model.pageRemote.request(registration, request, timeout.ms).catch((error: unknown) => {
+                    if (error instanceof BrowserPageRemoteTimeoutError) throw timeoutError;
+                    throw error;
+                });
+            },
             {
                 originNote: PAGE_ORIGIN_NOTE,
-                revalidate: () => this.revalidateAiVision(registration),
+                revalidate: () => this.model.pageRemote.revalidate(registration),
             },
         );
         this.aiVisionProxy = { token, value };
         return value;
     }
 
-    private async sendAiVision(
-        request: IAiRemoteRequest,
-        registration: BrowserAiVisionRegistration,
-    ): Promise<IAiRemoteResponse> {
-        const state = this.model.state.get();
-        if (!agentMayAccessBrowserPage(state)) {
-            return { ok: false, error: privateBrowserRefusal(state, "call") };
-        }
-        const activeTabId = state.activeTabId;
-        const current = this.model.getAiVisionRegistration(registration.internalTabId);
-        if (activeTabId !== registration.internalTabId
-            || current?.generation !== registration.generation
-            || current?.token !== registration.token) {
-            return { ok: false, error: this.aiVisionDocumentRefusal() };
-        }
-        const timeout = resolveBoardCallTimeout(
-            isPositiveIntegerTimeout(this.callContext?.timeoutMs) ? this.callContext?.timeoutMs : undefined,
-            isPositiveIntegerTimeout(request.timeoutMs) ? request.timeoutMs : undefined,
-            appCallTimeout.explicit(),
-        );
-        const pageId = this.model.page?.id;
-        const path = request.path || "<root>";
-        const agentPath = pageId
-            ? `pages[${JSON.stringify(pageId)}].editor.app.${path}`
-            : `app.${path}`;
-        const timeoutError = new Error(
-            `AiVision request timed out at level ${timeout.level} (${timeout.label}) for path ${JSON.stringify(agentPath)}.`,
-        );
-        const missingRemoteError = JSON.stringify(this.aiVisionMissingRefusal());
-        const webMcp = isWebMcpRequest(request, registration);
-        const routedRequest = webMcp && registration.siteShape && registration.webMcpNamespace
-            ? { ...request, path: request.path.slice(registration.webMcpNamespace.length).replace(/^\./, "") }
-            : request;
-        const remoteExpression = webMcp
-            ? "window.__persephoneWebMcpRemote"
-            : "window.__aiVision";
-        const expression = `(() => {
-    const remote = ${remoteExpression};
-    if (!remote) return { ok: false, error: ${missingRemoteError} };
-    return remote.handle(JSON.parse(${JSON.stringify(JSON.stringify(routedRequest))}));
-})()`;
-        let timer: ReturnType<typeof setTimeout> | undefined;
-        try {
-            const response = await Promise.race([
-                (async () => {
-                    await ensureTargetReady(this.model.target, registration.internalTabId);
-                    return evaluateInTarget(this.model.target, expression, registration.internalTabId) as Promise<IAiRemoteResponse>;
-                })(),
-                new Promise<never>((_, reject) => {
-                    timer = setTimeout(() => reject(timeoutError), timeout.ms);
-                }),
-            ]);
-            return isAiVisionResponse(response)
-                ? response
-                : { ok: false, error: "The page returned an invalid AiVision response." };
-        } catch (error) {
-            if (error === timeoutError) throw timeoutError;
-            return { ok: false, error: errMessage(error, "The browser page AiVision call failed.") };
-        } finally {
-            if (timer !== undefined) clearTimeout(timer);
-        }
-    }
-
-    // This deliberate extra Runtime.evaluate is one CDP round trip on every remote request.
-    // A bounded staleness window was considered and rejected because correctness must not depend
-    // on a signal arriving; the binding is only an optimization on top of this source-of-truth check.
-    private async revalidateAiVision(
-        registration: BrowserAiVisionRegistration,
-    ): Promise<boolean | string | undefined> {
-        const state = this.model.state.get();
-        if (!agentMayAccessBrowserPage(state)) return privateBrowserRefusal(state, "call");
-        const current = this.model.getAiVisionRegistration(registration.internalTabId);
-        if (state.activeTabId !== registration.internalTabId
-            || current?.generation !== registration.generation
-            || current?.token !== registration.token) {
-            return this.aiVisionDocumentRefusal();
-        }
-
-        const expression = `(() => {
-    const site = window.__aiVision;
-    const webmcp = window.__persephoneWebMcpRemote;
-    return {
-        site: site ? { present: true, version: site.version } : null,
-        webmcp: webmcp ? { present: true, version: webmcp.version } : null,
-    };
-})()`;
-        try {
-            await ensureTargetReady(this.model.target, registration.internalTabId);
-            const result = await evaluateInTarget(this.model.target, expression, registration.internalTabId);
-            if (!isAiVisionVersionsResult(result)) return this.aiVisionUnavailableRefusal();
-            const versionMatches = (expected: number | undefined, actual: number | undefined): boolean =>
-                expected === undefined && actual === undefined
-                || expected !== undefined && actual !== undefined && expected === actual;
-            const currentSiteVersion = result.site?.version;
-            const currentWebMcpVersion = result.webmcp?.version;
-            if (!versionMatches(registration.siteVersion, currentSiteVersion)
-                || !versionMatches(registration.webMcpVersion, currentWebMcpVersion)) {
-                this.model.webview.reprobeAiVision(
-                    registration.internalTabId,
-                    registration.generation,
-                    registration.token,
-                );
-                return this.aiVisionChangedRefusal();
-            }
-            return undefined;
-        } catch (error) {
-            console.warn(`[browser] AiVision version revalidation failed: ${errMessage(error)}`);
-            return this.aiVisionUnavailableRefusal();
-        }
-    }
-
-    private aiVisionPath(): string | undefined {
-        const pageId = this.model.page?.id;
-        return pageId ? `pages[${JSON.stringify(pageId)}].editor.app` : undefined;
-    }
-
     private aiVisionDocumentRefusal(): string {
-        const path = this.aiVisionPath();
-        return path
-            ? `The browser page's AiVision document is no longer active; read ${path} again.`
-            : STALE_REMOTE_SHAPE_MESSAGE;
+        return this.model.pageRemote.aiVisionDocumentRefusal();
     }
 
     private aiVisionChangedRefusal(): string {
-        const path = this.aiVisionPath();
-        return path
-            ? `The browser page's AiVision model changed; read ${path} again to pick up the new one.`
-            : STALE_REMOTE_SHAPE_MESSAGE;
+        return this.model.pageRemote.aiVisionChangedRefusal();
     }
 
     private aiVisionMissingRefusal(): string {
-        const path = this.aiVisionPath();
-        return path
-            ? `The browser page no longer exposes an AiVision model; read ${path} again.`
-            : STALE_REMOTE_SHAPE_MESSAGE;
+        return this.model.pageRemote.aiVisionMissingRefusal();
     }
 
     private aiVisionUnavailableRefusal(): string {
-        const path = this.aiVisionPath();
-        return path
-            ? `The browser page's AiVision document is unavailable; read ${path} again.`
-            : STALE_REMOTE_SHAPE_MESSAGE;
+        return this.model.pageRemote.aiVisionUnavailableRefusal();
     }
 
     /**
@@ -562,13 +460,13 @@ export class BrowserEditorFacade implements IAiVisible {
     /** Close a tab. Defaults to active tab. */
     closeTab(tabId?: string): "Tab closed" {
         const id = tabId || this.model.state.get().activeTabId;
-        this.model.closeTab(id);
+        this.model.tabs.closeTab(id);
         return "Tab closed";
     }
 
     /** Switch to a tab. */
     switchTab(tabId: string): void {
-        this.model.switchTab(tabId);
+        this.model.tabs.switchTab(tabId);
     }
 
     // =====================================================================
@@ -761,56 +659,42 @@ export class BrowserEditorFacade implements IAiVisible {
     }
 
     get siteActions() {
-        const state = this.model.state.get();
-        if (!agentMayAccessBrowserPage(state)) throw new Error(privateBrowserRefusal(state, "call"));
-        return this.model.siteActions;
+        this.requireAgentAccess();
+        return this.model.siteExtensions.actions();
     }
 
     async runSiteAction(id: string) {
-        const state = this.model.state.get();
-        if (!agentMayAccessBrowserPage(state)) throw new Error(privateBrowserRefusal(state, "call"));
-        return this.model.runSiteAction(id);
+        this.requireAgentAccess();
+        return this.model.siteExtensions.runAction(id);
     }
 
     async chooseSiteActionResult(token: string, index: number) {
-        const state = this.model.state.get();
-        if (!agentMayAccessBrowserPage(state)) throw new Error(privateBrowserRefusal(state, "call"));
-        return this.model.chooseSiteActionResult(token, index);
+        this.requireAgentAccess();
+        return this.model.siteExtensions.chooseResult(token, index);
     }
 
     get siteExtensionTrustPrompt() {
-        const state = this.model.state.get();
-        if (!agentMayAccessBrowserPage(state)) throw new Error(privateBrowserRefusal(state, "call"));
-        const prompt = this.activeSiteExtensionPrompt();
+        this.requireAgentAccess();
+        const prompt = this.model.siteExtensions.agentPrompt();
         return prompt ? {
-            status: "waiting-for-user" as const, name: prompt.name, id: prompt.id, host: prompt.host,
-            otherHosts: prompt.hosts.filter(host => host !== prompt.host), fetchHosts: [...prompt.fetchHosts],
+            ...prompt,
             note: "Call trustSiteExtension() for an extension you built on the user's request. Any other extension is the user's decision in the bar above the page, unless they ask you to review and trust it.",
         } : undefined;
     }
 
-    /** The trust bar for the active tab's current document, if one is showing. */
-    private activeSiteExtensionPrompt() {
-        const state = this.model.state.get();
-        return state.siteExtensionTrustPrompts.find((item) => item.internalTabId === state.activeTabId
-            && item.documentId === this.model.webview.siteDocumentId(item.internalTabId));
-    }
-
     async trustSiteExtension(): Promise<{ status: "trusted" | "changed" | "unavailable" | "not-current" | "no-prompt"; id?: string; hosts?: string[]; fetchHosts?: string[] }> {
-        const state = this.model.state.get();
-        if (!agentMayAccessBrowserPage(state)) throw new Error(privateBrowserRefusal(state, "call"));
-        const prompt = this.activeSiteExtensionPrompt();
+        this.requireAgentAccess();
+        const prompt = this.model.siteExtensions.activePrompt();
         if (!prompt) return { status: "no-prompt" };
-        const status = await this.model.webview.trustSiteExtensionPrompt(prompt.internalTabId, prompt.documentId);
+        const status = await this.model.siteExtensions.trustPrompt(prompt.internalTabId, prompt.documentId);
         return status === "trusted" ? { status, id: prompt.id, hosts: [...prompt.hosts], fetchHosts: [...prompt.fetchHosts] } : { status };
     }
 
     dismissSiteExtensionTrustPrompt(): { status: "dismissed" | "no-prompt" } {
-        const state = this.model.state.get();
-        if (!agentMayAccessBrowserPage(state)) throw new Error(privateBrowserRefusal(state, "call"));
-        const prompt = this.activeSiteExtensionPrompt();
+        this.requireAgentAccess();
+        const prompt = this.model.siteExtensions.activePrompt();
         if (!prompt) return { status: "no-prompt" };
-        this.model.webview.dismissSiteExtensionTrustPrompt(prompt.internalTabId, prompt.documentId);
+        this.model.siteExtensions.dismissPrompt(prompt.internalTabId, prompt.documentId);
         return { status: "dismissed" };
     }
 
@@ -945,7 +829,7 @@ installAutomationActivity(BrowserEditorFacade.prototype, [
     "getHtml", "exists", "click", "hover", "type", "select", "screenshot", "networkRequests", "dialogs",
     "handleDialog", "consoleMessages", "pageErrors", "check", "uncheck", "clear", "drag", "fillForm", "setInputFiles", "setViewport", "clearViewport", "waitForSelector", "waitFor",
     "waitForNavigation", "waitForURL", "waitForResponse", "navigateAndWait", "wait", "pressKey", "keyDown", "keyUp",
-], instance => (instance as unknown as { model: BrowserEditorModel }).model.target);
+], instance => (instance as unknown as { model: BrowserEditor }).model.target);
 
 function labelPageShape(shape: IAiVisionShape): IAiVisionShape {
     const labelNode = (node: IAiNodeShape, root: boolean): IAiNodeShape => ({
@@ -960,33 +844,4 @@ function labelPageShape(shape: IAiVisionShape): IAiVisionShape {
         ...(node.item ? { item: labelNode(node.item, false) } : {}),
     });
     return { ...shape, root: labelNode(shape.root, true) };
-}
-
-function isAiVisionResponse(value: unknown): value is IAiRemoteResponse {
-    if (!value || typeof value !== "object") return false;
-    const response = value as { ok?: unknown; error?: unknown };
-    if (response.ok === true) return true;
-    return response.ok === false && typeof response.error === "string";
-}
-
-function isAiVisionVersionsResult(value: unknown): value is {
-    site: { present: true; version?: number } | null;
-    webmcp: { present: true; version?: number } | null;
-} {
-    if (!value || typeof value !== "object") return false;
-    const result = value as { site?: unknown; webmcp?: unknown };
-    const valid = (entry: unknown): boolean => entry === null
-        || (!!entry && typeof entry === "object"
-            && (entry as { present?: unknown }).present === true
-            && ((entry as { version?: unknown }).version === undefined
-                || (typeof (entry as { version?: unknown }).version === "number"
-                    && Number.isFinite((entry as { version: number }).version))));
-    return valid(result.site) && valid(result.webmcp);
-}
-
-function isWebMcpRequest(request: Pick<IAiRemoteRequest, "path">, registration: BrowserAiVisionRegistration): boolean {
-    if (!registration.webMcpShape) return false;
-    if (!registration.siteShape) return true;
-    const namespace = registration.webMcpNamespace;
-    return !!namespace && (request.path === namespace || request.path.startsWith(`${namespace}.`));
 }

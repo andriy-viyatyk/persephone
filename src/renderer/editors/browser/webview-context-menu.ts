@@ -8,13 +8,13 @@ import type { MenuItem } from "../../uikit/Menu";
 import { toClipboard, withTimeout } from "../../core/utils/utils";
 import { guard } from "../../core/utils/guard";
 import { t, untranslated } from "../../../shared/i18n/t";
-import type { BrowserEditorModel } from "./BrowserEditorModel";
+import type { BrowserEditor } from "./BrowserEditor";
 
 const SVG_PROBE_TIMEOUT = 250;
 const LINK_PROBE_TIMEOUT = 1000;
 
 export interface BrowserContextMenuInput {
-    model: BrowserEditorModel;
+    model: BrowserEditor;
     webview: Electron.WebviewTag;
     internalTabId: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -90,7 +90,7 @@ export async function showBrowserContextMenu({
                 label: t("browser.toolbarOpenLinkNewTab"),
                 onClick: () => {
                     const parentTab = model.state.get().tabs.find((t) => t.id === internalTabId);
-                    model.addTab(linkURL, parentTab?.groupId);
+                    model.tabs.addTab(linkURL, parentTab?.groupId);
                 },
             });
             items.push({

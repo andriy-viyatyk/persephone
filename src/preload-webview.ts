@@ -12,6 +12,7 @@
 
 import { installPageTranslationAgent } from "./preload-webview/page-translation-agent";
 import { exitCinemaFromEscape, installCinemaMode } from "./preload-webview/cinema-mode";
+import { WEBMCP_REMOTE_HOST_KEY } from "./shared/browser-page-globals";
 const { ipcRenderer, contextBridge } = require("electron");
 installPageTranslationAgent();
 installCinemaMode();
@@ -75,7 +76,7 @@ try {
 if (webMcpEnabled) {
     try {
         contextBridge.executeInMainWorld({
-            func: () => {
+            func: (hostKey: string) => {
                 if (!window.isSecureContext) return;
 
                 const documentWithContext = document as Document & { modelContext?: WebMcpContext };
@@ -93,7 +94,6 @@ if (webMcpEnabled) {
                     executeTool(tool: WebMcpTool, input?: Record<string, unknown>, options?: { signal?: AbortSignal }): Promise<string | null>;
                 };
 
-                const hostKey = "__persephoneWebMcpRemote";
                 const hostWindow = window as unknown as Record<string, unknown>;
                 if (hostWindow[hostKey]) return;
 
@@ -174,7 +174,7 @@ if (webMcpEnabled) {
                                         kind: "WebMCP",
                                         toolCount: orderedTools.length,
                                         tools: (members || []).map((member) => member.name),
-                                    },
+        },
                                 };
                             }
                             if (request.action === "ai:children") return { ok: true, result: [] };
@@ -260,6 +260,7 @@ if (webMcpEnabled) {
                     });
                 }
             },
+            args: [WEBMCP_REMOTE_HOST_KEY],
         });
     } catch {
         // Guest support is optional on Electron versions without executeInMainWorld.

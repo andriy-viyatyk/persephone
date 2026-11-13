@@ -503,6 +503,19 @@ Phase 6 items can run in parallel with Phases 4–5 once their own dependencies 
 | 6.8 | **Shell and scripting:** a `PageTabState` projection on the page model, `EditorModel.displayTitle` and `IAudibleEditor`; a board identity service; `MainPageView` reduced to layout; a `MenuBarView` folder-UI table; `ScriptLibrary` + a script engine with one `SCRIPT_GLOBALS` list | SHL-4, 6, 7, 8, 11, 13 |
 | 6.9 | **Main, other:** a `McpSessionHost` shared by both MCP servers and one routed-fetch protocol handler; split `video-stream-server` and `clipboard-service` when they are next touched | MAIN-10, MAIN-14 |
 
+**6.1 is split into three epics.** Part 1 is done ([EPIC-158](epics/EPIC-158.md), 2026-11-13): module shape (BRW-12),
+the shared small rules (BRW-11), `BrowserSiteExtensionController`, `BrowserPageRemote`, `BrowserFindModel`, the page
+menu, one shortcut table, a private webview registry (BRW-1, BRW-2) and one translation owner (BRW-7). Remaining:
+
+- **6.1 part 2 (renderer, next):** tab state without mirrors and navigation as an explicit command (BRW-4); split
+  `BrowserView.ts`, add `BrowserSitePermissionsModel`, move favicon handling and guest registration out of the view, one
+  permission-labels table, named toolbar controls (BRW-5; the site-action button and translation popover content already
+  have their own files); the typed `GuestMessage` protocol, `BrowserGuestChannel`, removal of the dead title/favicon/find
+  events and the preload split (BRW-6); `BrowserBookmarksModel` + `resolveBrowserProfile` with the Tor bookmark fix
+  (BRW-9); `BrowserEditor.createNew` with disposal on refusal (BRW-10).
+- **6.1 part 3 (main):** `BrowserGuest` + `BrowserGuestRegistry`, `HostFullscreenController`, `browser-dom-snapshot.ts`,
+  `CdpTarget` with feature modules and one `resolveTarget` (MAIN-7).
+
 ### Phase 7: Lock it in
 
 - Turn the import-zone lint warnings into errors and rewrite `overview.md`'s dependency rules to match.

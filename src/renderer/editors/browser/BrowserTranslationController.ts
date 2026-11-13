@@ -6,6 +6,7 @@ import { ui } from "../../api/ui";
 import { TOneState } from "../../core/state/state";
 import { getTextTranslationProvider, type TranslationDetection, type TranslationOperation } from "../../ui/translation/TextTranslationProvider";
 import { downloadTranslationRoute, findTranslationRoute, languageDisplayName, resolveAppLocaleTarget, resolveModelLanguage } from "../../ui/translation/TranslationWorkflow";
+import { BrowserPageTranslationController, type BrowserPageTranslationState } from "./BrowserPageTranslationController";
 
 // Browser detection bounds: the provider caps a detection sample at 4,096 code points.
 // Detection runs on whatever rendered text the page has, up to the provider limit; short samples report low confidence.
@@ -23,8 +24,14 @@ export interface BrowserTranslationTabState {
 }
 
 const INITIAL_TAB_STATE: BrowserTranslationTabState = { available: false, active: false, from: "", to: "", candidates: [] };
+const INITIAL_PAGE_STATE: BrowserPageTranslationState = { active: false, from: "", to: "", pendingCount: 0, doneCount: 0, failedCount: 0 };
 
-/** Owns toolbar translation workflow; page writes and restoration remain in `BrowserEditorModel`. */
+export interface BrowserTranslationTabView {
+    state: BrowserTranslationTabState;
+    page: BrowserPageTranslationState;
+}
+
+/** Owns browser translation workflow, per-tab page pumps, lifecycle, and view projection. */
 export class BrowserTranslationController {
     readonly state = new TOneState<Record<string, BrowserTranslationTabState>>({});
     private readonly provider = getTextTranslationProvider();
@@ -34,14 +41,40 @@ export class BrowserTranslationController {
     private readonly generations = new Map<string, number>();
     private readonly operations = new Map<string, TranslationOperation<unknown>>();
     private readonly scopes = new Map<string, string>();
+    private readonly pageControllers = new Map<string, BrowserPageTranslationController>();
+    private readonly tabViewSubscriptions = new Map<string, Set<() => void>>();
 
     public constructor(editor: import("./BrowserEditor").BrowserEditor) {
         this.editor = editor;
         void this.refreshAvailability();
     }
 
-    public getTabState(tabId: string): BrowserTranslationTabState {
+    private getTabState(tabId: string): BrowserTranslationTabState {
         return this.state.get()[tabId] ?? { ...INITIAL_TAB_STATE, available: !!this.providerId };
+    }
+
+    public tabView(tabId: string): BrowserTranslationTabView {
+        return { state: this.getTabState(tabId), page: this.pageControllers.get(tabId)?.state ?? INITIAL_PAGE_STATE };
+    }
+
+    public subscribeTabView(tabId: string, listener: () => void): () => void {
+        const controller = this.pageController(tabId);
+        let active = true;
+        const notify = (): void => { if (active) listener(); };
+        const unsubscribeState = this.state.subscribe(notify);
+        const unsubscribePage = controller.subscribe(notify);
+        const subscriptions = this.tabViewSubscriptions.get(tabId) ?? new Set<() => void>();
+        const dispose = (): void => {
+            if (!active) return;
+            active = false;
+            unsubscribeState();
+            unsubscribePage();
+            subscriptions.delete(dispose);
+            if (!subscriptions.size) this.tabViewSubscriptions.delete(tabId);
+        };
+        subscriptions.add(dispose);
+        this.tabViewSubscriptions.set(tabId, subscriptions);
+        return dispose;
     }
 
     public refreshAvailability = async (): Promise<void> => {
@@ -72,7 +105,7 @@ export class BrowserTranslationController {
     };
 
     public correctSource = async (tabId: string, from: string): Promise<void> => {
-        if (this.getTabState(tabId).active) await this.editor.webview.stopPageTranslation(tabId);
+        if (this.getTabState(tabId).active) await this.pageController(tabId).stop();
         this.updateTab(tabId, { from, error: undefined });
         await this.activate(tabId, from);
     };
@@ -83,8 +116,34 @@ export class BrowserTranslationController {
         this.updateTab(tabId, { ...INITIAL_TAB_STATE, available: !!this.providerId });
     };
 
+    public onNavigation = (tabId: string): void => {
+        void this.pageControllers.get(tabId)?.stop(true);
+        this.onPageNavigation(tabId);
+    };
+
+    public onReloadStart = (tabId: string): void => {
+        void this.pageControllers.get(tabId)?.stop();
+        this.onPageNavigation(tabId);
+    };
+
+    public onTabReleased = (tabId: string): void => {
+        const controller = this.pageControllers.get(tabId);
+        if (controller) void controller.stop(true);
+        for (const dispose of [...(this.tabViewSubscriptions.get(tabId) ?? [])]) dispose();
+        this.pageControllers.delete(tabId);
+    };
+
+    public handleFrame = (tabId: string, frameId: [number, number], kind: "translation-ready" | "translation-units", payload: unknown): void => {
+        this.pageController(tabId).handleFrame(frameId, kind, payload);
+    };
+
     public dispose(): void {
         for (const tabId of this.scopes.keys()) this.invalidate(tabId);
+        for (const controller of this.pageControllers.values()) controller.dispose();
+        this.pageControllers.clear();
+        for (const subscriptions of [...this.tabViewSubscriptions.values()]) {
+            for (const dispose of [...subscriptions]) dispose();
+        }
     }
 
     private async activate(tabId: string, correctedFrom?: string): Promise<void> {
@@ -153,15 +212,15 @@ export class BrowserTranslationController {
                 }
             }
 
-            await this.editor.webview.startPageTranslation(from, to, tabId);
-            if (!this.isCurrent(tabId, generation)) { await this.editor.webview.stopPageTranslation(tabId); return; }
+            await this.pageController(tabId).start(from, to);
+            if (!this.isCurrent(tabId, generation)) { await this.pageController(tabId).stop(); return; }
             this.updateTab(tabId, { active: true, from, to, candidates, available: true, error: undefined, progress: undefined });
         } catch (error: unknown) {
             if (!this.isCurrent(tabId, generation)) return;
             const message = errMessage(error);
             this.updateTab(tabId, { active: false, error: message, progress: undefined });
             void ui.notify(t("translation.operationFailed", { message }), "error");
-            await this.editor.webview.stopPageTranslation(tabId);
+            await this.pageController(tabId).stop();
             await this.refreshAvailability();
         } finally {
             this.operations.delete(tabId);
@@ -170,8 +229,17 @@ export class BrowserTranslationController {
 
     private async stop(tabId: string): Promise<void> {
         this.invalidate(tabId);
-        await this.editor.webview.stopPageTranslation(tabId);
+        await this.pageController(tabId).stop();
         this.updateTab(tabId, { active: false, error: undefined });
+    }
+
+    private pageController(tabId: string): BrowserPageTranslationController {
+        let controller = this.pageControllers.get(tabId);
+        if (!controller) {
+            controller = new BrowserPageTranslationController(tabId, () => this.editor.webview.get(tabId));
+            this.pageControllers.set(tabId, controller);
+        }
+        return controller;
     }
 
     private invalidate(tabId: string): void {
@@ -204,7 +272,7 @@ export class BrowserTranslationController {
     }
 
     private async readDetectionSample(tabId: string): Promise<{ lang: string; text: string }> {
-        const webview = this.editor.webview.webviewRefs.get(tabId);
+        const webview = this.editor.webview.get(tabId);
         if (!webview) return { lang: "", text: "" };
         try {
             const value = await webview.executeJavaScript(`({ lang: document.documentElement?.getAttribute("lang") || "", text: (document.body?.innerText || "").slice(0, ${MAX_DETECTION_SAMPLE_CODE_POINTS * 2}) })`) as { lang?: unknown; text?: unknown };

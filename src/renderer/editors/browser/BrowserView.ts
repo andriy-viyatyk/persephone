@@ -1,13 +1,13 @@
-import { PAGE_ZOOM_MIN, PAGE_ZOOM_MAX, PAGE_ZOOM_STEP } from "../../../shared/browser-zoom";
+import { PAGE_ZOOM_DEFAULT, PAGE_ZOOM_MIN, PAGE_ZOOM_MAX, PAGE_ZOOM_STEP, clampPageZoom } from "../../../shared/browser-zoom";
 const { ipcRenderer } = require("electron");
 import { EditorToolbarView } from "../base/EditorToolbarView";
-import { BrowserEditor } from "./BrowserEditor";
+import type { BrowserEditor } from "./BrowserEditor";
 import { capabilities } from "../../api/capabilities/CapabilitiesClient";
 import { ui } from "../../api/ui";
 import { certificatesToPem } from "../../api/certificate-view";
 import { errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
-import type { BrowserEditorState, BrowserTabData } from "./BrowserEditorModel";
+import type { BrowserEditorState, BrowserTabData } from "./browser-state";
 import { BrowserChannel, type BrowserRegisterRequest, type BrowserSitePermissionEntry, type BrowserSitePermissionKey, type BrowserSitePermissions } from "../../../ipc/browser-ipc";
 import { PageManagerView } from "../../components/page-manager/PageManagerView";
 import type { PageSlotViewProps } from "../../components/page-manager/PageSlot";
@@ -23,10 +23,6 @@ import { ButtonView } from "../../uikit/Button/ButtonView";
 import { SliderView } from "../../uikit/Slider/SliderView";
 import { SwitchView } from "../../uikit/Switch/SwitchView";
 import { PopoverView } from "../../uikit/Popover/PopoverView";
-import { SelectView } from "../../uikit/Select/SelectView";
-import type { SelectViewProps } from "../../uikit/Select/SelectView";
-import type { IListBoxItem } from "../../uikit/ListBox/types";
-import { languageDisplayName } from "../../ui/translation/TranslationWorkflow";
 import { SpinnerView } from "../../uikit/Spinner/SpinnerView";
 import { DotView } from "../../uikit/Dot/DotView";
 import { TagView } from "../../uikit/Tag/TagView";
@@ -35,10 +31,6 @@ import { SplitterView } from "../../uikit/Splitter/SplitterView";
 import { openMenu, type MenuHandle } from "../../uikit/Menu/attach-menu";
 import { IncognitoIcon, TorIcon } from "../../theme/language-icons";
 import color from "../../theme/color";
-import { getIcon } from "../../theme/icon-registry";
-import { showAppPopupMenu, closeAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
-import type { SiteActionItem } from "../../../shared/site-extension-actions";
-import type { MenuItem } from "../../uikit/Menu";
 import { dismissOverlays } from "../../uikit/shared/overlayLayer";
 import { BrowserTabsPanelView } from "./BrowserTabsPanel";
 import { BookmarksDrawerView, type BookmarksDrawerProps } from "./BookmarksDrawer";
@@ -46,10 +38,15 @@ import { TorStatusOverlayView } from "./TorStatusOverlay";
 import { UrlSuggestionsDropdownView } from "./UrlSuggestionsDropdown";
 import { DownloadButtonView } from "./DownloadButton";
 import { BrowserSecondaryViewsView } from "./BrowserSecondaryViews";
+import { BrowserSiteActionsView } from "./BrowserSiteActionsView";
+import { BrowserTranslationPopoverContentView } from "./BrowserTranslationPopoverContentView";
+import { isPrivateBrowserSession } from "./agent-access";
 import { BrowserBookmarks } from "./BrowserBookmarks";
 import { LinkActionView, LinkBreadcrumbView } from "../link-editor";
 import { LinkBodyView } from "../link-editor/LinkBody";
 import { FindBarView } from "../shared/FindBarView";
+import { getPageMenuItems } from "./browser-page-menu";
+import type { BrowserFindState } from "./BrowserFindModel";
 import { focusAfterPaint } from "../../core/utils/scheduling";
 import "./BrowserView.css";
 import "../../uikit/Panel/Panel.css";
@@ -83,7 +80,6 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
     private readonly webview: Electron.WebviewTag;
     private registered = false;
     private readonly initialUrl: string;
-    private wasCurrentWebview = false;
     private htmlFullscreen = false;
 
     public constructor(props: BrowserWebviewItemProps) {
@@ -104,7 +100,7 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
     }
 
     protected onMount(): void {
-        const existing = this.model.webview.webviewRefs.get(this.tabId);
+        const existing = this.model.webview.get(this.tabId);
         if (existing && existing !== this.webview && existing.isConnected) {
             // Preserve the duplicate-connected-webview warning verbatim in meaning.
             console.warn(
@@ -112,21 +108,11 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
                     + "previous webview is still connected (US-806)",
             );
         }
-        this.model.webview.webviewRefs.set(this.tabId, this.webview);
-        // Delete only our OWN entry. The earlier implementation deleted unconditionally, but its
-        // duplicate-mount warning above exists precisely because "a new view mounted before
-        // the old one unmounted" has been observed for this tab key; the trigger is unknown.
-        // In that ordering an unconditional delete removes the *live* webview from the map, so
-        // `webviewRefs.get(tabId)` reports nothing for a tab that has one — and the tab then
-        // silently stops responding to navigation while its guest renderer stays alive. This is
-        // the same class as the board bridge regression: on a shared key, the
-        // entry you did not put there belongs to somebody else. Identical in the normal path.
+        this.model.webview.attach(this.tabId, this.webview);
         this.own(() => {
-            this.wasCurrentWebview = this.model.webview.webviewRefs.get(this.tabId) === this.webview;
-            if (this.wasCurrentWebview) {
-                this.model.webview.webviewRefs.delete(this.tabId);
-                this.model.webview.clearAiVisionSiteExtension(this.tabId);
-                this.model.webview.endPageTranslation(this.tabId);
+            if (this.model.webview.detach(this.tabId, this.webview) && this.registered) {
+                ipcRenderer.send(BrowserChannel.unregister, `${this.model.id}/${this.tabId}`);
+                this.registered = false;
             }
         });
 
@@ -139,14 +125,14 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
         this.listenNative("focus", onFocus);
 
         const onDomReady = (): void => {
-            if (this.model.webview.webviewRefs.get(this.tabId) !== this.webview) return;
+            if (this.model.webview.get(this.tabId) !== this.webview) return;
             const currentUrl = this.webview.getURL();
             if (currentUrl && currentUrl !== "about:blank") this.model.tabs.currentUrls.set(this.tabId, currentUrl);
             const request: BrowserRegisterRequest = {
                 tabId: this.model.id,
                 internalTabId: this.tabId,
                 webContentsId: this.webview.getWebContentsId(),
-                zoomPercent: this.model.state.get().tabs.find((tab) => tab.id === this.tabId)?.zoomPercent ?? 100,
+                zoomPercent: this.model.state.get().tabs.find((tab) => tab.id === this.tabId)?.zoomPercent ?? PAGE_ZOOM_DEFAULT,
             };
             ipcRenderer.send(BrowserChannel.register, request);
             this.model.webview.markLoaded(this.tabId);
@@ -164,15 +150,15 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
             // probe normally rides never fire for it and its `.app` would stay missing until the
             // user navigated. The probe dedupes per tab and document generation, so this costs at
             // most the one evaluate it would have cost anyway.
-            this.model.webview.probeAiVisionOnReady(this.tabId);
-            void this.model.webview.injectSiteExtension(this.tabId);
+            this.model.pageRemote.onReady(this.tabId);
+            this.model.siteExtensions.onDocumentReady(this.tabId);
         };
         this.listenNative("dom-ready", onDomReady);
 
         const onIpcMessage = (event: Electron.IpcMessageEvent): void => {
             const { channel, args } = event;
             if (channel === "translation-ready" || channel === "translation-units") {
-                this.model.webview.handleTranslationFrame(this.tabId, event.frameId, channel, args[0]);
+                this.model.translation.handleFrame(this.tabId, event.frameId, channel, args[0]);
             } else if (channel === "page-title") {
                 const title = args[0] as string;
                 if (title) this.model.updateTab(this.tabId, { pageTitle: title });
@@ -184,9 +170,9 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
             } else if (channel === "guest-pointerdown") {
                 dismissOverlays(this.webview);
             } else if (channel === "show-find-bar") {
-                this.model.webview.openFind();
-            } else if (channel === "hide-find-bar" && this.model.state.get().findBarVisible) {
-                this.model.webview.closeFind();
+                this.model.find.open();
+            } else if (channel === "hide-find-bar" && this.model.find.state.get().findBarVisible) {
+                this.model.find.close();
             }
         };
         this.listenNative("ipc-message", onIpcMessage);
@@ -216,17 +202,9 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
         this.own(() => document.removeEventListener("keydown", onDocumentKeyDown, true));
 
         const onFoundInPage = (event: Electron.FoundInPageEvent): void => {
-            if (this.props.isActive) this.model.webview.handleFoundInPage(event.result);
+            if (this.props.isActive) this.model.find.foundInPage(event.result);
         };
         this.listenNative("found-in-page", onFoundInPage);
-        this.own(() => {
-            const ownsWebview = this.wasCurrentWebview || this.model.webview.webviewRefs.get(this.tabId) === this.webview;
-            if (ownsWebview) this.model.webview.webviewReady.delete(this.tabId);
-            if (ownsWebview && this.registered) {
-                ipcRenderer.send(BrowserChannel.unregister, `${this.model.id}/${this.tabId}`);
-                this.registered = false;
-            }
-        });
     }
 
     protected onUpdate(props: BrowserWebviewItemProps): void { this.updateBackground(props.tab); }
@@ -243,17 +221,17 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
     private handleFavicon(faviconUrl: string): void {
         if (!faviconUrl) return;
         const webview = this.webview;
-        if (this.model.webview.webviewRefs.get(this.tabId) !== webview) return;
+        if (this.model.webview.get(this.tabId) !== webview) return;
         const currentUrl = this.webview.getURL() || this.model.tabs.currentUrls.get(this.tabId) || "";
         this.model.tabs.cacheFavicon(currentUrl, faviconUrl);
         this.model.updateTab(this.tabId, { favicon: faviconUrl });
         const state = this.model.state.get();
-        if (state.isIncognito || state.isTor) return;
+        if (isPrivateBrowserSession(state)) return;
         // A proxied profile downloads it through its own session.
         const routedUrl = this.model.network.routedFetchUrl(faviconUrl);
         if (routedUrl === null) return;
         void import("../../components/icons/favicon-cache").then((cache) => {
-            if (this.model.webview.webviewRefs.get(this.tabId) !== webview) return;
+            if (this.model.webview.get(this.tabId) !== webview) return;
             const hostname = cache.getHostname(currentUrl);
             if (!hostname) return;
             if (cache.consumeFaviconSaveRequest(hostname)) { cache.saveFavicon(hostname, faviconUrl, routedUrl); return; }
@@ -557,11 +535,10 @@ class BrowserZoomContentView extends VanillaView<BrowserZoomContentProps> {
         this.listen(this.root, "wheel", this.handleWheel, { passive: false });
     }
     protected onUpdate(props: BrowserZoomContentProps): void { this.slider.update(this.sliderProps(props)); }
-
     private readonly handleWheel = (event: WheelEvent): void => {
         event.preventDefault();
         if (event.deltaY === 0) return;
-        const next = Math.max(PAGE_ZOOM_MIN, Math.min(PAGE_ZOOM_MAX, this.props.value + (event.deltaY < 0 ? PAGE_ZOOM_STEP : -PAGE_ZOOM_STEP)));
+        const next = clampPageZoom(this.props.value + (event.deltaY < 0 ? PAGE_ZOOM_STEP : -PAGE_ZOOM_STEP));
         if (next !== this.props.value) this.props.onChange(next);
     };
     private sliderProps(props: BrowserZoomContentProps) {
@@ -584,10 +561,7 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     private readonly endSlot: HTMLSpanElement;
     private readonly torIndicator = document.createElement("span");
     private readonly searchEngineButton = document.createElement("button");
-    private readonly siteActionButton: IconButtonView;
-    private actionMenuOpen = false;
-    private actionMenuGeneration = 0;
-    private actionMenuKey = "";
+    private readonly siteActions: BrowserSiteActionsView;
     private readonly sitePermissionsButton: IconButtonView;
     private readonly sitePermissionsPopover: PopoverView;
     private readonly translateButton: IconButtonView;
@@ -640,15 +614,14 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         this.star = this.child(new IconButtonView({ name: "url-bookmark-toggle", size: "sm", icon: "star", title: t("browser.bookmarkAdd"), onClick: this.model.bookmarksUI.handleStarClick }));
         this.input = this.child(new InputView({ name: "url-input", size: "sm", value: props.state.urlInput, onChange: this.model.urlBar.handleUrlChange, onKeyDown: this.model.urlBar.handleUrlKeyDown, onFocus: this.model.urlBar.handleUrlFocus, onBlur: this.model.urlBar.handleUrlBlur, onContextMenu: (event) => this.model.urlBar.handleUrlContextMenu(event as never), placeholder: t("browser.urlPlaceholder"), autoComplete: "off", startSlot: this.startSlot, endSlot: this.endSlot }));
         const bookmarks = make("toolbar-bookmarks", "bookmark", "Open Bookmarks", this.model.bookmarksUI.handleOpenBookmarks);
-        const torInfo = make("toolbar-tor-info", "question", "Tor connection info", this.model.showTorInfoDialog);
-        this.siteActionButton = make("toolbar-site-actions", "extension", t("browser.siteActions"), () => this.openSiteActions());
-        this.siteActionButton.update({ name: "toolbar-site-actions", size: "sm", icon: "extension", title: t("browser.siteActions"), "aria-label": t("browser.siteActions"), onClick: () => this.openSiteActions() });
+        const torInfo = make("toolbar-tor-info", "question", "Tor connection info", this.model.tor.showInfoDialog);
+        this.siteActions = this.child(new BrowserSiteActionsView({ model: this.model, state: props.state }));
         const downloads = this.child(new DownloadButtonView());
         const more = make("toolbar-more", "more-vert", "Page Menu", () => this.openPageMenu());
         const devtools = make("toolbar-devtools", "settings", "Open DevTools", this.model.webview.openDevTools);
-        const close = make("toolbar-close", "close", "Close Tab", () => this.model.closeTab(this.model.state.get().activeTabId));
+        const close = make("toolbar-close", "close", "Close Tab", () => this.model.tabs.closeTab(this.model.state.get().activeTabId));
         this.controls.push(bookmarks, torInfo, more, devtools, close);
-        this.endSlot.append(this.navigate.root, this.siteActionButton.root, this.translateButton.root, this.star.root);
+        this.endSlot.append(this.navigate.root, this.siteActions.root, this.translateButton.root, this.star.root);
         this.inputPanel.append(this.input.root);
         // Spell the DOM order out once, left to right, rather than appending `this.controls`
         // in construction order and patching it with insertBefore. `this.controls` keeps its
@@ -668,21 +641,18 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     get urlAnchor(): Element { return this.inputPanel; }
     get urlInputElement(): HTMLInputElement { return this.input.inputElement; }
 
-    protected onMount(): void { this.listen(this.searchEngineButton, "click", (event) => { event.stopPropagation(); this.openSearchMenu(); }); this.listen(this.torIndicator, "click", (event) => { event.stopPropagation(); this.model.toggleTorOverlay(); }); this.listen(this.proxyChip, "click", (event) => { event.stopPropagation(); void this.model.showNetworkInfoDialog(); }); this.controls.forEach((view) => view.mount()); this.zoomButton.mount(); this.zoomPopover.mount(); this.translateButton.mount(); this.input.mount(); this.model.urlBar.setUrlInputRef(this.input.inputElement); this.navigate.mount(); this.star.mount(); this.siteActionButton.mount(); this.downloads.mount(); this.sitePermissionsButton.mount(); this.sitePermissionsPopover.mount(); this.translatePopover.mount(); this.own(this.model.translation.state.subscribe(() => this.sync(this.props.state))); this.sync(this.props.state); }
+    protected onMount(): void { this.listen(this.searchEngineButton, "click", (event) => { event.stopPropagation(); this.openSearchMenu(); }); this.listen(this.torIndicator, "click", (event) => { event.stopPropagation(); this.model.tor.toggleOverlay(); }); this.listen(this.proxyChip, "click", (event) => { event.stopPropagation(); void this.model.showNetworkInfoDialog(); }); this.controls.forEach((view) => view.mount()); this.zoomButton.mount(); this.zoomPopover.mount(); this.translateButton.mount(); this.input.mount(); this.model.urlBar.setUrlInputRef(this.input.inputElement); this.navigate.mount(); this.star.mount(); this.siteActions.mount(); this.downloads.mount(); this.sitePermissionsButton.mount(); this.sitePermissionsPopover.mount(); this.translatePopover.mount(); this.own(this.model.pageRemote.changed.subscribe(() => this.sync(this.model.state.get()))); this.sync(this.props.state); }
     protected onUpdate(props: BrowserToolbarProps): void { this.sync(props.state); }
-    protected onDispose(): void { if (this.actionMenuOpen) void closeAppPopupMenu(); this.pageMenu?.dispose(); this.searchMenu?.dispose(); this.pageMenu = undefined; this.searchMenu = undefined; this.permissionsLoadGeneration++; this.translationStateUnsubscribe?.(); }
+    protected onDispose(): void { this.pageMenu?.dispose(); this.searchMenu?.dispose(); this.pageMenu = undefined; this.searchMenu = undefined; this.permissionsLoadGeneration++; this.translationStateUnsubscribe?.(); }
 
     private sync(state: BrowserEditorState): void {
-        const actionItems = this.model.webview.getSiteActions(state.activeTabId);
-        const actionKey = `${state.activeTabId}:${this.model.webview.siteDocumentId(state.activeTabId)}:${JSON.stringify(actionItems)}`;
-        this.siteActionButton.root.style.display = actionItems.length ? "" : "none";
-        if (this.actionMenuOpen && this.actionMenuKey !== actionKey) { this.actionMenuOpen = false; this.actionMenuGeneration++; void closeAppPopupMenu(); }
-        this.actionMenuKey = actionKey;
+        this.siteActions.update({ model: this.model, state });
         if (this.translationStateTabId !== state.activeTabId) {
             this.translationStateUnsubscribe?.();
             this.translationStateTabId = state.activeTabId;
-            this.translationStateUnsubscribe = this.model.webview.subscribePageTranslationState(state.activeTabId, () => this.sync(this.props.state));
+            this.translationStateUnsubscribe = this.model.translation.subscribeTabView(state.activeTabId, () => this.sync(this.props.state));
         }
+        const translationView = this.model.translation.tabView(state.activeTabId);
         const aiVisionIndicator = this.getAiVisionIndicator(state);
         const sitePermissionsTitle = aiVisionIndicator.source === "page"
             ? t("browser.sitePermissionsTitleBuiltin")
@@ -704,18 +674,18 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         this.navigate.update({ name: "url-navigate", size: "sm", icon: "arrow-right", title: t("browser.navigate"), onClick: this.model.urlBar.handleNavigate });
         this.star.update({ name: "url-bookmark-toggle", size: "sm", icon: state.isBookmarked ? "star-filled" : "star", title: state.isBookmarked ? t("browser.bookmarkEdit") : t("browser.bookmarkAdd"), active: state.isBookmarked, onClick: this.model.bookmarksUI.handleStarClick });
         this.controls[4].update({ name: "toolbar-bookmarks", size: "sm", icon: "bookmark", title: t("browser.toolbarOpenBookmarks"), onClick: this.model.bookmarksUI.handleOpenBookmarks });
-        this.controls[5].update({ name: "toolbar-tor-info", size: "sm", icon: "question", title: t("browser.toolbarTorInfo"), onClick: this.model.showTorInfoDialog, hidden: !state.isTor });
+        this.controls[5].update({ name: "toolbar-tor-info", size: "sm", icon: "question", title: t("browser.toolbarTorInfo"), onClick: this.model.tor.showInfoDialog, hidden: !state.isTor });
         this.controls[6].update({ name: "toolbar-more", size: "sm", icon: "more-vert", title: t("browser.toolbarPageMenu"), onClick: () => this.openPageMenu() });
         this.controls[7].update({ name: "toolbar-devtools", size: "sm", icon: "settings", title: t("browser.toolbarDevTools"), onClick: this.model.webview.openDevTools });
-        this.controls[8].update({ name: "toolbar-close", size: "sm", icon: "close", title: t("shell.closeTab"), onClick: () => this.model.closeTab(this.model.state.get().activeTabId) });
+        this.controls[8].update({ name: "toolbar-close", size: "sm", icon: "close", title: t("shell.closeTab"), onClick: () => this.model.tabs.closeTab(this.model.state.get().activeTabId) });
         this.renderStart(state);
         this.sitePermissionsPopover.update(this.sitePermissionsPopoverProps());
         this.permissionsContent?.update(this.sitePermissionsContentProps());
-        const translation = this.model.translation.getTabState(state.activeTabId);
+        const translation = translationView.state;
         this.translateButton.update({ name: "toolbar-translate", size: "sm", icon: "translate", title: t("translation.button"), "aria-label": t("translation.button"), active: translation.active, hidden: !translation.available, onClick: this.handleTranslateClick });
         this.translatePopover.update(this.translatePopoverProps());
-        this.translateContent?.update({ tabId: state.activeTabId, state: translation, pageError: this.model.webview.getPageTranslationState(state.activeTabId).lastError, onChange: this.model.translation.correctSource });
-        this.pageMenu?.update({ name: "page-menu", items: this.model.webview.getPageMenuItems(), placement: "bottom-end" });
+        this.translateContent?.update({ tabId: state.activeTabId, state: translation, pageError: translationView.page.lastError, onChange: this.model.translation.correctSource });
+        this.pageMenu?.update({ name: "page-menu", items: getPageMenuItems(this.model), placement: "bottom-end" });
         this.searchMenu?.update({ name: "search-engine-menu", items: this.model.urlBar.searchEngineMenuItems, placement: "bottom-start" });
     }
 
@@ -774,7 +744,6 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         }
         this.sitePermissionsPopover.update(this.sitePermissionsPopoverProps());
     };
-
     private readonly viewCertificate = async (): Promise<void> => {
         if (this.certificateActionBusy) return;
         this.certificateActionBusy = true;
@@ -814,7 +783,6 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
             this.certificateActionBusy = false;
         }
     };
-
     private async loadSitePermissions(): Promise<void> {
         const generation = ++this.permissionsLoadGeneration;
         const registrationKey = this.permissionsRegistrationKey;
@@ -835,7 +803,6 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         await this.loadSitePermissions();
         this.permissionsContent?.update(this.sitePermissionsContentProps());
     };
-
     private readonly resetSitePermissions = async (): Promise<void> => {
         const registrationKey = this.permissionsRegistrationKey;
         const reset = await this.model.resetSitePermissions(registrationKey);
@@ -862,11 +829,7 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     }
 
     private getAiVisionIndicator(state: BrowserEditorState): AiVisionIndicator {
-        if (state.isIncognito || state.isTor) return { source: "none" };
-        const registration = this.model.getAiVisionRegistration(state.activeTabId);
-        if (!registration) return { source: "none" };
-        const extensionName = this.model.webview.getAiVisionSiteExtensionName(state.activeTabId);
-        return extensionName === undefined ? { source: "page" } : { source: "extension", extensionName };
+        return this.model.pageRemote.indicator(state);
     }
 
     private readonly reloadAfterPermissionChange = (): void => {
@@ -895,7 +858,7 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
 
     private readonly handleTranslateClick = (): void => {
         const tabId = this.model.state.get().activeTabId;
-        if (this.model.translation.getTabState(tabId).active) {
+        if (this.model.translation.tabView(tabId).state.active) {
             this.translatePopoverOpen = false;
             this.translatePopover.update(this.translatePopoverProps());
             void this.model.translation.toggle(tabId);
@@ -909,13 +872,13 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     private zoomContentProps(): BrowserZoomContentProps {
         const state = this.model.state.get();
         return {
-            value: state.tabs.find((tab) => tab.id === state.activeTabId)?.zoomPercent ?? 100,
+            value: state.tabs.find((tab) => tab.id === state.activeTabId)?.zoomPercent ?? PAGE_ZOOM_DEFAULT,
             onChange: (value) => this.model.webview.setTabZoom(this.model.state.get().activeTabId, value),
         };
     }
 
     private zoomButtonProps(state: BrowserEditorState) {
-        const value = state.tabs.find((tab) => tab.id === state.activeTabId)?.zoomPercent ?? 100;
+        const value = state.tabs.find((tab) => tab.id === state.activeTabId)?.zoomPercent ?? PAGE_ZOOM_DEFAULT;
         return { name: "toolbar-page-zoom", size: "sm" as const, children: `${value}%`, title: t("browser.pageZoom"), "aria-label": t("browser.pageZoom"), "aria-expanded": this.zoomOpen, onClick: () => { this.zoomOpen = !this.zoomOpen; if (!this.zoomOpen) this.zoomContent = undefined; this.zoomPopover.update(this.zoomPopoverProps()); this.zoomButton.update(this.zoomButtonProps(this.model.state.get())); } };
     }
 
@@ -943,10 +906,12 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
             outsideClickIgnoreSelector: '[data-name="toolbar-translate"]',
             onClose: () => { this.translatePopoverOpen = false; this.translatePopover.update(this.translatePopoverProps()); },
             contentView: (host: HTMLElement) => {
+                const activeTabId = this.model.state.get().activeTabId;
+                const view = this.model.translation.tabView(activeTabId);
                 const content = new BrowserTranslationPopoverContentView({
-                    tabId: this.model.state.get().activeTabId,
-                    state: this.model.translation.getTabState(this.model.state.get().activeTabId),
-                    pageError: this.model.webview.getPageTranslationState(this.model.state.get().activeTabId).lastError,
+                    tabId: activeTabId,
+                    state: view.state,
+                    pageError: view.page.lastError,
                     onChange: this.model.translation.correctSource,
                 }, host);
                 this.translateContent = content;
@@ -955,92 +920,8 @@ class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         };
     }
 
-    private openSiteActions(): void {
-        const tabId = this.model.state.get().activeTabId;
-        const tree = this.model.webview.getSiteActions(tabId);
-        const icons = { play: "play", "file-text": "new-file", image: "view-landscape", table: "filter-table", link: "open-link" } as const;
-        const menu = (items: SiteActionItem[]): MenuItem[] => items.map(item => ({
-            id: item.id, label: item.label,
-            ...(item.icon ? { icon: getIcon(icons[item.icon])?.createElement({}) } : {}),
-            ...(item.children?.length ? { items: menu(item.children) } : { onClick: () => void this.runSiteAction(item.id, tabId, menuKey) }),
-        }));
-        if (!tree.length) return;
-        const rect = this.siteActionButton.root.getBoundingClientRect();
-        this.actionMenuOpen = true;
-        const menuKey = this.actionMenuKey;
-        const generation = ++this.actionMenuGeneration;
-        void showAppPopupMenu(rect.left, rect.bottom, menu(tree), { skipInspect: true, skipDefaults: true, isCurrent: () => this.actionMenuOpen && this.actionMenuGeneration === generation && this.actionMenuKey === menuKey }).finally(() => { if (this.actionMenuGeneration === generation) this.actionMenuOpen = false; });
-    }
-
-    private async runSiteAction(id: string, tabId: string, menuKey: string): Promise<void> {
-        if (this.model.state.get().activeTabId !== tabId || this.actionMenuKey !== menuKey) return;
-        const outcome = await this.model.runSiteAction(id);
-        if (outcome.status === "busy") { ui.notify(t("browser.siteActionBusy"), "warning"); return; }
-        if (outcome.status !== "choice-required" || this.model.state.get().activeTabId !== tabId || this.actionMenuKey !== menuKey) return;
-        const rect = this.siteActionButton.root.getBoundingClientRect();
-        this.actionMenuOpen = true;
-        const generation = ++this.actionMenuGeneration;
-        await showAppPopupMenu(rect.left, rect.bottom, [
-            { label: t("browser.siteActionChoose"), disabled: true },
-            ...outcome.choices.map((choice, index) => ({
-                label: choice.label, onClick: (): void => { void this.model.chooseSiteActionResult(outcome.token, index); },
-            })),
-        ], { skipInspect: true, skipDefaults: true, isCurrent: () => this.actionMenuOpen && this.actionMenuGeneration === generation && this.actionMenuKey === menuKey });
-        if (this.actionMenuGeneration === generation) this.actionMenuOpen = false;
-    }
-
     private openSearchMenu(): void { this.searchMenu?.dispose(); this.searchMenu = openMenu(this.searchEngineButton, { name: "search-engine-menu", items: this.model.urlBar.searchEngineMenuItems, placement: "bottom-start", onClose: () => { this.searchMenu = undefined; } }); }
-    private openPageMenu(): void { this.pageMenu?.dispose(); this.pageMenu = openMenu(this.controls[6].root, { name: "page-menu", items: this.model.webview.getPageMenuItems(), placement: "bottom-end", onClose: () => { this.pageMenu = undefined; } }); }
-}
-
-interface BrowserTranslationPopoverProps {
-    tabId: string;
-    state: import("./BrowserTranslationController").BrowserTranslationTabState;
-    pageError?: string;
-    onChange: (tabId: string, from: string) => Promise<void>;
-}
-
-class BrowserTranslationPopoverContentView extends VanillaView<BrowserTranslationPopoverProps> {
-    private readonly label = document.createElement("div");
-    private readonly error = document.createElement("div");
-    private readonly select: SelectView<IListBoxItem>;
-
-    public constructor(props: BrowserTranslationPopoverProps, host: HTMLElement) {
-        super(props, host);
-        this.label.dataset.translationLabel = "";
-        this.error.dataset.translationError = "";
-        this.select = this.child(new SelectView(this.selectProps()));
-        this.root.append(this.label, this.select.root, this.error);
-        this.root.dataset.translationPopoverContent = "";
-    }
-
-    protected onMount(): void { this.select.mount(); this.sync(); }
-    protected onUpdate(props: BrowserTranslationPopoverProps): void { this.props = props; this.sync(); }
-
-    private selectProps(): SelectViewProps<IListBoxItem> {
-        const options = this.props.state.candidates.map((code) => ({ value: code, label: `${languageDisplayName(code)} (${code})` }));
-        const selected = options.find((option) => option.value === this.props.state.from) ?? null;
-        return {
-            name: "translation-source-language",
-            size: "sm",
-            items: options,
-            value: selected,
-            placeholder: t("translation.chooseSource"),
-            emptyMessage: t("translation.chooseSource"),
-            onChange: (item) => { void this.props.onChange(this.props.tabId, String(item.value)); },
-        };
-    }
-
-    private sync(): void {
-        const language = this.props.state.from;
-        const languageLabel = `${languageDisplayName(language)} (${language})`;
-        this.label.textContent = !language ? t("translation.chooseSource")
-            : this.props.state.active ? t("translation.translatedFrom", { language: languageLabel })
-            : t("translation.pageLanguage", { language: languageLabel });
-        this.select.update(this.selectProps());
-        this.error.textContent = this.props.pageError || this.props.state.error || this.props.state.progress || "";
-        this.error.hidden = !this.error.textContent;
-    }
+    private openPageMenu(): void { this.pageMenu?.dispose(); this.pageMenu = openMenu(this.controls[6].root, { name: "page-menu", items: getPageMenuItems(this.model), placement: "bottom-end", onClose: () => { this.pageMenu = undefined; } }); }
 }
 
 class PopupBlockedView extends VanillaView<{ model: BrowserEditor; count: number }> {
@@ -1105,8 +986,8 @@ class SiteExtensionTrustPromptBarView extends VanillaView<{ model: BrowserEditor
         super(props, root);
         const details = createPanelElement({ name: "site-extension-trust-copy", flex: true, direction: "column", gap: "xs" });
         details.append(this.copy);
-        this.trust = this.child(new ButtonView({ name: "site-extension-trust", size: "sm", variant: "ghost", children: t("browser.trust"), onClick: () => void props.model.webview.trustSiteExtensionPrompt(props.prompt.internalTabId, props.prompt.documentId) }));
-        this.notNow = this.child(new ButtonView({ name: "site-extension-not-now", size: "sm", variant: "ghost", children: t("browser.notNow"), onClick: () => props.model.webview.dismissSiteExtensionTrustPrompt(props.prompt.internalTabId, props.prompt.documentId) }));
+        this.trust = this.child(new ButtonView({ name: "site-extension-trust", size: "sm", variant: "ghost", children: t("browser.trust"), onClick: () => void props.model.siteExtensions.trustPrompt(props.prompt.internalTabId, props.prompt.documentId) }));
+        this.notNow = this.child(new ButtonView({ name: "site-extension-not-now", size: "sm", variant: "ghost", children: t("browser.notNow"), onClick: () => props.model.siteExtensions.dismissPrompt(props.prompt.internalTabId, props.prompt.documentId) }));
         root.append(details, this.trust.root, this.notNow.root);
     }
     protected onMount(): void { this.trust.mount(); this.notNow.mount(); this.sync(); }
@@ -1175,14 +1056,14 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
         this.webviewArea = createPanelElement({ name: "webview-area", flex: true, position: "relative", overflow: "hidden" });
         this.browserBody = createPanelElement({ name: "browser-body", direction: "row", flex: true, overflow: "hidden", position: "relative" });
         this.pageManager = this.child(new PageManagerView({ pageIds: [], activeId: "", renderPage: () => this.pageViewCtor }));
-        this.splitter = this.child(new SplitterView({ name: "tabs-webview-splitter", orientation: "vertical", value: this.model.state.get().tabsPanelWidth, onChange: this.model.setTabsPanelWidth, side: "before", min: 32, background: "default", hoverBackground: "light", border: "none" }));
+        this.splitter = this.child(new SplitterView({ name: "tabs-webview-splitter", orientation: "vertical", value: this.model.state.get().tabsPanelWidth, onChange: this.model.tabs.setPanelWidth, side: "before", min: 32, background: "default", hoverBackground: "light", border: "none" }));
         this.popupSwap = new SubtreeSwap(this.popupHost); this.permissionSwap = new SubtreeSwap(this.popupHost); this.siteExtensionTrustSwap = new SubtreeSwap(this.popupHost); this.torSwap = new SubtreeSwap(this.webviewArea); this.networkSwap = new SubtreeSwap(this.webviewArea); this.clickSwap = new SubtreeSwap(this.webviewArea); this.findSwap = new SubtreeSwap(this.webviewArea); this.drawerSwap = new SubtreeSwap(this.browserBody); this.suggestionsSwap = new SubtreeSwap(this.root);
         this.own(() => { this.popupSwap.dispose(); this.permissionSwap.dispose(); this.siteExtensionTrustSwap.dispose(); this.torSwap.dispose(); this.networkSwap.dispose(); this.clickSwap.dispose(); this.findSwap.dispose(); this.drawerSwap.dispose(); this.suggestionsSwap.dispose(); });
         this.buildTree();
     }
 
     protected onMount(): void {
-        this.listen(this.root, "keydown", (event) => this.model.webview.handleKeyDown(event as never));
+        this.listen(this.root, "keydown", (event) => this.model.handleBrowserShortcut(event as never, "root"));
         this.model.webview.initIpcHandler(); this.own(() => this.model.webview.disposeIpcHandler());
         this.toolbar.mount(); this.editorToolbar.mount(); this.tabs.mount(); this.splitter.mount(); this.pageManager.mount();
         this.model.urlBar.setUrlInputRef(this.toolbar.urlInputElement);
@@ -1196,7 +1077,10 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
             this.model.urlBar.setFocusScheduler(undefined);
         });
         this.own(this.model.tabs.materializationRevision.subscribe(() => this.sync(this.model.state.get())));
-        this.bind(this.model.state, (state) => state, this.sync); this.sync(this.model.state.get());
+        this.bind(this.model.state, (state) => state, this.sync);
+        this.own(this.model.find.state.subscribe(() => this.syncFind(this.model.find.state.get())));
+        this.sync(this.model.state.get());
+        this.syncFind(this.model.find.state.get());
     }
     protected onUpdate(): void { this.sync(this.model.state.get()); }
     protected onDispose(): void {
@@ -1213,7 +1097,7 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
     private tabsProps(state: BrowserEditorState) { return { model: this.model, tabs: state.tabs, activeTabId: state.activeTabId, width: state.tabsPanelWidth }; }
 
     private readonly sync = (state: BrowserEditorState): void => {
-        this.toolbar.update({ model: this.model, state }); this.tabs.update(this.tabsProps(state)); this.tabsHost.style.width = `${state.tabsPanelWidth}px`; this.loadingBar.toggleAttribute("data-loading", state.loading); this.splitter.update({ name: "tabs-webview-splitter", orientation: "vertical", value: state.tabsPanelWidth, onChange: this.model.setTabsPanelWidth, side: "before", min: 32, background: "default", hoverBackground: "light", border: "none" });
+        this.toolbar.update({ model: this.model, state }); this.tabs.update(this.tabsProps(state)); this.tabsHost.style.width = `${state.tabsPanelWidth}px`; this.loadingBar.toggleAttribute("data-loading", state.loading); this.splitter.update({ name: "tabs-webview-splitter", orientation: "vertical", value: state.tabsPanelWidth, onChange: this.model.tabs.setPanelWidth, side: "before", min: 32, background: "default", hoverBackground: "light", border: "none" });
         // No webview mounts while the profile's proxy could not be applied:
         // its session route is unknown, and a mounted webview would start loading.
         this.pageManager.update({ pageIds: state.networkError ? [] : state.tabs.filter((tab) => this.model.tabs.isMaterialized(tab.id)).map((tab) => tab.id), activeId: state.activeTabId, renderPage: () => this.pageViewCtor });
@@ -1227,7 +1111,7 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
                 this.focusTimer = setTimeout(() => this.model.urlBar.focusUrlInput(), 100);
             }
         }
-        this.syncPopup(state); this.syncPermissionPrompt(state); this.syncSiteExtensionTrustPrompt(state); this.syncTor(state); this.syncNetworkError(state); this.syncClick(state); this.syncFind(state); this.syncDrawer(state); this.syncSuggestions(state);
+        this.syncPopup(state); this.syncPermissionPrompt(state); this.syncSiteExtensionTrustPrompt(); this.syncTor(state); this.syncNetworkError(state); this.syncClick(state); this.syncDrawer(state); this.syncSuggestions(state);
     };
 
     private syncPopup(state: BrowserEditorState): void {
@@ -1242,9 +1126,8 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
         created?.mount();
         this.permissionView?.update({ model: this.model, prompt });
     }
-    private syncSiteExtensionTrustPrompt(state: BrowserEditorState): void {
-        const documentId = this.model.webview.siteDocumentId(state.activeTabId);
-        const prompt = state.siteExtensionTrustPrompts.find((item) => item.internalTabId === state.activeTabId && item.documentId === documentId);
+    private syncSiteExtensionTrustPrompt(): void {
+        const prompt = this.model.siteExtensions.activePrompt();
         if (!prompt) { this.siteExtensionTrustView = undefined; this.siteExtensionTrustSwap.clear(); return; }
         let created: SiteExtensionTrustPromptBarView | undefined;
         this.siteExtensionTrustSwap.set("site-extension-trust", () => { created = new SiteExtensionTrustPromptBarView({ model: this.model, prompt }); this.siteExtensionTrustView = created; return created; });
@@ -1263,9 +1146,9 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
         if (!state.popupOpen) { this.clickSwap.clear(); return; }
         let created: StaticNodeView | undefined; this.clickSwap.set("click", () => { const node = document.createElement("div"); node.dataset.webviewClickOverlay = ""; created = new StaticNodeView(node); return created; }); created?.mount();
     }
-    private syncFind(state: BrowserEditorState): void {
+    private syncFind(state: BrowserFindState): void {
         if (!state.findBarVisible) { this.findView = undefined; this.findSwap.clear(); return; }
-        const props = { text: state.findText, currentMatch: state.findActiveMatch, totalMatches: state.findTotalMatches, onTextChange: this.model.webview.setFindText, onNext: this.model.webview.findNext, onPrev: this.model.webview.findPrev, onClose: this.model.webview.closeFind, placeholder: t("browser.toolbarFindPlaceholder") };
+        const props = { text: state.findText, currentMatch: state.findActiveMatch, totalMatches: state.findTotalMatches, onTextChange: this.model.find.setText, onNext: this.model.find.next, onPrev: this.model.find.prev, onClose: this.model.find.close, placeholder: t("browser.toolbarFindPlaceholder") };
         let created: FindBarView | undefined; this.findSwap.set("find", () => { created = new FindBarView(props); this.findView = created; return created; }); created?.mount(); this.findView?.update(props);
     }
     private syncDrawer(state: BrowserEditorState): void {
@@ -1286,5 +1169,3 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
         let created: UrlSuggestionsDropdownView | undefined; this.suggestionsSwap.set("suggestions", () => { created = new UrlSuggestionsDropdownView(props); this.suggestionsView = created; return created; }); created?.mount(); this.suggestionsView?.update(props);
     }
 }
-
-export { BrowserEditor };

@@ -19,7 +19,7 @@ import { MermaidEditor } from "../../editors/mermaid/MermaidEditor";
 import type { ImageEditor } from "../../editors/image/ImageEditor";
 import type { VideoEditor } from "../../editors/video/VideoEditor";
 import type { FileDiffEditor } from "../../editors/file-diff/FileDiffEditor";
-import type { BrowserEditorModel } from "../../editors/browser/BrowserEditorModel";
+import type { BrowserEditor } from "../../editors/browser/BrowserEditor";
 import type { McpInspectorEditorModel } from "../../editors/mcp-inspector/McpInspectorEditorModel";
 import type { ScriptOutputFlags } from "../ScriptContext";
 import type { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
@@ -94,7 +94,7 @@ const FACADE_FOR_EDITOR: Record<string, EditorFacadeFactory> = {
     "svg-view": (editor, id, name) => new SvgEditorFacade(editor as SvgEditor, id, name),
     "html-view": (editor, id, name) => new HtmlEditorFacade(editor as HtmlEditor, id, name),
     "mermaid-view": (editor, id, name) => new MermaidEditorFacade(editor as MermaidEditor, id, name),
-    "browser-view": (editor, id, name, callContext) => new BrowserEditorFacade(editor as unknown as BrowserEditorModel, id, name, callContext),
+    "browser-view": (editor, id, name, callContext) => new BrowserEditorFacade(editor as unknown as BrowserEditor, id as "browser-view", name, callContext),
     "mcp-view": (editor, id, name) => new McpInspectorFacade(editor as unknown as McpInspectorEditorModel, id, name),
     "image-view": (editor, id, name) => new ImageEditorFacade(editor as unknown as ImageEditor, id, name),
     "video-view": (editor, id, name) => new VideoEditorFacade(editor as unknown as VideoEditor, id, name),
@@ -313,7 +313,7 @@ export class PageWrapper implements IAiVisible {
 
     private aiRestricted(): string | undefined {
         const state = this.browserState();
-        return !state || agentMayAccessBrowserPage(state) ? undefined : privateBrowserRefusal(state, "call");
+        return !state || agentMayAccessBrowserPage(state) ? undefined : privateBrowserRefusal(state);
     }
 
     private aiChildren(): IAiChild[] {
@@ -369,7 +369,7 @@ export class PageWrapper implements IAiVisible {
             summary.isTor = !!state.isTor;
             if (state.openedByAgent) summary.openedByAgent = true;
             if (agentMayAccessBrowserPage(state)) {
-                const url = (this.model as unknown as BrowserEditorModel).currentUrl;
+                const url = (this.model as unknown as BrowserEditor).currentUrl;
                 if (url) summary.url = url;
             }
         }

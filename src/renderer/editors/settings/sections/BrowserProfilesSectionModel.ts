@@ -5,7 +5,7 @@ import type { BrowserNetwork } from "../../../../ipc/browser-network-ipc";
 import { ui } from "../../../api/ui";
 import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
 import { TComponentModel } from "../../../core/state/model";
-import { getPartitionString } from "../../browser/BrowserEditorModel";
+import { getPartitionString } from "../../browser/browser-state";
 import { api } from "../../../../ipc/renderer/api";
 import { BrowserChannel, type BrowserPermissionDecisionEntry } from "../../../../ipc/browser-ipc";
 import { TAG_COLORS } from "../../../theme/palette-colors";

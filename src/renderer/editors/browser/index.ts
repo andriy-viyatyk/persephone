@@ -1,6 +1,6 @@
 import { TComponentState } from "../../core/state/state";
 import { BrowserEditor } from "./BrowserEditor";
-import { getDefaultBrowserPageState } from "./BrowserEditorModel";
+import { getDefaultBrowserPageState } from "./browser-state";
 import { BrowserEditorView } from "./BrowserView";
 import type { EditorModule } from "../base/editorRegistry";
 
@@ -12,4 +12,4 @@ export const browserModule: EditorModule = {
 
 export { BrowserEditor };
 export type { BrowserQueueEvent } from "./BrowserEditor";
-export type { BrowserEditorState, BrowserTabData } from "./BrowserEditorModel";
+export type { BrowserEditorState, BrowserTabData } from "./browser-state";

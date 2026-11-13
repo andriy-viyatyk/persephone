@@ -1,6 +1,6 @@
 import { TComponentState } from "../../core/state/state";
 import { BrowserEditor } from "./BrowserEditor";
-import { browserPageTitle, getDefaultBrowserPageState } from "./BrowserEditorModel";
+import { browserPageTitle, getDefaultBrowserPageState } from "./browser-state";
 import type { PagesModel } from "../../api/pages/PagesModel";
 import type { PageModel } from "../../api/pages/PageModel";
 import { settings } from "../../api/settings";
@@ -8,6 +8,7 @@ import { ui } from "../../api/ui";
 import { fs as appFs } from "../../api/fs";
 import { errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
+import { isPrivateBrowserSession } from "./agent-access";
 
 // ============================================================================
 // Browser page opening — the browser-specific halves of the pages lifecycle.
@@ -82,7 +83,7 @@ export async function showBrowserPage(
     // instead of leaking the opening navigation onto the normal network.
     if (options?.tor) {
         try {
-            await editor.armTorProxy();
+            await editor.tor.armProxy();
         } catch (err) {
             // Refuse to open rather than open unproxied: a Tor page whose
             // partition could not be armed would browse over the normal
@@ -112,7 +113,7 @@ export async function showBrowserPage(
     // partition is already fail-closed, so the page may mount behind the
     // Tor overlay while the daemon comes up.
     if (options?.tor) {
-        void editor.initTorProxy();
+        void editor.tor.init();
     }
     return page;
 }
@@ -143,15 +144,14 @@ export async function openUrlInBrowserTab(
             return !!pageState.isIncognito && (!options.openedByAgent || pageState.openedByAgent);
         }
         if (options?.external) {
-            return !pageState.isIncognito && !pageState.isTor;
+            return !isPrivateBrowserSession(pageState);
         }
         const targetProfile =
             options?.profileName !== undefined
                 ? options.profileName || ""
                 : undefined;
         return (
-            !pageState.isIncognito &&
-            !pageState.isTor &&
+            !isPrivateBrowserSession(pageState) &&
             (targetProfile === undefined ||
                 (pageState.profileName ?? "") === targetProfile)
         );

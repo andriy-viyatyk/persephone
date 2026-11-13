@@ -1,4 +1,4 @@
-import { PAGE_ZOOM_MIN, PAGE_ZOOM_MAX } from "../../../shared/browser-zoom";
+import { PAGE_ZOOM_DEFAULT, isValidPageZoom } from "../../../shared/browser-zoom";
 import { englishMessage } from "../../../shared/i18n/t";
 const { ipcRenderer } = require("electron");
 import { TComponentState } from "../../core/state/state";
@@ -22,42 +22,30 @@ import { searchHistoryManager } from "./browser-search-history";
 import { errMessage } from "../../../shared/utils";
 import { BrowserWebviewModel } from "./BrowserWebviewModel";
 import { BrowserTranslationController } from "./BrowserTranslationController";
-import { siteExtensionTrust, sameSiteExtensionHostSet } from "../../api/site-extension-trust";
+import { BrowserSiteExtensionController } from "./BrowserSiteExtensionController";
 import { BrowserUrlBarModel } from "./BrowserUrlBarModel";
 import { BrowserBookmarksUIModel } from "./BrowserBookmarksUIModel";
 import { BrowserTargetModel } from "./BrowserTargetModel";
 import { BrowserTabsModel } from "./BrowserTabsModel";
 import { BrowserTorModel } from "./BrowserTorModel";
 import { BrowserProfileNetworkModel } from "./BrowserProfileNetworkModel";
-import type { IAiVisionShape } from "ai-vision";
 import {
-    BrowserEditorState,
-    BrowserTabData,
+    type BrowserEditorState,
+    type BrowserTabData,
     DEFAULT_URL,
-    SEARCH_ENGINES,
-    SearchEngine,
     createInternalTabId,
     createTabGroupId,
-    detectSearchEngine,
     browserPageTitle,
-} from "./BrowserEditorModel";
+    getPartitionString,
+} from "./browser-state";
+import { SEARCH_ENGINES, detectSearchEngine, type SearchEngine } from "./search-engines";
+import { isPrivateBrowserSession } from "./agent-access";
+import { BrowserPageRemote } from "./BrowserPageRemote";
+import { BrowserFindModel } from "./BrowserFindModel";
+import { BrowserShortcutTable } from "./BrowserShortcutTable";
 
 export type BrowserQueueEvent = { type: "focus" };
 export type BrowserQueueRequest = never;
-
-export interface BrowserAiVisionRegistration {
-    readonly internalTabId: string;
-    /** Combined descriptor shape exposed to the resolver. */
-    readonly shape: IAiVisionShape;
-    readonly siteShape?: IAiVisionShape;
-    readonly webMcpShape?: IAiVisionShape;
-    readonly version?: number;
-    readonly siteVersion?: number;
-    readonly webMcpVersion?: number;
-    readonly webMcpNamespace?: string;
-    readonly generation: number;
-    readonly token: number;
-}
 
 export class BrowserEditor extends EditorModel<
     BrowserEditorState,
@@ -67,11 +55,14 @@ export class BrowserEditor extends EditorModel<
     readonly editorId = "browser-view";
     noLanguage = true;
     skipSave = true;
-
     /** Sub-model: webview refs, IPC events, context menu, keyboard shortcuts. */
     readonly webview: BrowserWebviewModel;
+    /** Owns find-in-page state and commands. */
+    readonly find: BrowserFindModel;
     /** User-facing Translate workflow for the active browser page. */
     readonly translation: BrowserTranslationController;
+    readonly siteExtensions: BrowserSiteExtensionController;
+    readonly pageRemote: BrowserPageRemote;
     /** Sub-model: URL input, suggestions, search engine selector. */
     readonly urlBar: BrowserUrlBarModel;
     /** Sub-model: bookmarks drawer, star button, image discovery. */
@@ -84,16 +75,12 @@ export class BrowserEditor extends EditorModel<
     readonly tor: BrowserTorModel;
     /** Sub-model: the profile's proxy route; inert on Tor/incognito pages. */
     readonly network: BrowserProfileNetworkModel;
+    private readonly shortcuts: BrowserShortcutTable;
 
     readonly typedQueue: ComponentQueue<BrowserQueueEvent, BrowserQueueRequest>;
-
     private keyDownSub: () => void;
-    private readonly aiVisionByTab = new Map<string, BrowserAiVisionRegistration>();
-    private readonly aiVisionRegisteredTabs = new Set<string>();
-    private readonly aiVisionGenerationByTab = new Map<string, number>();
-    private aiVisionToken = 0;
-    private aiVisionBindingVersion = 0;
-    private aiVisionDisposed = false;
+    private readonly incognitoId = crypto.randomUUID();
+    private readonly torId = crypto.randomUUID();
 
     constructor(state: TComponentState<BrowserEditorState>) {
         super(state);
@@ -105,45 +92,43 @@ export class BrowserEditor extends EditorModel<
         this.tor = new BrowserTorModel(this);
         this.network = new BrowserProfileNetworkModel(this);
         this.webview = new BrowserWebviewModel(this);
+        this.find = new BrowserFindModel(this);
+        this.shortcuts = new BrowserShortcutTable({
+            focusUrlInput: () => this.urlBar.focusUrlInput(),
+            openFind: () => this.find.open(),
+            isFindVisible: () => this.find.state.get().findBarVisible,
+            closeFind: () => this.find.close(),
+            stopActiveGuest: () => this.webview.getActiveWebview()?.stop(),
+            reloadOrStop: () => this.webview.reloadOrStop(),
+            hardReload: () => this.webview.hardReload(),
+            openDevTools: () => this.webview.openDevTools(),
+            goBack: () => this.webview.goBack(),
+            goForward: () => this.webview.goForward(),
+            goHome: () => this.goHome(),
+            isFocused: () => pages.query.focusedPage === this.page,
+        });
         let activeActionTab = state.get().activeTabId;
         this.own(state.subscribe(() => {
             const next = state.get().activeTabId;
-            if (next !== activeActionTab) this.webview.deactivateSiteActions(activeActionTab);
+            if (next !== activeActionTab) this.siteExtensions.onActiveTabChanged(activeActionTab);
             activeActionTab = next;
         }));
         this.translation = new BrowserTranslationController(this);
-        this.webview.setTranslationLifecycle(this.translation.onPageNavigation);
-        this.own(siteExtensionTrust.subscribeSnapshot((snapshot) => {
-            this.webview.refreshActionTrust();
-            this.state.update((state) => {
-                state.siteExtensionTrustPrompts = state.siteExtensionTrustPrompts.filter((prompt) => {
-                    const grant = snapshot[prompt.id];
-                    return !grant || !sameSiteExtensionHostSet(grant.hosts, prompt.hosts) || !sameSiteExtensionHostSet(grant.fetchHosts, prompt.fetchHosts);
-                });
-            });
-        }));
+        this.siteExtensions = new BrowserSiteExtensionController(this);
+        // Cross-calls begin only after webview, translation, and siteExtensions are composed.
+        this.pageRemote = new BrowserPageRemote(this);
         this.urlBar = new BrowserUrlBarModel(this);
         this.bookmarksUI = new BrowserBookmarksUIModel(this);
         this.target = new BrowserTargetModel(this);
-        this.keyDownSub = globalKeyDown.subscribe((e) => this.handleGlobalKeyDown(e));
+        this.keyDownSub = globalKeyDown.subscribe((event) => this.handleBrowserShortcut(event, "global"));
         this.own(this.keyDownSub);
     }
 
-    get siteActions() { return this.webview.getSiteActions(); }
-    runSiteAction = (id: string) => this.webview.runSiteAction(id);
-    chooseSiteActionResult = (token: string, index: number) => this.webview.chooseSiteActionResult(token, index);
-
     /** Electron session partition string, derived from profile state. */
     get partition(): string {
-        return this.tor.partition;
+        const state = this.state.get();
+        return getPartitionString(state.profileName, state.isIncognito, this.incognitoId, state.isTor, this.torId);
     }
-
-    /** Ensure the Tor partition is armed before the first navigation. */
-    armTorProxy = async (): Promise<void> => this.tor.armProxy();
-    initTorProxy = async (): Promise<{ success: boolean; error?: string }> => this.tor.init();
-    reconnectTor = async (): Promise<void> => this.tor.reconnect();
-    showTorInfoDialog = async (): Promise<void> => this.tor.showInfoDialog();
-    toggleTorOverlay = () => this.tor.toggleOverlay();
     /** Put the profile session on its configured route before the first navigation. */
     armProfileNetwork = async (): Promise<void> => this.network.armProxy();
     showNetworkInfoDialog = async (): Promise<void> => this.network.showInfoDialog();
@@ -161,11 +146,6 @@ export class BrowserEditor extends EditorModel<
             // `networkError` already carries the reason for the error panel.
         }
     };
-
-    getAiVisionRegistration = (
-        internalTabId = this.state.get().activeTabId,
-    ): BrowserAiVisionRegistration | undefined => this.aiVisionByTab.get(internalTabId);
-
     /** Return Chromium's leaf-first DER certificate chain for the selected HTTPS tab. */
     getCertificate = async (
         internalTabId = this.state.get().activeTabId,
@@ -189,81 +169,16 @@ export class BrowserEditor extends EditorModel<
         return { url: currentUrl, certificates: response.tableNames };
     };
 
-    hasAiVisionRegisteredTab = (internalTabId: string): boolean => this.aiVisionRegisteredTabs.has(internalTabId);
-
-    getAiVisionDocumentGeneration = (internalTabId: string): number | undefined => {
-        if (!this.state.get().tabs.some((tab) => tab.id === internalTabId)) return undefined;
-        return this.aiVisionGenerationByTab.get(internalTabId) ?? 0;
+    releaseTab = (internalTabId: string): void => {
+        this.siteExtensions.onTabReleased(internalTabId);
+        this.translation.onTabReleased(internalTabId);
+        this.pageRemote.onTabReleased(internalTabId);
     };
-
-    getAiVisionBindingVersion = (): number => this.aiVisionBindingVersion;
-
-    notifyAiVisionIndicatorChanged = (): void => {
-        if (this.aiVisionDisposed) return;
-        this.state.update((state) => { state.aiVisionIndicatorRevision++; });
-    };
-
-    setAiVisionRegistration = (
-        internalTabId: string,
-        generation: number,
-        shape: IAiVisionShape,
-        version?: number,
-        siteShape?: IAiVisionShape,
-        siteVersion?: number,
-        webMcpShape?: IAiVisionShape,
-        webMcpVersion?: number,
-        webMcpNamespace?: string,
-    ): boolean => {
-        if (this.aiVisionDisposed
-            || this.getAiVisionDocumentGeneration(internalTabId) !== generation) return false;
-        const registration: BrowserAiVisionRegistration = {
-            internalTabId,
-            shape,
-            version,
-            siteShape,
-            siteVersion,
-            webMcpShape,
-            webMcpVersion,
-            webMcpNamespace,
-            generation,
-            token: ++this.aiVisionToken,
-        };
-        this.aiVisionByTab.set(internalTabId, registration);
-        this.aiVisionRegisteredTabs.add(internalTabId);
-        this.notifyAiVisionIndicatorChanged();
-        return true;
-    };
-
-    clearAiVisionRegistration = (internalTabId: string): void => {
-        const generation = this.aiVisionGenerationByTab.get(internalTabId) ?? 0;
-        this.aiVisionGenerationByTab.set(internalTabId, generation + 1);
-        if (this.aiVisionByTab.delete(internalTabId)) this.notifyAiVisionIndicatorChanged();
-    };
-
-    clearAiVisionRegistrationIfCurrent = (internalTabId: string, generation: number): void => {
-        if (this.getAiVisionDocumentGeneration(internalTabId) === generation) {
-            this.clearAiVisionRegistration(internalTabId);
-        }
-    };
-
-    invalidateAiVisionBinding = (): void => {
-        this.aiVisionBindingVersion++;
-    };
-
-    private clearAllAiVisionRegistrations(): void {
-        for (const internalTabId of this.aiVisionByTab.keys()) {
-            this.clearAiVisionRegistration(internalTabId);
-        }
-        this.aiVisionByTab.clear();
-    }
 
     async dispose(): Promise<void> {
-        this.aiVisionDisposed = true;
         this.translation.dispose();
-        this.webview.dispose();
-        this.clearAllAiVisionRegistrations();
-        this.aiVisionGenerationByTab.clear();
-        this.aiVisionRegisteredTabs.clear();
+        this.siteExtensions.dispose();
+        this.pageRemote.dispose();
         this.bookmarksUI.dispose();
 
         const s = this.state.get();
@@ -275,66 +190,14 @@ export class BrowserEditor extends EditorModel<
 
         // Clear HTTP cache for this partition to free disk space.
         // Skip incognito/tor: no persist: prefix means no disk storage.
-        if (!s.isIncognito && !s.isTor) {
+        if (!isPrivateBrowserSession(s)) {
             ipcRenderer.invoke(BrowserChannel.clearCache, this.partition);
         }
     }
 
-    /** Handle global keyboard shortcuts when this browser page is focused. */
-    private handleGlobalKeyDown = (e: KeyboardEvent) => {
-        if (e.defaultPrevented) return;
-        if (pages.query.focusedPage !== this.page) return;
-
-        const keyLower = e.key.toLowerCase();
-
-        // F5 / Ctrl+F5 / Ctrl+R / Ctrl+Shift+R reload
-        if (e.key === "F5" || (keyLower === "r" && e.ctrlKey)) {
-            e.preventDefault();
-            if (e.key === "F5" ? e.ctrlKey : e.shiftKey) {
-                this.webview.hardReload();
-            } else {
-                this.webview.reloadOrStop();
-            }
-            return;
-        }
-        // F12 opens DevTools.
-        if (e.key === "F12") {
-            e.preventDefault();
-            this.webview.openDevTools();
-            return;
-        }
-        // Ctrl+F open find bar
-        if (keyLower === "f" && e.ctrlKey) {
-            e.preventDefault();
-            this.webview.openFind();
-            return;
-        }
-        // Escape: close find bar first, then stop loading
-        if (e.key === "Escape") {
-            e.preventDefault();
-            if (this.state.get().findBarVisible) {
-                this.webview.closeFind();
-            } else {
-                this.webview.getActiveWebview()?.stop();
-            }
-            return;
-        }
-        // Alt+Left / Alt+Right: back / forward
-        if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
-            e.preventDefault();
-            if (e.key === "ArrowLeft") {
-                this.webview.goBack();
-            } else {
-                this.webview.goForward();
-            }
-            return;
-        }
-        // Alt+Home: go to home page
-        if (e.altKey && e.key === "Home") {
-            e.preventDefault();
-            this.goHome();
-            return;
-        }
+    /** Dispatch a browser shortcut from its existing root or global event source. */
+    handleBrowserShortcut = (event: KeyboardEvent, source: "root" | "global"): void => {
+        this.shortcuts.dispatch(event, source);
     };
 
     focus(): void {
@@ -352,11 +215,11 @@ export class BrowserEditor extends EditorModel<
         // this, typing a URL before reconnecting would navigate a bare partition
         // straight out onto the normal network. Failures are recorded rather than
         // thrown, so a page is never dropped from a restore; the overlay then shows
-        // the error, `reconnectTor` retries the arming, and for a newly opened page
-        // `showBrowserPage` re-asserts it and declines to open on failure.
+        // the error, `BrowserTorModel.reconnect()` retries the arming. A newly opened page's
+        // `showBrowserPage` path re-asserts it and declines to open on failure.
         if (s.isTor) {
             try {
-                await this.armTorProxy();
+                await this.tor.armProxy();
             } catch (err) {
                 this.state.update((st) => {
                     st.torStatus = "error";
@@ -435,7 +298,7 @@ export class BrowserEditor extends EditorModel<
                     loading: false, audible: false, canGoBack: false, canGoForward: false,
                     id: createInternalTabId(),
                     groupId: t.groupId || createTabGroupId(),
-                    zoomPercent: Number.isFinite(t.zoomPercent) && t.zoomPercent >= PAGE_ZOOM_MIN && t.zoomPercent <= PAGE_ZOOM_MAX ? t.zoomPercent : 100,
+                    zoomPercent: isValidPageZoom(t.zoomPercent) ? t.zoomPercent : PAGE_ZOOM_DEFAULT,
                 }));
                 // Map activeTabId: if the original activeTabId matches a tab by index, use the new ID
                 const origIndex = data.tabs.findIndex(
@@ -501,7 +364,7 @@ export class BrowserEditor extends EditorModel<
                         homeUrl: "",
                         navHistory: [] as string[],
                         groupId: createTabGroupId(),
-                        zoomPercent: 100,
+                        zoomPercent: PAGE_ZOOM_DEFAULT,
                     } satisfies BrowserTabData;
                     s.tabs = [fresh];
                     s.activeTabId = fresh.id;
@@ -549,7 +412,7 @@ export class BrowserEditor extends EditorModel<
     /** The setting remembering the last pick: one for profile pages, one shared by Incognito and Tor. */
     private get searchEngineSettingKey(): "browser-search-engine" | "browser-private-search-engine" {
         const s = this.state.get();
-        return s.isIncognito || s.isTor ? "browser-private-search-engine" : "browser-search-engine";
+        return isPrivateBrowserSession(s) ? "browser-private-search-engine" : "browser-search-engine";
     }
 
     /** Preselect the engine last picked in a page of the same mode. Call on a new page only. */
@@ -707,7 +570,7 @@ export class BrowserEditor extends EditorModel<
         });
         // Add hostname to search history (unless incognito/tor)
         const s = this.state.get();
-        if (!s.isIncognito && !s.isTor) {
+        if (!isPrivateBrowserSession(s)) {
             try {
                 const hostname = new URL(url).hostname;
                 if (hostname) {
@@ -731,14 +594,6 @@ export class BrowserEditor extends EditorModel<
         if (url === DEFAULT_URL) this.urlBar.focusUrlInput();
         return internalTabId;
     };
-    closeTab = (internalTabId: string) => this.tabs.closeTab(internalTabId);
-    closeOtherTabs = (internalTabId: string) => this.tabs.closeOtherTabs(internalTabId);
-    closeTabsBelow = (internalTabId: string) => this.tabs.closeTabsBelow(internalTabId);
-    moveTab = (fromId: string, toId: string) => this.tabs.moveTab(fromId, toId);
-    switchTab = (internalTabId: string) => this.tabs.switchTab(internalTabId);
-    toggleMute = (internalTabId: string) => this.tabs.toggleMute(internalTabId);
-    toggleMuteAll = () => this.tabs.toggleMuteAll();
-    setTabsPanelWidth = (width: number) => this.tabs.setPanelWidth(width);
 
     dismissBlockedPopups = () => {
         this.state.update((s) => { s.blockedPopupCount = 0; });
@@ -756,19 +611,6 @@ export class BrowserEditor extends EditorModel<
             state.permissionPrompts = state.permissionPrompts.filter((prompt) => prompt.requestId !== requestId);
         });
         this.webview.resolvePermissionRequest(requestId, decision);
-    };
-
-    setSiteExtensionTrustPrompt = (prompt: NonNullable<BrowserEditorState["siteExtensionTrustPrompts"][number]>): void => {
-        this.state.update((state) => {
-            state.siteExtensionTrustPrompts = state.siteExtensionTrustPrompts.filter((item) => item.internalTabId !== prompt.internalTabId);
-            state.siteExtensionTrustPrompts.push(prompt);
-        });
-    };
-    clearSiteExtensionTrustPrompt = (internalTabId: string, documentId?: number): void => {
-        this.state.update((state) => {
-            state.siteExtensionTrustPrompts = state.siteExtensionTrustPrompts.filter((item) =>
-                item.internalTabId !== internalTabId || (documentId !== undefined && item.documentId !== documentId));
-        });
     };
 
 }

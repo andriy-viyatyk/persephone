@@ -39,7 +39,7 @@ modules into page-ready editor models.
 | `category-view` | `CategoryEditor` | `tree-category://` links and unclaimed directories | — | — |
 | `git-tree` | `GitTreeEditorModel` | `.git` directories (resolved folder links) | — | — |
 | `mneme-root` | `MnemeRootEditorModel` | `.mneme` directories (resolved folder links) | — | — |
-| `browser-view` | `BrowserEditorModel` | (none — opened via UI) | — | — |
+| `browser-view` | `BrowserEditor` | (none — opened via UI) | — | — |
 | `mcp-view` | `McpInspectorEditorModel` | (none — opened via UI) | — | — |
 | `about-view` | `AboutEditor` | (none — opened via UI) | — | — |
 | `settings-view` | `SettingsEditor` | (none — opened via UI) | — | — |
@@ -527,7 +527,7 @@ operation facade use `GenericEditorFacade`, which exposes only identity metadata
 | `page.editor` | `SvgEditorFacade` | `SvgEditor` |
 | `page.editor` | `HtmlEditorFacade` | `HtmlEditor` |
 | `page.editor` | `MermaidEditorFacade` | `MermaidEditor` |
-| `page.editor` | `BrowserEditorFacade` | `BrowserEditorModel` |
+| `page.editor` | `BrowserEditorFacade` | `BrowserEditor` |
 | `page.editor` | `McpInspectorFacade` | `McpInspectorEditorModel` |
 | `page.editor` | `ImageEditorFacade` | `ImageEditor` |
 | `page.editor` | `VideoEditorFacade` | `VideoEditor` |

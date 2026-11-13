@@ -9,7 +9,7 @@ import { t } from "../../../shared/i18n/t";
 import { profileImageRoute, resolveRoutedSrc, torImageRoute } from "../link-editor/routed-src";
 import type { ImageRoute } from "../link-editor/routed-src";
 import { DisposableStore } from "../../core/utils/DisposableStore";
-import type { BrowserEditorModel } from "./BrowserEditorModel";
+import type { BrowserEditor } from "./BrowserEditor";
 
 /**
  * The saved network for a browser page: its profile ("" = the built-in default
@@ -50,7 +50,7 @@ export class BrowserProfileNetworkModel {
     private armed = false;
     private disposed = false;
 
-    constructor(readonly model: BrowserEditorModel) {
+    constructor(readonly model: BrowserEditor) {
         const networkSettings = ["browser-profiles", "browser-default-network", "browser-incognito-network"] as const satisfies readonly AppSettingsKey[];
         for (const key of networkSettings) {
             this.disposables.add(settings.watch(key, () => {

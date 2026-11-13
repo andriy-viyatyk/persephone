@@ -4,7 +4,7 @@ import { showEditLinkDialog } from "../link-editor/EditLinkDialog";
 import { api } from "../../../ipc/renderer/api";
 import { settings } from "../../api/settings";
 import type { BrowserProfile } from "../../api/settings-schema";
-import type { BrowserEditorModel } from "./BrowserEditorModel";
+import type { BrowserEditor } from "./BrowserEditor";
 import type { LinkItem } from "../link-editor/linkTypes";
 import { app } from "../../api/app";
 import { BookmarkEvent } from "../../api/events/events";
@@ -12,6 +12,7 @@ import { withTimeout } from "../../core/utils/utils";
 import { DisposableStore } from "../../core/utils/DisposableStore";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
+import { isPrivateBrowserSession } from "./agent-access";
 
 const SELECT_BOOKMARK_FILE_ID = "select-bookmarks-file";
 const CREATE_BOOKMARK_FILE_ID = "create-bookmarks-file";
@@ -37,7 +38,7 @@ const IMAGE_DISCOVERY_TIMEOUT = 1000;
  * and tracked images for the browser editor.
  */
 export class BrowserBookmarksUIModel {
-    readonly model: BrowserEditorModel;
+    readonly model: BrowserEditor;
 
     /** Per-tab tracked images for bookmark image discovery. */
     trackedImagesRef = new Map<string, TrackedImageLevel[]>();
@@ -48,7 +49,7 @@ export class BrowserBookmarksUIModel {
     private urlTrackingSub: (() => void) | null = null;
     private readonly subscriptions = new DisposableStore();
 
-    constructor(model: BrowserEditorModel) {
+    constructor(model: BrowserEditor) {
         this.model = model;
     }
 
@@ -224,14 +225,15 @@ export class BrowserBookmarksUIModel {
         const bm = await this.ensureBookmarks();
         if (!bm) return;
 
-        const { urlInput, activeTabId, tabs, isIncognito, isTor } = this.model.state.get();
+        const state = this.model.state.get();
+        const { urlInput, activeTabId, tabs } = state;
 
         // Cache the favicon for this hostname before showing the dialog.
         // Skip on Tor pages too: `saveFavicon` downloads over a raw Node
         // https request (no proxy at all) AND writes to the persistent on-disk
         // cache. The `page-favicon-updated` path in BrowserView already excludes
         // Tor; this one used to check only incognito.
-        if (!isIncognito && !isTor) {
+        if (!isPrivateBrowserSession(state)) {
             const activeTab = tabs.find((t) => t.id === activeTabId);
             if (activeTab?.favicon) {
                 const { getHostname, saveFavicon } = await import("../../components/icons/favicon-cache");

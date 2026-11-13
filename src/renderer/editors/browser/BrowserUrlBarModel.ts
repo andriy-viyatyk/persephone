@@ -1,25 +1,25 @@
 import {
     detectSearchEngine,
     SEARCH_ENGINES,
-} from "./BrowserEditorModel";
+} from "./search-engines";
 import { searchHistoryManager } from "./browser-search-history";
 import type { MenuItem } from "../../uikit/Menu/index";
 import { ContextMenuEvent } from "../../api/events/events";
 import { t } from "../../../shared/i18n/t";
-import type { BrowserEditorModel } from "./BrowserEditorModel";
+import type { BrowserEditor } from "./BrowserEditor";
 
 /**
  * Manages URL bar input, suggestions dropdown, and search engine selection
  * for the browser editor.
  */
 export class BrowserUrlBarModel {
-    readonly model: BrowserEditorModel;
+    readonly model: BrowserEditor;
 
     /** DOM reference for the URL input element. */
     urlInputRef: HTMLInputElement | null = null;
     private focusScheduler: ((select: boolean) => void) | undefined;
 
-    constructor(model: BrowserEditorModel) {
+    constructor(model: BrowserEditor) {
         this.model = model;
     }
 

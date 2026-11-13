@@ -647,7 +647,7 @@ editor-specific operations. Editors without an operation facade still return a
 | `page.editor` | `SvgEditorFacade` | `SvgEditor` | `svg` (read-only), `savePngToFile()` |
 | `page.editor` | `HtmlEditorFacade` | `HtmlEditor` | `html` (read-only) |
 | `page.editor` | `MermaidEditorFacade` | `MermaidEditor` | `svgUrl`, `loading`, `error` (read-only), `savePngToFile()` |
-| `page.editor` | `BrowserEditorFacade` | `BrowserEditorModel` | `url`, `title`, shared snapshot/click/hover/type/select/key/evaluate/wait/screenshot/network operations, navigation, and inner-tab management |
+| `page.editor` | `BrowserEditorFacade` | `BrowserEditor` | `url`, `title`, shared snapshot/click/hover/type/select/key/evaluate/wait/screenshot/network operations, navigation, and inner-tab management |
 | `page.editor` | `McpInspectorFacade` | `McpInspectorEditorModel` | `connect()`, `disconnect()`, connection params, server info (title, description, websiteUrl, instructions), `history`, `clearHistory()`, `showHistory()` |
 | `page.editor` | `BoardEditorFacade` | `BoardEditorModel` | Board state, `getManifest()` normalized manifest snapshot, shared frame automation operations, secondary-frame selection, and reload |
 | `page.editor` | `BoardInfoEditorFacade` | `BoardInfoEditorModel` | Install/properties state, including normalized manifest-backed properties |
@@ -1025,7 +1025,7 @@ must read `.app` again. A trusted board's `remote.notify(text)` records a rate-l
 `remote-notify` event with board attribution; it is separate from the board's user-facing toast.
 
 A browser page may publish the same package remote through `window.__aiVision`. After a completed
-cross-document load, `BrowserWebviewModel` probes only pages allowed by the existing private-page
+cross-document load, `BrowserPageRemote` probes only pages allowed by the existing private-page
 gate and caches a shape by browser tab and document generation. `BrowserEditorFacade` exposes it as
 `.app` when present; navigation, reload, tab switching, closing, and disposal invalidate the cached
 binding. Page-authored nodes are labelled with a `page:` kind prefix and an origin note, and remain

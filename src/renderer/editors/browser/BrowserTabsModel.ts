@@ -7,17 +7,17 @@ import { settings } from "../../api/settings";
 import type { BrowserProfile } from "../../api/settings-schema";
 import { BrowserBookmarks } from "./BrowserBookmarks";
 import { t } from "../../../shared/i18n/t";
+import type { BrowserEditor } from "./BrowserEditor";
 import type {
-    BrowserEditorModel,
     BrowserEditorState,
     BrowserTabData,
-} from "./BrowserEditorModel";
+} from "./browser-state";
 import {
     DEFAULT_URL,
     createInternalTabId,
     createTabGroupId,
     browserPageTitle,
-} from "./BrowserEditorModel";
+} from "./browser-state";
 
 /** Owns internal browser tabs and tab-scoped navigation/bookmark resources. */
 export class BrowserTabsModel {
@@ -47,7 +47,7 @@ export class BrowserTabsModel {
     private bookmarkLifecycleGeneration = 0;
     private disposed = false;
 
-    constructor(readonly model: BrowserEditorModel) {
+    constructor(readonly model: BrowserEditor) {
         this.materialized.add(model.state.get().activeTabId);
         // Preload bookmarks silently after a short delay (don't block browser page opening).
         const generation = this.bookmarkLifecycleGeneration;
@@ -154,10 +154,7 @@ export class BrowserTabsModel {
         const state = this.model.state.get();
         if (!state.tabs.some((tab) => tab.id === internalTabId)) return;
         this.removeMaterialized(internalTabId);
-        const isActive = state.activeTabId === internalTabId;
-        this.model.webview.clearAiVisionSiteExtension(internalTabId);
-        this.model.clearAiVisionRegistration(internalTabId);
-        if (isActive) this.model.invalidateAiVisionBinding();
+        this.model.releaseTab(internalTabId);
         this.model.state.update((s) => {
             const idx = s.tabs.findIndex((t) => t.id === internalTabId);
             if (idx < 0) return;
@@ -210,11 +207,9 @@ export class BrowserTabsModel {
         for (const candidate of state.tabs) {
             if (candidate.id !== internalTabId) {
                 this.removeMaterialized(candidate.id);
-                this.model.webview.clearAiVisionSiteExtension(candidate.id);
-                this.model.clearAiVisionRegistration(candidate.id);
+                this.model.releaseTab(candidate.id);
             }
         }
-        if (state.activeTabId !== internalTabId) this.model.invalidateAiVisionBinding();
         this.model.state.update((s) => {
             for (const t of s.tabs) if (t.id !== internalTabId) this.currentUrls.delete(t.id);
             s.tabs = [tab];
@@ -234,10 +229,8 @@ export class BrowserTabsModel {
         const removed = state.tabs.slice(idx + 1);
         for (const tab of removed) {
             this.removeMaterialized(tab.id);
-            this.model.webview.clearAiVisionSiteExtension(tab.id);
-            this.model.clearAiVisionRegistration(tab.id);
+            this.model.releaseTab(tab.id);
         }
-        if (removed.some((tab) => tab.id === state.activeTabId)) this.model.invalidateAiVisionBinding();
         this.model.state.update((s) => {
             const removed = s.tabs.splice(idx + 1);
             const removedIds = new Set(removed.map((t) => t.id));
@@ -272,19 +265,14 @@ export class BrowserTabsModel {
         const state = this.model.state.get();
         if (state.activeTabId === internalTabId || !state.tabs.some((tab) => tab.id === internalTabId)) return;
         this.materialize(internalTabId);
-        this.model.invalidateAiVisionBinding();
+        this.model.pageRemote.invalidateBinding();
         this.model.state.update((s) => {
             const tab = s.tabs.find((t) => t.id === internalTabId);
             if (!tab) return;
             this.activeTabHistory.push(s.activeTabId);
             s.activeTabId = internalTabId;
             this.syncTopLevelFromTab(s, tab);
-            if (s.findBarVisible) {
-                s.findBarVisible = false;
-                s.findText = "";
-                s.findActiveMatch = 0;
-                s.findTotalMatches = 0;
-            }
+            if (this.model.find.state.get().findBarVisible) this.model.find.reset();
         });
     };
 

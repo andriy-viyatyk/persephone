@@ -502,13 +502,20 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │
 │   ├── browser/            # Built-in browser (non-text, no trait)
 │   │   ├── BrowserEditor.ts          # EditorModel subclass — registry entry point
-│   │   ├── BrowserEditorModel.ts     # Browser state types, defaults, and partition helper
+│   │   ├── browser-state.ts          # Browser state types, defaults, IDs, title, and partition helpers
+│   │   ├── search-engines.ts         # Search engine definitions and URL detection
 │   │   ├── BrowserTabsModel.ts       # Internal tabs and lazy materialization, URL/favicon caches, bookmarks resource
 │   │   ├── BrowserTorModel.ts         # Tor partition and daemon lifecycle
 │   │   ├── BrowserProfileNetworkModel.ts # Profile/Incognito proxy: apply before mount, follow settings edits, image route for app-drawn resources
 │   │   ├── BrowserView.ts             # Native browser UI and per-tab webview host
-│   │   ├── BrowserWebviewModel.ts    # Webview management
-│   │   ├── BrowserTranslationController.ts # Provider/language workflow and toolbar state
+│   │   ├── BrowserWebviewModel.ts    # Private guest registry, readiness, navigation, event routing
+│   │   ├── BrowserSiteExtensionController.ts # Trust, injection, site actions, and fetch routing
+│   │   ├── BrowserSiteActionsView.ts  # Site action toolbar popover content
+│   │   ├── BrowserPageRemote.ts      # Page-authored AiVision/WebMCP registration and requests
+│   │   ├── BrowserFindModel.ts       # Find-in-page state and commands
+│   │   ├── BrowserShortcutTable.ts   # Browser chrome keyboard shortcut registry
+│   │   ├── BrowserTranslationController.ts # Translation workflow and per-tab page translation
+│   │   ├── browser-page-menu.ts      # Page menu and Show Resources actions
 │   │   ├── BrowserPageTranslationController.ts # Frame-scoped page translation scheduling and results
 │   │   ├── webview-context-menu.ts    # Webview context-menu construction
 │   │   ├── BrowserUrlBarModel.ts     # URL bar state
@@ -1156,7 +1163,7 @@ import { app } from "../../api/app";
 import { Button } from "../../uikit/Button/Button";
 
 // Type-only imports for code splitting (erased at compile time)
-import type { BrowserEditorModel } from "../../editors/browser/BrowserEditorModel";
+import type { BrowserEditor } from "../../editors/browser/BrowserEditor";
 
 // Dynamic imports for editors (preserves code splitting)
 const { ArchiveEditorView } = await import("../editors/archive/ArchiveEditorView");

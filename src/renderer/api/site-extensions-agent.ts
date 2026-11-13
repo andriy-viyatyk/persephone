@@ -153,7 +153,7 @@ async function reload(pageId: string): Promise<SiteExtensionReloadResult> {
     if (!editor) return invalidResult("not-current");
     const { BrowserEditor } = await import("../editors/browser/BrowserEditor");
     if (!(editor instanceof BrowserEditor)) return invalidResult("not-current");
-    return editor.webview.reloadSiteExtension();
+    return editor.siteExtensions.reload();
 }
 
 async function remove(id: string) {

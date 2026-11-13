@@ -1,3 +1,22 @@
+## EPIC-158 — Refactoring Phase 6.1 part 1: browser module shape, shared rules and the `BrowserWebviewModel` split
+
+Completed 2026-11-13. Roadmap Phase 6.1 part 1 (BRW-12, BRW-11, BRW-1, BRW-2, BRW-7): `BrowserWebviewModel` now owns
+guests (a private registry, readiness, load/zoom/devtools) and one event router that fans out, in the old order, to one
+owner per feature — `editor.siteExtensions`, `editor.pageRemote`, `editor.find` and `editor.translation`.
+`BrowserWebviewModel.ts` 1,453 → 376 lines, `BrowserEditor.ts` 774 → 616, `BrowserView.ts` 1,290 → 1,171,
+`BrowserEditorFacade.ts` 992 → 847. `window.persephone`, the script facade, MCP `call`, AiVision messages and persisted
+browser state are unchanged. Plans by Codex, reviewed against the roadmap guardrails; Codex Luna implemented, with plan
+corrections recorded in the epic notes. Parts 2 (renderer: BRW-4, 5, 6, 9, 10) and 3 (main: MAIN-7) remain. Epic
+document: [EPIC-158](EPIC-158.md).
+
+- [x] **Module shape (US-1898).** `BrowserEditorModel.ts` → `browser-state.ts` + `search-engines.ts`; the alias, its import cycle, the tab/Tor compatibility delegates and the `BrowserView` re-export are gone; `BrowserEditor` owns the partition; the facade declares `implements IAiVisible, IBrowserEditor`.
+- [x] **Shared small rules (US-1899).** Zoom helpers in `src/shared/browser-zoom.ts` (renderer and main), `isPrivateBrowserSession`, `siteExtensionTrust.isGranted`, `SiteExtensionTrustPrompt.from`, one `releaseTab` for tab removal, one facade access guard; the dead `via` parameter is gone.
+- [x] **Site-extension controller (US-1900).** `BrowserSiteExtensionController` owns the whole runtime and trust-prompt state; `SiteActionDocument` replaces the anonymous record and holds the one `resolveFetch` evaluate.
+- [x] **Page remote (US-1901).** `BrowserPageRemote` owns registration, probe, signals, transport, revalidation, WebMCP routing and the privacy checks; the facade keeps presentation; `aiVisionIndicatorRevision` replaced by a `changed` subscription; page-global names in `src/shared/browser-page-globals.ts`.
+- [x] **Find, page menu, shortcuts, registry (US-1902).** `BrowserFindModel`, `browser-page-menu.ts`, one `BrowserShortcutTable`, and a private webview registry behind `attach`/`detach`/`get`/`isReady`.
+- [x] **Translation owner (US-1903).** `BrowserTranslationController` owns the per-tab page pumps, lifecycle and frame routing, with one `tabView` and one subscription; `setTranslationLifecycle` is gone.
+- [x] **Epic review.** `/review` found no guardrail findings; `/document` updated seven architecture docs; `/userdoc` needed no changes. No English catalog messages changed.
+
 ## EPIC-157 — Refactoring Phase 5.7: content Layer 2 records a typed `action`; Layer 3 executes it
 
 Completed 2026-11-13. Roadmap Phase 5.7 (CORE-11, with CORE-3 step 5): link parsers and resolvers only classify a link

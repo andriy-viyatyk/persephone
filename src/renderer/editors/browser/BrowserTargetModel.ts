@@ -1,14 +1,14 @@
-import type { BrowserEditorModel } from "./BrowserEditorModel";
+import type { BrowserEditor } from "./BrowserEditor";
 import { CdpSession } from "../../automation/CdpSession";
 import type { IBrowserTarget, IInputPoint, ITargetTab } from "../../automation/types";
 
 /**
- * Lightweight automation adapter for BrowserEditorModel.
+ * Lightweight automation adapter for BrowserEditor.
  * Exposes only what the automation layer needs — navigation, tabs, and CDP.
  * Follows the same sub-model pattern as BrowserWebviewModel.
  */
 export class BrowserTargetModel implements IBrowserTarget {
-    constructor(private readonly model: BrowserEditorModel) {}
+    constructor(private readonly model: BrowserEditor) {}
 
     get id(): string {
         return this.model.id;
@@ -41,7 +41,7 @@ export class BrowserTargetModel implements IBrowserTarget {
     focusWebview(tabId?: string): void {
         const state = this.model.state.get();
         const targetTab = tabId || state.activeTabId;
-        const webview = this.model.webview.webviewRefs.get(targetTab);
+        const webview = this.model.webview.get(targetTab);
         webview?.focus();
     }
 
@@ -49,7 +49,7 @@ export class BrowserTargetModel implements IBrowserTarget {
         const state = this.model.state.get();
         const targetTab = tabId || state.activeTabId;
         await this.ensureReady(targetTab);
-        const webview = this.model.webview.webviewRefs.get(targetTab);
+        const webview = this.model.webview.get(targetTab);
         if (!webview) throw new Error("Browser tab webview is not ready.");
         if (webview) {
             webview.focus();
@@ -103,10 +103,10 @@ export class BrowserTargetModel implements IBrowserTarget {
 
     closeTab(tabId?: string): void {
         const id = tabId || this.model.state.get().activeTabId;
-        this.model.closeTab(id);
+        this.model.tabs.closeTab(id);
     }
 
     switchTab(tabId: string): void {
-        this.model.switchTab(tabId);
+        this.model.tabs.switchTab(tabId);
     }
 }

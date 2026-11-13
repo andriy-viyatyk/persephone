@@ -2,6 +2,7 @@ import type { SiteExtensionTrustSnapshot } from "../../ipc/api-types";
 import { api } from "../../ipc/renderer/api";
 import rendererEvents from "../../ipc/renderer/renderer-events";
 import { MainSnapshotMirror } from "../core/state/MainSnapshotMirror";
+import type { SiteExtensionRecord } from "./site-extensions";
 
 function normalized(hosts: string[]): string[] { return [...new Set(hosts)].sort(); }
 export function sameSiteExtensionHostSet(left: string[], right: string[]): boolean {
@@ -25,6 +26,14 @@ class SiteExtensionTrust extends MainSnapshotMirror<SiteExtensionTrustSnapshot> 
         }]));
     }
     get(id: string) { return this.snapshot[id]; }
+
+    isGranted(extension: SiteExtensionRecord): boolean;
+    isGranted(extension: Pick<SiteExtensionRecord, "id" | "hosts" | "fetchHosts">): boolean;
+    isGranted(extension: Pick<SiteExtensionRecord, "id" | "hosts" | "fetchHosts">): boolean {
+        const grant = this.get(extension.id);
+        return !!grant?.enabled && sameSiteExtensionHostSet(grant.hosts, extension.hosts)
+            && sameSiteExtensionHostSet(grant.fetchHosts, extension.fetchHosts);
+    }
 
     /** Tell main which folder extensions are read from; main drops every grant when it changes. */
     async bindFolder(folder: string): Promise<void> {

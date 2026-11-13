@@ -21,10 +21,16 @@ normalization, keyboard shortcuts, and popup policy while composing focused subm
 
 - `BrowserTabsModel` owns internal-tab lifecycle and tab-scoped resources, including URL and favicon
   caches, active-tab history, mute/panel operations, and the `BrowserBookmarks` resource.
-- `BrowserTorModel` owns per-instance partition identifiers, proxy arming, Tor listeners and reconnect
-  lifecycle, and window-close cleanup.
-- `BrowserWebviewModel`, `BrowserUrlBarModel`, `BrowserBookmarksUIModel`, and `BrowserTargetModel`
-  own webview events, URL-bar state, bookmark UI, and automation respectively.
+- `BrowserEditor` owns the resolved Electron session partition and its stable incognito/Tor IDs,
+  composes the focused feature models, and fans tab release out to each owner.
+- `BrowserTorModel` owns proxy arming, Tor listeners and reconnect lifecycle, and window-close cleanup.
+- `BrowserWebviewModel` owns the private guest registry, readiness and navigation commands, and routes
+  guest events to `BrowserSiteExtensionController`, `BrowserPageRemote`, `BrowserFindModel`, and
+  `BrowserTranslationController` in lifecycle order. Those models own site-extension injection and
+  actions, page-authored AiVision/WebMCP registration and requests, find-in-page state, and translation
+  workflow plus per-tab translation respectively.
+- `BrowserUrlBarModel`, `BrowserBookmarksUIModel`, and `BrowserTargetModel` own URL-bar state,
+  bookmark UI, and automation respectively.
 
 The host's tab and Tor methods are compatibility forwarding points; the corresponding submodels own
 those behaviors and their cleanup. Views use the composed models, while the browser page retains its
@@ -334,8 +340,14 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/renderer/editors/browser/BrowserView.ts` | Renderer | Native browser view composition: toolbar, URL bar, multi-webview hosting, and overlays |
 | `src/renderer/editors/browser/BrowserEditor.ts` | Renderer | Editor coordinator: restore/persistence, navigation normalization, profile presentation, keyboard shortcuts, and composed sub-model lifecycle |
 | `src/renderer/editors/browser/BrowserTabsModel.ts` | Renderer | Internal-tab lifecycle, current URL and favicon caches, mute/panel operations, and bookmark resource ownership |
-| `src/renderer/editors/browser/BrowserTorModel.ts` | Renderer | Per-page Tor partition IDs, proxy arming, daemon listeners/reconnect, and cleanup |
-| `src/renderer/editors/browser/BrowserWebviewModel.ts` | Renderer | Webview refs, `browser:event` IPC handling including AiVision shape/notify signals, navigation updates, find-in-page, keyboard shortcuts |
+| `src/renderer/editors/browser/browser-state.ts` | Renderer | Browser state/defaults, tab/group IDs, title policy, and partition string helper |
+| `src/renderer/editors/browser/search-engines.ts` | Renderer | Search-engine definitions and URL detection |
+| `src/renderer/editors/browser/BrowserTorModel.ts` | Renderer | Tor proxy arming, daemon listeners/reconnect, and cleanup |
+| `src/renderer/editors/browser/BrowserWebviewModel.ts` | Renderer | Private webview registry, readiness and navigation commands, guest event routing |
+| `src/renderer/editors/browser/BrowserSiteExtensionController.ts` | Renderer | Site-extension trust, injection, actions, fetch routing, and reload lifecycle |
+| `src/renderer/editors/browser/BrowserPageRemote.ts` | Renderer | Page/WebMCP model registration, probing, privacy checks, revalidation, and remote requests |
+| `src/renderer/editors/browser/BrowserFindModel.ts` | Renderer | Find-in-page state and commands |
+| `src/renderer/editors/browser/BrowserTranslationController.ts` | Renderer | Translation toolbar workflow and per-tab page translation lifecycle |
 | `src/renderer/editors/browser/webview-context-menu.ts` | Renderer | Browser webview context-menu construction and bounded DOM/SVG/resource probes |
 | `src/renderer/editors/browser/BrowserTargetModel.ts` | Renderer | Automation adapter sub-model — implements `IBrowserTarget` for Object Model call paths |
 | `src/renderer/editors/browser/BrowserTabsPanel.ts` | Renderer | Native left-side internal tabs panel with compact floating preview and drag-to-reorder |
@@ -527,7 +539,7 @@ Each browser page is bound to a **profile** that determines its Electron session
 | Incognito | `browser-incognito-<uuid>` | Cleared when page closes |
 | Tor | `browser-tor-<uuid>` | Cleared when page closes |
 
-`getPartitionString()` in `BrowserEditorModel.ts` computes the partition. `BrowserTorModel.partition` is a **getter** (not a stored field) because the profile state may be set after model construction in `showBrowserPage()`. Each incognito/Tor model has stable IDs (random UUIDs generated once per instance) to keep the partition consistent across getter calls.
+`getPartitionString()` in `browser-state.ts` computes the partition. `BrowserEditor.partition` is the shared getter because profile state may be set after editor construction in `showBrowserPage()`. Each editor has stable incognito/Tor IDs (random UUIDs generated once per instance) to keep the partition consistent across getter calls. `BrowserTorModel` reads this resolved partition and owns Tor lifecycle only.
 
 ### Permission Policy
 
@@ -984,9 +996,9 @@ When focus is inside a `<webview>`, keyboard events are consumed by the guest pa
 
 When focus is on any renderer element (toolbar, URL bar, tab panel, or no specific focus), the browser editor subscribes to a global keyboard event bus. `MainPageView` broadcasts all `keydown` events via `globalKeyDown.send(e)` (defined in `events.ts`). `BrowserEditor` subscribes in its constructor and handles browser hotkeys only when it's the active page. This keeps browser-specific logic out of the shell composition view.
 
-### Layer 3: Root div `onKeyDown` (`BrowserWebviewModel`)
+### Layer 3: Browser shortcut table (`BrowserEditor`)
 
-The root browser `<div>` handles `Ctrl+L` (focus URL bar) and `Ctrl+F` (find in page) — shortcuts specific to the browser UI that don't need global reach. This layer covers focus on Persephone's own chrome; `Ctrl+F` with focus *inside* the page is decided by the guest preload instead (see below).
+The browser shortcut table handles `Ctrl+L` (focus URL bar) and `Ctrl+F` (find in page) — shortcuts specific to the browser UI that don't need global reach. This layer covers focus on Persephone's own chrome; `Ctrl+F` with focus *inside* the page is decided by the guest preload instead (see below).
 
 ### Supported Hotkeys
 
@@ -1120,7 +1132,7 @@ const tabs = browser.tabs;                  // list of internal tabs
 **Implementation:** [`BrowserEditorFacade`](../../src/renderer/scripting/api-wrapper/BrowserEditorFacade.ts)
 
 The facade has an optional page-authored `.app` child. After `did-stop-loading` for a real document,
-`BrowserWebviewModel` probes `window.__aiVision` and the app-owned WebMCP remote unless the existing
+`BrowserPageRemote` probes `window.__aiVision` and the app-owned WebMCP remote unless the existing
 privacy gate refuses the page. A valid serialized shape is retained per internal tab and document
 generation; `BrowserEditorFacade` mounts it through `createRemoteProxy` only for the active tab. A
 navigation, reload, tab switch, close, or model disposal invalidates that binding, so a prior
@@ -1163,13 +1175,13 @@ as data. The `.app` subtree does not contribute to the page or `pages` overview 
 The URL bar's Site permissions control indicates when the active regular page has a live model
 registration: green identifies a page-published model and blue identifies a model after a trusted
 site extension was successfully injected into the same document. The popover repeats that source
-in a badge above the origin. `BrowserEditor` keeps registrations private and advances an ephemeral
-state revision when one is added or removed so the toolbar and an open popover refresh; neither the
-revision nor registration data is persisted. `BrowserWebviewModel` separately retains the injected
-extension name with the document id, clearing it on navigation, successful in-place extension
-teardown, tab removal, and disposal. The view only combines that marker with a live registration,
-and suppresses the indicator in Incognito and Tor modes. A trust grant, prompt, or failed injection
-alone is not evidence that a model came from an extension.
+in a badge above the origin. `BrowserPageRemote` keeps registrations private and emits a change
+subscription so the toolbar and an open popover refresh; neither the subscription state nor
+registration data is persisted. `BrowserSiteExtensionController` retains the injected extension
+name with the document id, clearing it on navigation, successful in-place extension teardown, tab
+removal, and disposal. The view combines that marker with a live registration and suppresses the
+indicator in Incognito and Tor modes. A trust grant, prompt, or failed injection alone is not evidence
+that a model came from an extension.
 
 The same site-info popover offers certificate viewing for HTTPS pages. `BrowserEditor.getCertificate()`
 uses the active or requested internal tab's current URL and asks that tab's existing
@@ -1197,7 +1209,7 @@ path is resolved relative to its extension folder and rejected when its normaliz
 folder. This is a lexical check; a symlink inside the extension folder can still point outside it,
 so this path check is not a filesystem sandbox.
 
-`BrowserWebviewModel` checks each completed document's URL and privacy mode before loading an
+`BrowserSiteExtensionController` checks each completed document's URL and privacy mode before loading an
 extension. Incognito and Tor pages are always skipped. A matching extension runs in the page's
 main world through CDP `Runtime.evaluate`, with the standalone site-extension runtime loaded before
 the extension script; this path is not subject to the site's script CSP. Extensions do not run until
@@ -1396,8 +1408,8 @@ Paths and queries remain in bounded session memory and are never shown to the ag
 
 The manifest's separate `fetchHosts` set is part of the folder-bound grant; legacy grants migrate
 to an empty set, and either host set changing requires consent again. The main-world runtime sends
-bounded `fetch-request` signals through the existing binding. BrowserWebviewModel associates them
-with the current trusted document and context; the guarded main broker checks the persisted grant
+bounded `fetch-request` signals through the existing binding. `BrowserSiteExtensionController`
+associates them with the current trusted document and context; the guarded main broker checks the persisted grant
 for each HTTPS destination and redirect. It uses cookieless Node fetch, a ten-second deadline,
 three redirects, four requests per tab, and an 8 MiB decoded UTF-8 limit. Lifecycle invalidation
 cancels requests and discards late results. No DNS filtering or pinning is performed, and the shared

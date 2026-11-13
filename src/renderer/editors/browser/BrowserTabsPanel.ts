@@ -7,7 +7,7 @@ import { KeyedList } from "../../uikit/shared/keyed-list";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { PopoverView } from "../../uikit/Popover/PopoverView";
 import type { BrowserEditor } from "./BrowserEditor";
-import type { BrowserTabData } from "./BrowserEditorModel";
+import type { BrowserTabData } from "./browser-state";
 import { t } from "../../../shared/i18n/t";
 import "./BrowserTabsPanel.css";
 import "../../uikit/Panel/Panel.css";

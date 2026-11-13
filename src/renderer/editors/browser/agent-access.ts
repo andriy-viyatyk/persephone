@@ -14,16 +14,16 @@ export interface IBrowserAccessFlags {
     openedByAgent?: boolean;
 }
 
-export function agentMayAccessBrowserPage(state: IBrowserAccessFlags | undefined): boolean {
-    if (!state) return true;
-    if (!state.isIncognito && !state.isTor) return true;
-    return !!state.openedByAgent;
+export function isPrivateBrowserSession(state: IBrowserAccessFlags | undefined): boolean {
+    return !!state && (state.isIncognito || state.isTor);
 }
 
-export function privateBrowserRefusal(state: IBrowserAccessFlags, via: "browser tools" | "call"): string {
+export function agentMayAccessBrowserPage(state: IBrowserAccessFlags | undefined): boolean {
+    return !isPrivateBrowserSession(state) || !!state?.openedByAgent;
+}
+
+export function privateBrowserRefusal(state: IBrowserAccessFlags): string {
     const mode = state.isTor ? "Tor" : "incognito";
-    const remedy = via === "call"
-        ? "open a normal browser page instead (pages.showBrowserPage), or open your own private page — pages you open are yours to read"
-        : "use pages.openUrlInBrowserTab to open a normal browser page, or open your own incognito/Tor page — pages the agent opens are accessible to it";
+    const remedy = "open a normal browser page instead (pages.showBrowserPage), or open your own private page — pages you open are yours to read";
     return `This browser page is in ${mode} mode and was opened by the user. Agent access is disabled for privacy protection; ${remedy}.`;
 }

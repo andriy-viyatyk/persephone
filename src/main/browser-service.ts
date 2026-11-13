@@ -1,4 +1,4 @@
-import { PAGE_ZOOM_MIN, PAGE_ZOOM_MAX } from "../shared/browser-zoom";
+import { PAGE_ZOOM_DEFAULT, isValidPageZoom } from "../shared/browser-zoom";
 /**
  * Main process browser service.
  *
@@ -173,7 +173,7 @@ export interface RegisteredWebview {
 const registrations = new Map<string, RegisteredWebview>();
 
 function validZoomPercent(value: unknown): value is number {
-    return typeof value === "number" && Number.isFinite(value) && value >= PAGE_ZOOM_MIN && value <= PAGE_ZOOM_MAX;
+    return isValidPageZoom(value);
 }
 
 function applyGuestZoom(registration: RegisteredWebview): void {
@@ -881,7 +881,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
     registrations.set(key, {
         tabId,
         internalTabId,
-        zoomPercent: validZoomPercent(request.zoomPercent) ? request.zoomPercent : 100,
+        zoomPercent: validZoomPercent(request.zoomPercent) ? request.zoomPercent : PAGE_ZOOM_DEFAULT,
         webContents: wc,
         senderWebContents: sender,
         listeners,
