@@ -1,6 +1,6 @@
 import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { HtmlEditor } from "../../editors/html";
-import { writePngToFile } from "../../editors/shared/image-export";
+import { writePngToFile } from "../../editors/shared/image-actions";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { errMessage } from "../../../shared/utils";
 
@@ -89,17 +89,17 @@ export class HtmlEditorFacade extends EditorFacadeBase<HtmlEditor> implements IA
 
     async copyImageToClipboard(): Promise<void> {
         this.requireCaptureIdle();
-        await this.editor.copyImageToClipboard();
+        await this.editor.imageActions.copy();
     }
 
     async openInImageView(): Promise<void> {
         this.requireCaptureIdle();
-        await this.editor.openInImageView();
+        await this.editor.imageActions.openInImageView();
     }
 
     async editImage(): Promise<void> {
         this.requireCaptureIdle();
-        await this.editor.editImage();
+        await this.editor.imageActions.editImage();
     }
 
     private requireCaptureIdle(): void {

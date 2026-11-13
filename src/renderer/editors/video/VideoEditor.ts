@@ -1,5 +1,4 @@
 import { EditorId } from "../../../shared/editor-ids";
-import { COMPLETED_RECORDING_PATTERN } from "../../../shared/recording-filenames";
 import { englishMessage, t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import {
@@ -18,16 +17,19 @@ import type { VideoFormat, PlayerState } from "./video-types";
 import { api } from "../../../ipc/renderer/api";
 import { settings } from "../../api/settings";
 import { ui } from "../../api/ui";
-import { app } from "../../api/app";
 import { pages } from "../../api/pages";
-import { fpBasename, fpDirname, fpNormalizeForCompare, isPlainLocalPath } from "../../core/utils/file-path";
+import { fpNormalizeForCompare } from "../../core/utils/file-path";
 import { errMessage } from "../../../shared/utils";
-import { pipeFromLink, pipeFromPersistedSource, UnresolvableLinkError } from "../../content/rebuild-pipe";
-import { reportProviderError, watchSourceRecovery } from "../../content/source-recovery";
-import { isProviderResolutionError } from "../../content/registry";
-import { registerPipeResource, unregisterPipeResource } from "../../content/pipe-resource-server";
-import type { VideoStreamSessionConfig } from "../../../ipc/api-param-types";
 import { REOPEN_TRAIT } from "../base/editor-traits";
+import {
+    deleteTemporary,
+    discard as discardRecording,
+    isTemporaryRecording as isTemporaryRecordingPath,
+    saveAs as saveRecordingAs,
+} from "../../api/window-recording";
+import { videoSessionStore } from "../../api/video-session-store";
+import { VideoStreamSession } from "./VideoStreamSession";
+import type { VideoStreamStartOptions } from "./VideoStreamSession";
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -55,19 +57,6 @@ export interface VideoEditorState extends EditorStateBase {
     reloadKey: number;
 }
 
-/** Last mute state within this window session — remembered across video player
- *  instances. Module-scoped (preserved from legacy `VideoPlayerEditor.tsx:48`). */
-let sessionMuted = false;
-
-type VideoSourceKind = "hls" | "http" | "local-file" | "pipe";
-
-function sourceKind(url: string, format: VideoFormat): VideoSourceKind {
-    if (format === "m3u8") return "hls";
-    if (/^https?:\/\//i.test(url)) return "http";
-    if (isPlainLocalPath(url)) return "local-file";
-    return "pipe";
-}
-
 export const getDefaultVideoEditorState = (): VideoEditorState => ({
     id: crypto.randomUUID(),
     title: englishMessage("editors.videoPlayer"),
@@ -77,7 +66,7 @@ export const getDefaultVideoEditorState = (): VideoEditorState => ({
     inputText: "",
     format: "mp4",
     playerState: "stopped",
-    pageMuted: sessionMuted,
+    pageMuted: videoSessionStore.muted,
     parsedRequest: null,
     streamUrl: "",
     reloadKey: 0,
@@ -92,14 +81,26 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
     noLanguage = true;
     skipSave = true;
     private mediaElement: HTMLMediaElement | null = null;
-    private activeSessionId: string | undefined;
-    private activeSessionResourceId: string | undefined;
-    private sourceRequestId = 0;
-    private recoveryWatch: (() => void) | undefined;
-    private inFlightSource: { url: string; promise: Promise<void> } | undefined;
+    private readonly streamSession: VideoStreamSession;
 
     constructor(state: TComponentState<VideoEditorState>) {
         super(state);
+        this.streamSession = new VideoStreamSession({
+            getSourceState: () => {
+                const { url, format, parsedRequest, playerState, streamUrl } = this.state.get();
+                return { url, format, parsedRequest, playerState, streamUrl };
+            },
+            getPipe: () => this.pipe,
+            setPipe: (pipe) => { this.pipe = pipe; },
+            getPageId: () => this.page?.id,
+            getSourceLink: () => this.sourceLink,
+            setLoading: (streamUrl) => this.state.update((current) => {
+                current.playerState = "loading";
+                current.streamUrl = streamUrl;
+            }),
+            setStreamUrl: (streamUrl) => this.state.update((current) => { current.streamUrl = streamUrl; }),
+            setPlayerState: (playerState) => this.state.update((current) => { current.playerState = playerState; }),
+        });
         this.traits.add(REOPEN_TRAIT, { onReopen: (pipe) => this.reopen(pipe) });
         this.getIconElement = () => PlayerIcon.createElement({ color: DEFAULT_BROWSER_COLOR });
     }
@@ -134,35 +135,22 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
     }
 
     get isTemporaryRecording(): boolean {
-        const filePath = this.filePath;
-        if (!filePath) return false;
-        return fpNormalizeForCompare(fpDirname(filePath)) === fpNormalizeForCompare(app.fs.resolveDataPath("recordings"))
-            && COMPLETED_RECORDING_PATTERN.test(fpBasename(filePath));
+        return this.filePath ? isTemporaryRecordingPath(this.filePath) : false;
     }
 
     saveTemporaryRecording = async (): Promise<void> => {
         if (!this.isTemporaryRecording || !this.filePath) throw new Error("This video is not an unsaved recording.");
         const sourcePath = this.filePath;
-        const extension = fpBasename(sourcePath).toLowerCase().endsWith(".mp4") ? "mp4" : "webm";
-        const destination = await app.fs.showSaveDialog({
-            title: t("editors.saveRecordingAs"),
-            defaultPath: `Persephone Recording.${extension}`,
-            filters: [{ name: "Video", extensions: ["mp4", "webm"] }],
-        });
+        const destination = await saveRecordingAs(sourcePath);
         if (!destination) return;
-        await app.fs.copyFile(sourcePath, destination);
         await this.submitUrl(destination);
         this.state.update((state) => { state.filePath = destination; });
-        await app.fs.delete(sourcePath);
-        const { windowRecording } = await import("../../api/window-recording");
-        windowRecording.clearLast(sourcePath);
+        await deleteTemporary(sourcePath);
     };
 
     discardTemporaryRecording = async (): Promise<void> => {
         if (!this.isTemporaryRecording || !this.filePath) throw new Error("This video is not an unsaved recording.");
-        await app.fs.delete(this.filePath);
-        const { windowRecording } = await import("../../api/window-recording");
-        windowRecording.clearLast(this.filePath);
+        await discardRecording(this.filePath);
         const page = this.page ? pages.query.findPage(this.page.id) : undefined;
         await page?.close();
     };
@@ -188,7 +176,7 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
      *  retries too. A playing page and HTTP/local sources are left as they are. */
     private reopen(freshPipe?: IContentPipe): boolean {
         const { url, format, playerState } = this.state.get();
-        if (!freshPipe || !this.page || sourceKind(url, format) !== "pipe"
+        if (!freshPipe || !this.page || !this.streamSession.isPipeSource(url, format)
             || (playerState !== "error" && playerState !== "unsupported format")) return false;
         void this.startSource(url, this.state.get().parsedRequest, {
             freshPipe,
@@ -202,141 +190,13 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         this.state.update((s) => { s.inputText = text; });
     };
 
-    private deleteActiveSession = async (): Promise<void> => {
-        const sessionId = this.activeSessionId;
-        const resourceId = this.activeSessionResourceId;
-        this.activeSessionId = undefined;
-        this.activeSessionResourceId = undefined;
-        try {
-            if (sessionId) await api.deleteVideoStreamSession(sessionId);
-        } finally {
-            if (resourceId) {
-                unregisterPipeResource(resourceId);
-            }
-        }
-    };
-
-    private invalidateResource = async (resourceId: string | undefined): Promise<void> => {
-        if (!resourceId) return;
-        unregisterPipeResource(resourceId);
-    };
-
-    private ensurePipeForSource = async (
-        url: string,
-        requestId: number,
-        rebuild = false,
-    ): Promise<IContentPipe | undefined> => {
-        if (this.pipe) return this.pipe;
-        const pipe = rebuild
-            ? await pipeFromLink(url, { unknownScheme: "reject" })
-            : await pipeFromPersistedSource(this.state.get().sourceLink, url, { unknownScheme: "reject" });
-        if (requestId !== this.sourceRequestId) {
-            pipe.dispose();
-            return undefined;
-        }
-        this.pipe = pipe;
-        return pipe;
-    };
-
-    private installRecoveryWatch(pipe: IContentPipe, requestId: number): void {
-        this.recoveryWatch?.();
-        this.recoveryWatch = watchSourceRecovery(pipe, () => {
-            const { url, format, playerState } = this.state.get();
-            if (requestId !== this.sourceRequestId || sourceKind(url, format) !== "pipe"
-                || (playerState !== "error" && playerState !== "unsupported format")) return;
-            void this.startSource(url, this.state.get().parsedRequest, { force: true });
-        });
-    }
-
     private startSource = (
         url: string,
         parsedRequest: ParsedHttpRequest | null,
-        options: { freshPipe?: IContentPipe; force?: boolean; rebuildPipe?: boolean } = {},
-    ): Promise<void> => {
-        if (this.inFlightSource?.url === url && !options.freshPipe) return this.inFlightSource.promise;
-        const { format, streamUrl, playerState } = this.state.get();
-        if (!options.force && streamUrl
-            && playerState !== "error" && playerState !== "unsupported format") return Promise.resolve();
-        const kind = sourceKind(url, format);
-        const requestId = ++this.sourceRequestId;
-        this.recoveryWatch?.();
-        this.recoveryWatch = undefined;
-        this.state.update((state) => {
-            state.playerState = "loading";
-            state.streamUrl = kind === "hls" ? url : "";
-        });
-
-        const promise = (async () => {
-            let resourceId: string | undefined;
-            try {
-                await this.deleteActiveSession();
-                if (requestId !== this.sourceRequestId) {
-                    options.freshPipe?.dispose();
-                    return;
-                }
-                if (options.freshPipe) {
-                    const oldPipe = this.pipe;
-                    if (oldPipe && oldPipe !== options.freshPipe) oldPipe.dispose();
-                    this.pipe = options.freshPipe;
-                } else if (options.rebuildPipe) {
-                    this.pipe?.dispose();
-                    this.pipe = null;
-                }
-                if (kind === "hls") return;
-                let config: VideoStreamSessionConfig;
-                if (kind === "http") {
-                    config = { url, headers: parsedRequest?.headers, pageId: this.page?.id };
-                } else if (kind === "local-file") {
-                    config = { filePath: url, pageId: this.page?.id };
-                } else {
-                    const pipe = await this.ensurePipeForSource(url, requestId, options.rebuildPipe);
-                    if (!pipe || requestId !== this.sourceRequestId) return;
-                    await pipe.stat();
-                    if (requestId !== this.sourceRequestId) return;
-                    resourceId = `video-${crypto.randomUUID()}`;
-                    registerPipeResource(resourceId, pipe, { kind: "video-session" });
-                    config = { pipe: true, pipeResourceId: resourceId, pageId: this.page?.id };
-                    this.installRecoveryWatch(pipe, requestId);
-                }
-                const session = await api.createVideoStreamSession(config, settings.get("video-stream.port"));
-                if (requestId !== this.sourceRequestId) {
-                    await api.deleteVideoStreamSession(session.sessionId);
-                    await this.invalidateResource(resourceId);
-                    return;
-                }
-                this.activeSessionId = session.sessionId;
-                this.activeSessionResourceId = resourceId;
-                this.state.update((state) => {
-                    if (requestId === this.sourceRequestId && state.url === url) state.streamUrl = session.streamingUrl;
-                });
-            } catch (error: unknown) {
-                await this.invalidateResource(resourceId);
-                if (requestId !== this.sourceRequestId) return;
-                if (options.freshPipe && this.pipe !== options.freshPipe) {
-                    this.pipe?.dispose();
-                    this.pipe = options.freshPipe;
-                }
-                if (kind === "http" || kind === "local-file") {
-                    this.state.update((state) => { state.streamUrl = url; });
-                    return;
-                }
-                if (isProviderResolutionError(error)) {
-                    reportProviderError(error);
-                    if (this.pipe) this.installRecoveryWatch(this.pipe, requestId);
-                } else if (error instanceof UnresolvableLinkError && error.scheme && !error.registered) {
-                    ui.notify(
-                        `This page was opened from a "${error.scheme}:" link, and the board that `
-                        + "provides it is missing or untrusted. Reinstall or trust that board to restore it.",
-                        "error",
-                    );
-                }
-                this.state.update((state) => { state.playerState = "error"; });
-            }
-        })().finally(() => {
-            if (this.inFlightSource?.promise === promise) this.inFlightSource = undefined;
-        });
-        this.inFlightSource = { url, promise };
-        return promise;
+        options: VideoStreamStartOptions = {},
+    ): Promise<string | undefined> => {
+        const { format } = this.state.get();
+        return this.streamSession.start({ url, format, parsedRequest }, options);
     };
 
     /** Submit input text as a video URL. Resolves stream URL before VPlayer loads. */
@@ -383,14 +243,14 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
 
     /** Called by VPlayer when muted state changes. */
     onMutedChange = (muted: boolean) => {
-        sessionMuted = muted;
+        videoSessionStore.setMuted(muted);
         this.state.update((s) => { s.pageMuted = muted; });
     };
 
     /** Toggle mute — called by PageTab mute button. */
     toggleMuteAll = () => {
         const newMuted = !this.state.get().pageMuted;
-        sessionMuted = newMuted;
+        videoSessionStore.setMuted(newMuted);
         this.state.update((s) => { s.pageMuted = newMuted; });
     };
 
@@ -402,18 +262,9 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         // restored page keeps its file. Startup cleanup still removes leftovers after 7 days.
         const unsavedRecording = this.isTemporaryRecording ? this.filePath : undefined;
         this.mediaElement = null;
-        // Invalidate in-flight starts before awaiting their IPC creation; each stale request
-        // will then delete and invalidate only the session/resource it created.
-        this.sourceRequestId++;
-        this.recoveryWatch?.();
-        this.recoveryWatch = undefined;
-        const pipe = this.pipe;
-        this.pipe = null;
         try {
-            await this.deleteActiveSession();
+            await this.streamSession.dispose();
         } finally {
-            if (pipe) pipe.dispose();
-            this.state.update((s) => { s.streamUrl = ""; });
             await super.dispose();
             if (unsavedRecording) await this.deleteUnsavedRecording(unsavedRecording);
         }
@@ -427,9 +278,7 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
             && fpNormalizeForCompare(editor.filePath) === target));
         if (stillOpen) return;
         try {
-            if (await app.fs.exists(filePath)) await app.fs.delete(filePath);
-            const { windowRecording } = await import("../../api/window-recording");
-            windowRecording.clearLast(filePath);
+            await deleteTemporary(filePath);
         } catch { /* Best effort: the seven-day startup cleanup removes anything left behind. */ }
     }
 

@@ -2,9 +2,11 @@ import { app } from "./app";
 import { pages } from "./pages";
 import { errMessage } from "../../shared/utils";
 import { t } from "../../shared/i18n/t";
+import { COMPLETED_RECORDING_PATTERN } from "../../shared/recording-filenames";
 import { api } from "../../ipc/renderer/api";
 import color from "../theme/color";
 import type { RecordingRegion } from "../../ipc/api-param-types";
+import { fpBasename, fpDirname, fpNormalizeForCompare } from "../core/utils/file-path";
 
 export interface RecordingResult {
     path: string;
@@ -347,3 +349,32 @@ function isVisible(element: HTMLElement): boolean {
 }
 
 export const windowRecording = new WindowRecordingModel();
+
+export function isTemporaryRecording(filePath: string): boolean {
+    return fpNormalizeForCompare(fpDirname(filePath))
+        === fpNormalizeForCompare(app.fs.resolveDataPath("recordings"))
+        && COMPLETED_RECORDING_PATTERN.test(fpBasename(filePath));
+}
+
+export async function saveAs(filePath: string): Promise<string | undefined> {
+    if (!isTemporaryRecording(filePath)) throw new Error("This video is not an unsaved recording.");
+    const extension = fpBasename(filePath).toLowerCase().endsWith(".mp4") ? "mp4" : "webm";
+    const destination = await app.fs.showSaveDialog({
+        title: t("editors.saveRecordingAs"),
+        defaultPath: `Persephone Recording.${extension}`,
+        filters: [{ name: "Video", extensions: ["mp4", "webm"] }],
+    });
+    if (!destination) return undefined;
+    await app.fs.copyFile(filePath, destination);
+    return destination;
+}
+
+export async function discard(filePath: string): Promise<void> {
+    await deleteTemporary(filePath);
+}
+
+export async function deleteTemporary(filePath: string): Promise<void> {
+    if (!isTemporaryRecording(filePath)) throw new Error("This video is not an unsaved recording.");
+    await app.fs.delete(filePath);
+    windowRecording.clearLast(filePath);
+}

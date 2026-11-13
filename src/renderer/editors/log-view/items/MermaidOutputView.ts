@@ -8,7 +8,7 @@ import { app } from "../../../api/app";
 import { guard } from "../../../core/utils/guard";
 import { themeState } from "../../../theme/theme-state";
 import { renderMermaidSvg, svgToDataUrl } from "../../mermaid/render-mermaid";
-import { copyPngBlobToClipboard } from "../../shared/image-export";
+import { copyPngBlobToClipboard } from "../../shared/image-actions";
 import type { MermaidOutputEntry } from "../logTypes";
 import { DialogHeaderView } from "./DialogHeader";
 

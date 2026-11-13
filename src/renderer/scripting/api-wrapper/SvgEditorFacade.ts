@@ -1,6 +1,6 @@
 import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { SvgEditor } from "../../editors/svg";
-import { writePngToFile } from "../../editors/shared/image-export";
+import { writePngToFile } from "../../editors/shared/image-actions";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { errMessage } from "../../../shared/utils";
 
@@ -76,10 +76,10 @@ export class SvgEditorFacade extends EditorFacadeBase<SvgEditor> implements IAiV
     }
 
     openInDrawingEditor(): Promise<void> {
-        return this.editor.openInDrawingEditor();
+        return this.editor.imageActions.openInDrawingEditor();
     }
 
     copyImageToClipboard(): Promise<void> {
-        return this.editor.copyImageToClipboard();
+        return this.editor.imageActions.copy();
     }
 }

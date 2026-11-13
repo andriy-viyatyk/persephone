@@ -1,0 +1,160 @@
+import { createContentsElement } from "../../uikit/shared/create-contents-element";
+import { t } from "../../../shared/i18n/t";
+import { LogViewEditor } from "./LogViewEditor";
+import { LogBodyView } from "./LogBodyView";
+import { TextEditorPageView } from "../base/TextEditorPageView";
+import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
+import { VanillaView } from "../../uikit/shared/vanilla-view";
+import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
+import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
+
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+
+
+function createTimestampIconElement(active: boolean): SVGElement {
+    const element = document.createElementNS(SVG_NAMESPACE, "svg");
+    element.setAttribute("width", "16");
+    element.setAttribute("height", "16");
+    element.setAttribute("viewBox", "0 0 16 16");
+    element.setAttribute("fill", "none");
+
+    const opacity = active ? "1" : "0.5";
+    const circle = document.createElementNS(SVG_NAMESPACE, "circle");
+    circle.setAttribute("cx", "8");
+    circle.setAttribute("cy", "8");
+    circle.setAttribute("r", "6.5");
+    circle.setAttribute("stroke", "currentColor");
+    circle.setAttribute("stroke-width", "1");
+    circle.setAttribute("opacity", opacity);
+
+    const hands = document.createElementNS(SVG_NAMESPACE, "polyline");
+    hands.setAttribute("points", "8,4 8,8 11,10");
+    hands.setAttribute("stroke", "currentColor");
+    hands.setAttribute("stroke-width", "1");
+    hands.setAttribute("stroke-linecap", "round");
+    hands.setAttribute("stroke-linejoin", "round");
+    hands.setAttribute("opacity", opacity);
+
+    element.append(circle, hands);
+    return element;
+}
+
+function createClearIconElement(): SVGElement {
+    const element = document.createElementNS(SVG_NAMESPACE, "svg");
+    element.setAttribute("width", "16");
+    element.setAttribute("height", "16");
+    element.setAttribute("viewBox", "0 0 16 16");
+    element.setAttribute("fill", "none");
+
+    const path = document.createElementNS(SVG_NAMESPACE, "path");
+    path.setAttribute("d", "M2 5h8M2 8h5M2 11h3M10.5 5.5l4 4M14.5 5.5l-4 4");
+    path.setAttribute("stroke", "currentColor");
+    path.setAttribute("stroke-width", "1.1");
+    path.setAttribute("stroke-linecap", "round");
+    element.append(path);
+    return element;
+}
+
+
+class LogToolbarBitsView extends VanillaView<{ model: LogViewEditor }> {
+    private model: LogViewEditor;
+    private clearButton: IconButtonView | undefined;
+    private timestampButton: IconButtonView | undefined;
+    private stateSubscription: (() => void) | undefined;
+
+    public constructor(props: { model: LogViewEditor }) {
+        super(props, createContentsElement());
+        this.model = props.model;
+    }
+
+    protected onMount(): void {
+        this.clearButton = this.child(new IconButtonView(this.clearButtonProps()));
+        this.timestampButton = this.child(new IconButtonView(this.timestampButtonProps()));
+        this.root.append(this.clearButton.root, this.timestampButton.root);
+        this.clearButton.mount();
+        this.timestampButton.mount();
+        this.bindState();
+        this.own(() => {
+            this.stateSubscription?.();
+            this.stateSubscription = undefined;
+        });
+    }
+
+    protected onUpdate(props: { model: LogViewEditor }): void {
+        if (props.model !== this.model) {
+            this.model = props.model;
+            this.bindState();
+        }
+        this.sync(this.model.state.get().showTimestamps);
+    }
+
+    protected onDispose(): void {
+        this.clearButton = undefined;
+        this.timestampButton = undefined;
+    }
+
+    private bindState(): void {
+        this.stateSubscription?.();
+        this.stateSubscription = this.model.state.subscribe<boolean>(
+            (showTimestamps) => this.sync(showTimestamps),
+            (state) => state.showTimestamps,
+        );
+    }
+
+    private sync(showTimestamps: boolean): void {
+        this.timestampButton?.update(this.timestampButtonProps(showTimestamps));
+    }
+
+    private clearButtonProps(): IconButtonViewProps {
+        return {
+            name: "log-clear",
+            size: "sm",
+            icon: createClearIconElement(),
+            title: t("logView.clearLog"),
+            onClick: async () => {
+        const result = await showConfirmationDialog({ message: t("logView.confirmClearLog"), buttons: [dialogButton(DialogButton.yes), dialogButton(DialogButton.cancel)] });
+                if (result === DialogButton.yes) this.model.clear();
+            },
+        };
+    }
+
+    private timestampButtonProps(showTimestamps = this.model.state.get().showTimestamps): IconButtonViewProps {
+        return {
+            name: "log-toggle-timestamps",
+            size: "sm",
+            icon: createTimestampIconElement(showTimestamps),
+            title: showTimestamps ? "Hide timestamps" : "Show timestamps",
+            onClick: this.model.toggleTimestamps,
+        };
+    }
+}
+
+export class LogViewEditorView extends VanillaView<{ model: LogViewEditor }> {
+    private readonly body: LogBodyView;
+    private readonly toolbar: LogToolbarBitsView;
+    private readonly pageView: TextEditorPageView<LogViewEditor>;
+
+    public constructor(props: { model: LogViewEditor }) {
+        const model = props.model;
+        const body = new LogBodyView({ model });
+        const toolbar = new LogToolbarBitsView({ model });
+        const pageView = new TextEditorPageView({
+            model: props.model,
+            createParts: () => ({ body: body.root, toolbar: toolbar.root }),
+        });
+        super(props, pageView.root);
+        this.body = this.child(body);
+        this.toolbar = this.child(toolbar);
+        this.pageView = this.child(pageView);
+    }
+
+    protected onMount(): void {
+        this.body.mount();
+        this.toolbar.mount();
+        this.pageView.mount();
+    }
+
+    protected onUpdate(props: { model: LogViewEditor }): void {
+        this.pageView.update({ model: props.model, createParts: () => ({ body: this.body.root, toolbar: this.toolbar.root }) });
+    }
+}

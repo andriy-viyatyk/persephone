@@ -14,12 +14,14 @@ import { ui } from "../../api/ui";
 import { pipeFromSourcePath } from "../../content/rebuild-pipe";
 import type { IImageExport } from "../base/IImageExport";
 import type { MenuItem } from "../../uikit/Menu/index";
-import { rasterToPngBlob, savePngViaDialog } from "../shared/image-export";
+import { rasterToPngBlob } from "../../core/utils/image-raster";
+import { ImageActions } from "../shared/image-actions";
+import type { IImageEditSource, ImageEditPayload } from "../base/IImageEditSource";
 import { filePathMenuItems } from "../shared/editor-menu-items";
-import { openImageForEdit } from "../../api/capability-feedback";
 import { errMessage } from "../../../shared/utils";
 import { mimeTypeForPath } from "../../../shared/mime-types";
-import { reportProviderError, watchSourceMove, watchSourceRecovery } from "../../content/source-recovery";
+import { reportProviderError } from "../../content/source-recovery";
+import { movedSource, watchPipeSource } from "../../content/source-watch";
 
 function extToMime(ext: string): string {
     const mime = mimeTypeForPath(`file${ext.toLowerCase()}`);
@@ -50,20 +52,19 @@ export function getDefaultImageEditorState(): ImageEditorState {
     };
 }
 
-export class ImageEditor extends EditorModel<ImageEditorState> implements IImageExport {
+export class ImageEditor extends EditorModel<ImageEditorState> implements IImageExport, IImageEditSource {
     override readonly deferRestoreOnOpen = true;
     /** Editor identity. Matches `EditorDescriptor.editorId`. */
     readonly editorId = EditorId.imageView;
 
     noLanguage = true;
+    readonly imageActions = new ImageActions(this);
 
     /** Tracks whether `restore()` or `cacheBlobUrl()` wrote a temp cache
      *  file for the image (true for non-local sources AND blob-URL
      *  imports). Gates the dispose() cleanup. */
     private cacheFileCreated = false;
-    private pipeWatch: (() => void) | undefined;
-    private recoveryWatch: (() => void) | undefined;
-    private moveWatch: (() => void) | undefined;
+    private sourceWatch: (() => void) | undefined;
 
     constructor(state: TComponentState<ImageEditorState>) {
         super(state);
@@ -107,48 +108,37 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
     }
 
     private watchPipe(pipe: NonNullable<ImageEditor["pipe"]>, registerOwnership: boolean): void {
-        if (!this.pipeWatch && pipe.watch) {
-            this.pipeWatch = pipe.watch((event) => {
-                if (event !== "available" && event !== "moved" && !this.hasImage) void this.restore();
+        if (!this.sourceWatch) {
+            this.sourceWatch = watchPipeSource(pipe, {
+                onChanged: () => {
+                    if (!this.hasImage) void this.restore();
+                },
+                onRecovered: () => {
+                    if (!this.hasImage) void this.restore();
+                },
+                onMoved: (newPath) => {
+                    if (newPath !== pipe.provider.sourceUrl) this.followMovedSource(newPath);
+                },
             }, "image editor");
-            if (registerOwnership) this.own(() => this.pipeWatch?.());
-        }
-        if (!this.recoveryWatch) {
-            this.recoveryWatch = watchSourceRecovery(pipe, () => {
-                if (!this.hasImage) void this.restore();
-            }, "image editor");
-            if (registerOwnership) this.own(() => this.recoveryWatch?.());
-        }
-        if (!this.moveWatch) {
-            this.moveWatch = watchSourceMove(pipe, (newPath) => {
-                if (newPath !== pipe.provider.sourceUrl) this.followMovedSource(newPath);
-            }, "image editor");
-            if (registerOwnership) this.own(() => this.moveWatch?.());
+            if (registerOwnership) this.own(() => this.sourceWatch?.());
         }
     }
 
     private followMovedSource(newSourcePath: string): void {
         const currentPipe = this.pipe;
         if (!currentPipe) return;
-        const oldFilePath = this.state.get().filePath;
-        const newFilePath = currentPipe.logicalPathFor(newSourcePath);
-        this.pipeWatch?.();
-        this.recoveryWatch?.();
-        this.moveWatch?.();
-        this.pipeWatch = undefined;
-        this.recoveryWatch = undefined;
-        this.moveWatch = undefined;
-        const newPipe = currentPipe.cloneForMovedSource(newSourcePath);
-        this.pipe = newPipe;
+        const moved = movedSource(currentPipe, newSourcePath, this.state.get());
+        this.sourceWatch?.();
+        this.sourceWatch = undefined;
+        this.pipe = moved.pipe;
         this.state.update((state) => {
-            state.filePath = newFilePath;
-            state.title = fpBasename(newFilePath);
-            if (state.sourceLink?.filePath === oldFilePath) state.sourceLink.filePath = newFilePath;
-            if (state.sourceLink?.url === oldFilePath) state.sourceLink.url = newFilePath;
+            state.filePath = moved.filePath;
+            state.title = moved.title;
+            state.sourceLink = moved.sourceLink;
         });
         // The existing image URL and cache still represent the open image; rebinding only
         // changes where future saves and restores point.
-        this.watchPipe(newPipe, false);
+        this.watchPipe(moved.pipe, false);
     }
 
     async restore(options?: { signal?: AbortSignal }): Promise<void> {
@@ -281,10 +271,6 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
         return filePath ? fpBasename(filePath).replace(/\.\w+$/, "") : "image";
     }
 
-    /** t("editors.saveAsPngFile") menu action — convert the image to PNG and write it
-     *  (prompts for a path; `savePngViaDialog` surfaces failures as a toast). */
-    saveAsPng = (): Promise<void> => savePngViaDialog(this);
-
     /** t("editors.saveOriginal") menu action — write the source bytes in their original
      *  format (no re-encode). Reads via the content pipe (local / archive /
      *  cached URL) and falls back to fetching the runtime URL. */
@@ -325,7 +311,7 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
         }
     };
 
-    openInDrawingEditor = async (): Promise<void> => {
+    imageEditPayload = async (): Promise<ImageEditPayload | undefined> => {
         const { filePath, url } = this.state.get();
         let dataUrl: string;
         let mimeType: string;
@@ -343,16 +329,16 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
             const buffer = Buffer.from(await blob.arrayBuffer());
             dataUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
         } else {
-            return;
+            return undefined;
         }
         const baseName = filePath
             ? fpBasename(filePath).replace(/\.\w+$/, "")
             : "image";
-        await openImageForEdit({
+        return {
             dataUrl,
             mimeType,
             title: baseName,
-        });
+        };
     };
 
     getIconElement = (): Element => createFileIconElement({

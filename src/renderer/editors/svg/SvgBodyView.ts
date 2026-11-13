@@ -1,5 +1,4 @@
 import { ImageViewportView } from "../../uikit/ImageViewport/ImageViewportView";
-import { t } from "../../../shared/i18n/t";
 import type { ImageViewportProps } from "../../uikit/ImageViewport/ImageViewportView";
 import {
     createPanelElement,
@@ -7,8 +6,6 @@ import {
 } from "../../uikit/Panel/panel-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { SvgEditor } from "./SvgEditor";
-import { ui } from "../../api/ui";
-import { errMessage } from "../../../shared/utils";
 
 export interface SvgBodyViewProps {
     model: SvgEditor;
@@ -24,10 +21,11 @@ function rootPanelProps(): PanelStyleProps {
     };
 }
 
-function viewportProps(content: string): ImageViewportProps {
+function viewportProps(model: SvgEditor, content: string): ImageViewportProps {
     return {
         src: `data:image/svg+xml,${encodeURIComponent(content)}`,
         alt: "SVG Preview",
+        onCopyToClipboard: (blob) => model.imageActions.copy(blob),
     };
 }
 
@@ -48,7 +46,7 @@ export class SvgBodyView extends VanillaView<SvgBodyViewProps> {
         this.model = this.props.model;
         const content = this.model.host?.state.get().content ?? "";
         this.viewport = this.child(new ImageViewportView(
-            viewportProps(content),
+            viewportProps(this.model, content),
         ));
         this.root.append(this.viewport.root);
         this.viewport.mount();
@@ -72,7 +70,7 @@ export class SvgBodyView extends VanillaView<SvgBodyViewProps> {
 
         this.bindToHostIfNeeded();
         this.viewport.update(
-            viewportProps(this.model.host?.state.get().content ?? ""),
+            viewportProps(this.model, this.model.host?.state.get().content ?? ""),
         );
     }
 
@@ -88,15 +86,9 @@ export class SvgBodyView extends VanillaView<SvgBodyViewProps> {
 
         this.hostSubscription = this.ownSubscription(host.state.subscribe(
             (content: string) => {
-                this.viewport.update(viewportProps(content));
+                this.viewport.update(viewportProps(this.model, content));
             },
             (state) => state.content,
         ));
-    }
-
-    public copyImage = (): void => {
-        void this.model.copyImageToClipboard().catch((error: unknown) => {
-        ui.notify(t("editors.failedToCopySvgImage", { error: errMessage(error) }), "error");
-        });
     }
 }

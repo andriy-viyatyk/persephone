@@ -3,8 +3,9 @@ import { TComponentState } from "../../core/state/state";
 import type { EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
 import type { IImageExport } from "../base/IImageExport";
-import { copyPngBlobToClipboard, rasterToPngBlob } from "../shared/image-export";
-import { openImageForEdit, getMissingEditCapabilityMessage } from "../../api/capability-feedback";
+import { rasterToPngBlob } from "../../core/utils/image-raster";
+import { ImageActions } from "../shared/image-actions";
+import type { IImageEditSource, ImageEditPayload } from "../base/IImageEditSource";
 import { errMessage } from "../../../shared/utils";
 
 export type SvgQueueEvent = { type: "focus" };
@@ -21,9 +22,13 @@ export const defaultSvgEditorState: SvgEditorState = {
 };
 
 export class SvgEditor extends TextHostEditorModel<SvgEditorState, SvgQueueEvent, SvgQueueRequest>
-    implements IImageExport {
+    implements IImageExport, IImageEditSource {
     readonly editorId = EditorId.svgView;
     protected readonly displayName = "SVG";
+    readonly imageActions = new ImageActions(this, {
+        copyError: (error) => new Error(`SVG preview cannot copy an image: ${errMessage(error)}`),
+        drawingEditorError: (error) => new Error(`SVG preview cannot open in Drawing Editor: ${errMessage(error)}`),
+    });
 
     constructor(state: TComponentState<SvgEditorState>) {
         super(state);
@@ -54,29 +59,13 @@ export class SvgEditor extends TextHostEditorModel<SvgEditorState, SvgQueueEvent
         return (this.state.get().title || "image").replace(/\.\w+$/, "");
     }
 
-    async openInDrawingEditor(): Promise<void> {
+    async imageEditPayload(): Promise<ImageEditPayload> {
         const content = this.requireSource("open in Drawing Editor");
-        try {
-            const dataUrl = `data:image/svg+xml;base64,${Buffer.from(content, "utf-8").toString("base64")}`;
-            const title = (this.displayTitle || "SVG").replace(/\.svg$/i, "");
-            await openImageForEdit({
-                dataUrl,
-                mimeType: "image/svg+xml",
-                title,
-            });
-        } catch (error) {
-            if (getMissingEditCapabilityMessage(error, "image.edit")) throw error;
-            throw new Error(`SVG preview cannot open in Drawing Editor: ${errMessage(error)}`);
-        }
-    }
-
-    async copyImageToClipboard(): Promise<void> {
-        try {
-            const blob = await this.exportPng();
-            await copyPngBlobToClipboard(blob);
-        } catch (error) {
-            throw new Error(`SVG preview cannot copy an image: ${errMessage(error)}`);
-        }
+        return {
+            dataUrl: `data:image/svg+xml;base64,${Buffer.from(content, "utf-8").toString("base64")}`,
+            mimeType: "image/svg+xml",
+            title: (this.displayTitle || "SVG").replace(/\.svg$/i, ""),
+        };
     }
 
     private requireSource(action: string): string {

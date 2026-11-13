@@ -6,7 +6,7 @@ import { app } from "../../api/app";
 import { guard } from "../../core/utils/guard";
 import { CopyIcon, OpenLinkIcon } from "../../theme/icons";
 import { renderMermaidSvg, svgToDataUrl } from "../mermaid/render-mermaid";
-import { copyPngBlobToClipboard } from "../shared/image-export";
+import { copyPngBlobToClipboard } from "../shared/image-actions";
 import { ColorizedCodeView, type ColorizedCodeProps } from "../shared/ColorizedCodeView";
 import { errMessage } from "../../../shared/utils";
 import { VanillaView } from "../../uikit/shared/vanilla-view";

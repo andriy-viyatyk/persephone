@@ -81,6 +81,7 @@ export class ImageEditorView extends VanillaView<{ model: ImageEditor }> {
         return {
             src: url || "",
             alt: filePath ? fpBasename(filePath) : t("editors.imageFallback"),
+            onCopyToClipboard: (blob) => this.model.imageActions.copy(blob),
         };
     }
 }

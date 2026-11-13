@@ -1,7 +1,6 @@
 import { createContentsElement } from "../../uikit/shared/create-contents-element";
 import { t } from "../../../shared/i18n/t";
 import { pages } from "../../api/pages";
-import { ui } from "../../api/ui";
 import type { EditorModelInstance as EditorModel } from "./EditorModel";
 import { EditorStatusBarView } from "./EditorStatusBarView";
 import { PageToolbarView } from "./PageToolbarView";
@@ -19,6 +18,7 @@ import "../../uikit/Panel/Panel.css";
 import { TEXT_SELECTION_TRAIT } from "./editor-traits";
 import { TextPageKeymap } from "./TextPageKeymap";
 import { runPageScript } from "../../scripting/run-page-script";
+import { getTextChromeContributions } from "./text-chrome-contributions";
 
 export interface TextChromeViewProps {
     model: EditorModel;
@@ -167,43 +167,6 @@ class RunButtonsView extends VanillaView<{ model: EditorModel; host: TextFileMod
     }
 }
 
-class ShowResourcesButtonView extends VanillaView<{ host: TextFileModel }> {
-    private host: TextFileModel;
-    private readonly button: ToggledIconButton;
-
-    public constructor(props: { host: TextFileModel }) {
-        super(props, document.createElement("span"));
-        this.host = props.host;
-        this.button = new ToggledIconButton(this.root, (button) => this.child(button), (button) => this.releaseChild(button));
-    }
-
-    protected onMount(): void {
-        this.root.dataset.part = "text-show-resources";
-        this.root.style.display = "contents";
-        this.bind(this.host.state, (state) => state.language, () => this.sync());
-    }
-
-    protected onUpdate(props: { host: TextFileModel }): void {
-        this.host = props.host;
-        this.sync();
-    }
-
-    protected onDispose(): void {
-        this.button.dispose();
-    }
-
-    private sync(): void {
-        const buttonProps: IconButtonProps = {
-            name: "text-show-resources",
-            size: "sm",
-            title: t("editors.showResources"),
-            icon: "web-scraper",
-            onClick: () => { void showHtmlResources(this.host); },
-        };
-        this.button.sync(this.host.state.get().language === "html", buttonProps);
-    }
-}
-
 export class TextChromeView extends VanillaView<TextChromeViewProps> {
     private model: EditorModel;
     private host: TextFileModel | null = null;
@@ -214,7 +177,7 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
     private pageToolbar: PageToolbarView | undefined;
     private compareButton: CompareButtonView | undefined;
     private runButtons: RunButtonsView | undefined;
-    private showResourcesButton: ShowResourcesButtonView | undefined;
+    private readonly rightLeadingContributions: VanillaView<{ host: TextFileModel }>[] = [];
     private scriptPanel: ScriptPanelView | undefined;
     private footer: EditorStatusBarView | undefined;
 
@@ -279,7 +242,7 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
         this.pageToolbar = undefined;
         this.compareButton = undefined;
         this.runButtons = undefined;
-        this.showResourcesButton = undefined;
+        this.rightLeadingContributions.length = 0;
         this.scriptPanel = undefined;
         this.keymap = undefined;
         this.footer = undefined;
@@ -319,9 +282,14 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
 
         this.compareButton = this.child(new CompareButtonView({ model: this.model }));
         this.runButtons = this.child(new RunButtonsView({ model: this.model, host: this.host }));
-        this.showResourcesButton = this.child(new ShowResourcesButtonView({ host: this.host }));
+        for (const contribution of getTextChromeContributions()) {
+            if (contribution.slot !== "right-leading") continue;
+            const view = this.child(contribution.createView(this.host));
+            this.rightLeadingContributions.push(view);
+            rightContent.append(view.root);
+        }
         toolbarContent.append(this.compareButton.root, this.runButtons.root, toolbarContributionsHost);
-        rightContent.append(this.showResourcesButton.root, rightContributionsHost);
+        rightContent.append(rightContributionsHost);
 
         if (this.host.script) {
             this.scriptPanel = this.child(new ScriptPanelView({ model: this.host }));
@@ -343,7 +311,7 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
         this.pageToolbar.mount();
         this.compareButton?.mount();
         this.runButtons?.mount();
-        this.showResourcesButton?.mount();
+        this.rightLeadingContributions.forEach((view) => view.mount());
         this.scriptPanel?.mount();
         this.footer?.mount();
 
@@ -401,10 +369,8 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
             this.releaseChild(this.runButtons);
             this.runButtons = undefined;
         }
-        if (this.showResourcesButton) {
-            this.releaseChild(this.showResourcesButton);
-            this.showResourcesButton = undefined;
-        }
+        this.rightLeadingContributions.forEach((view) => this.releaseChild(view));
+        this.rightLeadingContributions.length = 0;
         if (this.scriptPanel) {
             this.releaseChild(this.scriptPanel);
             this.scriptPanel = undefined;
@@ -447,16 +413,3 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
     };
 }
 
-async function showHtmlResources(host: TextFileModel): Promise<void> {
-    const { extractHtmlResources } = await import("../../core/utils/html-resources");
-    const { content, filePath, title } = host.state.get();
-    const baseUrl = filePath
-        ? "file:///" + filePath.replace(/\\/g, "/").replace(/\/[^/]*$/, "/")
-        : undefined;
-    const links = extractHtmlResources(content, { baseUrl });
-    if (links.length === 0) {
-        ui.notify(t("editors.noResourcesFoundInHtml"), "info");
-        return;
-    }
-    pages.lifecycle.openLinks(links, (title || "HTML") + " — Resources");
-}

@@ -131,6 +131,8 @@ without clicking, focusing, opening the filter popup, or changing filter state.
 
 ## Errors and limits
 
+Encrypted content cannot be displayed as a grid until you unlock the file.
+
 Grid requires data compatible with its selected language. A malformed JSON array/object, invalid JSONL
 line, or malformed CSV produces a parse error rather than a useful table. JSON objects must have
 consistent enough properties for meaningful columns; missing properties remain empty cells.

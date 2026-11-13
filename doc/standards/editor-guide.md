@@ -39,9 +39,13 @@ Three questions decide the shape of your editor:
 ├── index.ts                 # EditorModule registration
 ├── MyEditor.ts              # EditorModel subclass
 ├── MyEditorBodyView.ts       # Native body
-│                            # (MyEditorView.ts for a standalone main view)
+├── MyEditorView.ts           # Main native page view, when present
 └── components/              # (optional) Editor-specific components
 ```
+
+The main native page view lives in `XxxEditorView.ts`, where `Xxx` is the editor name. Keep
+`index.ts` as the editor module registration and composition entry point; do not put the main view
+class there. Other editor-local native views keep their descriptive `XxxView.ts` names.
 
 ## Step 2: Implement the EditorModel Subclass
 
@@ -189,9 +193,10 @@ Choose the page chrome before writing the view:
   `contributions` fills its slot. `TextChromeView` mounts it for you; a non-text editor whose page
   has a content pipe (Image, Video, Archive, boards) mounts it below its body. The pipe status
   lives only here, not in the top toolbar.
-- **`TextChromeView`** — use for a text-host editor. It supplies the native host-aware toolbar,
-  script panel, status bar footer, focus/key handling, and overlay slot. The editor's `View`
-  composes it directly; the body is a native slot in its `children` slot.
+- **`TextEditorPageView`** — use for a text-host editor. It composes `TextChromeView`, which
+  supplies the native host-aware toolbar, script panel, status bar footer, focus/key handling, and
+  overlay slot. The editor's main `XxxEditorView` supplies body and contribution roots through
+  `createParts(model)`; the shared page view maps them into the existing native slots.
 
 Every editor module requires a native `View` arm. A converted or new DOM-heavy view should use
 `VanillaView` and export it as `View`. Compose body views directly in the page view. Keep the root stable and
@@ -264,9 +269,10 @@ For generated-content renderers or third-party/native hosts, import a stylesheet
 editor and scope its selectors below a semantic editor root. Do not add a general-purpose
 `className` or `style` escape hatch to UIKit to carry those rules.
 
-For a text-bearing native editor, construct `TextChromeView` directly, register it with `child()`,
-and mount/update it alongside the editor body. Pass DOM nodes through native slots; no framework
-element or error-boundary adapter is needed.
+For a text-bearing native editor, construct `TextEditorPageView` in the main `XxxEditorView`,
+register it with `child()`, and mount/update it alongside the editor body. Supply the retained body
+and contribution roots through `createParts(model)`; no framework element or error-boundary adapter
+is needed.
 
 ## Step 4: Export the EditorModule
 
@@ -450,6 +456,6 @@ the editor explicitly owns that panel. Do not register a replaced record view wi
 - **Simple viewer:** `/src/renderer/editors/image/` — read-only image viewer, no content host
 - **Text-bearing minimal:** `/src/renderer/editors/svg/` — read-only `VanillaView` preview over the host (`/src/renderer/editors/html/` adds an image-export capability)
 - **Text-bearing complex:** `/src/renderer/editors/grid/` — JSON/CSV grid editor with a native `DataGridView`, full edit/save flow, shared content echo guard, and host-slot settings
-- **Markdown renderer:** `/src/renderer/editors/markdown/` — native `TextChromeView` shell with a native body and hand-written HAST-to-DOM rendering
+- **Markdown renderer:** `/src/renderer/editors/markdown/` — native `TextEditorPageView` shell with a native body and hand-written HAST-to-DOM rendering
 - **No-host with sidebar:** `/src/renderer/editors/explorer/` — Explorer sidebar editor with no main content area
 - **Multi-process editor:** `/src/renderer/editors/browser/` — webview-based browser spanning three processes ([architecture doc](../architecture/browser-editor.md))

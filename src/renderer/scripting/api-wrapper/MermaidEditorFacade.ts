@@ -1,6 +1,6 @@
 import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { MermaidEditor } from "../../editors/mermaid";
-import { writePngToFile } from "../../editors/shared/image-export";
+import { writePngToFile } from "../../editors/shared/image-actions";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { errMessage } from "../../../shared/utils";
 
@@ -106,7 +106,7 @@ export class MermaidEditorFacade extends EditorFacadeBase<MermaidEditor> impleme
     }
 
     openInDrawingEditor(): Promise<void> {
-        return this.editor.openInDrawingEditor();
+        return this.editor.imageActions.openInDrawingEditor();
     }
 
     convertToExcalidraw(): Promise<void> {
@@ -114,6 +114,6 @@ export class MermaidEditorFacade extends EditorFacadeBase<MermaidEditor> impleme
     }
 
     copyImageToClipboard(): Promise<void> {
-        return this.editor.copyImageToClipboard();
+        return this.editor.imageActions.copy();
     }
 }

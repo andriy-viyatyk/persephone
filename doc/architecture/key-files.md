@@ -97,7 +97,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Node.js HTTP proxy tunnels (SOCKS5 and HTTP CONNECT parsing, handshakes, and pooled agents) | `/src/renderer/api/proxy-tunnel.ts` |
 | Path utilities           | `/src/renderer/core/utils/file-path.ts`           |
 | Element-wise identity comparison for freshly allocated model arrays (`sameItems`) | `/src/renderer/core/utils/utils.ts` |
-| Renderer clipboard helpers (text and PNG via main-process IPC) | `/src/renderer/core/utils/utils.ts`, `/src/renderer/editors/shared/image-export.ts`, `/src/ipc/main/clipboard-handlers.ts`, `/src/ipc/main/media-handlers.ts` |
+| Renderer clipboard helpers (text and PNG via main-process IPC) | `/src/renderer/core/utils/utils.ts`, `/src/renderer/editors/shared/image-actions.ts`, `/src/ipc/main/clipboard-handlers.ts`, `/src/ipc/main/media-handlers.ts` |
 | State primitives         | `/src/renderer/core/state/`                        |
 | Vanilla view lifecycle and ownership (`VanillaView`, `IOwnedView`, guarded `bind`/`listen` with early-release handles, owner-bound scheduling, `ownSubscription`, FIFO cleanup, and single-owner claims) | `/src/renderer/uikit/shared/vanilla-view.ts` |
 | Keyed DOM reconciliation (duplicate-safe keyed records, cursor-based minimal moves, reusable `clear`, and inert `dispose`) | `/src/renderer/uikit/shared/keyed-list.ts` |
@@ -179,7 +179,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Non-content link actions (browser routing, folder pages, capabilities and notices) | `/src/renderer/content/open-actions/` |
 | Scheme hand-off handled-state sequence | `/src/renderer/content/link-handoff.ts` |
 | Pipe rebuild from persisted source data (`pipeFromSourcePath` and descriptor-first `pipeFromPersistedSource`) | `/src/renderer/content/rebuild-pipe.ts` |
-| Provider-availability and source-move watches; shared typed provider-error reporting | `/src/renderer/content/source-recovery.ts` |
+| Shared content-pipe source watching and moved-source rebuilding | `/src/renderer/content/source-watch.ts` |
+| Typed provider-error reporting for source recovery | `/src/renderer/content/source-recovery.ts` |
 | Pipe resolvers (Layer 2; HTTP content extensions and eligible board claims inform browser-vs-content routing; `.pdf` retains its browser fallback) | `/src/renderer/content/resolvers.ts` |
 | Link resolution and URL path/fragment helpers | `/src/renderer/content/link-utils.ts` |
 | Open handler (Layer 3)   | `/src/renderer/content/open-handler.ts`           |
@@ -288,13 +289,15 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Content-host owner slot (owns host transfer, restore sequence, subscriptions, echo guard, settings mirror, persistence, release/save/dispose; configured through owner options and used by text and board editors) | `/src/renderer/editors/base/content-host-slot.ts` |
 | Editor traits (content-host, text-selection/navigation, reopen, fragment-navigation, and fresh-empty capabilities) | `/src/renderer/editors/base/editor-traits.ts` |
 | Board-owned transient open-context trait and payload | `/src/renderer/api/boards/board-open-context.ts` |
+| Text-editor page shell (retained body and contribution slots composed into host-aware chrome) | `/src/renderer/editors/base/TextEditorPageView.ts`, `/src/renderer/editors/base/text-chrome-contributions.ts` |
 | Native text-host chrome (toolbar, focus/key handling, script panel, footer, overlay, and DOM slot projection) | `/src/renderer/editors/base/TextChromeView.ts` |
 | Page toolbar native view and editor catalog switch projection (NavPanel, catalog subscription, toolbar slots, and toolbar/node option parity) | `/src/renderer/editors/base/PageToolbarView.ts`, `/src/renderer/editors/base/editor-switch-options.ts` |
 | Native editor toolbar view | `/src/renderer/editors/base/EditorToolbarView.ts` |
 | Shared editor status bar / footer (`script` toggle · optional board start/end slots · legacy contributions slot · pipe status · provider icon · encoding label; mounted by `TextChromeView`, `BoardEditorView`, Image, Video and Archive) | `/src/renderer/editors/base/EditorStatusBarView.ts` |
 | Page-pipe resolution shared by the pipe status and the provider badge (`subscribePagePipe`) | `/src/renderer/components/pipe-status/page-pipe.ts` |
 | Image-export capability (`exportPng`/`suggestedImageName`; Mermaid/SVG/Image/HTML) | `/src/renderer/editors/base/IImageExport.ts` |
-| Image-export helpers (headless canvas→PNG, bounded dimension metadata, save-to-file/dialog) | `/src/renderer/editors/shared/image-export.ts` |
+| Shared image actions and toolbar (PNG copy/save, open/edit actions, and editor-specific failure handling) | `/src/renderer/editors/shared/image-actions.ts`, `/src/renderer/editors/shared/ImageActionsToolbarView.ts` |
+| Pure image raster and Blob conversions (canvas→PNG, bounded dimension metadata, buffer/data URL conversion) | `/src/renderer/core/utils/image-raster.ts` |
 | Reusable image viewport (view-owned zoom/pan DOM plus model geometry and clipboard copy for Image/SVG/Mermaid previews) | `/src/renderer/uikit/ImageViewport/` |
 | Reusable minimap (view-owned source mirror/observation, model-owned geometry, drag navigation, and viewport indicator) | `/src/renderer/uikit/Minimap/` |
 | ISO date input view and public prop type (`DateInputView`, `DateInputProps`) | `/src/renderer/uikit/DateInput/DateInputView.ts` |
@@ -308,19 +311,22 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Page script execution and script-library actions | `/src/renderer/scripting/run-page-script.ts`, `/src/renderer/scripting/script-library-actions.ts` |
 | Monaco editor            | `/src/renderer/editors/monaco/MonacoEditor.ts`    |
 | Monaco editor body (native `VanillaView`, host lifecycle, project binding and per-page diagnostics) | `/src/renderer/editors/monaco/MonacoBodyView.ts` |
-| Monaco editor view, word-wrap and project-diagnostics toolbar contributions | `/src/renderer/editors/monaco/index.ts` |
-| Grid editor model and column-key utilities | `/src/renderer/editors/grid/GridEditor.ts`, `/src/renderer/editors/grid/utils/grid-utils.ts` |
-| Native grid body (inside the native `TextChromeView` shell; mounts UIKit `DataGridView` directly) | `/src/renderer/editors/grid/GridBodyView.ts` |
+| Monaco editor view, word-wrap and project-diagnostics toolbar contributions | `/src/renderer/editors/monaco/MonacoEditorView.ts` |
+| Grid editor model and column-key utilities | `/src/renderer/editors/grid/GridEditor.ts`, `/src/renderer/editors/grid/utils/grid-utils.ts`, `/src/renderer/editors/grid/utils/grid-format.ts` |
+| Grid codecs (JSON, JSONL, and CSV parsing/serialization) | `/src/renderer/editors/grid/formats/` |
+| Native grid page and body (text page shell, toolbar, and UIKit `DataGridView`) | `/src/renderer/editors/grid/GridEditorView.ts`, `/src/renderer/editors/grid/GridBodyView.ts` |
 | HTML editor model (live-pipe-derived local resource root and browser source URL; iframe capture/export) | `/src/renderer/editors/html/HtmlEditor.ts` |
 | Native HTML preview body (sandboxed iframe loaded from the isolated `html-preview://` origin, host-content and pipe-state binding) | `/src/renderer/editors/html/HtmlBodyView.ts` |
-| HTML editor toolbar contributions (copy, source browser action, capture menu) | `/src/renderer/editors/html/index.ts` |
-| Native SVG preview body (host-content binding and `ImageViewportView`) | `/src/renderer/editors/svg/SvgBodyView.ts` |
-| Native Markdown body (find bar, minimap, scroll projection, and MarkdownBlock lifecycle) | `/src/renderer/editors/markdown/MarkdownBodyView.ts` |
-| Video/audio editor (pipe-backed media playback, transient range sessions, archive/board sources, VLC handoff, and temporary recording save/discard lifecycle) | `/src/renderer/editors/video/VideoEditor.ts` |
+| HTML editor page view and resource button (sandboxed preview, toolbar, and source-resource action) | `/src/renderer/editors/html/HtmlEditorView.ts`, `/src/renderer/editors/html/HtmlResourcesButtonView.ts` |
+| Native SVG page view and preview body (text page shell, host-content binding, and `ImageViewportView`) | `/src/renderer/editors/svg/SvgEditorView.ts`, `/src/renderer/editors/svg/SvgBodyView.ts` |
+| Native Markdown page view and body (text page shell, find bar, minimap, scroll projection, and MarkdownBlock lifecycle) | `/src/renderer/editors/markdown/MarkdownEditorView.ts`, `/src/renderer/editors/markdown/MarkdownBodyView.ts` |
+| Video/audio editor (pipe-backed media playback and editor state) | `/src/renderer/editors/video/VideoEditor.ts` |
+| Video stream session lifecycle (request ids, range-resource registration, source recovery, and IPC) | `/src/renderer/editors/video/VideoStreamSession.ts` |
 | Markdown body host/model contract reused by embedded guide rendering | `/src/renderer/editors/markdown/MarkdownBodyModel.ts` |
 | Native Markdown block renderer (unified/remark pipeline, HAST overrides, and owned interactive nodes) | `/src/renderer/editors/markdown/MarkdownBlockView.ts` |
 | Hand-written HAST-to-DOM property and namespace conversion | `/src/renderer/editors/markdown/hast-dom.ts` |
 | Log view editor (plain entry collection with versioned `renderChange` invalidation) | `/src/renderer/editors/log-view/LogViewEditor.ts` |
+| Native Log View page composition | `/src/renderer/editors/log-view/LogViewEditorView.ts` |
 | Syntax-highlighted code (Monaco colorize) | `/src/renderer/editors/shared/ColorizedCodeView.ts` |
 | Find bar (native input/buttons) | `/src/renderer/editors/shared/FindBarView.ts` |
 | Converted compare editor (native diff host and compare model orchestration) | `/src/renderer/editors/compare/CompareEditor.ts` |
@@ -328,7 +334,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Archive editor view (native page toolbar and archive content surface) | `/src/renderer/editors/archive/ArchiveEditorView.ts` |
 | Category editor view (native page toolbar and provider-backed category surface) | `/src/renderer/editors/category/CategoryEditor.ts` |
 | Board Info editor view (native install/properties surface) | `/src/renderer/editors/board-info/BoardInfoEditorView.ts` |
-| Converted Mermaid body (native preview body inside `TextChromeView`) | `/src/renderer/editors/mermaid/MermaidBodyView.ts` |
+| Native Mermaid page view and preview body (text page shell and image viewport) | `/src/renderer/editors/mermaid/MermaidEditorView.ts`, `/src/renderer/editors/mermaid/MermaidBodyView.ts` |
 | Converted Toolset editor view (native standalone editor view) | `/src/renderer/editors/toolset/ToolsetEditorView.ts` |
 | Native Explorer Search panel (vanilla secondary view over `FileSearchView`) | `/src/renderer/editors/explorer/SearchSecondaryView.ts` |
 | DOM-first editor icon resolver (tab + sidebar panel headers; `getIconElement`/file-icon fallback, returning `Element` or `null`) | `/src/renderer/components/icons/icon-elements.ts` |
@@ -338,7 +344,9 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Focusable contextual help icon and tooltip | `/src/renderer/uikit/HelpIcon/HelpIconView.ts` |
 | Native settings page and section composition (height-constrained panel stack, fixed two-level Content tree, click-to-scroll/scroll-spy linkage, built-in controls, board-declared controls, and lifecycle ownership) | `/src/renderer/editors/settings/SettingsView.ts`, `/src/renderer/editors/settings/settings-catalog.ts`, `/src/renderer/editors/settings/sections/` |
 | Clipboard settings section (enable toggle, item cap, and on-disk storage warning) | `/src/renderer/editors/settings/sections/ClipboardSection.ts`, `/src/renderer/editors/settings/sections/ClipboardSectionModel.ts` |
-| Native link editor body and chrome (list/tiles switching, pinned links, tooltip content, and direct TextChrome composition) | `/src/renderer/editors/link-editor/LinkBody.ts`, `/src/renderer/editors/link-editor/index.ts`, `/src/renderer/editors/link-editor/PinnedLinksPanelView.ts` |
+| Native link editor page composition, body, and chrome (list/tiles switching, pinned links, and tooltip content) | `/src/renderer/editors/link-editor/LinkEditorView.ts`, `/src/renderer/editors/link-editor/LinkBody.ts`, `/src/renderer/editors/link-editor/PinnedLinksPanelView.ts` |
+| Environment-variables editor page composition | `/src/renderer/editors/env-vars/EnvVarsEditorView.ts` |
+| File-diff editor page composition (toolbar, revisions, and diff body) | `/src/renderer/editors/file-diff/FileDiffEditorView.ts` |
 | Browser editor coordinator (restore, navigation, active-tab state, page creation and sub-model lifecycle) | `/src/renderer/editors/browser/BrowserEditor.ts` |
 | Browser state and partition rules (state/defaults, tab/group IDs, title policy, partition string helper; `BrowserEditor` owns stable private-session IDs and the resolved partition) | `/src/renderer/editors/browser/browser-state.ts`, `/src/renderer/editors/browser/BrowserEditor.ts` |
 | Browser search-engine definitions and URL detection | `/src/renderer/editors/browser/search-engines.ts` |

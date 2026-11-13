@@ -1,4 +1,4 @@
-import { EditorId } from "../../../shared/editor-ids";
+import { EditorId } from "../../../../shared/editor-ids";
 
 export type GridFormat = "json" | "csv" | "jsonl";
 export type GridEditorId = typeof EditorId.gridJson | typeof EditorId.gridCsv | typeof EditorId.gridJsonl;

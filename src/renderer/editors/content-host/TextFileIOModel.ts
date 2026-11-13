@@ -14,14 +14,13 @@ import { FileProvider } from "../../content/providers/FileProvider";
 import { ArchiveTransformer } from "../../content/transformers/ArchiveTransformer";
 import { PipePair } from "../../content/PipePair";
 import { DisposableStore } from "../../core/utils/DisposableStore";
-import { reportProviderError, watchSourceMove, watchSourceRecovery } from "../../content/source-recovery";
+import { reportProviderError } from "../../content/source-recovery";
+import { movedSource, watchPipeSource } from "../../content/source-watch";
 
 export class TextFileIOModel {
     /** Cache pipe — same transformers as primary pipe, CacheFileProvider as source. */
     private readonly pipes: PipePair;
-    private watchSubscription: (() => void) | null = null;
-    private recoveryWatchSubscription: (() => void) | null = null;
-    private moveWatchSubscription: (() => void) | null = null;
+    private sourceWatch: (() => void) | null = null;
     private readonly disposables = new DisposableStore();
     private modificationSaved = true;
     private isSavingModifications = false;
@@ -74,12 +73,8 @@ export class TextFileIOModel {
 
     /** Replace source and cache pipes together, then watch the new source. */
     setPrimary(pipe: IContentPipe | null): void {
-        this.watchSubscription?.();
-        this.watchSubscription = null;
-        this.recoveryWatchSubscription?.();
-        this.recoveryWatchSubscription = null;
-        this.moveWatchSubscription?.();
-        this.moveWatchSubscription = null;
+        this.sourceWatch?.();
+        this.sourceWatch = null;
         this.pipes.setPrimary(pipe);
         // Assigning `pipe` publishes on `pipeState` — it is an accessor over that channel.
         this.model.pipe = this.pipes.primary;
@@ -88,28 +83,19 @@ export class TextFileIOModel {
 
     /** Set up file watch via pipe.watch(). */
     setupWatch(): void {
-        this.watchSubscription?.();
-        this.watchSubscription = null;
-        this.recoveryWatchSubscription?.();
-        this.recoveryWatchSubscription = null;
-        this.moveWatchSubscription?.();
-        this.moveWatchSubscription = null;
+        this.sourceWatch?.();
+        this.sourceWatch = null;
         const pipe = this.model.pipe;
-        if (pipe?.watch) {
-            this.watchSubscription = this.disposables.add(pipe.watch((event) => {
-                if (event !== "available" && event !== "moved") void this.onFileChanged();
-            }, "text editor"));
-            this.recoveryWatchSubscription = this.disposables.add(
-                // Re-read through onFileChanged, not restore(): restore() re-runs setupWatch()
-                // synchronously, which would re-subscribe from inside this callback.
-                watchSourceRecovery(pipe, () => { void this.onFileChanged(); }, "text editor"),
-            );
-            this.moveWatchSubscription = this.disposables.add(
-                watchSourceMove(pipe, (newPath) => {
-                    if (newPath !== pipe.provider.sourceUrl) void this.applyRenamedPath(newPath);
-                }, "text editor"),
-            );
-        }
+        if (!pipe) return;
+        this.sourceWatch = this.disposables.add(watchPipeSource(pipe, {
+            onChanged: () => { void this.onFileChanged(); },
+            // Re-read through onFileChanged, not restore(): restore() re-runs setupWatch()
+            // synchronously, which would re-subscribe from inside this callback.
+            onRecovered: () => { void this.onFileChanged(); },
+            onMoved: (newPath) => {
+                if (newPath !== pipe.provider.sourceUrl) void this.applyRenamedPath(newPath);
+            },
+        }, "text editor"));
     }
 
     // ── Public API ───────────────────────────────────────────────────
@@ -223,18 +209,31 @@ export class TextFileIOModel {
     /** Update filePath, title, pipe and recent-files after a rename on disk. */
     applyRenamedPath = async (newSourcePath: string, movedPipe?: IContentPipe) => {
         const currentPipe = this.model.pipe;
-        const oldPath = this.model.state.get().filePath;
-        const newFilePath = currentPipe?.logicalPathFor(newSourcePath) ?? newSourcePath;
-        const newPipe = movedPipe ?? (currentPipe
-            ? currentPipe.cloneForMovedSource(newSourcePath)
-            : new ContentPipe(new FileProvider(newSourcePath)));
+        const snapshot = this.model.state.get();
+        const oldPath = snapshot.filePath;
+        const moved = currentPipe && !movedPipe
+            ? movedSource(currentPipe, newSourcePath, snapshot)
+            : undefined;
+        const newFilePath = moved?.filePath ?? currentPipe?.logicalPathFor(newSourcePath) ?? newSourcePath;
+        const newPipe = movedPipe ?? moved?.pipe ?? new ContentPipe(new FileProvider(newSourcePath));
         this.setPrimary(newPipe);
 
         this.model.state.update((s) => {
             s.filePath = newFilePath;
             s.title = fpBasename(newFilePath);
-            if (s.sourceLink?.filePath === oldPath) s.sourceLink.filePath = newFilePath;
-            if (s.sourceLink?.url === oldPath) s.sourceLink.url = newFilePath;
+            if (moved) {
+                s.sourceLink = moved.sourceLink;
+            } else if (s.sourceLink) {
+                const filePathMatches = s.sourceLink.filePath === snapshot.filePath;
+                const urlMatches = s.sourceLink.url === snapshot.filePath;
+                if (filePathMatches || urlMatches) {
+                    s.sourceLink = {
+                        ...s.sourceLink,
+                        ...(filePathMatches ? { filePath: newFilePath } : {}),
+                        ...(urlMatches ? { url: newFilePath } : {}),
+                    };
+                }
+            }
         });
         if (oldPath && newFilePath !== oldPath) {
             await recent.remove(oldPath);
@@ -419,12 +418,8 @@ export class TextFileIOModel {
     );
 
     dispose() {
-        this.watchSubscription?.();
-        this.watchSubscription = null;
-        this.recoveryWatchSubscription?.();
-        this.recoveryWatchSubscription = null;
-        this.moveWatchSubscription?.();
-        this.moveWatchSubscription = null;
+        this.sourceWatch?.();
+        this.sourceWatch = null;
         this.disposables.dispose();
         this.pipes.dispose();
         this.model.pipe = null;

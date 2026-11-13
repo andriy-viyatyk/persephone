@@ -8,8 +8,6 @@ import type { ImageViewportProps } from "../../uikit/ImageViewport/ImageViewport
 import { guard } from "../../core/utils/guard";
 import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { ui } from "../../api/ui";
-import { errMessage } from "../../../shared/utils";
 
 export interface MermaidBodyViewProps {
     model: MermaidEditor;
@@ -184,12 +182,7 @@ export class MermaidBodyView extends VanillaView<MermaidBodyViewProps> {
         return {
             src: svgUrl,
             alt: t("editors.mermaidDiagram"),
+            onCopyToClipboard: (blob) => this.model.imageActions.copy(blob),
         };
-    }
-
-    public copyImage = (): void => {
-        void this.model.copyImageToClipboard().catch((error: unknown) => {
-        ui.notify(t("editors.failedToCopyMermaidImage", { error: errMessage(error) }), "error");
-        });
     }
 }

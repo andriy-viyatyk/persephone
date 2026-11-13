@@ -2,10 +2,9 @@ import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { ImageEditor } from "../../editors/image/ImageEditor";
 import {
     blobToBuffer,
-    copyImageToClipboard,
     rasterToPngBlobWithDimensions,
-    writePngToFile,
-} from "../../editors/shared/image-export";
+} from "../../core/utils/image-raster";
+import { writePngToFile } from "../../editors/shared/image-actions";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 
 const IMAGE_ELEMENTS = [
@@ -119,7 +118,7 @@ export class ImageEditorFacade extends EditorFacadeBase<ImageEditor> implements 
     }
 
     saveAsPng(): Promise<void> {
-        return this.editor.saveAsPng();
+        return this.editor.imageActions.saveAsPng();
     }
 
     saveOriginal(): Promise<void> {
@@ -129,11 +128,11 @@ export class ImageEditorFacade extends EditorFacadeBase<ImageEditor> implements 
 
     openInDrawingEditor(): Promise<void> {
         this.requireImageSource("openInDrawingEditor");
-        return this.editor.openInDrawingEditor();
+        return this.editor.imageActions.openInDrawingEditor();
     }
 
     copyImageToClipboard(): Promise<void> {
-        return copyImageToClipboard(this.editor);
+        return this.editor.imageActions.copy();
     }
 
     private requireImageSource(member: "saveOriginal" | "openInDrawingEditor"): void {

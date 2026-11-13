@@ -2,7 +2,7 @@ import color from "../../theme/color";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { SplitterView } from "../../uikit/Splitter/SplitterView";
-import { LinkActionView, LinkBreadcrumbView, LinkFooterView } from "../link-editor";
+import { LinkActionView, LinkBreadcrumbView, LinkFooterView } from "../link-editor/LinkEditorView";
 import { LinkBodyView } from "../link-editor/LinkBody";
 import { BrowserBookmarks } from "./BrowserBookmarks";
 import { BrowserSecondaryViewsView } from "./BrowserSecondaryViews";

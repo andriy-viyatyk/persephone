@@ -348,10 +348,13 @@ in-app player and external player on the same source.
 The video editor classifies HLS, HTTP, local-file and pipe-backed sources in one start flow. A
 reopen can transfer a newly resolved pipe to the existing editor only when its pipe-backed source
 is in a failed state; healthy sources leave the fresh pipe with the page lifecycle to dispose.
-Pipe-backed video, image and text editors use `source-recovery.ts` to watch for a provider becoming
-available and retry the source. Text and image editors keep their separate file-change handling;
-the recovery watch responds only to provider availability. The shared provider-error reporter
-deduplicates repeated notifications when its caller supplies the previous error message.
+Pipe-backed video, image and text editors use `source-watch.ts` to subscribe to source changes,
+provider recovery, and moved-file events through one disposer. Each editor supplies callbacks for
+its existing behavior; moved sources are rebuilt with the archive-entry path preserved. The helper
+reuses `source-recovery.ts` for typed provider-error reporting, which deduplicates repeated
+notifications when its caller supplies the previous error message. Video stream-session lifecycle,
+including request ids and pipe-resource registration, is owned by `VideoStreamSession` in the video
+editor folder.
 
 Window recordings are written as temporary MP4 or WebM files under the app data `recordings`
 folder, then opened through the normal video-editor path when requested by the user. A recorder-

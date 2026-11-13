@@ -1,7 +1,6 @@
 import { createComponentModelDriver } from "../../core/state/model";
 import { VanillaView } from "../shared/vanilla-view";
-import { copyPngBlobToClipboard } from "../../editors/shared/image-export";
-import { imageElementToPngBlob } from "./image-raster";
+import { imageElementToPngBlob } from "../../core/utils/image-raster";
 import { uikitText } from "../shared/uikit-text";
 import {
     defaultImageViewportState,
@@ -15,6 +14,7 @@ import "./ImageViewport.css";
 export interface ImageViewportProps {
     src: string;
     alt?: string;
+    onCopyToClipboard?: (blob: Blob) => Promise<void> | void;
 }
 
 export class ImageViewportView extends VanillaView<ImageViewportProps> {
@@ -191,8 +191,8 @@ export class ImageViewportView extends VanillaView<ImageViewportProps> {
 
     public copyToClipboard = async (): Promise<void> => {
         const image = this.image;
-        if (!image) return;
-        await copyPngBlobToClipboard(await imageElementToPngBlob(image));
+        if (!image || image.naturalWidth <= 0 || !this.props.onCopyToClipboard) return;
+        await this.props.onCopyToClipboard(await imageElementToPngBlob(image));
     };
 
     private resetView(): void {

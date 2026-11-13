@@ -8,11 +8,12 @@ import { FileProvider } from "../../content/providers/FileProvider";
 import { HttpProvider } from "../../content/providers/HttpProvider";
 import { toFileUrl } from "../../content/link-utils";
 import { ui } from "../../api/ui";
-import { pages } from "../../api/pages";
 import { api } from "../../../ipc/renderer/api";
-import { blobToDataUrl, copyPngBlobToClipboard } from "../shared/image-export";
+import { blobToDataUrl } from "../../core/utils/image-raster";
 import type { IImageExport } from "../base/IImageExport";
-import { openImageForEdit, notifyEditCapabilityFailure, type EditCapabilityId } from "../../api/capability-feedback";
+import type { IImageEditSource, ImageEditPayload } from "../base/IImageEditSource";
+import { ImageActions, type ImageExportAction } from "../shared/image-actions";
+import { notifyEditCapabilityFailure, type EditCapabilityId } from "../../api/capability-feedback";
 import { errMessage } from "../../../shared/utils";
 
 export type HtmlQueueEvent = { type: "focus" };
@@ -33,16 +34,20 @@ export const defaultHtmlEditorState: HtmlEditorState = {
 };
 
 export class HtmlEditor extends TextHostEditorModel<HtmlEditorState, HtmlQueueEvent, HtmlQueueRequest>
-    implements IImageExport {
+    implements IImageExport, IImageEditSource {
     readonly editorId = EditorId.htmlView;
     protected readonly displayName = "HTML";
 
     /** The live preview iframe, reported by the view; used to capture its
      *  on-screen region. Transient — cleared on unmount (HC1). */
     private _captureEl: HTMLIFrameElement | null = null;
+    readonly imageActions: ImageActions;
 
     constructor(state: TComponentState<HtmlEditorState>) {
         super(state);
+        this.imageActions = new ImageActions(this, {
+            runExportAction: (action, run) => this.runImageAction(action, run),
+        });
     }
 
     focus(): void {
@@ -137,27 +142,19 @@ export class HtmlEditor extends TextHostEditorModel<HtmlEditorState, HtmlQueueEv
         }
     }
 
-    /** Copy the rendered page to the clipboard as a PNG. */
-    copyImageToClipboard(): Promise<void> {
-        return this.withCapture(async (blob) => {
-            await copyPngBlobToClipboard(blob);
-            ui.notify(t("editors.imageCopiedToClipboard"), "success");
-        }, "Failed to copy image");
+    async imageEditPayload(): Promise<ImageEditPayload> {
+        const blob = await this.exportPng();
+        return { dataUrl: await blobToDataUrl(blob), mimeType: "image/png", title: this.suggestedImageName() };
     }
 
-    /** Open the captured PNG in the Image viewer (new page). */
-    openInImageView(): Promise<void> {
-        return this.withCapture((blob) => {
-            pages.openImageInNewTab(URL.createObjectURL(blob));
-        }, "Failed to open image");
-    }
-
-    /** Open the captured PNG in the Excalidraw board for editing (new page). */
-    editImage(): Promise<void> {
+    private runImageAction(action: ImageExportAction, run: (blob: Blob) => Promise<void>): Promise<void> {
+        const failMessage = action === "copy"
+            ? "Failed to copy image"
+            : action === "open-in-image-view" ? "Failed to open image" : "Failed to open image for editing";
         return this.withCapture(async (blob) => {
-            const dataUrl = await blobToDataUrl(blob);
-            await openImageForEdit({ dataUrl, mimeType: "image/png", title: this.suggestedImageName() });
-        }, "Failed to open image for editing", "image.edit");
+            await run(blob);
+            if (action === "copy") ui.notify(t("editors.imageCopiedToClipboard"), "success");
+        }, failMessage, action === "edit-image" ? "image.edit" : undefined);
     }
 
     // ── Dispose ─────────────────────────────────────────────────────────

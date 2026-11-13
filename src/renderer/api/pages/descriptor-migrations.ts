@@ -1,5 +1,6 @@
 import { InternalEditorIds } from "../../editors/base/editor-ids";
 import type { EditorDescriptor, PageDescriptor } from "../../../shared/persistence";
+import { EditorId } from "../../../shared/editor-ids";
 import {
     decodePersephoneBoardLink,
     encodePersephoneBoardLink,
@@ -79,9 +80,40 @@ export function migrateLegacyEditorStateType(descriptor: EditorDescriptor): Edit
     return { ...descriptor, editorId, state, ...(host ? { host } : {}) };
 }
 
+/** Move pre-HS1 Grid settings into the host-owned editor settings slot. */
+export function promoteLegacyGridSettings(descriptor: EditorDescriptor): EditorDescriptor {
+    const editorId = descriptor.editorId;
+    if (editorId !== EditorId.gridJson && editorId !== EditorId.gridCsv && editorId !== EditorId.gridJsonl) {
+        return descriptor;
+    }
+    if (!descriptor.host) return descriptor;
+
+    const legacyKeys = ["columns", "filters", "search", "sortColumn", "csvDelimiter", "csvWithColumns", "focus"] as const;
+    const state = { ...descriptor.state };
+    if (!legacyKeys.some((key) => state[key] !== undefined)) return descriptor;
+
+    const hostState = { ...descriptor.host.state };
+    const editorSettings = isRecord(hostState.editorSettings) ? { ...hostState.editorSettings } : {};
+    if (editorSettings[editorId] === undefined) {
+        editorSettings[editorId] = {
+            columns: state.columns ?? [],
+            filters: state.filters ?? [],
+            search: state.search ?? "",
+            sortColumn: state.sortColumn,
+            csvDelimiter: state.csvDelimiter ?? ",",
+            csvWithColumns: state.csvWithColumns ?? false,
+            focus: state.focus,
+        };
+    }
+    for (const key of legacyKeys) delete state[key];
+    hostState.editorSettings = editorSettings;
+    return { ...descriptor, state, host: { ...descriptor.host, state: hostState } };
+}
+
 export async function normalizePageDescriptor(desc: PageDescriptor): Promise<PageDescriptor> {
     const withBoardIds = (await Promise.all(desc.editors.map(migratePersistedBoardRootsAndIds)))
-        .map(migrateLegacyEditorStateType);
+        .map(migrateLegacyEditorStateType)
+        .map(promoteLegacyGridSettings);
     const withEditorMigrations = { ...desc, editors: withBoardIds };
     return migratePersistedBoardLinks(withEditorMigrations);
 }

@@ -6,10 +6,12 @@ import { TextFileModel } from "../content-host/TextFileModel";
 import { themeState } from "../../theme/theme-state";
 import { renderMermaid } from "./render-mermaid";
 import type { IImageExport } from "../base/IImageExport";
-import { copyPngBlobToClipboard, rasterToPngBlob } from "../shared/image-export";
+import { rasterToPngBlob } from "../../core/utils/image-raster";
+import { ImageActions } from "../shared/image-actions";
+import type { IImageEditSource, ImageEditPayload } from "../base/IImageEditSource";
+import { getMissingEditCapabilityMessage } from "../../api/capability-feedback";
 import { app } from "../../api/app";
 import { t } from "../../../shared/i18n/t";
-import { getMissingEditCapabilityMessage, openImageForEdit } from "../../api/capability-feedback";
 import type { DiagramEditResult } from "../../api/types/capabilities";
 import { ui } from "../../api/ui";
 import { errMessage } from "../../../shared/utils";
@@ -51,9 +53,13 @@ export const defaultMermaidEditorState: MermaidEditorState = {
 
 export class MermaidEditor
     extends TextHostEditorModel<MermaidEditorState, MermaidQueueEvent, MermaidQueueRequest>
-    implements IImageExport {
+    implements IImageExport, IImageEditSource {
     readonly editorId = EditorId.mermaidView;
     protected readonly displayName = "Mermaid";
+    readonly imageActions = new ImageActions(this, {
+        copyError: (error) => new Error(`Mermaid preview cannot copy an image: ${errMessage(error)}`),
+        drawingEditorError: (error) => new Error(`Mermaid preview cannot open in Drawing Editor: ${errMessage(error)}`),
+    });
 
     private _renderTimer: ReturnType<typeof setTimeout> | undefined;
     private _syncingTheme = false;
@@ -191,21 +197,14 @@ export class MermaidEditor
         return (this.state.get().title || "diagram").replace(/\.\w+$/, "");
     }
 
-    async openInDrawingEditor(): Promise<void> {
+    async imageEditPayload(): Promise<ImageEditPayload> {
         const svgUrl = await this.renderForAction("open in Drawing Editor");
-        try {
-            const svgText = decodeURIComponent(svgUrl.replace("data:image/svg+xml,", ""));
-            const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svgText, "utf-8").toString("base64")}`;
-            const title = (this.displayTitle || "Mermaid").replace(/\.\w+$/, "");
-            await openImageForEdit({
-                dataUrl,
-                mimeType: "image/svg+xml",
-                title,
-            });
-        } catch (error) {
-            if (getMissingEditCapabilityMessage(error, "image.edit")) throw error;
-            throw new Error(`Mermaid preview cannot open in Drawing Editor: ${errMessage(error)}`);
-        }
+        const svgText = decodeURIComponent(svgUrl.replace("data:image/svg+xml,", ""));
+        return {
+            dataUrl: `data:image/svg+xml;base64,${Buffer.from(svgText, "utf-8").toString("base64")}`,
+            mimeType: "image/svg+xml",
+            title: (this.displayTitle || "Mermaid").replace(/\.\w+$/, ""),
+        };
     }
 
     async convertToExcalidraw(): Promise<void> {
@@ -226,7 +225,7 @@ export class MermaidEditor
             t("editors.couldntConvertToEditableShapes", { reason: result.message }),
                 "info",
             );
-            await this.openInDrawingEditor();
+            await this.imageActions.openInDrawingEditor();
             return;
         }
         if (result.imageOnly) {
@@ -234,15 +233,6 @@ export class MermaidEditor
             t("editors.diagramCannotConvertToEditableShapes"),
                 "info",
             );
-        }
-    }
-
-    async copyImageToClipboard(): Promise<void> {
-        try {
-            const blob = await this.exportPng();
-            await copyPngBlobToClipboard(blob);
-        } catch (error) {
-            throw new Error(`Mermaid preview cannot copy an image: ${errMessage(error)}`);
         }
     }
 

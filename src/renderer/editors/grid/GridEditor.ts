@@ -1,4 +1,4 @@
-import { TComponentState } from "../../core/state/state";
+import { TComponentState, TOneState } from "../../core/state/state";
 import { type EditorStateBase, type RestoreData } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
 import { TextFileModel } from "../content-host/TextFileModel";
@@ -16,12 +16,8 @@ import {
     type SortState,
     defaultCompare,
     filterRows,
-    rowsToCsvText,
 } from "../../uikit/DataGrid";
-import { parseObject } from "../../core/utils/parse-utils";
-import { csvToRecords } from "../../core/utils/csv-utils";
 import {
-    columnLetters,
     getGridDataWithColumns,
     getRowKey,
     nextColumnKeys,
@@ -31,8 +27,12 @@ import {
     withFilterMode,
     type GridFilterMode,
 } from "./utils/grid-utils";
-import { formatFromEditorId, type GridFormat, type GridEditorId } from "./util";
-import { errMessage } from "../../../shared/utils";
+import { formatFromEditorId, type GridFormat, type GridEditorId } from "./utils/grid-format";
+import { csvCodec } from "./formats/csv-codec";
+import { jsonCodec } from "./formats/json-codec";
+import { jsonlCodec } from "./formats/jsonl-codec";
+import type { CsvCodecOptions, GridCodec, GridParseResult } from "./formats/GridCodec";
+import { t } from "../../../shared/i18n/t";
 
 export type GridQueueEvent =
     | { type: "focus" }
@@ -75,23 +75,6 @@ export interface GridColumnSetting {
     filterType?: GridFilterMode;
 }
 
-/**
- * HS1 — Grid's editor-keyed view-state slot shape. Lives on
- * `host.editorSettings[this.editorId]` so it survives Grid↔Monaco switches
- * (host outlives the editor) AND app restarts (host descriptor rides
- * `openFiles.txt`). Seeded into editor state by `adoptHost`; mirrored back
- * by a `state.subscribe` mirror set up in the same call.
- */
-interface GridViewSettings {
-    columns: GridColumnSetting[];
-    filters: Filter[];
-    search: string;
-    sortColumn: SortColumn | undefined;
-    csvDelimiter: string;
-    csvWithColumns: boolean;
-    focus: CellFocus | undefined;
-}
-
 /** Project a live column down to what is worth remembering. */
 function toColumnSetting(column: Column): GridColumnSetting {
     const setting: GridColumnSetting = { key: String(column.key) };
@@ -101,6 +84,17 @@ function toColumnSetting(column: Column): GridColumnSetting {
     if (column.dataType !== undefined) setting.dataType = column.dataType;
     if (resolveFilterMode(column) === "text") setting.filterType = "text";
     return setting;
+}
+
+/** HS1 editor-keyed state stored on host.editorSettings[this.editorId]. */
+interface GridViewSettings {
+    columns: GridColumnSetting[];
+    filters: Filter[];
+    search: string;
+    sortColumn: SortColumn | undefined;
+    csvDelimiter: string;
+    csvWithColumns: boolean;
+    focus: CellFocus | undefined;
 }
 
 /**
@@ -176,15 +170,6 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
     protected readonly displayName = "Grid";
     readonly format: GridFormat;
 
-    /** HS1 — descriptors carried Grid view-config directly on
-     *  `EditorDescriptor.state` (per GR4's original resolution). One-shot
-     *  legacy promotion: applyRestoreData stashes the legacy fields here;
-     *  adoptHost promotes them into `host.editorSettings[this.editorId]`
-     *  if the host slot is still empty. After the first save 
-     *  the descriptor no longer carries the legacy fields and the host slot
-     *  becomes the single source of truth. */
-    private _pendingLegacySettings: GridViewSettings | null = null;
-
     private _maxRowId = 0;
 
     /**
@@ -198,6 +183,11 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
 
     /** The live grid, between `setGrid(grid)` and `setGrid(null)`. */
     private _grid: DataGridInstance | undefined;
+    readonly gridAvailable = new TOneState(false);
+
+    get grid(): DataGridInstance | undefined {
+        return this._grid;
+    }
 
     /** One serialize per tick, however many cells the edit touched. */
     private _serializeQueued = false;
@@ -212,6 +202,7 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
 
     /** Keys `newColumn` has minted but that no `onColumnsChange` has reported back yet. */
     private readonly _pendingColumnKeys = new Set<string>();
+    private readonly codec: GridCodec<CsvCodecOptions>;
 
     /** Narrowed queue typed for Grid's event union. */
 
@@ -219,6 +210,7 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
         super(state);
         this.editorId = editorId;
         this.format = formatFromEditorId(editorId);
+        this.codec = this.format === "csv" ? csvCodec : this.format === "jsonl" ? jsonlCodec : jsonCodec;
     }
 
     // ── The grid handle  ──────────────────────────────────
@@ -232,6 +224,7 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
      */
     setGrid = (grid: DataGridInstance | null): void => {
         this._grid = grid ?? undefined;
+        this.gridAvailable.set(!!grid);
         if (!grid) return;
 
         // Same guard the filters get in `GridBodyView`: `setSort` rejects a column that is not
@@ -294,31 +287,8 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
     // ── Persistence ─────────────────────────────────────────────────────
 
     applyRestoreData(data: RestoreData<GridEditorState>): void {
+        this.gridAvailable.set(false);
         super.applyRestoreData(data);
-        // NOTE: columns / filters / sortColumn / search / focus /
-        // csvDelimiter / csvWithColumns no longer applied here — they
-        // arrive from host.getEditorState in adoptHost. Legacy descriptors
-        // that still carry them are picked up below for one-shot
-        // promotion into the host slot.
-        const hasLegacy =
-            data.columns !== undefined ||
-            data.filters !== undefined ||
-            data.search !== undefined ||
-            data.sortColumn !== undefined ||
-            data.csvDelimiter !== undefined ||
-            data.csvWithColumns !== undefined ||
-            data.focus !== undefined;
-        if (hasLegacy) {
-            this._pendingLegacySettings = {
-                columns: (data.columns ?? []).map(toColumnSetting),
-                filters: data.filters ?? [],
-                search: data.search ?? "",
-                sortColumn: data.sortColumn,
-                csvDelimiter: data.csvDelimiter ?? ",",
-                csvWithColumns: data.csvWithColumns ?? false,
-                focus: data.focus,
-            };
-        }
     }
 
     // ── Host adoption ───────────────────────────────────────────────────
@@ -361,17 +331,6 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
                 ),
             );
         }
-
-        if (
-            this._pendingLegacySettings &&
-            host.getEditorState<GridViewSettings>(this.editorId) === undefined
-        ) {
-            host.setEditorState<GridViewSettings>(
-                this.editorId,
-                this._pendingLegacySettings,
-            );
-        }
-        this._pendingLegacySettings = null;
 
         // HS1 — seed editor state from the host slot (sync, no flicker).
         // Field-by-field with `=== undefined` guards so future shape evolution
@@ -421,7 +380,7 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
             const s = this.state.get();
             if (!s.csvDelimiter || s.csvDelimiter === ",") {
                 const content = host.state.get().content ?? "";
-                const detected = GridEditor.detectCsvDelimiter(content);
+                const detected = csvCodec.detectOptions?.(content).csvDelimiter ?? ",";
                 if (detected !== s.csvDelimiter) {
                     this.state.update((x) => {
                         x.csvDelimiter = detected;
@@ -455,7 +414,7 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
         if (this._host?.state.get().encrypted) {
             this.setRows([], this.state.get().columns);
             this.state.update((s) => {
-                s.error = "Content is encrypted. Unlock the file to view as grid.";
+            s.error = t("editors.gridEncryptedContent");
             });
             return;
         }
@@ -538,49 +497,17 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
         this.focusCell(0, 0);
     }
 
-    private parseContent(content: string): any {
-        let err: any = undefined;
-        let res: any = undefined;
-        switch (this.format) {
-            case "csv": {
-                const { csvDelimiter, csvWithColumns } = this.state.get();
-                let rows: string[][] | Record<string, string>[] = csvToRecords(
-                    content,
-                    csvWithColumns,
-                    csvDelimiter,
-                    (e) => (err = e),
-                );
-                if (Array.isArray(rows) && !csvWithColumns) {
-                    // `string[]` → `{ a: "…", b: "…", … }` so the grid can index cells by
-                    // column name. Spreadsheet letters, not the row's ordinals: they are what
-                    // `newColumn` mints, so a header-free file keeps one naming scheme whether
-                    // a column arrived by parse, by paste, or by Insert Column.
-                    const keys = columnLetters(
-                        (rows as string[][]).reduce((max, r) => Math.max(max, r.length), 0),
-                    );
-                    rows = (rows as string[][]).map((r) => {
-                        const record: Record<string, string> = {};
-                        r.forEach((value, i) => {
-                            record[keys[i]] = value;
-                        });
-                        return record;
-                    });
-                }
-                res = rows;
-                break;
-            }
-            case "jsonl":
-                res = parseJsonl(content, (e) => (err = e));
-                break;
-            case "json":
-            default:
-                res = parseObject(content, (e) => (err = e));
-                break;
-        }
+    private codecOptions(): CsvCodecOptions {
+        const { csvDelimiter, csvWithColumns } = this.state.get();
+        return { csvDelimiter, csvWithColumns };
+    }
+
+    private parseContent(content: string): unknown {
+        const result: GridParseResult = this.codec.parse(content, this.codecOptions());
         this.state.update((s) => {
-            s.error = err ? err.message + "\n" + err.stack : undefined;
+            s.error = result.error ? result.error.message + "\n" + result.error.stack : undefined;
         });
-        return res;
+        return result.rows;
     }
 
     // ── av-grid callbacks  ─────────────────────────
@@ -857,30 +784,7 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
     // ── Serialization ───────────────────────────────────────────────────
 
     private getContentToSave(): string {
-        switch (this.format) {
-            case "csv":
-                return this.getCsvContent();
-            case "jsonl":
-                return this.getJsonlContent();
-            case "json":
-            default:
-                return this.getJsonContent();
-        }
-    }
-
-    private getJsonContent(): string {
-        return JSON.stringify(this.liveRows(), null, 4);
-    }
-
-    private getCsvContent(): string {
-        const { csvDelimiter, csvWithColumns, columns } = this.state.get();
-        return rowsToCsvText(this.liveRows(), columns, csvWithColumns, csvDelimiter);
-    }
-
-    private getJsonlContent(): string {
-        return this.liveRows()
-            .map((row) => JSON.stringify(row))
-            .join("\n");
+        return this.codec.serialize(this.liveRows(), this.state.get().columns, this.codecOptions());
     }
 
     /**
@@ -911,44 +815,6 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
 
     // ── Static helpers ──────────────────────────────────────────────────
 
-    /** Heuristic CSV delimiter detection from the first 5 lines. Shared by
-     *  `restore()` (session-restore path), `switchFrom()` (switch-in path),
-     *  and the open-file flow (`editors/editor-factory.ts`'s synchronous host construction). */
-    static detectCsvDelimiter(content: string): string {
-        const firstLine = content.split("\n").slice(0, 5).join("") || "";
-        const delimiters = [",", ";", "\t", "|"];
-        let maxCount = 0;
-        let detected = ",";
-        for (const delim of delimiters) {
-            const count = (firstLine.match(new RegExp("\\" + delim, "g")) || []).length;
-            if (count > maxCount) {
-                maxCount = count;
-                detected = delim;
-            }
-        }
-        return detected;
-    }
 }
 
 // ── Helpers (file-local) ────────────────────────────────────────────────
-
-function parseJsonl(content: string, onError: (e: Error) => void): any[] {
-    const lines = content.split("\n");
-    const result: any[] = [];
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        try {
-            const parsed = JSON.parse(line);
-            result.push(
-                typeof parsed === "object" && parsed !== null
-                    ? parsed
-                    : { value: parsed },
-            );
-        } catch (e) {
-            onError(new Error(`Line ${i + 1}: ${errMessage(e)}`));
-            return result;
-        }
-    }
-    return result;
-}

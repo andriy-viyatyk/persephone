@@ -354,7 +354,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   └── notice.ts
 │   ├── link-utils.ts       # URL → pipe descriptor resolution and shared URL path/fragment helpers
 │   ├── rebuild-pipe.ts     # Rebuilds pipes from persisted source paths or source links, preferring saved pipe descriptors where available
-│   ├── source-recovery.ts  # Provider-availability recovery watches and shared typed provider-error reporting
+│   ├── source-watch.ts     # Shared provider-availability and moved-source watch lifecycle
+│   ├── source-recovery.ts  # Shared typed provider-error reporting
 │   ├── open-handler.ts     # Layer 3: open handler on openContent — creates/navigates pages
 │   ├── folder-editor-link.ts # folder-editor:// UTF-8-safe board-folder link; maps built-in folder ids to their existing links
 │   ├── persephone-board-link.ts # persephone-board:// link encode/decode (addresses a board root); dispatched by the registered-scheme adapter → target "board-view"
@@ -466,6 +467,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── editor-switch.ts          # switchMainEditor — switch-widget transition (host transfer / rebuild)
 │   │   ├── PageToolbarView.ts        # Native page toolbar — NavPanel + switch widget auto-slots
 │   │   ├── TextChromeView.ts         # Native host-aware chrome (toolbar, script panel, footer)
+│   │   ├── TextEditorPageView.ts    # Shared text page shell with retained body and contribution slots
+│   │   ├── text-chrome-contributions.ts # Shared script and editor toolbar contributions
 │   │   ├── EditorToolbarView.ts      # Native toolbar root used by individual editors
 │   │   ├── EditorStatusBarView.ts    # Shared editor status bar (footer): pipe status, provider, text-host parts
 │   │   ├── EditorStatusBar.css       # Status bar styles
@@ -485,10 +488,11 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   └── index.ts
 │   ├── grid/               # JSON/CSV/JSONL grid editor (text-bearing, content-host trait)
 │   │   ├── GridEditor.ts             # EditorModel — parsing, sort/filter/edit state
+│   │   ├── GridEditorView.ts         # Native page view and toolbar
 │   │   ├── GridBodyView.ts            # Native DataGrid integration
+│   │   ├── formats/                  # JSON, JSONL, and CSV codecs
 │   │   ├── components/               # Grid-specific components
-│   │   ├── utils/                    # Grid utilities
-│   │   ├── util.ts                   # Shared utility helpers
+│   │   ├── utils/                    # Grid utilities including grid-format.ts
 │   │   └── index.ts
 │   ├── markdown/           # Markdown preview (text-bearing, content-host trait)
 │   │   ├── MarkdownEditor.ts         # EditorModel — search state, scroll, compact

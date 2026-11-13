@@ -127,6 +127,11 @@ filters whose column is live, and `setGrid` applies a remembered sort only when 
 there. Both prune on the way to av-grid rather than in state, so a filter whose column comes back
 — the same header toggle, undone — is still there when it does.
 
+Parsing and serialization are delegated to the codecs in `editors/grid/formats/`: JSON and JSONL
+codecs own their text formats, while the CSV codec also detects delimiter and header options. The
+`GridEditor` selects the codec from its editor id, owns the active options, and publishes parsed
+rows to the view; the view reads that grid state directly.
+
 ## Rendering Architecture
 
 The board editor follows the same native page path: `BoardEditorView` owns the board's four-way
@@ -140,7 +145,7 @@ RenderEditor
     └── module.View → native VanillaView root
 ```
 
-All editors flow through the same path — there is no longer a content-view branching point that wraps text-bearing editors inside `TextEditorView`. Every `EditorModule` has one required framework-free `View` arm, and `AsyncEditorView` mounts it directly. Native text editors compose `TextChromeView`, while no-host editors that need shared page controls compose `PageToolbarView`. `EditorToolbar` and `ContentHostFooter` are native views, not editor-module arms.
+All editors flow through the same path — there is no longer a content-view branching point that wraps text-bearing editors inside `TextEditorView`. Every `EditorModule` has one required framework-free `View` arm, and `AsyncEditorView` mounts it directly. Native text editors compose `TextEditorPageView`, which maps retained body and contribution roots into `TextChromeView`; no-host editors that need shared page controls compose `PageToolbarView`. `EditorToolbar` and `ContentHostFooter` are native views, not editor-module arms.
 
 **Error protection:** `AsyncEditorView` catches native editor construction, mount, update, and module-load failures and displays `NativeEditorErrorView` with the error message and optional stack.
 
@@ -404,7 +409,7 @@ interface IImageExport {
 }
 ```
 
-For the rasterising editors (Mermaid, SVG, Image), export runs at the **model level and is host-independent** — it does not require a mounted view, so it works for a page that is not the active tab. The shared helpers in `/src/renderer/editors/shared/image-export.ts` do the canvas work: `rasterToPngBlob(src)` loads any source (an `image/svg+xml` data URL, a blob URL, or an http(s) URL) into an offscreen `<img>`, draws it to a canvas at natural size, and encodes a PNG. Because the browser performs the rasterisation, fonts and text render correctly — output external "SVG → PNG" tooling fails to produce.
+For the rasterising editors (Mermaid, SVG, Image), export runs at the **model level and is host-independent** — it does not require a mounted view, so it works for a page that is not the active tab. The pure helpers in `/src/renderer/core/utils/image-raster.ts` do the canvas and Blob work: `rasterToPngBlob(src)` loads any source (an `image/svg+xml` data URL, a blob URL, or an http(s) URL) into an offscreen `<img>`, draws it to a canvas at natural size, and encodes a PNG. Because the browser performs the rasterisation, fonts and text render correctly — output external "SVG → PNG" tooling fails to produce. `editors/shared/image-actions.ts` owns shared copy, save, open-in-view, and edit actions; `ImageActionsToolbarView` presents those actions while each editor keeps its own export and failure policy.
 
 The Image editor's script facade also uses `rasterToPngBlobWithDimensions(src, maxDimension)` for
 its read-only inline MCP result. That helper preserves the source aspect ratio, limits the longer

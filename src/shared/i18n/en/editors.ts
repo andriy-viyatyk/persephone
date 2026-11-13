@@ -10,6 +10,7 @@ export const editorsCatalog = {
     gridJson: { message: "Grid (JSON)" },
     gridCsv: { message: "Grid (CSV)" },
     gridJsonl: { message: "Grid (JSONL)" },
+    gridEncryptedContent: { message: "Content is encrypted. Unlock the file to view as grid." },
     logView: { message: "Log View" },
     preview: { message: "Preview" },
     mermaid: { message: "Mermaid" },

@@ -2,6 +2,7 @@ import { CapabilityError } from "./capability-error";
 import { errMessage } from "../../shared/utils";
 import { t } from "../../shared/i18n/t";
 import type { CapabilityPageResult } from "./types/capabilities";
+import { getImageDimensions } from "../core/utils/image-raster";
 
 export type EditCapabilityId = "image.edit" | "diagram.edit" | "theme.edit";
 
@@ -31,10 +32,7 @@ export async function openImageForEdit(options: {
     mimeType?: string;
     title: string;
 }): Promise<CapabilityPageResult> {
-    const [{ app }, { getImageDimensions }] = await Promise.all([
-        import("./app"),
-        import("../editors/shared/image-export"),
-    ]);
+    const { app } = await import("./app");
     const dimensions = await getImageDimensions(options.dataUrl);
     const title = /\.excalidraw$/i.test(options.title)
         ? options.title

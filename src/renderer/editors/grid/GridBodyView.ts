@@ -17,8 +17,6 @@ import { getRowKey } from "./utils/grid-utils";
 
 export interface GridBodyViewProps {
     model: GridEditor;
-    onModel?: (model: DataGridInstance<any> | null) => void;
-
 }
 
 interface GridProjection {
@@ -108,15 +106,10 @@ export class GridBodyView extends VanillaView<GridBodyViewProps> {
     private modelSubscription: (() => void) | undefined;
     private queueSubscription: (() => void) | undefined;
     private liveGrid: DataGridInstance<any> | null = null;
-    private publishedModel: GridEditor | undefined;
-    private publishedOnModel: GridBodyViewProps["onModel"] | undefined;
-    private hasPublishedGrid = false;
 
     private readonly onGrid = (grid: DataGridInstance<any> | null): void => {
         if (!grid) {
             this.releaseGridHandles();
-            this.model.setGrid(null);
-            this.props.onModel?.(null);
             return;
         }
 
@@ -209,7 +202,6 @@ export class GridBodyView extends VanillaView<GridBodyViewProps> {
                 this.publishExistingGrid();
                 this.subscribeToModel();
             } else {
-                this.refreshOnModel();
                 this.applyProjection(selectGridProjection(this.model.state.get()));
             }
         }
@@ -267,7 +259,6 @@ export class GridBodyView extends VanillaView<GridBodyViewProps> {
         this.setHidden(this.root, false);
         this.setHidden(this.contentPanel, hasError);
         this.setHidden(this.errorPanel, !hasError);
-        this.refreshOnModel();
     }
 
     /** The embedded body may be re-pointed without changing its GridEditor identity. */
@@ -286,35 +277,11 @@ export class GridBodyView extends VanillaView<GridBodyViewProps> {
     private publishGrid(grid: DataGridInstance<any>): void {
         this.liveGrid = grid;
         this.model.setGrid(grid);
-
-        if (this.hasPublishedGrid && this.publishedOnModel !== this.props.onModel) {
-            this.publishedOnModel?.(null);
-        }
-        this.props.onModel?.(grid);
-        this.publishedModel = this.model;
-        this.publishedOnModel = this.props.onModel;
-        this.hasPublishedGrid = true;
     }
 
     private releaseGridHandles(): void {
-        this.publishedModel?.setGrid(null);
-        if (!this.publishedModel && this.liveGrid) {
-            this.model.setGrid(null);
-        }
-        if (this.hasPublishedGrid) {
-            this.publishedOnModel?.(null);
-        }
         this.liveGrid = null;
-        this.publishedModel = undefined;
-        this.publishedOnModel = undefined;
-        this.hasPublishedGrid = false;
-    }
-
-    private refreshOnModel(): void {
-        if (!this.hasPublishedGrid || this.publishedOnModel === this.props.onModel) return;
-        this.publishedOnModel?.(null);
-        this.props.onModel?.(this.liveGrid);
-        this.publishedOnModel = this.props.onModel;
+        this.model.setGrid(null);
     }
 
     private setHostVisibility(visible: boolean): void {
