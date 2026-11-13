@@ -1,7 +1,7 @@
-import { app } from "../api/app";
-import { createLinkData } from "../../shared/link-data";
+import { app } from "../../api/app";
+import { createLinkData } from "../../../shared/link-data";
 import { createOpenWithMenuItem } from "./open-with-editor";
-import { t } from "../../shared/i18n/t";
+import { t } from "../../../shared/i18n/t";
 
 /**
  * Register default context menu handlers for ILink items.
@@ -19,7 +19,7 @@ export function registerTreeContextMenuHandlers(): void {
         if (!item) return;
         if (!item.href.startsWith("http://") && !item.href.startsWith("https://")) return;
 
-        const { appendLinkOpenMenuItems } = await import("../editors/shared/link-open-menu");
+        const { appendLinkOpenMenuItems } = await import("../../editors/shared/link-open-menu");
         appendLinkOpenMenuItems(event.items, item.href, { startGroup: true });
     });
 
@@ -57,7 +57,7 @@ export function registerTreeContextMenuHandlers(): void {
                     label: t("shell.openInNewTab"),
                     icon: "open-file",
                     onClick: async () => {
-                        const { pages } = await import("../api/pages");
+                        const { pages } = await import("../../api/pages");
                         pages.lifecycle.addEmptyPageWithNavPanel(item.href);
                     },
                 },
@@ -68,7 +68,7 @@ export function registerTreeContextMenuHandlers(): void {
                 label: t("shell.showInFileExplorer"),
                 icon: "folder-open",
                 onClick: async () => {
-                    const { api } = await import("../../ipc/renderer/api");
+                    const { api } = await import("../../../ipc/renderer/api");
                     api.showFolder(item.href);
                 },
             });
@@ -86,7 +86,7 @@ export function registerTreeContextMenuHandlers(): void {
                     label: t("shell.openInNewWindow"),
                     icon: "new-window",
                     onClick: async () => {
-                        const { pages } = await import("../api/pages");
+                        const { pages } = await import("../../api/pages");
                         pages.lifecycle.openPathInNewWindow(item.href);
                     },
                 },
@@ -98,7 +98,7 @@ export function registerTreeContextMenuHandlers(): void {
                     label: t("shell.showInFileExplorer"),
                     icon: "folder-open",
                     onClick: async () => {
-                        const { api } = await import("../../ipc/renderer/api");
+                        const { api } = await import("../../../ipc/renderer/api");
                         api.showItemInFolder(item.href);
                     },
                 },
@@ -106,7 +106,7 @@ export function registerTreeContextMenuHandlers(): void {
 
             // Re-fire on fileExplorer.itemContextMenu for script compatibility.
             // Scripts work directly with event.items — same array instance.
-            const { ContextMenuEvent: CtxMenuEvent } = await import("../api/events/events");
+            const { ContextMenuEvent: CtxMenuEvent } = await import("../../api/events/events");
             const fileTarget = {
                 path: item.href,
                 name: item.title,

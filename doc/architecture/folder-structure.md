@@ -340,6 +340,13 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── builtin-schemes.ts  # Built-in URL-scheme registrations and handlers
 │   ├── parsers.ts          # Layer 1: scheme dispatch plus file/archive and cURL/fetch adapters on openRawLink
 │   ├── resolvers.ts        # Layer 2: registered-scheme dispatch plus fallback pipe resolvers on openLink
+│   ├── link-handoff.ts     # Shared handled reset/delegate/finalize sequence for scheme hand-offs
+│   ├── open-actions/       # Layer 3 execution of typed browser, folder, capability and notice actions
+│   │   ├── dispatch.ts
+│   │   ├── browser.ts
+│   │   ├── folder-page.ts
+│   │   ├── capability.ts
+│   │   └── notice.ts
 │   ├── link-utils.ts       # URL → pipe descriptor resolution and shared URL path/fragment helpers
 │   ├── rebuild-pipe.ts     # Rebuilds pipes from persisted source paths or source links, preferring saved pipe descriptors where available
 │   ├── source-recovery.ts  # Provider-availability recovery watches and shared typed provider-error reporting
@@ -366,10 +373,12 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── tree-provider-link.ts # tree-category:// link format (encode/decode)
 │   │   ├── MnemeTreeProvider.ts  # ITreeProvider over a Mneme root — browse like a filesystem; create/rename/delete; drag-drop import
 │   │   └── mnemeLinkTraits.ts    # MnemeLink TraitSet (LINK + FILE_LINK) for tree drag-drop (move within / copy across roots)
-│   ├── tree-context-menus.ts    # Default context menu handlers for tree provider items
 │   └── open-with-default-app.ts # Hand a path to the OS shell (shell.openPath); shared by the tree context menu and Explorer double-click
 │
 ├── ui/                     # Application Shell
+│   ├── link-menus/          # App-level link and file menu builders
+│   │   ├── tree-context-menus.ts # Default context menu handlers for tree provider items
+│   │   └── open-with-editor.ts   # Shared Open with submenu and editor selection action
 │   ├── app/                # Root shell
 │   │   ├── MainPageView.ts         # Native root layout (header, tabs, editors, sidebar)
 │   │   ├── HeaderQuickSettingsPopover.ts # Header snip/record actions and live service switches

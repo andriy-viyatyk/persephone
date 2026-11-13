@@ -6,6 +6,7 @@ import {
     type RegistrationOptions,
     type RegistrationResult,
 } from "./registry";
+import { handoff } from "./link-handoff";
 
 export type SchemePhase = "open" | "source-path";
 
@@ -71,9 +72,7 @@ function createHookContext(
                 await delegate();
                 return;
             }
-            data.handled = false;
-            await delegate();
-            data.handled = true;
+            await handoff(data, delegate);
         },
         createPipe: createPipeFromDescriptor,
     };

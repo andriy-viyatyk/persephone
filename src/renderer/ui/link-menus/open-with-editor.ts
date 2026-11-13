@@ -1,14 +1,14 @@
-import type { MenuItem } from "../core/events/context-menu";
-import { app } from "../api/app";
-import { ui } from "../api/ui";
-import { pages } from "../api/pages";
-import { getFileOpenEditorOptions } from "../editors/base/editor-switch-options";
-import { parseBoardEditorId } from "../api/boards/custom-editor-registry";
-import { createBoardGlyphElement } from "../editors/board/board-glyph-element";
-import { ArchiveIcon, type SvgIconComponent } from "../theme/icons";
-import { DefaultIcon, GridIcon, LinkIcon } from "../theme/language-icons";
-import { openWithDefaultApp } from "./open-with-default-app";
-import { t } from "../../shared/i18n/t";
+import type { MenuItem } from "../../core/events/context-menu";
+import { app } from "../../api/app";
+import { ui } from "../../api/ui";
+import { pages } from "../../api/pages";
+import { getFileOpenEditorOptions } from "../../editors/base/editor-switch-options";
+import { parseBoardEditorId } from "../../api/boards/custom-editor-registry";
+import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
+import { ArchiveIcon, type SvgIconComponent } from "../../theme/icons";
+import { DefaultIcon, GridIcon, LinkIcon } from "../../theme/language-icons";
+import { openWithDefaultApp } from "../../content/open-with-default-app";
+import { t } from "../../../shared/i18n/t";
 
 /** Built-in editors with a recognisable icon; every other built-in (the Text Editor included)
  *  gets the generic file icon. */

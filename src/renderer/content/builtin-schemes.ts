@@ -1,6 +1,5 @@
 import { decodeFolderEditorLink } from "./folder-editor-link";
 import type { ILinkData } from "../../shared/link-data";
-import { openImageForEdit, notifyEditCapabilityFailure } from "../api/capability-feedback";
 import { errMessage } from "../../shared/utils";
 import { t } from "../../shared/i18n/t";
 import { parseGuideUrl } from "../../shared/guides/guide-links";
@@ -11,15 +10,9 @@ import {
     virtualPipeDescriptor,
 } from "./link-utils";
 import { registerScheme, type SchemeHookContext } from "./scheme-registry";
-import { DialogButton, dialogButton } from "../ui/dialogs/dialog-buttons";
 import { resolveEditorIdForFile, isBoardEditorId } from "../api/boards/custom-editor-registry";
-
-const OPEN_EXTERNAL_LINK = "Open";
-
-async function notifyUser(message: string, type: "error" | "warning"): Promise<void> {
-    const { ui } = await import("../api/ui");
-    ui.notify(message, type);
-}
+import { getGuidePage } from "../guides";
+import { editorRegistry } from "../editors/base/editorRegistry";
 
 async function parsePassThrough(data: ILinkData, context: SchemeHookContext): Promise<void> {
     data.url = data.href;
@@ -47,8 +40,7 @@ async function parseFolderEditor(data: ILinkData, context: SchemeHookContext): P
     const decoded = decodeFolderEditorLink(data.href);
     const parsed = decoded && { editorId: decoded.editorId, anchorFolder: decoded.anchorFolder };
     if (!parsed) {
-        await notifyUser(t("api.invalidFolderEditorLink", { href: data.href }), "warning");
-        data.handled = true;
+        data.action = { kind: "notice", message: t("api.invalidFolderEditorLink", { href: data.href }), level: "warning" };
         return;
     }
     data.url = data.href;
@@ -60,99 +52,13 @@ async function parseFolderEditor(data: ILinkData, context: SchemeHookContext): P
 async function parseGuide(data: ILinkData, context: SchemeHookContext): Promise<void> {
     const parsed = parseGuideUrl(data.href);
     if (!parsed) {
-        await notifyUser(
-            t("api.invalidGuideLink", { href: data.href }),
-            "warning",
-        );
-        data.handled = true;
+        data.action = { kind: "notice", message: t("api.invalidGuideLink", { href: data.href }), level: "warning" };
         return;
     }
     data.url = parsed.url;
     if (parsed.fragment) data.fragment ??= parsed.fragment;
     data.target ??= "md-view";
     await context.handoff();
-}
-
-export async function openLinkInBrowser(data: ILinkData): Promise<void> {
-    const browserMode = data.browserMode;
-    const openInBrowser = data.target === "browser";
-
-    if (data.browserPageId) {
-        const { pages } = await import("../api/pages");
-        const page = pages.query.findPage(data.browserPageId);
-        const editor = page?.mainEditor;
-        if (editor && "navigate" in editor && "addTab" in editor) {
-            const tabMode = data.browserTabMode ?? "addTab";
-            if (tabMode === "navigate") {
-                (editor as any).navigate(data.url); // eslint-disable-line @typescript-eslint/no-explicit-any
-            } else {
-                (editor as any).addTab(data.url); // eslint-disable-line @typescript-eslint/no-explicit-any
-            }
-        }
-        return;
-    }
-
-    if (browserMode === "os-default") {
-        await launchExternal(data);
-    } else if (browserMode === "incognito") {
-        const { pages } = await import("../api/pages");
-        await pages.openUrlInBrowserTab(data.url, { incognito: true });
-    } else if (browserMode?.startsWith("profile:")) {
-        const profileName = browserMode.slice("profile:".length);
-        const { pages } = await import("../api/pages");
-        await pages.openUrlInBrowserTab(data.url, { profileName });
-    } else if (browserMode === "internal") {
-        const { pages } = await import("../api/pages");
-        await pages.openUrlInBrowserTab(data.url, { external: true });
-    } else {
-        const { settings } = await import("../api/settings");
-        const behavior = settings.get("link-open-behavior");
-        if (behavior === "internal-browser" || openInBrowser) {
-            const { pages } = await import("../api/pages");
-            await pages.openUrlInBrowserTab(data.url, { external: openInBrowser });
-        } else {
-            await launchExternal(data);
-        }
-    }
-}
-
-/** Open the link in the OS default handler, subject to the source board's permission. */
-async function launchExternal(data: ILinkData): Promise<void> {
-    const decision = await externalLaunchDecision(data);
-    if (decision === "deny") return;
-    if (decision === "internal") {
-        const { pages } = await import("../api/pages");
-        await pages.openUrlInBrowserTab(data.url, { external: true });
-        return;
-    }
-    const { shell } = await import("../api/shell");
-    shell.openExternal(data.url);
-}
-
-/**
- * A board without the `openExternal` permission cannot hand a link to another app. A web
- * link still opens, in an internal Browser tab, since that stays inside Persephone; any
- * other scheme is blocked. Both outcomes are noted in the board's log.
- */
-async function externalLaunchDecision(data: ILinkData): Promise<"allow" | "internal" | "deny"> {
-    if (!data.boardRoot) {
-        if (!data.unattributedPopup) return "allow";
-        const { showConfirmationDialog } = await import("../ui/dialogs/ConfirmationDialog");
-        return await showConfirmationDialog({
-            title: t("api.externalLinkTitle"),
-            message: t("api.externalLinkUnattributed", { url: data.url ?? "" }),
-            buttons: [dialogButton(OPEN_EXTERNAL_LINK), dialogButton(DialogButton.cancel)],
-        }) === OPEN_EXTERNAL_LINK ? "allow" : "deny";
-    }
-    const { boardRegistry } = await import("../api/boards/board-registry");
-    if (boardRegistry.grant(data.boardRoot)?.allows("openExternal")) return "allow";
-    const isWebLink = /^https?:\/\//i.test(data.url ?? "");
-    const { api } = await import("../../ipc/renderer/api");
-    const message = isWebLink
-        ? `"openExternal" is not enabled in board-manifest.json; opened in an internal Browser tab: ${data.url}`
-        : `Blocked external launch: ${data.url}`;
-    void api.appendBoardLog(data.boardRoot, isWebLink ? "info" : "warning", message).catch(() => {});
-    return isWebLink ? "internal" : "deny";
 }
 
 const httpContentExtensions = new Set([
@@ -175,9 +81,10 @@ async function resolveVirtual(
     data: ILinkData,
     context: SchemeHookContext,
 ): Promise<void> {
-    if (context.phase === "open" && (data.target === "browser" || data.browserMode)) {
-        await openLinkInBrowser(data);
-        data.handled = true;
+    if (data.target === "browser" || data.browserMode) {
+        data.pipeDescriptor = virtualPipeDescriptor(data.url);
+        data.pipe = context.createPipe(data.pipeDescriptor);
+        data.action = { kind: "browser" };
         return;
     }
     data.target ||= "monaco";
@@ -188,19 +95,14 @@ async function resolveVirtual(
 
 async function resolveData(data: ILinkData, context: SchemeHookContext): Promise<void> {
     if (data.target === "image.edit" && data.url?.startsWith("data:image/")) {
-        if (context.phase === "source-path") return;
-        try {
-            await openImageForEdit({ dataUrl: data.url, title: data.title || "drawing" });
-        } catch (error) {
-            notifyEditCapabilityFailure(error, "image.edit", t("api.failedToOpenImageForEditing"));
-        }
-        data.handled = true;
+        data.action = { kind: "capability", id: "image.edit", payload: { dataUrl: data.url, title: data.title || "drawing" } };
         return;
     }
 
-    if (context.phase === "open" && (data.target === "browser" || data.browserMode)) {
-        await openLinkInBrowser(data);
-        data.handled = true;
+    if (data.target === "browser" || data.browserMode) {
+        data.pipeDescriptor = resolveUrlToPipeDescriptor(data.url, data) ?? undefined;
+        if (data.pipeDescriptor) data.pipe = context.createPipe(data.pipeDescriptor);
+        data.action = { kind: "browser" };
         return;
     }
 
@@ -213,7 +115,6 @@ async function resolveData(data: ILinkData, context: SchemeHookContext): Promise
 
 async function resolveMneme(data: ILinkData, context: SchemeHookContext): Promise<void> {
     const path = data.url.slice("mneme://".length);
-    const { editorRegistry } = await import("../editors/base/editorRegistry");
     data.target = data.target || editorRegistry.resolveId(path) || "monaco";
     data.pipeDescriptor = {
         provider: { type: "mneme", config: { path } },
@@ -226,63 +127,38 @@ async function resolveMneme(data: ILinkData, context: SchemeHookContext): Promis
 async function resolveGuide(data: ILinkData, context: SchemeHookContext): Promise<void> {
     const parsed = parseGuideUrl(data.url);
     if (!parsed) {
-        await notifyUser(
-            t("api.invalidGuideUrl", { url: data.url }),
-            "error",
-        );
-        data.handled = true;
+        data.action = { kind: "notice", message: t("api.invalidGuideUrl", { url: data.url }), level: "error" };
         return;
     }
 
-    if (context.phase === "source-path") {
-        data.url = parsed.url;
-        data.target = "md-view";
-        data.pipeDescriptor = {
-            provider: { type: "guide", config: { path: parsed.path } },
-            transformers: [],
-        };
-        data.pipe = context.createPipe(data.pipeDescriptor);
-        return;
-    }
+    data.url = parsed.url;
+    data.target = "md-view";
+    data.pipeDescriptor = {
+        provider: { type: "guide", config: { path: parsed.path } },
+        transformers: [],
+    };
 
     try {
-        const { getGuidePage } = await import("../guides");
         const page = await getGuidePage(parsed.path);
         if (!page) {
-            const { ui } = await import("../api/ui");
-            ui.notify(
-                t("api.guideNotFound", { path: parsed.path }),
-                "error",
-            );
-            data.handled = true;
+            data.action = { kind: "notice", message: t("api.guideNotFound", { path: parsed.path }), level: "error" };
             return;
         }
 
-        data.url = parsed.url;
         data.title ??= page.title;
-        data.target = "md-view";
-        data.pipeDescriptor = {
-            provider: { type: "guide", config: { path: parsed.path } },
-            transformers: [],
-        };
         data.pipe = context.createPipe(data.pipeDescriptor);
         await context.handoff();
     } catch (error) {
-        const { ui } = await import("../api/ui");
-        ui.notify(t("api.failedToOpenGuide", { path: parsed.path, error: errMessage(error) }), "error");
-        data.handled = true;
+        data.action = {
+            kind: "notice",
+            message: t("api.failedToOpenGuide", { path: parsed.path, error: errMessage(error) }),
+            level: "error",
+        };
     }
 }
 
 async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise<void> {
-    if (context.phase === "source-path") {
-        data.pipeDescriptor = resolveUrlToPipeDescriptor(data.url, data) ?? undefined;
-        if (data.pipeDescriptor) data.pipe = context.createPipe(data.pipeDescriptor);
-        return;
-    }
-
     if (data.target === "http.request.open") {
-        const { capabilities } = await import("../api/capabilities/CapabilitiesClient");
         const title = requestTitle(data.url);
         const payload = {
             url: data.url,
@@ -291,20 +167,9 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
             ...(data.body !== undefined ? { body: data.body } : {}),
             title,
         };
-        try {
-            await capabilities.invoke("http.request.open", payload, { version: 1 });
-        } catch (error: unknown) {
-            const { CapabilityError } = await import("../api/capability-error");
-            if (error instanceof CapabilityError && error.code === "no-handler") {
-                await notifyUser(
-                    t("api.noRestClientRegistered"),
-                    "warning",
-                );
-            } else {
-                await notifyUser(t("api.failedToOpenRequestInRestClient", { error: errMessage(error) }), "error");
-            }
-        }
-        data.handled = true;
+        data.pipeDescriptor = resolveUrlToPipeDescriptor(data.url, data) ?? undefined;
+        if (data.pipeDescriptor) data.pipe = context.createPipe(data.pipeDescriptor);
+        data.action = { kind: "capability", id: "http.request.open", payload };
         return;
     }
 
@@ -340,8 +205,9 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
     const hasContentIntent = hasContentExtension || boardClaimsExtension || !!data.headers || !!data.fallbackTarget;
     const browserMode = data.browserMode;
     if (browserMode || openInBrowser || (!hasContentIntent && !hasExplicitEditorTarget)) {
-        await openLinkInBrowser(data);
-        data.handled = true;
+        data.pipeDescriptor = resolveUrlToPipeDescriptor(data.url, data) ?? undefined;
+        if (data.pipeDescriptor) data.pipe = context.createPipe(data.pipeDescriptor);
+        data.action = { kind: "browser" };
         return;
     }
 
@@ -355,8 +221,9 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
         && !boardWins
         && !hasExplicitEditorTarget
     ) {
-        await openLinkInBrowser(data);
-        data.handled = true;
+        data.pipeDescriptor = resolveUrlToPipeDescriptor(data.url, data) ?? undefined;
+        if (data.pipeDescriptor) data.pipe = context.createPipe(data.pipeDescriptor);
+        data.action = { kind: "browser" };
         return;
     }
 

@@ -184,9 +184,7 @@ function createBoardSchemeHooks(providerType: string, boardRoot: string): Scheme
                 transformers: [],
             };
             data.pipe = context.createPipe(data.pipeDescriptor);
-            if (context.phase === "source-path") return;
-            // Target resolution is an OPEN-phase concern: `source-path` rebuilds a pipe for a page
-            // that already exists and discards `data.target`.
+            // Source-path reconstruction discards target and title after rebuilding the pipe.
             const effectivePath = urlPathFileName(data.url);
             // Evaluate the empty-name branch BEFORE resolveEditorIdForFile: it substitutes the
             // whole URL via `matchPath || filePath` when effectivePath is empty, then Monaco's

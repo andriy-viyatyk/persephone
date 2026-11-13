@@ -3,7 +3,8 @@ import { resolveEditorIdForFile } from "../api/boards/custom-editor-registry";
 import { isArchivePath } from "../core/utils/file-path";
 import { createPipeFromDescriptor } from "./registry";
 import { dispatchRegisteredSchemeResolve } from "./scheme-registry";
-import { openLinkInBrowser } from "./builtin-schemes";
+import { runOpenStep } from "./open-actions/dispatch";
+import { handoff } from "./link-handoff";
 import {
     resolveUrlToPipeDescriptor,
     isHttpUrl,
@@ -15,14 +16,13 @@ import {
 /** Register the Layer 2 file fallback and the registry-backed scheme dispatcher. */
 export function registerResolvers(): void {
     // File resolver — fallback for plain files, archives, and virtual paths.
-    app.events.openLink.subscribe(async (data) => {
+    app.events.openLink.subscribe(async (data) => runOpenStep(data, async () => {
         if (isHttpUrl(data.url)) return;
 
         // Explicit browser intent for a local path → open it in a browser instead of an editor.
         if (data.target === "browser" || data.browserMode) {
             data.url = toFileUrl(data.url);
-            await openLinkInBrowser(data);
-            data.handled = true;
+            data.action = { kind: "browser" };
             return;
         }
 
@@ -30,11 +30,7 @@ export function registerResolvers(): void {
         if (!data.url.includes("://") && !isArchivePath(data.url)) {
             const stat = await app.fs.stat(data.url);
             if (stat.isDirectory) {
-                const { pages } = await import("../api/pages");
-                const folderPage = await pages.lifecycle.addEmptyPageWithNavPanel(data.url);
-                pages.closeFirstPageIfEmpty();
-                data.openedPageId = folderPage.id;
-                data.handled = true;
+                data.action = { kind: "folder-page", path: data.url };
                 return;
             }
         }
@@ -47,9 +43,7 @@ export function registerResolvers(): void {
                 data.target ||= "monaco";
                 data.pipeDescriptor = virtualPipeDescriptor(data.url);
                 data.pipe = createPipeFromDescriptor(data.pipeDescriptor);
-                data.handled = false;
-                await app.events.openContent.sendAsync(data);
-                data.handled = true;
+                await handoff(data, () => app.events.openContent.sendAsync(data));
             }
             return;
         }
@@ -59,13 +53,11 @@ export function registerResolvers(): void {
             || "monaco";
         data.pipeDescriptor = pipeDescriptor;
         data.pipe = createPipeFromDescriptor(pipeDescriptor);
-        data.handled = false;
-        await app.events.openContent.sendAsync(data);
-        data.handled = true;
-    });
+        await handoff(data, () => app.events.openContent.sendAsync(data));
+    }));
 
     // Registered schemes run before the file fallback and delegate to Layer 3 in open mode.
-    app.events.openLink.subscribe(async (data) => {
+    app.events.openLink.subscribe(async (data) => runOpenStep(data, async () => {
         await dispatchRegisteredSchemeResolve(data, () => app.events.openContent.sendAsync(data));
-    });
+    }));
 }

@@ -173,6 +173,9 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Board pipe content-type helper (logical extension and archive-entry MIME mapping for ranged resource responses) | `/src/renderer/content/board-pipe-utils.ts` |
 | Shared text codec (`decodeBuffer` / `encodeString`) | `/src/renderer/core/utils/text-encoding.ts` |
 | Link parsers (Layer 1)   | `/src/renderer/content/parsers.ts`                |
+| Typed link-action dispatch (clears caller input and executes the action recorded by each parser/resolver step) | `/src/renderer/content/open-actions/dispatch.ts` |
+| Non-content link actions (browser routing, folder pages, capabilities and notices) | `/src/renderer/content/open-actions/` |
+| Scheme hand-off handled-state sequence | `/src/renderer/content/link-handoff.ts` |
 | Pipe rebuild from persisted source data (`pipeFromSourcePath` and descriptor-first `pipeFromPersistedSource`) | `/src/renderer/content/rebuild-pipe.ts` |
 | Provider-availability and source-move watches; shared typed provider-error reporting | `/src/renderer/content/source-recovery.ts` |
 | Pipe resolvers (Layer 2; HTTP content extensions and eligible board claims inform browser-vs-content routing; `.pdf` retains its browser fallback) | `/src/renderer/content/resolvers.ts` |
@@ -485,7 +488,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Explorer tree OS-clipboard actions (Cut/Copy/Paste ⇄ Windows Explorer — context menu + Ctrl+C/X/V; file provider only; recursive copy/move via `core/utils/copy-files.ts`. `copyPathsToOsClipboard(paths, cut)` is the real entry point — N paths in one CF_HDROP write — with `copyPathToOsClipboard` a single-path shim over it) | `/src/renderer/components/tree-provider/os-clipboard.ts` |
 | Open-with-default-app helper (`shell.openPath` over `Endpoint.openPath`; used by the tree and Recent Files "Open with" submenu's **Default App** leaf and the Explorer panel's file double-click. `shell.openPath` reports failure by RESOLVING with an error string rather than throwing, so this reports it as a toast — the older `showFolder`/`showItemInFolder` endpoints discard it, which is why a separate endpoint exists. See [context-menu.md](context-menu.md) for the files-only rule) | `/src/renderer/content/open-with-default-app.ts` |
 | Local-file Persephone open helper (determines whether an extension resolves to a built-in editor, installed board, or Monaco language; reveals an already-open page or opens the file through the raw-link pipeline) | `/src/renderer/content/open-in-persephone.ts` |
-| File "Open with" candidate list and action (pre-open built-in and board choices; revalidates on selection, switches an already-open page in place, or opens a fresh page with the explicit editor target) | `/src/renderer/editors/base/editor-switch-options.ts`, `/src/renderer/content/open-with-editor.ts` |
+| File "Open with" candidate list and action (pre-open built-in and board choices; revalidates on selection, switches an already-open page in place, or opens a fresh page with the explicit editor target) | `/src/renderer/editors/base/editor-switch-options.ts`, `/src/renderer/ui/link-menus/open-with-editor.ts` |
 | Sidebar-focus guard (`isFocusInSidebar` — navigation from a sidebar panel doesn't steal editor focus; page activation still autofocuses) | `/src/renderer/core/utils/focus-utils.ts` |
 | Mneme service (Rust)     | `/mneme/` (knowledge-base service; see `/mneme/README.md`) |
 | Mneme shared MCP connection (single auto-reconnecting client; refcounted subscriptions → per-document watchers) | `/src/renderer/api/mneme-connection.ts` |

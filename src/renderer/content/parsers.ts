@@ -2,6 +2,8 @@ import { app } from "../api/app";
 import { isArchivePath } from "../core/utils/file-path";
 import { parseHttpRequest } from "../core/utils/curl-parser";
 import { canonicalizeScheme, dispatchRegisteredSchemeParse } from "./scheme-registry";
+import { runOpenStep } from "./open-actions/dispatch";
+import { handoff } from "./link-handoff";
 import "./builtin-schemes";
 import { normalizeFileUrl, isFileUrl, isPlausibleFilePath, splitUrlFragment } from "./link-utils";
 import { t } from "../../shared/i18n/t";
@@ -9,7 +11,7 @@ import { t } from "../../shared/i18n/t";
 /** Register Layer 1 fallbacks and the registry-backed scheme dispatcher. */
 export function registerRawLinkParsers(): void {
     // File parser — fallback for plain file paths and file:// URLs.
-    app.events.openRawLink.subscribe(async (data) => {
+    app.events.openRawLink.subscribe(async (data) => runOpenStep(data, async () => {
         let filePath = data.href;
         if (isFileUrl(filePath)) {
             const split = splitUrlFragment(filePath);
@@ -17,19 +19,15 @@ export function registerRawLinkParsers(): void {
             if (split.fragment) data.fragment ??= split.fragment;
         }
         if (!isPlausibleFilePath(filePath)) {
-            const { ui } = await import("../api/ui");
-            ui.notify(t("api.invalidFilePath", { path: filePath }), "warning");
-            data.handled = true;
+            data.action = { kind: "notice", message: t("api.invalidFilePath", { path: filePath }), level: "warning" };
             return;
         }
         data.url = filePath;
-        data.handled = false;
-        await app.events.openLink.sendAsync(data);
-        data.handled = true;
-    });
+        await handoff(data, () => app.events.openLink.sendAsync(data));
+    }));
 
     // Archive parser — registered after the file fallback so LIFO keeps archive ahead of file.
-    app.events.openRawLink.subscribe(async (data) => {
+    app.events.openRawLink.subscribe(async (data) => runOpenStep(data, async () => {
         if (!isArchivePath(data.href)) return;
         let archivePath = data.href;
         if (isFileUrl(archivePath)) {
@@ -38,19 +36,17 @@ export function registerRawLinkParsers(): void {
             if (split.fragment) data.fragment ??= split.fragment;
         }
         data.url = archivePath;
-        data.handled = false;
-        await app.events.openLink.sendAsync(data);
-        data.handled = true;
-    });
+        await handoff(data, () => app.events.openLink.sendAsync(data));
+    }));
 
     // Registered schemes run before the file fallback but after the cURL/fetch auxiliary parser.
-    app.events.openRawLink.subscribe(async (data) => {
+    app.events.openRawLink.subscribe(async (data) => runOpenStep(data, async () => {
         data.href = canonicalizeScheme(data.href);
         await dispatchRegisteredSchemeParse(data, () => app.events.openLink.sendAsync(data));
-    });
+    }));
 
     // cURL / fetch is an auxiliary parser, not a registry scheme. It must run first for commands.
-    app.events.openRawLink.subscribe(async (data) => {
+    app.events.openRawLink.subscribe(async (data) => runOpenStep(data, async () => {
         const trimmed = data.href.trim();
         if (!/^(curl\s|fetch\()/i.test(trimmed)) return;
 
@@ -62,8 +58,6 @@ export function registerRawLinkParsers(): void {
         if (parsed.body) data.body ??= parsed.body;
 
         data.url = parsed.url;
-        data.handled = false;
-        await app.events.openLink.sendAsync(data);
-        data.handled = true;
-    });
+        await handoff(data, () => app.events.openLink.sendAsync(data));
+    }));
 }

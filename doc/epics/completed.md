@@ -1,3 +1,17 @@
+## EPIC-157 — Refactoring Phase 5.7: content Layer 2 records a typed `action`; Layer 3 executes it
+
+Completed 2026-11-13. Roadmap Phase 5.7 (CORE-11, with CORE-3 step 5): link parsers and resolvers only classify a link
+and record a typed `ILinkData.action`; one Layer 3 table in `content/open-actions/` opens browsers, folder pages,
+capabilities and notices, so the `context.phase` guards are gone from platform hooks and the source-path rebuild is
+silent. `builtin-schemes.ts` 399 → 266 lines, `resolvers.ts` 71 → 63, `parsers.ts` 69 → 63. `openContent` still
+carries content only; the script hook context, `window.persephone` and persisted source links are unchanged. Plans by
+Codex, reviewed against the roadmap guardrails; Codex Luna implemented, with plan corrections recorded in the epic
+notes. Epic document: [EPIC-157](EPIC-157.md).
+
+- [x] **Menu builders out of `content/` (US-1896).** `tree-context-menus.ts` and `open-with-editor.ts` moved to `src/renderer/ui/link-menus/`; import paths only.
+- [x] **Typed link action and the action table (US-1897).** `ILinkAction` (content, browser, folder page, capability, notice); `runOpenStep` clears a caller-supplied action and executes only what each parser/resolver step recorded; `link-handoff.ts` replaces five hand-rolled hand-offs; browser routing with the board `openExternal` rule, `image.edit` and `http.request.open` moved intact into executors; typed `BrowserEditor` check replaces the `any` cast.
+- [x] **Epic review.** `/review` removed `action` from `createLinkData()`'s options type; `/document` updated `agents-common.md` and three architecture docs; `/userdoc` updated the scripting `io` guide. No English catalog messages changed.
+
 ## EPIC-156 — Refactoring Phase 5.6: main conventions — one service shape, IPC only in `ipc/main`, IPC contracts by domain
 
 Completed 2026-11-13. Roadmap Phase 5.6 (MAIN-6, BND-7, BND-8): IPC endpoints are declared once per domain in

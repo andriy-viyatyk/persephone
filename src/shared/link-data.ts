@@ -1,7 +1,7 @@
 import type { ILinkData, StoredLinkData } from "../renderer/api/types/io.link-data";
 import type { ILink } from "../renderer/api/types/io.tree";
 
-export type { ILinkData, StoredLinkData };
+export type { ILinkAction, ILinkData, StoredLinkData } from "../renderer/api/types/io.link-data";
 
 /**
  * Create an ILinkData from a raw link string.
@@ -12,7 +12,7 @@ export type { ILinkData, StoredLinkData };
  */
 export function createLinkData(
     href: string,
-    options?: Partial<Omit<ILinkData, "href" | "handled">>,
+    options?: Partial<Omit<ILinkData, "href" | "handled" | "action">>,
 ): ILinkData {
     return { handled: false, href, ...options };
 }
@@ -56,6 +56,7 @@ export function cleanForStorage(data: ILinkData): StoredLinkData {
     const {
         handled,
         pipe,
+        action,
         pageId,
         openedPageId,
         revealLine,

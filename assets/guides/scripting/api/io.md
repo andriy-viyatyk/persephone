@@ -86,7 +86,10 @@ The parse hook should set `data.url` and call `context.handoff()`. The resolve h
 `context.createPipe()`. In the `open` phase, call `context.handoff()` after preparing the data. In
 the `source-path` phase, `handoff()` only calls the supplied delegate and leaves handled state
 unchanged, so resolve hooks can build the pipe and call it in either phase. `context.delegate()`
-remains available for custom handled-state logic.
+remains available for custom handled-state logic. Hooks classify and prepare link data; the
+platform's Layer 3 action dispatcher owns non-content effects such as browser routing, notices,
+folder pages, and capabilities. The public `phase`, `delegate()`, and `handoff()` contract is
+unchanged.
 
 Registering a scheme already registered by your scripts replaces the hooks and reports an `info`
 notification. Built-in schemes cannot be replaced; trying to register one reports an error. The
@@ -458,8 +461,8 @@ For full details on event channels and the pipeline, see [app.events](./events.m
 ### io.createLinkData(href, options?)
 
 Creates an `ILinkData` object for sending through `app.events.openRawLink`. Persephone parses the
-link, resolves its content, and opens the appropriate page. All options are optional top-level
-fields on `ILinkData`.
+link, resolves its content, and opens the appropriate page. Options are caller-settable link
+metadata; pipeline output fields such as `action` cannot be seeded through this helper.
 
 ```javascript
 // Open any URL or file — Persephone auto-selects the editor
@@ -485,7 +488,7 @@ await app.events.openRawLink.sendAsync(
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `href` | `string` | Raw link string — file path, URL, or cURL command. |
-| `options` | `Partial<ILinkData>?` | Optional fields to set on the data object (see `ILinkData` fields below). |
+| `options` | `Partial<Omit<ILinkData, "href" \| "handled" \| "action">>?` | Optional caller-settable fields (see `ILinkData` fields below). |
 
 **Key `ILinkData` fields you can pass as options:**
 
@@ -504,6 +507,11 @@ await app.events.openRawLink.sendAsync(
 | `browserMode` | `string?` | Route to a specific browser: `"os-default"`, `"internal"`, `"incognito"`, or `"profile:<name>"`. Omit to use the `link-open-behavior` setting. |
 | `browserPageId` | `string?` | Route to a specific already-open browser page by ID. URL is added as a new tab (or navigates the active tab if `browserTabMode` is `"navigate"`). |
 | `browserTabMode` | `"navigate" \| "addTab"?` | When `browserPageId` is set: `"navigate"` navigates the active tab, `"addTab"` opens a new tab (default). |
+
+`action` is output-only pipeline metadata. Platform parsing and resolution may record it for Layer 3,
+but callers must not seed it as an `io.createLinkData()` option; each platform subscriber clears any
+pre-existing value before it runs. Scripts that implement a scheme may set `{ kind: "content" }` as
+an explicit content marker. Actions are never stored in a page's source link.
 
 ### io.linkToLinkData(link)
 

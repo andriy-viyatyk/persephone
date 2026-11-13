@@ -286,8 +286,8 @@ see [state-management.md](architecture/state-management.md).
 ### 5. Content Delivery Pipeline
 3-layer pipeline in `/src/renderer/content/`; one `ILinkData` object is enriched by each layer:
 - **Layer 1 (Parsers):** reads `data.href`, sets `data.url` (`openRawLink` → `openLink`)
-- **Layer 2 (Resolvers):** sets `data.pipe` (temporal) + `data.pipeDescriptor` (persisted) + `data.target` (`openLink` → `openContent`)
-- **Layer 3 (Open Handler):** consumes `data.pipe`, `cleanForStorage(data)` builds `sourceLink`, creates/navigates page
+- **Layer 2 (Resolvers):** sets `data.pipe` (temporal) + `data.pipeDescriptor` (persisted) + `data.target`, or records a typed non-content `data.action`
+- **Layer 3:** the open-actions dispatcher executes recorded non-content actions; content continues to the open handler, which consumes `data.pipe` and creates/navigates a page. `cleanForStorage(data)` builds `sourceLink` without transient actions.
 
 Content pipes (`IContentPipe`) compose a provider (data source) with transformers (data effects):
 ```typescript

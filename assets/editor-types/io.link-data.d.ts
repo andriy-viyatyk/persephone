@@ -17,6 +17,29 @@ export type ILinkDiffRevision =
     | { kind: "head" }
     | { kind: "commit"; hash: string; shortHash: string };
 
+/** Output recorded by a Layer 1 or Layer 2 subscriber for Layer 3 to execute. */
+export type ILinkAction =
+    | { kind: "content" }
+    | { kind: "browser" }
+    | { kind: "folder-page"; path: string }
+    | {
+        kind: "capability";
+        id: "image.edit";
+        payload: { dataUrl: string; title: string };
+    }
+    | {
+        kind: "capability";
+        id: "http.request.open";
+        payload: {
+            url: string;
+            method?: string;
+            headers?: Record<string, string>;
+            body?: string;
+            title: string;
+        };
+    }
+    | { kind: "notice"; message: string; level: "warning" | "error" };
+
 /**
  * Persistable link identity, link-item metadata, and HTTP request information.
  * This shape is independent of a single open attempt, so it can be stored on a
@@ -72,6 +95,8 @@ export interface ILinkPipeline {
     handled?: boolean;
     /** Temporal pipe instance (set by Layer 2, consumed by Layer 3). */
     pipe?: IContentPipe;
+    /** Layer 2 output consumed by the open pipeline; callers cannot request an action by seeding it. */
+    action?: ILinkAction;
     /** Open in this specific page instead of a new tab. */
     pageId?: string;
     /** OUT: the page a handler created, when it created one the caller cannot find again

@@ -10,7 +10,7 @@ import type { MenuItem } from "../../uikit/Menu";
 import { api } from "../../../ipc/renderer/api";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { createIconElement } from "../../uikit/shared/slots";
-import { createOpenWithMenuItem } from "../../content/open-with-editor";
+import { createOpenWithMenuItem } from "../link-menus/open-with-editor";
 
 export interface RecentFileListProps {
     onClose?: () => void;

@@ -55,7 +55,7 @@ export interface ISchemeHookContext {
     readonly phase: "open" | "source-path";
     /** Continue through the existing EventChannel pipeline. */
     readonly delegate: () => Promise<boolean>;
-    /** Reset handled state, delegate in open phase, and preserve source-path reconstruction. */
+    /** Hand off content: reset handled state around the open delegate, or only delegate for source-path reconstruction. */
     readonly handoff: () => Promise<void>;
     /** Reconstruct a content pipe from its persistable descriptor. */
     readonly createPipe: (descriptor: IPipeDescriptor) => IContentPipe;
@@ -119,7 +119,7 @@ export interface IIoNamespace {
      *     browserMode: "incognito",
      * }));
      */
-    createLinkData(href: string, options?: Partial<Omit<ILinkData, "href" | "handled">>): ILinkData;
+    createLinkData(href: string, options?: Partial<Omit<ILinkData, "href" | "handled" | "action">>): ILinkData;
     /**
      * Convert an ILink to ILinkData — preserves all ILink fields through the pipeline.
      * @example
@@ -149,7 +149,9 @@ export interface IIoNamespace {
      * Hooks can use `context.handoff()` to enter the existing openRawLink → openLink →
      * openContent pipeline in the open phase. In `source-path` phase, handoff only invokes the
      * supplied delegate and does not change handled state; resolve should build the pipe first.
-     * `context.delegate()` remains available for custom handled-state behavior. Script-owned
+     * Hooks classify and prepare data; the platform action dispatcher owns non-content effects.
+     * The phase, delegate(), and handoff() contract is unchanged. `context.delegate()` remains
+     * available for custom handled-state behavior. Script-owned
      * re-registration replaces the prior script entry with an info report; platform-owned schemes
      * remain first-wins with an error.
      * Registrations are cleared by a renderer reload/restart, and replacements affect only

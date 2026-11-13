@@ -26,6 +26,11 @@ The content registry is split by the kind of extension point it owns:
   guide, toolset, tree-category, and Git-tree schemes. `parsers.ts` and `resolvers.ts` remain the
   event-channel adapters: they dispatch registered schemes and retain the plain-file and archive
   `!` fallbacks.
+- `open-actions/` is Layer 3's table for non-content outcomes recorded by Layer 1 or Layer 2:
+  browser routing, folder-page creation, capability invocation, and notices. `dispatch.ts` clears
+  caller input at each platform subscriber boundary and executes only the action recorded by that
+  step. `link-handoff.ts` owns the handled reset/delegate/finalize sequence. Source-path pipe
+  reconstruction calls scheme hooks directly and never dispatches actions.
 
 The `pages.openUrl` validation boundary asks `scheme-registry.ts` whether a scheme is registered,
 so adding a platform or script scheme does not require a second hand-maintained allow-list. Plain
@@ -72,9 +77,10 @@ Opening content flows through three event-driven layers. Each layer is registere
   ┌──────▼──────────────────────────────────────────────┐
   │  Layer 2 — Resolvers (resolvers.ts)                 │
   │  openLink → openContent                             │
-  │  Build pipe, enrich ILinkData (set pipe, pipeDesc.) │
+  │  Build pipe, enrich ILinkData or record action      │
   └──────┬──────────────────────────────────────────────┘
-         │  ILinkData { url, pipe, pipeDescriptor, target, ... }
+         │  ILinkData { url, pipe, pipeDescriptor, target, action?, ... }
+         ├── non-content action → open-actions/ dispatcher
   ┌──────▼──────────────────────────────────────────────┐
   │  Layer 3 — Open Handler (open-handler.ts)           │
   │  openContent → page creation                        │
@@ -112,24 +118,47 @@ script registrations are session-scoped and are therefore accepted by the same r
 
 **Fragment extraction.** A trailing `#fragment` on an incoming href is an in-document anchor, not part of the path, so the file, archive, `mneme://`, and `persephone-guide://` parsers split it off into the ephemeral `data.fragment` hint (URL-decoded, without the `#`) before resolving. This is done **only for real URLs** (`file://`, `mneme://`, `persephone-guide://`), never for a bare filesystem path: in a URL a literal `#` must be percent-encoded as `%23`, which makes the split unambiguous, whereas `#` is a legal character in Windows file and folder names (`C:\notes\C#\readme.md`). The HTTP parser leaves fragments in the URL, where the browser handles them.
 
-Scheme hooks can use `context.handoff()` after preparing their data. In the open phase it resets
-`data.handled`, calls the existing delegate, then marks the data handled. During source-path
-reconstruction it only calls the supplied delegate, preserving the parse-to-resolver pipe-building
-path without entering page opening or changing `data.handled`. `context.delegate()` remains
-available for hooks that need custom handled-state behavior.
+Scheme hooks can use `context.handoff()` after preparing their data. In the open phase the shared
+`link-handoff.ts` helper resets `data.handled`, calls the existing delegate, then marks the data
+handled. During source-path reconstruction it only calls the supplied delegate, preserving the
+parse-to-resolver pipe-building path without entering page opening or changing `data.handled`.
+`context.delegate()` remains available for hooks that need custom handled-state behavior. Hooks
+classify outcomes; they record a typed `data.action` for non-content effects instead of showing UI,
+opening pages, launching URLs, or invoking capabilities themselves.
 
 ### Layer 2 — Resolvers
 
-Registered in `resolvers.ts` via `registerResolvers()`. Each resolver uses `resolveUrlToPipeDescriptor()` (from `link-utils.ts`) to create a pipe descriptor, then `createPipeFromDescriptor()` (from `registry.ts`) to instantiate the pipe. Enriches the `ILinkData` object (sets `data.pipe`, `data.pipeDescriptor`, `data.target`) and forwards the same object on `app.events.openContent`.
+Registered in `resolvers.ts` via `registerResolvers()`. Each resolver uses `resolveUrlToPipeDescriptor()` (from `link-utils.ts`) to create a pipe descriptor, then `createPipeFromDescriptor()` (from `registry.ts`) to instantiate the pipe. It enriches the `ILinkData` object and forwards content outcomes on `app.events.openContent`; non-content outcomes are returned as typed actions for the action dispatcher. Each parser and resolver subscriber enters through `runOpenStep()`, which clears any action supplied by a caller before that step runs.
 
-- **File resolver** (fallback) -- resolves file paths and archive paths (with "!") to pipe descriptors. Resolves target editor via `editorRegistry.resolveId()`. Two short-circuits run before pipe resolution: (1) explicit **browser intent** (`data.target === "browser"` or a `browserMode` is set) normalizes the path to a `file://` URL via `toFileUrl()` and opens it in a browser through the shared `openLinkInBrowser()` helper, bypassing Layer 3; (2) a plain (non-virtual, non-archive) path is `stat`-ed via `app.fs.stat()` and, if it is a **directory**, opens an empty page (no main editor) with the Explorer panel rooted at the folder via `pages.lifecycle.addEmptyPageWithNavPanel()`, assigns that page's id to the ephemeral `data.openedPageId` output, and marks `data.handled`. Directories never produce a content pipe. `openedPageId` is an output for callers such as `pages.openPath()`; it is not an input and is stripped before any link data can be persisted.
-- **HTTP resolver** -- resolves HTTP/HTTPS URLs to pipe descriptors. A content-extension set decides whether a URL is content or should open in the browser; once it is content, the normal editor registry resolves the built-in editor and the merged resolver may select an eligible board. URLs without recognized extensions (or explicit browser intent) open in the browser via `openLinkInBrowser()`, short-circuiting Layer 3 the same way. cURL/fetch requests with `Accept` headers use header-based editor resolution.
+- **File resolver** (fallback) -- resolves file paths and archive paths (with "!") to pipe descriptors. Resolves target editor via `editorRegistry.resolveId()`. Explicit **browser intent** (`data.target === "browser"` or a `browserMode` is set) normalizes the path to a `file://` URL via `toFileUrl()` and records a browser action. A plain (non-virtual, non-archive) path is `stat`-ed via `app.fs.stat()` and, if it is a **directory**, records a folder-page action. The executor creates an empty page with the Explorer panel rooted at the folder, then assigns its id to the ephemeral `data.openedPageId` output. Directories never produce a content pipe. `openedPageId` is an output for callers such as `pages.openPath()`; it is not an input and is stripped before link data can be persisted.
+- **HTTP resolver** -- resolves HTTP/HTTPS URLs to pipe descriptors. A content-extension set decides whether a URL is content or should open in the browser; once it is content, the normal editor registry resolves the built-in editor and the merged resolver may select an eligible board. URLs without recognized extensions (or explicit browser intent) record a browser action. cURL/fetch requests with `Accept` headers use header-based editor resolution.
 
   The set is intentionally separate from editor matching. `.pdf` remains in it with a browser-fallback override: a qualifying board wins, and without one the browser tab renders it natively. Registered built-in editors and eligible boards otherwise follow the same resolution path as local files.
 - **Guide resolver** -- resolves `persephone-guide://<corpus-path>[#fragment]` to a read-only `GuideProvider` pipe targeting the Markdown editor. The corpus path is relative to the application-shipped guide index and omits the `.md` suffix; the fragment is carried as the ephemeral navigation hint. The provider's fragment-free `sourceUrl` is the stable scheme identity used in persisted source links.
-- **Image-edit resolver** -- when `data.target === "image.edit"` and `data.url` is a `data:image/*` URL, imports the image as a **new untitled drawing** through the image editor's open flow and marks `data.handled`, short-circuiting Layer 3. Registered last so it runs first (LIFO), intercepting before the file resolver would build a pipe. Import-only: the drawing is a new page, never bound to (so never overwriting) the image source. Accepts only data URLs -- a caller with an http/file image converts it to a data URL first.
+- **Image-edit action** -- when `data.target === "image.edit"` and `data.url` is a `data:image/*` URL, the resolver records a capability action. The executor imports the image as a **new untitled drawing** through the image editor's open flow. Import-only: the drawing is a new page, never bound to (so never overwriting) the image source. Accepts only data URLs -- a caller with an http/file image converts it to a data URL first.
 
-`openLinkInBrowser()` is the single browser-routing path shared by both resolvers, so `target: "browser"` / `browserMode` works identically for local files and remote URLs. It honors `browserPageId` (route to a specific browser page), `browserMode` (`os-default` → `shell.openExternal`; `internal` / `profile:<name>` / `incognito` → `pages.openUrlInBrowserTab()`), and otherwise the `link-open-behavior` setting.
+### Layer 3 — Open actions
+
+`open-actions/dispatch.ts` consumes each recorded non-content action once and marks it handled after
+execution. `browser.ts` owns browser-page routing, browser mode and OS-default policy; it also
+preserves board `openExternal` grant checks, board logging, unattributed-popup confirmation, and
+internal fallback behavior. `folder-page.ts` creates directory pages and reports `openedPageId`.
+`capability.ts` invokes `image.edit` and `http.request.open` with their existing feedback. `notice.ts`
+shows already-translated warning or error messages. The `content` action is a no-op marker; content
+continues through `openContent` to `open-handler.ts`. `cleanForStorage()` removes `action`, and
+`StoredLinkData` does not include it.
+
+| Action kind | Executor | Effect |
+|---|---|---|
+| `browser` | `browser.ts` | Routes to a Browser page, configured profile, internal Browser, or OS handler under the existing board policy. |
+| `folder-page` | `folder-page.ts` | Creates an Explorer-rooted page and records `openedPageId`. |
+| `capability` | `capability.ts` | Invokes `image.edit` or `http.request.open` and reports failures. |
+| `notice` | `notice.ts` | Shows a warning or error notice. |
+| `content` | No-op | Continues through the existing content hand-off to `openContent`. |
+
+Browser routing honors `browserPageId` (route to a specific Browser page), `browserMode`
+(`os-default` → the shell, `internal` / `profile:<name>` / `incognito` →
+`pages.openUrlInBrowserTab()`), and otherwise the `link-open-behavior` setting.
 
 When an OS-default launch originates from a board, the board's `openExternal` permission gates
 launching outside Persephone. Without that permission, HTTP(S) links open in an internal Browser
@@ -422,6 +451,8 @@ Key rules:
 | `/src/renderer/content/builtin-schemes.ts` | Built-in URL-scheme hooks and browser/content resolution |
 | `/src/renderer/content/parsers.ts` | Layer 1 -- scheme dispatch plus plain-file/archive and cURL/fetch adapters |
 | `/src/renderer/content/resolvers.ts` | Layer 2 -- fallback resolver and registered-scheme dispatch |
+| `/src/renderer/content/open-actions/dispatch.ts` | Layer 3 -- executes typed non-content actions recorded by parser/resolver steps |
+| `/src/renderer/content/link-handoff.ts` | Shared handled-state sequence for scheme hand-offs |
 | `/src/renderer/content/rebuild-pipe.ts` | Rebuilds pipes from persisted source paths or source links, preferring saved pipe descriptors where available |
 | `/src/renderer/content/source-recovery.ts` | Provider-availability recovery watches and shared typed provider-error reporting |
 | `/src/renderer/content/link-utils.ts` | URL → pipe descriptor resolution and shared URL path/fragment helpers |
