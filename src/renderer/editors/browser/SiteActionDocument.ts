@@ -49,7 +49,7 @@ export class SiteActionDocument {
         this.fetchHosts = fetchHosts;
         this.target = target;
         this.isCurrentDocument = isCurrentDocument;
-        this.fetchKey = `${model.id}/${tabId}`;
+        this.fetchKey = model.guest.key(tabId);
         this.fetchRequests = new Set();
         this.injected = false;
         this.items = [];

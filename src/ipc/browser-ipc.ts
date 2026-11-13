@@ -4,9 +4,7 @@
  * The renderer creates a <webview> element and registers it with the main
  * process by sending its webContentsId. The main process then attaches
  * reliable event listeners on the actual webContents object and relays
- * events back to the renderer. This avoids the unreliable event behavior
- * of the <webview> DOM element (e.g. page-favicon-updated not firing
- * on back/forward navigation).
+ * supported events back to the renderer.
  */
 
 // IPC channel names
@@ -176,8 +174,6 @@ export type BrowserEventType =
     | "zoom-intent"
     | "did-navigate"
     | "did-navigate-in-page"
-    | "page-title-updated"
-    | "page-favicon-updated"
     | "did-start-loading"
     | "did-stop-loading"
     | "did-start-navigation"
@@ -185,8 +181,6 @@ export type BrowserEventType =
     | "context-menu"
     | "audio-state-changed"
     | "popups-blocked"
-    | "show-find-bar"
-    | "hide-find-bar"
     | "permission-request"
     | "ai-vision-signal";
 
@@ -221,8 +215,6 @@ export interface BrowserPermissionPromptData {
 export interface BrowserEventData {
     zoomIntent?: "in" | "out" | "reset";
     url?: string;
-    title?: string;
-    favicon?: string;
     canGoBack?: boolean;
     canGoForward?: boolean;
     isMainFrame?: boolean;

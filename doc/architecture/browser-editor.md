@@ -19,8 +19,8 @@ The browser editor uses three levels of tab nesting:
 `BrowserEditor` coordinates editor-level restore/persistence, profile presentation, navigation
 normalization, keyboard shortcuts, and popup policy while composing focused submodels:
 
-- `BrowserTabsModel` owns internal-tab lifecycle and tab-scoped resources, including URL and favicon
-  caches, active-tab history, mute/panel operations, and the `BrowserBookmarks` resource.
+- `BrowserTabsModel` owns internal-tab lifecycle, committed URL and favicon state, active-tab history,
+  and mute/panel operations. `BrowserBookmarksModel` owns the bookmark resource lifecycle and UI.
 - `BrowserEditor` owns the resolved Electron session partition and its stable incognito/Tor IDs,
   composes the focused feature models, and fans tab release out to each owner.
 - `BrowserTorModel` owns proxy arming, Tor listeners and reconnect lifecycle, and window-close cleanup.
@@ -29,12 +29,19 @@ normalization, keyboard shortcuts, and popup policy while composing focused subm
   `BrowserTranslationController` in lifecycle order. Those models own site-extension injection and
   actions, page-authored AiVision/WebMCP registration and requests, find-in-page state, and translation
   workflow plus per-tab translation respectively.
-- `BrowserUrlBarModel`, `BrowserBookmarksUIModel`, and `BrowserTargetModel` own URL-bar state,
-  bookmark UI, and automation respectively.
+- `BrowserUrlBarModel`, `BrowserBookmarksModel`, `BrowserSitePermissionsModel`, and
+  `BrowserTargetModel` own URL-bar state, bookmarks, site-permission/certificate actions, and
+  automation respectively. `resolveBrowserProfile()` centralizes the resolved profile, color, and
+  bookmark-file read/write target.
 
 The host's tab and Tor methods are compatibility forwarding points; the corresponding submodels own
 those behaviors and their cleanup. Views use the composed models, while the browser page retains its
 existing facade and IPC contracts.
+
+`BrowserEditor.createNew(options)` configures a browser editor, applies the initial navigation,
+restores its models, and returns either the ready editor or a refusal. It disposes the partially
+constructed editor on refusal. `browser-pages.ts` reports refusals and adds successful editors to
+the page collection; the browser chunk remains behind the pages model's dynamic import.
 
 ### Browser toolbar order
 
@@ -138,7 +145,7 @@ A notification bar appears below the loading indicator showing the blocked count
 
 Each materialized internal tab has its own `<webview>` element. On session restore, only the active internal tab is materialized; other tabs keep their saved URL, title, favicon, and tab metadata without creating a guest. Activating one of those tabs materializes it, and it remains mounted across later switches so its scroll position, form data, and session survive. Tabs created during the current session are materialized immediately. Only the active tab's webview is visible (`display` vs `display: none`).
 
-`BrowserTabsModel` owns the runtime-only materialized-ID set. `BrowserView.sync()` passes only those IDs to `PageManagerView`, while retaining tab order. Closing a tab removes its ID; an active-tab fallback is materialized as part of the transition. State-only operations such as reading tab metadata or closing an unloaded tab do not create a guest. An allowed automation operation that targets an unloaded tab explicitly materializes it and waits for its `dom-ready` registration mark, with a bounded timeout, before issuing guest work. This path does not switch the visible tab and still runs after the existing browser access checks.
+`BrowserTabsModel` owns the runtime-only materialized-ID set. `BrowserEditorView.sync()` passes only those IDs to `PageManagerView`, while retaining tab order. Closing a tab removes its ID; an active-tab fallback is materialized as part of the transition. State-only operations such as reading tab metadata or closing an unloaded tab do not create a guest. An allowed automation operation that targets an unloaded tab explicitly materializes it and waits for its `dom-ready` registration mark, with a bounded timeout, before issuing guest work. This path does not switch the visible tab and still runs after the existing browser access checks.
 
 ### PageManagerView (Native Placeholder DOM Stability)
 
@@ -158,46 +165,49 @@ is disposed.
 
 ### dom-ready Gating
 
-The `BrowserView` update path forwards active-tab URL changes to
-`BrowserWebviewModel.navigateWebview()`. The model calls `loadURL()` only when the registered webview
+The `BrowserEditor.navigate()` command forwards active-tab URL requests to
+`BrowserWebviewModel.load()`. The model calls `loadURL()` only when the registered webview
 has reached its `dom-ready` state. Automation readiness waiters are separate: they resolve after the
 guest is registered with main, or after a bounded timeout, so a targeted background tab can be used
 without activating it.
 
 ### IPC Registration
 
-`BrowserWebviewItemView` registers a webview with main on `dom-ready` using the composite key
-`${tabId}/${internalTabId}`. The view owns the registration and unregisters it during disposal; main
-also removes tracked listeners and registrations when the webContents or sender is destroyed.
-URL projection changes update the existing view and must not unregister the webview or clear its
-readiness state.
+`BrowserWebviewItemView` attaches and detaches each webview through `BrowserWebviewModel`. The model
+owns the `dom-ready` listener and registration lifecycle; `BrowserGuestChannel` owns the registration
+key `${editorId}/${internalTabId}` and is the renderer's browser IPC path. Detaching removes the
+listener and unregisters the guest. Main also removes registrations when the webContents or sender is
+destroyed. URL projection changes preserve the view and its readiness state.
+
+The guest preload sends `GuestMessage` values from the shared IPC union over Electron's existing
+`ipc-message` event. `BrowserWebviewModel` handles that union exhaustively. The guest transport does
+not add a request correlator or a separate response envelope.
 
 ## Data Flow
 
 ### 1. User navigates (types URL + Enter)
 
 ```
-BrowserView update path
-  -> BrowserWebviewModel.navigateWebview(activeTabId, url)
+BrowserEditor navigation command
+  -> BrowserWebviewModel.load(activeTabId, url)
   -> if the registered webview is dom-ready, webview.loadURL(url)
   -> main receives webContents navigation events and sends BrowserChannel.event
-  -> BrowserWebviewModel.handleBrowserEvent updates current URL and URL-bar projection
+  -> BrowserWebviewModel.commitNavigation stores the committed URL on the tab
 ```
 
 ### 2. Navigation events (page loaded, redirected)
 
 ```
 webContents events (main)          IPC                    Renderer
-─────────────────────────    ───────────────    ─────────────────────
-did-navigate (url)       →  BrowserChannel  →  onBrowserEvent handler
-                             .event              → model.tabs.currentUrls = url
-                                                 → setUrlInput(url)
-                                                 → model.updateFromWebview(...)
+ did-navigate (url)       →  BrowserChannel  → BrowserWebviewModel.commitNavigation
+                              .event              → update tab.url and tab metadata
+                                                  → URL bar reads committed active-tab URL
 ```
 
-**CRITICAL:** Navigation events update `model.tabs.currentUrls` and `setUrlInput()` directly. They do **NOT** update `state.url`. If you update `state.url` from a navigation event, the native view will treat the observed URL as a new navigation target and call `loadURL()` again, causing a redundant navigation → ERR_ABORTED.
-
-The rule: `state.url` = navigation target (set by user action only). `model.tabs.currentUrls` = actual current URL in each webview.
+**Navigation state:** `BrowserTabData.url` stores the committed URL. `BrowserEditor.navigate()` is an
+explicit command that asks `BrowserWebviewModel` to load a URL; navigation events commit the observed
+URL to the tab. The URL bar and page summary read the active tab, so there is no top-level URL mirror
+to go stale.
 
 ### 3. Title and favicon detection (preload script)
 
@@ -337,9 +347,13 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 
 | File | Process | Purpose |
 |------|---------|---------|
-| `src/renderer/editors/browser/BrowserView.ts` | Renderer | Native browser view composition: toolbar, URL bar, multi-webview hosting, and overlays |
+| `src/renderer/editors/browser/BrowserEditorView.ts`, `BrowserToolbarView.ts`, `BrowserWebviewItemView.ts`, `BrowserPromptBars.ts`, `SitePermissionsPopover.ts`, `PageZoomPopover.ts` | Renderer | Browser UI composition split across focused views |
 | `src/renderer/editors/browser/BrowserEditor.ts` | Renderer | Editor coordinator: restore/persistence, navigation normalization, profile presentation, keyboard shortcuts, and composed sub-model lifecycle |
-| `src/renderer/editors/browser/BrowserTabsModel.ts` | Renderer | Internal-tab lifecycle, current URL and favicon caches, mute/panel operations, and bookmark resource ownership |
+| `src/renderer/editors/browser/BrowserTabsModel.ts` | Renderer | Internal-tab lifecycle, committed URL and favicon caches, mute/panel operations |
+| `src/renderer/editors/browser/BrowserBookmarksModel.ts` | Renderer | Bookmark resource lifecycle and UI actions |
+| `src/renderer/editors/browser/browser-profile.ts` | Renderer | Profile, color, and bookmark-file resolution |
+| `src/renderer/editors/browser/BrowserSitePermissionsModel.ts` | Renderer | Site permissions and certificate actions |
+| `src/renderer/editors/browser/BrowserGuestChannel.ts` | Renderer | Browser guest IPC and registration keys |
 | `src/renderer/editors/browser/browser-state.ts` | Renderer | Browser state/defaults, tab/group IDs, title policy, and partition string helper |
 | `src/renderer/editors/browser/search-engines.ts` | Renderer | Search-engine definitions and URL detection |
 | `src/renderer/editors/browser/BrowserTorModel.ts` | Renderer | Tor proxy arming, daemon listeners/reconnect, and cleanup |
@@ -520,7 +534,7 @@ and the challenge passes without it.
 
 ## Session Restore
 
-`getRestoreData()` saves all internal tabs with their actual current URLs (from the `BrowserTabsModel.currentUrls` map, which tracks post-redirect URLs). `applyRestoreData()` restores them with fresh internal tab IDs and ensures each tab has a `groupId` (assigning a new one if missing for backward compatibility). The active tab is identified by index position during restore and is the only restored tab initially materialized; other tabs retain saved URL, title, favicon, and settings until activation or explicit guest automation access. Transient loading, audible, and back/forward flags reset on restore because they describe live guest state. Mute intent and zoom are retained and applied when a guest is created. Profile name, incognito flag, and Tor flag are also saved/restored.
+`getRestoreData()` saves each internal tab with its committed URL. Navigation events update `tab.url` directly, so restore data and the active-tab summary do not depend on a separate current-URL map or top-level URL mirror. `applyRestoreData()` restores them with fresh internal tab IDs and ensures each tab has a `groupId` (assigning a new one if missing for backward compatibility). The active tab is identified by index position during restore and is the only restored tab initially materialized; other tabs retain saved URL, title, favicon, and settings until activation or explicit guest automation access. Transient loading, audible, and back/forward flags reset on restore because they describe live guest state. Mute intent and zoom are retained and applied when a guest is created. Profile name, incognito flag, and Tor flag are also saved/restored.
 
 Navigation history (`navHistory` on each `BrowserTabData`) is persisted as part of the tab state via `getRestoreData()`. Search history is stored separately per profile in the app data folder using `SearchHistoryStorage` (file-based, max 2000 entries). Incognito and Tor profiles skip search history persistence.
 
@@ -587,8 +601,8 @@ closed.
 
 The main process accepts prompts only from registered browser webContents and relays them through
 the owning app renderer's `BrowserChannel.event`. `BrowserWebviewModel` associates each prompt with
-its internal tab, and `BrowserView` shows the permission bar for the active tab. Allow and Block
-send only the opaque request ID and decision back over `BrowserChannel.resolvePermissionRequest`;
+its internal tab, and `BrowserPromptBars` shows the permission bar for the active tab. Allow and Block
+send only the opaque request ID and decision back over `BrowserGuestChannel.resolvePermissionRequest` (which invokes `BrowserChannel.resolvePermissionRequest`);
 the main process owns the pending callback and stores the decision. Closing a webContents or
 starting its main-frame navigation settles outstanding prompts as denied. The URL bar's site
 permissions popover reads, changes, and resets decisions through main-process IPC keyed by the
@@ -642,7 +656,7 @@ session.
 | Incognito | IncognitoIcon |
 | Tor | TorIcon (purple onion, branded colors) |
 
-The `resolvedColor` getter on `BrowserEditor` resolves the color chain: explicit profile → default profile setting → `DEFAULT_BROWSER_COLOR`.
+`resolveBrowserProfile(state)` resolves the selected or default profile and its color, falling back to `DEFAULT_BROWSER_COLOR`. Tor and Incognito icons are selected before profile color is used.
 
 ### Incognito Indicator
 
@@ -701,7 +715,7 @@ Arming deliberately does not add the partition to `activePartitions`. That set, 
 session?" — for the `tor-src://` handler and `checkIp`, and an armed partition is not one yet.
 
 Consequently no navigation site consults `torStatus`: the armed proxy is the single enforcement
-point, rather than a check duplicated across `navigateWebview`, `addTab`, and the URL bar.
+point, rather than a check duplicated across `navigate`, `addTab`, and the URL bar.
 
 One gap remains by design. A daemon that dies is caught — `child.on("close")` broadcasts
 `tor:status` `"error"` when `isCurrent(child)` still holds, which distinguishes an unexpected
@@ -733,7 +747,7 @@ The consequences handled explicitly:
   renderer, so it resolves the URL through the same route (`routeSrc`).
 - **Favicon persistence.** Favicons are normally written to the app data folder.
   `LinkEditor.isPrivatePage` (true for a route marked `private` — Tor, and a proxied Incognito page)
-  gates the `requestFaviconSave` call sites, and `BrowserView`/`BrowserBookmarksUIModel` skip the
+  gates the `requestFaviconSave` call sites, and `BrowserEditorView`/`BrowserBookmarksModel` skip the
   save for Tor and incognito. The marker set behind `requestFaviconSave` is module-level and shared
   by every browser page, so a marker armed from a private page would otherwise be honoured later by
   another one. A proxied profile is persistent, so it does save favicons, but downloads them with
@@ -822,7 +836,7 @@ in-memory partition, released when the page closes.
   page of a profile neither resets its connections nor mounts before the first apply settles.
 - **Fail closed.** If main cannot apply the proxy (a hand-edited invalid host), `networkError` is
   set: `showBrowserPage` refuses a new page, and an existing or restored page keeps its tabs but
-  mounts **no webview** — `BrowserView` passes an empty page list to the page manager and shows
+  mounts **no webview** — `BrowserEditorView` passes an empty page list to the page manager and shows
   `ProfileNetworkErrorView` with Retry. Fixing the setting re-applies it.
 - **Follow edits.** The model subscribes to the three settings and re-applies on change; main
   closes connections, re-issues the `profile-src` token, and re-applies the guest WebRTC policy to
@@ -925,24 +939,40 @@ Each browser profile can be associated with a `.link.json` bookmarks file. A con
 
 ```
 BrowserEditor
-    └─ BrowserTabsModel.bookmarks
-        ├─ TextFileModel — file I/O, encryption, FileWatcher, auto-save
-        └─ LinkEditor   — parsed link data, categories, tags, filters
+    └─ BrowserBookmarksModel
+        └─ BrowserBookmarks
+            ├─ TextFileModel — file I/O, encryption, FileWatcher, auto-save
+            └─ LinkEditor   — parsed link data, categories, tags, filters
 ```
 
-`BrowserBookmarks` wraps both models. `TextFileModel` handles reading/writing the `.link.json` file (including encryption/decryption), while `LinkEditor` provides the structured data layer. Every mutation flows through `LinkEditor.onDataChanged()` → `TextFileModel.changeContent()` → debounced save to disk.
+`BrowserBookmarksModel` owns the bookmark resource, delayed preload timer, interactive initialization,
+UI actions, and disposal. `BrowserBookmarks` wraps the file and structured-data models. `TextFileModel`
+handles reading/writing the `.link.json` file (including encryption/decryption), while `LinkEditor`
+provides the structured data layer. Every mutation flows through `LinkEditor.onDataChanged()` to
+`TextFileModel.changeContent()` and its debounced save.
 
 ### Initialization Flow
 
 Bookmarks load through two paths:
 
-**Eager preload (silent):** The `BrowserTabsModel` constructor schedules `preloadBookmarks()` after a 300ms delay. It checks for a configured bookmarks file, calls `BrowserBookmarks.init({ silent: true })` which skips the password dialog for encrypted files. If successful, bookmarks appear immediately on blank tabs. If encrypted, bookmarks stay null until the user triggers manually.
+**Eager preload (silent):** `BrowserBookmarksModel` schedules `preloadBookmarks()` after a 300ms delay.
+It resolves the file through `resolveBrowserProfile(state)` and calls
+`BrowserBookmarks.init({ silent: true })`, which skips the password dialog for encrypted files. If
+successful, bookmarks appear immediately on blank tabs. If encrypted, bookmarks remain unloaded until
+the user triggers initialization.
 
-**Manual trigger (interactive):** User clicks ☆ (star) or "Open Links" → check `model.tabs.bookmarks !== null` → if null, read the profile's bookmarks file path through `model.tabs.getBookmarksFilePath()` → if no file path, show "Associate Bookmarks File" dialog → create `BrowserBookmarks(filePath)` → `model.tabs.initBookmarks(filePath)` with a password dialog if encrypted → store on `BrowserTabsModel.bookmarks`.
+**Manual trigger (interactive):** User clicks the star or "Open Links"; `BrowserBookmarksModel` checks
+its resource and the resolved bookmark-file path. If no path exists, it shows the "Associate Bookmarks
+File" dialog. It then creates `BrowserBookmarks(filePath)` and initializes it with a password dialog
+when needed. `resolveBrowserProfile(state).setBookmarksFile(path)` persists the selected path to the
+same setting or profile that supplied it.
 
-After initialization, `BrowserTabsModel` sets two callbacks on `linkModel`:
-- `onLinkOpen` — modifies the link event data before it enters the `openRawLink` pipeline: sets `target: "browser"` and `metadata.browserPageId` pointing to the owning browser page. The HTTP resolver's browser branch then routes the URL to that specific page (navigates current blank tab via `browserTabMode: "navigate"`, or adds a new tab if the current tab has content).
-- `onGetLinkMenuItems` — returns an "Open in New Tab" menu item that calls `BrowserTabsModel.addTab(url)`. These items are prepended to the link context menu (before "Edit"), providing mouse-only access to new-tab behavior without requiring `Ctrl+Click`.
+After initialization, `BrowserBookmarksModel` configures two callbacks on `linkModel`:
+- `onLinkOpen` modifies the link event data before it enters the `openRawLink` pipeline: sets
+  `target: "browser"` and `metadata.browserPageId` to the owning browser page. The HTTP resolver's
+  browser branch then routes the URL to that page (navigating a blank active tab or adding a new tab).
+- `onGetLinkMenuItems` returns an "Open in New Tab" menu item that calls `BrowserEditor.addTab(url)`.
+  These items are prepended to the link context menu (before "Edit").
 
 ### Three Entry Points
 
@@ -1241,7 +1271,7 @@ extensions tab lists validation status, host conflicts, trust state, and managem
 
 ## Page zoom
 
-Each internal tab persists its own `zoomPercent` (50–200, default 100). `BrowserView` exposes
+Each internal tab persists its own `zoomPercent` (50–200, default 100). `BrowserEditorView` exposes
 the active tab's value through a toolbar button and a popover with a vertical Slider and presets.
 The popover wheel and guest keyboard or Ctrl+wheel zoom intents change the value in 5% steps.
 `BrowserWebviewModel` updates tab state and sends `BrowserChannel.setZoom`; the main process
@@ -1377,13 +1407,13 @@ Additionally, `LinkViewModel.onGetLinkMenuItems` is an optional callback that al
 
 ## Common Pitfalls
 
-1. **Never update `state.url` from navigation events.** Only update it from user-initiated `model.navigate()`. Use the `model.tabs.currentUrls` map for tracking the actual URL per internal tab.
+1. **Keep tab URLs committed.** `BrowserTabData.url` is updated by navigation events. Use `BrowserEditor.navigate(url)` to request navigation; do not mirror the URL into a separate top-level field.
 
-2. **The webview's `src` attribute is set once at creation.** The initial URL is assigned when `BrowserWebviewItemView` constructs the element. Subsequent navigations use `webview.loadURL()` from `BrowserWebviewModel.navigateWebview()`, gated by `webviewReady`.
+2. **The webview's `src` attribute is set once at creation.** The initial URL is assigned when `BrowserWebviewItemView` constructs the element. Subsequent navigations use `webview.loadURL()` from `BrowserWebviewModel.load()`, gated by `BrowserWebviewModel.isReady()`.
 
-3. **Keep IPC registration separate from URL projection.** URL changes must not tear down the `dom-ready` registration or clear `webviewReady`; doing so breaks subsequent navigations.
+3. **Keep IPC registration separate from URL projection.** URL changes must not tear down the `dom-ready` registration or clear the readiness state; doing so breaks subsequent navigations.
 
-4. **Call `loadURL()` only after dom-ready.** New tabs created via `addTab(url)` must wait for the webview to fire `dom-ready` before `loadURL()` is called. The `webviewReady` Set tracks this.
+4. **Call `loadURL()` only after dom-ready.** New tabs created via `addTab(url)` must wait for the webview to fire `dom-ready` before `loadURL()` is called. `BrowserWebviewReadiness` tracks this.
 
 5. **Favicon requires PageTab subscription.** `PageTab` must include favicon in its state selector (via `_iconHint`) or it won't re-render when the favicon changes.
 

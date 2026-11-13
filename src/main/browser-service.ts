@@ -5,8 +5,8 @@ import { PAGE_ZOOM_DEFAULT, isValidPageZoom } from "../shared/browser-zoom";
  * Manages webContents for browser tab webviews. When a renderer registers
  * a webview by its webContentsId, this service attaches event listeners
  * on the actual webContents and relays events back to the renderer via IPC.
- * This provides reliable events (e.g. page-favicon-updated fires consistently)
- * compared to the <webview> DOM element's event API.
+ * This provides reliable navigation and lifecycle events compared to the
+ * <webview> DOM element's event API.
  *
  * Registration key is `${tabId}/${internalTabId}` to support multiple
  * internal browser tabs per persephone page tab.
@@ -576,20 +576,6 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         if (isMainFrame) {
             settlePermissionRequestsForWebContents(wc);
             sendEvent(sender, tabId, internalTabId, "did-start-navigation", { url, isMainFrame, isSameDocument: inPlace });
-        }
-    });
-
-    on("page-title-updated", (_e: Electron.Event, title: string) => {
-        sendEvent(sender, tabId, internalTabId, "page-title-updated", {
-            title,
-        });
-    });
-
-    on("page-favicon-updated", (_e: Electron.Event, favicons: string[]) => {
-        if (favicons && favicons.length > 0) {
-            sendEvent(sender, tabId, internalTabId, "page-favicon-updated", {
-                favicon: favicons[0],
-            });
         }
     });
 

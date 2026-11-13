@@ -1,7 +1,7 @@
 import { TComponentState } from "../../core/state/state";
 import { BrowserEditor } from "./BrowserEditor";
 import { getDefaultBrowserPageState } from "./browser-state";
-import { BrowserEditorView } from "./BrowserView";
+import { BrowserEditorView } from "./BrowserEditorView";
 import type { EditorModule } from "../base/editorRegistry";
 
 export const browserModule: EditorModule = {

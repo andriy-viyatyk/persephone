@@ -7,7 +7,7 @@
  * "Branches & Tags" secondary-view panel. The panel is a pure renderer over
  * `state`; all fetching lives here. Owned + disposed by the owning editor
  * (`GitTreeEditorModel`), which composes focused submodels the same way
- * `BrowserEditor` does (webview / urlBar / bookmarksUI / target).
+ * `BrowserEditor` does (webview / urlBar / bookmarks / target).
  *
  * Gated by the "git.enabled" setting via the renderer git API — when off, no
  * git activity happens at all.

@@ -109,7 +109,7 @@ export class BrowserUrlBarModel {
         if (!s.suggestionsOpen) return [];
         const mode = this.suggestionsMode;
         if (mode === "navigation") {
-            const activeTab = s.tabs.find((t) => t.id === s.activeTabId);
+            const activeTab = this.model.activeTab;
             return activeTab?.navHistory ?? [];
         }
         const text = s.urlInput.trim();

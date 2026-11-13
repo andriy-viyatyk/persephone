@@ -1,9 +1,7 @@
-const { ipcRenderer } = require("electron");
 import type { MenuItem } from "../../uikit/Menu";
 import { app } from "../../api/app";
 import { pages } from "../../api/pages";
 import { ui } from "../../api/ui";
-import { BrowserChannel } from "../../../ipc/browser-ipc";
 import { t } from "../../../shared/i18n/t";
 import type { BrowserEditor } from "./BrowserEditor";
 
@@ -11,11 +9,10 @@ import type { BrowserEditor } from "./BrowserEditor";
 export function getPageMenuItems(model: BrowserEditor): MenuItem[] {
     const state = model.state.get();
     const activeTabId = state.activeTabId;
-    const tab = state.tabs.find((item) => item.id === activeTabId);
+    const tab = model.findTab(activeTabId);
     const webview = model.webview.getActiveWebview();
     const pageUrl = tab?.url || "";
     const hasPage = !!webview && !!pageUrl && pageUrl !== "about:blank";
-    const regKey = `${model.id}/${activeTabId}`;
 
     return [
         {
@@ -39,7 +36,7 @@ export function getPageMenuItems(model: BrowserEditor): MenuItem[] {
             label: t("browser.toolbarViewActualDom"),
             disabled: !hasPage,
             onClick: async () => {
-                const html = await ipcRenderer.invoke(BrowserChannel.collectDom, regKey);
+                const html = await model.guest.collectDom(activeTabId);
                 await app.capabilities.invoke("text.open", {
                     content: html,
                     language: "html",
@@ -51,7 +48,7 @@ export function getPageMenuItems(model: BrowserEditor): MenuItem[] {
             id: "show-resources",
             label: t("browser.toolbarShowResources"),
             disabled: !hasPage,
-            onClick: () => showResources(model, regKey, pageUrl, tab?.pageTitle || pageUrl),
+            onClick: () => showResources(model, activeTabId, pageUrl, tab?.pageTitle || pageUrl),
         },
     ];
 }
@@ -59,14 +56,14 @@ export function getPageMenuItems(model: BrowserEditor): MenuItem[] {
 /** Collect page resources and the network log, then open them as a link collection. */
 export async function showResources(
     model: BrowserEditor,
-    regKey: string,
+    tabId: string,
     pageUrl: string,
     title: string,
 ): Promise<void> {
     const [html, networkLog, loadedUrls] = await Promise.all([
-        ipcRenderer.invoke(BrowserChannel.collectDom, regKey),
-        ipcRenderer.invoke(BrowserChannel.getNetworkLog, regKey),
-        ipcRenderer.invoke(BrowserChannel.collectLoadedResources, regKey) as Promise<string[]>,
+        model.guest.collectDom(tabId),
+        model.guest.networkLog(tabId),
+        model.guest.collectLoadedResources(tabId),
     ]);
 
     const { extractHtmlResources, loadedFontLinks } = await import("../../core/utils/html-resources");

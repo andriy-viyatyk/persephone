@@ -1,4 +1,5 @@
 import type { TranslationActivationMessage, TranslationFrameScope, TranslationResultMessage, TranslationUnit } from "../ipc/browser-translation-messages";
+import { BrowserGuestMessageChannel, sendToHost } from "../ipc/browser-guest-messages";
 
 const { ipcRenderer } = require("electron");
 
@@ -164,7 +165,7 @@ export function installPageTranslationAgent(): void {
             const target = targets.get(overflow.shift()!);
             if (target) enqueue(target);
         }
-        ipcRenderer.sendToHost("translation-units", { scope, items });
+        sendToHost(ipcRenderer, { channel: BrowserGuestMessageChannel.translationUnits, payload: { scope, items } });
         if (queued.size) emitTimer = setTimeout(flushQueue, 0);
     }
     const isBlock = (element: Element): boolean => element.matches(BLOCK_SELECTOR);
@@ -376,5 +377,5 @@ export function installPageTranslationAgent(): void {
         writeQueue.push(...(message.results || []));
         if (!writeTimer) writeTimer = setTimeout(flushWrites, 0);
     });
-    ipcRenderer.sendToHost("translation-ready", { scope });
+    sendToHost(ipcRenderer, { channel: BrowserGuestMessageChannel.translationReady, payload: { scope } });
 }

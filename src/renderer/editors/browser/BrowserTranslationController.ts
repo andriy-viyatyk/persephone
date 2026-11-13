@@ -138,6 +138,7 @@ export class BrowserTranslationController {
     };
 
     public dispose(): void {
+        this.refreshVersion++;
         for (const tabId of this.scopes.keys()) this.invalidate(tabId);
         for (const controller of this.pageControllers.values()) controller.dispose();
         this.pageControllers.clear();

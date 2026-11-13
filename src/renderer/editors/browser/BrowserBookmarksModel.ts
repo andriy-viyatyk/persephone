@@ -1,9 +1,6 @@
-import { bookmarkProfileSelection } from "./bookmark-profile";
 import { BrowserBookmarks, createEmptyLinkFile } from "./BrowserBookmarks";
 import { showEditLinkDialog } from "../link-editor/EditLinkDialog";
 import { api } from "../../../ipc/renderer/api";
-import { settings } from "../../api/settings";
-import type { BrowserProfile } from "../../api/settings-schema";
 import type { BrowserEditor } from "./BrowserEditor";
 import type { LinkItem } from "../link-editor/linkTypes";
 import { app } from "../../api/app";
@@ -13,6 +10,9 @@ import { DisposableStore } from "../../core/utils/DisposableStore";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
 import { isPrivateBrowserSession } from "./agent-access";
+import { createIconElement } from "../../uikit/shared/slots";
+import { resolveBrowserProfile } from "./browser-profile";
+import { DEFAULT_URL } from "./browser-state";
 
 const SELECT_BOOKMARK_FILE_ID = "select-bookmarks-file";
 const CREATE_BOOKMARK_FILE_ID = "create-bookmarks-file";
@@ -34,11 +34,14 @@ const BOOKMARKS_FILE_FILTER = { name: "Link Files", extensions: ["link.json"] };
 const IMAGE_DISCOVERY_TIMEOUT = 1000;
 
 /**
- * Manages bookmarks UI: drawer visibility, star button, image discovery,
- * and tracked images for the browser editor.
+ * Owns the bookmarks resource, its lifecycle, and bookmark UI behavior.
  */
-export class BrowserBookmarksUIModel {
+export class BrowserBookmarksModel {
     readonly model: BrowserEditor;
+    bookmarks: BrowserBookmarks | null = null;
+    private bookmarkPreloadTimer: ReturnType<typeof setTimeout> | undefined;
+    private bookmarkLifecycleGeneration = 0;
+    private disposed = false;
 
     /** Per-tab tracked images for bookmark image discovery. */
     trackedImagesRef = new Map<string, TrackedImageLevel[]>();
@@ -51,14 +54,31 @@ export class BrowserBookmarksUIModel {
 
     constructor(model: BrowserEditor) {
         this.model = model;
+        const generation = this.bookmarkLifecycleGeneration;
+        this.bookmarkPreloadTimer = setTimeout(() => {
+            this.bookmarkPreloadTimer = undefined;
+            if (this.disposed || generation !== this.bookmarkLifecycleGeneration) return;
+            void this.preloadBookmarks(generation);
+        }, 300);
     }
 
-    /** Unsubscribe from all state subscriptions. */
-    dispose = () => {
+    /** Release bookmark subscriptions, pending preload, and the bookmark resource. */
+    dispose = async () => {
+        this.disposed = true;
+        this.bookmarkLifecycleGeneration++;
+        if (this.bookmarkPreloadTimer !== undefined) {
+            clearTimeout(this.bookmarkPreloadTimer);
+            this.bookmarkPreloadTimer = undefined;
+        }
         this.bookmarksSub?.();
         this.bookmarksSub = null;
         this.urlTrackingSub?.();
         this.urlTrackingSub = null;
+        this.subscriptions.dispose();
+        if (this.bookmarks) {
+            await this.bookmarks.dispose();
+            this.bookmarks = null;
+        }
     };
 
     // =====================================================================
@@ -67,11 +87,12 @@ export class BrowserBookmarksUIModel {
 
     /** Ensure bookmarks are loaded, prompting user to associate a file if needed. */
     ensureBookmarks = async (): Promise<BrowserBookmarks | null> => {
-        if (this.model.tabs.bookmarks) {
-            return this.model.tabs.bookmarks;
+        if (this.bookmarks) {
+            return this.bookmarks;
         }
 
-        let filePath = this.model.tabs.getBookmarksFilePath();
+        const profile = resolveBrowserProfile(this.model.state.get());
+        let filePath = profile.bookmarksFile;
 
         // If the configured file no longer exists, treat as unconfigured
         if (filePath && !(await app.fs.exists(filePath))) {
@@ -110,24 +131,78 @@ export class BrowserBookmarksUIModel {
 
             if (!filePath) return null;
 
-            // Persist the file path in settings for this profile
-            const selection = bookmarkProfileSelection(this.model.state.get(), settings.get("browser-default-profile"));
-            if (selection.kind === "setting") {
-                settings.set(selection.key, filePath);
-            } else {
-                const profiles = settings.get("browser-profiles");
-                settings.set("browser-profiles", profiles.map((p: BrowserProfile) =>
-                    p.name === selection.name ? { ...p, bookmarksFile: filePath } : p,
-                ));
-            }
+            profile.setBookmarksFile(filePath);
         }
 
-        const bm = await this.model.tabs.initBookmarks(filePath);
+        const bm = await this.initBookmarks(filePath);
         if (bm) {
             this.model.state.update((s) => { s.bookmarksReady = true; });
             this.startBookmarkTracking(bm);
         }
         return bm;
+    };
+
+    preloadBookmarks = async (generation = this.bookmarkLifecycleGeneration): Promise<void> => {
+        if (this.disposed || generation !== this.bookmarkLifecycleGeneration) return;
+        const filePath = resolveBrowserProfile(this.model.state.get()).bookmarksFile;
+        if (!filePath || this.bookmarks) return;
+        const bookmarks = new BrowserBookmarks(filePath);
+        const ok = await bookmarks.init({ silent: true });
+        if (this.disposed || generation !== this.bookmarkLifecycleGeneration) {
+            await bookmarks.dispose();
+            return;
+        }
+        if (!ok) {
+            await bookmarks.dispose();
+            return;
+        }
+        if (this.bookmarks) {
+            await bookmarks.dispose();
+            return;
+        }
+        this.bookmarks = bookmarks;
+        this.configureBookmarks(bookmarks);
+        this.model.state.update((s) => { s.bookmarksReady = true; });
+    };
+
+    initBookmarks = async (filePath: string): Promise<BrowserBookmarks | null> => {
+        const generation = ++this.bookmarkLifecycleGeneration;
+        if (this.bookmarks) {
+            const current = this.bookmarks;
+            this.bookmarks = null;
+            await current.dispose();
+        }
+        const bookmarks = new BrowserBookmarks(filePath);
+        const ok = await bookmarks.init();
+        if (this.disposed || generation !== this.bookmarkLifecycleGeneration || !ok) {
+            await bookmarks.dispose();
+            return null;
+        }
+        if (this.bookmarks) {
+            await bookmarks.dispose();
+            return this.bookmarks;
+        }
+        this.bookmarks = bookmarks;
+        this.configureBookmarks(bookmarks);
+        return bookmarks;
+    };
+
+    private configureBookmarks = (bookmarks: BrowserBookmarks): void => {
+        bookmarks.linkEditor.onLinkOpen = (data) => {
+            data.target = "browser";
+            data.browserPageId = this.model.page?.id;
+            const currentTab = this.model.activeTab;
+            if (!currentTab?.url || currentTab.url === DEFAULT_URL) data.browserTabMode = "navigate";
+        };
+        bookmarks.linkEditor.onGetLinkMenuItems = (link) => link.href ? [{
+            id: "open-in-new-tab",
+            label: t("shell.openInNewTab"),
+            icon: createIconElement("open-link"),
+            onClick: () => this.model.tabs.addTab(link.href),
+        }] : [];
+        bookmarks.linkEditor.imageProxySource = () => this.model.network.imageRoute;
+        bookmarks.panelHost.setInitialWidth(this.model.state.get().bookmarksSidebarWidth);
+        bookmarks.panelHost.onWidthChange = (width) => this.model.state.update((s) => { s.bookmarksSidebarWidth = width; });
     };
 
     // =====================================================================
@@ -137,7 +212,10 @@ export class BrowserBookmarksUIModel {
     /** Subscribe to linkEditor state changes to track whether current URL is bookmarked. */
     private startBookmarkTracking = (bm: BrowserBookmarks) => {
         // Clean up previous subscriptions
-        this.dispose();
+        this.bookmarksSub?.();
+        this.bookmarksSub = null;
+        this.urlTrackingSub?.();
+        this.urlTrackingSub = null;
 
         // Track changes in the link editor (add/remove/edit bookmarks)
         this.bookmarksSub = this.subscriptions.add(bm.linkEditor.state.subscribe(
@@ -155,7 +233,7 @@ export class BrowserBookmarksUIModel {
     };
 
     private updateIsBookmarked = () => {
-        const bm = this.model.tabs.bookmarks;
+        const bm = this.bookmarks;
         if (!bm) {
             this.model.state.update((s) => { s.isBookmarked = false; });
             return;
@@ -180,8 +258,7 @@ export class BrowserBookmarksUIModel {
     };
 
     handleBookmarkLinkClick = (url: string) => {
-        const s = this.model.state.get();
-        const currentTab = s.tabs.find((t) => t.id === s.activeTabId);
+        const currentTab = this.model.activeTab;
         const currentUrl = currentTab?.url || "";
         // Ctrl+Click (or Cmd+Click on Mac) opens in a new tab; plain click navigates current blank tab
         const e = window.event as KeyboardEvent | MouseEvent | undefined;
@@ -226,15 +303,15 @@ export class BrowserBookmarksUIModel {
         if (!bm) return;
 
         const state = this.model.state.get();
-        const { urlInput, activeTabId, tabs } = state;
+        const { urlInput, activeTabId } = state;
 
         // Cache the favicon for this hostname before showing the dialog.
         // Skip on Tor pages too: `saveFavicon` downloads over a raw Node
         // https request (no proxy at all) AND writes to the persistent on-disk
-        // cache. The `page-favicon-updated` path in BrowserView already excludes
+        // cache. The guest `page-favicon` path already excludes
         // Tor; this one used to check only incognito.
         if (!isPrivateBrowserSession(state)) {
-            const activeTab = tabs.find((t) => t.id === activeTabId);
+            const activeTab = this.model.findTab(activeTabId);
             if (activeTab?.favicon) {
                 const { getHostname, saveFavicon } = await import("../../components/icons/favicon-cache");
                 const hostname = getHostname(urlInput);
@@ -255,7 +332,7 @@ export class BrowserBookmarksUIModel {
             }
         }
 
-        const activeTab = tabs.find((t) => t.id === activeTabId);
+        const activeTab = this.model.findTab(activeTabId);
         await this.showBookmarkDialog({
             title: activeTab?.pageTitle || "",
             href: urlInput,
@@ -278,7 +355,7 @@ export class BrowserBookmarksUIModel {
         tags?: string[];
         existingLink?: LinkItem;
     }): Promise<void> => {
-        const bm = this.model.tabs.bookmarks;
+        const bm = this.bookmarks;
         if (!bm) return;
 
         const isEdit = !!params.existingLink;

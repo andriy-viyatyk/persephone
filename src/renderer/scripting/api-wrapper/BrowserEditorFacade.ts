@@ -53,8 +53,6 @@ import { isPositiveIntegerTimeout, resolveBoardCallTimeout } from "../../../shar
 import type { IAiCallContext } from "../ai-vision/root";
 import type { NavigationWaitOptions, NavigationWaitResult } from "../../../ipc/browser-ipc";
 import { agentMayAccessBrowserPage, privateBrowserRefusal } from "../../editors/browser/agent-access";
-import { BrowserChannel } from "../../../ipc/browser-ipc";
-const { ipcRenderer } = require("electron");
 
 const APP_MEMBER: IAiMember = {
     name: "app",
@@ -229,16 +227,16 @@ export class BrowserEditorFacade implements IAiVisible, IBrowserEditor {
         if (!this.model.webview.isVisible(tabId)) {
             throw new Error("Browser tab is hidden or unavailable");
         }
-        return `${this.model.id}/${tabId}`;
+        return this.model.guest.key(tabId);
     }
 
     fullscreen(selector?: string, options?: { tabId?: string }): Promise<{ fullscreen: boolean }> {
         if (selector !== undefined && typeof selector !== "string") throw new Error("Selector must be a CSS selector");
-        return ipcRenderer.invoke(BrowserChannel.fullscreen, { key: this.fullscreenKey(options), selector });
+        return this.model.guest.fullscreen(this.fullscreenKey(options), selector);
     }
 
     exitFullscreen(options?: { tabId?: string }): Promise<{ fullscreen: boolean }> {
-        return ipcRenderer.invoke(BrowserChannel.exitFullscreen, { key: this.fullscreenKey(options) });
+        return this.model.guest.exitFullscreen(this.fullscreenKey(options));
     }
 
     /** Capture the live target before an operation; never use the navigation destination. */
@@ -247,7 +245,7 @@ export class BrowserEditorFacade implements IAiVisible, IBrowserEditor {
         try {
             if (!settings.get("agent-tips.enabled")) return undefined;
             const state = this.model.state.get();
-            return state.tabs.find(tab => tab.id === (tabId || state.activeTabId))?.url;
+            return this.model.findTab(tabId || state.activeTabId)?.url;
         } catch { return undefined; }
     }
 
@@ -345,22 +343,13 @@ export class BrowserEditorFacade implements IAiVisible, IBrowserEditor {
         return this.model.pageRemote.aiVisionUnavailableRefusal();
     }
 
-    /**
-     * The ACTIVE TAB's live values, which is what the member summaries promise. `state.url` and
-     * `state.pageTitle` track the page-level address bar and go stale after an in-page navigation
-     * — click a link and they still name the previous document, so an agent that reads `url` to
-     * confirm a click concludes, wrongly, that the click did nothing. Found by 's gate run,
-     * where a Haiku agent reported exactly that. `state.*` remains the fallback for a page with no
-     * tab record yet.
-     */
+    /** The active tab's committed values, which the member summaries expose. */
     get url(): string | undefined {
         return this.model.currentUrl;
     }
 
     get title(): string | undefined {
-        const state = this.model.state.get();
-        const tab = state.tabs.find(t => t.id === state.activeTabId);
-        return tab?.pageTitle || state.pageTitle || undefined;
+        return this.model.activeTab?.pageTitle || undefined;
     }
 
     navigate(url: string): Promise<void> {
@@ -440,8 +429,7 @@ export class BrowserEditorFacade implements IAiVisible, IBrowserEditor {
 
     /** The active tab. */
     get activeTab(): IBrowserTab | undefined {
-        const state = this.model.state.get();
-        const tab = state.tabs.find(t => t.id === state.activeTabId);
+        const tab = this.model.activeTab;
         if (!tab) return undefined;
         return {
             id: tab.id,
@@ -635,7 +623,7 @@ export class BrowserEditorFacade implements IAiVisible, IBrowserEditor {
 
     /** Read the active HTTPS tab's Chromium certificate chain, or undefined when unavailable. */
     getCertificate(): Promise<{ url: string; certificates: string[] } | undefined> {
-        return this.model.getCertificate();
+        return this.model.sitePermissions.getCertificate();
     }
 
     async check(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void> {

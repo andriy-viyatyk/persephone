@@ -258,7 +258,7 @@ export class BrowserPageRemote {
         mainContext?: boolean;
     }): void {
         if (!this.canAccessPage()) return;
-        if (data.registrationKey !== `${this.model.id}/${tabId}` || typeof data.payload !== "string") return;
+        if (data.registrationKey !== this.model.guest.key(tabId) || typeof data.payload !== "string") return;
         const webview = this.model.webview.get(tabId);
         if (!webview || !this.model.webview.isReady(tabId)
             || !this.model.state.get().tabs.some((tab) => tab.id === tabId)) return;

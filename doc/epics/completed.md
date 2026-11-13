@@ -1,3 +1,24 @@
+## EPIC-159 — Refactoring Phase 6.1 part 2: browser renderer — view split, guest protocol, bookmarks, tab state and page creation
+
+Completed 2026-11-13. Roadmap Phase 6.1 part 2 (BRW-5, BRW-9, BRW-6, BRW-4 steps 1–3, BRW-10): `BrowserView.ts` is split
+into one file per view and the views hold no model work; guest→host messages are a typed `GuestMessage` union and every
+editor-tab browser IPC call goes through `editor.guest` (`BrowserGuestChannel`); bookmarks have one owner; tab state has
+no top-level mirrors and navigation is an explicit command; `BrowserEditor.createNew` builds a page and disposes it on
+refusal. `BrowserView.ts` 1,171 → deleted, `BrowserEditor.ts` 616 → 536, `BrowserTabsModel.ts` 351 → 237,
+`BrowserWebviewModel.ts` 376 → 360, `BrowserEditorFacade.ts` 847 → 835, `preload-webview.ts` 442 → 14,
+`browser-pages.ts` 215 → 112. `window.persephone`, the script facade, MCP `call`, AiVision messages, `data-name` values
+and persisted browser state are unchanged. Plans by Codex, reviewed against the roadmap guardrails; Codex Luna
+implemented, with plan corrections recorded in the epic notes. BRW-4 step 4 (state slices) and part 3 (MAIN-7) remain.
+Epic document: [EPIC-159](EPIC-159.md).
+
+- [x] **View split (US-1904).** Pure move into `BrowserWebviewItemView`, `BrowserToolbarView`, `SitePermissionsPopover`, `PageZoomPopover`, `BrowserPromptBars` and `BrowserEditorView` (composition only).
+- [x] **Bookmarks owner (US-1905).** `BrowserBookmarksModel` (`editor.bookmarks`) owns the resource, preload timer and UI; `resolveBrowserProfile` is the one profile/color/bookmark-file rule for read and write.
+- [x] **Guest protocol (US-1906).** `src/ipc/browser-guest-messages.ts` (`GuestMessage`, typed `sendToHost`, `parseGuestMessage`); `BrowserWebviewModel.handleGuestMessage`; `BrowserGuestChannel` owns the registration key; main's dead title/favicon events and the dead find event types removed; `BrowserTabsModel.onFavicon`; preload split into `chrome-shim`, `webmcp-bridge` (one `toMemberName`) and `page-reporters`.
+- [x] **View models (US-1907).** `BrowserSitePermissionsModel` (`editor.sitePermissions`) owns permissions and the certificate workflow; guest registration, mute and unregister in `BrowserWebviewModel.attach`/`detach`; the event subscription lives with the model; one `browser-permission-labels.ts`; named toolbar controls.
+- [x] **Tab state (US-1908).** `createBrowserTab`, `editor.activeTab`/`findTab`; the six mirrors and `currentUrls` are gone; once a guest exists only navigation events write `tab.url`, and `navigate()` calls `webview.load()`.
+- [x] **Page creation (US-1909).** `BrowserEditor.createNew`/`configureMode`/`matches`; Tor arming in one helper; refusal disposes the editor; `browser-pages.ts` keeps page selection only.
+- [x] **Epic review.** `/review` replaced one non-null assertion; `/document` updated three architecture docs; `/userdoc` needed no changes. No English catalog messages changed.
+
 ## EPIC-158 — Refactoring Phase 6.1 part 1: browser module shape, shared rules and the `BrowserWebviewModel` split
 
 Completed 2026-11-13. Roadmap Phase 6.1 part 1 (BRW-12, BRW-11, BRW-1, BRW-2, BRW-7): `BrowserWebviewModel` now owns

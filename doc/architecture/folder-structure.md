@@ -504,10 +504,15 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── BrowserEditor.ts          # EditorModel subclass — registry entry point
 │   │   ├── browser-state.ts          # Browser state types, defaults, IDs, title, and partition helpers
 │   │   ├── search-engines.ts         # Search engine definitions and URL detection
-│   │   ├── BrowserTabsModel.ts       # Internal tabs and lazy materialization, URL/favicon caches, bookmarks resource
+│   │   ├── BrowserTabsModel.ts       # Internal tabs, lazy materialization, committed URLs, favicon caches
 │   │   ├── BrowserTorModel.ts         # Tor partition and daemon lifecycle
 │   │   ├── BrowserProfileNetworkModel.ts # Profile/Incognito proxy: apply before mount, follow settings edits, image route for app-drawn resources
-│   │   ├── BrowserView.ts             # Native browser UI and per-tab webview host
+│   │   ├── BrowserEditorView.ts      # Browser editor composition and stylesheet imports
+│   │   ├── BrowserToolbarView.ts     # Toolbar and translation controls
+│   │   ├── BrowserWebviewItemView.ts # Per-tab webview host and blank-page links
+│   │   ├── BrowserPromptBars.ts      # Popup, permission, and site-extension prompts
+│   │   ├── SitePermissionsPopover.ts # Site-permission popover content
+│   │   ├── PageZoomPopover.ts        # Page zoom popover content
 │   │   ├── BrowserWebviewModel.ts    # Private guest registry, readiness, navigation, event routing
 │   │   ├── BrowserSiteExtensionController.ts # Trust, injection, site actions, and fetch routing
 │   │   ├── BrowserSiteActionsView.ts  # Site action toolbar popover content
@@ -529,7 +534,11 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── UrlSuggestionsDropdown.ts  # URL autocomplete
 │   │   ├── TorStatusOverlay.ts        # Tor connection status
 │   │   ├── BrowserBookmarks.ts       # Bookmarks data management (wraps TextFileModel + LinkEditor)
-│   │   ├── BrowserBookmarksUIModel.ts # Bookmarks UI state
+│   │   ├── BrowserBookmarksModel.ts  # Bookmark resource lifecycle and UI state
+│   │   ├── browser-profile.ts        # Browser profile, color, and bookmark-file resolution
+│   │   ├── BrowserGuestChannel.ts   # Browser guest IPC and registration keys
+│   │   ├── BrowserSitePermissionsModel.ts # Site permissions and certificate actions
+│   │   ├── BrowserWebviewReadiness.ts # Per-tab dom-ready and waiter state
 │   │   ├── BrowserPanelHost.ts       # IPageHost impl for browser's bookmarks sidebar
 │   │   ├── BrowserSecondaryViews.ts   # Native secondary views for blank page and BookmarksDrawer
 │   │   ├── browser-search-history.ts # Search history
@@ -1025,8 +1034,11 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 │   ├── tools/              # Advertised tool definitions — call, the whole manifest
 │   └── ai-vision/          # Main-process AiVision roots, service descriptors, and gated main scripting
 ├── browser-service.ts      # Browser page support (webview management and tracked native message boxes)
-├── preload-webview.ts      # Browser guest preload; installs page translation agent alongside other guest hooks
+├── preload-webview.ts      # Browser guest preload entry point
 ├── preload-webview/
+│   └── chrome-shim.ts           # Guest window.chrome compatibility shim
+│   └── page-reporters.ts        # Guest title, favicon, input, find, and image messages
+│   └── webmcp-bridge.ts         # Guest WebMCP bridge
 │   └── page-translation-agent.ts # Guest-frame text discovery, mutation tracking, and reversible translated DOM updates
 ├── browser-registration.ts # Default browser registration
 ├── ipc-sender-guard.ts     # Shared authorization for every ipcMain registration; accepts only the app's live main frame
@@ -1117,6 +1129,7 @@ unguarded `ipcMain` listener or handler.
 ├── board-snapshot-channels.ts # Full board snapshot event, pull, and wire types
 ├── browser-network-ipc.ts  # BrowserNetwork type, proxy validation, browser-network channels
 ├── browser-translation-messages.ts # Typed host/guest translation messages and frame-scoped unit DTOs
+├── browser-guest-messages.ts # Typed guest-to-host browser messages
 ├── runner-channels.ts      # Streaming command-runner channels and wire types
 ├── module-service-channels.ts # Main/utility-process service protocol and lifecycle wire types
 ├── ...                     # Other standalone protocols and domain channels

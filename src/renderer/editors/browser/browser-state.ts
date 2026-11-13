@@ -30,13 +30,6 @@ export interface BrowserTabData {
 }
 
 export interface BrowserEditorState extends IEditorState {
-    /** Active internal tab's URL (kept in sync for toolbar display). */
-    url: string;
-    pageTitle: string;
-    loading: boolean;
-    canGoBack: boolean;
-    canGoForward: boolean;
-    favicon: string;
     /** All internal browser tabs. */
     tabs: BrowserTabData[];
     /** ID of the active internal tab. */
@@ -124,7 +117,7 @@ export function createTabGroupId(): string {
     return `bg-${nextGroupId++}`;
 }
 
-function createTab(url = DEFAULT_URL, groupId?: string): BrowserTabData {
+export function createBrowserTab(url = DEFAULT_URL, groupId?: string): BrowserTabData {
     return {
         id: createInternalTabId(),
         url,
@@ -143,17 +136,11 @@ function createTab(url = DEFAULT_URL, groupId?: string): BrowserTabData {
 }
 
 export const getDefaultBrowserPageState = (): BrowserEditorState => {
-    const tab = createTab();
+    const tab = createBrowserTab();
     return {
         ...getDefaultEditorModelState(),
         title: englishMessage("editors.browser"),
         editor: "browser-view",
-        url: DEFAULT_URL,
-        pageTitle: "",
-        loading: false,
-        canGoBack: false,
-        canGoForward: false,
-        favicon: "",
         tabs: [tab],
         activeTabId: tab.id,
         tabsPanelWidth: 34,

@@ -25,7 +25,7 @@ export class BrowserTargetModel implements IBrowserTarget {
     cdp(tabId?: string): CdpSession {
         const state = this.model.state.get();
         const targetTab = tabId || state.activeTabId;
-        return new CdpSession(`${this.model.id}/${targetTab}`);
+        return new CdpSession(this.model.guest.key(targetTab));
     }
 
     inputCdp(tabId?: string, sessionId?: string) {
@@ -85,8 +85,7 @@ export class BrowserTargetModel implements IBrowserTarget {
     }
 
     get activeTab(): ITargetTab | undefined {
-        const state = this.model.state.get();
-        const tab = state.tabs.find(t => t.id === state.activeTabId);
+        const tab = this.model.activeTab;
         if (!tab) return undefined;
         return {
             id: tab.id,

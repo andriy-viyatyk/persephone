@@ -1,16 +1,13 @@
 import { PAGE_ZOOM_DEFAULT, PAGE_ZOOM_STEP, clampPageZoom, isValidPageZoom } from "../../../shared/browser-zoom";
-const { ipcRenderer } = require("electron");
-import {
-    BrowserChannel,
-    BrowserEvent,
-    BrowserPermissionPromptData,
-} from "../../../ipc/browser-ipc";
+import type { BrowserEvent, BrowserPermissionPromptData, BrowserRegisterRequest } from "../../../ipc/browser-ipc";
+import { BrowserGuestMessageChannel, type GuestMessage } from "../../../ipc/browser-guest-messages";
 import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
 import { browserUrlChanged, type BrowserUrlEvent } from "../../core/state/events";
 import { DEFAULT_URL } from "./browser-state";
 import type { BrowserEditor } from "./BrowserEditor";
 import { showBrowserContextMenu } from "./webview-context-menu";
-import { showResources } from "./browser-page-menu";
+import { dismissOverlays } from "../../uikit/shared/overlayLayer";
+import { BrowserWebviewReadiness } from "./BrowserWebviewReadiness";
 
 /**
  * Manages webview references, IPC event handling, context menu, and guest operations.
@@ -19,32 +16,70 @@ export class BrowserWebviewModel {
     readonly model: BrowserEditor;
     /** Map from internal tab ID to webview element. */
     private readonly webviewRefs = new Map<string, Electron.WebviewTag>();
-    /** Set of internalTabIds whose webview has fired dom-ready. */
-    private readonly webviewReady = new Set<string>();
-    private readonly loadedWaiters = new Map<string, Set<() => void>>();
-
+    private readonly readiness = new BrowserWebviewReadiness();
+    private readonly detachGuest = new Map<string, () => void>();
+    private readonly registeredGuests = new Set<string>();
+    private readonly pendingLoads = new Map<string, string>();
     attach(tabId: string, webview: Electron.WebviewTag): void {
+        this.detachGuest.get(tabId)?.();
+        this.detachGuest.delete(tabId);
+        this.registeredGuests.delete(tabId);
+        this.pendingLoads.delete(tabId);
         this.webviewRefs.set(tabId, webview);
+        const onDomReady = (): void => {
+            if (this.get(tabId) !== webview) return;
+            const request: BrowserRegisterRequest = {
+                tabId: this.model.id,
+                internalTabId: tabId,
+                webContentsId: webview.getWebContentsId(),
+                zoomPercent: this.model.findTab(tabId)?.zoomPercent ?? PAGE_ZOOM_DEFAULT,
+            };
+            this.model.guest.register(request);
+            this.readiness.markLoaded(tabId);
+            this.registeredGuests.add(tabId);
+            const pendingUrl = this.pendingLoads.get(tabId);
+            if (pendingUrl !== undefined) {
+                this.pendingLoads.delete(tabId);
+                this.loadReady(webview, pendingUrl);
+            }
+            const tab = this.model.findTab(tabId);
+            if (tab?.muted || this.model.state.get().pageMuted) this.model.guest.setMuted(tabId, true);
+            this.model.pageRemote.onReady(tabId);
+            this.model.siteExtensions.onDocumentReady(tabId);
+        };
+        webview.addEventListener("dom-ready", onDomReady);
+        this.detachGuest.set(tabId, () => webview.removeEventListener("dom-ready", onDomReady));
     }
-
     /** Remove the exact guest owned by a view, then release its tab-scoped collaborators. */
     detach(tabId: string, webview: Electron.WebviewTag): boolean {
         if (this.get(tabId) !== webview) return false;
         this.webviewRefs.delete(tabId);
+        this.pendingLoads.delete(tabId);
+        this.detachGuest.get(tabId)?.();
+        this.detachGuest.delete(tabId);
+        if (this.registeredGuests.delete(tabId)) this.model.guest.unregister(tabId);
         this.model.siteExtensions.onTabReleased(tabId);
         this.model.translation.onTabReleased(tabId);
-        this.webviewReady.delete(tabId);
+        this.readiness.release(tabId);
         return true;
     }
-
     get(tabId: string): Electron.WebviewTag | undefined {
         return this.webviewRefs.get(tabId);
     }
-
     isReady(tabId: string): boolean {
-        return this.webviewReady.has(tabId);
+        return this.readiness.isReady(tabId);
     }
-
+    clearPendingLoad(tabId: string): void { this.pendingLoads.delete(tabId); }
+    load(tabId: string, url: string): void {
+        const webview = this.get(tabId);
+        if (!webview) return;
+        if (!this.isReady(tabId)) { this.pendingLoads.set(tabId, url); return; }
+        this.loadReady(webview, url);
+    }
+    private loadReady(webview: Electron.WebviewTag, url: string): void {
+        if (webview.getURL() !== url) void webview.loadURL(url).catch((): void => undefined);
+    }
+    isRegistered = (tabId: string): boolean => this.registeredGuests.has(tabId);
     isVisible(tabId: string): boolean {
         const webview = this.get(tabId);
         if (!webview?.isConnected || !webview.getClientRects().length || !webview.offsetWidth || !webview.offsetHeight) {
@@ -54,33 +89,17 @@ export class BrowserWebviewModel {
     }
 
     waitForLoaded(id: string): Promise<void> {
-        if (this.isReady(id)) return Promise.resolve();
-        return new Promise((resolve) => {
-            const waiters = this.loadedWaiters.get(id) ?? new Set<() => void>();
-            this.loadedWaiters.set(id, waiters);
-            const finish = (): void => {
-                clearTimeout(timer);
-                waiters.delete(finish);
-                if (!waiters.size) this.loadedWaiters.delete(id);
-                resolve();
-            };
-            const timer = setTimeout(finish, 5000);
-            waiters.add(finish);
-        });
+        return this.readiness.waitForLoaded(id);
     }
     clearLoadedWaiters(id: string): void {
-        for (const resolve of this.loadedWaiters.get(id) ?? []) resolve();
+        this.readiness.clearLoadedWaiters(id);
     }
     markLoaded(id: string): void {
-        this.webviewReady.add(id);
-        this.clearLoadedWaiters(id);
+        this.readiness.markLoaded(id);
     }
 
     /** When true, rate limiting is disabled (user clicked "Allow"). */
     popupsAllowed = false;
-
-    /** Tracks the previous active tab URL for navigation change detection. */
-    private prevActiveUrl = "";
 
     constructor(model: BrowserEditor) {
         this.model = model;
@@ -103,7 +122,7 @@ export class BrowserWebviewModel {
     reloadOrStop = () => {
         const wv = this.getActiveWebview();
         if (!wv) return;
-        if (this.model.state.get().loading) {
+        if (this.model.activeTab?.loading) {
             this.resetTranslationForReload();
             wv.stop();
         } else {
@@ -121,52 +140,26 @@ export class BrowserWebviewModel {
         if (!this.get(activeTabId)) return;
         this.resetTranslationForReload(activeTabId);
         this.model.siteExtensions.onNavigationStarted(activeTabId, true, false);
-        ipcRenderer.send(
-            BrowserChannel.hardReload,
-            `${this.model.id}/${activeTabId}`,
-        );
+        this.model.guest.hardReload(activeTabId);
     };
 
     openDevTools = () => {
         this.getActiveWebview()?.openDevTools();
     };
 
-    /**
-     * Navigate the active tab's webview when the tab URL changes.
-     * Called from the view's update path when activeTab.url changes.
-     */
-    navigateWebview = (activeTabId: string, url: string) => {
-        if (url !== this.prevActiveUrl) {
-            const webview = this.get(activeTabId);
-            if (webview && this.isReady(activeTabId)) {
-                const actualUrl = this.model.tabs.currentUrls.get(activeTabId) || "";
-                if (actualUrl !== url) {
-                    // A failed load (e.g. ERR_NAME_NOT_RESOLVED) is shown by the webview's own
-                    // error page and reported to automation by the navigation wait; the promise
-                    // rejection itself must not surface as an unhandled-rejection alert.
-                    webview.loadURL(url).catch((): void => undefined);
-                }
-            }
-        }
-        this.prevActiveUrl = url;
+    init = () => {
+        this.eventUnsubscribe = this.model.guest.onEvent(this.handleBrowserEvent);
     };
 
-    // =====================================================================
-    // IPC Event Handler
-    // =====================================================================
-
-    /** Set up the global IPC event listener during view mount. */
-    initIpcHandler = () => {
-        ipcRenderer.on(BrowserChannel.event, this.handleBrowserEvent);
-    };
-
-    /** Remove the global IPC event listener during view disposal. */
-    disposeIpcHandler = () => {
-        ipcRenderer.removeListener(BrowserChannel.event, this.handleBrowserEvent);
+    dispose = () => {
+        this.eventUnsubscribe?.();
+        this.eventUnsubscribe = undefined;
+        for (const [tabId, webview] of this.webviewRefs) this.detach(tabId, webview);
         this.model.pageRemote.clearViewLifecycle();
     };
 
-    /** Reload the active page even while it is loading. */
+    private eventUnsubscribe?: () => void;
+
     reload = () => {
         this.resetTranslationForReload();
         this.getActiveWebview()?.reload();
@@ -176,25 +169,17 @@ export class BrowserWebviewModel {
         this.model.translation.onReloadStart(internalTabId);
     }
 
-    resolvePermissionRequest = (requestId: string, decision: "allow" | "block") => {
-        void ipcRenderer.invoke(BrowserChannel.resolvePermissionRequest, { requestId, decision });
-    };
-
-    /** Apply shared state updates for full and in-page navigation events. */
     private applyNavigation = (
         internalTabId: string,
         data: { url?: string; canGoBack?: boolean; canGoForward?: boolean },
         inPage: boolean,
     ) => {
-        const previousUrl = this.model.tabs.currentUrls.get(internalTabId);
+        const previousUrl = this.model.findTab(internalTabId)?.url;
         const url = data.url || "";
-        this.model.tabs.currentUrls.set(internalTabId, url);
         if (internalTabId === this.model.state.get().activeTabId) {
-            this.model.urlBar.syncFromUrl(url);
             if (!inPage && this.model.find.state.get().findBarVisible) this.model.find.close();
         }
-        this.model.updateTab(internalTabId, {
-            url: data.url,
+        this.model.commitNavigation(internalTabId, url, {
             canGoBack: data.canGoBack,
             canGoForward: data.canGoForward,
             ...(!inPage ? { favicon: this.model.tabs.getCachedFavicon(url) } : {}),
@@ -207,7 +192,7 @@ export class BrowserWebviewModel {
             if (handled) this.restoreClaimedNavigation(internalTabId, previousUrl, data.canGoBack);
         }
         if (!handled) this.model.addNavHistory(internalTabId, url);
-        if (!inPage) this.model.bookmarksUI.shiftTrackedImages(internalTabId);
+        if (!inPage) this.model.bookmarks.shiftTrackedImages(internalTabId);
     };
 
     private restoreClaimedNavigation(
@@ -236,16 +221,46 @@ export class BrowserWebviewModel {
             return;
         }
         const safeUrl = previousUrl || DEFAULT_URL;
-        this.model.tabs.currentUrls.set(internalTabId, safeUrl);
-        this.model.updateTab(internalTabId, { url: safeUrl });
+        if (webview) this.load(internalTabId, safeUrl);
+        else this.model.setFutureUrl(internalTabId, safeUrl);
     }
 
     setTabZoom = (internalTabId: string, zoomPercent: number): void => {
         if (!isValidPageZoom(zoomPercent)) return;
         if (!this.model.state.get().tabs.some((tab) => tab.id === internalTabId)) return;
         this.model.updateTab(internalTabId, { zoomPercent });
-        void ipcRenderer.invoke(BrowserChannel.setZoom, { registrationKey: `${this.model.id}/${internalTabId}`, zoomPercent });
+        void this.model.guest.setZoom(internalTabId, zoomPercent);
     };
+
+    handleGuestMessage(tabId: string, msg: GuestMessage, frameId: [number, number]): void {
+        switch (msg.channel) {
+            case BrowserGuestMessageChannel.pageTitle:
+                this.model.updateTab(tabId, { pageTitle: msg.payload }); return;
+            case BrowserGuestMessageChannel.pageFavicon: {
+                const pageUrl = this.get(tabId)?.getURL() || this.model.findTab(tabId)?.url || "";
+                this.model.tabs.onFavicon(tabId, pageUrl, msg.payload);
+                return;
+            }
+            case BrowserGuestMessageChannel.pointerDown: {
+                const webview = this.get(tabId);
+                if (webview) dismissOverlays(webview);
+                return;
+            }
+            case BrowserGuestMessageChannel.showFindBar:
+                this.model.find.open(); return;
+            case BrowserGuestMessageChannel.hideFindBar:
+                if (this.model.find.state.get().findBarVisible) this.model.find.close(); return;
+            case BrowserGuestMessageChannel.clickedImages:
+                this.model.bookmarks.trackClickedImages(tabId, msg.payload); return;
+            case BrowserGuestMessageChannel.translationUnits:
+            case BrowserGuestMessageChannel.translationReady:
+                this.model.translation.handleFrame(tabId, frameId, msg.channel, msg.payload); return;
+            default: {
+                const exhaustive: never = msg;
+                return exhaustive;
+            }
+        }
+    }
 
     private handleBrowserEvent = async (
         _event: Electron.IpcRendererEvent,
@@ -257,7 +272,7 @@ export class BrowserWebviewModel {
 
         switch (type) {
             case "zoom-intent": {
-                const tab = this.model.state.get().tabs.find((item) => item.id === internalTabId);
+                const tab = this.model.findTab(internalTabId);
                 if (!tab || !data.zoomIntent) break;
                 const value = data.zoomIntent === "reset" ? PAGE_ZOOM_DEFAULT : clampPageZoom(tab.zoomPercent + (data.zoomIntent === "in" ? PAGE_ZOOM_STEP : -PAGE_ZOOM_STEP));
                 this.setTabZoom(internalTabId, value);
@@ -297,9 +312,7 @@ export class BrowserWebviewModel {
                 });
                 if (data.blocked) {
                     const webview = this.get(internalTabId);
-                    const tabData = this.model.state
-                        .get()
-                        .tabs.find((t) => t.id === internalTabId);
+                    const tabData = this.model.findTab(internalTabId);
                     if (webview && tabData && tabData.url !== data.url) {
                         webview.goBack();
                     }
@@ -312,7 +325,7 @@ export class BrowserWebviewModel {
                         this.model.state.update((s) => { s.blockedPopupCount++; });
                         break;
                     }
-                    const parentTab = this.model.state.get().tabs.find((t) => t.id === internalTabId);
+                    const parentTab = this.model.findTab(internalTabId);
                     const newInternalTabId = this.model.addTab(data.url, parentTab?.groupId);
                     const event: BrowserUrlEvent = { url: data.url };
                     browserUrlChanged.send(event);
@@ -335,42 +348,16 @@ export class BrowserWebviewModel {
                 }
                 break;
             }
-            case "show-find-bar":
-                this.model.find.open();
-                break;
-            case "hide-find-bar":
-                if (this.model.find.state.get().findBarVisible) {
-                    this.model.find.close();
-                }
-                break;
             case "ai-vision-signal":
                 this.model.pageRemote.onSignal(internalTabId, data);
                 break;
             case "context-menu": {
                 const webview = this.get(internalTabId);
                 if (!webview) break;
-                await this.handleContextMenu(webview, internalTabId, data);
+                await showBrowserContextMenu({ model: this.model, webview, internalTabId, data });
                 break;
             }
         }
-    };
-
-    // Context Menu
-    // =====================================================================
-
-    private handleContextMenu = async (
-        webview: Electron.WebviewTag,
-        internalTabId: string,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        data: any,
-    ) => {
-        await showBrowserContextMenu({
-            model: this.model,
-            webview,
-            internalTabId,
-            data,
-            showResources: (regKey, pageUrl, title) => showResources(this.model, regKey, pageUrl, title),
-        });
     };
 
 }

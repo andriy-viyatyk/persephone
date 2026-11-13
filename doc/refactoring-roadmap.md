@@ -505,16 +505,18 @@ Phase 6 items can run in parallel with Phases 4–5 once their own dependencies 
 
 **6.1 is split into three epics.** Part 1 is done ([EPIC-158](epics/EPIC-158.md), 2026-11-13): module shape (BRW-12),
 the shared small rules (BRW-11), `BrowserSiteExtensionController`, `BrowserPageRemote`, `BrowserFindModel`, the page
-menu, one shortcut table, a private webview registry (BRW-1, BRW-2) and one translation owner (BRW-7). Remaining:
+menu, one shortcut table, a private webview registry (BRW-1, BRW-2) and one translation owner (BRW-7). Part 2 is done
+([EPIC-159](epics/EPIC-159.md), 2026-11-13): `BrowserView.ts` split into one file per view, `BrowserSitePermissionsModel`,
+guest registration and favicon handling out of the view, one permission-labels table, named toolbar controls (BRW-5);
+the typed `GuestMessage` protocol, `BrowserGuestChannel`, dead title/favicon/find events removed, preload split (BRW-6);
+`BrowserBookmarksModel` + `resolveBrowserProfile` (BRW-9); tab state without mirrors and navigation as an explicit command
+(BRW-4 steps 1–3); `BrowserEditor.createNew` with disposal on refusal (BRW-10). Remaining:
 
-- **6.1 part 2 (renderer, next):** tab state without mirrors and navigation as an explicit command (BRW-4); split
-  `BrowserView.ts`, add `BrowserSitePermissionsModel`, move favicon handling and guest registration out of the view, one
-  permission-labels table, named toolbar controls (BRW-5; the site-action button and translation popover content already
-  have their own files); the typed `GuestMessage` protocol, `BrowserGuestChannel`, removal of the dead title/favicon/find
-  events and the preload split (BRW-6); `BrowserBookmarksModel` + `resolveBrowserProfile` with the Tor bookmark fix
-  (BRW-9); `BrowserEditor.createNew` with disposal on refusal (BRW-10).
-- **6.1 part 3 (main):** `BrowserGuest` + `BrowserGuestRegistry`, `HostFullscreenController`, `browser-dom-snapshot.ts`,
-  `CdpTarget` with feature modules and one `resolveTarget` (MAIN-7).
+- **6.1 part 3 (main, next):** `BrowserGuest` + `BrowserGuestRegistry`, `HostFullscreenController`,
+  `browser-dom-snapshot.ts`, `CdpTarget` with feature modules and one `resolveTarget` (MAIN-7).
+- **BRW-4 step 4 (deferred from EPIC-159):** URL-bar, find and prompt state in their own `TComponentState` slices owned by
+  `BrowserUrlBarModel`, `BrowserFindModel` and the prompt owners, with views binding only the slice they render. Small
+  enough to ride along with part 3 or 6.2.
 
 ### Phase 7: Lock it in
 

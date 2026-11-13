@@ -1,29 +1,19 @@
-import { bookmarkProfileSelection } from "./bookmark-profile";
 import { TOneState } from "../../core/state/state";
-const { ipcRenderer } = require("electron");
-import { BrowserChannel } from "../../../ipc/browser-ipc";
-import { createIconElement } from "../../uikit/shared/slots";
-import { settings } from "../../api/settings";
-import type { BrowserProfile } from "../../api/settings-schema";
-import { BrowserBookmarks } from "./BrowserBookmarks";
-import { t } from "../../../shared/i18n/t";
 import type { BrowserEditor } from "./BrowserEditor";
+import { isPrivateBrowserSession } from "./agent-access";
 import type {
-    BrowserEditorState,
     BrowserTabData,
 } from "./browser-state";
 import {
     DEFAULT_URL,
-    createInternalTabId,
+    createBrowserTab,
     createTabGroupId,
     browserPageTitle,
 } from "./browser-state";
-
-/** Owns internal browser tabs and tab-scoped navigation/bookmark resources. */
+/** Owns internal browser tabs and tab-scoped navigation state. */
 export class BrowserTabsModel {
     readonly materializationRevision = new TOneState(0);
     private readonly materialized = new Set<string>();
-
     isMaterialized = (id: string): boolean => this.materialized.has(id);
     materialize = (id: string): void => {
         if (this.materialized.has(id) || !this.model.state.get().tabs.some((tab) => tab.id === id)) return;
@@ -38,78 +28,11 @@ export class BrowserTabsModel {
         this.materialized.delete(id);
         this.model.webview.clearLoadedWaiters(id);
     };
-
-    readonly currentUrls = new Map<string, string>();
     private readonly faviconCache = new Map<string, string>();
     private activeTabHistory: string[] = [];
-    bookmarks: BrowserBookmarks | null = null;
-    private bookmarkPreloadTimer: ReturnType<typeof setTimeout> | undefined;
-    private bookmarkLifecycleGeneration = 0;
-    private disposed = false;
-
     constructor(readonly model: BrowserEditor) {
         this.materialized.add(model.state.get().activeTabId);
-        // Preload bookmarks silently after a short delay (don't block browser page opening).
-        const generation = this.bookmarkLifecycleGeneration;
-        this.bookmarkPreloadTimer = setTimeout(() => {
-            this.bookmarkPreloadTimer = undefined;
-            if (this.disposed || generation !== this.bookmarkLifecycleGeneration) return;
-            void this.preloadBookmarks(generation);
-        }, 300);
     }
-
-    getBookmarksFilePath = (): string => {
-        const selection = bookmarkProfileSelection(this.model.state.get(), settings.get("browser-default-profile"));
-        if (selection.kind === "setting") return settings.get(selection.key) || "";
-        const profiles = settings.get("browser-profiles");
-        return profiles.find((p: BrowserProfile) => p.name === selection.name)?.bookmarksFile || "";
-    };
-
-    preloadBookmarks = async (generation = this.bookmarkLifecycleGeneration): Promise<void> => {
-        if (this.disposed || generation !== this.bookmarkLifecycleGeneration) return;
-        const filePath = this.getBookmarksFilePath();
-        if (!filePath || this.bookmarks) return;
-        const bm = new BrowserBookmarks(filePath);
-        const ok = await bm.init({ silent: true });
-        if (this.disposed || generation !== this.bookmarkLifecycleGeneration) {
-            await bm.dispose();
-            return;
-        }
-        if (!ok) {
-            await bm.dispose();
-            return;
-        }
-        if (this.bookmarks) {
-            await bm.dispose();
-            return;
-        }
-        this.bookmarks = bm;
-        this.configureBookmarks(bm);
-        this.model.state.update((s) => { s.bookmarksReady = true; });
-    };
-
-    initBookmarks = async (filePath: string): Promise<BrowserBookmarks | null> => {
-        const generation = ++this.bookmarkLifecycleGeneration;
-        if (this.bookmarks) {
-            const current = this.bookmarks;
-            this.bookmarks = null;
-            await current.dispose();
-        }
-        const bm = new BrowserBookmarks(filePath);
-        const ok = await bm.init();
-        if (this.disposed || generation !== this.bookmarkLifecycleGeneration || !ok) {
-            await bm.dispose();
-            return null;
-        }
-        if (this.bookmarks) {
-            await bm.dispose();
-            return this.bookmarks;
-        }
-        this.bookmarks = bm;
-        this.configureBookmarks(bm);
-        return bm;
-    };
-
     cacheFavicon = (url: string, favicon: string) => {
         try {
             this.faviconCache.set(new URL(url).origin, favicon);
@@ -117,7 +40,6 @@ export class BrowserTabsModel {
             // Invalid URL
         }
     };
-
     getCachedFavicon = (url: string): string => {
         try {
             return this.faviconCache.get(new URL(url).origin) || "";
@@ -125,15 +47,24 @@ export class BrowserTabsModel {
             return "";
         }
     };
-
+    onFavicon = (tabId: string, pageUrl: string, faviconUrl: string): void => {
+        if (!faviconUrl) return;
+        const webview = this.model.webview.get(tabId);
+        if (!webview) return;
+        this.cacheFavicon(pageUrl, faviconUrl); this.model.updateTab(tabId, { favicon: faviconUrl });
+        if (isPrivateBrowserSession(this.model.state.get())) return;
+        const routedUrl = this.model.network.routedFetchUrl(faviconUrl);
+        if (routedUrl === null) return;
+        void import("../../components/icons/favicon-cache").then((cache) => {
+            if (this.model.webview.get(tabId) !== webview) return;
+            const hostname = cache.getHostname(pageUrl);
+            if (!hostname) return;
+            const links = this.model.bookmarks.bookmarks?.linkEditor.state.get().data.links;
+            if (cache.consumeFaviconSaveRequest(hostname) || links?.some((link) => cache.getHostname(link.href) === hostname)) cache.saveFavicon(hostname, faviconUrl, routedUrl);
+        });
+    };
     addTab = (url = DEFAULT_URL, parentGroupId?: string): string => {
-        const tab: BrowserTabData = {
-            id: createInternalTabId(), url, pageTitle: "", loading: false,
-            canGoBack: false, canGoForward: false, favicon: "", audible: false,
-            muted: false, homeUrl: url !== DEFAULT_URL ? url : "", navHistory: [],
-            groupId: parentGroupId || createTabGroupId(),
-            zoomPercent: 100,
-        };
+        const tab = createBrowserTab(url, parentGroupId);
         this.materialized.add(tab.id);
         this.model.state.update((s) => {
             if (parentGroupId) {
@@ -144,12 +75,12 @@ export class BrowserTabsModel {
             }
             this.activeTabHistory.push(s.activeTabId);
             s.activeTabId = tab.id;
-            this.syncTopLevelFromTab(s, tab);
         });
+        this.syncPageTitle();
+        this.model.urlBar.syncFromUrl(tab.url);
         this.materializationRevision.set(this.materializationRevision.get() + 1);
         return tab.id;
     };
-
     closeTab = (internalTabId: string) => {
         const state = this.model.state.get();
         if (!state.tabs.some((tab) => tab.id === internalTabId)) return;
@@ -163,33 +94,29 @@ export class BrowserTabsModel {
                 const fresh = this.createBlankTab();
                 s.tabs = [fresh];
                 s.activeTabId = fresh.id;
-                this.currentUrls.delete(internalTabId);
                 this.activeTabHistory = [];
-                this.syncTopLevelFromTab(s, fresh);
                 return;
             }
             s.tabs.splice(idx, 1);
-            this.currentUrls.delete(internalTabId);
             if (s.activeTabId === internalTabId) {
                 const tabIds = new Set(s.tabs.map((t) => t.id));
                 let newActive: BrowserTabData | undefined;
                 while (this.activeTabHistory.length > 0) {
                     const prevId = this.activeTabHistory.pop();
                     if (prevId && tabIds.has(prevId)) {
-                        newActive = s.tabs.find((t) => t.id === prevId);
+                        newActive = this.model.findTab(prevId);
                         break;
                     }
                 }
                 if (!newActive) newActive = s.tabs[Math.min(idx, s.tabs.length - 1)];
                 s.activeTabId = newActive.id;
-                this.syncTopLevelFromTab(s, newActive);
             }
         });
-
+        this.syncPageTitle();
+        this.model.urlBar.syncFromUrl(this.model.activeTab?.url || "");
         this.refreshAnyTabAudible();
         this.materialize(this.model.state.get().activeTabId);
     };
-
     /** A closed tab never reports `audible: false`, so recompute the page-tab sound indicator
      *  from the tabs that remain whenever tabs are removed. */
     private refreshAnyTabAudible = (): void => {
@@ -199,10 +126,9 @@ export class BrowserTabsModel {
             s._anyTabAudible = anyAudible;
         });
     };
-
     closeOtherTabs = (internalTabId: string) => {
         const state = this.model.state.get();
-        const tab = state.tabs.find((candidate) => candidate.id === internalTabId);
+        const tab = this.model.findTab(internalTabId);
         if (!tab) return;
         for (const candidate of state.tabs) {
             if (candidate.id !== internalTabId) {
@@ -211,17 +137,15 @@ export class BrowserTabsModel {
             }
         }
         this.model.state.update((s) => {
-            for (const t of s.tabs) if (t.id !== internalTabId) this.currentUrls.delete(t.id);
             s.tabs = [tab];
             s.activeTabId = tab.id;
             this.activeTabHistory = [];
-            this.syncTopLevelFromTab(s, tab);
         });
-
+        this.syncPageTitle();
+        this.model.urlBar.syncFromUrl(tab.url);
         this.refreshAnyTabAudible();
         this.materialize(internalTabId);
     };
-
     closeTabsBelow = (internalTabId: string) => {
         const state = this.model.state.get();
         const idx = state.tabs.findIndex((t) => t.id === internalTabId);
@@ -234,19 +158,17 @@ export class BrowserTabsModel {
         this.model.state.update((s) => {
             const removed = s.tabs.splice(idx + 1);
             const removedIds = new Set(removed.map((t) => t.id));
-            for (const t of removed) this.currentUrls.delete(t.id);
             this.activeTabHistory = this.activeTabHistory.filter((id) => !removedIds.has(id));
-            if (!s.tabs.find((t) => t.id === s.activeTabId)) {
+            if (!s.tabs.find((tab) => tab.id === s.activeTabId)) {
                 const tab = s.tabs[idx];
                 s.activeTabId = tab.id;
-                this.syncTopLevelFromTab(s, tab);
             }
         });
-
+        this.syncPageTitle();
+        this.model.urlBar.syncFromUrl(this.model.activeTab?.url || "");
         this.refreshAnyTabAudible();
         this.materialize(this.model.state.get().activeTabId);
     };
-
     moveTab = (fromId: string, toId: string) => {
         if (fromId === toId) return;
         this.model.state.update((s) => {
@@ -266,23 +188,24 @@ export class BrowserTabsModel {
         if (state.activeTabId === internalTabId || !state.tabs.some((tab) => tab.id === internalTabId)) return;
         this.materialize(internalTabId);
         this.model.pageRemote.invalidateBinding();
+        const tab = this.model.findTab(internalTabId);
+        if (!tab) return;
         this.model.state.update((s) => {
-            const tab = s.tabs.find((t) => t.id === internalTabId);
-            if (!tab) return;
             this.activeTabHistory.push(s.activeTabId);
             s.activeTabId = internalTabId;
-            this.syncTopLevelFromTab(s, tab);
             if (this.model.find.state.get().findBarVisible) this.model.find.reset();
         });
+        this.syncPageTitle();
+        this.model.urlBar.syncFromUrl(tab.url);
     };
 
     toggleMute = (internalTabId: string) => {
         const s = this.model.state.get();
-        const tab = s.tabs.find((t) => t.id === internalTabId);
+        const tab = this.model.findTab(internalTabId);
         if (!tab) return;
         const newMuted = !tab.muted;
         this.model.updateTab(internalTabId, { muted: newMuted });
-        ipcRenderer.send(BrowserChannel.setAudioMuted, `${this.model.id}/${internalTabId}`, newMuted || s.pageMuted);
+        this.model.guest.setMuted(internalTabId, newMuted || s.pageMuted);
     };
 
     toggleMuteAll = () => {
@@ -290,7 +213,7 @@ export class BrowserTabsModel {
         const newPageMuted = !s.pageMuted;
         this.model.state.update((st) => { st.pageMuted = newPageMuted; });
         for (const tab of s.tabs) {
-            ipcRenderer.send(BrowserChannel.setAudioMuted, `${this.model.id}/${tab.id}`, tab.muted || newPageMuted);
+            this.model.guest.setMuted(tab.id, tab.muted || newPageMuted);
         }
     };
 
@@ -300,52 +223,15 @@ export class BrowserTabsModel {
     };
 
     dispose = async () => {
-        this.disposed = true;
         for (const id of this.model.state.get().tabs.map((tab) => tab.id)) this.removeMaterialized(id);
         this.materialized.clear();
-        this.bookmarkLifecycleGeneration++;
-        if (this.bookmarkPreloadTimer !== undefined) {
-            clearTimeout(this.bookmarkPreloadTimer);
-            this.bookmarkPreloadTimer = undefined;
-        }
-        if (this.bookmarks) {
-            await this.bookmarks.dispose();
-            this.bookmarks = null;
-        }
     };
 
-    private createBlankTab = (): BrowserTabData => ({
-        id: createInternalTabId(), url: DEFAULT_URL, pageTitle: "", loading: false,
-        canGoBack: false, canGoForward: false, favicon: "", audible: false,
-        muted: false, homeUrl: "", navHistory: [], groupId: createTabGroupId(), zoomPercent: 100,
-    });
+    private createBlankTab = (): BrowserTabData => createBrowserTab();
 
-    private syncTopLevelFromTab = (s: BrowserEditorState, tab: BrowserTabData) => {
-        s.url = this.currentUrls.get(tab.id) || tab.url;
-        s.pageTitle = tab.pageTitle;
-        s.loading = tab.loading;
-        s.canGoBack = tab.canGoBack;
-        s.canGoForward = tab.canGoForward;
-        s.favicon = tab.favicon;
-        s.title = browserPageTitle(s, tab.pageTitle);
+    private syncPageTitle = (): void => {
+        const tab = this.model.activeTab;
+        this.model.state.update((state) => { state.title = browserPageTitle(state, tab?.pageTitle); });
     };
 
-    private configureBookmarks = (bm: BrowserBookmarks): void => {
-        bm.linkEditor.onLinkOpen = (data) => {
-            data.target = "browser";
-            data.browserPageId = this.model.page?.id;
-            const s = this.model.state.get();
-            const currentTab = s.tabs.find((t) => t.id === s.activeTabId);
-            if (!currentTab?.url || currentTab.url === DEFAULT_URL) data.browserTabMode = "navigate";
-        };
-        bm.linkEditor.onGetLinkMenuItems = (link) => link.href ? [{
-            id: "open-in-new-tab",
-            label: t("shell.openInNewTab"),
-            icon: createIconElement("open-link"),
-            onClick: () => this.addTab(link.href),
-        }] : [];
-        bm.linkEditor.imageProxySource = () => this.model.network.imageRoute;
-        bm.panelHost.setInitialWidth(this.model.state.get().bookmarksSidebarWidth);
-        bm.panelHost.onWidthChange = (w) => this.model.state.update((s) => { s.bookmarksSidebarWidth = w; });
-    };
 }

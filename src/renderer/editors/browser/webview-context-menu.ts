@@ -1,5 +1,4 @@
-const { ipcRenderer } = require("electron");
-import { BrowserChannel } from "../../../ipc/browser-ipc";
+import type { BrowserEventData } from "../../../ipc/browser-ipc";
 import { app } from "../../api/app";
 import { pages } from "../../api/pages";
 import { ui } from "../../api/ui";
@@ -9,6 +8,7 @@ import { toClipboard, withTimeout } from "../../core/utils/utils";
 import { guard } from "../../core/utils/guard";
 import { t, untranslated } from "../../../shared/i18n/t";
 import type { BrowserEditor } from "./BrowserEditor";
+import { showResources } from "./browser-page-menu";
 
 const SVG_PROBE_TIMEOUT = 250;
 const LINK_PROBE_TIMEOUT = 1000;
@@ -17,9 +17,7 @@ export interface BrowserContextMenuInput {
     model: BrowserEditor;
     webview: Electron.WebviewTag;
     internalTabId: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    data: any;
-    showResources: (regKey: string, pageUrl: string, title: string) => void;
+    data: BrowserEventData;
 }
 
 export async function showBrowserContextMenu({
@@ -27,7 +25,6 @@ export async function showBrowserContextMenu({
     webview,
     internalTabId,
     data,
-    showResources,
 }: BrowserContextMenuInput): Promise<void> {
         const menuX = data.x || 0;
         const menuY = data.y || 0;
@@ -89,7 +86,7 @@ export async function showBrowserContextMenu({
                 id: "open-link-in-new-tab",
                 label: t("browser.toolbarOpenLinkNewTab"),
                 onClick: () => {
-                    const parentTab = model.state.get().tabs.find((t) => t.id === internalTabId);
+                    const parentTab = model.findTab(internalTabId);
                     model.tabs.addTab(linkURL, parentTab?.groupId);
                 },
             });
@@ -102,7 +99,7 @@ export async function showBrowserContextMenu({
                 id: "add-to-bookmarks",
                 label: t("browser.toolbarAddToBookmarks"),
                 onClick: async () => {
-                    const bm = await model.bookmarksUI.ensureBookmarks();
+                    const bm = await model.bookmarks.ensureBookmarks();
                     if (!bm) return;
                     // Same busy-page hazard as the SVG probe above: the title/image are
                     // suggestions only, so open the dialog without them rather than wait.
@@ -124,7 +121,7 @@ export async function showBrowserContextMenu({
                         imgSrc: "",
                     });
                     const existingLink = bm.findByUrl(linkURL);
-                    await model.bookmarksUI.showBookmarkDialog({
+                    await model.bookmarks.showBookmarkDialog({
                         title: linkInfo.title,
                         href: linkURL,
                         discoveredImages: linkInfo.imgSrc ? [linkInfo.imgSrc] : [],
@@ -161,7 +158,7 @@ export async function showBrowserContextMenu({
                 id: "use-image-for-bookmark",
                 label: t("browser.toolbarUseImageForBookmark"),
                 onClick: () => {
-                    model.bookmarksUI.trackClickedImages(internalTabId, [srcURL]);
+                    model.bookmarks.trackClickedImages(internalTabId, [srcURL]);
                 },
             });
         }
@@ -216,8 +213,7 @@ export async function showBrowserContextMenu({
         }
 
         // Navigation items
-        const state = model.state.get();
-        const tab = state.tabs.find((t) => t.id === internalTabId);
+        const tab = model.findTab(internalTabId);
         items.push({
             id: "back",
             label: t("browser.back"),
@@ -257,15 +253,11 @@ export async function showBrowserContextMenu({
         });
 
         // View actual DOM (includes iframe content via main process)
-        const regKey = `${model.id}/${internalTabId}`;
         items.push({
             id: "view-actual-dom",
             label: t("browser.toolbarViewActualDom"),
             onClick: async () => {
-                const html = await ipcRenderer.invoke(
-                    BrowserChannel.collectDom,
-                    regKey,
-                );
+                const html = await model.guest.collectDom(internalTabId);
                 await app.capabilities.invoke("text.open", {
                     content: html,
                     language: "html",
@@ -278,7 +270,7 @@ export async function showBrowserContextMenu({
         items.push({
             id: "show-resources",
             label: t("browser.toolbarShowResources"),
-            onClick: () => showResources(regKey, pageUrl, tab?.pageTitle || pageUrl),
+            onClick: () => showResources(model, internalTabId, pageUrl, tab?.pageTitle || pageUrl),
         });
 
         // SVG item

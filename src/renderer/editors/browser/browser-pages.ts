@@ -1,14 +1,8 @@
-import { TComponentState } from "../../core/state/state";
-import { BrowserEditor } from "./BrowserEditor";
-import { browserPageTitle, getDefaultBrowserPageState } from "./browser-state";
+import { BrowserEditor, type BrowserNewOptions } from "./BrowserEditor";
 import type { PagesModel } from "../../api/pages/PagesModel";
 import type { PageModel } from "../../api/pages/PageModel";
 import { settings } from "../../api/settings";
 import { ui } from "../../api/ui";
-import { fs as appFs } from "../../api/fs";
-import { errMessage } from "../../../shared/utils";
-import { t } from "../../../shared/i18n/t";
-import { isPrivateBrowserSession } from "./agent-access";
 
 // ============================================================================
 // Browser page opening — the browser-specific halves of the pages lifecycle.
@@ -18,103 +12,20 @@ import { isPrivateBrowserSession } from "./agent-access";
 // through `await import(...)`, keeping the browser editor lazily loaded.
 // ============================================================================
 
-export interface ShowBrowserPageOptions {
-    profileName?: string;
-    incognito?: boolean;
-    tor?: boolean;
-    url?: string;
-    /** Set by MCP tools and MCP-run scripts; lets the agent read/drive its own private pages. */
-    openedByAgent?: boolean;
-}
+export type ShowBrowserPageOptions = BrowserNewOptions;
 
 export async function showBrowserPage(
     model: PagesModel,
     options?: ShowBrowserPageOptions,
 ): Promise<PageModel | undefined> {
-    if (options?.tor) {
-        const torPath = settings.get("tor.exe-path");
-        if (!torPath) {
-            ui.notify(
-                t("browser.browserTorNeedsExe"),
-                "error",
-            );
-            return;
-        }
-        if (!(await appFs.exists(torPath))) {
-            ui.notify(t("browser.browserTorExeNotFound", { path: torPath }), "error");
-            return;
-        }
-    }
-
-    const editor = new BrowserEditor(
-        new TComponentState(getDefaultBrowserPageState()),
-    );
-    if (options?.profileName || options?.incognito || options?.tor || options?.openedByAgent) {
-        editor.state.update((s) => {
-            if (options.profileName) s.profileName = options.profileName;
-            if (options.incognito) s.isIncognito = true;
-            if (options.tor) s.isTor = true;
-            if (options.openedByAgent) s.openedByAgent = true;
-            // The default state's title predates these flags; recompute so an agent-opened private
-            // page shows "Browser (agent)" from the first paint.
-            s.title = browserPageTitle(s, s.pageTitle);
-        });
-    }
-    // After the mode flags: Incognito and Tor pages remember their own engine.
-    editor.applyRememberedSearchEngine();
-    // Resolved after the profile and engine are set, so a search uses this page's engine and history.
-    const openUrl = options?.url ? editor.resolveAddressInput(options.url) : "";
-    if (openUrl) {
-        editor.state.update((s) => {
-            s.url = openUrl;
-            const tab = s.tabs?.[0];
-            if (tab) {
-                tab.url = openUrl;
-                tab.homeUrl = openUrl;
-            }
-        });
-    }
-    await editor.restore();
-
-    // Arm the Tor proxy BEFORE the page is added. `addPage` mounts the
-    // webview, which begins loading `options.url` immediately, whereas the
-    // daemon takes seconds to bootstrap — and an unproxied Electron
-    // session is DIRECT. Arming first makes that window fail closed
-    // instead of leaking the opening navigation onto the normal network.
-    if (options?.tor) {
-        try {
-            await editor.tor.armProxy();
-        } catch (err) {
-            // Refuse to open rather than open unproxied: a Tor page whose
-            // partition could not be armed would browse over the normal
-            // network, which is the exact failure this guards against.
-            ui.notify(
-                t("browser.browserTorSecureFailed", { error: errMessage(err) }),
-                "error",
-            );
-            await editor.dispose();
-            return;
-        }
-    }
-
-    // A proxied profile: `restore()` above already applied the route
-    // and records a failure instead of throwing, so a restore never drops a page.
-    // A NEW page is refused instead — it has no tabs worth keeping.
-    const networkError = editor.state.get().networkError;
-    if (networkError) {
-        ui.notify(t("browser.browserProxyOpenFailed", { error: networkError }), "error");
-        await editor.dispose();
+    const result = await BrowserEditor.createNew(options ?? {});
+    if ("refused" in result) {
+        ui.notify(result.refused, "error");
         return;
     }
-
+    const { editor } = result;
     const page = model.lifecycle.addPage(editor);
-
-    // Bootstrapping stays un-awaited: it can take tens of seconds, and the
-    // partition is already fail-closed, so the page may mount behind the
-    // Tor overlay while the daemon comes up.
-    if (options?.tor) {
-        void editor.tor.init();
-    }
+    if (options?.tor) void editor.tor.init();
     return page;
 }
 
@@ -134,27 +45,13 @@ export async function openUrlInBrowserTab(
 
     const matchesBrowser = (page: PageModel) => {
         const editor = page.mainEditor;
-        if (!(editor instanceof BrowserEditor)) return false;
-        // A board's Run page shows that board's built app; other links never land in it.
-        if (model.boardPageRouter.getRunPageOwner(page)) return false;
-        const pageState = editor.state.get();
+        if (!(editor instanceof BrowserEditor) || model.boardPageRouter.getRunPageOwner(page)) return false;
         if (options?.incognito) {
-            // An agent never adds its tab to the user's private page (it could not see it anyway);
-            // it reuses only an incognito page it opened itself, or gets a fresh one below.
-            return !!pageState.isIncognito && (!options.openedByAgent || pageState.openedByAgent);
+            return editor.matches({ incognito: true, openedByAgent: !!options.openedByAgent });
         }
-        if (options?.external) {
-            return !isPrivateBrowserSession(pageState);
-        }
-        const targetProfile =
-            options?.profileName !== undefined
-                ? options.profileName || ""
-                : undefined;
-        return (
-            !isPrivateBrowserSession(pageState) &&
-            (targetProfile === undefined ||
-                (pageState.profileName ?? "") === targetProfile)
-        );
+        return editor.matches(options?.external || options?.profileName === undefined
+            ? {}
+            : { profileName: options.profileName || "" });
     };
 
     const addTabToPage = (index: number): string | undefined => {

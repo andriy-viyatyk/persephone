@@ -90,7 +90,7 @@ export const getDefaultGitTreeEditorState = (): GitTreeEditorState => ({
  * auto-matched to a file (`accepts: () => -1`).
  *
  * Composes **focused submodels**, one per concern — the same pattern as
- * `BrowserEditor` (webview / urlBar / bookmarksUI / target). As Git
+ * `BrowserEditor` (webview / urlBar / bookmarks / target). As Git
  * functionality grows, each new concern becomes its own submodel
  * rather than bloating this class:
  *   - `gitTree`  — commit history (the editor body).
