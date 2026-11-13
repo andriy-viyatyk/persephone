@@ -1,6 +1,6 @@
 import type { WebContents } from "electron";
-import { EventEndpoint } from "../../ipc/api-types";
 import type { BoardNotifyMsg, BoardToMain } from "../../ipc/board-bridge/port-protocol";
+import { sendRendererEvent } from "../../ipc/main/renderer-event-sender";
 import { appCallTimeoutRangeMessage, isValidAppCallTimeout } from "../../shared/ai-vision-timeout";
 import { BoardRoot } from "../../shared/board/board-root";
 import { onWebContentsGone } from "../webcontents-lifetime";
@@ -112,7 +112,7 @@ export class BoardBridgeConnections {
     public reportBoardLoadFailure(hostWebContents: WebContents, root: string, detail: string): void {
         if (root) void boardLog.append(root, "error", detail).catch(() => {});
         try {
-            hostWebContents.send(EventEndpoint.eBoardNotify, {
+            sendRendererEvent(hostWebContents, "eBoardNotify", {
                 message: `Board failed to load: ${detail}`,
                 type: "error",
             } satisfies BoardNotifyMsg);

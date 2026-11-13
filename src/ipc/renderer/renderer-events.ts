@@ -1,196 +1,56 @@
-import { PageDescriptor } from "../../shared/types";
-import { DownloadEntry, PublishedBoardsCatalog, UpdateCheckResult } from "../api-param-types";
-import { EventApi, EventEndpoint, EventObject, McpStatus, MnemeStatus, type PathWatchEvent } from "../api-types";
-import type { ClipboardHistoryChanged, ClipboardStatus } from "../clipboard-ipc";
-import type { BoardServiceStatus } from "../module-service-channels";
-import type { BoardNotifyMsg } from "../board-bridge/port-protocol";
+import type { EventApi, EventObject } from "../api-types";
+import type { EventPayload } from "../event-types";
 
-class RendererEventObject<T> implements EventObject<T> {
-    private subscribers: Array<(data: T) => void> = [];
-    private eventName: EventEndpoint;
+class RendererEventObject<K extends keyof EventApi> implements EventObject<EventPayload<K>> {
+    private subscribers: Array<(data: EventPayload<K>) => void> = [];
 
-    constructor(eventName: EventEndpoint) {
-        this.eventName = eventName;
+    constructor(private readonly eventName: K) {
         this.listen();
     }
 
-    subscribe(callback: (data: T) => void) {
+    subscribe(callback: (data: EventPayload<K>) => void): () => void {
         this.subscribers.push(callback);
-
         return () => {
-            this.subscribers = this.subscribers.filter(
-                (cb) => cb !== callback
-            );
+            this.subscribers = this.subscribers.filter((subscriber) => subscriber !== callback);
         };
     }
 
-    send(data: T) {
-        if (!window.electron || !window.electron.ipcRenderer) {
-            return;
-        }
+    send(data: EventPayload<K>): void {
+        if (!window.electron?.ipcRenderer) return;
         window.electron.ipcRenderer.sendMessage(this.eventName, data);
     }
 
-    private listen() {
-        if (!window.electron || !window.electron.ipcRenderer) {
+    private listen(): void {
+        if (!window.electron?.ipcRenderer) {
             console.error("Event Listener: IPC Renderer is not available");
             return;
         }
-        window.electron.ipcRenderer.on(this.eventName, (data: T) => {
-            this.subscribers.forEach((cb) => {
+        window.electron.ipcRenderer.on(this.eventName, (data) => {
+            this.subscribers.forEach((subscriber) => {
                 try {
-                    cb(data);
-                } catch (e) {
-                    console.error("Event callback error:", e);
+                    subscriber(data as EventPayload<K>);
+                } catch (error) {
+                    console.error("Event callback error:", error);
                 }
             });
         });
     }
 }
 
-class RendererEvents implements EventApi {
-    [EventEndpoint.eVoiceTypingShortcut] = new RendererEventObject<{
-        sessionId: string;
-        action: "start" | "stop" | "cancel";
-        mode?: "transcribe" | "translate";
-        source: "app" | { kind: "guest"; webContentsId: number };
-    }>(EventEndpoint.eVoiceTypingShortcut);
+type RendererEvents = { [K in keyof EventApi]: EventApi[K] };
+const eventObjects = new Map<keyof EventApi, EventObject<unknown>>();
 
-    [EventEndpoint.eWindowMaximized] = new RendererEventObject<boolean>(
-        EventEndpoint.eWindowMaximized
-    );
-    [EventEndpoint.eBeforeQuit] = new RendererEventObject<void>(
-        EventEndpoint.eBeforeQuit
-    );
-    [EventEndpoint.eReloadForLanguage] = new RendererEventObject<void>(
-        EventEndpoint.eReloadForLanguage
-    );
-
-    [EventEndpoint.eOpenFile] = new RendererEventObject<string>(
-        EventEndpoint.eOpenFile
-    );
-
-    [EventEndpoint.eOpenDiff] = new RendererEventObject<{ firstPath: string; secondPath: string }>(
-        EventEndpoint.eOpenDiff
-    );
-
-    [EventEndpoint.eShowPage] = new RendererEventObject<string>(
-        EventEndpoint.eShowPage
-    );
-
-    [EventEndpoint.eMovePageIn] = new RendererEventObject<{ page: PageDescriptor; targetPageId: string | undefined }>(
-        EventEndpoint.eMovePageIn
-    );
-
-    [EventEndpoint.eMovePageOut] = new RendererEventObject<string>(
-        EventEndpoint.eMovePageOut
-    );
-
-    [EventEndpoint.eZoomChanged] = new RendererEventObject<number>(
-        EventEndpoint.eZoomChanged
-    );
-
-    [EventEndpoint.eUpdateAvailable] = new RendererEventObject<UpdateCheckResult>(
-        EventEndpoint.eUpdateAvailable
-    );
-
-    [EventEndpoint.eOpenUrl] = new RendererEventObject<{ url: string; boardRoot?: string; unattributedPopup?: boolean }>(
-        EventEndpoint.eOpenUrl
-    );
-
-    [EventEndpoint.eOpenPipelineCandidate] = new RendererEventObject<string>(
-        EventEndpoint.eOpenPipelineCandidate
-    );
-
-    [EventEndpoint.eOpenClaimedBrowserDownload] = new RendererEventObject<{
-        url: string;
-        boardRoot: string;
-        sessionHandle?: string;
-    }>(
-        EventEndpoint.eOpenClaimedBrowserDownload
-    );
-
-    [EventEndpoint.eOpenExternalUrl] = new RendererEventObject<string>(
-        EventEndpoint.eOpenExternalUrl
-    );
-
-    [EventEndpoint.eDownloadStarted] = new RendererEventObject<DownloadEntry>(
-        EventEndpoint.eDownloadStarted
-    );
-
-    [EventEndpoint.eDownloadProgress] = new RendererEventObject<{ id: string; receivedBytes: number; totalBytes: number }>(
-        EventEndpoint.eDownloadProgress
-    );
-    [EventEndpoint.eDownloadAwaitingPath] = new RendererEventObject<{ id: string; receivedBytes: number; totalBytes: number }>(
-        EventEndpoint.eDownloadAwaitingPath
-    );
-
-    [EventEndpoint.eDownloadCompleted] = new RendererEventObject<{ id: string; savePath: string }>(
-        EventEndpoint.eDownloadCompleted
-    );
-
-    [EventEndpoint.eDownloadFailed] = new RendererEventObject<{ id: string; error: string }>(
-        EventEndpoint.eDownloadFailed
-    );
-    [EventEndpoint.eDownloadRemoved] = new RendererEventObject<{ id: string }>(
-        EventEndpoint.eDownloadRemoved
-    );
-
-    [EventEndpoint.eDownloadCleared] = new RendererEventObject<DownloadEntry[]>(
-        EventEndpoint.eDownloadCleared
-    );
-
-    [EventEndpoint.eMcpStatusChanged] = new RendererEventObject<McpStatus>(
-        EventEndpoint.eMcpStatusChanged
-    );
-
-    [EventEndpoint.eMnemeStatusChanged] = new RendererEventObject<MnemeStatus>(
-        EventEndpoint.eMnemeStatusChanged
-    );
-    [EventEndpoint.eAudioCaptureCount] = new RendererEventObject<{ count: number; revision: number }>(
-        EventEndpoint.eAudioCaptureCount
-    );
-
-    [EventEndpoint.eClipboardHistoryChanged] = new RendererEventObject<ClipboardHistoryChanged>(
-        EventEndpoint.eClipboardHistoryChanged
-    );
-
-    [EventEndpoint.eClipboardStatusChanged] = new RendererEventObject<ClipboardStatus>(
-        EventEndpoint.eClipboardStatusChanged
-    );
-
-    [EventEndpoint.eBoardNotify] = new RendererEventObject<BoardNotifyMsg>(EventEndpoint.eBoardNotify);
-
-    [EventEndpoint.ePublishedBoardsUpdated] = new RendererEventObject<PublishedBoardsCatalog>(
-        EventEndpoint.ePublishedBoardsUpdated
-    );
-
-    [EventEndpoint.eBoardInstallProgress] = new RendererEventObject<{ installId: string; receivedBytes: number; totalBytes: number }>(
-        EventEndpoint.eBoardInstallProgress
-    );
-
-    [EventEndpoint.eModuleServiceStatusChanged] = new RendererEventObject<BoardServiceStatus>(
-        EventEndpoint.eModuleServiceStatusChanged,
-    );
-
-    [EventEndpoint.eBoardSnapshotChanged] = new RendererEventObject<import("../board-snapshot-channels").BoardSnapshot>(
-        EventEndpoint.eBoardSnapshotChanged,
-    );
-    [EventEndpoint.eCapabilityIndexSnapshot] = new RendererEventObject<ReturnType<typeof import("../../main/capability-registry").capabilityRegistry.snapshot>>(
-        EventEndpoint.eCapabilityIndexSnapshot,
-    );
-    [EventEndpoint.eCapabilityIndexChanged] = new RendererEventObject<number>(
-        EventEndpoint.eCapabilityIndexChanged,
-    );
-    [EventEndpoint.eSiteExtensionTrustChanged] = new RendererEventObject<import("../api-types").SiteExtensionTrustSnapshot>(
-        EventEndpoint.eSiteExtensionTrustChanged,
-    );
-
-    [EventEndpoint.ePathWatchBatch] = new RendererEventObject<PathWatchEvent>(
-        EventEndpoint.ePathWatchBatch,
-    );
-}
-
-const rendererEvents = new RendererEvents();
+const rendererEvents = new Proxy({} as RendererEvents, {
+    get(_target, key: string | symbol) {
+        if (typeof key === "symbol" || key === "then" || key === "toJSON" || key === "constructor") return undefined;
+        const eventKey = key as keyof EventApi;
+        let eventObject = eventObjects.get(eventKey);
+        if (!eventObject) {
+            eventObject = new RendererEventObject(eventKey) as EventObject<unknown>;
+            eventObjects.set(eventKey, eventObject);
+        }
+        return eventObject;
+    },
+});
 
 export default rendererEvents;

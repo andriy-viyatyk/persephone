@@ -1,7 +1,7 @@
 import { BrowserWindow } from "electron";
 import { openWindows } from "../../main/open-windows";
+import { RendererEvent } from "../api-types";
 import { guardedIpcOn } from "../../main/ipc-sender-guard";
-import { EventEndpoint, RendererEvent } from "../api-types";
 
 export const initRendererEvents = () => {
     guardedIpcOn(RendererEvent.fileDropped, (event, filePath: string) => {
@@ -9,7 +9,7 @@ export const initRendererEvents = () => {
         if (senderWindow) {
             const openWindow = openWindows.findByWindow(senderWindow);
             if (openWindow) {
-                openWindow.send(EventEndpoint.eOpenFile, filePath);
+                openWindow.send("eOpenFile", filePath);
             }
         }
     });

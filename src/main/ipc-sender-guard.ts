@@ -6,6 +6,13 @@ export const IPC_AUTHORIZATION_ERROR = "Unauthorized IPC sender";
 
 type IpcEvent = IpcMainEvent | IpcMainInvokeEvent;
 
+export type SenderPolicy = (event: IpcEvent) => boolean;
+
+export interface SenderPolicyOptions {
+    policy?: SenderPolicy;
+    deny?: "ignore" | (() => unknown);
+}
+
 const warnedChannelsBySender = new WeakMap<WebContents, Set<string>>();
 
 export function isAppRenderer(event: IpcEvent): boolean {
@@ -35,9 +42,14 @@ export function guardIpcSender(event: IpcEvent, channel: string): boolean {
 export function guardedIpcOn<Args extends unknown[]>(
     channel: string,
     listener: (event: IpcMainEvent, ...args: Args) => void,
+    options: SenderPolicyOptions = {},
 ): void {
     ipcMain.on(channel, (event, ...args) => {
         if (!guardIpcSender(event, channel)) return;
+        if (options.policy && !options.policy(event)) {
+            if (typeof options.deny === "function") throw options.deny();
+            return;
+        }
         listener(event, ...(args as Args));
     });
 }
@@ -45,9 +57,15 @@ export function guardedIpcOn<Args extends unknown[]>(
 export function guardedIpcHandle<Args extends unknown[], Result>(
     channel: string,
     listener: (event: IpcMainInvokeEvent, ...args: Args) => Result | Promise<Result>,
+    options: SenderPolicyOptions = {},
 ): void {
     ipcMain.handle(channel, (event, ...args) => {
         if (!guardIpcSender(event, channel)) throw new Error(IPC_AUTHORIZATION_ERROR);
+        if (options.policy && !options.policy(event)) {
+            if (typeof options.deny === "function") throw options.deny();
+            if (options.deny !== "ignore") throw new Error(IPC_AUTHORIZATION_ERROR);
+            return undefined;
+        }
         return listener(event, ...(args as Args));
     });
 }

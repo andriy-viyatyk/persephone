@@ -24,16 +24,17 @@ import {
     BrowserSitePermissions,
     BrowserEvent,
 } from "../ipc/browser-ipc";
-import { EventEndpoint } from "../ipc/api-types";
 import { t } from "../shared/i18n/t";
 import { globalPopupRateLimiter } from "../ipc/popup-rate-limiter";
-import { initNetworkLogger, setWebContentsResolver, clearNetworkLog } from "./network-logger";
-import { clearCdpTargetState, initCdpHandlers } from "./cdp-service";
+import type { EventApi } from "../ipc/api-types";
+import type { EventPayload } from "../ipc/event-types";
+import { sendRendererEvent } from "../ipc/main/renderer-event-sender";
+import { clearNetworkLog } from "./network-logger";
+import { clearCdpTargetState } from "./cdp-service";
 import { withNativeDialogSync } from "./native-dialog-tracker";
 import { hasRecentRendererRequest } from "./renderer-rpc";
 import { appPartition, fileAccessPersistPartition } from "./constants";
-import { clearProfilePermissionDecisions, getSitePermissionEntries, hasSavedProfilePermissionDecisions, listProfilePermissionDecisions, removeProfilePermissionDecision, resetSitePermissionDecisions, resolvePermissionRequest, setPermissionPromptHandler, setSitePermissionDecision, settlePermissionRequestsForWebContents } from "./permission-policy-service";
-import { guardedIpcHandle, guardedIpcOn } from "./ipc-sender-guard";
+import { clearProfilePermissionDecisions, getSitePermissionEntries, hasSavedProfilePermissionDecisions, listProfilePermissionDecisions, removeProfilePermissionDecision, resetSitePermissionDecisions, resolvePermissionRequest, setSitePermissionDecision, settlePermissionRequestsForWebContents } from "./permission-policy-service";
 import { randomUUID } from "node:crypto";
 import { errMessage } from "../shared/utils";
 
@@ -145,7 +146,7 @@ function parseFeature(features: string, name: string): number | undefined {
     return match ? parseInt(match[1], 10) : undefined;
 }
 
-interface RegisteredWebview {
+export interface RegisteredWebview {
     tabId: string;
     internalTabId: string;
     zoomPercent: number;
@@ -222,10 +223,26 @@ function sendEvent(
     }
 }
 
-function sendHostEvent(sender: WebContents, endpoint: EventEndpoint, data: string): void {
+export function getBrowserServiceRegistrations(): Iterable<[string, RegisteredWebview]> {
+    return registrations.entries();
+}
+
+export function getBrowserServiceRegistration(key: string): RegisteredWebview | undefined {
+    return registrations.get(key);
+}
+
+export function sendBrowserRegistrationEvent(
+    registration: RegisteredWebview,
+    type: BrowserEvent["type"],
+    data: BrowserEvent["data"],
+): void {
+    sendEvent(registration.senderWebContents, registration.tabId, registration.internalTabId, type, data);
+}
+
+function sendHostEvent<K extends keyof EventApi>(sender: WebContents, endpoint: K, data: EventPayload<K>): void {
     try {
         if (!sender.isDestroyed()) {
-            sender.send(endpoint, data);
+            sendRendererEvent(sender, endpoint, data);
         }
     } catch {
         // The host renderer may be destroyed before the webview is disposed.
@@ -690,7 +707,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
                 // Consume the activation: one user action hands over at most one URL.
                 const activated = !!reg && Date.now() - reg.lastUserActivation <= USER_ACTIVATION_WINDOW_MS;
                 if (reg) reg.lastUserActivation = 0;
-                if (activated) sendHostEvent(sender, EventEndpoint.eOpenPipelineCandidate, url);
+                if (activated) sendHostEvent(sender, "eOpenPipelineCandidate", url);
             }
         } catch {
             // Invalid URL
@@ -1070,9 +1087,9 @@ async function collectDom(key: string): Promise<string> {
 }
 
 /**
- * Initialize browser IPC handlers. Call once during app startup.
+ * Initialize browser observers and configure the service collaborators.
  */
-export function initBrowserHandlers(): void {
+export function initializeBrowserService(): void {
     app.on("web-contents-created", (_event, contents) => {
         if (contents.getType() === "webview") globalMuteService.register(contents, "webview");
         contents.on("will-attach-webview", (_event, webPreferences, params) => {
@@ -1106,52 +1123,51 @@ export function initBrowserHandlers(): void {
         cleanUserAgent(ses);
     });
 
-    setPermissionPromptHandler((contents, permissionRequest) => {
-        for (const registration of registrations.values()) {
-            if (registration.webContents !== contents || contents.isDestroyed()) continue;
-            sendEvent(registration.senderWebContents, registration.tabId, registration.internalTabId,
-                "permission-request", { permissionRequest });
-            return true;
-        }
-        return false;
-    });
+}
 
-    const ownedRegistration = (event: IpcMainInvokeEvent, key: unknown): RegisteredWebview | undefined => {
-        if (typeof key !== "string" || key.length > 240) return undefined;
-        const registration = registrations.get(key);
-        if (!registration || registration.senderWebContents !== event.sender
-            || registration.webContents.isDestroyed()) return undefined;
-        return registration;
-    };
-    const requireFullscreenRegistration = (event: IpcMainInvokeEvent, key: unknown): RegisteredWebview => {
-        const reg = ownedRegistration(event, key);
-        if (!reg) throw new Error("Browser tab is unregistered or unavailable");
-        return reg;
-    };
-    guardedIpcHandle(BrowserChannel.fullscreen, async (event, request: { key: string; selector?: string }) => {
+function ownedRegistration(event: IpcMainInvokeEvent, key: unknown): RegisteredWebview | undefined {
+    if (typeof key !== "string" || key.length > 240) return undefined;
+    const registration = registrations.get(key);
+    if (!registration || registration.senderWebContents !== event.sender || registration.webContents.isDestroyed()) return undefined;
+    return registration;
+}
+
+function requireFullscreenRegistration(event: IpcMainInvokeEvent, key: unknown): RegisteredWebview {
+    const registration = ownedRegistration(event, key);
+    if (!registration) throw new Error("Browser tab is unregistered or unavailable");
+    return registration;
+}
+
+function isBrowserPermissionSession(registration: RegisteredWebview): boolean {
+    return registration.webContents.session !== session.fromPartition(appPartition)
+        && registration.webContents.session !== session.fromPartition(fileAccessPersistPartition);
+}
+
+function validProfileName(name: unknown): name is string {
+    return typeof name === "string" && name.trim().length > 0 && name.length <= 80 && !/[\\/]/.test(name)
+        && !Array.from(name).some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127);
+}
+
+export const browserService = {
+    async enterFullscreen(event: IpcMainInvokeEvent, request: { key: string; selector?: string }) {
         if (!request || (request.selector !== undefined && typeof request.selector !== "string")) throw new Error("Invalid fullscreen request");
-        const reg = requireFullscreenRegistration(event, request.key);
-        return enterGuestFullscreen(request.key, reg, request.selector);
-    });
-    guardedIpcHandle(BrowserChannel.exitFullscreen, async (event, request: { key: string }) => {
-        const reg = requireFullscreenRegistration(event, request?.key);
-        if (!reg.htmlFullscreen) return { fullscreen: false };
+        return enterGuestFullscreen(request.key, requireFullscreenRegistration(event, request.key), request.selector);
+    },
+    async exitFullscreen(event: IpcMainInvokeEvent, request: { key: string }) {
+        const registration = requireFullscreenRegistration(event, request?.key);
+        if (!registration.htmlFullscreen) return { fullscreen: false };
         await exitHtmlFullscreen(request.key);
         return { fullscreen: false };
-    });
-    guardedIpcHandle(BrowserChannel.setZoom, (event, request: BrowserSetZoomRequest): boolean => {
+    },
+    setZoom(event: IpcMainInvokeEvent, request: BrowserSetZoomRequest): boolean {
         if (!request || !validZoomPercent(request.zoomPercent)) return false;
         const registration = ownedRegistration(event, request.registrationKey);
         if (!registration) return false;
         registration.zoomPercent = request.zoomPercent;
         applyGuestZoom(registration);
         return true;
-    });
-    const isBrowserPermissionSession = (registration: RegisteredWebview): boolean =>
-        registration.webContents.session !== session.fromPartition(appPartition)
-        && registration.webContents.session !== session.fromPartition(fileAccessPersistPartition);
-
-    guardedIpcHandle(BrowserChannel.getSitePermissions, (event, request: BrowserSitePermissionRegistrationRequest): BrowserSitePermissions => {
+    },
+    getSitePermissions(event: IpcMainInvokeEvent, request: BrowserSitePermissionRegistrationRequest): BrowserSitePermissions {
         const empty: BrowserSitePermissions = { origin: "", entries: [] };
         const registration = ownedRegistration(event, request?.registrationKey);
         if (!registration || !isBrowserPermissionSession(registration)) return empty;
@@ -1161,89 +1177,55 @@ export function initBrowserHandlers(): void {
             if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return empty;
             return { origin: parsed.origin, entries: getSitePermissionEntries(registration.webContents.session, origin) };
         } catch { return empty; }
-    });
-
-    guardedIpcHandle(BrowserChannel.setSitePermission, (event, request: SetBrowserSitePermissionRequest): boolean => {
+    },
+    setSitePermission(event: IpcMainInvokeEvent, request: SetBrowserSitePermissionRequest): boolean {
         if (!request || typeof request !== "object") return false;
         const registration = ownedRegistration(event, request.registrationKey);
         if (!registration || !isBrowserPermissionSession(registration) || typeof request.key !== "string"
             || (request.decision !== "allow" && request.decision !== "block")) return false;
         return setSitePermissionDecision(registration.webContents.session, registration.webContents.getURL(), request.key, request.decision);
-    });
-
-    guardedIpcHandle(BrowserChannel.resetSitePermissions, (event, request: BrowserSitePermissionRegistrationRequest): boolean => {
+    },
+    resetSitePermissions(event: IpcMainInvokeEvent, request: BrowserSitePermissionRegistrationRequest): boolean {
         const registration = ownedRegistration(event, request?.registrationKey);
         if (!registration || !isBrowserPermissionSession(registration)) return false;
         return resetSitePermissionDecisions(registration.webContents.session, registration.webContents.getURL());
-    });
-
-    guardedIpcHandle(BrowserChannel.resolvePermissionRequest, (event, request: { requestId: string; decision: "allow" | "block" }) => {
-        if (!request || typeof request.requestId !== "string"
-            || (request.decision !== "allow" && request.decision !== "block")) return false;
+    },
+    resolvePermissionRequest(_event: IpcMainInvokeEvent, request: { requestId: string; decision: "allow" | "block" }): boolean {
+        if (!request || typeof request.requestId !== "string" || (request.decision !== "allow" && request.decision !== "block")) return false;
         return resolvePermissionRequest(request.requestId, request.decision);
-    });
-
-    const validProfileName = (name: unknown): name is string => typeof name === "string"
-        && name.trim().length > 0 && name.length <= 80 && !/[\\/]/.test(name)
-        && !Array.from(name).some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127);
-    guardedIpcHandle(BrowserChannel.listPermissionDecisions, (_event, profileName: string) => {
+    },
+    listPermissionDecisions(profileName: string) {
         if (!validProfileName(profileName)) return [];
         if (profileName !== "default" && !hasSavedProfilePermissionDecisions(profileName)) return [];
         return listProfilePermissionDecisions(profileName);
-    });
-    guardedIpcHandle(BrowserChannel.removePermissionDecision, (_event, request: { profileName: string; origin: string; permission: string }) => {
-        if (!request || !validProfileName(request.profileName)
-            || typeof request.origin !== "string" || typeof request.permission !== "string") return false;
+    },
+    removePermissionDecision(request: { profileName: string; origin: string; permission: string }): boolean {
+        if (!request || !validProfileName(request.profileName) || typeof request.origin !== "string" || typeof request.permission !== "string") return false;
         if (!hasSavedProfilePermissionDecisions(request.profileName)) return false;
         removeProfilePermissionDecision(request.profileName, request.origin, request.permission);
         return true;
-    });
-    guardedIpcHandle(BrowserChannel.clearPermissionDecisions, (_event, profileName: string) => {
-        if (!validProfileName(profileName)) return false;
-        if (!hasSavedProfilePermissionDecisions(profileName)) return false;
+    },
+    clearPermissionDecisions(profileName: string): boolean {
+        if (!validProfileName(profileName) || !hasSavedProfilePermissionDecisions(profileName)) return false;
         clearProfilePermissionDecisions(profileName);
         return true;
-    });
-
-    guardedIpcOn(
-        BrowserChannel.register,
-        (event, request: BrowserRegisterRequest) => {
-            registerWebview(event, request);
-        },
-    );
-
-    guardedIpcOn(BrowserChannel.unregister, (_event, key: string) => {
-        unregisterWebview(key);
-    });
-
-    guardedIpcOn(BrowserChannel.setAudioMuted, (_event, key: string, muted: boolean) => {
-        const reg = registrations.get(key);
-        if (reg && !reg.webContents.isDestroyed()) {
-            globalMuteService.setLocalMuted(reg.webContents, muted);
+    },
+    registerWebview(event: Electron.IpcMainEvent, request: BrowserRegisterRequest): void { registerWebview(event, request); },
+    unregisterWebview(key: string): void { unregisterWebview(key); },
+    setAudioMuted(key: string, muted: boolean): void {
+        const registration = registrations.get(key);
+        if (registration && !registration.webContents.isDestroyed()) globalMuteService.setLocalMuted(registration.webContents, muted);
+    },
+    exitHtmlFullscreen(key: string): void { void exitHtmlFullscreen(key).catch((): void => undefined); },
+    allowPopups(): void { globalPopupRateLimiter.allow("popups"); },
+    hardReload(key: string): void {
+        const registration = registrations.get(key);
+        if (registration && !registration.webContents.isDestroyed()) {
+            registration.bypassUnloadGuard = true;
+            registration.webContents.reloadIgnoringCache();
         }
-    });
-
-    guardedIpcOn(BrowserChannel.exitHtmlFullscreen, (_event, key: string) => {
-        void exitHtmlFullscreen(key).catch((): void => undefined);
-    });
-
-    guardedIpcOn(BrowserChannel.allowPopups, () => {
-        globalPopupRateLimiter.allow("popups");
-    });
-
-        // Hard reload routed from the renderer (Ctrl+F5 or Ctrl+Shift+R while focus
-    // is on the browser UI rather than inside the page). Arm the bypass flag
-    // and reload here so the beforeunload guard is skipped without a prompt —
-    // mirrors the main-side before-input-event path.
-    guardedIpcOn(BrowserChannel.hardReload, (_event, key: string) => {
-        const reg = registrations.get(key);
-        if (reg && !reg.webContents.isDestroyed()) {
-            reg.bypassUnloadGuard = true;
-            reg.webContents.reloadIgnoringCache();
-        }
-    });
-
-    guardedIpcHandle(BrowserChannel.clearProfileData, async (_event, partition: string) => {
+    },
+    async clearProfileData(partition: string): Promise<void> {
         if (!isPersistentBrowserProfilePartition(partition)) {
             console.warn(`[IPC] Rejected invalid partition for ${BrowserChannel.clearProfileData}`);
             return;
@@ -1251,56 +1233,15 @@ export function initBrowserHandlers(): void {
         const ses = session.fromPartition(partition);
         await ses.clearStorageData();
         await ses.clearCache();
-    });
-
-    guardedIpcHandle(BrowserChannel.clearCache, async (_event, partition: string) => {
+    },
+    async clearCache(partition: string): Promise<void> {
         if (!isPersistentBrowserProfilePartition(partition)) {
             console.warn(`[IPC] Rejected invalid partition for ${BrowserChannel.clearCache}`);
             return;
         }
         const ses = session.fromPartition(partition);
-        await Promise.all([
-            ses.clearCache(),
-            ses.clearCodeCaches({}),
-            ses.clearStorageData({ storages: ["serviceworkers", "cachestorage"] }),
-        ]);
-    });
-
-    guardedIpcHandle(BrowserChannel.collectDom, async (_event, key: string) => {
-        return collectDom(key);
-    });
-
-    guardedIpcHandle(BrowserChannel.collectLoadedResources, async (_event, key: string) => {
-        return collectLoadedResources(key);
-    });
-
-    // CDP session management for browser automation
-    initCdpHandlers((key: string) => {
-        const reg = registrations.get(key);
-        return reg && !reg.webContents.isDestroyed() ? reg.webContents : undefined;
-    }, (webContents, payload, executionContextId, mainContext) => {
-        for (const [key, registration] of registrations) {
-            if (registration.webContents !== webContents) continue;
-            if (registration.webContents.isDestroyed()) return;
-            sendEvent(
-                registration.senderWebContents,
-                registration.tabId,
-                registration.internalTabId,
-                "ai-vision-signal",
-                { registrationKey: key, payload, executionContextId, mainContext },
-            );
-            return;
-        }
-    });
-
-    // Network request logging
-    initNetworkLogger();
-    setWebContentsResolver((wcId: number) => {
-        for (const [key, reg] of registrations) {
-            if (!reg.webContents.isDestroyed() && reg.webContents.id === wcId) {
-                return key;
-            }
-        }
-        return undefined;
-    });
-}
+        await Promise.all([ses.clearCache(), ses.clearCodeCaches({}), ses.clearStorageData({ storages: ["serviceworkers", "cachestorage"] })]);
+    },
+    collectDom(key: string) { return collectDom(key); },
+    collectLoadedResources(key: string) { return collectLoadedResources(key); },
+};

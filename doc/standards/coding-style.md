@@ -581,6 +581,24 @@ cannot be relied on to read an entry inside the packaged asar. Under `eval`, eve
 `require` must be a node builtin, so such a bundle must keep its npm dependencies inlined and
 must not import `electron`.
 
+### Main-process service lifecycles
+
+Main-process services with app-level startup or shutdown work are declared in the ordered table in
+`src/main/main-services.ts`. Keep Electron application event listeners and direct composition-root
+operations in `src/main/main-setup.ts`; run setup and ready rows at their existing phase boundaries.
+The table order owns startup order, and ordinary quit disposal follows the reverse table order.
+Use separate setup phases where a direct composition-root operation, such as certificate selection,
+must stay between table starts.
+Keep explicitly named pre-gate shutdown steps and the module-service quit gate outside ordinary
+reverse disposal.
+
+A `MainService` implements `start()`, `dispose()`, or both. A row without either method is not a
+service row. Give each row only the disposal it already owns; do not add quit cleanup for listeners,
+timers, windows, requests, or other state that has no current app-level disposal. Inject class
+collaborators through constructors. For module-function services, use one typed dependency object in
+the table row's start adapter and call the existing module functions. Keep module imports free of
+application listeners and other startup effects.
+
 ## Comments
 
 **No planning IDs in code:** comments say why, not which ticket; task history lives in git and `doc/tasks/completed.md`.

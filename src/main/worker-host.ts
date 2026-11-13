@@ -16,7 +16,6 @@
 import { IpcMainEvent } from "electron";
 import { Worker } from "worker_threads";
 import { WorkerChannel } from "../ipc/worker-channels";
-import { guardedIpcOn } from "./ipc-sender-guard";
 
 // Worker → Host message discriminator (see protocol comment above).
 type WorkerHostMessage =
@@ -135,16 +134,12 @@ parentPort.on("message", async (msg) => {
 /** Active workers keyed by request id. */
 const activeWorkers = new Map<string, Worker>();
 
-/**
- * Initialize worker host IPC handlers. Call once during app startup.
- */
-export function initWorkerHost(): void {
-    guardedIpcOn(WorkerChannel.start, (event: IpcMainEvent, msg: {
+export function start(event: IpcMainEvent, msg: {
         id: string;
         fnString: string;
         data: unknown;
         hasProxy: boolean;
-    }) => {
+}): void {
         const worker = new Worker(WORKER_CODE, { eval: true });
         activeWorkers.set(msg.id, worker);
 
@@ -210,15 +205,14 @@ export function initWorkerHost(): void {
             data: msg.data,
             hasProxy: msg.hasProxy,
         });
-    });
+}
 
-    // Renderer sends proxy call results back
-    guardedIpcOn(WorkerChannel.proxyResult, (_event: IpcMainEvent, msg: {
+export function acceptProxyResult(msg: {
         id: string;
         callId: number;
         value?: unknown;
         error?: string;
-    }) => {
+    }): void {
         const worker = activeWorkers.get(msg.id);
         if (worker) {
             worker.postMessage({
@@ -228,5 +222,4 @@ export function initWorkerHost(): void {
                 error: msg.error,
             });
         }
-    });
 }

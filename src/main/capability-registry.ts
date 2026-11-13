@@ -5,8 +5,9 @@ import { CAPABILITY_DEFAULT_TIMEOUT_MS } from "../shared/capability-limits";
 import { PLATFORM_BACKEND_CAPABILITIES, PLATFORM_CAPABILITIES, type CapabilityBackendKind } from "../shared/platform-capabilities";
 import { BoardRoot } from "../shared/board/board-root";
 import { boardRootDigest } from "./board-root-hashes";
-import { EventEndpoint } from "../ipc/api-types";
 import { openWindows } from "./open-windows";
+import { sendRendererEvent } from "../ipc/main/renderer-event-sender";
+import { BrowserWindow, type WebContents } from "electron";
 
 export interface CapabilityRegistration extends BoardCapabilityDeclaration {
     version: number;
@@ -54,7 +55,7 @@ class CapabilityRegistry {
         });
         this.revision++;
         for (const listener of this.listeners) listener();
-        openWindows.send(EventEndpoint.eCapabilityIndexChanged, this.revision);
+        openWindows.send("eCapabilityIndexChanged", this.revision);
     }
 
     snapshot() {
@@ -68,6 +69,12 @@ class CapabilityRegistry {
             })),
         ];
         return { revision: this.revision, registrations: [...platform, ...this.boards], legacyRegistrations };
+    }
+    rendererReady(webContents: WebContents): void {
+        const window = BrowserWindow.fromWebContents(webContents);
+        if (!window || !openWindows.findByWindow(window)) throw new Error("permission-denied");
+        openWindows.markRendererReady(window);
+        sendRendererEvent(webContents, "eCapabilityIndexSnapshot", this.snapshot());
     }
     onChange(listener: () => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
     board(provider: string) { return this.boardSnapshot.boards.find((entry) => boardRootDigest(BoardRoot.from(entry.boardRoot)) === provider); }

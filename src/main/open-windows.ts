@@ -1,12 +1,15 @@
-import { BrowserWindow } from "electron";
-import { EventEndpoint } from "../ipc/api-types";
+import { BrowserWindow, type WebContents } from "electron";
+import type { EventApi, WindowCloseResolution } from "../ipc/api-types";
+import type { EventPayload } from "../ipc/event-types";
 import { OpenWindow } from "./open-window";
 import { windowStates } from "./window-states";
 import { JsonFileStore } from "./json-file-store";
 import { PageDescriptor, WindowPages } from "../shared/types";
 import type { LaunchInput } from "../shared/launch-input";
-import type { WindowCloseResolution } from "../ipc/api-types";
 import { BoardRoot } from "../shared/board/board-root";
+import { parseLaunchInputs } from "./launch-inputs";
+import fs from "node:fs";
+import path from "node:path";
 
 interface OpenWindowData {
     window?: OpenWindow;
@@ -73,7 +76,7 @@ class OpenWindows {
         return record?.window?.window.webContents;
     }
 
-    send = (eventName: EventEndpoint, data: unknown) => {
+    send = <K extends keyof EventApi>(eventName: K, data: EventPayload<K>): void => {
         this.windows.forEach((win) => {
             win.window?.send(eventName, data);
         });
@@ -128,6 +131,50 @@ class OpenWindows {
         return win;
     };
 
+    openBoardWindowFromRequest = async (boardRoot: string): Promise<void> => {
+        if (typeof boardRoot !== "string" || !boardRoot.trim()) throw new Error("Invalid board root.");
+        const resolvedRoot = path.resolve(boardRoot);
+        const identity = BoardRoot.from(resolvedRoot);
+        if (!fs.existsSync(path.join(identity.path, "board-manifest.json"))) throw new Error(`Not a board folder: "${resolvedRoot}" is missing or has no board-manifest.json.`);
+        this.openBoardWindow(identity.path);
+    };
+
+    updateBoardIdentity = async (browserWindow: BrowserWindow | undefined, request: { displayName: string; iconDataUrl: string }): Promise<void> => {
+        const boardWindow = browserWindow && this.findByWindow(browserWindow);
+        if (!boardWindow?.boardRoot) throw new Error("Board identity updates are only available to registered board windows.");
+        await boardWindow.updateBoardIdentity(request?.displayName, request?.iconDataUrl);
+    };
+
+    handleSecondInstance = (commandLine: string[], workingDirectory: string): void => {
+        const inputs = parseLaunchInputs(commandLine, workingDirectory);
+        if (inputs.length === 0 || inputs.some((input) => input.kind !== "board")) this.bringToFront(); inputs.forEach((input) => this.handleLaunchInput(input));
+    };
+
+    windowAction = (window: BrowserWindow | null, action: "maximize" | "minimize" | "restore" | "close"): void => {
+        window?.[action]();
+    };
+
+    getWindowIndex = (window: BrowserWindow | null): number => this.findByWindow(window)?.index ?? -1;
+
+    openNewWindow = async (filePath?: string): Promise<number> => {
+        return filePath ? (await this.openPathInNewWindow(filePath)) ?? -1 : this.createWindow().index;
+    };
+
+    setVoiceTypingConfig = (webContents: WebContents, request: { shortcut: string; translateShortcut: string }): void => {
+        if (!request || typeof request.shortcut !== "string" || !request.shortcut || typeof request.translateShortcut !== "string" || !request.translateShortcut) throw new TypeError("Normalized voice typing shortcuts are required.");
+        const window = BrowserWindow.fromWebContents(webContents);
+        const openWindow = window && this.findByWindow(window);
+        if (!openWindow) throw new Error("permission-denied");
+        openWindow.setVoiceTypingShortcuts(request.shortcut, request.translateShortcut);
+    };
+
+    setVoiceTypingState = (webContents: WebContents, request: { state: "idle" | "recording" | "transcribing" }): void => {
+        if (!request || !["idle", "recording", "transcribing"].includes(request.state)) throw new TypeError("Invalid voice typing state.");
+        const window = BrowserWindow.fromWebContents(webContents);
+        const openWindow = window && this.findByWindow(window);
+        if (!openWindow) throw new Error("permission-denied");
+        openWindow.setVoiceTypingState(request.state);
+    };
     windowOnClose = (window: OpenWindow) => {
         const record = this.findWindowDataByOpenWindow(window);
         if (record) record.rendererReady = false;
@@ -224,19 +271,19 @@ class OpenWindows {
 
     handleOpenFile = (filePath: string) => {
         const mainWin = this.ensureNormalWindow();
-        mainWin.send(EventEndpoint.eOpenFile, filePath);
+        mainWin.send("eOpenFile", filePath);
         mainWin.focus();
     };
 
     handleOpenDiff = (firstPath: string, secondPath: string) => {
         const mainWin = this.ensureNormalWindow();
-        mainWin.send(EventEndpoint.eOpenDiff, { firstPath, secondPath });
+        mainWin.send("eOpenDiff", { firstPath, secondPath });
         mainWin.focus();
     }
 
     handleOpenUrl = (url: string) => {
         const mainWin = this.ensureNormalWindow();
-        mainWin.send(EventEndpoint.eOpenExternalUrl, url);
+        mainWin.send("eOpenExternalUrl", url);
         mainWin.focus();
     }
 
@@ -313,7 +360,7 @@ class OpenWindows {
 
         if (openWindowData.whenReady) {
             await openWindowData.whenReady;
-            openWindowData.window?.send(EventEndpoint.eShowPage, pageId);
+            openWindowData.window?.send("eShowPage", pageId);
         }
     };
 
@@ -327,7 +374,7 @@ class OpenWindows {
         const sourceWindow = this.findWindowDataByIndex(sourceWindowIndex);
         if (!sourceWindow) { return;}
 
-        sourceWindow.window?.send(EventEndpoint.eMovePageOut, page.id);
+        sourceWindow.window?.send("eMovePageOut", page.id);
 
         let targetWindow = targetWindowIndex === undefined ? undefined : this.findWindowDataByIndex(targetWindowIndex);
 
@@ -339,7 +386,7 @@ class OpenWindows {
 
         if (targetWindow.whenReady) {
             await targetWindow.whenReady;
-            targetWindow.window?.send(EventEndpoint.eMovePageIn, { page, targetPageId });
+            targetWindow.window?.send("eMovePageIn", { page, targetPageId });
         }
     }
 
@@ -348,7 +395,7 @@ class OpenWindows {
 
         const newWindow = this.createWindow();
         await newWindow.whenReady;
-        newWindow.window?.send(EventEndpoint.eOpenFile, filePath);
+        newWindow.window?.send("eOpenFile", filePath);
         newWindow.window?.focus();
         return newWindow.index;
     }

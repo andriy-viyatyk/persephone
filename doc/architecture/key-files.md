@@ -95,7 +95,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Node.js HTTP proxy tunnels (SOCKS5 and HTTP CONNECT parsing, handshakes, and pooled agents) | `/src/renderer/api/proxy-tunnel.ts` |
 | Path utilities           | `/src/renderer/core/utils/file-path.ts`           |
 | Element-wise identity comparison for freshly allocated model arrays (`sameItems`) | `/src/renderer/core/utils/utils.ts` |
-| Renderer clipboard helpers (text and PNG via main-process IPC) | `/src/renderer/core/utils/utils.ts`, `/src/renderer/editors/shared/image-export.ts`, `/src/ipc/main/core-handlers.ts` |
+| Renderer clipboard helpers (text and PNG via main-process IPC) | `/src/renderer/core/utils/utils.ts`, `/src/renderer/editors/shared/image-export.ts`, `/src/ipc/main/clipboard-handlers.ts`, `/src/ipc/main/media-handlers.ts` |
 | State primitives         | `/src/renderer/core/state/`                        |
 | Vanilla view lifecycle and ownership (`VanillaView`, `IOwnedView`, guarded `bind`/`listen` with early-release handles, owner-bound scheduling, `ownSubscription`, FIFO cleanup, and single-owner claims) | `/src/renderer/uikit/shared/vanilla-view.ts` |
 | Keyed DOM reconciliation (duplicate-safe keyed records, cursor-based minimal moves, reusable `clear`, and inert `dispose`) | `/src/renderer/uikit/shared/keyed-list.ts` |
@@ -416,6 +416,12 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Windows browser registration | `/src/main/browser-registration.ts`           |
 | MCP HTTP transport (sessions, HTTP, lifecycle) | `/src/main/mcp-http-server.ts`  |
 | Shared main-process IPC sender authorization (`guardedIpcOn` / `guardedIpcHandle`; validates app partition, live main frame, and owning BrowserWindow) | `/src/main/ipc-sender-guard.ts` |
+| Domain IPC contracts (request signatures and event payload maps, composed as `Api` / `EventApi`) | `/src/ipc/contracts/`, `/src/ipc/api-types.ts`, `/src/ipc/event-types.ts` |
+| Renderer IPC client (contract-keyed requests, shared pending-request handling, default timeout, and convenience port adapters) | `/src/ipc/renderer/api.ts` |
+| Main IPC endpoint binder (guarded endpoint reply/error path and domain contract binding) | `/src/ipc/main/endpoint-registry.ts` |
+| Main IPC registrar composition (per-domain handlers and renderer event listeners) | `/src/ipc/main/controller.ts`, `/src/ipc/main/*-handlers.ts`, `/src/ipc/main/renderer-events.ts` |
+| Ordered main-process service startup and reverse disposal table | `/src/main/main-services.ts` |
+| Main-process lifecycle composition root (setup/ready boundaries, Electron listeners, and module-service quit gate) | `/src/main/main-setup.ts` |
 | Isolated HTML preview origin (per-preview content and storage lifecycle; live root HTML plus folder-confined sibling resources under a preview CSP) | `/src/main/html-preview-protocol.ts` |
 | MCP server definition — instructions, guides, tools | `/src/main/mcp/`             |
 | Main-process AiVision roots and service descriptors, including read-only path-watch diagnostics and the settings-gated main script node | `/src/main/mcp/ai-vision/` |
@@ -497,7 +503,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Git service (main)       | `/src/main/git-service.ts`                        |
 | Git IPC types            | `/src/ipc/git-ipc.ts`                             |
 | Clipboard IPC types and renderer event payloads (`ClipboardHistoryItem.dropEffect` for file lists) | `/src/ipc/clipboard-ipc.ts` |
-| Browser URL-claim snapshot IPC (renderer-to-main generation-numbered claims and endpoint validation) | `/src/ipc/api-param-types.ts`, `/src/ipc/api-types.ts`, `/src/ipc/renderer/api.ts`, `/src/ipc/main/board-handlers.ts` |
+| Browser URL-claim snapshot IPC (renderer-to-main generation-numbered claims and endpoint validation) | `/src/ipc/contracts/boards.ts`, `/src/ipc/renderer/api.ts`, `/src/ipc/main/board-handlers.ts` |
 | Git renderer API         | `/src/renderer/api/git.ts`                        |
 | Native Git Tree view | `/src/renderer/components/git-tree/GitTreeView.ts` |
 | Git Tree layout preferences (full-mode column order/widths and bottom-panel height) | `/src/renderer/editors/git-tree/git-tree-preferences.ts` |

@@ -5,7 +5,6 @@ import { guard } from "../../core/utils/guard";
 import { createLinkData } from "../../../shared/link-data";
 import type { IRuntimeVersions, IUpdateInfo } from "../../api/types/shell";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
-import { EventEndpoint } from "../../../ipc/api-types";
 import type { UpdateCheckResult } from "../../../ipc/api-param-types";
 import type { EditorModel } from "../base/EditorModel";
 import { AboutEditor } from "./AboutEditor";
@@ -87,7 +86,7 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
         this.alive = true;
         this.mountContent();
 
-        const updateSubscription = rendererEvents[EventEndpoint.eUpdateAvailable].subscribe(
+        const updateSubscription = rendererEvents["eUpdateAvailable"].subscribe(
             (result: UpdateCheckResult) => {
                 if (!this.alive) return;
                 this.updateResult = mapUpdateResult(result);

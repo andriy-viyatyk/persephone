@@ -1,7 +1,6 @@
 import { app, net } from "electron";
 import { electronStore } from "./e-store";
 import { openWindows } from "./open-windows";
-import { EventEndpoint } from "../ipc/api-types";
 import { ReleaseInfo, RuntimeVersions, UpdateCheckResult } from "../ipc/api-param-types";
 import { compareVersions } from "../shared/version-utils";
 
@@ -50,7 +49,7 @@ async function fetchLatestRelease(): Promise<ReleaseInfo | null> {
 }
 
 function broadcastUpdateAvailable(result: UpdateCheckResult): void {
-    openWindows.send(EventEndpoint.eUpdateAvailable, result);
+    openWindows.send("eUpdateAvailable", result);
 }
 
 export async function checkForUpdates(force = false): Promise<UpdateCheckResult> {

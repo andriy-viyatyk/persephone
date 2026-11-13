@@ -35,7 +35,6 @@ import { fpBasename, fpJoin } from "../../core/utils/file-path";
 import { BoardRoot } from "../../../shared/board/board-root";
 import { api } from "../../../ipc/renderer/api";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
-import { EventEndpoint } from "../../../ipc/api-types";
 import type { BoardServiceStatus } from "../../../ipc/module-service-channels";
 import type { BoardServiceProvider } from "../../../ipc/board-bridge/port-protocol";
 import type { PublishedBoardInfo, PublishedBoardVersion } from "../../../ipc/api-param-types";
@@ -640,7 +639,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         this._activeDownloads.set(entry.id, installId);
         this.setInstallUi(entry.id, { phase: "downloading", received: 0, total: entry.archive.size });
 
-        const sub = rendererEvents[EventEndpoint.eBoardInstallProgress].subscribe((p) => {
+        const sub = rendererEvents["eBoardInstallProgress"].subscribe((p) => {
             if (p.installId !== installId) return;
             this.setInstallUi(entry.id, {
                 phase: "downloading",

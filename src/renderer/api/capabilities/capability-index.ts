@@ -1,5 +1,4 @@
 import { api } from "../../../ipc/renderer/api";
-import { EventEndpoint } from "../../../ipc/api-types";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 import { MainSnapshotMirror } from "../../core/state/MainSnapshotMirror";
 
@@ -12,8 +11,8 @@ export class CapabilityIndexMirror extends MainSnapshotMirror<CapabilityIndex | 
     protected override revisionOf(index: CapabilityIndex | null): number { return index?.revision ?? -1; }
 
     protected subscribeToMain(): void {
-        this.attach(rendererEvents[EventEndpoint.eCapabilityIndexSnapshot], (index) => this.apply(index));
-        this.attach(rendererEvents[EventEndpoint.eCapabilityIndexChanged], (revision) => this.noteRevision(revision));
+        this.attach(rendererEvents["eCapabilityIndexSnapshot"], (index) => this.apply(index));
+        this.attach(rendererEvents["eCapabilityIndexChanged"], (revision) => this.noteRevision(revision));
     }
 
     registrations(): CapabilityIndex["legacyRegistrations"] {

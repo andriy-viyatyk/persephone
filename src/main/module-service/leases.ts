@@ -1,5 +1,4 @@
 import { MessageChannelMain, type MessagePortMain, type WebContents } from "electron";
-import { EventEndpoint } from "../../ipc/api-types";
 import {
     LEASE_LOST_CODE,
     SERVICE_RENDERER_LEASE_TIMEOUT_MS,
@@ -60,7 +59,7 @@ export async function transferRendererLease(
         );
         if (target.isDestroyed()) throw new ServiceError("renderer-port-attach-failed");
         target.postMessage(
-            EventEndpoint.eModuleServicePort,
+            "eModuleServicePort",
             { boardRoot: record.boardRoot, generation, leaseNonce },
             [port1],
         );

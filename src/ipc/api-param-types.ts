@@ -5,6 +5,24 @@ export interface FileFilter {
     extensions: string[];
 }
 
+export type WindowDisplayTarget = number | "primary" | "other" | "largest" | "smallest";
+export interface IWindowDisplay {
+    index: number;
+    id: number;
+    bounds: Electron.Rectangle;
+    workArea: Electron.Rectangle;
+    scaleFactor: number;
+    primary: boolean;
+    current: boolean;
+    label?: string;
+}
+export interface IWindowMoveResult {
+    display: number;
+    bounds: Electron.Rectangle;
+    maximized: boolean;
+    fullscreen: boolean;
+}
+
 /**
  * `defaultPath` vs `location` — both say where a dialog should open, with different strength.
  * A `defaultPath` carrying a directory is an explicit choice and beats the remembered folder;

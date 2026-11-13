@@ -1,8 +1,4 @@
-import { ENDPOINT_REPLY_CHANNEL, Endpoint, EventEndpoint, RendererEvent } from "../../ipc/api-types";
-import type { BoardPipeChannel } from "../../ipc/board-pipe-channels";
-import type { BoardServiceSettingsChannel } from "../../ipc/board-service-settings-channels";
-
-type BoardServiceSettingsChannelName = typeof BoardServiceSettingsChannel[keyof typeof BoardServiceSettingsChannel];
+import type { PreloadListenerChannel, PreloadOnceChannel, PreloadPortChannel, PreloadSendChannel } from "../../ipc/preload-channels";
 
 declare global {
     /** Active script context set by ScriptContext.customRequire() during require() calls.
@@ -13,21 +9,21 @@ declare global {
         electron: {
             ipcRenderer: {
                 sendMessage(
-                    channel: Endpoint | EventEndpoint | BoardPipeChannel | BoardServiceSettingsChannelName | RendererEvent,
+                    channel: PreloadSendChannel,
                     ...args: unknown[]
                 ): void;
                 on(
-                    channel: Endpoint | typeof ENDPOINT_REPLY_CHANNEL | EventEndpoint | BoardPipeChannel,
+                    channel: PreloadListenerChannel,
                     func: (...args: unknown[]) => void
                 ): () => void;
                 once(
-                    channel: Endpoint | BoardPipeChannel,
+                    channel: PreloadOnceChannel,
                     func: (...args: unknown[]) => void
                 ): void;
                 /** Ports-aware listener — surfaces a transferred
                  *  MessagePort (on `event.ports`) that `on`/`once` drop. */
                 onPort(
-                    channel: EventEndpoint,
+                    channel: PreloadPortChannel,
                     func: (payload: unknown, ports: readonly MessagePort[]) => void
                 ): () => void;
             };

@@ -32,6 +32,10 @@ let endpointUrl: string | undefined;
 let statusChanged: (() => void) | undefined;
 let shuttingDown = false;
 
+export interface PrivateMcpEndpointStartDependencies {
+    statusChanged: () => void;
+}
+
 function broadcast(): void { statusChanged?.(); }
 
 function authorizedToken(req: http.IncomingMessage): string | undefined {
@@ -196,7 +200,9 @@ async function ensureServer(): Promise<string> {
     return startPromise;
 }
 
-export function setPrivateMcpStatusChanged(callback: () => void): void { statusChanged = callback; }
+export function initializePrivateMcpEndpoints(dependencies: PrivateMcpEndpointStartDependencies): void {
+    statusChanged = dependencies.statusChanged;
+}
 
 export async function issuePrivateMcpEndpoint(boardRoot: string): Promise<{ url: string; headers: { Authorization: string }; token: string }> {
     if (shuttingDown) throw codedError("service-exited", "Private MCP endpoint is shutting down");

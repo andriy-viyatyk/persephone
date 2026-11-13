@@ -1,8 +1,6 @@
-import { app, type WebContents } from "electron";
-import { BoardServiceSettingsChannel } from "../../ipc/board-service-settings-channels";
+import { app, type WebContents, type IpcMainEvent } from "electron";
 import type { RendererRpcMethods } from "../../ipc/renderer-rpc";
 import type { ServiceMainMessage, ServiceParentMessage } from "../../ipc/module-service-channels";
-import { guardedIpcOn } from "../ipc-sender-guard";
 import { onWebContentsGone } from "../webcontents-lifetime";
 import { openWindows } from "../open-windows";
 import { requestRenderer } from "../renderer-rpc";
@@ -32,7 +30,9 @@ export class ServiceBoardSettingsAdapter {
     private readonly aborts = new Map<ServiceRecord, Set<AbortController>>();
     private readonly subscriptions = new Map<string, BoardSettingsSubscription>();
 
-    constructor(private readonly context: BoardSettingsAdapterContext) {
+    constructor(private readonly context: BoardSettingsAdapterContext) {}
+
+    start(): void {
         app.on("browser-window-created", (_event, window) => {
             window.webContents.once("did-finish-load", (): void => {
                 for (const subscription of this.subscriptions.values()) {
@@ -44,19 +44,20 @@ export class ServiceBoardSettingsAdapter {
                 }
             });
         });
-        guardedIpcOn(BoardServiceSettingsChannel.changed, (event, change: { subscriptionId: string; id: string; value: unknown }) => {
-            if (!change || typeof change.subscriptionId !== "string" || typeof change.id !== "string"
-                || !(typeof change.value === "string" || typeof change.value === "boolean"
-                    || (typeof change.value === "number" && Number.isFinite(change.value)))) return;
-            const subscription = [...this.subscriptions.values()].find((candidate) => candidate.subscriptionId === change.subscriptionId);
-            if (!subscription || subscription.webContents !== event.sender
-                || subscription.record.current !== subscription.process
-                || !isStartedOrRunning(subscription.record) || !this.context.isAllowed(subscription.record)) return;
-            try {
-                subscription.process.postMessage({ kind: "board-settings-changed", subscriptionId: subscription.subscriptionId,
-                    id: change.id, value: change.value } satisfies ServiceParentMessage);
-            } catch { /* The generation check prevents forwarding to a replacement service. */ }
-        });
+    }
+
+    handleChanged(event: IpcMainEvent, change: { subscriptionId: string; id: string; value: unknown }): void {
+        if (!change || typeof change.subscriptionId !== "string" || typeof change.id !== "string"
+            || !(typeof change.value === "string" || typeof change.value === "boolean"
+                || (typeof change.value === "number" && Number.isFinite(change.value)))) return;
+        const subscription = [...this.subscriptions.values()].find((candidate) => candidate.subscriptionId === change.subscriptionId);
+        if (!subscription || subscription.webContents !== event.sender
+            || subscription.record.current !== subscription.process
+            || !isStartedOrRunning(subscription.record) || !this.context.isAllowed(subscription.record)) return;
+        try {
+            subscription.process.postMessage({ kind: "board-settings-changed", subscriptionId: subscription.subscriptionId,
+                id: change.id, value: change.value } satisfies ServiceParentMessage);
+        } catch { /* The generation check prevents forwarding to a replacement service. */ }
     }
 
     handle(record: ServiceRecord, process: ModuleServiceProcess, message: BoardSettingsRequest): void {

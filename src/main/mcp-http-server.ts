@@ -1,12 +1,14 @@
 import { AgentTipsRegistry } from "./mcp/agent-tips";
 import { randomUUID } from "node:crypto";
 import http from "node:http";
-import { openWindows } from "./open-windows";
-import { EventEndpoint } from "../ipc/api-types";
 import { cancelRendererRequests } from "./renderer-rpc";
 import { loadSdk, McpTransportInstance, requireSdk, McpServerInstance } from "./mcp/sdk";
 import { createMcpServer } from "./mcp/server-factory";
-import { getPrivateMcpClientCount, setPrivateMcpStatusChanged } from "./mcp/private-session-endpoints";
+import { initializePrivateMcpEndpoints, type PrivateMcpEndpointStartDependencies } from "./mcp/private-session-endpoints";
+import { getSessionSnapshots, type McpSessionSnapshot } from "./mcp/session-snapshots";
+import { coalescePendingCall } from "./coalesce-pending-call";
+
+export type { McpSessionSnapshot } from "./mcp/session-snapshots";
 
 // The Streamable HTTP transport for Persephone's MCP server: sessions, HTTP plumbing
 // and lifecycle. What the server OFFERS — instructions, tools, guides — is defined as
@@ -34,6 +36,7 @@ const MAX_SESSIONS = 500;            // backstop cap against burst leaks
 
 let httpServer: http.Server | undefined;
 let currentPort = DEFAULT_PORT;
+let statusChanged: () => void = () => {};
 interface Session { tips: AgentTipsRegistry; server: McpServerInstance; transport: McpTransportInstance; lastActivity: number }
 const sessions = new Map<string, Session>();
 let sessionSweepTimer: ReturnType<typeof setInterval> | undefined;
@@ -57,7 +60,7 @@ function sweepIdleSessions(): void {
             session.tips.dispose();
             Promise.resolve(session.transport.close()).catch(() => {
                 sessions.delete(sid);
-                broadcastMcpStatus();
+                statusChanged();
             });
         }
     }
@@ -65,16 +68,10 @@ function sweepIdleSessions(): void {
 
 // ── Status Broadcast ────────────────────────────────────────────────
 
-function broadcastMcpStatus(): void {
-    openWindows.send(EventEndpoint.eMcpStatusChanged, {
-        running: isMcpHttpServerRunning(),
-        url: getMcpUrl(),
-        clientCount: getMcpClientCount(),
-        inAppAgentCount: getPrivateMcpClientCount(),
-    });
+export function startMcpHttpServerService(dependencies: PrivateMcpEndpointStartDependencies): void {
+    statusChanged = dependencies.statusChanged;
+    initializePrivateMcpEndpoints(dependencies);
 }
-
-setPrivateMcpStatusChanged(broadcastMcpStatus);
 
 // ── HTTP Body Parser ───────────────────────────────────────────────
 
@@ -191,7 +188,7 @@ async function startSession(req: http.IncomingMessage, res: http.ServerResponse,
             victim.tips.dispose();
             Promise.resolve(victim.transport.close()).catch(() => {
                 sessions.delete(oldestSid);
-                broadcastMcpStatus();
+                statusChanged();
             });
         }
     }
@@ -204,7 +201,7 @@ async function startSession(req: http.IncomingMessage, res: http.ServerResponse,
         allowedHosts: [`127.0.0.1:${currentPort}`, `localhost:${currentPort}`],
         onsessioninitialized: (sid: string) => {
             sessions.set(sid, { tips, server: mcpServer, transport, lastActivity: Date.now() });
-            broadcastMcpStatus();
+            statusChanged();
         },
     });
 
@@ -212,7 +209,7 @@ async function startSession(req: http.IncomingMessage, res: http.ServerResponse,
         tips.dispose();
         const sid = transport.sessionId;
         if (sid) sessions.delete(sid);
-        broadcastMcpStatus();
+        statusChanged();
     };
 
     await mcpServer.connect(transport);
@@ -260,7 +257,7 @@ export async function startMcpHttpServer(port?: number): Promise<void> {
             sessionSweepTimer = setInterval(sweepIdleSessions, SESSION_SWEEP_MS);
             sessionSweepTimer.unref?.();
             console.log(`MCP HTTP server started: http://127.0.0.1:${currentPort}/mcp`);
-            broadcastMcpStatus();
+            statusChanged();
             resolve();
         });
     });
@@ -268,7 +265,7 @@ export async function startMcpHttpServer(port?: number): Promise<void> {
     return startPromise;
 }
 
-export async function stopMcpHttpServer(): Promise<void> {
+async function stopMcpHttpServerInternal(): Promise<void> {
     const pending = startPromise;
     if (pending) await pending.catch((): undefined => undefined);
     if (!httpServer) return;
@@ -291,10 +288,17 @@ export async function stopMcpHttpServer(): Promise<void> {
         httpServer.close(() => {
             httpServer = undefined;
             console.log("MCP HTTP server stopped");
-            broadcastMcpStatus();
+            statusChanged();
             resolve();
         });
     });
+}
+
+export const stopMcpHttpServer = coalescePendingCall(stopMcpHttpServerInternal);
+
+export async function setMcpEnabled(enabled: boolean, port?: number): Promise<void> {
+    if (enabled) await startMcpHttpServer(port);
+    else await stopMcpHttpServer();
 }
 
 export function isMcpHttpServerRunning(): boolean {
@@ -312,20 +316,7 @@ export function getMcpClientCount(): number {
     return sessions.size;
 }
 
-export interface McpSessionSnapshot {
-    ordinal: number;
-    idPrefix: string;
-    lastActivity: number;
-    idleMs: number;
-}
-
 /** Return bounded metadata for the active MCP sessions without exposing SDK objects or full ids. */
 export function getMcpSessionSnapshots(): McpSessionSnapshot[] {
-    const now = Date.now();
-    return [...sessions.entries()].map(([id, session], index) => ({
-        ordinal: index + 1,
-        idPrefix: id.slice(0, 8),
-        lastActivity: session.lastActivity,
-        idleMs: Math.max(0, now - session.lastActivity),
-    }));
+    return getSessionSnapshots(sessions);
 }

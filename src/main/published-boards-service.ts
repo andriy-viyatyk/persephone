@@ -1,7 +1,6 @@
 import { net } from "electron";
 import { electronStore } from "./e-store";
 import { openWindows } from "./open-windows";
-import { EventEndpoint } from "../ipc/api-types";
 import { isBoardEditorKind } from "../shared/board/board-manifest-schema";
 import {
     PublishedBoardInfo,
@@ -265,7 +264,7 @@ export async function getPublishedBoards(force = false): Promise<PublishedBoards
     // as a content change and the cache never pins a stale base URL.
     if (!catalogsEqual(cached, fetched)) {
         electronStore.set(STORE_KEYS.catalog, fetched);
-        openWindows.send(EventEndpoint.ePublishedBoardsUpdated, withScreenshotUrls(fetched));
+        openWindows.send("ePublishedBoardsUpdated", withScreenshotUrls(fetched));
     }
 
     return { catalog: withScreenshotUrls(fetched), fetchedAt: now, fromCache: false };

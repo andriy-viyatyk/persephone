@@ -1,10 +1,10 @@
 import { PLATFORM_AUDIO_CAPABILITY_ID } from "../shared/capability-constants";
-import { CONTROL_CHANNEL, ARM_CHANNEL, CLEAR_CHANNEL, OPEN_CHANNEL, CLOSE_CHANNEL } from "../ipc/audio-channels";
+import { OPEN_CHANNEL, CLOSE_CHANNEL } from "../ipc/audio-channels";
 import { globalMuteService } from "./global-mute-service";
-import { app, BrowserWindow, MessageChannelMain, type MessagePortMain, type WebContents } from "electron";
+import { BrowserWindow, MessageChannelMain, type MessagePortMain, type WebContents } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { AUDIO_DEVICES_REQUEST, AUDIO_DEVICES_REPLY, AUDIO_SETTINGS_UPDATE, AUDIO_SETTINGS_GET, AUDIO_SETTINGS_DEVICES, AUDIO_STATUS, AUDIO_STATUS_GET, AUDIO_RETRY, type AudioDevice, type AudioDevicesReply, type AudioDevicesRequest } from "../ipc/audio-channels";
+import { AUDIO_DEVICES_REQUEST, AUDIO_SETTINGS_UPDATE, AUDIO_STATUS, AUDIO_RETRY, type AudioDevice, type AudioDevicesReply, type AudioDevicesRequest } from "../ipc/audio-channels";
 import { openWindows } from "./open-windows";
 import { MAX_SERVICE_CHANNELS_PER_BOARD } from "../shared/capability-limits";
 import { BoardGrant } from "../shared/board/board-grant";
@@ -16,9 +16,8 @@ import { onWebContentsGone } from "./webcontents-lifetime";
 import { appPartition } from "./constants";
 import { capabilityRegistry } from "./capability-registry";
 import type { BoundCapability, MainCapabilityInvocationContext } from "./capability-router";
-import { armAudioMicrophoneGrant, armAudioLoopbackGrant, clearAudioCaptureGrants, setAudioWindowTargetResolver } from "./permission-policy-service";
+import { armAudioMicrophoneGrant, armAudioLoopbackGrant, clearAudioCaptureGrants } from "./permission-policy-service";
 import { setAudioCaptureCount } from "./audio-capture-state";
-import { guardedIpcHandle, guardedIpcOn } from "./ipc-sender-guard";
 import { deliverConsumerPort, deliveryOwner, type ChannelDelivery, type ServiceProcessPort } from "./channel-delivery";
 
 // Vite replaces this identifier in development and production builds.
@@ -78,103 +77,103 @@ class AudioService {
     private microphoneSettings: unknown;
     private readonly microphoneStatus = new Map<string, unknown>();
 
+    get windowContents(): WebContents | undefined {
+        return this.window && !this.window.isDestroyed() ? this.window.webContents : undefined;
+    }
+
     initialize(): void {
         if (this.initialized) return;
         this.initialized = true;
-        guardedIpcOn(AUDIO_SETTINGS_UPDATE, (event, snapshot: unknown) => {
-            if (event.senderFrame !== event.sender.mainFrame || !openWindows.windows.some((item) => !item.boardRoot && item.window?.window.webContents === event.sender)) return;
-            this.microphoneSettings = snapshot;
-            if (this.window && !this.window.isDestroyed()) this.window.webContents.send(AUDIO_SETTINGS_UPDATE, snapshot);
-        });
-        guardedIpcHandle(AUDIO_SETTINGS_GET, (event) => {
-            if (!this.window || event.sender !== this.window.webContents || event.senderFrame !== event.sender.mainFrame) throw codedError("permission-denied");
-            return this.microphoneSettings;
-        });
-        guardedIpcOn(AUDIO_STATUS, (event, status: unknown) => {
-            if (event.senderFrame !== event.sender.mainFrame || (event.sender !== this.window?.webContents
-                && !openWindows.windows.some((item) => !item.boardRoot && item.window?.window.webContents === event.sender))) return;
-            if (!status || typeof status !== "object" || !("mode" in status) || typeof status.mode !== "string") return;
-            this.microphoneStatus.set(status.mode.startsWith("reference-") ? "reference" : "cleaning", status);
-            for (const item of openWindows.windows) if (!item.boardRoot && item.window && !item.window.window.isDestroyed()) item.window.window.webContents.send(AUDIO_STATUS, status);
-        });
-        guardedIpcHandle(AUDIO_STATUS_GET, (event) => {
-            if (event.senderFrame !== event.sender.mainFrame || !openWindows.windows.some((item) => !item.boardRoot && item.window?.window.webContents === event.sender)) throw codedError("permission-denied");
-            return [...this.microphoneStatus.values()];
-        });
-        guardedIpcOn(AUDIO_RETRY, (event) => {
-            if (event.senderFrame !== event.sender.mainFrame || !openWindows.windows.some((item) => !item.boardRoot && item.window?.window.webContents === event.sender)) return;
-            if (this.window && !this.window.isDestroyed()) this.window.webContents.send(AUDIO_RETRY);
-            for (const item of openWindows.windows) if (!item.boardRoot && item.window && !item.window.window.isDestroyed()) item.window.window.webContents.send(AUDIO_RETRY);
-        });
-        guardedIpcHandle(AUDIO_SETTINGS_DEVICES, async (event) => {
-            if (event.senderFrame !== event.sender.mainFrame || !openWindows.windows.some((item) => !item.boardRoot && item.window?.window.webContents === event.sender)) throw codedError("permission-denied");
-            this.pendingOpens++;
-            let requestId: string | undefined;
-            try {
-                const signal = AbortSignal.timeout(10000);
-                const opened = await this.ensureWindow(signal);
-                const created = this.deviceRequests.create(undefined, signal, { meta: { generation: opened.generation } });
-                requestId = created.id;
-                try { opened.window.webContents.send(AUDIO_DEVICES_REQUEST, { requestId, epoch: this.epoch } satisfies AudioDevicesRequest); }
-                catch (error) { this.deviceRequests.fail(requestId, error); throw error; }
-                return await created.promise;
-            } finally {
-                this.pendingOpens--;
-                this.destroyIdleWindow();
-            }
-        });
-        setAudioWindowTargetResolver(() => this.window && !this.window.isDestroyed() ? this.window.webContents : undefined);
-        guardedIpcOn(AUDIO_DEVICES_REPLY, (event, reply: AudioDevicesReply) => {
-            const window = this.window;
-            if (!window || window.isDestroyed() || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame
-                || !reply || typeof reply.requestId !== "string" || reply.epoch !== this.epoch) return;
-            const accepted = (meta: { generation: number }) => meta.generation === this.generation;
-            if ("error" in reply) this.deviceRequests.fail(reply.requestId, codedError("rejected", reply.error.message), accepted);
-            else this.deviceRequests.settle(reply.requestId, reply.devices, accepted);
-        });
-        guardedIpcOn(CONTROL_CHANNEL, (event, message: { type?: unknown; channelId?: unknown; epoch?: unknown; code?: unknown; message?: unknown; count?: unknown }) => {
-            const window = this.window;
-            if (!window || window.isDestroyed() || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) return;
-            if (message?.type === "ready" && message.epoch === this.epoch) {
-                this.readyResolve?.();
-                this.readyResolve = undefined;
-                return;
-            }
-            if (message?.type === "channel-ready" && typeof message.channelId === "string") {
-                const record = this.channels.get(message.channelId);
-                if (!record || record.closed) return;
-                clearTimeout(record.readyTimer);
-                record.readyResolve();
-                return;
-            }
-            if (message?.type === "channel-closed" && typeof message.channelId === "string") {
-                const record = this.channels.get(message.channelId);
-                if (record) this.finishChannel(record, typeof message.code === "string" ? message.code : "channel-closed",
-                    typeof message.message === "string" ? message.message : "Audio channel closed.", false);
-            }
-            if (message?.type === "capture-count" && Number.isSafeInteger(message.count) && (message.count as number) >= 0) {
-                setAudioCaptureCount(message.count as number);
-            }
-        });
-        guardedIpcHandle(ARM_CHANNEL, async (event, source: unknown) => {
-            const window = this.window;
-            if (!window || window.isDestroyed() || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame
-                || (source !== "microphone" && source !== "computer")) throw codedError("permission-denied");
-            if (source === "computer") armAudioLoopbackGrant(window.webContents);
-            else armAudioMicrophoneGrant(window.webContents);
-        });
-        guardedIpcHandle(CLEAR_CHANNEL, (event) => {
-            const window = this.window;
-            if (!window || window.isDestroyed() || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw codedError("permission-denied");
-            clearAudioCaptureGrants(window.webContents);
-        });
         capabilityRegistry.onChange(() => {
             for (const record of this.channels.values()) {
                 try { this.authorize(record.bound, record.source); }
                 catch (error) { this.finishChannel(record, "permission-denied", errMessage(error, "Audio permission was revoked."), true); }
             }
         });
-        app.on("before-quit", () => this.dispose());
+    }
+
+    updateSettings(snapshot: unknown): void {
+        this.microphoneSettings = snapshot;
+        if (this.window && !this.window.isDestroyed()) this.window.webContents.send(AUDIO_SETTINGS_UPDATE, snapshot);
+    }
+
+    getSettings(): unknown {
+        return this.microphoneSettings;
+    }
+
+    updateStatus(status: unknown): void {
+        if (!status || typeof status !== "object" || !("mode" in status) || typeof status.mode !== "string") return;
+        this.microphoneStatus.set(status.mode.startsWith("reference-") ? "reference" : "cleaning", status);
+        for (const item of openWindows.windows) if (!item.boardRoot && item.window && !item.window.window.isDestroyed()) item.window.window.webContents.send(AUDIO_STATUS, status);
+    }
+
+    getStatus(): unknown[] {
+        return [...this.microphoneStatus.values()];
+    }
+
+    retry(): void {
+        if (this.window && !this.window.isDestroyed()) this.window.webContents.send(AUDIO_RETRY);
+        for (const item of openWindows.windows) if (!item.boardRoot && item.window && !item.window.window.isDestroyed()) item.window.window.webContents.send(AUDIO_RETRY);
+    }
+
+    async getDevices(): Promise<AudioDevice[]> {
+        this.pendingOpens++;
+        try {
+            const signal = AbortSignal.timeout(10000);
+            const opened = await this.ensureWindow(signal);
+            const created = this.deviceRequests.create(undefined, signal, { meta: { generation: opened.generation } });
+            try { opened.window.webContents.send(AUDIO_DEVICES_REQUEST, { requestId: created.id, epoch: this.epoch } satisfies AudioDevicesRequest); }
+            catch (error) { this.deviceRequests.fail(created.id, error); throw error; }
+            return await created.promise;
+        } finally {
+            this.pendingOpens--;
+            this.destroyIdleWindow();
+        }
+    }
+
+    acceptDevicesReply(reply: AudioDevicesReply): void {
+        const window = this.window;
+        if (!window || window.isDestroyed() || !reply || typeof reply.requestId !== "string" || reply.epoch !== this.epoch) return;
+        const accepted = (meta: { generation: number }) => meta.generation === this.generation;
+        if ("error" in reply) this.deviceRequests.fail(reply.requestId, codedError("rejected", reply.error.message), accepted);
+        else this.deviceRequests.settle(reply.requestId, reply.devices, accepted);
+    }
+
+    handleControlMessage(message: { type?: unknown; channelId?: unknown; epoch?: unknown; code?: unknown; message?: unknown; count?: unknown }): void {
+        const window = this.window;
+        if (!window || window.isDestroyed()) return;
+        if (message?.type === "ready" && message.epoch === this.epoch) {
+            this.readyResolve?.();
+            this.readyResolve = undefined;
+            return;
+        }
+        if (message?.type === "channel-ready" && typeof message.channelId === "string") {
+            const record = this.channels.get(message.channelId);
+            if (!record || record.closed) return;
+            clearTimeout(record.readyTimer);
+            record.readyResolve();
+            return;
+        }
+        if (message?.type === "channel-closed" && typeof message.channelId === "string") {
+            const record = this.channels.get(message.channelId);
+            if (record) this.finishChannel(record, typeof message.code === "string" ? message.code : "channel-closed",
+                typeof message.message === "string" ? message.message : "Audio channel closed.", false);
+        }
+        if (message?.type === "capture-count" && Number.isSafeInteger(message.count) && (message.count as number) >= 0) setAudioCaptureCount(message.count as number);
+    }
+
+    async armCapture(source: unknown): Promise<void> {
+        const window = this.window;
+        if (source !== "microphone" && source !== "computer") throw codedError("permission-denied");
+        if (!window) throw codedError("permission-denied");
+        if (source === "computer") armAudioLoopbackGrant(window.webContents);
+        else armAudioMicrophoneGrant(window.webContents);
+    }
+
+    clearCapture(): void {
+        const window = this.window;
+        if (!window) throw codedError("permission-denied");
+        clearAudioCaptureGrants(window.webContents);
     }
 
     async callDevices(bound: BoundCapability, method: string, args: unknown[], invocation: MainCapabilityInvocationContext, reauthorize: () => void): Promise<AudioDevice[]> {

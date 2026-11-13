@@ -1,6 +1,5 @@
 /** Main-side composition root for board ports, RPC handlers and lifecycle services. */
 import { MessageChannelMain, type WebContents } from "electron";
-import { EventEndpoint } from "../ipc/api-types";
 import { frameEvent } from "../ipc/board-bridge/frame-protocol";
 import type { BoardThemePalette } from "../ipc/board-bridge/boot";
 import type { BoardToMain } from "../ipc/board-bridge/port-protocol";
@@ -105,7 +104,7 @@ export function createBoardPort(
     entry.start();
     ensureHostWired(hostWebContents);
     entry.startWatchdog(BOARD_HANDSHAKE_TIMEOUT_MS);
-    hostWebContents.postMessage(EventEndpoint.eBoardPort, { boardId }, [port1]);
+    hostWebContents.postMessage("eBoardPort", { boardId }, [port1]);
 }
 
 /** Update only the live port created by this host renderer for this exact load. */

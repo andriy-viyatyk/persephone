@@ -8,12 +8,11 @@
  */
 import path from "path";
 import fs from "fs";
-import { app, BrowserWindow, session, Session } from "electron";
+import { app, BrowserWindow, session, Session, type WebContents } from "electron";
 import { TorChannel, TorIpInfo, TorStatus } from "../ipc/tor-ipc";
 import { SidecarProcess } from "./sidecar-process";
 import { errMessage } from "../shared/utils";
 import { applySessionProxy, lookupGeo, setSessionDirect } from "./session-proxy";
-import { guardedIpcHandle, guardedIpcOn } from "./ipc-sender-guard";
 import { onWebContentsGone } from "./webcontents-lifetime";
 
 const TOR_BOOTSTRAP_TIMEOUT_MS = 90_000;
@@ -460,58 +459,29 @@ class TorService {
             }
         }
     }
+
+    async acquireFetchForSender(sender: WebContents, torExePath: string, socksPort: number): Promise<unknown> {
+        const senderId = sender.id;
+        if (!this.fetchLeaseSenders.has(senderId)) {
+            this.fetchLeaseSenders.add(senderId);
+            const releaseSender = () => {
+                this.fetchLeaseSenders.delete(senderId);
+                this.releaseAllFetch(senderId);
+            };
+            onWebContentsGone(sender, releaseSender, { events: ["destroyed", "render-process-gone"] });
+        }
+        return this.acquireFetch(senderId, torExePath, socksPort);
+    }
+
+    releaseFetchForSender(sender: WebContents): void {
+        this.releaseFetch(sender.id);
+    }
+
+    private readonly fetchLeaseSenders = new Set<number>();
 }
 
-// ── Singleton & IPC Registration ────────────────────────────────────────────
+// ── Singleton ───────────────────────────────────────────────────────────────
 
 const torService = new TorService();
-
-export function initTorHandlers(): void {
-    guardedIpcHandle(
-        TorChannel.arm,
-        async (_event, socksPort: number, partition: string) => {
-            return torService.armPartition(socksPort, partition);
-        },
-    );
-
-    guardedIpcHandle(
-        TorChannel.start,
-        async (
-            _event,
-            torExePath: string,
-            socksPort: number,
-            partition: string,
-        ) => {
-            return torService.startForPartition(torExePath, socksPort, partition);
-        },
-    );
-
-    const fetchLeaseSenders = new Set<number>();
-    guardedIpcHandle(TorChannel.fetchAcquire, async (event, torExePath: string, socksPort: number) => {
-        const senderId = event.sender.id;
-        if (!fetchLeaseSenders.has(senderId)) {
-            fetchLeaseSenders.add(senderId);
-            const releaseSender = () => {
-                fetchLeaseSenders.delete(senderId);
-                torService.releaseAllFetch(senderId);
-            };
-            onWebContentsGone(event.sender, releaseSender, { events: ["destroyed", "render-process-gone"] });
-        }
-        return torService.acquireFetch(senderId, torExePath, socksPort);
-    });
-    guardedIpcOn(TorChannel.fetchRelease, (event) => torService.releaseFetch(event.sender.id));
-
-    guardedIpcHandle(TorChannel.stop, async (_event, partition: string) => {
-        return torService.stopForPartition(partition);
-    });
-
-    guardedIpcHandle(TorChannel.checkIp, async (_event, partition: string) => {
-        return torService.checkIp(partition);
-    });
-
-    guardedIpcHandle(TorChannel.restart, async (_event, partition: string) => {
-        return torService.restart(partition);
-    });
-}
 
 export { torService };

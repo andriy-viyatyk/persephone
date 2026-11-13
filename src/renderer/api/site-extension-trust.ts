@@ -1,5 +1,4 @@
 import type { SiteExtensionTrustSnapshot } from "../../ipc/api-types";
-import { EventEndpoint } from "../../ipc/api-types";
 import { api } from "../../ipc/renderer/api";
 import rendererEvents from "../../ipc/renderer/renderer-events";
 import { MainSnapshotMirror } from "../core/state/MainSnapshotMirror";
@@ -16,7 +15,7 @@ class SiteExtensionTrust extends MainSnapshotMirror<SiteExtensionTrustSnapshot> 
 
     protected fetch(): Promise<SiteExtensionTrustSnapshot> { return api.getSiteExtensionTrust(); }
     protected subscribeToMain(): void {
-        this.attach(rendererEvents[EventEndpoint.eSiteExtensionTrustChanged], (snapshot) => this.apply(snapshot));
+        this.attach(rendererEvents["eSiteExtensionTrustChanged"], (snapshot) => this.apply(snapshot));
     }
     protected override normalize(snapshot: SiteExtensionTrustSnapshot): SiteExtensionTrustSnapshot {
         return Object.fromEntries(Object.entries(snapshot).map(([id, grant]) => [id, {

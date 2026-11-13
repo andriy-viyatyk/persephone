@@ -2,8 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import type { BoardNotifyMsg, BoardRunnerOutMsg, BoardToMain, BoardToMainEvents } from "../../../ipc/board-bridge/port-protocol";
 import { RunnerChannel, RunnerKillMsg, RunnerStartMsg, RunnerStdinMsg } from "../../../ipc/runner-channels";
-import { EventEndpoint } from "../../../ipc/api-types";
 import { frameEvent } from "../../../ipc/board-bridge/frame-protocol";
+import { sendRendererEvent } from "../../../ipc/main/renderer-event-sender";
 import { BoardGrant } from "../../../shared/board/board-grant";
 import { boardTrustService } from "../../board-trust-service";
 import { endJobStdin, killJob, startJobTo, startNodeJobTo, writeJobStdin, type JobSink } from "../../command-runner";
@@ -39,7 +39,7 @@ function runNotify(entry: BoardBridgeConnection, notification: BoardToMainEvents
     if (!notification.message) return;
     const win = ownerWindow(entry.hostWebContents);
     const { message, type, persistent } = notification;
-    win?.webContents.send(EventEndpoint.eBoardNotify, { message, type, persistent } satisfies BoardNotifyMsg);
+    if (win) sendRendererEvent(win.webContents, "eBoardNotify", { message, type, persistent } satisfies BoardNotifyMsg);
     if (type === "error" || type === "warning") {
         void boardLog.append(entry.root, type, message).catch(() => {});
     }

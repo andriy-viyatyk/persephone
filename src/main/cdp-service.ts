@@ -21,7 +21,6 @@
 import { WebContents } from "electron";
 import { boardFrameRegistry, type BoardFrameRegistration } from "./board-host/BoardFrameRegistry";
 import {
-    BrowserChannel,
     type CdpAttachOptions,
     type PageConsoleLevel,
     type PageConsoleRecord,
@@ -37,11 +36,12 @@ import {
 import { APP_WINDOW_CDP_KEY } from "../ipc/api-types";
 import { AI_VISION_HOST_SIGNAL } from "ai-vision";
 import { errMessage } from "../shared/utils";
-import { setNetworkResponseBodyResolver } from "./network-logger";
-import { guardedIpcHandle } from "./ipc-sender-guard";
+import { createNetworkResponseBodyResolver } from "./cdp-network-response-bodies";
 
 /** Track which webContents have an attached debugger. */
 const attachedDebuggers = new WeakSet<WebContents>();
+let getWebContentsForCdp: ((key: string) => WebContents | undefined) | undefined;
+let onAiVisionSignalCallback: ((webContents: WebContents, payload: string, executionContextId: number, mainContext: boolean) => void) | undefined;
 const defaultExecutionContexts = new WeakMap<WebContents, Map<number, string>>();
 const mainFrameIds = new WeakMap<WebContents, string>();
 type CdpEventHandler = (method: string, params: unknown, sessionId: string | undefined) => void;
@@ -996,55 +996,36 @@ async function boardSend(reg: BoardFrameRegistration, method: string, params: ob
     }
 }
 
-/**
- * Initialize CDP IPC handlers.
- * @param getWebContents — resolver from registration key to webContents (browser pages)
- */
-export function initCdpHandlers(
-    getWebContents: (key: string) => WebContents | undefined,
-    onAiVisionSignal: (webContents: WebContents, payload: string, executionContextId: number, mainContext: boolean) => void,
-): void {
-    getWebContentsForPageEvents = getWebContents;
-    setNetworkResponseBodyResolver(async (key, entries, maxBodyBytes) => {
-        const collector = networkCollectors.get(key);
-        const output = new Map<number, { responseBody: string; responseBodyBase64Encoded: boolean; responseBodyTruncated: boolean }>();
-        if (!collector || collector.wc.isDestroyed()) return output;
-        const candidates = entries.map(entry => collector.records.filter(record =>
-            record.finished && record.response && record.url === entry.url && record.method === entry.method
-            && record.wallTime !== undefined && Math.abs(record.wallTime - entry.timestamp) <= 1000));
-        for (let index = 0; index < entries.length; index++) {
-            const matches = candidates[index];
-            if (matches.length !== 1) continue;
-            const record = matches[0];
-            if (candidates.some((other, otherIndex) => otherIndex !== index && other.includes(record))) continue;
-            try {
-                const result = await collector.wc.debugger.sendCommand("Network.getResponseBody", { requestId: record.requestId }, record.sessionId);
-                if (!isRecord(result) || typeof result.body !== "string") continue;
-                const body = boundedResponseBody(result.body, result.base64Encoded === true, record.response ?? { mimeType: "", headers: {} }, maxBodyBytes);
-                if (!body) continue;
-                output.set(entries[index].id, { responseBody: body.body, responseBodyBase64Encoded: body.base64Encoded, responseBodyTruncated: body.truncated });
-            } catch { /* Chromium may already have discarded the body. */ }
-        }
-        return output;
-    });
-    guardedIpcHandle(BrowserChannel.getPageEvents, async (event, key: string) => {
+export interface CdpServiceStartDependencies {
+    getWebContents: (key: string) => WebContents | undefined;
+    onAiVisionSignal: (webContents: WebContents, payload: string, executionContextId: number, mainContext: boolean) => void;
+}
+
+export function startCdpService(dependencies: CdpServiceStartDependencies): void {
+    getWebContentsForCdp = dependencies.getWebContents;
+    onAiVisionSignalCallback = dependencies.onAiVisionSignal;
+    getWebContentsForPageEvents = dependencies.getWebContents;
+}
+
+export const resolveNetworkResponseBodies = createNetworkResponseBodyResolver(
+    (key) => networkCollectors.get(key),
+    boundedResponseBody,
+);
+
+export const cdpService = {
+    async getPageEvents(event: Electron.IpcMainInvokeEvent, key: string): Promise<PageEventsSnapshot> {
         const state = await pageEventsForSender(event, key);
-        return {
-            policy: state.policy,
-            dialogs: state.dialogs.map(dialog => ({ ...dialog })),
+        return { policy: state.policy, dialogs: state.dialogs.map(dialog => ({ ...dialog })),
             consoleMessages: state.consoleMessages.map(message => ({ ...message, args: [...message.args] })),
-            pageErrors: state.pageErrors.map(error => ({ ...error })),
-        } satisfies PageEventsSnapshot;
-    });
-    guardedIpcHandle(BrowserChannel.markDialogReported, async (event, key: string) => {
+            pageErrors: state.pageErrors.map(error => ({ ...error })) } satisfies PageEventsSnapshot;
+    },
+    async markDialogReported(event: Electron.IpcMainInvokeEvent, key: string): Promise<void> {
         const state = await pageEventsForSender(event, key);
         const dialog = state.dialogs.find(record => !record.reported && record.disposition !== "pending");
         if (dialog) dialog.reported = true;
-    });
-    guardedIpcHandle(BrowserChannel.setDialogPolicy, async (event, key: string, policy: PageDialogPolicy) => {
-        if (policy !== "accept" && policy !== "dismiss" && policy !== "manual") {
-            throw new Error("Dialog policy must be accept, dismiss, or manual.");
-        }
+    },
+    async setDialogPolicy(event: Electron.IpcMainInvokeEvent, key: string, policy: PageDialogPolicy): Promise<PageDialogPolicy> {
+        if (policy !== "accept" && policy !== "dismiss" && policy !== "manual") throw new Error("Dialog policy must be accept, dismiss, or manual.");
         const state = await pageEventsForSender(event, key);
         state.policy = policy;
         if (policy !== "manual") {
@@ -1052,55 +1033,47 @@ export function initCdpHandlers(
             if (pending) await sendDialogCommand(state, policy === "accept");
         }
         return policy;
-    });
-    guardedIpcHandle(BrowserChannel.handleDialog, async (event, key: string, accept: boolean, promptText?: string) => {
+    },
+    async handleDialog(event: Electron.IpcMainInvokeEvent, key: string, accept: boolean, promptText?: string): Promise<void> {
         const state = await pageEventsForSender(event, key);
-        const pending = key === APP_WINDOW_CDP_KEY ? undefined
-            : state.dialogs.find(record => record.disposition === "pending" && record.type !== "beforeunload");
+        const pending = key === APP_WINDOW_CDP_KEY ? undefined : state.dialogs.find(record => record.disposition === "pending" && record.type !== "beforeunload");
         if (!pending) throw new Error("No pending JavaScript dialog is open on this page.");
         await sendDialogCommand(state, accept, promptText);
-    });
-    guardedIpcHandle(BrowserChannel.automationBegin, async (event, key: string) => {
+    },
+    async automationBegin(event: Electron.IpcMainInvokeEvent, key: string): Promise<void> {
         const state = await pageEventsForSender(event, key);
-        const pending = key === APP_WINDOW_CDP_KEY ? undefined
-            : state.dialogs.find(record => record.disposition === "pending" && record.type !== "beforeunload");
+        const pending = key === APP_WINDOW_CDP_KEY ? undefined : state.dialogs.find(record => record.disposition === "pending" && record.type !== "beforeunload");
         if (pending) {
-            if (state.policy === "manual") {
-                throw new Error(`A ${pending.type}("${pending.message}") dialog is open on this page — call handleDialog(accept, promptText?) or set dialogs({ policy })`);
-            }
+            if (state.policy === "manual") throw new Error(`A ${pending.type}("${pending.message}") dialog is open on this page — call handleDialog(accept, promptText?) or set dialogs({ policy })`);
             await sendDialogCommand(state, state.policy === "accept");
         }
         const activity = automationActivity.get(key) ?? { count: 0, graceUntil: 0 };
         activity.count++;
         automationActivity.set(key, activity);
-    });
-    guardedIpcHandle(BrowserChannel.automationEnd, (_event, key: string) => {
+    },
+    automationEnd(key: string): void {
         const activity = automationActivity.get(key);
         if (!activity || activity.count === 0) return;
         activity.count--;
         if (activity.count === 0) activity.graceUntil = Date.now() + 2000;
-    });
-    guardedIpcHandle(BrowserChannel.armNavigationWait, async (_event, key: string, options: NavigationWaitRequest) =>
-        armNavigationWait(key, options));
-    guardedIpcHandle(BrowserChannel.awaitNavigationWait, async (_event, token: string) => {
+    },
+    armNavigationWait(key: string, options: NavigationWaitRequest) { return armNavigationWait(key, options); },
+    async awaitNavigationWait(token: string) {
         const state = navigationWaits.get(token);
         if (!state) throw new Error("Navigation wait token is missing or expired.");
-        try { return await state.promise; }
-        finally { navigationWaits.delete(token); }
-    });
-    guardedIpcHandle(BrowserChannel.armResponseWait, async (event, key: string, pattern: string | BrowserResponsePattern, options: BrowserResponseWaitOptions) =>
-        armResponseWait(event, key, pattern, options));
-    guardedIpcHandle(BrowserChannel.awaitResponseWait, async (_event, token: string) => {
+        try { return await state.promise; } finally { navigationWaits.delete(token); }
+    },
+    armResponseWait(event: Electron.IpcMainInvokeEvent, key: string, pattern: string | BrowserResponsePattern, options: BrowserResponseWaitOptions) {
+        return armResponseWait(event, key, pattern, options);
+    },
+    async awaitResponseWait(token: string) {
         const state = responseWaits.get(token);
         if (!state) throw new Error("Response wait token is missing or expired.");
-        try { return await state.promise; }
-        finally { responseWaits.delete(token); }
-    });
-    guardedIpcHandle(BrowserChannel.armDragIntercept, async (event, key: string, sessionId?: string) => {
+        try { return await state.promise; } finally { responseWaits.delete(token); }
+    },
+    async armDragIntercept(event: Electron.IpcMainInvokeEvent, key: string, sessionId?: string): Promise<string> {
         const page = await pageEventsForSender(event, key);
-        if (boardFrameRegistry.has(key) && (page.sessionId || undefined) !== (sessionId || undefined)) {
-            throw new Error("Drag interception session does not match the selected target.");
-        }
+        if (boardFrameRegistry.has(key) && (page.sessionId || undefined) !== (sessionId || undefined)) throw new Error("Drag interception session does not match the selected target.");
         const token = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
         let resolve!: (data: DragData) => void;
         const promise = new Promise<DragData>(done => { resolve = done; });
@@ -1117,121 +1090,59 @@ export function initCdpHandlers(
         });
         dragIntercepts.set(token, state);
         return token;
-    });
-    guardedIpcHandle(BrowserChannel.takeDragIntercept, async (_event, token: string, waitMs: number) => {
+    },
+    async takeDragIntercept(token: string, waitMs: number) {
         const state = dragIntercepts.get(token);
         if (!state || state.taken) return null;
         state.taken = true;
         const delay = Number.isFinite(waitMs) ? Math.max(0, Math.min(waitMs, 5000)) : 0;
         let timer: ReturnType<typeof setTimeout> | undefined;
-        try {
-            return await Promise.race([
-                state.promise,
-                new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), delay); }),
-            ]);
-        } finally {
-            if (timer !== undefined) clearTimeout(timer);
-            state.cleanup();
-            dragIntercepts.delete(token);
-        }
-    });
-
-    guardedIpcHandle(BrowserChannel.cdpAttach, async (event, key: string, options?: CdpAttachOptions) => {
+        try { return await Promise.race([state.promise, new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), delay); })]); }
+        finally { if (timer !== undefined) clearTimeout(timer); state.cleanup(); dragIntercepts.delete(token); }
+    },
+    async cdpAttach(event: Electron.IpcMainInvokeEvent, key: string, options?: CdpAttachOptions): Promise<boolean> {
         if (key === APP_WINDOW_CDP_KEY) {
             if (event.sender.isDestroyed()) return false;
-            try {
-                ensureAttached(event.sender);
-                return true;
-            } catch {
-                return false;
-            }
+            try { ensureAttached(event.sender); return true; } catch { return false; }
         }
         const board = boardFrameRegistry.get(key);
         if (board) {
             if (board.host.isDestroyed()) return false;
-            try {
-                ensureAttached(board.host);
-                return true;
-            } catch {
-                return false;
-            }
+            try { ensureAttached(board.host); return true; } catch { return false; }
         }
-        const wc = getWebContents(key);
+        const wc = getWebContentsForCdp?.(key);
         if (!wc || wc.isDestroyed()) return false;
+        if (options?.aiVisionBinding === true && !onAiVisionSignalCallback) return false;
         try {
             ensureAttached(wc);
-            if (options?.aiVisionBinding === true) {
-                await ensureAiVisionBinding(wc, onAiVisionSignal);
-            }
+            if (options?.aiVisionBinding === true) await ensureAiVisionBinding(wc, onAiVisionSignalCallback);
             return true;
-        } catch {
-            return false;
-        }
-    });
-
-    guardedIpcHandle(BrowserChannel.cdpDetach, async (_event, key: string) => {
-        if (key === APP_WINDOW_CDP_KEY) {
-            // The app window's debugger is SHARED (boards attach to the same wc);
-            // never detach it — just leave it attached for the window's lifetime.
-            return;
-        }
+        } catch { return false; }
+    },
+    async cdpDetach(key: string): Promise<void> {
+        if (key === APP_WINDOW_CDP_KEY) return;
         const board = boardFrameRegistry.get(key);
-        if (board) {
-            // The host wc debugger is SHARED (other boards / future use); never detach
-            // it for one board — just drop this board's cached frame session.
-            board.sessionId = undefined;
-            clearCdpTargetState(key);
-            return;
-        }
-        const wc = getWebContents(key);
-        if (!wc || wc.isDestroyed()) return;
-        if (!attachedDebuggers.has(wc)) return;
-        try {
-            wc.debugger.detach();
-        } catch {
-            // already detached
-        }
+        if (board) { board.sessionId = undefined; clearCdpTargetState(key); return; }
+        const wc = getWebContentsForCdp?.(key);
+        if (!wc || wc.isDestroyed() || !attachedDebuggers.has(wc)) return;
+        try { wc.debugger.detach(); } catch { /* already detached */ }
         clearAiVisionBinding(wc);
         clearCdpTargetState(key);
         attachedDebuggers.delete(wc);
-    });
-
-    guardedIpcHandle(
-        BrowserChannel.cdpSend,
-        async (event, key: string, method: string, params?: object, sessionId?: string) => {
-            if (key === APP_WINDOW_CDP_KEY) {
-                const wc = event.sender;
-                if (wc.isDestroyed()) throw new Error("App window is gone");
-                if (!attachedDebuggers.has(wc)) {
-                    try {
-                        ensureAttached(wc);
-                    } catch {
-                        throw new Error("Failed to attach CDP debugger");
-                    }
-                }
-                // Top-level session — Persephone's own renderer UI. `sessionId` is passed
-                // through so the shared snapshot code's nested-iframe attaches (board
-                // frames inside the app) and their `f1-…` refs still resolve.
-                return wc.debugger.sendCommand(method, params, sessionId);
-            }
-            const board = boardFrameRegistry.get(key);
-            if (board) {
-                return boardSend(board, method, params, sessionId);
-            }
-            const wc = getWebContents(key);
-            if (!wc || wc.isDestroyed()) {
-                throw new Error("WebContents not found or destroyed");
-            }
-            // Auto-attach on first command
-            if (!attachedDebuggers.has(wc)) {
-                try {
-                    ensureAttached(wc);
-                } catch {
-                    throw new Error("Failed to attach CDP debugger");
-                }
-            }
-            await ensureNetworkCollector(key, wc);
+    },
+    async cdpSend(event: Electron.IpcMainInvokeEvent, key: string, method: string, params?: object, sessionId?: string) {
+        if (key === APP_WINDOW_CDP_KEY) {
+            const wc = event.sender;
+            if (wc.isDestroyed()) throw new Error("App window is gone");
+            if (!attachedDebuggers.has(wc)) { try { ensureAttached(wc); } catch { throw new Error("Failed to attach CDP debugger"); } }
             return wc.debugger.sendCommand(method, params, sessionId);
-        },
-    );
-}
+        }
+        const board = boardFrameRegistry.get(key);
+        if (board) return boardSend(board, method, params, sessionId);
+        const wc = getWebContentsForCdp?.(key);
+        if (!wc || wc.isDestroyed()) throw new Error("WebContents not found or destroyed");
+        if (!attachedDebuggers.has(wc)) { try { ensureAttached(wc); } catch { throw new Error("Failed to attach CDP debugger"); } }
+        await ensureNetworkCollector(key, wc);
+        return wc.debugger.sendCommand(method, params, sessionId);
+    },
+};

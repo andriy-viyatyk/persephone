@@ -1,6 +1,5 @@
 import path from "node:path";
 import type { WebContents } from "electron";
-import { EventEndpoint } from "../ipc/api-types";
 import { boardTrustService } from "./board-trust-service";
 import { BoardRoot } from "../shared/board/board-root";
 import { BoardGrant } from "../shared/board/board-grant";
@@ -46,7 +45,7 @@ class ModuleServiceSupervisor {
         postMessage: (process, message, ports) => process.postMessage(message, ports),
     };
     private disposing = false;
-    private readonly boardSettings = new ServiceBoardSettingsAdapter({
+    readonly boardSettings = new ServiceBoardSettingsAdapter({
         isAllowed: (record) => this.isBoardSettingsAllowed(record),
         selectRenderer: (excluded) => this.selectBoardSettingsRenderer(excluded),
     });
@@ -718,7 +717,7 @@ class ModuleServiceSupervisor {
     }
 
     private emit(record: ServiceRecord): void {
-        openWindows.send(EventEndpoint.eModuleServiceStatusChanged, this.statusOf(record));
+        openWindows.send("eModuleServiceStatusChanged", this.statusOf(record));
     }
 }
 

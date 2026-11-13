@@ -14,8 +14,8 @@ import { boardRootDigest } from "./board-root-hashes";
 import { codedError, isCoded } from "../shared/coded-error";
 import { onWebContentsGone } from "./webcontents-lifetime";
 import { requestRenderer, RENDERER_REQUEST_NO_TIMEOUT } from "./renderer-rpc";
-import type { CapabilityBackend, OpenedCapabilityChannel } from "./capability-backend";
-import type { CapabilityBackendKind } from "../shared/platform-capabilities";
+import type { OpenedCapabilityChannel } from "./capability-backend";
+import { capabilityBackendRegistry } from "./capability-backend-registry";
 
 export type CapabilityCaller = { kind: "platform" | "agent" } | { kind: "board-page" | "board-service"; provider: string };
 export interface CapabilityOptions { version?: number; provider?: string; filter?: { mime?: string; representation?: string }; forOpen?: boolean }
@@ -47,8 +47,6 @@ export interface MainCapabilityInvocationContext {
     readonly parentRequestId?: string;
     readonly dispose: () => void;
 }
-
-export type ServiceOwnerTracker = (boardRoot: string, onClosed: () => void) => () => void;
 
 function checkedJson(value: unknown, maxBytes = MAX_INTENT_PAYLOAD_BYTES): CapabilityJson {
     const ancestors = new Set<object>();
@@ -88,29 +86,18 @@ class CapabilityRouter {
     private preferences: Record<string, string> = {};
     private readonly handlerCounts = new Map<string, number>();
     private readonly invocationContexts = new Map<string, MainCapabilityInvocationContext>();
-    private readonly backends = new Map<CapabilityBackendKind, CapabilityBackend>();
-    private serviceOwnerTracker: ServiceOwnerTracker | undefined;
-
-    registerBackend(kind: CapabilityBackendKind, backend: CapabilityBackend): void {
-        if (this.backends.has(kind)) throw new Error(`Capability backend "${kind}" is already registered.`);
-        this.backends.set(kind, backend);
-    }
-    setServiceOwnerTracker(tracker: ServiceOwnerTracker): void { this.serviceOwnerTracker = tracker; }
     /** Lets a nested call that names `parentRequestId` inherit this call's lifetime and ancestry. */
     trackInvocation(context: MainCapabilityInvocationContext & { requestId: string }): () => void {
         this.invocationContexts.set(context.requestId, context);
         return () => { this.invocationContexts.delete(context.requestId); };
     }
-    private backendFor(registration: CapabilityRegistration): CapabilityBackend | undefined {
-        return registration.backend ? this.backends.get(registration.backend) : undefined;
-    }
-    private watchServiceOwner(invocation: MainCapabilityInvocationContext): (() => void) | undefined {
-        if (invocation.owner.kind !== "service") return undefined;
-        if (!this.serviceOwnerTracker) throw codedError("no-handler", "Capability service owner tracking is not registered.");
-        return this.serviceOwnerTracker(invocation.owner.boardRoot, () => invocation.controller.abort(codedError("handler-closed")));
-    }
 
-    setPreferences(value: Record<string, string>): void { this.preferences = { ...value }; }
+    setPreferences(value: Record<string, string>): void {
+        if (!value || typeof value !== "object" || Array.isArray(value) || Object.values(value).some((entry) => typeof entry !== "string")) {
+            throw new Error("Invalid capability preferences.");
+        }
+        this.preferences = { ...value };
+    }
 
     /** Build a trusted context, or inherit its lifecycle and ancestry from an active service call. */
     createInvocationContext(bound: BoundCapability, input: Omit<CapabilityCallContext, "invocation"> = {}): MainCapabilityInvocationContext {
@@ -241,7 +228,7 @@ class CapabilityRouter {
         const declaration = registration.methods[method];
         if (declaration.kind === "channel") return this.invokeChannel(bound, method, args, context);
         if (declaration.kind === "open") return this.invokeOpen(bound, method, args, context);
-        const backend = this.backendFor(registration);
+        const backend = capabilityBackendRegistry.getBackend(registration.backend);
         if (declaration.kind !== "call" || !backend) throw codedError("no-handler");
         if (!Array.isArray(args)) throw codedError("rejected", "Arguments must be an array.");
         const jsonArgs = checkedJson(args) as CapabilityJson[];
@@ -271,7 +258,7 @@ class CapabilityRouter {
             const operation = (async () => {
                 let untrackOwner: (() => void) | undefined;
                 try {
-                    untrackOwner = this.watchServiceOwner(invocation);
+                    untrackOwner = capabilityBackendRegistry.watchServiceOwner(invocation);
                     return await backend.call({ bound, registration, method, args: jsonArgs, invocation, deadlineAt,
                         reauthorize: () => { this.authorize(bound, method); } });
                 } finally { untrackOwner?.(); invocation.dispose(); }
@@ -350,7 +337,7 @@ class CapabilityRouter {
             ...(invocation.originatingWindowId !== undefined ? { originatingWindowId: invocation.originatingWindowId } : {}),
             requestId, dispose: () => undefined });
         try {
-            untrackOwner = this.watchServiceOwner(invocation);
+            untrackOwner = capabilityBackendRegistry.watchServiceOwner(invocation);
             let outcome: CapabilityOutcome | undefined;
             try {
                 this.authorize(bound, method);
@@ -374,7 +361,7 @@ class CapabilityRouter {
     private async invokeChannel(bound: BoundCapability, method: string, args: unknown[], context: CapabilityCallContext) {
         const registration = this.authorize(bound, method);
         if (bound.caller.kind === "agent") throw codedError("permission-denied");
-        const backend = this.backendFor(registration);
+        const backend = capabilityBackendRegistry.getBackend(registration.backend);
         if (!backend || !Array.isArray(args) || args.length > 1) throw codedError("rejected");
         backend.checkChannelArguments?.(method, args);
         const argument = args.length ? checkedJson(args[0]) : {};

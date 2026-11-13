@@ -2,7 +2,6 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { app, clipboard, ClipboardItem, nativeImage, webContents } from "electron";
-import { EventEndpoint } from "../ipc/api-types";
 import type {
     ClipboardDropEffect,
     ClipboardFlavor,
@@ -160,12 +159,12 @@ function getStatus(): ClipboardStatus {
 }
 
 function broadcastStatus(): void {
-    openWindows.send(EventEndpoint.eClipboardStatusChanged, getStatus());
+    openWindows.send("eClipboardStatusChanged", getStatus());
 }
 
 function broadcastHistory(reason: ClipboardHistoryChanged["reason"]): void {
     revision += 1;
-    openWindows.send(EventEndpoint.eClipboardHistoryChanged, {
+    openWindows.send("eClipboardHistoryChanged", {
         revision,
         reason,
     } satisfies ClipboardHistoryChanged);

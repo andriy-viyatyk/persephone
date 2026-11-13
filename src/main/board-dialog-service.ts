@@ -1,5 +1,4 @@
 import { BrowserWindow, type WebContents } from "electron";
-import { guardedIpcHandle } from "./ipc-sender-guard";
 import { randomUUID } from "crypto";
 import { BoardDialogChannel, type BoardDialogRecord } from "../ipc/board-dialog-ipc";
 import { onWebContentsGone } from "./webcontents-lifetime";
@@ -67,8 +66,9 @@ export function requestBoardDialog(host: WebContents, key: string, input: Pick<B
     });
 }
 
-guardedIpcHandle(BoardDialogChannel.list, event => (history.get(event.sender.id) ?? []).map(record => ({ ...record })));
-guardedIpcHandle(BoardDialogChannel.answer, (event, id: string, accept: boolean, text?: string) => {
-    const item = pending.find(entry => entry.host === event.sender && entry.record.id === id);
+export function listForSender(sender: WebContents): BoardDialogRecord[] { return (history.get(sender.id) ?? []).map(record => ({ ...record })); }
+
+export function answerForSender(sender: WebContents, id: string, accept: boolean, text?: string): void {
+    const item = pending.find(entry => entry.host === sender && entry.record.id === id);
     if (item) finish(item, accept === true, typeof text === "string" ? text : undefined);
-});
+}

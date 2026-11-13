@@ -2,6 +2,8 @@ import { execFileSync, execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { app } from "electron";
+import { applicationProfileName } from "./application-profile";
+import { t } from "../shared/i18n/t";
 
 /**
  * Manages Windows browser registration in HKCU (no admin required).
@@ -78,6 +80,7 @@ function shellNotify(): void {
 }
 
 export function registerAsDefaultBrowser(): void {
+    if (applicationProfileName()) throw new Error(t("settings.profileBrowserRegistration"));
     const launcher = getLauncherPath();
     const prefix = "SOFTWARE\\Clients\\StartMenuInternet\\persephone";
 
@@ -114,6 +117,7 @@ export function registerAsDefaultBrowser(): void {
 }
 
 export function unregisterAsDefaultBrowser(): void {
+    if (applicationProfileName()) throw new Error(t("settings.profileBrowserRegistration"));
     regDelete("SOFTWARE\\Clients\\StartMenuInternet\\persephone");
     regDelete("SOFTWARE\\Classes\\PersephoneURL");
     regDelete("SOFTWARE\\Classes\\PersephoneHTM");

@@ -1,6 +1,5 @@
 import { BoardRoot } from "../../shared/board/board-root";
 import { SERVICE_REQUEST_DEADLINE_MS, type BoardServiceStatus } from "../../ipc/module-service-channels";
-import { EventEndpoint } from "../../ipc/api-types";
 import { api } from "../../ipc/renderer/api";
 import rendererEvents from "../../ipc/renderer/renderer-events";
 import { errMessage } from "../../shared/utils";
@@ -36,7 +35,7 @@ class ModuleServiceStatus extends MainSnapshotMirror<StatusMap> {
     }
 
     protected subscribeToMain(): void {
-        this.attach(rendererEvents[EventEndpoint.eModuleServiceStatusChanged], (status) => this.applyEvent(status));
+        this.attach(rendererEvents["eModuleServiceStatusChanged"], (status) => this.applyEvent(status));
     }
 
     /** Preserve event values per key when a pull started before those events. */

@@ -1,4 +1,3 @@
-import { EventEndpoint } from "../ipc/api-types";
 import type { ServiceParentMessage } from "../ipc/module-service-channels";
 import type { ServiceChannelDelivery, ServiceChannelTarget } from "../shared/service-channel-target";
 import type { MessagePortMain, WebContents } from "electron";
@@ -23,5 +22,5 @@ export function deliverConsumerPort(delivery: ChannelDelivery, channelId: string
         return;
     }
     const target: ServiceChannelTarget = delivery.kind === "board-frame" ? { kind: "board-frame", boardId: delivery.boardId } : { kind: "renderer" };
-    delivery.webContents.postMessage(EventEndpoint.eBoardServiceChannel, { target, channelId } satisfies ServiceChannelDelivery, [port]);
+    delivery.webContents.postMessage("eBoardServiceChannel", { target, channelId } satisfies ServiceChannelDelivery, [port]);
 }

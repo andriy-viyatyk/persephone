@@ -1,4 +1,3 @@
-import { EventEndpoint } from "../ipc/api-types";
 import { openWindows } from "./open-windows";
 
 export interface AudioCaptureCountSnapshot {
@@ -17,7 +16,7 @@ export function setAudioCaptureCount(count: number): void {
     const nextCount = Number.isSafeInteger(count) && count >= 0 ? count : 0;
     if (snapshot.count === nextCount) return;
     snapshot = { count: nextCount, revision: snapshot.revision + 1 };
-    openWindows.send(EventEndpoint.eAudioCaptureCount, snapshot);
+    openWindows.send("eAudioCaptureCount", snapshot);
     for (const listener of listeners) listener();
 }
 

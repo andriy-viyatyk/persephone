@@ -1,11 +1,17 @@
 import { BrowserWindow, type IpcMainEvent, type WebContents } from "electron";
-import { Endpoint, EventEndpoint, type PathWatchSubscribeRequest, type PathWatchUnsubscribeRequest, type PathWatchOwner, type BeginPathMoveRequest, type CompletePathMoveRequest } from "../api-types";
-import { bindEndpoint } from "./endpoint-registry";
+import { sendRendererEvent } from "./renderer-event-sender";
+import type {
+    BeginPathMoveRequest,
+    CompletePathMoveRequest,
+    PathWatchApi,
+    PathWatchOwner,
+    PathWatchSubscribeRequest,
+    PathWatchUnsubscribeRequest,
+} from "../contracts/path-watch";
 import { openWindows } from "../../main/open-windows";
 import { pathWatchService, type PathWatchSubscribeResult } from "../../main/path-watch-service";
 import { onWebContentsGone } from "../../main/webcontents-lifetime";
-
-export type PathWatchEndpoint = "subscribePathWatch" | "unsubscribePathWatch" | "beginPathMove" | "completePathMove";
+import { bindDomain } from "./endpoint-registry";
 
 interface ClientSubscription {
     cancelled: boolean;
@@ -48,61 +54,59 @@ function trackSender(sender: WebContents): void {
     // file, a clicked link), which would drop every subscription of a renderer that never reloaded.
     onWebContentsGone(sender, () => releaseSender(sender), { events: ["destroyed", "did-navigate"], repeat: true });
 }
-
 export function initPathWatchHandlers(): void {
-    bindEndpoint(Endpoint.subscribePathWatch, async (event, request: PathWatchSubscribeRequest) => {
-        trackSender(event.sender);
-        const owner = getOwner(event);
-        ownersBySender.set(event.sender.id, owner);
-        const clients = clientsBySender.get(event.sender.id) ?? new Map<string, ClientSubscription>();
-        clientsBySender.set(event.sender.id, clients);
-        const previous = clients.get(request.clientId);
-        previous?.dispose?.();
-        const client: ClientSubscription = { cancelled: false };
-        clients.set(request.clientId, client);
-        let result: PathWatchSubscribeResult;
-        try {
-            result = await pathWatchService.subscribe(request.path, {
-                owner,
-                recursive: request.recursive,
-                debounceMs: request.debounceMs,
-                label: request.label,
-            }, batch => {
-                if (client.cancelled || event.sender.isDestroyed()) return;
-                try {
-                    event.sender.send(EventEndpoint.ePathWatchBatch, { clientId: request.clientId, batch });
-                } catch {
-                    // Sender teardown can race a queued watcher batch.
-                }
-            });
-        } catch (error: unknown) {
-            if (clients.get(request.clientId) === client) clients.delete(request.clientId);
-            throw error;
+    bindDomain<PathWatchApi>({
+        subscribePathWatch: async (event, request: PathWatchSubscribeRequest) => {
+            trackSender(event.sender);
+            const owner = getOwner(event);
+            ownersBySender.set(event.sender.id, owner);
+            const clients = clientsBySender.get(event.sender.id) ?? new Map<string, ClientSubscription>();
+            clientsBySender.set(event.sender.id, clients);
+            const previous = clients.get(request.clientId);
+            previous?.dispose?.();
+            const client: ClientSubscription = { cancelled: false };
+            clients.set(request.clientId, client);
+            let result: PathWatchSubscribeResult;
+            try {
+                result = await pathWatchService.subscribe(request.path, {
+                    owner,
+                    recursive: request.recursive,
+                    debounceMs: request.debounceMs,
+                    label: request.label,
+                }, batch => {
+                    if (client.cancelled || event.sender.isDestroyed()) return;
+                    try {
+                        sendRendererEvent(event.sender, "ePathWatchBatch", { clientId: request.clientId, batch });
+                    } catch {
+                        // Sender teardown can race a queued watcher batch.
+                    }
+                });
+            } catch (error: unknown) {
+                if (clients.get(request.clientId) === client) clients.delete(request.clientId);
+                throw error;
+            }
+            client.serviceId = result.id;
+            client.dispose = result.dispose;
+            if (client.cancelled || clients.get(request.clientId) !== client) {
+                result.dispose();
+                return;
+            }
+        },
+        unsubscribePathWatch: async (event, request: PathWatchUnsubscribeRequest) => {
+            const clients = clientsBySender.get(event.sender.id);
+            const client = clients?.get(request.clientId);
+            if (client) {
+                client.cancelled = true;
+                client.dispose?.();
+                clients?.delete(request.clientId);
+                if (clients?.size === 0) clientsBySender.delete(event.sender.id);
+            }
+        },
+        beginPathMove: async (_event, request: BeginPathMoveRequest) => {
+            return pathWatchService.beginMove(request.from, request.to);
+        },
+        completePathMove: async (_event, request: CompletePathMoveRequest) => {
+            pathWatchService.completeMove(request.moveId, request.succeeded);
         }
-        client.serviceId = result.id;
-        client.dispose = result.dispose;
-        if (client.cancelled || clients.get(request.clientId) !== client) {
-            result.dispose();
-            return;
-        }
-    });
-
-    bindEndpoint(Endpoint.unsubscribePathWatch, async (event, request: PathWatchUnsubscribeRequest) => {
-        const clients = clientsBySender.get(event.sender.id);
-        const client = clients?.get(request.clientId);
-        if (client) {
-            client.cancelled = true;
-            client.dispose?.();
-            clients?.delete(request.clientId);
-            if (clients?.size === 0) clientsBySender.delete(event.sender.id);
-        }
-    });
-
-    bindEndpoint(Endpoint.beginPathMove, async (_event, request: BeginPathMoveRequest) => {
-        return pathWatchService.beginMove(request.from, request.to);
-    });
-
-    bindEndpoint(Endpoint.completePathMove, async (_event, request: CompletePathMoveRequest) => {
-        pathWatchService.completeMove(request.moveId, request.succeeded);
     });
 }

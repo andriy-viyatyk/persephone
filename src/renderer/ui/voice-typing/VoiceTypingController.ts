@@ -2,7 +2,6 @@ import { SERVICE_CHANNEL_OPEN_TIMEOUT_MS } from "../../../ipc/module-service-cha
 import { errMessage } from "../../../shared/utils";
 import { codedError } from "../../../shared/coded-error";
 import { api } from "../../../ipc/renderer/api";
-import { EventEndpoint } from "../../../ipc/api-types";
 import { settings } from "../../api/settings";
 import { ui } from "../../api/ui";
 import { t } from "../../../shared/i18n/t";
@@ -83,7 +82,7 @@ export class VoiceTypingController {
 
     public start(): void {
         this.providerDiscovery = new SpeechTranscriptionProvider();
-        this.shortcutSubscription = rendererEvents[EventEndpoint.eVoiceTypingShortcut].subscribe((event) => {
+        this.shortcutSubscription = rendererEvents["eVoiceTypingShortcut"].subscribe((event) => {
             if (event.action === "start") this.startSession(event.sessionId, event.mode ?? "transcribe");
             else if (event.action === "stop") this.stopSession(event.sessionId);
             else this.cancelSession(event.sessionId);

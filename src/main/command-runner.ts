@@ -12,7 +12,7 @@
  * The transport is abstracted behind a {@link JobSink} so
  * one spawn/stream/tree-kill engine serves two callers:
  *  • the renderer `app` API + scripts, over IPC (`event.sender.send`) — a
- *    `WebContents`-backed sink wired in `initCommandRunner`;
+ *    `WebContents`-backed sink wired in the command-runner registrar;
  *  • a Board, over its per-board `MessagePort` — a port-backed sink supplied by
  *    `board-bridge.ts` (the board iframe has no `WebContents` of its own).
  *
@@ -33,7 +33,6 @@ import {
 import { errMessage } from "../shared/utils";
 import { NODE_SCRIPT_END_STDIN_KIND, NODE_SCRIPT_MARKER, NODE_SCRIPT_STDIN_KIND, type NodeScriptHostMessage } from "../ipc/node-script-host-protocol";
 import { getNodeHostEntryPath } from "./utils";
-import { guardedIpcOn } from "./ipc-sender-guard";
 import { onWebContentsGone } from "./webcontents-lifetime";
 
 /** Coalesce stdout/stderr bursts into one message per ~tick to cut message count. */
@@ -406,28 +405,25 @@ export function killJob(jobId: string, signal?: string): void {
 }
 
 /**
- * Register the runner IPC handlers for the renderer `app`/script clients. Call
- * once during app startup (alongside `initWorkerHost()` in `main-setup.ts`).
+ * Start a renderer-owned command job while preserving its sender for stream replies.
  * Boards do NOT use these channels — they route runner messages over their port
  * via `startJobTo`/`writeJobStdin`/… (see `board-bridge.ts`).
  */
-export function initCommandRunner(): void {
-    guardedIpcOn(RunnerChannel.start, (event: IpcMainEvent, msg: RunnerStartMsg) => {
-        wireSenderReaping(event.sender);
-        startJobTo(webContentsSink(event.sender), msg);
-    });
+export function start(event: IpcMainEvent, msg: RunnerStartMsg): void {
+    wireSenderReaping(event.sender);
+    startJobTo(webContentsSink(event.sender), msg);
+}
 
-    guardedIpcOn(RunnerChannel.stdin, (_event, msg: RunnerStdinMsg) => {
-        writeJobStdin(msg.jobId, msg.data);
-    });
+export function writeStdin(msg: RunnerStdinMsg): void {
+    writeJobStdin(msg.jobId, msg.data);
+}
 
-    guardedIpcOn(RunnerChannel.endStdin, (_event, msg: RunnerJobMsg) => {
-        endJobStdin(msg.jobId);
-    });
+export function endStdin(msg: RunnerJobMsg): void {
+    endJobStdin(msg.jobId);
+}
 
-    guardedIpcOn(RunnerChannel.kill, (_event, msg: RunnerKillMsg) => {
-        killJob(msg.jobId, msg.signal);
-    });
+export function kill(msg: RunnerKillMsg): void {
+    killJob(msg.jobId, msg.signal);
 }
 
 /** Kill every in-flight child. Wired into `app.on("will-quit", …)`. */

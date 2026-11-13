@@ -13,7 +13,7 @@ import path from "path";
 import fs from "fs";
 import { app } from "electron";
 import { openWindows } from "./open-windows";
-import { EventEndpoint, MnemeStatus } from "../ipc/api-types";
+import type { MnemeStatus } from "../ipc/contracts/mcp-mneme";
 import { SidecarProcess, SidecarStartResult } from "./sidecar-process";
 
 const DEFAULT_PORT = 7700;
@@ -62,8 +62,14 @@ export function getMnemeStatus(): MnemeStatus {
     return { running: sidecar.isRunning, url: getMnemeUrl() };
 }
 
+export function setMnemeEnabled(enabled: boolean, port?: number): Promise<MnemeStatus> {
+    if (enabled) return startMneme(port);
+    stopMneme();
+    return Promise.resolve(getMnemeStatus());
+}
+
 function broadcastMnemeStatus(error?: string): void {
-    openWindows.send(EventEndpoint.eMnemeStatusChanged, {
+    openWindows.send("eMnemeStatusChanged", {
         running: sidecar.isRunning,
         url: getMnemeUrl(),
         ...(error ? { error } : {}),

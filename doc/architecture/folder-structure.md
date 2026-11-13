@@ -976,6 +976,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ```
 /src/main/
 ├── main-setup.ts           # Application setup and window creation
+├── main-services.ts        # Ordered app-level service startup, phase boundaries, and reverse disposal
 ├── capability-client.ts    # Per-caller-owner capability list/get/invoke client
 ├── capability-router.ts    # Main capability resolution, authorization, limits and dispatch
 ├── capability-backend.ts   # Backend interface for capability method dispatch
@@ -1080,40 +1081,38 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 
 All main-process `ipcMain` registrations must pass through the shared sender guard in
 `src/main/ipc-sender-guard.ts`. Use `guardedIpcOn` / `guardedIpcHandle` for event and invoke
-handlers, or register typed API endpoints with `bindEndpoint` in `main/endpoint-registry.ts`, which
-uses the same guard. Do not add a direct, unguarded `ipcMain` listener or handler.
+handlers, or register typed API endpoints with `bindEndpoint` / `bindDomain` in
+`main/endpoint-registry.ts`, which use the same guard. The renderer request client and main
+registrars derive their signatures from the shared domain contracts. Do not add a direct,
+unguarded `ipcMain` listener or handler.
 
 ```
 /src/ipc/
-├── api-types.ts            # IPC channel definitions
+├── contracts/              # Domain request signatures, event payloads, and endpoint-specific timeout exemptions
+│   ├── app.ts              # Application APIs and lifecycle event contracts
+│   ├── boards.ts           # Board lifecycle, bridge, automation, and catalog APIs/events
+│   ├── window.ts           # Window and display APIs/events
+│   └── ...                 # Audio, files, capabilities, Git, module services, and other domains
+├── api-types.ts            # Composes domain contracts into Api and EventApi
+├── api-param-types.ts      # Shared IPC parameter types
+├── event-types.ts          # Event payload types derived from EventApi
+├── preload-channels.ts     # Preload allowlist for IPC channel and port operations
+├── board-bridge/           # Board boot context, port wire types, frame envelopes, UI catalogs, and origin routes
 ├── board-snapshot-channels.ts # Full board snapshot event, pull, and wire types
-├── api-param-types.ts      # IPC parameter types
-├── browser-ipc.ts          # Browser-specific IPC channels
+├── browser-network-ipc.ts  # BrowserNetwork type, proxy validation, browser-network channels
 ├── browser-translation-messages.ts # Typed host/guest translation messages and frame-scoped unit DTOs
-├── browser-network-ipc.ts  # BrowserNetwork type, proxy endpoint validation, browser-network:* channels
-├── tor-ipc.ts              # Tor service IPC channels (start, stop, log, check-ip, restart, status) + TorStatus/TorIpInfo types
-├── git-ipc.ts              # Git service IPC channel names + request/response types
-├── clipboard-ipc.ts        # Clipboard history/status DTOs plus file-clipboard DTOs (CF_HDROP paths + drop effect)
-├── search-ipc.ts           # Search IPC channels + wire types; also the batch-flush bounds, the matched-line result cap, and the default exclude patterns that seed the search-exclude setting
-├── worker-channels.ts      # Worker thread IPC channels (app.runAsync)
-├── runner-channels.ts      # Streaming command-runner IPC channels + wire types (RunnerChannel, inbound/outbound message unions, IExecuteHandle contract — implemented once in shared/execute-handle.ts for proc.ts and board-shim.ts)
-├── board-bridge/             # Board boot context, port wire types, frame envelopes, UI catalogs, and origin routes
-├── module-service-channels.ts # Main/utility-process service protocol, lifecycle status, trust snapshot, renderer leases, direct board channels, and storage wire types
-├── board-pipe-channels.ts    # Board-pipe range request/reply wire types
-├── popup-rate-limiter.ts   # Global popup/tab rate limiter (app-wide singleton)
-├── main/                   # Main process handlers
-│   ├── controller.ts       # Compact IPC composition root — initializes endpoint registrars and renderer events
-│   ├── endpoint-registry.ts # Shared typed Endpoint binder; derives main handler signatures from Api and owns reply/error wiring
-│   ├── core-handlers.ts    # Desktop, app, local-service, and utility Endpoint registrations
-│   ├── git-handlers.ts     # Lazy Git service Endpoint registrations
-│   ├── board-handlers.ts   # Lazy Board lifecycle, bridge, automation, and catalog Endpoint registrations
-│   ├── board-pipe-handlers.ts # Board-pipe page registration and renderer reply handlers
-│   ├── dialog-handlers.ts  # IPC endpoints for native file dialogs (dialog implementations live in main/native-dialogs.ts)
-│   ├── renderer-events.ts  # Events sent TO renderer
-│   └── window-handlers.ts  # Window management handlers
-└── renderer/               # Renderer process API
-    ├── api.ts              # IPC API (typed method calls)
-    └── renderer-events.ts  # Events received FROM main
+├── runner-channels.ts      # Streaming command-runner channels and wire types
+├── module-service-channels.ts # Main/utility-process service protocol and lifecycle wire types
+├── ...                     # Other standalone protocols and domain channels
+├── main/                   # Main-process IPC composition and domain registrars
+│   ├── controller.ts       # Composition root that initializes the registrars and renderer events
+│   ├── endpoint-registry.ts # Guarded endpoint binder and domain contract binder
+│   ├── *-handlers.ts       # Per-domain endpoint registrations
+│   ├── renderer-event-sender.ts # Typed event sender for main-owned windows
+│   └── renderer-events.ts  # Renderer event and port listeners
+└── renderer/               # Renderer process IPC client
+    ├── api.ts              # Contract-keyed request client, timeout policy, and convenience port adapters
+    └── renderer-events.ts  # Event subscriptions derived from EventApi
 ```
 
 Module services cross these boundaries intentionally: main owns persisted trust and derives the

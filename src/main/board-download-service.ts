@@ -4,7 +4,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { openWindows } from "./open-windows";
 import { getDataFolder, preparePath } from "./utils";
-import { EventEndpoint } from "../ipc/api-types";
 import { BoardArchiveDownloadRequest } from "../ipc/api-param-types";
 
 /**
@@ -46,7 +45,7 @@ export async function downloadBoardArchive(req: BoardArchiveDownloadRequest): Pr
     let lastSent = 0;
 
     const sendProgress = (totalBytes: number) =>
-        openWindows.send(EventEndpoint.eBoardInstallProgress, {
+        openWindows.send("eBoardInstallProgress", {
             installId,
             receivedBytes: received,
             totalBytes,

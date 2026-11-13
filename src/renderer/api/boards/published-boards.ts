@@ -8,7 +8,6 @@
  */
 import { api } from "../../../ipc/renderer/api";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
-import { EventEndpoint } from "../../../ipc/api-types";
 import { PublishedBoardInfo, PublishedBoardsCatalog, PublishedBoardVersions } from "../../../ipc/api-param-types";
 import { MainSnapshotMirror } from "../../core/state/MainSnapshotMirror";
 import { getBoardCompatibility } from "../../../shared/version-utils";
@@ -62,7 +61,7 @@ class PublishedBoards extends MainSnapshotMirror<PublishedBoardsCatalog | null> 
     }
 
     protected subscribeToMain(): void {
-        this.attach(rendererEvents[EventEndpoint.ePublishedBoardsUpdated], (catalog) => this.apply(catalog));
+        this.attach(rendererEvents["ePublishedBoardsUpdated"], (catalog) => this.apply(catalog));
     }
 
     protected override normalize(catalog: PublishedBoardsCatalog | null): PublishedBoardsCatalog | null {

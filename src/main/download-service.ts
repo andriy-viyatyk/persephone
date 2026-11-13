@@ -4,8 +4,10 @@ import fs from "node:fs";
 import { app, BrowserWindow, dialog, DownloadItem, Session, shell, WebContents } from "electron";
 import { DownloadEntry } from "../ipc/api-param-types";
 import type { BrowserUrlMaskClaim } from "../ipc/api-param-types";
-import { EventEndpoint } from "../ipc/api-types";
 import type { BoardNotifyMsg } from "../ipc/board-bridge/port-protocol";
+import type { EventApi } from "../ipc/api-types";
+import type { EventPayload } from "../ipc/event-types";
+import { sendRendererEvent } from "../ipc/main/renderer-event-sender";
 import { matchesBrowserUrlMask } from "../shared/browser-url-masks";
 import { openWindows } from "./open-windows";
 import { preparePath } from "./utils";
@@ -47,11 +49,11 @@ const recentStore = new JsonFileStore<DownloadEntry[]>("recentDownloads.json", {
     defaultValue: () => [],
     onSaveError: "warn",
 });
-function sendToBrowserHost(webContents: WebContents, endpoint: EventEndpoint, data: unknown): void {
+function sendToBrowserHost<K extends keyof EventApi>(webContents: WebContents, endpoint: K, data: EventPayload<K>): void {
     const hostContents = (webContents as WebContents & { hostWebContents?: WebContents }).hostWebContents;
     try {
         if (hostContents && !hostContents.isDestroyed()) {
-            hostContents.send(endpoint, data);
+            sendRendererEvent(hostContents, endpoint, data);
         }
     } catch {
         // The host renderer may be destroyed before the webview is disposed.
@@ -159,7 +161,7 @@ class DownloadService {
             }
         }
         this.persist();
-        openWindows.send(EventEndpoint.eDownloadCleared, this.getDownloads());
+        openWindows.send("eDownloadCleared", this.getDownloads());
     }
 
     private generateId(): string {
@@ -192,12 +194,12 @@ class DownloadService {
                 || routed
                 ? registerSessionSource(webContents.session, url, torPartition, routed)
                 : undefined;
-            sendToBrowserHost(webContents, EventEndpoint.eOpenClaimedBrowserDownload, {
+            sendToBrowserHost(webContents, "eOpenClaimedBrowserDownload", {
                 url,
                 boardRoot: claim.boardRoot,
                 ...(sessionHandle ? { sessionHandle } : {}),
             });
-            sendToBrowserHost(webContents, EventEndpoint.eBoardNotify, {
+            sendToBrowserHost(webContents, "eBoardNotify", {
                 message: `${claim.boardName} claimed this download and opened its source URL.`,
                 type: "info",
             } satisfies BoardNotifyMsg);
@@ -230,7 +232,7 @@ class DownloadService {
         };
         const record: DownloadRecord = { entry, item, tempPath, transferDone: false, finishing: false, referrerUrl };
         this.downloads.set(id, record);
-        openWindows.send(EventEndpoint.eDownloadStarted, { ...entry });
+        openWindows.send("eDownloadStarted", { ...entry });
         this.trackDownload(item, record, recordSource, referrerUrl);
         void this.chooseDownloadPath(parentWindow, record, defaultPath);
     }
@@ -240,7 +242,7 @@ class DownloadService {
             if (!record.transferDone) record.item?.cancel();
             try { await fs.promises.unlink(record.tempPath); } catch { /* The transfer may not have created its temp file yet. */ }
             this.downloads.delete(record.entry.id);
-            openWindows.send(EventEndpoint.eDownloadRemoved, { id: record.entry.id });
+            openWindows.send("eDownloadRemoved", { id: record.entry.id });
         };
         try {
             const result = await withNativeDialog(parentWindow, "file", () => dialog.showSaveDialog(parentWindow, { defaultPath }));
@@ -263,7 +265,7 @@ class DownloadService {
             const now = Date.now();
             if (now - lastProgressSent >= PROGRESS_THROTTLE_MS) {
                 lastProgressSent = now;
-                openWindows.send(EventEndpoint.eDownloadProgress, {
+                openWindows.send("eDownloadProgress", {
                     id: record.entry.id, receivedBytes: record.entry.receivedBytes, totalBytes: record.entry.totalBytes,
                 });
             }
@@ -277,7 +279,7 @@ class DownloadService {
             if (state === "completed" && !record.targetPath) {
                 record.transferDone = true;
                 record.entry.status = "awaitingPath";
-                openWindows.send(EventEndpoint.eDownloadAwaitingPath, {
+                openWindows.send("eDownloadAwaitingPath", {
                     id: record.entry.id, receivedBytes: record.entry.receivedBytes, totalBytes: record.entry.totalBytes,
                 });
             } else if (state === "completed") {
@@ -285,12 +287,12 @@ class DownloadService {
                 void this.finishDownloadMove(record, record.hostUrl ?? "", referrerUrl);
             } else if (state === "cancelled") {
                 record.entry.status = "cancelled";
-                openWindows.send(EventEndpoint.eDownloadFailed, { id: record.entry.id, error: "Cancelled" });
+                openWindows.send("eDownloadFailed", { id: record.entry.id, error: "Cancelled" });
                 void fs.promises.unlink(record.tempPath).catch((): void => undefined);
             } else {
                 record.entry.status = "failed";
                 record.entry.error = "Download interrupted";
-                openWindows.send(EventEndpoint.eDownloadFailed, { id: record.entry.id, error: record.entry.error });
+                openWindows.send("eDownloadFailed", { id: record.entry.id, error: record.entry.error });
                 void fs.promises.unlink(record.tempPath).catch((): void => undefined);
             }
             record.item = undefined;
@@ -314,12 +316,12 @@ class DownloadService {
             record.entry.filename = path.basename(savePath);
             record.entry.savePath = savePath;
             record.entry.status = "completed";
-            openWindows.send(EventEndpoint.eDownloadCompleted, { id: record.entry.id, savePath });
+            openWindows.send("eDownloadCompleted", { id: record.entry.id, savePath });
             this.persist();
         } catch (error) {
             record.entry.status = "failed";
             record.entry.error = "Failed to save download: " + errMessage(error);
-            openWindows.send(EventEndpoint.eDownloadFailed, { id: record.entry.id, error: record.entry.error });
+            openWindows.send("eDownloadFailed", { id: record.entry.id, error: record.entry.error });
             try { await fs.promises.unlink(record.tempPath); } catch { /* Best-effort cleanup. */ }
         }
     }

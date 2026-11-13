@@ -4,7 +4,6 @@
  * snapshot and requests main-owned mutations. Trust is never read from a board
  * manifest, and this registry is not exposed on `app` or any script type.
  */
-import { EventEndpoint } from "../../../ipc/api-types";
 import type { BoardSnapshot, BoardSnapshotEntry, DisabledBundledBoard } from "../../../ipc/board-snapshot-channels";
 import { api } from "../../../ipc/renderer/api";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
@@ -160,7 +159,7 @@ class BoardRegistry extends MainSnapshotMirror<IndexedBoardSnapshot> {
     }
 
     protected subscribeToMain(): void {
-        this.attach(rendererEvents[EventEndpoint.eBoardSnapshotChanged], (snapshot) => this.apply(indexSnapshot(snapshot)));
+        this.attach(rendererEvents["eBoardSnapshotChanged"], (snapshot) => this.apply(indexSnapshot(snapshot)));
         this.own(settings.watch("disabled-bundled-boards", () => {
             void api.setDisabledBundledBoards(settings.get("disabled-bundled-boards")).catch((error: unknown) => {
                 console.error(`Disabled bundled board setting sync failed: ${errMessage(error)}`);

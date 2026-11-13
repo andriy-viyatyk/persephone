@@ -76,8 +76,9 @@ const audioWindowMicrophoneGrants = new Map<number, { expiresAt: number; frame: 
 const audioWindowLoopbackGrants = new Map<number, { expiresAt: number; frame: Electron.WebFrameMain; target: WebContents; onDestroyed: () => void }>();
 let audioWindowTargetResolver: () => WebContents | undefined = () => undefined;
 
-export function setAudioWindowTargetResolver(resolve: () => WebContents | undefined): void {
-    audioWindowTargetResolver = resolve;
+export interface PermissionPolicyStartDependencies {
+    promptHandler: PermissionPromptHandler;
+    audioWindowTargetResolver: () => WebContents | undefined;
 }
 
 function armAudioWindowGrant(target: WebContents, grants: Map<number, { expiresAt: number; frame: Electron.WebFrameMain; target: WebContents; onDestroyed: () => void }>): void {
@@ -521,8 +522,6 @@ function installSession(ses: Session): void {
     denySelection(ses);
 }
 
-export function setPermissionPromptHandler(handler: PermissionPromptHandler): void { promptHandler = handler; }
-
 export function resolvePermissionRequest(requestId: string, decision: PermissionDecision): boolean {
     const request = pending.get(requestId);
     if (!request) return false;
@@ -627,9 +626,11 @@ export function clearProfilePermissionDecisions(profileName: string): void {
     writeStore();
 }
 
-export function initPermissionPolicy(): void {
+export function initPermissionPolicy(dependencies: PermissionPolicyStartDependencies): void {
     if (initialized) return;
     initialized = true;
+    promptHandler = dependencies.promptHandler;
+    audioWindowTargetResolver = dependencies.audioWindowTargetResolver;
     hydrateStore();
     app.on("session-created", installSession);
     app.on("web-contents-created", (_event, contents) => {

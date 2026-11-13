@@ -24,7 +24,7 @@ import {
     SearchError,
 } from "../ipc/search-ipc";
 import type { SearchWorkerMessage } from "./search-worker";
-import { guardedIpcOn } from "./ipc-sender-guard";
+import type { IpcMainEvent } from "electron";
 
 /** Active search per sender (webContents id → its worker). */
 const activeSearches = new Map<number, { worker: Worker; searchId: string }>();
@@ -77,10 +77,9 @@ function send(sender: WebContents, channel: string, payload: unknown): void {
 }
 
 /**
- * Initialize search IPC handlers. Call once during app startup.
+ * Start a sender-owned search worker.
  */
-export function initSearchHandlers(): void {
-    guardedIpcOn(SearchChannel.start, (event, request: SearchRequest) => {
+export function start(event: IpcMainEvent, request: SearchRequest): void {
         const sender = event.sender;
         const senderId = sender.id;
         const { searchId } = request;
@@ -161,16 +160,15 @@ export function initSearchHandlers(): void {
         });
 
         worker.postMessage({ type: "search", request });
-    });
+}
 
     // Scoped by search id, not by sender: a window runs one search at a time, but a view that
     // was disposed after its search was replaced would otherwise terminate the *replacement*.
     // A stale or unknown id is a silent no-op — it only means that search already ended.
     // Optional-chained because a malformed message must not throw in the main process.
-    guardedIpcOn(SearchChannel.cancel, (event, cancel: SearchCancel | undefined) => {
+export function cancel(event: IpcMainEvent, cancel: SearchCancel | undefined): void {
         const active = activeSearches.get(event.sender.id);
         if (cancel?.searchId && active?.searchId === cancel.searchId) {
             terminateSearch(event.sender.id);
         }
-    });
 }

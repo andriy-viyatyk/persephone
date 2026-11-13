@@ -2,7 +2,6 @@ import { isValidSiteExtensionId, isExactSiteExtensionHost } from "../shared/site
 import { validateSiteExtensionFetchHosts } from "../shared/site-extension-hosts";
 import path from "node:path";
 import type { SiteExtensionTrustSnapshot } from "../ipc/api-types";
-import { EventEndpoint } from "../ipc/api-types";
 import { openWindows } from "./open-windows";
 import { SerialQueue } from "../shared/serial-queue";
 import { JsonFileStore } from "./json-file-store";
@@ -110,7 +109,7 @@ class SiteExtensionTrustService {
             this.folder = nextFolder;
             for (const listener of this.listeners) listener();
             const snapshot = this.copy();
-            openWindows.send(EventEndpoint.eSiteExtensionTrustChanged, snapshot);
+            openWindows.send("eSiteExtensionTrustChanged", snapshot);
             return snapshot;
         });
     }

@@ -1,6 +1,5 @@
 import type { WebContents } from "electron";
-import { GLOBAL_MUTE_CHANGED, GLOBAL_MUTE_RELEASE_ALL, GLOBAL_MUTE_SNAPSHOT, type GlobalMuteSnapshot } from "../ipc/global-mute-channels";
-import { guardedIpcHandle } from "./ipc-sender-guard";
+import { GLOBAL_MUTE_CHANGED, type GlobalMuteSnapshot } from "../ipc/global-mute-channels";
 
 class GlobalMuteService {
     private readonly contents = new Map<WebContents, { local: boolean; type: string }>();
@@ -8,9 +7,9 @@ class GlobalMuteService {
     private readonly leases = new Map<string, { label: string; close: () => void }>();
     private revision = 0;
 
-    initialize(): void {
-        guardedIpcHandle(GLOBAL_MUTE_SNAPSHOT, () => this.snapshot());
-        guardedIpcHandle(GLOBAL_MUTE_RELEASE_ALL, () => { this.releaseAll(); return this.snapshot(); });
+    releaseAllAndSnapshot(): GlobalMuteSnapshot {
+        this.releaseAll();
+        return this.snapshot();
     }
 
     register(contents: WebContents, type: string): void {

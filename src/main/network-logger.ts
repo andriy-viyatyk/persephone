@@ -10,9 +10,8 @@
  * Windows single sign-on proof to Microsoft sign-in navigations (see windows-sso.ts).
  */
 import { app, Session } from "electron";
-import { BrowserChannel, NetworkLogEntry, NetworkLogOptions } from "../ipc/browser-ipc";
+import { type NetworkLogEntry, type NetworkLogOptions } from "../ipc/browser-ipc";
 import { addWindowsSsoHeaders, redactWindowsSsoHeaders, wantsWindowsSso } from "./windows-sso";
-import { guardedIpcHandle } from "./ipc-sender-guard";
 
 const MAX_LOG_ENTRIES = 200;
 const MAX_BODY_SIZE = 100 * 1024; // 100 KB — skip larger bodies
@@ -26,25 +25,13 @@ const pagePending = new Map<string, Map<number, NetworkLogEntry>>();
 /** Sessions already hooked — prevent double-hooking. */
 const hookedSessions = new WeakSet<Session>();
 
-/**
- * Resolves a webContentsId to its registration key.
- * Set by browser-service.ts which owns the registrations map.
- */
 let resolveWebContentsId: (wcId: number) => string | undefined = () => undefined;
 type ResponseBodyFields = { responseBody: string; responseBodyBase64Encoded: boolean; responseBodyTruncated: boolean };
 let resolveResponseBodies: (key: string, entries: NetworkLogEntry[], maxBodyBytes: number) => Promise<Map<number, ResponseBodyFields>> = async () => new Map();
 
-export function setNetworkResponseBodyResolver(
-    resolver: (key: string, entries: NetworkLogEntry[], maxBodyBytes: number) => Promise<Map<number, ResponseBodyFields>>,
-): void {
-    resolveResponseBodies = resolver;
-}
-
-/** Set the resolver function. Called once from browser-service.ts. */
-export function setWebContentsResolver(
-    resolver: (wcId: number) => string | undefined,
-): void {
-    resolveWebContentsId = resolver;
+export interface NetworkLoggerStartDependencies {
+    resolveWebContentsId: (webContentsId: number) => string | undefined;
+    resolveResponseBodies: (key: string, entries: NetworkLogEntry[], maxBodyBytes: number) => Promise<Map<number, ResponseBodyFields>>;
 }
 
 /** Decode request body from uploadData. Returns undefined if empty or too large. */
@@ -201,17 +188,20 @@ export function getNetworkLogMetadata(key: string, limit = 20): NetworkLogMetada
 }
 
 /** Initialize network logging. Call once during app startup. */
-export function initNetworkLogger(): void {
+export function initNetworkLogger(dependencies: NetworkLoggerStartDependencies): void {
+    resolveWebContentsId = dependencies.resolveWebContentsId;
+    resolveResponseBodies = dependencies.resolveResponseBodies;
     app.on("session-created", (ses: Session) => {
         hookSession(ses);
     });
 
-    guardedIpcHandle(BrowserChannel.getNetworkLog, async (_event, key: string, options: NetworkLogOptions = {}) => {
-        const entries = pageLogs.get(key) ?? [];
-        if (!options.includeBodies) return entries.map(entry => ({ ...entry }));
-        const requestedLimit = options.maxBodyBytes ?? 64 * 1024;
-        const maxBodyBytes = Number.isFinite(requestedLimit) ? Math.max(0, Math.min(1024 * 1024, Math.floor(requestedLimit))) : 64 * 1024;
-        const bodies = await resolveResponseBodies(key, entries, maxBodyBytes);
-        return entries.map(entry => ({ ...entry, ...(bodies.get(entry.id) ?? {}) }));
-    });
+}
+
+export async function getNetworkLog(key: string, options: NetworkLogOptions = {}) {
+    const entries = pageLogs.get(key) ?? [];
+    if (!options.includeBodies) return entries.map(entry => ({ ...entry }));
+    const requestedLimit = options.maxBodyBytes ?? 64 * 1024;
+    const maxBodyBytes = Number.isFinite(requestedLimit) ? Math.max(0, Math.min(1024 * 1024, Math.floor(requestedLimit))) : 64 * 1024;
+    const bodies = await resolveResponseBodies(key, entries, maxBodyBytes);
+    return entries.map(entry => ({ ...entry, ...(bodies.get(entry.id) ?? {}) }));
 }

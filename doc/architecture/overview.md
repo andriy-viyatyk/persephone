@@ -84,9 +84,12 @@ key needs a reason from that list.
 
 Every `ipcMain` event or invoke registration must authorize its sender through the shared
 `src/main/ipc-sender-guard.ts` guard. Use `guardedIpcOn` / `guardedIpcHandle`, or the typed
-`bindEndpoint` registrar (which calls the same guard); direct unguarded registrations are not
-allowed. The guard accepts only a live main frame belonging to a Persephone `BrowserWindow` in the
-application session.
+`bindEndpoint` / `bindDomain` registrar (which calls the same guard); direct unguarded registrations
+are not allowed. IPC request signatures and event payloads are split by domain under
+`src/ipc/contracts/` and composed into `Api` / `EventApi` in `src/ipc/api-types.ts`. The renderer
+client in `src/ipc/renderer/api.ts` creates typed requests from those contract keys, while
+`src/ipc/main/controller.ts` initializes per-domain main-process registrars. The guard accepts only
+a live main frame belonging to a Persephone `BrowserWindow` in the application session.
 
 Packaged builds lock Electron fuses in `electron-builder.yml`: `RunAsNode`, `NODE_OPTIONS` (including
 `NODE_EXTRA_CA_CERTS`), and Node inspector arguments are disabled; embedded asar integrity validation
@@ -196,6 +199,10 @@ The main entry (`src/main.ts`) parses the optional application profile, sets its
 acquires the single-instance lock, then calls `setupMainProcess()` from `src/main/main-setup.ts`.
 Main setup establishes permission and protocol policy, initializes main-owned trust state, registers
 services and IPC handlers, and starts window creation when Electron is ready.
+App-level service starts are ordered by `src/main/main-services.ts` and run at the setup boundaries
+around certificate selection and IPC registration, then after CDM readiness. Ordinary quit disposal
+follows the reverse table order; the path-watch and private-MCP pre-gate steps and the module-service
+quit gate remain explicit by name, with the gate kept in `main-setup.ts`.
 
 After NLS is ready, the entry synchronously loads the custom theme catalog and installs the selected
 theme before importing the app, IPC API, and settings in parallel. It then starts one renderer-index

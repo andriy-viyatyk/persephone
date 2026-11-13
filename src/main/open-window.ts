@@ -5,7 +5,9 @@ import { app, BrowserWindow, clipboard, nativeImage, screen, type WebContents } 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { EventEndpoint } from "../ipc/api-types";
+import type { EventApi } from "../ipc/api-types";
+import type { EventPayload } from "../ipc/event-types";
+import { sendRendererEvent } from "../ipc/main/renderer-event-sender";
 import { normalizeVoiceTypingShortcut, RIGHT_CTRL_SHORTCUT, SHIFT_RIGHT_CTRL_SHORTCUT, voiceTypingShortcutForInput } from "../shared/voice-typing-shortcut";
 import { debounce, errMessage } from "../shared/utils";
 import { electronStore } from "./e-store";
@@ -170,7 +172,7 @@ export class OpenWindow {
         this.window.on("close", (event) => {
             if (!this.canQuit) {
                 event.preventDefault();
-                this.send(EventEndpoint.eBeforeQuit, undefined);
+                this.send("eBeforeQuit", undefined);
                 // If renderer is crashed or unresponsive, force-quit after timeout.
                 //
                 // This deliberately calls close() directly rather than going
@@ -200,11 +202,11 @@ export class OpenWindow {
         });
 
         this.window.on("maximize", () => {
-            this.send(EventEndpoint.eWindowMaximized, true);
+            this.send("eWindowMaximized", true);
         });
 
         this.window.on("unmaximize", () => {
-            this.send(EventEndpoint.eWindowMaximized, false);
+            this.send("eWindowMaximized", false);
         });
 
         this.window.on("resize", () => {
@@ -226,18 +228,18 @@ export class OpenWindow {
                     const currentZoom = this.window.webContents.getZoomLevel();
                     this.window.webContents.setZoomLevel(currentZoom + 0.5);
                     reapplyBrowserGuestZoom(this.window.webContents);
-                    this.send(EventEndpoint.eZoomChanged, currentZoom + 0.5);
+                    this.send("eZoomChanged", currentZoom + 0.5);
                 } else if (input.key === "-") {
                     event.preventDefault();
                     const currentZoom = this.window.webContents.getZoomLevel();
                     this.window.webContents.setZoomLevel(currentZoom - 0.5);
                     reapplyBrowserGuestZoom(this.window.webContents);
-                    this.send(EventEndpoint.eZoomChanged, currentZoom - 0.5);
+                    this.send("eZoomChanged", currentZoom - 0.5);
                 } else if (input.key === "0") {
                     event.preventDefault();
                     this.window.webContents.setZoomLevel(0);
                     reapplyBrowserGuestZoom(this.window.webContents);
-                    this.send(EventEndpoint.eZoomChanged, 0);
+                    this.send("eZoomChanged", 0);
                 }
             }
         });
@@ -248,7 +250,7 @@ export class OpenWindow {
                 const referrer = new URL(details.referrer.url);
                 if (referrer.protocol === "board:") boardRoot = getBoardRootForHost(referrer.host) ?? undefined;
             } catch { /* Empty or malformed referrer is deliberately unattributed. */ }
-            this.send(EventEndpoint.eOpenUrl, {
+            this.send("eOpenUrl", {
                 url: details.url,
                 ...(boardRoot ? { boardRoot } : {}),
                 ...(!boardRoot ? { unattributedPopup: true } : {}),
@@ -274,7 +276,7 @@ export class OpenWindow {
                     }
                 }
                 event.preventDefault();
-                this.send(EventEndpoint.eOpenUrl, { url });
+                this.send("eOpenUrl", { url });
                 return;
             }
 
@@ -296,7 +298,7 @@ export class OpenWindow {
                 event.preventDefault();
 
                 const filePath = fileURLToPath(url);
-                this.send(EventEndpoint.eOpenFile, filePath);
+                this.send("eOpenFile", filePath);
                 return;
             }
 
@@ -307,7 +309,7 @@ export class OpenWindow {
 
             // Block and send to renderer for routing
             event.preventDefault();
-            this.send(EventEndpoint.eOpenUrl, { url });
+            this.send("eOpenUrl", { url });
         });
 
         //: `will-navigate` above covers only the MAIN frame. A board renders in an
@@ -344,7 +346,7 @@ export class OpenWindow {
             details.preventDefault();
             let boardRoot: string | undefined;
             try { boardRoot = getBoardRootForHost(new URL(currentUrl).host) ?? undefined; } catch { /* no board origin */ }
-            this.send(EventEndpoint.eOpenUrl, { url: details.url, ...(boardRoot ? { boardRoot } : {}) });
+            this.send("eOpenUrl", { url: details.url, ...(boardRoot ? { boardRoot } : {}) });
         });
 
         if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
@@ -361,11 +363,11 @@ export class OpenWindow {
         // this.window.webContents.openDevTools();
     }
 
-    send(eventName: EventEndpoint, data: unknown) {
+    send<K extends keyof EventApi>(eventName: K, data: EventPayload<K>): void {
         if (!this.window) {
             return;
         }
-        this.window.webContents.send(eventName, data);
+        sendRendererEvent(this.window.webContents, eventName, data);
     }
 
     focus = () => {
@@ -503,7 +505,7 @@ export class OpenWindow {
             this.voiceTypingState = "idle";
             this.clearVoiceTypingSession();
             this.clearVoiceTypingControlSession();
-            this.send(EventEndpoint.eVoiceTypingShortcut, { sessionId, action: "cancel", source });
+            this.send("eVoiceTypingShortcut", { sessionId, action: "cancel", source });
         }
     }
 
@@ -537,10 +539,10 @@ export class OpenWindow {
             this.voiceTypingSession = { id: sessionId, target };
             this.voiceTypingControlSession = { id: sessionId, target, mode };
             this.voiceTypingState = "recording";
-            this.send(EventEndpoint.eVoiceTypingShortcut, { sessionId, action: "start", mode, source });
+            this.send("eVoiceTypingShortcut", { sessionId, action: "start", mode, source });
         } else if (this.voiceTypingControlSession) {
             this.voiceTypingState = "transcribing";
-            this.send(EventEndpoint.eVoiceTypingShortcut, { sessionId: this.voiceTypingControlSession.id, action: "stop", source });
+            this.send("eVoiceTypingShortcut", { sessionId: this.voiceTypingControlSession.id, action: "stop", source });
         }
     }
 

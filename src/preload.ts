@@ -5,19 +5,15 @@ import {
 } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { ENDPOINT_REPLY_CHANNEL, Endpoint, EventEndpoint, RendererEvent } from "./ipc/api-types";
-import type { BoardPipeChannel } from "./ipc/board-pipe-channels";
-import type { BoardServiceSettingsChannel } from "./ipc/board-service-settings-channels";
-
-type BoardServiceSettingsChannelName = typeof BoardServiceSettingsChannel[keyof typeof BoardServiceSettingsChannel];
+import type { PreloadListenerChannel, PreloadOnceChannel, PreloadPortChannel, PreloadSendChannel } from "./ipc/preload-channels";
 
 const electronHandler = {
     ipcRenderer: {
-        sendMessage(channel: Endpoint | EventEndpoint | BoardPipeChannel | BoardServiceSettingsChannelName | RendererEvent, ...args: unknown[]) {
+        sendMessage(channel: PreloadSendChannel, ...args: unknown[]) {
             ipcRenderer.send(channel, ...args);
         },
         on(
-            channel: Endpoint | typeof ENDPOINT_REPLY_CHANNEL | EventEndpoint | BoardPipeChannel,
+            channel: PreloadListenerChannel,
             func: (...args: unknown[]) => void
         ) {
             const subscription = (
@@ -31,7 +27,7 @@ const electronHandler = {
             };
         },
         once(
-            channel: Endpoint | BoardPipeChannel,
+            channel: PreloadOnceChannel,
             func: (...args: unknown[]) => void
         ) {
             ipcRenderer.once(channel, (_event, ...args) => func(...args));
@@ -41,7 +37,7 @@ const electronHandler = {
         // `event.ports`) is unreachable through them. `onPort` surfaces the ports
         // explicitly — used to receive a per-board bridge port from main.
         onPort(
-            channel: EventEndpoint,
+            channel: PreloadPortChannel,
             func: (payload: unknown, ports: readonly MessagePort[]) => void
         ) {
             const subscription = (event: IpcRendererEvent, payload: unknown) =>

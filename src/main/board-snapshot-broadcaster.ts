@@ -1,4 +1,3 @@
-import { EventEndpoint } from "../ipc/api-types";
 import type { BoardSnapshot } from "../ipc/board-snapshot-channels";
 import type { BoardTrustSnapshot } from "./board-trust-snapshot-builder";
 import { openWindows } from "./open-windows";
@@ -14,7 +13,7 @@ class BoardSnapshotBroadcaster {
         if (serialized === this.serialized) return;
         this.serialized = serialized;
         this.snapshot = { revision: this.snapshot.revision + 1, ...content };
-        openWindows.send(EventEndpoint.eBoardSnapshotChanged, this.snapshot);
+        openWindows.send("eBoardSnapshotChanged", this.snapshot);
     }
 
     current(): BoardSnapshot {

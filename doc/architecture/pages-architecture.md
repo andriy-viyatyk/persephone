@@ -707,10 +707,10 @@ disposed of through `OpenWindow.close()` → `win.destroy()`, which bypasses the
 **Hiding is what keeps the app alive.** A hidden `BrowserWindow` still counts as
 open, so `window-all-closed` does not fire and `app.quit()` is never reached —
 which is the whole mechanism behind close-to-tray. Destroying the last window
-instead lets `window-all-closed` run, and the `will-quit` handler tears down every
-background service (Tor, child commands, board ports, the named pipe, the MCP HTTP
-server, the video stream server, Mneme). The `window.close-to-tray` setting is
-simply a choice between those two paths.
+instead lets `window-all-closed` run. On quit, `main-setup.ts` runs the explicitly
+named pre-gate cleanup and module-service quit gate, then disposes the app-level
+main services through the reverse-ordered table in `main-services.ts`. The
+`window.close-to-tray` setting is simply a choice between those two paths.
 
 **Policy rides on the reply, because main cannot read settings.** The main process
 never loads `appSettings.json` — settings live in the renderer. Rather than mirror

@@ -1,8 +1,8 @@
 import { applicationProfileName } from "./application-profile";
-import { app } from "electron";
+import { app, nativeImage, shell } from "electron";
 import path from "node:path";
 import fs from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { getLauncherPath } from "./browser-registration";
 import { BoardRoot } from "../shared/board/board-root";
@@ -86,4 +86,51 @@ export async function writeBoardWindowIcon(boardRoot: string, png: Buffer): Prom
     await fs.mkdir(path.dirname(iconPath), { recursive: true });
     await fs.writeFile(iconPath, pngBackedIco(png));
     return iconPath;
+}
+
+export async function createBoardShortcut(request: {
+    boardRoot: string;
+    linkPath: string;
+    displayName: string;
+    iconDataUrl: string;
+    overwrite?: boolean;
+}): Promise<boolean> {
+    if (!request || typeof request.boardRoot !== "string" || !request.boardRoot.trim()
+        || typeof request.linkPath !== "string" || !request.linkPath.trim()
+        || typeof request.displayName !== "string" || !request.displayName.trim() || request.displayName.length > 256) {
+        throw new Error("Invalid board shortcut details.");
+    }
+    if (!path.isAbsolute(request.linkPath)) throw new Error("linkPath must be absolute.");
+    const resolvedLinkPath = path.resolve(request.linkPath);
+    if (path.extname(resolvedLinkPath).toLowerCase() !== ".lnk") throw new Error("linkPath must end in .lnk.");
+    const parentPath = path.dirname(resolvedLinkPath);
+    if (!existsSync(parentPath) || !statSync(parentPath).isDirectory()) throw new Error("linkPath parent directory does not exist.");
+    if (existsSync(resolvedLinkPath) && request.overwrite !== true) throw new Error("File exists; pass overwrite: true.");
+
+    const match = /^data:image\/png;base64,([A-Za-z0-9+/]+={0,2})$/.exec(request.iconDataUrl);
+    if (!match || match[1].length > 7_000_000) throw new Error("Invalid board icon data URL.");
+    const image = nativeImage.createFromDataURL(request.iconDataUrl);
+    const size = image.getSize();
+    if (image.isEmpty() || size.width !== 256 || size.height !== 256) throw new Error("Board icons must be 256x256 PNG images.");
+
+    const iconPath = await writeBoardWindowIcon(request.boardRoot, image.toPNG());
+    const details: Electron.ShortcutDetails = {
+        target: getBoardLauncherPath(),
+        args: `--board "${boardRootForLaunchArgs(request.boardRoot)}"${boardProfileArgument()}`,
+        description: request.displayName,
+        icon: iconPath,
+        iconIndex: 0,
+        appUserModelId: boardAppId(request.boardRoot),
+    };
+    if (!shell.writeShortcutLink(resolvedLinkPath, "create", details)) throw new Error("Failed to create board shortcut.");
+    const written = shell.readShortcutLink(resolvedLinkPath);
+    const normalizePath = (value: unknown): string | null => typeof value === "string"
+        ? path.normalize(path.resolve(value)).replace(/[\\/]+$/, "").toLowerCase()
+        : null;
+    const verified = normalizePath(written.target) === normalizePath(details.target)
+        && written.args === details.args && written.description === details.description
+        && normalizePath(written.icon) === normalizePath(details.icon)
+        && written.appUserModelId === details.appUserModelId;
+    if (!verified) throw new Error("Board shortcut verification failed.");
+    return true;
 }

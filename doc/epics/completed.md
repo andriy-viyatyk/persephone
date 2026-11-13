@@ -1,3 +1,21 @@
+## EPIC-156 — Refactoring Phase 5.6: main conventions — one service shape, IPC only in `ipc/main`, IPC contracts by domain
+
+Completed 2026-11-13. Roadmap Phase 5.6 (MAIN-6, BND-7, BND-8): IPC endpoints are declared once per domain in
+`src/ipc/contracts/`, bound by completeness-checked `bindDomain` registrars that only delegate, called from a renderer
+client generated from the same contract (with a default timeout), and registered only in `src/ipc/main/`. Sender
+policies have names; main-process services start and stop from one ordered table. `core-handlers.ts` 845 lines →
+deleted, `api-types.ts` 627 → 60, `ipc/renderer/api.ts` 757 → 123, `main-setup.ts` 286 → 77. Wire channel names,
+`window.persephone`, the script API and MCP behaviour are unchanged. Plans by Codex, reviewed against the roadmap
+guardrails; Codex Luna implemented, with plan corrections recorded in the epic notes. Epic document:
+[EPIC-156](EPIC-156.md).
+
+- [x] **Thin `core-handlers` and named sender policies (US-1891).** Controller logic moved to `src/main` owners (window display, zoom, page capture, board shortcut, launch inputs and others); `requireAppWindow`/`requireNormalWindow`/`requireWindowOf`/`anyPolicy` in `main/ipc-sender-policies.ts` replace the inline re-checks with unchanged denial messages; `connectCapabilityChannel` split from `connectHostServiceChannel`.
+- [x] **Contracts by domain and `bindDomain` (US-1892).** 20 contract modules; `Api`/`EventApi` are intersections; the `Controller` became domain registrars; the `XEndpoint` unions and `Omit<>` are gone.
+- [x] **Generated client, timeout, typed events (US-1893).** A cached `Proxy` client over the existing transport replaces `ApiCalls`; 30 s default timeout with per-contract exemptions; typed main event sends; renderer events derived from `EventApi`; one preload channel union; `Endpoint`/`EventEndpoint` deleted.
+- [x] **IPC registration only in `ipc/main` (US-1894).** 13 service-side `guardedIpc*` registrations moved to registrars bound from `controller.init()`; all registrar and `main-setup` dynamic imports static.
+- [x] **One main service shape (US-1895).** `main/main-services.ts` table with phases and reverse-order disposal reproduces today's startup calls and quit disposals; setters replaced by constructor or `start(deps)` injection; `app-asset` protocol and its CORS allowlist in `main/app-asset-protocol.ts`; the convention is in `coding-style.md`.
+- [x] **Epic review.** `/review` replaced five non-null assertions with runtime guards; `/document` updated `overview.md`, `key-files.md`, `folder-structure.md` and `pages-architecture.md`; `/userdoc` needed no changes. No English catalog messages changed.
+
 ## EPIC-155 — Refactoring Phase 5.5: settings schema, settings effects, theme startup and the startup phase table
 
 Completed 2026-11-13. Roadmap Phase 5.5 (CORE-7, CORE-8, CORE-9, EDT-3, PLAT-6, BND-14, decision D12): each setting is

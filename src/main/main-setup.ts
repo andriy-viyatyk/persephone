@@ -1,239 +1,43 @@
-import { globalMuteService } from "./global-mute-service";
-import { applicationProfileName } from "./application-profile";
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { app, components, net, protocol, session } from "electron";
-import path from "node:path";
-import { appPartition, fileAccessPersistPartition } from "./constants";
+import { app, components } from "electron";
 import { controller } from "../ipc/main/controller";
-import { takeBoardStartupInput, takeStartupInputsForMain } from "../ipc/main/window-handlers";
-import { getAssetPath, launchOperands, parseLaunchArguments } from "./utils";
-import { pathToFileURL } from "node:url";
-import { openWindows } from "./open-windows";
-import { setupTray } from "./tray-setup";
-import { versionService } from "./version-service";
-import { initSearchHandlers } from "./search-service";
-import { initBrowserHandlers, initBrowserUserAgent } from "./browser-service";
-import { initTorHandlers, torService } from "./tor-service";
-import { registerTorSrcProtocol } from "./tor-src-protocol";
-import { registerSessionSrcProtocol } from "./session-src-protocol";
-import { initBrowserNetworkHandlers, registerProfileSrcProtocol } from "./browser-network-service";
-import { PROFILE_SRC_SCHEME } from "../ipc/browser-network-ipc";
-import { initWorkerHost } from "./worker-host";
-import { initCommandRunner, killAllCommands } from "./command-runner";
-import { disposeAllBoardPorts } from "./board-bridge";
-import { startPipeServer, stopPipeServer } from "./pipe-server";
-import { stopMcpHttpServer } from "./mcp-http-server";
-import { shutdownPrivateMcpEndpoint } from "./mcp/private-session-endpoints";
-import { shutdownMneme } from "./mneme-service";
-import { shutdownClipboard } from "./clipboard-service";
-import { stopVideoStreamServer } from "./video-stream-server";
-import { downloadService } from "./download-service";
-import { reconstructWindowsEnv } from "./windows-env";
-import { moduleServiceSupervisor } from "./module-service-supervisor";
-import { boardTrustService } from "./board-trust-service";
-import { subscribeBoardTrustConsumers } from "./board-trust-subscribers";
-import { siteExtensionTrustService } from "./site-extension-trust-service";
-import { boardPipeService } from "./board-pipe-service";
 import { SERVICE_QUIT_GATE_TIMEOUT_MS } from "../ipc/module-service-channels";
 import { errMessage } from "../shared/utils";
-import { initPermissionPolicy } from "./permission-policy-service";
-import { shutdownPathWatchService } from "./path-watch-service";
-import { audioService } from "./audio-service";
-import { capabilityRouter } from "./capability-router";
-import { AudioBackend } from "./audio-backend";
-import { BoardServiceBackend } from "./board-service-backend";
+import { moduleServiceSupervisor } from "./module-service-supervisor";
+import { openWindows } from "./open-windows";
+import { disposeMainServices, startMainServices } from "./main-services";
 
-export function setupMainProcess() {
-    audioService.initialize();
-    capabilityRouter.registerBackend("audio", new AudioBackend(audioService));
-    capabilityRouter.registerBackend("board-service", new BoardServiceBackend(moduleServiceSupervisor, capabilityRouter));
-    capabilityRouter.setServiceOwnerTracker((boardRoot, onClosed) => moduleServiceSupervisor.trackServiceOwner(boardRoot, onClosed));
+export function setupMainProcess(): void {
+    void startMainServices("setup-before-certificate");
+
     app.on("select-client-certificate", (event, webContents, _url, _list, callback) => {
         if (webContents === null) {
             event.preventDefault();
             callback();
         }
     });
-    // Permission handlers must be present before any renderer or webview session is created.
-    initPermissionPolicy();
-    // Likewise the fallback User-Agent: a renderer process reads it when it starts.
-    initBrowserUserAgent();
-    // Load the main-owned board trust state before restored renderer windows can request services.
-    subscribeBoardTrustConsumers();
-    void boardTrustService.init().catch((error: unknown) => {
-        console.error(`Board trust initialization failed: ${errMessage(error)}`);
-    });
-    void siteExtensionTrustService.init().catch((error: unknown) => {
-        console.error(`Site extension trust initialization failed: ${errMessage(error)}`);
-    });
 
-    // Recover standard Windows folder and system environment variables before any child
-    // process is spawned, in case the app was launched from a degraded shell.
-    reconstructWindowsEnv();
-
-    protocol.registerSchemesAsPrivileged([
-        {
-            scheme: "app-asset",
-            privileges: {
-                standard: true,
-                secure: true,
-                supportFetchAPI: true,
-                bypassCSP: true,
-                // Fetched cross-origin from the renderer (editor-type .d.ts,
-                // libarchive.wasm). Electron 43 / Chromium requires explicit
-                // corsEnabled for custom-scheme cross-origin fetch — without it
-                // the dev origin (http://localhost:5273) is blocked by CORS.
-                corsEnabled: true,
-            },
-        },
-        {
-            // Tor-routed remote resources for renderer-drawn content.
-            // The app renderer is not covered by a Tor page's session proxy, so
-            // e.g. the Link editor's bookmark images opt in via this scheme.
-            scheme: "tor-src",
-            privileges: {
-                standard: true,
-                secure: true,
-                supportFetchAPI: true,
-            },
-        },
-        {
-            // Proxied-profile routed remote resources for renderer-drawn content:
-            // the `tor-src` counterpart for browser profiles behind a proxy.
-            scheme: PROFILE_SRC_SCHEME,
-            privileges: {
-                standard: true,
-                secure: true,
-                supportFetchAPI: true,
-                // The favicon cache reads routed bytes with renderer fetch(), cross-origin.
-                corsEnabled: true,
-            },
-        },
-        {
-            // Short-lived private-session capabilities for claimed browser downloads.
-            scheme: "session-src",
-            privileges: {
-                standard: true,
-                secure: true,
-                supportFetchAPI: true,
-                // HttpProvider fetches it from the renderer origin, which is cross-origin.
-                corsEnabled: true,
-            },
-        },
-        {
-            // Board frontend delivery. NOT bypassCSP — board
-            // pages are governed by the CSP the board:// handler sets (forbids remote).
-            scheme: "board",
-            privileges: {
-                standard: true,
-                secure: true,
-                supportFetchAPI: true,
-            },
-        },
-        {
-            // Native HTML preview documents. A srcdoc frame would inherit the main window's
-            // strict CSP; this scheme serves each preview with its own CSP.
-            scheme: "html-preview",
-            privileges: { standard: true, secure: true, supportFetchAPI: true },
-        },
-    ]);
-
+    void startMainServices("setup-after-certificate-before-ipc");
     controller.init();
-    initSearchHandlers();
-    globalMuteService.initialize();
-    initBrowserHandlers();
-    initTorHandlers();
-    initBrowserNetworkHandlers();
-    initWorkerHost();
-    initCommandRunner();
-    downloadService.init();
-
-    function registerAssetProtocol(partition: string) {
-        const customSession = session.fromPartition(partition);
-
-        customSession.protocol.handle("app-asset", async (request) => {
-            const parsedUrl = new URL(request.url);
-
-            let relativePath = path.join(parsedUrl.host, parsedUrl.pathname);
-
-            if (
-                relativePath.startsWith(path.sep) ||
-                relativePath.startsWith("/")
-            ) {
-                relativePath = relativePath.substring(1);
-            }
-
-            const file = path.join(getAssetPath(), relativePath);
-            const fileUrl = pathToFileURL(file).toString();
-
-            const response = await net.fetch(fileUrl, { bypassCustomProtocolHandlers: true });
-            if (!["vendor/dtln-aec/dtln_aec_128_1.onnx",
-                "vendor/dtln-aec/dtln_aec_128_2.onnx", "vendor/onnxruntime-web/ort-wasm-simd-threaded.wasm"]
-                .includes(relativePath.replace(/\\/g, "/"))) return response;
-            const headers = new Headers(response.headers);
-            headers.set("Access-Control-Allow-Origin", "*");
-            return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
-        });
-    }
+    void startMainServices("setup-after-ipc");
 
     app.on("ready", async () => {
-        // Ensure Widevine CDM is available (Castlabs Electron downloads it automatically)
+        // Ensure Widevine CDM is available (Castlabs Electron downloads it automatically).
         try {
             await components.whenReady();
             console.log("Widevine CDM ready:", components.status());
-        } catch (err) {
-            console.warn("Widevine CDM initialization failed:", err);
-        }
-
-        registerAssetProtocol(appPartition);
-        registerAssetProtocol(fileAccessPersistPartition);
-        // Registering this scheme lets renderer-drawn content (the Link editor's bookmark images on
-        // a Tor page's blank tab) fetch a remote URL through that page's Tor session.
-        // Only the app window's session needs it — do not widen to other partitions.
-        registerTorSrcProtocol(appPartition);
-        registerSessionSrcProtocol(appPartition);
-        registerProfileSrcProtocol(appPartition);
-        // Single host-routed board:// handler on the main window's session.
-        // Boards load board://<host> iframes in this session, routed by host.
-        const { initBoardProtocol } = await import("./board-protocol-service");
-        initBoardProtocol(appPartition);
-        const { initHtmlPreviewProtocol } = await import("./html-preview-protocol");
-        initHtmlPreviewProtocol(appPartition);
-        try {
-            const { initializeRecordingService } = await import("./recording-service");
-            await initializeRecordingService();
         } catch (error: unknown) {
-            console.error(`Recording cleanup initialization failed: ${errMessage(error)}`);
+            console.warn("Widevine CDM initialization failed:", error);
         }
-        const boardStartupInput = takeBoardStartupInput();
-        openWindows.restoreState(!boardStartupInput);
-        if (boardStartupInput) {
-            openWindows.openBoardWindow(boardStartupInput.path);
-            void openWindows.dispatchNormalInputs(takeStartupInputsForMain());
-        }
-        setupTray();
-        startPipeServer();
 
-        // Check for updates after a short delay to not slow down startup
-        setTimeout(() => {
-            if (!applicationProfileName()) versionService.checkForUpdates();
-            // Refresh the published-boards catalog on the same 24h-gated cadence.
-            import("./published-boards-service").then(({ publishedBoardsService }) =>
-                publishedBoardsService.getPublishedBoards(),
-            );
-            // Sweep any board-download ZIP orphaned by a crash mid-download.
-            import("./board-download-service").then(({ boardDownloadService }) =>
-                boardDownloadService.cleanDownloadsFolder(),
-            );
-        }, 5000);
+        await startMainServices("ready");
     });
 
     let serviceQuitGateStarted = false;
     let serviceQuitGateReleased = false;
 
     app.on("will-quit", (event) => {
-        shutdownPathWatchService();
-        void shutdownPrivateMcpEndpoint();
+        disposeMainServices("before-gate");
         if (!serviceQuitGateReleased) {
             event.preventDefault();
             if (!serviceQuitGateStarted) {
@@ -248,8 +52,7 @@ export function setupMainProcess() {
                             new Promise<void>((resolve) => setTimeout(resolve, SERVICE_QUIT_GATE_TIMEOUT_MS)),
                         ]);
                     } finally {
-                        // `app.quit()` must run on every path. A throw here would leave the gate
-                        // latched and the app unquittable, which is worse than an orphaned child.
+                        // Re-enter Electron's quit flow even when disposal timed out or failed.
                         try {
                             moduleServiceSupervisor.forceKillAllSync();
                         } catch (error: unknown) {
@@ -261,15 +64,7 @@ export function setupMainProcess() {
                 })();
             }
         }
-        torService.shutdown();
-        killAllCommands();
-        disposeAllBoardPorts();
-        stopPipeServer();
-        stopMcpHttpServer();
-        stopVideoStreamServer();
-        boardPipeService.dispose();
-        shutdownMneme();
-        shutdownClipboard();
+        disposeMainServices("quit");
     });
 
     app.on("window-all-closed", () => {
@@ -278,9 +73,5 @@ export function setupMainProcess() {
         }
     });
 
-    app.on("second-instance", (event, commandLine, workingDirectory) => {
-        const inputs = parseLaunchArguments(launchOperands(commandLine), workingDirectory);
-        if (inputs.length === 0 || inputs.some((input) => input.kind !== "board")) openWindows.bringToFront();
-        inputs.forEach((input) => openWindows.handleLaunchInput(input));
-    });
+    app.on("second-instance", (_event, commandLine, workingDirectory) => openWindows.handleSecondInstance(commandLine, workingDirectory));
 }

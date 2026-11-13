@@ -1,7 +1,7 @@
 import { api } from "../../ipc/renderer/api";
 import rendererEvents from "../../ipc/renderer/renderer-events";
-import { EventEndpoint, type PathWatchBatch, type PathWatchSubscribeRequest } from "../../ipc/api-types";
 import { errMessage } from "../../shared/utils";
+import type { PathWatchBatch, PathWatchSubscribeRequest } from "../../ipc/api-types";
 
 // Recovery probes cannot use app.fs: fs.ts imports this module.
 const nodefs = require("fs") as typeof import("fs");
@@ -135,7 +135,7 @@ function scheduleRetry(subscription: LocalSubscription): void {
     }, delay);
 }
 
-rendererEvents[EventEndpoint.ePathWatchBatch].subscribe(event => {
+rendererEvents["ePathWatchBatch"].subscribe(event => {
     const subscription = subscriptionsByClient.get(event.clientId);
     if (!subscription?.active) return;
     deliver(subscription, event.batch);

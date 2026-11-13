@@ -102,7 +102,7 @@ function watchCaller(opts: CapabilityInvokeOptions | undefined, cancel: () => vo
 }
 
 async function openRendererCapabilityChannel(request: CapabilityClientInvoke): Promise<ServiceChannel> {
-    const channelId = unwrapClientResult(JSON.parse(await api.connectHostServiceChannel({ kind: "capability", request })) as CapabilityClientResult<string>);
+    const channelId = unwrapClientResult(await api.connectCapabilityChannel(request));
     const port = await serviceChannelPorts.claim(channelId, {
         timeoutMs: SERVICE_CHANNEL_OPEN_TIMEOUT_MS,
         timeoutError: () => codedError("timeout", "Channel delivery timed out."),

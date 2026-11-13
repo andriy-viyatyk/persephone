@@ -7,10 +7,7 @@ import { ui } from "../ui";
 import { guard } from "../../core/utils/guard";
 import { isBoardClaimedScheme, schemeOf } from "../../content/scheme-registry";
 import { boardEditorId } from "../boards/custom-editor-registry";
-import { UpdateCheckResult } from "../../../ipc/api-param-types";
-import { EventEndpoint } from "../../../ipc/api-types";
-import type { BoardNotifyMsg } from "../../../ipc/board-bridge/port-protocol";
-import type { PageDescriptor } from "../../../shared/types";
+import type { EventPayload } from "../../../ipc/event-types";
 import type { LaunchInput } from "../../../shared/launch-input";
 import { saveWindowStateForShutdown } from "./save-window-state";
 import { errMessage } from "../../../shared/utils";
@@ -49,10 +46,10 @@ export class RendererEventsService {
         rendererEvents.eReloadForLanguage.subscribe(this.handleReloadForLanguage);
 
         // Update check notification
-        rendererEvents[EventEndpoint.eUpdateAvailable].subscribe(this.handleUpdateAvailable);
+        rendererEvents["eUpdateAvailable"].subscribe(this.handleUpdateAvailable);
 
         // Board `persephone.notify()` toast.
-        rendererEvents[EventEndpoint.eBoardNotify].subscribe(this.handleBoardNotify);
+        rendererEvents["eBoardNotify"].subscribe(this.handleBoardNotify);
 
     }
 
@@ -83,19 +80,19 @@ export class RendererEventsService {
         }
     };
 
-    private handleShowPage = async (pageId: string) => {
+    private handleShowPage = async (pageId: EventPayload<"eShowPage">) => {
         await guard(t("api.failedToShowPage"), () => pages.navigation.showPage(pageId));
     };
 
-    private handleMovePageIn = async (data: { page: PageDescriptor; targetPageId: string | undefined } | undefined) => {
+    private handleMovePageIn = async (data: EventPayload<"eMovePageIn">) => {
         await guard(t("api.failedToMovePage"), () => pages.lifecycle.movePageIn(data));
     };
 
-    private handleMovePageOut = async (pageId: string) => {
+    private handleMovePageOut = async (pageId: EventPayload<"eMovePageOut">) => {
         await guard(t("api.failedToMovePage"), () => pages.lifecycle.movePageOut(pageId));
     };
 
-    private handleOpenUrl = async (event: { url: string; boardRoot?: string; unattributedPopup?: boolean }) => {
+    private handleOpenUrl = async (event: EventPayload<"eOpenUrl">) => {
         await guard(t("api.failedToOpenUrl"), () =>
             app.events.openRawLink.sendAsync(createLinkData(event.url, {
                 ...(event.boardRoot ? { boardRoot: event.boardRoot, sourceId: "board" } : {}),
@@ -104,7 +101,7 @@ export class RendererEventsService {
         );
     };
 
-    private handlePipelineCandidate = async (url: string) => {
+    private handlePipelineCandidate = async (url: EventPayload<"eOpenPipelineCandidate">) => {
         const scheme = schemeOf(url);
         if (!scheme || !isBoardClaimedScheme(scheme)) return;
 
@@ -113,11 +110,7 @@ export class RendererEventsService {
         );
     };
 
-    private handleClaimedBrowserDownload = async (data: {
-        url: string;
-        boardRoot: string;
-        sessionHandle?: string;
-    }) => {
+    private handleClaimedBrowserDownload = async (data: EventPayload<"eOpenClaimedBrowserDownload">) => {
         await guard(t("api.failedToOpenUrl"), () =>
             app.events.openRawLink.sendAsync(
                 createLinkData(data.url, {
@@ -165,11 +158,11 @@ export class RendererEventsService {
         }
     };
 
-    private handleBoardNotify = (data: BoardNotifyMsg) => {
+    private handleBoardNotify = (data: EventPayload<"eBoardNotify">) => {
         void ui.notify(data.message, data.type ?? "info", { persistent: data.persistent === true });
     };
 
-    private handleUpdateAvailable = async (result: UpdateCheckResult) => {
+    private handleUpdateAvailable = async (result: EventPayload<"eUpdateAvailable">) => {
         if (result.updateAvailable && result.releaseInfo) {
             const closeResult = await ui.notify(
                 t("api.updateAvailable", { version: result.releaseInfo.version }),
