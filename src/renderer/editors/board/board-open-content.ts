@@ -24,7 +24,7 @@ import { pages } from "../../api/pages";
 import { errMessage } from "../../../shared/utils";
 import type { BoardOpenContentRequest } from "../../../ipc/board-bridge/frame-protocol";
 import type { EditorView } from "../../../shared/types";
-import { BOARD_EDITOR_ID_PREFIX } from "../../api/boards/custom-editor-registry";
+import { parseBoardEditorId } from "../../../shared/board/board-editor-id";
 
 export interface BoardOpenContentReply {
     /** Id of the created page. */
@@ -59,7 +59,7 @@ export function resolveBoardOpenContent(
     if (!editor) {
         return { error: 'openContent() requires an "editor" id, e.g. { editor: "md-view" }.' };
     }
-    if (editor.startsWith(BOARD_EDITOR_ID_PREFIX)) {
+    if (parseBoardEditorId(editor) !== null) {
         return { error: "openContent() cannot open another board — pass a built-in editor id." };
     }
 

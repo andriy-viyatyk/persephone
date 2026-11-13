@@ -9,46 +9,93 @@ import type {
 import { isBoardEditorKind, type NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
 import { BoardGrant } from "../../../shared/board/board-grant";
 
+type BoardManifestFieldsSource = Partial<Pick<NormalizedBoardManifest,
+    | "name"
+    | "description"
+    | "author"
+    | "repository"
+    | "standalone"
+    | "minAppVersion"
+    | "permissions"
+    | "minBridgeVersion"
+    | "service"
+    | "singleInstance"
+    | "singleInstanceMasks"
+    | "contentProviders"
+    | "capabilities"
+    | "settings"
+    | "fileMasks"
+    | "browserUrlMasks"
+    | "contentMasks"
+    | "folderMasks"
+    | "folderEditorMasks"
+    | "folderEditorPriority"
+    | "editorPriority"
+    | "editorName"
+    | "editorKind"
+    | "editorSources"
+    | "secondaryViews"
+    | "guides"
+>>;
+
 /** Project a normalized manifest into the copied script API shape. */
 export function projectBoardManifest(manifest: NormalizedBoardManifest): IBoardManifest | undefined {
     if (typeof manifest.schemaVersion !== "number") return undefined;
-    const copy: Partial<MutableBoardManifest> = { schemaVersion: manifest.schemaVersion };
-    if (typeof manifest.name === "string") copy.name = manifest.name;
-    if (typeof manifest.description === "string") copy.description = manifest.description;
-    if (typeof manifest.author === "string") copy.author = manifest.author;
-    if (typeof manifest.repository === "string") copy.repository = manifest.repository;
-    if (typeof manifest.version === "string") copy.version = manifest.version;
-    if (typeof manifest.standalone === "boolean") copy.standalone = manifest.standalone;
-    if (typeof manifest.minAppVersion === "string") copy.minAppVersion = manifest.minAppVersion;
-    if (manifest.permissions !== undefined) {
-        copy.permissions = BoardGrant.from(manifest.permissions).clone();
+    const fields = projectBoardManifestFields(manifest);
+    return {
+        schemaVersion: manifest.schemaVersion,
+        ...copyDefined(fields, ["name", "description", "author", "repository"]),
+        ...(typeof manifest.version === "string" ? { version: manifest.version } : {}),
+        ...copyDefined(fields, [
+            "standalone", "minAppVersion", "permissions", "minBridgeVersion", "service",
+            "singleInstance", "singleInstanceMasks", "contentProviders", "capabilities", "settings",
+            "fileMasks", "browserUrlMasks", "contentMasks", "folderMasks", "folderEditorMasks",
+            "folderEditorPriority", "editorPriority", "editorName", "editorKind", "editorSources",
+            "secondaryViews", "guides",
+        ]),
+    } as IBoardManifest;
+}
+
+/** Project the manifest fields shared by the full manifest and Board Info properties shapes. */
+export function projectBoardManifestFields(source: BoardManifestFieldsSource): Partial<BoardManifestFieldsSource> {
+    const copy: Partial<BoardManifestFieldsSource> = {};
+    if (typeof source.name === "string") Object.assign(copy, { name: source.name });
+    if (typeof source.description === "string") Object.assign(copy, { description: source.description });
+    if (typeof source.author === "string") Object.assign(copy, { author: source.author });
+    if (typeof source.repository === "string") Object.assign(copy, { repository: source.repository });
+    if (typeof source.standalone === "boolean") Object.assign(copy, { standalone: source.standalone });
+    if (typeof source.minAppVersion === "string") Object.assign(copy, { minAppVersion: source.minAppVersion });
+    if (source.permissions !== undefined) {
+        Object.assign(copy, { permissions: BoardGrant.from(source.permissions).clone() });
     }
-    if (typeof manifest.minBridgeVersion === "string") copy.minBridgeVersion = manifest.minBridgeVersion;
-    if (typeof manifest.service === "string") copy.service = manifest.service;
-    if (manifest.singleInstance !== undefined) copy.singleInstance = manifest.singleInstance;
-    if (manifest.singleInstanceMasks !== undefined) copy.singleInstanceMasks = [...manifest.singleInstanceMasks];
-    if (manifest.contentProviders !== undefined) {
-        copy.contentProviders = manifest.contentProviders.map(projectBoardContentProvider);
+    if (typeof source.minBridgeVersion === "string") Object.assign(copy, { minBridgeVersion: source.minBridgeVersion });
+    if (typeof source.service === "string") Object.assign(copy, { service: source.service });
+    if (source.singleInstance !== undefined) Object.assign(copy, { singleInstance: source.singleInstance });
+    if (source.singleInstanceMasks !== undefined) Object.assign(copy, { singleInstanceMasks: [...source.singleInstanceMasks] });
+    if (source.contentProviders !== undefined) {
+        Object.assign(copy, { contentProviders: source.contentProviders.map(projectBoardContentProvider) });
     }
-    if (manifest.capabilities !== undefined) {
-        copy.capabilities = manifest.capabilities.map(projectBoardCapability);
+    if (source.capabilities !== undefined) {
+        Object.assign(copy, { capabilities: source.capabilities.map(projectBoardCapability) });
     }
-    if (manifest.settings !== undefined) copy.settings = manifest.settings.map(projectBoardSetting);
-    if (manifest.fileMasks !== undefined) copy.fileMasks = [...manifest.fileMasks];
-    if (manifest.browserUrlMasks !== undefined) copy.browserUrlMasks = [...manifest.browserUrlMasks];
-    if (manifest.contentMasks !== undefined) copy.contentMasks = [...manifest.contentMasks];
-    if (manifest.folderMasks !== undefined) copy.folderMasks = [...manifest.folderMasks];
-    if (manifest.folderEditorMasks !== undefined) copy.folderEditorMasks = [...manifest.folderEditorMasks];
-    if (typeof manifest.folderEditorPriority === "number") copy.folderEditorPriority = manifest.folderEditorPriority;
-    if (typeof manifest.editorPriority === "number") copy.editorPriority = manifest.editorPriority;
-    if (typeof manifest.editorName === "string") copy.editorName = manifest.editorName;
-    if (isBoardEditorKind(manifest.editorKind)) copy.editorKind = manifest.editorKind;
-    if (manifest.editorSources === "local" || manifest.editorSources === "any") copy.editorSources = manifest.editorSources;
-    if (manifest.secondaryViews !== undefined) {
-        copy.secondaryViews = manifest.secondaryViews.map(projectBoardSecondaryView);
+    if (source.settings !== undefined) Object.assign(copy, { settings: source.settings.map(projectBoardSetting) });
+    if (source.fileMasks !== undefined) Object.assign(copy, { fileMasks: [...source.fileMasks] });
+    if (source.browserUrlMasks !== undefined) Object.assign(copy, { browserUrlMasks: [...source.browserUrlMasks] });
+    if (source.contentMasks !== undefined) Object.assign(copy, { contentMasks: [...source.contentMasks] });
+    if (source.folderMasks !== undefined) Object.assign(copy, { folderMasks: [...source.folderMasks] });
+    if (source.folderEditorMasks !== undefined) Object.assign(copy, { folderEditorMasks: [...source.folderEditorMasks] });
+    if (typeof source.folderEditorPriority === "number") Object.assign(copy, { folderEditorPriority: source.folderEditorPriority });
+    if (typeof source.editorPriority === "number") Object.assign(copy, { editorPriority: source.editorPriority });
+    if (typeof source.editorName === "string") Object.assign(copy, { editorName: source.editorName });
+    if (isBoardEditorKind(source.editorKind)) Object.assign(copy, { editorKind: source.editorKind });
+    if (source.editorSources === "local" || source.editorSources === "any") {
+        Object.assign(copy, { editorSources: source.editorSources });
     }
-    if (manifest.guides !== undefined) copy.guides = manifest.guides;
-    return copy as IBoardManifest;
+    if (source.secondaryViews !== undefined) {
+        Object.assign(copy, { secondaryViews: source.secondaryViews.map(projectBoardSecondaryView) });
+    }
+    if (source.guides !== undefined) Object.assign(copy, { guides: source.guides });
+    return copy;
 }
 
 export function projectBoardCapability(capability: {
@@ -110,9 +157,13 @@ export function projectBoardSecondaryView(view: {
     };
 }
 
-type MutableBoardManifest = {
-    -readonly [Key in keyof IBoardManifest]: IBoardManifest[Key];
-};
+function copyDefined<T extends object, K extends keyof T>(source: T, keys: readonly K[]): Partial<Pick<T, K>> {
+    const copy: Partial<Pick<T, K>> = {};
+    for (const key of keys) {
+        if (source[key] !== undefined) Object.assign(copy, { [key]: source[key] });
+    }
+    return copy;
+}
 
 function cloneJson(value: unknown): unknown {
     return value === undefined ? undefined : JSON.parse(JSON.stringify(value)) as unknown;

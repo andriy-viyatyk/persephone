@@ -11,7 +11,8 @@ import { PERSEPHONE_BOARD_PREFIX, decodePersephoneBoardLink, encodePersephoneBoa
 import { pipeFromSourcePath } from "../../content/rebuild-pipe";
 import { buildEditorById } from "../../editors/editor-factory";
 import type { IContentPipe } from "../types/io.pipe";
-import { customEditorRegistry, boardEditorId, parseBoardEditorId, resolveEditorIdForFile } from "./custom-editor-registry";
+import { customEditorRegistry, resolveEditorIdForFile } from "./custom-editor-registry";
+import { boardEditorId, parseBoardEditorId } from "../../../shared/board/board-editor-id";
 import { readBoardManifest } from "./board-manifest-io";
 import { asBoardHostEditor } from "./board-host-editor";
 import type { PageModel } from "../pages/PageModel";

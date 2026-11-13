@@ -5,9 +5,9 @@ import { getLanguageByExtension } from "../../core/utils/language-mapping";
 import {
     customEditorRegistry,
     getFolderEditorsForFolder,
-    parseBoardEditorId,
     resolveEditorIdForFile,
 } from "../../api/boards/custom-editor-registry";
+import { parseBoardEditorId } from "../../../shared/board/board-editor-id";
 import { BOARD_INFO_EDITOR_ID } from "../board-info/board-info-id";
 import type { TextFileModel } from "../content-host/TextFileModel";
 import type { EditorModel } from "./EditorModel";

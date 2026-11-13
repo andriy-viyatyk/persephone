@@ -1,3 +1,4 @@
+import { boardEditorId, parseBoardEditorId } from "../../../shared/board/board-editor-id";
 /**
  * Custom-editor registry. Enumerates trusted and bundled boards, reads each board's
  * `board-manifest.json`, and maps files → the boards that claim them (via the manifest's
@@ -46,23 +47,6 @@ import { readBoardManifest } from "./board-manifest-io";
 import { stableBoardIdentity } from "../../../shared/board/board-stable-identity";
 import type { BoardSettingDeclaration } from "../../../shared/board/board-settings-declarations";
 import { validateLegacyCapabilityDeclaration } from "../../../shared/capability-contract";
-
-/** Prefix marking a virtual custom-editor id. The remainder is the board root VERBATIM
- *  (original case, may contain ':' and '\\' on Windows — parse by prefix, never by split). */
-export const BOARD_EDITOR_ID_PREFIX = "board-editor:";
-
-/** Build the virtual editor id for a board acting as a custom editor. Carries the ORIGINAL-case
- *  root (BoardEditorModel needs the real path to load); do not normalize it into the id. */
-export function boardEditorId(boardRoot: string): string {
-    return BOARD_EDITOR_ID_PREFIX + boardRoot;
-}
-
-/** Extract the board root from a `board-editor:<root>` id, or null if it isn't one. */
-export function parseBoardEditorId(editorId: string): string | null {
-    return editorId.startsWith(BOARD_EDITOR_ID_PREFIX)
-        ? editorId.slice(BOARD_EDITOR_ID_PREFIX.length)
-        : null;
-}
 
 /** Resolve a persisted dynamic board id while preserving the real-root id format. */
 export async function resolveBoardEditorId(editorId: string): Promise<string> {
@@ -701,13 +685,4 @@ export function getFolderEditorsForFolder(folderPath: string): string[] {
         ...editorRegistry.getFolderEditors(folderPath),
         ...customEditorRegistry.getBoardsForFolder(folderPath).map((board) => board.editorId),
     ];
-}
-
-/**
- * True for either board editor id form — the plain `board-view` (a board opened as a
- * page) or a custom-editor `board-editor:<root>` (a board editing a file). Used by the
- * MCP / automation board-detection sites so a custom-editor board stays automatable.
- */
-export function isBoardEditorId(id: string | undefined): boolean {
-    return id === "board-view" || (!!id && parseBoardEditorId(id) !== null);
 }

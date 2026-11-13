@@ -1,9 +1,6 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
-import { ui } from "../../api/ui";
 import type { FileDiffEditor } from "../../editors/file-diff/FileDiffEditor";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 
 const FILE_DIFF_ELEMENTS = [
     { name: "file-diff-picker-from", purpose: "Open the popover for selecting the original revision.", where: "left side of the diff toolbar" },
@@ -13,8 +10,8 @@ const FILE_DIFF_ELEMENTS = [
 ] as const;
 
 const FILE_DIFF_EDITOR_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete current editor id." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
+
+
     { name: "from", kind: "property", summary: "The resolved original revision, or undefined while repository-backed diff state is loading." },
     { name: "to", kind: "property", summary: "The resolved modified revision, or undefined while repository-backed diff state is loading." },
     { name: "hasStaged", kind: "property", summary: "Whether the file has staged changes, or undefined while repository-backed diff state is loading." },
@@ -34,22 +31,21 @@ HTML resources when the host language is html. The File History panel is owned b
 git-diff-revisions; its git-diff-revisions-refresh and git-diff-revisions-tree descendants are panel
 controls and are not duplicated in this editor inventory.`;
 
-export class FileDiffEditorFacade implements IAiVisible {
-    constructor(private readonly editor: FileDiffEditor, readonly id: string, readonly name: string) {}
+export class FileDiffEditorFacade extends EditorFacadeBase<FileDiffEditor> implements IAiVisible {
+    constructor(private readonly editor: FileDiffEditor, readonly id: string, readonly name: string) {
+        super(id, name);
+        this.setEditor(editor);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const elements = createElements(FILE_DIFF_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-        });
-        return {
+        return this.describeEditor({
             kind: "FileDiffEditor",
             summary: "File Diff facade with revision identity and shared text controls.",
-            members: [...FILE_DIFF_EDITOR_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, FILE_DIFF_EDITOR_HELP),
+            members: FILE_DIFF_EDITOR_MEMBERS,
+            identitySummaries: { id: "The concrete current editor id.", name: "The editor's registry display name." },
+            identityIndex: 0,
+            help: FILE_DIFF_EDITOR_HELP,
             elements: FILE_DIFF_ELEMENTS,
-            provide: elements.provide,
             summarize: () => ({
                 kind: "FileDiffEditor",
                 id: this.id,
@@ -59,7 +55,7 @@ export class FileDiffEditorFacade implements IAiVisible {
                 hasStaged: this.hasStaged,
                 readOnly: this.readOnly,
             }),
-        };
+        });
     }
 
     get from() {

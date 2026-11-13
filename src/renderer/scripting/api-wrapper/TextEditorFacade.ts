@@ -1,10 +1,7 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { MonacoEditor } from "../../editors/monaco/MonacoEditor";
 import type { TextFileModel } from "../../editors/content-host/TextFileModel";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
-import { ui } from "../../api/ui";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import { TEXT_NAVIGATION_TRAIT, TEXT_SELECTION_TRAIT } from "../../editors/base/editor-traits";
 import { runPageScript } from "../run-page-script";
 import { getAvailableScripts, openScriptInTab, saveScriptToLibrary, selectScript } from "../script-library-actions";
@@ -29,8 +26,8 @@ const TEXT_ELEMENTS = [
 ] as const;
 
 const TEXT_EDITOR_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete current editor id." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
+
+
     { name: "editorMounted", kind: "property", summary: "True when the Monaco editor is visible and mounted. The queue layer defers commands until mount, so this is informational - consumers no longer need to gate calls on it." },
     { name: "wordWrap", kind: "property", summary: "Whether word wrapping is enabled for this Text Editor page." },
     { name: "getSelectedText", kind: "method", signature: "getSelectedText(): Promise<string>", summary: "Get currently selected text, or empty string if no selection." },
@@ -88,24 +85,23 @@ The encryption and related-script state getters return undefined when MonacoEdit
 Every host-backed action throws 'Text editor action unavailable: no text host attached' in that
 state. This detached-host contract is separate from conditional element visibility.`;
 
-export class TextEditorFacade implements IAiVisible {
-    constructor(private readonly editor: MonacoEditor, readonly id: string, readonly name: string) {}
+export class TextEditorFacade extends EditorFacadeBase<MonacoEditor> implements IAiVisible {
+    constructor(private readonly editor: MonacoEditor, readonly id: string, readonly name: string) {
+        super(id, name);
+        this.setEditor(editor);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const elements = createElements(TEXT_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-        });
-        return {
+        return this.describeEditor({
             kind: "TextEditor",
             summary: "Monaco text editor facade.",
-            members: [...TEXT_EDITOR_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, TEXT_EDITOR_HELP),
+            members: TEXT_EDITOR_MEMBERS,
+            identitySummaries: { id: "The concrete current editor id.", name: "The editor's registry display name." },
+            identityIndex: 0,
+            help: TEXT_EDITOR_HELP,
             elements: TEXT_ELEMENTS,
-            provide: elements.provide,
             summarize: () => ({ kind: "TextEditor", id: this.id, name: this.name, editorMounted: this.editorMounted }),
-        };
+        });
     }
 
     /** True once the editor model exists. Queue-backed commands no longer

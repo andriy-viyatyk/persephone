@@ -1,5 +1,6 @@
-import type { IBrowserTarget, IInputPoint, ITargetTab } from "../../automation/types";
+import type { IAutomationTarget, ISyntheticInputHost, ITabbedTarget, ITargetTab } from "../../automation/types";
 import { CdpSession } from "../../automation/CdpSession";
+import { createInputSession } from "../../automation/input-session";
 import { BOARD_CDP_TAB } from "../../../ipc/api-types";
 import { panelKey } from "../../api/pages/panel-key";
 import { boardSecondaryPanelId, parseBoardSecondaryPanelId } from "./board-secondary";
@@ -7,7 +8,7 @@ import type { BoardFrameRegistry } from "./model/BoardFrameRegistry";
 import type { BoardEditorModel } from "./BoardEditorModel";
 
 /**
- * `IBrowserTarget` adapter for board automation. The board has no `WebContents` of its
+ * Automation adapter for board pages. The board has no `WebContents` of its
  * own, so commands route through the host window's `<iframe>`.
  *
  * A board has no navigation or agent-creatable tabs, but it can have several frames:
@@ -18,17 +19,10 @@ import type { BoardEditorModel } from "./BoardEditorModel";
  *
  * The active tab defaults to `main`, so behavior stays unchanged until a secondary
  * view is selected. Selecting one expands its sidebar panel and waits for the frame
- * to register before issuing commands. Navigation and tab creation or closing return
- * clear errors because a board has fixed frames and no page navigation.
+ * to register before issuing commands. Navigation and frame creation or closing are omitted
+ * because a board has fixed frames and no page navigation.
  */
-const NAV_MSG =
-    "Navigation is not supported on board pages — a board is a single fixed document. " +
-    "Use the board's own scripts (persephone.execute) to change its content.";
-const TAB_MSG =
-    "Tabs cannot be created or closed on board pages — a board's frames (its main view + " +
-    "declared secondary views) are fixed by its manifest. Use the editor's tabs and switchTab() to switch between them.";
-
-export class BoardTargetModel implements IBrowserTarget {
+export class BoardTargetModel implements IAutomationTarget, ISyntheticInputHost, ITabbedTarget {
     constructor(private readonly model: BoardEditorModel, private readonly registry: BoardFrameRegistry) {}
 
     get id(): string {
@@ -42,13 +36,7 @@ export class BoardTargetModel implements IBrowserTarget {
     }
 
     inputCdp(tabId?: string, sessionId?: string) {
-        return {
-            cdp: this.cdp(tabId),
-            sessionId,
-            mapPoint: (point: IInputPoint, offsets: ReadonlyArray<IInputPoint> = []) => offsets.reduce(
-                (mapped, offset) => ({ x: mapped.x + offset.x, y: mapped.y + offset.y }), point,
-            ),
-        };
+        return createInputSession(this.cdp(tabId), sessionId);
     }
 
     focusWebview(tabId?: string): void {
@@ -65,15 +53,6 @@ export class BoardTargetModel implements IBrowserTarget {
         await this.cdp(tabId).evaluate(`document.execCommand('insertText', false, ${JSON.stringify(text)})`);
     }
 
-    navigate(): void {
-        throw new Error(NAV_MSG);
-    }
-    back(): void {
-        throw new Error(NAV_MSG);
-    }
-    forward(): void {
-        throw new Error(NAV_MSG);
-    }
     reload(): void {
         // Soft reload = remount the board frames (the existing toolbar Reload /
         // pages[i].editor.reload() path. Re-handshakes the bridge + re-registers CDP on load.
@@ -108,13 +87,6 @@ export class BoardTargetModel implements IBrowserTarget {
 
     get activeTab(): ITargetTab | undefined {
         return this.tabs.find((t) => t.active) ?? this.tabs[0];
-    }
-
-    addTab(): string {
-        throw new Error(TAB_MSG);
-    }
-    closeTab(): void {
-        throw new Error(TAB_MSG);
     }
 
     /**

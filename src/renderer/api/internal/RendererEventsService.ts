@@ -6,7 +6,7 @@ import { appWindow, signalReadyToQuit } from "../window";
 import { ui } from "../ui";
 import { guard } from "../../core/utils/guard";
 import { isBoardClaimedScheme, schemeOf } from "../../content/scheme-registry";
-import { boardEditorId } from "../boards/custom-editor-registry";
+import { boardEditorId } from "../../../shared/board/board-editor-id";
 import type { EventPayload } from "../../../ipc/event-types";
 import type { LaunchInput } from "../../../shared/launch-input";
 import { saveWindowStateForShutdown } from "./save-window-state";

@@ -525,7 +525,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── BrowserPageTranslationController.ts # Frame-scoped page translation scheduling and results
 │   │   ├── webview-context-menu.ts    # Webview context-menu construction
 │   │   ├── BrowserUrlBarModel.ts     # URL bar state
-│   │   ├── BrowserTargetModel.ts     # Automation adapter (implements IBrowserTarget)
+│   │   ├── BrowserTargetModel.ts     # Browser automation host for narrow target interfaces
 │   │   ├── BrowserTabsPanel.ts        # Native browser tab bar and compact hover preview
 │   │   ├── BrowserTabsPanel.css      # Scoped browser-tab presentation
 │   │   ├── BrowserView.css           # Scoped browser/webview presentation
@@ -722,7 +722,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── BoardWebview.ts            # Thin native iframe view; creates and retires its BoardFrameSession
 │   │   ├── BoardsTreeView.ts         # Reusable native boards tree (single-root + multi-root; folder-compacted; click / trailing / context-menu slots)
 │   │   ├── boards-tree-build.ts      # Pure builder: board path list → compacted folder/board node tree
-│   │   ├── BoardTargetModel.ts       # Automation adapter (IBrowserTarget for Object Model call paths)
+│   │   ├── BoardTargetModel.ts       # Board automation host for narrow target interfaces
 │   │   ├── board-icon-cache.ts       # Module-level icon cache (SVG/PNG/ICO → data URL, per board path)
 │   │   ├── board-theme.ts            # computeBoardThemePalette + BOARD_TOKEN_VARS (--p-* contract)
 │   │   ├── UntrustedBoardView.ts      # Shown in place of the board iframe when the board is untrusted (Trust board button)
@@ -774,7 +774,12 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── api-wrapper/        # Safe wrappers for script access
 │       ├── AppWrapper.ts           # Wraps app → IApp (events proxy; compile-time member check)
 │       ├── PageCollectionWrapper.ts # Wraps pages → IPageCollection
-│       ├── PageWrapper.ts          # Wraps page → IPage (with the current editor facade and switch node)
+│       ├── PageWrapper.ts          # Wraps page → IPage; gets editor facades from the registry
+│       ├── EditorFacadeBase.ts     # Shared identity, attachment checks, and AiVision descriptor assembly
+│       ├── editor-facade-registry.ts # Editor ID to facade factory registry
+│       ├── register-editor-facades.ts # Registers facade factories before page lookup
+│       ├── AutomationSurface.ts    # Shared script automation dispatch and activity/tip policy
+│       ├── LogEntryHandle.ts       # Generic handle for Log View output entries
 │       ├── TextEditorFacade.ts     # ITextEditor facade
 │       ├── GridEditorFacade.ts     # IGridEditor facade
 │       ├── LinkEditorFacade.ts     # ILinkEditor facade
@@ -794,12 +799,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │       ├── MnemeConfigEditorFacade.ts # IMnemeConfigEditor facade (configuration/status/actions)
 │       ├── MnemeRootEditorFacade.ts # IMnemeRootEditor facade (search state/actions)
 │       ├── UiFacade.ts             # Log View UI (logging + dialogs + output)
-│       ├── Progress.ts            # Progress helper class (returned by ui.show.progress)
-│       ├── Grid.ts                # Grid helper class (returned by ui.show.grid)
-│       ├── Text.ts                # Text helper class (returned by ui.show.text)
-│       ├── Markdown.ts            # Markdown helper class (returned by ui.show.markdown)
-│       ├── Mermaid.ts             # Mermaid helper class (returned by ui.show.mermaid)
-│       └── StyledTextBuilder.ts    # Fluent styled text builder + styledText() factory
+│       └── StyledTextBuilder.ts   # Fluent styled text builder + styledText() factory
 │   └── ai-vision/           # Renderer AiVision root, call/attention entry points, event log, and descriptors
 │       ├── dialogs/         # ViewId-keyed adapters for renderer dialogs
 │       ├── menus/           # Popup-menu adapter and indexed menus node
@@ -820,13 +820,23 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │       └── page-panels.ts   # pages[i].editor.panels projection and controls
 │
 ├── automation/             # Browser-like automation used by Object Model call paths
-│   ├── types.ts            # IBrowserTarget interface
+│   ├── types.ts            # Narrow target seams: automation, synthetic input, navigation, and tabs
 │   ├── CdpSession.ts       # CDP session wrapper (IPC to main process debugger)
 │   ├── snapshot.ts         # Accessibility snapshot (main frame + iframes, overlay detection)
-│   ├── input.ts            # Keyboard/text input (typeText, pressKey, fill strategies)
-│   ├── operations.ts       # Shared target-neutral automation operations used by facades
+│   ├── page-scripts.ts     # Shared in-page visibility, frame-offset, and locator snippets
+│   ├── input-session.ts    # CDP input session and shared frame-coordinate mapping
+│   ├── locator.ts          # Locator parsing, strictness, and element resolution
+│   ├── mouse.ts            # Mouse actions and shared pointer dispatch
+│   ├── keyboard.ts         # Key actions and modifier mapping
+│   ├── forms.ts            # Text, select, checkbox, and file input operations
+│   ├── queries.ts          # Evaluate, query, and wait operations
+│   ├── page-events.ts      # Readiness, page events, dialogs, console, and errors
+│   ├── navigation.ts       # Navigation and response waits
+│   ├── page-state.ts       # Screenshots, viewport, and network state
+│   ├── synthetic.ts        # Explicit legacy synthetic input compatibility path
+│   ├── input.ts            # Legacy input strategy implementation used by synthetic.ts
 │   ├── ref.ts              # Per-host ref/frame-session stores and ref resolution
-│   ├── AppTargetModel.ts   # Automation adapter (IBrowserTarget) for the app's own UI (pageId "app")
+│   ├── AppTargetModel.ts   # App-window automation target (pageId "app")
 │
 ├── uikit/                  # UIKit — standalone component library
 │   │                       # Canonical home for reusable primitives. Must not import from

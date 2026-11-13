@@ -1,12 +1,9 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { IToolsetEditor } from "../../api/types/toolset-editor";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { fpNormalizeForCompare } from "../../core/utils/file-path";
 import { toolsTrust } from "../../api/tools/tools-trust";
 import { registeredTools } from "../../api/tools/registered-tools";
-import { ui } from "../../api/ui";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import type { ToolsetEditorModel } from "../../editors/toolset/ToolsetEditorModel";
 
 const TOOLSET_ELEMENTS: readonly IAiElementDeclaration[] = [
@@ -16,8 +13,8 @@ const TOOLSET_ELEMENTS: readonly IAiElementDeclaration[] = [
 ];
 
 const TOOLSET_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete editor id: toolset-view." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
+
+
     { name: "toolsetRoot", kind: "property", summary: "The absolute root of this one toolset, or undefined before it is resolved." },
     { name: "toolsetName", kind: "property", summary: "The authoritative toolset name used to reach tools.toolsets[toolsetName], or undefined when no root is resolved." },
     { name: "registered", kind: "property", summary: "Whether this root is registered, or undefined when no root is resolved." },
@@ -47,29 +44,28 @@ elements is the curated, page-scoped list of three stable controls; repeated mat
 list. Explorer/sidebar tool trees belong to page.panels; the canonical tools data path remains
 tools.toolsets[toolsetName].`;
 
-export class ToolsetEditorFacade implements IAiVisible, IToolsetEditor {
+export class ToolsetEditorFacade extends EditorFacadeBase<ToolsetEditorModel> implements IAiVisible, IToolsetEditor {
     constructor(
         private readonly editor: ToolsetEditorModel,
         readonly id: "toolset-view",
         readonly name: string,
-    ) {}
+    ) {
+        super(id, name);
+        this.setEditor(editor);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const elements = createElements(TOOLSET_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-            highlightOptions: { all: true },
-        });
-        return {
+        return this.describeEditor({
             kind: "ToolsetEditor",
             summary: "Model-backed toolset identity, validation status, actions, and curated controls.",
-            members: [...TOOLSET_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, TOOLSET_HELP),
+            members: TOOLSET_MEMBERS,
+            identitySummaries: { id: "The concrete editor id: toolset-view.", name: "The editor's registry display name." },
+            identityIndex: 0,
+            help: TOOLSET_HELP,
             elements: TOOLSET_ELEMENTS,
-            provide: elements.provide,
+            highlightOptions: { all: true },
             summarize: () => this.aiSummary(),
-        };
+        });
     }
 
     get toolsetRoot(): string | undefined {

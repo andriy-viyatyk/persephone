@@ -1,5 +1,5 @@
 import { fpDirname } from "../core/utils/file-path";
-import { parseBoardEditorId } from "../api/boards/custom-editor-registry";
+import { parseBoardEditorId } from "../../shared/board/board-editor-id";
 import { encodeCategoryLink } from "./tree-providers/tree-provider-link";
 import { encodeGitTreeLink } from "./git-tree-link";
 import { encodeMnemeFolderLink } from "./mneme-folder-link";

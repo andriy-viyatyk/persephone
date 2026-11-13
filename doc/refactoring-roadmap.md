@@ -516,6 +516,13 @@ modules, `HostFullscreenController` owned by `OpenWindow` (the `open-windows` cy
 `CdpTarget` with one `resolveTarget` and feature modules under `src/main/cdp/` (MAIN-7); URL-bar, find and prompt state
 slices (BRW-4 step 4). **Roadmap item 6.1 is complete.**
 
+**6.2 is done** ([EPIC-161](epics/EPIC-161.md), 2026-11-13): `operations.ts` split into owner modules with one
+in-page snippet per rule and narrow target interfaces (BRW-8); one `AutomationSurface` for the browser, board and
+`window.screen` hosts (BRW-3); `EditorFacadeBase`, a typed facade registry and `src/shared/board/board-editor-id.ts`
+(SHL-9); facades call model methods (SHL-10); one Log View entry normaliser and `LogEntryHandle` (SHL-12). Left out on
+purpose: query methods keep first-match selector semantics, and the automation help text stays host-owned because the
+hosts word it differently (one shared constant would have changed `$help`). **Roadmap item 6.2 is complete.**
+
 ### Phase 7: Lock it in
 
 - Turn the import-zone lint warnings into errors and rewrite `overview.md`'s dependency rules to match.

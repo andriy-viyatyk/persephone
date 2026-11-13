@@ -1,13 +1,11 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { AboutEditor, AboutGuideLocation } from "../../editors/about/AboutEditor";
 import { getGuideIndex } from "../../guides";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import type { GuidePage, GuideTreeFolder, GuideTreeNode } from "../../../shared/guides";
 import { parseGuideUrl, PERSEPHONE_GUIDE_PREFIX } from "../../../shared/guides/guide-links";
 import { errMessage } from "../../../shared/utils";
-import { ui } from "../../api/ui";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
+import { activatePageAndWaitForLayout } from "../ai-vision/page-elements";
 
 export const ABOUT_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "about-root", purpose: "The complete About page containing the card and guide browser.", where: "whole About page" },
@@ -37,8 +35,8 @@ export const ABOUT_ELEMENTS: readonly IAiElementDeclaration[] = [
 ];
 
 const ABOUT_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete About editor id: about-view." },
-    { name: "name", kind: "property", summary: "The About editor's registry display name." },
+
+
     { name: "open", kind: "method", signature: "open(path: string): Promise<void>", summary: "Open a validated guide in About's right pane without creating a tab; a folder path opens its index page.", caution: "activates About and changes its guide-browser location" },
     { name: "back", kind: "method", signature: "back(): Promise<void>", summary: "Return to the previous About guide-browser location; throws when history is empty.", caution: "activates About and changes its guide-browser location" },
     { name: "current", kind: "property", summary: "The current About guide-browser location: { kind: \"contents\" } or { kind: \"guide\", path, fragment? }." },
@@ -118,29 +116,28 @@ function folderWithoutIndexError(path: string, folder: GuideTreeFolder): Error {
     );
 }
 
-export class AboutEditorFacade implements IAiVisible {
-    constructor(private readonly editor: AboutEditor, readonly id: "about-view", readonly name: string) {}
+export class AboutEditorFacade extends EditorFacadeBase<AboutEditor> implements IAiVisible {
+    constructor(private readonly editor: AboutEditor, readonly id: "about-view", readonly name: string) {
+        super(id, name);
+        this.setEditor(editor);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const elements = createElements(ABOUT_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-        });
-        return {
+        return this.describeEditor({
             kind: "AboutEditor",
             summary: "About page guide-browser facade.",
-            members: [...ABOUT_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, ABOUT_HELP),
+            members: ABOUT_MEMBERS,
+            identitySummaries: { id: "The concrete About editor id: about-view.", name: "The About editor's registry display name." },
+            identityIndex: 0,
+            help: ABOUT_HELP,
             elements: ABOUT_ELEMENTS,
-            provide: elements.provide,
             summarize: () => ({
                 kind: "AboutEditor",
                 id: this.id,
                 name: this.name,
                 current: this.current,
             }),
-        };
+        });
     }
 
     async open(path: string): Promise<void> {
@@ -180,7 +177,8 @@ export class AboutEditorFacade implements IAiVisible {
             parsed.path = page.path;
         }
 
-        const pageId = this.requirePageId("open");
+        const pageId = this.requireAttached("open", action =>
+            `About action unavailable: cannot ${action} without an About page host.`);
         await activatePageAndWaitForLayout(pageId);
         if (page.audience === "agent" && !this.editor.guideBrowser.showAgentGuides) {
             this.editor.guideBrowser.setShowAgentGuides(true);
@@ -196,7 +194,8 @@ export class AboutEditorFacade implements IAiVisible {
         if (!this.editor.guideBrowser.canGoBack) {
             throw new Error("About guide history is empty; open a guide before calling back().");
         }
-        const pageId = this.requirePageId("back");
+        const pageId = this.requireAttached("back", action =>
+            `About action unavailable: cannot ${action} without an About page host.`);
         await activatePageAndWaitForLayout(pageId);
         this.editor.guideBrowser.back();
     }
@@ -211,9 +210,4 @@ export class AboutEditorFacade implements IAiVisible {
         };
     }
 
-    private requirePageId(action: string): string {
-        const pageId = this.editor.page?.id;
-        if (!pageId) throw new Error(`About action unavailable: cannot ${action} without an About page host.`);
-        return pageId;
-    }
 }

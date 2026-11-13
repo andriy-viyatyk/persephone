@@ -1,5 +1,5 @@
 import { app } from "../../api/app";
-import { boardInstallRegistry, type InstalledBoardEntry } from "../../api/boards/board-install-registry";
+import { boardInstallRegistry } from "../../api/boards/board-install-registry";
 import { boardRegistry } from "../../api/boards/board-registry";
 import { BoardGrant } from "../../../shared/board/board-grant";
 import { requestBoardTrust } from "../../api/boards/request-board-trust";
@@ -20,7 +20,6 @@ import {
     BoardInfoEditorModel,
     type BoardInfoEditorState,
     type BoardPropsInfo,
-    type InstallProgress,
 } from "./BoardInfoEditorModel";
 import { BoardScreenshotView } from "./BoardScreenshotView";
 import { ButtonView, type ButtonViewProps } from "../../uikit/Button/ButtonView";
@@ -66,7 +65,6 @@ type SurfaceState = ReturnType<typeof selectSurfaceState>;
 
 interface BoardInfoBodyProps extends SurfaceState {
     model: BoardInfoEditorModel;
-    installed: InstalledBoardEntry[];
     catalog: PublishedBoardInfo[];
 }
 
@@ -137,7 +135,6 @@ export class BoardInfoEditorView extends VanillaView<{ model: EditorModel }> {
         return {
             ...state,
             model: this.model,
-            installed: boardInstallRegistry.listInstalled(),
             catalog: publishedBoards.getCatalog(),
         };
     }
@@ -698,17 +695,14 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
     }
 
     private tileStatus(props: BoardInfoBodyProps, entry: PublishedBoardInfo): TileStatus {
-        const ui: InstallProgress | undefined = props.installUi[entry.id];
-        if (ui?.phase === "downloading") {
-            return { kind: "downloading", received: ui.received, total: ui.total };
+        const status = props.model.installStateOf(entry);
+        if (status.installState === "downloading") {
+            return { kind: "downloading", received: status.received, total: status.total };
         }
-        const installed = props.installed.find((candidate) => candidate.id === entry.id);
-        if (installed) {
-            return boardRegistry.isTrusted(installed.root)
-                ? { kind: "registered", root: installed.root }
-                : { kind: "downloaded", root: installed.root };
+        if (status.installState === "error") return { kind: "error", error: status.error };
+        if ((status.installState === "registered" || status.installState === "downloaded") && status.root) {
+            return { kind: status.installState, root: status.root };
         }
-        if (ui?.phase === "error") return { kind: "error", error: ui.error };
         return { kind: "idle" };
     }
 

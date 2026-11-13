@@ -1,9 +1,6 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { IMnemeRootEditor, IMnemeSearchHit, MnemeSearchMode } from "../../api/types/mneme-root-editor";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
-import { ui } from "../../api/ui";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import type { MnemeRootEditorModel, WikiSearchHit } from "../../editors/mneme-root/MnemeRootEditorModel";
 
 const MNEME_ROOT_ELEMENTS: readonly IAiElementDeclaration[] = [
@@ -19,8 +16,8 @@ const MNEME_ROOT_ELEMENTS: readonly IAiElementDeclaration[] = [
 ];
 
 const MNEME_ROOT_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete current editor id: mneme-root." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
+
+
     { name: "rootFolder", kind: "property", summary: "The configured root folder, or undefined when empty." },
     { name: "rootName", kind: "property", summary: "The resolved Mneme root name, or undefined before resolution." },
     { name: "resolving", kind: "property", summary: "Whether the model is resolving the root against Mneme." },
@@ -67,27 +64,26 @@ setMode validates runtime values against exactly text, vector, and hybrid. runSe
 the model; an empty query or unresolved root follows the model's no-search behavior and does not
 manufacture a result array.`;
 
-export class MnemeRootEditorFacade implements IAiVisible, IMnemeRootEditor {
+export class MnemeRootEditorFacade extends EditorFacadeBase<MnemeRootEditorModel> implements IAiVisible, IMnemeRootEditor {
     constructor(
         private readonly editor: MnemeRootEditorModel,
         readonly id: "mneme-root",
         readonly name: string,
-    ) {}
+    ) {
+        super(id, name);
+        this.setEditor(editor);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const elements = createElements(MNEME_ROOT_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-            highlightOptions: { all: true },
-        });
-        return {
+        return this.describeEditor({
             kind: "MnemeRootEditor",
             summary: "Model-backed Mneme root search and browsing-state facade.",
-            members: [...MNEME_ROOT_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, MNEME_ROOT_HELP),
+            members: MNEME_ROOT_MEMBERS,
+            identitySummaries: { id: "The concrete current editor id: mneme-root.", name: "The editor's registry display name." },
+            identityIndex: 0,
+            help: MNEME_ROOT_HELP,
             elements: MNEME_ROOT_ELEMENTS,
-            provide: elements.provide,
+            highlightOptions: { all: true },
             summarize: () => ({
                 kind: "MnemeRootEditor",
                 id: this.id,
@@ -101,7 +97,7 @@ export class MnemeRootEditorFacade implements IAiVisible, IMnemeRootEditor {
                 searching: this.searching,
                 ...(this.error !== undefined ? { error: this.error } : {}),
             }),
-        };
+        });
     }
 
     get rootFolder(): string | undefined { return this.editor.state.get().rootFolder || undefined; }

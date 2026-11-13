@@ -3,7 +3,7 @@ import { app } from "../../api/app";
 import { ui } from "../../api/ui";
 import { pages } from "../../api/pages";
 import { getFileOpenEditorOptions } from "../../editors/base/editor-switch-options";
-import { parseBoardEditorId } from "../../api/boards/custom-editor-registry";
+import { parseBoardEditorId } from "../../../shared/board/board-editor-id";
 import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
 import { ArchiveIcon, type SvgIconComponent } from "../../theme/icons";
 import { DefaultIcon, GridIcon, LinkIcon } from "../../theme/language-icons";

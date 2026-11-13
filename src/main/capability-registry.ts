@@ -1,3 +1,4 @@
+import { boardEditorId } from "../shared/board/board-editor-id";
 import type { CapabilityRegistration as LegacyRegistration } from "../ipc/capability-bus-channels";
 import type { BoardServiceTrustSnapshot } from "../ipc/module-service-channels";
 import type { BoardCapabilityDeclaration, CapabilityMethod } from "../shared/capability-contract";
@@ -64,7 +65,7 @@ class CapabilityRegistry {
             ...this.boardSnapshot.boards.flatMap((board) => (board.legacyCapabilities ?? []).filter((declaration) => isBoardDeclarable(declaration.id)).map((declaration) => {
                 const { methods: _methods, ...fields } = declaration;
                 return { ...fields, version: declaration.version ?? 1, priority: declaration.priority ?? 50,
-                    handlerKey: `board-editor:${board.boardRoot}`, origin: "board" as const,
+                    handlerKey: boardEditorId(board.boardRoot), origin: "board" as const,
                     boardRoot: board.boardRoot, boardName: board.boardName };
             })),
         ];

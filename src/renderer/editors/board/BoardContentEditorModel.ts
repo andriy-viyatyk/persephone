@@ -6,7 +6,7 @@ import { fpBasename } from "../../core/utils/file-path";
 import { ui } from "../../api/ui";
 import { TextFileModel, newTextFileModel } from "../content-host/TextFileModel";
 import { BoardEditorModel, type BoardEditorState } from "./BoardEditorModel";
-import { boardEditorId } from "../../api/boards/custom-editor-registry";
+import { boardEditorId } from "../../../shared/board/board-editor-id";
 import { errMessage } from "../../../shared/utils";
 import { ContentHostSlot } from "../base/content-host-slot";
 

@@ -7,11 +7,11 @@ import type { EditorDescriptor } from "../../../shared/persistence";
 import { TextFileModel } from "../content-host/TextFileModel";
 import { ContentHostSlot } from "../base/content-host-slot";
 import {
-    boardEditorId,
     customEditorRegistry,
     getFolderEditorsForFolder,
     type CustomEditorRegistrationIssue,
 } from "../../api/boards/custom-editor-registry";
+import { boardEditorId } from "../../../shared/board/board-editor-id";
 import { isBoardFolder, readBoardManifest } from "../../api/boards/board-manifest-io";
 import { normalizeVersionRequirement } from "../../../shared/version-utils";
 import { type BoardContentProviderDeclaration, type BoardCapabilityDeclaration, type BoardEditorKind, type SecondaryViewDecl } from "../../../shared/board/board-manifest-schema";
@@ -52,6 +52,14 @@ const DELETE_AND_CONTINUE = "Delete & continue";
  *  download and the last error. */
 export interface InstallProgress {
     phase: "downloading" | "error";
+    received?: number;
+    total?: number;
+    error?: string;
+}
+
+export interface BoardInfoInstallStatus {
+    installState: "available" | "downloading" | "registered" | "downloaded" | "error";
+    root?: string;
     received?: number;
     total?: number;
     error?: string;
@@ -599,6 +607,29 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     setInstallDir(dir: string): void {
         if (typeof dir !== "string" || !dir.trim()) throw new Error("Install directory must be a non-empty path.");
         this.state.update((s) => { s.installDir = dir; });
+    }
+
+    installStateOf(entry: Pick<PublishedBoardInfo, "id">): BoardInfoInstallStatus {
+        const installUi = this.state.get().installUi[entry.id];
+        const installedEntry = boardInstallRegistry.getById(entry.id);
+        let installState: BoardInfoInstallStatus["installState"] = "available";
+        let root: string | undefined;
+        if (installUi?.phase === "downloading") {
+            installState = "downloading";
+        } else if (installedEntry) {
+            root = installedEntry.root;
+            installState = boardRegistry.isTrusted(root) ? "registered" : "downloaded";
+        } else if (installUi?.phase === "error") {
+            installState = "error";
+        }
+
+        return {
+            installState,
+            ...(root !== undefined ? { root } : {}),
+            ...(installUi?.received !== undefined ? { received: installUi.received } : {}),
+            ...(installUi?.total !== undefined ? { total: installUi.total } : {}),
+            ...(installUi?.error !== undefined ? { error: installUi.error } : {}),
+        };
     }
 
     async download(entry: PublishedBoardInfo): Promise<void> {

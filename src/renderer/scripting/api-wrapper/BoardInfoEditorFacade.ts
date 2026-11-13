@@ -1,13 +1,11 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type {
-    BoardInfoInstallState,
     IBoardInfoCatalogMatch,
     IBoardInfoEditor,
     IBoardInfoProperties,
     IBoardInfoVersion,
 } from "../../api/types/board-info-editor";
 import type { BoardInfoEditorModel } from "../../editors/board-info/BoardInfoEditorModel";
-import { boardInstallRegistry } from "../../api/boards/board-install-registry";
 import { boardRegistry } from "../../api/boards/board-registry";
 import { requestBoardTrust } from "../../api/boards/request-board-trust";
 import { boardPermissionLines, FULL_ACCESS_DETAIL } from "../../api/boards/board-permission-copy";
@@ -15,16 +13,10 @@ import { BoardGrant } from "../../../shared/board/board-grant";
 import type { BoardEditorKind } from "../../../shared/board/board-manifest-schema";
 // After Phase 2 extraction, UI consumers use t(key) and agent-facing output uses englishMessage(key) with the same catalog key.
 import { publishedBoards } from "../../api/boards/published-boards";
-import { ui } from "../../api/ui";
 import { compareVersions } from "../../../shared/version-utils";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import {
-    projectBoardCapability,
-    projectBoardContentProvider,
-    projectBoardSecondaryView,
-    projectBoardSetting,
+    projectBoardManifestFields,
 } from "./board-manifest-projection";
 
 const BOARD_INFO_ELEMENTS: readonly IAiElementDeclaration[] = [
@@ -42,8 +34,8 @@ const BOARD_INFO_ELEMENTS: readonly IAiElementDeclaration[] = [
 ];
 
 const BOARD_INFO_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete editor id: board-info." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
+
+
     { name: "mode", kind: "property", summary: "Model-backed install or properties mode." },
     { name: "matches", kind: "property", summary: "Fresh catalog match snapshots with install, download, and trust status." },
     { name: "installDir", kind: "property", summary: "The selected parent directory for catalog downloads, or undefined before it is established." },
@@ -106,29 +98,36 @@ function projectPermissionLines(permissions: NonNullable<IBoardInfoProperties["p
         fullAccess ? [text, "Full access", FULL_ACCESS_DETAIL] : [text]);
 }
 
-export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
+function copyDefined<T extends object, K extends keyof T>(source: T, keys: readonly K[]): Partial<Pick<T, K>> {
+    const copy: Partial<Pick<T, K>> = {};
+    for (const key of keys) {
+        if (source[key] !== undefined) Object.assign(copy, { [key]: source[key] });
+    }
+    return copy;
+}
+
+export class BoardInfoEditorFacade extends EditorFacadeBase<BoardInfoEditorModel> implements IAiVisible, IBoardInfoEditor {
     constructor(
         private readonly editor: BoardInfoEditorModel,
         readonly id: "board-info",
         readonly name: string,
-    ) {}
+    ) {
+        super(id, name);
+        this.setEditor(editor);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const elements = createElements(BOARD_INFO_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-            highlightOptions: { all: true },
-        });
-        return {
+        return this.describeEditor({
             kind: "BoardInfoEditor",
             summary: "Model-backed Board Info catalog, install, properties, and version facade.",
-            members: [...BOARD_INFO_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, BOARD_INFO_HELP),
+            members: BOARD_INFO_MEMBERS,
+            identitySummaries: { id: "The concrete editor id: board-info.", name: "The editor's registry display name." },
+            identityIndex: 0,
+            help: BOARD_INFO_HELP,
             elements: BOARD_INFO_ELEMENTS,
-            provide: elements.provide,
+            highlightOptions: { all: true },
             summarize: () => this.aiSummary(),
-        };
+        });
     }
 
     get mode(): "install" | "properties" {
@@ -137,8 +136,7 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
 
     get matches(): readonly IBoardInfoCatalogMatch[] {
         const state = this.editor.state.get();
-        const installed = boardInstallRegistry.listInstalled();
-        return state.matches.map((entry) => this.copyMatch(entry, state.installUi[entry.id], installed));
+        return state.matches.map((entry) => this.copyMatch(entry));
     }
 
     get installDir(): string | undefined {
@@ -148,69 +146,36 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
     get properties(): IBoardInfoProperties | undefined {
         const properties = this.editor.state.get().props;
         if (!properties) return undefined;
-
+        const projected = projectBoardManifestFields(properties);
         return {
-            name: properties.name,
-            ...(properties.description !== undefined ? { description: properties.description } : {}),
-            ...(properties.author !== undefined ? { author: properties.author } : {}),
-            ...(properties.repository !== undefined ? { repository: properties.repository } : {}),
-            ...(properties.manifestVersion !== undefined ? { manifestVersion: properties.manifestVersion } : {}),
+            name: projected.name ?? properties.name,
+            ...copyDefined(projected, ["description", "author", "repository"]),
+            ...copyDefined(properties, ["manifestVersion"]),
             ...(properties.permissions !== undefined
-                ? { permissions: BoardGrant.from(properties.permissions).clone(),
-                    permissionLines: projectPermissionLines(properties.permissions) }
+                ? {
+                    permissions: projected.permissions ?? BoardGrant.from(properties.permissions).clone(),
+                    permissionLines: projectPermissionLines(properties.permissions),
+                }
                 : {}),
             ...(properties.proposedPermissions !== undefined
-                ? { proposedPermissions: BoardGrant.from(properties.proposedPermissions).clone(),
-                    proposedPermissionLines: projectPermissionLines(properties.proposedPermissions) }
+                ? {
+                    proposedPermissions: BoardGrant.from(properties.proposedPermissions).clone(),
+                    proposedPermissionLines: projectPermissionLines(properties.proposedPermissions),
+                }
                 : {}),
             ...(properties.permissionChanges !== undefined
                 ? { permissionChanges: properties.permissionChanges.map((change) => ({ ...change })) }
                 : {}),
-            ...(properties.permissionChangePending !== undefined
-                ? { permissionChangePending: properties.permissionChangePending }
-                : {}),
-            ...(properties.standalone !== undefined ? { standalone: properties.standalone } : {}),
-            ...(properties.singleInstance !== undefined ? { singleInstance: properties.singleInstance } : {}),
-            ...(properties.singleInstanceMasks !== undefined
-                ? { singleInstanceMasks: [...properties.singleInstanceMasks] }
-                : {}),
-            ...(properties.minAppVersion !== undefined ? { minAppVersion: properties.minAppVersion } : {}),
-            ...(properties.minBridgeVersion !== undefined ? { minBridgeVersion: properties.minBridgeVersion } : {}),
-            ...(properties.service !== undefined ? { service: properties.service } : {}),
-            ...(properties.bridgeCompatibilityReason !== undefined
-                ? { bridgeCompatibilityReason: properties.bridgeCompatibilityReason }
-                : {}),
-            ...(properties.fileMasks !== undefined ? { fileMasks: [...properties.fileMasks] } : {}),
-            ...(properties.browserUrlMasks !== undefined ? { browserUrlMasks: [...properties.browserUrlMasks] } : {}),
-            ...(properties.contentMasks !== undefined ? { contentMasks: [...properties.contentMasks] } : {}),
-            ...(properties.folderMasks !== undefined ? { folderMasks: [...properties.folderMasks] } : {}),
-            ...(properties.folderEditorMasks !== undefined
-                ? { folderEditorMasks: [...properties.folderEditorMasks] }
-                : {}),
-            ...(properties.folderEditorPriority !== undefined
-                ? { folderEditorPriority: properties.folderEditorPriority }
-                : {}),
-            ...(properties.editorPriority !== undefined ? { editorPriority: properties.editorPriority } : {}),
-            ...(properties.editorName !== undefined ? { editorName: properties.editorName } : {}),
-            ...(properties.editorKind !== undefined ? { editorKind: properties.editorKind } : {}),
-            ...(properties.editorSources !== undefined ? { editorSources: properties.editorSources } : {}),
-            ...(properties.contentProviders !== undefined
-                ? {
-                    contentProviders: properties.contentProviders.map(projectBoardContentProvider),
-                }
-                : {}),
-            ...(properties.capabilities !== undefined
-                ? {
-                    capabilities: properties.capabilities.map(projectBoardCapability),
-                }
-                : {}),
-            ...(properties.settings !== undefined
-                ? { settings: properties.settings.map(projectBoardSetting) }
-                : {}),
-            ...(properties.secondaryViews !== undefined
-                ? { secondaryViews: properties.secondaryViews.map(projectBoardSecondaryView) }
-                : {}),
-            ...(properties.guides !== undefined ? { guides: properties.guides } : {}),
+            ...copyDefined(properties, ["permissionChangePending"]),
+            ...copyDefined(projected, ["standalone"]),
+            ...copyDefined(projected, ["singleInstance", "singleInstanceMasks"]),
+            ...copyDefined(projected, ["minAppVersion", "minBridgeVersion", "service"]),
+            ...copyDefined(properties, ["bridgeCompatibilityReason"]),
+            ...copyDefined(projected, [
+                "fileMasks", "browserUrlMasks", "contentMasks", "folderMasks", "folderEditorMasks",
+                "folderEditorPriority", "editorPriority", "editorName", "editorKind", "editorSources",
+            ]),
+            ...copyDefined(projected, ["contentProviders", "capabilities", "settings", "secondaryViews", "guides"]),
             ...(properties.registrationIssues !== undefined
                 ? {
                     registrationIssues: properties.registrationIssues.map((issue) => ({
@@ -224,9 +189,7 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
             root: properties.root,
             trusted: properties.missing ? false : boardRegistry.isTrusted(properties.root),
             isCatalogInstall: properties.isCatalogInstall,
-            ...(properties.catalogId !== undefined ? { catalogId: properties.catalogId } : {}),
-            ...(properties.installedVersion !== undefined ? { installedVersion: properties.installedVersion } : {}),
-            ...(properties.missing !== undefined ? { missing: properties.missing } : {}),
+            ...copyDefined(properties, ["catalogId", "installedVersion", "missing"]),
         };
     }
 
@@ -291,20 +254,8 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
             screenshotUrl?: string;
             archive: { size: number };
         },
-        installUi: { phase: "downloading" | "error"; received?: number; total?: number; error?: string } | undefined,
-        installed: readonly { id: string; root: string }[],
     ): IBoardInfoCatalogMatch {
-        const installedEntry = installed.find((candidate) => candidate.id === entry.id);
-        let installState: BoardInfoInstallState = "available";
-        let root: string | undefined;
-        if (installUi?.phase === "downloading") {
-            installState = "downloading";
-        } else if (installedEntry) {
-            root = installedEntry.root;
-            installState = boardRegistry.isTrusted(root) ? "registered" : "downloaded";
-        } else if (installUi?.phase === "error") {
-            installState = "error";
-        }
+        const status = this.editor.installStateOf(entry);
 
         return {
             id: entry.id,
@@ -325,11 +276,11 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
             ...(entry.minAppVersion !== undefined ? { minAppVersion: entry.minAppVersion } : {}),
             ...(entry.screenshotUrl !== undefined ? { screenshotUrl: entry.screenshotUrl } : {}),
             size: entry.archive.size,
-            installState,
-            ...(root !== undefined ? { root } : {}),
-            ...(installUi?.received !== undefined ? { received: installUi.received } : {}),
-            ...(installUi?.total !== undefined ? { total: installUi.total } : {}),
-            ...(installUi?.error !== undefined ? { error: installUi.error } : {}),
+            installState: status.installState,
+            ...(status.root !== undefined ? { root: status.root } : {}),
+            ...(status.received !== undefined ? { received: status.received } : {}),
+            ...(status.total !== undefined ? { total: status.total } : {}),
+            ...(status.error !== undefined ? { error: status.error } : {}),
         };
     }
 

@@ -7,7 +7,8 @@ import { STALE_REMOTE_SHAPE_MESSAGE } from "ai-vision";
 import { Subscription } from "../../core/state/events";
 import { tryParseJson } from "../../core/utils/parse-utils";
 import { errMessage } from "../../../shared/utils";
-import { evaluateInTarget, ensureTargetReady } from "../../automation/operations";
+import { evaluateInTarget } from "../../automation/queries";
+import { ensureTargetReady } from "../../automation/page-events";
 import {
     logBrowserNavigated,
     logBrowserShapeChanged,

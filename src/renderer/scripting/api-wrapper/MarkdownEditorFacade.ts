@@ -1,9 +1,6 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { MarkdownEditor } from "../../editors/markdown";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
-import { ui } from "../../api/ui";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 
 const MARKDOWN_ELEMENTS = [
     { name: "text-compare-left", purpose: "Compare this page with the left grouped page.", where: "left side of the Markdown text toolbar, when comparison is available" },
@@ -16,8 +13,8 @@ const MARKDOWN_ELEMENTS = [
 ] as const;
 
 const MARKDOWN_EDITOR_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete current editor id." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
+
+
     { name: "viewMounted", kind: "property", summary: "True if the markdown preview container is mounted in the DOM." },
     { name: "html", kind: "property", summary: "The rendered HTML content from the preview container, or undefined when the rendered view is not mounted." },
     { name: "compactMode", kind: "property", summary: "Whether compact spacing and typography are enabled." },
@@ -59,22 +56,21 @@ and waits for its retained slot layout.`;
  * - `html` reads from the DOM container (rendered by the `hast → DOM` walker)
  * - `viewMounted` indicates whether the container is available
  */
-export class MarkdownEditorFacade implements IAiVisible {
-    constructor(private readonly editor: MarkdownEditor, readonly id: string, readonly name: string) {}
+export class MarkdownEditorFacade extends EditorFacadeBase<MarkdownEditor> implements IAiVisible {
+    constructor(private readonly editor: MarkdownEditor, readonly id: string, readonly name: string) {
+        super(id, name);
+        this.setEditor(editor);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const elements = createElements(MARKDOWN_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-        });
-        return {
+        return this.describeEditor({
             kind: "MarkdownEditor",
             summary: "Markdown preview facade.",
-            members: [...MARKDOWN_EDITOR_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, MARKDOWN_EDITOR_HELP),
+            members: MARKDOWN_EDITOR_MEMBERS,
+            identitySummaries: { id: "The concrete current editor id.", name: "The editor's registry display name." },
+            identityIndex: 0,
+            help: MARKDOWN_EDITOR_HELP,
             elements: MARKDOWN_ELEMENTS,
-            provide: elements.provide,
             summarize: () => ({
                 kind: "MarkdownEditor", id: this.id, name: this.name,
                 viewMounted: this.viewMounted,
@@ -83,7 +79,7 @@ export class MarkdownEditorFacade implements IAiVisible {
                 currentMatchIndex: this.currentMatchIndex,
                 totalMatches: this.totalMatches,
             }),
-        };
+        });
     }
 
     get viewMounted(): boolean {

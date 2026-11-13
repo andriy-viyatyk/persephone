@@ -1,4 +1,4 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { GridEditor } from "../../editors/grid/GridEditor";
 import type {
     IGridCellSelection,
@@ -6,9 +6,6 @@ import type {
     IGridSort,
 } from "../../api/types/grid-editor";
 import { IAiMember, IAiVisible, IAiVisionDescriptor, arrayOfChoicesRule, choiceRule, numberRule, validateCallArguments, valueRule } from "ai-vision";
-import { ui } from "../../api/ui";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 
 const GRID_ELEMENTS = [
     {
@@ -66,8 +63,8 @@ const GRID_ELEMENTS = [
 ] as const;
 
 const GRID_EDITOR_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete current editor id." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
+
+
     { name: "rows", kind: "property", summary: "All rows as plain objects." },
     { name: "rowKeys", kind: "property", summary: "Row keys in the same order as rows; pass them to editCell and deleteRows." },
     { name: "columns", kind: "property", summary: "Column definitions (key and display name)." },
@@ -114,29 +111,28 @@ function copyValue(value: unknown): unknown {
     return value;
 }
 
-export class GridEditorFacade implements IAiVisible {
-    constructor(private readonly editor: GridEditor, readonly id: string, readonly name: string) {}
+export class GridEditorFacade extends EditorFacadeBase<GridEditor> implements IAiVisible {
+    constructor(private readonly editor: GridEditor, readonly id: string, readonly name: string) {
+        super(id, name);
+        this.setEditor(editor);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const elements = createElements(GRID_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-            highlightOptions: { all: true },
-        });
-        return {
+        return this.describeEditor({
             kind: "GridEditor",
             summary: "Grid data manipulation facade.",
-            members: [...GRID_EDITOR_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, GRID_EDITOR_HELP),
+            members: GRID_EDITOR_MEMBERS,
+            identitySummaries: { id: "The concrete current editor id.", name: "The editor's registry display name." },
+            identityIndex: 0,
+            help: GRID_EDITOR_HELP,
             elements: GRID_ELEMENTS,
-            provide: elements.provide,
+            highlightOptions: { all: true },
             summarize: () => ({
                 kind: "GridEditor", id: this.id, name: this.name,
                 rowCount: this.rowCount,
                 columns: this.columns.map(({ key, name }) => ({ key, name })),
             }),
-        };
+        });
     }
 
     /**

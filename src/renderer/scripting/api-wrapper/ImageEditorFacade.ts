@@ -1,4 +1,4 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { ImageEditor } from "../../editors/image/ImageEditor";
 import {
     blobToBuffer,
@@ -7,9 +7,6 @@ import {
     writePngToFile,
 } from "../../editors/shared/image-export";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
-import { ui } from "../../api/ui";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 
 const IMAGE_ELEMENTS = [
     { name: "image-save", purpose: "Open the image save menu.", where: "right side of the image toolbar" },
@@ -30,8 +27,8 @@ interface ImageReadResult {
 }
 
 const IMAGE_EDITOR_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete current editor id." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
+
+
     { name: "source", kind: "property", summary: "The original image path when available, otherwise its loaded runtime URL; undefined when no image is loaded." },
     { name: "read", kind: "method", signature: "read(options?: { maxDimension?: number }): Promise<ImageReadResult>", summary: "Read the loaded image as a bounded PNG image result for inline MCP display; reports applied and original dimensions." },
     { name: "savePngToFile", kind: "method", signature: "savePngToFile(filePath: string): Promise<string>", summary: "Re-encode the displayed image to PNG (1x scale) and write it to filePath. Parent directories are created as needed. Returns the written path.", caution: "writes a PNG and may overwrite the target" },
@@ -64,24 +61,23 @@ layout before drawing.`;
  * Accessed via `page.editor` after narrowing `page.editor.id` to `image-view`. Lets a script (and, through
  * `script.execute`, an agent) write the displayed image to a file as PNG.
  */
-export class ImageEditorFacade implements IAiVisible {
-    constructor(private readonly editor: ImageEditor, readonly id: string, readonly name: string) {}
+export class ImageEditorFacade extends EditorFacadeBase<ImageEditor> implements IAiVisible {
+    constructor(private readonly editor: ImageEditor, readonly id: string, readonly name: string) {
+        super(id, name);
+        this.setEditor(editor);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const elements = createElements(IMAGE_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-        });
-        return {
+        return this.describeEditor({
             kind: "ImageEditor",
             summary: "Image viewer facade.",
-            members: [...IMAGE_EDITOR_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, IMAGE_EDITOR_HELP),
+            members: IMAGE_EDITOR_MEMBERS,
+            identitySummaries: { id: "The concrete current editor id.", name: "The editor's registry display name." },
+            identityIndex: 0,
+            help: IMAGE_EDITOR_HELP,
             elements: IMAGE_ELEMENTS,
-            provide: elements.provide,
             summarize: () => ({ kind: "ImageEditor", id: this.id, name: this.name }),
-        };
+        });
     }
 
     get source(): string | undefined {

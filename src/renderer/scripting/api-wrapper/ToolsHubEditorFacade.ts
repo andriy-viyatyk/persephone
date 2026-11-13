@@ -1,9 +1,6 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { HubTab, IToolsHubEditor } from "../../api/types/tools-hub-editor";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
-import { ui } from "../../api/ui";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import type { ToolsHubEditor } from "../../editors/tools-hub/ToolsHubEditor";
 
 const VALID_HUB_TABS: readonly HubTab[] = ["editors", "search", "tools", "site-extensions"];
@@ -17,8 +14,8 @@ const TOOLS_HUB_ELEMENTS: readonly IAiElementDeclaration[] = [
 ];
 
 const TOOLS_HUB_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete editor id: tools-hub-view." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
+
+
     { name: "activeTab", kind: "property", summary: "The model-backed active tab, or undefined for absent or invalid persisted state." },
     { name: "setTab", kind: "method", signature: "setTab(tab: HubTab): void", summary: "Select editors, search, tools, or site-extensions." },
 ];
@@ -43,34 +40,33 @@ be invisible when another tab is active. Structural
 roots, repeated rows, sidebar trees, pinned rails, menus, and overlays are not part of this editor
 list.`;
 
-export class ToolsHubEditorFacade implements IAiVisible, IToolsHubEditor {
+export class ToolsHubEditorFacade extends EditorFacadeBase<ToolsHubEditor> implements IAiVisible, IToolsHubEditor {
     constructor(
         private readonly editor: ToolsHubEditor,
         readonly id: "tools-hub-view",
         readonly name: string,
-    ) {}
+    ) {
+        super(id, name);
+        this.setEditor(editor);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const elements = createElements(TOOLS_HUB_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-            highlightOptions: { all: true },
-        });
-        return {
+        return this.describeEditor({
             kind: "ToolsHubEditor",
             summary: "Model-backed Tools & Editors hub tab state and curated controls.",
-            members: [...TOOLS_HUB_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, TOOLS_HUB_HELP),
+            members: TOOLS_HUB_MEMBERS,
+            identitySummaries: { id: "The concrete editor id: tools-hub-view.", name: "The editor's registry display name." },
+            identityIndex: 0,
+            help: TOOLS_HUB_HELP,
             elements: TOOLS_HUB_ELEMENTS,
-            provide: elements.provide,
+            highlightOptions: { all: true },
             summarize: () => ({
                 kind: "ToolsHubEditor",
                 id: this.id,
                 name: this.name,
                 ...(this.activeTab !== undefined ? { activeTab: this.activeTab } : {}),
             }),
-        };
+        });
     }
 
     get activeTab(): HubTab | undefined {

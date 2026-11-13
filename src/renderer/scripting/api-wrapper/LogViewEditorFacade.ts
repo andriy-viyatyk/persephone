@@ -1,4 +1,4 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type {
     ILogDialogResult,
     ILogEntrySnapshot,
@@ -7,11 +7,8 @@ import type {
 } from "../../api/types/log-view-editor";
 import type { LogViewEditor } from "../../editors/log-view/LogViewEditor";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
-import { ui } from "../../api/ui";
 import { invalidUiPushEntryError, normalizeUiPushEntry } from "../../api/mcp/ui-push-validation";
 import type { NormalizedUiPushEntry } from "../../api/mcp/ui-push-validation";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 
 const LOG_VIEW_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "log-clear", purpose: "Clear all Log View entries after confirmation." },
@@ -29,8 +26,6 @@ const LOG_VIEW_ELEMENTS: readonly IAiElementDeclaration[] = [
 ];
 
 const LOG_VIEW_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete editor id: log-view." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
     { name: "entries", kind: "property", summary: "Fresh copied Log View entry snapshots, or undefined without an attached host." },
     { name: "entryCount", kind: "property", summary: "The number of parsed entries, including zero, or undefined when detached." },
     { name: "error", kind: "property", summary: "The actual JSONL parse error, or undefined for a valid parse or detached editor." },
@@ -53,7 +48,7 @@ The call result omits fields that are absent; it does not replace an absent fiel
 The curated elements are page-scoped. Prefix selectors log-dialog-button and log-dialog-checkbox locate control families; highlight passes highlightOptions: { all: true }. A highlight result's count is total matches and highlighted is the number actually ringed or capped by the overlay. Output open/copy controls are locations only because their handlers remain view-owned; use entries or push for model-backed data.
 `;
 
-export class LogViewEditorFacade implements IAiVisible {
+export class LogViewEditorFacade extends EditorFacadeBase<LogViewEditor> implements IAiVisible {
     private readonly resolveEditor: () => LogViewEditor | undefined;
 
     /**
@@ -69,7 +64,9 @@ export class LogViewEditorFacade implements IAiVisible {
         readonly name: string,
         private readonly ensure?: () => LogViewEditor,
     ) {
+        super(id, name);
         this.resolveEditor = typeof editor === "function" ? editor : () => editor;
+        this.setEditor(this.resolveEditor, ensure);
     }
 
     private get editor(): LogViewEditor | undefined {
@@ -77,21 +74,17 @@ export class LogViewEditorFacade implements IAiVisible {
     }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor?.page?.id;
-        const elements = createElements(LOG_VIEW_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId
-                ? () => activatePageAndWaitForLayout(pageId)
-                : undefined,
-            highlightOptions: { all: true },
-        });
-        return {
+        return this.describeEditor({
             kind: "LogViewEditor",
             summary: "Log View entries, inline dialog read-back, and cautious model-backed actions.",
-            members: [...LOG_VIEW_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, LOG_VIEW_HELP),
+            members: LOG_VIEW_MEMBERS,
+            identitySummaries: {
+                id: "The concrete editor id: log-view.",
+                name: "The editor's registry display name.",
+            },
+            help: LOG_VIEW_HELP,
             elements: LOG_VIEW_ELEMENTS,
-            provide: elements.provide,
+            highlightOptions: { all: true },
             summarize: () => ({
                 kind: "LogViewEditor",
                 id: this.id,
@@ -100,7 +93,7 @@ export class LogViewEditorFacade implements IAiVisible {
                 error: this.error,
                 hasUnresolvedDialogs: this.isAttached() ? this.editor.hasUnresolvedDialogs() : undefined,
             }),
-        };
+        });
     }
 
     get entries(): ILogEntrySnapshot[] | undefined {
@@ -127,9 +120,9 @@ export class LogViewEditorFacade implements IAiVisible {
         const rawEntries = Array.isArray(entries) ? entries : [entries];
         const normalizedEntries: NormalizedUiPushEntry[] = [];
         for (const raw of rawEntries) {
-            // strictTypes: reject a guessed entry type instead of rendering a blank entry and
-            // reporting success. The legacy output route keeps its lenient behaviour unchanged.
-            const normalized = normalizeUiPushEntry(raw, { strictTypes: true });
+            // The push source rejects guessed entry types instead of rendering a blank entry and
+            // reporting success. Keep its existing strict validation and grid content parsing.
+            const normalized = normalizeUiPushEntry(raw, { source: "push" });
             if (!normalized) throw invalidUiPushEntryError(raw);
             normalizedEntries.push(normalized);
         }
@@ -173,14 +166,4 @@ export class LogViewEditorFacade implements IAiVisible {
         return !!editor && editor.page !== null;
     }
 
-    /**
-     * A write may bring the page into existence; a read may not. `ensure` is present only for the
-     * fixed MCP Log View, so `pages[i].editor` on a real log-view page behaves exactly as before.
-     */
-    private requireAttached(action: string): void {
-        if (!this.isAttached()) this.ensure?.();
-        if (!this.isAttached()) {
-            throw new Error(`Log View ${action} unavailable: no page host attached.`);
-        }
-    }
 }

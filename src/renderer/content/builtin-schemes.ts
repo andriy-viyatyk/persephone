@@ -10,7 +10,8 @@ import {
     virtualPipeDescriptor,
 } from "./link-utils";
 import { registerScheme, type SchemeHookContext } from "./scheme-registry";
-import { resolveEditorIdForFile, isBoardEditorId } from "../api/boards/custom-editor-registry";
+import { resolveEditorIdForFile } from "../api/boards/custom-editor-registry";
+import { isBoardEditorId } from "../../shared/board/board-editor-id";
 import { getGuidePage } from "../guides";
 import { editorRegistry } from "../editors/base/editorRegistry";
 

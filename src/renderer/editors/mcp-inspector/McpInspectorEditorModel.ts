@@ -227,6 +227,32 @@ export const getDefaultMcpInspectorEditorState = (): McpInspectorEditorState => 
     activePanel: "info",
 });
 
+function assertCredentialFreeUrl(value: string): void {
+    if (/^[a-z][a-z\d+.-]*:\/\/[^/?#]*@/i.test(value)) {
+        throw new Error("MCP URL must not contain embedded userinfo or credentials.");
+    }
+
+    let parsed: URL;
+    try {
+        parsed = new URL(value);
+    } catch {
+        return;
+    }
+
+    // Userinfo only. A fragment is not a credential, and rejecting one would refuse a legitimate
+    // URL for no gain — the guard is here to stop a secret being written into the call transcript,
+    // not to narrow what an MCP endpoint may look like.
+    if (parsed.username || parsed.password) {
+        throw new Error("MCP URL must not contain embedded credentials (user:password@).");
+    }
+
+    for (const key of parsed.searchParams.keys()) {
+        if (/(?:token|secret|password|passwd|credential|api[_-]?key|auth)/i.test(key)) {
+            throw new Error(`MCP URL query parameter "${key}" may contain a secret and is not allowed.`);
+        }
+    }
+}
+
 // ============================================================================
 // Model
 // ============================================================================
@@ -322,6 +348,29 @@ export class McpInspectorEditorModel extends EditorModel<McpInspectorEditorState
     setActivePanel = (panel: McpPanelId): void => {
         this.state.update((s) => { s.activePanel = panel; });
     };
+
+    get availablePanels(): readonly McpPanelId[] {
+        const state = this.state.get();
+        const panels: McpPanelId[] = ["info"];
+        if (state.hasTools) panels.push("tools");
+        if (state.hasResources) panels.push("resources");
+        if (state.hasPrompts) panels.push("prompts");
+        panels.push("history");
+        return panels;
+    }
+
+    setTransportType(value: string): void {
+        this.state.update((state) => { state.transportType = value as McpTransportType; });
+    }
+
+    setUrl(value: string): void {
+        assertCredentialFreeUrl(value);
+        this.state.update((state) => { state.url = value; });
+    }
+
+    setConnectionName(value: string): void {
+        this.state.update((state) => { state.connectionName = value; });
+    }
 
     // -- Connections ----------------------------------------------------------
 

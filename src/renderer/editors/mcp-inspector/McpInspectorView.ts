@@ -33,6 +33,14 @@ function transportItems(): IListBoxItem[] {
     ];
 }
 
+const PANEL_LABELS = {
+    info: "tools.mcpInfo",
+    tools: "tools.mcpTools",
+    resources: "tools.mcpResources",
+    prompts: "tools.mcpPrompts",
+    history: "tools.mcpHistory",
+} as const;
+
 type ConnectedPanelView =
     | ToolsPanelView
     | ResourcesPanelView
@@ -178,7 +186,7 @@ export class McpInspectorEditorView extends VanillaView<{ model: EditorModel }> 
         created?.mount();
     }
     private readonly toggleConnection = (): void => { if (this.model.connection.status === "connected" || this.model.connection.status === "connecting") void this.model.disconnect(); else void this.model.connect(); };
-    private readonly selectTransport = (item: IListBoxItem): void => { this.model.state.update((state) => { state.transportType = item.value as "http" | "stdio"; }); };
+    private readonly selectTransport = (item: IListBoxItem): void => { this.model.setTransportType(item.value as string); };
     private readonly selectSaved = (id: string): void => { const connection = this.storeConnections.find((item) => item.id === id); if (connection) this.model.fillFromSaved(connection); };
 }
 
@@ -231,10 +239,10 @@ class EmptyServerBarView extends VanillaView<Record<string, never>> { public con
 class ServerBarView extends VanillaView<{ model: McpInspectorEditorModel; state: McpInspectorEditorState }> {
     private dot: DotView | undefined; private title: HTMLSpanElement | undefined; private version: HTMLSpanElement | undefined; private segments: SegmentedControlView | undefined;
     public constructor(props: { model: McpInspectorEditorModel; state: McpInspectorEditorState }) { super(props, createPanelElement({ direction: "row", align: "center", gap: "md", paddingX: "lg", paddingY: "xs", borderBottom: true })); }
-    protected onMount(): void { this.dot = this.child(new DotView({ size: "xs", color: dotColorFor(this.props.state.connectionStatus) })); this.title = createTextElement("", { size: "sm", color: "default", bold: true }); this.segments = this.child(new SegmentedControlView({ name: "mcp-panel-switch", items: this.panelSegments(this.props.state), value: this.props.state.activePanel, onChange: (value) => this.props.model.setActivePanel(value as McpPanelId), size: "sm" })); this.root.append(this.dot.root, this.title, this.segments.root); this.dot.mount(); this.segments.mount(); this.apply(this.props); }
+    protected onMount(): void { this.dot = this.child(new DotView({ size: "xs", color: dotColorFor(this.props.state.connectionStatus) })); this.title = createTextElement("", { size: "sm", color: "default", bold: true }); this.segments = this.child(new SegmentedControlView({ name: "mcp-panel-switch", items: this.panelSegments(this.props.model), value: this.props.state.activePanel, onChange: (value) => this.props.model.setActivePanel(value as McpPanelId), size: "sm" })); this.root.append(this.dot.root, this.title, this.segments.root); this.dot.mount(); this.segments.mount(); this.apply(this.props); }
     protected onUpdate(props: { model: McpInspectorEditorModel; state: McpInspectorEditorState }): void { this.apply(props); }
-    private apply(props: { model: McpInspectorEditorModel; state: McpInspectorEditorState }): void { const state = props.state; this.dot.update({ size: "xs", color: dotColorFor(state.connectionStatus) }); this.title.textContent = state.serverTitle || state.serverName; if (state.serverVersion) { this.version ??= createTextElement("", { size: "sm", color: "light" }); this.version.textContent = untranslated(`v${state.serverVersion}`); if (!this.version.parentNode) this.root.insertBefore(this.version, this.segments.root); } else this.version?.remove(); this.segments.update({ name: "mcp-panel-switch", items: this.panelSegments(state), value: state.activePanel, onChange: (value) => props.model.setActivePanel(value as McpPanelId), size: "sm" }); }
-    private panelSegments(state: McpInspectorEditorState): ISegment[] { const segments: ISegment[] = [{ value: "info", label: t("tools.mcpInfo") }]; if (state.hasTools) segments.push({ value: "tools", label: t("tools.mcpTools") }); if (state.hasResources) segments.push({ value: "resources", label: t("tools.mcpResources") }); if (state.hasPrompts) segments.push({ value: "prompts", label: t("tools.mcpPrompts") }); segments.push({ value: "history", label: t("tools.mcpHistory") }); return segments; }
+    private apply(props: { model: McpInspectorEditorModel; state: McpInspectorEditorState }): void { const state = props.state; this.dot.update({ size: "xs", color: dotColorFor(state.connectionStatus) }); this.title.textContent = state.serverTitle || state.serverName; if (state.serverVersion) { this.version ??= createTextElement("", { size: "sm", color: "light" }); this.version.textContent = untranslated(`v${state.serverVersion}`); if (!this.version.parentNode) this.root.insertBefore(this.version, this.segments.root); } else this.version?.remove(); this.segments.update({ name: "mcp-panel-switch", items: this.panelSegments(props.model), value: state.activePanel, onChange: (value) => props.model.setActivePanel(value as McpPanelId), size: "sm" }); }
+    private panelSegments(model: McpInspectorEditorModel): ISegment[] { return model.availablePanels.map((id) => ({ value: id, label: t(PANEL_LABELS[id]) })); }
 }
 
 interface DisconnectedBodyProps { model: McpInspectorEditorModel; state: McpInspectorEditorState; connections: SavedMcpConnection[]; }

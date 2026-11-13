@@ -1,10 +1,7 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { MermaidEditor } from "../../editors/mermaid";
 import { writePngToFile } from "../../editors/shared/image-export";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
-import { ui } from "../../api/ui";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import { errMessage } from "../../../shared/utils";
 
 const MERMAID_ELEMENTS = [
@@ -17,8 +14,8 @@ const MERMAID_ELEMENTS = [
 ] as const;
 
 const MERMAID_EDITOR_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete current editor id." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
+
+
     { name: "svgUrl", kind: "property", summary: "Data URL of the rendered SVG diagram. Empty while loading or on error." },
     { name: "loading", kind: "property", summary: "True while the diagram is being rendered." },
     { name: "error", kind: "property", summary: "Error message if rendering failed. Empty on success." },
@@ -54,22 +51,21 @@ retained slot layout.`;
  * - loading/error indicate rendering state.
  * - All reads sync.
  */
-export class MermaidEditorFacade implements IAiVisible {
-    constructor(private readonly editor: MermaidEditor, readonly id: string, readonly name: string) {}
+export class MermaidEditorFacade extends EditorFacadeBase<MermaidEditor> implements IAiVisible {
+    constructor(private readonly editor: MermaidEditor, readonly id: string, readonly name: string) {
+        super(id, name);
+        this.setEditor(editor);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const elements = createElements(MERMAID_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-        });
-        return {
+        return this.describeEditor({
             kind: "MermaidEditor",
             summary: "Mermaid diagram preview facade.",
-            members: [...MERMAID_EDITOR_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, MERMAID_EDITOR_HELP),
+            members: MERMAID_EDITOR_MEMBERS,
+            identitySummaries: { id: "The concrete current editor id.", name: "The editor's registry display name." },
+            identityIndex: 0,
+            help: MERMAID_EDITOR_HELP,
             elements: MERMAID_ELEMENTS,
-            provide: elements.provide,
             summarize: () => ({
                 kind: "MermaidEditor", id: this.id, name: this.name,
                 loading: this.loading,
@@ -77,7 +73,7 @@ export class MermaidEditorFacade implements IAiVisible {
                 hasSvg: this.svgUrl.length > 0,
                 lightMode: this.lightMode,
             }),
-        };
+        });
     }
 
     get svgUrl(): string {

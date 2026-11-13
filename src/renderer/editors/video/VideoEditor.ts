@@ -106,6 +106,30 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         return this.mediaElement;
     }
 
+    play(): Promise<void> {
+        const media = this.mediaElement;
+        if (!media) return Promise.reject(this.missingMediaError());
+        return media.play();
+    }
+
+    pause(): void {
+        this.requireMediaElement().pause();
+    }
+
+    seek(time: number): void {
+        this.requireMediaElement().currentTime = time;
+    }
+
+    private requireMediaElement(): HTMLMediaElement {
+        const media = this.mediaElement;
+        if (!media) throw this.missingMediaError();
+        return media;
+    }
+
+    private missingMediaError(): Error {
+        return new Error("Media action requires a mounted media element");
+    }
+
     get isTemporaryRecording(): boolean {
         const filePath = this.filePath;
         if (!filePath) return false;

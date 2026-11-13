@@ -1,4 +1,5 @@
 import type { IAiElementDeclaration, IAiMember } from "ai-vision";
+import { BOARD_EDITOR_ID_PREFIX } from "../../../shared/board/board-editor-id";
 
 export const BOARD_ELEMENTS: readonly IAiElementDeclaration[] = [
     {
@@ -35,8 +36,6 @@ function method(name: string, signature: string, summary: string, caution?: stri
 }
 
 export const BOARD_MEMBERS: readonly IAiMember[] = [
-    property("id", "The concrete board editor id: board-view or board-editor:<root>."),
-    property("name", "The board editor's registry display name."),
     property("boardRoot", "The board root path, or undefined before a board root is attached."),
     property("folderPath", "The absolute folder claimed by this board, or undefined for plain/file-only boards."),
     property("boardName", "The resolved board folder name, or undefined when the board is not found."),
@@ -96,7 +95,7 @@ export const APP_MEMBER: IAiMember = {
 };
 
 export const BOARD_HELP = `Access via pages[i].editor after narrowing editor.id to "board-view" or
-"board-editor:<root>". This facade describes board chrome, trust state, manifest metadata, reload,
+"${BOARD_EDITOR_ID_PREFIX}<root>". This facade describes board chrome, trust state, manifest metadata, reload,
 statusText, busy state, and declared secondary panels. It does not accept or return a trust decision:
 untrusted content remains restricted until the user answers the Trust-this-Board dialog, shown as
 "Trust this board?". The live dialog is dialogs[0]; its implementation is

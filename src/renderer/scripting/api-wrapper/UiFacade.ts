@@ -1,42 +1,41 @@
 import type { LogViewEditor } from "../../editors/log-view";
-import { normalizeLogDialogButtons, type StyledText, type LogEntry, type CheckboxItem, type GridColumn } from "../../editors/log-view/logTypes";
+import type { StyledText, LogEntry, CheckboxItem, GridColumn } from "../../editors/log-view/logTypes";
+import { normalizeUiPushEntry, type NormalizedUiPushEntry } from "../../api/mcp/ui-push-validation";
 import { StyledLogBuilder } from "./StyledTextBuilder";
-import { Progress } from "./Progress";
-import { Grid } from "./Grid";
-import { Text } from "./Text";
-import { Markdown } from "./Markdown";
-import { Mermaid } from "./Mermaid";
+import {
+    createGridHandle,
+    createMarkdownHandle,
+    createMermaidHandle,
+    createProgressHandle,
+    createTextHandle,
+    type Grid as GridHandleType,
+    type Markdown as MarkdownHandleType,
+    type Mermaid as MermaidHandleType,
+    type Progress as ProgressHandleType,
+    type Text as TextHandleType,
+} from "./LogEntryHandle";
 
-/**
- * Check if value is a plain options object (not a string, not an array).
- * Generic so the narrowing preserves the caller's input-union object branch
- * (and excludes array members of that union, since StyledText etc. include
- * arrays which the runtime check rejects too).
- */
+/** Excludes arrays so StyledText unions retain their positional branch. */
 function isOptionsObject<T>(value: T): value is Exclude<Extract<T, object>, readonly unknown[]> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/**
- * Script facade for the `ui` global variable.
- * Wraps a LogViewEditor to provide logging and dialog methods.
- */
+/** Script facade for the `ui` global, backed by a LogViewEditor. */
 export class UiFacade {
     constructor(private readonly editor: LogViewEditor) {}
 
     private addDialogEntry(type: string, fields: Record<string, unknown>): Promise<LogEntry> {
-        const buttons = fields.buttons;
-        if (Array.isArray(buttons) && buttons.every((button): button is string => typeof button === "string")) {
-            // Normalize caller-owned strings for validation while preserving the public string[] shape.
-            const normalized = normalizeLogDialogButtons(buttons);
-            fields = { ...fields, buttons: normalized.map(({ id, requiresInput }) => requiresInput ? `!${id}` : id) };
-        }
-        return this.editor.addDialogEntry(type, fields);
+        const normalized = this.normalizeScriptEntry(type, fields);
+        return this.editor.addDialogEntry(normalized.type, normalized.fields as Record<string, unknown>);
     }
 
-    // =========================================================================
+    private normalizeScriptEntry(type: string, fields: Record<string, unknown>): NormalizedUiPushEntry {
+        const normalized = normalizeUiPushEntry({ type, ...fields }, { source: "script" });
+        if (!normalized) throw new Error("Failed to normalize script Log View entry.");
+        return normalized;
+    }
+
     // Console forwarding control
-    // =========================================================================
 
     consoleLogPrevented = false;
     consoleWarnPrevented = false;
@@ -46,9 +45,7 @@ export class UiFacade {
     preventConsoleWarn() { this.consoleWarnPrevented = true; }
     preventConsoleError() { this.consoleErrorPrevented = true; }
 
-    // =========================================================================
-    // Logging — returns StyledLogBuilder for optional chaining
-    // =========================================================================
+    // Logging returns StyledLogBuilder for optional chaining
 
     private addLog(type: string, message: StyledText): StyledLogBuilder {
         const entry = this.editor.addEntry(type, message);
@@ -66,16 +63,7 @@ export class UiFacade {
     text(message: StyledText) { return this.addLog("log.text", message); }
     clear() { this.editor.clear(); }
 
-    // =========================================================================
-    // Dialogs (async, returns Promise)
-    //
-    // Two-overload pattern:
-    //   Simple form:  method(positionalArgs...)
-    //   Full form:    method({ ...allParams })
-    //
-    // Disambiguation: StyledText is string | StyledSegment[] (always string or
-    // array). A plain non-array object is always the full form.
-    // =========================================================================
+    // Dialogs accept positional or plain options-object forms.
 
     readonly dialog = {
         confirm: (messageOrOpts: StyledText | { message: StyledText; buttons?: string[] }, buttons?: string[]): Promise<LogEntry> => {
@@ -124,39 +112,42 @@ export class UiFacade {
         },
     };
 
-    // =========================================================================
-    // Output (rich display)
-    // =========================================================================
+    // Rich output
 
     readonly show = {
-        progress: (labelOrOpts?: StyledText | { label?: StyledText; value?: number; max?: number }): Progress => {
+        progress: (labelOrOpts?: StyledText | { label?: StyledText; value?: number; max?: number }): ProgressHandleType => {
             const fields = isOptionsObject(labelOrOpts) ? labelOrOpts : { label: labelOrOpts };
-            const entry = this.editor.addEntry("output.progress", fields);
-            return new Progress(entry.id, this.editor, fields);
+            const normalized = this.normalizeScriptEntry("output.progress", fields);
+            const entry = this.editor.addEntry(normalized.type, normalized.fields);
+            return createProgressHandle(entry.id, this.editor, fields);
         },
 
-        grid: (dataOrOpts: unknown[] | { data: unknown[]; columns?: (string | GridColumn)[]; title?: StyledText }): Grid => {
+        grid: (dataOrOpts: unknown[] | { data: unknown[]; columns?: (string | GridColumn)[]; title?: StyledText }): GridHandleType => {
             const fields = Array.isArray(dataOrOpts) ? { data: dataOrOpts } : dataOrOpts;
-            const entry = this.editor.addEntry("output.grid", fields);
-            return new Grid(entry.id, this.editor, fields);
+            const normalized = this.normalizeScriptEntry("output.grid", fields);
+            const entry = this.editor.addEntry(normalized.type, normalized.fields);
+            return createGridHandle(entry.id, this.editor, fields);
         },
 
-        text: (textOrOpts: string | { text: string; language?: string; title?: StyledText; wordWrap?: boolean; lineNumbers?: boolean; minimap?: boolean }, language?: string): Text => {
+        text: (textOrOpts: string | { text: string; language?: string; title?: StyledText; wordWrap?: boolean; lineNumbers?: boolean; minimap?: boolean }, language?: string): TextHandleType => {
             const fields = isOptionsObject(textOrOpts) ? textOrOpts : { text: textOrOpts, language };
-            const entry = this.editor.addEntry("output.text", fields);
-            return new Text(entry.id, this.editor, fields);
+            const normalized = this.normalizeScriptEntry("output.text", fields);
+            const entry = this.editor.addEntry(normalized.type, normalized.fields);
+            return createTextHandle(entry.id, this.editor, fields);
         },
 
-        markdown: (textOrOpts: string | { text: string; title?: StyledText }): Markdown => {
+        markdown: (textOrOpts: string | { text: string; title?: StyledText }): MarkdownHandleType => {
             const fields = isOptionsObject(textOrOpts) ? textOrOpts : { text: textOrOpts };
-            const entry = this.editor.addEntry("output.markdown", fields);
-            return new Markdown(entry.id, this.editor, fields);
+            const normalized = this.normalizeScriptEntry("output.markdown", fields);
+            const entry = this.editor.addEntry(normalized.type, normalized.fields);
+            return createMarkdownHandle(entry.id, this.editor, fields);
         },
 
-        mermaid: (textOrOpts: string | { text: string; title?: StyledText }): Mermaid => {
+        mermaid: (textOrOpts: string | { text: string; title?: StyledText }): MermaidHandleType => {
             const fields = isOptionsObject(textOrOpts) ? textOrOpts : { text: textOrOpts };
-            const entry = this.editor.addEntry("output.mermaid", fields);
-            return new Mermaid(entry.id, this.editor, fields);
+            const normalized = this.normalizeScriptEntry("output.mermaid", fields);
+            const entry = this.editor.addEntry(normalized.type, normalized.fields);
+            return createMermaidHandle(entry.id, this.editor, fields);
         },
     };
 }

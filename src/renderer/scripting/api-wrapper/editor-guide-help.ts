@@ -2,8 +2,7 @@ import { guideUrl } from "../../../shared/guides/guide-links";
 import { editorRegistry } from "../../editors/base/editorRegistry";
 
 export function withEditorGuideHelp(editorId: string, baseHelp: string): string {
-    const guidePath = editorRegistry.getById(editorId)?.guidePath
-        ?? (editorId.startsWith("board-editor:") ? editorRegistry.getById("board-view")?.guidePath : undefined);
+    const guidePath = editorRegistry.resolveDefinition(editorId)?.guidePath;
     if (!guidePath) return baseHelp;
 
     return `${baseHelp}\n\nGuide: read ${guideCallPath(guidePath)} for the page text; show it with ${guideUrl(guidePath)}.`;

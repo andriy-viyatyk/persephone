@@ -1,7 +1,6 @@
 import { editorRegistry } from "../../editors/base";
 import type { EditorModel } from "../../editors/base/EditorModel";
 import type { EditorViewModule } from "../../editors/types";
-import { parseBoardEditorId } from "../../api/boards/custom-editor-registry";
 import { guard } from "../../core/utils/guard";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { AsyncEditorView } from "./AsyncEditorView";
@@ -48,9 +47,8 @@ export class RenderEditorView extends VanillaView<RenderEditorViewProps> {
 }
 
 const getEditorModule = (editorId: string) => async (): Promise<EditorViewModule> => {
-    const defId = parseBoardEditorId(editorId) !== null ? "board-view" : editorId;
-    const def = editorRegistry.getById(defId);
+    const def = editorRegistry.resolveDefinition(editorId);
     if (!def) throw new Error(`No editor registered for id: ${editorId}`);
-    const module = await editorRegistry.getModule(defId);
+    const module = await editorRegistry.getModule(def.id);
     return { View: module.View };
 };

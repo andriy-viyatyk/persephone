@@ -5,6 +5,7 @@ import type { VanillaViewCtor } from "../../uikit/shared/vanilla-view";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
 import type { ContentRepresentation } from "../../api/types/capabilities";
 import type { MessageKey } from "../../../shared/i18n/en";
+import { parseBoardEditorId } from "../../../shared/board/board-editor-id";
 
 export type EditorCapabilityDeclaration =
     | { readonly id: "text.open"; readonly representation?: never }
@@ -115,6 +116,11 @@ class EditorRegistry {
 
     getById(id: string): EditorDefinition | undefined {
         return this.definitions.get(id);
+    }
+
+    resolveDefinition(id: string): EditorDefinition | undefined {
+        return this.getById(id)
+            ?? (parseBoardEditorId(id) !== null ? this.getById("board-view") : undefined);
     }
 
     getAll(): EditorDefinition[] {

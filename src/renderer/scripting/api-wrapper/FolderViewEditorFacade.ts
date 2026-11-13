@@ -1,9 +1,6 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { IFolderItem, IFolderViewEditor, IFolderViewMode } from "../../api/types/folder-view-editor";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
-import { ui } from "../../api/ui";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import type { CategoryEditorModel } from "../../editors/category/CategoryEditorModel";
 
 const FOLDER_VIEW_ELEMENTS = [
@@ -11,8 +8,8 @@ const FOLDER_VIEW_ELEMENTS = [
 ] as const;
 
 const FOLDER_VIEW_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete current editor id: category-view." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
+
+
     { name: "providerType", kind: "property", summary: "The resolved tree provider type, or undefined when no provider is attached." },
     { name: "providerName", kind: "property", summary: "The resolved tree provider display name, or undefined when no provider is attached." },
     { name: "sourceUrl", kind: "property", summary: "The resolved provider source URL, or undefined when no provider is attached." },
@@ -41,26 +38,25 @@ openItem(), openCategory(), and refresh() use the same model paths as the Folder
 changes view mode or reaches into a mounted view. This surface is not a content or filesystem
 security boundary; app.fs remains independent.`;
 
-export class FolderViewEditorFacade implements IAiVisible, IFolderViewEditor {
+export class FolderViewEditorFacade extends EditorFacadeBase<CategoryEditorModel> implements IAiVisible, IFolderViewEditor {
     constructor(
         private readonly editor: CategoryEditorModel,
         readonly id: "category-view",
         readonly name: string,
-    ) {}
+    ) {
+        super(id, name);
+        this.setEditor(editor);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const elements = createElements(FOLDER_VIEW_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-        });
-        return {
+        return this.describeEditor({
             kind: "FolderViewEditor",
             summary: "Folder View provider-backed navigation facade.",
-            members: [...FOLDER_VIEW_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, FOLDER_VIEW_HELP),
+            members: FOLDER_VIEW_MEMBERS,
+            identitySummaries: { id: "The concrete current editor id: category-view.", name: "The editor's registry display name." },
+            identityIndex: 0,
+            help: FOLDER_VIEW_HELP,
             elements: FOLDER_VIEW_ELEMENTS,
-            provide: elements.provide,
             summarize: () => ({
                 kind: "FolderViewEditor",
                 id: this.id,
@@ -70,7 +66,7 @@ export class FolderViewEditorFacade implements IAiVisible, IFolderViewEditor {
                 selectedHref: this.selectedHref,
                 viewMode: this.viewMode,
             }),
-        };
+        });
     }
 
     get providerType(): string | undefined { return this.editor.providerHost?.treeProvider?.type; }

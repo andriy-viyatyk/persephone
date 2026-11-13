@@ -14,7 +14,8 @@ import { queueLegacyBoardDeprecationNotice } from "./legacy-board-deprecation-no
 import { cleanForStorage } from "../../../shared/link-data";
 import { pipeFromPersistedSource } from "../../content/rebuild-pipe";
 import { decodePersephoneBoardLink } from "../../content/persephone-board-link";
-import { boardEditorId, customEditorRegistry } from "../../api/boards/custom-editor-registry";
+import { customEditorRegistry } from "../../api/boards/custom-editor-registry";
+import { boardEditorId } from "../../../shared/board/board-editor-id";
 import { hostOwnsPipe } from "../../../shared/board/board-manifest-queries";
 import { isBoardFolder, readBoardManifest } from "../../api/boards/board-manifest-io";
 import {

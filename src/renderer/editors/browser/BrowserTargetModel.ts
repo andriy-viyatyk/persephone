@@ -1,13 +1,14 @@
 import type { BrowserEditor } from "./BrowserEditor";
 import { CdpSession } from "../../automation/CdpSession";
-import type { IBrowserTarget, IInputPoint, ITargetTab } from "../../automation/types";
+import type { IAutomationTarget, IMutableTabTarget, INavigableTarget, ISyntheticInputHost, ITargetTab } from "../../automation/types";
+import { createInputSession } from "../../automation/input-session";
 
 /**
  * Lightweight automation adapter for BrowserEditor.
  * Exposes only what the automation layer needs — navigation, tabs, and CDP.
  * Follows the same sub-model pattern as BrowserWebviewModel.
  */
-export class BrowserTargetModel implements IBrowserTarget {
+export class BrowserTargetModel implements IAutomationTarget, ISyntheticInputHost, INavigableTarget, IMutableTabTarget {
     constructor(private readonly model: BrowserEditor) {}
 
     get id(): string {
@@ -29,13 +30,7 @@ export class BrowserTargetModel implements IBrowserTarget {
     }
 
     inputCdp(tabId?: string, sessionId?: string) {
-        return {
-            cdp: this.cdp(tabId),
-            sessionId,
-            mapPoint: (point: IInputPoint, offsets: ReadonlyArray<IInputPoint> = []) => offsets.reduce(
-                (mapped, offset) => ({ x: mapped.x + offset.x, y: mapped.y + offset.y }), point,
-            ),
-        };
+        return createInputSession(this.cdp(tabId), sessionId);
     }
 
     focusWebview(tabId?: string): void {

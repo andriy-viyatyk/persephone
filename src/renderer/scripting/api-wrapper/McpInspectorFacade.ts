@@ -23,12 +23,9 @@ import type {
     McpToolResult,
     McpToolResultContent,
 } from "../../editors/mcp-inspector/McpInspectorEditorModel";
-import type { McpTransportType } from "../../editors/mcp-inspector/McpConnectionManager";
 import type { McpRequestEntry } from "../../editors/log-view/logTypes";
-import { ui } from "../../api/ui";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 
 const MCP_INSPECTOR_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "mcp-transport", purpose: "Choose the HTTP or stdio connection transport.", where: "connection bar, after Saved connections" },
@@ -46,8 +43,6 @@ const MCP_INSPECTOR_ELEMENTS: readonly IAiElementDeclaration[] = [
 ];
 
 const MCP_INSPECTOR_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete current editor id." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
     { name: "connectionStatus", kind: "property", summary: "Connection state: \"disconnected\", \"connecting\", \"connected\", \"error\"." },
     { name: "serverName", kind: "property", summary: "Connected server name (empty when disconnected)." },
     { name: "serverTitle", kind: "property", summary: "Display-friendly server title (empty if not provided)." },
@@ -210,25 +205,26 @@ function copyPromptMessage(message: McpPromptMessage): IMcpPromptMessageSnapshot
     return { role: message.role, content: message.content.map(copyPromptMessageContent) };
 }
 
-export class McpInspectorFacade implements IAiVisible {
-    constructor(private readonly model: McpInspectorEditorModel, readonly id: string, readonly name: string) {}
+export class McpInspectorFacade extends EditorFacadeBase<McpInspectorEditorModel> implements IAiVisible {
+    constructor(private readonly model: McpInspectorEditorModel, readonly id: string, readonly name: string) {
+        super(id, name);
+        this.setEditor(model);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.model.page?.id;
-        const elements = createElements(MCP_INSPECTOR_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-            highlightOptions: { all: true },
-        });
-        return {
+        return this.describeEditor({
             kind: "McpInspector",
             summary: "MCP Inspector connection, panel state, and troubleshooting facade.",
-            members: [...MCP_INSPECTOR_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, MCP_INSPECTOR_HELP),
+            members: MCP_INSPECTOR_MEMBERS,
+            identitySummaries: {
+                id: "The concrete current editor id.",
+                name: "The editor's registry display name.",
+            },
+            help: MCP_INSPECTOR_HELP,
             elements: MCP_INSPECTOR_ELEMENTS,
-            provide: elements.provide,
+            highlightOptions: { all: true },
             summarize: () => this.aiSummary(),
-        };
+        });
     }
 
     // -- Connection status (read-only) --------------------------------------
@@ -246,13 +242,12 @@ export class McpInspectorFacade implements IAiVisible {
 
     get transportType(): string { return this.model.state.get().transportType; }
     set transportType(value: string) {
-        this.model.state.update((state) => { state.transportType = value as McpTransportType; });
+        this.model.setTransportType(value);
     }
 
     get url(): string { return this.model.state.get().url; }
     set url(value: string) {
-        assertCredentialFreeUrl(value);
-        this.model.state.update((state) => { state.url = value; });
+        this.model.setUrl(value);
     }
 
     // These remain readable for compatibility, but cannot be changed by an agent: with a writable
@@ -262,7 +257,7 @@ export class McpInspectorFacade implements IAiVisible {
 
     get connectionName(): string { return this.model.state.get().connectionName; }
     set connectionName(value: string) {
-        this.model.state.update((state) => { state.connectionName = value; });
+        this.model.setConnectionName(value);
     }
 
     // -- Connection actions --------------------------------------------------
@@ -285,14 +280,8 @@ export class McpInspectorFacade implements IAiVisible {
     }
 
     get availablePanels(): readonly McpPanelId[] | undefined {
-        const state = this.connectedState;
-        if (!state) return undefined;
-        const panels: McpPanelId[] = ["info"];
-        if (state.hasTools) panels.push("tools");
-        if (state.hasResources) panels.push("resources");
-        if (state.hasPrompts) panels.push("prompts");
-        panels.push("history");
-        return panels;
+        if (!this.connectedState) return undefined;
+        return this.model.availablePanels;
     }
 
     get tools(): readonly IMcpToolSnapshot[] | undefined {
@@ -438,30 +427,3 @@ export class McpInspectorFacade implements IAiVisible {
         return summary;
     }
 }
-
-function assertCredentialFreeUrl(value: string): void {
-    if (/^[a-z][a-z\d+.-]*:\/\/[^/?#]*@/i.test(value)) {
-        throw new Error("MCP URL must not contain embedded userinfo or credentials.");
-    }
-
-    let parsed: URL;
-    try {
-        parsed = new URL(value);
-    } catch {
-        return;
-    }
-
-    // Userinfo only. A fragment is not a credential, and rejecting one would refuse a legitimate
-    // URL for no gain — the guard is here to stop a secret being written into the call transcript,
-    // not to narrow what an MCP endpoint may look like.
-    if (parsed.username || parsed.password) {
-        throw new Error("MCP URL must not contain embedded credentials (user:password@).");
-    }
-
-    for (const key of parsed.searchParams.keys()) {
-        if (/(?:token|secret|password|passwd|credential|api[_-]?key|auth)/i.test(key)) {
-            throw new Error(`MCP URL query parameter "${key}" may contain a secret and is not allowed.`);
-        }
-    }
-}
-import { withEditorGuideHelp } from "./editor-guide-help";

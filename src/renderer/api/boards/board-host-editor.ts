@@ -1,6 +1,6 @@
 import type { EditorModel } from "../../editors/base/EditorModel";
 import type { IContentPipe } from "../types/io.pipe";
-import { isBoardEditorId } from "./custom-editor-registry";
+import { isBoardEditorId } from "../../../shared/board/board-editor-id";
 
 export interface IBoardHostEditor {
     readonly boardRoot: string | undefined;

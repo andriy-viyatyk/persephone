@@ -19,7 +19,7 @@ export interface IConsoleMessageOptions {
     level?: PageConsoleLevel;
 }
 
-/** Tab info returned by IBrowserTarget. */
+/** Tab info exposed by automation targets that can report selected documents. */
 export interface ITargetTab {
     id: string;
     url: string;
@@ -40,8 +40,8 @@ export interface IInputSession {
     mapPoint(point: IInputPoint, ancestorFrameOffsets?: ReadonlyArray<IInputPoint>): IInputPoint;
 }
 
-/** Lightweight adapter interface — what the automation layer needs from the browser editor. */
-export interface IBrowserTarget {
+/** CDP capabilities used by shared automation operations. */
+export interface IAutomationTarget {
     /** Editor model ID (for page identification). */
     readonly id: string;
 
@@ -51,28 +51,39 @@ export interface IBrowserTarget {
     /** CDP input channel for the selected document or an attached OOPIF session. */
     inputCdp(tabId?: string, sessionId?: string): IInputSession;
 
-    /** Focus the host webview for the explicit synthetic compatibility route. Trusted keys use inputCdp(). */
+    /** Optional: ensure a tab is attachable before a command runs. */
+    ensureReady?(tabId?: string): Promise<void>;
+}
+
+/** Host seams used only by the explicit synthetic input compatibility path. */
+export interface ISyntheticInputHost {
+    /** Focus the host webview for explicit synthetic compatibility. */
     focusWebview(tabId?: string): void;
 
     /** Insert text through the host's legacy native insertion seam for explicit synthetic compatibility. */
     insertText(text: string, tabId?: string): Promise<void>;
 
-    /** Navigation */
+}
+
+export interface INavigableTarget {
     navigate(url: string): void;
     back(): void;
     forward(): void;
     reload(): void;
 
-    /** Tab management */
+}
+
+export interface ITabInfoTarget {
     readonly tabs: ReadonlyArray<ITargetTab>;
     readonly activeTab: ITargetTab | undefined;
+}
+
+export interface ITabbedTarget extends ITabInfoTarget {
+    /** Select the active tab. Async for targets that must mount a frame on demand. */
+    switchTab(tabId: string): void | Promise<void>;
+}
+
+export interface IMutableTabTarget extends ITabbedTarget {
     addTab(url?: string): string;
     closeTab(tabId?: string): void;
-    /** Select the active tab. Async for targets that must mount the tab's frame on demand
-     *  (a board auto-expands + waits for a secondary-view frame); sync `void` otherwise. */
-    switchTab(tabId: string): void | Promise<void>;
-
-    /** Optional: ensure a tab is attachable before a command runs (e.g. a board expands
-     *  + waits for a secondary-view frame). Omit when tabs are always ready. */
-    ensureReady?(tabId?: string): Promise<void>;
 }

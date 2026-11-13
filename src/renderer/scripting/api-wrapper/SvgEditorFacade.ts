@@ -1,10 +1,7 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { SvgEditor } from "../../editors/svg";
 import { writePngToFile } from "../../editors/shared/image-export";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
-import { ui } from "../../api/ui";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import { errMessage } from "../../../shared/utils";
 
 const SVG_ELEMENTS = [
@@ -15,8 +12,8 @@ const SVG_ELEMENTS = [
 ] as const;
 
 const SVG_EDITOR_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete current editor id." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
+
+
     { name: "viewMounted", kind: "property", summary: "True if the SVG preview content host is attached." },
     { name: "svg", kind: "property", summary: "The SVG source content, or undefined when the rendered view is not mounted." },
     { name: "savePngToFile", kind: "method", signature: "savePngToFile(filePath: string): Promise<string>", summary: "Rasterise the SVG to PNG (1x scale) and write it to filePath. Parent directories are created as needed. Returns the written path.", caution: "writes a PNG and may overwrite the target" },
@@ -42,24 +39,23 @@ activates its page and waits for its retained slot layout.`;
  * - Minimal read-only facade — exposes the raw SVG source from the host.
  * - Stays sync; no queue.execute requests.
  */
-export class SvgEditorFacade implements IAiVisible {
-    constructor(private readonly editor: SvgEditor, readonly id: string, readonly name: string) {}
+export class SvgEditorFacade extends EditorFacadeBase<SvgEditor> implements IAiVisible {
+    constructor(private readonly editor: SvgEditor, readonly id: string, readonly name: string) {
+        super(id, name);
+        this.setEditor(editor);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const elements = createElements(SVG_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-        });
-        return {
+        return this.describeEditor({
             kind: "SvgEditor",
             summary: "SVG preview facade.",
-            members: [...SVG_EDITOR_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, SVG_EDITOR_HELP),
+            members: SVG_EDITOR_MEMBERS,
+            identitySummaries: { id: "The concrete current editor id.", name: "The editor's registry display name." },
+            identityIndex: 0,
+            help: SVG_EDITOR_HELP,
             elements: SVG_ELEMENTS,
-            provide: elements.provide,
             summarize: () => ({ kind: "SvgEditor", id: this.id, name: this.name, svgLength: this.svg?.length }),
-        };
+        });
     }
 
     get viewMounted(): boolean {

@@ -1,114 +1,21 @@
+import "./register-editor-facades";
 import { pages } from "../../api/pages";
 import type { PageModel } from "../../api/pages/PageModel";
 import type { IPageHost } from "../../api/pages/IPageHost";
 import { editorRegistry } from "../../editors/base/editorRegistry";
 import type { EditorModel } from "../../editors/base/EditorModel";
 import type { IContentPipe } from "../../api/types/io.pipe";
-import { customEditorRegistry, isBoardEditorId } from "../../api/boards/custom-editor-registry";
-import type { BoardEditorModel } from "../../editors/board/BoardEditorModel";
-import type { BoardInfoEditorModel } from "../../editors/board-info/BoardInfoEditorModel";
-import { MonacoEditor } from "../../editors/monaco/MonacoEditor";
-import { GridEditor } from "../../editors/grid/GridEditor";
-import { EnvVarsEditor } from "../../editors/env-vars/EnvVarsEditor";
-import { ArchiveEditor } from "../../editors/archive/ArchiveEditor";
-import { LinkEditor } from "../../editors/link-editor/LinkEditor";
-import { MarkdownEditor } from "../../editors/markdown/MarkdownEditor";
-import { SvgEditor } from "../../editors/svg/SvgEditor";
-import { HtmlEditor } from "../../editors/html/HtmlEditor";
-import { MermaidEditor } from "../../editors/mermaid/MermaidEditor";
-import type { ImageEditor } from "../../editors/image/ImageEditor";
-import type { VideoEditor } from "../../editors/video/VideoEditor";
-import type { FileDiffEditor } from "../../editors/file-diff/FileDiffEditor";
+import { customEditorRegistry } from "../../api/boards/custom-editor-registry";
 import type { BrowserEditor } from "../../editors/browser/BrowserEditor";
-import type { McpInspectorEditorModel } from "../../editors/mcp-inspector/McpInspectorEditorModel";
 import type { ScriptOutputFlags } from "../ScriptContext";
 import type { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { agentMayAccessBrowserPage, privateBrowserRefusal } from "../../editors/browser/agent-access";
-import { BrowserEditorFacade } from "./BrowserEditorFacade";
-import { GenericEditorFacade } from "./GenericEditorFacade";
-import { GridEditorFacade } from "./GridEditorFacade";
-import { HtmlEditorFacade } from "./HtmlEditorFacade";
-import { ImageEditorFacade } from "./ImageEditorFacade";
-import { LinkEditorFacade } from "./LinkEditorFacade";
-import { MarkdownEditorFacade } from "./MarkdownEditorFacade";
-import { AboutEditorFacade } from "./AboutEditorFacade";
+import { editorFacadeRegistry, type IEditorFacade } from "./editor-facade-registry";
 import type { IAiCallContext } from "../ai-vision/root";
-import { McpInspectorFacade } from "./McpInspectorFacade";
-import { MermaidEditorFacade } from "./MermaidEditorFacade";
-import { EnvVarsEditorFacade } from "./EnvVarsEditorFacade";
-import { ArchiveEditorFacade } from "./ArchiveEditorFacade";
 import { PageEditorSwitchesNode } from "../ai-vision/page-editor-switches";
 import { PagePanelsNode } from "../ai-vision/page-panels";
 import { PageTabNode } from "../ai-vision/page-tab";
-import { SvgEditorFacade } from "./SvgEditorFacade";
-import { TextEditorFacade } from "./TextEditorFacade";
-import { VideoEditorFacade } from "./VideoEditorFacade";
-import { FileDiffEditorFacade } from "./FileDiffEditorFacade";
-import { LogViewEditorFacade } from "./LogViewEditorFacade";
-import type { LogViewEditor } from "../../editors/log-view/LogViewEditor";
-import { FolderViewEditorFacade } from "./FolderViewEditorFacade";
-import { GitTreeEditorFacade } from "./GitTreeEditorFacade";
-import { BoardEditorFacade } from "./BoardEditorFacade";
-import { BoardInfoEditorFacade } from "./BoardInfoEditorFacade";
-import { ToolsetEditorFacade } from "./ToolsetEditorFacade";
-import { ToolsHubEditorFacade } from "./ToolsHubEditorFacade";
-import { MnemeConfigEditorFacade } from "./MnemeConfigEditorFacade";
-import { MnemeRootEditorFacade } from "./MnemeRootEditorFacade";
-import type { CategoryEditorModel } from "../../editors/category/CategoryEditorModel";
-import type { GitTreeEditorModel } from "../../editors/git-tree/GitTreeEditorModel";
-import type { ToolsetEditorModel } from "../../editors/toolset/ToolsetEditorModel";
-import type { ToolsHubEditor } from "../../editors/tools-hub/ToolsHubEditor";
-import type { MnemeConfigEditorModel } from "../../editors/mneme-config/MnemeConfigEditorModel";
-import type { MnemeRootEditorModel } from "../../editors/mneme-root/MnemeRootEditorModel";
-import type { AboutEditor } from "../../editors/about/AboutEditor";
 import { isArchiveFile, isArchivePath, isPlainLocalPath } from "../../core/utils/file-path";
-
-type EditorFacade =
-    | TextEditorFacade | GridEditorFacade | LinkEditorFacade
-    | MarkdownEditorFacade | AboutEditorFacade | SvgEditorFacade | HtmlEditorFacade | MermaidEditorFacade
-    | BrowserEditorFacade | McpInspectorFacade
-    | ImageEditorFacade | VideoEditorFacade | FileDiffEditorFacade
-    | EnvVarsEditorFacade | ArchiveEditorFacade
-    | LogViewEditorFacade | FolderViewEditorFacade | GitTreeEditorFacade | BoardEditorFacade
-    | BoardInfoEditorFacade | ToolsetEditorFacade | ToolsHubEditorFacade
-    | MnemeConfigEditorFacade | MnemeRootEditorFacade | GenericEditorFacade;
-type EditorFacadeFactory =
-    (editor: EditorModel, id: string, name: string, callContext?: IAiCallContext) => EditorFacade;
-
-const BOARD_FACADE_FACTORY: EditorFacadeFactory = (editor, id, name, callContext) =>
-    new BoardEditorFacade(editor as BoardEditorModel, id as "board-view" | `board-editor:${string}`, name, callContext);
-
-const BOARD_INFO_FACADE_FACTORY: EditorFacadeFactory = (editor, id, name) =>
-    new BoardInfoEditorFacade(editor as BoardInfoEditorModel, id as "board-info", name);
-
-const FACADE_FOR_EDITOR: Record<string, EditorFacadeFactory> = {
-    "monaco": (editor, id, name) => new TextEditorFacade(editor as MonacoEditor, id, name),
-    "grid-json": (editor, id, name) => new GridEditorFacade(editor as GridEditor, id, name),
-    "grid-csv": (editor, id, name) => new GridEditorFacade(editor as GridEditor, id, name),
-    "grid-jsonl": (editor, id, name) => new GridEditorFacade(editor as GridEditor, id, name),
-    "env-vars-view": (editor, id, name) => new EnvVarsEditorFacade(editor as EnvVarsEditor, id as "env-vars-view", name),
-    "archive-view": (editor, id, name) => new ArchiveEditorFacade(editor as ArchiveEditor, id as "archive-view", name),
-    "link-view": (editor, id, name) => new LinkEditorFacade(editor as LinkEditor, id, name),
-    "md-view": (editor, id, name) => new MarkdownEditorFacade(editor as MarkdownEditor, id, name),
-    "about-view": (editor, id, name) => new AboutEditorFacade(editor as AboutEditor, id as "about-view", name),
-    "svg-view": (editor, id, name) => new SvgEditorFacade(editor as SvgEditor, id, name),
-    "html-view": (editor, id, name) => new HtmlEditorFacade(editor as HtmlEditor, id, name),
-    "mermaid-view": (editor, id, name) => new MermaidEditorFacade(editor as MermaidEditor, id, name),
-    "browser-view": (editor, id, name, callContext) => new BrowserEditorFacade(editor as unknown as BrowserEditor, id as "browser-view", name, callContext),
-    "mcp-view": (editor, id, name) => new McpInspectorFacade(editor as unknown as McpInspectorEditorModel, id, name),
-    "image-view": (editor, id, name) => new ImageEditorFacade(editor as unknown as ImageEditor, id, name),
-    "video-view": (editor, id, name) => new VideoEditorFacade(editor as unknown as VideoEditor, id, name),
-    "file-diff": (editor, id, name) => new FileDiffEditorFacade(editor as FileDiffEditor, id, name),
-    "log-view": (editor, id, name) => new LogViewEditorFacade(editor as LogViewEditor, id as "log-view", name),
-    "category-view": (editor, id, name) => new FolderViewEditorFacade(editor as CategoryEditorModel, id as "category-view", name),
-    "git-tree": (editor, id, name) => new GitTreeEditorFacade(editor as GitTreeEditorModel, id as "git-tree", name),
-    "board-view": BOARD_FACADE_FACTORY,
-    "board-info": BOARD_INFO_FACADE_FACTORY,
-    "toolset-view": (editor, id, name) => new ToolsetEditorFacade(editor as ToolsetEditorModel, id as "toolset-view", name),
-    "tools-hub-view": (editor, id, name) => new ToolsHubEditorFacade(editor as ToolsHubEditor, id as "tools-hub-view", name),
-    "mneme-config": (editor, id, name) => new MnemeConfigEditorFacade(editor as MnemeConfigEditorModel, id as "mneme-config", name),
-    "mneme-root": (editor, id, name) => new MnemeRootEditorFacade(editor as MnemeRootEditorModel, id as "mneme-root", name),
-};
 
 const PAGE_MEMBERS: readonly IAiMember[] = [
     { name: "id", kind: "property", summary: "Stable page id (use in pages[\"<id>\"])." },
@@ -258,18 +165,13 @@ export class PageWrapper implements IAiVisible {
         if (!this.model.noLanguage) this.model.changeLanguage(value);
     }
 
-    get editor(): EditorFacade {
+    get editor(): IEditorFacade {
         const id = this.currentEditorId();
-        if (!id) return new GenericEditorFacade("", "None");
-        const name = editorRegistry.getById(id)?.name
-            ?? customEditorRegistry.findByEditorId(id)?.name
+        if (!id) return editorFacadeRegistry.create("", null, "None");
+        const name = customEditorRegistry.findByEditorId(id)?.name
+            ?? editorRegistry.resolveDefinition(id)?.name
             ?? id;
-        const editor = this.mainEditor;
-        const factory = editor
-            ? FACADE_FOR_EDITOR[id]
-                ?? (isBoardEditorId(id) ? BOARD_FACADE_FACTORY : undefined)
-            : undefined;
-        return factory ? factory(editor, id, name, this.callContext) : new GenericEditorFacade(id, name);
+        return editorFacadeRegistry.create(id, this.mainEditor, name, this.callContext);
     }
 
     get editorSwitches(): PageEditorSwitchesNode {

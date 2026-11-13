@@ -1,9 +1,6 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { IArchiveEditor, IArchiveEntry } from "../../api/types/archive-editor";
 import type { ArchiveEditor } from "../../editors/archive/ArchiveEditor";
-import { ui } from "../../api/ui";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 
 const ARCHIVE_ELEMENTS: readonly IAiElementDeclaration[] = [
@@ -12,8 +9,8 @@ const ARCHIVE_ELEMENTS: readonly IAiElementDeclaration[] = [
 ];
 
 const ARCHIVE_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete current editor id: archive-view." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
+
+
     { name: "archivePath", kind: "property", summary: "The loaded archive path, or undefined without an attached loaded archive." },
     { name: "selectedEntryHref", kind: "property", summary: "The selected archive entry href, or undefined when no entry is selected." },
     { name: "listEntries", kind: "method", signature: "listEntries(): Promise<IArchiveEntry[] | undefined>", summary: "List copied metadata snapshots for all archive entries; I/O errors remain errors." },
@@ -41,27 +38,26 @@ archives are unsupported by this surface; reader errors are returned. extractTo 
 existing zip-slip protection and writes the user's disk. No action reaches into a view, menu,
 clipboard, or unmounted view model.`;
 
-export class ArchiveEditorFacade implements IAiVisible, IArchiveEditor {
+export class ArchiveEditorFacade extends EditorFacadeBase<ArchiveEditor> implements IAiVisible, IArchiveEditor {
     constructor(
         private readonly editor: ArchiveEditor,
         readonly id: "archive-view",
         readonly name: string,
-    ) {}
+    ) {
+        super(id, name);
+        this.setEditor(editor);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const elements = createElements(ARCHIVE_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-            highlightOptions: { all: true },
-        });
-        return {
+        return this.describeEditor({
             kind: "ArchiveEditor",
             summary: "Archive metadata and model-backed navigation/extraction facade.",
-            members: [...ARCHIVE_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, ARCHIVE_HELP),
+            members: ARCHIVE_MEMBERS,
+            identitySummaries: { id: "The concrete current editor id: archive-view.", name: "The editor's registry display name." },
+            identityIndex: 0,
+            help: ARCHIVE_HELP,
             elements: ARCHIVE_ELEMENTS,
-            provide: elements.provide,
+            highlightOptions: { all: true },
             summarize: () => ({
                 kind: "ArchiveEditor",
                 id: this.id,
@@ -69,7 +65,7 @@ export class ArchiveEditorFacade implements IAiVisible, IArchiveEditor {
                 archivePath: this.archivePath,
                 selectedEntryHref: this.selectedEntryHref,
             }),
-        };
+        });
     }
 
     get archivePath(): string | undefined {

@@ -98,40 +98,36 @@ export function invalidUiPushEntryError(raw: unknown): UiPushValidationError {
 }
 
 /**
- * Normalize one Log View-compatible entry, preserving its established validation rules.
- *
- * `strictTypes` rejects an entry type that is not one of the documented ones. The Log View call
- * does **not** pass it, so that tool's behaviour is unchanged; `pages.logView.push` does.
- *
- * The reason is a real failure, observed in acceptance run: a Haiku agent guessed the
- * types `"markdown"` and `"dialog"` instead of `"output.markdown"` and `"input.confirm"`. The
- * lenient fall-through accepted all three, rendered them as **empty** entries, and returned ids —
- * so the agent reported success while the user saw three blank lines. Validation only ever ran for
- * types beginning `input.`, so a guessed type skipped it entirely. A wrong type must fail loudly
- * and name the alternatives.
+ * `source: "push"` preserves the strict writer's known-type checks, dialog validation,
+ * and grid content parsing. `source: "script"` differs only by skipping unknown-type/schema-type
+ * rejection (while keeping the shared `input.*` dialog classification), skipping dialog unknown-property checks plus required checks for confirm,
+ * buttons, radioboxes, and select (checkboxes keeps required/array checks), and passing
+ * through output.grid array data when content is absent. Type splitting, dialog
+ * classification, and output-field copying are shared.
  */
 export function normalizeUiPushEntry(
     raw: unknown,
-    options: { readonly strictTypes?: boolean } = {},
+    options: { readonly source: "push" | "script" },
 ): NormalizedUiPushEntry | undefined {
+    const strictTypes = options.source === "push";
     const entry = typeof raw === "string"
         ? { type: "log.info", text: raw }
         : raw && typeof raw === "object" && !Array.isArray(raw)
             ? raw as Record<string, unknown>
             : undefined;
     if (!entry) {
-        if (options.strictTypes) throw invalidUiPushEntryError(raw);
+        if (strictTypes) throw invalidUiPushEntryError(raw);
         return undefined;
     }
 
     const { type, ...fields } = entry;
     if (typeof type !== "string") {
-        if (options.strictTypes) throw invalidUiPushEntryError(raw);
+        if (strictTypes) throw invalidUiPushEntryError(raw);
         return undefined;
     }
-    if (!type && !options.strictTypes) return undefined;
+    if (!type && !strictTypes) return undefined;
 
-    if (options.strictTypes
+    if (strictTypes
         && !KNOWN_LOG_TYPES.has(type)
         && !KNOWN_OUTPUT_TYPES.has(type)
         && !(type in DIALOG_SPECS)) {
@@ -144,24 +140,26 @@ export function normalizeUiPushEntry(
     if (type.startsWith("input.")) {
         const spec = DIALOG_SPECS[type];
         if (!spec) {
+            if (options.source === "script") return { type, fields, isDialog: true };
             const validTypes = Object.keys(DIALOG_SPECS).join(", ");
             throw new UiPushValidationError(
                 `Unknown dialog type '${type}'. Valid types: ${validTypes}. Read persephone://guides/ui-push for details.`,
             );
         }
-        const unknownProps = Object.keys(fields).filter((key) => !spec.props.has(key));
+        const unknownProps = strictTypes ? Object.keys(fields).filter((key) => !spec.props.has(key)) : [];
         if (unknownProps.length > 0) {
             throw new UiPushValidationError(
                 `Unknown properties for ${type}: ${unknownProps.join(", ")}. Correct usage: ${spec.usage}`,
             );
         }
-        if (spec.required && !fields[spec.required]) {
+        const checkScriptRequired = type === "input.checkboxes";
+        if (spec.required && (strictTypes || checkScriptRequired) && !fields[spec.required]) {
             const requiredType = spec.required === "items" ? "array" : "string";
             throw new UiPushValidationError(
                 `${type} requires '${spec.required}' (${requiredType}). Correct usage: ${spec.usage}`,
             );
         }
-        if (spec.required === "items" && !Array.isArray(fields.items)) {
+        if (spec.required === "items" && (strictTypes || checkScriptRequired) && !Array.isArray(fields.items)) {
             throw new UiPushValidationError(
                 `${type} 'items' must be an array. Correct usage: ${spec.usage}`,
             );
@@ -170,6 +168,9 @@ export function normalizeUiPushEntry(
     }
 
     if (type === "output.grid") {
+        if (options.source === "script" && Array.isArray(fields.data) && !("content" in fields)) {
+            return { type, fields, isDialog: false };
+        }
         if (!fields.content) {
             throw new UiPushValidationError(
                 `output.grid requires 'content' field (JSON string or CSV string). Example: { type: "output.grid", content: "[{\\\"name\\\":\\\"A\\\",\\\"value\\\":1}]", title: "My Table" }`,

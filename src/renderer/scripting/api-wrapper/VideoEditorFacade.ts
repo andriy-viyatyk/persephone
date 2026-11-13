@@ -1,9 +1,6 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
-import { ui } from "../../api/ui";
 import type { VideoEditor } from "../../editors/video/VideoEditor";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 
 const VIDEO_ELEMENTS = [
     { name: "video-url-input", purpose: "Enter a video URL, local source, or cURL request.", where: "top of the Video toolbar" },
@@ -11,8 +8,8 @@ const VIDEO_ELEMENTS = [
 ] as const;
 
 const VIDEO_EDITOR_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete current editor id." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
+
+
     { name: "source", kind: "property", summary: "The raw submitted source URL or path, or undefined before a source is submitted." },
     { name: "format", kind: "property", summary: "The detected source format: mp4, m3u8, or audio." },
     { name: "playerState", kind: "property", summary: "The current player lifecycle state, including loading, unsupported format, and error." },
@@ -56,22 +53,20 @@ caution metadata calls this out. Reading properties and elements does not activa
 highlight activates the owning page and waits for its layout before drawing.`;
 
 /** Safe read-mostly facade around VideoEditor for script access. */
-export class VideoEditorFacade implements IAiVisible {
-    constructor(private readonly editor: VideoEditor, readonly id: string, readonly name: string) {}
+export class VideoEditorFacade extends EditorFacadeBase<VideoEditor> implements IAiVisible {
+    constructor(private readonly editor: VideoEditor, readonly id: string, readonly name: string) {
+        super(id, name);
+        this.setEditor(editor);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const elements = createElements(VIDEO_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-        });
-        return {
+        return this.describeEditor({
             kind: "VideoEditor",
             summary: "Read-mostly video and audio facade with live playback properties when media is mounted.",
-            members: [...VIDEO_EDITOR_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, VIDEO_EDITOR_HELP),
+            members: VIDEO_EDITOR_MEMBERS,
+            identitySummaries: { id: "The concrete current editor id.", name: "The editor's registry display name." },
+            help: VIDEO_EDITOR_HELP,
             elements: VIDEO_ELEMENTS,
-            provide: elements.provide,
             summarize: () => ({
                 kind: "VideoEditor",
                 id: this.id,
@@ -81,7 +76,7 @@ export class VideoEditorFacade implements IAiVisible {
                 playerState: this.playerState,
                 mediaMounted: this.mediaMounted,
             }),
-        };
+        });
     }
 
     get source(): string | undefined {
@@ -138,18 +133,15 @@ export class VideoEditorFacade implements IAiVisible {
     }
 
     play(): Promise<void> {
-        const media = this.editor.activeMediaElement;
-        if (!media) return Promise.reject(this.missingMediaError());
-        return media.play();
+        return this.editor.play();
     }
 
     pause(): void {
-        this.requireMediaElement().pause();
+        this.editor.pause();
     }
 
     seek(time: number): void {
-        const media = this.requireMediaElement();
-        media.currentTime = time;
+        this.editor.seek(time);
     }
 
     toggleMute(): void {
@@ -161,15 +153,5 @@ export class VideoEditorFacade implements IAiVisible {
             throw new Error("Video editor action unavailable: openInVlc requires a submitted URL.");
         }
         return this.editor.openInVlc();
-    }
-
-    private requireMediaElement(): HTMLMediaElement {
-        const media = this.editor.activeMediaElement;
-        if (!media) throw this.missingMediaError();
-        return media;
-    }
-
-    private missingMediaError(): Error {
-        return new Error("Media action requires a mounted media element");
     }
 }

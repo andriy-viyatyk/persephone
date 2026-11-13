@@ -1,4 +1,5 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
+import { AutomationSurface } from "./AutomationSurface";
 import type {
     BoardRenderState,
     IBoardEditor,
@@ -33,42 +34,13 @@ import {
     type IAiVisible,
     type IAiVisionDescriptor,
 } from "ai-vision";
-import { ui } from "../../api/ui";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import { BOARD_CDP_TAB } from "../../../ipc/api-types";
+import { BOARD_EDITOR_ID_PREFIX } from "../../../shared/board/board-editor-id";
 import type { BoardEditorModel } from "../../editors/board/BoardEditorModel";
 import type { BoardAiVisionRegistration } from "../../editors/board/model/BoardAiVisionChannel";
 import type { ITargetTab } from "../../automation/types";
-import {
-    clickElement,
-    checkElement,
-    clearElement,
-    ensureTargetReady,
-    evaluateInTarget,
-    boardDialogs,
-    answerBoardDialog,
-    consoleMessages,
-    pageErrors,
-    installAutomationActivity,
-    hoverElement,
-    keyDownOnTarget,
-    keyUpOnTarget,
-    networkRequests,
-    pressKeyOnTarget,
-    resolveElementLocator,
-    selectOption,
-    takeScreenshot,
-    snapshot,
-    typeTextInto,
-    uncheckElement,
-    waitFor,
-    dragElements,
-    fillForm as fillFormOperation,
-    setInputFiles as setInputFilesOperation,
-    waitForResponse as waitForResponseOperation,
-} from "../../automation/operations";
-import type { WaitMode } from "../../automation/operations";
+import { ensureTargetReady } from "../../automation/page-events";
+import { boardDialogs, answerBoardDialog } from "../../editors/board/board-dialogs";
 import { boardRegistry } from "../../api/boards/board-registry";
 import { boardSecondaryPanelId } from "../../editors/board/board-secondary";
 import { projectBoardManifest } from "./board-manifest-projection";
@@ -86,25 +58,23 @@ import {
 } from "./board-editor-facade-definitions";
 
 
-export class BoardEditorFacade implements IAiVisible, IBoardEditor {
+export class BoardEditorFacade extends EditorFacadeBase<BoardEditorModel> implements IAiVisible, IBoardEditor {
+    private readonly automation: AutomationSurface;
     constructor(
         private readonly editor: BoardEditorModel,
         readonly id: "board-view" | `board-editor:${string}`,
         readonly name: string,
         private readonly callContext?: IAiCallContext,
-    ) {}
+    ) {
+        super(id, name);
+        this.setEditor(editor);
+        this.automation = new AutomationSurface({ target: editor.target, host: "board" });
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const declarations = [...BOARD_ELEMENTS, ...this.editor.chrome.getLiveToolbarElementDeclarations()];
-        const elements = createElements(declarations, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-            highlightOptions: { all: true },
-        });
         const registration = this.editor.aiVision.getRegistration();
         const app = registration ? this.getAiVisionProxy(registration) : undefined;
-        return {
+        return this.describeEditor({
             kind: "BoardEditor",
             summary: "Board chrome, trust, metadata, frame automation, panels, and reload facade.",
             members: [
@@ -112,11 +82,17 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
                 ...BOARD_AUTOMATION_TAB_MEMBERS,
                 ...BOARD_MEMBERS,
                 ...(app ? [APP_MEMBER] : []),
-                ...elements.members,
             ],
-            help: withEditorGuideHelp(this.id, BOARD_HELP),
-            elements: declarations,
-            provide: (name) => name === "app" && app ? { value: app } : elements.provide(name),
+            identitySummaries: {
+                id: `The concrete board editor id: board-view or ${BOARD_EDITOR_ID_PREFIX}<root>.`,
+                name: "The board editor's registry display name.",
+            },
+            identityIndex: BROWSER_AUTOMATION_MEMBERS.length + BOARD_AUTOMATION_TAB_MEMBERS.length,
+            help: BOARD_HELP,
+            elements: () => [...BOARD_ELEMENTS, ...this.editor.chrome.getLiveToolbarElementDeclarations()],
+            highlightOptions: { all: true },
+            provide: elementProvide => name =>
+                name === "app" && app ? { value: app } : elementProvide(name),
             restricted: () => this.restricted(),
             summarize: () => ({
                 kind: "BoardEditor",
@@ -131,7 +107,7 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
                 ...(this.working !== undefined ? { working: this.working } : {}),
                 ...(this.statusText !== undefined ? { statusText: this.statusText } : {}),
             }),
-        };
+        });
     }
 
     /** List the board's main frame and declared secondary-view frames without attaching to CDP. */
@@ -146,155 +122,66 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
     }
 
     /** Build an accessibility snapshot for the selected or explicitly requested board frame. */
-    async snapshot(options?: TabOption & {
+    snapshot(options?: TabOption & {
         root?: string | { ref: string };
         interactive?: boolean;
         maxNodes?: number;
         maxChars?: number;
-    }): Promise<string> {
-        await ensureTargetReady(this.editor.target, options?.tabId);
-        return snapshot(this.editor.target, options?.tabId, { ...options, overlayHint: true, host: "board" });
-    }
+    }): Promise<string> { return this.automation.snapshot(options); }
 
     /** Click a board element by CSS selector or explicit snapshot ref. */
-    async click(locator: IBrowserElementLocator, options?: IBrowserClickOptions): Promise<void> {
-        await ensureTargetReady(this.editor.target, options?.tabId);
-        await clickElement(this.editor.target, resolveElementLocator(locator), options);
-    }
+    click(locator: IBrowserElementLocator, options?: IBrowserClickOptions): Promise<void> { return this.automation.click(locator, options); }
 
     /** Hover a board element by CSS selector or explicit snapshot ref. */
-    async hover(locator: IBrowserElementLocator, options?: IBrowserHoverOptions): Promise<void> {
-        await ensureTargetReady(this.editor.target, options?.tabId);
-        await hoverElement(this.editor.target, resolveElementLocator(locator), options);
-    }
+    hover(locator: IBrowserElementLocator, options?: IBrowserHoverOptions): Promise<void> { return this.automation.hover(locator, options); }
 
     /** Type into a board input by CSS selector or explicit snapshot ref. */
-    async type(locator: IBrowserElementLocator, text: string, options?: IBrowserTypeOptions): Promise<void> {
-        await ensureTargetReady(this.editor.target, options?.tabId);
-        await typeTextInto(this.editor.target, resolveElementLocator(locator), text, {
-            tabId: options?.tabId,
-            slowly: options?.slowly,
-            submit: options?.submit,
-            synthetic: options?.synthetic,
-            nth: options?.nth,
-            timeout: options?.timeout,
-            force: options?.force,
-        });
-    }
+    type(locator: IBrowserElementLocator, text: string, options?: IBrowserTypeOptions): Promise<void> { return this.automation.type(locator, text, options); }
 
     /** Select a board option by CSS selector or explicit snapshot ref. */
-    async select(
+    select(
         locator: IBrowserElementLocator,
         values: string | string[],
         options?: IBrowserSelectOptions,
-    ): Promise<void> {
-        await ensureTargetReady(this.editor.target, options?.tabId);
-        await selectOption(this.editor.target, resolveElementLocator(locator), values, options);
-    }
+    ): Promise<void> { return this.automation.select(locator, values, options); }
 
-    async check(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void> {
-        await ensureTargetReady(this.editor.target, options?.tabId);
-        await checkElement(this.editor.target, resolveElementLocator(locator), options);
-    }
+    check(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void> { return this.automation.check(locator, options); }
 
-    async uncheck(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void> {
-        await ensureTargetReady(this.editor.target, options?.tabId);
-        await uncheckElement(this.editor.target, resolveElementLocator(locator), options);
-    }
+    uncheck(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void> { return this.automation.uncheck(locator, options); }
 
-    async clear(locator: IBrowserElementLocator, options?: IBrowserTypeOptions): Promise<void> {
-        await ensureTargetReady(this.editor.target, options?.tabId);
-        await clearElement(this.editor.target, resolveElementLocator(locator), options);
-    }
+    clear(locator: IBrowserElementLocator, options?: IBrowserTypeOptions): Promise<void> { return this.automation.clear(locator, options); }
 
     /** Press a key or compound key in the selected board frame. */
-    async pressKey(key: string, options?: IBrowserKeyboardOptions): Promise<void> {
-        await ensureTargetReady(this.editor.target, options?.tabId);
-        await pressKeyOnTarget(this.editor.target, key, options);
-    }
+    pressKey(key: string, options?: IBrowserKeyboardOptions): Promise<void> { return this.automation.pressKey(key, options); }
 
-    async keyDown(key: string, options?: IBrowserKeyboardOptions): Promise<void> {
-        await ensureTargetReady(this.editor.target, options?.tabId);
-        await keyDownOnTarget(this.editor.target, key, options);
-    }
+    keyDown(key: string, options?: IBrowserKeyboardOptions): Promise<void> { return this.automation.keyDown(key, options); }
 
-    async keyUp(key: string, options?: IBrowserKeyboardOptions): Promise<void> {
-        await ensureTargetReady(this.editor.target, options?.tabId);
-        await keyUpOnTarget(this.editor.target, key, options);
-    }
+    keyUp(key: string, options?: IBrowserKeyboardOptions): Promise<void> { return this.automation.keyUp(key, options); }
 
     /** Evaluate JavaScript in the selected or explicitly requested board frame. */
-    async evaluate(expression: string | IBrowserEvaluateFunction, options?: IBrowserEvaluateOptions): Promise<unknown> {
-        await ensureTargetReady(this.editor.target, options?.tabId);
-        return evaluateInTarget(this.editor.target, expression, options);
-    }
+    evaluate(expression: string | IBrowserEvaluateFunction, options?: IBrowserEvaluateOptions): Promise<unknown> { return this.automation.evaluate(expression, options); }
 
     /** Wait for exactly one selector, text, textGone, or time condition in a board frame. */
-    async waitFor(options: WaitForOption): Promise<void> {
-        if (options.state !== undefined && options.selector === undefined) {
-            throw new Error("'state' can only be used with 'selector'.");
-        }
-        const modes = [options.selector, options.text, options.textGone, options.time]
-            .filter(value => value !== undefined);
-        if (modes.length !== 1) {
-            throw new Error("Expected exactly one of 'selector', 'text', 'textGone', or 'time'.");
-        }
-        let mode: WaitMode;
-        if (options.time !== undefined) {
-            mode = { kind: "time", seconds: options.time };
-        } else if (options.selector !== undefined) {
-            mode = { kind: "selector", selector: options.selector, state: options.state ?? "attached" };
-        } else if (options.text !== undefined) {
-            mode = { kind: "text", text: options.text };
-        } else {
-            mode = { kind: "textGone", text: options.textGone! };
-        }
-        await ensureTargetReady(this.editor.target, options.tabId);
-        await waitFor(this.editor.target, { mode, timeout: options.timeout, tabId: options.tabId });
-    }
+    waitFor(options: WaitForOption): Promise<void> { return this.automation.waitFor(options); }
 
     /** Capture the selected board frame as PNG, or undefined when its session is unavailable. */
-    async screenshot(options?: IBrowserScreenshotOptions): Promise<IBrowserScreenshot | undefined> {
-        await ensureTargetReady(this.editor.target, options?.tabId);
-        return takeScreenshot(this.editor.target, options?.tabId, {
-            ...options,
-            host: "board",
-            returnUndefinedIfUnavailable: true,
-        });
-    }
+    screenshot(options?: IBrowserScreenshotOptions): Promise<IBrowserScreenshot | undefined> { return this.automation.screenshot(options); }
 
-    async drag(
+    drag(
         source: IBrowserElementLocator,
         destination: IBrowserElementLocator,
         options?: IBrowserDragOptions,
-    ): Promise<void> {
-        await ensureTargetReady(this.editor.target, options?.tabId);
-        await dragElements(
-            this.editor.target,
-            resolveElementLocator(source),
-            resolveElementLocator(destination),
-            options,
-        );
-    }
+    ): Promise<void> { return this.automation.drag(source, destination, options); }
 
-    async fillForm(fields: IBrowserFormField[]): Promise<void> {
-        await ensureTargetReady(this.editor.target, fields.find(field => field.options?.tabId)?.options?.tabId);
-        await fillFormOperation(this.editor.target, fields);
-    }
+    fillForm(fields: IBrowserFormField[]): Promise<void> { return this.automation.fillForm(fields); }
 
-    async setInputFiles(locator: IBrowserElementLocator, paths: string[], options?: TabOption): Promise<void> {
-        await ensureTargetReady(this.editor.target, options?.tabId);
-        await setInputFilesOperation(this.editor.target, resolveElementLocator(locator), paths, options);
-    }
+    setInputFiles(locator: IBrowserElementLocator, paths: string[], options?: TabOption): Promise<void> { return this.automation.setInputFiles(locator, paths, options); }
 
     /** Read recorded network requests for the selected board frame. */
-    async networkRequests(options?: TabOption): Promise<IBrowserNetworkRequest[]> {
-        await ensureTargetReady(this.editor.target, options?.tabId);
-        return networkRequests(this.editor.target, options?.tabId);
-    }
+    networkRequests(options?: TabOption): Promise<IBrowserNetworkRequest[]> { return this.automation.networkRequests(options); }
 
     waitForResponse(urlOrRegex: string | RegExp, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse> {
-        return waitForResponseOperation(this.editor.target, urlOrRegex, options);
+        return this.automation.waitForResponse(urlOrRegex, options);
     }
 
     async dialogs(options?: TabOption): Promise<{ dialogs: Awaited<ReturnType<typeof boardDialogs>> }> {
@@ -311,11 +198,11 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
     }
 
     async consoleMessages(options?: TabOption & { since?: number; level?: IBrowserConsoleLevel }) {
-        return consoleMessages(this.editor.target, options);
+        return this.automation.consoleMessages(options);
     }
 
     async pageErrors(options?: TabOption) {
-        return pageErrors(this.editor.target, options?.tabId);
+        return this.automation.pageErrors(options);
     }
 
     /** Select a board frame and wait until a secondary frame is attachable. */
@@ -393,17 +280,19 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
 
     reload(): Promise<IBoardReloadResult> {
         const pageId = this.editor.page?.id;
-        if (!pageId) throw new Error("Board reload unavailable: no page host attached.");
-        const boardRoot = this.boardRoot;
-        if (!boardRoot) throw new Error("Board reload unavailable: no board root is attached.");
-
-        const renderState = this.renderState;
-        if (renderState !== "trusted" && renderState !== "bundled") {
-            return Promise.resolve({ refreshed: true, pageId, frameReady: false, renderState });
-        }
-        return this.editor.reloadAndWait().then((result) => result.cancelled
-            ? { refreshed: false, cancelled: true, pageId, frameReady: result.frameReady, renderState }
-            : { refreshed: true, pageId, frameReady: result.frameReady, renderState });
+        return this.automation.runHostOperation("reload", undefined, async () => {
+            if (!pageId) throw new Error("Board reload unavailable: no page host attached.");
+            const boardRoot = this.boardRoot;
+            if (!boardRoot) throw new Error("Board reload unavailable: no board root is attached.");
+            const renderState = this.renderState;
+            if (renderState !== "trusted" && renderState !== "bundled") {
+                return { refreshed: true, pageId, frameReady: false, renderState };
+            }
+            const result = await this.editor.reloadAndWait();
+            return result.cancelled
+                ? { refreshed: false, cancelled: true, pageId, frameReady: result.frameReady, renderState }
+                : { refreshed: true, pageId, frameReady: result.frameReady, renderState };
+        }, { passive: false, tip: false });
     }
 
     private isResolvedBoard(): boolean {
@@ -468,21 +357,6 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
         });
     }
 }
-
-installAutomationActivity(BoardEditorFacade.prototype, [
-    "snapshot", "click", "hover", "type", "select", "check", "uncheck", "clear", "pressKey", "keyDown", "keyUp",
-    "evaluate",
-    "waitFor",
-    "screenshot",
-    "networkRequests",
-    "waitForResponse",
-    "consoleMessages",
-    "pageErrors",
-    "drag",
-    "fillForm",
-    "setInputFiles",
-    "reload",
-], instance => (instance as unknown as { editor: BoardEditorModel }).editor.target);
 
 interface TabOption {
     tabId?: string;

@@ -63,9 +63,9 @@ import {
 import { fpExtname } from "../../core/utils/file-path";
 import {
     customEditorRegistry,
-    parseBoardEditorId,
     resolveEditorIdForFile,
 } from "../../api/boards/custom-editor-registry";
+import { parseBoardEditorId } from "../../../shared/board/board-editor-id";
 import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
 
 // =============================================================================

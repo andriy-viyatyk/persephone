@@ -1,9 +1,10 @@
-import type { IBrowserTarget, IInputPoint, ITargetTab } from "./types";
+import type { IAutomationTarget, ISyntheticInputHost, ITabInfoTarget, ITargetTab } from "./types";
+import { createInputSession } from "./input-session";
 import { CdpSession } from "./CdpSession";
 import { APP_WINDOW_CDP_KEY } from "../../ipc/api-types";
 
 /**
- * `IBrowserTarget` adapter for Persephone's OWN main window, letting the
+ * Automation adapter for Persephone's OWN main window, letting the
  * shared automation operations drive the app's own UI through `window.screen` — page
  * tabs, sidebar, toolbars, dialogs, and the active editor. Selected explicitly via
  * `window.screen` or the explicit `pageId: "app"` target.
@@ -16,21 +17,12 @@ import { APP_WINDOW_CDP_KEY } from "../../ipc/api-types";
  *  • `focusWebview()` — a no-op. Trusted mouse input is sent through CDP and needs no OS
  *    focus; the existing keyboard path also avoids stealing the user's window focus.
  *  • `insertText()` — legacy insertion seam used only by explicit synthetic input.
- * Navigation and tab methods throw a clear error: the app window has no browser-style
- * navigation or tabs — opening and switching Persephone pages is done through `pages`
- * (`pages.showPage(id)`).
+ * Navigation and tab mutation are intentionally absent: pages are managed through `pages`.
  *
  * Exposed as a module-level singleton — there is exactly one app UI per renderer, and
  * the sentinel key resolves to whichever window handled the MCP command.
  */
-const NAV_MSG =
-    "Navigation is not supported on the app window (pageId: \"app\") — it is Persephone's own UI, " +
-    "not a browser page. To open or switch pages, read `pages` and call `pages.showPage(pageId)`.";
-const TAB_MSG =
-    "Tabs are not supported on the app window (pageId: \"app\"). Persephone's page tabs are not " +
-    "browser tabs — read `pages` to list them and `pages.showPage(pageId)` to switch.";
-
-class AppTargetModel implements IBrowserTarget {
+class AppTargetModel implements IAutomationTarget, ISyntheticInputHost, ITabInfoTarget {
     get id(): string {
         return "app";
     }
@@ -40,13 +32,7 @@ class AppTargetModel implements IBrowserTarget {
     }
 
     inputCdp(_tabId?: string, sessionId?: string) {
-        return {
-            cdp: this.cdp(),
-            sessionId,
-            mapPoint: (point: IInputPoint, offsets: ReadonlyArray<IInputPoint> = []) => offsets.reduce(
-                (mapped, offset) => ({ x: mapped.x + offset.x, y: mapped.y + offset.y }), point,
-            ),
-        };
+        return createInputSession(this.cdp(), sessionId);
     }
 
     focusWebview(): void {
@@ -58,20 +44,6 @@ class AppTargetModel implements IBrowserTarget {
         // Insert at the currently focused element (input.ts has already focused the
         // target) via the app-window CDP session.
         await this.cdp().evaluate(`document.execCommand('insertText', false, ${JSON.stringify(text)})`);
-    }
-
-    navigate(): void {
-        throw new Error(NAV_MSG);
-    }
-    back(): void {
-        throw new Error(NAV_MSG);
-    }
-    forward(): void {
-        throw new Error(NAV_MSG);
-    }
-    reload(): void {
-        // Reloading the app window is deliberately NOT exposed to the agent.
-        throw new Error(NAV_MSG);
     }
 
     get tabs(): ReadonlyArray<ITargetTab> {
@@ -90,15 +62,6 @@ class AppTargetModel implements IBrowserTarget {
         return this.tabs[0];
     }
 
-    addTab(): string {
-        throw new Error(TAB_MSG);
-    }
-    closeTab(): void {
-        throw new Error(TAB_MSG);
-    }
-    switchTab(): void {
-        throw new Error(TAB_MSG);
-    }
 }
 
 /** Singleton app-window automation target (there is one app UI per renderer). */

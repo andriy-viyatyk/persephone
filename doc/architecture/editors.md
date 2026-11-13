@@ -714,7 +714,7 @@ Each decl is `{ id, html?, title? }`. `html` defaults to the main entry (`index.
 
 **Navigation (Pattern A).** A board that contributes panels is **not** kept alive as a sidebar contributor when its main view navigates away — the base `EditorModel.beforeNavigateAway` already clears the derived `state.secondaryView`, so the panels are removed and the board is disposed normally. `secondaryViewDefs` is retained (not wiped) so a re-promoted **busy** board re-derives its panels via `onNavigationReuse()`. Keeping a board alive on the page via its secondary views is a future concern, orthogonal to the existing busy-process retention for plain boards.
 
-**Automating secondary views (frames-as-tabs).** `call` object-model automation maps each board frame — main + each declared secondary view — onto the existing `IBrowserTarget` **tab** abstraction, so `pages[i].editor.tabs` enumerates them and `switchTab(tabId)` switches to one. The session registers each frame under its own CDP key `${model.id}/${tab}`; the main-only board-loaded separator and autofocus stay on the main session. `BoardFrameRegistry` owns the per-tab frame map and active tab id, and `BoardTargetModel` is its only active-tab writer. Its `switchTab` **opens + activates the sidebar panel** so the target frame mounts before automation drives it. Frames are resolved by their unique `?v=<nonce>`, disambiguating multiple tabs of the same board and the lingering pre-reload frame after a remount.
+**Automating secondary views (frames-as-tabs).** `call` object-model automation maps each board frame — main + each declared secondary view — onto the `ITabbedTarget` **tab** abstraction, so `pages[i].editor.tabs` enumerates them and `switchTab(tabId)` switches to one. The session registers each frame under its own CDP key `${model.id}/${tab}`; the main-only board-loaded separator and autofocus stay on the main session. `BoardFrameRegistry` owns the per-tab frame map and active tab id, and `BoardTargetModel` is its only active-tab writer. Its `switchTab` **opens + activates the sidebar panel** so the target frame mounts before automation drives it. Frames are resolved by their unique `?v=<nonce>`, disambiguating multiple tabs of the same board and the lingering pre-reload frame after a remount.
 
 **Debugging observability.** The shim mirrors `console.error`/`console.warn` from every board frame to the board's `ui.log` via a `board:log` host-frame message (alongside its existing uncaught-error / unhandled-rejection / CSP detectors) — `console.log`/`info` are deliberately not mirrored. Every source writes through the main-process `src/main/board-log.ts`, which serializes writes and bounds the log at 256 KiB, trimming toward the last ~128 KiB on overflow. Main-frame loads append a `----- board loaded -----` separator, preserving prior history while the board remains open. Bundled-board logs resolve under `<userData>/board-logs/<id>/ui.log`; the toolbar asks main for the path before opening it. The `pages[i].editor.reload()` MCP tool is deterministic: it registers a `BoardEditorModel.waitForFrameLoad()` waiter **before** issuing the reload, awaits the remounted main frame's load + CDP re-registration, and returns `frameReady` — so a snapshot right after refresh can no longer hit the stale pre-reload frame (a `frameReady: false` timeout still reports `refreshed: true`, signalling the agent to check `ui.log` rather than snapshot garbage).
 
@@ -779,7 +779,8 @@ per-board trust flow described above.
 
 ```typescript
 editorRegistry.register(module)                    // Register an EditorModule
-editorRegistry.getById(id)                         // Get module by ID
+editorRegistry.getById(id)                         // Exact editor definition lookup
+editorRegistry.resolveDefinition(id)               // Exact lookup, then board-editor:<root> → board-view
 editorRegistry.getAll()                            // Get all registered modules
 editorRegistry.resolve(fileName)                   // Best module for a file NAME (acceptFile only)
 editorRegistry.resolveId(fileName)                 // Resolve just the editor ID
@@ -790,7 +791,11 @@ editorRegistry.getPreviewEditor(lang, filePath)    // Get auto-preview editor fo
 editorRegistry.createEditor(id)                    // Create an EditorModel instance
 ```
 
-The registry is the single resolution surface — it owns extension/language/content matching internally (no external `registry.ts` to delegate to).
+`getById()` remains exact for callers that need a registered definition. `resolveDefinition()` is
+the family-aware lookup used where a dynamic `board-editor:<root>` ID needs the built-in board
+definition (facade name/help and editor rendering); it does not alter file or folder resolution.
+The registry owns extension/language/content matching internally (no external `registry.ts` to
+delegate to).
 
 ## Adding a New Editor
 

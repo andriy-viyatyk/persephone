@@ -366,7 +366,7 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/renderer/editors/browser/BrowserPromptsModel.ts` | Renderer | Transient blocked-popup and permission-prompt state and actions |
 | `src/renderer/editors/browser/BrowserTranslationController.ts` | Renderer | Translation toolbar workflow and per-tab page translation lifecycle |
 | `src/renderer/editors/browser/webview-context-menu.ts` | Renderer | Browser webview context-menu construction and bounded DOM/SVG/resource probes |
-| `src/renderer/editors/browser/BrowserTargetModel.ts` | Renderer | Automation adapter sub-model — implements `IBrowserTarget` for Object Model call paths |
+| `src/renderer/editors/browser/BrowserTargetModel.ts` | Renderer | Browser host adapter for the narrow automation target interfaces |
 | `src/renderer/editors/browser/BrowserTabsPanel.ts` | Renderer | Native left-side internal tabs panel with compact floating preview and drag-to-reorder |
 | `src/renderer/editors/browser/BrowserBookmarks.ts` | Renderer | Wraps TextFileModel + LinkEditor for bookmark file I/O |
 | `src/renderer/editors/browser/BookmarksDrawer.ts` | Renderer | Native sliding overlay drawer rendering the Link Editor for bookmarks |
@@ -376,15 +376,15 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/renderer/editors/browser/browser-search-history.ts` | Renderer | Per-profile persistent search history storage (file-based) |
 | `src/renderer/editors/browser/TorStatusOverlay.ts` | Renderer | Native Tor connection overlay with spinner, log, reconnect button |
 | `src/renderer/editors/browser/network-log-links.ts` | Renderer | Network log → ILink[] conversion for Show Resources |
-| `src/renderer/automation/operations.ts` | Renderer | Shared target-neutral snapshot, navigation, locator/input, waiting, screenshot, network, and inner-tab operations |
+| `src/renderer/automation/locator.ts`, `mouse.ts`, `keyboard.ts`, `forms.ts`, `queries.ts`, `page-events.ts`, `navigation.ts`, `page-state.ts`, `synthetic.ts` | Renderer | Shared target-neutral automation operations grouped by job |
 | `src/renderer/automation/ref.ts` | Renderer | Host-scoped accessibility refs and iframe CDP-session maps |
 | `src/renderer/automation/snapshot.ts` | Renderer | Accessibility tree → YAML formatter for automation snapshots |
 | `src/renderer/automation/CdpSession.ts` | Renderer | CDP session wrapper (IPC to main process debugger) |
-| `src/renderer/automation/AppTargetModel.ts` | Renderer | `IBrowserTarget` adapter for the app's own UI (`pageId: "app"`) |
+| `src/renderer/automation/AppTargetModel.ts` | Renderer | App-window adapter for the narrow automation target interfaces (`pageId: "app"`) |
 | `src/renderer/api/window-screen.ts` | Renderer | Object Model adapter exposing the app-window target as `app.window.screen` |
 | `src/renderer/scripting/ai-vision/browser-automation-members.ts` | Renderer | Shared automation descriptor used by browser, board, and app-window hosts |
 | `src/renderer/scripting/ai-vision/namespaces/window-screen.ts` | Renderer | `window.screen` descriptor, help, summary, and active-private-page restriction |
-| `src/renderer/automation/types.ts` | Renderer | `IBrowserTarget` interface — what automation needs from browser editor |
+| `src/renderer/automation/types.ts` | Renderer | Narrow automation, synthetic-input, navigation, and tab target interfaces |
 | `src/main/browser-service.ts` | Main | Browser service composition and IPC-facing methods |
 | `src/main/browser/BrowserGuest.ts`, `BrowserGuestRegistry.ts` | Main | Per-registration guest listeners, state, disposal, and lookup |
 | `src/main/browser-dom-snapshot.ts` | Main | DOM and loaded-resource collection, including iframe content |
@@ -1292,15 +1292,27 @@ relative to the app window's zoom.
 
 ## Browser Automation (MCP)
 
-Browser automation lives in `src/renderer/automation/`. `operations.ts` provides shared operations
-for browser pages (`BrowserTargetModel`), trusted board frames (`BoardTargetModel`), and the app
-window (`AppTargetModel`). The facades are `BrowserEditorFacade`, `BoardEditorFacade`, and
-`window.screen`; `BROWSER_AUTOMATION_MEMBERS` describes the shared operation set. Browser pages add
-navigation, tab, query, viewport, and dialog members; boards add board state and frame selection;
-the app target has no browser navigation or tab API.
+Browser automation lives in `src/renderer/automation/`. Operations are separated by job: `locator.ts`
+resolves selectors and snapshot refs; `mouse.ts`, `keyboard.ts`, and `forms.ts` perform input;
+`queries.ts` handles evaluation, queries, and waits; `page-events.ts` reads readiness, dialogs,
+console, and page errors; `navigation.ts` owns navigation and response waits; `page-state.ts` owns
+screenshots, viewport, and network state; and `synthetic.ts` contains the explicit legacy synthetic
+input path. `page-scripts.ts` holds shared in-page snippets for visibility checks, frame offsets,
+and selector resolution. `input-session.ts` owns the common CDP input session and coordinate mapping.
+Board-only dialog actions are kept with the board editor in `editors/board/board-dialogs.ts`.
+
+Browser pages (`BrowserTargetModel`), trusted board frames (`BoardTargetModel`), and the app window
+(`AppTargetModel`) implement narrow target seams from `types.ts`: `IAutomationTarget` supplies CDP
+access and readiness, while synthetic input, navigation, and tab capabilities are separate
+interfaces. Operations accept only the capabilities they need. `AutomationSurface` in
+`scripting/api-wrapper/` composes those operations for `BrowserEditorFacade`, `BoardEditorFacade`,
+and `window.screen`; it owns shared readiness, activity-lease, and tip-recording behavior.
+`BROWSER_AUTOMATION_MEMBERS` describes the shared operation set. Browser pages add navigation, tab,
+query, viewport, and dialog members; boards add board state and frame selection; the app target has
+no browser navigation or tab API.
 
 ```text
-call -> resolved facade/target -> operations.ts -> CDP session for resolved element -> result
+call -> AutomationSurface -> operation module -> CDP session for resolved element -> result
 ```
 
 The path-based `call` route and scripting facades use the same operation layer. `call-tools.ts`
@@ -1323,10 +1335,12 @@ does not constrain trusted `script.execute`.
 
 ### Shared input and actionability
 
-The shared resolver in `operations.ts` accepts a CSS selector or snapshot ref. Action operations use
+The shared resolver in `locator.ts` accepts a CSS selector or snapshot ref. Action operations use
 strict actionable resolution: they require one visible match unless a zero-based `{ nth }` selects
 among visible matches. Query and read methods use query-mode resolution and do not enforce the same
-single-match rule. Before trusted actions it checks attachment, visibility, stability across two
+single-match rule; queries preserve their existing first-match behavior. `page-scripts.ts` builds
+the in-page selector code with each caller's existing strictness, including visible-only and `nth`
+resolution. Before trusted actions it checks attachment, visibility, stability across two
 animation-frame measurements (with a bounded timer fallback), enabled state, and hit-testing
 at the dispatch point. Transient failures retry on timers to the operation timeout (5 seconds by
 default). `{ force: true }` skips all checks. `requestAnimationFrame` is used only for this bounded

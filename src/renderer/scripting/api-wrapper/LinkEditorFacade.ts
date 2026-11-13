@@ -1,11 +1,9 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { LinkEditor } from "../../editors/link-editor";
 import type { LinkItem } from "../../editors/link-editor/linkTypes";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 
 const LINK_EDITOR_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete current editor id." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
     { name: "links", kind: "property", summary: "All links (complete data, not filtered by UI)." },
     { name: "categories", kind: "property", summary: "All category names." },
     { name: "tags", kind: "property", summary: "All tag names." },
@@ -28,22 +26,22 @@ deleteLink() are model-backed; deleteLink() does not open a confirmation dialog.
  * - `href` is exposed as `url`, `pinned` is computed from state
  * - Delete operations skip confirmation dialogs
  */
-export class LinkEditorFacade implements IAiVisible {
-    constructor(private readonly editor: LinkEditor, readonly id: string, readonly name: string) {}
+export class LinkEditorFacade extends EditorFacadeBase<LinkEditor> implements IAiVisible {
+    constructor(private readonly editor: LinkEditor, readonly id: string, readonly name: string) { super(id, name); this.setEditor(editor); }
 
     get aiVision(): IAiVisionDescriptor {
-        return {
-            kind: "LinkEditor",
-            summary: "Links management facade.",
+        return this.describeEditor({
+            kind: "LinkEditor", summary: "Links management facade.",
             members: LINK_EDITOR_MEMBERS,
-            help: withEditorGuideHelp(this.id, LINK_EDITOR_HELP),
+            identitySummaries: { id: "The concrete current editor id.", name: "The editor's registry display name." },
+            help: LINK_EDITOR_HELP,
             summarize: () => ({
                 kind: "LinkEditor", id: this.id, name: this.name,
                 linksCount: this.linksCount,
                 categories: this.categories,
                 tags: this.tags,
             }),
-        };
+        });
     }
 
     get links(): Array<{ readonly id: string; readonly url: string; readonly title: string; readonly category: string; readonly tags: readonly string[]; readonly pinned: boolean; readonly isDirectory: boolean }> {

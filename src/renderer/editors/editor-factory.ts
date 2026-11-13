@@ -6,9 +6,9 @@ import { TComponentState } from "../core/state/state";
 import { editorRegistry, isExplicitHostTarget } from "./base/editorRegistry";
 import {
     resolveEditorIdForFile,
-    parseBoardEditorId,
     resolveBoardEditorId,
 } from "../api/boards/custom-editor-registry";
+import { parseBoardEditorId } from "../../shared/board/board-editor-id";
 import { fpBasename, fpExtname } from "../core/utils/file-path";
 import { getLanguageByExtension } from "../core/utils/language-mapping";
 import type { IContentPipe } from "../api/types/io.pipe";

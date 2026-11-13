@@ -648,7 +648,7 @@ editor-specific operations. Editors without an operation facade still return a
 | `page.editor` | `HtmlEditorFacade` | `HtmlEditor` | `html` (read-only) |
 | `page.editor` | `MermaidEditorFacade` | `MermaidEditor` | `svgUrl`, `loading`, `error` (read-only), `savePngToFile()` |
 | `page.editor` | `BrowserEditorFacade` | `BrowserEditor` | `url`, `title`, shared snapshot/click/hover/type/select/key/evaluate/wait/screenshot/network operations, navigation, and inner-tab management |
-| `page.editor` | `McpInspectorFacade` | `McpInspectorEditorModel` | `connect()`, `disconnect()`, connection params, server info (title, description, websiteUrl, instructions), `history`, `clearHistory()`, `showHistory()` |
+| `page.editor` | `McpInspectorFacade` | `McpInspectorEditorModel` | `connect()`, `disconnect()`, connection params, server info, `availablePanels`, panel selection, `history`, `clearHistory()`, `showHistory()` |
 | `page.editor` | `BoardEditorFacade` | `BoardEditorModel` | Board state, `getManifest()` normalized manifest snapshot, shared frame automation operations, secondary-frame selection, and reload |
 | `page.editor` | `BoardInfoEditorFacade` | `BoardInfoEditorModel` | Install/properties state, including normalized manifest-backed properties |
 | `page.editor` | `ToolsetEditorFacade` | `ToolsetEditorModel` | Registered toolset state/actions |
@@ -679,10 +679,36 @@ while retaining its own compatibility, registration, trust, and install state. T
 belongs to the Persephone script facade and does not change the board-frame `persephone` bridge.
 
 Browser and board automation facades, together with `app.window.screen`, share the target-neutral
-operations in `/src/renderer/automation/operations.ts`. Browser pages add navigation and inner-tab
-management; boards add frame selection and board lifecycle state; `window.screen` is the complete
-current application-window host and has no browser navigation or page-tab operations. Accessibility
-refs are scoped by the host that minted them in `/src/renderer/automation/ref.ts`.
+operations through `AutomationSurface` in `/src/renderer/scripting/api-wrapper/`. The surface
+centralizes readiness, activity leases, and browser tip recording. The underlying work is split
+among `locator.ts`, `mouse.ts`, `keyboard.ts`, `forms.ts`, `queries.ts`, `page-events.ts`,
+`navigation.ts`, `page-state.ts`, and `synthetic.ts`; shared in-page snippets and CDP input
+coordinate mapping live in `page-scripts.ts` and `input-session.ts`. Targets implement narrow
+capability interfaces in `automation/types.ts` so an operation depends only on the host methods it
+uses. Browser pages add navigation and inner-tab management; boards add frame selection and board
+lifecycle state; `window.screen` is the complete current application-window host and has no browser
+navigation or page-tab operations. Accessibility refs are scoped by the host that minted them in
+`/src/renderer/automation/ref.ts`.
+
+`EditorFacadeBase` in `api-wrapper/` owns shared facade identity, attachment checks, and AiVision
+descriptor assembly. `editor-facade-registry.ts` maps editor IDs to factories without statically
+importing editor modules; `register-editor-facades.ts` registers those factories before the first
+page facade lookup. Editors without an operation facade still receive `GenericEditorFacade`.
+`editorRegistry.resolveDefinition(id)` resolves the built-in `board-view` definition for a dynamic
+`board-editor:<root>` family id while leaving exact `getById()` lookups unchanged.
+
+Rules that require editor state belong to editor models. `McpInspectorEditorModel.availablePanels`
+and `setActivePanel()` own its panel list and selection; `BoardInfoEditorModel.installStateOf()`
+owns the per-board install status; and `VideoEditor.play()`, `pause()`, and `seek()` own playback
+against its mounted media element. Facades call these methods rather than reproducing model rules.
+Board Info properties are projected from the normalized manifest through
+`projectBoardManifest()`.
+
+Log View script output uses one normalizer for `ui.*` and `pages.logView.push()`. Its `source`
+option keeps the strict writer validation for `push` while preserving the more permissive legacy
+script behavior. `LogEntryHandle<TEntry>` supplies the shared rich-handle runtime used by text,
+markdown, Mermaid, grid, and progress output; each configured handle retains its existing public
+properties and optional open/completion actions.
 
 String locators may use `text=` on all three hosts. A quoted value matches exact text after
 whitespace normalization and is case-sensitive; an unquoted value matches a case-insensitive
@@ -1359,6 +1385,11 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
     ├── AppWrapper.ts            # Wraps app singleton
     ├── PageWrapper.ts           # Wraps PageModel → IPage; current editor is optional
     ├── PageCollectionWrapper.ts # Wraps PagesModel → IPageCollection
+    ├── EditorFacadeBase.ts      # Shared facade identity, attachment, and AiVision behavior
+    ├── editor-facade-registry.ts # Editor ID to facade factory mapping
+    ├── register-editor-facades.ts # Registers facade factories before page lookup
+    ├── AutomationSurface.ts     # Shared browser-like automation orchestration
+    ├── LogEntryHandle.ts        # Shared configurable runtime for rich Log View handles
     ├── TextEditorFacade.ts      # Monaco operations
     ├── GridEditorFacade.ts      # Grid data operations
     ├── LinkEditorFacade.ts      # Link manager operations
@@ -1379,12 +1410,23 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
     ├── MnemeConfigEditorFacade.ts # Mneme configuration and service state/actions
     ├── MnemeRootEditorFacade.ts # Mneme root search state/actions
     ├── UiFacade.ts              # Log View UI (logging + dialogs + output)
-    ├── Progress.ts              # Progress helper class (returned by ui.show.progress)
-    ├── Grid.ts                  # Grid helper class (returned by ui.show.grid)
-    ├── Text.ts                  # Text helper class (returned by ui.show.text)
-    ├── Markdown.ts              # Markdown helper class (returned by ui.show.markdown)
-    ├── Mermaid.ts               # Mermaid helper class (returned by ui.show.mermaid)
     └── StyledTextBuilder.ts     # Fluent styled text builder + styledText() factory
+
+/src/renderer/automation/
+├── types.ts                     # Narrow operation target interfaces
+├── CdpSession.ts                # CDP session wrapper
+├── page-scripts.ts              # Shared in-page locator, visibility, and frame snippets
+├── input-session.ts             # CDP input session and shared coordinate mapping
+├── locator.ts                   # Locator parsing and element resolution
+├── mouse.ts                     # Mouse operations and pointer dispatch
+├── keyboard.ts                  # Keyboard operations and modifier mapping
+├── forms.ts                     # Form controls and file input operations
+├── queries.ts                   # Queries, evaluation, and waits
+├── page-events.ts               # Readiness, dialogs, console, and page errors
+├── navigation.ts                # Navigation and response waits
+├── page-state.ts                # Screenshots, viewport, and network state
+├── synthetic.ts                 # Explicit synthetic-input compatibility path
+└── ref.ts                       # Host-scoped refs and iframe session stores
 
 /src/renderer/scripting/ai-vision/
 ├── root.ts                      # Renderer object-model root and root namespaces

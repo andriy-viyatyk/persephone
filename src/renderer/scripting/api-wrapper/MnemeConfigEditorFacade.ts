@@ -1,4 +1,4 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type {
     IMnemeConfigEditor,
     IMnemeModelDownload,
@@ -9,9 +9,6 @@ import type {
     IMnemeRootStatus,
 } from "../../api/types/mneme-config-editor";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
-import { ui } from "../../api/ui";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import type { MnemeConfigEditorModel } from "../../editors/mneme-config/MnemeConfigEditorModel";
 import type {
     WikiModelDownload,
@@ -34,8 +31,8 @@ const MNEME_CONFIG_ELEMENTS: readonly IAiElementDeclaration[] = [
 ];
 
 const MNEME_CONFIG_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete current editor id: mneme-config." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
+
+
     { name: "running", kind: "property", summary: "Whether the Mneme sidecar is reported running." },
     { name: "url", kind: "property", summary: "The current credential-free Mneme endpoint, or undefined when unavailable." },
     { name: "connectionStatus", kind: "property", summary: "The shared Mneme MCP connection status." },
@@ -75,27 +72,26 @@ mneme-open-mcp-inspector are element locations; add-root remains a native folder
 dialog and is not a facade method. The Mneme tree remains page.panels["mneme-tree"], and document
 reading/writing/deletion remains the Mneme MCP responsibility.`;
 
-export class MnemeConfigEditorFacade implements IAiVisible, IMnemeConfigEditor {
+export class MnemeConfigEditorFacade extends EditorFacadeBase<MnemeConfigEditorModel> implements IAiVisible, IMnemeConfigEditor {
     constructor(
         private readonly editor: MnemeConfigEditorModel,
         readonly id: "mneme-config",
         readonly name: string,
-    ) {}
+    ) {
+        super(id, name);
+        this.setEditor(editor);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const elements = createElements(MNEME_CONFIG_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-            highlightOptions: { all: true },
-        });
-        return {
+        return this.describeEditor({
             kind: "MnemeConfigEditor",
             summary: "Model-backed Mneme configuration and service-status facade.",
-            members: [...MNEME_CONFIG_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, MNEME_CONFIG_HELP),
+            members: MNEME_CONFIG_MEMBERS,
+            identitySummaries: { id: "The concrete current editor id: mneme-config.", name: "The editor's registry display name." },
+            identityIndex: 0,
+            help: MNEME_CONFIG_HELP,
             elements: MNEME_CONFIG_ELEMENTS,
-            provide: elements.provide,
+            highlightOptions: { all: true },
             summarize: () => ({
                 kind: "MnemeConfigEditor",
                 id: this.id,
@@ -106,7 +102,7 @@ export class MnemeConfigEditorFacade implements IAiVisible, IMnemeConfigEditor {
                 ...(this.errorMessage !== undefined ? { errorMessage: this.errorMessage } : {}),
                 refreshing: this.refreshing,
             }),
-        };
+        });
     }
 
     get running(): boolean { return this.editor.state.get().running; }

@@ -1,4 +1,4 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type {
     IGitAheadBehindSnapshot,
     IGitChangeList,
@@ -10,9 +10,6 @@ import type {
     IGitTreeEditor,
 } from "../../api/types/git-tree-editor";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
-import { ui } from "../../api/ui";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import type { GitTreeEditorModel } from "../../editors/git-tree/GitTreeEditorModel";
 
 const GIT_TREE_ELEMENTS = [
@@ -23,8 +20,8 @@ const GIT_TREE_ELEMENTS = [
 ] as const;
 
 const GIT_TREE_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete current editor id: git-tree." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
+
+
     { name: "repoRoot", kind: "property", summary: "The loaded repository root, or undefined when detached or unloaded." },
     { name: "currentRef", kind: "property", summary: "The current branch ref, or undefined for detached HEAD or no repository." },
     { name: "commits", kind: "property", summary: "Copied loaded commits, capped at the model's 200-commit page." },
@@ -72,27 +69,26 @@ function copyChange(change: { path: string; status: string; oldPath?: string }):
     return { path: change.path, status: change.status, ...(change.oldPath !== undefined ? { oldPath: change.oldPath } : {}) };
 }
 
-export class GitTreeEditorFacade implements IAiVisible, IGitTreeEditor {
+export class GitTreeEditorFacade extends EditorFacadeBase<GitTreeEditorModel> implements IAiVisible, IGitTreeEditor {
     constructor(
         private readonly editor: GitTreeEditorModel,
         readonly id: "git-tree",
         readonly name: string,
-    ) {}
+    ) {
+        super(id, name);
+        this.setEditor(editor);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const elements = createElements(GIT_TREE_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-            highlightOptions: { all: true },
-        });
-        return {
+        return this.describeEditor({
             kind: "GitTreeEditor",
             summary: "Git Tree read-mostly history, status, refs, and navigation facade.",
-            members: [...GIT_TREE_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, GIT_TREE_HELP),
+            members: GIT_TREE_MEMBERS,
+            identitySummaries: { id: "The concrete current editor id: git-tree.", name: "The editor's registry display name." },
+            identityIndex: 0,
+            help: GIT_TREE_HELP,
             elements: GIT_TREE_ELEMENTS,
-            provide: elements.provide,
+            highlightOptions: { all: true },
             summarize: () => ({
                 kind: "GitTreeEditor",
                 id: this.id,
@@ -102,7 +98,7 @@ export class GitTreeEditorFacade implements IAiVisible, IGitTreeEditor {
                 loadedCommitCount: this.loadedCommitCount,
                 selectedCommitHash: this.selectedCommitHash,
             }),
-        };
+        });
     }
 
     private get attachedRepository(): string | undefined {
@@ -180,7 +176,7 @@ export class GitTreeEditorFacade implements IAiVisible, IGitTreeEditor {
     }
 
     private requireRepository(action: string): void {
-        if (!this.editor.page) throw new Error(`Git ${action} unavailable: no page host attached.`);
+        this.requireAttached(action, value => `Git ${value} unavailable: no page host attached.`);
         if (!this.attachedRepository) throw new Error(`Git ${action} unavailable: no repository is loaded.`);
     }
 }

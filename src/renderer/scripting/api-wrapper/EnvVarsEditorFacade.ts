@@ -1,13 +1,10 @@
-import { withEditorGuideHelp } from "./editor-guide-help";
+import { EditorFacadeBase } from "./EditorFacadeBase";
 import type {
     IEnvVarSnapshot,
     IEnvVarsEditor,
     IEnvVarsStatus,
 } from "../../api/types/env-vars-editor";
 import type { EnvVarsEditor, EnvVarsEditorState } from "../../editors/env-vars/EnvVarsEditor";
-import { ui } from "../../api/ui";
-import { createElements } from "ai-vision/dom";
-import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 
 const ENV_VARS_ELEMENTS: readonly IAiElementDeclaration[] = [
@@ -22,8 +19,8 @@ const ENV_VARS_ELEMENTS: readonly IAiElementDeclaration[] = [
 ];
 
 const ENV_VARS_MEMBERS: readonly IAiMember[] = [
-    { name: "id", kind: "property", summary: "The concrete current editor id: env-vars-view." },
-    { name: "name", kind: "property", summary: "The editor's registry display name." },
+
+
     { name: "status", kind: "property", summary: "The attached model status: ok, locked, or error; undefined when detached." },
     { name: "encrypted", kind: "property", summary: "Whether the attached text host uses encryption, or undefined without that host." },
     { name: "unlocked", kind: "property", summary: "Whether the attached text host is decrypted; only meaningful when encrypted is true — an unencrypted file reports false because it was never locked, not because it is. Undefined without that host." },
@@ -65,27 +62,26 @@ button/cancel-only dialog and accepts or returns no password. app.boardVars rema
 value-capable environment store and is not duplicated here. Detached actions fail before mutating
 with an unavailable-host diagnostic.`;
 
-export class EnvVarsEditorFacade implements IAiVisible, IEnvVarsEditor {
+export class EnvVarsEditorFacade extends EditorFacadeBase<EnvVarsEditor> implements IAiVisible, IEnvVarsEditor {
     constructor(
         private readonly editor: EnvVarsEditor,
         readonly id: "env-vars-view",
         readonly name: string,
-    ) {}
+    ) {
+        super(id, name);
+        this.setEditor(editor);
+    }
 
     get aiVision(): IAiVisionDescriptor {
-        const pageId = this.editor.page?.id;
-        const elements = createElements(ENV_VARS_ELEMENTS, ui.highlightElement.bind(ui), {
-            scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
-            beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
-            highlightOptions: { all: true },
-        });
-        return {
+        return this.describeEditor({
             kind: "EnvVarsEditor",
             summary: "Environment variables page facade with parsed state and model-backed actions.",
-            members: [...ENV_VARS_MEMBERS, ...elements.members],
-            help: withEditorGuideHelp(this.id, ENV_VARS_HELP),
+            members: ENV_VARS_MEMBERS,
+            identitySummaries: { id: "The concrete current editor id: env-vars-view.", name: "The editor's registry display name." },
+            identityIndex: 0,
+            help: ENV_VARS_HELP,
             elements: ENV_VARS_ELEMENTS,
-            provide: elements.provide,
+            highlightOptions: { all: true },
             summarize: () => ({
                 kind: "EnvVarsEditor",
                 id: this.id,
@@ -98,7 +94,7 @@ export class EnvVarsEditorFacade implements IAiVisible, IEnvVarsEditor {
                 variableCount: this.variables?.length,
                 errorMessage: this.errorMessage,
             }),
-        };
+        });
     }
 
     get status(): IEnvVarsStatus | undefined {
@@ -151,7 +147,7 @@ export class EnvVarsEditorFacade implements IAiVisible, IEnvVarsEditor {
     }
 
     selectProfile(profile: string): void {
-        this.requireAttached();
+        this.requireAttached("action", () => "Environment variables action unavailable: no page host attached.");
         const state = this.editor.state.get();
         if (state.status !== "ok" || !state.data[state.selectedNamespace]
             || !Object.prototype.hasOwnProperty.call(state.data[state.selectedNamespace], profile)) {
@@ -161,27 +157,27 @@ export class EnvVarsEditorFacade implements IAiVisible, IEnvVarsEditor {
     }
 
     addNamespace(name: string): boolean {
-        this.requireAttached();
+        this.requireAttached("action", () => "Environment variables action unavailable: no page host attached.");
         return this.editor.addNamespace(name);
     }
 
     deleteNamespace(name: string): Promise<void> {
-        this.requireAttached();
+        this.requireAttached("action", () => "Environment variables action unavailable: no page host attached.");
         return this.editor.deleteNamespace(name);
     }
 
     addProfile(namespace: string, name: string): boolean {
-        this.requireAttached();
+        this.requireAttached("action", () => "Environment variables action unavailable: no page host attached.");
         return this.editor.addProfile(namespace, name);
     }
 
     deleteProfile(namespace: string, profile: string): Promise<void> {
-        this.requireAttached();
+        this.requireAttached("action", () => "Environment variables action unavailable: no page host attached.");
         return this.editor.deleteProfile(namespace, profile);
     }
 
     async showEncryptionDialog(message?: string): Promise<void> {
-        this.requireAttached();
+        this.requireAttached("action", () => "Environment variables action unavailable: no page host attached.");
         const host = this.editor.host;
         if (!host) throw new Error("Environment variables action unavailable: no page host attached.");
         if (!host.encrypted || host.decrypted) {
@@ -194,14 +190,10 @@ export class EnvVarsEditorFacade implements IAiVisible, IEnvVarsEditor {
         return this.editor.page !== null;
     }
 
-    private requireAttached(): void {
-        if (!this.isAttached()) {
-            throw new Error("Environment variables action unavailable: no page host attached.");
-        }
-    }
+
 
     private requireNamespace(namespace: string): void {
-        this.requireAttached();
+        this.requireAttached("action", () => "Environment variables action unavailable: no page host attached.");
         const state = this.editor.state.get();
         if (state.status !== "ok" || !Object.prototype.hasOwnProperty.call(state.data, namespace)) {
             throw new Error(`Environment variables namespace unavailable: no namespace with name ${JSON.stringify(namespace)}.`);

@@ -5,9 +5,9 @@ import { editorRegistry } from "./editorRegistry";
 // redundant (this whole module is only reached via PageModel's dynamic import).
 import {
     getFolderEditorsForFolder,
-    parseBoardEditorId,
     customEditorRegistry,
 } from "../../api/boards/custom-editor-registry";
+import { parseBoardEditorId } from "../../../shared/board/board-editor-id";
 import { BOARD_INFO_EDITOR_ID } from "../board-info/board-info-id";
 import type { PageModel } from "../../api/pages/PageModel";
 import { guard } from "../../core/utils/guard";

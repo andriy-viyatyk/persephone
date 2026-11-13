@@ -1,3 +1,26 @@
+## EPIC-161 — Refactoring Phase 6.2: automation and facades — `operations.ts` split, narrow targets, `AutomationSurface`, `EditorFacadeBase`, model-owned rules and one log-entry normalizer
+
+Completed 2026-11-13. Roadmap Phase 6.2 (BRW-3, BRW-8, SHL-9, SHL-10, SHL-12): `automation/operations.ts` is split into
+owner modules with one in-page snippet per rule (`page-scripts.ts`) and narrow target interfaces (`IAutomationTarget`,
+`ISyntheticInputHost`, `INavigableTarget`, tab capabilities); one `AutomationSurface` implements the shared automation
+members for the browser, board and `window.screen` hosts and replaces the prototype-patching activity installer;
+`EditorFacadeBase` and a typed facade registry replace `PageWrapper`'s imports, union and casts; the board-editor id
+rule lives in `src/shared/board/board-editor-id.ts` and `editorRegistry.resolveDefinition` resolves families; MCP
+Inspector, Board Info and Video facades call model methods; `ui.*` and `pages.logView.push` share one normaliser and the
+five output handles are one `LogEntryHandle`. `BrowserEditorFacade.ts` 835 → 618, `BoardEditorFacade.ts` 508 → 382,
+`window-screen.ts` 224 → 66, `PageWrapper.ts` 408 → 310. `$help` for every checked host and facade is byte-identical;
+the script API, `.d.ts` typings, MCP `call` and `window.persephone` are unchanged. Plans by Codex, reviewed against the
+roadmap guardrails; Codex Luna implemented, with plan corrections recorded in the epic notes. Roadmap item 6.2 is
+complete. Epic document: [EPIC-161](EPIC-161.md).
+
+- [x] **Operations split (US-1916).** Pure move into `locator`, `page-events`, `navigation`, `mouse`, `keyboard`, `forms`, `queries`, `page-state`, `synthetic`; board dialog helpers in `editors/board/board-dialogs.ts`; the `focusElementByClick` alias removed.
+- [x] **Snippets and narrow targets (US-1917).** `page-scripts.ts` (visible predicate, frame offsets, the shared resolver), one trusted mouse dispatch, one modifier-bits table, `createInputSession`; app and board targets no longer implement members only to throw.
+- [x] **Automation surface (US-1918).** `AutomationSurface` with one lifecycle runner (readiness, activity lease, tips) and `runHostOperation` for host-only methods; `installAutomationActivity` and its method lists are gone.
+- [x] **Facade base and registry (US-1919).** `EditorFacadeBase`, `editor-facade-registry.ts` + `register-editor-facades.ts`, `board-editor-id.ts`, `editorRegistry.resolveDefinition`; three `board-editor:` special cases deleted.
+- [x] **Model-owned rules (US-1920).** `McpInspectorEditorModel.availablePanels` and setters, `BoardInfoEditorModel.installStateOf`, `projectBoardManifestFields`, `VideoEditor.play/pause/seek`.
+- [x] **Log entries (US-1921).** `normalizeUiPushEntry({ source })` for both paths; `LogEntryHandle` replaces Markdown/Mermaid/Text/Grid/Progress.
+- [x] **Epic review.** `/review` removed three non-null assertions; `/document` updated six architecture docs; `/userdoc` needed no changes. No English catalog messages changed.
+
 ## EPIC-160 — Refactoring Phase 6.1 part 3: browser main process — `BrowserGuest`, host fullscreen, DOM snapshot and `CdpTarget`
 
 Completed 2026-11-13. Roadmap Phase 6.1 part 3 (MAIN-7, plus the deferred BRW-4 step 4): one `BrowserGuest` per
