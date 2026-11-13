@@ -1,6 +1,7 @@
+import { EditorId } from "../../shared/editor-ids";
 import { getLanguageByExtension } from "../core/utils/language-mapping";
 import { fpExtname } from "../core/utils/file-path";
-import { resolveEditorIdForFile } from "../api/boards/custom-editor-registry";
+import { editorCatalog } from "../editors/base/editor-catalog";
 
 /**
  * Whether Persephone has its own editor or board for this local file: a dedicated built-in editor
@@ -12,8 +13,8 @@ import { resolveEditorIdForFile } from "../api/boards/custom-editor-registry";
  * it to Windows.
  */
 export function canOpenInPersephone(filePath: string): boolean {
-    const editorId = resolveEditorIdForFile(filePath);
-    if (editorId && editorId !== "monaco") return true;
+    const editorId = editorCatalog.resolveFile(filePath);
+    if (editorId && editorId !== EditorId.monaco) return true;
     const extension = fpExtname(filePath);
     return !!extension && !!getLanguageByExtension(extension);
 }

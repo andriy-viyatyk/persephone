@@ -2,10 +2,10 @@ import { TComponentState } from "../../core/state/state";
 import { VideoEditor, getDefaultVideoEditorState } from "./VideoEditor";
 import { VideoEditorView } from "./VideoView";
 import { detectVideoFormat } from "./video-types";
-import type { EditorModule } from "../base/editorRegistry";
-import type { EditorModel } from "../base/EditorModel";
+import { defineEditorModule } from "../base/editorRegistry";
+import type { EditorModelInstance as EditorModel } from "../base/EditorModel";
 
-export const videoModule: EditorModule = {
+export const videoModule = defineEditorModule(VideoEditor, {
     createEditor: () =>
         new VideoEditor(new TComponentState(getDefaultVideoEditorState())),
     View: VideoEditorView,
@@ -22,7 +22,7 @@ export const videoModule: EditorModule = {
             new TComponentState(initialState),
         ) as unknown as EditorModel;
     },
-};
+});
 
 export { VideoEditor, getDefaultVideoEditorState };
 export type { VideoEditorState } from "./VideoEditor";

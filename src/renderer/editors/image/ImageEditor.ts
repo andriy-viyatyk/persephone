@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import {
@@ -52,7 +53,7 @@ export function getDefaultImageEditorState(): ImageEditorState {
 export class ImageEditor extends EditorModel<ImageEditorState> implements IImageExport {
     override readonly deferRestoreOnOpen = true;
     /** Editor identity. Matches `EditorDescriptor.editorId`. */
-    readonly editorId = "image-view";
+    readonly editorId = EditorId.imageView;
 
     noLanguage = true;
 

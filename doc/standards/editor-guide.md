@@ -275,10 +275,9 @@ element or error-boundary adapter is needed.
 import { TComponentState } from "../../core/state/state";
 import { MyEditor, defaultMyEditorState } from "./MyEditor";
 import { MyEditorView } from "./MyEditorView";
-import type { EditorModule } from "../base/editorRegistry";
-import type { EditorModel } from "../base/EditorModel";
+import { defineEditorModule } from "../base/editorRegistry";
 
-export const myEditorModule: EditorModule = {
+export const myEditorModule = defineEditorModule(MyEditor, {
     createEditor: () =>
         new MyEditor(new TComponentState({ ...defaultMyEditorState })),
     View: MyEditorView,
@@ -287,8 +286,11 @@ export const myEditorModule: EditorModule = {
     // newEditorModel: async (filePath?: string) => { ... },
     // Only for standalone editors that claim a filesystem folder:
     // newEditorModelForFolder: async (anchorFolder: string) => { ... },
-};
+});
 ```
+
+`defineEditorModule(MyEditor, def)` checks the model once at the registry-to-view boundary. Editor views take
+`{ model: MyEditor }`, so their implementation can use the concrete model directly.
 
 Default states carry `id: ""` — never generate an id in the module; the registry stamps a
 real `instanceId` when one exists (host id, restore descriptor, switch source).
@@ -307,50 +309,51 @@ For a user-facing editor, add `guidePath` with the guide-corpus path without `.m
 top-level guide. Development-only editors may omit it.
 
 The `load` closure MUST keep a literal `import("./…")` so Vite code splitting is preserved.
-The loop derives the rest: `match` comes from `EDITOR_MATCHERS["my-editor"]` (add your
-matcher in `/src/renderer/editors/base/editor-matchers.ts`), and `accepts` defaults to
-`makeAccepts(match)` — or `() => -1` when there is no matcher (standalone editors that never
-match a file). Only editors with special acceptance semantics (monaco, file-diff) set an
-explicit `accepts` on their row. Row order breaks equal file-match priorities in `resolve`, so append unless you have a reason not to.
+The loop derives `match` from `EDITOR_MATCHERS["my-editor"]` (add rules in
+`/src/renderer/editors/base/editor-matchers.ts`). A matcher-free standalone editor makes no
+matching claims. Row order breaks equal-tier matches, so append unless you have a reason not to.
 
 ### Row / Matcher Options
 
 | Property | Where | Description |
 |----------|-------|-------------|
-| `id` | row | Unique editor ID (must be in `EditorView` type) |
+| `id` | row | Unique built-in editor ID (must be in `EditorView` type) |
 | `name` | row | Display name shown in UI |
 | `guidePath` | row | Canonical packaged guide path used by facade help and the active-page guide entry points; omit only for development-only editors |
 | `hasContentHost` | row | `true` for text-bearing editors (extend `TextHostEditorModel`) |
-| `accepts(input)` | row (override) | Returns priority ≥ 0 if this editor accepts the input, -1 otherwise; default derived from the matcher |
 | `load()` | row | Module importer (literal dynamic `import`) |
-| `acceptFile(fileName)` | matcher | Returns priority ≥ 0 if this editor should **open** the file by default, -1 otherwise. File **name** only — no language, no content |
-| `acceptFolder(folderPath)` | matcher | Returns priority >= 0 if this editor should open the directory by default, -1 otherwise |
-| `validForLanguage(lang)` | matcher | Returns `true` if the editor is valid for the language |
-| `switchOption(lang, filePath?)` | matcher | Returns priority ≥ 0 to show in the switch dropdown, -1 to hide |
-| `detectsContent(lang, content)` | matcher | Returns `true` if content matches this editor (regex-based, no JSON parsing) |
+| `file` | matcher | File-name rule with a named tier; contributes to file-open resolution and file switch candidates |
+| `language` | matcher | Language rule with a named tier and optional validity result; contributes to language switches, preview, validation, or language-only queries |
+| `content` | matcher | Fast content predicate with a named tier; influences host switch candidates, not file-open resolution |
+| `folder` | matcher | Synchronous folder rule with a named tier; marker probes stay in the dedicated folder-marker helper |
+| `host` | matcher | Host-state rule with a named tier; can gate a switch on live host state, such as Git Diff's `gitRepo` |
 
-`acceptFile` and `switchOption` answer different questions and are independently optional. `acceptFile` decides which editor a file *opens* in (`editorRegistry.resolve` / `resolveId` consult nothing else); `switchOption` decides which editors appear in the switch widget for a *language*. An editor may declare either or both — `md-view` declares both (so Markdown opens in Preview *and* is switchable), while `html-view` and `mermaid-view` declare only `switchOption` (so they are reachable by switching but never claim a file on open).
+`EditorRegistry.rank(input)` is the single matcher evaluation path. Each registry query declares its
+matcher axes, score direction, selection rule, and stable tie behavior in `QUERY_RULES`; adding a
+matcher rule does not itself decide which queries consume it. For example, file-open resolution
+uses the `file` axis, while a live-host switch can consider `host`, `file`, `language`, and
+`content`. The `EditorCatalog` composes the built-in registry with registered extension sources
+such as the board-owned `BoardEditorSource` for open resolution and switch candidates.
 
-Folder editors use the parallel `acceptFolder` contract. `editorRegistry.resolveForFolder` selects
-the highest-priority claimant, with `category-view` as the priority-0 fallback for every directory;
-`getFolderEditors` returns all non-negative claimants in ascending priority for the switch widget.
+Folder editors use the `folder` matcher rule. `editorRegistry.resolveForFolder` selects the
+highest-tier claimant, with `category-view` as the priority-0 fallback for every directory;
+`getFolderEditors` returns claimants in ascending tier order for the switch widget.
 A folder editor that participates in this flow should expose a verified `folderAnchor`, return
 the same candidates from `findCompatibleEditors()`, and provide
 `newEditorModelForFolder(anchorFolder)` so switching preserves its editor-specific path
 interpretation. Keep marker and setting gates in the matcher, not in Explorer views or providers.
 
-The default `makeAccepts` implementation checks `acceptFile(fileName)` first, then
-`switchOption(language, fileName)`, and finally `detectsContent` when a host is available. A
-text-host switch list supplies the host's language and uses its file path, falling back to the
-page title for extensionless or untitled pages. Therefore language-only matchers can offer
-Markdown, JSON, CSV, JSONL, HTML, or Mermaid views without a file extension, while specialized
-JSON editors keep their filename/content safeguards. `svg-view` additionally
-accepts `xml` only when the page name has no file extension, so an untitled XML page can show SVG
-Preview but a real `.xml` file remains text-only.
+The `host-switch` query ranks the `host`, `file`, `language`, and `content` axes, then sorts
+descending with registration order as the tie rule. A text-host switch list supplies the live
+host language and its file path, falling back to the page title for extensionless or untitled
+pages. Language-only rules can therefore offer Markdown, JSON, CSV, JSONL, HTML, or Mermaid views
+without a matching file suffix, while specialized editors keep their filename/content safeguards.
 
-### Priority Guidelines
+### Tier Guidelines
 
-The `acceptFile` ladder as actually registered — highest wins, and ties go to whichever editor the registry iterates first, so avoid ties:
+Named tiers live in `editor-matchers.ts`; each `EditorRegistry` query specifies the axes, direction,
+selection rule, and tie behavior it uses. The file-open query selects the highest matching file
+tier; ties keep registration order:
 
 - `0` — Fallback: monaco, the floor that guarantees every file resolves
 - `10` — Rendered view preferred over source: markdown preview
@@ -359,19 +362,29 @@ The `acceptFile` ladder as actually registered — highest wins, and ties go to 
 - `100` — Exclusive viewers with no text view: image, archive, video
 - `200` — Pseudo-paths: `tree-category://` links
 
-Content-based detection is **not** on this ladder — it scores `60` inside `accepts()` and never reaches `acceptFile`, so it influences the switch widget, not which editor opens a file.
+Host-switch ranking may use the `host`, `file`, `language`, and `content` axes. The `CONTENT_DETECTED`
+tier (`60`) can outrank Monaco's `MONACO_HOST` tier (`50`) in the switch widget; content matching
+does not affect file-open resolution. The `EditorCatalog` compares built-in and extension-source
+resolution tiers, with built-ins winning equal-priority ties.
 
 A trusted or bundled board declaring `editorPriority` in its `board-manifest.json` competes on this same ladder and must **strictly** exceed the best built-in claimant to become the default. The bundled Excalidraw board uses `50`; it wins `.excalidraw` because Monaco is the remaining built-in fallback at `0`, while a trusted replacement at the same board priority wins by board-origin tie rules. See [Custom-Editor Boards](../architecture/editors.md#custom-editor-boards).
 
-Folder resolution uses a separate ladder: `0` is the `category-view` floor for every directory;
+Folder resolution uses a separate query over folder tiers: `0` is the `category-view` floor for every directory;
 specialized folder editors such as Git Tree and Mneme use `20` only for their enabled, verified
 marker directories.
 
 ## Step 6: Update Shared Types (if introducing new IDs)
 
-Two unions live in the shared/public type surface; update both as applicable when adding a new editor:
+The public built-in editor union and the dynamic board editor ID shape are separate; use the
+built-in union when registering a new native editor:
 
-- **`EditorView`** (the editor ID union — required for any new editor with a new ID). Canonical site: `/src/renderer/api/types/common.d.ts`. Add the new ID to the union there. `/src/shared/types.ts` re-exports `EditorView` from this file, so internal code keeps working transparently. The Vite `editorTypesPlugin` (configured in `/vite.renderer.config.ts`) auto-copies `.d.ts` files from `src/renderer/api/types/` to `assets/editor-types/` on `npm start` / `npm run dist` — never hand-edit `assets/editor-types/`. Adding the ID gives TypeScript-typed scripts autocomplete + typo detection for the new editor on `page.editor.id`, `app.editors.getById()`, `app.pages.addEditorPage()`, and `ISwitchOptions.options`.
+- **`EditorView`** (the built-in editor ID union — required for any new registered editor ID). Add
+  the ID to `/src/renderer/api/types/common.d.ts`; `/src/shared/editor-ids.ts` derives the
+  `EditorId` constants from that union. `/src/shared/types.ts` re-exports `EditorView` for
+  internal consumers. The Vite `editorTypesPlugin` (configured in `/vite.renderer.config.ts`)
+  auto-copies `.d.ts` files from `src/renderer/api/types/` to `assets/editor-types/` on build —
+  never hand-edit `assets/editor-types/`. Adding the ID gives scripts autocomplete and typo
+  detection on editor-facing APIs.
 
 - Page descriptors identify the registered editor through `editorId`; session compatibility for old `type` values is handled by the dated descriptor migration in `api/pages/descriptor-migrations.ts`.
 
@@ -402,7 +415,8 @@ class MyEditor extends EditorModel<MyEditorState> {
 ```
 
 Register the panel in `/src/renderer/ui/secondary-views/secondary-view-registry.ts`. A registration
-returns `VanillaViewCtor<SecondaryViewProps>`; the secondary-view host owns the asynchronous load,
+returns `VanillaViewCtor<SecondaryViewProps<MyEditor>>`; use the owning model type so panel views
+retain their model's concrete API. The secondary-view host owns the asynchronous load,
 stable root, and retirement lifecycle. Build headers with `SideBarPanelHeaderView` against the
 provided `headerHost`, pass DOM `Node` slots, and keep editor bodies out of secondary views unless
 the editor explicitly owns that panel. Do not register a replaced record view with `this.child()`.

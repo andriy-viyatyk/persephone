@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { editorRegistry } from "../base/editorRegistry";
 import { ContentPipe } from "../../content/ContentPipe";
 import { HttpProvider } from "../../content/providers/HttpProvider";
@@ -11,7 +12,7 @@ export async function openImageInNewTab(
     title?: string,
     sessionHandle?: string,
 ): Promise<void> {
-    const editor = await editorRegistry.createEditor("image-view");
+    const editor = await editorRegistry.createEditor(EditorId.imageView);
     if (!(editor instanceof ImageEditor)) throw new Error("Image editor was not created");
     editor.state.update((state) => {
         state.title = title || imageUrl.split("/").pop()?.split("?")[0] || "Image";

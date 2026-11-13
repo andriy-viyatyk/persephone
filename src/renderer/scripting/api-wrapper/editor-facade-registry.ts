@@ -1,4 +1,4 @@
-import type { EditorModel } from "../../editors/base/EditorModel";
+import type { EditorModelInstance as EditorModel } from "../../editors/base/EditorModel";
 import type { IAiCallContext } from "../ai-vision/root";
 import type { IAiVisible } from "ai-vision";
 import { GenericEditorFacade } from "./GenericEditorFacade";

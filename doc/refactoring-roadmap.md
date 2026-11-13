@@ -531,6 +531,20 @@ audio window split into `CaptureSourcePool` and `PlaybackChannel` (CORE-12); mai
 (MAIN-9). D8 resolved (see §6). Left out on purpose: the rest of item 2.2, and collapsing `OneShotFrameGrant`'s
 per-grant arm-order flags (a small behaviour change). **Roadmap item 6.3 is complete.**
 
+**6.4 is split into two epics.** Part 1 is done ([EPIC-163](epics/EPIC-163.md), 2026-11-13): typed editor ids
+(`shared/editor-ids.ts`, `editors/base/editor-ids.ts`) and the registry dead code (EDC-5 steps 1, 2, 4); one matcher
+contract with named tiers and a declarative `QUERY_RULES` table read by `editorRegistry.rank()` (EDC-5 step 3);
+`EditorCatalog` with `BuiltInEditorSource` and the board-owned `BoardEditorSource`, one switch-candidate path, the
+toolbar subscribed to the catalog only, the Archive/Video self-entry workarounds gone (EDC-2 step 1); ordered
+`EditorSwitchStrategy` dispatch owned by base, Board Info, board and category (EDC-2 step 2); `EditorModel` on `TModel`
+with a typed request queue and the single-implementer hooks as traits, and an error-level import zone that keeps
+`editors/base/` free of board modules (EDC-6, EDC-2 steps 3–4); `defineEditorModule` and typed secondary views,
+`createContentsElement` and `ToggledIconButton` in `uikit/shared` (EDC-7 step 1 and the step 3 helpers). The
+`.excalidraw` grid exclusion stays in the built-in matcher (EDC-5 step 5 left as is, reason in the epic). **Part 2
+remains:** EDC-7 steps 2 and 4 (`TextEditorPageView<M>`, "Show resources" as an HTML contribution, view file naming),
+EDC-8 image actions, EDC-9 panel views without IO, EDC-10 `ExplorerEditor` split, EDC-11 `TreeProviderHost`, EDC-12
+source watching, EDC-13 `VideoStreamSession`, EDC-14 grid codecs.
+
 ### Phase 7: Lock it in
 
 - Turn the import-zone lint warnings into errors and rewrite `overview.md`'s dependency rules to match.

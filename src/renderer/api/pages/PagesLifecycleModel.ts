@@ -1,5 +1,6 @@
+import { EditorId } from "../../../shared/editor-ids";
 import type { PagesModel } from "./PagesModel";
-import { EditorModel } from "../../editors/base";
+import type { EditorModelInstance as EditorModel } from "../../editors/base";
 import { EditorView, PageDescriptor } from "../../../shared/types";
 import { t } from "../../../shared/i18n/t";
 import { cleanForStorage } from "../../../shared/link-data";
@@ -14,6 +15,7 @@ import { PageModel } from "./PageModel";
 import { navigatePageTo, type NavigatePageToOptions } from "./PageNavigator";
 import { guard } from "../../core/utils/guard";
 import { errMessage } from "../../../shared/utils";
+import { REOPEN_TRAIT } from "../../editors/base/editor-traits";
 import { RestoreFailedEditor } from "../../editors/restore-failed/RestoreFailedEditor";
 import { fpBasename } from "../../core/utils/file-path";
 import { applyOpenHints, prepareOpenedEditor, registerOpenSession } from "./open-request";
@@ -222,7 +224,7 @@ export class PagesLifecycleModel {
         }
         editorRegistry.assertKnownLanguage(language);
         const editorDef = editorRegistry.getById(editor);
-        if (!editorDef && editor !== "monaco") {
+        if (!editorDef && editor !== EditorId.monaco) {
             throw new Error(
                 `Editor '${editor}' is not registered. Available editors: ${editorRegistry.getAll().map((e) => e.id).join(", ")}`,
             );
@@ -262,7 +264,7 @@ export class PagesLifecycleModel {
         editorModel.state.update((s) => {
             s.title = normalizedTitle;
             s.language = "json";
-            s.editor = editorRegistry.validateForLanguage("link-view", "json") as EditorView;
+            s.editor = editorRegistry.validateForLanguage(EditorId.linkView, "json") as EditorView;
         });
         editorModel.restore();
         editorModel.changeContent(content);
@@ -313,7 +315,7 @@ export class PagesLifecycleModel {
             if (existingPage.restore.state.get().status !== "ready") {
                 pipe?.dispose();
             } else {
-                const adopted = existingPage.mainEditor?.onReopen?.(pipe) === true;
+                const adopted = existingPage.mainEditor?.traits.get(REOPEN_TRAIT)?.onReopen(pipe) === true;
                 if (!adopted) pipe?.dispose();
             }
             // The document is already open — an anchor link into it is still a jump

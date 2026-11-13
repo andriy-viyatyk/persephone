@@ -2,12 +2,14 @@ import { TComponentState } from "../../core/state/state";
 import {
     CategoryEditorModel,
     getDefaultCategoryEditorModelState,
+    newCategoryEditorModelForFolder,
 } from "./CategoryEditorModel";
 import { CategoryEditorView } from "./CategoryEditor";
-import type { EditorModule } from "../base/editorRegistry";
-import type { EditorModel } from "../base/EditorModel";
+import { defineEditorModule } from "../base/editorRegistry";
+import type { EditorModelInstance as EditorModel } from "../base/EditorModel";
+import type { IPageHost } from "../../api/pages/IPageHost";
 
-export const categoryModule: EditorModule = {
+export const categoryModule = defineEditorModule(CategoryEditorModel, {
     createEditor: () =>
         new CategoryEditorModel(new TComponentState(getDefaultCategoryEditorModelState())),
     View: CategoryEditorView,
@@ -21,12 +23,14 @@ export const categoryModule: EditorModule = {
         }
         return model as unknown as EditorModel;
     },
-    newEditorModelForFolder: async (anchorFolder: string) => {
-        const model = new CategoryEditorModel();
-        model.initFromLink({ type: "file", url: anchorFolder, category: anchorFolder });
+    newEditorModelForFolder: async (anchorFolder: string, page?: IPageHost) => {
+        const model = page
+            ? newCategoryEditorModelForFolder(page, anchorFolder)
+            : new CategoryEditorModel();
+        if (!page) model.initFromLink({ type: "file", url: anchorFolder, category: anchorFolder });
         return model as unknown as EditorModel;
     },
-};
+});
 
 export {
     CategoryEditorModel,

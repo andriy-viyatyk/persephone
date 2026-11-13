@@ -1,6 +1,7 @@
+import { InternalEditorIds } from "../../editors/base/editor-ids";
 import { TOneState } from "../../core/state/state";
 import { afterDispatch } from "../../core/state/dispatch";
-import type { EditorModel } from "../../editors/base";
+import type { EditorModelInstance as EditorModel } from "../../editors/base";
 import {
     explorerRootForPanels,
     autoInitExplorer,
@@ -311,7 +312,7 @@ export class PageModel implements IPageHost {
     get sidebarMandatory(): boolean {
         return this.editors.some(
             (e) => e.contributesPanels()
-                && e.editorId !== "explorer",
+                && e.editorId !== InternalEditorIds.explorer,
         );
     }
 
@@ -672,7 +673,7 @@ export class PageModel implements IPageHost {
     /** Find the Explorer in editors[]. */
     findExplorer(): EditorModel | undefined {
         return this.editors.find(
-            (m) => m.editorId === "explorer",
+            (m) => m.editorId === InternalEditorIds.explorer,
         );
     }
 

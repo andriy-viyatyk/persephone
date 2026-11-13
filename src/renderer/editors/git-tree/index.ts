@@ -2,11 +2,11 @@ import { TComponentState } from "../../core/state/state";
 import { GitTreeEditorModel, getDefaultGitTreeEditorState } from "./GitTreeEditorModel";
 import { GitTreeEditorView } from "./GitTreeEditorView";
 import { decodeGitTreeLink } from "../../content/git-tree-link";
-import type { EditorModule } from "../base/editorRegistry";
-import type { EditorModel } from "../base/EditorModel";
+import { defineEditorModule } from "../base/editorRegistry";
+import type { EditorModelInstance as EditorModel } from "../base/EditorModel";
 import { fpDirname } from "../../core/utils/file-path";
 
-export const gitTreeModule: EditorModule = {
+export const gitTreeModule = defineEditorModule(GitTreeEditorModel, {
     createEditor: () =>
         new GitTreeEditorModel(new TComponentState(getDefaultGitTreeEditorState())),
     View: GitTreeEditorView,
@@ -27,7 +27,7 @@ export const gitTreeModule: EditorModule = {
         model.initFromRepoRoot(fpDirname(anchorFolder));
         return model as unknown as EditorModel;
     },
-};
+});
 
 export { GitTreeEditorModel, getDefaultGitTreeEditorState } from "./GitTreeEditorModel";
 export type { GitTreeEditorState } from "./GitTreeEditorModel";

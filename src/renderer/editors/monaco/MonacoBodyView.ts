@@ -274,7 +274,7 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
     private subscribeToCurrentQueue(): void {
         if (!this.hostView?.isReady) return;
 
-        const queue = this.model.typedQueue;
+        const queue = this.model.queue;
         const unsubscribe = queue.subscribe(this.handleQueueEvent);
         const release = this.ownSubscription(() => {
             unsubscribe();

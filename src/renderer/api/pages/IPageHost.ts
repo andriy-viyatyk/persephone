@@ -1,5 +1,5 @@
 import type { TOneState } from "../../core/state/state";
-import type { EditorModel } from "../../editors/base";
+import type { EditorModelInstance as EditorModel } from "../../editors/base";
 import type { IContentPipe } from "../types/io.pipe";
 import type { ISecondaryViewsState, SecondaryViewsModel } from "./SecondaryViewsModel";
 import type { IPageState } from "./PageModel";

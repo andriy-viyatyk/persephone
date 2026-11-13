@@ -1,4 +1,4 @@
-import type { EditorModel } from "../../editors/base/EditorModel";
+import type { EditorModelInstance as EditorModel } from "../../editors/base/EditorModel";
 import { createEditorIconElement, subscribeFileIconElements } from "../../components/icons/icon-elements";
 import {
     CollapsiblePanelStackView,

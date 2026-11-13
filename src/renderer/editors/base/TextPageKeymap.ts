@@ -1,4 +1,4 @@
-import type { EditorModel } from "./EditorModel";
+import type { EditorModelInstance as EditorModel } from "./EditorModel";
 import { runPageScript } from "../../scripting/run-page-script";
 import { saveScriptToLibrary } from "../../scripting/script-library-actions";
 

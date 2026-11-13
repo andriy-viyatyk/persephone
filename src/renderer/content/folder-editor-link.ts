@@ -1,3 +1,4 @@
+import { EditorId } from "../../shared/editor-ids";
 import { fpDirname } from "../core/utils/file-path";
 import { parseBoardEditorId } from "../../shared/board/board-editor-id";
 import { encodeCategoryLink } from "./tree-providers/tree-provider-link";
@@ -51,8 +52,8 @@ export function folderEditorLinkFor(
     anchorFolder: string,
     sourceUrl: string,
 ): string {
-    if (editorId === "git-tree") return encodeGitTreeLink(fpDirname(anchorFolder));
-    if (editorId === "mneme-root") return encodeMnemeFolderLink(fpDirname(anchorFolder));
+    if (editorId === EditorId.gitTree) return encodeGitTreeLink(fpDirname(anchorFolder));
+    if (editorId === EditorId.mnemeRoot) return encodeMnemeFolderLink(fpDirname(anchorFolder));
     if (parseBoardEditorId(editorId) !== null) {
         return encodeFolderEditorLink(editorId, anchorFolder);
     }

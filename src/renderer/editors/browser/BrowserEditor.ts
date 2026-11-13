@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { PAGE_ZOOM_DEFAULT, isValidPageZoom } from "../../../shared/browser-zoom";
 import { englishMessage, t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
@@ -6,7 +7,6 @@ import {
     type EditorRestoreOptions,
     type RestoreData,
 } from "../base/EditorModel";
-import { ComponentQueue } from "../../core/state/ComponentQueue";
 import type { EditorDescriptor } from "../../../shared/persistence";
 import { globalKeyDown } from "../../core/state/events";
 import { pages } from "../../api/pages";
@@ -55,8 +55,8 @@ export type BrowserQueueRequest = never;
 
 export class BrowserEditor extends EditorModel<
     BrowserEditorState,
-    void,
-    BrowserQueueEvent
+    BrowserQueueEvent,
+    BrowserQueueRequest
 > {
     static async createNew(options: BrowserNewOptions = {}): Promise<BrowserNewResult> {
         if (options.tor) {
@@ -95,7 +95,7 @@ export class BrowserEditor extends EditorModel<
             : !isPrivateBrowserSession(state) && (options.profileName === undefined || (state.profileName ?? "") === options.profileName);
     }
 
-    readonly editorId = "browser-view";
+    readonly editorId = EditorId.browserView;
     noLanguage = true;
     skipSave = true;
     readonly guest: BrowserGuestChannel;
@@ -113,7 +113,6 @@ export class BrowserEditor extends EditorModel<
     readonly network: BrowserProfileNetworkModel;
     readonly sitePermissions: BrowserSitePermissionsModel;
     private readonly shortcuts: BrowserShortcutTable;
-    readonly typedQueue: ComponentQueue<BrowserQueueEvent, BrowserQueueRequest>;
     private keyDownSub: () => void;
     private readonly incognitoId = crypto.randomUUID();
     private readonly torId = crypto.randomUUID();
@@ -121,10 +120,6 @@ export class BrowserEditor extends EditorModel<
     constructor(state: TComponentState<BrowserEditorState>) {
         super(state);
         this.guest = new BrowserGuestChannel(this.id);
-        this.typedQueue = this.queue as unknown as ComponentQueue<
-            BrowserQueueEvent,
-            BrowserQueueRequest
-        >;
         this.tabs = new BrowserTabsModel(this);
         this.bookmarks = new BrowserBookmarksModel(this);
         this.tor = new BrowserTorModel(this);
@@ -198,7 +193,7 @@ export class BrowserEditor extends EditorModel<
         this.shortcuts.dispatch(event, source);
     };
 
-    focus(): void { this.typedQueue.send({ type: "focus" }); }
+    focus(): void { this.queue.send({ type: "focus" }); }
 
     async restore(options: BrowserRestoreOptions = {}): Promise<void> {
         await super.restore(options);

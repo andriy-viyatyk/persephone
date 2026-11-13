@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import {
     EditorModel,
     type EditorStateBase,
@@ -16,12 +17,12 @@ export const getDefaultSettingsEditorState = (): SettingsEditorState => ({
     // Stored and script-facing title stays English; the tab translates it (ui/tabs/page-title.ts).
     title: englishMessage("settings.pageTitle"),
     modified: false,
-    editor: "settings-view",
+    editor: EditorId.settingsView,
 });
 
 export class SettingsEditor extends EditorModel<SettingsEditorState> {
     /** Editor identity. Matches `EditorDescriptor.editorId`. */
-    readonly editorId = "settings-view";
+    readonly editorId = EditorId.settingsView;
 
     noLanguage = true;
     skipSave = true;

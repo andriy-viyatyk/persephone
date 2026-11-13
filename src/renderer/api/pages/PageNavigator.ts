@@ -1,6 +1,7 @@
+import { EditorId } from "../../../shared/editor-ids";
 import type { PagesModel } from "./PagesModel";
 import type { PageModel } from "./PageModel";
-import type { EditorModel } from "../../editors/base";
+import type { EditorModelInstance as EditorModel } from "../../editors/base";
 import type { ILinkData } from "../../../shared/link-data";
 import type { IContentPipe } from "../types/io.pipe";
 import { newTextFileModel } from "../../editors/content-host/TextFileModel";
@@ -195,8 +196,8 @@ export async function navigatePageTo(
     const needsReveal = !!(request.revealLine || request.highlightText);
     if (needsReveal && currentFilePath
         && sameFileIdentity(currentFilePath, newFilePath)) {
-        if (page.mainEditor?.editorId !== "monaco") {
-            await page.switchMainEditor("monaco");
+        if (page.mainEditor?.editorId !== EditorId.monaco) {
+            await page.switchMainEditor(EditorId.monaco);
         }
         const textHost = page.mainEditor?.contentHost;
         if (!textHost) return false;

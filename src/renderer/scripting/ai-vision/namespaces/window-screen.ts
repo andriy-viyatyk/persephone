@@ -1,3 +1,4 @@
+import { EditorId } from "../../../../shared/editor-ids";
 import { pages } from "../../../api/pages";
 import type { IBrowserAccessFlags } from "../../../editors/browser/agent-access";
 import { BROWSER_AUTOMATION_MEMBERS } from "../browser-automation-members";
@@ -77,7 +78,7 @@ function restrictedWindowScreen(): string | undefined {
     );
     for (const page of visiblePages) {
         const editor = page.mainEditor;
-        if (!editor || editor.editorId !== "browser-view") continue;
+        if (!editor || editor.editorId !== EditorId.browserView) continue;
 
         const state = editor.state.get() as IBrowserAccessFlags;
         const mode = state.isTor ? "Tor" : state.isIncognito ? "incognito" : undefined;

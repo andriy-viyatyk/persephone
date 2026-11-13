@@ -1,8 +1,8 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import type { EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
-import { ComponentQueue } from "../../core/state/ComponentQueue";
 import { fpBasename, fpDirname } from "../../core/utils/file-path";
 import { FileProvider } from "../../content/providers/FileProvider";
 import { HttpProvider } from "../../content/providers/HttpProvider";
@@ -32,27 +32,21 @@ export const defaultHtmlEditorState: HtmlEditorState = {
     secondaryView: undefined,
 };
 
-export class HtmlEditor extends TextHostEditorModel<HtmlEditorState, void, HtmlQueueEvent>
+export class HtmlEditor extends TextHostEditorModel<HtmlEditorState, HtmlQueueEvent, HtmlQueueRequest>
     implements IImageExport {
-    readonly editorId = "html-view";
+    readonly editorId = EditorId.htmlView;
     protected readonly displayName = "HTML";
 
     /** The live preview iframe, reported by the view; used to capture its
      *  on-screen region. Transient — cleared on unmount (HC1). */
     private _captureEl: HTMLIFrameElement | null = null;
 
-    readonly typedQueue: ComponentQueue<HtmlQueueEvent, HtmlQueueRequest>;
-
     constructor(state: TComponentState<HtmlEditorState>) {
         super(state);
-        this.typedQueue = this.queue as unknown as ComponentQueue<
-            HtmlQueueEvent,
-            HtmlQueueRequest
-        >;
     }
 
     focus(): void {
-        this.typedQueue.send({ type: "focus" });
+        this.queue.send({ type: "focus" });
     }
 
     /** The sibling-resource folder for a plain local HTML file, from its live source pipe. */

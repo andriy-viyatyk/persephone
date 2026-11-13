@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import type { PagesModel } from "./PagesModel";
 import type {
     PageDescriptor,
@@ -8,7 +9,7 @@ import { parseObject } from "../../core/utils/parse-utils";
 import { debounce, errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
 import { editorRegistry } from "../../editors/base/editorRegistry";
-import type { EditorModel } from "../../editors/base/EditorModel";
+import type { EditorModelInstance as EditorModel } from "../../editors/base/EditorModel";
 import { RestoreFailedEditor } from "../../editors/restore-failed/RestoreFailedEditor";
 import {
     ExplorerEditor,
@@ -170,7 +171,7 @@ export class PagesPersistenceModel {
                 "../../editors/category/CategoryEditorModel"
             );
             const category = await editorRegistry.createEditor(
-                "category-view",
+                EditorId.categoryView,
                 folderFallback.sourceEditorId,
             );
             constructed.push(category);

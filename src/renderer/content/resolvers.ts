@@ -1,5 +1,6 @@
+import { EditorId } from "../../shared/editor-ids";
 import { app } from "../api/app";
-import { resolveEditorIdForFile } from "../api/boards/custom-editor-registry";
+import { editorCatalog } from "../editors/base/editor-catalog";
 import { isArchivePath } from "../core/utils/file-path";
 import { createPipeFromDescriptor } from "./registry";
 import { dispatchRegisteredSchemeResolve } from "./scheme-registry";
@@ -40,7 +41,7 @@ export function registerResolvers(): void {
             // Virtual paths do not resolve to a real source but still need Layer 3 to create the
             // requested editor. The registry hooks use the same placeholder descriptor.
             if (data.url.includes("://")) {
-                data.target ||= "monaco";
+                data.target ||= EditorId.monaco;
                 data.pipeDescriptor = virtualPipeDescriptor(data.url);
                 data.pipe = createPipeFromDescriptor(data.pipeDescriptor);
                 await handoff(data, () => app.events.openContent.sendAsync(data));
@@ -49,8 +50,8 @@ export function registerResolvers(): void {
         }
 
         data.target = data.target
-            || resolveEditorIdForFile(data.url, effectivePathOf(data.url))
-            || "monaco";
+            || editorCatalog.resolveFile(data.url, effectivePathOf(data.url))
+            || EditorId.monaco;
         data.pipeDescriptor = pipeDescriptor;
         data.pipe = createPipeFromDescriptor(pipeDescriptor);
         await handoff(data, () => app.events.openContent.sendAsync(data));

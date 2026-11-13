@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import {
     EditorModel,
     type EditorStateBase,
@@ -27,7 +28,7 @@ export const getDefaultStorybookEditorState = (): StorybookEditorState => {
         id: STORYBOOK_PAGE_ID,
         title: untranslated("Storybook"),
         modified: false,
-        editor: "storybook-view",
+        editor: EditorId.storybookView,
         selectedStoryId: first?.id ?? "",
         propValues: first ? buildInitialProps(first) : {},
         previewBackground: "light",
@@ -49,7 +50,7 @@ export function buildInitialProps(story: Story): Record<string, unknown> {
 
 export class StorybookEditorModel extends EditorModel<StorybookEditorState> {
     /** Editor identity. Matches `EditorDescriptor.editorId`. */
-    readonly editorId = "storybook-view";
+    readonly editorId = EditorId.storybookView;
 
     noLanguage = true;
     skipSave = true;

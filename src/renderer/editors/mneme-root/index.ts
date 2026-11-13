@@ -5,11 +5,11 @@ import {
 } from "./MnemeRootEditorModel";
 import { MnemeRootEditorView } from "./MnemeRootEditorView";
 import { decodeMnemeFolderLink } from "../../content/mneme-folder-link";
-import type { EditorModule } from "../base/editorRegistry";
-import type { EditorModel } from "../base/EditorModel";
+import { defineEditorModule } from "../base/editorRegistry";
+import type { EditorModelInstance as EditorModel } from "../base/EditorModel";
 import { fpDirname } from "../../core/utils/file-path";
 
-export const mnemeRootModule: EditorModule = {
+export const mnemeRootModule = defineEditorModule(MnemeRootEditorModel, {
     createEditor: () =>
         new MnemeRootEditorModel(new TComponentState(getDefaultMnemeRootEditorState())),
     View: MnemeRootEditorView,
@@ -30,7 +30,7 @@ export const mnemeRootModule: EditorModule = {
         model.initFromRootFolder(fpDirname(anchorFolder));
         return model as unknown as EditorModel;
     },
-};
+});
 
 export { MnemeRootEditorModel, getDefaultMnemeRootEditorState } from "./MnemeRootEditorModel";
 export type { MnemeRootEditorState } from "./MnemeRootEditorModel";

@@ -1,3 +1,4 @@
+import { InternalEditorIds } from "../../editors/base/editor-ids";
 import type { EditorDescriptor, PageDescriptor } from "../../../shared/persistence";
 import {
     decodePersephoneBoardLink,
@@ -72,8 +73,8 @@ export function migrateLegacyEditorStateType(descriptor: EditorDescriptor): Edit
         : undefined;
     if (host) delete host.state.type;
 
-    const editorId = !descriptor.host && descriptor.editorId !== "explorer" && legacyType === "fileExplorer"
-        ? "explorer"
+    const editorId = !descriptor.host && descriptor.editorId !== InternalEditorIds.explorer && legacyType === "fileExplorer"
+        ? InternalEditorIds.explorer
         : descriptor.editorId;
     return { ...descriptor, editorId, state, ...(host ? { host } : {}) };
 }

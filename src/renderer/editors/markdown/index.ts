@@ -1,3 +1,4 @@
+import { createContentsElement } from "../../uikit/shared/create-contents-element";
 import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import { MarkdownEditor, defaultMarkdownEditorState } from "./MarkdownEditor";
@@ -6,19 +7,9 @@ import { TextChromeView } from "../base/TextChromeView";
 import { ButtonView, type ButtonViewProps } from "../../uikit/Button/ButtonView";
 import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import type { EditorModule } from "../base/editorRegistry";
-import type { EditorModel } from "../base/EditorModel";
+import { defineEditorModule } from "../base/editorRegistry";
 
-function createContentsRoot(): HTMLSpanElement {
-    const root = document.createElement("span");
-    root.style.display = "contents";
-    return root;
-}
 
-function requireMarkdownModel(model: EditorModel): MarkdownEditor {
-    if (!(model instanceof MarkdownEditor)) throw new Error("Markdown view received an invalid model.");
-    return model;
-}
 
 class MarkdownToolbarBitsView extends VanillaView<{ model: MarkdownEditor }> {
     private model: MarkdownEditor;
@@ -26,7 +17,7 @@ class MarkdownToolbarBitsView extends VanillaView<{ model: MarkdownEditor }> {
     private stateSubscription: (() => void) | undefined;
 
     public constructor(props: { model: MarkdownEditor }) {
-        super(props, createContentsRoot());
+        super(props, createContentsElement());
         this.model = props.model;
     }
 
@@ -84,7 +75,7 @@ class MarkdownBackButtonView extends VanillaView<{ model: MarkdownEditor }> {
     private pageSubscription: (() => void) | undefined;
 
     public constructor(props: { model: MarkdownEditor }) {
-        super(props, createContentsRoot());
+        super(props, createContentsElement());
         this.model = props.model;
     }
 
@@ -150,15 +141,15 @@ class MarkdownBackButtonView extends VanillaView<{ model: MarkdownEditor }> {
     }
 }
 
-export class MarkdownEditorView extends VanillaView<{ model: EditorModel }> {
+export class MarkdownEditorView extends VanillaView<{ model: MarkdownEditor }> {
     private readonly body: MarkdownBodyView;
     private readonly backButton: MarkdownBackButtonView;
     private readonly toolbar: MarkdownToolbarBitsView;
     private readonly chrome: TextChromeView;
     private model: MarkdownEditor;
 
-    public constructor(props: { model: EditorModel }) {
-        const model = requireMarkdownModel(props.model);
+    public constructor(props: { model: MarkdownEditor }) {
+        const model = props.model;
         const body = new MarkdownBodyView({ model });
         const backButton = new MarkdownBackButtonView({ model });
         const toolbar = new MarkdownToolbarBitsView({ model });
@@ -183,8 +174,8 @@ export class MarkdownEditorView extends VanillaView<{ model: EditorModel }> {
         this.chrome.mount();
     }
 
-    protected onUpdate(props: { model: EditorModel }): void {
-        const model = requireMarkdownModel(props.model);
+    protected onUpdate(props: { model: MarkdownEditor }): void {
+        const model = props.model;
         if (model !== this.model) {
             throw new Error("Markdown view received a different model instance.");
         }
@@ -197,11 +188,11 @@ export class MarkdownEditorView extends VanillaView<{ model: EditorModel }> {
     }
 }
 
-export const markdownModule: EditorModule = {
+export const markdownModule = defineEditorModule(MarkdownEditor, {
     createEditor: () =>
         new MarkdownEditor(new TComponentState({ ...defaultMarkdownEditorState })),
     View: MarkdownEditorView,
-};
+});
 
 export { MarkdownEditor, defaultMarkdownEditorState };
 export type { MarkdownEditorState, MarkdownQueueEvent } from "./MarkdownEditor";

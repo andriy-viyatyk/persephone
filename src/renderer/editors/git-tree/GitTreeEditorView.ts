@@ -13,7 +13,6 @@ import {
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { PageToolbarView, type PageToolbarViewProps } from "../base/PageToolbarView";
-import type { EditorModel } from "../base/EditorModel";
 import { GitTreeView } from "../../components/git-tree/GitTreeView";
 import type { GitCommitRow } from "../../components/git-tree/swimlane-layout";
 import type { GitTreeState } from "../../components/git-tree/GitTreeModel";
@@ -119,14 +118,8 @@ const selectToolbarState = (state: GitBranchesState): BranchToolbarState => ({
     pulling: state.pulling,
 });
 
-function requireGitTreeModel(model: EditorModel): GitTreeEditorModel {
-    if (!(model instanceof GitTreeEditorModel)) {
-        throw new Error("Git Tree view received an invalid model.");
-    }
-    return model;
-}
 
-export class GitTreeEditorView extends VanillaView<{ model: EditorModel }> {
+export class GitTreeEditorView extends VanillaView<{ model: GitTreeEditorModel }> {
     private model: GitTreeEditorModel;
     private pageToolbar!: PageToolbarView;
     private refreshButton!: IconButtonView;
@@ -165,7 +158,7 @@ export class GitTreeEditorView extends VanillaView<{ model: EditorModel }> {
         pulling: false,
     };
 
-    public constructor(props: { model: EditorModel }) {
+    public constructor(props: { model: GitTreeEditorModel }) {
         super(props, createPanelElement({
             name: "git-tree-editor-root",
             direction: "column",
@@ -173,7 +166,7 @@ export class GitTreeEditorView extends VanillaView<{ model: EditorModel }> {
             overflow: "hidden",
             background: "default",
         }));
-        this.model = requireGitTreeModel(props.model);
+        this.model = props.model;
     }
 
     protected onMount(): void {
@@ -230,8 +223,8 @@ export class GitTreeEditorView extends VanillaView<{ model: EditorModel }> {
         this.bind(this.model.selectionState, (state) => state.selectedHash, this.syncSelectedCommit);
     }
 
-    protected onUpdate(props: { model: EditorModel }): void {
-        const nextModel = requireGitTreeModel(props.model);
+    protected onUpdate(props: { model: GitTreeEditorModel }): void {
+        const nextModel = props.model;
         if (nextModel !== this.model) {
             throw new Error("Git Tree view model identity cannot change while the view is mounted.");
         }

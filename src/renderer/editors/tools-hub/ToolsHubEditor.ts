@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { EditorModel, type EditorStateBase } from "../base/EditorModel";
 import { untranslated } from "../../../shared/i18n/t";
 import { TOOLS_HUB_PAGE_ID } from "./tools-hub-page-id";
@@ -22,7 +23,7 @@ export const getDefaultToolsHubEditorState = (): ToolsHubEditorState => ({
     id: TOOLS_HUB_PAGE_ID,
     title: untranslated("Tools & Editors"),
     modified: false,
-    editor: "tools-hub-view",
+    editor: EditorId.toolsHubView,
     tab: "editors",
 });
 
@@ -35,7 +36,7 @@ export const getDefaultToolsHubEditorState = (): ToolsHubEditorState => ({
  */
 export class ToolsHubEditor extends EditorModel<ToolsHubEditorState> {
     /** Editor identity. Matches `EditorDescriptor.editorId`. */
-    readonly editorId = "tools-hub-view";
+    readonly editorId = EditorId.toolsHubView;
 
     noLanguage = true;
     skipSave = true;

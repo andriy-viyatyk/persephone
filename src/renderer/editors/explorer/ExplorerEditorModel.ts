@@ -1,3 +1,4 @@
+import { InternalEditorIds } from "../base/editor-ids";
 import { TComponentState, TOneState } from "../../core/state/state";
 import { app } from "../../api/app";
 import { settings } from "../../api/settings";
@@ -60,7 +61,7 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
      *  registration id so persistence (`EditorDescriptor.editorId`) reads the
      *  same string as the panel-component lookup. Explorer is NOT in
      *  `editorRegistry`. */
-    readonly editorId = "explorer";
+    readonly editorId = InternalEditorIds.explorer;
 
     /** File tree data source. Created lazily by the view layer
      *  (`ExplorerSecondaryView.ts`); reads see whatever the view set.

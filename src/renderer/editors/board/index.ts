@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { TComponentState } from "../../core/state/state";
 import { decodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { customEditorRegistry } from "../../api/boards/custom-editor-registry";
@@ -9,8 +10,9 @@ import {
 } from "./BoardEditorModel";
 import { BoardStreamEditorModel } from "./BoardStreamEditorModel";
 import { BoardEditorView } from "./BoardEditorView";
-import type { EditorModule, EditorRestoreContext } from "../base/editorRegistry";
-import type { EditorModel } from "../base/EditorModel";
+import type { EditorRestoreContext } from "../base/editorRegistry";
+import { defineEditorModule } from "../base/editorRegistry";
+import type { EditorModelInstance as EditorModel } from "../base/EditorModel";
 import type { EditorDescriptor } from "../../../shared/persistence";
 import type { BoardEditorKind } from "../../../shared/board/board-manifest-schema";
 
@@ -142,12 +144,12 @@ function createPlainBoardEditorWithState(
     return new BoardEditorModel(new TComponentState(state));
 }
 
-export const boardModule: EditorModule = {
+export const boardModule = defineEditorModule(BoardEditorModel, {
     createEditor: createPlainBoardEditor,
     View: BoardEditorView,
     restoreFromDescriptor: async (descriptor, context: EditorRestoreContext) => {
         if (
-            (descriptor.editorId === "board-view" || descriptor.editorId === "draw-view") &&
+            (descriptor.editorId === EditorId.boardView || descriptor.editorId === "draw-view") &&
             descriptor.id !== context.mainEditorId
         ) {
             return null;
@@ -155,7 +157,7 @@ export const boardModule: EditorModule = {
 
         const boardState = descriptor.state as Partial<ReturnType<typeof getDefaultBoardEditorState>>;
         const folderPath = boardState.folderPath;
-        if (descriptor.editorId === "board-view" && folderPath !== undefined && typeof folderPath === "string") {
+        if (descriptor.editorId === EditorId.boardView && folderPath !== undefined && typeof folderPath === "string") {
             await customEditorRegistry.ensureInitialized();
             const boardRoot = boardState.boardRoot;
             const claim = boardRoot && folderPath
@@ -184,7 +186,7 @@ export const boardModule: EditorModule = {
             : createPlainBoardEditor();
         return model as unknown as EditorModel;
     },
-};
+});
 
 export { BoardEditorModel } from "./BoardEditorModel";
 export type { BoardEditorState } from "./BoardEditorModel";

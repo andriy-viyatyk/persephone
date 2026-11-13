@@ -127,7 +127,7 @@ export class MermaidBodyView extends VanillaView<MermaidBodyViewProps> {
             (projection) => this.applyProjection(projection),
             selectMermaidProjection,
         ));
-        this.queueSubscription = this.ownSubscription(this.model.typedQueue.subscribe(() => {
+        this.queueSubscription = this.ownSubscription(this.model.queue.subscribe(() => {
             // PV8: deliberate no-op; drain the focus queue to keep its lifecycle clean.
         }));
     }

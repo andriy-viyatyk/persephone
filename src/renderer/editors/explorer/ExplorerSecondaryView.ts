@@ -27,7 +27,7 @@ import type { ExplorerEditor } from "./ExplorerEditorModel";
 import "../../uikit/IconButton/IconButton.css";
 import { t } from "../../../shared/i18n/t";
 
-export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProps> {
+export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProps<ExplorerEditor>> {
     private model: ExplorerEditor;
     private provider: FileTreeProvider | undefined;
     private treeProviderView: TreeProviderViewImpl | undefined;
@@ -43,7 +43,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
     private readonly trailingButtons = new Map<string, IconButtonView>();
     private revealFrame: Cleanup | undefined;
 
-    public constructor(props: SecondaryViewProps) {
+    public constructor(props: SecondaryViewProps<ExplorerEditor>) {
         super(props, createPanelElement({
             name: "explorer-secondary-view",
             direction: "column",
@@ -51,7 +51,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
             minHeight: 0,
             overflow: "hidden",
         }));
-        this.model = props.model as ExplorerEditor;
+        this.model = props.model;
     }
 
     protected onMount(): void {
@@ -93,8 +93,8 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         this.updateHeader(this.props);
     }
 
-    protected onUpdate(props: SecondaryViewProps): void {
-        const model = props.model as ExplorerEditor;
+    protected onUpdate(props: SecondaryViewProps<ExplorerEditor>): void {
+        const model = props.model;
         if (model !== this.model) {
             this.model = model;
             this.replaceProvider(model.rootPath);
@@ -387,7 +387,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         this.revealFrame = undefined;
     }
 
-    private updateHeader(props: SecondaryViewProps): void {
+    private updateHeader(props: SecondaryViewProps<ExplorerEditor>): void {
         const provider = this.provider;
         const rootPath = this.model.rootPath;
         const parentPath = fpDirname(rootPath);

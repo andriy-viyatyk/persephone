@@ -788,6 +788,32 @@ export default tseslint.config(
         },
     },
 
+    {
+        files: ["src/renderer/editors/base/**/*.ts"],
+        rules: {
+            "import/no-restricted-paths": ["error", {
+                zones: [
+                    {
+                        target: "./src/renderer/editors/base",
+                        from: [
+                            "./src/renderer/editors/board",
+                            "./src/renderer/editors/board-info",
+                            "./src/renderer/api/boards",
+                            "./src/shared/board-source-context.ts",
+                        ],
+                        message: "editors/base must not depend on board implementation/domain modules; use its generic catalog and traits.",
+                    },
+                    {
+                        target: "./src/renderer/editors/base",
+                        from: "./src/shared/board",
+                        except: ["board-editor-id.ts"],
+                        message: "editors/base may import only the pure board-editor-id helper from shared/board.",
+                    },
+                ],
+            }],
+        },
+    },
+
     // C4-1: av-grid is reached only through uikit/DataGrid, so a later decision to vendor the
     // library's source changes one folder instead of every consumer.
     {

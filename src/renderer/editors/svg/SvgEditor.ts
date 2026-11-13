@@ -1,7 +1,7 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { TComponentState } from "../../core/state/state";
 import type { EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
-import { ComponentQueue } from "../../core/state/ComponentQueue";
 import type { IImageExport } from "../base/IImageExport";
 import { copyPngBlobToClipboard, rasterToPngBlob } from "../shared/image-export";
 import { openImageForEdit, getMissingEditCapabilityMessage } from "../../api/capability-feedback";
@@ -20,23 +20,17 @@ export const defaultSvgEditorState: SvgEditorState = {
     secondaryView: undefined,
 };
 
-export class SvgEditor extends TextHostEditorModel<SvgEditorState, void, SvgQueueEvent>
+export class SvgEditor extends TextHostEditorModel<SvgEditorState, SvgQueueEvent, SvgQueueRequest>
     implements IImageExport {
-    readonly editorId = "svg-view";
+    readonly editorId = EditorId.svgView;
     protected readonly displayName = "SVG";
-
-    readonly typedQueue: ComponentQueue<SvgQueueEvent, SvgQueueRequest>;
 
     constructor(state: TComponentState<SvgEditorState>) {
         super(state);
-        this.typedQueue = this.queue as unknown as ComponentQueue<
-            SvgQueueEvent,
-            SvgQueueRequest
-        >;
     }
 
     focus(): void {
-        this.typedQueue.send({ type: "focus" });
+        this.queue.send({ type: "focus" });
     }
 
     // No host-content subscription needed — the body reads

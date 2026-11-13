@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { TComponentState, TOneState } from "../../core/state/state";
 import {
     EditorModel,
@@ -6,7 +7,7 @@ import {
 } from "../base/EditorModel";
 import type { EditorDescriptor } from "../../../shared/persistence";
 import type { ArchiveTreeProvider } from "../../content/tree-providers/ArchiveTreeProvider";
-import { fpBasename, isPlainLocalPath, buildArchivePath } from "../../core/utils/file-path";
+import { fpBasename, buildArchivePath } from "../../core/utils/file-path";
 import { archiveService, type ArchiveEntry } from "../../api/archive-service";
 import { app } from "../../api/app";
 import { createLinkData } from "../../../shared/link-data";
@@ -35,7 +36,7 @@ export function getDefaultArchiveEditorState(): ArchiveEditorState {
 
 export class ArchiveEditor extends EditorModel<ArchiveEditorState> {
     /** Editor identity. Matches `EditorDescriptor.editorId`. */
-    readonly editorId = "archive-view";
+    readonly editorId = EditorId.archiveView;
 
     noLanguage = true;
 
@@ -68,12 +69,6 @@ export class ArchiveEditor extends EditorModel<ArchiveEditorState> {
      *  itself a ZIP) is appended by the widget — letting the user switch back to the board
      *. A plain archive with no associated board yields a single-entry list, which the
      *  widget hides — no regression. Empty for a non-local archive (boards edit local files). */
-    override findCompatibleEditors(): string[] {
-        const path = this.filePath;
-        if (!path || !isPlainLocalPath(path)) return [];
-        return [this.editorId];
-    }
-
     /** Initialize from archive path. Creates ArchiveTreeProvider and sets title. */
     async initFromArchive(archiveUrl: string): Promise<void> {
         const { ArchiveTreeProvider } = await import(

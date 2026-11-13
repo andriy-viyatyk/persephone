@@ -97,7 +97,7 @@ export function matchesFolderEditorMasks(
  * folder gate cannot be evaluated, and it is SKIPPED rather than failed: a folder-scoped board
  * still lends its icon to every name-matching file. That is a deliberate trade — the icon
  * carries no path, and an icon is cosmetic, whereas the two paths that DECIDE which editor
- * opens a file (`resolveEditorIdForFile`, the editor-switch widget) always hold a full path
+ * opens a file (merged editor resolution and the editor-switch widget) always hold a full path
  * and so always honor the folder scope.
  */
 

@@ -1,6 +1,6 @@
 import type { PagesModel } from "./PagesModel";
 import type { PageModel } from "./PageModel";
-import type { EditorModel } from "../../editors/base";
+import type { EditorModelInstance as EditorModel } from "../../editors/base";
 
 export class PagesLayoutModel {
     constructor(private model: PagesModel) {}

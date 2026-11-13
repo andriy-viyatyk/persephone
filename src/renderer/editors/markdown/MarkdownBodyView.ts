@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { app } from "../../api/app";
 import { pages } from "../../api/pages";
 import { createLinkData } from "../../../shared/link-data";
@@ -23,7 +24,12 @@ import { isGuideHref, isLocalMarkdownHref } from "./markdown-nav";
 
 export interface MarkdownBodyViewProps {
     model: MarkdownBodyModel;
+}
 
+function queueFor(model: MarkdownBodyModel): NonNullable<MarkdownBodyModel["queue"]> {
+    const queue = model.queue ?? model.typedQueue;
+    if (!queue) throw new Error("Markdown body model must provide a command queue");
+    return queue;
 }
 
 interface MarkdownProjection {
@@ -193,7 +199,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
             page.pushNavBack({ href: current.filePath, title: current.title });
         }
         void app.events.openRawLink.sendAsync(
-            createLinkData(href, { pageId, target: "md-view", sourceId: "markdown-link" }),
+            createLinkData(href, { pageId, target: EditorId.mdView, sourceId: "markdown-link" }),
         );
     };
 
@@ -205,7 +211,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
         this.model.setMatchCount(count);
         if (count > 0) {
             const newIndex = currentMatchIndex >= count ? 0 : currentMatchIndex;
-            void this.model.typedQueue.execute({ type: "scrollToMatch", index: newIndex });
+            void queueFor(this.model).execute({ type: "scrollToMatch", index: newIndex });
         }
     };
 
@@ -230,7 +236,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
             ? selectHostProjection(this.model.host.state.get())
             : EMPTY_HOST;
         this.markdownBlock = this.child(new MarkdownBlockView({
-            commandQueue: this.model.typedQueue,
+            commandQueue: queueFor(this.model),
             content: this.hostProjection.content,
             highlightText: this.getHighlightText(),
             compact,
@@ -367,7 +373,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
     }
 
     private subscribeToQueue(): void {
-        this.queueSubscription = this.ownSubscription(this.model.typedQueue.subscribe(this.handleQueueEvent));
+        this.queueSubscription = this.ownSubscription(queueFor(this.model).subscribe(this.handleQueueEvent));
     }
 
     private applyProjection(projection: MarkdownProjection): void {
@@ -382,7 +388,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
             || previous.currentMatchIndex !== projection.currentMatchIndex
             || previous.totalMatches !== projection.totalMatches;
         if (matchChanged && projection.totalMatches > 0) {
-            void this.model.typedQueue.execute({
+            void queueFor(this.model).execute({
                 type: "scrollToMatch",
                 index: projection.currentMatchIndex,
             });
@@ -449,7 +455,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
     private blockProps(): MarkdownBlockProps {
         const state = this.model.state.get();
         return {
-            commandQueue: this.model.typedQueue,
+            commandQueue: queueFor(this.model),
             content: this.hostProjection.content,
             highlightText: this.getHighlightText(),
             compact: state.compactMode,
@@ -479,9 +485,9 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
         const attempt = (): void => {
             this.anchorRetry = null;
             if (!this.isCurrent(model, generation)) return;
-            if (model.typedQueue.pendingRequestCount > 0) return;
+            if (queueFor(model).pendingRequestCount > 0) return;
 
-            void model.typedQueue.execute({ type: "scrollToAnchor", fragment }).then(
+            void queueFor(model).execute({ type: "scrollToAnchor", fragment }).then(
                 (found) => {
                     if (!this.isCurrent(model, generation)) return;
                     if (found) {

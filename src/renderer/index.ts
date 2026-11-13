@@ -7,6 +7,9 @@ import { MainPageView } from "./ui/app/MainPageView";
 import { installGlobalStyles } from "./theme/global-styles";
 import { installPageActivationEvents } from "./scripting/ai-vision/page-activation";
 import "./editors/register-editors";
+import { registerEditorSwitchStrategies } from "./editors/register-switch-strategies";
+
+registerEditorSwitchStrategies();
 
 export function mount(container: HTMLElement): () => void {
     const disposeGlobalStyles = installGlobalStyles();

@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { editorRegistry } from "../base/editorRegistry";
 import { McpInspectorEditorModel } from "./McpInspectorEditorModel";
 import type { PagesModel } from "../../api/pages/PagesModel";
@@ -6,7 +7,7 @@ export async function showMcpInspectorPage(
     model: PagesModel,
     options?: { url?: string; name?: string; autoConnect?: boolean },
 ): Promise<void> {
-    const editor = await editorRegistry.createEditor("mcp-view");
+    const editor = await editorRegistry.createEditor(EditorId.mcpView);
     if (!(editor instanceof McpInspectorEditorModel)) {
         throw new Error("MCP inspector editor was not created");
     }

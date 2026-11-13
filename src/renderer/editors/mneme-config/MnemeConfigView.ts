@@ -8,7 +8,6 @@ import type { DotColor } from "../../uikit/Dot/DotView";
 import { EditorToolbarView } from "../base/EditorToolbarView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { pages } from "../../api/pages";
-import type { EditorModel } from "../base";
 import { MnemeConfigEditorModel, type MnemeConfigEditorState } from "./MnemeConfigEditorModel";
 import { isModelReady } from "./mnemeTypes";
 import { ModelPanelView } from "./ModelPanel";
@@ -89,14 +88,13 @@ class RunningConfigView extends VanillaView<RunningConfigProps> {
     }
 }
 
-export interface MnemeConfigEditorViewProps { model: EditorModel; }
-function requireConfigModel(model: EditorModel): MnemeConfigEditorModel { if (!(model instanceof MnemeConfigEditorModel)) throw new Error("Mneme config view received an invalid model."); return model; }
+export interface MnemeConfigEditorViewProps { model: MnemeConfigEditorModel; }
 
 export class MnemeConfigEditorView extends VanillaView<MnemeConfigEditorViewProps> {
     private model: MnemeConfigEditorModel; private stateSubscription: (() => void) | undefined; private connected = false; private live = false; private inventoryGeneration = 0; private pageModel: StoppedConfigView | RunningConfigView | undefined;
-    public constructor(props: MnemeConfigEditorViewProps) { super(props, createPanelElement({ name: "mneme-config-root", direction: "column", flex: true })); this.model = requireConfigModel(props.model); }
+    public constructor(props: MnemeConfigEditorViewProps) { super(props, createPanelElement({ name: "mneme-config-root", direction: "column", flex: true })); this.model = props.model; }
     protected onMount(): void { this.live = true; this.subscribeToModel(this.model); }
-    protected onUpdate(props: MnemeConfigEditorViewProps): void { const model = requireConfigModel(props.model); if (model !== this.model) this.replaceModelSubscription(model); this.sync(this.model.state.get()); }
+    protected onUpdate(props: MnemeConfigEditorViewProps): void { const model = props.model; if (model !== this.model) this.replaceModelSubscription(model); this.sync(this.model.state.get()); }
     protected onDispose(): void { this.live = false; this.stateSubscription?.(); this.stateSubscription = undefined; this.inventoryGeneration++; this.pageModel = undefined; }
     private subscribeToModel(model: MnemeConfigEditorModel): void {
         this.stateSubscription?.(); this.stateSubscription = undefined; this.connected = false;

@@ -13,7 +13,7 @@ import { BoardEditorModel, type BoardEditorState } from "./BoardEditorModel";
 import { t, untranslated } from "../../../shared/i18n/t";
 import { boardDisplayText, boardMetadataKeys, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
 
-export default class BoardSecondaryView extends VanillaView<SecondaryViewProps> {
+export default class BoardSecondaryView extends VanillaView<SecondaryViewProps<BoardEditorModel>> {
     private boardModel: BoardEditorModel | undefined;
     private header: SideBarPanelHeaderHandle | undefined;
     private contentHost: HTMLDivElement | undefined;
@@ -22,7 +22,7 @@ export default class BoardSecondaryView extends VanillaView<SecondaryViewProps> 
     private viewId: string | null | undefined;
     private stateUnsubscribe: (() => void) | undefined;
 
-    public constructor(props: SecondaryViewProps) {
+    public constructor(props: SecondaryViewProps<BoardEditorModel>) {
         super(props, createPanelElement({
             name: "board-secondary-view",
             direction: "column",
@@ -74,7 +74,7 @@ export default class BoardSecondaryView extends VanillaView<SecondaryViewProps> 
         );
     }
 
-    protected onUpdate(props: SecondaryViewProps): void {
+    protected onUpdate(props: SecondaryViewProps<BoardEditorModel>): void {
         const nextViewId = parseBoardSecondaryPanelId(props.panelId);
         if (nextViewId !== this.viewId) {
             this.disposeBoardWebview();
@@ -103,8 +103,8 @@ export default class BoardSecondaryView extends VanillaView<SecondaryViewProps> 
         this.viewId = undefined;
     }
 
-    private getBoardModel(props: SecondaryViewProps): BoardEditorModel | undefined {
-        return props.model instanceof BoardEditorModel ? props.model : undefined;
+    private getBoardModel(props: SecondaryViewProps<BoardEditorModel>): BoardEditorModel | undefined {
+        return props.model;
     }
 
     private readonly renderState = (): void => {

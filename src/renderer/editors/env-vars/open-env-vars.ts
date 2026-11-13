@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { boardVars } from "../../api/board-vars/BoardEnvStore";
 import type { EnvVarsEditor } from "./EnvVarsEditor";
 
@@ -22,7 +23,7 @@ export async function openEnvVarsPage(namespace: string): Promise<void> {
     const { createLinkData } = await import("../../../shared/link-data");
     await app.events.openRawLink.sendAsync(
         createLinkData(path, {
-            target: "env-vars-view",
+            target: EditorId.envVarsView,
             envNamespace: namespace,
             sourceId: "board-vars-show",
         }),

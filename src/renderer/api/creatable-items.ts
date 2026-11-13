@@ -1,3 +1,4 @@
+import { EditorId } from "../../shared/editor-ids";
 import { pages } from "./pages";
 import { app } from "./app";
 import { fs } from "./fs";
@@ -99,7 +100,7 @@ const staticItems: CreatableItem[] = [
         labelKey: "shell.textScriptJs",
         label: englishMessage("shell.textScriptJs"),
         createIcon: () => JavascriptIcon.createElement(),
-        create: () => pages.lifecycle.addEditorPage("monaco", "javascript", "untitled.js"),
+        create: () => pages.lifecycle.addEditorPage(EditorId.monaco, "javascript", "untitled.js"),
         category: "editor",
     },
     {
@@ -107,31 +108,31 @@ const staticItems: CreatableItem[] = [
         labelKey: "shell.textScriptTs",
         label: englishMessage("shell.textScriptTs"),
         createIcon: () => TypescriptIcon.createElement(),
-        create: () => pages.lifecycle.addEditorPage("monaco", "typescript", "untitled.ts"),
+        create: () => pages.lifecycle.addEditorPage(EditorId.monaco, "typescript", "untitled.ts"),
         category: "editor",
     },
     {
-        id: "grid-json",
+        id: EditorId.gridJson,
         labelKey: "editors.gridJson",
         label: englishMessage("editors.gridJson"),
         createIcon: () => GridIcon.createElement(),
-        create: () => pages.lifecycle.addEditorPage("grid-json", "json", "untitled.grid.json"),
+        create: () => pages.lifecycle.addEditorPage(EditorId.gridJson, "json", "untitled.grid.json"),
         category: "editor",
     },
     {
-        id: "grid-csv",
+        id: EditorId.gridCsv,
         labelKey: "editors.gridCsv",
         label: englishMessage("editors.gridCsv"),
         createIcon: () => GridIcon.createElement(),
-        create: () => pages.lifecycle.addEditorPage("grid-csv", "csv", "untitled.grid.csv"),
+        create: () => pages.lifecycle.addEditorPage(EditorId.gridCsv, "csv", "untitled.grid.csv"),
         category: "editor",
     },
     {
-        id: "link-view",
+        id: EditorId.linkView,
         labelKey: "editors.links",
         label: englishMessage("editors.links"),
         createIcon: () => LinkIcon.createElement(),
-        create: () => pages.lifecycle.addEditorPage("link-view", "json", "untitled.link.json"),
+        create: () => pages.lifecycle.addEditorPage(EditorId.linkView, "json", "untitled.link.json"),
         category: "editor",
     },
     {
@@ -167,7 +168,7 @@ const staticItems: CreatableItem[] = [
         category: "tool",
     },
     {
-        id: "mneme-config",
+        id: EditorId.mnemeConfig,
         labelKey: "editors.mneme",
         label: englishMessage("editors.mneme"),
         createIcon: () => createIconElement("memory", { color: MEMORY_ICON_COLOR }),
@@ -183,7 +184,7 @@ const staticItems: CreatableItem[] = [
         category: "tool",
     },
     {
-        id: "video-view",
+        id: EditorId.videoView,
         labelKey: "editors.videoPlayer",
         label: englishMessage("editors.videoPlayer"),
         createIcon: () => createIconElement("player", { color: DEFAULT_BROWSER_COLOR }),

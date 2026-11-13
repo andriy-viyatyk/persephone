@@ -10,6 +10,7 @@ import { DEFAULT_PROFILE, type BoardVarsFile } from "../../api/board-vars/types"
 import type { ILinkData } from "../../../shared/link-data";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
+import { EditorId } from "../../../shared/editor-ids";
 
 /** HS1 host-slot shape — the two per-window selection fields ride
  *  `host.editorSettings["env-vars-view"]`. Survives EnvVars↔Monaco switches AND app restarts. */
@@ -41,7 +42,7 @@ export const defaultEnvVarsEditorState: EnvVarsEditorState = {
 };
 
 export class EnvVarsEditor extends TextHostEditorModel<EnvVarsEditorState> {
-    readonly editorId = "env-vars-view";
+    readonly editorId = EditorId.envVarsView;
     protected readonly displayName = "Environment Variables";
 
     // TD4 — ref-equality marker for serialization skip.

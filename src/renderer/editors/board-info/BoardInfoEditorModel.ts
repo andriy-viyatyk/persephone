@@ -1,14 +1,15 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { Subscription } from "../../core/state/events";
 import type { TComponentState } from "../../core/state/state";
-import { EditorModel, type EditorStateBase, type RestoreData } from "../base/EditorModel";
+import { EditorModel, type EditorModelInstance, type EditorStateBase, type RestoreData } from "../base/EditorModel";
 import { CONTENT_HOST_TRAIT } from "../base/editor-traits";
 import { editorRegistry } from "../base/editorRegistry";
+import { editorCatalog } from "../base/editor-catalog";
 import type { EditorDescriptor } from "../../../shared/persistence";
 import { TextFileModel } from "../content-host/TextFileModel";
 import { ContentHostSlot } from "../base/content-host-slot";
 import {
     customEditorRegistry,
-    getFolderEditorsForFolder,
     type CustomEditorRegistrationIssue,
 } from "../../api/boards/custom-editor-registry";
 import { boardEditorId } from "../../../shared/board/board-editor-id";
@@ -157,7 +158,7 @@ export const getDefaultBoardInfoEditorState = (): BoardInfoEditorState => ({
     id: crypto.randomUUID(),
     title: englishMessage("board.infoInstallTitle"),
     modified: false,
-    editor: "board-info",
+    editor: EditorId.boardInfo,
     matches: [],
     installUi: {},
 });
@@ -275,7 +276,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
 
     /** Tolerant transfer: adopt the old editor's host if it has one; otherwise (host-less
      *  standalone open) keep no host. */
-    override switchFrom(oldEditor: EditorModel): void {
+    override switchFrom(oldEditor: EditorModelInstance): void {
         const folderPath = oldEditor.folderAnchor;
         if (folderPath !== undefined && !oldEditor.contentHost) {
             this.state.update((s) => {
@@ -331,14 +332,14 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
      *  rendering `Text | +` while Board Info is active (mirrors BoardContentEditorModel). */
     override findCompatibleEditors(): string[] {
         const source = this.currentSource();
-        if (source.kind === "folder") return getFolderEditorsForFolder(source.path);
+        if (source.kind === "folder") return [BOARD_INFO_EDITOR_ID];
         // A standalone simple board (no host, no file, no folder) has no peer editor to switch
         // to — the board itself shows no switch (BoardEditorModel returns []), so neither does
         // its properties page. The title fallback would otherwise offer a dead `Text | +` pair;
         // the return path is the page's "Open board" button.
         const state = this.state.get();
         if (!this.contentHostSlot.host && !state.filePath) return [];
-        const builtin = editorRegistry.resolveId(source.path) ?? "monaco";
+        const builtin = editorRegistry.resolveId(source.path) ?? EditorId.monaco;
         return [builtin, BOARD_INFO_EDITOR_ID];
     }
 
@@ -776,12 +777,12 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     async autoSwitchToNatural(): Promise<void> {
         const source = this.currentSource();
         if (source.kind === "folder") {
-            const id = getFolderEditorsForFolder(source.path)[0];
-            if (id) await this.page?.switchMainEditor(id);
+            const candidate = editorCatalog.candidatesForFolder(source.path)[0];
+            if (candidate) await this.page?.switchMainEditor(candidate.id);
             return;
         }
         if (this.contentHostSlot.host === null || source.path === this.displayTitle) return;
-        const id = editorRegistry.resolveId(source.path) ?? "monaco";
+        const id = editorRegistry.resolveId(source.path) ?? EditorId.monaco;
         await this.page?.switchMainEditor(id);
     }
 

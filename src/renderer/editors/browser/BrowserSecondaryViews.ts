@@ -1,5 +1,5 @@
 import { SecondaryViewsView } from "../../ui/secondary-views/SecondaryViewsView";
-import type { EditorModel } from "../base/EditorModel";
+import type { EditorModelInstance as EditorModel } from "../base/EditorModel";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { BrowserPanelHost } from "./BrowserPanelHost";
 import { sameItems } from "../../core/utils/utils";

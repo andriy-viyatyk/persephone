@@ -1,4 +1,4 @@
-import type { EditorModel } from "../../editors/base/EditorModel";
+import type { EditorModelInstance as EditorModel } from "../../editors/base/EditorModel";
 import type { IContentPipe } from "../types/io.pipe";
 import { isBoardEditorId } from "../../../shared/board/board-editor-id";
 

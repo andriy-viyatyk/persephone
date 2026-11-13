@@ -1,7 +1,7 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { TComponentState } from "../../core/state/state";
 import type { EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
-import { ComponentQueue } from "../../core/state/ComponentQueue";
 import { TextFileModel } from "../content-host/TextFileModel";
 import { tryParseJson } from "../../core/utils/parse-utils";
 import { debounce, errMessage } from "../../../shared/utils";
@@ -75,8 +75,8 @@ export const defaultLogViewEditorState: LogViewEditorState = {
     error: undefined,
 };
 
-export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, void, LogQueueEvent> {
-    readonly editorId = "log-view";
+export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, LogQueueEvent, LogQueueRequest> {
+    readonly editorId = EditorId.logView;
     protected readonly displayName = "Log View";
 
     // LogView-specific private fields (verbatim from today's LogViewModel):
@@ -87,18 +87,12 @@ export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, void,
     private dirtyIndices = new Set<number>();
     private entries: LogEntry[] = [];
 
-    readonly typedQueue: ComponentQueue<LogQueueEvent, LogQueueRequest>;
-
     constructor(state: TComponentState<LogViewEditorState>) {
         super(state);
-        this.typedQueue = this.queue as unknown as ComponentQueue<
-            LogQueueEvent,
-            LogQueueRequest
-        >;
     }
 
     focus(): void {
-        this.typedQueue.send({ type: "focus" });
+        this.queue.send({ type: "focus" });
     }
 
     // ── Three-phase lifecycle ──────────────────────────────────────────
@@ -381,7 +375,7 @@ export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, void,
     } {
         const entry = this.addEntry(type, fields);
         // LV5 — replaces today's forceScrollVersion bump.
-        this.typedQueue.send({ type: "scrollToBottom" });
+        this.queue.send({ type: "scrollToBottom" });
         const promise = new Promise<LogEntry>((resolve) => {
             this.pendingDialogs.set(entry.id, { resolve });
         });

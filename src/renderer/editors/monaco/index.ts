@@ -1,3 +1,4 @@
+import { createContentsElement } from "../../uikit/shared/create-contents-element";
 import { TComponentState } from "../../core/state/state";
 import { t } from "../../../shared/i18n/t";
 import { MonacoEditor, defaultMonacoEditorState } from "./MonacoEditor";
@@ -5,24 +6,14 @@ import { MonacoBodyView } from "./MonacoBodyView";
 import { TextChromeView } from "../base/TextChromeView";
 import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import type { EditorModule } from "../base/editorRegistry";
-import type { EditorModel } from "../base/EditorModel";
+import { defineEditorModule } from "../base/editorRegistry";
 import { TranscriptController } from "../../ui/transcript/TranscriptController";
 import type { TranscriptState } from "../../ui/transcript/TranscriptController";
 import { TranscriptToolbarContributionView } from "../../ui/transcript/TranscriptToolbarContributionView";
 import { TranslateTextPageController } from "../../ui/translation/TranslateTextPageController";
 import { TranslateTextToolbarContributionView } from "../../ui/translation/TranslateTextToolbarContributionView";
 
-function requireMonacoModel(model: EditorModel): MonacoEditor {
-    if (!(model instanceof MonacoEditor)) throw new Error("Monaco view received an invalid model.");
-    return model;
-}
 
-function createContentsRoot(): HTMLSpanElement {
-    const root = document.createElement("span");
-    root.style.display = "contents";
-    return root;
-}
 
 interface MonacoToolbarBitsProps { model: MonacoEditor; transcriptController: TranscriptController; translationController: TranslateTextPageController }
 
@@ -36,7 +27,7 @@ class MonacoToolbarBitsView extends VanillaView<MonacoToolbarBitsProps> {
     private readonly translate: TranslateTextToolbarContributionView;
 
     public constructor(props: MonacoToolbarBitsProps) {
-        super(props, createContentsRoot());
+        super(props, createContentsElement());
         this.model = props.model;
         this.transcript = this.child(new TranscriptToolbarContributionView({ controller: props.transcriptController }));
         this.translate = this.child(new TranslateTextToolbarContributionView({ controller: props.translationController, model: props.model, language: props.model.language ?? "plaintext" }));
@@ -126,15 +117,15 @@ class MonacoToolbarBitsView extends VanillaView<MonacoToolbarBitsProps> {
     }
 }
 
-export class MonacoEditorView extends VanillaView<{ model: EditorModel }> {
+export class MonacoEditorView extends VanillaView<{ model: MonacoEditor }> {
     private readonly body: MonacoBodyView;
     private readonly toolbar: MonacoToolbarBitsView;
     private readonly chrome: TextChromeView;
     private readonly transcriptController: TranscriptController;
     private readonly translationController: TranslateTextPageController;
 
-    public constructor(props: { model: EditorModel }) {
-        const model = requireMonacoModel(props.model);
+    public constructor(props: { model: MonacoEditor }) {
+        const model = props.model;
         const body = new MonacoBodyView({ model });
         const toolbarRef: { current?: MonacoToolbarBitsView } = {};
         const transcriptController = new TranscriptController(() => body.getEditor(), (state) => toolbarRef.current?.updateTranscriptState(state));
@@ -171,8 +162,8 @@ export class MonacoEditorView extends VanillaView<{ model: EditorModel }> {
         this.chrome.mount();
     }
 
-    protected onUpdate(props: { model: EditorModel }): void {
-        const model = requireMonacoModel(props.model);
+    protected onUpdate(props: { model: MonacoEditor }): void {
+        const model = props.model;
         this.body.update({ model });
         this.toolbar.update({ model, transcriptController: this.transcriptController, translationController: this.translationController });
         this.chrome.update({
@@ -183,11 +174,11 @@ export class MonacoEditorView extends VanillaView<{ model: EditorModel }> {
     }
 }
 
-export const monacoModule: EditorModule = {
+export const monacoModule = defineEditorModule(MonacoEditor, {
     createEditor: () =>
         new MonacoEditor(new TComponentState({ ...defaultMonacoEditorState })),
     View: MonacoEditorView,
-};
+});
 
 export { MonacoEditor, defaultMonacoEditorState };
 export type {

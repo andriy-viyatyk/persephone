@@ -1,4 +1,4 @@
-import type { EditorModel } from "../base/EditorModel";
+import type { EditorModelInstance as EditorModel } from "../base/EditorModel";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import { t } from "../../../shared/i18n/t";

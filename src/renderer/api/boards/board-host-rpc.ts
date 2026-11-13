@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import type { RendererRpcMethods } from "../../../ipc/renderer-rpc";
 import { BoardGrant } from "../../../shared/board/board-grant";
 import { BOARD_THEME_METHODS } from "../../../shared/board/board-call-route";
@@ -160,12 +161,12 @@ export function registerBoardHostRpc(server: RendererRpcServer): void {
         const highlightText = typeof params.highlightText === "string" ? params.highlightText : undefined;
         const reuseKey = typeof params.reuseKey === "string" ? params.reuseKey : undefined;
         try {
-            if (editor === "image-view" && target.startsWith("data:image/")) {
+            if (editor === EditorId.imageView && target.startsWith("data:image/")) {
                 const blob = await (await fetch(target)).blob();
                 await pages.openImageInNewTab(URL.createObjectURL(blob), "Image");
                 return null;
             }
-            if (editor === "browser-view" && reuseKey !== undefined) {
+            if (editor === EditorId.browserView && reuseKey !== undefined) {
                 await pages.boardPageRouter.openBoardRunPage(boardRoot, reuseKey, target);
                 return null;
             }
@@ -174,7 +175,7 @@ export function registerBoardHostRpc(server: RendererRpcServer): void {
             }));
             return null;
         } catch (error: unknown) {
-            const action = editor === "image-view" ? t("api.failedToOpenImage") : t("api.failedToOpenLink");
+            const action = editor === EditorId.imageView ? t("api.failedToOpenImage") : t("api.failedToOpenLink");
             void ui.notify(t("api.actionFailed", { action, error: errMessage(error) }), "error");
             throw error;
         }

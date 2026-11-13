@@ -1,3 +1,4 @@
+import { createContentsElement } from "../../uikit/shared/create-contents-element";
 import type { ButtonProps } from "../../uikit/Button/ButtonView";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import type { IconButtonProps } from "../../uikit/IconButton/IconButtonView";
@@ -40,11 +41,6 @@ function selectBodyProjection(state: EnvVarsEditorState): EnvVarsBodyProjection 
     };
 }
 
-function createContentsRoot(): HTMLSpanElement {
-    const root = document.createElement("span");
-    root.style.display = "contents";
-    return root;
-}
 
 const EMPTY_PROFILE_DATA: Record<string, string> = {};
 
@@ -127,7 +123,7 @@ class NamespaceRowView extends VanillaView<NamespaceRowProps> {
     private appliedSelected = false;
 
     public constructor(props: NamespaceRowProps) {
-        super(props, createContentsRoot());
+        super(props, createContentsElement());
     }
 
     protected onMount(): void {
@@ -493,7 +489,7 @@ type ProfilePaneProps = {
 };
 
 class ProfilePaneView extends VanillaView<ProfilePaneProps> {
-    private readonly contentRegion = createContentsRoot();
+    private readonly contentRegion = createContentsElement();
     private segmentedControl: SegmentedControlView | undefined;
     private input: InputView | undefined;
     private deleteButton: IconButtonView | undefined;
@@ -633,7 +629,7 @@ type NormalStateProps = EnvVarsBodyProjection & {
 };
 
 class NormalStateView extends VanillaView<NormalStateProps> {
-    private readonly contentRegion = createContentsRoot();
+    private readonly contentRegion = createContentsElement();
     private namespaceList: NamespaceListView | undefined;
     private profilePane: ProfilePaneView | undefined;
 
@@ -707,12 +703,12 @@ class NormalStateView extends VanillaView<NormalStateProps> {
 
 export class EnvVarsBodyView extends VanillaView<EnvVarsBodyProps> {
     private readonly model: EnvVarsEditor;
-    private readonly branchRegion = createContentsRoot();
+    private readonly branchRegion = createContentsElement();
     private activeBranch: LockedStateView | ErrorStateView | NormalStateView | undefined;
     private activeKind: "locked" | "error" | "normal" | undefined;
 
     public constructor(props: EnvVarsBodyProps) {
-        super(props, createContentsRoot());
+        super(props, createContentsElement());
         this.model = props.model;
         this.root.dataset.type = "env-vars-body";
         this.root.append(this.branchRegion);

@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import type { TComponentState } from "../../core/state/state";
 import { EditorModel, type EditorRestoreOptions } from "../base/EditorModel";
 import type { EditorDescriptor } from "../../../shared/persistence";
@@ -7,6 +8,7 @@ import { ui } from "../../api/ui";
 import { TextFileModel, newTextFileModel } from "../content-host/TextFileModel";
 import { BoardEditorModel, type BoardEditorState } from "./BoardEditorModel";
 import { boardEditorId } from "../../../shared/board/board-editor-id";
+import type { BoardEditorId } from "../../../shared/editor-ids";
 import { errMessage } from "../../../shared/utils";
 import { ContentHostSlot } from "../base/content-host-slot";
 
@@ -33,7 +35,7 @@ export class BoardContentEditorModel extends BoardEditorModel {
         super(state);
         this.contentHostSlot = new ContentHostSlot(this, {
             displayName: () => "Board content",
-            stampEditorId: { fixed: "board-view" },
+            stampEditorId: { fixed: EditorId.boardView },
             createFallbackHost: () => newTextFileModel(this.currentFilePath() ?? ""),
             resolveTitle: ({ hostTitle, filePath, currentTitle }) =>
                 hostTitle || (filePath ? fpBasename(filePath) : undefined) || currentTitle,
@@ -57,9 +59,9 @@ export class BoardContentEditorModel extends BoardEditorModel {
      * A content-host board keeps the virtual `board-editor:<root>` id so switching back to a
      * built-in editor recognizes the board boundary. Host persistence is stamped `board-view`.
      */
-    override get editorId(): string {
+    override get editorId(): BoardEditorId | typeof EditorId.boardView {
         const root = this.state.get().boardRoot;
-        return root ? boardEditorId(root) : "board-view";
+        return root ? boardEditorId(root) : EditorId.boardView;
     }
 
     override get editorKind() {
@@ -73,8 +75,8 @@ export class BoardContentEditorModel extends BoardEditorModel {
         const host = this.contentHostSlot.host;
         const builtins = host
             ? editorRegistry.findEditorsAccepting(host)
-            : [editorRegistry.resolveId(this.currentFilePath() ?? this.title) ?? "monaco"];
-        return [...builtins, boardEditorId(root)];
+            : [editorRegistry.resolveId(this.currentFilePath() ?? this.title) ?? EditorId.monaco];
+        return builtins;
     }
 
     override switchFrom(oldEditor: EditorModel): void {

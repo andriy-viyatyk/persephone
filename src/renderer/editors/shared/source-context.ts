@@ -6,6 +6,7 @@ import type { BoardSourceContext } from "../../../shared/board-source-context";
 import { createLinkData } from "../../../shared/link-data";
 import { app } from "../../api/app";
 import { afterPaint } from "../../core/utils/scheduling";
+import { isBoardContextSourceId } from "../base/editor-ids";
 
 const MAX_SOURCE_CONTEXT_ITEMS = 5_000;
 const MAX_SOURCE_CONTEXT_BYTES = 1024 * 1024;
@@ -177,7 +178,7 @@ export async function captureBoardSourceContext(
     options: GetSiblingItemsOptions & { sourceLink: ILinkData },
 ): Promise<BoardSourceContext | undefined> {
     const { page, sourceLink, currentHref } = options;
-    if (sourceLink.sourceId !== "explorer" && sourceLink.sourceId !== "link-category" && sourceLink.sourceId !== "link-tag") {
+    if (!isBoardContextSourceId(sourceLink.sourceId)) {
         return undefined;
     }
     const provider = findSourceProvider(page, sourceLink.sourceId);

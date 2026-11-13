@@ -1,4 +1,5 @@
-import type { EditorModel } from "./EditorModel";
+import { EditorId } from "../../../shared/editor-ids";
+import type { EditorModelInstance as EditorModel } from "./EditorModel";
 import type { EditorDescriptor } from "../../../shared/persistence";
 import type { TextFileModel } from "../content-host/TextFileModel";
 import type { VanillaViewCtor } from "../../uikit/shared/vanilla-view";
@@ -6,31 +7,52 @@ import { monacoLanguages } from "../../core/utils/monaco-languages";
 import type { ContentRepresentation } from "../../api/types/capabilities";
 import type { MessageKey } from "../../../shared/i18n/en";
 import { parseBoardEditorId } from "../../../shared/board/board-editor-id";
+import type { EditorView } from "../../../shared/types";
+import type { InternalEditorId } from "./editor-ids";
+import { CONTENT_DETECTED } from "./editor-matchers";
 
 export type EditorCapabilityDeclaration =
     | { readonly id: "text.open"; readonly representation?: never }
     | { readonly id: "content.view"; readonly representation: ContentRepresentation };
 
-export interface AcceptanceInput {
-    fileName?: string;
-    language?: string;
-    host?: TextFileModel;
+export type Tier = number;
+
+export interface LanguageMatch { valid?: boolean; tier?: Tier }
+
+export interface EditorMatcher {
+    file?(name: string): Tier | undefined;
+    language?(language: string, name?: string): LanguageMatch | undefined;
+    content?(language: string, content: string): boolean;
+    folder?(path: string): Tier | undefined;
+    host?(host: TextFileModel): Tier | undefined;
 }
+
+type MatcherAxis = "host" | "file" | "language" | "content" | "folder";
+type RankPurpose = "open-file" | "host-switch" | "language-switch" | "preview" | "language-validation" | "open-folder" | "folder-switch";
+
+interface QueryRule {
+    axes: readonly MatcherAxis[]; direction: "ascending" | "descending" | "none";
+    selection: "first" | "all" | "last"; ties: "registration-first" | "registration-last" | "none";
+    score: "first-tier" | "language-validity";
+    requireContentHost?: boolean; excludeMonaco?: boolean; fileGate?: boolean;
+}
+
+type RankInput = { purpose: RankPurpose; fileName?: string; folderPath?: string; language?: string;
+    host?: TextFileModel; editorId?: string };
+
+interface RankedEditor { id: string; tier: Tier; valid?: boolean }
 
 type EditorModuleCommon = {
     /** Factory for a new editor instance. */
     createEditor(): EditorModel;
     /** Restore one persisted descriptor owned by this editor module. */
     restoreFromDescriptor?(descriptor: EditorDescriptor, context: EditorRestoreContext): Promise<EditorModel | null>;
-    /** File-open factory for standalone (no-host) editors whose construction
-     *  depends on the opened path — decoding a link (git-tree, mneme-root,
-     *  board, toolset, category), seeding path-derived state (image, video),
-     *  or reading the target (archive). Editors without it open through the
-     *  default text-host flow. */
+    /** File-open factory for standalone editors whose construction depends on the path: link decoding
+     *  (git-tree, mneme-root, board, toolset, category), path-derived state (image, video), or archive
+     *  reading. Editors without it use the default text-host flow. */
     newEditorModel?(filePath?: string): Promise<EditorModel>;
-    /** Folder-open factory for standalone editors whose construction depends on
-     *  the Explorer-named directory rather than an encoded link. */
-    newEditorModelForFolder?(anchorFolder: string): Promise<EditorModel>;
+    /** Folder-open factory for standalone editors that use the Explorer-named directory. */
+    newEditorModelForFolder?(anchorFolder: string, page?: import("../../api/pages/IPageHost").IPageHost): Promise<EditorModel>;
 };
 
 export interface EditorRestoreContext {
@@ -43,51 +65,53 @@ export interface EditorRestoreModule {
     restoreFromDescriptor?: (descriptor: EditorDescriptor, context: EditorRestoreContext) => Promise<EditorModel | null>;
 }
 
-export type EditorModule = EditorModuleCommon & {
-    View: VanillaViewCtor<{ model: EditorModel }>;
+export type EditorModule<M extends EditorModel = EditorModel> = EditorModuleCommon & {
+    View: VanillaViewCtor<{ model: M }>;
 };
 
-export interface EditorMatcher {
-    /** File-open resolution priority for this file name (highest wins;
-     *  monaco is the 0 floor). */
-    acceptFile?(fileName: string): number;
-    /** Folder-open resolution priority for this directory (highest wins). */
-    acceptFolder?(folderPath: string): number;
-    /** Switch-widget offer priority for this language/file (ascending sort;
-     *  monaco = 0 first). */
-    switchOption?(language: string, fileName?: string): number;
-    /** Whether this editor is valid for a language (checked on language change). */
-    validForLanguage?(language: string): boolean;
-    /** Content-marker detection (fast regex, no JSON parse) — the "open as X?"
-     *  suggestion for structured content. */
-    detectsContent?(language: string, content: string): boolean;
+type EditorModelConstructor<M extends EditorModel> = abstract new (...args: never[]) => M;
+
+function isModelOfType<M extends EditorModel>(
+    model: EditorModel,
+    ModelClass: EditorModelConstructor<M>,
+): model is M {
+    return model instanceof ModelClass;
+}
+
+/** Adds the single runtime model check at the registry-to-view boundary. */
+export function defineEditorModule<M extends EditorModel>(
+    ModelClass: EditorModelConstructor<M>,
+    definition: EditorModule<M>,
+): EditorModule<EditorModel> {
+    const TypedView = definition.View;
+    // This adapter must preserve the selected view's lifecycle without adding a wrapper view.
+    // eslint-disable-next-line vanilla-view/no-indirect-view-subclass
+    class CheckedView extends TypedView {
+        public constructor(props: { model: EditorModel }) {
+            const model = props.model;
+            if (!isModelOfType(model, ModelClass)) {
+                throw new Error("Editor view received a model of the wrong type.");
+            }
+            super({ model });
+        }
+    }
+
+    return { ...definition, View: CheckedView };
 }
 
 export interface EditorDefinition {
-    id: string;
+    id: EditorView | InternalEditorId;
     name: string;
     /** English catalog identity used for localized UI display. */
     readonly nameKey?: MessageKey;
     /** Canonical user guide path for synchronous facade help. */
     readonly guidePath?: string;
 
-    /** Single acceptance predicate. Returns priority (higher wins) or -1 if
-     *  not applicable. The page evaluates this against the current host (for
-     *  switch UI via `findEditorsAccepting`). Content-based detection is
-     *  absorbed: editors peek at `host.state.get().content` when they recognize
-     *  their format by marker. Built from `match` via `makeAccepts`. */
-    accepts(input: AcceptanceInput): number;
-
-    /** Whether this editor wraps a text content host. Drives the open-file
-     *  flow: if true, the caller creates a host first and inherits it into
-     *  the new editor via `switchFrom` / `applyRestoreData`.
-     *
-     *  Could be derived from trait introspection at module-load; kept
-     *  explicit during the inert phase for clarity. */
+    /** Whether the open-file flow creates a host first and inherits it via `switchFrom` / `applyRestoreData`.
+     *  Kept explicit during the inert phase; it could be derived from trait introspection at module-load. */
     readonly hasContentHost: boolean;
 
-    /** MCP-specific recovery guidance when this standalone editor is passed to
-     *  `pages.addEditorPage`, which only constructs content-host editors. */
+    /** MCP recovery guidance for `pages.addEditorPage`, which only constructs content-host editors. */
     readonly mcpHint?: string;
 
     /** Icon token used for a directory claimed by this editor. */
@@ -96,20 +120,84 @@ export interface EditorDefinition {
     /** Built-in capability declarations served by this editor. */
     readonly capabilities?: readonly EditorCapabilityDeclaration[];
 
-    /** Granular matching rules. Absent for pure standalone editors
-     *  (browser / settings / about / mcp / storybook) that never match a file
-     *  and never appear in the switch widget. */
+    /** Granular matching rules; absent for standalone editors that do not match files or appear in the switch. */
     match?: EditorMatcher;
 
-    loadModule(): Promise<EditorModule>;
+    loadModule(): Promise<EditorModule<EditorModel>>;
 }
+
+const QUERY_RULES: Record<RankPurpose, QueryRule> = {
+    "open-file": { axes: ["file"], direction: "descending", selection: "first", ties: "registration-first", score: "first-tier" },
+    "host-switch": {
+        axes: ["host", "file", "language", "content"],
+        direction: "descending",
+        selection: "all",
+        ties: "registration-first",
+        score: "first-tier",
+        requireContentHost: true,
+    },
+    "language-switch": { axes: ["language"], direction: "ascending", selection: "all", ties: "registration-first", score: "first-tier" },
+    preview: {
+        axes: ["language"], direction: "ascending", selection: "last", ties: "registration-last", score: "first-tier",
+        excludeMonaco: true, fileGate: true,
+    },
+    "language-validation": {
+        axes: ["language"], direction: "none", selection: "first", ties: "none", score: "language-validity",
+    },
+    "open-folder": { axes: ["folder"], direction: "descending", selection: "first", ties: "registration-first", score: "first-tier" },
+    "folder-switch": { axes: ["folder"], direction: "ascending", selection: "all", ties: "registration-first", score: "first-tier" },
+};
 
 class EditorRegistry {
     private definitions = new Map<string, EditorDefinition>();
-    private modules = new Map<string, EditorModule>();
+    private modules = new Map<string, EditorModule<EditorModel>>();
     private restoreOnlyLoaders = new Map<string, () => Promise<EditorRestoreModule>>();
     private restoreOnlyModules = new Map<string, EditorRestoreModule>();
 
+    static readonly QUERY_RULES = QUERY_RULES;
+
+    rank(input: RankInput): RankedEditor[] {
+        const rule = EditorRegistry.QUERY_RULES[input.purpose];
+        const definitions = input.editorId
+            ? [this.definitions.get(input.editorId)].filter((def): def is EditorDefinition => !!def)
+            : Array.from(this.definitions.values());
+        const ranked: RankedEditor[] = [];
+        for (const definition of definitions) {
+            if (rule.requireContentHost && !definition.hasContentHost) continue;
+            if (rule.excludeMonaco && definition.id === EditorId.monaco) continue;
+            const matcher = definition.match;
+            if (rule.fileGate && matcher?.file && matcher.file(input.fileName ?? "") === undefined) continue;
+            let tier: Tier | undefined;
+            let valid: boolean | undefined;
+            for (const axis of rule.axes) {
+                let axisTier: Tier | undefined;
+                switch (axis) {
+                    case "host": axisTier = input.host ? matcher?.host?.(input.host) : undefined; break;
+                    case "file": axisTier = input.fileName ? matcher?.file?.(input.fileName) : undefined; break;
+                    case "language": {
+                        const match = input.language ? matcher?.language?.(input.language, input.fileName) : undefined;
+                        valid = match?.valid;
+                        axisTier = match?.tier;
+                        break;
+                    }
+                    case "content": {
+                        const state = input.host?.state.get() as { content?: string } | undefined;
+                        axisTier = input.host && matcher?.content?.(input.language ?? "", state?.content ?? "")
+                            ? CONTENT_DETECTED : undefined;
+                        break;
+                    }
+                    case "folder": axisTier = input.folderPath ? matcher?.folder?.(input.folderPath) : undefined; break;
+                }
+                if (axisTier !== undefined) { tier = axisTier; break; }
+            }
+            if (rule.score === "language-validity") ranked.push({ id: definition.id, tier: 0, valid });
+            else if (tier !== undefined && tier >= 0) ranked.push({ id: definition.id, tier });
+        }
+        const sorted = rule.direction === "none" ? ranked : ranked.sort((left, right) =>
+            (rule.direction === "ascending" ? 1 : -1) * (left.tier - right.tier));
+        return rule.selection === "first" ? sorted.slice(0, 1)
+            : rule.selection === "last" ? sorted.slice(-1) : sorted;
+    }
     register(def: EditorDefinition): void {
         this.definitions.set(def.id, def);
     }
@@ -120,7 +208,7 @@ class EditorRegistry {
 
     resolveDefinition(id: string): EditorDefinition | undefined {
         return this.getById(id)
-            ?? (parseBoardEditorId(id) !== null ? this.getById("board-view") : undefined);
+            ?? (parseBoardEditorId(id) !== null ? this.getById(EditorId.boardView) : undefined);
     }
 
     getAll(): EditorDefinition[] {
@@ -206,145 +294,62 @@ class EditorRegistry {
         }
     }
 
-    /** Resolve the best editor id for opening a folder. Category View is the
-     *  priority-0 fallback for every directory. */
     resolveForFolder(folderPath: string): string {
-        let bestId = "category-view";
-        let bestPriority = 0;
-        for (const def of this.definitions.values()) {
-            const p = def.match?.acceptFolder?.(folderPath) ?? -1;
-            if (p > bestPriority) {
-                bestPriority = p;
-                bestId = def.id;
-            }
-        }
-        return bestId;
+        return this.rank({ purpose: "open-folder", folderPath })[0]?.id ?? EditorId.categoryView;
     }
 
-    /** All folder editors that accept this directory, in ascending priority
-     *  order so Category View is the floor option. */
     getFolderEditors(folderPath: string): string[] {
-        const results: { id: string; priority: number }[] = [];
-        for (const def of this.definitions.values()) {
-            const priority = def.match?.acceptFolder?.(folderPath) ?? -1;
-            if (priority >= 0) results.push({ id: def.id, priority });
-        }
-        results.sort((a, b) => a.priority - b.priority);
-        return results.map((result) => result.id);
+        return this.rank({ purpose: "folder-switch", folderPath }).map(({ id }) => id);
     }
 
-    /** All editor ids that accept the current host. Used by the page-level
-     *  switch widget. Mode-agnostic by design — `accepts()` returns -1 only
-     *  when truly incompatible. */
     findEditorsAccepting(host: TextFileModel): string[] {
-        const out: { id: string; p: number }[] = [];
         const language = host.state.get().language;
         const fileName = (host as unknown as { filePath?: string }).filePath
             ?? (host.state.get() as { title?: string }).title;
-        for (const def of this.definitions.values()) {
-            if (!def.hasContentHost) continue;
-            const p = def.accepts({ host, language, fileName });
-            if (p >= 0) out.push({ id: def.id, p });
-        }
-        return out.sort((a, b) => b.p - a.p).map((x) => x.id);
+        return this.rank({ purpose: "host-switch", host, language, fileName }).map(({ id }) => id);
     }
 
-
-    /** Resolve the best editor DEFINITION for opening a file, by file-acceptance
-     *  priority (highest wins; monaco is the 0 floor). Returns undefined when no
-     *  file name is given. Mirrors the legacy registry's `resolve`. */
     resolve(fileName?: string): EditorDefinition | undefined {
-        if (!fileName) return undefined;
-        let best: EditorDefinition | undefined;
-        let bestPriority = -1;
-        for (const def of this.definitions.values()) {
-            const p = def.match?.acceptFile?.(fileName) ?? -1;
-            if (p > bestPriority) {
-                best = def;
-                bestPriority = p;
-            }
-        }
-        return best;
+        const id = this.rank({ purpose: "open-file", fileName })[0]?.id;
+        return id ? this.definitions.get(id) : undefined;
     }
 
-    /** Resolve just the editor id for a file path. Mirrors legacy `resolveId`. */
     resolveId(fileName?: string): string | undefined {
         return this.resolve(fileName)?.id;
     }
 
-    /** Editor switch options for a language/file — the switch widget. Editors whose `match.switchOption` ≥ 0, sorted ascending
-     *  (monaco = 0 first), labelled by editor name. Empty list when ≤ 1 option
-     *  applies. Mirrors the legacy `getSwitchOptions`. */
     getSwitchOptions(
         language: string,
         fileName?: string,
     ): { options: string[]; getOptionLabel: (option: string) => string } {
-        const results: { id: string; priority: number }[] = [];
-        for (const def of this.definitions.values()) {
-            const p = def.match?.switchOption?.(language, fileName) ?? -1;
-            if (p >= 0) results.push({ id: def.id, priority: p });
-        }
-        // Ascending so monaco (priority 0) leads.
-        results.sort((a, b) => a.priority - b.priority);
-        const options = results.map((r) => r.id);
+        const options = this.rank({ purpose: "language-switch", language, fileName }).map(({ id }) => id);
         const getOptionLabel = (option: string) => {
-            if (!option || option === "monaco") return language.toUpperCase();
+            if (!option || option === EditorId.monaco) return language.toUpperCase();
             return this.definitions.get(option)?.name ?? language.toUpperCase();
         };
         return { options: options.length > 1 ? options : [], getOptionLabel };
     }
 
-    /** Preferred preview editor for a file in navigation context: the best
-     *  non-monaco editor whose `switchOption` ≥ 0 and whose `acceptFile` (if
-     *  present) doesn't reject the file. Mirrors the legacy `getPreviewEditor`. */
     getPreviewEditor(language: string, fileName: string): string | undefined {
-        const results: { id: string; priority: number }[] = [];
-        for (const def of this.definitions.values()) {
-            if (def.id === "monaco") continue;
-            const p = def.match?.switchOption?.(language, fileName) ?? -1;
-            if (p < 0) continue;
-            const acceptFile = def.match?.acceptFile;
-            if (acceptFile && acceptFile(fileName) < 0) continue;
-            results.push({ id: def.id, priority: p });
-        }
-        if (results.length === 0) return undefined;
-        results.sort((a, b) => a.priority - b.priority);
-        return results[results.length - 1].id;
+        return this.rank({ purpose: "preview", language, fileName }).at(-1)?.id;
     }
 
-    /** Validate an editor against a language; falls back to "monaco" if the
-     *  editor doesn't support it. Mirrors the legacy `validateForLanguage`. */
     validateForLanguage(editor: string | undefined, language: string): string | undefined {
-        if (!editor || editor === "monaco") return editor;
-        const def = this.definitions.get(editor);
-        if (def?.match?.validForLanguage?.(language) === false) return "monaco";
-        return editor;
+        return editor && editor !== EditorId.monaco
+            && this.rank({ purpose: "language-validation", editorId: editor, language })[0]?.valid === false
+            ? EditorId.monaco
+            : editor;
     }
-
-    /** Instantiate a new editor by id. Lazy-loads the module on first use.
-     *  Returns a bare editor — no host. Callers drive the three-phase
-     *  lifecycle:
-     *
-     *      const editor = await editorRegistry.createEditor(id);
-     *      editor.applyRestoreData(data);   // OR editor.switchFrom(oldEditor)
-     *      await editor.restore();
-     *
-     *  `instanceId`:
-     *  when provided, preserves cache-file id continuity across app restarts
-     *  and multi-window transfer. Omit for new pages / switch widget /
-     *  open-file. */
+    /** Lazy-load and create a bare editor by id; callers provide a host if needed, apply restore or switch data,
+     *  then call `restore()`. `instanceId` preserves cache-file identity across restarts and windows; omit it
+     *  for new pages, the switch widget, and file opens. */
     async createEditor(id: string, instanceId?: string): Promise<EditorModel> {
         await this.loadModule(id);
         return this.createEditorSync(id, instanceId);
     }
 
-    /** Synchronous `createEditor` against the module cache. Exists for the
-     *  construction paths that cannot await — the editor factory's synchronous host path sits under
-     *  sync public APIs (`addEditorPage`, `openLinks`, `page.grouped`).
-     *  Content-host modules are preloaded at startup
-     *  (`preloadContentHostModules`), so a miss only happens in the first
-     *  moments after launch; it throws a descriptive error rather than
-     *  falling back silently. */
+    /** Synchronous construction from the module cache for APIs such as `addEditorPage`, `openLinks`, and
+     *  `page.grouped`. Content-host modules preload at startup; a miss throws a descriptive error. */
     createEditorSync(id: string, instanceId?: string): EditorModel {
         const def = this.definitions.get(id);
         if (!def) throw new Error(`No editor registered for id: ${id}`);
@@ -355,19 +360,14 @@ class EditorRegistry {
             );
         }
         const editor = module.createEditor();
-        // Modules construct with the default state's empty id — only a real
-        // instance id may be stamped. An empty string must NOT clobber state:
-        // downstream panel keys use editor ids as stable identity.
+        // Modules start with an empty id; only a real instance id may be stamped because panel keys use it.
         if (instanceId) {
             editor.state.update((s) => { s.id = instanceId; });
         }
         return editor;
     }
 
-    /** Warm the module cache for every content-host editor so the synchronous
-     *  construction path (the editor factory's synchronous host path) can build any text-host editor
-     *  without awaiting. Fire-and-forget per module; a load failure is logged
-     *  here and surfaces to the user on first real use. */
+    /** Preload content-host modules for synchronous construction; failures are logged and surface on first use. */
     preloadContentHostModules(): void {
         for (const def of this.definitions.values()) {
             if (!def.hasContentHost) continue;
@@ -379,11 +379,11 @@ class EditorRegistry {
     }
 
     /** Public module accessor - loads and caches the module for an id. */
-    getModule(id: string): Promise<EditorModule> {
+    getModule(id: string): Promise<EditorModule<EditorModel>> {
         return this.loadModule(id);
     }
 
-    private async loadModule(id: string): Promise<EditorModule> {
+    private async loadModule(id: string): Promise<EditorModule<EditorModel>> {
         let module = this.modules.get(id);
         if (module) return module;
         const def = this.definitions.get(id);
@@ -396,10 +396,8 @@ class EditorRegistry {
 
 export const editorRegistry = new EditorRegistry();
 
-/** An explicit content-host target (e.g. "file-diff") that is NOT the file's
- *  natural editor must win over preview/default editor selection. Normal opens
- *  carry target === resolveId(filePath), so they return false here and fall
- *  through to the preview editor. Shared by the open-file and navigate flows. */
+/** Explicit content-host targets override preview/default selection; ordinary opens match `resolveId(filePath)`.
+ *  Shared by open-file and navigate flows. */
 export function isExplicitHostTarget(
     target: string | undefined,
     filePath: string,

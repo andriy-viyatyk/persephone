@@ -1,4 +1,4 @@
-import { EditorModel } from "./base";
+import type { EditorModelInstance as EditorModel } from "./base";
 import type { VanillaViewCtor } from "../uikit/shared/vanilla-view";
 
 export interface EditorViewModule {

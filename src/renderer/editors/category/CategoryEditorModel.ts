@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { TComponentState } from "../../core/state/state";
 import { app } from "../../api/app";
 import type { ITreeProvider, ITreeProviderItem, ILink } from "../../api/types/io.tree";
@@ -5,7 +6,8 @@ import type { NavigationState } from "../base/navigation-state";
 import type { TOneState } from "../../core/state/state";
 import { folderViewModeService } from "./FolderViewModeService";
 import {
-    EditorModel,
+    EditorModel as EditorModelClass,
+    type EditorModelInstance,
     type EditorStateBase,
 } from "../base/EditorModel";
 import { createFolderIconElement } from "../../components/icons/icon-elements";
@@ -40,16 +42,16 @@ export interface CategoryTreeProviderHost {
     readonly id: string;
 }
 
-export type CategoryTreeProviderHostEditor = EditorModel & CategoryTreeProviderHost;
+export type CategoryTreeProviderHostEditor = EditorModelInstance & CategoryTreeProviderHost;
 
-function isCategoryTreeProviderHost(editor: EditorModel): editor is CategoryTreeProviderHostEditor {
+function isCategoryTreeProviderHost(editor: EditorModelInstance): editor is CategoryTreeProviderHostEditor {
     return editor instanceof LinkEditor
         || editor instanceof ExplorerEditor
         || editor instanceof ArchiveEditor;
 }
 
 function findTreeProviderHost(
-    secondaryViews: EditorModel[],
+    secondaryViews: EditorModelInstance[],
     type: string,
     sourceUrl: string,
 ): CategoryTreeProviderHostEditor | null {
@@ -84,6 +86,12 @@ export function buildFolderCategoryLink(page: IPageHost, anchorFolder: string): 
     return { type: "file", url: anchorFolder, category: anchorFolder };
 }
 
+export function newCategoryEditorModelForFolder(page: IPageHost, anchorFolder: string): CategoryEditorModel {
+    const model = new CategoryEditorModel();
+    model.initFromLink(buildFolderCategoryLink(page, anchorFolder));
+    return model;
+}
+
 function copyItem(item: ILink): ILink {
     return {
         ...item,
@@ -91,9 +99,9 @@ function copyItem(item: ILink): ILink {
     };
 }
 
-export class CategoryEditorModel extends EditorModel<CategoryEditorModelState> {
+export class CategoryEditorModel extends EditorModelClass<CategoryEditorModelState> {
     /** Editor identity. Matches `EditorDescriptor.editorId`. */
-    readonly editorId = "category-view";
+    readonly editorId = EditorId.categoryView;
 
     noLanguage = true;
 

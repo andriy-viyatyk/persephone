@@ -45,10 +45,9 @@ export interface MarkdownBodyPage {
     pushNavBack(entry: { href: string; title: string }): void;
 }
 
-export interface MarkdownBodyModel {
+interface MarkdownBodyModelBase {
     readonly state: MarkdownBodyStateStore<MarkdownBodyState>;
     readonly host?: MarkdownBodyHost | null;
-    readonly typedQueue: MarkdownBodyQueue;
     readonly page?: MarkdownBodyPage | null;
     openSearch(): void;
     closeSearch(): void;
@@ -59,3 +58,8 @@ export interface MarkdownBodyModel {
     setContainer?(element: HTMLDivElement | null): void;
     navigateLink?(href: string): boolean;
 }
+
+export type MarkdownBodyModel = MarkdownBodyModelBase & (
+    | { readonly queue: MarkdownBodyQueue; readonly typedQueue?: never }
+    | { readonly typedQueue: MarkdownBodyQueue; readonly queue?: never }
+);

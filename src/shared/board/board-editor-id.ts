@@ -1,7 +1,10 @@
+import { EditorId } from "../editor-ids";
+import type { BoardEditorId } from "../editor-ids";
+
 export const BOARD_EDITOR_ID_PREFIX = "board-editor:";
 
-export function boardEditorId(boardRoot: string): string {
-    return BOARD_EDITOR_ID_PREFIX + boardRoot;
+export function boardEditorId(boardRoot: string): BoardEditorId {
+    return `${BOARD_EDITOR_ID_PREFIX}${boardRoot}`;
 }
 
 /** Extract the board root from a `board-editor:<root>` id, or null if it isn't one. */
@@ -13,5 +16,5 @@ export function parseBoardEditorId(editorId: string): string | null {
 
 /** Whether an editor id belongs to the built-in board editor or its custom-editor family. */
 export function isBoardEditorId(id: string | undefined): boolean {
-    return id === "board-view" || (!!id && parseBoardEditorId(id) !== null);
+    return id === EditorId.boardView || (!!id && parseBoardEditorId(id) !== null);
 }

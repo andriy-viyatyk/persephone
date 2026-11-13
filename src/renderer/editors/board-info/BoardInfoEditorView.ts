@@ -15,7 +15,6 @@ import type { PublishedBoardInfo, PublishedBoardVersion } from "../../../ipc/api
 import { formatBytes } from "../../core/utils/format-bytes";
 import { formatDateTime } from "../../core/utils/format";
 import { PageToolbarView, type PageToolbarViewProps } from "../base/PageToolbarView";
-import type { EditorModel } from "../base/EditorModel";
 import {
     BoardInfoEditorModel,
     type BoardInfoEditorState,
@@ -68,12 +67,6 @@ interface BoardInfoBodyProps extends SurfaceState {
     catalog: PublishedBoardInfo[];
 }
 
-function requireBoardInfoModel(model: EditorModel): BoardInfoEditorModel {
-    if (!(model instanceof BoardInfoEditorModel)) {
-        throw new Error("Board Info view received an invalid model.");
-    }
-    return model;
-}
 
 function panel(props: PanelStyleProps, ...children: Node[]): HTMLDivElement {
     return createPanelElement(props, children);
@@ -83,12 +76,12 @@ function text(value: string, props: TextStyleProps = {}): HTMLSpanElement {
     return createTextElement(value, props);
 }
 
-export class BoardInfoEditorView extends VanillaView<{ model: EditorModel }> {
+export class BoardInfoEditorView extends VanillaView<{ model: BoardInfoEditorModel }> {
     private model: BoardInfoEditorModel;
     private pageToolbar!: PageToolbarView;
     private body!: BoardInfoBodyView;
 
-    public constructor(props: { model: EditorModel }) {
+    public constructor(props: { model: BoardInfoEditorModel }) {
         const root = createPanelElement({
             name: "board-info-editor",
             direction: "column",
@@ -98,7 +91,7 @@ export class BoardInfoEditorView extends VanillaView<{ model: EditorModel }> {
         });
         root.dataset.type = "board-info-editor";
         super(props, root);
-        this.model = requireBoardInfoModel(props.model);
+        this.model = props.model;
     }
 
     protected onMount(): void {
@@ -119,8 +112,8 @@ export class BoardInfoEditorView extends VanillaView<{ model: EditorModel }> {
         });
     }
 
-    protected onUpdate(props: { model: EditorModel }): void {
-        this.model = requireBoardInfoModel(props.model);
+    protected onUpdate(props: { model: BoardInfoEditorModel }): void {
+        this.model = props.model;
         this.applySurfaceState(selectSurfaceState(this.model.state.get()));
     }
 

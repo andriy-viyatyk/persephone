@@ -1,3 +1,5 @@
+import { createContentsElement } from "../../uikit/shared/create-contents-element";
+import { EditorId } from "../../../shared/editor-ids";
 import { createComponentModelDriver, type ComponentModelDriver } from "../../core/state/model";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
@@ -76,7 +78,7 @@ class FileDiffEmptyView extends VanillaView<FileDiffEmptyViewProps> {
 
     private buttonProps(): ButtonProps {
         return {
-            onClick: () => void this.props.model.page?.switchMainEditor?.("monaco"),
+            onClick: () => void this.props.model.page?.switchMainEditor?.(EditorId.monaco),
             children: t("git.switchToTextEditor"),
         };
     }
@@ -152,7 +154,7 @@ export class FileDiffBodyView extends VanillaView<FileDiffBodyProps> {
     private activeDiffHost: MonacoDiffEditorHostView | undefined;
 
     public constructor(props: FileDiffBodyProps) {
-        super(props, createContentsRoot());
+        super(props, createContentsElement());
         this.model = props.model;
         this.driver = createComponentModelDriver(
             { model: props.model },
@@ -161,7 +163,7 @@ export class FileDiffBodyView extends VanillaView<FileDiffBodyProps> {
         );
         this.bodyProjection = selectBodyProjection(this.driver.model.state.get());
         this.revision = props.model.state.get().to;
-        this.branchRegion = createContentsRoot();
+        this.branchRegion = createContentsElement();
         this.swap = new SubtreeSwap(this.branchRegion);
         this.root.dataset.type = "file-diff-body";
         this.root.append(this.branchRegion);
@@ -322,8 +324,3 @@ export class FileDiffBodyView extends VanillaView<FileDiffBodyProps> {
     };
 }
 
-function createContentsRoot(): HTMLSpanElement {
-    const root = document.createElement("span");
-    root.style.display = "contents";
-    return root;
-}

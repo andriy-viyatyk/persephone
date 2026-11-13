@@ -15,7 +15,6 @@ import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { KeyedList } from "../../uikit/shared/keyed-list";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { EditorToolbarView } from "../base/EditorToolbarView";
-import type { EditorModel } from "../base/EditorModel";
 import { MarkdownBlockView } from "../markdown/MarkdownBlockView";
 import { mcpConnectionStore, type SavedMcpConnection } from "./McpConnectionStore";
 import { McpInspectorEditorModel, type McpInspectorEditorState, type McpPanelId } from "./McpInspectorEditorModel";
@@ -56,7 +55,7 @@ function dotColorFor(status: string): "success" | "warning" | "error" | "neutral
     return "neutral";
 }
 
-export class McpInspectorEditorView extends VanillaView<{ model: EditorModel }> {
+export class McpInspectorEditorView extends VanillaView<{ model: McpInspectorEditorModel }> {
     private model: McpInspectorEditorModel;
     private storeConnections: SavedMcpConnection[] = [];
     private toolbar: EditorToolbarView | undefined;
@@ -75,10 +74,9 @@ export class McpInspectorEditorView extends VanillaView<{ model: EditorModel }> 
     private activeBody: ActiveBodyView | undefined;
     private bodyKey = "";
 
-    public constructor(props: { model: EditorModel }) {
+    public constructor(props: { model: McpInspectorEditorModel }) {
         super(props, createPanelElement({ name: "mcp-inspector-root", direction: "column", flex: true, overflow: "hidden" }));
         this.root.dataset.type = "mcp-inspector-root";
-        if (!(props.model instanceof McpInspectorEditorModel)) throw new Error("MCP inspector view received an invalid model.");
         this.model = props.model;
     }
 
@@ -106,7 +104,7 @@ export class McpInspectorEditorView extends VanillaView<{ model: EditorModel }> 
         void mcpConnectionStore.load();
     }
 
-    protected onUpdate(props: { model: EditorModel }): void {
+    protected onUpdate(props: { model: McpInspectorEditorModel }): void {
         if (props.model !== this.model) throw new Error("MCP inspector view model cannot be replaced.");
     }
 

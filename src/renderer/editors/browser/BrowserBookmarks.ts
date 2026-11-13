@@ -5,7 +5,7 @@ import { TextFileModel, getDefaultTextFileEditorModelState } from "../content-ho
 import { LinkEditor, defaultLinkEditorState } from "../link-editor";
 import { LinkItem } from "../link-editor/linkTypes";
 import { BrowserPanelHost } from "./BrowserPanelHost";
-import { EditorView } from "../../../shared/types";
+import { EditorId } from "../../../shared/editor-ids";
 import { shell } from "../../api/shell";
 import { ui } from "../../api/ui";
 import { DisposableStore } from "../../core/utils/DisposableStore";
@@ -24,7 +24,7 @@ export class BrowserBookmarks {
             ...getDefaultTextFileEditorModelState(),
             filePath,
             language: "json",
-            editor: "link-view" as EditorView,
+            editor: EditorId.linkView,
         };
         this.textFileHost = new TextFileModel(new TComponentState(state));
         // TextFileModel creates sub-models (script, editor) we don't need,

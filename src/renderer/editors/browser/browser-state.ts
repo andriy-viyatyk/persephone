@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { englishMessage } from "../../../shared/i18n/t";
 import { IEditorState } from "../../../shared/types";
 import { TorStatus } from "../../../ipc/tor-ipc";
@@ -137,7 +138,7 @@ export const getDefaultBrowserPageState = (): BrowserEditorState => {
     return {
         ...getDefaultEditorModelState(),
         title: englishMessage("editors.browser"),
-        editor: "browser-view",
+        editor: EditorId.browserView,
         tabs: [tab],
         activeTabId: tab.id,
         tabsPanelWidth: 34,

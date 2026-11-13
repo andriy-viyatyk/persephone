@@ -1,5 +1,5 @@
 import type { IPageHost } from "../../api/pages/IPageHost";
-import type { EditorModel } from "../../editors/base/EditorModel";
+import type { EditorModelInstance as EditorModel } from "../../editors/base/EditorModel";
 import { parseBoardSecondaryPanelId } from "../../editors/board/board-secondary";
 import { ExplorerEditor } from "../../editors/explorer/ExplorerEditorModel";
 import { GitTreeEditorModel } from "../../editors/git-tree/GitTreeEditorModel";

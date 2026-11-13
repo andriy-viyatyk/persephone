@@ -1,3 +1,28 @@
+## EPIC-163 — Refactoring Phase 6.4 part 1: editor framework — typed editor ids, one matcher contract, `EditorCatalog`, switch strategies, a slimmer `EditorModel` and typed editor modules
+
+Completed 2026-11-13. Roadmap Phase 6.4 part 1 (EDC-2, EDC-5, EDC-6, EDC-7 step 1 and the step 3 helpers): editor ids
+are typed constants (`shared/editor-ids.ts`, `editors/base/editor-ids.ts`); one matcher contract with named tiers and a
+declarative `QUERY_RULES` table read by `editorRegistry.rank()`; `EditorCatalog` merges `BuiltInEditorSource` and the
+board-owned `BoardEditorSource` (registered from the startup table) and is the only switch-candidate path, so the
+toolbar no longer imports board modules and Archive/Video lost their self-entry workarounds; `switchMainEditor` is
+validation plus ordered `EditorSwitchStrategy` dispatch owned by base, Board Info, board and category;
+`EditorModel` extends `TModel` with a typed request queue, single-implementer hooks are traits (open context is
+board-owned), and an error-level import zone keeps `editors/base/` free of board modules; editor modules are typed
+through `defineEditorModule`, secondary views are generic, and `createContentsElement` / `ToggledIconButton` live in
+`uikit/shared`. `editor-switch.ts` 253 → 13, `editor-switch-options.ts` 223 → 47, `PageToolbarView.ts` 472 → 411.
+One deliberate change: the switch always includes the current editor (image pages report `[image-view]`, and a board
+claiming an image extension now shows). Persisted ids, the script API, MCP `call`, i18n and `window.persephone` are
+unchanged. Plans by Codex, reviewed against the roadmap guardrails; Codex Luna implemented, with plan corrections
+recorded in the epic notes. Part 2 of item 6.4 remains (EDC-7 steps 2/4, EDC-8 to EDC-14). Epic document:
+[EPIC-163](EPIC-163.md).
+
+- [x] **Typed editor ids (US-1928).** `EditorId`, `BoardEditorId`, internal ids, `BOARD_CONTEXT_SOURCE_IDS`; stale registry comments removed.
+- [x] **Matcher contract (US-1929).** Named tiers, `QUERY_RULES` and one `rank()`; `makeAccepts` and the row `accepts` overrides gone.
+- [x] **Editor catalog (US-1930).** `EditorCatalog`, `BuiltInEditorSource`, `BoardEditorSource`; merged resolution callers migrated; status-bar slots renamed `startContributions`/`endContributions`.
+- [x] **Switch strategies (US-1931).** Ordered strategies for Board Info, folders, content-host and simple boards, host transfer and rebuild; registered from the renderer composition root.
+- [x] **Slimmer `EditorModel` (US-1932).** `TModel`, typed queue (nine casts gone), `REOPEN`/`FRAGMENT_NAV`/`FRESH_EMPTY` traits, board `OPEN_CONTEXT_TRAIT`, `editors/base` import zone.
+- [x] **Typed editor modules (US-1933).** `defineEditorModule` (21 guards gone), typed `SecondaryViewProps<M>`, `createContentsElement`, `ToggledIconButton`.
+
 ## EPIC-162 — Refactoring Phase 6.3: voice and speech — speech home, `SpeechSessionClient`, `MicrophoneCapture`, `VoiceTypingService`, audio window split, main `VoiceTypingController` and one-shot media grants
 
 Completed 2026-11-13. Roadmap Phase 6.3 (SHL-2, CORE-12, MAIN-8, MAIN-9), plus the speech/DSP slice of item 2.2:

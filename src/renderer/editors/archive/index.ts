@@ -1,10 +1,10 @@
 import { TComponentState } from "../../core/state/state";
 import { ArchiveEditor, getDefaultArchiveEditorState } from "./ArchiveEditor";
 import { ArchiveEditorView, makeArchiveEditor } from "./ArchiveEditorView";
-import type { EditorModule } from "../base/editorRegistry";
-import type { EditorModel } from "../base/EditorModel";
+import { defineEditorModule } from "../base/editorRegistry";
+import type { EditorModelInstance as EditorModel } from "../base/EditorModel";
 
-export const archiveModule: EditorModule = {
+export const archiveModule = defineEditorModule(ArchiveEditor, {
     createEditor: () =>
         new ArchiveEditor(new TComponentState(getDefaultArchiveEditorState())),
     View: ArchiveEditorView,
@@ -13,7 +13,7 @@ export const archiveModule: EditorModule = {
         if (filePath) await model.initFromArchive(filePath);
         return model as unknown as EditorModel;
     },
-};
+});
 
 export { ArchiveEditor, getDefaultArchiveEditorState };
 export type { ArchiveEditorState } from "./ArchiveEditor";

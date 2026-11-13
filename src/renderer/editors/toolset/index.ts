@@ -5,10 +5,10 @@ import {
     getDefaultToolsetEditorState,
 } from "./ToolsetEditorModel";
 import { ToolsetEditorView } from "./ToolsetEditorView";
-import type { EditorModule } from "../base/editorRegistry";
-import type { EditorModel } from "../base/EditorModel";
+import { defineEditorModule } from "../base/editorRegistry";
+import type { EditorModelInstance as EditorModel } from "../base/EditorModel";
 
-export const toolsetModule: EditorModule = {
+export const toolsetModule = defineEditorModule(ToolsetEditorModel, {
     createEditor: () =>
         new ToolsetEditorModel(new TComponentState(getDefaultToolsetEditorState())),
     View: ToolsetEditorView,
@@ -21,7 +21,7 @@ export const toolsetModule: EditorModule = {
         }
         return model as unknown as EditorModel;
     },
-};
+});
 
 export { ToolsetEditorModel, getDefaultToolsetEditorState } from "./ToolsetEditorModel";
 export type { ToolsetEditorState } from "./ToolsetEditorModel";

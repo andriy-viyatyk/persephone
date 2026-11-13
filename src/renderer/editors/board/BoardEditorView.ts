@@ -1,4 +1,4 @@
-import type { EditorModel } from "../base/EditorModel";
+import type { EditorModelInstance as EditorModel } from "../base/EditorModel";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { createIconElement } from "../../uikit/shared/slots";
@@ -160,8 +160,8 @@ class BoardHostView extends VanillaView<BoardHostViewProps> {
             model: this.model,
             host: this.host,
             contributions,
-            boardStart: this.statusItems.hasStartItems ? this.statusItems.root : undefined,
-            boardEnd: this.statusItems.hasEndItems ? this.statusItems.endRoot : undefined,
+            startContributions: this.statusItems.hasStartItems ? this.statusItems.root : undefined,
+            endContributions: this.statusItems.hasEndItems ? this.statusItems.endRoot : undefined,
         };
     }
 }

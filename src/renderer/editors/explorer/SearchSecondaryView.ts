@@ -29,15 +29,15 @@ function searchTitle(model: ExplorerEditor): { text: string; path: string } {
     };
 }
 
-export default class SearchSecondaryView extends VanillaView<SecondaryViewProps> {
+export default class SearchSecondaryView extends VanillaView<SecondaryViewProps<ExplorerEditor>> {
     private model: ExplorerEditor;
     private searchRootPath: string;
     private fileSearch: FileSearchView;
     private readonly closeButton: IconButtonView;
     private readonly header: SideBarPanelHeaderHandle;
 
-    public constructor(props: SecondaryViewProps) {
-        const model = props.model as ExplorerEditor;
+    public constructor(props: SecondaryViewProps<ExplorerEditor>) {
+        const model = props.model;
         const fileSearch = createFileSearchView(model);
         super(
             props,
@@ -73,8 +73,8 @@ export default class SearchSecondaryView extends VanillaView<SecondaryViewProps>
         this.updateHeader(this.props);
     }
 
-    protected onUpdate(props: SecondaryViewProps): void {
-        const model = props.model as ExplorerEditor;
+    protected onUpdate(props: SecondaryViewProps<ExplorerEditor>): void {
+        const model = props.model;
         const bodyChanged = this.model !== model || this.searchRootPath !== model.rootPath;
         this.model = model;
 
@@ -112,7 +112,7 @@ export default class SearchSecondaryView extends VanillaView<SecondaryViewProps>
         });
     }
 
-    private updateHeader(props: SecondaryViewProps): void {
+    private updateHeader(props: SecondaryViewProps<ExplorerEditor>): void {
         const title = searchTitle(this.model);
         this.header.update({
             headerHost: props.headerHost,

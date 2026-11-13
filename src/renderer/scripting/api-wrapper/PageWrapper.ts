@@ -1,11 +1,12 @@
+import { EditorId } from "../../../shared/editor-ids";
 import "./register-editor-facades";
 import { pages } from "../../api/pages";
 import type { PageModel } from "../../api/pages/PageModel";
 import type { IPageHost } from "../../api/pages/IPageHost";
 import { editorRegistry } from "../../editors/base/editorRegistry";
-import type { EditorModel } from "../../editors/base/EditorModel";
+import type { EditorModelInstance as EditorModel } from "../../editors/base/EditorModel";
 import type { IContentPipe } from "../../api/types/io.pipe";
-import { customEditorRegistry } from "../../api/boards/custom-editor-registry";
+import { editorCatalog } from "../../editors/base/editor-catalog";
 import type { BrowserEditor } from "../../editors/browser/BrowserEditor";
 import type { ScriptOutputFlags } from "../ScriptContext";
 import type { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
@@ -99,7 +100,7 @@ export class PageWrapper implements IAiVisible {
         if (!this.model && !this.mainEditor) return "";
         return this.mainEditor?.editorId
             ?? (this.model?.state.get() as { editor?: string } | undefined)?.editor
-            ?? "monaco";
+            ?? EditorId.monaco;
     }
 
     /** False for a page whose editor was closed while the tab stayed open. */
@@ -168,7 +169,7 @@ export class PageWrapper implements IAiVisible {
     get editor(): IEditorFacade {
         const id = this.currentEditorId();
         if (!id) return editorFacadeRegistry.create("", null, "None");
-        const name = customEditorRegistry.findByEditorId(id)?.name
+        const name = editorCatalog.describe(id)?.label
             ?? editorRegistry.resolveDefinition(id)?.name
             ?? id;
         return editorFacadeRegistry.create(id, this.mainEditor, name, this.callContext);
@@ -208,7 +209,7 @@ export class PageWrapper implements IAiVisible {
     }
 
     private browserState(): IBrowserPrivacyState | undefined {
-        return this.model && this.currentEditorId() === "browser-view"
+        return this.model && this.currentEditorId() === EditorId.browserView
             ? this.model.state.get() as IBrowserPrivacyState
             : undefined;
     }

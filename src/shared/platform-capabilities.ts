@@ -1,14 +1,15 @@
+import { EditorId } from "./editor-ids";
 import { PLATFORM_AUDIO_CAPABILITY_ID, PLATFORM_CAPABILITY_IDS } from "./capability-constants";
 import type { CapabilityMethod } from "./capability-contract";
 /** Built-in capability metadata in editor registration order. */
 export const PLATFORM_CAPABILITIES = [
-    { editorId: "monaco", id: PLATFORM_CAPABILITY_IDS.textOpen, version: 1, priority: 50 },
-    { editorId: "grid-json", id: PLATFORM_CAPABILITY_IDS.contentView, representation: "grid", version: 1, priority: 50 },
-    { editorId: "log-view", id: PLATFORM_CAPABILITY_IDS.contentView, representation: "log", version: 1, priority: 50 },
-    { editorId: "md-view", id: PLATFORM_CAPABILITY_IDS.contentView, representation: "markdown", version: 1, priority: 50 },
-    { editorId: "svg-view", id: PLATFORM_CAPABILITY_IDS.contentView, representation: "svg", version: 1, priority: 50 },
-    { editorId: "html-view", id: PLATFORM_CAPABILITY_IDS.contentView, representation: "html", version: 1, priority: 50 },
-    { editorId: "mermaid-view", id: PLATFORM_CAPABILITY_IDS.contentView, representation: "mermaid", version: 1, priority: 50 },
+    { editorId: EditorId.monaco, id: PLATFORM_CAPABILITY_IDS.textOpen, version: 1, priority: 50 },
+    { editorId: EditorId.gridJson, id: PLATFORM_CAPABILITY_IDS.contentView, representation: "grid", version: 1, priority: 50 },
+    { editorId: EditorId.logView, id: PLATFORM_CAPABILITY_IDS.contentView, representation: "log", version: 1, priority: 50 },
+    { editorId: EditorId.mdView, id: PLATFORM_CAPABILITY_IDS.contentView, representation: "markdown", version: 1, priority: 50 },
+    { editorId: EditorId.svgView, id: PLATFORM_CAPABILITY_IDS.contentView, representation: "svg", version: 1, priority: 50 },
+    { editorId: EditorId.htmlView, id: PLATFORM_CAPABILITY_IDS.contentView, representation: "html", version: 1, priority: 50 },
+    { editorId: EditorId.mermaidView, id: PLATFORM_CAPABILITY_IDS.contentView, representation: "mermaid", version: 1, priority: 50 },
 ] as const;
 
 /** The main-process component that runs a capability's `call` and `channel` methods. */

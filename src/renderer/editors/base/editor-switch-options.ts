@@ -1,223 +1,47 @@
-import { boardInstallRegistry } from "../../api/boards/board-install-registry";
-import { publishedBoards } from "../../api/boards/published-boards";
-import { fpBasename, fpExtname, isPlainLocalPath } from "../../core/utils/file-path";
+import { EditorId } from "../../../shared/editor-ids";
+import { fpBasename, fpExtname } from "../../core/utils/file-path";
 import { getLanguageByExtension } from "../../core/utils/language-mapping";
-import {
-    customEditorRegistry,
-    getFolderEditorsForFolder,
-    resolveEditorIdForFile,
-} from "../../api/boards/custom-editor-registry";
-import { parseBoardEditorId } from "../../../shared/board/board-editor-id";
-import { BOARD_INFO_EDITOR_ID } from "../board-info/board-info-id";
-import type { TextFileModel } from "../content-host/TextFileModel";
-import type { EditorModel } from "./EditorModel";
+import { editorCatalog, type EditorCandidate } from "./editor-catalog";
 import { editorRegistry } from "./editorRegistry";
-import { hostOwnsPipe } from "../../../shared/board/board-manifest-queries";
 import { englishMessage, t } from "../../../shared/i18n/t";
 import type { MessageKey } from "../../../shared/i18n/en";
-import { boardDisplayText } from "../../api/boards/board-display-text";
-import { BoardRoot } from "../../../shared/board/board-root";
 
-export interface IEditorSwitchOption {
-    readonly id: string;
-    readonly label: string;
-    readonly title?: string;
-    readonly labelKey?: MessageKey;
-    readonly titleKey?: MessageKey;
-    readonly labelParams?: Record<string, string | number>;
-    /** UI-only projection; `label` stays English for scripting and agent consumers. */
-    readonly displayLabel?: string;
-}
-
-/** Compatible targets for opening a file before a page/editor has been created. */
-export function getFileOpenEditorOptions(path: string): IEditorSwitchOption[] {
+/** Compatible targets for opening a file, with the resolved default shown first. */
+export function getFileOpenEditorOptions(path: string): EditorCandidate[] {
     const fileName = fpBasename(path);
     const language = getLanguageByExtension(fpExtname(fileName))?.id ?? "plaintext";
     const switchOptions = editorRegistry.getSwitchOptions(language, fileName);
-    const builtInIds = [...switchOptions.options];
-    for (const definition of editorRegistry.getAll()) {
-        if ((definition.match?.acceptFile?.(fileName) ?? -1) >= 0 && !builtInIds.includes(definition.id)) {
-            builtInIds.push(definition.id);
+    const candidates = editorCatalog.candidatesForFile(path);
+    const defaultId = editorCatalog.resolveFile(path) ?? EditorId.monaco;
+    const defaultCandidate = candidates.find(({ id }) => id === defaultId);
+    const defaultLabel = switchOptions.options.includes(defaultId)
+        ? switchOptions.getOptionLabel(defaultId)
+        : defaultCandidate?.label ?? editorRegistry.getById(defaultId)?.name ?? defaultId;
+    const defaultOption: EditorCandidate = defaultCandidate?.boardRoot
+        ? {
+            ...defaultCandidate,
+            label: englishMessage("shell.defaultBoardEditor", { name: defaultCandidate.label }),
+            labelKey: "shell.defaultBoardEditor",
+            labelParams: { name: defaultCandidate.label },
+            displayLabel: t("shell.defaultBoardEditor", { name: defaultCandidate.displayLabel ?? defaultCandidate.label }),
         }
-    }
-
-    const defaultEditorId = resolveEditorIdForFile(path) ?? "monaco";
-    const matchingBoards = customEditorRegistry.getBoardsForFileName(fileName);
-    const local = isPlainLocalPath(path);
-    const eligibleBoards = matchingBoards.filter((board) =>
-        local || hostOwnsPipe(board.editorKind) || board.editorSources === "any"
-    );
-    const defaultBoard = eligibleBoards.find((board) => board.editorId === defaultEditorId);
-    const builtInOptions = builtInIds
-        .filter((id) => id !== defaultEditorId)
-        .flatMap((id) => {
-            const definition = editorRegistry.getById(id);
-            if (!definition) return [];
-            const label = switchOptions.options.includes(id)
-                ? switchOptions.getOptionLabel(id)
-                : definition.name;
-            return [{ id, label, labelKey: id === "monaco" ? undefined : definition.nameKey }];
-        });
-
-    const boardOptions = eligibleBoards
-        .filter((board) => board.editorId !== defaultEditorId)
-        .map((board) => ({
-            id: board.editorId,
-            label: englishMessage("shell.boardName", { name: board.name }),
-            labelKey: "shell.boardName" as const,
-            labelParams: { name: board.name },
-            displayLabel: t("shell.boardName", { name: boardDisplayText(board.boardRoot, undefined, board.displayNameKey, board.name) }),
-        }));
-
-    const defaultOption = defaultBoard
-        ? { id: defaultBoard.editorId, label: englishMessage("shell.defaultBoardEditor", { name: defaultBoard.name }), labelKey: "shell.defaultBoardEditor" as const, labelParams: { name: defaultBoard.name }, displayLabel: t("shell.defaultBoardEditor", { name: boardDisplayText(defaultBoard.boardRoot, undefined, defaultBoard.displayNameKey, defaultBoard.name) }) }
         : {
-            id: defaultEditorId,
-            label: englishMessage("shell.defaultEditor", { name: switchOptions.options.includes(defaultEditorId)
-                ? switchOptions.getOptionLabel(defaultEditorId)
-                : editorRegistry.getById(defaultEditorId)?.name ?? defaultEditorId }),
-            labelKey: "shell.defaultEditor" as const,
-            labelParams: { name: switchOptions.options.includes(defaultEditorId)
-                ? switchOptions.getOptionLabel(defaultEditorId)
-                : editorRegistry.getById(defaultEditorId)?.name ?? defaultEditorId },
+            id: defaultId,
+            label: englishMessage("shell.defaultEditor", { name: defaultLabel }),
+            labelKey: "shell.defaultEditor",
+            labelParams: { name: defaultLabel },
+            transition: defaultCandidate?.transition ?? "rebuild",
         };
-    return [defaultOption, ...builtInOptions, ...boardOptions];
-}
-
-/** The exact candidate projection used by the page toolbar and page scripting node. */
-export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[] {
-    const folderPath = model.folderAnchor;
-    if (folderPath !== undefined) {
-        const boardMatches = customEditorRegistry.getBoardsForFolder(folderPath);
-        const merged = [...getFolderEditorsForFolder(folderPath)];
-        const currentBoardId = parseBoardEditorId(model.editorId) !== null
-            ? model.editorId
-            : undefined;
-        if (currentBoardId && !merged.includes(currentBoardId)) merged.push(currentBoardId);
-
-        const boardNameById = new Map(boardMatches.map((board) => [board.editorId, board.name]));
-        const boardById = new Map(boardMatches.map((board) => [board.editorId, board]));
-        if (currentBoardId && !boardNameById.has(currentBoardId)) {
-            const selectedBoard = (model.state.get() as { selectedBoard?: string }).selectedBoard;
-            if (selectedBoard) boardNameById.set(currentBoardId, selectedBoard);
-        }
-        const trustedRoots = new Set(
-            boardMatches.map((board) => BoardRoot.from(board.boardRoot).key),
-        );
-        const catalogMatches = publishedBoards.catalogBoardsForFolder(folderPath).filter((board) => {
-            const installedEntry = boardInstallRegistry.listInstalled()
-                .find((entry) => entry.id === board.id);
-            return !installedEntry
-                || !trustedRoots.has(BoardRoot.from(installedEntry.root).key);
-        });
-        if (catalogMatches.length > 0 && !merged.includes(BOARD_INFO_EDITOR_ID)) {
-            merged.push(BOARD_INFO_EDITOR_ID);
-        }
-        const plusIndex = merged.indexOf(BOARD_INFO_EDITOR_ID);
-        if (plusIndex !== -1 && plusIndex !== merged.length - 1) {
-            merged.splice(plusIndex, 1);
-            merged.push(BOARD_INFO_EDITOR_ID);
-        }
-        return merged.map((id) => {
-            const board = boardById.get(id);
-            return ({
-            id,
-            label: id === BOARD_INFO_EDITOR_ID
-                ? "\u00A0\u00A0+\u00A0\u00A0"
-                : boardNameById.get(id) ?? editorRegistry.getById(id)?.name ?? id,
-            labelKey: id === BOARD_INFO_EDITOR_ID ? undefined : editorRegistry.getById(id)?.nameKey,
-            title: id === BOARD_INFO_EDITOR_ID
-                ? englishMessage("shell.installEditorForFolder")
-                : undefined,
-            titleKey: id === BOARD_INFO_EDITOR_ID ? "shell.installEditorForFolder" : undefined,
-            displayLabel: board
-                ? boardDisplayText(board.boardRoot, undefined, board.displayNameKey, board.name)
-                : undefined,
-        });
-        });
-    }
-
-    const host = getTextHost(model);
-    const hostState = host?.state.get();
-    const filePath = model.filePath;
-    // An untitled page is an in-memory local source, not a non-local URL/archive.
-    const local = !filePath || isPlainLocalPath(filePath);
-    const fileName = filePath ?? model.displayTitle;
-
-    // Boards claim a page by file name (`fileMasks`) or by CONTENT (`contentMasks`, — the
-    // manifest counterpart of a built-in matcher's `detectsContent`). The content path is what lets
-    // a board be offered on an UNTITLED, in-memory page, whose "file name" is just its title. Both
-    // sets then pass the same locality gate, so a content match on a non-local source still needs a
-    // content-host board.
-    const content = hostState?.content ?? "";
-    const boardMatchesAll = [...customEditorRegistry.getBoardsForFile(fileName)];
-    for (const board of customEditorRegistry.getBoardsForContent(content)) {
-        if (!boardMatchesAll.some((existing) => existing.editorId === board.editorId)) {
-            boardMatchesAll.push(board);
-        }
-    }
-    const boardMatches = local
-        ? boardMatchesAll
-        : boardMatchesAll.filter(
-            (board) => hostOwnsPipe(board.editorKind),
-        );
-    const catalogAll = publishedBoards.catalogBoardsForFile(fileName);
-    const installed = boardInstallRegistry.listInstalled();
-    const trustedRoots = new Set(
-        boardMatches.map((board) => BoardRoot.from(board.boardRoot).key),
-    );
-    const catalogMatches = catalogAll.filter((catalogBoard) => {
-        if (
-            !local
-            && !hostOwnsPipe(catalogBoard.editorKind)
-        ) return false;
-        const installedEntry = installed.find((entry) => entry.id === catalogBoard.id);
-        return !installedEntry || !trustedRoots.has(BoardRoot.from(installedEntry.root).key);
+    const options = candidates.filter(({ id }) => id !== defaultId).map((candidate) => {
+        if (!candidate.boardRoot) return candidate;
+        const name = candidate.label;
+        return {
+            ...candidate,
+            label: englishMessage("shell.boardName", { name }),
+            labelKey: "shell.boardName" as MessageKey,
+            labelParams: { name },
+            displayLabel: t("shell.boardName", { name: candidate.displayLabel ?? name }),
+        };
     });
-
-    const merged = [...model.findCompatibleEditors()];
-    for (const board of boardMatches) {
-        if (!merged.includes(board.editorId)) merged.push(board.editorId);
-    }
-    if (catalogMatches.length > 0 && !merged.includes(BOARD_INFO_EDITOR_ID)) {
-        merged.push(BOARD_INFO_EDITOR_ID);
-    }
-    const plusIndex = merged.indexOf(BOARD_INFO_EDITOR_ID);
-    if (plusIndex !== -1 && plusIndex !== merged.length - 1) {
-        merged.splice(plusIndex, 1);
-        merged.push(BOARD_INFO_EDITOR_ID);
-    }
-
-    const boardNameById = new Map(boardMatches.map((board) => [board.editorId, board.name]));
-    const boardById = new Map(boardMatches.map((board) => [board.editorId, board]));
-    return merged.map((id) => {
-        const board = boardById.get(id);
-        return ({
-        id,
-        // Non-breaking spaces, written as escapes on purpose: the label is rendered as ordinary
-        // text, so plain spaces around the "+" collapse and the segment comes out barely wider
-        // than the glyph. Literal U+00A0 characters here are fragile - a reformat or a re-save
-        // silently turns them back into plain spaces, and the button narrows again.
-        label: id === BOARD_INFO_EDITOR_ID
-            ? "\u00A0\u00A0+\u00A0\u00A0"
-            : boardNameById.get(id) ?? editorRegistry.getById(id)?.name ?? id,
-        labelKey: id === BOARD_INFO_EDITOR_ID ? undefined : editorRegistry.getById(id)?.nameKey,
-        title: id === BOARD_INFO_EDITOR_ID
-            ? englishMessage("shell.installEditorForFileType")
-            : undefined,
-        titleKey: id === BOARD_INFO_EDITOR_ID ? "shell.installEditorForFileType" : undefined,
-        displayLabel: board
-            ? boardDisplayText(board.boardRoot, undefined, board.displayNameKey, board.name)
-            : undefined,
-    });
-    });
-}
-
-/** File identity used by the toolbar's catalog subscription. */
-export function getEditorSwitchFileName(model: EditorModel): string {
-    return model.filePath ?? model.displayTitle;
-}
-
-function getTextHost(model: EditorModel): TextFileModel | null {
-    return model.contentHost;
+    return [defaultOption, ...options];
 }

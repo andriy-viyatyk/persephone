@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import {
     EditorModel,
     type EditorStateBase,
@@ -77,7 +78,7 @@ export const getDefaultGitTreeEditorState = (): GitTreeEditorState => ({
     id: crypto.randomUUID(),
     title: untranslated(englishMessage("editors.gitTree")),
     modified: false,
-    editor: "git-tree",
+    editor: EditorId.gitTree,
     repoRoot: "",
 });
 
@@ -98,7 +99,7 @@ export const getDefaultGitTreeEditorState = (): GitTreeEditorState => ({
  */
 export class GitTreeEditorModel extends EditorModel<GitTreeEditorState> {
     /** Editor identity. Matches `EditorDescriptor.editorId`. */
-    readonly editorId = "git-tree";
+    readonly editorId = EditorId.gitTree;
 
     noLanguage = true;
     skipSave = true;
@@ -562,7 +563,7 @@ export class GitTreeEditorModel extends EditorModel<GitTreeEditorState> {
      *  same `git-changes` panel, and the panel "x" closes only one per click.
      *  Matches when the navigation is a `git-tree` target for our repoRoot. */
     matchesNavigationTarget(target: string | undefined, filePath: string): boolean {
-        if (target !== "git-tree") return false;
+        if (target !== EditorId.gitTree) return false;
         const link = decodeGitTreeLink(filePath);
         return !!link && link.repoRoot === this.state.get().repoRoot;
     }

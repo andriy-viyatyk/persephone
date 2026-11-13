@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { boardEditorId, parseBoardEditorId } from "../../../shared/board/board-editor-id";
 /**
  * Custom-editor registry. Enumerates trusted and bundled boards, reads each board's
@@ -17,11 +18,11 @@ import { boardEditorId, parseBoardEditorId } from "../../../shared/board/board-e
  */
 import { TModel } from "../../core/state/model";
 import { TGlobalState } from "../../core/state/state";
-import { fpBasename, isPlainLocalPath } from "../../core/utils/file-path";
+import { fpBasename } from "../../core/utils/file-path";
 import { BoardRoot } from "../../../shared/board/board-root";
 import { OwnershipRegistry } from "../../../shared/ownership-registry";
 import { errMessage } from "../../../shared/utils";
-import { editorRegistry } from "../../editors/base/editorRegistry";
+import { editorCatalog } from "../../editors/base/editor-catalog";
 import { boardRegistry } from "./board-registry";
 import { boardInstallRegistry } from "./board-install-registry";
 import { invalidateBoardDisplayText } from "./board-display-text";
@@ -41,7 +42,7 @@ import {
 import { createBoardProvider } from "../../content/board-provider-factory";
 import { matchesBoardMasks } from "./board-file-masks";
 import { matchesFileMask, matchesContentMasks, matchesFolderEditorMasks } from "../../../shared/board/board-masks";
-import { boardManifestCompatibility, hostOwnsPipe } from "../../../shared/board/board-manifest-queries";
+import { boardManifestCompatibility } from "../../../shared/board/board-manifest-queries";
 import { type BoardContentProviderDeclaration, type BoardCapabilityDeclaration, type BoardEditorAssociation, type NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
 import { readBoardManifest } from "./board-manifest-io";
 import { stableBoardIdentity } from "../../../shared/board/board-stable-identity";
@@ -170,13 +171,13 @@ function createBoardSchemeHooks(providerType: string, boardRoot: string): Scheme
             data.pipe = context.createPipe(data.pipeDescriptor);
             // Source-path reconstruction discards target and title after rebuilding the pipe.
             const effectivePath = urlPathFileName(data.url);
-            // Evaluate the empty-name branch BEFORE resolveEditorIdForFile: it substitutes the
+            // Evaluate the empty-name branch before catalog resolution: it substitutes the
             // whole URL via `matchPath || filePath` when effectivePath is empty, then Monaco's
-            // unconditional `acceptFile: () => 0` returns "monaco". Every arm after that call is
+            // unconditional file fallback tier returns "monaco". Every arm after that call is
             // unreachable for a non-empty url, so do not fold this branch into the `||` chain.
             data.target = data.target
-                || (effectivePath ? resolveEditorIdForFile(data.url, effectivePath) : boardEditorId(boardRoot))
-                || "monaco";
+                || (effectivePath ? editorCatalog.resolveFile(data.url, effectivePath) : boardEditorId(boardRoot))
+                || EditorId.monaco;
             // Without this the tab is titled with the raw percent-encoded href — for a torrent
             // link, the whole magnet inside the query string. A named link is titled by its file;
             // a nameless one (a magnet) by the claiming board, since there is nothing else to say.
@@ -592,10 +593,10 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
     /**
      * Boards whose `contentMasks` match this page's CONTENT (SYNC — safe for a toolbar render).
      *
-     * The board counterpart of a built-in matcher's `detectsContent`, and scoped identically: this
+     * The board counterpart of a built-in matcher's `content` rule, and scoped identically: this
      * feeds the editor-SWITCH widget only, so a board can claim an untitled, in-memory page (an
      * agent-generated graph, a script's output, pasted JSON) that no file mask can ever match.
-     * Nothing here participates in `resolveEditorIdForFile`, so content can never take a file away
+     * Nothing here participates in merged file resolution, so content can never take a file away
      * from the editor that would otherwise open it.
      */
     getBoardsForContent(content: string): CustomEditorMatch[] {
@@ -614,75 +615,3 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
 }
 
 export const customEditorRegistry = new CustomEditorRegistry();
-
-/**
- * Resolve the winning editor id for opening a file, merging the built-in registry with
- * trusted or bundled file-associated boards. A board wins when it can handle the SOURCE (see the
- * capability gate below) and its `editorPriority` is STRICTLY greater than the best built-in
- * claimant (built-ins win exact ties; among boards, source order — `getBoardsForFile`
- * preserves it). Returns the built-in id otherwise.
- *
- * Consumed by the two file-open decision points — `PagesLifecycleModel.newEditorModel`
- * (direct open) and the Layer 2 file resolver (`content/resolvers.ts`, openRawLink). Both
- * registries stay separate data structures; this only READS both.
- *
- * `matchPath` exists because those two callers hold different strings for a non-local source. The
- * openRawLink path matches on the source's effective path (the archive entry name or the last URL
- * segment without query/fragment), while locality — the capability gate —
- * must still be judged on the ORIGINAL url. Passing the effective path as `filePath` would read as
- * "plain local file" and hand every simple board a source it cannot read.
- */
-export function resolveEditorIdForFile(
-    filePath?: string,
-    matchPath?: string,
-): string | undefined {
-    const match = matchPath || filePath;
-    const builtinDef = match ? editorRegistry.resolve(match) : undefined;
-    const builtinId = builtinDef?.id;
-    if (!filePath || !match) return builtinId;
-    // A simple board reads the file itself, so by default it is offered real local files only
-    // The content-host board also handles HTTPS, archive, and encrypted content.
-    // So the local-path gate filters the board scan by capability rather than short-circuiting it.
-    const local = isPlainLocalPath(filePath);
-    const builtinPriority = builtinDef?.match?.acceptFile?.(match) ?? 0;
-    let best: CustomEditorMatch | undefined;
-    for (const b of customEditorRegistry.getBoardsForFile(match)) {
-        // Non-local source (archive entry / URL): a content-host board reads through the host, and
-        // a board declaring `editorSources: "any"` still gets a readable local path out of
-        // `getFilePath()` because Persephone materializes the pipe into a cache file for it. Any
-        // OTHER simple board would fail inside `readFile`, so it stays unoffered and the built-in
-        // editor keeps the file — a clean fallback beats a board that opens and errors.
-        if (
-            !local
-            && !hostOwnsPipe(b.editorKind)
-            && b.editorSources !== "any"
-        ) continue;
-        // Strict `>` so the FIRST (earliest-trusted) board wins ties among boards.
-        if (!best || b.priority > best.priority) best = b;
-    }
-    if (best && best.priority > builtinPriority) return best.editorId;
-    return builtinId;
-}
-
-/** Resolve the winning editor id for a folder, merging built-ins with trusted direct-folder
- * board claims. Built-ins win exact priority ties; source order wins board ties. */
-export function resolveEditorIdForFolder(folderPath: string): string {
-    const builtinId = editorRegistry.resolveForFolder(folderPath);
-    const builtinPriority =
-        editorRegistry.getById(builtinId)?.match?.acceptFolder?.(folderPath) ?? 0;
-    let best: CustomEditorMatch | undefined;
-    for (const board of customEditorRegistry.getBoardsForFolder(folderPath)) {
-        if (!best || board.folderEditorPriority > best.folderEditorPriority) best = board;
-    }
-    if (best && best.folderEditorPriority > builtinPriority) return best.editorId;
-    return builtinId;
-}
-
-/** Return built-in folder candidates in registry order, followed by every matching board source.
- * Priority affects only the default resolver, never this list. */
-export function getFolderEditorsForFolder(folderPath: string): string[] {
-    return [
-        ...editorRegistry.getFolderEditors(folderPath),
-        ...customEditorRegistry.getBoardsForFolder(folderPath).map((board) => board.editorId),
-    ];
-}

@@ -24,7 +24,7 @@ type MnemeTreeState = Pick<
 >;
 
 /** Native Wiki tree secondary view. */
-export default class MnemeTreeSecondaryView extends VanillaView<SecondaryViewProps> {
+export default class MnemeTreeSecondaryView extends VanillaView<SecondaryViewProps<MnemeRootEditorModel>> {
     private mnemeModel: MnemeRootEditorModel;
     private readonly initialTreeState: TreeProviderViewSavedState | undefined;
     private modelStateBinding: (() => void) | undefined;
@@ -36,7 +36,7 @@ export default class MnemeTreeSecondaryView extends VanillaView<SecondaryViewPro
     private fallbackPanel: HTMLDivElement | undefined;
     private fallbackText: HTMLSpanElement | undefined;
 
-    public constructor(props: SecondaryViewProps) {
+    public constructor(props: SecondaryViewProps<MnemeRootEditorModel>) {
         super(props, createPanelElement({
             name: "mneme-tree-secondary-view",
             direction: "column",
@@ -44,7 +44,7 @@ export default class MnemeTreeSecondaryView extends VanillaView<SecondaryViewPro
             minHeight: 0,
             overflow: "hidden",
         }));
-        this.mnemeModel = props.model as MnemeRootEditorModel;
+        this.mnemeModel = props.model;
         this.initialTreeState = this.mnemeModel.treeState;
     }
 
@@ -73,8 +73,8 @@ export default class MnemeTreeSecondaryView extends VanillaView<SecondaryViewPro
         this.updateHeader(this.props);
     }
 
-    protected onUpdate(props: SecondaryViewProps): void {
-        const model = props.model as MnemeRootEditorModel;
+    protected onUpdate(props: SecondaryViewProps<MnemeRootEditorModel>): void {
+        const model = props.model;
         if (model !== this.mnemeModel) {
             this.mnemeModel = model;
             this.bindModelState(model);
@@ -213,7 +213,7 @@ export default class MnemeTreeSecondaryView extends VanillaView<SecondaryViewPro
         if (this.fallbackText) this.fallbackText.textContent = message;
     }
 
-    private updateHeader(props: SecondaryViewProps): void {
+    private updateHeader(props: SecondaryViewProps<MnemeRootEditorModel>): void {
         this.header?.update({
             headerHost: props.headerHost,
             icon: props.iconElement,

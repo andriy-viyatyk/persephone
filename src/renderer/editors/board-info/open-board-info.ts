@@ -1,6 +1,6 @@
 import { TComponentState } from "../../core/state/state";
 import { CONTENT_HOST_TRAIT } from "../base/editor-traits";
-import type { EditorModel } from "../base/EditorModel";
+import type { EditorModelInstance as EditorModel } from "../base/EditorModel";
 import type { PageModel } from "../../api/pages/PageModel";
 import { BoardInfoEditorModel, getDefaultBoardInfoEditorState } from "./BoardInfoEditorModel";
 

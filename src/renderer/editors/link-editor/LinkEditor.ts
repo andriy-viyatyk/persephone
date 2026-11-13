@@ -1,7 +1,7 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { TComponentState, TOneState } from "../../core/state/state";
 import { EditorModel, type EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
-import { ComponentQueue } from "../../core/state/ComponentQueue";
 import type { NavigationState } from "../base/navigation-state";
 import { TextFileModel } from "../content-host/TextFileModel";
 import { ui } from "../../api/ui";
@@ -21,6 +21,7 @@ import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 
 const IMPORT_ALL = englishMessage("links.importAll");
 import type { ImageRoute } from "./routed-src";
+import { isBoardContextSourceId } from "../base/editor-ids";
 
 export type ExpandedPanel = "tags" | "categories" | "hostnames";
 
@@ -90,10 +91,10 @@ export const defaultLinkEditorState: LinkEditorState = {
 const LINK_PANELS = ["link-category", "link-tags", "link-hostnames"];
 
 export class LinkEditor
-    extends TextHostEditorModel<LinkEditorState, void, LinkQueueEvent>
+    extends TextHostEditorModel<LinkEditorState, LinkQueueEvent, LinkQueueRequest>
     implements ILinkSource
 {
-    readonly editorId = "link-view";
+    readonly editorId = EditorId.linkView;
     protected readonly displayName = untranslated("Link");
 
     // LK4 — ref-equality marker.
@@ -145,14 +146,8 @@ export class LinkEditor
     // Save debounce — today's pattern:
     private onDataChangedDebounced = debounce(() => this.onDataChanged(), 300);
 
-    readonly typedQueue: ComponentQueue<LinkQueueEvent, LinkQueueRequest>;
-
     constructor(state: TComponentState<LinkEditorState>) {
         super(state);
-        this.typedQueue = this.queue as unknown as ComponentQueue<
-            LinkQueueEvent,
-            LinkQueueRequest
-        >;
     }
 
     /** The trait extracted the host (switch away) — drop the host-bound
@@ -166,7 +161,7 @@ export class LinkEditor
     }
 
     focus(): void {
-        this.typedQueue.send({ type: "focus" });
+        this.queue.send({ type: "focus" });
     }
 
     refocus(): void {
@@ -307,11 +302,10 @@ export class LinkEditor
     private isOwnNavigationSourceId(sourceId?: string): boolean {
         if (!sourceId) return false;
         if (sourceId === this.id) return true;
-        return (
-            sourceId === "link-category" ||
-            sourceId === "link-tag" ||
-            sourceId === "link-hostname"
-        );
+        if (isBoardContextSourceId(sourceId)) {
+            return sourceId !== "explorer";
+        }
+        return sourceId === "link-hostname";
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -1073,7 +1067,7 @@ export class LinkEditor
             // sourceLink.selectedTag === undefined and falls back to the full,
             // unfiltered link list. Mirrors navigateToTrack's re-propagation.
             ...(sourceId === "link-tag" ? { selectedTag: this.state.get().selectedTag } : undefined),
-            ...(this.page ? { pageId: this.page.id, fallbackTarget: "monaco", title: item.title } : undefined),
+            ...(this.page ? { pageId: this.page.id, fallbackTarget: EditorId.monaco, title: item.title } : undefined),
         });
         void import("../../api/app").then(({ app }) => app.events.openRawLink.sendAsync(data));
     };

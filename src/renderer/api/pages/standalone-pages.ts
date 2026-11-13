@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { t } from "../../../shared/i18n/t";
 import type { EditorView } from "../../../shared/types";
 import { editorRegistry } from "../../editors/base/editorRegistry";
@@ -43,7 +44,7 @@ export class StandalonePages {
     private readonly entries = new Map<StandalonePageId, StandalonePageEntry>([
         [ABOUT_PAGE_ID, {
             id: ABOUT_PAGE_ID,
-            build: { kind: "editor", editorId: "about-view" },
+            build: { kind: "editor", editorId: EditorId.aboutView },
             afterShow: async (page, options) => {
                 if (!options.atContents) return;
                 const { AboutEditor } = await import("../../editors/about");
@@ -53,19 +54,19 @@ export class StandalonePages {
         }],
         [SETTINGS_PAGE_ID, {
             id: SETTINGS_PAGE_ID,
-            build: { kind: "editor", editorId: "settings-view" },
+            build: { kind: "editor", editorId: EditorId.settingsView },
         }],
         [MNEME_CONFIG_PAGE_ID, {
             id: MNEME_CONFIG_PAGE_ID,
-            build: { kind: "editor", editorId: "mneme-config" },
+            build: { kind: "editor", editorId: EditorId.mnemeConfig },
         }],
         [STORYBOOK_PAGE_ID, {
             id: STORYBOOK_PAGE_ID,
-            build: { kind: "editor", editorId: "storybook-view" },
+            build: { kind: "editor", editorId: EditorId.storybookView },
         }],
         [TOOLS_HUB_PAGE_ID, {
             id: TOOLS_HUB_PAGE_ID,
-            build: { kind: "editor", editorId: "tools-hub-view" },
+            build: { kind: "editor", editorId: EditorId.toolsHubView },
             afterShow: async (page, options) => {
                 if (!options.tab) return;
                 const { ToolsHubEditor } = await import("../../editors/tools-hub");
@@ -100,15 +101,15 @@ export class StandalonePages {
         }],
         ["mcp-ui-log", {
             id: "mcp-ui-log",
-            build: { kind: "text-host", editorId: "log-view", language: "jsonl", title: MCP_UI_LOG_TITLE },
+            build: { kind: "text-host", editorId: EditorId.logView, language: "jsonl", title: MCP_UI_LOG_TITLE },
         }],
         ["mcp-server-log", {
             id: "mcp-server-log",
-            build: { kind: "text-host", editorId: "log-view", language: "jsonl", title: MCP_SERVER_LOG_TITLE },
+            build: { kind: "text-host", editorId: EditorId.logView, language: "jsonl", title: MCP_SERVER_LOG_TITLE },
         }],
         ["video-player", {
             id: "video-player",
-            build: { kind: "editor", editorId: "video-view" },
+            build: { kind: "editor", editorId: EditorId.videoView },
         }],
     ]);
 

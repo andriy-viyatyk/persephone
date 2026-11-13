@@ -11,7 +11,7 @@ import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache"
 import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
 import { readBoardManifest } from "../../api/boards/board-manifest-io";
 import { type NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
-import type { EditorModel } from "../../editors/base";
+import type { EditorModelInstance as EditorModel } from "../../editors/base";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { SplitButtonView } from "../../uikit/SplitButton/SplitButtonView";
 import { PopoverView } from "../../uikit/Popover/PopoverView";

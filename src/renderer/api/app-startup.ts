@@ -145,6 +145,11 @@ export const appStartupEntries: readonly AppStartupEntry[] = [
             await import("./editor-categories");
             const { customEditorRegistry } = await import("./boards/custom-editor-registry");
             await customEditorRegistry.ensureInitialized();
+            const [{ editorCatalog }, { boardEditorSource }] = await Promise.all([
+                import("../editors/base/editor-catalog"),
+                import("./boards/board-editor-source"),
+            ]);
+            editorCatalog.registerSource(boardEditorSource);
         },
     },
     {

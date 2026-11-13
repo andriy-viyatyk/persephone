@@ -1,4 +1,3 @@
-import type { EditorModel } from "../base/EditorModel";
 import { ToolsHubEditor, type HubTab } from "./ToolsHubEditor";
 import { SearchBoardsTabView } from "./SearchBoardsTab";
 import { SiteExtensionsTabView } from "./SiteExtensionsTab";
@@ -15,12 +14,8 @@ import "../../uikit/Panel/Panel.css";
 import "../../uikit/SegmentedControl/SegmentedControl.css";
 import "./ToolsHubView.css";
 
-function requireToolsHubModel(model: EditorModel): ToolsHubEditor {
-    if (!(model instanceof ToolsHubEditor)) throw new Error("Tools hub view received an invalid model.");
-    return model;
-}
 
-export class ToolsHubEditorView extends VanillaView<{ model: EditorModel }> {
+export class ToolsHubEditorView extends VanillaView<{ model: ToolsHubEditor }> {
     private model: ToolsHubEditor;
     private tabs: SegmentedControlView | undefined;
     private body: HTMLDivElement | undefined;
@@ -31,11 +26,11 @@ export class ToolsHubEditorView extends VanillaView<{ model: EditorModel }> {
     private editorsTree: EditorsTreeView | undefined;
     private modelSubscription: (() => void) | undefined;
 
-    public constructor(props: { model: EditorModel }) {
+    public constructor(props: { model: ToolsHubEditor }) {
         const root = createPanelElement({ name: "tools-hub", direction: "column", width: "100%", height: "100%", minHeight: 0 });
         root.dataset.type = "tools-hub";
         super(props, root);
-        this.model = requireToolsHubModel(props.model);
+        this.model = props.model;
     }
 
     protected onMount(): void {
@@ -56,8 +51,8 @@ export class ToolsHubEditorView extends VanillaView<{ model: EditorModel }> {
         this.own(() => { this.modelSubscription?.(); this.modelSubscription = undefined; });
     }
 
-    protected onUpdate(props: { model: EditorModel }): void {
-        const model = requireToolsHubModel(props.model);
+    protected onUpdate(props: { model: ToolsHubEditor }): void {
+        const model = props.model;
         if (model !== this.model) {
             this.modelSubscription?.();
             this.model = model;

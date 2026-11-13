@@ -1,11 +1,11 @@
+import { EditorId } from "../../shared/editor-ids";
+import { InternalEditorIds } from "./base/editor-ids";
+import type { EditorView } from "../../shared/types";
+import type { InternalEditorId } from "./base/editor-ids";
 import { editorRegistry } from "./base/editorRegistry";
 import { PLATFORM_CAPABILITIES } from "../../shared/platform-capabilities";
-import type {
-    EditorCapabilityDeclaration,
-    EditorDefinition,
-    EditorModule,
-} from "./base/editorRegistry";
-import { EDITOR_MATCHERS, makeAccepts } from "./base/editor-matchers";
+import type { EditorCapabilityDeclaration, EditorModule } from "./base/editorRegistry";
+import { EDITOR_MATCHERS } from "./base/editor-matchers";
 import { customEditorRegistry } from "../api/boards/custom-editor-registry";
 import { BOARD_SECONDARY_PREFIX } from "./board/board-secondary";
 import { secondaryViewRegistry } from "../ui/secondary-views/secondary-view-registry";
@@ -20,6 +20,7 @@ secondaryViewRegistry.register({
     id: "archive-tree",
     labelKey: "shell.archive",
     label: englishMessage("shell.archive"),
+    loadModelClass: async () => (await import("./archive/ArchiveEditor")).ArchiveEditor,
     loadView: () => import("./archive/ArchiveSecondaryView"),
 });
 
@@ -27,6 +28,7 @@ secondaryViewRegistry.register({
     id: "explorer",
     labelKey: "shell.explorer",
     label: englishMessage("shell.explorer"),
+    loadModelClass: async () => (await import("./explorer/ExplorerEditorModel")).ExplorerEditor,
     loadView: () => import("./explorer/ExplorerSecondaryView"),
 });
 
@@ -37,6 +39,7 @@ secondaryViewRegistry.register({
     // Sidebar-only sub-panel of Explorer — give it the search glyph (the one on
     // the Explorer header's "open search" button) instead of Explorer's folder icon.
     icon: "search",
+    loadModelClass: async () => (await import("./explorer/ExplorerEditorModel")).ExplorerEditor,
     loadView: () => import("./explorer/SearchSecondaryView"),
 });
 
@@ -49,6 +52,7 @@ secondaryViewRegistry.register({
     // Explorer root via the shared BoardsTree. Uses the colored variant so the panel
     // header reads as an accent.
     icon: "board-color",
+    loadModelClass: async () => (await import("./explorer/ExplorerEditorModel")).ExplorerEditor,
     loadView: () => import("./explorer/BoardsSecondaryView"),
 });
 
@@ -57,6 +61,7 @@ secondaryViewRegistry.register({
     labelKey: "shell.clipboard",
     label: englishMessage("shell.clipboard"),
     icon: "paste",
+    loadModelClass: async () => (await import("./explorer/ExplorerEditorModel")).ExplorerEditor,
     loadView: () => import("./explorer/ClipboardSecondaryView"),
 });
 
@@ -64,6 +69,7 @@ secondaryViewRegistry.register({
     id: "link-category",
     labelKey: "shell.categories",
     label: englishMessage("shell.categories"),
+    loadModelClass: async () => (await import("./link-editor/LinkEditor")).LinkEditor,
     loadView: () => import("./link-editor/panels/LinkCategorySecondaryView"),
 });
 
@@ -71,6 +77,7 @@ secondaryViewRegistry.register({
     id: "link-tags",
     labelKey: "shell.tags",
     label: englishMessage("shell.tags"),
+    loadModelClass: async () => (await import("./link-editor/LinkEditor")).LinkEditor,
     loadView: () => import("./link-editor/panels/LinkTagsSecondaryView"),
 });
 
@@ -78,6 +85,7 @@ secondaryViewRegistry.register({
     id: "link-hostnames",
     labelKey: "shell.hostnames",
     label: englishMessage("shell.hostnames"),
+    loadModelClass: async () => (await import("./link-editor/LinkEditor")).LinkEditor,
     loadView: () => import("./link-editor/panels/LinkHostnamesSecondaryView"),
 });
 
@@ -85,6 +93,7 @@ secondaryViewRegistry.register({
     id: "git-changes",
     labelKey: "shell.git",
     label: englishMessage("shell.git"),
+    loadModelClass: async () => (await import("./git-tree/GitTreeEditorModel")).GitTreeEditorModel,
     loadView: () => import("./git-tree/GitPanelSecondaryView"),
 });
 
@@ -92,6 +101,7 @@ secondaryViewRegistry.register({
     id: "git-diff-revisions",
     labelKey: "shell.fileHistory",
     label: englishMessage("shell.fileHistory"),
+    loadModelClass: async () => (await import("./file-diff/FileDiffEditor")).FileDiffEditor,
     loadView: () => import("./file-diff/GitDiffRevisionsSecondaryView"),
 });
 
@@ -100,6 +110,7 @@ secondaryViewRegistry.register({
     labelKey: "shell.wiki",
     label: englishMessage("shell.wiki"),
     // No icon override → falls back to the editor's MemoryIcon.
+    loadModelClass: async () => (await import("./mneme-root/MnemeRootEditorModel")).MnemeRootEditorModel,
     loadView: () => import("./mneme-root/MnemeTreeSecondaryView"),
 });
 
@@ -111,102 +122,82 @@ secondaryViewRegistry.register({
 secondaryViewRegistry.registerPrefix(BOARD_SECONDARY_PREFIX, {
     id: BOARD_SECONDARY_PREFIX,
     labelKey: "shell.boardView",
-    label: englishMessage("shell.boardView"), // never shown — BoardSecondaryView renders its own header from the decl
+    label: englishMessage("shell.boardView"), // never shown
+    loadModelClass: async () => (await import("./board/BoardEditorModel")).BoardEditorModel,
     loadView: () => import("./board/BoardSecondaryView"),
 });
 
 // =============================================================================
 // Editor Registrations — table-driven
 // =============================================================================
-// One row per editor. Derived defaults keep the rows to the three things that
-// actually differ (id, name, module importer):
-//   - `match` comes from EDITOR_MATCHERS[id] (absent for pure standalone
-//     editors that never match a file and never appear in the switch widget);
-//   - `accepts` defaults to makeAccepts(match) when a matcher exists, else
-//     `() => -1`; rows with special acceptance semantics override it.
+// One row per editor. Matching rules are owned by EDITOR_MATCHERS[id]; standalone
+// editors have no matcher claim.
 // Each row's `load` MUST keep a literal `import("./…")` so Vite code splitting
 // is preserved — never build the specifier dynamically.
 
 interface EditorRow {
-    id: string;
+    id: EditorView | InternalEditorId;
     nameKey: MessageKey;
     guidePath?: string;
     hasContentHost?: boolean;
     mcpHint?: string;
     folderIcon?: string;
-    /** Explicit acceptance override (monaco, file-diff). */
-    accepts?: EditorDefinition["accepts"];
     load: () => Promise<EditorModule>;
 }
 
 const EDITORS: EditorRow[] = [
     {
-        id: "monaco",
+        id: EditorId.monaco,
         nameKey: "editors.textEditor",
         guidePath: "editors/monaco",
         hasContentHost: true,
-        // Explicit accepts (NOT makeAccepts): monaco is the universal text fallback
-        // and the page-switch floor — walkthrough 20 §accepts. Its number outranks
-        // content editors so it leads `findEditorsAccepting`; specific viewers
-        // outrank it in view mode. Its matcher carries the separate file-resolution
-        // floor (0) + switch-first (0) priorities for the registry's resolve /
-        // getSwitchOptions / validateForLanguage.
-        accepts: () => {
-            return 50;
-        },
         load: async () => (await import("./monaco")).monacoModule,
     },
-    { id: "grid-json", nameKey: "editors.gridJson", guidePath: "editors/grid", hasContentHost: true, load: async () => (await import("./grid")).gridJsonModule },
-    { id: "grid-csv", nameKey: "editors.gridCsv", guidePath: "editors/grid", hasContentHost: true, load: async () => (await import("./grid")).gridCsvModule },
-    { id: "grid-jsonl", nameKey: "editors.gridJsonl", guidePath: "editors/grid", hasContentHost: true, load: async () => (await import("./grid")).gridJsonlModule },
-    { id: "log-view", nameKey: "editors.logView", guidePath: "editors/log-view", hasContentHost: true, mcpHint: 'Use pages.logView.push(entries) to write entries to the MCP Log View; use pages.logView.dialogResult(id) to read an answer.', load: async () => (await import("./log-view")).logViewModule },
-    { id: "md-view", nameKey: "editors.preview", guidePath: "editors/markdown", hasContentHost: true, load: async () => (await import("./markdown")).markdownModule },
-    { id: "svg-view", nameKey: "editors.preview", guidePath: "editors/svg", hasContentHost: true, load: async () => (await import("./svg")).svgModule },
-    { id: "html-view", nameKey: "editors.preview", guidePath: "editors/html", hasContentHost: true, load: async () => (await import("./html")).htmlModule },
-    { id: "mermaid-view", nameKey: "editors.mermaid", guidePath: "editors/mermaid", hasContentHost: true, load: async () => (await import("./mermaid")).mermaidModule },
-    { id: "link-view", nameKey: "editors.links", guidePath: "editors/links", hasContentHost: true, load: async () => (await import("./link-editor")).linkModule },
-    { id: "env-vars-view", nameKey: "editors.envVars", guidePath: "editors/env-vars", hasContentHost: true, load: async () => (await import("./env-vars")).envVarsModule },
-    { id: "browser-view", nameKey: "editors.browser", guidePath: "editors/browser", mcpHint: "Use pages.openUrlInBrowserTab(url, options) to open or reuse a URL in the built-in browser, then use pages[i].editor after narrowing editor.id to \"browser-view\".", load: async () => (await import("./browser")).browserModule },
-    { id: "image-view", nameKey: "editors.imageViewer", guidePath: "editors/image", mcpHint: 'Use script.execute with: await app.pages.openFile("/path/to/image.png")', load: async () => (await import("./image")).imageModule },
-    { id: "archive-view", nameKey: "editors.archive", guidePath: "editors/archive", mcpHint: 'Use script.execute with: await app.pages.openFile("/path/to/archive.zip")', load: async () => (await import("./archive")).archiveModule },
-    { id: "video-view", nameKey: "editors.videoPlayer", guidePath: "editors/video", mcpHint: 'Use script.execute with: await app.pages.openFile("/path/to/video.mp4")', load: async () => (await import("./video")).videoModule },
-    { id: "settings-view", nameKey: "editors.settings", guidePath: "screens/settings", mcpHint: "Use script.execute with: await app.pages.showSettingsPage()", load: async () => (await import("./settings")).settingsModule },
-    { id: "restore-failed", nameKey: "editors.restoreFailedTitle", load: async () => (await import("./restore-failed")).restoreFailedModule },
-    { id: "about-view", nameKey: "editors.about", guidePath: "screens/index", mcpHint: "Use script.execute with: await app.pages.showAboutPage()", load: async () => (await import("./about")).aboutModule },
+    { id: EditorId.gridJson, nameKey: "editors.gridJson", guidePath: "editors/grid", hasContentHost: true, load: async () => (await import("./grid")).gridJsonModule },
+    { id: EditorId.gridCsv, nameKey: "editors.gridCsv", guidePath: "editors/grid", hasContentHost: true, load: async () => (await import("./grid")).gridCsvModule },
+    { id: EditorId.gridJsonl, nameKey: "editors.gridJsonl", guidePath: "editors/grid", hasContentHost: true, load: async () => (await import("./grid")).gridJsonlModule },
+    { id: EditorId.logView, nameKey: "editors.logView", guidePath: "editors/log-view", hasContentHost: true, mcpHint: 'Use pages.logView.push(entries) to write entries to the MCP Log View; use pages.logView.dialogResult(id) to read an answer.', load: async () => (await import("./log-view")).logViewModule },
+    { id: EditorId.mdView, nameKey: "editors.preview", guidePath: "editors/markdown", hasContentHost: true, load: async () => (await import("./markdown")).markdownModule },
+    { id: EditorId.svgView, nameKey: "editors.preview", guidePath: "editors/svg", hasContentHost: true, load: async () => (await import("./svg")).svgModule },
+    { id: EditorId.htmlView, nameKey: "editors.preview", guidePath: "editors/html", hasContentHost: true, load: async () => (await import("./html")).htmlModule },
+    { id: EditorId.mermaidView, nameKey: "editors.mermaid", guidePath: "editors/mermaid", hasContentHost: true, load: async () => (await import("./mermaid")).mermaidModule },
+    { id: EditorId.linkView, nameKey: "editors.links", guidePath: "editors/links", hasContentHost: true, load: async () => (await import("./link-editor")).linkModule },
+    { id: EditorId.envVarsView, nameKey: "editors.envVars", guidePath: "editors/env-vars", hasContentHost: true, load: async () => (await import("./env-vars")).envVarsModule },
+    { id: EditorId.browserView, nameKey: "editors.browser", guidePath: "editors/browser", mcpHint: "Use pages.openUrlInBrowserTab(url, options) to open or reuse a URL in the built-in browser, then use pages[i].editor after narrowing editor.id to \"browser-view\".", load: async () => (await import("./browser")).browserModule },
+    { id: EditorId.imageView, nameKey: "editors.imageViewer", guidePath: "editors/image", mcpHint: 'Use script.execute with: await app.pages.openFile("/path/to/image.png")', load: async () => (await import("./image")).imageModule },
+    { id: EditorId.archiveView, nameKey: "editors.archive", guidePath: "editors/archive", mcpHint: 'Use script.execute with: await app.pages.openFile("/path/to/archive.zip")', load: async () => (await import("./archive")).archiveModule },
+    { id: EditorId.videoView, nameKey: "editors.videoPlayer", guidePath: "editors/video", mcpHint: 'Use script.execute with: await app.pages.openFile("/path/to/video.mp4")', load: async () => (await import("./video")).videoModule },
+    { id: EditorId.settingsView, nameKey: "editors.settings", guidePath: "screens/settings", mcpHint: "Use script.execute with: await app.pages.showSettingsPage()", load: async () => (await import("./settings")).settingsModule },
+    { id: InternalEditorIds.restoreFailed, nameKey: "editors.restoreFailedTitle", load: async () => (await import("./restore-failed")).restoreFailedModule },
+    { id: EditorId.aboutView, nameKey: "editors.about", guidePath: "screens/index", mcpHint: "Use script.execute with: await app.pages.showAboutPage()", load: async () => (await import("./about")).aboutModule },
     // Reached only via showToolsHubPage (the AppBar panel's "Open in new tab" button) —
     // never a file-open target.
-    { id: "tools-hub-view", nameKey: "editors.toolsAndEditors", guidePath: "screens/index", load: async () => (await import("./tools-hub")).toolsHubModule },
-    { id: "mcp-view", nameKey: "editors.mcpInspector", guidePath: "screens/mcp-inspector", mcpHint: 'Open with pages.showMcpInspectorPage() or pages.showMcpInspectorPage({ url: "http://host:port/mcp" }) using a credential-free URL, then use pages[i].editor after narrowing editor.id to "mcp-view" to inspect connection and panel state.', load: async () => (await import("./mcp-inspector")).mcpModule },
-    { id: "mneme-config", nameKey: "editors.mneme", guidePath: "mneme", mcpHint: 'Use pages.showMnemeConfigPage(), then the "mneme-config" editor facade for configuration and status; use the Mneme MCP server for document contents and document operations. This facade does not expose transport credentials.', load: async () => (await import("./mneme-config")).mnemeConfigModule },
+    { id: EditorId.toolsHubView, nameKey: "editors.toolsAndEditors", guidePath: "screens/index", load: async () => (await import("./tools-hub")).toolsHubModule },
+    { id: EditorId.mcpView, nameKey: "editors.mcpInspector", guidePath: "screens/mcp-inspector", mcpHint: 'Open with pages.showMcpInspectorPage() or pages.showMcpInspectorPage({ url: "http://host:port/mcp" }) using a credential-free URL, then use pages[i].editor after narrowing editor.id to "mcp-view" to inspect connection and panel state.', load: async () => (await import("./mcp-inspector")).mcpModule },
+    { id: EditorId.mnemeConfig, nameKey: "editors.mneme", guidePath: "mneme", mcpHint: 'Use pages.showMnemeConfigPage(), then the "mneme-config" editor facade for configuration and status; use the Mneme MCP server for document contents and document operations. This facade does not expose transport credentials.', load: async () => (await import("./mneme-config")).mnemeConfigModule },
     // Importer touched for the Storybook editor's .tsx -> .ts native-view conversion.
-    { id: "storybook-view", nameKey: "editors.storybook", load: async () => (await import("./storybook")).storybookModule },
-    { id: "category-view", nameKey: "editors.folderView", guidePath: "editors/folder", load: async () => (await import("./category")).categoryModule },
-    { id: "git-tree", nameKey: "editors.gitTree", guidePath: "editors/git-tree", folderIcon: "git", load: async () => (await import("./git-tree")).gitTreeModule },
-    { id: "mneme-root", nameKey: "editors.mneme", guidePath: "mneme", folderIcon: "mneme", mcpHint: 'Use the "mneme-root" editor facade for root and search state; use the Mneme MCP server for document contents and document operations. This facade does not expose transport credentials.', load: async () => (await import("./mneme-root")).mnemeRootModule },
-    { id: "board-view", nameKey: "editors.boards", guidePath: "editors/board", load: async () => (await import("./board")).boardModule },
-    { id: "toolset-view", nameKey: "editors.agentTool", guidePath: "agent-tools", load: async () => (await import("./toolset")).toolsetModule },
+    { id: EditorId.storybookView, nameKey: "editors.storybook", load: async () => (await import("./storybook")).storybookModule },
+    { id: EditorId.categoryView, nameKey: "editors.folderView", guidePath: "editors/folder", load: async () => (await import("./category")).categoryModule },
+    { id: EditorId.gitTree, nameKey: "editors.gitTree", guidePath: "editors/git-tree", folderIcon: "git", load: async () => (await import("./git-tree")).gitTreeModule },
+    { id: EditorId.mnemeRoot, nameKey: "editors.mneme", guidePath: "mneme", folderIcon: "mneme", mcpHint: 'Use the "mneme-root" editor facade for root and search state; use the Mneme MCP server for document contents and document operations. This facade does not expose transport credentials.', load: async () => (await import("./mneme-root")).mnemeRootModule },
+    { id: EditorId.boardView, nameKey: "editors.boards", guidePath: "editors/board", load: async () => (await import("./board")).boardModule },
+    { id: EditorId.toolsetView, nameKey: "editors.agentTool", guidePath: "agent-tools", load: async () => (await import("./toolset")).toolsetModule },
     {
-        id: "board-info",
+        id: EditorId.boardInfo,
         nameKey: "editors.boardInfo",
         guidePath: "boards",
         // Host-capable holder: adopts/yields the shared content host WITHOUT rendering
         // it, so `Text ↔ + ↔ installed board` switches transfer the same host with no reload.
         hasContentHost: true,
         // Never a default open target — reached only via the "+" switch entry or explicit
-        // navigation (hub, update toast, or Properties button). No matcher → accepts -1.
+        // navigation (hub, update toast, or Properties button). No matcher claim.
         load: async () => (await import("./board-info")).boardInfoModule,
     },
     {
-        id: "file-diff",
+        id: InternalEditorIds.fileDiff,
         nameKey: "editors.gitDiff",
         guidePath: "editors/file-diff",
         hasContentHost: true,
-        // Host-aware: offered for any file detected in a git
-        // repo, regardless of changes (Concern 2A). No host (file-open resolution)
-        // → -1, so it never becomes a default open target. Below monaco (50) so
-        // editing stays the primary editor.
-        accepts: (input) =>
-            (input.host?.state.get() as { gitRepo?: unknown } | undefined)?.gitRepo ? 25 : -1,
         load: async () => (await import("./file-diff")).fileDiffModule,
     },
 ];
@@ -222,13 +213,12 @@ for (const e of EDITORS) {
         mcpHint: e.mcpHint,
         folderIcon: e.folderIcon,
         capabilities: PLATFORM_CAPABILITIES.filter((item) => item.editorId === e.id) as readonly EditorCapabilityDeclaration[],
-        accepts: e.accepts ?? (match ? makeAccepts(match) : () => -1),
         match,
         loadModule: e.load,
     });
 }
 
-editorRegistry.registerRestoreOnly("explorer", async () => (await import("./explorer")).explorerRestoreModule);
+editorRegistry.registerRestoreOnly(InternalEditorIds.explorer, async () => (await import("./explorer")).explorerRestoreModule);
 editorRegistry.registerRestoreOnly("draw-view", async () => (await import("./board")).boardModule);
 
 

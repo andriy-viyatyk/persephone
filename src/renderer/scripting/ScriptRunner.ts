@@ -1,5 +1,5 @@
 import type { AgentTipCollector } from "./ai-vision/agent-tip-collector";
-import type { EditorModel } from "../editors/base";
+import type { EditorModelInstance as EditorModel } from "../editors/base";
 import { pages } from "../api/pages";
 import type { ConsoleLogEntry, ScriptOutputFlags } from "./ScriptContext";
 import { settings } from "../api/settings";

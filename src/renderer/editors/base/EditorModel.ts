@@ -1,4 +1,4 @@
-import { TDialogModel } from "../../core/state/model";
+import { TModel } from "../../core/state/model";
 import type { IState } from "../../core/state/state";
 import { TraitSet } from "../../core/traits/traits";
 import { Subscription } from "../../core/state/events";
@@ -11,7 +11,6 @@ import type { IPageHost } from "../../api/pages/IPageHost";
 import type { IEditorState } from "../../../shared/types";
 import type { ILinkData, StoredLinkData } from "../../../shared/link-data";
 import type { ILinkDiffRevision } from "../../api/types/io.link-data";
-import type { BoardSourceContext } from "../../../shared/board-source-context";
 import type { MenuItem } from "../../uikit/Menu/index";
 
 export interface EditorStateBase extends Omit<Partial<IEditorState>, "id" | "title" | "modified"> {
@@ -38,25 +37,21 @@ export type RestoreData<S extends EditorStateBase = EditorStateBase> = Partial<S
     highlightText?: string;
 };
 
-export type EditorOpenContext =
-    | { mode: "register-session"; sourceUrl: string; sessionHandle: string }
-    | { mode: "enqueue-source"; sourceUrl: string; sessionHandle?: string; sourceContext?: BoardSourceContext };
-
 export interface EditorRestoreOptions {
     signal?: AbortSignal;
 }
 
 export abstract class EditorModel<
     T extends EditorStateBase = EditorStateBase,
-    R = unknown,
     E extends ComponentQueueEvent = ComponentQueueEvent,
-> extends TDialogModel<T, R> {
+    Q = never,
+> extends TModel<T> {
     /** Registry key — set by each subclass to its registry id ("monaco",
      *  "grid-json", "image-view", …). Used by `editorRegistry.createEditor` to
      *  pick the class, by `PageModel.switchMainEditor` short-circuit, by
      *  the switch widget's "current" highlight, and by persistence
      *  (`EditorDescriptor.editorId`), which replaces the legacy state discriminator. */
-    abstract readonly editorId: string;
+    abstract readonly editorId: import("../../../shared/types").EditorView | import("../../../shared/editor-ids").BoardEditorId | import("./editor-ids").InternalEditorId;
 
     /** Fresh file opens may insert this editor before its source restore settles. */
     readonly deferRestoreOnOpen: boolean = false;
@@ -68,7 +63,7 @@ export abstract class EditorModel<
 
     /** Mailbox for model → view commands and view-context queries. Subclasses
      *  narrow E to their own event union. Disposed by `dispose()`. */
-    readonly queue: ComponentQueue<E> = new ComponentQueue<E>();
+    readonly queue: ComponentQueue<E, Q> = new ComponentQueue<E, Q>();
 
     /** Editor-capability bag. Subclass constructors populate with trait
      *  implementations (e.g. `CONTENT_HOST_TRAIT`). */
@@ -147,7 +142,7 @@ export abstract class EditorModel<
     /** Pull whatever is transferable from `oldEditor` (host, id for cache-file
      *  continuity, pending queue passthroughs). Throws if the old editor
      *  cannot give up what this editor needs. */
-    switchFrom(_oldEditor: EditorModel): void {
+    switchFrom(_oldEditor: EditorModelInstance): void {
         throw new Error(`${this.constructor.name} does not implement switchFrom`);
     }
 
@@ -166,13 +161,13 @@ export abstract class EditorModel<
     /** Called before this editor is replaced as `page.mainEditor`. Inspect
      *  `newModel` to decide whether to keep `secondaryView` set (survive as
      *  a sidebar panel). Base clears it. */
-    beforeNavigateAway(_newModel: EditorModel): void {
+    beforeNavigateAway(_newModel: EditorModelInstance): void {
         this.secondaryView = undefined;
     }
 
     /** Called on every editor in `page.editors[]` (except the new main)
      *  when the page's mainEditor changes. */
-    onMainEditorChanged(_newMainEditor: EditorModel | null): void {
+    onMainEditorChanged(_newMainEditor: EditorModelInstance | null): void {
         // Override in subclasses.
     }
 
@@ -231,10 +226,6 @@ export abstract class EditorModel<
     /** True if this editor wraps a never-touched, never-saved empty document.
      *  Used to silently replace the auto-created empty page when the user
      *  opens their first real file. Default: false; Monaco overrides. */
-    isFreshEmpty(): boolean {
-        return false;
-    }
-
     // ── Standard getters ──────────────────────────────────────────────────
 
     get id(): string { return this.state.get().id; }
@@ -315,13 +306,9 @@ export abstract class EditorModel<
     /** Optional. Called by `PagesLifecycleModel.openFile` when the file or link being opened
      *  is already this page's main editor. Return true to take ownership of the fresh pipe;
      *  return false to leave disposal to the page lifecycle. */
-    onReopen?(pipe?: IContentPipe): boolean;
-
     /** Optional. Receive transient context from a source open. Editors can
      *  register a private-session handle for a new page or enqueue a source
      *  delivered to an existing page. This context is never persisted. */
-    acceptOpenContext?(context: EditorOpenContext): void;
-
     /** Optional. Apply caller-selected revisions when opening a comparison editor. */
     applyDiffRevisions?(from?: ILinkDiffRevision, to?: ILinkDiffRevision): void;
 
@@ -332,8 +319,6 @@ export abstract class EditorModel<
      *  opening `ILinkData` carried a `fragment` — including when an already-open
      *  editor instance is reused for the navigation. Default: undefined — editors
      *  without in-document anchors simply don't implement it. */
-    revealFragment?(fragment: string): void;
-
     // ── View focus signal (walkthrough 20 / MO7) ──────────────────────────
 
     /** Called by `<TextChrome>` after its 200ms root-focus subscription fires
@@ -381,3 +366,9 @@ export abstract class EditorModel<
         super.dispose();
     }
 }
+
+/** Erased editor type for cross-editor APIs that do not inspect a queue's payload types. */
+// `any` represents the existential request channel at editor-erased boundaries.
+// Concrete editors keep their precise queue request type in `EditorModel<T, E, Q>`.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type EditorModelInstance = EditorModel<EditorStateBase, ComponentQueueEvent, any>;

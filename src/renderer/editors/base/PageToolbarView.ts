@@ -1,15 +1,12 @@
-import { boardInstallRegistry } from "../../api/boards/board-install-registry";
+import { createContentsElement } from "../../uikit/shared/create-contents-element";
 import { guard } from "../../core/utils/guard";
 import type { IPageHost } from "../../api/pages/IPageHost";
-import { publishedBoards } from "../../api/boards/published-boards";
-import type { EditorModel, EditorStateBase } from "./EditorModel";
-import { getEditorSwitchFileName, getEditorSwitchOptions } from "./editor-switch-options";
+import type { EditorModelInstance as EditorModel, EditorStateBase } from "./EditorModel";
+import { editorCatalog } from "./editor-catalog";
 import { EditorToolbarView } from "./EditorToolbarView";
 import { TextHostEditorModel } from "./TextHostEditorModel";
-import { customEditorRegistry } from "../../api/boards/custom-editor-registry";
-import { onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
 import type { TextFileEditorModelState, TextFileModel } from "../content-host/TextFileModel";
-import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
+import type { IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
 import {
     SegmentedControlView,
     type ISegment,
@@ -18,6 +15,7 @@ import {
 import { SpacerView } from "../../uikit/Spacer/SpacerView";
 import { fillSlot, type SlotContent } from "../../uikit/shared/fill-slot";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
+import { ToggledIconButton } from "../../uikit/shared/toggled-icon-button";
 import "../../uikit/SegmentedControl/SegmentedControl.css";
 import { t } from "../../../shared/i18n/t";
 
@@ -80,19 +78,13 @@ function selectHostFilePath(state: TextFileEditorModelState): string | undefined
     return state.filePath;
 }
 
-function createContentsPart(part: string): HTMLSpanElement {
-    const element = document.createElement("span");
-    element.dataset.part = part;
-    element.style.display = "contents";
-    return element;
-}
 
 class NavPanelButtonView extends VanillaView<{ model: EditorModel }> {
     private model: EditorModel;
     private page: IPageHost | null = null;
     private host: TextFileModel | null = null;
     private editorStateModel: EditorModel | null = null;
-    private button: IconButtonView | undefined;
+    private readonly button: ToggledIconButton;
     private pageStateUnsubscribe: (() => void) | undefined;
     private hostStateUnsubscribe: (() => void) | undefined;
     private pipeStateUnsubscribe: (() => void) | undefined;
@@ -101,6 +93,7 @@ class NavPanelButtonView extends VanillaView<{ model: EditorModel }> {
     public constructor(props: { model: EditorModel }) {
         super(props, document.createElement("span"));
         this.model = props.model;
+        this.button = new ToggledIconButton(this.root, (button) => this.child(button), (button) => this.releaseChild(button));
     }
 
     protected onMount(): void {
@@ -128,7 +121,7 @@ class NavPanelButtonView extends VanillaView<{ model: EditorModel }> {
         this.page = null;
         this.host = null;
         this.editorStateModel = null;
-        this.button = undefined;
+        this.button.dispose();
     }
 
     private rebindSubscriptions(): void {
@@ -198,14 +191,6 @@ class NavPanelButtonView extends VanillaView<{ model: EditorModel }> {
             && (target.pipe === undefined && target.filePath === undefined
                 || Boolean(page?.canOpenNavigator(target.pipe, target.filePath)));
 
-        if (!visible) {
-            if (this.button) {
-                this.releaseChild(this.button);
-                this.button = undefined;
-            }
-            return;
-        }
-
         const buttonProps: IconButtonViewProps = {
             name: "page-nav-panel",
             size: "sm",
@@ -213,13 +198,7 @@ class NavPanelButtonView extends VanillaView<{ model: EditorModel }> {
             icon: "nav-panel",
             onClick: this.handleClick,
         };
-        if (!this.button) {
-            this.button = this.child(new IconButtonView(buttonProps));
-            this.root.append(this.button.root);
-            this.button.mount();
-        } else {
-            this.button.update(buttonProps);
-        }
+        this.button.sync(visible, buttonProps);
     }
 
     private readonly handleClick = (): void => {
@@ -232,9 +211,7 @@ class NavPanelButtonView extends VanillaView<{ model: EditorModel }> {
 export class SwitchWidgetView extends VanillaView<SwitchWidgetViewProps> {
     private model: EditorModel;
     private host: TextFileModel | null = null;
-    private catalogSubscriptionKey: { kind: "file" | "folder"; path: string } | undefined;
     private hostStateUnsubscribe: (() => void) | undefined;
-    private catalogUnsubscribe: (() => void) | undefined;
     private segmented: SegmentedControlView | undefined;
 
     public constructor(props: SwitchWidgetViewProps) {
@@ -245,12 +222,7 @@ export class SwitchWidgetView extends VanillaView<SwitchWidgetViewProps> {
     protected onMount(): void {
         this.root.dataset.type = "switch-widget";
         this.root.style.display = "contents";
-        this.own(customEditorRegistry.state.subscribe(
-            () => this.syncSegments(),
-            (state) => state.entries,
-        ));
-        this.own(boardInstallRegistry.subscribeInstalled(() => this.syncSegments()));
-        this.own(onBoardDisplayTextChanged(() => this.syncSegments()));
+        this.own(editorCatalog.subscribe(() => this.syncSegments()));
         this.bind(this.model.state, selectEditorSwitchProjection, () => this.syncSegments());
     }
 
@@ -262,10 +234,7 @@ export class SwitchWidgetView extends VanillaView<SwitchWidgetViewProps> {
     protected onDispose(): void {
         this.hostStateUnsubscribe?.();
         this.hostStateUnsubscribe = undefined;
-        this.catalogUnsubscribe?.();
-        this.catalogUnsubscribe = undefined;
         this.host = null;
-        this.catalogSubscriptionKey = undefined;
         this.segmented = undefined;
     }
 
@@ -288,39 +257,9 @@ export class SwitchWidgetView extends VanillaView<SwitchWidgetViewProps> {
         }
     }
 
-    private ensureCatalogSubscription(
-        key: { kind: "file" | "folder"; path: string },
-    ): void {
-        if (
-            key.kind === this.catalogSubscriptionKey?.kind
-            && key.path === this.catalogSubscriptionKey.path
-        ) return;
-
-        this.catalogUnsubscribe?.();
-        this.catalogSubscriptionKey = key;
-        this.catalogUnsubscribe = this.ownSubscription(
-            key.kind === "folder"
-                ? publishedBoards.subscribeCatalogBoardsForFolder(
-                    key.path,
-                    () => this.syncSegments(),
-                )
-                : publishedBoards.subscribeCatalogBoardsForFile(
-                    key.path,
-                    () => this.syncSegments(),
-                ),
-        );
-    }
-
     private syncSegments(): void {
         this.ensureHostSubscription();
-        const folderPath = this.model.folderAnchor;
-        this.ensureCatalogSubscription(
-            folderPath !== undefined
-                ? { kind: "folder", path: folderPath }
-                : { kind: "file", path: getEditorSwitchFileName(this.model) },
-        );
-
-        const options = getEditorSwitchOptions(this.model);
+        const options = editorCatalog.switchOptions(this.model);
         if (options.length < 2 || !options.some((option) => option.id === this.model.editorId)) {
             this.removeSegmented();
             return;
@@ -394,9 +333,9 @@ export class PageToolbarView extends VanillaView<PageToolbarViewProps> {
         this.child(this.toolbar);
         this.toolbar.mount();
 
-        const content = createContentsPart("page-toolbar-content");
-        const childrenHost = createContentsPart("page-toolbar-children");
-        const rightHost = createContentsPart("page-toolbar-right");
+        const content = createContentsElement("page-toolbar-content");
+        const childrenHost = createContentsElement("page-toolbar-children");
+        const rightHost = createContentsElement("page-toolbar-right");
         this.content = content;
         this.childrenHost = childrenHost;
         this.rightHost = rightHost;

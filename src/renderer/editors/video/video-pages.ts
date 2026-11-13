@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import type { ParsedHttpRequest } from "../../core/utils/curl-parser";
 import { editorRegistry } from "../base/editorRegistry";
 import { VideoEditor } from "./VideoEditor";
@@ -8,7 +9,7 @@ export async function openSiteActionVideo(
     request: ParsedHttpRequest,
     isCurrent: () => boolean,
 ): Promise<boolean> {
-    const editor = await editorRegistry.createEditor("video-view");
+    const editor = await editorRegistry.createEditor(EditorId.videoView);
     if (!(editor instanceof VideoEditor)) throw new Error("Video editor was not created");
     if (!isCurrent()) {
         await editor.dispose();

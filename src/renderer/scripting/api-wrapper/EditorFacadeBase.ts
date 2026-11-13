@@ -1,4 +1,4 @@
-import type { EditorModel } from "../../editors/base/EditorModel";
+import type { EditorModelInstance } from "../../editors/base/EditorModel";
 import { ui } from "../../api/ui";
 import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
@@ -20,7 +20,7 @@ export interface EditorFacadeDescription {
 }
 
 /** Shared page identity, attachment validation, and AiVision descriptor assembly for editor facades. */
-export abstract class EditorFacadeBase<TEditor extends EditorModel> {
+export abstract class EditorFacadeBase<TEditor extends EditorModelInstance> {
     #attachedEditor?: TEditor | (() => TEditor | undefined);
     #ensureAttached?: () => void;
 

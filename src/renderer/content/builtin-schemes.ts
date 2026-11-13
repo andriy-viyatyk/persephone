@@ -1,3 +1,4 @@
+import { EditorId } from "../../shared/editor-ids";
 import { decodeFolderEditorLink } from "./folder-editor-link";
 import type { ILinkData } from "../../shared/link-data";
 import { errMessage } from "../../shared/utils";
@@ -10,7 +11,7 @@ import {
     virtualPipeDescriptor,
 } from "./link-utils";
 import { registerScheme, type SchemeHookContext } from "./scheme-registry";
-import { resolveEditorIdForFile } from "../api/boards/custom-editor-registry";
+import { editorCatalog } from "../editors/base/editor-catalog";
 import { isBoardEditorId } from "../../shared/board/board-editor-id";
 import { getGuidePage } from "../guides";
 import { editorRegistry } from "../editors/base/editorRegistry";
@@ -58,7 +59,7 @@ async function parseGuide(data: ILinkData, context: SchemeHookContext): Promise<
     }
     data.url = parsed.url;
     if (parsed.fragment) data.fragment ??= parsed.fragment;
-    data.target ??= "md-view";
+    data.target ??= EditorId.mdView;
     await context.handoff();
 }
 
@@ -88,7 +89,7 @@ async function resolveVirtual(
         data.action = { kind: "browser" };
         return;
     }
-    data.target ||= "monaco";
+    data.target ||= EditorId.monaco;
     data.pipeDescriptor = virtualPipeDescriptor(data.url);
     data.pipe = context.createPipe(data.pipeDescriptor);
     await context.handoff();
@@ -107,7 +108,7 @@ async function resolveData(data: ILinkData, context: SchemeHookContext): Promise
         return;
     }
 
-    data.target = data.target || resolveEditorIdForFile(data.url, data.url) || "monaco";
+    data.target = data.target || editorCatalog.resolveFile(data.url, data.url) || EditorId.monaco;
     data.pipeDescriptor = resolveUrlToPipeDescriptor(data.url, data) ?? undefined;
     if (!data.pipeDescriptor) return;
     data.pipe = context.createPipe(data.pipeDescriptor);
@@ -116,7 +117,7 @@ async function resolveData(data: ILinkData, context: SchemeHookContext): Promise
 
 async function resolveMneme(data: ILinkData, context: SchemeHookContext): Promise<void> {
     const path = data.url.slice("mneme://".length);
-    data.target = data.target || editorRegistry.resolveId(path) || "monaco";
+    data.target = data.target || editorRegistry.resolveId(path) || EditorId.monaco;
     data.pipeDescriptor = {
         provider: { type: "mneme", config: { path } },
         transformers: [],
@@ -133,7 +134,7 @@ async function resolveGuide(data: ILinkData, context: SchemeHookContext): Promis
     }
 
     data.url = parsed.url;
-    data.target = "md-view";
+    data.target = EditorId.mdView;
     data.pipeDescriptor = {
         provider: { type: "guide", config: { path: parsed.path } },
         transformers: [],
@@ -185,7 +186,7 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
 
     if (!hasContentExtension && data.headers) {
         const accept = data.headers["accept"] || data.headers["Accept"] || "";
-        if (accept.includes("image/")) headerTarget = "image-view";
+        if (accept.includes("image/")) headerTarget = EditorId.imageView;
         else if (accept.includes("pdf")) headerBrowserFallback = true;
         else if (
             accept.includes("json")
@@ -194,13 +195,13 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
             || accept.includes("javascript")
             || accept.includes("text/")
             || accept.includes("*/*")
-        ) headerTarget = "monaco";
+        ) headerTarget = EditorId.monaco;
     }
 
     // A board that registered this extension as a custom editor (a font, an office document)
     // is content intent too; otherwise the browser would just download the file.
     const boardClaimsExtension = !hasContentExtension && !!ext
-        && isBoardEditorId(resolveEditorIdForFile(data.url, effectivePath));
+        && isBoardEditorId(editorCatalog.resolveFile(data.url, effectivePath));
 
     const hasExplicitEditorTarget = data.target && data.target !== "browser";
     const hasContentIntent = hasContentExtension || boardClaimsExtension || !!data.headers || !!data.fallbackTarget;
@@ -213,7 +214,7 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
     }
 
     const resolvedTarget = hasContentIntent
-        ? resolveEditorIdForFile(data.url, effectivePath)
+        ? editorCatalog.resolveFile(data.url, effectivePath)
         : undefined;
     const boardWins = !!resolvedTarget && isBoardEditorId(resolvedTarget);
 
@@ -258,10 +259,10 @@ registerScheme("http", { parse: parsePassThrough, resolve: resolveHttp }, platfo
 registerScheme("https", { parse: parsePassThrough, resolve: resolveHttp }, platformRegistration);
 registerScheme("data", { parse: parsePassThrough, resolve: resolveData }, platformRegistration);
 registerScheme("folder-editor", { parse: parseFolderEditor, resolve: resolveVirtual }, platformRegistration);
-registerScheme("git-tree", { parse: (data, context) => parseVirtual(data, context, "git-tree"), resolve: resolveVirtual }, platformRegistration);
+registerScheme("git-tree", { parse: (data, context) => parseVirtual(data, context, EditorId.gitTree), resolve: resolveVirtual }, platformRegistration);
 registerScheme("mneme", { parse: parseMneme, resolve: resolveMneme }, platformRegistration);
-registerScheme("mneme-folder", { parse: (data, context) => parseVirtual(data, context, "mneme-root"), resolve: resolveVirtual }, platformRegistration);
-registerScheme("persephone-board", { parse: (data, context) => parseVirtual(data, context, "board-view"), resolve: resolveVirtual }, platformRegistration);
+registerScheme("mneme-folder", { parse: (data, context) => parseVirtual(data, context, EditorId.mnemeRoot), resolve: resolveVirtual }, platformRegistration);
+registerScheme("persephone-board", { parse: (data, context) => parseVirtual(data, context, EditorId.boardView), resolve: resolveVirtual }, platformRegistration);
 registerScheme("persephone-guide", { parse: parseGuide, resolve: resolveGuide }, platformRegistration);
-registerScheme("persephone-toolset", { parse: (data, context) => parseVirtual(data, context, "toolset-view"), resolve: resolveVirtual }, platformRegistration);
-registerScheme("tree-category", { parse: (data, context) => parseVirtual(data, context, "category-view"), resolve: resolveVirtual }, platformRegistration);
+registerScheme("persephone-toolset", { parse: (data, context) => parseVirtual(data, context, EditorId.toolsetView), resolve: resolveVirtual }, platformRegistration);
+registerScheme("tree-category", { parse: (data, context) => parseVirtual(data, context, EditorId.categoryView), resolve: resolveVirtual }, platformRegistration);

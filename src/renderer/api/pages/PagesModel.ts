@@ -15,6 +15,7 @@ import { StandalonePages } from "./standalone-pages";
 import { BoardPageRouter } from "../boards/board-page-router";
 import { api } from "../../../ipc/renderer/api";
 import { invalidatePagePipe } from "../../content/pipe-resource-server";
+import { FRESH_EMPTY_TRAIT } from "../../editors/base/editor-traits";
 
 // ── State ────────────────────────────────────────────────────────────
 
@@ -246,8 +247,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         if (pages.length !== 2) return;
         const firstPage = pages[0];
         if (firstPage.pinSide !== undefined) return;
-        // Use the editor instance so isFreshEmpty() resolves correctly.
-        if (firstPage.mainEditor?.isFreshEmpty?.() === true) {
+        if (firstPage.mainEditor?.traits.get(FRESH_EMPTY_TRAIT)?.isFreshEmpty() === true) {
             firstPage.close();
         }
     };

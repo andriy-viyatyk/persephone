@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import type * as monaco from "monaco-editor";
 import { TDialogModel } from "../../core/state/model";
 import { TComponentState } from "../../core/state/state";
@@ -251,7 +252,7 @@ export class TranslateTextPageController {
                 : spans;
             const content = reconstructTranslation(selectedSource, relativeSpans, translated);
             const languageName = displayName(chosen.value.target);
-            app.pages.lifecycle.addEditorPage("monaco", snapshot.language, `${snapshot.title} (${languageName})`, content);
+            app.pages.lifecycle.addEditorPage(EditorId.monaco, snapshot.language, `${snapshot.title} (${languageName})`, content);
             if (failed) void ui.notify(t("translation.partialFailure", { count: failed }), "warning");
             model.close("done");
             this.activeDialog = undefined;

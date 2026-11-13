@@ -26,7 +26,7 @@ import "../../uikit/Spacer/Spacer.css";
 type GitPanelTab = "changes" | "branches" | "tags";
 
 /** Native Git changes/refs secondary view. */
-export default class GitPanelSecondaryView extends VanillaView<SecondaryViewProps> {
+export default class GitPanelSecondaryView extends VanillaView<SecondaryViewProps<GitTreeEditorModel>> {
     private model: GitTreeEditorModel | undefined;
     private header: SideBarPanelHeaderHandle | undefined;
     private repoBadge: TagView | undefined;
@@ -45,7 +45,7 @@ export default class GitPanelSecondaryView extends VanillaView<SecondaryViewProp
     private repoName = "";
     private repoRoot = "";
 
-    public constructor(props: SecondaryViewProps) {
+    public constructor(props: SecondaryViewProps<GitTreeEditorModel>) {
         super(props, createPanelElement({
             name: "git-panel",
             direction: "column",
@@ -192,7 +192,7 @@ export default class GitPanelSecondaryView extends VanillaView<SecondaryViewProp
         this.syncPanel(this.repoName, this.repoRoot);
     }
 
-    protected onUpdate(props: SecondaryViewProps): void {
+    protected onUpdate(props: SecondaryViewProps<GitTreeEditorModel>): void {
         const model = this.getModel(props);
         if (model) this.model = model;
         this.updateHeader(props);
@@ -213,8 +213,8 @@ export default class GitPanelSecondaryView extends VanillaView<SecondaryViewProp
         this.model = undefined;
     }
 
-    private getModel(props: SecondaryViewProps): GitTreeEditorModel | undefined {
-        return props.model instanceof GitTreeEditorModel ? props.model : undefined;
+    private getModel(props: SecondaryViewProps<GitTreeEditorModel>): GitTreeEditorModel | undefined {
+        return props.model;
     }
 
     private syncPanel(repoName: string, repoRoot: string): void {
@@ -299,7 +299,7 @@ export default class GitPanelSecondaryView extends VanillaView<SecondaryViewProp
         return title;
     }
 
-    private updateHeader(props: SecondaryViewProps): void {
+    private updateHeader(props: SecondaryViewProps<GitTreeEditorModel>): void {
         const model = this.model;
         if (!model || !this.header || !this.repoBadge || !this.titleNode) return;
         if (this.fileCount !== this.titleCount) {

@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { EditorModel, type EditorStateBase, type RestoreData } from "../base/EditorModel";
 import { MemoryIcon } from "../../theme/icons";
 import { MEMORY_ICON_COLOR } from "../../theme/palette-colors";
@@ -98,7 +99,7 @@ export const getDefaultMnemeRootEditorState = (): MnemeRootEditorState => ({
     id: crypto.randomUUID(),
     title: untranslated("Mneme"),
     modified: false,
-    editor: "mneme-root",
+    editor: EditorId.mnemeRoot,
     rootFolder: "",
     rootName: "",
     resolving: false,
@@ -127,7 +128,7 @@ export const getDefaultMnemeRootEditorState = (): MnemeRootEditorState => ({
  * instance instead of stacking duplicate panels.
  */
 export class MnemeRootEditorModel extends EditorModel<MnemeRootEditorState> {
-    readonly editorId = "mneme-root";
+    readonly editorId = EditorId.mnemeRoot;
 
     noLanguage = true;
     skipSave = true;
@@ -181,7 +182,7 @@ export class MnemeRootEditorModel extends EditorModel<MnemeRootEditorState> {
      *  instance (promote back to main) rather than building a duplicate panel. A
      *  DIFFERENT root does not match → a second instance + a second panel. */
     matchesNavigationTarget(target: string | undefined, filePath: string): boolean {
-        if (target !== "mneme-root") return false;
+        if (target !== EditorId.mnemeRoot) return false;
         const link = decodeMnemeFolderLink(filePath);
         return !!link && normPath(link.rootFolder) === normPath(this.state.get().rootFolder);
     }

@@ -1,3 +1,4 @@
+import { createContentsElement } from "../../uikit/shared/create-contents-element";
 import { englishMessage, t } from "../../../shared/i18n/t";
 import { settings } from "../../api/settings";
 import { PopoverView, type PopoverViewProps } from "../../uikit/Popover/PopoverView";
@@ -220,7 +221,7 @@ export class HeaderQuickSettingsPopoverView extends VanillaView<HeaderQuickSetti
     private previousOpen: boolean;
 
     public constructor(props: HeaderQuickSettingsPopoverProps) {
-        super(props, createContentsRoot());
+        super(props, createContentsElement());
         this.previousOpen = props.open;
         this.popover = this.child(new PopoverView(this.popoverProps(props)));
         this.root.append(this.popover.root);
@@ -260,8 +261,3 @@ export class HeaderQuickSettingsPopoverView extends VanillaView<HeaderQuickSetti
     }
 }
 
-function createContentsRoot(): HTMLSpanElement {
-    const root = document.createElement("span");
-    root.style.display = "contents";
-    return root;
-}

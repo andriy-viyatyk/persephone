@@ -1,3 +1,4 @@
+import { InternalEditorIds } from "../base/editor-ids";
 import type { EditorStateBase, RestoreData } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
 import type { EditorDescriptor, HostDescriptor } from "../../../shared/persistence";
@@ -53,7 +54,7 @@ export const defaultFileDiffEditorState: FileDiffEditorState = {
  * lives in `FileDiffBody`.
  */
 export class FileDiffEditor extends TextHostEditorModel<FileDiffEditorState> {
-    readonly editorId = "file-diff";
+    readonly editorId = InternalEditorIds.fileDiff;
     protected readonly displayName = "File Diff";
 
     private _diffStateReady = false;

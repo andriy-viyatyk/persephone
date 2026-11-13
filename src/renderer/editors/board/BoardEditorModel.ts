@@ -1,4 +1,6 @@
-import { EditorModel, type EditorOpenContext, type EditorStateBase } from "../base/EditorModel";
+import { EditorId } from "../../../shared/editor-ids";
+import { EditorModel, type EditorStateBase } from "../base/EditorModel";
+import { OPEN_CONTEXT_TRAIT, type EditorOpenContext } from "../../api/boards/board-open-context";
 import { editorRegistry } from "../base/editorRegistry";
 import { api } from "../../../ipc/renderer/api";
 import { BOARD_CDP_TAB } from "../../../ipc/api-types";
@@ -16,6 +18,8 @@ import { pipeFromPersistedSource } from "../../content/rebuild-pipe";
 import { decodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { customEditorRegistry } from "../../api/boards/custom-editor-registry";
 import { boardEditorId } from "../../../shared/board/board-editor-id";
+import type { BoardEditorId } from "../../../shared/editor-ids";
+import { isBoardContextSourceId } from "../base/editor-ids";
 import { hostOwnsPipe } from "../../../shared/board/board-manifest-queries";
 import { isBoardFolder, readBoardManifest } from "../../api/boards/board-manifest-io";
 import {
@@ -129,7 +133,7 @@ export const getDefaultBoardEditorState = (): BoardEditorState => ({
     id: crypto.randomUUID(),
     title: englishMessage("board.editor"),
     modified: false,
-    editor: "board-view",
+    editor: EditorId.boardView,
     selectedBoard: undefined,
     reloadToken: 0,
 });
@@ -153,11 +157,11 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
      *  switch widget shows/highlights it and `switchMainEditor` routes correctly), else
      *  the constant `"board-view"` for a plain board page. Persistence pins `"board-view"`
      *  regardless (see `getRestoreData`) so restore keys on the stable id. */
-    get editorId(): string {
+    get editorId(): BoardEditorId | typeof EditorId.boardView {
         const root = this.state.get().boardRoot;
         return root && (this.currentFilePath() || this.state.get().folderPath)
             ? boardEditorId(root)
-            : "board-view";
+            : EditorId.boardView;
     }
 
     /** Apply content written by a board frame when this board owns a content host. */
@@ -200,6 +204,9 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
 
     constructor(modelState: IState<BoardEditorState>) {
         super(modelState);
+        this.traits.add(OPEN_CONTEXT_TRAIT, {
+            acceptOpenContext: (context) => this.acceptOpenContext(context),
+        });
         this.sourceInbox = new BoardSourceInbox({
             getSource: () => ({ url: this.state.get().sourceLink?.url, filePath: this.state.get().filePath }),
             blockRestore: () => this.state.update((state) => { state.sourceRestoreBlocked = true; }),
@@ -236,7 +243,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         if (previous === muted) this.state.set({ ...this.state.get() });
     }
 
-    acceptOpenContext(context: EditorOpenContext): void {
+    private acceptOpenContext(context: EditorOpenContext): void {
         if (context.mode === "register-session") {
             this.sourceInbox.registerSession(context.sourceUrl, context.sessionHandle);
             return;
@@ -254,9 +261,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         const sourceLink = this.state.get().sourceLink;
         const sourceId = sourceLink?.sourceId;
         const context = sourceLink?.sourceContext;
-        const supportedSource = sourceId === "explorer"
-            || sourceId === "link-category"
-            || sourceId === "link-tag";
+        const supportedSource = isBoardContextSourceId(sourceId);
         const item = typeof href === "string" ? context?.items.find((candidate) => {
             if (isPlainLocalPath(href) && isPlainLocalPath(candidate.href)) {
                 return fpNormalizeForCompare(href) === fpNormalizeForCompare(candidate.href);
@@ -465,7 +470,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
      *  (promote back to main) rather than stacking a duplicate. Matches the
      *  `persephone-board://` link for this board's root. */
     matchesNavigationTarget(target: string | undefined, filePath: string): boolean {
-        if (target !== "board-view") return false;
+        if (target !== EditorId.boardView) return false;
         const boardRoot = this.state.get().boardRoot;
         if (!boardRoot) return false;
         const boardLink = decodePersephoneBoardLink(filePath);
@@ -608,9 +613,9 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         if (!filePath || !root || !isPlainLocalPath(filePath)) return [];
         const language = getLanguageByExtension(fpExtname(filePath).toLowerCase())?.id ?? "";
         const builtins = editorRegistry.getSwitchOptions(language, filePath).options;
-        const builtinId = editorRegistry.resolveId(filePath) ?? "monaco";
+        const builtinId = editorRegistry.resolveId(filePath) ?? EditorId.monaco;
         if (!builtins.includes(builtinId)) builtins.push(builtinId);
-        return [...builtins, boardEditorId(root)];
+        return builtins;
     }
 
     /** Persist the STABLE `"board-view"` id so restore + cross-window keys on it
@@ -618,7 +623,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
      *  re-derived from the persisted file/folder path and `state.boardRoot` on restore. */
     override getRestoreData() {
         const data = super.getRestoreData();
-        data.editorId = "board-view";
+        data.editorId = EditorId.boardView;
         //: persist ONLY the board-declared restorable subset of sharedState —
         // undeclared/transient state must never bloat the open-pages file. Shallow-clone so
         // we don't mutate the live `state` object `super` returned by reference.

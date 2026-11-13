@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { COMPLETED_RECORDING_PATTERN } from "../../../shared/recording-filenames";
 import { englishMessage, t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
@@ -26,6 +27,7 @@ import { reportProviderError, watchSourceRecovery } from "../../content/source-r
 import { isProviderResolutionError } from "../../content/registry";
 import { registerPipeResource, unregisterPipeResource } from "../../content/pipe-resource-server";
 import type { VideoStreamSessionConfig } from "../../../ipc/api-param-types";
+import { REOPEN_TRAIT } from "../base/editor-traits";
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -70,7 +72,7 @@ export const getDefaultVideoEditorState = (): VideoEditorState => ({
     id: crypto.randomUUID(),
     title: englishMessage("editors.videoPlayer"),
     modified: false,
-    editor: "video-view",
+    editor: EditorId.videoView,
     url: "",
     inputText: "",
     format: "mp4",
@@ -85,7 +87,7 @@ export const getDefaultVideoEditorState = (): VideoEditorState => ({
 
 export class VideoEditor extends EditorModel<VideoEditorState> {
     /** Editor identity. Matches `EditorDescriptor.editorId`. */
-    readonly editorId = "video-view";
+    readonly editorId = EditorId.videoView;
 
     noLanguage = true;
     skipSave = true;
@@ -98,6 +100,7 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
 
     constructor(state: TComponentState<VideoEditorState>) {
         super(state);
+        this.traits.add(REOPEN_TRAIT, { onReopen: (pipe) => this.reopen(pipe) });
         this.getIconElement = () => PlayerIcon.createElement({ color: DEFAULT_BROWSER_COLOR });
     }
 
@@ -179,15 +182,11 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
     /** Lists itself so the editor switch renders once a board for the file is installed, or the
      *  catalog offers one through "+" (an audio file and the Audio Player). Alone it is a
      *  single-entry list, which the switch hides. */
-    override findCompatibleEditors(): string[] {
-        return this.filePath ? [this.editorId] : [];
-    }
-
     /** The same source was opened onto this page again. A pipe-backed source that failed gets
      * a fresh pipe session, so reopening its link recovers the page. A failed
      *  stream response reaches the media element as "unsupported format", so that state
      *  retries too. A playing page and HTTP/local sources are left as they are. */
-    override onReopen(freshPipe?: IContentPipe): boolean {
+    private reopen(freshPipe?: IContentPipe): boolean {
         const { url, format, playerState } = this.state.get();
         if (!freshPipe || !this.page || sourceKind(url, format) !== "pipe"
             || (playerState !== "error" && playerState !== "unsupported format")) return false;

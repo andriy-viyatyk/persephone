@@ -1,4 +1,4 @@
-import type { EditorModel } from "../../editors/base/EditorModel";
+import type { EditorModelInstance as EditorModel } from "../../editors/base/EditorModel";
 import { CompareEditor } from "../../editors/compare/CompareEditor";
 import type { TextFileModel } from "../../editors/content-host/TextFileModel";
 import { pages } from "../../api/pages";

@@ -4,13 +4,13 @@ import {
     getDefaultStorybookEditorState,
 } from "./StorybookEditorModel";
 import { StorybookEditorView } from "./StorybookEditorView";
-import type { EditorModule } from "../base/editorRegistry";
+import { defineEditorModule } from "../base/editorRegistry";
 
-export const storybookModule: EditorModule = {
+export const storybookModule = defineEditorModule(StorybookEditorModel, {
     createEditor: () =>
         new StorybookEditorModel(new TComponentState(getDefaultStorybookEditorState())),
     View: StorybookEditorView,
-};
+});
 
 export {
     StorybookEditorModel,

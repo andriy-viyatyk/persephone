@@ -11,7 +11,6 @@ import { TagsInputView } from "../../uikit/TagsInput/TagsInputView";
 import { DateInputView } from "../../uikit/DateInput/DateInputView";
 import { MarkdownBlockView } from "../markdown/MarkdownBlockView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import type { EditorModel } from "../base/EditorModel";
 import { PageToolbarView, type PageToolbarViewProps } from "../base/PageToolbarView";
 import {
     MnemeRootEditorModel,
@@ -244,12 +243,8 @@ class RootResultView extends VanillaView<RootResultProps> {
     }
 }
 
-export interface MnemeRootEditorViewProps { model: EditorModel; }
+export interface MnemeRootEditorViewProps { model: MnemeRootEditorModel; }
 
-function requireRootModel(model: EditorModel): MnemeRootEditorModel {
-    if (!(model instanceof MnemeRootEditorModel)) throw new Error("Mneme root view received an invalid model.");
-    return model;
-}
 
 export class MnemeRootEditorView extends VanillaView<MnemeRootEditorViewProps> {
     private model: MnemeRootEditorModel | undefined;
@@ -272,7 +267,7 @@ export class MnemeRootEditorView extends VanillaView<MnemeRootEditorViewProps> {
 
     public constructor(props: MnemeRootEditorViewProps) {
         super(props, createPanelElement({ direction: "column", flex: true, width: "100%" }));
-        this.model = requireRootModel(props.model);
+        this.model = props.model;
     }
 
     protected onMount(): void {
@@ -286,7 +281,7 @@ export class MnemeRootEditorView extends VanillaView<MnemeRootEditorViewProps> {
     }
 
     protected onUpdate(props: MnemeRootEditorViewProps): void {
-        const model = requireRootModel(props.model);
+        const model = props.model;
         if (model !== this.model) this.replaceModelSubscription(model);
         this.sync(projectState(model.state.get()));
     }

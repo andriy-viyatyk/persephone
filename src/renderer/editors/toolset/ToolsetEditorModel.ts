@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { EditorModel, type EditorStateBase } from "../base/EditorModel";
 import { ToolsIcon } from "../../theme/icons";
 import { fpBasename, fpJoin, fpNormalizeForCompare } from "../../core/utils/file-path";
@@ -34,7 +35,7 @@ export const getDefaultToolsetEditorState = (): ToolsetEditorState => ({
     id: crypto.randomUUID(),
     title: englishMessage("board.agentTool"),
     modified: false,
-    editor: "toolset-view",
+    editor: EditorId.toolsetView,
     manifest: null,
 });
 
@@ -49,7 +50,7 @@ export const getDefaultToolsetEditorState = (): ToolsetEditorState => ({
  * navigation.
  */
 export class ToolsetEditorModel extends EditorModel<ToolsetEditorState> {
-    readonly editorId = "toolset-view";
+    readonly editorId = EditorId.toolsetView;
 
     noLanguage = true;
     skipSave = true;
@@ -67,7 +68,7 @@ export class ToolsetEditorModel extends EditorModel<ToolsetEditorState> {
     /** Per-page singleton: re-navigating to the SAME toolset reuses this instance rather than
      *  stacking a duplicate. Matches the `persephone-toolset://` link for this toolset's root. */
     matchesNavigationTarget(target: string | undefined, filePath: string): boolean {
-        if (target !== "toolset-view") return false;
+        if (target !== EditorId.toolsetView) return false;
         const root = this.state.get().toolsetRoot;
         if (!root) return false;
         const link = decodePersephoneToolsetLink(filePath);

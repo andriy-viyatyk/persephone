@@ -1,5 +1,5 @@
 import { editorRegistry } from "../../editors/base";
-import type { EditorModel } from "../../editors/base/EditorModel";
+import type { EditorModelInstance as EditorModel } from "../../editors/base/EditorModel";
 import type { EditorViewModule } from "../../editors/types";
 import { guard } from "../../core/utils/guard";
 import { VanillaView } from "../../uikit/shared/vanilla-view";

@@ -230,12 +230,12 @@ export class LinkTagsNavigationPanelView extends VanillaView<LinkEditor> {
     }
 }
 
-export default class LinkTagsSecondaryView extends VanillaView<SecondaryViewProps> {
+export default class LinkTagsSecondaryView extends VanillaView<SecondaryViewProps<LinkEditor>> {
     private editor: LinkEditor | undefined;
     private navigation: LinkTagsNavigationPanelView | undefined;
     private header: SideBarPanelHeaderHandle | undefined;
 
-    public constructor(props: SecondaryViewProps) {
+    public constructor(props: SecondaryViewProps<LinkEditor>) {
         super(props, createPanelElement({
             name: "link-tags-secondary-view",
             direction: "column",
@@ -246,7 +246,6 @@ export default class LinkTagsSecondaryView extends VanillaView<SecondaryViewProp
     }
 
     protected onMount(): void {
-        if (!(this.props.model instanceof LinkEditor)) return;
         this.editor = this.props.model;
         this.navigation = this.child(new LinkTagsNavigationPanelView(this.editor));
         this.root.append(this.navigation.root);
@@ -260,11 +259,9 @@ export default class LinkTagsSecondaryView extends VanillaView<SecondaryViewProp
         this.updateHeader();
     }
 
-    protected onUpdate(props: SecondaryViewProps): void {
-        if (props.model instanceof LinkEditor) {
-            this.editor = props.model;
-            this.navigation?.update(props.model);
-        }
+    protected onUpdate(props: SecondaryViewProps<LinkEditor>): void {
+        this.editor = props.model;
+        this.navigation?.update(props.model);
         this.updateHeader();
     }
 

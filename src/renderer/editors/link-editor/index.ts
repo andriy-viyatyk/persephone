@@ -1,3 +1,4 @@
+import { createContentsElement } from "../../uikit/shared/create-contents-element";
 import { TComponentState } from "../../core/state/state";
 import type { BreadcrumbProps } from "../../uikit/Breadcrumb/BreadcrumbView";
 import { BreadcrumbView } from "../../uikit/Breadcrumb/BreadcrumbView";
@@ -13,8 +14,7 @@ import { LinkEditor, defaultLinkEditorState, type LinkEditorState } from "./Link
 import { LinkBodyView } from "./LinkBody";
 import type { LinkViewMode } from "./linkTypes";
 import { restoreFocus } from "../../uikit/shared/focus-restore";
-import type { EditorModule } from "../base/editorRegistry";
-import type { EditorModel } from "../base/EditorModel";
+import { defineEditorModule } from "../base/editorRegistry";
 import { t } from "../../../shared/i18n/t";
 
 function viewModeLabel(mode: LinkViewMode): string {
@@ -43,16 +43,7 @@ const VIEW_MODE_ORDER: LinkViewMode[] = [
     "tiles-portrait-big",
 ];
 
-function createContentsRoot(): HTMLSpanElement {
-    const root = document.createElement("span");
-    root.style.display = "contents";
-    return root;
-}
 
-function requireLinkModel(model: EditorModel): LinkEditor {
-    if (!(model instanceof LinkEditor)) throw new Error("Link view received an invalid model.");
-    return model;
-}
 
 interface LinkBreadcrumbProjection {
     expandedPanel: LinkEditorState["expandedPanel"];
@@ -76,7 +67,7 @@ export class LinkBreadcrumbView extends VanillaView<{ model: LinkEditor }> {
     private stateSubscription: (() => void) | undefined;
 
     public constructor(props: { model: LinkEditor }) {
-        super(props, createContentsRoot());
+        super(props, createContentsElement());
         this.model = props.model;
     }
 
@@ -168,7 +159,7 @@ export class LinkActionView extends VanillaView<{ model: LinkEditor }> {
     private previousFocus: Element | null = null;
 
     public constructor(props: { model: LinkEditor }) {
-        super(props, createContentsRoot());
+        super(props, createContentsElement());
         this.model = props.model;
     }
 
@@ -376,7 +367,7 @@ export class LinkFooterView extends VanillaView<{ model: LinkEditor }> {
     }
 }
 
-export class LinkEditorView extends VanillaView<{ model: EditorModel }> {
+export class LinkEditorView extends VanillaView<{ model: LinkEditor }> {
     private model: LinkEditor | undefined;
     private breadcrumb: LinkBreadcrumbView | undefined;
     private actions: LinkActionView | undefined;
@@ -384,12 +375,12 @@ export class LinkEditorView extends VanillaView<{ model: EditorModel }> {
     private body: LinkBodyView | undefined;
     private chrome: TextChromeView | undefined;
 
-    public constructor(props: { model: EditorModel }) {
-        super(props, createContentsRoot());
+    public constructor(props: { model: LinkEditor }) {
+        super(props, createContentsElement());
     }
 
     protected onMount(): void {
-        const model = requireLinkModel(this.props.model);
+        const model = this.props.model;
         const breadcrumb = this.child(new LinkBreadcrumbView({ model }));
         const actions = this.child(new LinkActionView({ model }));
         const footer = this.child(new LinkFooterView({ model }));
@@ -416,8 +407,8 @@ export class LinkEditorView extends VanillaView<{ model: EditorModel }> {
         chrome.mount();
     }
 
-    protected onUpdate(props: { model: EditorModel }): void {
-        const model = requireLinkModel(props.model);
+    protected onUpdate(props: { model: LinkEditor }): void {
+        const model = props.model;
         if (model !== this.model) {
             throw new Error("Link view received a different model instance.");
         }
@@ -440,11 +431,11 @@ export class LinkEditorView extends VanillaView<{ model: EditorModel }> {
     }
 }
 
-export const linkModule: EditorModule = {
+export const linkModule = defineEditorModule(LinkEditor, {
     createEditor: () =>
         new LinkEditor(new TComponentState({ ...defaultLinkEditorState })),
     View: LinkEditorView,
-};
+});
 
 export { LinkEditor, defaultLinkEditorState };
 export type { LinkEditorState, LinkQueueEvent, ExpandedPanel } from "./LinkEditor";

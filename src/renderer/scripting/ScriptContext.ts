@@ -1,5 +1,5 @@
 import type { IAiCallContext } from "./ai-vision/root";
-import type { EditorModel } from "../editors/base";
+import type { EditorModelInstance as EditorModel } from "../editors/base";
 import { pages } from "../api/pages";
 import { AppWrapper } from "./api-wrapper/AppWrapper";
 import { PageWrapper } from "./api-wrapper/PageWrapper";

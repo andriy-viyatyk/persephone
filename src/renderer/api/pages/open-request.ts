@@ -1,9 +1,10 @@
-import type { EditorModel } from "../../editors/base";
+import type { EditorModelInstance as EditorModel } from "../../editors/base";
 import { cleanForStorage } from "../../../shared/link-data";
 import type { ILinkData, StoredLinkData } from "../../../shared/link-data";
 import type { ILinkDiffRevision } from "../types/io.link-data";
 import type { PageModel } from "./PageModel";
-import { TEXT_NAVIGATION_TRAIT } from "../../editors/base/editor-traits";
+import { FRAGMENT_NAV_TRAIT, TEXT_NAVIGATION_TRAIT } from "../../editors/base/editor-traits";
+import { OPEN_CONTEXT_TRAIT } from "../boards/board-open-context";
 
 export interface PageOpenRequest {
     filePath?: string;
@@ -65,7 +66,7 @@ export function prepareOpenedEditor(
 export function registerOpenSession(editor: EditorModel, request: PageOpenRequest): void {
     const sourceUrl = request.sourceUrl ?? request.sourceLink?.url ?? request.filePath;
     if (!request.sessionHandle || !sourceUrl) return;
-    editor.acceptOpenContext?.({
+    editor.traits.get(OPEN_CONTEXT_TRAIT)?.acceptOpenContext({
         mode: "register-session",
         sourceUrl,
         sessionHandle: request.sessionHandle,
@@ -81,7 +82,7 @@ export function applyOpenHints(
     if (context.exit === "fresh" && (request.diffFrom || request.diffTo)) {
         editor.applyDiffRevisions?.(request.diffFrom, request.diffTo);
     }
-    if (request.fragment) editor.revealFragment?.(request.fragment);
+    if (request.fragment) editor.traits.get(FRAGMENT_NAV_TRAIT)?.revealFragment(request.fragment);
     if (context.exit === "fresh" || context.exit === "reveal") {
         const navigation = editor.traits.get(TEXT_NAVIGATION_TRAIT);
         if (request.revealLine) navigation?.revealLine(request.revealLine);

@@ -1,10 +1,32 @@
-import type { AcceptanceInput, EditorMatcher } from "./editorRegistry";
+import { EditorId } from "../../../shared/editor-ids";
+import { InternalEditorIds } from "./editor-ids";
+import type { EditorMatcher, Tier } from "./editorRegistry";
 import { isGitRepoDir } from "./folder-markers";
 import { fpBasename, fpExtname, isArchiveFile } from "../../core/utils/file-path";
 import { getLanguageByExtension } from "../../core/utils/language-mapping";
 import { settings } from "../../api/settings";
 
-// ── Shared helpers (relocated from register-editors.ts) ──────────────────────
+// Match tiers keep the existing score roles explicit; query ordering belongs to QUERY_RULES.
+// Monaco's lowest switch-option tier.
+export const MONACO_SWITCH: Tier = 0;
+// Universal file-open fallback and Category View's folder fallback.
+export const FILE_FALLBACK: Tier = 0;
+// Language-based switch offer.
+export const LANGUAGE_SWITCH: Tier = 10;
+// Markdown's preferred file-open tier.
+export const MARKDOWN_DEFAULT: Tier = 10;
+// Filename-specific built-in editor claim and verified folder claim.
+export const SPECIALIZED_FILE: Tier = 20;
+// File Diff host offer when Git state is present.
+export const FILE_DIFF_HOST: Tier = 25;
+// Monaco's host-switch offer.
+export const MONACO_HOST: Tier = 50;
+// A host content marker detected after file and language rules make no claim.
+export const CONTENT_DETECTED: Tier = 60;
+// Exclusive binary viewer file claim.
+export const EXCLUSIVE_FILE: Tier = 100;
+// Category link pseudo-path claim.
+export const PSEUDO_PATH: Tier = 200;
 
 const matchesExtension = (fileName: string, extensions: string[]): boolean => {
     const lower = fileName.toLowerCase();
@@ -14,26 +36,19 @@ const matchesExtension = (fileName: string, extensions: string[]): boolean => {
 const matchesPattern = (fileName: string, pattern: RegExp): boolean =>
     pattern.test(fileName.toLowerCase());
 
-// Patterns for specialized JSON editors (excluded from grid-json switch).
-const SPECIALIZED_JSON_PATTERNS = [
-    /\.link\.json$/i,
-    /\.excalidraw$/i,
-];
-
+// US-1930 owns moving the bundled Excalidraw claim into the board catalog.
+const SPECIALIZED_JSON_PATTERNS = [/\.link\.json$/i, /\.excalidraw$/i];
 const isSpecializedJson = (fileName?: string): boolean =>
-    fileName ? SPECIALIZED_JSON_PATTERNS.some((p) => p.test(fileName)) : false;
+    fileName ? SPECIALIZED_JSON_PATTERNS.some((pattern) => pattern.test(fileName)) : false;
 
-// Any extension the monaco language table maps to "markdown" (.md, .markdown, .mkd, …).
 const isMarkdownFile = (fileName: string): boolean => {
     const dot = fileName.lastIndexOf(".");
     return dot >= 0 && getLanguageByExtension(fileName.slice(dot))?.id === "markdown";
 };
 
-// An unsaved page is named by its title ("untitled"), which carries no extension, so the
-// extension-keyed switch options below have nothing to match on. For those names the Monaco
-// language is the only signal of what the content is, and matchers fall back to it.
-// A named file keeps extension-only matching: a `.xml` file is not offered an SVG preview.
 const hasFileExtension = (fileName?: string): boolean => Boolean(fileName && fpExtname(fileName));
+const languageResult = (language: string, supported: string, tier?: Tier): ReturnType<NonNullable<EditorMatcher["language"]>> =>
+    language === supported ? { valid: true, tier } : { valid: false };
 
 const IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico"];
 const VIDEO_EXTENSIONS = [
@@ -41,116 +56,99 @@ const VIDEO_EXTENSIONS = [
     ".flac", ".m4a", ".wma", ".opus", ".avi", ".mkv", ".mov",
 ];
 
-// ── Per-editor matchers (keyed by editor id) ─────────────────────────────────
-
 export const EDITOR_MATCHERS: Record<string, EditorMatcher> = {
-    "monaco": {
-        // Lowest file-resolution priority — the fallback for all files.
-        acceptFile: () => 0,
-        // Always the first switch option.
-        switchOption: () => 0,
-        validForLanguage: () => true,
+    [EditorId.monaco]: {
+        file: () => FILE_FALLBACK,
+        language: () => ({ valid: true, tier: MONACO_SWITCH }),
+        host: () => MONACO_HOST,
     },
-    "grid-json": {
-        acceptFile: (fn) => (matchesPattern(fn, /\.grid\.json$/i) ? 20 : -1),
-        switchOption: (lang, fn) => (lang === "json" && !isSpecializedJson(fn) ? 10 : -1),
-        validForLanguage: (lang) => lang === "json",
+    [EditorId.gridJson]: {
+        file: (name) => matchesPattern(name, /\.grid\.json$/i) ? SPECIALIZED_FILE : undefined,
+        language: (language, name) => languageResult(
+            language,
+            "json",
+            isSpecializedJson(name) ? undefined : LANGUAGE_SWITCH,
+        ),
     },
-    "grid-csv": {
-        acceptFile: (fn) => (matchesPattern(fn, /\.grid\.csv$/i) ? 20 : -1),
-        switchOption: (lang) => (lang === "csv" ? 10 : -1),
-        validForLanguage: (lang) => lang === "csv",
+    [EditorId.gridCsv]: {
+        file: (name) => matchesPattern(name, /\.grid\.csv$/i) ? SPECIALIZED_FILE : undefined,
+        language: (language) => languageResult(language, "csv", LANGUAGE_SWITCH),
     },
-    "grid-jsonl": {
-        acceptFile: (fn) => (matchesPattern(fn, /\.grid\.jsonl$/i) ? 20 : -1),
-        switchOption: (lang) => (lang === "jsonl" ? 10 : -1),
-        validForLanguage: (lang) => lang === "jsonl",
+    [EditorId.gridJsonl]: {
+        file: (name) => matchesPattern(name, /\.grid\.jsonl$/i) ? SPECIALIZED_FILE : undefined,
+        language: (language) => languageResult(language, "jsonl", LANGUAGE_SWITCH),
     },
-    "log-view": {
-        acceptFile: (fn) => (matchesPattern(fn, /\.log\.jsonl$/i) ? 20 : -1),
-        switchOption: (lang, fn) =>
-            lang === "jsonl" && !!fn && matchesPattern(fn, /\.log\.jsonl$/i) ? 10 : -1,
-        validForLanguage: (lang) => lang === "jsonl",
-        detectsContent: (lang, content) =>
-            lang === "jsonl" && /"type"\s*:\s*"log\./.test(content),
+    [EditorId.logView]: {
+        file: (name) => matchesPattern(name, /\.log\.jsonl$/i) ? SPECIALIZED_FILE : undefined,
+        language: (language, name) => languageResult(
+            language,
+            "jsonl",
+            name && matchesPattern(name, /\.log\.jsonl$/i) ? LANGUAGE_SWITCH : undefined,
+        ),
+        content: (language, content) => language === "jsonl" && /"type"\s*:\s*"log\./.test(content),
     },
-    "md-view": {
-        // Markdown files default to Preview: Persephone is used as a docs viewer far more
-        // than a markdown editor. Priority 10 — above monaco's 0 floor, below the
-        // specialized 20-tier — so a file-associated board needs editorPriority > 10 to
-        // claim a markdown file.
-        acceptFile: (fn) => (isMarkdownFile(fn) ? 10 : -1),
-        switchOption: (lang) => (lang === "markdown" ? 10 : -1),
-        validForLanguage: (lang) => lang === "markdown",
+    [EditorId.mdView]: {
+        file: (name) => isMarkdownFile(name) ? MARKDOWN_DEFAULT : undefined,
+        language: (language) => languageResult(language, "markdown", LANGUAGE_SWITCH),
     },
-    "svg-view": {
-        switchOption: (lang, fn) => {
-            if (!!fn && matchesExtension(fn, [".svg"])) return 10;
-            return lang === "xml" && !hasFileExtension(fn) ? 10 : -1;
+    [EditorId.svgView]: {
+        language: (language, name) => {
+            const supported = language === "xml";
+            const tier = (!!name && matchesExtension(name, [".svg"]))
+                || (supported && !hasFileExtension(name))
+                ? LANGUAGE_SWITCH
+                : undefined;
+            return { valid: supported, tier };
         },
-        validForLanguage: (lang) => lang === "xml",
     },
-    "html-view": {
-        switchOption: (lang) => (lang === "html" ? 10 : -1),
-        validForLanguage: (lang) => lang === "html",
+    [EditorId.htmlView]: {
+        language: (language) => languageResult(language, "html", LANGUAGE_SWITCH),
     },
-    "mermaid-view": {
-        switchOption: (lang) => (lang === "mermaid" ? 10 : -1),
-        validForLanguage: (lang) => lang === "mermaid",
+    [EditorId.mermaidView]: {
+        language: (language) => languageResult(language, "mermaid", LANGUAGE_SWITCH),
     },
-    "link-view": {
-        acceptFile: (fn) => (matchesPattern(fn, /\.link\.json$/i) ? 20 : -1),
-        switchOption: (lang, fn) =>
-            lang === "json" && !!fn && matchesPattern(fn, /\.link\.json$/i) ? 10 : -1,
-        validForLanguage: (lang) => lang === "json",
-        detectsContent: (lang, content) =>
-            lang === "json"
+    [EditorId.linkView]: {
+        file: (name) => matchesPattern(name, /\.link\.json$/i) ? SPECIALIZED_FILE : undefined,
+        language: (language, name) => languageResult(
+            language,
+            "json",
+            name && matchesPattern(name, /\.link\.json$/i) ? LANGUAGE_SWITCH : undefined,
+        ),
+        content: (language, content) => language === "json"
             && content.includes('"type"')
             && /"type"\s*:\s*"link-editor"/.test(content)
             && content.includes('"links"'),
     },
-    "image-view": {
-        acceptFile: (fn) => (matchesExtension(fn, IMAGE_EXTENSIONS) ? 100 : -1),
+    [EditorId.imageView]: {
+        file: (name) => matchesExtension(name, IMAGE_EXTENSIONS) ? EXCLUSIVE_FILE : undefined,
     },
-    "archive-view": {
-        acceptFile: (fn) => (isArchiveFile(fn) ? 100 : -1),
+    [EditorId.archiveView]: {
+        file: (name) => isArchiveFile(name) ? EXCLUSIVE_FILE : undefined,
     },
-    "video-view": {
-        acceptFile: (fn) => (matchesExtension(fn, VIDEO_EXTENSIONS) ? 100 : -1),
+    [EditorId.videoView]: {
+        file: (name) => matchesExtension(name, VIDEO_EXTENSIONS) ? EXCLUSIVE_FILE : undefined,
     },
-    "category-view": {
-        acceptFile: (fn) => (fn.startsWith("tree-category://") ? 200 : -1),
-        acceptFolder: () => 0,
+    [EditorId.categoryView]: {
+        file: (name) => name.startsWith("tree-category://") ? PSEUDO_PATH : undefined,
+        folder: () => FILE_FALLBACK,
     },
-    "git-tree": {
-        acceptFolder: (folderPath) => (isGitRepoDir(folderPath) ? 20 : -1),
+    [EditorId.gitTree]: {
+        folder: (path) => isGitRepoDir(path) ? SPECIALIZED_FILE : undefined,
     },
-    "mneme-root": {
-        acceptFolder: (folderPath) =>
-            fpBasename(folderPath) === ".mneme" && !!settings.get("mneme.enabled") ? 20 : -1,
+    [EditorId.mnemeRoot]: {
+        folder: (path) => fpBasename(path) === ".mneme" && !!settings.get("mneme.enabled")
+            ? SPECIALIZED_FILE
+            : undefined,
     },
-    "env-vars-view": {
-        acceptFile: (fn) => (matchesPattern(fn, /\.env\.json$/i) ? 20 : -1),
-        switchOption: (lang, fn) =>
-            lang === "json" && !!fn && matchesPattern(fn, /\.env\.json$/i) ? 10 : -1,
-        validForLanguage: (lang) => lang === "json",
+    [EditorId.envVarsView]: {
+        file: (name) => matchesPattern(name, /\.env\.json$/i) ? SPECIALIZED_FILE : undefined,
+        language: (language, name) => languageResult(
+            language,
+            "json",
+            name && matchesPattern(name, /\.env\.json$/i) ? LANGUAGE_SWITCH : undefined,
+        ),
+    },
+    [InternalEditorIds.fileDiff]: {
+        host: (host) => (host.state.get() as { gitRepo?: unknown }).gitRepo ? FILE_DIFF_HOST : undefined,
     },
 };
-
-export function makeAccepts(match: EditorMatcher): (input: AcceptanceInput) => number {
-    return (input) => {
-        if (input.fileName) {
-            const p = match.acceptFile?.(input.fileName) ?? -1;
-            if (p >= 0) return p;
-        }
-        if (input.language) {
-            const p = match.switchOption?.(input.language, input.fileName) ?? -1;
-            if (p >= 0) return p;
-        }
-        if (input.host && match.detectsContent) {
-            const content = (input.host.state.get() as { content?: string }).content ?? "";
-            if (match.detectsContent(input.language ?? "", content)) return 60;
-        }
-        return -1;
-    };
-}

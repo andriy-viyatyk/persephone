@@ -1,5 +1,5 @@
 export { EditorModel } from "./EditorModel";
-export type { EditorStateBase, RestoreData } from "./EditorModel";
+export type { EditorModelInstance, EditorStateBase, RestoreData } from "./EditorModel";
 
 import type { IEditorState } from "../../../shared/types";
 import { untranslated } from "../../../shared/i18n/t";
@@ -21,4 +21,4 @@ export type { IContentHostTrait } from './editor-traits';
 export { TEXT_SELECTION_TRAIT, TEXT_NAVIGATION_TRAIT } from './editor-traits';
 export type { ITextSelectionTrait, ITextNavigationTrait } from './editor-traits';
 export { editorRegistry } from './editorRegistry';
-export type { EditorDefinition, EditorModule, AcceptanceInput } from './editorRegistry';
+export type { EditorDefinition, EditorModule } from './editorRegistry';

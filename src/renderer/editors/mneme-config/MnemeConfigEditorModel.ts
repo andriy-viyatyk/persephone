@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { EditorModel, type EditorStateBase } from "../base/EditorModel";
 import type { EditorDescriptor } from "../../../shared/persistence";
 import { TComponentState } from "../../core/state/state";
@@ -50,7 +51,7 @@ export const getDefaultMnemeConfigEditorState = (): MnemeConfigEditorState => ({
     id: crypto.randomUUID(),
     title: untranslated("Mneme"),
     modified: false,
-    editor: "mneme-config",
+    editor: EditorId.mnemeConfig,
     connectionStatus: "disconnected",
     errorMessage: "",
     running: false,
@@ -65,7 +66,7 @@ export const getDefaultMnemeConfigEditorState = (): MnemeConfigEditorState => ({
 const REINDEX_ALL_KEY = "__all__";
 
 export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> {
-    readonly editorId = "mneme-config";
+    readonly editorId = EditorId.mnemeConfig;
     noLanguage = true;
     skipSave = true;
 

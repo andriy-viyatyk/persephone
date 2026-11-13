@@ -19,7 +19,7 @@ import { t } from "../../../shared/i18n/t";
 const shortHashOf = (hash: string): string => hash.slice(0, 7);
 
 /** Native File History secondary view backed by the shared native Git tree. */
-export default class GitDiffRevisionsSecondaryView extends VanillaView<SecondaryViewProps> {
+export default class GitDiffRevisionsSecondaryView extends VanillaView<SecondaryViewProps<FileDiffEditor>> {
     private model: FileDiffEditor | undefined;
     private header: SideBarPanelHeaderHandle | undefined;
     private refreshButton: IconButtonView | undefined;
@@ -29,7 +29,7 @@ export default class GitDiffRevisionsSecondaryView extends VanillaView<Secondary
     private leadingRows: GitCommitRow[] = [syntheticCommitRow("unstaged", t("git.unstagedChanges"))];
     private sideSelect: GitTreeSideSelect | undefined;
 
-    public constructor(props: SecondaryViewProps) {
+    public constructor(props: SecondaryViewProps<FileDiffEditor>) {
         super(props, createPanelElement({
             name: "git-diff-revisions",
             direction: "column",
@@ -90,7 +90,7 @@ export default class GitDiffRevisionsSecondaryView extends VanillaView<Secondary
         this.updateHeader(this.props);
     }
 
-    protected onUpdate(props: SecondaryViewProps): void {
+    protected onUpdate(props: SecondaryViewProps<FileDiffEditor>): void {
         const model = this.getModel(props);
         if (model) this.model = model;
         this.updateHeader(props);
@@ -105,8 +105,8 @@ export default class GitDiffRevisionsSecondaryView extends VanillaView<Secondary
         this.model = undefined;
     }
 
-    private getModel(props: SecondaryViewProps): FileDiffEditor | undefined {
-        return props.model instanceof FileDiffEditor ? props.model : undefined;
+    private getModel(props: SecondaryViewProps<FileDiffEditor>): FileDiffEditor | undefined {
+        return props.model;
     }
 
     private readonly applyDiffState = (state: Pick<FileDiffEditorState, "from" | "to" | "hasStaged">): void => {
@@ -170,7 +170,7 @@ export default class GitDiffRevisionsSecondaryView extends VanillaView<Secondary
         this.treeHost.style.display = unavailable ? "none" : "";
     }
 
-    private updateHeader(props: SecondaryViewProps): void {
+    private updateHeader(props: SecondaryViewProps<FileDiffEditor>): void {
         this.header?.update({
             headerHost: props.headerHost,
             icon: props.iconElement,

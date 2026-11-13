@@ -1,3 +1,4 @@
+import { createContentsElement } from "../../uikit/shared/create-contents-element";
 import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import { pages } from "../../api/pages";
@@ -12,21 +13,11 @@ import { DrawIcon } from "../../theme/language-icons";
 import { createIconComponentElement } from "../../theme/icons";
 import { savePngViaDialog } from "../shared/image-export";
 import { restoreFocus } from "../../uikit/shared/focus-restore";
-import type { EditorModule } from "../base/editorRegistry";
-import type { EditorModel } from "../base/EditorModel";
+import { defineEditorModule } from "../base/editorRegistry";
 
 const MENU_CLOSE_DELAY_MS = 250;
 
-function createContentsRoot(): HTMLSpanElement {
-    const root = document.createElement("span");
-    root.style.display = "contents";
-    return root;
-}
 
-function requireHtmlModel(model: EditorModel): HtmlEditor {
-    if (!(model instanceof HtmlEditor)) throw new Error("HTML view received an invalid model.");
-    return model;
-}
 
 class HtmlToolbarBitsView extends VanillaView<{ model: HtmlEditor }> {
     private model: HtmlEditor;
@@ -41,7 +32,7 @@ class HtmlToolbarBitsView extends VanillaView<{ model: HtmlEditor }> {
     private pipeSubscription: (() => void) | undefined;
 
     public constructor(props: { model: HtmlEditor }) {
-        super(props, createContentsRoot());
+        super(props, createContentsElement());
         this.model = props.model;
     }
 
@@ -199,14 +190,14 @@ class HtmlToolbarBitsView extends VanillaView<{ model: HtmlEditor }> {
     }
 }
 
-export class HtmlEditorView extends VanillaView<{ model: EditorModel }> {
+export class HtmlEditorView extends VanillaView<{ model: HtmlEditor }> {
     private readonly body: HtmlBodyView;
     private readonly toolbar: HtmlToolbarBitsView;
     private readonly chrome: TextChromeView;
     private model: HtmlEditor;
 
-    public constructor(props: { model: EditorModel }) {
-        const model = requireHtmlModel(props.model);
+    public constructor(props: { model: HtmlEditor }) {
+        const model = props.model;
         const body = new HtmlBodyView({ model });
         const toolbar = new HtmlToolbarBitsView({ model });
         const chrome = new TextChromeView({
@@ -227,8 +218,8 @@ export class HtmlEditorView extends VanillaView<{ model: EditorModel }> {
         this.chrome.mount();
     }
 
-    protected onUpdate(props: { model: EditorModel }): void {
-        const model = requireHtmlModel(props.model);
+    protected onUpdate(props: { model: HtmlEditor }): void {
+        const model = props.model;
         if (model !== this.model) {
             throw new Error("HTML view received a different model instance.");
         }
@@ -240,12 +231,12 @@ export class HtmlEditorView extends VanillaView<{ model: EditorModel }> {
     }
 }
 
-export const htmlModule: EditorModule = {
+export const htmlModule = defineEditorModule(HtmlEditor, {
     createEditor: () =>
         new HtmlEditor(new TComponentState({ ...defaultHtmlEditorState })),
     View: HtmlEditorView,
 
-};
+});
 
 export { HtmlEditor, defaultHtmlEditorState };
 export type { HtmlEditorState, HtmlQueueEvent } from "./HtmlEditor";

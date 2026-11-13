@@ -1,3 +1,5 @@
+import { createContentsElement } from "../../uikit/shared/create-contents-element";
+import { EditorId } from "../../../shared/editor-ids";
 import { t, untranslated } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import { TextChromeView } from "../base/TextChromeView";
@@ -8,24 +10,14 @@ import type { InputProps } from "../../uikit/Input/InputView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { showColumnsOptions } from "./components/ColumnsOptions";
 import { showCsvOptions } from "./components/CsvOptions";
-import type { EditorModule } from "../base/editorRegistry";
-import type { EditorModel } from "../base/EditorModel";
+import { defineEditorModule, type EditorModule } from "../base/editorRegistry";
 import { GridEditor, defaultGridEditorState, type GridEditorState } from "./GridEditor";
 import { GridBodyView, getVisibleRowsLabel } from "./GridBodyView";
 import type { DataGridInstance } from "../../uikit/DataGrid";
 import type { GridEditorId } from "./util";
 import "../../uikit/Button/Button.css";
 
-function createContentsRoot(): HTMLSpanElement {
-    const root = document.createElement("span");
-    root.style.display = "contents";
-    return root;
-}
 
-function requireGridModel(model: EditorModel): GridEditor {
-    if (!(model instanceof GridEditor)) throw new Error("Grid view received an invalid model.");
-    return model;
-}
 
 interface GridToolbarProps {
     model: GridEditor;
@@ -39,7 +31,7 @@ class GridToolbarView extends VanillaView<GridToolbarProps> {
     private csvButton: ButtonView | undefined;
 
     public constructor(props: GridToolbarProps) {
-        super(props, createContentsRoot());
+        super(props, createContentsElement());
         this.model = props.model;
         this.getGridModel = props.getGridModel;
     }
@@ -118,7 +110,7 @@ class GridSearchInputView extends VanillaView<{ model: GridEditor }> {
     private stateSubscription: (() => void) | undefined;
 
     public constructor(props: { model: GridEditor }) {
-        super(props, createContentsRoot());
+        super(props, createContentsElement());
         this.model = props.model;
     }
 
@@ -204,7 +196,7 @@ function selectGridFooter(state: GridEditorState): GridFooterProjection {
     };
 }
 
-export class GridEditorView extends VanillaView<{ model: EditorModel }> {
+export class GridEditorView extends VanillaView<{ model: GridEditor }> {
     private model: GridEditor | undefined;
     private gridModel: DataGridInstance<any> | null = null;
     private body: GridBodyView | undefined;
@@ -213,12 +205,12 @@ export class GridEditorView extends VanillaView<{ model: EditorModel }> {
     private chrome: TextChromeView | undefined;
     private footer: HTMLSpanElement | undefined;
 
-    public constructor(props: { model: EditorModel }) {
-        super(props, createContentsRoot());
+    public constructor(props: { model: GridEditor }) {
+        super(props, createContentsElement());
     }
 
     protected onMount(): void {
-        const model = requireGridModel(this.props.model);
+        const model = this.props.model;
         this.model = model;
         const body = this.child(new GridBodyView({ model, onModel: this.onGridModel }));
         const toolbar = this.child(new GridToolbarView({ model, getGridModel: this.getGridModel }));
@@ -248,8 +240,8 @@ export class GridEditorView extends VanillaView<{ model: EditorModel }> {
         });
     }
 
-    protected onUpdate(props: { model: EditorModel }): void {
-        const model = requireGridModel(props.model);
+    protected onUpdate(props: { model: GridEditor }): void {
+        const model = props.model;
         if (model !== this.model) {
             throw new Error("Grid view received a different model instance.");
         }
@@ -293,17 +285,17 @@ export class GridEditorView extends VanillaView<{ model: EditorModel }> {
 }
 
 function makeModule(id: GridEditorId): EditorModule {
-    return {
+    return defineEditorModule(GridEditor, {
         createEditor: () =>
             new GridEditor(new TComponentState({ ...defaultGridEditorState }), id),
         View: GridEditorView,
 
-    };
+    });
 }
 
-export const gridJsonModule: EditorModule = makeModule("grid-json");
-export const gridCsvModule: EditorModule = makeModule("grid-csv");
-export const gridJsonlModule: EditorModule = makeModule("grid-jsonl");
+export const gridJsonModule: EditorModule = makeModule(EditorId.gridJson);
+export const gridCsvModule: EditorModule = makeModule(EditorId.gridCsv);
+export const gridJsonlModule: EditorModule = makeModule(EditorId.gridJsonl);
 
 export { GridEditor, defaultGridEditorState } from "./GridEditor";
 export type { GridEditorState, GridQueueEvent } from "./GridEditor";

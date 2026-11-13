@@ -29,9 +29,9 @@ function resolveTextHostDisplayTitle(
  */
 export abstract class TextHostEditorModel<
     T extends EditorStateBase = EditorStateBase,
-    R = unknown,
     E extends ComponentQueueEvent = ComponentQueueEvent,
-> extends EditorModel<T, R, E> {
+    Q = never,
+> extends EditorModel<T, E, Q> {
     override readonly deferRestoreOnOpen = true;
     /** Human-readable editor name for error/notify strings. */
     protected abstract readonly displayName: string;

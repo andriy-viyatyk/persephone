@@ -53,7 +53,7 @@ modules into page-ready editor models.
 
 > **REST Client board:** REST collections are handled by the bundled board in `/assets/boards/rest-client/`, outside the native editor registry. Its manifest claims `.rest.json` files and JSON content with the `rest-client` collection marker. Board pages use the `board-editor:<root>` page editor id; scripts reach the board model through `pages[i].editor.app`.
 
-> **Toolset editor:** `ToolsetEditorModel` is a lightweight read-only viewer for one registered *toolset* (a folder holding `tools-manifest.json` + tool scripts — the Agent Tools registry). Like the board and git-tree editors it is a **no-host target editor** (`hasContentHost: false`, `accepts: () => -1`): it is never resolved from a filename, but opened by the `persephone-toolset://` link scheme (encode/decode in `content/persephone-toolset-link.ts`, parsed in `parsers.ts` → `target: "toolset-view"`, built by its module's `newEditorModel` through `editor-factory.ts`, and restored by the editor registry's default no-host descriptor path). Opening it from a normal click on `tools-manifest.json` is deliberately *not* wired — that still opens the JSON in Monaco; instead the file gets an "Open Toolset" trailing icon in the Explorer tree (register-gated via `RegisterToolsetDialog` when the folder is untrusted), mirroring `board-manifest.json`'s "Open Board" icon. The view shows the manifest's metadata, a registered chip, Open-Folder / Open-Log buttons, and a card per declared tool. The registry/trust/executor layer it reads (`api/tools/`) is intentionally kept off the `app` model and every script `.d.ts`, so scripts can neither self-register nor execute tools — the same rule that keeps the internal board registry unscriptable.
+> **Toolset editor:** `ToolsetEditorModel` is a lightweight read-only viewer for one registered *toolset* (a folder holding `tools-manifest.json` + tool scripts — the Agent Tools registry). It has no matcher rules, so it is never resolved from a filename; it is opened by the `persephone-toolset://` link scheme (encode/decode in `content/persephone-toolset-link.ts`, parsed in `parsers.ts` → `target: "toolset-view"`, built by its module's `newEditorModel` through `editor-factory.ts`, and restored by the editor registry's default no-host descriptor path). Opening it from a normal click on `tools-manifest.json` is deliberately *not* wired — that still opens the JSON in Monaco; instead the file gets an "Open Toolset" trailing icon in the Explorer tree (register-gated via `RegisterToolsetDialog` when the folder is untrusted), mirroring `board-manifest.json`'s "Open Board" icon. The view shows the manifest's metadata, a registered chip, Open-Folder / Open-Log buttons, and a card per declared tool. The registry/trust/executor layer it reads (`api/tools/`) is intentionally kept off the `app` model and every script `.d.ts`, so scripts can neither self-register nor execute tools — the same rule that keeps the internal board registry unscriptable.
 
 > **Board editor:** `BoardEditorModel` is a Pattern-B (survive-navigation) editor. It hosts the board's `index.html` in an in-DOM cross-origin `<iframe src="board://<host>/index.html">` (no `sandbox` attribute; `host` is a stable hash of the board root minted by main; isolated by SOP + `nodeIntegrationInSubFrames: false` + a CSP that forbids remote network). The `board://` protocol is registered once on the host session and routes host→board-root. A browser-IIFE shim (`src/board-shim.ts`), inlined into the served HTML by the `board://` handler, rebuilds `window.persephone` — the bridge object — over a per-board `MessagePort` (minted by `MessageChannelMain` in main, handed off through a one-time renderer-brokered handshake): `execute()` (thin client over the main-process command runner), the integration tier (`openRawLink`, `notify`, file/folder dialogs, `readFile`/`writeFile`), and the theme/token contract (`--p-*` CSS variables injected into the served `<head>` for a themed first paint, live across theme switches). Main enforces the trusted grant snapshot for object-form manifest permissions; trusted legacy manifests without declarations temporarily retain unrestricted bridge access. The theme shortcuts travel the other way for the same SOP reason the content bridge exists: the host's global `KeyboardService` listens on the **host** document, which a cross-origin frame's keydown never reaches, so the shim forwards Ctrl+Alt+`[` / `]` to the host as `board:cycleTheme` and both paths converge on the shared `api/cycle-app-theme.ts`. It uses the same bubble-phase `defaultPrevented` opt-out as the forwarded Ctrl+S, and — unlike `board:setStatusText`, which is main-frame-only because the footer is main-view state — it is accepted from **any** frame, since the app theme is global rather than per-board. Automation (`call` object-model automation) targets the board **frame** via CDP through `BoardTargetModel`. External boards are gated by the renderer `BoardRegistry` and show `UntrustedBoardView.ts` until trusted; bundled boards under `assets/boards/` use permissions from their shipped manifest. A missing board root shows `BoardNotFoundView.ts`. The `boards-assets/` root holds the recommended-components catalog (skins + manifest). See `assets/guides/agents/boards.md` for the canonical board authoring guide; scaffolding generates a board-local `CLAUDE.md` from it.
 
@@ -192,12 +192,16 @@ model references. This applies to single-editor models and diff original / modif
 ## EditorModel Base Class
 
 ```typescript
-abstract class EditorModel<TState extends EditorStateBase = EditorStateBase> {
+abstract class EditorModel<
+    TState extends EditorStateBase = EditorStateBase,
+    E extends ComponentQueueEvent = ComponentQueueEvent,
+    Q = never,
+> extends TModel<TState> {
     readonly id: string;
     readonly editorId: string;          // e.g. "grid-json", "image-view"
     readonly state: TOneState<TState>;
     readonly traits: TraitSet;
-    readonly queue: ComponentQueue;
+    readonly queue: ComponentQueue<E, Q>;
     readonly contentHost: TextFileModel | null;
     readonly filePath: string | undefined;
     readonly sourceLink: StoredLinkData | undefined;
@@ -240,6 +244,11 @@ abstract class EditorModel<TState extends EditorStateBase = EditorStateBase> {
     onGetMenuItems(): MenuItem[];        // default delegates to contentHost
 }
 ```
+
+`EditorModel<T, E, Q>` extends `TModel<T>` and keeps editor-specific request and response types on
+its `ComponentQueue<E, Q>`. Cross-editor APIs use the erased `EditorModelInstance` type. Optional
+behaviors with one or few implementations live in traits owned by their feature modules rather
+than accumulating as hooks on this base class.
 
 Editors expose their own lifecycle and release confirmation methods; `TDialogModel.canClose` is a dialog guard, not a universal editor contract.
 
@@ -468,17 +477,13 @@ returns the native constructor as-is; it has no React arm and no normalization s
 callers use native views, and `AsyncEditorView` mounts the module's `View` directly.
 
 The eagerly-registered half is the `EditorDefinition` (`id`, `name`, optional `guidePath`,
-`accepts`, `hasContentHost`, `match?`, `loadModule`). `guidePath` is the canonical path in the
-packaged guide corpus, without `.md`; it is used by editor-facade help and the active-page guide
-entry points. User-facing editors should point to their editor or screen guide, while development-
-only editors may omit it. Registration lives in
-`/src/renderer/editors/register-editors.ts` as a **table + loop**: one row per editor
-(`{ id, name, guidePath?, hasContentHost?, accepts?, capabilities?, load }`), with `match` derived from
-`EDITOR_MATCHERS[id]` and `accepts` defaulting to `makeAccepts(match)` (or `() => -1` for
-standalone editors with no matcher). Monaco and `file-diff` carry explicit `accepts`
-overrides. Each row's `load` keeps a literal `import("./…")` so Vite code splitting is
-preserved, and row order breaks equal file-match priorities in `resolve`.
-
+`hasContentHost`, `match?`, `loadModule`). `guidePath` is the canonical path in the packaged
+guide corpus, without `.md`; it is used by editor-facade help and the active-page guide entry
+points. Registration lives in `/src/renderer/editors/register-editors.ts` as a **table + loop**:
+one row per editor (`{ id, name, guidePath?, hasContentHost?, capabilities?, load }`), with
+`match` derived from `EDITOR_MATCHERS[id]`. Matcher-free standalone editors make no matching
+claims. Each row's `load` keeps a literal `import("./…")` so Vite code splitting is preserved,
+and row order breaks equal-tier matches.
 `capabilities?` declares built-in handoffs owned by the editor. The renderer capability service
 seeds `app.capabilities` from these declarations at startup, keeping page/editor construction in
 the editor registry while exposing a stable handoff surface to scripts and other callers.
@@ -562,36 +567,40 @@ When a file is opened:
 File path → editorRegistry.resolve(filePath) → EditorModule → createEditor() / newEditorModel(filePath) → Render
 ```
 
-`resolve` consults **only** each matcher's `acceptFile(fileName)` — a pure file-name test — and the highest returned priority wins. The tiers:
+`resolve` uses the `file` matcher axis and chooses the highest nonnegative tier; equal tiers keep
+registration order. Named tiers are defined once in `editor-matchers.ts`: Monaco's file fallback
+is 0, Markdown's default is 10, specialized file names are 20, exclusive viewers are 100, and
+`tree-category://` pseudo-paths are 200. Markdown sits at 10 because Persephone is used far more
+as a documentation *viewer* than as a Markdown editor, and its extension set comes from the shared
+Monaco language table (`getLanguageByExtension`). Content detection does not affect file-open
+resolution.
 
-| Priority | Claimants | Matched on |
-|----------|-----------|------------|
-| 0 | `monaco` | everything — the floor that guarantees a file always resolves |
-| 10 | `md-view` | any extension the Monaco language table maps to `markdown` |
-| 20 | `grid-json`, `grid-csv`, `grid-jsonl`, `log-view`, `link-view`, `env-vars-view` | compound file-name patterns (`*.grid.json`, `*.grid.csv`, …) |
-| 100 | `image-view`, `archive-view`, `video-view` | binary-format extensions |
-| 200 | `category-view` | `tree-category://` links |
+All editor registration is in `/src/renderer/editors/register-editors.ts`; matcher rules are in
+`/src/renderer/editors/base/editor-matchers.ts`. `EditorMatcher` has one contract: optional
+`file`, `language`, `content`, `folder`, and `host` rules. An absent tier means no claim. Language
+results can separately express support without a switch offer or reject a language. The
+`EditorRegistry.QUERY_RULES` table declares each query's axes, score direction, selection and tie
+rule; `rank()` evaluates the matcher rules and owns the single stable sort.
 
-Markdown sits at 10 rather than sharing monaco's floor because Persephone is used far more as a documentation *viewer* than as a Markdown editor, so `.md` files open in the rendered Preview by default. The tier is kept below 20 so a compound name always outranks it, and `md-view` derives its extension set from the shared Monaco language table (`getLanguageByExtension`) instead of a duplicated list — `.md`, `.markdown`, `.mkd`, `.mdown`, and the rest come along automatically.
+The query rules preserve the distinct callers: file open sorts file claims descending and selects the
+first; language switch sorts language tiers ascending; preview excludes Monaco, requires a language
+tier and rejects files that fail an existing file matcher, then selects the last ascending result;
+language validation falls back only on explicit `valid: false`; folder open selects the first
+highest-tier claim and folder switch returns all claims ascending.
 
-Content-based detection is **not** part of this path: `acceptFile` never sees content. It belongs to `accepts()` (priority 60 when a `detectsContent` matcher fires) and reaches the user through the switch widget — see [Content-Based Editor Detection](#content-based-editor-detection).
-
-All editor registration is in `/src/renderer/editors/register-editors.ts`; the matchers themselves are in `/src/renderer/editors/base/editor-matchers.ts`.
-
-Folder matchers live beside the file matchers and are synchronous: `category-view` accepts every
-directory at priority 0, while Git Tree and Mneme claim only enabled, marker-verified `.git` and
-`.mneme` directories at priority 20. The marker probe is isolated in
-`/src/renderer/editors/base/folder-markers.ts` because the registry contract is synchronous.
+Folder matchers are synchronous: Category View claims every directory at tier 0, while Git Tree
+and Mneme claim enabled, marker-verified `.git` and `.mneme` directories at tier 20. The marker
+probe is isolated in `/src/renderer/editors/base/folder-markers.ts` because the registry contract
+is synchronous. `resolveForFolder` selects the highest tier, with registration order breaking
+ties; `getFolderEditors` returns all claimants in ascending tier order.
 
 The Git Tree view remembers its column order/width layout and bottom-panel height through
 the global UI-preference cache. The editor model keeps page-local state for the current instance;
 the view seeds only missing values for a newly opened page and writes settled splitter values after
 a moved gesture.
 
-`editorRegistry.resolveForFolder(folderPath)` selects the highest-priority folder claimant and
-falls back to `category-view`; `getFolderEditors(folderPath)` returns all non-negative claimants
-in ascending priority for the switch widget. `FileTreeProvider` uses the resolved id and its
-optional `folderIcon` metadata for tree rows, while `folder-editor-link.ts` maps the id and
+`FileTreeProvider` uses the resolved id and its optional `folderIcon` metadata for tree rows,
+while `folder-editor-link.ts` maps the id and
 anchor to the existing category, Git Tree, or Mneme link scheme.
 
 ## Custom-Editor Boards
@@ -625,24 +634,24 @@ A folder mask is a path **suffix**, so it need not spell out the drive or root, 
 
 Callers may pass a bare file **name** where no path is available, such as a page title or a board's `persephone.icons.forFiles(names)` request. In that case the folder gate cannot be evaluated, so folder-scoped boards are excluded from icon resolution rather than lending their icon to every matching name. Local file-icon surfaces that have the full path can resolve the scoped board icon when the parent folder matches. Editor-open resolution and editor switching also use the full path and honor the folder scope; the explicit Open with menu lists file-mask matches independently of folder scope so users can choose a board for a particular file.
 
-**Two registries, merged.** Board editors are runtime-discovered, so they are **not** injected into the static `editorRegistry`. They live in a separate reactive registry, `customEditorRegistry` (`editors/board/custom-editor-registry.ts`), which enumerates trusted roots plus the app-owned bundled-board registry, reads each manifest, and maps file → claiming boards. It reacts to trust, bundled-source, and disabled-board changes (a removed or disabled association drops live) and re-reads manifests on refresh — there is no filesystem watcher, mirroring the Agent Tools `registeredTools` precedent. Each associated board is a distinct **virtual editor id** `board-editor:<boardRoot>` (`boardEditorId` / `parseBoardEditorId`), where the remainder after the prefix is the board root verbatim (original case; may contain `:` and `\` — parse by prefix, never by split).
+**Two registries, one catalog.** Board editors are runtime-discovered, so they are **not** injected into the static `editorRegistry`. They live in the reactive `customEditorRegistry` (`api/boards/custom-editor-registry.ts`), which enumerates trusted roots plus the app-owned bundled-board registry, reads each manifest, and maps files to claiming boards. It reacts to trust, bundled-source, and disabled-board changes and re-reads manifests on refresh. `BoardEditorSource` adapts that registry to the `EditorCatalog` contract; the source is registered in the renderer startup table before page restoration. Each associated board is a distinct **virtual editor id** `board-editor:<boardRoot>` (`boardEditorId` / `parseBoardEditorId`), where the remainder after the prefix is the board root verbatim (original case; may contain `:` and `\` — parse by prefix, never by split).
 
-**Merged resolution.** `resolveEditorIdForFile(filePath, matchPath?)` reads both registries and returns the winning id: it compares the best built-in `acceptFile` priority against the highest-priority trusted or bundled board claiming the file. A board wins only on a strictly-greater priority (built-ins win exact ties; among boards, registry order), and — for a non-local source — only when it is eligible for one (see [Non-Local Sources](#non-local-sources)). The optional `matchPath` exists because those are two different questions about the same open: locality is judged on the **original** url (`isPlainLocalPath`), while mask and built-in matching run against the **effective** path, so an `archive.zip!doc.pdf` entry is matched as `doc.pdf` without being mistaken for a local file. This helper — **not** `editorRegistry.resolveId` — is the merge point, called at the two file-open decision points: direct open (`PagesLifecycleModel.newEditorModel`) and the Layer 2 `openRawLink` file resolver (`content/resolvers.ts`). It is deliberately kept out of `editorRegistry.resolveId` so a `board-editor:<root>` id never leaks into `TextFileModel`/`resolvers` internal lookups.
+**Merged resolution.** `editorCatalog.resolveFile(filePath, matchPath?)` asks each source for a claim and returns the highest priority; exact ties stay with the earlier source, so built-in editors win board ties. `BoardEditorSource` applies the non-local eligibility gate to simple boards (see [Non-Local Sources](#non-local-sources)). The optional `matchPath` separates two questions about the same open: locality is judged on the **original** URL (`isPlainLocalPath`), while mask and built-in matching use the **effective** path, so an `archive.zip!doc.pdf` entry is matched as `doc.pdf` without being mistaken for a local file. File-open callers use the catalog, keeping dynamic board IDs out of internal built-in registry lookups.
 
 Bundled and trusted board matches use the same priority ladder: built-ins win exact ties, and
 board-to-board ties follow registry order. The bundled Excalidraw board declares priority `50`,
 which is sufficient because Monaco is the remaining `.excalidraw` fallback at priority `0`, while
 a trusted replacement at the same board priority wins by the board-origin tie rules.
 
-For folders, `resolveEditorIdForFolder(folderPath)` performs the analogous merge over the built-in
-folder resolver and trusted or bundled `folderEditorMasks`, but `getFolderEditorsForFolder(folderPath)` keeps
-the switch order independent of priority: built-in candidates first, then board candidates.
+For folders, `editorCatalog.resolveFolder(folderPath)` performs the analogous priority merge over
+the built-in folder resolver and trusted or bundled `folderEditorMasks`. Folder switch candidates
+keep source order: built-in candidates first, then board candidates.
 The registry is intentionally inert until a board is trusted or shipped as enabled bundled content;
 a manifest that only declares the new folder axis does not affect ordinary folder opening otherwise.
 
-**Construction & switch.** When resolution yields a `board-editor:<root>` id, `editor-factory.ts` decodes the root (in a branch placed *before* the text-fallback, so an unrecognized board id can't silently open as text) and builds a `BoardEditorModel` initialized with the target file path. For a folder target, `createEditorFromFolder(editorId, folderPath)` validates that the virtual id is still a trusted registry entry claiming that folder, then calls the board's folder factory with the board root and claimed folder as independent values. `PageModel.switchMainEditor` branches on the `board-editor:` prefix *before* the `editorRegistry.getById` lookup (which throws on unregistered ids): it runs the old editor's `confirmRelease()` guard (abort on cancel — reusing navigation's unsaved-changes prompt), then rebuilds through `createEditorFromFile` or the folder path as appropriate (a board has no shared content host to transfer). The switch widget (`SwitchWidgetView` in `PageToolbarView.ts`, and its direct `mountVanilla` use in `BoardToolbar.ts`) merges board options from the file- or folder-keyed registry projection and resolves labels from the registry rather than `editorRegistry.getById`. Folder switches preserve the built-in-first order and keep a currently open board recoverable while trust refresh removes it from newly selectable candidates. Text editors inherit the file behavior; a **no-host** built-in that can be a simple board's peer overrides it explicitly — the Archive editor does (exposing its `archiveUrl` as `filePath`, returning `["archive-view"]`), so it can be the built-in peer of a board claiming a ZIP-based file such as `.xlsx` / `.docx`.
+**Construction & switch.** When resolution yields a `board-editor:<root>` id, `editor-factory.ts` decodes the root and builds a `BoardEditorModel` initialized with the target path. For a folder target, `createEditorFromFolder(editorId, folderPath)` validates that the virtual id still claims that folder, then calls the board's folder factory with the board root and claimed folder as independent values. `PageModel.switchMainEditor` delegates to `editor-switch.ts`, which resolves an `EditorCandidate` through the catalog and dispatches to the first matching registered strategy. The board module owns content-host and simple-board strategies; the shared strategy module owns host transfer, folder factory and generic file rebuild. The toolbar and open-with callers use the same catalog candidate metadata, including board labels and transition type. Folder switch candidates preserve built-in-first order, while a currently open board remains a valid current candidate if trust refresh removes it from newly selectable candidates.
 
-**The switch list while the board is active.** The mirror-image requirement: `BoardEditorModel.findCompatibleEditors()` has to name the built-in editors the user should be able to return to, and it must agree with what those editors themselves offer — otherwise segments appear and disappear as the user switches, which reads as a bug. Getting that agreement takes deliberate work, because the two sides ask different questions. A built-in text editor calls `findEditorsAccepting(host)`, which evaluates the **live content host** and therefore knows the file's `language`; that is the only way language-only editors (`md-view`, `html-view`, `mermaid-view`, `svg-view` — matchers with a `switchOption` but no `acceptFile`) can ever be named. A *simple* board never loads the file into a host, so it has no language to offer and a name-based `resolveId` lookup structurally cannot return any of them. It therefore reconstructs the language from the file extension via `getLanguageByExtension` and takes `editorRegistry.getSwitchOptions(language, filePath).options`, then appends the `resolveId` winner if the language pass missed it (`getSwitchOptions` deliberately returns an empty list when fewer than two options apply) and finally its own id. `getSwitchOptions` sorts ascending, so Monaco leads — the same order the built-in editors show. The general rule for any future host-less editor joining the switch: **`findEditorsAccepting` sees language, `resolveId` does not** — derive the language yourself or language-only peers will silently drop out of the widget.
+**The switch list while the board is active.** The catalog combines built-in candidates with `BoardEditorSource.switchCandidates(model)`. The board source derives board matches from the current path or folder anchor, includes content matches for a live host, and adds the install action when matching catalog boards are available. The built-in source uses the same registry queries as built-in editor switches; for simple boards, the catalog still includes language-appropriate built-in candidates from the file name. The catalog keeps built-in candidates first, then board candidates, and includes the current editor when it is otherwise absent.
 
 **Identity & persistence.** A `BoardEditorModel` acting as a custom editor reports its `editorId` as the dynamic `board-editor:<root>` so the switch widget matches; `getRestoreData()` pins the persisted id to `"board-view"` and stores `boardRoot` beside the independent `filePath` or `folderPath`. Restore revalidates a folder claim against the current trusted registry before constructing it, and an invalid claim falls back to Folder View rather than inferring the folder from the installed board root. MCP/automation board detection uses `isBoardEditorId` (true for both `"board-view"` and any `board-editor:<root>`); match such a page by its `boardRoot` / `selectedBoard` and, for folder boards, its claimed folder.
 
@@ -656,7 +665,7 @@ A plain board page uses the manifest `name` for its tab title and persists the l
 
 A simple board reads an ordinary path, but Persephone opens plenty of things that are not one — an entry inside an archive (`archive.zip!doc.pdf`), an `http(s)` URL, a pipe with transformers. Locality is `isPlainLocalPath()` (`core/utils/file-path.ts`): any URL scheme of two or more characters is non-local, including slash-less ones such as `magnet:` and `data:`, while a one-letter prefix (`C:\…`) is a drive. Two mechanisms let a simple board serve those without learning anything about them.
 
-**The declarative gate — `editorSources`.** `resolveEditorIdForFile` refuses to offer a non-local source to a *simple* board unless its manifest says `editorSources: "any"`; a content-host board is always eligible (Persephone owns its content either way). The gate is **default-closed**, and deliberately so: a board that reads its file with `persephone.readFile(path)` — the common shape — would break on a source that has no readable path, and the failure would be invisible to an author who only ever tests local files. Opting in is one manifest field, and the decision is made *before* any board code runs, which is why it has to be declarative rather than something a board could opt into by calling an API.
+**The declarative gate — `editorSources`.** `BoardEditorSource` refuses to offer a non-local source to a *simple* board unless its manifest says `editorSources: "any"`; a content-host board is always eligible (Persephone owns its content either way). The gate is **default-closed**, and deliberately so: a board that reads its file with `persephone.readFile(path)` — the common shape — would break on a source that has no readable path, and the failure would be invisible to an author who only ever tests local files. Opting in is one manifest field, and the decision is made *before* any board code runs, which is why it has to be declarative rather than something a board could opt into by calling an API.
 
 For HTTP(S) URLs, the scheme resolver treats an extension claimed by an eligible board as content intent, so normal editor resolution can open it in that board. Explicit browser routing still takes precedence.
 
@@ -683,7 +692,7 @@ A custom-editor board can go one step further and let Persephone own the file th
 - **No busy retention** (`keepAliveOnNavigation()` / `survivesNavigation()` → `false`; `setBusy()` is a no-op + `console.warn`). The host transfers out on switch, so a surviving host-less board would be a broken zombie, and duplicating the host would give two unsynchronized writers of the same file.
 - **Footer + Script panel parity.** `BoardEditorView` renders the shared `EditorStatusBarView` (`editors/base/`) below every board iframe: pipe status and provider icon always; the `script` toggle, encoding label and `ScriptPanel` **whenever `model.contentHost` is set** — so a content-host board gets the same footer and script-run affordance the built-in text editors get from `TextChromeView`. Plain boards (no host) get the footer without the text-host parts (`board-status-bar`). A board can also contribute its own **footer status text** (e.g. a Todo board's item count) via `persephone.setStatusText(text)` — it lands in the footer's `footerContributions` slot (between the script toggle and the provider/encoding), the same slot the built-in Grid editor fills. It rides the board→host-renderer `postMessage` channel as `board:setStatusText`, is routed only from the **main** frame (a secondary frame can't hijack the main footer), and stored as transient `BoardEditorState.statusText` (stripped from persistence, cleared on restore, re-set by the board on load). An isolated `FooterStatus` subscriber renders it so a frequently-changing count re-renders only the label, never the board iframe. `""` clears it; it works on plain boards too.
 
-**Construction & switch & persistence** use `createBoardEditor()` in `editors/board/index.ts` to resolve the board association and editor kind once for plain, file, folder, and restore specs. `BoardEditorModel` retains that kind for its lifetime; stream-host pages use `BoardStreamEditorModel`. The factory restores the legacy `draw-view` descriptor as a board and selects it after construction. Content-host switches transfer the host in both directions without release confirmation; `PagesPersistenceModel` uses the factory for restore before its generic host branch. The three `isPlainLocalPath` gates (`resolveEditorIdForFile`, `findCompatibleEditors`, and the `SwitchWidgetView`) are lifted by kind so a content-host board surfaces as a switch option over non-local files — a simple board reaches the same sources by declaring `editorSources: "any"` (see [Non-Local Sources](#non-local-sources)). The `SwitchWidgetView` additionally treats the page **title** as the file name when there is no path (mirroring `editorRegistry.findEditorsAccepting`, which already resolves the built-in switch via `filePath ?? host.title`), so the board is offered on a freshly-renamed untitled page — only content-host boards qualify there, since a title-only page has no local path and simple boards require a real local file.
+**Construction & switch & persistence** use `createBoardEditor()` in `editors/board/index.ts` to resolve the board association and editor kind once for plain, file, folder, and restore specs. `BoardEditorModel` retains that kind for its lifetime; stream-host pages use `BoardStreamEditorModel`. The factory restores the legacy `draw-view` descriptor as a board and selects it after construction. Content-host switches transfer the host in both directions without release confirmation; `PagesPersistenceModel` uses the factory for restore before its generic host branch. `BoardEditorSource` applies the non-local eligibility rule to both resolution and switch candidates: content-host boards remain available for pipe-backed files, while simple boards require `editorSources: "any"` (see [Non-Local Sources](#non-local-sources)). A content-host board can also remain a candidate for an untitled page renamed to a matching file name; simple boards still require a real local file.
 
 **The content bridge — `persephone.host.*`.** The host is a renderer-side object, so its bridge rides the board↔host-renderer channel (`postMessage`), not the main `MessagePort`. `ContentHostBridge` subscribes to `host.state` and pushes the content and language into the current iframe after load and on changes (echo-guarded against the board's own writes); the board posts `setContent` and `save` requests back. The shim exposes `persephone.host.getContent()`, `setContent()`, `onContentChange(cb)`, `getLanguage()`, and `save()`. **These are safe to call in any order** — a board reached via the editor-switch runs its `load()` before the handshake lands, so `getContent()` / `getLanguage()` **await the handshake internally** and only *then* resolve (content-host board) or reject (plain board); no ready-gate is needed and the editor-switch empty-render trap is gone. `onContentChange()` always registers the callback — on a plain board no content push ever arrives, so it simply never fires. `setContent()` updates the shim's own local replica before posting, so a `getContent()` immediately after returns the just-written value (read-your-own-write); the echo-guard still means a frame's own write does not re-fire *its own* `onContentChange` (the other frame does receive it). **Automatic Ctrl+S:** the shim registers a `window`-level keydown handler (before any author script) that requests a save unless a board handler already called `preventDefault()` — so saving works with zero board code. The DrawIO viewer board (read-only; edits happen in Monaco after a host transfer) is the reference implementation.
 
@@ -733,40 +742,54 @@ Every editor follows this pattern:
 
 ## Editor Switching
 
+`EditorCatalog` composes the built-in registry with registered `EditorSource`s. The built-in
+source adapts registry resolution and candidates; `BoardEditorSource` keeps trust and manifest
+matching in the board module. The catalog selects a resolution by strict priority comparison
+(built-in wins an exact tie) and composes switch candidates in source-registration order, removes
+duplicate IDs, includes the current editor if needed, and moves the install action to the end.
+The board source is registered by the renderer startup table before page restore.
+
 Text-bearing editors (those with `contentHost` + `CONTENT_HOST_TRAIT`) support switching views (e.g., JSON text -> Grid view):
 
 ```typescript
-// Get available switch options for current language and optional file path
-const opts = editorRegistry.getSwitchOptions(language, filePath);
-if (opts.options.length > 1) {
+// Get candidates for the active editor and its page context
+const candidates = editorCatalog.switchCandidates(editor);
+if (candidates.length > 1) {
     // Render switch buttons in the toolbar
 }
 ```
 
-The page-level switch invokes `PageModel.switchMainEditor(newEditorId)`, which transfers the host through the new editor's `switchFrom(oldEditor)` (see [Owner-Orchestrated Switching](#owner-orchestrated-switching)).
+`PageModel.switchMainEditor(newEditorId)` resolves the catalog candidate, then dispatches to the
+first matching registered `EditorSwitchStrategy`. Base strategies handle folder factories,
+content-host transfer, and rebuild-over-file; Board Info, Category, and Board modules register
+their own strategies. Strategy ordering preserves special-case precedence, including Board Info
+before generic file rebuilds. Host transfer still uses `switchFrom(oldEditor)` (see
+[Owner-Orchestrated Switching](#owner-orchestrated-switching)).
 
-For a text-host page, the native toolbar starts with `model.findCompatibleEditors()`, which calls
-`editorRegistry.findEditorsAccepting(host)`. The registry passes the live host language and the
-host's file path, falling back to its title when there is no path, to each editor's acceptance
-matcher. The default `makeAccepts` order is `acceptFile(fileName)` first, then
-`switchOption(language, fileName)`, then host-content detection. This means a language-only
-switcher can appear on an extensionless or untitled page, while a matcher can use the optional
-file name to keep a specialized editor tied to its filename pattern. For example, Markdown,
-JSON, CSV, JSONL, HTML, and Mermaid switchers can be selected from their language alone; the
-specialized JSON editors retain filename/content-specific safeguards. `svg-view`
-is the one XML exception: it accepts `xml` for an extensionless page (including an untitled page)
-but not for a named `.xml` file, which is not assumed to be SVG.
+For a text-host page, the built-in source starts with `model.findCompatibleEditors()`, which calls
+`editorRegistry.findEditorsAccepting(host)`. The registry supplies the live host language and its
+file path, falling back to the title when there is no path. The `host-switch` query ranks the
+`host`, `file`, `language`, and `content` axes using the first matching axis tier, then sorts
+descending; ties keep registration order. This lets language-only editors appear on extensionless
+or untitled pages while filename-gated editors retain their safeguards. Monaco's host tier is 50,
+Git Diff's host tier is 25 only when `gitRepo` is set, specialized file tiers are 20, language
+switch tiers are 10, and detected content is 60. Thus a content-detected Log View precedes Monaco.
 
-**Host-state-driven switch offers:** an editor's `accepts(input)` receives the candidate `input.host`, so a switch can be offered conditionally on host state — not just file type. The `file-diff` editor uses this: `accepts` returns a positive priority only when `input.host.state.gitRepo` is set (the file lives in a git repo), otherwise `-1`. Because the `SwitchWidgetView` (`PageToolbarView.ts`) also subscribes to `host.state`, including its language, changing a host language re-evaluates the switch list immediately; the "Git Diff" switch appears the moment async git detection lands on the shared host (see [state-management.md](state-management.md#host-centric-git-detection)). This is how every text editor inherits the File Diff switch with zero per-editor code.
+Because the toolbar observes `host.state`, including language and git detection, its candidates
+are recomputed when that state changes. This is how every text editor inherits the File Diff
+switch without per-editor UI code (see [state-management.md](state-management.md#host-centric-git-detection)).
 
 ### Content-Based Editor Detection
 
 The Link editor embeds a `"type"` property in its JSON content:
 - `"type": "link-editor"` → link-view
 
-This allows the correct switch button to appear even when the file name doesn't match the expected pattern (e.g., `.link.json`). Detection uses fast regex checks (no JSON parsing) via the matcher's `detectsContent` function. The bundled REST Client board independently recognizes its collection marker through its manifest `contentMasks`; board content detection never participates in file-open resolution.
-
-The switch widget evaluates `accepts()` against the current host state, including its content, when building the available options.
+This allows the correct switch button to appear even when the file name does not match its
+expected pattern. Detection uses fast regex checks (no JSON parse) through the matcher `content`
+rule. The Link editor detects its JSON marker; Log View detects its JSONL marker. In host-switch
+ranking, the named `CONTENT_DETECTED` tier (60) outranks Monaco's `MONACO_HOST` tier (50). The
+bundled REST Client board independently recognizes its collection marker through manifest
+`contentMasks`; board content matching remains outside file-open resolution.
 
 ## Bundled board exception
 
@@ -782,7 +805,8 @@ editorRegistry.register(module)                    // Register an EditorModule
 editorRegistry.getById(id)                         // Exact editor definition lookup
 editorRegistry.resolveDefinition(id)               // Exact lookup, then board-editor:<root> → board-view
 editorRegistry.getAll()                            // Get all registered modules
-editorRegistry.resolve(fileName)                   // Best module for a file NAME (acceptFile only)
+editorRegistry.resolve(fileName)                   // Best definition for a file name (file axis)
+editorRegistry.rank(input)                         // Apply the declared QUERY_RULES ranking
 editorRegistry.resolveId(fileName)                 // Resolve just the editor ID
 editorRegistry.findEditorsAccepting(host)          // All ids accepting a live content host (sees language)
 editorRegistry.validateForLanguage(editor, lang)   // Validate editor/language combo

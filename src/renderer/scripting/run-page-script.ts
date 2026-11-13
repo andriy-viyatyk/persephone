@@ -1,4 +1,4 @@
-import type { EditorModel } from "../editors/base/EditorModel";
+import type { EditorModelInstance as EditorModel } from "../editors/base/EditorModel";
 import { TEXT_SELECTION_TRAIT } from "../editors/base/editor-traits";
 import { isScriptLanguage } from "./transpile";
 import { scriptRunner } from "./ScriptRunner";

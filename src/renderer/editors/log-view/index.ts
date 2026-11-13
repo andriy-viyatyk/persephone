@@ -1,3 +1,4 @@
+import { createContentsElement } from "../../uikit/shared/create-contents-element";
 import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import { LogViewEditor, defaultLogViewEditorState } from "./LogViewEditor";
@@ -7,16 +8,10 @@ import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
 import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
-import type { EditorModule } from "../base/editorRegistry";
-import type { EditorModel } from "../base/EditorModel";
+import { defineEditorModule } from "../base/editorRegistry";
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
-function createContentsRoot(): HTMLSpanElement {
-    const root = document.createElement("span");
-    root.style.display = "contents";
-    return root;
-}
 
 function createTimestampIconElement(active: boolean): SVGElement {
     const element = document.createElementNS(SVG_NAMESPACE, "svg");
@@ -62,10 +57,6 @@ function createClearIconElement(): SVGElement {
     return element;
 }
 
-function requireLogModel(model: EditorModel): LogViewEditor {
-    if (!(model instanceof LogViewEditor)) throw new Error("Log view received an invalid model.");
-    return model;
-}
 
 class LogToolbarBitsView extends VanillaView<{ model: LogViewEditor }> {
     private model: LogViewEditor;
@@ -74,7 +65,7 @@ class LogToolbarBitsView extends VanillaView<{ model: LogViewEditor }> {
     private stateSubscription: (() => void) | undefined;
 
     public constructor(props: { model: LogViewEditor }) {
-        super(props, createContentsRoot());
+        super(props, createContentsElement());
         this.model = props.model;
     }
 
@@ -140,14 +131,14 @@ class LogToolbarBitsView extends VanillaView<{ model: LogViewEditor }> {
     }
 }
 
-export class LogViewEditorView extends VanillaView<{ model: EditorModel }> {
+export class LogViewEditorView extends VanillaView<{ model: LogViewEditor }> {
     private readonly body: LogBodyView;
     private readonly toolbar: LogToolbarBitsView;
     private readonly chrome: TextChromeView;
     private model: LogViewEditor;
 
-    public constructor(props: { model: EditorModel }) {
-        const model = requireLogModel(props.model);
+    public constructor(props: { model: LogViewEditor }) {
+        const model = props.model;
         const body = new LogBodyView({ model });
         const toolbar = new LogToolbarBitsView({ model });
         const chrome = new TextChromeView({
@@ -168,8 +159,8 @@ export class LogViewEditorView extends VanillaView<{ model: EditorModel }> {
         this.chrome.mount();
     }
 
-    protected onUpdate(props: { model: EditorModel }): void {
-        const model = requireLogModel(props.model);
+    protected onUpdate(props: { model: LogViewEditor }): void {
+        const model = props.model;
         if (model !== this.model) {
             throw new Error("Log view received a different model instance.");
         }
@@ -181,11 +172,11 @@ export class LogViewEditorView extends VanillaView<{ model: EditorModel }> {
     }
 }
 
-export const logViewModule: EditorModule = {
+export const logViewModule = defineEditorModule(LogViewEditor, {
     createEditor: () =>
         new LogViewEditor(new TComponentState({ ...defaultLogViewEditorState })),
     View: LogViewEditorView,
-};
+});
 
 export { LogViewEditor, defaultLogViewEditorState };
 export type { LogViewEditorState, LogQueueEvent } from "./LogViewEditor";

@@ -107,7 +107,7 @@ class BoardsEmptyBodyView extends VanillaView<{
     }
 }
 
-export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps> {
+export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps<ExplorerEditor>> {
     private model: ExplorerEditor;
     private header: SideBarPanelHeaderHandle | undefined;
     private closeButton: IconButtonView | undefined;
@@ -118,7 +118,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
     private bodyKind: "boards" | "tools" | "empty" | undefined;
     private readonly busyIndicators = new Map<string, DotView>();
 
-    public constructor(props: SecondaryViewProps) {
+    public constructor(props: SecondaryViewProps<ExplorerEditor>) {
         super(props, createPanelElement({
             name: "boards-secondary-view",
             direction: "column",
@@ -126,7 +126,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
             minHeight: 0,
             overflow: "hidden",
         }));
-        this.model = props.model as ExplorerEditor;
+        this.model = props.model;
     }
 
     protected onMount(): void {
@@ -169,8 +169,8 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
         this.updateHeader(this.props);
     }
 
-    protected onUpdate(props: SecondaryViewProps): void {
-        const model = props.model as ExplorerEditor;
+    protected onUpdate(props: SecondaryViewProps<ExplorerEditor>): void {
+        const model = props.model;
         if (model !== this.model) {
             this.model = model;
             this.refreshBody();
@@ -238,7 +238,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
         };
     }
 
-    private updateHeader(props: SecondaryViewProps): void {
+    private updateHeader(props: SecondaryViewProps<ExplorerEditor>): void {
         this.closeButton?.update(this.closeButtonProps());
         this.header?.update({
             headerHost: props.headerHost,

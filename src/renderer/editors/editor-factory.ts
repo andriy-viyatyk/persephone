@@ -1,13 +1,12 @@
-import { EditorModel } from "./base/EditorModel";
+import { EditorId } from "../../shared/editor-ids";
+import type { EditorModelInstance } from "./base/EditorModel";
 import { TextFileModel, newTextFileModel } from "./content-host/TextFileModel";
 import { MonacoEditor, defaultMonacoEditorState } from "./monaco/MonacoEditor";
 import { TextHostEditorModel } from "./base/TextHostEditorModel";
 import { TComponentState } from "../core/state/state";
 import { editorRegistry, isExplicitHostTarget } from "./base/editorRegistry";
-import {
-    resolveEditorIdForFile,
-    resolveBoardEditorId,
-} from "../api/boards/custom-editor-registry";
+import { resolveBoardEditorId } from "../api/boards/custom-editor-registry";
+import { editorCatalog } from "./base/editor-catalog";
 import { parseBoardEditorId } from "../../shared/board/board-editor-id";
 import { fpBasename, fpExtname } from "../core/utils/file-path";
 import { getLanguageByExtension } from "../core/utils/language-mapping";
@@ -19,11 +18,11 @@ interface EditorSelectionOptions {
 }
 
 /** Build an editor around a host through the registry's synchronous cache. */
-export function createEditorFromContentHost(host: TextFileModel): EditorModel {
+export function createEditorFromContentHost(host: TextFileModel): EditorModelInstance {
     const state = host.state.get();
-    const targetEditorId = state.editor || "monaco";
+    const targetEditorId = state.editor || EditorId.monaco;
     const id = state.id || crypto.randomUUID();
-    if (targetEditorId === "monaco") {
+    if (targetEditorId === EditorId.monaco) {
         const monaco = new MonacoEditor(
             new TComponentState({ ...defaultMonacoEditorState, id }),
         );
@@ -47,8 +46,8 @@ function resolveContentEditorId(
     options: EditorSelectionOptions,
 ): string {
     // The host default, as `newTextFileModel` sets it: built-in matches only, never a board id.
-    const naturalId = editorRegistry.resolveId(filePath) ?? "monaco";
-    if (options.forceText) return "monaco";
+    const naturalId = editorRegistry.resolveId(filePath) ?? EditorId.monaco;
+    if (options.forceText) return EditorId.monaco;
     if (target && isExplicitHostTarget(target, filePath ?? "")) return target;
     if (options.selectPreview && filePath) {
         const languageId = getLanguageByExtension(fpExtname(filePath).toLowerCase())?.id ?? "plaintext";
@@ -61,8 +60,8 @@ function resolveContentEditorId(
 async function newEditorModel(
     filePath?: string,
     options: EditorSelectionOptions = {},
-): Promise<EditorModel> {
-    return buildEditorById(resolveEditorIdForFile(filePath) ?? "monaco", filePath, undefined, options);
+): Promise<EditorModelInstance> {
+    return buildEditorById(editorCatalog.resolveFile(filePath) ?? EditorId.monaco, filePath, undefined, options);
 }
 
 /** Construct an editor for an explicit target. */
@@ -70,7 +69,7 @@ async function newEditorModelByTarget(
     filePath: string,
     target: string,
     options: EditorSelectionOptions = {},
-): Promise<EditorModel> {
+): Promise<EditorModelInstance> {
     return buildEditorById(target, filePath, undefined, options);
 }
 
@@ -80,7 +79,7 @@ export async function buildEditorById(
     filePath?: string,
     folderPath?: string,
     options: EditorSelectionOptions = {},
-): Promise<EditorModel> {
+): Promise<EditorModelInstance> {
     editorId = await resolveBoardEditorId(editorId);
     const boardRoot = parseBoardEditorId(editorId);
     if (boardRoot !== null) {
@@ -116,7 +115,7 @@ export async function constructEditorFromFile(
     target?: string,
     title?: string,
     options: EditorSelectionOptions = {},
-): Promise<EditorModel> {
+): Promise<EditorModelInstance> {
     const editor = target
         ? await newEditorModelByTarget(filePath, target, options)
         : await newEditorModel(filePath, options);
@@ -141,7 +140,7 @@ export async function createEditorFromFile(
     target?: string,
     title?: string,
     options: EditorSelectionOptions = {},
-): Promise<EditorModel> {
+): Promise<EditorModelInstance> {
     const editor = await constructEditorFromFile(filePath, pipe, target, title, options);
     await editor.restore();
     return editor;
@@ -151,7 +150,7 @@ export async function createEditorFromFile(
 export async function createEditorFromFolder(
     editorId: string,
     folderPath: string,
-): Promise<EditorModel> {
+): Promise<EditorModelInstance> {
     if (parseBoardEditorId(editorId) === null) {
         throw new Error(`Invalid folder board editor id: ${editorId}`);
     }

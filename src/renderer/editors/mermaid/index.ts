@@ -1,3 +1,4 @@
+import { createContentsElement } from "../../uikit/shared/create-contents-element";
 import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import { MermaidEditor, defaultMermaidEditorState, type MermaidEditorState } from "./MermaidEditor";
@@ -9,19 +10,9 @@ import { createIconComponentElement } from "../../theme/icons";
 import { savePngViaDialog } from "../shared/image-export";
 import { notifyEditCapabilityFailure } from "../../api/capability-feedback";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import type { EditorModule } from "../base/editorRegistry";
-import type { EditorModel } from "../base/EditorModel";
+import { defineEditorModule } from "../base/editorRegistry";
 
-function createContentsRoot(): HTMLSpanElement {
-    const root = document.createElement("span");
-    root.style.display = "contents";
-    return root;
-}
 
-function requireMermaidModel(model: EditorModel): MermaidEditor {
-    if (!(model instanceof MermaidEditor)) throw new Error("Mermaid view received an invalid model.");
-    return model;
-}
 
 interface MermaidToolbarProps {
     model: MermaidEditor;
@@ -53,7 +44,7 @@ class MermaidToolbarBitsView extends VanillaView<MermaidToolbarProps> {
     private stateSubscription: (() => void) | undefined;
 
     public constructor(props: MermaidToolbarProps) {
-        super(props, createContentsRoot());
+        super(props, createContentsElement());
         this.model = props.model;
         this.copyImage = props.copyImage;
     }
@@ -188,18 +179,18 @@ class MermaidToolbarBitsView extends VanillaView<MermaidToolbarProps> {
     };
 }
 
-export class MermaidEditorView extends VanillaView<{ model: EditorModel }> {
+export class MermaidEditorView extends VanillaView<{ model: MermaidEditor }> {
     private model: MermaidEditor | undefined;
     private body: MermaidBodyView | undefined;
     private toolbar: MermaidToolbarBitsView | undefined;
     private chrome: TextChromeView | undefined;
 
-    public constructor(props: { model: EditorModel }) {
-        super(props, createContentsRoot());
+    public constructor(props: { model: MermaidEditor }) {
+        super(props, createContentsElement());
     }
 
     protected onMount(): void {
-        const model = requireMermaidModel(this.props.model);
+        const model = this.props.model;
         this.model = model;
         const body = this.child(new MermaidBodyView({
             model,
@@ -222,8 +213,8 @@ export class MermaidEditorView extends VanillaView<{ model: EditorModel }> {
         chrome.mount();
     }
 
-    protected onUpdate(props: { model: EditorModel }): void {
-        const model = requireMermaidModel(props.model);
+    protected onUpdate(props: { model: MermaidEditor }): void {
+        const model = props.model;
         this.model = model;
         const body = this.body;
         const toolbar = this.toolbar;
@@ -247,12 +238,12 @@ export class MermaidEditorView extends VanillaView<{ model: EditorModel }> {
 
 }
 
-export const mermaidModule: EditorModule = {
+export const mermaidModule = defineEditorModule(MermaidEditor, {
     createEditor: () =>
         new MermaidEditor(new TComponentState({ ...defaultMermaidEditorState })),
     View: MermaidEditorView,
 
-};
+});
 
 export { MermaidEditor, defaultMermaidEditorState };
 export type { MermaidEditorState, MermaidQueueEvent } from "./MermaidEditor";

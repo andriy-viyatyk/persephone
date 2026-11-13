@@ -1,8 +1,9 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { TComponentState } from "../../core/state/state";
 import type { EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
-import { ComponentQueue } from "../../core/state/ComponentQueue";
 import { TextFileModel } from "../content-host/TextFileModel";
+import { FRAGMENT_NAV_TRAIT } from "../base/editor-traits";
 import type {
     MarkdownBodyState,
     MarkdownQueueEvent,
@@ -46,10 +47,10 @@ export const defaultMarkdownEditorState: MarkdownEditorState = {
 
 export class MarkdownEditor extends TextHostEditorModel<
     MarkdownEditorState,
-    void,
-    MarkdownQueueEvent
+    MarkdownQueueEvent,
+    MarkdownQueueRequest
 > {
-    readonly editorId = "md-view";
+    readonly editorId = EditorId.mdView;
     protected readonly displayName = "Markdown";
 
     /** PV9 — non-state DOM ref set by the body via `setContainer(el)` callback.
@@ -58,25 +59,22 @@ export class MarkdownEditor extends TextHostEditorModel<
      *  — see PV9 resolution). */
     private _containerRef: HTMLDivElement | null = null;
 
-    readonly typedQueue: ComponentQueue<MarkdownQueueEvent, MarkdownQueueRequest>;
-
     constructor(state: TComponentState<MarkdownEditorState>) {
         super(state);
-        this.typedQueue = this.queue as unknown as ComponentQueue<
-            MarkdownQueueEvent,
-            MarkdownQueueRequest
-        >;
+        this.traits.add(FRAGMENT_NAV_TRAIT, {
+            revealFragment: (fragment) => this.revealFragment(fragment),
+        });
     }
 
     focus(): void {
-        this.typedQueue.send({ type: "focus" });
+        this.queue.send({ type: "focus" });
     }
 
     /** — scroll to a heading anchor from a `#fragment` link. The body may
      *  not be mounted yet (this runs right after the editor is attached to the
      *  page); `ComponentQueue` buffers the event and drains it on subscribe. */
     revealFragment(fragment: string): void {
-        if (fragment) this.typedQueue.send({ type: "anchor", fragment });
+        if (fragment) this.queue.send({ type: "anchor", fragment });
     }
 
     /** Back-navigate the page to the previous Markdown document. Pops
@@ -92,7 +90,7 @@ export class MarkdownEditor extends TextHostEditorModel<
         const { app } = await import("../../api/app");
         const { createLinkData } = await import("../../../shared/link-data");
         await app.events.openRawLink.sendAsync(
-            createLinkData(entry.href, { pageId, target: "md-view" }),
+            createLinkData(entry.href, { pageId, target: EditorId.mdView }),
         );
     };
 

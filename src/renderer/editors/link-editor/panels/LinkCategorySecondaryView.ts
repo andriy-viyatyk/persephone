@@ -11,7 +11,7 @@ import { LinkEditor } from "../LinkEditor";
 import { LinkCategoryPanelView } from "./LinkCategoryPanel";
 import { t } from "../../../../shared/i18n/t";
 
-export default class LinkCategorySecondaryView extends VanillaView<SecondaryViewProps> {
+export default class LinkCategorySecondaryView extends VanillaView<SecondaryViewProps<LinkEditor>> {
     private editor: LinkEditor | undefined;
     private categoryPanel: LinkCategoryPanelView | undefined;
     private saveButton: IconButtonView | undefined;
@@ -21,7 +21,7 @@ export default class LinkCategorySecondaryView extends VanillaView<SecondaryView
     private boundPageState: NonNullable<LinkEditor["page"]>["state"] | undefined;
     private boundHostState: NonNullable<LinkEditor["host"]>["state"] | undefined;
 
-    public constructor(props: SecondaryViewProps) {
+    public constructor(props: SecondaryViewProps<LinkEditor>) {
         super(props, createPanelElement({
             name: "link-category-secondary-view",
             direction: "column",
@@ -32,8 +32,7 @@ export default class LinkCategorySecondaryView extends VanillaView<SecondaryView
     }
 
     protected onMount(): void {
-        const editor = this.props.model instanceof LinkEditor ? this.props.model : undefined;
-        if (!editor) return;
+        const editor = this.props.model;
 
         this.editor = editor;
         this.saveButton = new IconButtonView({
@@ -64,13 +63,11 @@ export default class LinkCategorySecondaryView extends VanillaView<SecondaryView
         this.updateHeader();
     }
 
-    protected onUpdate(props: SecondaryViewProps): void {
-        if (props.model instanceof LinkEditor) {
-            const editorChanged = props.model !== this.editor;
-            this.editor = props.model;
-            this.syncHeaderBindings(props.model, editorChanged);
-            this.categoryPanel?.update({ vm: props.model });
-        }
+    protected onUpdate(props: SecondaryViewProps<LinkEditor>): void {
+        const editorChanged = props.model !== this.editor;
+        this.editor = props.model;
+        this.syncHeaderBindings(props.model, editorChanged);
+        this.categoryPanel?.update({ vm: props.model });
         this.updateHeader();
     }
 

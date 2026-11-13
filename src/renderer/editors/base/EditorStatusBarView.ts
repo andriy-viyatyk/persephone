@@ -11,7 +11,7 @@ import { fillSlot, type SlotContent } from "../../uikit/shared/fill-slot";
 import { createIconElement } from "../../uikit/shared/slots";
 import { SpacerView } from "../../uikit/Spacer/SpacerView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import type { EditorModel } from "./EditorModel";
+import type { EditorModelInstance as EditorModel } from "./EditorModel";
 import { EditorToolbarView } from "./EditorToolbarView";
 import type { TextFileModel } from "../content-host/TextFileModel";
 import "../../uikit/Button/Button.css";
@@ -27,8 +27,8 @@ export interface EditorStatusBarViewProps {
     /** Text host: adds the script toggle and the encoding label. */
     host?: TextFileModel | null;
     contributions?: SlotContent;
-    boardStart?: SlotContent;
-    boardEnd?: SlotContent;
+    startContributions?: SlotContent;
+    endContributions?: SlotContent;
 }
 
 interface ProviderMeta {
@@ -61,10 +61,10 @@ export class EditorStatusBarView extends VanillaView<EditorStatusBarViewProps> {
     private contributionsHost: HTMLSpanElement | undefined;
     private contentHost: HTMLSpanElement | undefined;
     private spacer: SpacerView | undefined;
-    private boardStartHost: HTMLSpanElement | undefined;
-    private boardEndHost: HTMLSpanElement | undefined;
-    private boardStartCleanup: (() => void) | undefined;
-    private boardEndCleanup: (() => void) | undefined;
+    private startContributionsHost: HTMLSpanElement | undefined;
+    private endContributionsHost: HTMLSpanElement | undefined;
+    private startContributionsCleanup: (() => void) | undefined;
+    private endContributionsCleanup: (() => void) | undefined;
     private badgeHost: HTMLSpanElement | undefined;
     private contributionCleanup: (() => void) | undefined;
     private currentPipe: IContentPipe | null | undefined;
@@ -143,7 +143,7 @@ export class EditorStatusBarView extends VanillaView<EditorStatusBarViewProps> {
         }
 
         this.updateContributions(this.props.contributions);
-        this.updateBoardSlots(this.props.boardStart, this.props.boardEnd);
+        this.updateContributionSlots(this.props.startContributions, this.props.endContributions);
         this.own(() => {
             this.contributionCleanup?.();
             this.contributionCleanup = undefined;
@@ -152,7 +152,7 @@ export class EditorStatusBarView extends VanillaView<EditorStatusBarViewProps> {
 
     protected onUpdate(props: EditorStatusBarViewProps): void {
         this.updateContributions(props.contributions);
-        this.updateBoardSlots(props.boardStart, props.boardEnd);
+        this.updateContributionSlots(props.startContributions, props.endContributions);
     }
 
     protected onDispose(): void {
@@ -160,8 +160,8 @@ export class EditorStatusBarView extends VanillaView<EditorStatusBarViewProps> {
         this.badgeHost = undefined;
         this.contentHost = undefined;
         this.spacer = undefined;
-        this.boardStartHost = undefined;
-        this.boardEndHost = undefined;
+        this.startContributionsHost = undefined;
+        this.endContributionsHost = undefined;
     }
 
     private updateContributions(contributions: SlotContent | undefined): void {
@@ -169,7 +169,7 @@ export class EditorStatusBarView extends VanillaView<EditorStatusBarViewProps> {
         this.contributionCleanup = fillSlot(this.contributionsHost, contributions);
     }
 
-    private updateBoardSlots(start: SlotContent | undefined, end: SlotContent | undefined): void {
+    private updateContributionSlots(start: SlotContent | undefined, end: SlotContent | undefined): void {
         const content = this.contentHost;
         const spacer = this.spacer;
         const contributions = this.contributionsHost;
@@ -177,30 +177,30 @@ export class EditorStatusBarView extends VanillaView<EditorStatusBarViewProps> {
         const hasStart = start !== undefined && start !== null;
         spacer.update({ size: hasStart ? 0 : undefined });
         if (hasStart) {
-            if (!this.boardStartHost) {
-                this.boardStartHost = document.createElement("span");
-                this.boardStartHost.dataset.part = "board-status-start-slot";
-                content.insertBefore(this.boardStartHost, spacer.root);
+            if (!this.startContributionsHost) {
+                this.startContributionsHost = document.createElement("span");
+                this.startContributionsHost.dataset.part = "board-status-start-slot";
+                content.insertBefore(this.startContributionsHost, spacer.root);
             }
-            this.boardStartCleanup = fillSlot(this.boardStartHost, start);
+            this.startContributionsCleanup = fillSlot(this.startContributionsHost, start);
         } else {
-            this.boardStartCleanup?.();
-            this.boardStartCleanup = undefined;
-            this.boardStartHost?.remove();
-            this.boardStartHost = undefined;
+            this.startContributionsCleanup?.();
+            this.startContributionsCleanup = undefined;
+            this.startContributionsHost?.remove();
+            this.startContributionsHost = undefined;
         }
         if (end !== undefined && end !== null) {
-            if (!this.boardEndHost) {
-                this.boardEndHost = document.createElement("span");
-                this.boardEndHost.dataset.part = "board-status-end-slot";
-                content.insertBefore(this.boardEndHost, contributions.nextSibling);
+            if (!this.endContributionsHost) {
+                this.endContributionsHost = document.createElement("span");
+                this.endContributionsHost.dataset.part = "board-status-end-slot";
+                content.insertBefore(this.endContributionsHost, contributions.nextSibling);
             }
-            this.boardEndCleanup = fillSlot(this.boardEndHost, end);
+            this.endContributionsCleanup = fillSlot(this.endContributionsHost, end);
         } else {
-            this.boardEndCleanup?.();
-            this.boardEndCleanup = undefined;
-            this.boardEndHost?.remove();
-            this.boardEndHost = undefined;
+            this.endContributionsCleanup?.();
+            this.endContributionsCleanup = undefined;
+            this.endContributionsHost?.remove();
+            this.endContributionsHost = undefined;
         }
     }
 

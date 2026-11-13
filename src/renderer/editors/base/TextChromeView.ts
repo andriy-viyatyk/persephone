@@ -1,7 +1,8 @@
+import { createContentsElement } from "../../uikit/shared/create-contents-element";
 import { t } from "../../../shared/i18n/t";
 import { pages } from "../../api/pages";
 import { ui } from "../../api/ui";
-import type { EditorModel } from "./EditorModel";
+import type { EditorModelInstance as EditorModel } from "./EditorModel";
 import { EditorStatusBarView } from "./EditorStatusBarView";
 import { PageToolbarView } from "./PageToolbarView";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
@@ -9,6 +10,7 @@ import type { IconButtonProps } from "../../uikit/IconButton/IconButtonView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { fillSlot, type SlotContent } from "../../uikit/shared/fill-slot";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
+import { ToggledIconButton } from "../../uikit/shared/toggled-icon-button";
 import { isScriptLanguage } from "../../scripting/transpile";
 import type { PageModel } from "../../api/pages/PageModel";
 import type { TextFileModel } from "../content-host/TextFileModel";
@@ -30,20 +32,15 @@ function selectHasSelection(model: EditorModel): boolean {
     return model.traits.get(TEXT_SELECTION_TRAIT)?.hasSelection() ?? false;
 }
 
-function createContentsPart(part: string): HTMLSpanElement {
-    const element = document.createElement("span");
-    element.dataset.part = part;
-    element.style.display = "contents";
-    return element;
-}
 
 class CompareButtonView extends VanillaView<{ model: EditorModel }> {
     private model: EditorModel;
-    private button: IconButtonView | undefined;
+    private readonly button: ToggledIconButton;
 
     public constructor(props: { model: EditorModel }) {
         super(props, document.createElement("span"));
         this.model = props.model;
+        this.button = new ToggledIconButton(this.root, (button) => this.child(button), (button) => this.releaseChild(button));
     }
 
     protected onMount(): void {
@@ -62,7 +59,7 @@ class CompareButtonView extends VanillaView<{ model: EditorModel }> {
     }
 
     protected onDispose(): void {
-        this.button = undefined;
+        this.button.dispose();
     }
 
     private sync(): void {
@@ -76,14 +73,6 @@ class CompareButtonView extends VanillaView<{ model: EditorModel }> {
             && pages.query.canCompare(leftGroupedPage.id, ownerPage.id),
         );
 
-        if (!visible) {
-            if (this.button) {
-                this.releaseChild(this.button);
-                this.button = undefined;
-            }
-            return;
-        }
-
         const buttonProps: IconButtonProps = {
             name: "text-compare-left",
             size: "sm",
@@ -91,13 +80,7 @@ class CompareButtonView extends VanillaView<{ model: EditorModel }> {
             icon: "compare",
             onClick: this.handleClick,
         };
-        if (!this.button) {
-            this.button = this.child(new IconButtonView(buttonProps));
-            this.root.append(this.button.root);
-            this.button.mount();
-        } else {
-            this.button.update(buttonProps);
-        }
+        this.button.sync(visible, buttonProps);
     }
 
     private readonly handleClick = (): void => {
@@ -109,13 +92,14 @@ class CompareButtonView extends VanillaView<{ model: EditorModel }> {
 class RunButtonsView extends VanillaView<{ model: EditorModel; host: TextFileModel }> {
     private model: EditorModel;
     private host: TextFileModel;
-    private runButton: IconButtonView | undefined;
+    private readonly runButton: ToggledIconButton;
     private runAllButton: IconButtonView | undefined;
 
     public constructor(props: { model: EditorModel; host: TextFileModel }) {
         super(props, document.createElement("span"));
         this.model = props.model;
         this.host = props.host;
+        this.runButton = new ToggledIconButton(this.root, (button) => this.child(button), (button) => this.releaseChild(button));
     }
 
     protected onMount(): void {
@@ -132,18 +116,13 @@ class RunButtonsView extends VanillaView<{ model: EditorModel; host: TextFileMod
     }
 
     protected onDispose(): void {
-        this.runButton = undefined;
+        this.runButton.dispose();
         this.runAllButton = undefined;
     }
 
     private sync(): void {
         const visible = isScriptLanguage(this.host.state.get().language)
             && this.model.traits.get(TEXT_SELECTION_TRAIT) !== undefined;
-        if (!visible) {
-            this.removeRunButtons();
-            return;
-        }
-
         const hasSelection = selectHasSelection(this.model);
         const runButtonProps: IconButtonProps = {
             name: "text-run-script",
@@ -154,12 +133,10 @@ class RunButtonsView extends VanillaView<{ model: EditorModel; host: TextFileMod
             icon: "run",
             onClick: () => this.runScript(),
         };
-        if (!this.runButton) {
-            this.runButton = this.child(new IconButtonView(runButtonProps));
-            this.root.append(this.runButton.root);
-            this.runButton.mount();
-        } else {
-            this.runButton.update(runButtonProps);
+        this.runButton.sync(visible, runButtonProps);
+        if (!visible) {
+            this.removeRunAllButton();
+            return;
         }
 
         if (hasSelection && !this.runAllButton) {
@@ -178,14 +155,10 @@ class RunButtonsView extends VanillaView<{ model: EditorModel; host: TextFileMod
         }
     }
 
-    private removeRunButtons(): void {
+    private removeRunAllButton(): void {
         if (this.runAllButton) {
             this.releaseChild(this.runAllButton);
             this.runAllButton = undefined;
-        }
-        if (this.runButton) {
-            this.releaseChild(this.runButton);
-            this.runButton = undefined;
         }
     }
 
@@ -196,11 +169,12 @@ class RunButtonsView extends VanillaView<{ model: EditorModel; host: TextFileMod
 
 class ShowResourcesButtonView extends VanillaView<{ host: TextFileModel }> {
     private host: TextFileModel;
-    private button: IconButtonView | undefined;
+    private readonly button: ToggledIconButton;
 
     public constructor(props: { host: TextFileModel }) {
         super(props, document.createElement("span"));
         this.host = props.host;
+        this.button = new ToggledIconButton(this.root, (button) => this.child(button), (button) => this.releaseChild(button));
     }
 
     protected onMount(): void {
@@ -215,18 +189,10 @@ class ShowResourcesButtonView extends VanillaView<{ host: TextFileModel }> {
     }
 
     protected onDispose(): void {
-        this.button = undefined;
+        this.button.dispose();
     }
 
     private sync(): void {
-        if (this.host.state.get().language !== "html") {
-            if (this.button) {
-                this.releaseChild(this.button);
-                this.button = undefined;
-            }
-            return;
-        }
-
         const buttonProps: IconButtonProps = {
             name: "text-show-resources",
             size: "sm",
@@ -234,13 +200,7 @@ class ShowResourcesButtonView extends VanillaView<{ host: TextFileModel }> {
             icon: "web-scraper",
             onClick: () => { void showHtmlResources(this.host); },
         };
-        if (!this.button) {
-            this.button = this.child(new IconButtonView(buttonProps));
-            this.root.append(this.button.root);
-            this.button.mount();
-        } else {
-            this.button.update(buttonProps);
-        }
+        this.button.sync(this.host.state.get().language === "html", buttonProps);
     }
 }
 
@@ -338,11 +298,11 @@ export class TextChromeView extends VanillaView<TextChromeViewProps> {
         this.branchActive = true;
         this.keymap = new TextPageKeymap(this.model);
 
-        const toolbarContent = createContentsPart("text-toolbar-content");
-        const rightContent = createContentsPart("text-toolbar-right");
-        const toolbarContributionsHost = createContentsPart("text-toolbar-contributions");
-        const rightContributionsHost = createContentsPart("text-toolbar-right-contributions");
-        const childrenHost = createContentsPart("text-chrome-children");
+        const toolbarContent = createContentsElement("text-toolbar-content");
+        const rightContent = createContentsElement("text-toolbar-right");
+        const toolbarContributionsHost = createContentsElement("text-toolbar-contributions");
+        const rightContributionsHost = createContentsElement("text-toolbar-right-contributions");
+        const childrenHost = createContentsElement("text-chrome-children");
         this.toolbarContent = toolbarContent;
         this.rightContent = rightContent;
         this.toolbarContributionsHost = toolbarContributionsHost;

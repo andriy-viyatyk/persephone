@@ -1,27 +1,23 @@
+import { createContentsElement } from "../../uikit/shared/create-contents-element";
 import { TComponentState } from "../../core/state/state";
 import { EnvVarsEditor, defaultEnvVarsEditorState } from "./EnvVarsEditor";
 import { EnvVarsBodyView } from "./EnvVarsBodyView";
 import { TextChromeView } from "../base/TextChromeView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import type { EditorModule } from "../base/editorRegistry";
-import type { EditorModel } from "../base/EditorModel";
+import { defineEditorModule } from "../base/editorRegistry";
 
-function requireEnvVarsModel(model: EditorModel): EnvVarsEditor {
-    if (!(model instanceof EnvVarsEditor)) throw new Error("Env Vars view received an invalid model.");
-    return model;
-}
 
-export class EnvVarsEditorView extends VanillaView<{ model: EditorModel }> {
+export class EnvVarsEditorView extends VanillaView<{ model: EnvVarsEditor }> {
     private model: EnvVarsEditor | undefined;
     private body: EnvVarsBodyView | undefined;
     private chrome: TextChromeView | undefined;
 
-    public constructor(props: { model: EditorModel }) {
-        super(props, createContentsRoot());
+    public constructor(props: { model: EnvVarsEditor }) {
+        super(props, createContentsElement());
     }
 
     protected onMount(): void {
-        const model = requireEnvVarsModel(this.props.model);
+        const model = this.props.model;
         this.model = model;
         const body = this.child(new EnvVarsBodyView({ model }));
         const chrome = this.child(new TextChromeView({
@@ -35,8 +31,8 @@ export class EnvVarsEditorView extends VanillaView<{ model: EditorModel }> {
         chrome.mount();
     }
 
-    protected onUpdate(props: { model: EditorModel }): void {
-        const model = requireEnvVarsModel(props.model);
+    protected onUpdate(props: { model: EnvVarsEditor }): void {
+        const model = props.model;
         if (model !== this.model) {
             throw new Error("Env Vars view received a different model instance.");
         }
@@ -47,17 +43,12 @@ export class EnvVarsEditorView extends VanillaView<{ model: EditorModel }> {
     }
 }
 
-function createContentsRoot(): HTMLSpanElement {
-    const root = document.createElement("span");
-    root.style.display = "contents";
-    return root;
-}
 
-export const envVarsModule: EditorModule = {
+export const envVarsModule = defineEditorModule(EnvVarsEditor, {
     createEditor: () =>
         new EnvVarsEditor(new TComponentState({ ...defaultEnvVarsEditorState })),
     View: EnvVarsEditorView,
-};
+});
 
 export { EnvVarsEditor, defaultEnvVarsEditorState };
 export type { EnvVarsEditorState } from "./EnvVarsEditor";

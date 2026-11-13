@@ -51,7 +51,7 @@ interface ClipboardRowControls {
 
 const MAX_PREVIEW_LENGTH = 200;
 
-export default class ClipboardSecondaryView extends VanillaView<SecondaryViewProps> {
+export default class ClipboardSecondaryView extends VanillaView<SecondaryViewProps<ExplorerEditor>> {
     private model: ExplorerEditor;
     private header: SideBarPanelHeaderHandle | undefined;
     private headerActions: HTMLDivElement | undefined;
@@ -80,7 +80,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
     private openQueueGeneration = 0;
     private selectNextCapture = false;
 
-    public constructor(props: SecondaryViewProps) {
+    public constructor(props: SecondaryViewProps<ExplorerEditor>) {
         super(props, createPanelElement({
             name: "clipboard-secondary-view",
             direction: "column",
@@ -88,7 +88,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             minHeight: 0,
             overflow: "hidden",
         }));
-        this.model = props.model as ExplorerEditor;
+        this.model = props.model;
     }
 
     protected onMount(): void {
@@ -185,8 +185,8 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         void this.initialize();
     }
 
-    protected onUpdate(props: SecondaryViewProps): void {
-        const model = props.model as ExplorerEditor;
+    protected onUpdate(props: SecondaryViewProps<ExplorerEditor>): void {
+        const model = props.model;
         if (model !== this.model) this.model = model;
         this.updatePresentation();
     }
@@ -605,7 +605,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         );
     }
 
-    private updateHeader(props: SecondaryViewProps): void {
+    private updateHeader(props: SecondaryViewProps<ExplorerEditor>): void {
         const disabled = this.isDisabled();
         const unavailable = !disabled && this.isUnavailable();
         const showHealth = disabled || unavailable;

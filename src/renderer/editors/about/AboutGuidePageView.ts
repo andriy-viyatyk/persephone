@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { app } from "../../api/app";
 import { getGuideIndex } from "../../guides";
 import { TComponentState } from "../../core/state/state";
@@ -297,7 +298,7 @@ export class AboutGuidePageView extends VanillaView<AboutGuidePageViewProps> {
         if (location.kind !== "guide") return;
         void guard("Failed to open guide in tab", () => app.events.openRawLink.sendAsync(
             createLinkData(guideUrl(location.path), {
-                target: "md-view",
+                target: EditorId.mdView,
                 sourceId: "about-guide-open-in-tab",
             }),
         ));

@@ -5,10 +5,10 @@ import {
     type ImageEditorState,
 } from "./ImageEditor";
 import { ImageEditorView } from "./ImageView";
-import type { EditorModule } from "../base/editorRegistry";
-import type { EditorModel } from "../base/EditorModel";
+import { defineEditorModule } from "../base/editorRegistry";
+import type { EditorModelInstance as EditorModel } from "../base/EditorModel";
 
-export const imageModule: EditorModule = {
+export const imageModule = defineEditorModule(ImageEditor, {
     createEditor: () =>
         new ImageEditor(new TComponentState(getDefaultImageEditorState())),
     View: ImageEditorView,
@@ -21,7 +21,7 @@ export const imageModule: EditorModule = {
             new TComponentState(state),
         ) as unknown as EditorModel;
     },
-};
+});
 
 export { ImageEditor, getDefaultImageEditorState };
 export type { ImageEditorState } from "./ImageEditor";

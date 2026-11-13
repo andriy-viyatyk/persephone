@@ -4,14 +4,15 @@ import {
     getDefaultBoardInfoEditorState,
 } from "./BoardInfoEditorModel";
 import { BoardInfoEditorView } from "./BoardInfoEditorView";
-import type { EditorModule } from "../base/editorRegistry";
+import { defineEditorModule } from "../base/editorRegistry";
 
-export const boardInfoModule: EditorModule = {
-    createEditor: () =>
-        new BoardInfoEditorModel(new TComponentState(getDefaultBoardInfoEditorState())),
+const createEditor = () => new BoardInfoEditorModel(new TComponentState(getDefaultBoardInfoEditorState()));
+
+export const boardInfoModule = defineEditorModule(BoardInfoEditorModel, {
+    createEditor,
     View: BoardInfoEditorView,
     restoreFromDescriptor: async (descriptor) => {
-        const editor = boardInfoModule.createEditor();
+        const editor = createEditor();
         try {
             editor.applyRestoreData(descriptor as unknown as Parameters<typeof editor.applyRestoreData>[0]);
             await editor.restore();
@@ -21,7 +22,7 @@ export const boardInfoModule: EditorModule = {
             throw error;
         }
     },
-};
+});
 
 export { BoardInfoEditorModel, getDefaultBoardInfoEditorState } from "./BoardInfoEditorModel";
 export type { BoardInfoEditorState } from "./BoardInfoEditorModel";

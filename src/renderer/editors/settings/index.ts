@@ -1,13 +1,13 @@
 import { TComponentState } from "../../core/state/state";
 import { SettingsEditor, getDefaultSettingsEditorState } from "./SettingsEditor";
 import { SettingsView } from "./SettingsView";
-import type { EditorModule } from "../base/editorRegistry";
+import { defineEditorModule } from "../base/editorRegistry";
 
-export const settingsModule: EditorModule = {
+export const settingsModule = defineEditorModule(SettingsEditor, {
     createEditor: () =>
         new SettingsEditor(new TComponentState(getDefaultSettingsEditorState())),
     View: SettingsView,
-};
+});
 
 export { SettingsEditor, getDefaultSettingsEditorState, SETTINGS_PAGE_ID } from "./SettingsEditor";
 export type { SettingsEditorState } from "./SettingsEditor";

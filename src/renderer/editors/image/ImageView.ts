@@ -1,6 +1,6 @@
+import { createContentsElement } from "../../uikit/shared/create-contents-element";
 import { PageToolbarView } from "../base/PageToolbarView";
 import { EditorStatusBarView } from "../base/EditorStatusBarView";
-import type { EditorModel } from "../base/EditorModel";
 import { ImageViewportView } from "../../uikit/ImageViewport/ImageViewportView";
 import { t } from "../../../shared/i18n/t";
 import type { ImageViewportProps } from "../../uikit/ImageViewport/ImageViewportView";
@@ -13,18 +13,9 @@ interface ImageViewProps {
     model: ImageEditor;
 }
 
-function createContentsRoot(): HTMLSpanElement {
-    const root = document.createElement("span");
-    root.style.display = "contents";
-    return root;
-}
 
-function requireImageModel(model: EditorModel): ImageEditor {
-    if (!(model instanceof ImageEditor)) throw new Error("Image view received an invalid model.");
-    return model;
-}
 
-export class ImageEditorView extends VanillaView<{ model: EditorModel }> {
+export class ImageEditorView extends VanillaView<{ model: ImageEditor }> {
     private model: ImageEditor;
     private toolbar!: ImageToolbarView;
     private pageToolbar!: PageToolbarView;
@@ -33,9 +24,9 @@ export class ImageEditorView extends VanillaView<{ model: EditorModel }> {
         void this.viewport.copyToClipboard();
     };
 
-    public constructor(props: { model: EditorModel }) {
-        super(props, createContentsRoot());
-        this.model = requireImageModel(props.model);
+    public constructor(props: { model: ImageEditor }) {
+        super(props, createContentsElement());
+        this.model = props.model;
     }
 
     protected onMount(): void {
@@ -65,8 +56,8 @@ export class ImageEditorView extends VanillaView<{ model: EditorModel }> {
         );
     }
 
-    protected onUpdate(props: { model: EditorModel }): void {
-        const model = requireImageModel(props.model);
+    protected onUpdate(props: { model: ImageEditor }): void {
+        const model = props.model;
         if (model !== this.model) {
             throw new Error("Image view received a different model instance.");
         }

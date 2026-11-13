@@ -1,7 +1,7 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { TComponentState } from "../../core/state/state";
 import type { EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
-import { ComponentQueue } from "../../core/state/ComponentQueue";
 import { TextFileModel } from "../content-host/TextFileModel";
 import { themeState } from "../../theme/theme-state";
 import { renderMermaid } from "./render-mermaid";
@@ -50,22 +50,16 @@ export const defaultMermaidEditorState: MermaidEditorState = {
 };
 
 export class MermaidEditor
-    extends TextHostEditorModel<MermaidEditorState, void, MermaidQueueEvent>
+    extends TextHostEditorModel<MermaidEditorState, MermaidQueueEvent, MermaidQueueRequest>
     implements IImageExport {
-    readonly editorId = "mermaid-view";
+    readonly editorId = EditorId.mermaidView;
     protected readonly displayName = "Mermaid";
 
     private _renderTimer: ReturnType<typeof setTimeout> | undefined;
     private _syncingTheme = false;
 
-    readonly typedQueue: ComponentQueue<MermaidQueueEvent, MermaidQueueRequest>;
-
     constructor(state: TComponentState<MermaidEditorState>) {
         super(state);
-        this.typedQueue = this.queue as unknown as ComponentQueue<
-            MermaidQueueEvent,
-            MermaidQueueRequest
-        >;
 
         // MR5 — seed lightMode from theme on first construct. HS1 slot read
         // in adoptHost overrides this if the user previously toggled.
@@ -75,7 +69,7 @@ export class MermaidEditor
     }
 
     focus(): void {
-        this.typedQueue.send({ type: "focus" });
+        this.queue.send({ type: "focus" });
     }
 
     adoptHost(host: TextFileModel): void {

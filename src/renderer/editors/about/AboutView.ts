@@ -6,7 +6,6 @@ import { createLinkData } from "../../../shared/link-data";
 import type { IRuntimeVersions, IUpdateInfo } from "../../api/types/shell";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 import type { UpdateCheckResult } from "../../../ipc/api-param-types";
-import type { EditorModel } from "../base/EditorModel";
 import { AboutEditor } from "./AboutEditor";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
@@ -22,15 +21,9 @@ import "../../uikit/Button/Button.css";
 import "../../uikit/Divider/Divider.css";
 
 export interface AboutEditorProps {
-    model: EditorModel;
+    model: AboutEditor;
 }
 
-function requireAboutModel(model: EditorModel): AboutEditor {
-    if (!(model instanceof AboutEditor)) {
-        throw new Error("About view received an invalid model.");
-    }
-    return model;
-}
 
 function mapUpdateResult(result: UpdateCheckResult): IUpdateInfo {
     const releaseInfo = result.releaseInfo;
@@ -79,7 +72,7 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
         });
         root.classList.add("about-root");
         super(props, root);
-        this.model = requireAboutModel(props.model);
+        this.model = props.model;
     }
 
     protected onMount(): void {
@@ -113,7 +106,7 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
     }
 
     protected onUpdate(props: AboutEditorProps): void {
-        this.model = requireAboutModel(props.model);
+        this.model = props.model;
     }
 
     protected onDispose(): void {

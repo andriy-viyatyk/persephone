@@ -1,5 +1,6 @@
+import { EditorId } from "../../../shared/editor-ids";
 import type { IPageHost } from "../../api/pages/IPageHost";
-import { getEditorSwitchOptions } from "../../editors/base/editor-switch-options";
+import { editorCatalog } from "../../editors/base/editor-catalog";
 import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "./page-elements";
 import { ui } from "../../api/ui";
@@ -40,12 +41,12 @@ export class PageEditorSwitchesNode implements IAiVisible {
         if (host && !host.mainEditor) return "";
         return this.mainEditor?.editorId
             ?? host?.mainEditor?.contentHost?.state.get().editor
-            ?? "monaco";
+            ?? EditorId.monaco;
     }
 
     get options(): readonly IEditorSwitchOption[] {
         const editor = this.mainEditor;
-        return editor ? getEditorSwitchOptions(editor).map(({ id, label, title }) => ({ id, label, title })) : [];
+        return editor ? editorCatalog.switchOptions(editor).map(({ id, label, title }) => ({ id, label, title })) : [];
     }
 
     async switchTo(id: string): Promise<void> {

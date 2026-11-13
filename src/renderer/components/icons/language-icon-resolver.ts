@@ -61,11 +61,8 @@ import {
 } from "../../theme/language-icons";
 
 import { fpExtname } from "../../core/utils/file-path";
-import {
-    customEditorRegistry,
-    resolveEditorIdForFile,
-} from "../../api/boards/custom-editor-registry";
-import { parseBoardEditorId } from "../../../shared/board/board-editor-id";
+import { customEditorRegistry } from "../../api/boards/custom-editor-registry";
+import { editorCatalog } from "../../editors/base/editor-catalog";
 import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
 
 // =============================================================================
@@ -202,9 +199,9 @@ export function resolveFileIcon(fileName: string, language?: string): ResolvedFi
     const iconBoardMatches = /[\\/]/.test(fileName)
         ? boardMatches
         : boardMatches.filter((board) => board.folderMasks.length === 0);
-    const resolvedEditorId = resolveEditorIdForFile(fileName);
+    const resolvedEditorId = editorCatalog.resolveFile(fileName);
     const boardRoot = iconBoardMatches.some((board) => board.editorId === resolvedEditorId)
-        ? parseBoardEditorId(resolvedEditorId ?? "")
+        ? editorCatalog.describe(resolvedEditorId ?? "")?.boardRoot ?? null
         : null;
     if (boardRoot) return { kind: "board", boardRoot };
     if (staticIcon) return { kind: "component", Icon: staticIcon };

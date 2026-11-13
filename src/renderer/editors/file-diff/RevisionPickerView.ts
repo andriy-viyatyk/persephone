@@ -1,3 +1,4 @@
+import { createContentsElement } from "../../uikit/shared/create-contents-element";
 import { ButtonView, type ButtonViewProps } from "../../uikit/Button/ButtonView";
 import { PopoverView, type PopoverViewProps } from "../../uikit/Popover/PopoverView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -71,7 +72,7 @@ export class RevisionPickerView extends VanillaView<RevisionPickerViewProps> {
     private contentView: RevisionPickerContentView | undefined;
 
     public constructor(props: RevisionPickerViewProps) {
-        super(props, createContentsRoot());
+        super(props, createContentsElement());
         const button = this.child(new ButtonView(this.buttonProps(props)));
         const popover = this.child(new PopoverView(this.popoverProps(props, button.root)));
         this.button = button;
@@ -167,8 +168,3 @@ export class RevisionPickerView extends VanillaView<RevisionPickerViewProps> {
     }
 }
 
-function createContentsRoot(): HTMLSpanElement {
-    const root = document.createElement("span");
-    root.style.display = "contents";
-    return root;
-}

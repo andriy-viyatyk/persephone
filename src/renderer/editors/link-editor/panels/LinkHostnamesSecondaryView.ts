@@ -10,11 +10,11 @@ import { LinkEditor } from "../LinkEditor";
 import LinkHostnamesNavigationPanelView from "./LinkHostnamesNavigationPanel";
 import { t } from "../../../../shared/i18n/t";
 
-export default class LinkHostnamesSecondaryView extends VanillaView<SecondaryViewProps> {
+export default class LinkHostnamesSecondaryView extends VanillaView<SecondaryViewProps<LinkEditor>> {
     private navigation: LinkHostnamesNavigationPanelView | undefined;
     private header: SideBarPanelHeaderHandle | undefined;
 
-    public constructor(props: SecondaryViewProps) {
+    public constructor(props: SecondaryViewProps<LinkEditor>) {
         super(props, createPanelElement({
             name: "link-hostnames-secondary-view",
             direction: "column",
@@ -25,7 +25,6 @@ export default class LinkHostnamesSecondaryView extends VanillaView<SecondaryVie
     }
 
     protected onMount(): void {
-        if (!(this.props.model instanceof LinkEditor)) return;
         this.navigation = this.child(new LinkHostnamesNavigationPanelView(this.props.model));
         this.root.append(this.navigation.root);
         this.navigation.mount();
@@ -38,8 +37,8 @@ export default class LinkHostnamesSecondaryView extends VanillaView<SecondaryVie
         this.updateHeader();
     }
 
-    protected onUpdate(props: SecondaryViewProps): void {
-        if (props.model instanceof LinkEditor) this.navigation?.update(props.model);
+    protected onUpdate(props: SecondaryViewProps<LinkEditor>): void {
+        this.navigation?.update(props.model);
         this.updateHeader();
     }
 

@@ -4,13 +4,13 @@ import {
     getDefaultMcpInspectorEditorState,
 } from "./McpInspectorEditorModel";
 import { McpInspectorEditorView } from "./McpInspectorView";
-import type { EditorModule } from "../base/editorRegistry";
+import { defineEditorModule } from "../base/editorRegistry";
 
-export const mcpModule: EditorModule = {
+export const mcpModule = defineEditorModule(McpInspectorEditorModel, {
     createEditor: () =>
         new McpInspectorEditorModel(new TComponentState(getDefaultMcpInspectorEditorState())),
     View: McpInspectorEditorView,
-};
+});
 
 export { McpInspectorEditorModel, getDefaultMcpInspectorEditorState } from "./McpInspectorEditorModel";
 export type {

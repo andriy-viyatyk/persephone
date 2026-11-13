@@ -1,3 +1,4 @@
+import { InternalEditorIds } from "../base/editor-ids";
 import { TComponentState } from "../../core/state/state";
 import { EditorModel, type EditorStateBase } from "../base/EditorModel";
 
@@ -7,7 +8,7 @@ export interface RestoreFailedState extends EditorStateBase {
 }
 
 export class RestoreFailedEditor extends EditorModel<RestoreFailedState> {
-    readonly editorId = "restore-failed";
+    readonly editorId = InternalEditorIds.restoreFailed;
     noLanguage = true;
     skipSave = true;
     retry: () => Promise<void> = async () => {};

@@ -7,7 +7,6 @@ import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { PageToolbarView, type PageToolbarViewProps } from "../base/PageToolbarView";
 import { EditorStatusBarView } from "../base/EditorStatusBarView";
-import type { EditorModel } from "../base/EditorModel";
 import { VideoEditor } from "./VideoEditor";
 import { app } from "../../api/app";
 import { errMessage } from "../../../shared/utils";
@@ -30,12 +29,8 @@ interface VideoSurfaceState {
     reloadKey: number;
 }
 
-function requireVideoModel(model: EditorModel): VideoEditor {
-    if (!(model instanceof VideoEditor)) throw new Error("Video view received an invalid model.");
-    return model;
-}
 
-export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
+export class VideoEditorView extends VanillaView<{ model: VideoEditor }> {
     private model: VideoEditor;
     private pageToolbar!: PageToolbarView;
     private toolbarChildren!: HTMLDivElement;
@@ -50,7 +45,7 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
     private discardRecordingButton!: ButtonView;
     private recordingActions!: HTMLDivElement;
 
-    public constructor(props: { model: EditorModel }) {
+    public constructor(props: { model: VideoEditor }) {
         super(props, createPanelElement({
             name: "video-player",
             direction: "column",
@@ -59,7 +54,7 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
             overflow: "hidden",
         }));
         this.root.dataset.editor = "video";
-        this.model = requireVideoModel(props.model);
+        this.model = props.model;
     }
 
     protected onMount(): void {
@@ -150,8 +145,8 @@ export class VideoEditorView extends VanillaView<{ model: EditorModel }> {
 
     }
 
-    protected onUpdate(props: { model: EditorModel }): void {
-        const nextModel = requireVideoModel(props.model);
+    protected onUpdate(props: { model: VideoEditor }): void {
+        const nextModel = props.model;
         if (nextModel !== this.model) {
             throw new Error("Video view model identity cannot change while the view is mounted.");
         }

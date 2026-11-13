@@ -1,7 +1,6 @@
 import { TComponentState } from "../../core/state/state";
 import { type EditorStateBase, type RestoreData } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
-import { ComponentQueue } from "../../core/state/ComponentQueue";
 import { TextFileModel } from "../content-host/TextFileModel";
 import {
     type CellEditEvent,
@@ -172,7 +171,7 @@ export const defaultGridEditorState: GridEditorState = {
     error: undefined,
 };
 
-export class GridEditor extends TextHostEditorModel<GridEditorState, void, GridQueueEvent> {
+export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEvent, GridQueueRequest> {
     readonly editorId: GridEditorId;
     protected readonly displayName = "Grid";
     readonly format: GridFormat;
@@ -215,16 +214,11 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, void, GridQ
     private readonly _pendingColumnKeys = new Set<string>();
 
     /** Narrowed queue typed for Grid's event union. */
-    readonly typedQueue: ComponentQueue<GridQueueEvent, GridQueueRequest>;
 
     constructor(state: TComponentState<GridEditorState>, editorId: GridEditorId) {
         super(state);
         this.editorId = editorId;
         this.format = formatFromEditorId(editorId);
-        this.typedQueue = this.queue as unknown as ComponentQueue<
-            GridQueueEvent,
-            GridQueueRequest
-        >;
     }
 
     // ── The grid handle  ──────────────────────────────────
@@ -284,12 +278,12 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, void, GridQ
     }
 
     focus(): void {
-        this.typedQueue.send({ type: "focus" });
+        this.queue.send({ type: "focus" });
     }
 
     /** Restore-time / script-API entry to position the cell cursor. */
     focusCell(row: number, col: number): void {
-        this.typedQueue.send({ type: "focusCell", row, col });
+        this.queue.send({ type: "focusCell", row, col });
     }
 
     setDisplayedRowCount = (count: number) => {

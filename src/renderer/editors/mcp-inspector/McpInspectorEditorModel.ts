@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import {
     EditorModel,
     type EditorStateBase,
@@ -203,7 +204,7 @@ export const getDefaultMcpInspectorEditorState = (): McpInspectorEditorState => 
     id: crypto.randomUUID(),
     title: untranslated("MCP Inspector"),
     modified: false,
-    editor: "mcp-view",
+    editor: EditorId.mcpView,
 
     url: "",
     transportType: "http",
@@ -259,7 +260,7 @@ function assertCredentialFreeUrl(value: string): void {
 
 export class McpInspectorEditorModel extends EditorModel<McpInspectorEditorState> {
     /** Editor identity. Matches `EditorDescriptor.editorId`. */
-    readonly editorId = "mcp-view";
+    readonly editorId = EditorId.mcpView;
 
     noLanguage = true;
     skipSave = true;

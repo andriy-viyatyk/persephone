@@ -1,5 +1,5 @@
 import type { EditorViewModule, FileEditorView } from "../../editors/types";
-import type { EditorModel } from "../../editors/base";
+import type { EditorModelInstance as EditorModel } from "../../editors/base";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { SpinnerView } from "../../uikit/Spinner/SpinnerView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";

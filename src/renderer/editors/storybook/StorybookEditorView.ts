@@ -1,4 +1,3 @@
-import type { EditorModel } from "../base/EditorModel";
 import { createPanelElement, type PanelStyleProps } from "../../uikit/Panel/panel-style";
 import { ToolbarView } from "../../uikit/Toolbar/ToolbarView";
 import type { ToolbarProps } from "../../uikit/Toolbar/ToolbarView";
@@ -36,14 +35,8 @@ const ROOT_PROPS: PanelStyleProps = {
     height: 0,
 };
 
-function requireStorybookModel(model: EditorModel): StorybookEditorModel {
-    if (!(model instanceof StorybookEditorModel)) {
-        throw new Error("Storybook view received an invalid model.");
-    }
-    return model;
-}
 
-export class StorybookEditorView extends VanillaView<{ model: EditorModel }> {
+export class StorybookEditorView extends VanillaView<{ model: StorybookEditorModel }> {
     private model: StorybookEditorModel;
     private toolbar: ToolbarView | undefined;
     private readonly toolbarChildren: Node[] = [];
@@ -54,9 +47,9 @@ export class StorybookEditorView extends VanillaView<{ model: EditorModel }> {
     private livePreview: LivePreviewView | undefined;
     private propertyEditor: PropertyEditorView | undefined;
 
-    public constructor(props: { model: EditorModel }) {
+    public constructor(props: { model: StorybookEditorModel }) {
         super(props, createPanelElement(ROOT_PROPS));
-        this.model = requireStorybookModel(props.model);
+        this.model = props.model;
         this.root.dataset.type = "storybook-editor";
     }
 
@@ -130,8 +123,8 @@ export class StorybookEditorView extends VanillaView<{ model: EditorModel }> {
         );
     }
 
-    protected onUpdate(props: { model: EditorModel }): void {
-        const model = requireStorybookModel(props.model);
+    protected onUpdate(props: { model: StorybookEditorModel }): void {
+        const model = props.model;
         if (model !== this.model) {
             throw new Error("Storybook view model cannot change after mount.");
         }

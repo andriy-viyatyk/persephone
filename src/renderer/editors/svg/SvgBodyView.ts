@@ -53,7 +53,7 @@ export class SvgBodyView extends VanillaView<SvgBodyViewProps> {
         this.root.append(this.viewport.root);
         this.viewport.mount();
         this.bindToHostIfNeeded();
-        this.queueSubscription = this.ownSubscription(this.model.typedQueue.subscribe(() => {
+        this.queueSubscription = this.ownSubscription(this.model.queue.subscribe(() => {
             // Deliberate no-op: drain the focus queue to keep its lifecycle clean.
         }));
     }
@@ -65,7 +65,7 @@ export class SvgBodyView extends VanillaView<SvgBodyViewProps> {
             this.queueSubscription?.();
             this.queueSubscription = undefined;
             this.model = props.model;
-            this.queueSubscription = this.ownSubscription(this.model.typedQueue.subscribe(() => {
+            this.queueSubscription = this.ownSubscription(this.model.queue.subscribe(() => {
                 // Deliberate no-op: drain the focus queue to keep its lifecycle clean.
             }));
         }

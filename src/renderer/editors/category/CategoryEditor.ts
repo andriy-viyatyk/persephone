@@ -4,7 +4,6 @@ import type {
     ITreeProvider,
     ITreeProviderItem,
 } from "../../api/types/io.tree";
-import type { EditorModel } from "../base/EditorModel";
 import { PageToolbarView, type PageToolbarViewProps } from "../base/PageToolbarView";
 import { BreadcrumbView } from "../../uikit/Breadcrumb/BreadcrumbView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
@@ -28,14 +27,8 @@ import { folderViewModeService } from "./FolderViewModeService";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 
-function requireCategoryModel(model: EditorModel): CategoryEditorModel {
-    if (!(model instanceof CategoryEditorModel)) {
-        throw new Error("Category view received an invalid model.");
-    }
-    return model;
-}
 
-export class CategoryEditorView extends VanillaView<{ model: EditorModel }> {
+export class CategoryEditorView extends VanillaView<{ model: CategoryEditorModel }> {
     private model: CategoryEditorModel;
     private pageToolbar!: PageToolbarView;
     private breadcrumb: BreadcrumbView | undefined;
@@ -52,7 +45,7 @@ export class CategoryEditorView extends VanillaView<{ model: EditorModel }> {
     private viewModeGeneration = 0;
     private inert = false;
 
-    public constructor(props: { model: EditorModel }) {
+    public constructor(props: { model: CategoryEditorModel }) {
         super(props, createPanelElement({
             name: "category-editor-root",
             direction: "column",
@@ -60,7 +53,7 @@ export class CategoryEditorView extends VanillaView<{ model: EditorModel }> {
             overflow: "hidden",
             background: "default",
         }));
-        this.model = requireCategoryModel(props.model);
+        this.model = props.model;
         this.own(() => { this.inert = true; });
     }
 
@@ -87,8 +80,8 @@ export class CategoryEditorView extends VanillaView<{ model: EditorModel }> {
         );
     }
 
-    protected onUpdate(props: { model: EditorModel }): void {
-        this.model = requireCategoryModel(props.model);
+    protected onUpdate(props: { model: CategoryEditorModel }): void {
+        this.model = props.model;
         this.rebindPageState();
         this.syncSurface();
     }

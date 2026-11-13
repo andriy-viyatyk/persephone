@@ -1,10 +1,11 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { t } from "../../../shared/i18n/t";
 import { api } from "../../../ipc/renderer/api";
 import { pages } from "../../api/pages";
 import { appWindow } from "../../api/window";
 import type { IEditorState, WindowPages } from "../../../shared/types";
 import type { PageModel } from "../../api/pages/PageModel";
-import type { EditorModel } from "../../editors/base";
+import type { EditorModelInstance as EditorModel } from "../../editors/base";
 import { createFileTypeIconElement } from "../../components/icons/icon-elements";
 import { ListBoxView } from "../../uikit/ListBox/ListBoxView";
 import type { IListBoxItem, ListBoxProps } from "../../uikit/ListBox/types";
@@ -211,7 +212,7 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
     }
 
     private item(windowIndex: number, page: Partial<IEditorState> & { boardRoot?: string; folderPath?: string }): OpenTabsListItem {
-        const candidateRoot = page.editor === "board-view" && !page.filePath && !page.folderPath
+        const candidateRoot = page.editor === EditorId.boardView && !page.filePath && !page.folderPath
             ? page.boardRoot
             : undefined;
         if (candidateRoot) this.warmBoard(candidateRoot);
@@ -219,7 +220,7 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
         const isPlainBoardTitle = candidateRoot !== undefined && page.title !== undefined
             && page.title === (manifest?.name?.trim() || fpBasename(candidateRoot));
         const infoProps = (page as { props?: { name?: string } }).props;
-        const boardInfoRoot = page.editor === "board-info" && page.boardRoot && infoProps?.name === page.title
+        const boardInfoRoot = page.editor === EditorId.boardInfo && page.boardRoot && infoProps?.name === page.title
             ? page.boardRoot
             : undefined;
         const boardRoot = isPlainBoardTitle ? candidateRoot : boardInfoRoot;

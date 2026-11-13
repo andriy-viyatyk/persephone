@@ -1,10 +1,10 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { TComponentState } from "../../core/state/state";
 import { settings } from "../../api/settings";
 import type { EditorStateBase, RestoreData } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
 import type { TextFileModel } from "../content-host/TextFileModel";
-import { ComponentQueue, type ComponentQueueEvent } from "../../core/state/ComponentQueue";
-import { TEXT_NAVIGATION_TRAIT, TEXT_SELECTION_TRAIT } from "../base/editor-traits";
+import { FRESH_EMPTY_TRAIT, TEXT_NAVIGATION_TRAIT, TEXT_SELECTION_TRAIT } from "../base/editor-traits";
 
 export type MonacoQueueEvent =
     | { type: "revealLine"; line: number }
@@ -46,24 +46,15 @@ export const defaultMonacoEditorState: MonacoEditorState = {
 
 export class MonacoEditor extends TextHostEditorModel<
     MonacoEditorState,
-    void,
-    ComponentQueueEvent
+    MonacoQueueEvent,
+    MonacoQueueRequest
 > {
-    readonly editorId = "monaco";
+    readonly editorId = EditorId.monaco;
     protected readonly displayName = "Monaco";
-
-    /** Narrowed queue with both event and request channels typed. */
-    readonly typedQueue: ComponentQueue<MonacoQueueEvent, MonacoQueueRequest>;
 
     constructor(state: TComponentState<MonacoEditorState>) {
         super(state);
-        // Reuse the base queue instance under a typed alias — the base
-        // exposes `queue` as ComponentQueue<E> where E = ComponentQueueEvent.
-        // We narrow it via cast for our typed event union.
-        this.typedQueue = this.queue as unknown as ComponentQueue<
-            MonacoQueueEvent,
-            MonacoQueueRequest
-        >;
+        this.traits.add(FRESH_EMPTY_TRAIT, { isFreshEmpty: () => this.isFreshEmpty() });
         this.traits.add(TEXT_SELECTION_TRAIT, {
             hasSelection: () => this.state.get().hasSelection,
             getSelectedText: () => this.getSelectedText(),
@@ -75,7 +66,7 @@ export class MonacoEditor extends TextHostEditorModel<
         });
     }
 
-    isFreshEmpty(): boolean {
+    private isFreshEmpty(): boolean {
         const h = this._host;
         if (!h) return false;
         const hs = h.state.get();
@@ -137,48 +128,44 @@ export class MonacoEditor extends TextHostEditorModel<
     };
 
     focus(): void {
-        this.typedQueue.send({ type: "focus" });
+        this.queue.send({ type: "focus" });
     }
 
     // ── Typed queue wrappers (script API and chrome consumers) ─────────
 
     revealLine(line: number): void {
-        this.typedQueue.send({ type: "revealLine", line });
+        this.queue.send({ type: "revealLine", line });
     }
 
     setHighlightText(text: string | undefined): void {
-        this.typedQueue.send({ type: "highlightText", text });
-    }
-
-    focusEditor(): void {
-        this.typedQueue.send({ type: "focus" });
+        this.queue.send({ type: "highlightText", text });
     }
 
     openFind(): void {
-        this.typedQueue.send({ type: "openFind" });
+        this.queue.send({ type: "openFind" });
     }
 
     openReplace(): void {
-        this.typedQueue.send({ type: "openReplace" });
+        this.queue.send({ type: "openReplace" });
     }
 
     async getSelectedText(): Promise<string> {
-        return (await this.typedQueue.execute({ type: "getSelectedText" })) as string;
+        return (await this.queue.execute({ type: "getSelectedText" })) as string;
     }
 
     async getCursorPosition(): Promise<{ lineNumber: number; column: number }> {
-        return (await this.typedQueue.execute({ type: "getCursorPosition" })) as {
+        return (await this.queue.execute({ type: "getCursorPosition" })) as {
             lineNumber: number;
             column: number;
         };
     }
 
     async insertText(text: string): Promise<void> {
-        await this.typedQueue.execute({ type: "insertText", text });
+        await this.queue.execute({ type: "insertText", text });
     }
 
     async replaceSelection(text: string): Promise<void> {
-        await this.typedQueue.execute({ type: "replaceSelection", text });
+        await this.queue.execute({ type: "replaceSelection", text });
     }
 
     // ── Persistence ─────────────────────────────────────────────────────
@@ -186,10 +173,10 @@ export class MonacoEditor extends TextHostEditorModel<
     applyRestoreData(data: RestoreData<MonacoEditorState>): void {
         super.applyRestoreData(data);
         if (data.revealLine !== undefined) {
-            this.typedQueue.send({ type: "revealLine", line: data.revealLine });
+            this.queue.send({ type: "revealLine", line: data.revealLine });
         }
         if (data.highlightText !== undefined) {
-            this.typedQueue.send({ type: "highlightText", text: data.highlightText });
+            this.queue.send({ type: "highlightText", text: data.highlightText });
         }
     }
 }

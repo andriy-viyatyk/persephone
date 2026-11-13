@@ -13,7 +13,7 @@ import {
 import type { ArchiveEditor } from "./ArchiveEditor";
 import { t } from "../../../shared/i18n/t";
 
-export default class ArchiveSecondaryView extends VanillaView<SecondaryViewProps> {
+export default class ArchiveSecondaryView extends VanillaView<SecondaryViewProps<ArchiveEditor>> {
     private archiveModel: ArchiveEditor | undefined;
     private tree: TreeProviderViewImpl | undefined;
     private closeButton: IconButtonView | undefined;
@@ -21,7 +21,7 @@ export default class ArchiveSecondaryView extends VanillaView<SecondaryViewProps
     private treeProviderModel: TreeProviderViewModel | undefined;
     private revealFrame: Cleanup | undefined;
 
-    public constructor(props: SecondaryViewProps) {
+    public constructor(props: SecondaryViewProps<ArchiveEditor>) {
         super(props, createPanelElement({
             name: "archive-secondary-view",
             direction: "column",
@@ -73,7 +73,7 @@ export default class ArchiveSecondaryView extends VanillaView<SecondaryViewProps
         this.updateHeader(this.props);
     }
 
-    protected onUpdate(props: SecondaryViewProps): void {
+    protected onUpdate(props: SecondaryViewProps<ArchiveEditor>): void {
         const archiveModel = this.getArchiveModel(props);
         const provider = archiveModel?.treeProvider;
         if (archiveModel && provider) {
@@ -96,8 +96,8 @@ export default class ArchiveSecondaryView extends VanillaView<SecondaryViewProps
         this.archiveModel = undefined;
     }
 
-    private getArchiveModel(props: SecondaryViewProps): ArchiveEditor | undefined {
-        return props.model as ArchiveEditor;
+    private getArchiveModel(props: SecondaryViewProps<ArchiveEditor>): ArchiveEditor | undefined {
+        return props.model;
     }
 
     private treeProps(
@@ -113,14 +113,14 @@ export default class ArchiveSecondaryView extends VanillaView<SecondaryViewProps
         };
     }
 
-    private shouldShowClose(props: SecondaryViewProps): boolean {
+    private shouldShowClose(props: SecondaryViewProps<ArchiveEditor>): boolean {
         const archiveModel = this.archiveModel ?? this.getArchiveModel(props);
         return !!archiveModel
             && archiveModel !== archiveModel.page?.mainEditor
             && props.expanded !== false;
     }
 
-    private updateHeader(props: SecondaryViewProps): void {
+    private updateHeader(props: SecondaryViewProps<ArchiveEditor>): void {
         this.header?.update({
             headerHost: props.headerHost,
             icon: props.iconElement,

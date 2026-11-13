@@ -72,7 +72,7 @@ export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
         this.model.setCaptureElement(this.iframe);
         this.bindToHostIfNeeded();
         this.installMessageListener();
-        this.queueSubscription = this.ownSubscription(this.model.typedQueue.subscribe(() => {
+        this.queueSubscription = this.ownSubscription(this.model.queue.subscribe(() => {
             // Deliberate no-op: drain the focus queue to keep its lifecycle clean.
         }));
     }
@@ -86,7 +86,7 @@ export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
             this.queueSubscription = undefined;
             this.model = props.model;
             this.model.setCaptureElement(this.iframe);
-            this.queueSubscription = this.ownSubscription(this.model.typedQueue.subscribe(() => {
+            this.queueSubscription = this.ownSubscription(this.model.queue.subscribe(() => {
                 // Deliberate no-op: drain the focus queue to keep its lifecycle clean.
             }));
         }

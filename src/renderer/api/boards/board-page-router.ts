@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { EditorModel } from "../../editors/base";
 import { fpBasename, fpExtname } from "../../core/utils/file-path";
 import { getLanguageByExtension } from "../../core/utils/language-mapping";
@@ -11,10 +12,12 @@ import { PERSEPHONE_BOARD_PREFIX, decodePersephoneBoardLink, encodePersephoneBoa
 import { pipeFromSourcePath } from "../../content/rebuild-pipe";
 import { buildEditorById } from "../../editors/editor-factory";
 import type { IContentPipe } from "../types/io.pipe";
-import { customEditorRegistry, resolveEditorIdForFile } from "./custom-editor-registry";
+import { customEditorRegistry } from "./custom-editor-registry";
+import { editorCatalog } from "../../editors/base/editor-catalog";
 import { boardEditorId, parseBoardEditorId } from "../../../shared/board/board-editor-id";
 import { readBoardManifest } from "./board-manifest-io";
 import { asBoardHostEditor } from "./board-host-editor";
+import { OPEN_CONTEXT_TRAIT } from "./board-open-context";
 import type { PageModel } from "../pages/PageModel";
 import type { NavigatePageToOptions } from "../pages/PageNavigator";
 import type {
@@ -61,7 +64,7 @@ export class BoardPageRouter implements PageOpenInterceptor {
         options?: NavigatePageToOptions;
     }): Promise<OpenInterceptorOutcome<NavigatePageToOptions>> => {
         const { pageId, newFilePath, options } = request;
-        const resolvedTarget = options?.target ?? (resolveEditorIdForFile(newFilePath) ?? "monaco");
+        const resolvedTarget = options?.target ?? (editorCatalog.resolveFile(newFilePath) ?? EditorId.monaco);
         const boardRoot = parseBoardEditorId(resolvedTarget);
         const board = boardRoot === null ? undefined : customEditorRegistry.findByRoot(boardRoot);
         let sourceContext: Awaited<ReturnType<typeof captureBoardSourceContext>>;
@@ -94,7 +97,7 @@ export class BoardPageRouter implements PageOpenInterceptor {
     private resolveBoardRootForOpen(target?: string, filePath?: string): string | undefined {
         const boardRoot = target ? parseBoardEditorId(target) : null;
         if (boardRoot !== null) return boardRoot;
-        if (target !== "board-view" || !filePath) return undefined;
+        if (target !== EditorId.boardView || !filePath) return undefined;
         return decodePersephoneBoardLink(filePath)?.boardRoot;
     }
 
@@ -107,7 +110,7 @@ export class BoardPageRouter implements PageOpenInterceptor {
     ): void {
         const sourceUrl = sourceLink?.url ?? pipe?.provider.sourceUrl ?? filePath;
         if (!sourceUrl || sourceUrl.startsWith(PERSEPHONE_BOARD_PREFIX)) return;
-        page.mainEditor?.acceptOpenContext?.({
+        page.mainEditor?.traits.get(OPEN_CONTEXT_TRAIT)?.acceptOpenContext({
             mode: "enqueue-source",
             sourceUrl,
             sessionHandle,
@@ -198,14 +201,14 @@ export class BoardPageRouter implements PageOpenInterceptor {
         const pipe = await pipeFromSourcePath(url);
         const data = createLinkData(url, {
             sourceId: "app-api",
-            target: "board-view",
+            target: EditorId.boardView,
         });
         data.url = url;
         data.pipeDescriptor = pipe.toDescriptor();
         const sourceLink = cleanForStorage(data);
         const page = await this.model.lifecycle.openFile(pipe.provider.sourceUrl, pipe, {
             sourceLink,
-            target: "board-view",
+            target: EditorId.boardView,
             title,
             onPageCreated,
         });
@@ -219,7 +222,7 @@ export class BoardPageRouter implements PageOpenInterceptor {
     findBoardRunPage = (boardRoot: string, reuseKey: string): PageModel | undefined => {
         const normalizedRoot = BoardRoot.from(boardRoot);
         return this.model.state.get().pages.find((page) => {
-            if (page.mainEditor?.editorId !== "browser-view") return false;
+            if (page.mainEditor?.editorId !== EditorId.browserView) return false;
             const owner = this.getRunPageOwner(page);
             return !!owner
                 && normalizedRoot.equals(owner.boardRoot)

@@ -1,5 +1,5 @@
 import { TOneState } from "../../core/state/state";
-import type { EditorModel } from "../base";
+import type { EditorModelInstance as EditorModel } from "../base";
 import type { IPageHost } from "../../api/pages/IPageHost";
 import type { IPageState } from "../../api/pages/PageModel";
 import { SecondaryViewsModel, ISecondaryViewsState } from "../../api/pages/SecondaryViewsModel";

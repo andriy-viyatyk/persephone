@@ -11,7 +11,6 @@ import { TreeProviderViewImpl } from "../../components/tree-provider/TreeProvide
 import type { TreeProviderViewModel } from "../../components/tree-provider/TreeProviderViewModel";
 import { PageToolbarView, type PageToolbarViewProps } from "../base/PageToolbarView";
 import { EditorStatusBarView } from "../base/EditorStatusBarView";
-import type { EditorModel } from "../base/EditorModel";
 import {
     ArchiveEditor,
     getDefaultArchiveEditorState,
@@ -20,7 +19,7 @@ import {
 import { TComponentState } from "../../core/state/state";
 import { t } from "../../../shared/i18n/t";
 
-export class ArchiveEditorView extends VanillaView<{ model: EditorModel }> {
+export class ArchiveEditorView extends VanillaView<{ model: ArchiveEditor }> {
     private model: ArchiveEditor;
     private pageToolbar!: PageToolbarView;
     private collapseButton!: IconButtonView;
@@ -29,9 +28,9 @@ export class ArchiveEditorView extends VanillaView<{ model: EditorModel }> {
     private buttonHost!: HTMLSpanElement;
     private treeModel: TreeProviderViewModel | null = null;
 
-    public constructor(props: { model: EditorModel }) {
+    public constructor(props: { model: ArchiveEditor }) {
         super(props, createPanelElement({ direction: "column" }));
-        this.model = requireArchiveModel(props.model);
+        this.model = props.model;
     }
 
     protected onMount(): void {
@@ -75,8 +74,8 @@ export class ArchiveEditorView extends VanillaView<{ model: EditorModel }> {
         this.treeModel = this.tree.model;
     }
 
-    protected onUpdate(props: { model: EditorModel }): void {
-        this.model = requireArchiveModel(props.model);
+    protected onUpdate(props: { model: ArchiveEditor }): void {
+        this.model = props.model;
         if (!this.model.treeProvider) {
             this.applyEmptyRoot();
             return;
@@ -143,10 +142,6 @@ export class ArchiveEditorView extends VanillaView<{ model: EditorModel }> {
     };
 }
 
-function requireArchiveModel(model: EditorModel): ArchiveEditor {
-    if (!(model instanceof ArchiveEditor)) throw new Error("Archive view received an invalid model.");
-    return model;
-}
 
 export function makeArchiveEditor(): ArchiveEditor {
     return new ArchiveEditor(new TComponentState(getDefaultArchiveEditorState()));

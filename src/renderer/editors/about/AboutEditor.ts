@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import {
     EditorModel,
     type EditorStateBase,
@@ -15,7 +16,7 @@ export const getDefaultAboutEditorState = (): AboutEditorState => ({
     id: ABOUT_PAGE_ID,
     title: englishMessage("editors.about"),
     modified: false,
-    editor: "about-view",
+    editor: EditorId.aboutView,
 });
 
 export type AboutGuideLocation =
@@ -81,7 +82,7 @@ export class AboutGuideBrowserState {
 
 export class AboutEditor extends EditorModel<AboutEditorState> {
     /** Editor identity. Matches `EditorDescriptor.editorId`. */
-    readonly editorId = "about-view";
+    readonly editorId = EditorId.aboutView;
 
     readonly guideBrowser = new AboutGuideBrowserState();
 

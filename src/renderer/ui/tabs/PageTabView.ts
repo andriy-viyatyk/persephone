@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import { t } from "../../../shared/i18n/t";
 import { displayPageTitle } from "./page-title";
 import { api } from "../../../ipc/renderer/api";
@@ -8,7 +9,7 @@ import { ContextMenuEvent } from "../../api/events/events";
 import { pages } from "../../api/pages";
 import { appWindow } from "../../api/window";
 import { settings } from "../../api/settings";
-import type { EditorModel } from "../../editors/base/EditorModel";
+import type { EditorModelInstance as EditorModel } from "../../editors/base/EditorModel";
 import { BoardEditorModel } from "../../editors/board/BoardEditorModel";
 import { onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
@@ -69,7 +70,7 @@ function emptyEditorProjection(): EditorProjection {
 }
 
 function selectEditorState(state: EditorTabState, boardRoot?: string): EditorProjection {
-    const categoryLink = state.editor === "category-view" && state.filePath
+    const categoryLink = state.editor === EditorId.categoryView && state.filePath
         ? decodeCategoryLink(state.filePath)
         : null;
     return {
@@ -297,7 +298,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
             title: editor.displayTitle,
         } as EditorTabState & { boardRoot?: string; props?: { name?: string } };
         // Board Info in properties mode is titled with the board's English manifest name.
-        if (state.editor === "board-info" && state.boardRoot && state.props?.name === state.title) {
+        if (state.editor === EditorId.boardInfo && state.boardRoot && state.props?.name === state.title) {
             return selectEditorState(state, state.boardRoot);
         }
         const boardRoot = model instanceof BoardEditorModel

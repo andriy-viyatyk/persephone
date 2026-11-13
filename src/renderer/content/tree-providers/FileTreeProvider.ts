@@ -1,3 +1,4 @@
+import { EditorId } from "../../../shared/editor-ids";
 import type {
     ITreeProvider,
     ITreeProviderItem,
@@ -9,10 +10,7 @@ import { copyPathsInto } from "../../core/utils/copy-files";
 import { encodeCategoryLink } from "./tree-provider-link";
 import { folderEditorLinkFor } from "../folder-editor-link";
 import { editorRegistry } from "../../editors/base/editorRegistry";
-import {
-    customEditorRegistry,
-    resolveEditorIdForFolder,
-} from "../../api/boards/custom-editor-registry";
+import { editorCatalog } from "../../editors/base/editor-catalog";
 import type { PathWatchBatch } from "../../../ipc/api-types";
 import { subscribe } from "../../api/path-watch";
 import { fs } from "../../api/fs";
@@ -73,10 +71,8 @@ export class FileTreeProvider implements ITreeProvider {
             const isDir = entry.isDirectory();
 
             if (isDir) {
-                const target = resolveEditorIdForFolder(fullPath);
-                const board = customEditorRegistry
-                    .getBoardsForFolder(fullPath)
-                    .find((entry) => entry.editorId === target);
+                const target = editorCatalog.resolveFolder(fullPath) ?? EditorId.categoryView;
+                const board = editorCatalog.describe(target);
                 folders.push({
                     title: entry.name,
                     href: fullPath,
@@ -84,7 +80,7 @@ export class FileTreeProvider implements ITreeProvider {
                     tags: [],
                     isDirectory: true,
                     target,
-                    icon: board ? "board" : editorRegistry.getById(target)?.folderIcon,
+                    icon: board?.boardRoot ? "board" : editorRegistry.getById(target)?.folderIcon,
                     boardIconRoot: board?.boardRoot,
                 });
             } else {
@@ -147,7 +143,7 @@ export class FileTreeProvider implements ITreeProvider {
 
     getNavigationUrl(item: ITreeProviderItem): string {
         if (!item.isDirectory) return item.href;
-        return folderEditorLinkFor(item.target ?? "category-view", item.href, this.sourceUrl);
+        return folderEditorLinkFor(item.target ?? EditorId.categoryView, item.href, this.sourceUrl);
     }
 
     async getNavigationUrlByHref(href: string): Promise<string> {

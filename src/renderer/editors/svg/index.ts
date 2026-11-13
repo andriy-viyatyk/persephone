@@ -1,3 +1,4 @@
+import { createContentsElement } from "../../uikit/shared/create-contents-element";
 import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import { SvgEditor, defaultSvgEditorState } from "./SvgEditor";
@@ -8,20 +9,10 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { DrawIcon } from "../../theme/language-icons";
 import { createIconComponentElement } from "../../theme/icons";
 import { savePngViaDialog } from "../shared/image-export";
-import type { EditorModule } from "../base/editorRegistry";
-import type { EditorModel } from "../base/EditorModel";
+import { defineEditorModule } from "../base/editorRegistry";
 import { notifyEditCapabilityFailure } from "../../api/capability-feedback";
 
-function createContentsRoot(): HTMLSpanElement {
-    const root = document.createElement("span");
-    root.style.display = "contents";
-    return root;
-}
 
-function requireSvgModel(model: EditorModel): SvgEditor {
-    if (!(model instanceof SvgEditor)) throw new Error("SVG view received an invalid model.");
-    return model;
-}
 
 interface SvgToolbarBitsViewProps {
     model: SvgEditor;
@@ -37,7 +28,7 @@ class SvgToolbarBitsView extends VanillaView<SvgToolbarBitsViewProps> {
     private drawIcon!: SVGElement;
 
     public constructor(props: SvgToolbarBitsViewProps) {
-        super(props, createContentsRoot());
+        super(props, createContentsElement());
         this.model = props.model;
         this.copyImage = props.copyImage;
     }
@@ -106,14 +97,14 @@ class SvgToolbarBitsView extends VanillaView<SvgToolbarBitsViewProps> {
     }
 }
 
-export class SvgEditorView extends VanillaView<{ model: EditorModel }> {
+export class SvgEditorView extends VanillaView<{ model: SvgEditor }> {
     private readonly body: SvgBodyView;
     private readonly toolbar: SvgToolbarBitsView;
     private readonly chrome: TextChromeView;
     private model: SvgEditor;
 
-    public constructor(props: { model: EditorModel }) {
-        const model = requireSvgModel(props.model);
+    public constructor(props: { model: SvgEditor }) {
+        const model = props.model;
         const body = new SvgBodyView({ model });
         const toolbar = new SvgToolbarBitsView({
             model,
@@ -137,8 +128,8 @@ export class SvgEditorView extends VanillaView<{ model: EditorModel }> {
         this.chrome.mount();
     }
 
-    protected onUpdate(props: { model: EditorModel }): void {
-        this.model = requireSvgModel(props.model);
+    protected onUpdate(props: { model: SvgEditor }): void {
+        this.model = props.model;
         this.body.update({ model: this.model });
         this.toolbar.update({ model: this.model, copyImage: this.body.copyImage });
         this.chrome.update({
@@ -149,12 +140,12 @@ export class SvgEditorView extends VanillaView<{ model: EditorModel }> {
     }
 }
 
-export const svgModule: EditorModule = {
+export const svgModule = defineEditorModule(SvgEditor, {
     createEditor: () =>
         new SvgEditor(new TComponentState({ ...defaultSvgEditorState })),
     View: SvgEditorView,
 
-};
+});
 
 export { SvgEditor, defaultSvgEditorState };
 export type { SvgEditorState, SvgQueueEvent } from "./SvgEditor";
