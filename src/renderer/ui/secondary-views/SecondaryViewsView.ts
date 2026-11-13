@@ -104,8 +104,8 @@ export class SecondaryViewsView extends VanillaView<SecondaryViewsProps> {
             this.lastViews = props.views;
         }
         // A panel-contributing model can change its OWN `secondaryView` list while the
-        // models list stays identical — Explorer adding "search"/"boards" is the canonical
-        // case, since one ExplorerEditor owns all three panels. Guarding reconcile on the
+        // models list stays identical — Explorer and its attached panel editors all do this.
+        // Guarding reconcile on the
         // model list alone therefore dropped those panels: the state was written (and
         // persisted) but nothing rendered until a later mount saw them already present,
         // which is why the toggles only appeared to work on a restored page.

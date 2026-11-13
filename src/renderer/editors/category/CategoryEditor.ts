@@ -22,7 +22,7 @@ import { LinksListView } from "../link-editor/LinksListView";
 import type { LinksListProps } from "../link-editor/LinksList";
 import { LinksTilesView } from "../link-editor/LinksTilesView";
 import type { LinksTilesProps } from "../link-editor/LinksTiles";
-import { CategoryEditorModel, type CategoryTreeProviderHostEditor } from "./CategoryEditorModel";
+import { CategoryEditorModel, type CategoryTreeProviderHostPair } from "./CategoryEditorModel";
 import { folderViewModeService } from "./FolderViewModeService";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
@@ -35,7 +35,7 @@ export class CategoryEditorView extends VanillaView<{ model: CategoryEditorModel
     private categoryView: CategoryViewImpl | undefined;
     private messagePanel: HTMLDivElement | undefined;
     private searchHost: HTMLDivElement | undefined;
-    private host: CategoryTreeProviderHostEditor | null = null;
+    private host: CategoryTreeProviderHostPair | null = null;
     private selectedHref: string | null = null;
     private observedPage: IPageHost | null = null;
     private pageStateUnsub: (() => void) | undefined;
@@ -112,7 +112,7 @@ export class CategoryEditorView extends VanillaView<{ model: CategoryEditorModel
             this.rebindHostSelection(host);
         }
 
-        const provider = host?.treeProvider ?? null;
+        const provider = host?.host.provider ?? null;
         this.syncViewModeLoad(this.model.categoryPath ?? "");
         if (!provider) {
             this.releaseCategorySurface();
@@ -150,7 +150,7 @@ export class CategoryEditorView extends VanillaView<{ model: CategoryEditorModel
                 || categoryPath !== (this.model.categoryPath ?? "")
             ) return;
             this.viewMode = viewMode;
-            const provider = this.host?.treeProvider;
+            const provider = this.host?.host.provider;
             if (provider) this.categoryView?.update(this.categoryViewProps(provider));
         });
     }
@@ -242,30 +242,30 @@ export class CategoryEditorView extends VanillaView<{ model: CategoryEditorModel
             .join("/");
     }
 
-    private rebindHostSelection(host: CategoryTreeProviderHostEditor | null): void {
+    private rebindHostSelection(host: CategoryTreeProviderHostPair | null): void {
         this.hostSelectionUnsub?.();
         this.hostSelectionUnsub = undefined;
         if (!host) {
             this.applySelectedHref(null);
             return;
         }
-        this.hostSelectionUnsub = this.ownSubscription(host.selectionState.subscribe(
+        this.hostSelectionUnsub = this.ownSubscription(host.host.selectionState.subscribe(
             (href: string | null) => this.applySelectedHref(href),
             (state) => state.selectedHref,
         ));
-        this.applySelectedHref(host.selectionState.get().selectedHref);
+        this.applySelectedHref(host.host.selectionState.get().selectedHref);
     }
 
     private applySelectedHref(selectedHref: string | null): void {
         this.selectedHref = selectedHref;
-        const provider = this.host?.treeProvider;
+        const provider = this.host?.host.provider;
         if (provider) this.categoryView?.update(this.categoryViewProps(provider));
     }
 
     private readonly handleViewModeChange = (mode: CategoryViewMode): void => {
         const categoryPath = this.model.categoryPath ?? "";
         this.viewMode = mode;
-        const provider = this.host?.treeProvider;
+        const provider = this.host?.host.provider;
         if (provider) this.categoryView?.update(this.categoryViewProps(provider));
         void folderViewModeService.setViewMode(categoryPath, mode);
     };

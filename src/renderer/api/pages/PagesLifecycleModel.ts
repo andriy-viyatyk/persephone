@@ -6,8 +6,7 @@ import { t } from "../../../shared/i18n/t";
 import { cleanForStorage } from "../../../shared/link-data";
 import type { ILinkData } from "../../../shared/link-data";
 import { newTextFileModel } from "../../editors/content-host/TextFileModel";
-import { ExplorerEditor, getDefaultExplorerEditorState } from "../../editors/explorer";
-import { TComponentState } from "../../core/state/state";
+import { attachExplorer } from "../../editors/explorer/page-explorer";
 import { api } from "../../../ipc/renderer/api";
 import { recent } from "../recent";
 import { editorRegistry } from "../../editors/base/editorRegistry";
@@ -200,13 +199,7 @@ export class PagesLifecycleModel {
 
     addEmptyPageWithNavPanel = async (folderPath: string): Promise<PageModel> => {
         const page = new PageModel();
-        const state = new TComponentState({
-            ...getDefaultExplorerEditorState(),
-            rootPath: folderPath,
-        });
-        const explorer = new ExplorerEditor(state);
-        page.attach(explorer);
-        await explorer.restore();
+        await attachExplorer(page, { rootPath: folderPath });
         page.ensureSecondaryViewsModel();
         return this.addPage(null, page);
     };

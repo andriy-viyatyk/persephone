@@ -17,7 +17,6 @@ import { getAvailableScripts, getSelectedDropdownEntry, openScriptInTab, saveScr
 import type { ScriptDropdownEntry } from "../../../scripting/script-library-actions";
 import { runPageScript } from "../../../scripting/run-page-script";
 import * as monaco from "monaco-editor";
-import { TComponentState } from "../../../core/state/state";
 import "../../../uikit/Panel/Panel.css";
 import "../../../uikit/Splitter/Splitter.css";
 
@@ -405,14 +404,8 @@ export class ScriptPanelView extends VanillaView<ScriptPanelViewProps> {
             openPath: async (filePath, libraryRoot) => {
                 const page = await pages.openPath(filePath);
                 if (!page || !libraryRoot) return;
-                const { ExplorerEditor, getDefaultExplorerEditorState } = await import("../../explorer");
-                const explorerState = new TComponentState({
-                    ...getDefaultExplorerEditorState(),
-                    rootPath: libraryRoot,
-                });
-                const explorer = new ExplorerEditor(explorerState);
-                page.attach(explorer);
-                await explorer.restore();
+                const { attachExplorer } = await import("../../explorer/page-explorer");
+                await attachExplorer(page, { rootPath: libraryRoot });
                 page.ensureSecondaryViewsModel();
             },
             openLibraryRoot: (libraryRoot) => {

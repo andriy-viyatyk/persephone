@@ -99,7 +99,7 @@ export class AboutGuidePageView extends VanillaView<AboutGuidePageViewProps> {
             setMatchCount: this.setMatchCount,
             nextMatch: this.nextMatch,
             prevMatch: this.prevMatch,
-            navigateLink: this.navigateLink,
+            followLink: this.followLink,
         };
         this.own(() => this.bodyQueue.dispose());
 
@@ -304,7 +304,7 @@ export class AboutGuidePageView extends VanillaView<AboutGuidePageViewProps> {
         ));
     };
 
-    private readonly navigateLink = (href: string): boolean => {
+    private readonly followLink = (href: string): boolean => {
         const parsed = parseGuideUrl(href);
         if (!parsed) return false;
 

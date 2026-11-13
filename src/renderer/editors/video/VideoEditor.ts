@@ -30,6 +30,11 @@ import {
 import { videoSessionStore } from "../../api/video-session-store";
 import { VideoStreamSession } from "./VideoStreamSession";
 import type { VideoStreamStartOptions } from "./VideoStreamSession";
+import { ViewPort } from "../base/view-port";
+
+interface VideoViewPort {
+    mediaElement(): HTMLMediaElement | null;
+}
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -80,7 +85,7 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
 
     noLanguage = true;
     skipSave = true;
-    private mediaElement: HTMLMediaElement | null = null;
+    private readonly viewPort = new ViewPort<VideoViewPort>();
     private readonly streamSession: VideoStreamSession;
 
     constructor(state: TComponentState<VideoEditorState>) {
@@ -107,11 +112,11 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
 
     /** The active media element handed off by the mounted player view. */
     get activeMediaElement(): HTMLMediaElement | null {
-        return this.mediaElement;
+        return this.viewPort.get()?.mediaElement() ?? null;
     }
 
     play(): Promise<void> {
-        const media = this.mediaElement;
+        const media = this.viewPort.get()?.mediaElement() ?? null;
         if (!media) return Promise.reject(this.missingMediaError());
         return media.play();
     }
@@ -125,7 +130,7 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
     }
 
     private requireMediaElement(): HTMLMediaElement {
-        const media = this.mediaElement;
+        const media = this.viewPort.get()?.mediaElement() ?? null;
         if (!media) throw this.missingMediaError();
         return media;
     }
@@ -155,9 +160,8 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         await page?.close();
     };
 
-    /** Keep facade reads attached to the media element owned by this page. */
-    setMediaElement = (element: HTMLMediaElement | null): void => {
-        this.mediaElement = element;
+    attachViewPort(port: VideoViewPort): () => void {
+        return this.viewPort.attach(port);
     };
 
     override setPage(page: Parameters<EditorModel["setPage"]>[0]): void {
@@ -261,7 +265,7 @@ export class VideoEditor extends EditorModel<VideoEditorState> {
         // close or a cross-window tab move — so an unsaved recording is deleted here, while a
         // restored page keeps its file. Startup cleanup still removes leftovers after 7 days.
         const unsavedRecording = this.isTemporaryRecording ? this.filePath : undefined;
-        this.mediaElement = null;
+        this.viewPort.clear();
         try {
             await this.streamSession.dispose();
         } finally {

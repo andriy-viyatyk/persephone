@@ -1,5 +1,7 @@
 export const InternalEditorIds = {
     explorer: "explorer",
+    boards: "boards",
+    clipboard: "clipboard",
     fileDiff: "file-diff",
     restoreFailed: "restore-failed",
 } as const;

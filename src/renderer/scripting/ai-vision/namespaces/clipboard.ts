@@ -1,4 +1,4 @@
-import { api } from "../../../../ipc/renderer/api";
+import { ClipboardHistoryModel } from "../../../api/clipboard-history";
 import type {
     ClipboardFlavor,
     ClipboardHistoryItem,
@@ -97,7 +97,11 @@ function readLegacyFileListJson(stored: string): string[] {
 }
 
 export class ClipboardHistoryNode implements IAiVisible {
-    constructor(private readonly app: Pick<AppWrapper, "fs">) {}
+    private readonly clipboardHistory: ClipboardHistoryModel;
+
+    constructor(private readonly app: Pick<AppWrapper, "fs">) {
+        this.clipboardHistory = new ClipboardHistoryModel();
+    }
 
     get items(): Promise<ClipboardHistoryItem[]> {
         return this.readPage(0, MAX_PAGE_SIZE).then((page) => page.items);
@@ -123,7 +127,7 @@ export class ClipboardHistoryNode implements IAiVisible {
 
     async read(...args: unknown[]): Promise<string | string[] | ClipboardImageResult> {
         const [id, flavor] = validateCallArguments("clipboard.read", args, READ_ARGUMENTS, { maxArgs: 2 });
-        const snapshot = await api.getClipboardHistory();
+        const snapshot = await this.clipboardHistory.getSnapshot();
         const item = snapshot.items.find((candidate) => candidate.id === id);
         if (!item) throw new Error(`Clipboard history item ${JSON.stringify(id)} was not found.`);
 
@@ -155,12 +159,12 @@ export class ClipboardHistoryNode implements IAiVisible {
 
     async remove(...args: unknown[]): Promise<void> {
         const [id] = validateCallArguments("clipboard.remove", args, REMOVE_ARGUMENTS, { maxArgs: 1 });
-        return api.removeClipboardItem(id);
+        return this.clipboardHistory.remove(id);
     }
 
     async clear(...args: unknown[]): Promise<void> {
         validateCallArguments("clipboard.clear", args, [], { maxArgs: 0 });
-        return api.clearClipboardHistory();
+        return this.clipboardHistory.clear();
     }
 
     get aiVision(): IAiVisionDescriptor {
@@ -170,7 +174,7 @@ export class ClipboardHistoryNode implements IAiVisible {
             members: CLIPBOARD_MEMBERS,
             help: CLIPBOARD_HELP,
             summarize: async () => {
-                const snapshot = await api.getClipboardHistory();
+                const snapshot = await this.clipboardHistory.getSnapshot();
                 return {
                     kind: "ClipboardHistory",
                     count: snapshot.items.length,
@@ -188,7 +192,7 @@ export class ClipboardHistoryNode implements IAiVisible {
         total: number;
         items: ClipboardHistoryItem[];
     }> {
-        const snapshot: ClipboardHistorySnapshot = await api.getClipboardHistory();
+        const snapshot: ClipboardHistorySnapshot = await this.clipboardHistory.getSnapshot();
         return {
             revision: snapshot.revision,
             offset,

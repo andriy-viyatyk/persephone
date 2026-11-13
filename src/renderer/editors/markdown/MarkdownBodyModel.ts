@@ -40,23 +40,22 @@ export interface MarkdownBodyQueue {
     readonly pendingRequestCount: number;
 }
 
-export interface MarkdownBodyPage {
-    readonly id: string;
-    pushNavBack(entry: { href: string; title: string }): void;
+export interface MarkdownBodyViewPort {
+    renderedHtml(): string;
 }
 
 interface MarkdownBodyModelBase {
     readonly state: MarkdownBodyStateStore<MarkdownBodyState>;
     readonly host?: MarkdownBodyHost | null;
-    readonly page?: MarkdownBodyPage | null;
+    readonly page?: object | null;
     openSearch(): void;
     closeSearch(): void;
     setSearchText(text: string): void;
     setMatchCount(count: number): void;
     nextMatch(): void;
     prevMatch(): void;
-    setContainer?(element: HTMLDivElement | null): void;
-    navigateLink?(href: string): boolean;
+    attachViewPort?(port: MarkdownBodyViewPort): () => void;
+    followLink(href: string): boolean;
 }
 
 export type MarkdownBodyModel = MarkdownBodyModelBase & (

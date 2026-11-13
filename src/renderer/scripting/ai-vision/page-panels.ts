@@ -2,6 +2,10 @@ import type { IPageHost } from "../../api/pages/IPageHost";
 import type { EditorModelInstance as EditorModel } from "../../editors/base/EditorModel";
 import { parseBoardSecondaryPanelId } from "../../editors/board/board-secondary";
 import { ExplorerEditor } from "../../editors/explorer/ExplorerEditorModel";
+import { BoardsPanelEditor } from "../../editors/board/BoardsPanelEditorModel";
+import { ClipboardPanelEditor } from "../../editors/clipboard/ClipboardPanelEditorModel";
+import { openBoardsPanel } from "../../editors/explorer/page-explorer";
+import type { PageModel } from "../../api/pages/PageModel";
 import { GitTreeEditorModel } from "../../editors/git-tree/GitTreeEditorModel";
 import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "./page-elements";
@@ -91,6 +95,12 @@ function summarizeRefs(refs: {
 }
 
 function panelState(record: RenderedPanel): Record<string, unknown> {
+    if (record.model instanceof BoardsPanelEditor) {
+        return {
+            kind: "boards", rootPath: record.model.rootPath || undefined,
+            tab: record.model.boardsTab, boards: record.model.listBoards(), tools: record.model.listToolsets(),
+        };
+    }
     if (record.model instanceof ExplorerEditor) {
         if (record.panelId === "search") {
             const search = record.model.searchState;
@@ -101,17 +111,22 @@ function panelState(record: RenderedPanel): Record<string, unknown> {
                 totalMatches: search.totalMatches, totalFiles: search.totalFiles,
             } : { kind: "search" };
         }
-        if (record.panelId === "boards") {
-            return {
-                kind: "boards", rootPath: record.model.rootPath || undefined,
-                tab: record.model.boardsTab, boards: record.model.listBoards(), tools: record.model.listToolsets(),
-            };
-        }
         return {
             kind: "explorer", rootPath: record.model.rootPath || undefined,
             selectedHref: record.model.selectionState.get().selectedHref ?? undefined,
             providerType: record.model.treeProvider?.type,
         };
+    }
+    if (record.model instanceof ClipboardPanelEditor) {
+        const explorer = record.model.page?.findExplorer();
+        if (explorer instanceof ExplorerEditor) {
+            return {
+                kind: "explorer", rootPath: explorer.rootPath || undefined,
+                selectedHref: explorer.selectionState.get().selectedHref ?? undefined,
+                providerType: explorer.treeProvider?.type,
+            };
+        }
+        return { kind: "explorer" };
     }
     if (record.model instanceof GitTreeEditorModel && record.panelId === "git-changes") {
         const state = record.model.state.get();
@@ -133,6 +148,7 @@ function panelState(record: RenderedPanel): Record<string, unknown> {
 }
 
 function panelKind(record: RenderedPanel): "explorer" | "search" | "boards" | "git" | "generic" {
+    if (record.model instanceof BoardsPanelEditor && record.panelId === "boards") return "boards";
     if (record.model instanceof ExplorerEditor) {
         if (record.panelId === "search") return "search";
         if (record.panelId === "boards") return "boards";
@@ -225,19 +241,23 @@ export class PagePanelNode implements IAiVisible {
     get expanded(): boolean { return this.record?.expanded ?? false; }
     get state(): Record<string, unknown> { const record = this.record; return record ? panelState(record) : {}; }
 
-    get rootPath(): string | undefined { const owner = this.owner; return owner instanceof ExplorerEditor && owner.rootPath ? owner.rootPath : undefined; }
-    get selectedHref(): string | undefined { const owner = this.owner; return owner instanceof ExplorerEditor ? owner.selectionState.get().selectedHref ?? undefined : undefined; }
-    get providerType(): string | undefined { const owner = this.owner; return owner instanceof ExplorerEditor ? owner.treeProvider?.type : undefined; }
+    get rootPath(): string | undefined { const owner = this.owner; if (owner instanceof BoardsPanelEditor) return owner.rootPath || undefined; return this.explorerOwner()?.rootPath || undefined; }
+    get selectedHref(): string | undefined { return this.explorerOwner()?.selectionState.get().selectedHref ?? undefined; }
+    get providerType(): string | undefined { return this.explorerOwner()?.treeProvider?.type; }
     get items(): Promise<readonly Record<string, unknown>[] | undefined> { return this.listItems(); }
     get itemCount(): Promise<number | undefined> { return this.listItems().then(items => items?.length); }
-    listItems(): Promise<Record<string, unknown>[] | undefined> { const owner = this.owner; return owner instanceof ExplorerEditor ? owner.listItems().then(items => items?.map(item => ({ ...item, tags: [...item.tags] }))) : Promise.resolve(undefined); }
+    listItems(): Promise<Record<string, unknown>[] | undefined> { const owner = this.explorerOwner(); return owner ? owner.listItems().then(items => items?.map(item => ({ ...item, tags: [...item.tags] }))) : Promise.resolve(undefined); }
     openItem(item: Record<string, unknown>): Promise<void> { const owner = this.requireExplorer(); return owner.openItem(item as unknown as ITreeProviderItem); }
     revealItem(href: string): void { this.requireExplorer().revealItem(href); }
     expand(path: string): Promise<void> { return this.requireExplorer().expandPath(path); }
     collapse(path: string): Promise<void> { return this.requireExplorer().collapsePath(path); }
     navigateUp(): void { this.requireExplorer().navigateUp(); }
     openSearch(folder?: string): void { this.requireExplorer().openSearch(folder); }
-    openBoards(): void { this.requireExplorer().openBoards(); }
+    openBoards(): void {
+        const page = this.requireExplorer().page;
+        if (!page) throw new Error("Explorer action unavailable: no page host attached.");
+        openBoardsPanel(page as PageModel);
+    }
 
     private searchState() { const owner = this.owner; return owner instanceof ExplorerEditor && this.id === "search" ? owner.searchState : undefined; }
     get query(): string | undefined { return this.searchState()?.query; }
@@ -249,14 +269,14 @@ export class PagePanelNode implements IAiVisible {
     get totalFiles(): number | undefined { return this.searchState()?.totalFiles; }
     openSearchResult(path: string, lineNumber?: number): Promise<void> { return this.requireExplorer().openSearchResult(path, lineNumber); }
 
-    get tab(): "boards" | "tools" | undefined { const owner = this.owner; return owner instanceof ExplorerEditor && owner.rootPath ? owner.boardsTab : undefined; }
-    get boards(): string[] | undefined { const owner = this.owner; return owner instanceof ExplorerEditor && owner.rootPath ? owner.listBoards() : undefined; }
-    get tools(): Array<{ root: string; name: string }> | undefined { const owner = this.owner; return owner instanceof ExplorerEditor && owner.rootPath ? owner.listToolsets() : undefined; }
+    get tab(): "boards" | "tools" | undefined { const owner = this.owner; return owner instanceof BoardsPanelEditor && owner.rootPath ? owner.boardsTab : undefined; }
+    get boards(): string[] | undefined { const owner = this.owner; return owner instanceof BoardsPanelEditor && owner.rootPath ? owner.listBoards() : undefined; }
+    get tools(): Array<{ root: string; name: string }> | undefined { const owner = this.owner; return owner instanceof BoardsPanelEditor && owner.rootPath ? owner.listToolsets() : undefined; }
     get boardCount(): number | undefined { return this.boards?.length; }
     get toolsetCount(): number | undefined { return this.tools?.length; }
-    setTab(tab: "boards" | "tools"): void { this.requireExplorer().setBoardsTab(tab); }
-    openBoard(root: string): void { this.requireExplorer().openBoard(root); }
-    openToolset(root: string): Promise<void> { return this.requireExplorer().openToolset(root); }
+    setTab(tab: "boards" | "tools"): void { this.requireBoards().setBoardsTab(tab); }
+    openBoard(root: string): void { this.requireBoards().openBoard(root); }
+    openToolset(root: string): Promise<void> { return this.requireBoards().openToolset(root); }
 
     private gitOwner(): GitTreeEditorModel | undefined { const owner = this.owner; return owner instanceof GitTreeEditorModel && this.id === "git-changes" ? owner : undefined; }
     get activeTab(): "changes" | "branches" | "tags" | undefined { return this.gitOwner()?.state.get().gitPanelTab ?? "changes"; }
@@ -272,7 +292,7 @@ export class PagePanelNode implements IAiVisible {
     setAlphabetical(value: boolean): void { this.requireGit().setBranchesAlphabetical(value); }
     openChange(path: string, list: "unstaged" | "staged" = "unstaged"): void { const owner = this.requireGit(); const changes = list === "staged" ? owner.changes.state.get().staged : owner.changes.state.get().unstaged; const change = changes.find(item => item.path === path); if (!change) throw new Error(`Git action unavailable: no ${list} change with path ${JSON.stringify(path)}.`); owner.openChangeDiff({ ...change }, list); }
     revealRef(name: string, kind: "branch" | "remote-branch" | "tag"): void { this.requireGit().revealRefForFacade(name, kind); }
-    async close(): Promise<void> { const owner = this.owner; if (owner instanceof ExplorerEditor) { if (this.id === "search") owner.closeSearch(); else if (this.id === "boards") owner.closeBoards(); else owner.page?.setSecondaryViewsState({ open: false }); return; } if (owner instanceof GitTreeEditorModel) { await owner.requestClose(); return; } throw new Error("Panel close unavailable: this deferred panel has no current-task close path."); }
+    async close(): Promise<void> { const owner = this.owner; if (owner instanceof ExplorerEditor) { if (this.id === "search") owner.closeSearch(); else owner.page?.setSecondaryViewsState({ open: false }); return; } if (owner instanceof BoardsPanelEditor) { owner.closeBoards(); return; } if (owner instanceof ClipboardPanelEditor) { owner.page?.setSecondaryViewsState({ open: false }); return; } if (owner instanceof GitTreeEditorModel) { await owner.requestClose(); return; } throw new Error("Panel close unavailable: this deferred panel has no current-task close path."); }
 
     get aiVision(): IAiVisionDescriptor {
         const declarations = panelElements(this.kind);
@@ -281,7 +301,9 @@ export class PagePanelNode implements IAiVisible {
         const elements = createElements(declarations, ui.highlightElement.bind(ui), { scopeSelector, beforeHighlight: host ? () => activatePageAndWaitForLayout(host.id) : undefined, highlightOptions: { all: true } });
         return { kind: this.kind === "generic" ? "PagePanel" : `${this.kind[0].toUpperCase()}${this.kind.slice(1)}Panel`, summary: this.kind === "generic" ? "Generic deferred sidebar panel node." : `Model-backed ${this.kind} sidebar panel node.`, members: [...PANEL_COMMON_MEMBERS, ...panelSpecificMembers(this.kind), ...elements.members], elements: declarations, provide: elements.provide, help: PANEL_HELP, summarize: () => ({ kind: "PagePanel", id: this.id, label: this.label, ownerEditorId: this.ownerEditorId, expanded: this.expanded, state: this.state }) };
     }
-    private requireExplorer(): ExplorerEditor { const owner = this.owner; if (!(owner instanceof ExplorerEditor)) throw new Error("Explorer action unavailable: panel owner is not Explorer."); return owner; }
+    private explorerOwner(): ExplorerEditor | undefined { const owner = this.owner; if (owner instanceof ExplorerEditor) return owner; if (owner instanceof BoardsPanelEditor || owner instanceof ClipboardPanelEditor) { const explorer = owner.page?.findExplorer(); return explorer instanceof ExplorerEditor ? explorer : undefined; } return undefined; }
+    private requireExplorer(): ExplorerEditor { const owner = this.explorerOwner(); if (!owner) throw new Error("Explorer action unavailable: panel owner is not Explorer."); return owner; }
+    private requireBoards(): BoardsPanelEditor { const owner = this.owner; if (!(owner instanceof BoardsPanelEditor)) throw new Error("Explorer action unavailable: panel owner is not Explorer."); return owner; }
     private requireGit(): GitTreeEditorModel { const owner = this.gitOwner(); if (!owner || !owner.state.get().repoRoot) throw new Error("Git action unavailable: no repository is loaded."); return owner; }
 }
 

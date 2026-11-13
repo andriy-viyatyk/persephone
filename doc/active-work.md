@@ -8,13 +8,6 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-164** — [Refactoring Phase 6.4 part 2: source watching, `VideoStreamSession`, image actions, `TextEditorPageView`, grid codecs](epics/EPIC-164.md)
-  - [ ] [US-1934: `content/source-watch.ts` — one watch helper and `movedSource`](tasks/US-1934-source-watch/README.md)
-  - [ ] [US-1935: `VideoStreamSession`, recording helpers and mute ownership](tasks/US-1935-video-stream-session/README.md)
-  - [ ] [US-1936: Shared image actions and toolbar; `image-export.ts` split](tasks/US-1936-image-actions/README.md)
-  - [ ] [US-1937: `TextEditorPageView<M>`, HTML "Show resources", view file naming](tasks/US-1937-text-editor-page-view/README.md)
-  - [ ] [US-1938: Grid codecs, legacy-settings promotion, toolbar reads `model.grid`](tasks/US-1938-grid-codecs/README.md)
-
 ## Planned
 
 - *(no epic)*

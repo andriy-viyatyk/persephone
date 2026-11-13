@@ -56,6 +56,12 @@ export abstract class EditorModel<
     /** Fresh file opens may insert this editor before its source restore settles. */
     readonly deferRestoreOnOpen: boolean = false;
 
+    /** Stable ordering among page-attached sidebar contributors. */
+    readonly panelOrder: number = 10;
+
+    /** Whether this editor's panels allow the sidebar to close. */
+    readonly sidebarOptional: boolean = false;
+
     /** The folder this editor is anchored at, or undefined for a non-folder editor. */
     get folderAnchor(): string | undefined {
         return undefined;

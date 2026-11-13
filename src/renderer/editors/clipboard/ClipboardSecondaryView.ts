@@ -1,18 +1,8 @@
-import { app } from "../../api/app";
 import { pages } from "../../api/pages";
-import { settings } from "../../api/settings";
-import { normalizeClipboardMaxItems } from "../../api/settings-schema";
 import { ui } from "../../api/ui";
-import { api } from "../../../ipc/renderer/api";
-import rendererEvents from "../../../ipc/renderer/renderer-events";
-import type {
-    ClipboardHistoryChanged,
-    ClipboardHistoryItem,
-    ClipboardStatus,
-} from "../../../ipc/clipboard-ipc";
-import { createLinkData } from "../../../shared/link-data";
+import { ClipboardHistoryModel } from "../../api/clipboard-history";
+import type { ClipboardHistoryItem } from "../../../ipc/clipboard-ipc";
 import { errMessage } from "../../../shared/utils";
-import { SerialQueue } from "../../../shared/serial-queue";
 import { t, untranslated } from "../../../shared/i18n/t";
 import { createFileIconElement, subscribeFileIconElements } from "../../components/icons/icon-elements";
 import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view-registry";
@@ -31,7 +21,7 @@ import { TagView } from "../../uikit/Tag/TagView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { createIconElement } from "../../uikit/shared/slots";
 import type { MenuItem } from "../../uikit/Menu";
-import type { ExplorerEditor } from "./ExplorerEditorModel";
+import type { ClipboardPanelEditor } from "./ClipboardPanelEditorModel";
 import { clipboardTimeLabel } from "./clipboard-date";
 import "../../uikit/Button/Button.css";
 import "../../uikit/IconButton/IconButton.css";
@@ -51,8 +41,9 @@ interface ClipboardRowControls {
 
 const MAX_PREVIEW_LENGTH = 200;
 
-export default class ClipboardSecondaryView extends VanillaView<SecondaryViewProps<ExplorerEditor>> {
-    private model: ExplorerEditor;
+export default class ClipboardSecondaryView extends VanillaView<SecondaryViewProps<ClipboardPanelEditor>> {
+    private model: ClipboardPanelEditor;
+    private readonly clipboardHistory = new ClipboardHistoryModel();
     private header: SideBarPanelHeaderHandle | undefined;
     private headerActions: HTMLDivElement | undefined;
     private closeButton: IconButtonView | undefined;
@@ -64,23 +55,10 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
     private openSettingsButton: ButtonView | undefined;
     private list: ListBoxView<ClipboardListItem> | undefined;
     private readonly rowControls = new Map<string, ClipboardRowControls>();
-    private items: ClipboardHistoryItem[] = [];
     private rows: ClipboardListItem[] = [];
-    private status: ClipboardStatus | undefined;
-    private loading = true;
-    private historyLoaded = false;
-    private latestRevision = -1;
-    private historyRequestGeneration = 0;
-    private statusRequestGeneration = 0;
-    private statusEventGeneration = 0;
-    private restarting = false;
-    private selectedId: string | undefined;
-    private activeIndex: number | null = null;
-    private readonly openQueue = new SerialQueue();
-    private openQueueGeneration = 0;
-    private selectNextCapture = false;
+    private lastClipboardState = this.clipboardHistory.state.get();
 
-    public constructor(props: SecondaryViewProps<ExplorerEditor>) {
+    public constructor(props: SecondaryViewProps<ClipboardPanelEditor>) {
         super(props, createPanelElement({
             name: "clipboard-secondary-view",
             direction: "column",
@@ -89,6 +67,31 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             overflow: "hidden",
         }));
         this.model = props.model;
+    }
+
+    private get items(): ClipboardHistoryItem[] {
+        return this.clipboardHistory.state.get().items;
+    }
+
+    private get status() {
+        return this.clipboardHistory.state.get().status;
+    }
+
+    private get loading(): boolean {
+        return this.clipboardHistory.state.get().loading;
+    }
+
+    private get restarting(): boolean {
+        return this.clipboardHistory.state.get().restarting;
+    }
+
+    private get selectedId(): string | undefined {
+        return this.clipboardHistory.state.get().selectedId;
+    }
+
+    private get activeIndex(): number | null {
+        const selectedIndex = this.rows.findIndex((row) => row.value === this.selectedId);
+        return this.selectedId === undefined || selectedIndex < 0 ? null : selectedIndex;
     }
 
     protected onMount(): void {
@@ -171,33 +174,43 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         });
         this.own(() => this.header?.dispose());
 
-        this.own(rendererEvents.eClipboardHistoryChanged.subscribe(({ revision, reason }) => {
-            if (revision < this.latestRevision) return;
-            this.latestRevision = revision;
-            this.queryHistory(reason);
+        this.own(this.clipboardHistory.state.subscribe(() => {
+            if (this.isDisposed) return;
+            const state = this.clipboardHistory.state.get();
+            const previous = this.lastClipboardState;
+            this.lastClipboardState = state;
+            if (state.items !== previous.items) this.rebuildRows();
+            if (
+                state.items !== previous.items
+                || state.status !== previous.status
+                || state.historyLoaded !== previous.historyLoaded
+                || (!state.loading && state.loading !== previous.loading)
+            ) {
+                this.updatePresentation();
+                return;
+            }
+            if (state.loading !== previous.loading) {
+                this.list?.update(this.listProps());
+                return;
+            }
+            if (state.restarting !== previous.restarting && state.restarting) {
+                this.updateHeader(this.props);
+                return;
+            }
+            if (state.selectedId !== previous.selectedId) this.list?.update(this.listProps());
         }));
-        this.own(rendererEvents.eClipboardStatusChanged.subscribe((status) => {
-            this.statusEventGeneration++;
-            this.applyStatus(status);
-        }));
-
         this.updatePresentation();
-        void this.initialize();
+        void this.clipboardHistory.startMonitoring();
     }
 
-    protected onUpdate(props: SecondaryViewProps<ExplorerEditor>): void {
+    protected onUpdate(props: SecondaryViewProps<ClipboardPanelEditor>): void {
         const model = props.model;
         if (model !== this.model) this.model = model;
         this.updatePresentation();
     }
 
     protected onDispose(): void {
-        this.historyRequestGeneration++;
-        this.statusRequestGeneration++;
-        this.openQueueGeneration++;
-        void api.setClipboardHealthMonitoring(false).catch((error: unknown) => {
-            console.error("Failed to stop clipboard health monitoring", errMessage(error));
-        });
+        this.clipboardHistory.stopMonitoring();
         this.header = undefined;
         this.headerActions = undefined;
         this.closeButton = undefined;
@@ -211,84 +224,11 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         this.rowControls.clear();
     }
 
-    private async initialize(): Promise<void> {
-        const statusEventsAtRequest = this.statusEventGeneration;
-        try {
-            const status = await api.setClipboardHealthMonitoring(true);
-            if (!this.isDisposed && statusEventsAtRequest === this.statusEventGeneration) {
-                this.applyStatus(status);
-            }
-        } catch (error: unknown) {
-            if (!this.isDisposed) {
-        this.applyStatus(this.errorStatus(t("explorer.failedStartClipboardMonitoring", { error: errMessage(error) })));
-        void ui.notify(errMessage(error, t("explorer.failedStartClipboardMonitoringFallback")), "error");
-            }
-        }
-        if (this.isDisposed) return;
-        this.queryStatus();
-        this.queryHistory();
-    }
-
-    private queryStatus(): void {
-        const requestGeneration = ++this.statusRequestGeneration;
-        const statusEventsAtRequest = this.statusEventGeneration;
-        void api.getClipboardStatus().then((status) => {
-            if (
-                this.isDisposed
-                || requestGeneration !== this.statusRequestGeneration
-                || statusEventsAtRequest !== this.statusEventGeneration
-            ) return;
-            this.applyStatus(status);
-        }).catch((error: unknown) => {
-            if (this.isDisposed || requestGeneration !== this.statusRequestGeneration) return;
-        this.applyStatus(this.errorStatus(t("explorer.failedQueryClipboardStatus", { error: errMessage(error) })));
-        void ui.notify(errMessage(error, t("explorer.failedQueryClipboardStatusFallback")), "error");
-        });
-    }
-
-    private queryHistory(reason?: ClipboardHistoryChanged["reason"]): void {
-        const requestGeneration = ++this.historyRequestGeneration;
-        if (!this.historyLoaded) {
-            this.loading = true;
-            this.list?.update(this.listProps());
-        }
-        void api.getClipboardHistory().then((snapshot) => {
-            if (
-                this.isDisposed
-                || requestGeneration !== this.historyRequestGeneration
-                || snapshot.revision < this.latestRevision
-            ) return;
-            this.latestRevision = snapshot.revision;
-            this.items = snapshot.items;
-            this.historyLoaded = true;
-            this.loading = false;
-            this.applyCaptureSelection(reason);
-            this.rebuildRows();
-            this.updatePresentation();
-        }).catch((error: unknown) => {
-            if (this.isDisposed || requestGeneration !== this.historyRequestGeneration) return;
-            this.loading = false;
-            this.updatePresentation();
-        void ui.notify(errMessage(error, t("explorer.failedLoadClipboardHistory")), "error");
-        });
-    }
-
     /** Copying an item puts its content back on the clipboard, so the watcher captures it and
      *  the item returns at the top under a NEW id — the old row is gone and selection would be
      *  left pointing at nothing. Follow the content to its new row instead. Only a capture can
      *  honour the request; any other refresh means the copy produced no capture (an excluded
      *  write, a failed one) and the request is dropped rather than left armed for later. */
-    private applyCaptureSelection(reason: ClipboardHistoryChanged["reason"] | undefined): void {
-        if (!this.selectNextCapture || reason === undefined) return;
-        this.selectNextCapture = false;
-        if (reason === "captured" && this.items.length > 0) this.selectedId = this.items[0].id;
-    }
-
-    private applyStatus(status: ClipboardStatus): void {
-        this.status = status;
-        this.updatePresentation();
-    }
-
     private rebuildRows(): void {
         const nextIds = new Set(this.items.map((item) => item.id));
         for (const [id, controls] of this.rowControls) {
@@ -364,9 +304,8 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
     private reconcileSelectionAndActive(): void {
         const selectedIndex = this.rows.findIndex((row) => row.value === this.selectedId);
         if (this.selectedId !== undefined && selectedIndex === -1) {
-            this.selectedId = undefined;
+            this.clipboardHistory.select(undefined);
         }
-        this.activeIndex = this.selectedId === undefined ? null : selectedIndex;
     }
 
     private listProps(): Parameters<ListBoxView<ClipboardListItem>["update"]>[0] {
@@ -394,11 +333,9 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
     }
 
     private readonly handleSelection = (row: ClipboardListItem): void => {
-        this.selectedId = row.clipboardItem.id;
-        this.activeIndex = this.rows.findIndex((candidate) => candidate.value === row.value);
-        this.list?.update(this.listProps());
+        this.clipboardHistory.select(row.clipboardItem.id);
         this.takeListFocus();
-        this.enqueueOpen(row.clipboardItem);
+        void this.clipboardHistory.open(row.clipboardItem, this.model.page?.id, () => this.takeListFocus());
     };
 
     /**
@@ -429,19 +366,6 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         this.handleSelection(this.rows[next]);
     };
 
-    private enqueueOpen(item: ClipboardHistoryItem): void {
-        const generation = this.openQueueGeneration;
-        void this.openQueue.run(async () => {
-            if (this.isDisposed || generation !== this.openQueueGeneration) return;
-            await this.openItem(item);
-            this.takeListFocus();
-        }).catch((error: unknown) => {
-            if (!this.isDisposed) {
-        void ui.notify(t("explorer.failedOpenClipboardItem", { error: errMessage(error) }), "error");
-            }
-        });
-    }
-
     /** The list is the keyboard target for as long as the user is browsing it, so every open the
      *  panel itself starts ends with focus back on the list.
      *
@@ -466,42 +390,16 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         onClick: () => { void this.removeItem(row.clipboardItem.id); },
     }];
 
-    private async openItem(item: ClipboardHistoryItem): Promise<void> {
-        const path = item.payloads[item.primary];
-        if (!path) {
-                void ui.notify(t("explorer.clipboardPayloadUnavailable"), "error");
-            return;
-        }
-        try {
-            // Navigate the host page rather than opening a new tab — the same
-            // `pageId` link route the Explorer's own search results use
-            // (`ExplorerEditor.openSearchResult`). `app.pages.openFile` would
-            // spawn a page per item, which turns browsing the history into tab
-            // cleanup. Without a page host there is nothing to navigate, so fall
-            // back to opening one.
-            const pageId = this.model.page?.id;
-            if (pageId) {
-                await app.events.openRawLink.sendAsync(createLinkData(path, { pageId }));
-            } else {
-                await app.pages.openPath(path);
-            }
-        } catch (error: unknown) {
-        void ui.notify(t("explorer.failedOpenClipboardItem", { error: errMessage(error) }), "error");
-        }
-    }
-
     private async copyItem(id: string): Promise<void> {
         try {
-            this.selectNextCapture = !this.isDisabled();
-            const copied = await api.copyClipboardItem(id);
-            if (!copied || this.isDisabled()) this.selectNextCapture = false;
+            const copied = await this.clipboardHistory.copy(id);
             if (!copied && !this.isDisposed) {
-        void ui.notify(t("explorer.clipboardItemUnavailable"), "error");
+                void ui.notify(t("explorer.clipboardItemUnavailable"), "error");
             }
         } catch (error: unknown) {
-            this.selectNextCapture = false;
+            this.clipboardHistory.clearCopyFollow();
             if (!this.isDisposed) {
-        void ui.notify(t("explorer.failedCopyClipboardItem", { error: errMessage(error) }), "error");
+                void ui.notify(t("explorer.failedCopyClipboardItem", { error: errMessage(error) }), "error");
             }
         }
     }
@@ -515,10 +413,10 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         });
         if (confirmed === DialogButton.cancel || !confirmed) return;
         try {
-            await api.removeClipboardItem(id);
+            await this.clipboardHistory.remove(id);
         } catch (error: unknown) {
             if (!this.isDisposed) {
-        void ui.notify(t("explorer.failedRemoveClipboardItem", { error: errMessage(error) }), "error");
+                void ui.notify(t("explorer.failedRemoveClipboardItem", { error: errMessage(error) }), "error");
             }
         }
     }
@@ -533,33 +431,24 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         });
         if (confirmed !== DialogButton.clear) return;
         try {
-            await api.clearClipboardHistory();
+            await this.clipboardHistory.clear();
         } catch (error: unknown) {
             if (!this.isDisposed) {
-        void ui.notify(t("explorer.failedClearClipboardHistory", { error: errMessage(error) }), "error");
+                void ui.notify(t("explorer.failedClearClipboardHistory", { error: errMessage(error) }), "error");
             }
         }
     }
 
     private async restart(): Promise<void> {
         if (this.restarting) return;
-        this.restarting = true;
-        const statusEventsAtRequest = this.statusEventGeneration;
-        this.updateHeader(this.props);
+        const restart = this.clipboardHistory.restart();
         try {
-            const status = await api.restartClipboard(
-                normalizeClipboardMaxItems(settings.get("clipboard.max-items")),
-            );
-            if (!this.isDisposed && statusEventsAtRequest === this.statusEventGeneration) {
-                this.applyStatus(status);
-            }
+            await restart;
         } catch (error: unknown) {
             if (!this.isDisposed) {
-        this.applyStatus(this.errorStatus(errMessage(error, t("explorer.failedRestartClipboardListener"))));
-        void ui.notify(errMessage(error, t("explorer.failedRestartClipboardListener")), "error");
+                void ui.notify(errMessage(error, t("explorer.failedRestartClipboardListener")), "error");
             }
         } finally {
-            this.restarting = false;
             if (!this.isDisposed) this.updateHeader(this.props);
         }
     }
@@ -605,7 +494,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         );
     }
 
-    private updateHeader(props: SecondaryViewProps<ExplorerEditor>): void {
+    private updateHeader(props: SecondaryViewProps<ClipboardPanelEditor>): void {
         const disabled = this.isDisabled();
         const unavailable = !disabled && this.isUnavailable();
         const showHealth = disabled || unavailable;
@@ -664,15 +553,6 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         return this.status?.enabled === false || this.status?.health === "disabled";
     }
 
-    private errorStatus(error: string): ClipboardStatus {
-        return {
-            enabled: true,
-            running: false,
-            health: "error",
-            monitoring: true,
-            error,
-        };
-    }
 }
 
 function iconPathFor(item: ClipboardHistoryItem): string {

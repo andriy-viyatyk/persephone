@@ -155,7 +155,10 @@ manifest schema, `BoardGrant`, and `BoardRoot` are process-neutral value objects
 manifest I/O, trust and grant handling, root identity, board localization, bundled and custom editor
 registries, published-catalog access, install/update flows, and board-host helper services. The
 board editor directory retains the editor model, views, webview, automation adapter, and visual
-components; board:// pipe resources are served from `src/renderer/content/pipe-resource-server.ts`.
+components; its `BoardsPanelEditorModel` and `BoardsSecondaryView` own the optional Boards panel.
+The optional Clipboard panel has a separate editor and view under `src/renderer/editors/clipboard/`,
+while its history state and IPC operations live in `src/renderer/api/clipboard-history.ts`; board://
+pipe resources are served from `src/renderer/content/pipe-resource-server.ts`.
 
 The renderer entry is `src/renderer.ts`: after asynchronous application bootstrap it calls
 `mount(container)` exported by `src/renderer/index.ts`. The application shell, coupled views,
@@ -172,6 +175,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── capability-error.ts  # Shared renderer capability errors and normalization
 │   ├── capabilities/        # Script capability client, typed-RPC open server, handlers, validators, board dispatcher, frame adapter, and index mirror
 │   ├── editor-categories.ts # EditorCategoriesModel; category setting and exclusive editor/board membership
+│   ├── clipboard-history.ts # ClipboardHistoryModel; history/status state, monitoring, IPC, and race guards
 │   ├── creatable-items.ts   # Creatable-item registry for the Editors tree and new-page menu
 │   ├── ai-vision-call-timeout.ts # Session call-timeout setting owner
 │   ├── themes.ts           # Script/MCP application theme service (`app.themes`)
@@ -462,6 +466,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── TextHostEditorModel.ts    # Base for TextFileModel-wrapping editors — host-adoption lifecycle, subscription registry, content echo guard, host-settings mirror
 │   │   ├── editor-traits.ts          # Content-host, text-selection, and text-navigation transfer contracts
 │   │   ├── editor-traits.ts          # CONTENT_HOST_TRAIT — owner-orchestrated editor switching
+│   │   ├── tree-provider-host.ts      # Tree-provider host trait, provider/selection/reveal state, and mounted-tree reveal controller
+│   │   ├── view-port.ts               # Typed, identity-safe mounted-view capability registration
 │   │   ├── editor-matchers.ts        # Acceptance / resolution priority helpers
 │   │   ├── editorRegistry.ts         # Native editor registry — resolve, register, switch options
 │   │   ├── editor-switch.ts          # switchMainEditor — switch-widget transition (host transfer / rebuild)
@@ -699,11 +705,12 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── page-explorer.ts          # Explorer provisioning for a page — toggleNavigator, auto-init
 │   │   ├── ExplorerSecondaryView.ts   # "explorer" panel — tree view with native header
 │   │   ├── SearchSecondaryView.ts  # "search" panel — file search with native header
-│   │   ├── BoardsSecondaryView.ts # "boards" panel — Boards/Tools body switch: trusted boards (BoardsTree) or registered toolsets (ToolsTree) under the Explorer root; "+ New board" in the switch row
-│   │   ├── ClipboardSecondaryView.ts # "clipboard" panel — opt-in history, flavour icons, time/Copy row controls, selection/open navigation, disabled state, and listener health
+│   │   ├── index.ts
+│   ├── clipboard/          # Clipboard history/sidebar surface
+│   │   ├── ClipboardPanelEditorModel.ts # Independent optional "clipboard" panel editor
+│   │   ├── ClipboardSecondaryView.ts # "clipboard" view renders ClipboardHistoryModel state
 │   │   ├── ClipboardSecondaryView.css # Clipboard panel time/Copy trailing-slot swap styling
-│   │   ├── clipboard-date.ts          # Local-calendar Clipboard capture time badge and tooltip formatter
-│   │   └── index.ts
+│   │   └── clipboard-date.ts          # Local-calendar Clipboard capture time badge and tooltip formatter
 │   ├── mneme-config/       # Mneme config & monitoring editor (non-text, no trait)
 │   │   ├── MnemeConfigEditorModel.ts # EditorModel — roots, include/ignore, reindex + progress, model, status polling
 │   │   ├── MnemeConfigView.ts        # Main view (single page)
@@ -717,7 +724,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── MnemeTreeSecondaryView.ts # "mneme-tree" sidebar panel (browse/create/rename/delete/drop)
 │   │   ├── results-to-markdown.ts    # Render search hits as markdown
 │   │   └── index.ts
-│   ├── board/              # Board editor (non-text, Pattern B survive-navigation)
+│   ├── board/              # Board editor, board library/sidebar surfaces (non-text, Pattern B survive-navigation)
 │   │   ├── BoardEditorModel.ts       # EditorModel — single-board lifecycle, per-board trust gate, live iframe ref, icon; file/folder sources keep boardRoot separate from filePath/folderPath; busy keep-alive
 │   │   ├── BoardEditorView.ts        # Native four-way board branch host
 │   │   ├── BoardToolbar.ts           # In-board toolbar — File Explorer / board text slot / … menu; hosts the board-declared control group
@@ -729,6 +736,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── board-toolbar-icon.ts      # Toolbar icon resolution — registry name, sanitized inline SVG, or a file confined to the board root
 │   │   ├── board-file-icons.ts         # Resolves board-requested file names to deduplicated data URLs using Persephone's file-icon resolver
 │   │   ├── BoardWebview.ts            # Thin native iframe view; creates and retires its BoardFrameSession
+│   │   ├── BoardsPanelEditorModel.ts # Independent optional "boards" panel editor and Explorer-root binding
+│   │   ├── BoardsSecondaryView.ts     # Trusted boards and registered toolsets under the Explorer root
 │   │   ├── BoardsTreeView.ts         # Reusable native boards tree (single-root + multi-root; folder-compacted; click / trailing / context-menu slots)
 │   │   ├── boards-tree-build.ts      # Pure builder: board path list → compacted folder/board node tree
 │   │   ├── BoardTargetModel.ts       # Board automation host for narrow target interfaces

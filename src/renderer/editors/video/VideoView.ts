@@ -44,6 +44,8 @@ export class VideoEditorView extends VanillaView<{ model: VideoEditor }> {
     private saveRecordingButton!: ButtonView;
     private discardRecordingButton!: ButtonView;
     private recordingActions!: HTMLDivElement;
+    private mediaElement: HTMLMediaElement | null = null;
+    private detachViewPort: (() => void) | undefined;
 
     public constructor(props: { model: VideoEditor }) {
         super(props, createPanelElement({
@@ -58,6 +60,10 @@ export class VideoEditorView extends VanillaView<{ model: VideoEditor }> {
     }
 
     protected onMount(): void {
+        this.detachViewPort = this.model.attachViewPort({
+            mediaElement: () => this.mediaElement,
+        });
+        this.own(() => this.detachViewPort?.());
         const state = this.surfaceState();
         this.toolbarChildren = createPanelElement({
             direction: "row",
@@ -205,9 +211,13 @@ export class VideoEditorView extends VanillaView<{ model: VideoEditor }> {
             reloadKey: state.reloadKey,
             onStateChange: this.model.onPlayerStateChange,
             onMutedChange: this.model.onMutedChange,
-            onMediaElementChange: this.model.setMediaElement,
+            onMediaElementChange: this.handleMediaElementChange,
         };
     }
+
+    private readonly handleMediaElementChange = (element: HTMLMediaElement | null): void => {
+        this.mediaElement = element;
+    };
 
     private readonly syncSurface = (state: VideoSurfaceState): void => {
         this.urlInput.update(this.urlInputProps(state.inputText));

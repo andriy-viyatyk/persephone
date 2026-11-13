@@ -2,9 +2,8 @@ import { EditorId } from "../../../shared/editor-ids";
 import { t } from "../../../shared/i18n/t";
 import type { EditorView } from "../../../shared/types";
 import { editorRegistry } from "../../editors/base/editorRegistry";
-import { ExplorerEditor, getDefaultExplorerEditorState } from "../../editors/explorer";
+import { ensureClipboardPanel, openClipboardPanel } from "../../editors/explorer/page-explorer";
 import { newTextFileModel } from "../../editors/content-host/TextFileModel";
-import { TComponentState } from "../../core/state/state";
 import { guard } from "../../core/utils/guard";
 import { createEditorFromContentHost } from "../../editors/editor-factory";
 import type { PagesModel } from "./PagesModel";
@@ -80,23 +79,15 @@ export class StandalonePages {
                 kind: "custom",
                 build: async (model) => {
                     const page = this.createPage("clipboard-page");
-                    const state = new TComponentState({
-                        ...getDefaultExplorerEditorState(),
-                        rootPath: "",
-                        hideExplorer: true,
-                        clipboardOpen: true,
-                    });
-                    page.attach(new ExplorerEditor(state));
-                    const explorer = page.findExplorer();
-                    if (explorer instanceof ExplorerEditor) await explorer.restore();
+                    const clipboard = ensureClipboardPanel(page);
+                    await clipboard.restore();
                     page.ensureSecondaryViewsModel();
                     page.expandPanel("clipboard");
                     return model.lifecycle.addPage(null, page);
                 },
             },
             afterShow: (page) => {
-                const explorer = page.findExplorer();
-                if (explorer instanceof ExplorerEditor) explorer.openClipboard();
+                openClipboardPanel(page);
             },
         }],
         ["mcp-ui-log", {

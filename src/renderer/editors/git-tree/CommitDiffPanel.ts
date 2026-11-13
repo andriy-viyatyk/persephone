@@ -1,12 +1,17 @@
 import { app } from "../../api/app";
-import { git } from "../../api/git";
 import { createLinkData } from "../../../shared/link-data";
 import { fpExtname, fpJoin } from "../../core/utils/file-path";
 import { getLanguageByExtension } from "../../core/utils/language-mapping";
 import type { GitCommit, GitFileChange } from "../../../ipc/git-ipc";
+import {
+    CommitDiffPanelModel,
+    defaultCommitDiffPanelState,
+    type CommitDiffPanelProps,
+    type CommitDiffPanelState,
+} from "./CommitDiffPanelModel";
 import type { ILinkDiffRevision } from "../../api/types/io.link-data";
 import type { MenuItem } from "../../uikit/Menu";
-import { createComponentModelDriver, type ComponentModelDriver, TComponentModel } from "../../core/state/model";
+import { createComponentModelDriver, type ComponentModelDriver } from "../../core/state/model";
 import { createPanelElement, applyPanelAttributes, resolvePanelAttributes } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -22,42 +27,7 @@ import "../../components/file-list/FileList.css";
 import "../../components/git-tree/GitTree.css";
 import { t } from "../../../shared/i18n/t";
 
-export interface CommitDiffPanelProps {
-    repoRoot: string;
-    gitTree: GitTreeModel;
-    selectedHash?: string;
-    listWidth: number;
-    onListWidthChange: (width: number) => void;
-}
-
-interface CommitDiffPanelState {
-    changes: GitFileChange[];
-    selectedFile: string | undefined;
-    diff: { before: string; after: string };
-}
-
-const defaultState: CommitDiffPanelState = {
-    changes: [],
-    selectedFile: undefined,
-    diff: { before: "", after: "" },
-};
-
-class CommitDiffPanelModel extends TComponentModel<CommitDiffPanelState, CommitDiffPanelProps> {
-    setFiles = (changes: GitFileChange[]): void => {
-        this.state.update((state) => {
-            state.changes = changes;
-            state.selectedFile = changes[0]?.path;
-        });
-    };
-
-    setSelectedFile = (selectedFile: string | undefined): void => {
-        this.state.update((state) => { state.selectedFile = selectedFile; });
-    };
-
-    setDiff = (diff: { before: string; after: string }): void => {
-        this.state.update((state) => { state.diff = diff; });
-    };
-}
+export type { CommitDiffPanelProps } from "./CommitDiffPanelModel";
 
 type CommitDiffDriver = ComponentModelDriver<CommitDiffPanelState, CommitDiffPanelProps, CommitDiffPanelModel>;
 
@@ -75,11 +45,6 @@ export class CommitDiffPanelView extends VanillaView<CommitDiffPanelProps> {
 
     private gitTreeStateUnsubscribe: (() => void) | undefined;
     private boundGitTree: GitTreeModel | undefined;
-    private filesKey: string | undefined;
-    private filesGeneration = 0;
-    private diffKey: string | undefined;
-    private diffGeneration = 0;
-    private live = true;
     private itemsChanges: GitFileChange[] | undefined;
     private itemsCache: FileListItem[] = [];
     private mapChanges: GitFileChange[] | undefined;
@@ -102,12 +67,7 @@ export class CommitDiffPanelView extends VanillaView<CommitDiffPanelProps> {
             flex: 1,
             overflow: "hidden",
         });
-        this.driver = createComponentModelDriver(props, CommitDiffPanelModel, defaultState);
-        this.own(() => {
-            this.live = false;
-            this.filesGeneration++;
-            this.diffGeneration++;
-        });
+        this.driver = createComponentModelDriver(props, CommitDiffPanelModel, defaultCommitDiffPanelState);
         this.own(() => this.driver.dispose());
     }
 
@@ -146,54 +106,8 @@ export class CommitDiffPanelView extends VanillaView<CommitDiffPanelProps> {
     }
 
     private onCommitsChanged(commits: GitCommit[]): void {
-        this.loadFiles(commits);
-    }
-
-    private loadFiles(commits: GitCommit[]): void {
         const commit = this.currentCommit(commits);
-        const key = `${this.props.repoRoot}\u0000${this.props.selectedHash ?? ""}\u0000${commit?.hash ?? ""}`;
-        if (key === this.filesKey) return;
-        this.filesKey = key;
-        const generation = ++this.filesGeneration;
-        // A commit/repository change also invalidates an in-flight diff request. The file
-        // request will start the replacement diff after its selected path is known.
-        this.diffGeneration++;
-        this.diffKey = undefined;
-        if (!commit) {
-            this.driver.model.setFiles([]);
-            this.loadDiff();
-            return;
-        }
-        void git.commitFiles(this.props.repoRoot, commit.hash).then((changes) => {
-            if (!this.live || generation !== this.filesGeneration || key !== this.filesKey) return;
-            this.driver.model.setFiles(changes);
-            this.loadDiff();
-        });
-    }
-
-    private loadDiff(): void {
-        const commit = this.currentCommit();
-        const { changes, selectedFile } = this.driver.model.state.get();
-        const change = changes.find((item) => item.path === selectedFile);
-        const key = commit && selectedFile && change
-            ? `${this.props.repoRoot}\u0000${commit.hash}\u0000${selectedFile}\u0000${change.oldPath ?? ""}\u0000${change.status}`
-            : `${this.props.repoRoot}\u0000`;
-        if (key === this.diffKey) return;
-        this.diffKey = key;
-        const generation = ++this.diffGeneration;
-        if (!commit || !selectedFile || !change) {
-            this.driver.model.setDiff({ before: "", after: "" });
-            return;
-        }
-        const parent = commit.parents[0] ?? "";
-        const beforePath = change.oldPath ?? selectedFile;
-        void Promise.all([
-            parent ? git.show(this.props.repoRoot, parent, beforePath) : Promise.resolve(""),
-            git.show(this.props.repoRoot, commit.hash, selectedFile),
-        ]).then(([before, after]) => {
-            if (!this.live || generation !== this.diffGeneration || key !== this.diffKey) return;
-            this.driver.model.setDiff({ before, after });
-        });
+        this.driver.model.loadCommit(this.props.repoRoot, commit);
     }
 
     private readonly applyState = (state: CommitDiffPanelState): void => {
@@ -366,16 +280,14 @@ export class CommitDiffPanelView extends VanillaView<CommitDiffPanelProps> {
     };
 
     private readonly handleFileClick = (item: FileListItem): void => {
-        this.driver.model.setSelectedFile(item.filePath);
-        this.loadDiff();
+        this.driver.model.selectFile(item.filePath);
     };
 
     private readonly getContextMenu = (item: FileListItem): MenuItem[] => {
         const change = this.changeMap.get(item.filePath);
         const commit = this.currentCommit();
         if (!change || !commit) return [];
-        this.driver.model.setSelectedFile(item.filePath);
-        this.loadDiff();
+        this.driver.model.selectFile(item.filePath);
         return [{
             id: "open-in-new-tab",
             label: t("shell.openInNewTab"),

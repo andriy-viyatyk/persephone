@@ -529,10 +529,10 @@ guide history and agent-guide filter are runtime state rather than persisted pag
 `about-view` scripting facade exposes `open`, `back`, `current`, `elements`, and `highlight` for
 this fixed page; opening a guide in a tab uses the normal content pipeline.
 
-The Clipboard page is a custom entry in the same registry. It creates an editorless page with an
-Explorer host configured with persisted `hideExplorer` and `clipboardOpen`, then expands the
-Clipboard panel. Its `afterShow` action opens the panel on both new and reused pages. Closing that
-only panel invokes the general editorless sidebar-page auto-close rule described above.
+The Clipboard page is a custom entry in the same registry. It creates an editorless page with a
+standalone Clipboard panel editor, then expands the Clipboard panel. Its `afterShow` action opens
+the panel on both new and reused pages. Closing that only panel invokes the general editorless
+sidebar-page auto-close rule described above.
 
 ### Fixed-ID page rules
 
@@ -554,13 +554,13 @@ internal; public page methods remain the stable interface for UI and script call
 
 ## 9. PageModel — Sidebar and Navigation Context
 
-PageModel is the tab container that owns the sidebar layout (open/close/width via `secondaryViewsModel`), panel selection (`activePanel`), and secondary views. Explorer state (tree provider, selection, search) is owned by `ExplorerEditor` in `secondaryViews[]`. PageModel survives navigation — when the user navigates to a new file, only `page.mainEditor` changes while the PageModel (and its sidebar) stays intact.
+PageModel is the tab container that owns the sidebar layout (open/close/width via `secondaryViewsModel`), panel selection (`activePanel`), and the attached panel editors. Explorer tree, selection, and search state belong to `ExplorerEditor`; Boards and Clipboard are independent panel editors. PageModel survives navigation — when the user navigates to a new file, only `page.mainEditor` changes while the PageModel (and its sidebar) stays intact.
 
 **Source:** [`/src/renderer/api/pages/PageModel.ts`](../../src/renderer/api/pages/PageModel.ts)
 
 ### Mandatory sidebar and auto-Explorer
 
-`PageModel.sidebarMandatory` is a computed boolean. It is `true` when any secondary view other than the file Explorer is contributing panels. This happens for Link and Archive editors, and for boards that declare secondary views.
+`PageModel.sidebarMandatory` is a computed boolean. It is `true` when an attached panel editor contributes panels and does not opt into an optional sidebar. Explorer, Boards, and Clipboard panel editors are optional; Link, Archive, and board-declared secondary views keep the sidebar mandatory.
 
 When `sidebarMandatory` is `true`:
 - `setSecondaryViewsState({ open: false })` is ignored — the close request is silently clamped to `open: true`.

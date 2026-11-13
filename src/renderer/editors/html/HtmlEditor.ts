@@ -15,6 +15,11 @@ import type { IImageEditSource, ImageEditPayload } from "../base/IImageEditSourc
 import { ImageActions, type ImageExportAction } from "../shared/image-actions";
 import { notifyEditCapabilityFailure, type EditCapabilityId } from "../../api/capability-feedback";
 import { errMessage } from "../../../shared/utils";
+import { ViewPort } from "../base/view-port";
+
+interface HtmlViewPort {
+    captureRect(): { left: number; top: number; width: number; height: number };
+}
 
 export type HtmlQueueEvent = { type: "focus" };
 
@@ -38,9 +43,7 @@ export class HtmlEditor extends TextHostEditorModel<HtmlEditorState, HtmlQueueEv
     readonly editorId = EditorId.htmlView;
     protected readonly displayName = "HTML";
 
-    /** The live preview iframe, reported by the view; used to capture its
-     *  on-screen region. Transient — cleared on unmount (HC1). */
-    private _captureEl: HTMLIFrameElement | null = null;
+    private readonly viewPort = new ViewPort<HtmlViewPort>();
     readonly imageActions: ImageActions;
 
     constructor(state: TComponentState<HtmlEditorState>) {
@@ -81,9 +84,8 @@ export class HtmlEditor extends TextHostEditorModel<HtmlEditorState, HtmlQueueEv
 
     // ── Image export (IImageExport) ─────────────────────────────────────
 
-    /** Called by the view to (un)register the live preview iframe. */
-    setCaptureElement(el: HTMLIFrameElement | null): void {
-        this._captureEl = el;
+    attachViewPort(port: HtmlViewPort): () => void {
+        return this.viewPort.attach(port);
     }
 
     /** Capture the rendered page exactly as shown on screen (WYSIWYG) as a PNG.
@@ -92,15 +94,15 @@ export class HtmlEditor extends TextHostEditorModel<HtmlEditorState, HtmlQueueEv
      *
      *  DEVIATION from the headless `IImageExport` contract: unlike Mermaid/SVG/Image
      *  (which rasterise from model data), this capture is the *live on-screen* iframe,
-     *  so it requires a mounted, visible view and throws if `_captureEl` is null. This
+     *  so it requires a mounted, visible view and throws if the port is absent. This
      *  is intentional — the feature's whole point is to capture what the user sees. The
      *  toolbar actions are only reachable while the page is visible, so this holds in
      *  practice; a background-tab script call to `exportPng()` will reject.
      *  @throws if the preview iframe is not mounted / has no visible area. */
     async exportPng(): Promise<Blob> {
-        const el = this._captureEl;
-        if (!el) throw new Error("HTML preview is not mounted");
-        const r = el.getBoundingClientRect();
+        const port = this.viewPort.get();
+        if (!port) throw new Error("HTML preview is not mounted");
+        const r = port.captureRect();
         const rect = {
             x: Math.round(r.left),
             y: Math.round(r.top),
@@ -160,7 +162,7 @@ export class HtmlEditor extends TextHostEditorModel<HtmlEditorState, HtmlQueueEv
     // ── Dispose ─────────────────────────────────────────────────────────
 
     async dispose(): Promise<void> {
-        this._captureEl = null;
+        this.viewPort.clear();
         await super.dispose();
     }
 }

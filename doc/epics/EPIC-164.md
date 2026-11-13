@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-11-13
 
 ## Overview
@@ -86,11 +86,11 @@ The code was checked on 2026-11-13, after EPIC-163. Line numbers in the report h
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-1934 | `content/source-watch.ts`: one watch helper and `movedSource` | Planned |
-| US-1935 | `VideoStreamSession`, recording helpers and mute ownership | Planned |
-| US-1936 | Shared image actions and toolbar; `image-export.ts` split | Planned |
-| US-1937 | `TextEditorPageView<M>`, HTML "Show resources", view file naming | Planned |
-| US-1938 | Grid codecs, legacy-settings promotion, toolbar reads `model.grid` | Planned |
+| US-1934 | `content/source-watch.ts`: one watch helper and `movedSource` | Done |
+| US-1935 | `VideoStreamSession`, recording helpers and mute ownership | Done |
+| US-1936 | Shared image actions and toolbar; `image-export.ts` split | Done |
+| US-1937 | `TextEditorPageView<M>`, HTML "Show resources", view file naming | Done |
+| US-1938 | Grid codecs, legacy-settings promotion, toolbar reads `model.grid` | Done |
 
 ### Task notes for the planners
 
@@ -136,3 +136,5 @@ Recorded for a follow-up epic (EPIC-165 or later), roadmap item 6.4 part 3:
   (this epic) and part 3 (above). EDC-13 step 4 (`content/pipe-resource-server.ts`) was already done by an earlier
   epic.
 - Codex weekly window had 40% left at the start, so planning runs on Luna (the policy pick).
+- Implemented, reviewed and committed (87568404). The closing bookkeeping (status, dashboard, `epics/completed.md`,
+  roadmap) was finished in EPIC-165's commit.

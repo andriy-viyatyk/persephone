@@ -110,10 +110,79 @@ export function promoteLegacyGridSettings(descriptor: EditorDescriptor): EditorD
     return { ...descriptor, state, host: { ...descriptor.host, state: hostState } };
 }
 
+/** Move legacy Explorer-owned Boards and Clipboard panels to their own editors. */
+export function migrateLegacyExplorerPanels(desc: PageDescriptor): PageDescriptor {
+    const legacyExplorer = desc.editors.filter(descriptor =>
+        descriptor.editorId === InternalEditorIds.explorer
+        && ("boardsOpen" in descriptor.state || "clipboardOpen" in descriptor.state || "hideExplorer" in descriptor.state),
+    );
+    if (!legacyExplorer.length) return desc;
+
+    const editors = [...desc.editors];
+    let activePanel = desc.sidebar?.activePanel;
+    for (const legacy of legacyExplorer) {
+        const state = { ...legacy.state };
+        const boardsOpen = state.boardsOpen === true;
+        const clipboardOpen = state.clipboardOpen === true;
+        const hideExplorer = state.hideExplorer === true;
+        delete state.boardsOpen;
+        delete state.clipboardOpen;
+        delete state.hideExplorer;
+
+        const legacyIndex = editors.indexOf(legacy);
+        editors.splice(legacyIndex, 1);
+        if (!hideExplorer) {
+            state.secondaryView = ["explorer", ...(state.searchState ? ["search"] : [])];
+            editors.splice(legacyIndex, 0, { ...legacy, state });
+        }
+
+        const existingBoards = editors.find(descriptor => descriptor.editorId === InternalEditorIds.boards
+            && Array.isArray(descriptor.state.secondaryView)
+            && descriptor.state.secondaryView.includes("boards"));
+        const boards = !hideExplorer && boardsOpen
+            ? existingBoards ?? {
+                editorId: InternalEditorIds.boards,
+                id: crypto.randomUUID(),
+                state: { secondaryView: ["boards"] },
+            }
+            : undefined;
+        if (boards && !existingBoards) editors.splice(Math.min(legacyIndex + 1, editors.length), 0, boards);
+
+        const existingClipboard = editors.find(descriptor => descriptor.editorId === InternalEditorIds.clipboard
+            && Array.isArray(descriptor.state.secondaryView)
+            && descriptor.state.secondaryView.includes("clipboard"));
+        const clipboard = clipboardOpen
+            ? existingClipboard ?? {
+                editorId: InternalEditorIds.clipboard,
+                id: crypto.randomUUID(),
+                state: { secondaryView: ["clipboard"] },
+            }
+            : undefined;
+        if (clipboard && !existingClipboard) {
+            const insertionIndex = !hideExplorer && boards ? legacyIndex + 2 : legacyIndex;
+            editors.splice(Math.min(insertionIndex, editors.length), 0, clipboard);
+        }
+
+        if (activePanel?.startsWith(`${legacy.id}::`)) {
+            const panelId = activePanel.slice(legacy.id.length + 2);
+            if (panelId === "boards" && boards) activePanel = `${boards.id}::boards`;
+            else if (panelId === "clipboard" && clipboard) activePanel = `${clipboard.id}::clipboard`;
+        }
+    }
+
+    return {
+        ...desc,
+        editors,
+        ...(desc.sidebar && activePanel !== desc.sidebar.activePanel
+            ? { sidebar: { ...desc.sidebar, activePanel } }
+            : {}),
+    };
+}
+
 export async function normalizePageDescriptor(desc: PageDescriptor): Promise<PageDescriptor> {
     const withBoardIds = (await Promise.all(desc.editors.map(migratePersistedBoardRootsAndIds)))
         .map(migrateLegacyEditorStateType)
         .map(promoteLegacyGridSettings);
-    const withEditorMigrations = { ...desc, editors: withBoardIds };
+    const withEditorMigrations = migrateLegacyExplorerPanels({ ...desc, editors: withBoardIds });
     return migratePersistedBoardLinks(withEditorMigrations);
 }

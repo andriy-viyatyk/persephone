@@ -146,13 +146,8 @@ interface MyViewProps {
 }
 
 class MyViewModel extends TComponentModel<MyViewState, MyViewProps> {
-    // Refs as properties
-    containerRef: HTMLDivElement | null = null;
-
-    // Ref setter methods
-    setContainerRef = (ref: HTMLDivElement | null) => {
-        this.containerRef = ref;
-    };
+    // Keep DOM-owning details in the view; expose a narrow typed port only
+    // when model/facade behavior needs a mounted view capability.
 
     // Computed properties (getters)
     get selectedItem(): string | undefined {
@@ -239,6 +234,15 @@ measurement is the model's purpose (for example, av-grid's `RenderGridModel` mea
 container), and it may own listeners for a bounded pointer-capture gesture that it starts and
 cleans up as one operation (as `PopoverModel` does during resize). These exceptions must not become
 general rendering or document-querying responsibilities.
+
+### Mounted-view ports
+
+When a model or facade must invoke a capability that exists only while a view is mounted, keep the
+DOM or widget in the view and expose a narrow typed port through `editors/base/view-port.ts`.
+The view attaches its port on mount and retains the returned detach callback for unmount or model
+replacement. Detach clears only its own registration, so cleanup from an older view cannot erase a
+newer attachment. The model reads the optional port and preserves its established no-view result or
+error. Do not use the port to move rendering, DOM creation, or layout reads into the model.
 
 ## Vanilla lifecycle
 
@@ -779,7 +783,7 @@ handleClick = () => {
 };
 ```
 
-### Move useRef to Model Properties
+### Keep DOM refs in the view
 
 ```typescript
 // Before

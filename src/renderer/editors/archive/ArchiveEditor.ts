@@ -1,5 +1,5 @@
 import { EditorId } from "../../../shared/editor-ids";
-import { TComponentState, TOneState } from "../../core/state/state";
+import { TComponentState } from "../../core/state/state";
 import {
     EditorModel,
     type EditorStateBase,
@@ -13,7 +13,7 @@ import { app } from "../../api/app";
 import { createLinkData } from "../../../shared/link-data";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import { ArchiveIcon } from "../../theme/icons";
-import type { NavigationState } from "../base/navigation-state";
+import { TREE_PROVIDER_HOST_TRAIT, TreeProviderHost } from "../base/tree-provider-host";
 import type { IPageHost } from "../../api/pages/IPageHost";
 import type { MenuItem } from "../../uikit/Menu/index";
 import { filePathMenuItems } from "../shared/editor-menu-items";
@@ -40,20 +40,19 @@ export class ArchiveEditor extends EditorModel<ArchiveEditorState> {
 
     noLanguage = true;
 
-    /** Tree provider for browsing archive contents. Owned by this model.
-     *  Public field (mirror Explorer EX-IMPL5) — read by both views AND by the
-     *  EX8 `instanceof` chain in CategoryEditor. */
-    treeProvider: ArchiveTreeProvider | null = null;
+    readonly treeProviderHost = new TreeProviderHost<ArchiveTreeProvider>();
 
-    /** Selection state — highlights current entry in the archive tree. */
-    readonly selectionState = new TOneState<NavigationState>({ selectedHref: null });
+    get treeProvider(): ArchiveTreeProvider | null {
+        return this.treeProviderHost.provider;
+    }
 
-    /** Reveal request — reactive counter. When bumped, the view calls
-     *  revealItem(selectedHref). */
-    readonly revealVersion = new TOneState({ version: 0 });
+    get selectionState() {
+        return this.treeProviderHost.selectionState;
+    }
 
     constructor(state: TComponentState<ArchiveEditorState>) {
         super(state);
+        this.traits.add(TREE_PROVIDER_HOST_TRAIT, this.treeProviderHost);
         this.getIconElement = () => ArchiveIcon.createElement({ width: 16, height: 16 });
     }
 
@@ -74,7 +73,7 @@ export class ArchiveEditor extends EditorModel<ArchiveEditorState> {
         const { ArchiveTreeProvider } = await import(
             "../../content/tree-providers/ArchiveTreeProvider"
         );
-        this.treeProvider = new ArchiveTreeProvider(archiveUrl);
+        this.treeProviderHost.setProvider(new ArchiveTreeProvider(archiveUrl));
         this.state.update((s) => {
             s.title = fpBasename(archiveUrl);
             s.archiveUrl = archiveUrl;
@@ -88,7 +87,7 @@ export class ArchiveEditor extends EditorModel<ArchiveEditorState> {
             const { ArchiveTreeProvider } = await import(
                 "../../content/tree-providers/ArchiveTreeProvider"
             );
-            this.treeProvider = new ArchiveTreeProvider(archiveUrl);
+            this.treeProviderHost.setProvider(new ArchiveTreeProvider(archiveUrl));
         }
         // Direct-open path may already have `page`; navigation/restore paths
         // publish via setPage() once attached.
@@ -110,7 +109,7 @@ export class ArchiveEditor extends EditorModel<ArchiveEditorState> {
         const prefix = `${archivePath}!`;
         const entryPath = innerPath.startsWith(prefix) ? innerPath.slice(prefix.length) : innerPath;
         const href = buildArchivePath(archivePath, entryPath);
-        this.selectionState.update((state) => { state.selectedHref = href; });
+        this.treeProviderHost.setSelected(href);
 
         const navigationUrl = await provider.getNavigationUrlByHref(entryPath);
         const url = navigationUrl === entryPath ? href : navigationUrl;
@@ -138,7 +137,7 @@ export class ArchiveEditor extends EditorModel<ArchiveEditorState> {
         const provider = this.treeProvider;
         if (!this.page || !provider) return;
         const url = provider.getNavigationUrl(item) ?? item.href;
-        this.selectionState.update((state) => { state.selectedHref = item.href; });
+        this.treeProviderHost.setSelected(item.href);
         await app.events.openRawLink.sendAsync(createLinkData(url, {
             pageId: this.page?.id ?? this.id,
             sourceId: this.id,
@@ -184,9 +183,9 @@ export class ArchiveEditor extends EditorModel<ArchiveEditorState> {
         if (!newMainEditor || newMainEditor === this) return;
         if (this._isOpenedFromThisArchive(newMainEditor)) {
             const url = newMainEditor.sourceLink?.url ?? null;
-            this.selectionState.update((s) => { s.selectedHref = url; });
+            this.treeProviderHost.setSelected(url);
             if (url && this.page?.activePanelId === "archive-tree") {
-                this.revealVersion.update((s) => { s.version++; });
+                this.treeProviderHost.requestReveal(url);
             }
             this.page?.expandPanel("archive-tree");
         } else {
@@ -199,9 +198,7 @@ export class ArchiveEditor extends EditorModel<ArchiveEditorState> {
         if (panelId === "archive-tree") {
             const href = this.selectionState.get().selectedHref;
             if (href) {
-                // The monotonic token is a reveal command consumed by the secondary view, whose
-                // binding schedules the cancellable animation-frame reveal after the panel exists.
-                this.revealVersion.update((s) => { s.version++; });
+                this.treeProviderHost.requestReveal(href);
             }
         }
     }
@@ -216,7 +213,7 @@ export class ArchiveEditor extends EditorModel<ArchiveEditorState> {
     }
 
     async dispose(): Promise<void> {
-        this.treeProvider = null;
+        this.treeProviderHost.dispose();
         await super.dispose();
     }
 

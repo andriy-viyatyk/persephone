@@ -52,6 +52,7 @@ export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
     private boundModel: HtmlEditor | undefined;
     private boundHost: HtmlEditor["host"] = null;
     private queueSubscription: (() => void) | undefined;
+    private detachViewPort: (() => void) | undefined;
     private readonly previewId = crypto.randomUUID();
     private revision = 0;
     private appliedContent: string | undefined;
@@ -69,7 +70,8 @@ export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
     protected onMount(): void {
         this.applyContent(this.model.host?.state.get().content ?? "", this.model.resourceRoot());
         this.applyFrameStyle();
-        this.model.setCaptureElement(this.iframe);
+        this.attachModelViewPort();
+        this.own(() => this.detachViewPort?.());
         this.bindToHostIfNeeded();
         this.installMessageListener();
         this.queueSubscription = this.ownSubscription(this.model.queue.subscribe(() => {
@@ -81,11 +83,11 @@ export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
 
         const modelChanged = this.model !== props.model;
         if (modelChanged) {
-            this.model.setCaptureElement(null);
+            this.detachViewPort?.();
             this.queueSubscription?.();
             this.queueSubscription = undefined;
             this.model = props.model;
-            this.model.setCaptureElement(this.iframe);
+            this.attachModelViewPort();
             this.queueSubscription = this.ownSubscription(this.model.queue.subscribe(() => {
                 // Deliberate no-op: drain the focus queue to keep its lifecycle clean.
             }));
@@ -96,8 +98,14 @@ export class HtmlBodyView extends VanillaView<HtmlBodyViewProps> {
     }
 
     protected onDispose(): void {
-        this.model.setCaptureElement(null);
+        this.detachViewPort?.();
         void api.clearHtmlPreview(this.previewId);
+    }
+
+    private attachModelViewPort(): void {
+        this.detachViewPort = this.model.attachViewPort({
+            captureRect: () => this.iframe.getBoundingClientRect(),
+        });
     }
 
     private applyContent(content: string, resourceRoot = this.model.resourceRoot()): void {

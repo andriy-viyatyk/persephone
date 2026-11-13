@@ -349,7 +349,9 @@ and lookup read existing page state only and never create a sidebar or an absent
 
 | Model | Panel IDs | Pattern | Survival | Created by |
 |-------|-----------|---------|----------|-----------|
-| `ExplorerEditor` | `["explorer"]`, plus optional `search`, `boards`, and `clipboard` panels | A (separate) | Always survives navigation | `PageModel.createExplorer()` or restore |
+| `ExplorerEditor` | `explorer` and optional `search` panels | A (separate) | Always survives navigation | `PageModel.createExplorer()` or restore |
+| `BoardsPanelEditor` | `boards` | A (separate) | Always survives navigation | `attachExplorer()` or descriptor restore |
+| `ClipboardPanelEditor` | `clipboard` | A (separate) | Always survives navigation | `attachExplorer()`, standalone Clipboard page, or descriptor restore |
 | `ArchiveEditorModel` | `["archive-tree"]` | B (mainEditor) | Survives if new editor was opened from this archive | `_openArchive()` in PagesLifecycleModel |
 | `LinkEditor` (links) | `["link-category", "link-tags", "link-hostnames"]` (always all 3) | B (mainEditor) | Survives own-link navigation (`sourceId` = editor id / `link-category` / `link-tag` / `link-hostname`) **or while modified** (a dirty collection survives any navigation so unsaved work is never lost); otherwise removed on external navigation. Overrides `beforeNavigateAway` / `onMainEditorChanged`; the same `modified \|\| own-source` predicate drives `survivesNavigation` (skips the save-prompt). | `adoptHost()` sets `secondaryView = LINK_PANELS` |
 | `LinkEditor` (browser bookmarks) | `["link-category", "link-tags", "link-hostnames"]` | B — hosted on `BrowserPanelHost` (not `PageModel`) | Always present while the browser page is open; sidebar is mandatory-open. | `BrowserPanelHost.attach()` — called by `BrowserEditor` during bookmarks init |
@@ -361,11 +363,19 @@ and lookup read existing page state only and never create a sidebar or an absent
 
 ### Clipboard panel
 
-The Clipboard panel is an Explorer-owned Pattern A panel. The normal Explorer composition is
-Explorer, Search, Boards, then Clipboard as each feature is present. The dedicated Clipboard page
-uses the same Explorer host with persisted `hideExplorer`, so its composition contains only the
-Clipboard panel. The Tools & Editors registry entry is unconditional and pinnable; opening it
-reuses the fixed-ID page rather than creating another tab.
+The Clipboard panel is a separate Pattern A panel editor. The normal sidebar orders Explorer,
+Search, Boards, then Clipboard through each editor's `panelOrder`, so click order does not change
+the composition. The dedicated Clipboard page contains only the Clipboard panel editor. Legacy
+Explorer descriptors with `boardsOpen`, `clipboardOpen`, or `hideExplorer` are migrated by
+`migrateLegacyExplorerPanels()` into separate panel editor descriptors, including a rewrite of the
+active composite panel key. The Tools & Editors registry entry is unconditional and pinnable;
+opening it reuses the fixed-ID page rather than creating another tab.
+
+`ClipboardHistoryModel` in `api/clipboard-history.ts` owns history/status state, typed clipboard
+IPC calls, event subscriptions, revision and request-generation guards, and the serialized payload
+open queue. The panel view owns row DOM, focus, confirmations, and panel-specific toast handling.
+The AiVision clipboard node uses the same model for fresh snapshots and raw remove/clear calls but
+does not start monitoring, so reading stored payloads does not enable the live listener.
 
 It lists stored history metadata and routes a selected payload through the host page's normal
 `openRawLink` pipeline, so `.txt`, `.html`, `.png`, and `.files.txt` payloads use existing editors
@@ -610,7 +620,9 @@ name.
 
 ### Provider Resolution
 
-CategoryEditor resolves its ITreeProvider by scanning `page.secondaryViews[]`. It matches the `tree-category://` link's `type` and `url` against each secondary view's `treeProvider.type` and `treeProvider.sourceUrl`:
+CategoryEditor resolves its ITreeProvider by scanning `page.panelEditors` for the
+`TREE_PROVIDER_HOST_TRAIT`. It matches the `tree-category://` link's `type` and `url` against each
+host's provider `type` and `sourceUrl`:
 
 ```
 tree-category:// link: { type: "archive", url: "D:\archive.epub", category: "OEBPS" }
@@ -619,16 +631,12 @@ tree-category:// link: { type: "archive", url: "D:\archive.epub", category: "OEB
     ArchiveEditorModel  → treeProvider.type="archive", sourceUrl="D:\archive.epub" → MATCH
 ```
 
-This uses a duck-type interface — no EditorModel base class changes:
-
-```typescript
-interface ITreeProviderHost {
-    treeProvider: ITreeProvider | null;
-    selectionState: TOneState<NavigationState>;
-}
-```
-
-Both `ExplorerEditor` and `ArchiveEditorModel` expose `treeProvider` and `selectionState` with identical signatures.
+The shared trait avoids concrete editor imports and keeps provider discovery independent of the
+editor classes. `TreeProviderHost` in `editors/base/tree-provider-host.ts` owns the provider,
+selection state, and versioned reveal signal. Explorer owns and replaces its `FileTreeProvider` as
+the root changes; Archive supplies its archive provider, while Link uses the host's optional lazy
+provider factory. `TreeRevealController` schedules the latest reveal against the mounted tree and
+cancels superseded or disposed work.
 
 ### Navigation Survival
 
@@ -640,7 +648,9 @@ PageModel derives `panelEditors` from attached editor state; subscribers observe
 
 ### Restore Timing
 
-Secondary views are restored asynchronously after the main editor. On mount, if no provider is found, CategoryEditor retries after 50ms via `setTimeout`. This handles the case where the page is restored and the secondary view isn't ready yet.
+Provider-host traits are read from attached panel editors, while provider changes are observed from
+the host's reactive `providerState`; resolution does not depend on a timed retry or concrete editor
+class scan.
 
 ### Breadcrumb Navigation
 

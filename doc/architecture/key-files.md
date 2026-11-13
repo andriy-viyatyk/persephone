@@ -85,10 +85,14 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Failed persisted-page restore placeholder and retry/close recovery | `/src/renderer/editors/restore-failed/` |
 | Page navigation (`navigatePageTo` as named steps: confirm-release-unless-survives, singleton-target reuse, normalized same-file reuse and reveal, build with missing-file/error fallbacks, preview-vs-explicit-target selection, shared show/focus-unless-sidebar/save exit) | `/src/renderer/api/pages/PageNavigator.ts` |
 | Page open request construction and shared open hints (source link, path, title, editor target, session context, fragment/line/text reveal and diff revisions) | `/src/renderer/api/pages/open-request.ts` |
-| Page/editor descriptor migrations (dated migrations for legacy editor IDs, board paths/links and pin state) | `/src/renderer/api/pages/descriptor-migrations.ts` |
+| Page/editor descriptor migrations (dated migrations for legacy editor IDs, board paths/links, pin state, and legacy Explorer panel ownership) | `/src/renderer/api/pages/descriptor-migrations.ts` |
 | Browser page opening (`showBrowserPage` — Tor gate + arm-before-mount fail-closed sequence; `openUrlInBrowserTab` — address-input resolution, profile matching + nearest-tab reuse, skipping board-owned Run pages. Lives beside the browser editor so the startup-loaded pages model has no static import of the browser chunk; the lifecycle reaches it via dynamic import) | `/src/renderer/editors/browser/browser-pages.ts` |
 | Editor switch dispatch (catalog candidate selection plus first-match strategy dispatch; reached via dynamic import from `PageModel`) | `/src/renderer/editors/base/editor-switch.ts`, `/src/renderer/editors/base/editor-switch-strategies.ts` |
 | Explorer provisioning for a page (`toggleNavigator`, auto-init of an Explorer beside a mandatory sidebar, root-folder derivation from panel editors) | `/src/renderer/editors/explorer/page-explorer.ts` |
+| Explorer model's file-tree provider, navigation state, search state, listing/open operations, and tree-host trait | `/src/renderer/editors/explorer/ExplorerEditorModel.ts`, `/src/renderer/editors/base/tree-provider-host.ts` |
+| Clipboard history state, monitoring lifecycle, typed IPC operations, and request-generation guards | `/src/renderer/api/clipboard-history.ts` |
+| Clipboard panel editor and view | `/src/renderer/editors/clipboard/ClipboardPanelEditorModel.ts`, `/src/renderer/editors/clipboard/ClipboardSecondaryView.ts` |
+| Boards panel editor, Explorer-root binding, and board/toolset operations | `/src/renderer/editors/board/BoardsPanelEditorModel.ts`, `/src/renderer/editors/board/BoardsSecondaryView.ts` |
 | Markdown back-nav stack (page-owned, persisted in the page descriptor, count mirrored into `IPageState.navBackCount`) | `/src/renderer/api/pages/NavBackStack.ts` |
 | File operations          | `/src/renderer/api/fs.ts`                         |
 | Archive I/O (ZIP/RAR/7z/TAR) | `/src/renderer/api/archive-service.ts`          |
@@ -275,8 +279,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Native editor error view (message + optional stack for failures in the native editor path) | `/src/renderer/ui/app/NativeEditorErrorView.ts`, `/src/renderer/ui/app/NativeEditorErrorView.css` |
 | UI element addressing contract (the `data-name` convention, `data-name` vs `data-type`/`data-part`/state attributes, and the shell selector table that MCP UI guides quote — renaming a listed name is a documentation change) | [`ui-element-contract.md`](ui-element-contract.md) |
 | Secondary view registry (single native `VanillaView` panel loader; exact and prefix resolution) | `/src/renderer/ui/secondary-views/secondary-view-registry.ts` |
-| Clipboard secondary view (flavour-resolved row icons, preview/time badge and hover/focus Copy controls, persistent selection, panel-owned arrow navigation with serialized host opens, disabled-state controls, native open/remove/clear actions, listener health and restart) | `/src/renderer/editors/explorer/ClipboardSecondaryView.ts` |
-| Clipboard row time formatter (local-calendar badge and tooltip text for today and older captures) | `/src/renderer/editors/explorer/clipboard-date.ts` |
+| Clipboard secondary view (renders model state; flavour-resolved icons, time/Copy controls, selection/open navigation, disabled state, and listener health) | `/src/renderer/editors/clipboard/ClipboardSecondaryView.ts` |
+| Clipboard row time formatter (local-calendar badge and tooltip text for today and older captures) | `/src/renderer/editors/clipboard/clipboard-date.ts` |
 | Native sidebar view host (layout/model state and composite panel-key helpers are in `api/pages/`) | `/src/renderer/ui/secondary-views/SecondaryViewsView.ts`, `/src/renderer/ui/secondary-views/secondary-view-registry.ts` |
 | Native shared sidebar panel header (DOM title/badge/actions adoption, `data-part="header-buttons"` action protection, show-main control, and late `headerHost` reparenting) | `/src/renderer/ui/secondary-views/SideBarPanelHeaderView.ts` |
 | Native secondary-panel loader (cancellable dynamic import, vanilla panel mount, semantic error host, and explicit retirement cleanup) | `/src/renderer/ui/secondary-views/LazySecondaryViewView.ts` |
@@ -288,6 +292,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Text-host editor adapter (preserves the subclass API for ordinary text-bearing editors and delegates host lifecycle to `ContentHostSlot`; subclass hooks: `displayName`, `adoptHost`, `onHostAttached`, `onHostExtracted`, `untitledName`) | `/src/renderer/editors/base/TextHostEditorModel.ts` |
 | Content-host owner slot (owns host transfer, restore sequence, subscriptions, echo guard, settings mirror, persistence, release/save/dispose; configured through owner options and used by text and board editors) | `/src/renderer/editors/base/content-host-slot.ts` |
 | Editor traits (content-host, text-selection/navigation, reopen, fragment-navigation, and fresh-empty capabilities) | `/src/renderer/editors/base/editor-traits.ts` |
+| Tree-provider host trait, provider/navigation/reveal state owner, and mounted-tree reveal scheduler | `/src/renderer/editors/base/tree-provider-host.ts` |
+| Typed mounted-view registration for model access to view-owned handles | `/src/renderer/editors/base/view-port.ts` |
 | Board-owned transient open-context trait and payload | `/src/renderer/api/boards/board-open-context.ts` |
 | Text-editor page shell (retained body and contribution slots composed into host-aware chrome) | `/src/renderer/editors/base/TextEditorPageView.ts`, `/src/renderer/editors/base/text-chrome-contributions.ts` |
 | Native text-host chrome (toolbar, focus/key handling, script panel, footer, overlay, and DOM slot projection) | `/src/renderer/editors/base/TextChromeView.ts` |
@@ -640,7 +646,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Board-not-found placeholder (stale trusted/pinned path) | `/src/renderer/editors/board/BoardNotFoundView.ts` |
 | Trust board dialog (`showTrustBoardDialog`; RCE wording) | `/src/renderer/ui/dialogs/TrustBoardDialog.ts` |
 | Create-board dialog (folder picker + name + live target-location label; defaults folder to the Explorer root; both inputs required) | `/src/renderer/ui/dialogs/CreateBoardDialog.ts` |
-| Explorer-sibling "Boards" panel (trusted boards under the Explorer root via `BoardsTree`; backed by `ExplorerEditor` like Search; "+ New board" SplitButton) | `/src/renderer/editors/explorer/BoardsSecondaryView.ts` |
+| Explorer-sibling "Boards" panel (trusted boards and registered toolsets under the Explorer root, in its own optional panel editor) | `/src/renderer/editors/board/BoardsPanelEditorModel.ts`, `/src/renderer/editors/board/BoardsSecondaryView.ts` |
+| Commit-diff panel data loading and generation guards | `/src/renderer/editors/git-tree/CommitDiffPanelModel.ts` |
 | Board theme contract (`computeBoardThemePalette`, `BOARD_TOKEN_VARS`, `--p-*`) | `/src/renderer/editors/board/board-theme.ts` |
 | Board icon cache (module-level SVG/PNG/ICO → data URL cache) | `/src/renderer/editors/board/board-icon-cache.ts` |
 | Reusable boards tree (folder-compacted; single-root + multi-root; board-click / trailing-action / context-menu slots) | `/src/renderer/editors/board/BoardsTreeView.ts` |

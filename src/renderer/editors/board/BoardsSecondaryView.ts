@@ -29,8 +29,8 @@ import {
     type SideBarPanelHeaderHandle,
 } from "../../ui/secondary-views/SideBarPanelHeaderView";
 import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view-registry";
-import type { ExplorerEditor, ExplorerBoardsTab } from "./ExplorerEditorModel";
-import { BoardsTreeView } from "../board/BoardsTreeView";
+import type { BoardsPanelEditor, BoardsPanelTab } from "./BoardsPanelEditorModel";
+import { BoardsTreeView } from "./BoardsTreeView";
 import { createBoardShortcut } from "../board/board-shortcut";
 import { ToolsTreeView } from "../tools/ToolsTreeView";
 import { isBoardRootBusy, subscribeBusyBoardRoots } from "../../api/boards/busy-boards";
@@ -107,8 +107,8 @@ class BoardsEmptyBodyView extends VanillaView<{
     }
 }
 
-export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps<ExplorerEditor>> {
-    private model: ExplorerEditor;
+export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps<BoardsPanelEditor>> {
+    private model: BoardsPanelEditor;
     private header: SideBarPanelHeaderHandle | undefined;
     private closeButton: IconButtonView | undefined;
     private switchBar: HTMLDivElement | undefined;
@@ -118,7 +118,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps<
     private bodyKind: "boards" | "tools" | "empty" | undefined;
     private readonly busyIndicators = new Map<string, DotView>();
 
-    public constructor(props: SecondaryViewProps<ExplorerEditor>) {
+    public constructor(props: SecondaryViewProps<BoardsPanelEditor>) {
         super(props, createPanelElement({
             name: "boards-secondary-view",
             direction: "column",
@@ -154,7 +154,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps<
         });
         this.updateSwitchBar();
 
-        this.bind(this.model.state, (state) => state.rootPath, () => this.refreshBody());
+        this.bind(this.model.rootRevision, state => state, () => this.refreshBody());
         this.bind(this.model.boardsTabState, (state) => state.value, () => {
             this.segmentedControl?.update(this.segmentedProps());
             this.refreshBody();
@@ -169,7 +169,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps<
         this.updateHeader(this.props);
     }
 
-    protected onUpdate(props: SecondaryViewProps<ExplorerEditor>): void {
+    protected onUpdate(props: SecondaryViewProps<BoardsPanelEditor>): void {
         const model = props.model;
         if (model !== this.model) {
             this.model = model;
@@ -212,7 +212,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps<
             size: "sm" as const,
             value: this.model.boardsTab,
             onChange: (value: string) => {
-                this.model.setBoardsTab(value as ExplorerBoardsTab);
+                this.model.setBoardsTab(value as BoardsPanelTab);
             },
             items: [
                 { value: "boards", label: t("shell.boards") },
@@ -238,7 +238,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps<
         };
     }
 
-    private updateHeader(props: SecondaryViewProps<ExplorerEditor>): void {
+    private updateHeader(props: SecondaryViewProps<BoardsPanelEditor>): void {
         this.closeButton?.update(this.closeButtonProps());
         this.header?.update({
             headerHost: props.headerHost,

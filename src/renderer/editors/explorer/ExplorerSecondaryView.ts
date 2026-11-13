@@ -2,7 +2,7 @@ import { ContextMenuEvent } from "../../api/events/events";
 import { settings } from "../../api/settings";
 import { TOOLS_MANIFEST_FILE } from "../../api/tools/tools-manifest";
 import { openWithDefaultApp } from "../../content/open-with-default-app";
-import { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
+import type { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view-registry";
 import {
@@ -24,6 +24,10 @@ import { createIconElement } from "../../uikit/shared/slots";
 import { fpBasename, fpDirname } from "../../core/utils/file-path";
 import { BOARD_MANIFEST_FILE } from "../../../shared/board/board-manifest-schema";
 import type { ExplorerEditor } from "./ExplorerEditorModel";
+import { openBoardsPanel, openClipboardPanel } from "./page-explorer";
+import { openBoardForPage, openToolsetForPage } from "../board/BoardsPanelEditorModel";
+import type { PageModel } from "../../api/pages/PageModel";
+import { TreeRevealController } from "../base/tree-provider-host";
 import "../../uikit/IconButton/IconButton.css";
 import { t } from "../../../shared/i18n/t";
 
@@ -41,7 +45,10 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
     private collapseButton: IconButtonView | undefined;
     private closeButton: IconButtonView | undefined;
     private readonly trailingButtons = new Map<string, IconButtonView>();
-    private revealFrame: Cleanup | undefined;
+    private providerBinding: Cleanup | undefined;
+    private selectionBinding: Cleanup | undefined;
+    private treeRevealController: TreeRevealController | undefined;
+    private treeRevealCleanup: Cleanup | undefined;
 
     public constructor(props: SecondaryViewProps<ExplorerEditor>) {
         super(props, createPanelElement({
@@ -64,27 +71,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         });
         this.own(() => this.header?.dispose());
 
-        this.replaceProvider(this.model.rootPath);
-        this.bind(
-            this.model.state,
-            (state) => state.rootPath,
-            (rootPath) => this.replaceProvider(rootPath),
-        );
-        this.bind(
-            this.model.selectionState,
-            (state) => state.selectedHref,
-            (selectedHref) => {
-                if (this.provider && this.treeProviderView) {
-                    this.treeProviderView.update(this.treeProps(this.provider, selectedHref ?? undefined));
-                }
-            },
-        );
-        this.bind(
-            this.model.revealVersion,
-            (state) => state.version,
-            (version) => this.scheduleReveal(version),
-        );
-        this.own(() => this.cancelReveal());
+        this.bindModel(this.model);
         this.setClipboardButton(settings.get("clipboard.enabled"));
         this.own(settings.watch("clipboard.enabled", (enabled) => {
             this.setClipboardButton(enabled === true);
@@ -96,14 +83,20 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
     protected onUpdate(props: SecondaryViewProps<ExplorerEditor>): void {
         const model = props.model;
         if (model !== this.model) {
+            this.providerBinding?.();
+            this.selectionBinding?.();
+            this.releaseTree();
             this.model = model;
-            this.replaceProvider(model.rootPath);
+            this.bindModel(model);
         }
         this.updateHeader(props);
     }
 
     protected onDispose(): void {
-        this.cancelReveal();
+        this.providerBinding?.();
+        this.selectionBinding?.();
+        this.treeRevealCleanup?.();
+        this.treeRevealController = undefined;
         this.model.treeProviderViewModel = undefined;
         this.treeProviderModel = undefined;
         this.treeProviderView = undefined;
@@ -154,7 +147,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
             icon: "board",
             onClick: (event) => {
                 event.stopPropagation();
-                this.model.openBoards();
+                if (this.model.page) openBoardsPanel(this.model.page as PageModel);
             },
         }));
         this.collapseButton = this.child(new IconButtonView({
@@ -194,7 +187,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
                 icon: "paste",
                 onClick: (event) => {
                     event.stopPropagation();
-                    this.model.openClipboard();
+                    if (this.model.page) openClipboardPanel(this.model.page as PageModel);
                 },
             }));
             this.clipboardButton.mount();
@@ -206,7 +199,24 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         }
     }
 
-    private replaceProvider(rootPath: string): void {
+    private bindModel(model: ExplorerEditor): void {
+        this.providerBinding = this.bind(
+            model.treeProviderHost.providerState,
+            (provider) => provider,
+            (provider) => this.replaceProvider(provider, model.rootPath),
+        );
+        this.selectionBinding = this.bind(
+            model.selectionState,
+            (state) => state.selectedHref,
+            (selectedHref) => {
+                if (this.provider && this.treeProviderView) {
+                    this.treeProviderView.update(this.treeProps(this.provider, selectedHref ?? undefined));
+                }
+            },
+        );
+    }
+
+    private replaceProvider(provider: FileTreeProvider | null, rootPath: string): void {
         if (this.provider?.sourceUrl === rootPath) {
             if (this.provider && this.treeProviderView) {
                 this.treeProviderView.update(this.treeProps(
@@ -218,28 +228,12 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
             return;
         }
 
-        const oldTree = this.treeProviderView;
-        this.treeProviderView = undefined;
-        this.treeProviderModel = undefined;
-        this.model.treeProviderViewModel = undefined;
-        if (oldTree) this.releaseChild(oldTree);
+        this.releaseTree();
+        this.provider = provider ?? undefined;
 
-        if (this.provider && this.model.treeProvider === this.provider) {
-            this.model.treeProvider.dispose?.();
-            this.model.treeProvider = null;
-        }
-        this.provider = undefined;
-
-        if (rootPath) {
-            if (this.model.treeProvider && (this.model.treeProvider as FileTreeProvider).sourceUrl === rootPath) {
-                this.provider = this.model.treeProvider as FileTreeProvider;
-            } else {
-                if (this.model.treeProvider) this.model.treeProvider.dispose?.();
-                this.model.treeProvider = new FileTreeProvider(rootPath);
-                this.provider = this.model.treeProvider as FileTreeProvider;
-            }
+        if (provider) {
             const tree = this.child(new TreeProviderViewImpl(this.treeProps(
-                this.provider,
+                provider,
                 this.model.selectionState.get().selectedHref ?? undefined,
             )));
             this.treeProviderView = tree;
@@ -247,8 +241,25 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
             tree.mount();
             this.treeProviderModel = tree.model;
             this.model.treeProviderViewModel = tree.model;
+            this.treeRevealController = new TreeRevealController(this.model.treeProviderHost.revealSignal, {
+                getSelectedHref: () => this.model.treeProviderHost.selectionState.get().selectedHref,
+                scheduleFrame: (callback) => this.schedule.raf(callback),
+                reveal: (href) => { void this.treeProviderModel?.revealItem(href); },
+            });
+            this.treeRevealCleanup = this.disposables.add(() => this.treeRevealController?.dispose());
         }
         this.updateHeader(this.props);
+    }
+
+    private releaseTree(): void {
+        this.treeRevealCleanup?.();
+        this.treeRevealCleanup = undefined;
+        this.treeRevealController = undefined;
+        const oldTree = this.treeProviderView;
+        this.treeProviderView = undefined;
+        this.treeProviderModel = undefined;
+        this.model.treeProviderViewModel = undefined;
+        if (oldTree) this.releaseChild(oldTree);
     }
 
     private treeProps(provider: FileTreeProvider, selectedHref?: string) {
@@ -269,9 +280,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
     private readonly getSecondaryLabel = (_item: ITreeProviderItem, level: number): Node | undefined => {
         if (level !== 0) return undefined;
         const pathWithDisplayMarks = `\u200E${this.model.rootPath}\u200E`;
-        // `md` is one step below the tree row's own `base`: the path is context for the folder
-        // name, not a peer of it. Set here rather than on the generic secondary-label host because
-        // `createTextElement` pins `data-size`, which wins over anything the host inherits down.
+        // Keep the path smaller than the row name; createTextElement pins its size.
         const pathElement = createTextElement(pathWithDisplayMarks, {
             truncate: true,
             color: "light",
@@ -287,9 +296,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
     };
 
     private readonly handleItemClick = (item: ITreeProviderItem): void => {
-        // The already-selected guard and the selection write both live in openItem, which moved
-        // them there). Repeating them here made openItem's own guard see the href this handler had
-        // just written and return before opening the link, so no click ever navigated.
+        // openItem owns the selection guard so the selected href still opens.
         void this.model.openItem(item);
     };
 
@@ -311,7 +318,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
                 onClick = (event) => {
                     event.stopPropagation();
                     const boardRoot = fpDirname(item.href);
-                    this.model.openBoard(boardRoot);
+                    if (this.model.page) openBoardForPage(this.model.page, boardRoot, this.model.rootPath);
                 };
             } else if (base === TOOLS_MANIFEST_FILE) {
                 icon = "tools";
@@ -319,7 +326,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
                 title = t("explorer.openToolsetTitle");
                 onClick = (event) => {
                     event.stopPropagation();
-                    void this.model.openToolset(fpDirname(item.href));
+                    if (this.model.page) void openToolsetForPage(this.model.page, fpDirname(item.href));
                 };
             }
         }
@@ -371,21 +378,6 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
             onClick: () => this.model.openSearch(item.href),
         });
     };
-
-    private scheduleReveal(version: number): void {
-        this.cancelReveal();
-        const selectedHref = this.model.selectionState.get().selectedHref;
-        if (version <= 0 || !selectedHref) return;
-        this.revealFrame = this.schedule.raf(() => {
-            this.revealFrame = undefined;
-            void this.treeProviderModel?.revealItem(selectedHref);
-        });
-    }
-
-    private cancelReveal(): void {
-        this.revealFrame?.();
-        this.revealFrame = undefined;
-    }
 
     private updateHeader(props: SecondaryViewProps<ExplorerEditor>): void {
         const provider = this.provider;

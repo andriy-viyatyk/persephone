@@ -2,9 +2,9 @@ import type { ITreeProviderItem } from "../../api/types/io.tree";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import type { Cleanup } from "../../core/utils/DisposableStore";
 import { TreeProviderViewImpl } from "../../components/tree-provider/TreeProviderViewImpl";
 import type { TreeProviderViewModel } from "../../components/tree-provider/TreeProviderViewModel";
+import { TreeRevealController } from "../base/tree-provider-host";
 import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view-registry";
 import {
     createSideBarPanelHeader,
@@ -19,7 +19,7 @@ export default class ArchiveSecondaryView extends VanillaView<SecondaryViewProps
     private closeButton: IconButtonView | undefined;
     private header: SideBarPanelHeaderHandle | undefined;
     private treeProviderModel: TreeProviderViewModel | undefined;
-    private revealFrame: Cleanup | undefined;
+    private treeRevealController: TreeRevealController | undefined;
 
     public constructor(props: SecondaryViewProps<ArchiveEditor>) {
         super(props, createPanelElement({
@@ -57,18 +57,18 @@ export default class ArchiveSecondaryView extends VanillaView<SecondaryViewProps
 
         this.tree.mount();
         this.treeProviderModel = this.tree.model;
+        this.treeRevealController = new TreeRevealController(archiveModel.treeProviderHost.revealSignal, {
+            getSelectedHref: () => archiveModel.treeProviderHost.selectionState.get().selectedHref,
+            scheduleFrame: (callback) => this.schedule.raf(callback),
+            reveal: (href) => { void this.treeProviderModel?.revealItem(href); },
+        });
+        this.own(() => this.treeRevealController?.dispose());
         this.closeButton.mount();
         this.bind(
             archiveModel.selectionState,
             (state) => state.selectedHref,
             (selectedHref) => this.tree?.update(this.treeProps(archiveModel, provider, selectedHref)),
         );
-        this.bind(
-            archiveModel.revealVersion,
-            (state) => state.version,
-            (version) => this.scheduleReveal(version),
-        );
-        this.own(() => this.cancelReveal());
         this.own(() => this.header?.dispose());
         this.updateHeader(this.props);
     }
@@ -88,7 +88,7 @@ export default class ArchiveSecondaryView extends VanillaView<SecondaryViewProps
     }
 
     protected onDispose(): void {
-        this.cancelReveal();
+        this.treeRevealController = undefined;
         this.treeProviderModel = undefined;
         this.tree = undefined;
         this.closeButton = undefined;
@@ -141,18 +141,4 @@ export default class ArchiveSecondaryView extends VanillaView<SecondaryViewProps
         archiveModel?.page?.releaseEditor(archiveModel, { dispose: true });
     };
 
-    private scheduleReveal(version: number): void {
-        this.cancelReveal();
-        const selectedHref = this.archiveModel?.selectionState.get().selectedHref;
-        if (version <= 0 || !selectedHref) return;
-        this.revealFrame = this.schedule.raf(() => {
-            this.revealFrame = undefined;
-            void this.treeProviderModel?.revealItem(selectedHref);
-        });
-    }
-
-    private cancelReveal(): void {
-        this.revealFrame?.();
-        this.revealFrame = undefined;
-    }
 }

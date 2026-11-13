@@ -33,6 +33,7 @@ import { jsonCodec } from "./formats/json-codec";
 import { jsonlCodec } from "./formats/jsonl-codec";
 import type { CsvCodecOptions, GridCodec, GridParseResult } from "./formats/GridCodec";
 import { t } from "../../../shared/i18n/t";
+import { ViewPort } from "../base/view-port";
 
 export type GridQueueEvent =
     | { type: "focus" }
@@ -181,12 +182,11 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
      */
     private _rows: any[] = [];
 
-    /** The live grid, between `setGrid(grid)` and `setGrid(null)`. */
-    private _grid: DataGridInstance | undefined;
+    private readonly gridPort = new ViewPort<DataGridInstance>();
     readonly gridAvailable = new TOneState(false);
 
     get grid(): DataGridInstance | undefined {
-        return this._grid;
+        return this.gridPort.get();
     }
 
     /** One serialize per tick, however many cells the edit touched. */
@@ -223,7 +223,8 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
      * be the restored values rather than something the user has since changed.
      */
     setGrid = (grid: DataGridInstance | null): void => {
-        this._grid = grid ?? undefined;
+        if (grid) this.gridPort.attach(grid);
+        else this.gridPort.clear();
         this.gridAvailable.set(!!grid);
         if (!grid) return;
 
@@ -239,7 +240,7 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
 
     /** The rows, wherever they currently live. */
     private liveRows(): any[] {
-        return (this._grid?.getRows() as any[] | undefined) ?? this._rows;
+        return (this.gridPort.get()?.getRows() as any[] | undefined) ?? this._rows;
     }
 
     /** The rows, for a caller outside this model that must not mutate them. */
@@ -463,7 +464,7 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
         // changes the column count). Handing over the rows first means the synchronous dispatch
         // finds a grid whose rows already match the columns being published.
         // `setRows` itself validates only that it received an array, so it is safe this early.
-        this._grid?.setRows(rows);
+        this.gridPort.get()?.setRows(rows);
 
         this.state.update((s) => {
             s.rowCount = rows.length;
@@ -660,14 +661,15 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
         const row = this.liveRows().find((r) => getRowKey(r) === rowKey);
         if (!row) return;
         row[columnKey] = value;
-        this._grid?.refresh();
+        this.gridPort.get()?.refresh();
         this.scheduleSerialize();
     };
 
     addRows = (count = 1, insertIndex?: number): any[] => {
         const rows = Array.from({ length: count }, () => this.newRow());
-        if (this._grid) {
-            const added = this._grid.addRows(rows, insertIndex);
+        const grid = this.gridPort.get();
+        if (grid) {
+            const added = grid.addRows(rows, insertIndex);
             this.setRowCount(this.liveRows().length);
             this.scheduleSerialize();
             return added;
@@ -680,8 +682,9 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
     };
 
     deleteRows = (rowKeys: string[]): void => {
-        if (this._grid) {
-            this._grid.deleteRows(rowKeys);
+        const grid = this.gridPort.get();
+        if (grid) {
+            grid.deleteRows(rowKeys);
         } else {
             this._rows = this._rows.filter((r) => !rowKeys.includes(getRowKey(r)));
         }
@@ -703,9 +706,10 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
             const found = current.findIndex((c) => c.key === insertBeforeKey);
             if (found >= 0) index = found;
         }
-        if (this._grid) {
+        const grid = this.gridPort.get();
+        if (grid) {
             // `onColumnsChange` records the new set; nothing to write here.
-            return this._grid.addColumns(newColumns, index);
+            return grid.addColumns(newColumns, index);
         }
         const columns = [...current];
         columns.splice(index, 0, ...newColumns);
@@ -715,8 +719,9 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, GridQueueEv
 
     deleteColumns = (columnKeys: string[]): void => {
         this.stripColumnData(columnKeys);
-        if (this._grid) {
-            this._grid.deleteColumns(columnKeys);
+        const grid = this.gridPort.get();
+        if (grid) {
+            grid.deleteColumns(columnKeys);
             return;
         }
         this.onColumnsChange(

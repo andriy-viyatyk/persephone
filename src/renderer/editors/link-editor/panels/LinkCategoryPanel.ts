@@ -1,4 +1,4 @@
-import type { ITreeProviderItem } from "../../../api/types/io.tree";
+import type { ITreeProvider, ITreeProviderItem } from "../../../api/types/io.tree";
 import type { ContextMenuEvent } from "../../../api/events/events";
 import type { SlotText } from "../../../uikit/shared/slots";
 import { TreeProviderViewImpl } from "../../../components/tree-provider/TreeProviderViewImpl";
@@ -7,6 +7,7 @@ import "../../../uikit/Panel/Panel.css";
 import { createTextElement } from "../../../uikit/Text/text-style";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { LinkEditor } from "../LinkEditor";
+import { TREE_PROVIDER_HOST_TRAIT } from "../../base/tree-provider-host";
 import { createLinkTooltipContent } from "../LinkTooltipView";
 import { t } from "../../../../shared/i18n/t";
 
@@ -66,7 +67,7 @@ export class LinkCategoryPanelView extends VanillaView<LinkCategoryPanelProps> {
     }
 
     private syncTree(editor: LinkEditor): void {
-        const provider = editor.treeProvider;
+        const provider = editor.traits.get(TREE_PROVIDER_HOST_TRAIT)?.provider ?? null;
         if (!provider) {
             const treeProviderView = this.treeProviderView;
             this.treeProviderView = undefined;
@@ -85,7 +86,7 @@ export class LinkCategoryPanelView extends VanillaView<LinkCategoryPanelProps> {
         this.treeProviderView.update(this.treeProps(editor, provider));
     }
 
-    private treeProps(editor: LinkEditor, provider: LinkEditor["treeProvider"]): ConstructorParameters<typeof TreeProviderViewImpl>[0] {
+    private treeProps(editor: LinkEditor, provider: ITreeProvider | null): ConstructorParameters<typeof TreeProviderViewImpl>[0] {
         if (!provider) throw new Error("Link category tree provider is unavailable.");
 
         return {

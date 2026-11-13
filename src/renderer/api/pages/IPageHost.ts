@@ -28,8 +28,8 @@ export interface IPageHost {
     activePanelId: string;
     hasSidebar: boolean;
     /** Whether the sidebar is mandatory-open (cannot be closed). PageModel
-     *  computes the Explorer-only-closeable rule; an embedded `BrowserPanelHost`
-     *   returns `true`. Read by the close affordances (toggle / ✕). */
+     *  derives this from contributing editors; an embedded `BrowserPanelHost`
+     *  returns `true`. Read by the close affordances (toggle / ✕). */
     sidebarMandatory?: boolean;
     expandPanel(panelId: string): void;
     setActivePanel(panel: string): void;
@@ -37,6 +37,7 @@ export interface IPageHost {
     rememberSecondaryViewsWidth?(width?: number): void;
     secondaryViewsModel: SecondaryViewsModel | null;
     ensureSecondaryViewsModel(): SecondaryViewsModel;
+    findExplorer?(): EditorModel | undefined;
     canOpenNavigator(pipe?: IContentPipe | null, filePath?: string): boolean;
     toggleNavigator(pipe?: IContentPipe | null, filePath?: string): Promise<void>;
     releaseEditor(editor: EditorModel, options: { dispose: boolean }): Promise<void>;

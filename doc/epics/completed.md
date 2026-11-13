@@ -1,3 +1,43 @@
+## EPIC-165 — Refactoring Phase 6.4 part 3: editor framework — panel views without IO, `ExplorerEditor` split, `TreeProviderHost`
+
+Completed 2026-11-14. Roadmap Phase 6.4 part 3 (EDC-9, EDC-10, EDC-11), which completes item 6.4:
+`ClipboardHistoryModel` (`api/clipboard-history.ts`) owns clipboard history state, IPC and race guards for the panel
+and the ai-vision namespace; `CommitDiffPanelModel` loads commits; `MarkdownEditor.followLink` sits next to
+`navigateBack`; typed view ports (`editors/base/view-port.ts`) replace the Markdown, HTML, Video and Grid model-held
+DOM handles; `TreeProviderHost` + `TREE_PROVIDER_HOST_TRAIT` + `TreeRevealController` serve Archive, Explorer and Link,
+the Explorer owns its `FileTreeProvider`, and Category finds hosts by trait; `ExplorerEditor` keeps the tree and
+search while `BoardsPanelEditor` (`editors/board/`) and `ClipboardPanelEditor` (`editors/clipboard/`) are their own
+panel editors, built through `attachExplorer`, ordered by generic `panelOrder`/`sidebarOptional` fields, with a
+one-time descriptor migration of `boardsOpen`/`clipboardOpen`/`hideExplorer`. EDC-9 step 2 (board operations) was
+already met by `boardLifecycle` and the scaffold owner. One observable change: `page.panels.items` reports the Boards
+and Clipboard panels with their own owner id and kind. Plans by Codex, reviewed against the roadmap guardrails, with
+corrections recorded in the epic notes; Codex Luna implemented. Epic document: [EPIC-165](EPIC-165.md).
+
+- [x] **Clipboard history model (US-1939).** Per-panel model, inert ai-vision instance, raw remove/clear pass-throughs.
+- [x] **Panel operations (US-1940).** `CommitDiffPanelModel` file with loading and guards; `MarkdownEditor.followLink`.
+- [x] **Tree-provider host (US-1941).** Base host, trait and reveal controller; Explorer-owned provider; lazy Link provider.
+- [x] **Explorer split (US-1942).** Boards and Clipboard panel editors, `attachExplorer`, panel order, flag migration.
+- [x] **View ports (US-1943).** `ViewPort<T>` for Markdown, HTML, Video and Grid; identity-safe detach.
+
+## EPIC-164 — Refactoring Phase 6.4 part 2: editor framework — source watching, `VideoStreamSession`, shared image actions, `TextEditorPageView` and grid codecs
+
+Completed 2026-11-13 (commit 87568404). Roadmap Phase 6.4 part 2 (EDC-7 steps 2 and 4, EDC-8, EDC-12, EDC-13,
+EDC-14): one source-watch helper (`content/source-watch.ts`, `watchPipeSource` and `movedSource`) used by the text
+host, Image and Video; `VideoStreamSession` owns stream requests, recovery and IPC, with temporary-recording naming
+shared with main and mute owned outside module scope; shared image actions (`editors/shared/image-actions.ts`) and one
+`ImageActionsToolbarView`, with pure raster code in `core/utils/image-raster.ts` so `uikit/` no longer imports
+`editors/`; `TextEditorPageView` composes the ten text editors' chrome, "Show resources" is an HTML text-chrome
+contribution, and main views follow the `XxxEditorView.ts` naming rule; grid codecs in `editors/grid/formats/` with the
+legacy settings promotion as a descriptor migration. One new English message (the grid error) was translated into
+every pack. Plans by Codex, reviewed against the roadmap guardrails; Codex Luna implemented. Epic document:
+[EPIC-164](EPIC-164.md).
+
+- [x] **Source watch (US-1934).** `watchPipeSource`, `movedSource`; `TextFileIOModel.ensurePipe` uses `pipeFromSourcePath`.
+- [x] **`VideoStreamSession` (US-1935).** Session, recording helpers and mute ownership out of `VideoEditor`.
+- [x] **Image actions (US-1936).** `ImageActions`, `ImageActionsToolbarView`; `image-export.ts` split.
+- [x] **`TextEditorPageView` (US-1937).** `createParts(model)`, HTML "Show resources" contribution, view file naming.
+- [x] **Grid codecs (US-1938).** JSON/JSONL/CSV codecs, legacy-settings descriptor migration, toolbar reads `model.grid`.
+
 ## EPIC-163 — Refactoring Phase 6.4 part 1: editor framework — typed editor ids, one matcher contract, `EditorCatalog`, switch strategies, a slimmer `EditorModel` and typed editor modules
 
 Completed 2026-11-13. Roadmap Phase 6.4 part 1 (EDC-2, EDC-5, EDC-6, EDC-7 step 1 and the step 3 helpers): editor ids

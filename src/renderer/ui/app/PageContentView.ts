@@ -151,7 +151,7 @@ export class PageContentView extends VanillaView<PageContentProps> {
             // Hand the props down on every sync rather than guarding on the panel-editor
             // list: one panel-contributing model can change its OWN `secondaryView` id list
             // without `panelEditors` or the nav model changing at all — a single
-            // ExplorerEditor owns the explorer/search/boards panels. Guarding here meant
+            // Explorer and its attached panel editors contribute those panels. Guarding here meant
             // clicking Search or Boards on a freshly created folder page wrote and persisted
             // the state but rendered nothing, until a later mount happened to see the panels
             // already present. SecondaryViewsView does its own change detection,

@@ -244,20 +244,10 @@ export class PageModel implements IPageHost {
         );
     }
 
-    /** Editors that currently contribute panels (subset of `editors[]`). All
-     *  sidebar-owning editors (Link, Archive, Explorer, Category) live on the
-     *  editor; `instanceof` checks resolve against the concrete class. */
+    /** Panel contributors in their declared order; equal orders retain attach order. */
     get panelEditors(): EditorModel[] {
         const editors = this.editors.filter((e) => e.contributesPanels());
-        // Explorer panel always renders first. The Explorer editor is lazily
-        // attached AFTER content editors when the user toggles the navigator,
-        // so it would otherwise sort last. Stable-sort the explorer-contributing
-        // editor to the front; Array.sort is stable, so other editors keep
-        // their attach order.
-        const explorerRank = (e: EditorModel) =>
-            ((e.state.get() as { secondaryView?: string[] }).secondaryView ?? [])
-                .includes("explorer") ? 0 : 1;
-        return editors.sort((a, b) => explorerRank(a) - explorerRank(b));
+        return editors.sort((a, b) => a.panelOrder - b.panelOrder);
     }
 
     // ── Pinned (reactive) ────────────────────────────────────────────
@@ -312,7 +302,7 @@ export class PageModel implements IPageHost {
     get sidebarMandatory(): boolean {
         return this.editors.some(
             (e) => e.contributesPanels()
-                && e.editorId !== InternalEditorIds.explorer,
+                && !e.sidebarOptional,
         );
     }
 
@@ -528,8 +518,8 @@ export class PageModel implements IPageHost {
      * activePanel change, secondaryViewsToggled on open change. Width is clamped.
      */
     setSecondaryViewsState = (patch: Partial<ISecondaryViewsState>): void => {
-        // Mandatory-open clamp: ignore close requests while a non-Explorer panel
-        // is present (width / activePanel still apply).
+        // Mandatory-open clamp: ignore close requests while a mandatory panel is
+        // present (width / activePanel still apply).
         if (patch.open === false && this.sidebarMandatory) {
             patch = { ...patch, open: true };
         }
@@ -586,7 +576,7 @@ export class PageModel implements IPageHost {
         this.setActivePanel(panelKey(owner.id, panelId));
     }
 
-    /** Force the sidebar open when a non-Explorer panel is present, and
+    /** Force the sidebar open when a mandatory panel is present, and
      *  auto-initialize the Explorer panel for a panel editor opened from local
      *  disk. Called from the lifecycle points that recompute `hasSidebar`
      *  (attach / detach / onEditorPanelsChanged) so opening a Link/Archive/etc.
@@ -638,7 +628,7 @@ export class PageModel implements IPageHost {
      *  present panel (e.g. the seed "explorer" on a page with no Explorer, or the
      *  previously-active panel's editor was detached), expand the first available
      *  panel. `panelEditors` orders Explorer first, so an Explorer (when present)
-     *  is preferred; otherwise the next panel (Link/Mneme/…) is expanded.
+     *  is preferred; otherwise the next declared contributor is expanded.
      *  No-op when there are no panels — leaving the seed untouched so a last-panel
      *  detach doesn't resurrect the sidebar. */
     private _enforceActivePanelExpanded(): void {

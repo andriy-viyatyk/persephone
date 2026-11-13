@@ -7,7 +7,6 @@ import { runPageScript } from "../run-page-script";
 import { getAvailableScripts, openScriptInTab, saveScriptToLibrary, selectScript } from "../script-library-actions";
 import type { ScriptDropdownEntry } from "../script-library-actions";
 import { pages } from "../../api/pages";
-import { TComponentState } from "../../core/state/state";
 
 const TEXT_ELEMENTS = [
     { name: "text-compare-left", purpose: "Compare this text page with the left grouped page when the compare action is available.", where: "left side of the text toolbar, when comparison is available" },
@@ -264,13 +263,8 @@ export class TextEditorFacade extends EditorFacadeBase<MonacoEditor> implements 
             openPath: async (filePath, libraryRoot) => {
                 const page = await pages.openPath(filePath);
                 if (!page || !libraryRoot) return;
-                const { ExplorerEditor, getDefaultExplorerEditorState } = await import("../../editors/explorer");
-                const explorer = new ExplorerEditor(new TComponentState({
-                    ...getDefaultExplorerEditorState(),
-                    rootPath: libraryRoot,
-                }));
-                page.attach(explorer);
-                await explorer.restore();
+                const { attachExplorer } = await import("../../editors/explorer/page-explorer");
+                await attachExplorer(page, { rootPath: libraryRoot });
                 page.ensureSecondaryViewsModel();
             },
             openLibraryRoot: (libraryRoot) => pages.lifecycle.addEmptyPageWithNavPanel(libraryRoot),

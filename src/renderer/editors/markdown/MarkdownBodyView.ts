@@ -1,7 +1,4 @@
-import { EditorId } from "../../../shared/editor-ids";
-import { app } from "../../api/app";
 import { pages } from "../../api/pages";
-import { createLinkData } from "../../../shared/link-data";
 import {
     applyPanelAttributes,
     createPanelElement,
@@ -112,6 +109,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
 
     private modelSubscription: (() => void) | undefined;
     private hostSubscription: (() => void) | undefined;
+    private detachViewPort: (() => void) | undefined;
     private queueSubscription: (() => void) | undefined;
     private pageFocusSubscription: (() => void) | undefined;
     private boundModel: MarkdownBodyModel | undefined;
@@ -182,25 +180,10 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
         }
         if (!isLocalMarkdownHref(href) && !isGuideHref(href)) return;
 
-        if (this.model.navigateLink?.(href)) {
+        if (this.model.followLink(href)) {
             event.preventDefault();
             event.stopPropagation();
-            return;
         }
-
-        const page = this.model.page;
-        const pageId = page?.id;
-        if (!pageId) return;
-
-        event.preventDefault();
-        event.stopPropagation();
-        const current = this.model.host?.state.get();
-        if (current?.filePath) {
-            page.pushNavBack({ href: current.filePath, title: current.title });
-        }
-        void app.events.openRawLink.sendAsync(
-            createLinkData(href, { pageId, target: EditorId.mdView, sourceId: "markdown-link" }),
-        );
     };
 
     private readonly onMatchCountChange = (count: number): void => {
@@ -251,7 +234,8 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
         this.markdownBlock.mount();
         this.lastBlockProps = this.blockProps();
         this.reconcileMinimap();
-        this.model.setContainer?.(this.scrollPanel);
+        this.attachModelViewPort();
+        this.own(() => this.detachViewPort?.());
         this.bindToHostIfNeeded();
         this.bindModel();
         this.bindPageFocus();
@@ -288,11 +272,10 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
         this.hostSubscription = undefined;
         this.pageFocusSubscription?.();
         this.pageFocusSubscription = undefined;
-        this.model.setContainer?.(null);
+        this.detachViewPort?.();
     }
 
     private replaceModel(nextModel: MarkdownBodyModel): void {
-        const oldModel = this.model;
         this.cancelAnchorRetry();
         this.lifecycleGeneration += 1;
         this.queueSubscription?.();
@@ -303,7 +286,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
         this.hostSubscription = undefined;
         this.pageFocusSubscription?.();
         this.pageFocusSubscription = undefined;
-        oldModel.setContainer?.(null);
+        this.detachViewPort?.();
 
         this.model = nextModel;
         this.boundModel = undefined;
@@ -313,12 +296,18 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
             : EMPTY_HOST;
         this.lastProjection = undefined;
         this.lastBlockProps = undefined;
-        this.model.setContainer?.(this.scrollPanel);
+        this.attachModelViewPort();
         this.reconcileMinimap();
         this.bindToHostIfNeeded();
         this.bindModel();
         this.bindPageFocus();
         this.subscribeToQueue();
+    }
+
+    private attachModelViewPort(): void {
+        this.detachViewPort = this.model.attachViewPort?.({
+            renderedHtml: () => this.scrollPanel.innerHTML,
+        });
     }
 
     private bindModel(): void {

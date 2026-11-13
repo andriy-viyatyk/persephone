@@ -47,13 +47,10 @@ secondaryViewRegistry.register({
     id: "boards",
     labelKey: "shell.boards",
     label: englishMessage("shell.boards"),
-    // Sidebar-only sub-panel of Explorer — its own boards glyph,
-    // mirroring how "search" overrides to the search registry name. Lists trusted boards under the
-    // Explorer root via the shared BoardsTree. Uses the colored variant so the panel
-    // header reads as an accent.
+    // Sidebar panel with a root derived from the attached Explorer editor.
     icon: "board-color",
-    loadModelClass: async () => (await import("./explorer/ExplorerEditorModel")).ExplorerEditor,
-    loadView: () => import("./explorer/BoardsSecondaryView"),
+    loadModelClass: async () => (await import("./board/BoardsPanelEditorModel")).BoardsPanelEditor,
+    loadView: () => import("./board/BoardsSecondaryView"),
 });
 
 secondaryViewRegistry.register({
@@ -61,8 +58,8 @@ secondaryViewRegistry.register({
     labelKey: "shell.clipboard",
     label: englishMessage("shell.clipboard"),
     icon: "paste",
-    loadModelClass: async () => (await import("./explorer/ExplorerEditorModel")).ExplorerEditor,
-    loadView: () => import("./explorer/ClipboardSecondaryView"),
+    loadModelClass: async () => (await import("./clipboard/ClipboardPanelEditorModel")).ClipboardPanelEditor,
+    loadView: () => import("./clipboard/ClipboardSecondaryView"),
 });
 
 secondaryViewRegistry.register({
@@ -219,6 +216,8 @@ for (const e of EDITORS) {
 }
 
 editorRegistry.registerRestoreOnly(InternalEditorIds.explorer, async () => (await import("./explorer")).explorerRestoreModule);
+editorRegistry.registerRestoreOnly(InternalEditorIds.boards, async () => (await import("./board/BoardsPanelEditorModel")).boardsRestoreModule);
+editorRegistry.registerRestoreOnly(InternalEditorIds.clipboard, async () => (await import("./clipboard/ClipboardPanelEditorModel")).clipboardRestoreModule);
 editorRegistry.registerRestoreOnly("draw-view", async () => (await import("./board")).boardModule);
 
 

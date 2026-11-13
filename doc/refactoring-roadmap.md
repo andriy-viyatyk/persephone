@@ -531,7 +531,7 @@ audio window split into `CaptureSourcePool` and `PlaybackChannel` (CORE-12); mai
 (MAIN-9). D8 resolved (see §6). Left out on purpose: the rest of item 2.2, and collapsing `OneShotFrameGrant`'s
 per-grant arm-order flags (a small behaviour change). **Roadmap item 6.3 is complete.**
 
-**6.4 is split into two epics.** Part 1 is done ([EPIC-163](epics/EPIC-163.md), 2026-11-13): typed editor ids
+**6.4 was split into three epics.** Part 1 is done ([EPIC-163](epics/EPIC-163.md), 2026-11-13): typed editor ids
 (`shared/editor-ids.ts`, `editors/base/editor-ids.ts`) and the registry dead code (EDC-5 steps 1, 2, 4); one matcher
 contract with named tiers and a declarative `QUERY_RULES` table read by `editorRegistry.rank()` (EDC-5 step 3);
 `EditorCatalog` with `BuiltInEditorSource` and the board-owned `BoardEditorSource`, one switch-candidate path, the
@@ -544,6 +544,20 @@ with a typed request queue and the single-implementer hooks as traits, and an er
 remains:** EDC-7 steps 2 and 4 (`TextEditorPageView<M>`, "Show resources" as an HTML contribution, view file naming),
 EDC-8 image actions, EDC-9 panel views without IO, EDC-10 `ExplorerEditor` split, EDC-11 `TreeProviderHost`, EDC-12
 source watching, EDC-13 `VideoStreamSession`, EDC-14 grid codecs.
+Part 2 is done ([EPIC-164](epics/EPIC-164.md), 2026-11-13): one source-watch helper (`content/source-watch.ts`) for
+the text host, Image and Video (EDC-12); `VideoStreamSession` with recording naming shared with main and mute owned
+outside module scope (EDC-13); shared image actions and one `ImageActionsToolbarView`, with pure raster code in
+`core/utils/image-raster.ts` so `uikit/` no longer imports `editors/` (EDC-8); `TextEditorPageView` for the ten text
+editors, "Show resources" as an HTML text-chrome contribution and the `XxxEditorView.ts` naming rule (EDC-7 steps 2
+and 4); grid codecs and the legacy settings promotion as a descriptor migration (EDC-14). Part 3 is done
+([EPIC-165](epics/EPIC-165.md), 2026-11-14): `ClipboardHistoryModel` (`api/clipboard-history.ts`) consumed by the
+clipboard panel and the ai-vision namespace, `CommitDiffPanelModel` loading, `MarkdownEditor.followLink`, and typed
+view ports instead of model-held DOM handles (EDC-9; step 2 was already met by `boardLifecycle` and the scaffold
+owner); `TreeProviderHost` + `TREE_PROVIDER_HOST_TRAIT` + `TreeRevealController`, with the Explorer owning its
+`FileTreeProvider` and Category finding hosts by trait (EDC-11, EDC-9 step 3); `ExplorerEditor` split into Explorer,
+`BoardsPanelEditor` and `ClipboardPanelEditor` with `attachExplorer`, generic `panelOrder`/`sidebarOptional` editor
+fields and a one-time descriptor migration of `boardsOpen`/`clipboardOpen`/`hideExplorer` (EDC-10). One observable
+change: `page.panels.items` names the Boards and Clipboard panels' own owners. **Roadmap item 6.4 is complete.**
 
 ### Phase 7: Lock it in
 

@@ -1,7 +1,6 @@
 import { InternalEditorIds } from "../base/editor-ids";
-import { TComponentState, TOneState } from "../../core/state/state";
+import { TComponentState } from "../../core/state/state";
 import { app } from "../../api/app";
-import { settings } from "../../api/settings";
 import {
     EditorModel,
     type EditorStateBase,
@@ -11,21 +10,13 @@ import type { EditorDescriptor } from "../../../shared/persistence";
 import type { ILink, ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
 import type { TreeProviderViewModel, TreeProviderViewSavedState } from "../../components/tree-provider";
 import type { FileSearchState } from "../../components/file-search";
-import type { NavigationState } from "../base/navigation-state";
+import { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
+import { TREE_PROVIDER_HOST_TRAIT, TreeProviderHost } from "../base/tree-provider-host";
 import type { IPageHost } from "../../api/pages/IPageHost";
-import { fpBasename, fpDirname } from "../../core/utils/file-path";
+import { fpDirname } from "../../core/utils/file-path";
 import { createFolderIconElement } from "../../components/icons/icon-elements";
 import { createLinkData } from "../../../shared/link-data";
-import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
-import { openToolset as openToolsetLink } from "../../content/persephone-toolset-link";
-import { boardRegistry } from "../../api/boards/board-registry";
-import { toolsTrust } from "../../api/tools/tools-trust";
-import { registeredTools } from "../../api/tools/registered-tools";
-import { readToolsManifest } from "../../api/tools/tools-manifest";
-import { showRegisterToolsetDialog } from "../../ui/dialogs/RegisterToolsetDialog";
 import { untranslated } from "../../../shared/i18n/t";
-
-export type ExplorerBoardsTab = "boards" | "tools";
 
 export interface ExplorerEditorState extends EditorStateBase {
     /** Root path for the file tree. */
@@ -37,14 +28,6 @@ export interface ExplorerEditorState extends EditorStateBase {
     treeState?: TreeProviderViewSavedState;
     selectedHref?: string | null;
     searchState?: FileSearchState;
-    /** Whether the Boards sibling panel is open. Persisted so the panel
-     *  survives restart and page-move-between-windows; Search has no analogue because its
-     *  visibility is derived from `searchState`. */
-    boardsOpen?: boolean;
-    /** Persisted like Boards so the Clipboard sibling survives restart and page moves. */
-    clipboardOpen?: boolean;
-    /** Explicitly hides Explorer, Search, and Boards for the dedicated Clipboard page. */
-    hideExplorer?: boolean;
 }
 
 export function getDefaultExplorerEditorState(): ExplorerEditorState {
@@ -62,38 +45,37 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
      *  same string as the panel-component lookup. Explorer is NOT in
      *  `editorRegistry`. */
     readonly editorId = InternalEditorIds.explorer;
+    readonly panelOrder = 0;
+    readonly sidebarOptional = true;
 
-    /** File tree data source. Created lazily by the view layer
-     *  (`ExplorerSecondaryView.ts`); reads see whatever the view set.
-     *  EX-IMPL5 — public field, NOT a getter (Link uses a getter because its
-     *  tree provider is constructible without view-supplied configuration;
-     *  Explorer's `FileTreeProvider` needs the reactive rootPath). */
-    treeProvider: ITreeProvider | null = null;
+    readonly treeProviderHost = new TreeProviderHost<FileTreeProvider>();
 
     /** Tree expansion state — persisted via `ExplorerEditorState.treeState`. */
     treeState: TreeProviderViewSavedState | undefined = undefined;
     treeProviderViewModel: TreeProviderViewModel | undefined;
 
-    /** Selection state — reactive. The Explorer view subscribes for highlight. */
-    readonly selectionState = new TOneState<NavigationState>({ selectedHref: null });
+    get treeProvider(): FileTreeProvider | null {
+        return this.treeProviderHost.provider;
+    }
 
-    /** Monotonic reveal command token consumed by the secondary view. The view calls
-     *  `revealItem(selectedHref)` after the panel is available. */
-    readonly revealVersion = new TOneState({ version: 0 });
-
-    /** Model-owned Boards/Tools segment, shared by the panel and panel facade. */
-    readonly boardsTabState = new TOneState<{ value: ExplorerBoardsTab }>({ value: "boards" });
+    get selectionState() {
+        return this.treeProviderHost.selectionState;
+    }
 
     /** Search panel state. When defined, the search panel is visible. */
     searchState: FileSearchState | undefined = undefined;
 
     constructor(state: TComponentState<ExplorerEditorState>) {
         super(state);
+        this.searchState = state.get().searchState;
+        this.traits.add(TREE_PROVIDER_HOST_TRAIT, this.treeProviderHost);
+        this.ensureTreeProvider(this.rootPath);
+        this.own(this.state.subscribe(
+            (rootPath: string) => this.ensureTreeProvider(rootPath),
+            (state) => state.rootPath,
+        ));
         this.noLanguage = true;
         this.skipSave = true;
-        this.own(settings.watch("clipboard.enabled", () => {
-            this.secondaryView = this.composeSecondaryView();
-        }));
         // Folder glyph for the "Explorer" sidebar panel — the same icon the
         // explorer tree shows for folders. Explorer is sidebar-only, so this
         // essentially only ever appears on the panel header, not a page tab.
@@ -102,6 +84,14 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
 
     get rootPath(): string {
         return this.state.get().rootPath;
+    }
+
+    private ensureTreeProvider(rootPath: string): void {
+        const provider: ITreeProvider | null = this.treeProviderHost.provider;
+        if (provider?.sourceUrl !== rootPath) {
+            provider?.dispose?.();
+            this.treeProviderHost.setProvider(rootPath ? new FileTreeProvider(rootPath) : null);
+        }
     }
 
     async listItems(): Promise<ILink[] | undefined> {
@@ -113,7 +103,7 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
     // ── Selection ────────────────────────────────────────────────────
 
     setSelectedHref(href: string | null): void {
-        this.selectionState.update((s) => { s.selectedHref = href; });
+        this.treeProviderHost.setSelected(href);
     }
 
     async openItem(item: ITreeProviderItem): Promise<void> {
@@ -134,7 +124,7 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
         if (this.page.activePanelId !== "explorer") throw new Error("Explorer reveal unavailable: the Explorer panel is not active.");
         if (!this.treeProvider) throw new Error("Explorer reveal unavailable: no provider is attached.");
         this.setSelectedHref(href);
-        this.revealVersion.update((s) => { s.version++; });
+        this.treeProviderHost.requestReveal(href);
     }
 
     expandPath(path: string): Promise<void> {
@@ -155,16 +145,10 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
 
     // ── Secondary-view composition ─────────────────────────────────────
 
-    /** Canonical sidebar panel set for the Explorer-backed panels, always in display order:
-     *  Explorer → Search (iff `searchState`) → Boards (iff `boardsOpen`) → Clipboard (iff
-     *  `clipboardOpen`). A dedicated Clipboard host explicitly omits the other panels. Drives every
-     *  `secondaryView` assignment so Search and Boards compose instead of clobbering each other. */
+    /** Explorer contributes Search after its tree when search state exists. */
     private composeSecondaryView(): string[] {
-        const state = this.state.get();
-        const ids = state.hideExplorer ? [] : ["explorer"];
-        if (!state.hideExplorer && this.searchState) ids.push("search");
-        if (!state.hideExplorer && state.boardsOpen) ids.push("boards");
-        if (state.clipboardOpen) ids.push("clipboard");
+        const ids = ["explorer"];
+        if (this.searchState) ids.push("search");
         return ids;
     }
 
@@ -213,85 +197,6 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
 
     // ── Boards ─────────────────────────────────────────────────────────
 
-    openBoards(): void {
-        this.state.update((s) => { s.boardsOpen = true; });
-        this.secondaryView = this.composeSecondaryView();
-        this.page?.expandPanel("boards");
-    }
-
-    closeBoards(): void {
-        this.state.update((s) => { s.boardsOpen = false; });
-        this.secondaryView = this.composeSecondaryView();
-        this.page?.expandPanel("explorer");
-    }
-
-    openClipboard(): void {
-        this.state.update((s) => { s.clipboardOpen = true; });
-        this.secondaryView = this.composeSecondaryView();
-        this.page?.expandPanel("clipboard");
-    }
-
-    closeClipboard(): void {
-        this.state.update((s) => { s.clipboardOpen = false; });
-        this.secondaryView = this.composeSecondaryView();
-    }
-
-    get boardsTab(): ExplorerBoardsTab { return this.boardsTabState.get().value; }
-
-    setBoardsTab(value: ExplorerBoardsTab): void {
-        this.boardsTabState.update((state) => { state.value = value; });
-    }
-
-    listBoards(): string[] {
-        if (!this.rootPath) return [];
-        const rootKey = this.rootPath.replace(/\\/g, "/").toLowerCase();
-        return boardRegistry.roots("trusted")
-            .filter(path => {
-                const key = path.replace(/\\/g, "/").toLowerCase();
-                return key === rootKey || key.startsWith(rootKey + "/");
-            })
-            .slice();
-    }
-
-    listToolsets(): Array<{ root: string; name: string }> {
-        if (!this.rootPath) return [];
-        const rootKey = this.rootPath.replace(/\\/g, "/").toLowerCase();
-        return registeredTools.toolsets
-            .filter(toolset => {
-                const key = toolset.root.replace(/\\/g, "/").toLowerCase();
-                return key === rootKey || key.startsWith(rootKey + "/");
-            })
-            .map(toolset => ({ root: toolset.root, name: toolset.name }));
-    }
-
-    openBoard(root: string): void {
-        const page = this.page;
-        if (!page) throw new Error("Explorer action unavailable: no page host attached.");
-        void app.events.openRawLink.sendAsync(createLinkData(encodePersephoneBoardLink(root), {
-            pageId: page.id,
-            sourceId: "explorer",
-            explorerRoot: this.rootPath,
-        }));
-    }
-
-    async openToolset(root: string): Promise<void> {
-        const page = this.page;
-        if (!page) throw new Error("Explorer action unavailable: no page host attached.");
-        await toolsTrust.load();
-        if (!toolsTrust.isTrusted(root)) {
-            const manifest = await readToolsManifest(root);
-            const ok = await showRegisterToolsetDialog({
-                toolsetName: manifest?.name ?? fpBasename(root),
-                toolsetRoot: root,
-                tools: (manifest?.tools ?? []).map(tool => ({ name: tool.name, description: tool.description })),
-            });
-            if (!ok) return;
-            await toolsTrust.trust(root);
-            await registeredTools.refresh();
-        }
-        openToolsetLink(root, { pageId: page.id, sourceId: "explorer" });
-    }
-
     // ── Root navigation ──────────────────────────────────────────────
 
     navigateUp(): void {
@@ -312,9 +217,9 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
 
     /** Update selection and request reveal if the "explorer" panel is active. */
     private _selectAndReveal(href: string | null): void {
-        this.selectionState.update((s) => { s.selectedHref = href; });
+        this.treeProviderHost.setSelected(href);
         if (href && this.page?.activePanelId === "explorer") {
-            this.revealVersion.update((s) => { s.version++; });
+            this.treeProviderHost.requestReveal(href);
         }
     }
 
@@ -347,9 +252,7 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
         if (panelId === "explorer") {
             const href = this.selectionState.get().selectedHref;
             if (href) {
-                // The monotonic token is a reveal command consumed by the secondary view, whose
-                // binding schedules the cancellable animation-frame reveal after the panel exists.
-                this.revealVersion.update((s) => { s.version++; });
+                this.treeProviderHost.requestReveal(href);
             }
         }
     }
@@ -394,23 +297,22 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
 
     async restore(): Promise<void> {
         await super.restore();
-        const state = this.state.get();
-        if (this.page && (this.rootPath || state.hideExplorer || state.clipboardOpen)) {
+        if (this.page && this.rootPath) {
             this.secondaryView = this.composeSecondaryView();
         }
     }
 
     setPage(page: IPageHost | null): void {
         super.setPage(page);
-        const state = this.state.get();
-        if (page && (this.rootPath || state.hideExplorer || state.clipboardOpen) && !this.secondaryView?.length) {
+        if (page && this.rootPath && !this.secondaryView?.length) {
             this.secondaryView = this.composeSecondaryView();
         }
     }
 
     async dispose(): Promise<void> {
-        this.treeProvider?.dispose?.();
-        this.treeProvider = null;
+        const provider: ITreeProvider | null = this.treeProvider;
+        provider?.dispose?.();
+        this.treeProviderHost.dispose();
         await super.dispose();
     }
 }

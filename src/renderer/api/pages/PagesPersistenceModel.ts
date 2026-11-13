@@ -11,11 +11,7 @@ import { t } from "../../../shared/i18n/t";
 import { editorRegistry } from "../../editors/base/editorRegistry";
 import type { EditorModelInstance as EditorModel } from "../../editors/base/EditorModel";
 import { RestoreFailedEditor } from "../../editors/restore-failed/RestoreFailedEditor";
-import {
-    ExplorerEditor,
-    getDefaultExplorerEditorState,
-} from "../../editors/explorer";
-import { TComponentState } from "../../core/state/state";
+import { attachExplorer } from "../../editors/explorer/page-explorer";
 import { appWindow } from "../window";
 import { fs as appFs } from "../fs";
 import { PageModel } from "./PageModel";
@@ -158,13 +154,9 @@ export class PagesPersistenceModel {
         const folderFallback = folderFallbacks[0];
         if (folderFallback) {
             if (!page.findExplorer()) {
-                const explorer = new ExplorerEditor(new TComponentState({
-                    ...getDefaultExplorerEditorState(),
-                    rootPath: folderFallback.folderPath,
-                }));
-                constructed.push(explorer);
-                page.attach(explorer);
-                await explorer.restore();
+                await attachExplorer(page, { rootPath: folderFallback.folderPath }, explorer => {
+                    constructed.push(explorer);
+                });
             }
 
             const { buildFolderCategoryLink, CategoryEditorModel } = await import(

@@ -3,6 +3,10 @@ import { fpDirname } from "../../core/utils/file-path";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import type { PageModel } from "../../api/pages/PageModel";
 import { ExplorerEditor, getDefaultExplorerEditorState } from "./ExplorerEditorModel";
+import type { FileSearchState } from "../../components/file-search";
+import { ClipboardPanelEditor } from "../clipboard/ClipboardPanelEditorModel";
+import { BoardsPanelEditor } from "../board/BoardsPanelEditorModel";
+import { InternalEditorIds } from "../base/editor-ids";
 
 // ============================================================================
 // page-explorer — Explorer provisioning for a page.
@@ -31,6 +35,51 @@ export function explorerRootForPanels(page: PageModel): string {
     return "";
 }
 
+export async function attachExplorer(
+    page: PageModel,
+    options: { rootPath: string; search?: FileSearchState },
+    onCreate?: (editor: ExplorerEditor) => void,
+): Promise<ExplorerEditor> {
+    const state = new TComponentState({
+        ...getDefaultExplorerEditorState(),
+        rootPath: options.rootPath,
+        searchState: options.search,
+    });
+    const explorer = new ExplorerEditor(state);
+    onCreate?.(explorer);
+    page.attach(explorer);
+    await explorer.restore();
+    return explorer;
+}
+
+export function ensureBoardsPanel(page: PageModel): BoardsPanelEditor {
+    const existing = page.editors.find(editor => editor.editorId === InternalEditorIds.boards);
+    if (existing) return existing as BoardsPanelEditor;
+    const editor = BoardsPanelEditor.create();
+    page.attach(editor);
+    return editor;
+}
+
+export function ensureClipboardPanel(page: PageModel): ClipboardPanelEditor {
+    const existing = page.editors.find(editor => editor.editorId === InternalEditorIds.clipboard);
+    if (existing) return existing as ClipboardPanelEditor;
+    const editor = ClipboardPanelEditor.create();
+    page.attach(editor);
+    return editor;
+}
+
+export function openBoardsPanel(page: PageModel): void {
+    ensureBoardsPanel(page);
+    page.ensureSecondaryViewsModel();
+    page.expandPanel("boards");
+}
+
+export function openClipboardPanel(page: PageModel): void {
+    ensureClipboardPanel(page);
+    page.ensureSecondaryViewsModel();
+    page.expandPanel("clipboard");
+}
+
 /** When the sidebar is mandatory (a panel editor like Links is present) and
  *  there is no Explorer yet, auto-create one rooted at the panel editor's
  *  file folder — restoring the pre-mandatory-sidebar affordance where the
@@ -43,13 +92,7 @@ export async function autoInitExplorer(page: PageModel): Promise<void> {
     if (!page.sidebarMandatory) return;
     const rootPath = explorerRootForPanels(page);
     if (!rootPath) return;
-    const state = new TComponentState({
-        ...getDefaultExplorerEditorState(),
-        rootPath,
-    });
-    const explorer = new ExplorerEditor(state);
-    page.attach(explorer);
-    await explorer.restore();
+    await attachExplorer(page, { rootPath });
 }
 
 /** Toggle the SecondaryViews panel. Creates an ExplorerEditor (rooted at the
@@ -75,13 +118,7 @@ export async function toggleNavigator(
     }
     if (!rootPath) return;
 
-    const state = new TComponentState({
-        ...getDefaultExplorerEditorState(),
-        rootPath,
-    });
-    const explorer = new ExplorerEditor(state);
-    page.attach(explorer);
-    await explorer.restore();
+    await attachExplorer(page, { rootPath });
 
     page.setSecondaryViewsState({ open: true });
 }

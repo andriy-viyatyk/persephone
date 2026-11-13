@@ -1,11 +1,15 @@
 import { EditorId } from "../../../shared/editor-ids";
+import { app } from "../../api/app";
+import { createLinkData } from "../../../shared/link-data";
 import { TComponentState } from "../../core/state/state";
 import type { EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
 import { TextFileModel } from "../content-host/TextFileModel";
 import { FRAGMENT_NAV_TRAIT } from "../base/editor-traits";
+import { ViewPort } from "../base/view-port";
 import type {
     MarkdownBodyState,
+    MarkdownBodyViewPort,
     MarkdownQueueEvent,
     MarkdownQueueRequest,
 } from "./MarkdownBodyModel";
@@ -53,11 +57,7 @@ export class MarkdownEditor extends TextHostEditorModel<
     readonly editorId = EditorId.mdView;
     protected readonly displayName = "Markdown";
 
-    /** PV9 — non-state DOM ref set by the body via `setContainer(el)` callback.
-     *  Facade reads through `containerInnerHtml` / `viewMounted` getters. NOT
-     *  on `state` (no subscribers; ride-state-for-reactivity doesn't apply
-     *  — see PV9 resolution). */
-    private _containerRef: HTMLDivElement | null = null;
+    private readonly viewPort = new ViewPort<MarkdownBodyViewPort>();
 
     constructor(state: TComponentState<MarkdownEditorState>) {
         super(state);
@@ -87,12 +87,25 @@ export class MarkdownEditor extends TextHostEditorModel<
         if (!page || !pageId) return;
         const entry = page.popNavBack();
         if (!entry) return;
-        const { app } = await import("../../api/app");
-        const { createLinkData } = await import("../../../shared/link-data");
         await app.events.openRawLink.sendAsync(
             createLinkData(entry.href, { pageId, target: EditorId.mdView }),
         );
     };
+
+    followLink(href: string): boolean {
+        const page = this.page;
+        const pageId = page?.id;
+        if (!page || !pageId) return false;
+
+        const current = this.host?.state.get();
+        if (current?.filePath) {
+            page.pushNavBack({ href: current.filePath, title: current.title });
+        }
+        void app.events.openRawLink.sendAsync(
+            createLinkData(href, { pageId, target: EditorId.mdView, sourceId: "markdown-link" }),
+        );
+        return true;
+    }
 
     adoptHost(host: TextFileModel): void {
         super.adoptHost(host);
@@ -118,11 +131,9 @@ export class MarkdownEditor extends TextHostEditorModel<
 
     // ── View-driven setters / state mutators ────────────────────────────
 
-    /** PV9 — view callback ref: scroll panel sets its DOM node here.
-     *  Facade reads via `containerInnerHtml` / `viewMounted` getters. */
-    setContainer = (el: HTMLDivElement | null): void => {
-        this._containerRef = el;
-    };
+    attachViewPort(port: MarkdownBodyViewPort): () => void {
+        return this.viewPort.attach(port);
+    }
 
     toggleCompact = (): void => {
         this.state.update((s) => {
@@ -181,10 +192,15 @@ export class MarkdownEditor extends TextHostEditorModel<
     // ── Facade-only accessors ─────────────────────────────────────
 
     get containerInnerHtml(): string | undefined {
-        return this._containerRef?.innerHTML;
+        return this.viewPort.get()?.renderedHtml();
     }
 
     get viewMounted(): boolean {
-        return this._containerRef !== null;
+        return this.viewPort.get() !== undefined;
+    }
+
+    async dispose(): Promise<void> {
+        this.viewPort.clear();
+        await super.dispose();
     }
 }

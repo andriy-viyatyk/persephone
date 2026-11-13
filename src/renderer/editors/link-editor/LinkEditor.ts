@@ -1,8 +1,8 @@
 import { EditorId } from "../../../shared/editor-ids";
-import { TComponentState, TOneState } from "../../core/state/state";
+import { TComponentState } from "../../core/state/state";
 import { EditorModel, type EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
-import type { NavigationState } from "../base/navigation-state";
+import { TREE_PROVIDER_HOST_TRAIT, TreeProviderHost } from "../base/tree-provider-host";
 import { TextFileModel } from "../content-host/TextFileModel";
 import { ui } from "../../api/ui";
 import { debounce, errMessage } from "../../../shared/utils";
@@ -108,9 +108,15 @@ export class LinkEditor
         expandedPanel: "",
     };
 
-    // LK9 — tree provider lazy; selection state public for CategoryEditor reads.
-    private _treeProvider: LinkTreeProvider | null = null;
-    readonly selectionState = new TOneState<NavigationState>({ selectedHref: null });
+    readonly treeProviderHost = new TreeProviderHost<LinkTreeProvider>({
+        createProvider: () => this._host
+            ? new LinkTreeProvider(this, this._host.state.get().filePath || "")
+            : null,
+    });
+
+    get selectionState() {
+        return this.treeProviderHost.selectionState;
+    }
 
     // View refs (set by view; not on state):
     gridModel: GridModelCapability | null = null;
@@ -148,12 +154,13 @@ export class LinkEditor
 
     constructor(state: TComponentState<LinkEditorState>) {
         super(state);
+        this.traits.add(TREE_PROVIDER_HOST_TRAIT, this.treeProviderHost);
     }
 
     /** The trait extracted the host (switch away) — drop the host-bound
      *  tree provider. */
     protected onHostExtracted(): void {
-        this._treeProvider = null;
+        this.treeProviderHost.reset();
     }
 
     protected untitledName(): string {
@@ -171,11 +178,7 @@ export class LinkEditor
     // ── LK9 — Tree provider exposure ────────────────────────────────────
 
     get treeProvider(): LinkTreeProvider | null {
-        if (!this._host) return null;
-        if (!this._treeProvider) {
-            this._treeProvider = new LinkTreeProvider(this, this._host.state.get().filePath || "");
-        }
-        return this._treeProvider;
+        return this.treeProviderHost.provider;
     }
 
     selectByHref = (href: string): void => {
@@ -1108,7 +1111,7 @@ export class LinkEditor
         // Flush pending debounced save (today's onDispose pattern)
         this.onDataChanged();
 
-        this._treeProvider = null;
+        this.treeProviderHost.dispose();
         this.containerElement = null;
         this.gridModel = null;
         await super.dispose();
