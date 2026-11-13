@@ -180,6 +180,11 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── settings.ts         # ISettings runtime store and typed subscriptions
 │   ├── settings-schema.ts  # Ordered setting defaults, normalization, options, ranges, and migrations
 │   ├── settings-effects.ts # Settings-driven process and feature side effects
+│   ├── speech/             # Shared speech provider, typed session and microphone services
+│   │   ├── SpeechTranscriptionProvider.ts
+│   │   ├── SpeechSessionClient.ts
+│   │   ├── MicrophoneCapture.ts
+│   │   └── voice-typing/    # App-level service and per-session voice-typing collaborators
 │   ├── board-settings/     # Board-declared settings catalog, persistence, and bridge-facing reads
 │   │   ├── BoardSettingsStore.ts       # Renderer-lifetime board-settings.json store and change notifications
 │   │   ├── board-settings-bridge.ts    # Effective reads/writes/resets and board-frame change delivery
@@ -375,6 +380,11 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   └── mnemeLinkTraits.ts    # MnemeLink TraitSet (LINK + FILE_LINK) for tree drag-drop (move within / copy across roots)
 │   └── open-with-default-app.ts # Hand a path to the OS shell (shell.openPath); shared by the tree context menu and Explorer double-click
 │
+├── audio/                  # Hidden audio-window host and reusable capture/DSP components
+│   ├── audio-window.ts     # Thin IPC host for capture/playback collaborators
+│   ├── CaptureSourcePool.ts # Capture-source lifecycle and subscriptions
+│   ├── PlaybackChannel.ts  # Playback scheduling and channel lifecycle
+│   └── dsp/                # PCM capture, loopback reference, gate, DTLN pipeline and worker
 ├── ui/                     # Application Shell
 │   ├── link-menus/          # App-level link and file menu builders
 │   │   ├── tree-context-menus.ts # Default context menu handlers for tree provider items
@@ -386,14 +396,9 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── RenderEditorView.ts      # Native editor dispatcher
 │   │   ├── AsyncEditorView.ts      # Native async editor loader and error surface
 │   │   └── PageContentView.ts        # Native page content and editor lifecycle
-│   ├── voice-typing/       # Private host controller for speech capture/transcription or translation and its non-interactive overlay
-│   │   ├── VoiceTypingController.ts # Provider discovery, one channel, audio capture, cancellation, and result handoff
+│   ├── voice-typing/       # Non-interactive app-shell status overlay for speech capture/transcription or translation
 │   │   ├── VoiceTypingOverlayView.ts # App-shell recording/transcribing status overlay
 │   │   └── VoiceTypingOverlayView.css
-│   ├── speech/             # Shared live speech provider discovery, service channel, PCM capture, and session lease
-│   │   ├── SpeechTranscriptionProvider.ts
-│   │   ├── PcmAudioCapture.ts
-│   │   └── LiveSpeechSessionCoordinator.ts
 │   ├── transcript/         # Page-scoped computer/microphone capture and Monaco Transcript toolbar contribution
 │   │   ├── TranscriptController.ts
 │   │   ├── TranscriptToolbarContributionView.ts
@@ -1022,7 +1027,8 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── renderer-rpc.ts          # Typed main-to-renderer RPC client, cancellation and request lifecycle
 ├── application-profile.ts  # Profile argument validation and main-process profile identity
 ├── windows-env.ts          # Windows env backfill — reconstructs missing standard folder/system vars (APPDATA, LOCALAPPDATA, ProgramFiles*, …) at startup so child processes get a full env even when the app was launched from a degraded shell; win32-only, backfill-only
-├── open-window.ts          # Window creation, per-window voice-typing mode/shortcut/state routing, and captured-target text insertion
+├── open-window.ts          # Window creation and composition of per-window collaborators
+├── voice-typing-controller.ts # Per-window voice-typing shortcuts, session state and captured-target text insertion
 ├── open-windows.ts         # Multi-window management and broadcasting
 ├── global-mute-service.ts  # Main-owned mute leases and effective audio state across managed application contents
 ├── window-states.ts        # Window state persistence
@@ -1045,6 +1051,9 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 │   ├── tools/              # Advertised tool definitions — call, the whole manifest
 │   └── ai-vision/          # Main-process AiVision roots, service descriptors, and gated main scripting
 ├── browser-service.ts      # Browser composition and IPC-facing service surface
+├── media-grants.ts         # One-shot recording, voice-typing, transcript and audio-window grant instances
+├── one-shot-frame-grant.ts # Reusable one-shot grant lifecycle and optional frame binding
+├── site-permission-store.ts # Persistent profile decisions and in-memory private-session decisions
 ├── browser-service-composition.ts # Injects shared guest lookup into browser/CDP/network services
 ├── browser/                # Browser guest registration and per-guest policies
 │   ├── BrowserGuestRegistry.ts # Key/WebContents lookup and guest registration ownership

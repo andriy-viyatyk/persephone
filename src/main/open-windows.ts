@@ -1,7 +1,7 @@
 import { BrowserWindow, type WebContents } from "electron";
 import type { EventApi, WindowCloseResolution } from "../ipc/api-types";
 import type { EventPayload } from "../ipc/event-types";
-import { OpenWindow } from "./open-window";
+import { OpenWindow, type BoardHostRootLookup } from "./open-window";
 import { windowStates } from "./window-states";
 import { JsonFileStore } from "./json-file-store";
 import { PageDescriptor, WindowPages } from "../shared/types";
@@ -38,6 +38,11 @@ class OpenWindows {
     windows: OpenWindowData[] = [];
     doQuit = false;
     private lastFocusedNormalWindow: number | undefined;
+    private boardHostRootLookup?: BoardHostRootLookup;
+
+    setBoardOriginLookup(lookup: BoardHostRootLookup): void {
+        this.boardHostRootLookup = lookup;
+    }
 
     private trackRendererAvailability = (window: OpenWindow): void => {
         window.onRendererUnavailable = () => {
@@ -84,7 +89,7 @@ class OpenWindows {
 
     createWindow = (index?: number, dropPosition?: { x: number; y: number }): OpenWindowData => {
         const wIndex = index ?? this.nextWindowIndex();
-        const newWindow = new OpenWindow(dropPosition);
+        const newWindow = new OpenWindow(dropPosition, undefined, { boardHostRootLookup: this.boardHostRootLookup });
         newWindow.index = wIndex;
         newWindow.onClose = this.windowOnClose;
         this.trackRendererAvailability(newWindow);
@@ -120,7 +125,7 @@ class OpenWindows {
         const existing = this.windows.find((record) => record.boardRoot && identity.equals(record.boardRoot));
         if (existing?.window) { existing.window.focus(); return existing.window; }
         const data: OpenWindowData = { index: this.nextWindowIndex(), boardRoot: root };
-        const win = new OpenWindow(undefined, root);
+        const win = new OpenWindow(undefined, root, { boardHostRootLookup: this.boardHostRootLookup });
         win.index = data.index;
         win.onClose = this.windowOnClose;
         this.trackRendererAvailability(win);
@@ -174,6 +179,16 @@ class OpenWindows {
         const openWindow = window && this.findByWindow(window);
         if (!openWindow) throw new Error("permission-denied");
         openWindow.setVoiceTypingState(request.state);
+    };
+
+    insertVoiceTypingText = (
+        webContents: WebContents,
+        request: { sessionId: string; text: string; deferClipboard?: boolean },
+    ): Promise<{ copied: boolean }> => {
+        const window = BrowserWindow.fromWebContents(webContents);
+        const openWindow = window && this.findByWindow(window);
+        if (!openWindow) throw new Error("permission-denied");
+        return openWindow.insertVoiceTypingText(request.sessionId, request.text, request.deferClipboard);
     };
     windowOnClose = (window: OpenWindow) => {
         const record = this.findWindowDataByOpenWindow(window);

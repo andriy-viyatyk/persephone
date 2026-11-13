@@ -1,8 +1,8 @@
-import { settings } from "../../api/settings";
+import { settings } from "../settings";
 import type { MicrophoneCleaningOptions } from "../../../shared/microphone-cleaning-types";
 import { AUDIO_RETRY, AUDIO_STATUS } from "../../../ipc/audio-channels";
-import type { PcmAudioCapture } from "./PcmAudioCapture";
-import { microphoneDeviceId } from "./microphone-device";
+import type { PcmAudioCapture } from "../../audio/dsp/PcmAudioCapture";
+import { microphoneDeviceId } from "../../audio/dsp/microphone-device";
 
 export function microphoneOptions(stream: MediaStream): MicrophoneCleaningOptions {
     const id = microphoneDeviceId(stream);

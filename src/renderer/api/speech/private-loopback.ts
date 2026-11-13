@@ -1,6 +1,6 @@
 import { api } from "../../../ipc/renderer/api";
-import { PcmAudioCapture } from "./PcmAudioCapture";
-import type { LoopbackLease } from "./LoopbackReference";
+import { PcmAudioCapture } from "../../audio/dsp/PcmAudioCapture";
+import type { LoopbackLease } from "../../audio/dsp/LoopbackReference";
 import { SerialQueue } from "../../../shared/serial-queue";
 
 const loopbackQueue = new SerialQueue();
@@ -21,7 +21,7 @@ export function openPrivateLoopback(context: AudioContext, borrowed?: MediaStrea
             } finally { await api.clearTranscriptLoopback().catch(() => {}); }
         }
         const capture = new PcmAudioCapture();
-        try { await capture.start(stream, () => {}, () => {}, context, undefined, undefined, undefined, !borrowed); }
+        try { await capture.start({ stream, onChunk: () => {}, onLevel: () => {}, sharedContext: context, ownsStream: !borrowed }); }
         catch (error) { if (!borrowed) stream.getTracks().forEach((track) => track.stop()); throw error; }
         const track = stream.getAudioTracks()[0];
         return {

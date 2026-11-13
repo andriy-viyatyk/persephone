@@ -1,3 +1,28 @@
+## EPIC-162 — Refactoring Phase 6.3: voice and speech — speech home, `SpeechSessionClient`, `MicrophoneCapture`, `VoiceTypingService`, audio window split, main `VoiceTypingController` and one-shot media grants
+
+Completed 2026-11-13. Roadmap Phase 6.3 (SHL-2, CORE-12, MAIN-8, MAIN-9), plus the speech/DSP slice of item 2.2:
+speech services live in `src/renderer/api/speech/` and the DSP classes in `src/renderer/audio/dsp/` (the audio window no
+longer imports `ui/`); `SpeechSessionClient` owns the `speech.transcribe` session and typed decoding, and
+`MicrophoneCapture` the grant/constraints/device/PCM/cleaning/loopback setup, both shared by voice typing and
+transcripts; the 586-line renderer `VoiceTypingController` is replaced by `VoiceTypingService` (started from the
+renderer startup table, overlay bound to its `TOneState`), `VoiceTypingSession`, `LiveTextInserter` and
+`SpeechAutoStop`; the audio window is a 106-line host over `CaptureSourcePool` and `PlaybackChannel`; main's
+`VoiceTypingController` is composed by `OpenWindow`, which gets the board-origin lookup injected instead of importing
+`board-protocol-service`; five copied media grants are `OneShotFrameGrant` instances in `media-grants.ts` and site
+decisions live in `SitePermissionStore`. D8 resolved: voice typing and transcripts keep their in-window capture stack.
+`permission-policy-service.ts` 650 → 306, `open-window.ts` 637 → 485, `audio-window.ts` 492 → 106. Settings keys,
+IPC contracts, i18n messages, the script API, MCP `call` and `window.persephone` are unchanged. Plans by Codex,
+reviewed against the roadmap guardrails; Codex Luna implemented, with plan corrections recorded in the epic notes.
+Roadmap item 6.3 is complete. Epic document: [EPIC-162](EPIC-162.md).
+
+- [x] **Speech home (US-1922).** Pure move of `ui/speech/` to `api/speech/` and `audio/dsp/`; `ECHO_TUNING` in `audio/dsp/echo-tuning.ts`.
+- [x] **Session client and capture (US-1923).** `SpeechSessionClient`, `MicrophoneCapture` + `TranscriptDisplayCapture`, `PcmAudioCapture.start` options object, slimmer `TranscriptController`.
+- [x] **Voice typing service (US-1924).** `VoiceTypingService`, `VoiceTypingSession`, `LiveTextInserter`, `SpeechAutoStop` under `api/speech/voice-typing/`; `VoiceTypingController.ts` deleted.
+- [x] **Audio window (US-1925).** `CaptureSourcePool`, `PlaybackChannel`, thin `audio-window.ts` host; channel-ready order unchanged.
+- [x] **Main voice typing (US-1926).** `src/main/voice-typing-controller.ts`; shared shortcut defaults; injected `BoardHostRootLookup`.
+- [x] **Media grants (US-1927).** `OneShotFrameGrant`, `media-grants.ts`, `SitePermissionStore` on the existing `JsonFileStore`.
+- [x] **Epic review.** `/review` removed three non-null assertions; `/document` updated five architecture docs and the folder summary in `doc/agents-common.md`; `/userdoc` needed no changes. No English catalog messages changed.
+
 ## EPIC-161 — Refactoring Phase 6.2: automation and facades — `operations.ts` split, narrow targets, `AutomationSurface`, `EditorFacadeBase`, model-owned rules and one log-entry normalizer
 
 Completed 2026-11-13. Roadmap Phase 6.2 (BRW-3, BRW-8, SHL-9, SHL-10, SHL-12): `automation/operations.ts` is split into

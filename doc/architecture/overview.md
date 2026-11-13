@@ -522,14 +522,17 @@ does not require a board `uses` grant; it sends caller `{ id: "persephone", name
 and the exact interface metadata. The channel is owned and closed by the module-service supervisor
 with the provider's normal lifecycle.
 
-Voice Typing is a private app-shell controller, not a renderer service-registry entry or board API.
-It claims renderer-targeted service ports by their main-issued `channelId` through
-`serviceChannelPorts`; board-frame ports remain with their owning board views. The wire target is
-`ServiceChannelTarget { kind: "renderer" }`, while host-service `info.page.boardId` labels remain
-unchanged for providers.
-Main keeps each window's transcription and translation shortcuts and activity state so it can
-consume matching keydowns before the focused editor or embedded browser handles them. The default
-shortcuts are `Alt+V` and `Alt+Shift+V`; a configured right Ctrl tap or Shift+right Ctrl tap is
+The renderer's app-level `VoiceTypingService` owns shortcut/settings synchronization and creates a
+`VoiceTypingSession` for each dictation; the overlay binds to its state. `SpeechSessionClient`
+decodes the existing provider channel, and `MicrophoneCapture` owns arm/clear IPC, microphone setup,
+PCM capture and microphone-setting updates. The service claims renderer-targeted ports by their
+main-issued `channelId` through `serviceChannelPorts`; board-frame ports remain with their owning
+board views. The wire target is `ServiceChannelTarget { kind: "renderer" }`, while host-service
+`info.page.boardId` labels remain unchanged for providers.
+Main's per-window `VoiceTypingController` keeps transcription and translation shortcuts and activity
+state so it can consume matching keydowns before the focused editor or embedded browser handles
+them. The default shortcuts are `Alt+V` and `Alt+Shift+V`; a configured right Ctrl tap or
+Shift+right Ctrl tap is
 recognized on key release only when no other key was pressed during the tap. The selected shortcut
 sets the speech mode for that session. Translation is requested through the optional
 `speech.transcribe@1` opening field, and the overlay identifies translation when the provider

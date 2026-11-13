@@ -237,6 +237,14 @@ export const appStartupEntries: readonly AppStartupEntry[] = [
         },
     },
     {
+        name: "voice-typing",
+        phase: "events",
+        start: async () => {
+            const { voiceTypingService } = await import("./speech/voice-typing/VoiceTypingService");
+            voiceTypingService.start();
+        },
+    },
+    {
         name: "mneme-exit-notification",
         phase: "events",
         start: async (context) => {

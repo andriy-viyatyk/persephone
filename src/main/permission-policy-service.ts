@@ -1,20 +1,25 @@
-import { app, session, webContents, type Session, type WebContents } from "electron";
+import { app, session, type Session, type WebContents } from "electron";
 import { appPartition, fileAccessPersistPartition } from "./constants";
 import { errMessage } from "../shared/utils";
-import { JsonFileStore } from "./json-file-store";
-import type { BrowserSitePermissionKey } from "../ipc/browser-ipc";
 import { boardTrustService } from "./board-trust-service";
 import { getBoardRootForHost } from "./board-protocol-service";
+import {
+    audioWindowLoopbackGrant,
+    audioWindowMicrophoneGrant,
+    configureAudioWindowTargetResolver,
+    recordingGrant,
+    transcriptLoopbackGrant,
+    voiceTypingGrant,
+} from "./media-grants";
+import {
+    EXTERNAL_SCHEMES,
+    PROMPTABLE,
+    normalizeOrigin,
+    sitePermissionStore,
+    type BrowserPermissionKey,
+    type PermissionDecision,
+} from "./site-permission-store";
 
-export type BrowserPermissionKey =
-    | "camera" | "microphone" | "geolocation" | "notifications" | "midi" | "midiSysex"
-    | "clipboard-read" | "idle-detection" | "window-management" | "speaker-selection"
-    | `openExternal:${string}`;
-export type PermissionDecision = "allow" | "block";
-export interface SitePermissionEntry {
-    key: BrowserSitePermissionKey;
-    decision: PermissionDecision | undefined;
-}
 export interface PermissionPromptData {
     requestId: string;
     topLevelOrigin: string;
@@ -22,283 +27,20 @@ export interface PermissionPromptData {
     externalScheme?: string;
 }
 export type PermissionPromptHandler = (webContents: WebContents, data: PermissionPromptData) => boolean;
-type PermissionStore = { version: 1; profiles: Record<string, Record<string, Record<string, PermissionDecision>>> };
 type PermissionRequest = Parameters<Session["setPermissionRequestHandler"]>[0] extends (wc: WebContents, permission: infer P, cb: (allowed: boolean) => void, details: infer D) => void ? { webContents: WebContents; permission: P; details: D; callback: (allowed: boolean) => void } : never;
 type PermissionCheck = Parameters<Session["setPermissionCheckHandler"]>[0] extends (wc: WebContents | null, permission: infer P, origin: string, details: infer D) => boolean ? { webContents: WebContents | null; permission: P; details: D; origin: string } : never;
 
 const APP_ALLOW = new Set(["clipboard-read", "clipboard-sanitized-write", "fullscreen", "pointerLock"]);
-const PROMPTABLE = new Set<BrowserPermissionKey>([
-    "camera", "microphone", "geolocation", "notifications", "midi", "midiSysex",
-    "clipboard-read", "idle-detection", "window-management", "speaker-selection",
-]);
-const EXTERNAL_SCHEMES = new Set(["http", "https", "mailto", "tel"]);
-const SESSION_PROFILE_PATH = /[\\/]Partitions[\\/]browser-([^\\/]+)[\\/]?$/i;
-const privateDecisions = new WeakMap<Session, Map<string, PermissionDecision>>();
-const sessionProfiles = new WeakMap<Session, string | null>();
 const installedSessions = new WeakSet<Session>();
 const pending = new Map<string, { callback: (allowed: boolean) => void; session: Session; webContents: WebContents; profileName: string | null; origin: string; keys: BrowserPermissionKey[] }>();
-const store: PermissionStore = { version: 1, profiles: Object.create(null) as PermissionStore["profiles"] };
-function sanitizePermissionStore(raw: unknown): PermissionStore | null {
-    if (!raw || typeof raw !== "object" || (raw as PermissionStore).version !== 1
-        || !(raw as PermissionStore).profiles || typeof (raw as PermissionStore).profiles !== "object") return null;
-    const profiles = Object.create(null) as PermissionStore["profiles"];
-    for (const [profile, origins] of Object.entries((raw as PermissionStore).profiles)) {
-        if (!profile || !isSafeProfileName(profile) || !origins || typeof origins !== "object") continue;
-        const validOrigins = Object.create(null) as PermissionStore["profiles"][string];
-        for (const [origin, permissions] of Object.entries(origins)) {
-            if (normalizeOrigin(origin) !== origin || !permissions || typeof permissions !== "object") continue;
-            const validPermissions = Object.create(null) as Record<string, PermissionDecision>;
-            for (const [key, decision] of Object.entries(permissions)) {
-                const supportedKey = PROMPTABLE.has(key as BrowserPermissionKey)
-                    || Array.from(EXTERNAL_SCHEMES).some((scheme) => key === `openExternal:${scheme}`);
-                if (supportedKey && (decision === "allow" || decision === "block")) validPermissions[key] = decision;
-            }
-            if (Object.keys(validPermissions).length) validOrigins[origin] = validPermissions;
-        }
-        if (Object.keys(validOrigins).length) profiles[profile] = validOrigins;
-    }
-    return { version: 1, profiles };
-}
-const permissionStore = new JsonFileStore<PermissionStore>("browser-permissions.json", {
-    validate: sanitizePermissionStore,
-    defaultValue: () => ({ version: 1, profiles: Object.create(null) as PermissionStore["profiles"] }),
-    onSaveError: "warn",
-});
 let appSession: Session;
 let fileAccessSession: Session;
 let promptHandler: PermissionPromptHandler | undefined;
 let initialized = false;
-const recordingMediaGrants = new Map<number, number>();
-const voiceTypingMediaGrants = new Map<number, number>();
-const voiceTypingGrantTargets = new Map<number, { target: WebContents; onDestroyed: () => void }>();
-const transcriptLoopbackGrants = new Map<number, { expiresAt: number; frame: Electron.WebFrameMain; target: WebContents; onDestroyed: () => void }>();
-const audioWindowMicrophoneGrants = new Map<number, { expiresAt: number; frame: Electron.WebFrameMain; target: WebContents; onDestroyed: () => void }>();
-const audioWindowLoopbackGrants = new Map<number, { expiresAt: number; frame: Electron.WebFrameMain; target: WebContents; onDestroyed: () => void }>();
-let audioWindowTargetResolver: () => WebContents | undefined = () => undefined;
 
 export interface PermissionPolicyStartDependencies {
     promptHandler: PermissionPromptHandler;
     audioWindowTargetResolver: () => WebContents | undefined;
-}
-
-function armAudioWindowGrant(target: WebContents, grants: Map<number, { expiresAt: number; frame: Electron.WebFrameMain; target: WebContents; onDestroyed: () => void }>): void {
-    const current = audioWindowTargetResolver();
-    if (!current || current !== target || target.isDestroyed()) return;
-    clearAudioWindowGrant(target.id, grants);
-    const frame = target.mainFrame;
-    const expiresAt = Date.now() + 5000;
-    const onDestroyed = (): void => clearAudioWindowGrant(target.id, grants);
-    grants.set(target.id, { expiresAt, frame, target, onDestroyed });
-    target.once("destroyed", onDestroyed);
-    setTimeout(() => {
-        if ((grants.get(target.id)?.expiresAt ?? 0) <= Date.now()) clearAudioWindowGrant(target.id, grants);
-    }, 5100);
-}
-
-function clearAudioWindowGrant(webContentsId: number, grants: Map<number, { expiresAt: number; frame: Electron.WebFrameMain; target: WebContents; onDestroyed: () => void }>): void {
-    const grant = grants.get(webContentsId);
-    if (!grant) return;
-    grants.delete(webContentsId);
-    grant.target.removeListener("destroyed", grant.onDestroyed);
-}
-
-export function armAudioMicrophoneGrant(target: WebContents): void {
-    armAudioWindowGrant(target, audioWindowMicrophoneGrants);
-}
-
-/** Arm a separate, one-use Windows loopback grant for the hidden audio window. */
-export function armAudioLoopbackGrant(target: WebContents): void {
-    if (process.platform !== "win32") return;
-    armAudioWindowGrant(target, audioWindowLoopbackGrants);
-}
-
-export function clearAudioCaptureGrants(target?: WebContents): void {
-    const targets = target ? [target.id] : [...new Set([...audioWindowMicrophoneGrants.keys(), ...audioWindowLoopbackGrants.keys()])];
-    for (const id of targets) {
-        clearAudioWindowGrant(id, audioWindowMicrophoneGrants);
-        clearAudioWindowGrant(id, audioWindowLoopbackGrants);
-    }
-}
-
-function hasAudioWindowGrant(webContentsId: number, frame: Electron.WebFrameMain | undefined,
-    grants: Map<number, { expiresAt: number; frame: Electron.WebFrameMain; target: WebContents; onDestroyed: () => void }>): boolean {
-    const grant = grants.get(webContentsId);
-    if (!grant || grant.expiresAt <= Date.now() || grant.target.isDestroyed() || grant.target !== audioWindowTargetResolver()
-        || (frame && grant.frame !== frame) || grant.target.mainFrame !== grant.frame) {
-        clearAudioWindowGrant(webContentsId, grants);
-        return false;
-    }
-    return true;
-}
-
-function consumeAudioWindowGrant(frame: Electron.WebFrameMain | null,
-    grants: Map<number, { expiresAt: number; frame: Electron.WebFrameMain; target: WebContents; onDestroyed: () => void }>): boolean {
-    if (!frame) return false;
-    for (const [id, grant] of grants) {
-        if (grant.frame === frame && hasAudioWindowGrant(id, frame, grants)) {
-            clearAudioWindowGrant(id, grants);
-            return true;
-        }
-    }
-    return false;
-}
-
-/** Arm one short-lived app-main-frame display request for Windows loopback audio. */
-export function armTranscriptLoopbackGrant(webContentsId: number): void {
-    clearTranscriptLoopbackGrant(webContentsId);
-    if (process.platform !== "win32") return;
-    const target = webContents.fromId(webContentsId);
-    if (!target || target.isDestroyed()) return;
-    const frame = target.mainFrame;
-    const expiresAt = Date.now() + 5000;
-    const onDestroyed = (): void => clearTranscriptLoopbackGrant(webContentsId);
-    transcriptLoopbackGrants.set(webContentsId, { expiresAt, frame, target, onDestroyed });
-    target.once("destroyed", onDestroyed);
-    setTimeout(() => {
-        if ((transcriptLoopbackGrants.get(webContentsId)?.expiresAt ?? 0) <= Date.now()) clearTranscriptLoopbackGrant(webContentsId);
-    }, 5100);
-}
-
-export function clearTranscriptLoopbackGrant(webContentsId: number): void {
-    const grant = transcriptLoopbackGrants.get(webContentsId);
-    if (!grant) return;
-    transcriptLoopbackGrants.delete(webContentsId);
-    grant.target.removeListener("destroyed", grant.onDestroyed);
-}
-
-function hasTranscriptLoopbackGrant(webContentsId: number, frame?: Electron.WebFrameMain): boolean {
-    const grant = transcriptLoopbackGrants.get(webContentsId);
-    if (!grant || grant.expiresAt <= Date.now() || grant.target.isDestroyed()
-        || (frame && frame !== grant.frame) || grant.target.mainFrame !== grant.frame) {
-        clearTranscriptLoopbackGrant(webContentsId);
-        return false;
-    }
-    return true;
-}
-
-function consumeTranscriptLoopbackGrant(frame: Electron.WebFrameMain | null): boolean {
-    if (!frame) return false;
-    for (const [webContentsId, grant] of transcriptLoopbackGrants) {
-        if (grant.frame === frame && hasTranscriptLoopbackGrant(webContentsId, frame)) {
-            clearTranscriptLoopbackGrant(webContentsId);
-            return true;
-        }
-    }
-    return false;
-}
-
-/** Arm one app-main-frame, video-only permission request for a window source capture. */
-export function armRecordingMediaGrant(webContentsId: number): void {
-    recordingMediaGrants.set(webContentsId, Date.now() + 5000);
-    setTimeout(() => {
-        if ((recordingMediaGrants.get(webContentsId) ?? 0) <= Date.now()) recordingMediaGrants.delete(webContentsId);
-    }, 5100);
-}
-
-export function clearRecordingMediaGrant(webContentsId: number): void {
-    recordingMediaGrants.delete(webContentsId);
-}
-
-/** Arm one short-lived app-main-frame, audio-only permission request for voice typing. */
-export function armVoiceTypingMediaGrant(webContentsId: number): void {
-    clearVoiceTypingMediaGrant(webContentsId);
-    voiceTypingMediaGrants.set(webContentsId, Date.now() + 5000);
-    const target = webContents.fromId(webContentsId);
-    if (target) {
-        const onDestroyed = (): void => clearVoiceTypingMediaGrant(webContentsId);
-        voiceTypingGrantTargets.set(webContentsId, { target, onDestroyed });
-        target.once("destroyed", onDestroyed);
-    }
-    setTimeout(() => {
-        if ((voiceTypingMediaGrants.get(webContentsId) ?? 0) <= Date.now()) clearVoiceTypingMediaGrant(webContentsId);
-    }, 5100);
-}
-
-export function clearVoiceTypingMediaGrant(webContentsId: number): void {
-    voiceTypingMediaGrants.delete(webContentsId);
-    const target = voiceTypingGrantTargets.get(webContentsId);
-    if (target) {
-        target.target.removeListener("destroyed", target.onDestroyed);
-        voiceTypingGrantTargets.delete(webContentsId);
-    }
-}
-
-function hasRecordingMediaGrant(webContentsId: number): boolean {
-    const expiresAt = recordingMediaGrants.get(webContentsId);
-    if (!expiresAt || expiresAt <= Date.now()) {
-        recordingMediaGrants.delete(webContentsId);
-        return false;
-    }
-    return true;
-}
-
-function hasVoiceTypingMediaGrant(webContentsId: number): boolean {
-    const expiresAt = voiceTypingMediaGrants.get(webContentsId);
-    if (!expiresAt || expiresAt <= Date.now()) {
-        voiceTypingMediaGrants.delete(webContentsId);
-        return false;
-    }
-    return true;
-}
-
-function normalizeOrigin(value: string | undefined): string | undefined {
-    if (!value) return undefined;
-    try {
-        const url = new URL(value);
-        return (url.protocol === "http:" || url.protocol === "https:") && url.origin !== "null" ? url.origin : undefined;
-    } catch { return undefined; }
-}
-
-function isSafeProfileName(profile: string): boolean {
-    return profile.length <= 80
-        && !/[\\/]/.test(profile)
-        && !Array.from(profile).some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127);
-}
-
-function profileNameFor(ses: Session): string | null {
-    let profile = sessionProfiles.get(ses);
-    if (profile !== undefined) return profile;
-    profile = null;
-    if (ses.isPersistent()) {
-        const storage = ses.getStoragePath();
-        const match = storage?.match(SESSION_PROFILE_PATH);
-        if (match) profile = match[1];
-    }
-    sessionProfiles.set(ses, profile);
-    return profile;
-}
-
-function decisionMap(ses: Session, profileName: string | null): Map<string, PermissionDecision> | undefined {
-    if (profileName !== null) return undefined;
-    let decisions = privateDecisions.get(ses);
-    if (!decisions) { decisions = new Map(); privateDecisions.set(ses, decisions); }
-    return decisions;
-}
-
-function storageKey(origin: string, key: BrowserPermissionKey): string { return `${origin}\u0000${key}`; }
-
-function getDecision(ses: Session, profileName: string | null, origin: string, key: BrowserPermissionKey): PermissionDecision | undefined {
-    if (profileName !== null) return store.profiles[profileName]?.[origin]?.[key];
-    return decisionMap(ses, profileName)?.get(storageKey(origin, key));
-}
-
-function writeStore(): void {
-    permissionStore.saveSync(store);
-}
-
-function hydrateStore(): void {
-    store.profiles = permissionStore.loadSync().value.profiles;
-}
-
-function saveDecision(ses: Session, profileName: string | null, origin: string, key: BrowserPermissionKey, decision: PermissionDecision): void {
-    if (profileName === null) {
-        decisionMap(ses, profileName)?.set(storageKey(origin, key), decision);
-        return;
-    }
-    store.profiles[profileName] ??= Object.create(null) as PermissionStore["profiles"][string];
-    store.profiles[profileName][origin] ??= Object.create(null) as Record<string, PermissionDecision>;
-    store.profiles[profileName][origin][key] = decision;
-    writeStore();
 }
 
 function topOriginFromRequest(wc: WebContents): string | undefined {
@@ -385,8 +127,8 @@ function handleCheck(ses: Session, request: PermissionCheck): boolean {
             if (APP_ALLOW.has(permission as string)) return true;
             if (permission !== "media" || request.webContents === null) return false;
             return details.mediaType === "audio"
-                ? hasVoiceTypingMediaGrant(request.webContents.id) || hasAudioWindowGrant(request.webContents.id, request.webContents.mainFrame, audioWindowMicrophoneGrants)
-                : details.mediaType === "video" && hasRecordingMediaGrant(request.webContents.id);
+                ? voiceTypingGrant.has(request.webContents.id) || audioWindowMicrophoneGrant.has(request.webContents.id, request.webContents.mainFrame)
+                : details.mediaType === "video" && recordingGrant.has(request.webContents.id);
         }
         const requestingOrigin = requesterOrigin(origin);
         if (permission === "media" && details.securityOrigin) {
@@ -396,7 +138,6 @@ function handleCheck(ses: Session, request: PermissionCheck): boolean {
         return appSubframeAllowed(permission as string, requestingOrigin, details, false);
     }
     if (ses === fileAccessSession) return false;
-    const name = profileNameFor(ses);
     let top: string | undefined;
     if (request.webContents && !request.webContents.isDestroyed()) {
         try { top = normalizeOrigin(request.webContents.getURL()); } catch { top = undefined; }
@@ -409,12 +150,12 @@ function handleCheck(ses: Session, request: PermissionCheck): boolean {
     if (permission === "media") {
         const key = details.mediaType === "video" ? "camera" : details.mediaType === "audio" ? "microphone" : undefined;
         if (!key) return false;
-        return getDecision(ses, name, top, key) === "allow";
+        return sitePermissionStore.get(ses, top, key) === "allow";
     }
     if (permission === "openExternal") return false;
     const key = permission as BrowserPermissionKey;
     if (!PROMPTABLE.has(key)) return false;
-    return getDecision(ses, name, top, key) === "allow";
+    return sitePermissionStore.get(ses, top, key) === "allow";
 }
 
 function handleRequest(ses: Session, request: PermissionRequest): void {
@@ -429,21 +170,21 @@ function handleRequest(ses: Session, request: PermissionRequest): void {
             // Electron 43), so accept empty or video-only — never audio — while the one-shot grant is armed.
             const types = media.mediaTypes ?? [];
             const isVoiceTypingAudio = permission === "media" && details.isMainFrame === true
-                && types.length === 1 && types[0] === "audio" && hasVoiceTypingMediaGrant(webContents.id);
+                && types.length === 1 && types[0] === "audio" && voiceTypingGrant.has(webContents.id);
             const isAudioWindowMicrophone = permission === "media" && details.isMainFrame === true
-                && types.length === 1 && types[0] === "audio" && hasAudioWindowGrant(webContents.id, webContents.mainFrame, audioWindowMicrophoneGrants);
+                && types.length === 1 && types[0] === "audio" && audioWindowMicrophoneGrant.has(webContents.id, webContents.mainFrame);
             const isScreenRecordingVideo = permission === "media" && types.every((type) => type === "video")
-                && hasRecordingMediaGrant(webContents.id);
+                && recordingGrant.has(webContents.id);
             // getDisplayMedia arrives as "media" with empty mediaTypes, not "display-capture" (verified on
             // Electron 43). The display-media handler consumes the Transcript grant, so it is only checked here.
             const isTranscriptDisplay = permission === "media" && types.length === 0 && process.platform === "win32"
-                && hasTranscriptLoopbackGrant(webContents.id, webContents.mainFrame);
+                && transcriptLoopbackGrant.has(webContents.id, webContents.mainFrame);
             const isAudioWindowDisplay = permission === "media" && types.length === 0 && process.platform === "win32"
-                && hasAudioWindowGrant(webContents.id, webContents.mainFrame, audioWindowLoopbackGrants);
+                && audioWindowLoopbackGrant.has(webContents.id, webContents.mainFrame);
             const allowed = isVoiceTypingAudio || isAudioWindowMicrophone || isScreenRecordingVideo || isTranscriptDisplay || isAudioWindowDisplay;
-            if (isVoiceTypingAudio) clearVoiceTypingMediaGrant(webContents.id);
-            if (isAudioWindowMicrophone) clearAudioWindowGrant(webContents.id, audioWindowMicrophoneGrants);
-            if (isScreenRecordingVideo && allowed) clearRecordingMediaGrant(webContents.id);
+            if (isVoiceTypingAudio) voiceTypingGrant.clear(webContents.id);
+            if (isAudioWindowMicrophone) audioWindowMicrophoneGrant.clear(webContents.id);
+            if (isScreenRecordingVideo && allowed) recordingGrant.clear(webContents.id);
             callback(allowed);
             return;
         }
@@ -463,8 +204,8 @@ function handleRequest(ses: Session, request: PermissionRequest): void {
     const keys = requestKeys(permission as string, details as Electron.PermissionRequest);
     const origin = topOriginFromRequest(webContents);
     if (!keys || !origin) { callback(false); return; }
-    const profileName = profileNameFor(ses);
-    const values = keys.map((key) => getDecision(ses, profileName, origin, key));
+    const profileName = sitePermissionStore.profileNameFor(ses);
+    const values = keys.map((key) => sitePermissionStore.get(ses, origin, key));
     if (values.every((value) => value === "allow")) { callback(true); return; }
     if (values.some((value) => value === "block")) { callback(false); return; }
     if (permission === "openExternal" && !details.isMainFrame) { callback(false); return; }
@@ -483,8 +224,8 @@ function handleRequest(ses: Session, request: PermissionRequest): void {
  *  handler is registered here, once the app session is known, rather than in installSession(). */
 function installAppDisplayMedia(ses: Session): void {
     ses.setDisplayMediaRequestHandler((request, callback) => {
-        const transcriptGrant = request.videoRequested && request.audioRequested && consumeTranscriptLoopbackGrant(request.frame);
-        const audioGrant = request.videoRequested && request.audioRequested && consumeAudioWindowGrant(request.frame, audioWindowLoopbackGrants);
+        const transcriptGrant = request.videoRequested && request.audioRequested && transcriptLoopbackGrant.consume(request.frame);
+        const audioGrant = request.videoRequested && request.audioRequested && audioWindowLoopbackGrant.consume(request.frame);
         if (process.platform !== "win32" || !request.videoRequested || !request.audioRequested || (!transcriptGrant && !audioGrant)) {
             callback({});
             return;
@@ -526,7 +267,7 @@ export function resolvePermissionRequest(requestId: string, decision: Permission
     const request = pending.get(requestId);
     if (!request) return false;
     pending.delete(requestId);
-    for (const key of request.keys) saveDecision(request.session, request.profileName, request.origin, key, decision);
+    for (const key of request.keys) sitePermissionStore.set(request.session, request.profileName, request.origin, key, decision);
     request.callback(decision === "allow");
     return true;
 }
@@ -540,98 +281,12 @@ export function settlePermissionRequestsForWebContents(contents: WebContents): v
     }
 }
 
-function isSitePermissionKey(key: string): key is BrowserPermissionKey {
-    if (PROMPTABLE.has(key as BrowserPermissionKey)) return true;
-    const match = /^openExternal:([a-z][a-z0-9+.-]*)$/.exec(key);
-    return Boolean(match && EXTERNAL_SCHEMES.has(match[1]));
-}
-
-export function getSitePermissionEntries(ses: Session, originValue: string): SitePermissionEntry[] {
-    const origin = normalizeOrigin(originValue);
-    if (!origin || ses === appSession || ses === fileAccessSession) return [];
-    const profileName = profileNameFor(ses);
-    const decisions = profileName === null
-        ? Array.from(decisionMap(ses, profileName)?.entries() ?? [])
-        : Object.entries(store.profiles[profileName]?.[origin] ?? {});
-    const remembered: SitePermissionEntry[] = decisions.flatMap(([storedKey, decision]) => {
-        const key = profileName === null
-            ? storedKey.startsWith(`${origin}\u0000`) ? storedKey.slice(origin.length + 1) : ""
-            : storedKey;
-        return key && isSitePermissionKey(key) && (PROMPTABLE.has(key) || EXTERNAL_SCHEMES.has(key.slice("openExternal:".length)))
-            ? [{ key: key as BrowserPermissionKey, decision }]
-            : [];
-    });
-    const byKey = new Map(remembered.map(({ key, decision }) => [key, decision]));
-    return [
-        ...Array.from(PROMPTABLE).map((key) => ({ key, decision: byKey.get(key) })),
-        ...remembered.filter(({ key }) => key.startsWith("openExternal:")) as SitePermissionEntry[],
-    ];
-}
-
-export function setSitePermissionDecision(
-    ses: Session,
-    originValue: string,
-    key: string,
-    decision: PermissionDecision,
-): boolean {
-    const origin = normalizeOrigin(originValue);
-    if (!origin || ses === appSession || ses === fileAccessSession
-        || (decision !== "allow" && decision !== "block") || !isSitePermissionKey(key)) return false;
-    const profileName = profileNameFor(ses);
-    if (key.startsWith("openExternal:")
-        && !getDecision(ses, profileName, origin, key)) return false;
-    saveDecision(ses, profileName, origin, key, decision);
-    return true;
-}
-
-export function resetSitePermissionDecisions(ses: Session, originValue: string): boolean {
-    const origin = normalizeOrigin(originValue);
-    if (!origin || ses === appSession || ses === fileAccessSession) return false;
-    const profileName = profileNameFor(ses);
-    if (profileName === null) {
-        const decisions = decisionMap(ses, profileName);
-        for (const key of decisions?.keys() ?? []) {
-            if (key.startsWith(`${origin}\u0000`)) decisions?.delete(key);
-        }
-        return true;
-    }
-    if (!store.profiles[profileName]?.[origin]) return true;
-    delete store.profiles[profileName][origin];
-    if (!Object.keys(store.profiles[profileName]).length) delete store.profiles[profileName];
-    writeStore();
-    return true;
-}
-
-export function listProfilePermissionDecisions(profileName: string): Array<{ origin: string; permission: string; decision: PermissionDecision }> {
-    const origins = store.profiles[profileName] ?? {};
-    return Object.entries(origins).flatMap(([origin, permissions]) => Object.entries(permissions).map(([permission, decision]) => ({ origin, permission, decision })));
-}
-
-export function hasSavedProfilePermissionDecisions(profileName: string): boolean {
-    return Object.hasOwn(store.profiles, profileName);
-}
-
-export function removeProfilePermissionDecision(profileName: string, origin: string, permission: string): void {
-    const permissions = store.profiles[profileName]?.[origin];
-    if (!permissions) return;
-    delete permissions[permission];
-    if (!Object.keys(permissions).length) delete store.profiles[profileName][origin];
-    if (!Object.keys(store.profiles[profileName]).length) delete store.profiles[profileName];
-    writeStore();
-}
-
-export function clearProfilePermissionDecisions(profileName: string): void {
-    if (!store.profiles[profileName]) return;
-    delete store.profiles[profileName];
-    writeStore();
-}
-
 export function initPermissionPolicy(dependencies: PermissionPolicyStartDependencies): void {
     if (initialized) return;
     initialized = true;
     promptHandler = dependencies.promptHandler;
-    audioWindowTargetResolver = dependencies.audioWindowTargetResolver;
-    hydrateStore();
+    configureAudioWindowTargetResolver(dependencies.audioWindowTargetResolver);
+    sitePermissionStore.load();
     app.on("session-created", installSession);
     app.on("web-contents-created", (_event, contents) => {
         contents.on("select-bluetooth-device", (event, _devices, callback) => {
@@ -643,6 +298,7 @@ export function initPermissionPolicy(dependencies: PermissionPolicyStartDependen
     app.on("ready", () => {
         appSession = session.fromPartition(appPartition);
         fileAccessSession = session.fromPartition(fileAccessPersistPartition);
+        sitePermissionStore.setProtectedSessions(appSession, fileAccessSession);
         installSession(appSession);
         installAppDisplayMedia(appSession);
         installSession(fileAccessSession);

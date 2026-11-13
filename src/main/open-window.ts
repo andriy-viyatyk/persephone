@@ -2,23 +2,22 @@ import { globalMuteService } from "./global-mute-service";
 import { applicationProfileName } from "./application-profile";
 import { browserGuests, reapplyBrowserGuestZoom } from "./browser/BrowserGuestRegistry";
 import { HostFullscreenController } from "./host-fullscreen-controller";
-import { app, BrowserWindow, clipboard, nativeImage, screen, type WebContents } from "electron";
+import { app, BrowserWindow, nativeImage, screen, type WebContents } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { EventApi } from "../ipc/api-types";
 import type { EventPayload } from "../ipc/event-types";
 import { sendRendererEvent } from "../ipc/main/renderer-event-sender";
-import { normalizeVoiceTypingShortcut, RIGHT_CTRL_SHORTCUT, SHIFT_RIGHT_CTRL_SHORTCUT, voiceTypingShortcutForInput } from "../shared/voice-typing-shortcut";
-import { debounce, errMessage } from "../shared/utils";
+import { debounce } from "../shared/utils";
 import { electronStore } from "./e-store";
 import { getAssetPath, getDataFolder } from "./utils";
 import { STARTUP_DATA_DIR_ARG } from "../shared/application-profile";
 import { appPartition } from "./constants";
-import { getBoardRootForHost } from "./board-protocol-service";
 import { boardAppId, boardProfileArgument, boardRootForLaunchArgs, boardWindowIconPath, getBoardLauncherPath, writeBoardWindowIcon } from "./board-window-identity";
 import { BoardRoot } from "../shared/board/board-root";
 import { boardWindowStateKey } from "./board-root-hashes";
+import { VoiceTypingController, type VoiceTypingState } from "./voice-typing-controller";
 
 interface WindowState {
     width: number;
@@ -27,34 +26,10 @@ interface WindowState {
     y?: number;
 }
 
-type VoiceTypingState = "idle" | "recording" | "transcribing";
-type VoiceTypingMode = "transcribe" | "translate";
-type VoiceTypingSource = "app" | { kind: "guest"; webContentsId: number };
+export type BoardHostRootLookup = (host: string) => string | undefined;
 
-function inputMatchesShortcut(input: Electron.Input, shortcut: string): boolean {
-    return voiceTypingShortcutForInput(input) === shortcut;
-}
-
-function withDeadline<T>(promise: Promise<T>, milliseconds: number, fallback: T): Promise<T> {
-    return new Promise<T>((resolve) => {
-        let settled = false;
-        const timer = setTimeout(() => {
-            if (settled) return;
-            settled = true;
-            resolve(fallback);
-        }, milliseconds);
-        promise.then((value) => {
-            if (settled) return;
-            settled = true;
-            clearTimeout(timer);
-            resolve(value);
-        }, () => {
-            if (settled) return;
-            settled = true;
-            clearTimeout(timer);
-            resolve(fallback);
-        });
-    });
+interface OpenWindowOptions {
+    boardHostRootLookup?: BoardHostRootLookup;
 }
 
 export class OpenWindow {
@@ -66,12 +41,8 @@ export class OpenWindow {
     quitTimeout: ReturnType<typeof setTimeout> | null = null;
     onClose?: (window: OpenWindow) => void;
     onRendererUnavailable?: (window: OpenWindow) => void;
-    private voiceTypingShortcut = "Alt+V";
-    private voiceTypingTranslateShortcut = "Alt+Shift+V";
-    private rightCtrlTap: { target: WebContents; shift: boolean } | undefined;
-    private voiceTypingState: VoiceTypingState = "idle";
-    private voiceTypingSession: { id: string; target: WebContents } | undefined;
-    private voiceTypingControlSession: { id: string; target: WebContents; mode: VoiceTypingMode } | undefined;
+    private readonly voiceTypingController = new VoiceTypingController((eventName, data) => this.send(eventName, data));
+    private readonly boardHostRootLookup?: BoardHostRootLookup;
 
     boardRoot?: string;
 
@@ -99,8 +70,9 @@ export class OpenWindow {
         });
     }
 
-    constructor(position?: { x: number; y: number }, boardRoot?: string) {
+    constructor(position?: { x: number; y: number }, boardRoot?: string, options: OpenWindowOptions = {}) {
         this.boardRoot = boardRoot;
+        this.boardHostRootLookup = options.boardHostRootLookup;
         const boardKey = boardRoot ? boardWindowStateKey(BoardRoot.from(boardRoot)) : "windowState";
         let windowState: WindowState = electronStore.get(boardKey, {
             width: 1024,
@@ -199,8 +171,7 @@ export class OpenWindow {
                 this.quitTimeout = null;
             }
             this.window = null;
-            this.clearVoiceTypingSession();
-            this.clearVoiceTypingControlSession();
+            this.voiceTypingController.clearSessions();
             this.onClose?.(this);
         });
 
@@ -223,7 +194,7 @@ export class OpenWindow {
         this.window.webContents.on("before-input-event", (event, input) => {
             if (!this.window) return;
 
-            this.handleVoiceTypingInput(event, input, this.window.webContents, "app");
+            this.voiceTypingController.handleInput(event, input, this.window.webContents, "app");
 
             if (input.control || input.meta) {
                 if (input.key === "+" || input.key === "=") {
@@ -251,7 +222,7 @@ export class OpenWindow {
             let boardRoot: string | undefined;
             try {
                 const referrer = new URL(details.referrer.url);
-                if (referrer.protocol === "board:") boardRoot = getBoardRootForHost(referrer.host) ?? undefined;
+                if (referrer.protocol === "board:") boardRoot = this.boardHostRootLookup?.(referrer.host);
             } catch { /* Empty or malformed referrer is deliberately unattributed. */ }
             this.send("eOpenUrl", {
                 url: details.url,
@@ -348,7 +319,7 @@ export class OpenWindow {
 
             details.preventDefault();
             let boardRoot: string | undefined;
-            try { boardRoot = getBoardRootForHost(new URL(currentUrl).host) ?? undefined; } catch { /* no board origin */ }
+            try { boardRoot = this.boardHostRootLookup?.(new URL(currentUrl).host); } catch { /* no board origin */ }
             this.send("eOpenUrl", { url: details.url, ...(boardRoot ? { boardRoot } : {}) });
         });
 
@@ -395,7 +366,7 @@ export class OpenWindow {
     close = () => {
         const win = this.window;
         this.window = null;
-        this.clearVoiceTypingSession();
+        this.voiceTypingController.clearSession();
         this.onClose?.(this);
         if (win) {
             win.destroy();
@@ -419,142 +390,19 @@ export class OpenWindow {
     }, 500);
 
     setVoiceTypingShortcuts(shortcut: string, translateShortcut: string): void {
-        this.voiceTypingShortcut = normalizeVoiceTypingShortcut(shortcut) ?? "Alt+V";
-        this.voiceTypingTranslateShortcut = normalizeVoiceTypingShortcut(translateShortcut) ?? "Alt+Shift+V";
+        this.voiceTypingController.setShortcuts(shortcut, translateShortcut);
     }
 
     setVoiceTypingState(state: VoiceTypingState): void {
-        this.voiceTypingState = state;
-        if (state === "idle") {
-            this.clearVoiceTypingSession();
-            this.clearVoiceTypingControlSession();
-        }
+        this.voiceTypingController.setState(state);
     }
 
     handleGuestVoiceTypingInput(event: Electron.Event, input: Electron.Input, target: WebContents): void {
-        this.handleVoiceTypingInput(event, input, target, { kind: "guest", webContentsId: target.id });
+        this.voiceTypingController.handleInput(event, input, target, { kind: "guest", webContentsId: target.id });
     }
 
     async insertVoiceTypingText(sessionId: string, text: string, deferClipboard = false): Promise<{ copied: boolean }> {
-        const session = this.voiceTypingSession;
-        if (!session || session.id !== sessionId || !["recording", "transcribing"].includes(this.voiceTypingState)) throw new Error("The voice typing session is no longer active.");
-        const target = session.target;
-        if (!target.isDestroyed()) {
-            const frame = target.focusedFrame;
-            if (frame) {
-                try {
-                    // Returns the character before the caret ("" at the start), or null when nothing editable has focus.
-                    const before = await withDeadline(frame.executeJavaScript(`(() => {
-                        const element = document.activeElement;
-                        const textInput = element instanceof HTMLTextAreaElement
-                            || element instanceof HTMLInputElement && ["text", "search", "url", "tel", "email", "password", "number"].includes(element.type);
-                        if (textInput) {
-                            try { return element.value.slice(0, element.selectionStart ?? element.value.length).slice(-1); } catch { return ""; }
-                        }
-                        if (!(element instanceof HTMLElement)) return null;
-                        // Monaco keeps focus on an EditContext element, which is neither an input nor contenteditable.
-                        if (element.editContext) return element.editContext.text.slice(0, element.editContext.selectionStart).slice(-1);
-                        if (!element.isContentEditable) return null;
-                        const selection = getSelection();
-                        if (!selection || !selection.rangeCount || !element.contains(selection.anchorNode)) return "";
-                        const range = document.createRange();
-                        range.selectNodeContents(element);
-                        range.setEnd(selection.anchorNode, selection.anchorOffset);
-                        return range.toString().slice(-1);
-                    })()`) as Promise<string | null>, 1200, null);
-                    const editable = typeof before === "string";
-                    // Dictation continues the text: separate it from a preceding word.
-                    if (before && !/\s/.test(before)) text = ` ${text}`;
-                    if (this.voiceTypingSession?.id !== sessionId || !["recording", "transcribing"].includes(this.voiceTypingState)) {
-                        throw new Error("The voice typing session is no longer active.");
-                    }
-                    if (editable && !target.isDestroyed()) {
-                        // webContents.insertText() crashes the renderer when focus is in a cross-origin
-                        // child frame (a board iframe), so a child frame inserts through its own document.
-                        const inserted = frame === target.mainFrame
-                            ? await withDeadline(target.insertText(text).then(() => true), 1500, false)
-                            : await withDeadline(frame.executeJavaScript(`document.execCommand("insertText", false, ${JSON.stringify(text)})`) as Promise<boolean>, 1500, false);
-                        if (inserted) {
-                            if (!deferClipboard) this.clearVoiceTypingSession();
-                            return { copied: false };
-                        }
-                    }
-                } catch (error: unknown) {
-                    console.warn(`Voice typing insertion check failed: ${errMessage(error)}`);
-                }
-            }
-        }
-        if (!deferClipboard) await clipboard.writeText(text);
-        this.clearVoiceTypingSession();
-        return { copied: true };
-    }
-
-    private handleVoiceTypingInput(event: Electron.Event, input: Electron.Input, target: WebContents, source: VoiceTypingSource): void {
-        const rightCtrlShortcut = this.trackRightCtrlTap(input, target);
-        if (rightCtrlShortcut && [this.voiceTypingShortcut, this.voiceTypingTranslateShortcut].includes(rightCtrlShortcut)) {
-            this.toggleVoiceTyping(target, source, rightCtrlShortcut === this.voiceTypingTranslateShortcut ? "translate" : "transcribe");
-            return;
-        }
-        if (input.type !== "keyDown" || input.isAutoRepeat) return;
-        if (inputMatchesShortcut(input, this.voiceTypingShortcut) || inputMatchesShortcut(input, this.voiceTypingTranslateShortcut)) {
-            event.preventDefault();
-            const mode = inputMatchesShortcut(input, this.voiceTypingTranslateShortcut) ? "translate" : "transcribe";
-            this.toggleVoiceTyping(target, source, mode);
-            return;
-        }
-        if (input.key === "Escape" && this.voiceTypingState !== "idle" && this.voiceTypingControlSession) {
-            event.preventDefault();
-            const sessionId = this.voiceTypingControlSession.id;
-            this.voiceTypingState = "idle";
-            this.clearVoiceTypingSession();
-            this.clearVoiceTypingControlSession();
-            this.send("eVoiceTypingShortcut", { sessionId, action: "cancel", source });
-        }
-    }
-
-    /** Returns the plain or Shift-modified right Ctrl tap chord on release. */
-    private trackRightCtrlTap(input: Electron.Input, target: WebContents): string | undefined {
-        const isRightCtrl = input.code === "ControlRight";
-        if (input.type === "keyDown") {
-            if (isRightCtrl) {
-                if (!input.isAutoRepeat) this.rightCtrlTap = input.alt || input.meta ? undefined : { target, shift: input.shift };
-            } else if (input.key === "Shift" && this.rightCtrlTap?.target === target) {
-                this.rightCtrlTap.shift = true;
-            } else {
-                this.rightCtrlTap = undefined;
-            }
-            return undefined;
-        }
-        if (input.type !== "keyUp" || !isRightCtrl) {
-            if (input.type === "keyUp" && input.key === "Shift" && this.rightCtrlTap?.target === target) this.rightCtrlTap.shift = true;
-            return undefined;
-        }
-        const tap = this.rightCtrlTap;
-        this.rightCtrlTap = undefined;
-        if (tap?.target !== target) return undefined;
-        return tap.shift ? SHIFT_RIGHT_CTRL_SHORTCUT : RIGHT_CTRL_SHORTCUT;
-    }
-
-    private toggleVoiceTyping(target: WebContents, source: VoiceTypingSource, mode: VoiceTypingMode): void {
-        if (this.voiceTypingState === "transcribing") return;
-        if (this.voiceTypingState === "idle") {
-            const sessionId = crypto.randomUUID();
-            this.voiceTypingSession = { id: sessionId, target };
-            this.voiceTypingControlSession = { id: sessionId, target, mode };
-            this.voiceTypingState = "recording";
-            this.send("eVoiceTypingShortcut", { sessionId, action: "start", mode, source });
-        } else if (this.voiceTypingControlSession) {
-            this.voiceTypingState = "transcribing";
-            this.send("eVoiceTypingShortcut", { sessionId: this.voiceTypingControlSession.id, action: "stop", source });
-        }
-    }
-
-    private clearVoiceTypingSession(): void {
-        this.voiceTypingSession = undefined;
-    }
-
-    private clearVoiceTypingControlSession(): void {
-        this.voiceTypingControlSession = undefined;
+        return this.voiceTypingController.insertText(sessionId, text, deferClipboard);
     }
 
     ensureVisiblePosition = (bounds: WindowState): WindowState => {

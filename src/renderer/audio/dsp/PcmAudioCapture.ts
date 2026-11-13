@@ -24,6 +24,17 @@ registerProcessor("persephone-speech-capture", PersephoneSpeechProcessor);`;
 
 const workletModules = new WeakMap<AudioContext, Promise<void>>();
 
+export interface PcmAudioCaptureOptions {
+    stream: MediaStream;
+    onChunk: (data: ArrayBuffer, captureTimeMs: number) => void;
+    onLevel?: (level: number, durationMs: number) => void;
+    sharedContext?: AudioContext;
+    cleaning?: MicrophoneCleaningOptions;
+    onStatus?: (mode: string, reason: string) => void;
+    referenceAcquire?: () => Promise<LoopbackLease>;
+    ownsStream?: boolean;
+}
+
 function loadWorklet(context: AudioContext): Promise<void> {
     let loading = workletModules.get(context);
     if (!loading) {
@@ -68,7 +79,7 @@ export class PcmAudioCapture {
     private reconfiguring = false;
     private removeTrackListener: (() => void) | undefined;
     private discontinuity = false;
-    public async start(stream: MediaStream, onChunk: (data: ArrayBuffer, captureTimeMs: number) => void, onLevel: (level: number, durationMs: number) => void, sharedContext?: AudioContext, cleaning?: MicrophoneCleaningOptions, onStatus?: (mode: string, reason: string) => void, referenceAcquire?: () => Promise<LoopbackLease>, ownsStream = true): Promise<void> {
+    public async start({ stream, onChunk, onLevel = () => {}, sharedContext, cleaning, onStatus, referenceAcquire, ownsStream = true }: PcmAudioCaptureOptions): Promise<void> {
         this.stream = stream;
         this.onChunk = onChunk;
         this.onLevel = onLevel;
@@ -213,7 +224,8 @@ export class PcmAudioCapture {
                 if (this.stopped) return;
                 await stream.getAudioTracks()[0]?.applyConstraints({ channelCount: 1, echoCancellation: !this.loopbackRequested, noiseSuppression: !(next.enabled || this.loopbackRequested), autoGainControl: true });
                 if (this.stopped) return;
-                await this.start(stream, chunk, level, sharedContext, next, this.status, this.referenceAcquire);
+                await this.start({ stream, onChunk: chunk, onLevel: level, sharedContext, cleaning: next, onStatus: this.status,
+                    referenceAcquire: this.referenceAcquire, ownsStream: this.ownsStream });
             }
         } catch (error) {
             this.status?.("failed", errMessage(error, "Microphone restart failed"));

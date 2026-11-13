@@ -31,7 +31,7 @@ pipeline, but `ILinkData.target` does not name a capability.
 | [`src/ipc/renderer-rpc.ts`](../../src/ipc/renderer-rpc.ts), [`src/main/renderer-rpc.ts`](../../src/main/renderer-rpc.ts) and [`src/renderer/api/renderer-rpc.ts`](../../src/renderer/api/renderer-rpc.ts) | Typed main-to-renderer RPC, including capability-open cancellation and caller-owned no-timeout requests. |
 | [`src/ipc/capability-bus-channels.ts`](../../src/ipc/capability-bus-channels.ts) | Shared capability request, outcome and intent types used at IPC and board-frame boundaries. |
 | [`src/main/audio-service.ts`](../../src/main/audio-service.ts) and [`src/renderer/audio/audio-window.ts`](../../src/renderer/audio/audio-window.ts) | Main-owned `audio@1` channel lifecycle and the isolated hidden renderer that owns shared capture/playback resources. |
-| [`src/main/permission-policy-service.ts`](../../src/main/permission-policy-service.ts) | Frame-bound one-shot grants for hidden audio-window microphone and Windows loopback capture, separate from Transcript grants. |
+| [`src/main/media-grants.ts`](../../src/main/media-grants.ts) and [`src/main/one-shot-frame-grant.ts`](../../src/main/one-shot-frame-grant.ts) | Per-kind one-shot grants for recording, Voice Typing, Transcript, and hidden audio-window capture, with optional frame and target binding. |
 
 Board pages and board services use the bridge `persephone.capabilities` client. They resolve a
 provider through `getCapability(id, options?)`, then call named methods on its proxy. Board pages

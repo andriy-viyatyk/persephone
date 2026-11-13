@@ -32,7 +32,8 @@ import { sendRendererEvent } from "../ipc/main/renderer-event-sender";
 import { clearNetworkLog } from "./network-logger";
 import { clearCdpTargetState } from "./cdp-service";
 import { appPartition, fileAccessPersistPartition } from "./constants";
-import { clearProfilePermissionDecisions, getSitePermissionEntries, hasSavedProfilePermissionDecisions, listProfilePermissionDecisions, removeProfilePermissionDecision, resetSitePermissionDecisions, resolvePermissionRequest, setSitePermissionDecision, settlePermissionRequestsForWebContents } from "./permission-policy-service";
+import { clearProfilePermissionDecisions, getSitePermissionEntries, hasSavedProfilePermissionDecisions, listProfilePermissionDecisions, removeProfilePermissionDecision, resetSitePermissionDecisions, setSitePermissionDecision } from "./site-permission-store";
+import { resolvePermissionRequest, settlePermissionRequestsForWebContents } from "./permission-policy-service";
 
 function isPersistentBrowserProfilePartition(partition: unknown): partition is string {
     return typeof partition === "string"

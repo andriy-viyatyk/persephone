@@ -567,8 +567,9 @@ Each browser page is bound to a **profile** that determines its Electron session
 `initPermissionPolicy()` runs during main-process setup before renderer or webview sessions are
 created. The main process installs Electron permission-request and permission-check handlers on
 each session, plus device-selection denial handlers. `permission-policy-service.ts` owns the
-policy, pending request callbacks, and saved decisions; renderer code only presents prompts and
-controls.
+policy hooks, pending request callbacks, and board-origin subframe checks; `site-permission-store.ts`
+owns persistent profile decisions and in-memory private-session decisions. Renderer code only
+presents prompts and controls.
 
 The service classifies sessions by their Electron `Session`, rather than trusting a renderer mode
 flag. The app renderer session has a small built-in allowlist for app UI capabilities. The
@@ -610,12 +611,14 @@ The main process accepts prompts only from registered browser webContents and re
 the owning app renderer's `BrowserChannel.event`. `BrowserWebviewModel` associates each prompt with
 its internal tab, and `BrowserPromptBars` shows the permission bar for the active tab. Allow and Block
 send only the opaque request ID and decision back over `BrowserGuestChannel.resolvePermissionRequest` (which invokes `BrowserChannel.resolvePermissionRequest`);
-the main process owns the pending callback and stores the decision. Closing a webContents or
+the main process owns the pending callback, and `SitePermissionStore` stores the decision. Closing a webContents or
 starting its main-frame navigation settles outstanding prompts as denied. The URL bar's site
 permissions popover reads, changes, and resets decisions through main-process IPC keyed by the
 registered webview. Main verifies that the caller owns that registration and derives the current
-origin from the webContents. Profile Settings lists, removes, or clears saved profile decisions;
-Incognito and Tor decisions do not appear there because they are memory-only.
+origin from the webContents. `SitePermissionStore` persists profile decisions through
+`JsonFileStore` and keeps Incognito/Tor decisions in memory. Profile Settings lists, removes, or
+clears saved profile decisions; Incognito and Tor decisions do not appear there because they are
+memory-only.
 
 ### Windows Single Sign-On
 

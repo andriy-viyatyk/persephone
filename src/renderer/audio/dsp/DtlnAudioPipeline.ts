@@ -1,4 +1,4 @@
-import { ECHO_TUNING } from "./microphone-cleaning-types";
+import { ECHO_TUNING } from "./echo-tuning";
 import type { MicrophoneCleaningOptions } from "../../../shared/microphone-cleaning-types";
 import { errMessage } from "../../../shared/utils";
 

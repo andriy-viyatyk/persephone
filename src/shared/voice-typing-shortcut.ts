@@ -5,6 +5,8 @@ const RESERVED_CHORDS = new Set([
     "F5", "F12", "Alt+ArrowLeft", "Alt+ArrowRight",
 ]);
 const RESERVED_KEYS = new Set(["Escape", "Enter", "Tab"]);
+export const DEFAULT_VOICE_TYPING_SHORTCUT = "Alt+V";
+export const DEFAULT_VOICE_TYPING_TRANSLATE_SHORTCUT = "Alt+Shift+V";
 /** A lone tap of the right Ctrl key, pressed and released with no other key in between. */
 export const RIGHT_CTRL_SHORTCUT = "Right Ctrl";
 export const SHIFT_RIGHT_CTRL_SHORTCUT = "Shift+Right Ctrl";

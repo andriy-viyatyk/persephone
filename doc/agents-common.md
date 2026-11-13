@@ -202,6 +202,7 @@ may leave the old package in place and skip its binary download. For the current
     /ui              # Application shell — MainPage, tabs, sidebar, dialogs
     /editors         # ALL editors (text, grid, markdown, compare, board, …)
     /content         # Content delivery — providers, transformers, pipes
+    /audio           # Hidden audio window, reusable capture sources, playback, and DSP
     /scripting       # Script execution, wrappers, editor facades, worker
     /automation      # Path-based browser-like automation, CDP, snapshots
     /uikit           # Standalone component library (canonical home for reusable primitives)

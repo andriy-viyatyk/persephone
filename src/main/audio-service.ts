@@ -16,7 +16,7 @@ import { onWebContentsGone } from "./webcontents-lifetime";
 import { appPartition } from "./constants";
 import { capabilityRegistry } from "./capability-registry";
 import type { BoundCapability, MainCapabilityInvocationContext } from "./capability-router";
-import { armAudioMicrophoneGrant, armAudioLoopbackGrant, clearAudioCaptureGrants } from "./permission-policy-service";
+import { armAudioMicrophoneGrant, armAudioLoopbackGrant, clearAudioCaptureGrants } from "./media-grants";
 import { setAudioCaptureCount } from "./audio-capture-state";
 import { deliverConsumerPort, deliveryOwner, type ChannelDelivery, type ServiceProcessPort } from "./channel-delivery";
 

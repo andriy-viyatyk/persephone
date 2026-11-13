@@ -1,4 +1,4 @@
-import { ECHO_TUNING } from "./microphone-cleaning-types";
+import { ECHO_TUNING } from "./echo-tuning";
 import { errMessage } from "../../../shared/utils";
 
 const RATE = 16_000;

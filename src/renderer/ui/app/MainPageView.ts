@@ -19,7 +19,6 @@ import { errMessage } from "../../../shared/utils";
 import { SerialQueue } from "../../../shared/serial-queue";
 import { PageTabsView } from "../tabs/PageTabsView";
 import { RightPageTabsView } from "../tabs/RightPageTabsView";
-import { VoiceTypingController } from "../voice-typing/VoiceTypingController";
 import { VoiceTypingOverlayView } from "../voice-typing/VoiceTypingOverlayView";
 import { MenuBarView } from "../sidebar/MenuBarView";
 import { PagesView } from "./PagesView";
@@ -82,7 +81,6 @@ export class MainPageView extends VanillaView<object> {
     private quickSettingsOpen = false;
     private readonly quickSettingsPopover: HeaderQuickSettingsPopoverView;
     private voiceTypingOverlay: VoiceTypingOverlayView | undefined;
-    private voiceTypingController: VoiceTypingController | undefined;
     /** Bound once: the props pump must not hand the popover a fresh callback identity on every
      *  update (see the props-pump convention in `uikit/CLAUDE.md`). */
     private readonly runQuickSettingsSnip = (hideWindows: boolean): void => { void runSnip(hideWindows); };
@@ -114,14 +112,7 @@ export class MainPageView extends VanillaView<object> {
     protected onMount(): void {
         this.voiceTypingOverlay = this.child(new VoiceTypingOverlayView({}));
         this.voiceTypingOverlay.mount();
-        this.voiceTypingOverlay.updateState({ status: "idle", binding: "Alt+V", translating: false, level: 0, durationMs: 0 });
-        this.voiceTypingController = new VoiceTypingController((state) => this.voiceTypingOverlay?.updateState(state));
-        this.voiceTypingController.start();
-        this.own(() => {
-            this.voiceTypingController?.dispose();
-            this.voiceTypingController = undefined;
-            this.voiceTypingOverlay = undefined;
-        });
+        this.own(() => { this.voiceTypingOverlay = undefined; });
         const profileName = rendererProfileName();
         if (profileName) document.title += ` — ${profileName}`;
         this.buildHeader();

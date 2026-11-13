@@ -25,7 +25,7 @@ import { killAllCommands } from "./command-runner";
 import { disposeAllBoardPorts } from "./board-bridge";
 import { downloadService } from "./download-service";
 import { initHtmlPreviewProtocol } from "./html-preview-protocol";
-import { initBoardProtocol } from "./board-protocol-service";
+import { getBoardRootForHost, initBoardProtocol } from "./board-protocol-service";
 import { initializeRecordingService } from "./recording-service";
 import { initNetworkLogger } from "./network-logger";
 import { moduleServiceSupervisor } from "./module-service-supervisor";
@@ -112,6 +112,11 @@ function startBrowserComposition(dependencies: typeof browserCompositionDependen
 }
 
 const mainServiceTable: readonly MainServiceRow[] = [
+    {
+        name: "board origin lookup",
+        service: { start: () => openWindows.setBoardOriginLookup(getBoardRootForHost) },
+        startPhase: "setup-before-certificate",
+    },
     {
         name: "audio",
         service: { start: () => audioService.initialize(), dispose: () => audioService.dispose() },

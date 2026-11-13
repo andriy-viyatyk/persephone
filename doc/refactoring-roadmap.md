@@ -523,6 +523,14 @@ in-page snippet per rule and narrow target interfaces (BRW-8); one `AutomationSu
 purpose: query methods keep first-match selector semantics, and the automation help text stays host-owned because the
 hosts word it differently (one shared constant would have changed `$help`). **Roadmap item 6.2 is complete.**
 
+**6.3 is done** ([EPIC-162](epics/EPIC-162.md), 2026-11-13): speech services in `api/speech/` and DSP in `audio/dsp/`
+(the speech/DSP slice of item 2.2); `SpeechSessionClient` and `MicrophoneCapture` shared by voice typing and transcripts;
+`VoiceTypingService` (startup table) with `VoiceTypingSession`, `LiveTextInserter` and `SpeechAutoStop` (SHL-2); the
+audio window split into `CaptureSourcePool` and `PlaybackChannel` (CORE-12); main `VoiceTypingController` composed by
+`OpenWindow` with an injected board-origin lookup (MAIN-8); `OneShotFrameGrant` media grants and `SitePermissionStore`
+(MAIN-9). D8 resolved (see §6). Left out on purpose: the rest of item 2.2, and collapsing `OneShotFrameGrant`'s
+per-grant arm-order flags (a small behaviour change). **Roadmap item 6.3 is complete.**
+
 ### Phase 7: Lock it in
 
 - Turn the import-zone lint warnings into errors and rewrite `overview.md`'s dependency rules to match.
@@ -546,7 +554,7 @@ recommendation on 2026-11-10.**
 | D5 | The board template's `CLAUDE.md` (1,886 lines) is a near-copy of `guides/agents/boards.md`, and it already lags behind. | **Generate it from the guide** at build or scaffold time. That gives one source while keeping an offline copy in each board folder. |
 | D6 | Boards never nest, yet main still implements ancestor-coverage trust, and `overview.md:411` documents trust inheritance. | **Collapse to exact-root lookup** and update the overview (MAIN-3). |
 | D7 | Where the board domain lives. | **`api/boards/` plus `shared/board/`**, with no new top-level layer. Keep the rule that it is "not exposed on `app`". |
-| D8 | Whether voice typing and transcripts should keep their own in-window capture stack or use the audio service. | **Defer until 6.3.** After the split, either answer is a small change. Move the DSP classes to `renderer/audio/dsp/` in Phase 2 regardless. |
+| D8 | Whether voice typing and transcripts should keep their own in-window capture stack or use the audio service. | **Defer until 6.3.** After the split, either answer is a small change. Move the DSP classes to `renderer/audio/dsp/` in Phase 2 regardless. **Resolved in [EPIC-162](epics/EPIC-162.md): keep the in-window stack.** The audio service is a board capability (board grants, per-board channel limits, global mute, a separate window process); routing app voice features through it would change their permission model and add a process hop per PCM chunk. Both stacks share `audio/dsp/`, and `MicrophoneCapture` is the single seam to swap later. |
 | D9 | List keyboard navigation (clamp vs wrap) and the multi-selection context-menu rule; both currently differ between controls. | **Clamp everywhere**, with an explicit `wrap` prop where wanted (PathInput). For multi-selection menus, use the tree's behaviour: run the menu layers with the selection. |
 | D10 | `strictNullChecks` per folder. | **Yes, after Phase 2,** starting with `shared/`, `core/` and `content/`. It is compile-time only, and it would have caught bug #18. |
 | D11 | Tree lazy loading: delete `Tree`'s own lazy-load path (used only by Storybook) or move the provider tree onto it. | **Delete it** (UIK-2 option A). The provider store has to keep its own node tree anyway. |

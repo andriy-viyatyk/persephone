@@ -1,18 +1,11 @@
 import { t } from "../../../shared/i18n/t";
+import { voiceTypingService, type VoiceTypingOverlayState } from "../../api/speech/voice-typing/VoiceTypingService";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { getOverlayLayer } from "../../uikit/shared/overlayLayer";
 import "./VoiceTypingOverlayView.css";
 
 /** Speech RMS rarely exceeds 0.4; this matches the Speech to Text board's recorder meter. */
 const LEVEL_SCALE = 2.6;
-
-export interface VoiceTypingOverlayState {
-    status: "idle" | "starting" | "recording" | "transcribing";
-    binding: string;
-    translating: boolean;
-    level: number;
-    durationMs: number;
-}
 
 export class VoiceTypingOverlayView extends VanillaView<Record<string, never>> {
     private readonly label = document.createElement("span");
@@ -29,6 +22,7 @@ export class VoiceTypingOverlayView extends VanillaView<Record<string, never>> {
 
     protected onMount(): void {
         getOverlayLayer().append(this.root);
+        this.bind(voiceTypingService.state, (state) => state, (state) => this.updateState(state));
     }
 
     protected onDispose(): void {

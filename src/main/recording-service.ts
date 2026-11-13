@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { getDataFolder, preparePath } from "./utils";
-import { armRecordingMediaGrant, clearRecordingMediaGrant } from "./permission-policy-service";
+import { armRecordingMediaGrant, clearRecordingMediaGrant } from "./media-grants";
 import type { RecordingRegion } from "../ipc/api-param-types";
 import { onWebContentsGone } from "./webcontents-lifetime";
 
