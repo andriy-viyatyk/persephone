@@ -13,7 +13,6 @@ import { pages } from "../../api/pages";
 import { IncognitoIcon, TorIcon } from "../../theme/language-icons";
 import { GlobeIcon } from "../../theme/icons";
 import { settings } from "../../api/settings";
-import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
 import { searchHistoryManager } from "./browser-search-history";
 import { errMessage } from "../../../shared/utils";
 import { BrowserWebviewModel } from "./BrowserWebviewModel";
@@ -41,6 +40,7 @@ import { SEARCH_ENGINES, detectSearchEngine, type SearchEngine } from "./search-
 import { isPrivateBrowserSession } from "./agent-access";
 import { BrowserPageRemote } from "./BrowserPageRemote";
 import { BrowserFindModel } from "./BrowserFindModel";
+import { BrowserPromptsModel } from "./BrowserPromptsModel";
 import { BrowserShortcutTable } from "./BrowserShortcutTable";
 import { BrowserGuestChannel } from "./BrowserGuestChannel";
 import { BrowserSitePermissionsModel } from "./BrowserSitePermissionsModel";
@@ -101,6 +101,7 @@ export class BrowserEditor extends EditorModel<
     readonly guest: BrowserGuestChannel;
     readonly webview: BrowserWebviewModel;
     readonly find: BrowserFindModel;
+    readonly prompts: BrowserPromptsModel;
     readonly translation: BrowserTranslationController;
     readonly siteExtensions: BrowserSiteExtensionController;
     readonly pageRemote: BrowserPageRemote;
@@ -129,6 +130,7 @@ export class BrowserEditor extends EditorModel<
         this.tor = new BrowserTorModel(this);
         this.network = new BrowserProfileNetworkModel(this);
         this.webview = new BrowserWebviewModel(this);
+        this.prompts = new BrowserPromptsModel(this);
         this.find = new BrowserFindModel(this);
         this.shortcuts = new BrowserShortcutTable({
             focusUrlInput: () => this.urlBar.focusUrlInput(),
@@ -513,24 +515,6 @@ export class BrowserEditor extends EditorModel<
         const internalTabId = this.tabs.addTab(url, parentGroupId);
         if (url === DEFAULT_URL) this.urlBar.focusUrlInput();
         return internalTabId;
-    };
-
-    dismissBlockedPopups = () => {
-        this.state.update((s) => { s.blockedPopupCount = 0; });
-    };
-
-    allowPopups = () => {
-        this.webview.popupsAllowed = true;
-        globalPopupRateLimiter.allow("tabs");
-        this.guest.allowPopups();
-        this.state.update((s) => { s.blockedPopupCount = 0; });
-    };
-
-    resolvePermissionPrompt = (requestId: string, decision: "allow" | "block") => {
-        this.state.update((state) => {
-            state.permissionPrompts = state.permissionPrompts.filter((prompt) => prompt.requestId !== requestId);
-        });
-        this.guest.resolvePermissionRequest(requestId, decision);
     };
 
 }

@@ -1,3 +1,24 @@
+## EPIC-160 — Refactoring Phase 6.1 part 3: browser main process — `BrowserGuest`, host fullscreen, DOM snapshot and `CdpTarget`
+
+Completed 2026-11-13. Roadmap Phase 6.1 part 3 (MAIN-7, plus the deferred BRW-4 step 4): one `BrowserGuest` per
+registration owns its listeners, state and ordered disposal, indexed by the service-free `browserGuests` registry;
+navigation and popup policy are strategy modules; host fullscreen is a `HostFullscreenController` per `OpenWindow`, which
+breaks the `open-windows` → `open-window` → `browser-service` cycle; DOM collection lives in `browser-dom-snapshot.ts`;
+`CdpTarget` owns debugger attach, domains and event dispatch, one `resolveTarget` routes app/board/browser keys, and CDP
+features live in `src/main/cdp/` modules. URL-bar, find and prompt state are separate slices. `browser-service.ts`
+1,233 → 318 lines, `cdp-service.ts` 1,148 → 280. `window.persephone`, IPC contracts, the script facade, MCP `call`,
+`data-name` values and persisted browser state are unchanged. Plans by Codex, reviewed against the roadmap guardrails;
+Codex Luna implemented, with plan corrections recorded in the epic notes. Roadmap item 6.1 is complete.
+Epic document: [EPIC-160](EPIC-160.md).
+
+- [x] **DOM snapshot (US-1910).** Pure move of `collectDom`/`collectLoadedResources` to `browser-dom-snapshot.ts`.
+- [x] **Browser guest (US-1911).** `BrowserGuest`, `browserGuests` (`BrowserGuestRegistry`), `navigation-scheme-policy.ts`, `popup-policy.ts` under `src/main/browser/`; same-WebContents re-registration keeps CDP state.
+- [x] **Host fullscreen (US-1912).** `HostFullscreenController` owned by `OpenWindow` replaces four module `WeakMap`s; the window layer no longer imports the browser service.
+- [x] **CDP target (US-1913).** `CdpTarget` (attach, domains, dispatcher) and one `resolveTarget`; explicit detach runs the full target cleanup.
+- [x] **CDP features (US-1914).** `cdp-page-events`, `cdp-waits`, `cdp-network-collector`, `cdp-drag-intercept`, `cdp-ai-vision-binding` take a `CdpTarget`; `cdp-service.ts` keeps routing and the facade.
+- [x] **State slices (US-1915).** URL-bar entry state on `BrowserUrlBarModel`, find on `BrowserFindModel`, prompts on `BrowserPromptsModel` and the site-extension controller; views bind only their slice.
+- [x] **Epic review.** `/review` removed one non-null assertion; `/document` updated three architecture docs; `/userdoc` needed no changes. No English catalog messages changed.
+
 ## EPIC-159 — Refactoring Phase 6.1 part 2: browser renderer — view split, guest protocol, bookmarks, tab state and page creation
 
 Completed 2026-11-13. Roadmap Phase 6.1 part 2 (BRW-5, BRW-9, BRW-6, BRW-4 steps 1–3, BRW-10): `BrowserView.ts` is split

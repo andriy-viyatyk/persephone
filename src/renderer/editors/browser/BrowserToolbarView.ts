@@ -25,24 +25,18 @@ interface BrowserToolbarProps { model: BrowserEditor; state: BrowserEditorState;
 
 export class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     private readonly model: BrowserEditor;
-    private readonly zoomButton: ButtonView;
-    private readonly zoomPopover: PopoverView;
+    private readonly zoomButton: ButtonView; private readonly zoomPopover: PopoverView;
     private zoomContent: BrowserZoomContentView | undefined;
     private zoomOpen = false;
-    private readonly homeButton: IconButtonView;
-    private readonly backButton: IconButtonView;
-    private readonly forwardButton: IconButtonView;
-    private readonly reloadButton: IconButtonView;
-    private readonly bookmarksButton: IconButtonView;
-    private readonly torInfoButton: IconButtonView;
-    private readonly moreButton: IconButtonView;
-    private readonly devtoolsButton: IconButtonView;
-    private readonly closeButton: IconButtonView;
-    private readonly input: InputView;
+    private readonly homeButton: IconButtonView; private readonly backButton: IconButtonView;
+    private readonly forwardButton: IconButtonView; private readonly reloadButton: IconButtonView;
+    private readonly bookmarksButton: IconButtonView; private readonly torInfoButton: IconButtonView;
+    private readonly moreButton: IconButtonView; private readonly devtoolsButton: IconButtonView;
+    private readonly closeButton: IconButtonView; private readonly input: InputView;
     private readonly navigate: IconButtonView;
     private readonly star: IconButtonView;
     private readonly inputPanel: HTMLDivElement;
-    private readonly startSlot: HTMLSpanElement;
+    private readonly startSlot: HTMLSpanElement; private readonly urlEntrySlot = document.createElement("span");
     private readonly endSlot: HTMLSpanElement;
     private readonly torIndicator = document.createElement("span");
     private readonly searchEngineButton = document.createElement("button");
@@ -86,7 +80,8 @@ export class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         this.sitePermissionsButton = this.child(new IconButtonView({ name: "url-site-permissions", size: "sm", icon: "info", title: t("browser.sitePermissions"), onClick: this.toggleSitePermissions }));
         this.sitePermissionsPopover = this.child(new PopoverView(this.sitePermissionsPopoverProps()));
         this.star = this.child(new IconButtonView({ name: "url-bookmark-toggle", size: "sm", icon: "star", title: t("browser.bookmarkAdd"), onClick: this.model.bookmarks.handleStarClick }));
-        this.input = this.child(new InputView({ name: "url-input", size: "sm", value: props.state.urlInput, onChange: this.model.urlBar.handleUrlChange, onKeyDown: this.model.urlBar.handleUrlKeyDown, onFocus: this.model.urlBar.handleUrlFocus, onBlur: this.model.urlBar.handleUrlBlur, onContextMenu: (event) => this.model.urlBar.handleUrlContextMenu(event as never), placeholder: t("browser.urlPlaceholder"), autoComplete: "off", startSlot: this.startSlot, endSlot: this.endSlot }));
+        this.input = this.child(new InputView({ name: "url-input", size: "sm", value: this.model.urlBar.state.get().urlInput, onChange: this.model.urlBar.handleUrlChange, onKeyDown: this.model.urlBar.handleUrlKeyDown, onFocus: this.model.urlBar.handleUrlFocus, onBlur: this.model.urlBar.handleUrlBlur, onContextMenu: (event) => this.model.urlBar.handleUrlContextMenu(event as never), placeholder: t("browser.urlPlaceholder"), autoComplete: "off", startSlot: this.startSlot, endSlot: this.endSlot }));
+        this.urlEntrySlot.style.display = "contents";
         this.bookmarksButton = this.child(new IconButtonView(this.bookmarksProps(props.state)));
         this.torInfoButton = this.child(new IconButtonView(this.torInfoProps(props.state)));
         this.siteActions = this.child(new BrowserSiteActionsView({ model: this.model, state: props.state }));
@@ -111,7 +106,7 @@ export class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     get urlAnchor(): Element { return this.inputPanel; }
     get urlInputElement(): HTMLInputElement { return this.input.inputElement; }
 
-    protected onMount(): void { this.listen(this.searchEngineButton, "click", (event) => { event.stopPropagation(); this.openSearchMenu(); }); this.listen(this.torIndicator, "click", (event) => { event.stopPropagation(); this.model.tor.toggleOverlay(); }); this.listen(this.proxyChip, "click", (event) => { event.stopPropagation(); void this.model.showNetworkInfoDialog(); }); this.homeButton.mount(); this.backButton.mount(); this.forwardButton.mount(); this.reloadButton.mount(); this.bookmarksButton.mount(); this.torInfoButton.mount(); this.moreButton.mount(); this.devtoolsButton.mount(); this.closeButton.mount(); this.zoomButton.mount(); this.zoomPopover.mount(); this.translateButton.mount(); this.input.mount(); this.model.urlBar.setUrlInputRef(this.input.inputElement); this.navigate.mount(); this.star.mount(); this.siteActions.mount(); this.downloads.mount(); this.sitePermissionsButton.mount(); this.sitePermissionsPopover.mount(); this.translatePopover.mount(); this.own(this.model.pageRemote.changed.subscribe(() => this.sync(this.model.state.get()))); this.own(this.model.sitePermissions.state.subscribe(() => this.sync(this.model.state.get()))); this.sync(this.props.state); }
+    protected onMount(): void { this.listen(this.searchEngineButton, "click", (event) => { event.stopPropagation(); this.openSearchMenu(); }); this.listen(this.torIndicator, "click", (event) => { event.stopPropagation(); this.model.tor.toggleOverlay(); }); this.listen(this.proxyChip, "click", (event) => { event.stopPropagation(); void this.model.showNetworkInfoDialog(); }); this.homeButton.mount(); this.backButton.mount(); this.forwardButton.mount(); this.reloadButton.mount(); this.bookmarksButton.mount(); this.torInfoButton.mount(); this.moreButton.mount(); this.devtoolsButton.mount(); this.closeButton.mount(); this.zoomButton.mount(); this.zoomPopover.mount(); this.translateButton.mount(); this.input.mount(); this.model.urlBar.setUrlInputRef(this.input.inputElement); this.navigate.mount(); this.star.mount(); this.siteActions.mount(); this.downloads.mount(); this.sitePermissionsButton.mount(); this.sitePermissionsPopover.mount(); this.translatePopover.mount(); this.own(this.model.pageRemote.changed.subscribe(() => this.sync(this.model.state.get()))); this.own(this.model.sitePermissions.state.subscribe(() => this.sync(this.model.state.get()))); this.bind(this.model.urlBar.state, (state) => ({ urlInput: state.urlInput, userHasTyped: state.userHasTyped }), ({ urlInput, userHasTyped }) => { this.input.update(this.urlInputProps(urlInput)); this.syncUrlEntrySlot(this.props.state, userHasTyped, false); }); this.sync(this.props.state); }
     protected onUpdate(props: BrowserToolbarProps): void { this.sync(props.state); }
     protected onDispose(): void { this.pageMenu?.dispose(); this.searchMenu?.dispose(); this.pageMenu = undefined; this.searchMenu = undefined; this.translationStateUnsubscribe?.(); }
 
@@ -139,7 +134,6 @@ export class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         this.backButton.update(this.backProps(state));
         this.forwardButton.update(this.forwardProps(state));
         this.reloadButton.update(this.reloadProps(state));
-        this.input.update({ name: "url-input", size: "sm", value: state.urlInput, onChange: this.model.urlBar.handleUrlChange, onKeyDown: this.model.urlBar.handleUrlKeyDown, onFocus: this.model.urlBar.handleUrlFocus, onBlur: this.model.urlBar.handleUrlBlur, onContextMenu: (event) => this.model.urlBar.handleUrlContextMenu(event as never), placeholder: t("browser.urlPlaceholder"), autoComplete: "off", startSlot: this.startSlot, endSlot: this.endSlot });
         this.navigate.update({ name: "url-navigate", size: "sm", icon: "arrow-right", title: t("browser.navigate"), onClick: this.model.urlBar.handleNavigate });
         this.star.update({ name: "url-bookmark-toggle", size: "sm", icon: state.isBookmarked ? "star-filled" : "star", title: state.isBookmarked ? t("browser.bookmarkEdit") : t("browser.bookmarkAdd"), active: state.isBookmarked, onClick: this.model.bookmarks.handleStarClick });
         this.bookmarksButton.update(this.bookmarksProps(state));
@@ -147,7 +141,7 @@ export class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         this.moreButton.update(this.moreProps(state));
         this.devtoolsButton.update(this.devtoolsProps(state));
         this.closeButton.update(this.closeProps(state));
-        this.renderStart(state);
+        this.renderStart(state, this.model.urlBar.state.get().userHasTyped);
         this.sitePermissionsPopover.update(this.sitePermissionsPopoverProps());
         this.permissionsContent?.update(this.sitePermissionsContentProps());
         const translation = translationView.state;
@@ -158,7 +152,7 @@ export class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         this.searchMenu?.update({ name: "search-engine-menu", items: this.model.urlBar.searchEngineMenuItems, placement: "bottom-start" });
     }
 
-    private renderStart(state: BrowserEditorState): void {
+    private renderStart(state: BrowserEditorState, userHasTyped: boolean): void {
         this.startSlot.replaceChildren(); this.torIndicator.replaceChildren();
         if (state.isTor) {
             if (state.torStatus === "connecting") {
@@ -179,13 +173,17 @@ export class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         }
         if (state.isIncognito) this.startSlot.append(IncognitoIcon.createElement({ color: color.icon.light }));
         if (state.networkLabel) { this.proxyChip.title = t("browser.proxyInfoTitle", { network: state.networkLabel }); this.startSlot.append(this.proxyChip); }
-        const activeUrl = this.model.activeTab?.url || "";
-        const showSearchEngine = this.model.urlBar.showSearchEngineSelector;
-        this.model.sitePermissions.syncPage(state.activeTabId, activeUrl, !showSearchEngine && !state.userHasTyped);
-        const permissionsState = this.model.sitePermissions.state.get();
-        if (showSearchEngine) { this.searchEngineButton.textContent = `${this.model.urlBar.currentEngineName} ▾`; this.startSlot.append(this.searchEngineButton); }
-        else if (permissionsState.origin && !state.userHasTyped) this.startSlot.append(this.sitePermissionsButton.root);
+        this.syncUrlEntrySlot(state, userHasTyped, true);
     }
+
+    private syncUrlEntrySlot(state: BrowserEditorState, userHasTyped: boolean, syncPage: boolean): void {
+        this.urlEntrySlot.replaceChildren(); const activeUrl = this.model.activeTab?.url || ""; const showSearchEngine = this.model.urlBar.showSearchEngineSelector;
+        if (syncPage) this.model.sitePermissions.syncPage(state.activeTabId, activeUrl, !showSearchEngine && !userHasTyped);
+        const permissionsState = this.model.sitePermissions.state.get(); if (showSearchEngine) { this.searchEngineButton.textContent = `${this.model.urlBar.currentEngineName} ▾`; this.urlEntrySlot.append(this.searchEngineButton); }
+        else if (permissionsState.origin && !userHasTyped) this.urlEntrySlot.append(this.sitePermissionsButton.root); this.startSlot.append(this.urlEntrySlot);
+    }
+
+    private urlInputProps(urlInput: string) { return { name: "url-input", size: "sm" as const, value: urlInput, onChange: this.model.urlBar.handleUrlChange, onKeyDown: this.model.urlBar.handleUrlKeyDown, onFocus: this.model.urlBar.handleUrlFocus, onBlur: this.model.urlBar.handleUrlBlur, onContextMenu: (event: Event) => this.model.urlBar.handleUrlContextMenu(event as MouseEvent), placeholder: t("browser.urlPlaceholder"), autoComplete: "off", startSlot: this.startSlot, endSlot: this.endSlot }; }
 
     private readonly toggleSitePermissions = (): void => {
         if (this.model.sitePermissions.state.get().open) this.model.sitePermissions.close();

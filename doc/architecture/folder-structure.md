@@ -503,6 +503,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── browser/            # Built-in browser (non-text, no trait)
 │   │   ├── BrowserEditor.ts          # EditorModel subclass — registry entry point
 │   │   ├── browser-state.ts          # Browser state types, defaults, IDs, title, and partition helpers
+│   │   ├── BrowserPromptsModel.ts    # Transient blocked-popup and permission-prompt state
 │   │   ├── search-engines.ts         # Search engine definitions and URL detection
 │   │   ├── BrowserTabsModel.ts       # Internal tabs, lazy materialization, committed URLs, favicon caches
 │   │   ├── BrowserTorModel.ts         # Tor partition and daemon lifecycle
@@ -1033,7 +1034,15 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 │   ├── types.ts            # IMcpToolDef and friends
 │   ├── tools/              # Advertised tool definitions — call, the whole manifest
 │   └── ai-vision/          # Main-process AiVision roots, service descriptors, and gated main scripting
-├── browser-service.ts      # Browser page support (webview management and tracked native message boxes)
+├── browser-service.ts      # Browser composition and IPC-facing service surface
+├── browser-service-composition.ts # Injects shared guest lookup into browser/CDP/network services
+├── browser/                # Browser guest registration and per-guest policies
+│   ├── BrowserGuestRegistry.ts # Key/WebContents lookup and guest registration ownership
+│   ├── BrowserGuest.ts     # Per-registration listeners, state, and disposal
+│   ├── navigation-scheme-policy.ts # Browser guest navigation scheme decisions
+│   └── popup-policy.ts     # Browser popup admission and rate-limit policy
+├── browser-dom-snapshot.ts # DOM and loaded-resource collection for browser guests
+├── host-fullscreen-controller.ts # Per-window host fullscreen intent and guest coordination
 ├── preload-webview.ts      # Browser guest preload entry point
 ├── preload-webview/
 │   └── chrome-shim.ts           # Guest window.chrome compatibility shim
@@ -1084,7 +1093,14 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 │   ├── restart-budget.ts    # Sliding-window service failure count and bounded restart policy
 │   └── storage.ts           # Adapter routing utility-process storage requests through the main board store
 ├── board-storage.ts        # Main-owned per-board JSON store under data/board-storage/<root-hash>, sidecar metadata, validation and per-board mutation queue
-├── cdp-service.ts          # CDP session service for call-path automation — attaches the debugger to webContents; board frames registered/resolved by their ?v= nonce
+├── cdp-service.ts          # CDP composition and target routing for call-path automation
+├── cdp/                    # Per-WebContents CDP target and feature owners
+│   ├── CdpTarget.ts        # Debugger lifecycle, enabled domains, and event dispatch
+│   ├── cdp-page-events.ts  # Dialog policy and page event state
+│   ├── cdp-waits.ts        # Navigation and response wait lifecycle
+│   ├── cdp-network-collector.ts # Per-target network response collection
+│   ├── cdp-drag-intercept.ts # Drag interception lifecycle
+│   └── cdp-ai-vision-binding.ts # Browser AiVision CDP binding lifecycle
 ├── mneme-service.ts        # Mneme concerns on top of sidecar-process: port/config wiring and MnemeStatus broadcasts for the knowledge-base service
 ├── snip-service.ts         # Screen snip (spawns persephone-snip.exe, reads PNG from stdout; exports getSnipToolPath for clipboard services)
 ├── recording-service.ts    # Per-webContents video recording files, ordered chunk writes, permission grants, and seven-day cleanup

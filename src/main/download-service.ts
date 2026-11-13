@@ -14,7 +14,7 @@ import { preparePath } from "./utils";
 import { JsonFileStore } from "./json-file-store";
 import { rememberDirFromPick, resolveDefaultPath } from "./dialog-folder-memory";
 import { withNativeDialog } from "./native-dialog-tracker";
-import { isRegisteredBrowserWebContents } from "./browser-service";
+import { browserGuests } from "./browser/BrowserGuestRegistry";
 import { registerSessionSource } from "./session-src-protocol";
 import { browserNetworkService } from "./browser-network-service";
 import { torService } from "./tor-service";
@@ -178,7 +178,7 @@ class DownloadService {
     }
 
     private handleWillDownload(item: DownloadItem, webContents: WebContents): void {
-        if (!isRegisteredBrowserWebContents(webContents)) {
+        if (!browserGuests.hasWebContents(webContents)) {
             return this.handleOrdinaryDownload(item, webContents);
         }
 

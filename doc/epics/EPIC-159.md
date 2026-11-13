@@ -19,7 +19,7 @@ The code was checked on 2026-11-13, after EPIC-158. Line numbers in the report h
   certificate workflow inside it), the prompt bars and the editor view. Controls are built in the constructor and
   rebuilt by index in `sync()`. The webview item view registers the guest with main, sends mute state, dispatches guest
   messages and handles favicons (cache write, bookmark scan, profile proxy).
-- Guestâ†’host messages are bare strings with cast payloads; main sends `page-title-updated`/`page-favicon-updated`
+- Guest→host messages are bare strings with cast payloads; main sends `page-title-updated`/`page-favicon-updated`
   events nobody handles; `show-find-bar`/`hide-find-bar` are declared on `BrowserEventType` but main never sends them.
   The `${editorId}/${tabId}` registration key is rebuilt in many places and raw `ipcRenderer` browser calls come from
   several renderer files. `src/preload-webview.ts` (442 lines) is one `if (process.isMainFrame)` block.
@@ -62,9 +62,9 @@ The code was checked on 2026-11-13, after EPIC-158. Line numbers in the report h
   mirrors fixes the stale-URL bug and is the risky navigation change; slicing state is a render-cost refinement that is
   easier once the views are split and should not share a task with the navigation change.
 - **Pure move first.** US-1904 splits `BrowserView.ts` without changing behaviour, so later tasks edit the final files.
-- **Order.** Split (US-1904) â†’ bookmarks (US-1905, small, touches the view's bookmark reads) â†’ guest protocol and
-  channel (US-1906, gives the view-model moves a typed dispatch and one IPC path) â†’ view-model moves (US-1907) â†’ tab
-  state and navigation (US-1908, after the views it changes are final) â†’ page creation (US-1909, built on the final
+- **Order.** Split (US-1904) → bookmarks (US-1905, small, touches the view's bookmark reads) → guest protocol and
+  channel (US-1906, gives the view-model moves a typed dispatch and one IPC path) → view-model moves (US-1907) → tab
+  state and navigation (US-1908, after the views it changes are final) → page creation (US-1909, built on the final
   `navigate()`).
 - **No new protocol code** (guardrail 1). `GuestMessage` types the existing `sendToHost`/`ipc-message` channel; it adds
   no correlator, ack or error envelope. `BrowserGuestChannel` wraps the existing browser IPC (EPIC-156 contracts where
@@ -104,7 +104,7 @@ The code was checked on 2026-11-13, after EPIC-158. Line numbers in the report h
 - **US-1905.** Show the three profile-lookup copies and the one rule after, per mode (default, named profile,
   incognito, Tor), for both read and write. Every `tabs.bookmarks`/`initBookmarks` reader moves to `editor.bookmarks`.
   The preload timer and dispose move with the resource.
-- **US-1906.** List every guestâ†’host channel and its payload today (preload and translation agent) and the union after.
+- **US-1906.** List every guest→host channel and its payload today (preload and translation agent) and the union after.
   Decide the one title/favicon source (expected: the preload, since main's events are unhandled) and delete the other.
   List every place the registration key is built and every raw `ipcRenderer` browser call; all go through the channel
   afterwards. Check the preload's build entry can import the new `src/ipc` module. One `toMemberName()` in the WebMCP

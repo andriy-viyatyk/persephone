@@ -1,5 +1,5 @@
 import { BrowserWindow } from "electron";
-import { reapplyBrowserGuestZoom } from "./browser-service";
+import { reapplyBrowserGuestZoom } from "./browser/BrowserGuestRegistry";
 import { sendRendererEvent } from "../ipc/main/renderer-event-sender";
 
 export function zoom(webContents: Electron.WebContents, delta: number): void {

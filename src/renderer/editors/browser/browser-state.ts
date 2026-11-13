@@ -2,9 +2,23 @@ import { englishMessage } from "../../../shared/i18n/t";
 import { IEditorState } from "../../../shared/types";
 import { TorStatus } from "../../../ipc/tor-ipc";
 import { getDefaultEditorModelState } from "../base";
-import type { BrowserPermissionPromptData } from "../../../ipc/browser-ipc";
-import type { SiteExtensionTrustPromptData } from "./site-extension-trust-prompt";
 import { isPrivateBrowserSession } from "./agent-access";
+
+export interface BrowserUrlBarState {
+    urlInput: string;
+    suggestionsOpen: boolean;
+    userHasTyped: boolean;
+    hoveredIndex: number;
+    searchEntries: string[];
+}
+
+export const getDefaultBrowserUrlBarState = (): BrowserUrlBarState => ({
+    urlInput: DEFAULT_URL,
+    suggestionsOpen: false,
+    userHasTyped: false,
+    hoveredIndex: -1,
+    searchEntries: [],
+});
 
 /** State for a single internal browser tab. */
 export interface BrowserTabData {
@@ -71,16 +85,6 @@ export interface BrowserEditorState extends IEditorState {
     networkLabel: string;
     /** Why the profile network could not be applied; "" when it was. */
     networkError: string;
-    /** Current text in URL input (managed by BrowserUrlBarModel). */
-    urlInput: string;
-    /** Whether the URL suggestions dropdown is visible. */
-    suggestionsOpen: boolean;
-    /** Whether the user has typed in the URL bar (vs just focused it). */
-    userHasTyped: boolean;
-    /** Keyboard-navigated suggestion index (-1 = none). */
-    hoveredIndex: number;
-    /** Loaded search history entries for the suggestions dropdown. */
-    searchEntries: string[];
     /** Whether a context menu popup is open (shows transparent overlay). */
     popupOpen: boolean;
     /** Whether the bookmarks drawer is visible. */
@@ -94,13 +98,6 @@ export interface BrowserEditorState extends IEditorState {
     isBookmarked: boolean;
     /** Whether bookmarks have been initialized. */
     bookmarksReady: boolean;
-
-    /** Number of popups/tabs blocked by rate limiting since last dismiss. */
-    blockedPopupCount: number;
-    /** Permission prompts queued for internal browser tabs. */
-    permissionPrompts: Array<BrowserPermissionPromptData & { internalTabId: string }>;
-    /** Site extension consent prompts, scoped to a tab and its document (`siteDocumentId`). */
-    siteExtensionTrustPrompts: SiteExtensionTrustPromptData[];
 
 }
 
@@ -159,19 +156,11 @@ export const getDefaultBrowserPageState = (): BrowserEditorState => {
         networkToken: "",
         networkLabel: "",
         networkError: "",
-        urlInput: DEFAULT_URL,
-        suggestionsOpen: false,
-        userHasTyped: false,
-        hoveredIndex: -1,
-        searchEntries: [],
         popupOpen: false,
         bookmarksOpen: false,
         bookmarksWidth: 0,
         isBookmarked: false,
         bookmarksReady: false,
-        blockedPopupCount: 0,
-        permissionPrompts: [],
-        siteExtensionTrustPrompts: [],
     };
 };
 

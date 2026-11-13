@@ -118,13 +118,16 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
             this.urlBarFocusDisposer = undefined;
             this.model.urlBar.setFocusScheduler(undefined);
         });
-        this.own(this.model.tabs.materializationRevision.subscribe(() => this.sync(this.model.state.get())));
-        this.bind(this.model.state, (state) => state, this.sync);
-        this.own(this.model.find.state.subscribe(() => this.syncFind(this.model.find.state.get())));
-        this.sync(this.model.state.get());
+        this.own(this.model.tabs.materializationRevision.subscribe(() => this.syncShell(this.model.state.get())));
+        this.bind(this.model.state, (state) => state, this.syncShell);
+        this.bind(this.model.urlBar.state, (state) => state, () => this.syncSuggestions());
+        this.bind(this.model.find.state, (state) => state, (state) => this.syncFind(state));
+        this.bind(this.model.prompts.state, (state) => state, () => this.syncPrompts());
+        this.bind(this.model.siteExtensions.state, (state) => state, () => this.syncSiteExtensionTrustPrompt());
+        this.syncShell(this.model.state.get());
         this.syncFind(this.model.find.state.get());
     }
-    protected onUpdate(): void { this.sync(this.model.state.get()); }
+    protected onUpdate(): void { this.syncShell(this.model.state.get()); }
     protected onDispose(): void {
         if (this.focusTimer) clearTimeout(this.focusTimer);
         this.focusTimer = undefined;
@@ -138,7 +141,7 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
     }
     private tabsProps(state: BrowserEditorState) { return { model: this.model, tabs: state.tabs, activeTabId: state.activeTabId, width: state.tabsPanelWidth }; }
 
-    private readonly sync = (state: BrowserEditorState): void => {
+    private readonly syncShell = (state: BrowserEditorState): void => {
         const active = this.model.activeTab;
         this.toolbar.update({ model: this.model, state }); this.tabs.update(this.tabsProps(state)); this.tabsHost.style.width = `${state.tabsPanelWidth}px`; this.loadingBar.toggleAttribute("data-loading", !!active?.loading); this.splitter.update({ name: "tabs-webview-splitter", orientation: "vertical", value: state.tabsPanelWidth, onChange: this.model.tabs.setPanelWidth, side: "before", min: 32, background: "default", hoverBackground: "light", border: "none" });
         // No webview mounts while the profile's proxy could not be applied:
@@ -157,15 +160,15 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
                 this.focusTimer = setTimeout(() => this.model.urlBar.focusUrlInput(), 100);
             }
         }
-        this.syncPopup(state); this.syncPermissionPrompt(state); this.syncSiteExtensionTrustPrompt(); this.syncTor(state); this.syncNetworkError(state); this.syncClick(state); this.syncDrawer(state); this.syncSuggestions(state);
+        this.syncPrompts(); this.syncSiteExtensionTrustPrompt(); this.syncTor(state); this.syncNetworkError(state); this.syncClick(state); this.syncDrawer(state); this.syncSuggestions();
     };
 
-    private syncPopup(state: BrowserEditorState): void {
-        if (state.blockedPopupCount <= 0) { this.popupView = undefined; this.popupSwap.clear(); return; }
-        let created: PopupBlockedView | undefined; this.popupSwap.set("blocked", () => { created = new PopupBlockedView({ model: this.model, count: state.blockedPopupCount }); this.popupView = created; return created; }); created?.mount(); this.popupView?.update({ model: this.model, count: state.blockedPopupCount });
-    }
-    private syncPermissionPrompt(state: BrowserEditorState): void {
-        const prompt = state.permissionPrompts.find((item) => item.internalTabId === state.activeTabId);
+    private syncPrompts(): void {
+        const count = this.model.prompts.state.get().blockedPopupCount;
+        if (count <= 0) { this.popupView = undefined; this.popupSwap.clear(); }
+        else { let created: PopupBlockedView | undefined; this.popupSwap.set("blocked", () => { created = new PopupBlockedView({ model: this.model, count }); this.popupView = created; return created; }); created?.mount(); this.popupView?.update({ model: this.model, count }); }
+        const activeTabId = this.model.state.get().activeTabId;
+        const prompt = this.model.prompts.state.get().permissionPrompts.find((item) => item.internalTabId === activeTabId);
         if (!prompt) { this.permissionView = undefined; this.permissionSwap.clear(); return; }
         let created: PermissionPromptBarView | undefined;
         this.permissionSwap.set("permission", () => { created = new PermissionPromptBarView({ model: this.model, prompt }); this.permissionView = created; return created; });
@@ -208,10 +211,11 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
         const drawerProps = (): BookmarksDrawerProps => ({ open: true, bookmarks, width: this.model.state.get().bookmarksWidth, onChangeWidth: (width: number) => this.model.state.update((s) => { s.bookmarksWidth = width; }), onClose: this.model.bookmarks.handleCloseBookmarks });
         let created: BookmarksDrawerView | undefined; this.drawerSwap.set("drawer", () => { created = new BookmarksDrawerView(drawerProps()); this.drawerView = created; return created; }); created?.mount(); this.drawerView?.update(drawerProps());
     }
-    private syncSuggestions(state: BrowserEditorState): void {
+    private syncSuggestions(): void {
+        const state = this.model.urlBar.state.get();
         const items = this.model.urlBar.suggestionsItems; const open = state.suggestionsOpen && items.length > 0;
         if (!open) { this.suggestionsView = undefined; this.suggestionsSwap.clear(); return; }
-        const props = { anchorEl: this.toolbar.urlAnchor, open: true, items, mode: this.model.urlBar.suggestionsMode, searchText: this.model.urlBar.suggestionsMode === "search" ? state.urlInput : undefined, hoveredIndex: state.hoveredIndex, onHoveredIndexChange: (index: number) => this.model.state.update((s) => { s.hoveredIndex = index; }), onSelect: this.model.urlBar.handleSuggestionSelect, onClearVisible: this.model.urlBar.suggestionsMode === "search" ? this.model.urlBar.handleClearVisible : undefined };
+        const props = { anchorEl: this.toolbar.urlAnchor, open: true, items, mode: this.model.urlBar.suggestionsMode, searchText: this.model.urlBar.suggestionsMode === "search" ? state.urlInput : undefined, hoveredIndex: state.hoveredIndex, onHoveredIndexChange: (index: number) => this.model.urlBar.state.update((s) => { s.hoveredIndex = index; }), onSelect: this.model.urlBar.handleSuggestionSelect, onClearVisible: this.model.urlBar.suggestionsMode === "search" ? this.model.urlBar.handleClearVisible : undefined };
         let created: UrlSuggestionsDropdownView | undefined; this.suggestionsSwap.set("suggestions", () => { created = new UrlSuggestionsDropdownView(props); this.suggestionsView = created; return created; }); created?.mount(); this.suggestionsView?.update(props);
     }
 }

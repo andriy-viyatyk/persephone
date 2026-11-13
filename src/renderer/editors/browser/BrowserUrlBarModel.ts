@@ -7,6 +7,8 @@ import type { MenuItem } from "../../uikit/Menu/index";
 import { ContextMenuEvent } from "../../api/events/events";
 import { t } from "../../../shared/i18n/t";
 import type { BrowserEditor } from "./BrowserEditor";
+import { TComponentState } from "../../core/state/state";
+import { getDefaultBrowserUrlBarState, type BrowserUrlBarState } from "./browser-state";
 
 /**
  * Manages URL bar input, suggestions dropdown, and search engine selection
@@ -14,6 +16,7 @@ import type { BrowserEditor } from "./BrowserEditor";
  */
 export class BrowserUrlBarModel {
     readonly model: BrowserEditor;
+    readonly state = new TComponentState<BrowserUrlBarState>(getDefaultBrowserUrlBarState());
 
     /** DOM reference for the URL input element. */
     urlInputRef: HTMLInputElement | null = null;
@@ -43,7 +46,7 @@ export class BrowserUrlBarModel {
      * Closes suggestions dropdown.
      */
     syncFromUrl = (url: string) => {
-        this.model.state.update((s) => {
+        this.state.update((s) => {
             s.urlInput = url;
             s.suggestionsOpen = false;
             s.userHasTyped = false;
@@ -54,7 +57,7 @@ export class BrowserUrlBarModel {
     loadSearchEntries = () => {
         const storage = this.searchStorage;
         if (storage) {
-            this.model.state.update((s) => {
+            this.state.update((s) => {
                 s.searchEntries = storage.getAll();
             });
         }
@@ -70,18 +73,18 @@ export class BrowserUrlBarModel {
     }
 
     get detectedSearch() {
-        const { urlInput } = this.model.state.get();
+        const { urlInput } = this.state.get();
         return detectSearchEngine(urlInput);
     }
 
     get isBlankPage() {
-        const { urlInput } = this.model.state.get();
+        const { urlInput } = this.state.get();
         return !urlInput || urlInput === "about:blank";
     }
 
     get showSearchEngineSelector() {
         if (this.isBlankPage || this.detectedSearch) return true;
-        const { urlInput } = this.model.state.get();
+        const { urlInput } = this.state.get();
         if (!urlInput) return false;
         const trimmed = urlInput.trim();
         // Hide for URLs with a protocol scheme
@@ -98,14 +101,14 @@ export class BrowserUrlBarModel {
     }
 
     get suggestionsMode(): "navigation" | "search" {
-        const { userHasTyped, urlInput } = this.model.state.get();
+        const { userHasTyped, urlInput } = this.state.get();
         return (!userHasTyped && urlInput)
             ? "navigation"
             : "search";
     }
 
     get suggestionsItems(): string[] {
-        const s = this.model.state.get();
+        const s = this.state.get();
         if (!s.suggestionsOpen) return [];
         const mode = this.suggestionsMode;
         if (mode === "navigation") {
@@ -142,20 +145,20 @@ export class BrowserUrlBarModel {
     // =====================================================================
 
     handleUrlKeyDown = (e: KeyboardEvent) => {
-        const s = this.model.state.get();
+        const s = this.state.get();
         const items = this.suggestionsItems;
 
         if (s.suggestionsOpen && items.length > 0) {
             switch (e.key) {
                 case "ArrowDown":
                     e.preventDefault();
-                    this.model.state.update((st) => {
+                    this.state.update((st) => {
                         st.hoveredIndex = Math.min(st.hoveredIndex + 1, items.length - 1);
                     });
                     return;
                 case "ArrowUp":
                     e.preventDefault();
-                    this.model.state.update((st) => {
+                    this.state.update((st) => {
                         st.hoveredIndex = Math.max(st.hoveredIndex - 1, -1);
                     });
                     return;
@@ -163,7 +166,7 @@ export class BrowserUrlBarModel {
                     if (s.hoveredIndex >= 0 && s.hoveredIndex < items.length) {
                         e.preventDefault();
                         const value = items[s.hoveredIndex];
-                        this.model.state.update((st) => {
+                        this.state.update((st) => {
                             st.urlInput = value;
                             st.suggestionsOpen = false;
                         });
@@ -174,7 +177,7 @@ export class BrowserUrlBarModel {
                     break;
                 case "Escape":
                     e.preventDefault();
-                    this.model.state.update((st) => {
+                    this.state.update((st) => {
                         st.suggestionsOpen = false;
                     });
                     return;
@@ -182,14 +185,14 @@ export class BrowserUrlBarModel {
         }
         if (e.key === "Enter") {
             e.preventDefault();
-            this.model.state.update((st) => {
+            this.state.update((st) => {
                 st.suggestionsOpen = false;
             });
             this.model.navigate(s.urlInput);
             this.urlInputRef?.blur();
         } else if (e.key === "Escape") {
             const currentUrl = this.model.currentUrl || "";
-            this.model.state.update((st) => {
+            this.state.update((st) => {
                 st.suggestionsOpen = false;
                 st.urlInput = currentUrl;
             });
@@ -198,10 +201,10 @@ export class BrowserUrlBarModel {
     };
 
     handleNavigate = () => {
-        this.model.state.update((s) => {
+        this.state.update((s) => {
             s.suggestionsOpen = false;
         });
-        const { urlInput } = this.model.state.get();
+        const { urlInput } = this.state.get();
         this.model.navigate(urlInput);
         this.urlInputRef?.blur();
     };
@@ -215,7 +218,7 @@ export class BrowserUrlBarModel {
             onClick: async () => {
                 const text = await navigator.clipboard.readText();
                 if (text) {
-                    this.model.state.update((s) => {
+                    this.state.update((s) => {
                         s.urlInput = text;
                     });
                     this.model.navigate(text);
@@ -226,7 +229,7 @@ export class BrowserUrlBarModel {
 
     handleUrlFocus = () => {
         this.focusScheduler?.(true);
-        this.model.state.update((s) => {
+        this.state.update((s) => {
             s.suggestionsOpen = true;
             s.userHasTyped = false;
             s.hoveredIndex = -1;
@@ -238,13 +241,13 @@ export class BrowserUrlBarModel {
         // Clear any lingering DOM selection from the URL input so it doesn't
         // leak into global context menus as phantom "selected text".
         window.getSelection()?.removeAllRanges();
-        this.model.state.update((s) => {
+        this.state.update((s) => {
             s.suggestionsOpen = false;
         });
     };
 
     handleUrlChange = (value: string) => {
-        this.model.state.update((s) => {
+        this.state.update((s) => {
             s.urlInput = value;
             s.userHasTyped = true;
             s.hoveredIndex = -1;
@@ -252,7 +255,7 @@ export class BrowserUrlBarModel {
     };
 
     handleSuggestionSelect = (value: string) => {
-        this.model.state.update((s) => {
+        this.state.update((s) => {
             s.urlInput = value;
             s.suggestionsOpen = false;
         });
@@ -264,7 +267,7 @@ export class BrowserUrlBarModel {
         const storage = this.searchStorage;
         if (!storage) return;
         storage.removeMany(this.suggestionsItems);
-        this.model.state.update((s) => {
+        this.state.update((s) => {
             s.searchEntries = storage.getAll();
         });
     };

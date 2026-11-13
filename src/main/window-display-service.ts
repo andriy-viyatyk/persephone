@@ -1,6 +1,6 @@
 import { BrowserWindow, screen, type IpcMainEvent } from "electron";
 import type { IWindowDisplay, IWindowMoveResult, WindowDisplayTarget } from "../ipc/api-param-types";
-import { exitWindowHtmlFullscreen, getHostFullscreenIntent, getPostFullscreenMaximize, restoreGuestFullscreen, setHostFullscreenIntent, setPostFullscreenMaximize, windowHtmlFullscreenKeys } from "./browser-service";
+import { openWindows } from "./open-windows";
 
 function senderWindow(event: IpcMainEvent): BrowserWindow {
     const window = BrowserWindow.fromWebContents(event.sender);
@@ -41,8 +41,9 @@ export async function getFullScreen(event: IpcMainEvent): Promise<boolean> {
 export async function setFullScreen(event: IpcMainEvent, on: boolean): Promise<{ fullscreen: boolean }> {
     if (typeof on !== "boolean") throw new Error("Fullscreen must be a boolean");
     const window = senderWindow(event);
-    setHostFullscreenIntent(window, on);
-    if (!on) await exitWindowHtmlFullscreen(window);
+    const owner = openWindows.findByWindow(window);
+    owner?.hostFullscreen.setHostFullscreenIntent(on);
+    if (!on) await owner?.hostFullscreen.exitWindowHtmlFullscreen();
     if (window.isFullScreen() !== on) window.setFullScreen(on);
     await waitForWindow(window, () => window.isFullScreen() === on, "window fullscreen transition");
     return { fullscreen: window.isFullScreen() };
@@ -70,14 +71,16 @@ export async function moveToDisplay(event: IpcMainEvent, target: WindowDisplayTa
     }
     if (index < 0 || index >= displays.length || !displays[index]) throw new Error("Invalid display target or no other display is available; call getDisplays() again");
     const display = displays[index];
-    const guestFullscreenKeys = windowHtmlFullscreenKeys(window);
-    const desiredFullscreen = options?.fullscreen ?? (guestFullscreenKeys.length ? getHostFullscreenIntent(window) : window.isFullScreen());
+    const owner = openWindows.findByWindow(window);
+    const guestFullscreenKeys = owner?.hostFullscreen.windowHtmlFullscreenKeys() ?? [];
+    const desiredFullscreen = options?.fullscreen ?? (owner && guestFullscreenKeys.length
+        ? owner.hostFullscreen.getHostFullscreenIntent() : window.isFullScreen());
     const normal = window.getNormalBounds();
     const [minimumWidth, minimumHeight] = window.getMinimumSize();
     const area = display.workArea;
     if (minimumWidth > area.width || minimumHeight > area.height) throw new Error("Window minimum size exceeds the target display work area");
     if (window.isMinimized()) window.restore();
-    const desiredMaximized = options?.maximize ?? (window.isFullScreen() ? getPostFullscreenMaximize(window) : undefined) ?? window.isMaximized();
+    const desiredMaximized = options?.maximize ?? (window.isFullScreen() ? owner?.hostFullscreen.getPostFullscreenMaximize() : undefined) ?? window.isMaximized();
     const width = Math.min(normal.width, area.width);
     const height = Math.min(normal.height, area.height);
     const bounds = { x: Math.round(area.x + (area.width - width) / 2), y: Math.round(area.y + (area.height - height) / 2), width, height };
@@ -87,9 +90,9 @@ export async function moveToDisplay(event: IpcMainEvent, target: WindowDisplayTa
     screen.on("display-removed", onDisplayChange);
     screen.on("display-metrics-changed", onDisplayChange);
     try {
-        setPostFullscreenMaximize(window, undefined);
-        setHostFullscreenIntent(window, false);
-        await exitWindowHtmlFullscreen(window);
+        owner?.hostFullscreen.setPostFullscreenMaximize(undefined);
+        owner?.hostFullscreen.setHostFullscreenIntent(false);
+        await owner?.hostFullscreen.exitWindowHtmlFullscreen();
         if (window.isFullScreen()) {
             window.setFullScreen(false);
             await waitForWindow(window, () => !window.isFullScreen(), "exit from fullscreen");
@@ -100,9 +103,9 @@ export async function moveToDisplay(event: IpcMainEvent, target: WindowDisplayTa
         await new Promise(resolve => setTimeout(resolve, 100));
         if (!window.isDestroyed() && !boundsClose(window.getBounds(), bounds)) window.setBounds(bounds);
         if (desiredMaximized) window.maximize();
-        setHostFullscreenIntent(window, desiredFullscreen);
+        owner?.hostFullscreen.setHostFullscreenIntent(desiredFullscreen);
         if (desiredFullscreen) {
-            setPostFullscreenMaximize(window, desiredMaximized);
+            owner?.hostFullscreen.setPostFullscreenMaximize(desiredMaximized);
             window.setFullScreen(true);
         }
         await waitForWindow(window, () => {
@@ -111,7 +114,7 @@ export async function moveToDisplay(event: IpcMainEvent, target: WindowDisplayTa
                 && (desiredFullscreen || window.isMaximized() === desiredMaximized) && window.isFullScreen() === desiredFullscreen;
         }, "display move and requested window state");
         if (guestFullscreenKeys.length && options?.fullscreen === undefined && !desiredFullscreen) {
-            try { await restoreGuestFullscreen(guestFullscreenKeys[0]); } catch { /* Reported by the state below. */ }
+            try { await owner?.hostFullscreen.restoreGuestFullscreen(guestFullscreenKeys[0]); } catch { /* Reported by the state below. */ }
         }
         return { display: index, bounds: window.getBounds(), maximized: window.isMaximized(), fullscreen: window.isFullScreen() };
     } finally {

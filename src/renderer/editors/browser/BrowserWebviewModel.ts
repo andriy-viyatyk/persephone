@@ -307,9 +307,7 @@ export class BrowserWebviewModel {
                 break;
             case "did-start-navigation": {
                 this.model.siteExtensions.onNavigationStarted(internalTabId, data.isMainFrame, data.isSameDocument);
-                this.model.state.update((state) => {
-                    state.permissionPrompts = state.permissionPrompts.filter((item) => item.internalTabId !== internalTabId);
-                });
+                this.model.prompts.clearTab(internalTabId);
                 if (data.blocked) {
                     const webview = this.get(internalTabId);
                     const tabData = this.model.findTab(internalTabId);
@@ -322,7 +320,7 @@ export class BrowserWebviewModel {
             case "new-window": {
                 if (data.url) {
                     if (!this.popupsAllowed && !globalPopupRateLimiter.check("tabs")) {
-                        this.model.state.update((s) => { s.blockedPopupCount++; });
+                        this.model.prompts.countBlockedPopup();
                         break;
                     }
                     const parentTab = this.model.findTab(internalTabId);
@@ -334,17 +332,13 @@ export class BrowserWebviewModel {
                 break;
             }
             case "popups-blocked": {
-                this.model.state.update((s) => { s.blockedPopupCount++; });
+                this.model.prompts.countBlockedPopup();
                 break;
             }
             case "permission-request": {
                 const prompt = data.permissionRequest as BrowserPermissionPromptData | undefined;
                 if (prompt && this.model.state.get().tabs.some((tab) => tab.id === internalTabId)) {
-                    this.model.state.update((state) => {
-                        if (!state.permissionPrompts.some((item) => item.requestId === prompt.requestId)) {
-                            state.permissionPrompts.push({ ...prompt, internalTabId });
-                        }
-                    });
+                    this.model.prompts.enqueuePermission(prompt, internalTabId);
                 }
                 break;
             }

@@ -18,6 +18,10 @@ export function errMessage(e: unknown, fallback = "Unexpected error"): string {
     return text && text !== "[object Object]" ? text : fallback;
 }
 
+export function isRecord(value: unknown): value is Record<string, unknown> {
+    return value !== null && typeof value === "object";
+}
+
 /** Join binary chunks (stdout/stderr from a spawned process) into one buffer. */
 export function concatChunks(chunks: Uint8Array[]): Uint8Array {
     let total = 0;

@@ -1,4 +1,4 @@
-import { TOneState } from "../../core/state/state";
+import { TComponentState } from "../../core/state/state";
 import type { BrowserEditor } from "./BrowserEditor";
 
 export interface BrowserFindState {
@@ -17,7 +17,7 @@ const DEFAULT_FIND_STATE: BrowserFindState = {
 
 /** Owns find-in-page state and commands for the active browser guest. */
 export class BrowserFindModel {
-    readonly state = new TOneState<BrowserFindState>(DEFAULT_FIND_STATE);
+    readonly state = new TComponentState<BrowserFindState>(DEFAULT_FIND_STATE);
 
     constructor(private readonly model: BrowserEditor) {}
 

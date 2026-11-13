@@ -510,13 +510,11 @@ menu, one shortcut table, a private webview registry (BRW-1, BRW-2) and one tran
 guest registration and favicon handling out of the view, one permission-labels table, named toolbar controls (BRW-5);
 the typed `GuestMessage` protocol, `BrowserGuestChannel`, dead title/favicon/find events removed, preload split (BRW-6);
 `BrowserBookmarksModel` + `resolveBrowserProfile` (BRW-9); tab state without mirrors and navigation as an explicit command
-(BRW-4 steps 1–3); `BrowserEditor.createNew` with disposal on refusal (BRW-10). Remaining:
-
-- **6.1 part 3 (main, next):** `BrowserGuest` + `BrowserGuestRegistry`, `HostFullscreenController`,
-  `browser-dom-snapshot.ts`, `CdpTarget` with feature modules and one `resolveTarget` (MAIN-7).
-- **BRW-4 step 4 (deferred from EPIC-159):** URL-bar, find and prompt state in their own `TComponentState` slices owned by
-  `BrowserUrlBarModel`, `BrowserFindModel` and the prompt owners, with views binding only the slice they render. Small
-  enough to ride along with part 3 or 6.2.
+(BRW-4 steps 1–3); `BrowserEditor.createNew` with disposal on refusal (BRW-10). Part 3 is done
+([EPIC-160](epics/EPIC-160.md), 2026-11-13): `BrowserGuest` + `browserGuests` registry with navigation and popup policy
+modules, `HostFullscreenController` owned by `OpenWindow` (the `open-windows` cycle is gone), `browser-dom-snapshot.ts`,
+`CdpTarget` with one `resolveTarget` and feature modules under `src/main/cdp/` (MAIN-7); URL-bar, find and prompt state
+slices (BRW-4 step 4). **Roadmap item 6.1 is complete.**
 
 ### Phase 7: Lock it in
 

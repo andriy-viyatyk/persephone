@@ -224,7 +224,7 @@ export class BrowserBookmarksModel {
         ));
 
         // Track urlInput changes to re-check isBookmarked
-        this.urlTrackingSub = this.subscriptions.add(this.model.state.subscribe(
+        this.urlTrackingSub = this.subscriptions.add(this.model.urlBar.state.subscribe(
             () => this.updateIsBookmarked(),
             (state) => state.urlInput,
         ));
@@ -238,7 +238,7 @@ export class BrowserBookmarksModel {
             this.model.state.update((s) => { s.isBookmarked = false; });
             return;
         }
-        const { urlInput } = this.model.state.get();
+        const { urlInput } = this.model.urlBar.state.get();
         const found = !!bm.findByUrl(urlInput);
         const current = this.model.state.get().isBookmarked;
         if (found !== current) {
@@ -303,7 +303,8 @@ export class BrowserBookmarksModel {
         if (!bm) return;
 
         const state = this.model.state.get();
-        const { urlInput, activeTabId } = state;
+        const { urlInput } = this.model.urlBar.state.get();
+        const { activeTabId } = state;
 
         // Cache the favicon for this hostname before showing the dialog.
         // Skip on Tor pages too: `saveFavicon` downloads over a raw Node

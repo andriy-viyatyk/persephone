@@ -33,6 +33,8 @@ normalization, keyboard shortcuts, and popup policy while composing focused subm
   `BrowserTargetModel` own URL-bar state, bookmarks, site-permission/certificate actions, and
   automation respectively. `resolveBrowserProfile()` centralizes the resolved profile, color, and
   bookmark-file read/write target.
+- `BrowserPromptsModel` owns transient blocked-popup and permission-prompt state and actions; the
+  prompt views render that slice alongside their other browser state.
 
 The host's tab and Tor methods are compatibility forwarding points; the corresponding submodels own
 those behaviors and their cleanup. Views use the composed models, while the browser page retains its
@@ -361,6 +363,7 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/renderer/editors/browser/BrowserSiteExtensionController.ts` | Renderer | Site-extension trust, injection, actions, fetch routing, and reload lifecycle |
 | `src/renderer/editors/browser/BrowserPageRemote.ts` | Renderer | Page/WebMCP model registration, probing, privacy checks, revalidation, and remote requests |
 | `src/renderer/editors/browser/BrowserFindModel.ts` | Renderer | Find-in-page state and commands |
+| `src/renderer/editors/browser/BrowserPromptsModel.ts` | Renderer | Transient blocked-popup and permission-prompt state and actions |
 | `src/renderer/editors/browser/BrowserTranslationController.ts` | Renderer | Translation toolbar workflow and per-tab page translation lifecycle |
 | `src/renderer/editors/browser/webview-context-menu.ts` | Renderer | Browser webview context-menu construction and bounded DOM/SVG/resource probes |
 | `src/renderer/editors/browser/BrowserTargetModel.ts` | Renderer | Automation adapter sub-model — implements `IBrowserTarget` for Object Model call paths |
@@ -382,8 +385,12 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/renderer/scripting/ai-vision/browser-automation-members.ts` | Renderer | Shared automation descriptor used by browser, board, and app-window hosts |
 | `src/renderer/scripting/ai-vision/namespaces/window-screen.ts` | Renderer | `window.screen` descriptor, help, summary, and active-private-page restriction |
 | `src/renderer/automation/types.ts` | Renderer | `IBrowserTarget` interface — what automation needs from browser editor |
-| `src/main/browser-service.ts` | Main | Attaches to webContents, relays events via IPC, audio state, hotkeys, cache cleanup, DOM collection (incl. iframes) |
-| `src/main/cdp-service.ts` | Main | CDP session management — debugger attach/detach/send via IPC, plus the browser-only AiVision binding and filtered runtime event path |
+| `src/main/browser-service.ts` | Main | Browser service composition and IPC-facing methods |
+| `src/main/browser/BrowserGuest.ts`, `BrowserGuestRegistry.ts` | Main | Per-registration guest listeners, state, disposal, and lookup |
+| `src/main/browser-dom-snapshot.ts` | Main | DOM and loaded-resource collection, including iframe content |
+| `src/main/host-fullscreen-controller.ts` | Main | Per-window host fullscreen intent and registered-guest coordination |
+| `src/main/cdp-service.ts` | Main | CDP service composition and app, board, and browser target routing |
+| `src/main/cdp/CdpTarget.ts` and feature modules | Main | Per-WebContents debugger state and page-event, wait, network, drag, and AiVision owners |
 | `src/main/network-logger.ts` | Main | Per-page HTTP request/response logging via `session.webRequest`, circular buffer, IPC access |
 | `src/main/tor-service.ts` | Main | Tor process lifecycle: spawn/kill tor.exe, restart, per-partition SOCKS5 proxy (armed before the daemon starts so the partition fails closed), torrc generation, exit-IP lookup |
 | `src/main/tor-src-protocol.ts` | Main | `tor-src://` handler — fetches an `http(s)` URL through a Tor partition's session |
@@ -615,7 +622,7 @@ Incognito and Tor decisions do not appear there because they are memory-only.
 The global `browser-windows-sso` setting is opt-in and defaults to off. The renderer sends its
 initial value and later changes to the main process over the typed
 `Endpoint.setWindowsSsoEnabled` IPC endpoint; main keeps only this boolean policy. The setting
-appears in Settings â†’ Browser â†’ Browser Profiles.
+appears in Settings → Browser → Browser Profiles.
 
 When enabled on Windows, the sole `session.webRequest.onBeforeSendHeaders` listener in
 `network-logger.ts` may add Windows sign-in proof to `mainFrame` and `subFrame` HTTPS requests
@@ -1020,7 +1027,7 @@ Browser hotkeys (F5, F12, Alt+Left/Right, etc.) must work regardless of where fo
 
 ### Layer 1: Main Process (`before-input-event`)
 
-When focus is inside a `<webview>`, keyboard events are consumed by the guest page and never reach the renderer's DOM. The main process intercepts these via `webContents.on("before-input-event")` in `browser-service.ts`, handling F5, Ctrl+R, F12, and Alt+Left/Right directly on the webContents. Escape is intercepted there only while that webview is in HTML fullscreen; otherwise it reaches the guest page and the preload handles it after the page has had a chance to claim it.
+When focus is inside a `<webview>`, keyboard events are consumed by the guest page and never reach the renderer's DOM. `BrowserGuest` intercepts these via `webContents.on("before-input-event")`, handling F5, Ctrl+R, F12, and Alt+Left/Right directly on the webContents. Escape is intercepted there only while that webview is in HTML fullscreen; otherwise it reaches the guest page and the preload handles it after the page has had a chance to claim it.
 
 ### Layer 2: Global Key Event Bus (`globalKeyDown` Subscription)
 
@@ -1098,19 +1105,19 @@ guest page receiving the key.
 The renderer and main process both track the webview's `enter-html-full-screen` and
 `leave-html-full-screen` events. If the fullscreen webview becomes hidden because the user changes
 pages or opens another tab, a `ResizeObserver` removes the fullscreen presentation and sends
-`BrowserChannel.exitHtmlFullscreen`. The main process tracks guest fullscreen per webview registration
-and explicit host fullscreen intent separately. It restores the host window only after no registered
-guest needs fullscreen and no host fullscreen intent remains. If the guest does not respond, a
-one-second fallback requests the native exit while preserving guest ownership until Electron confirms
-the transition; unregistering a fullscreen webview also reconciles the host state. Escape requests
-the same exit while HTML fullscreen is active, whether focus is in the guest or Persephone chrome.
+`BrowserChannel.exitHtmlFullscreen`. `BrowserGuest` owns the guest's fullscreen state and transition
+listeners. The `HostFullscreenController` owned by each `OpenWindow` tracks host fullscreen intent
+and coordinates all registered guests in that window; it restores the host window only after no
+guest needs fullscreen and no host fullscreen intent remains. Unregistering a fullscreen guest also
+reconciles host state. Escape requests the same exit while HTML fullscreen is active, whether focus
+is in the guest or Persephone chrome.
 Window bounds are not persisted during fullscreen, avoiding restoration of the display-sized bounds
 as a normal window on the next launch.
 
-The main process also tracks the last mouse press per webview registration. If focus leaves the
-guest, its host window blurs, or the press opens a new tab or popup before the matching mouse-up
-reaches the page, the service sends a mouse-up at the last pointer position. This prevents the page
-from retaining a pressed-button state after the release was routed elsewhere.
+`BrowserGuest` tracks the last mouse press for its registration. If focus leaves the guest, its host
+window blurs, or the press opens a new tab or popup before the matching mouse-up reaches the page,
+the guest sends a mouse-up at the last pointer position. This prevents the page from retaining a
+pressed-button state after the release was routed elsewhere.
 
 The scripting facade exposes guest HTML fullscreen through
 `pages[pageId].editor.fullscreen(selector?, { tabId? })` and `exitFullscreen({ tabId? })`. These
@@ -1134,14 +1141,14 @@ runtime.
 
 ### Reload and the `beforeunload` guard
 
-A guest page with a `beforeunload` handler (e.g. an unsaved-changes guard) tries to cancel any reload/navigation. Electron's default for the resulting `will-prevent-unload` event is to **silently cancel the unload** — no prompt, no reload — which makes Reload/F5 appear dead. `browser-service.ts` handles `will-prevent-unload` to fix this:
+A guest page with a `beforeunload` handler (e.g. an unsaved-changes guard) tries to cancel any reload/navigation. Electron's default for the resulting `will-prevent-unload` event is to **silently cancel the unload** — no prompt, no reload — which makes Reload/F5 appear dead. `BrowserGuest` handles `will-prevent-unload` to fix this:
 
 - **Soft reload** (toolbar button, `F5`, `Ctrl+R`) → a native confirm ("You have unsaved changes. Leave the page and discard them?"); **Leave** allows the unload (reload proceeds), **Cancel** keeps the page.
 - **Hard reload** (`Ctrl+F5` / `Ctrl+Shift+R`) → bypasses the prompt and force-reloads.
 
-The bypass uses a one-shot `bypassUnloadGuard` flag on the per-webContents `RegisteredWebview`: armed by a hard reload, consumed (and cleared) by the `will-prevent-unload` handler, and cleared defensively on `did-stop-loading` so it can never leak to a later reload. Because the flag lives in the main process, both keyboard layers must arm it there:
+The bypass uses a one-shot `bypassUnloadGuard` flag on the per-registration `BrowserGuest`: armed by a hard reload, consumed (and cleared) by the `will-prevent-unload` handler, and cleared defensively on `did-stop-loading` so it can never leak to a later reload. Because the flag lives in the main process, both keyboard layers must arm it there:
 
-- **Layer 1** (`before-input-event`, focus inside the page) sets `reg.bypassUnloadGuard` and calls `wc.reloadIgnoringCache()` directly.
+- **Layer 1** (`before-input-event`, focus inside the page) arms the guest's bypass flag and calls `reloadIgnoringCache()` directly.
 - **Layer 2** (`globalKeyDown`, focus on browser chrome) calls `BrowserWebviewModel.hardReload()`, which sends the new `BrowserChannel.hardReload` IPC (key `${tabId}/${internalTabId}`); the main handler arms the flag and reloads — mirroring Layer 1 so both paths have identical semantics. (Soft reload stays renderer-side via `reloadOrStop()` → `<webview>.reload()`, which still triggers the confirm.)
 
 ## Scripting Facade

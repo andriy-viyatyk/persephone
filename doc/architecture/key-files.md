@@ -335,6 +335,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Browser site-action popover content | `/src/renderer/editors/browser/BrowserSiteActionsView.ts` |
 | Browser page remote (page/WebMCP probing, registration, privacy checks, revalidation, and remote requests) | `/src/renderer/editors/browser/BrowserPageRemote.ts` |
 | Browser find-in-page state and commands | `/src/renderer/editors/browser/BrowserFindModel.ts` |
+| Browser popup and site-permission prompt state/actions | `/src/renderer/editors/browser/BrowserPromptsModel.ts` |
 | Browser chrome shortcut registry and page menu | `/src/renderer/editors/browser/BrowserShortcutTable.ts`, `/src/renderer/editors/browser/browser-page-menu.ts` |
 | Site-action contract validation (bounded action trees, identifiers, labels and icons shared across the main-world runtime and renderer) | `/src/shared/site-extension-actions.ts` |
 | Site-action result validation and dispatch (closed result union and opens in existing editors) | `/src/renderer/editors/browser/site-extension-actions.ts` |
@@ -357,7 +358,13 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Browser webview context-menu builder (bounded DOM/SVG/resource probes and menu actions) | `/src/renderer/editors/browser/webview-context-menu.ts` |
 | Browser guest preload (entry point and focused page reporters, WebMCP bridge, translation agent, and chrome shim) | `/src/preload-webview.ts`, `/src/preload-webview/page-reporters.ts`, `/src/preload-webview/webmcp-bridge.ts`, `/src/preload-webview/page-translation-agent.ts`, `/src/preload-webview/chrome-shim.ts` |
 | Browser guest translation wire contract (frame-scoped scopes, units, detection samples, activation, and results) | `/src/ipc/browser-translation-messages.ts` |
-| Browser webContents service (main-process webview registration and isolated guest zoom, persistent-profile-only WebMCP preload gate, registered Browser-webcontents scope check, event relay, navigation guards, registered-protocol handoff, pre-dispatch browser shortcuts, lost mouse-press recovery, and HTML-fullscreen cleanup) | `/src/main/browser-service.ts` |
+| Browser main-process composition/API, dependency wiring, guest DOM snapshots, guest lifecycle and registry, and per-window fullscreen coordination | `/src/main/browser-service.ts`, `/src/main/browser-service-composition.ts`, `/src/main/browser-dom-snapshot.ts`, `/src/main/browser/BrowserGuest.ts`, `/src/main/browser/BrowserGuestRegistry.ts`, `/src/main/host-fullscreen-controller.ts` |
+| Browser guest navigation and popup policies | `/src/main/browser/navigation-scheme-policy.ts`, `/src/main/browser/popup-policy.ts` |
+| CDP service composition and target routing | `/src/main/cdp-service.ts` |
+| Per-WebContents CDP debugger lifecycle, domain state, and event dispatch | `/src/main/cdp/CdpTarget.ts` |
+| CDP page events and dialogs | `/src/main/cdp/cdp-page-events.ts` |
+| CDP navigation and response waits | `/src/main/cdp/cdp-waits.ts` |
+| CDP network collection, drag interception, and AiVision binding | `/src/main/cdp/cdp-network-collector.ts`, `/src/main/cdp/cdp-drag-intercept.ts`, `/src/main/cdp/cdp-ai-vision-binding.ts` |
 | Browser and app media permission policy (main-owned session classification, Electron permission request/check handlers, site prompts and decisions, persistent profile store, memory-only private-session decisions, and one-shot app-main-frame recording-video and voice-typing-audio grants) | `/src/main/permission-policy-service.ts` |
 | Browser request log (bounded per-tab HTTP metadata, opt-in response bodies fetched from CDP while Chromium retains them, metadata-only AiVision summaries, Windows SSO composition, and redacted request headers) | `/src/main/network-logger.ts` |
 | Windows SSO adapter (global opt-in policy, eligible-session/origin checks, snip-tool process invocation, header mapping, and request-log redaction) | `/src/main/windows-sso.ts` |

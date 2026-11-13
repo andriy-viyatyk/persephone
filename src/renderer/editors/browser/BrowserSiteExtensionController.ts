@@ -12,13 +12,18 @@ import type { SiteActionItem } from "../../../shared/site-extension-actions";
 import { validateSiteActionResult } from "./site-extension-actions";
 import { SiteExtensionTrustPrompt } from "./site-extension-trust-prompt";
 import type { BrowserEditor } from "./BrowserEditor";
-import type { BrowserEditorState } from "./browser-state";
 import { isPrivateBrowserSession } from "./agent-access";
 import { ensureTargetReady, evaluateInTarget } from "../../automation/operations";
 import { errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
 import { withTimeout } from "../../core/utils/utils";
 import { SiteActionDocument } from "./SiteActionDocument";
+import { TComponentState } from "../../core/state/state";
+import type { SiteExtensionTrustPromptData } from "./site-extension-trust-prompt";
+
+interface BrowserSiteExtensionState {
+    siteExtensionTrustPrompts: SiteExtensionTrustPromptData[];
+}
 
 function stripExtensionErrorControls(message: string): string {
     return Array.from(message).filter((character) => {
@@ -40,6 +45,7 @@ function pageExtensionError(message: string): string {
 
 export class BrowserSiteExtensionController {
     private readonly model: BrowserEditor;
+    readonly state = new TComponentState<BrowserSiteExtensionState>({ siteExtensionTrustPrompts: [] });
     private readonly siteDocuments = new Map<string, number>();
     private readonly injectedSiteExtensions = new Map<string, { documentId: number; name: string }>();
     readonly actionDocuments = new Map<string, SiteActionDocument>();
@@ -57,8 +63,8 @@ export class BrowserSiteExtensionController {
     }
 
     activePrompt() {
-        const state = this.model.state.get();
-        return state.siteExtensionTrustPrompts.find((prompt) => prompt.internalTabId === state.activeTabId
+        const activeTabId = this.model.state.get().activeTabId;
+        return this.state.get().siteExtensionTrustPrompts.find((prompt) => prompt.internalTabId === activeTabId
             && prompt.documentId === this.documentId(prompt.internalTabId));
     }
 
@@ -115,7 +121,7 @@ export class BrowserSiteExtensionController {
         for (const [tabId, doc] of this.actionDocuments) {
             if (!doc.isCurrent(false)) this.clear(tabId);
         }
-        this.model.state.update((state) => {
+        this.state.update((state) => {
             state.siteExtensionTrustPrompts = state.siteExtensionTrustPrompts.filter((prompt) => {
                 const grant = snapshot[prompt.id];
                 return !grant || !sameSiteExtensionHostSet(grant.hosts, prompt.hosts)
@@ -124,15 +130,15 @@ export class BrowserSiteExtensionController {
         });
     }
 
-    setTrustPrompt(prompt: NonNullable<BrowserEditorState["siteExtensionTrustPrompts"][number]>): void {
-        this.model.state.update((state) => {
+    setTrustPrompt(prompt: SiteExtensionTrustPromptData): void {
+        this.state.update((state) => {
             state.siteExtensionTrustPrompts = state.siteExtensionTrustPrompts.filter((item) => item.internalTabId !== prompt.internalTabId);
             state.siteExtensionTrustPrompts.push(prompt);
         });
     }
 
     clearTrustPrompt(tabId: string, documentId?: number): void {
-        this.model.state.update((state) => {
+        this.state.update((state) => {
             state.siteExtensionTrustPrompts = state.siteExtensionTrustPrompts.filter((item) =>
                 item.internalTabId !== tabId || (documentId !== undefined && item.documentId !== documentId));
         });
@@ -175,7 +181,7 @@ export class BrowserSiteExtensionController {
     }
 
     async trustPrompt(tabId: string, documentId: number): Promise<"trusted" | "changed" | "unavailable" | "not-current"> {
-        const prompt = this.model.state.get().siteExtensionTrustPrompts.find((item) => item.internalTabId === tabId && item.documentId === documentId);
+        const prompt = this.state.get().siteExtensionTrustPrompts.find((item) => item.internalTabId === tabId && item.documentId === documentId);
         if (!prompt || !this.currentDocument(tabId, documentId, prompt.host)) return "not-current";
         if (!prompt.available) return "unavailable";
         const current = await siteExtensionStore.findForHost(prompt.host).catch((): undefined => undefined);

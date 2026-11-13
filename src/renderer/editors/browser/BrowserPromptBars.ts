@@ -1,6 +1,7 @@
 import type { BrowserEditor } from "./BrowserEditor";
 import { t } from "../../../shared/i18n/t";
-import type { BrowserEditorState } from "./browser-state";
+import type { BrowserPermissionPrompt } from "./BrowserPromptsModel";
+import type { SiteExtensionTrustPromptData } from "./site-extension-trust-prompt";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -14,7 +15,7 @@ export class PopupBlockedView extends VanillaView<{ model: BrowserEditor; count:
     private readonly dismiss: IconButtonView;
     public constructor(props: { model: BrowserEditor; count: number }) {
         const root = createPanelElement({ name: "popup-blocked-bar", direction: "row", align: "center", gap: "md", paddingX: "md", paddingY: "xs", background: "light", borderBottom: true, shrink: false });
-        super(props, root); this.allow = this.child(new ButtonView({ name: "popup-allow", size: "sm", variant: "ghost", children: t("browser.allow"), onClick: props.model.allowPopups })); this.dismiss = this.child(new IconButtonView({ name: "popup-dismiss", size: "sm", icon: "close", title: t("browser.dismiss"), onClick: props.model.dismissBlockedPopups }));
+        super(props, root); this.allow = this.child(new ButtonView({ name: "popup-allow", size: "sm", variant: "ghost", children: t("browser.allow"), onClick: props.model.prompts.allowPopups })); this.dismiss = this.child(new IconButtonView({ name: "popup-dismiss", size: "sm", icon: "close", title: t("browser.dismiss"), onClick: props.model.prompts.dismissBlockedPopups }));
         root.append(createPanelElement({ flex: true }, [this.text]), this.allow.root, this.dismiss.root);
     }
     protected onMount(): void { this.allow.mount(); this.dismiss.mount(); this.sync(); }
@@ -22,13 +23,13 @@ export class PopupBlockedView extends VanillaView<{ model: BrowserEditor; count:
     private sync(): void { this.text.textContent = t("browser.blockedPopup", { count: this.props.count }); }
 }
 
-export class PermissionPromptBarView extends VanillaView<{ model: BrowserEditor; prompt: BrowserEditorState["permissionPrompts"][number] }> {
+export class PermissionPromptBarView extends VanillaView<{ model: BrowserEditor; prompt: BrowserPermissionPrompt }> {
     private readonly origin = createTextElement("");
     private readonly requestText = createTextElement("");
     private readonly allow: ButtonView;
     private readonly block: ButtonView;
 
-    public constructor(props: { model: BrowserEditor; prompt: BrowserEditorState["permissionPrompts"][number] }) {
+    public constructor(props: { model: BrowserEditor; prompt: BrowserPermissionPrompt }) {
         const root = createPanelElement({ name: "browser-permission-prompt", direction: "row", align: "center", gap: "md", paddingX: "md", paddingY: "xs", background: "light", borderBottom: true, shrink: false });
         super(props, root);
         const details = createPanelElement({ name: "permission-prompt-copy", flex: true, direction: "column", gap: "xs" });
@@ -39,7 +40,7 @@ export class PermissionPromptBarView extends VanillaView<{ model: BrowserEditor;
     }
 
     protected onMount(): void { this.allow.mount(); this.block.mount(); this.sync(); }
-    protected onUpdate(props: { model: BrowserEditor; prompt: BrowserEditorState["permissionPrompts"][number] }): void { this.props = props; this.sync(); }
+    protected onUpdate(props: { model: BrowserEditor; prompt: BrowserPermissionPrompt }): void { this.props = props; this.sync(); }
 
     private sync(): void {
         const prompt = this.props.prompt;
@@ -55,15 +56,15 @@ export class PermissionPromptBarView extends VanillaView<{ model: BrowserEditor;
     }
 
     private resolve(decision: "allow" | "block"): void {
-        this.props.model.resolvePermissionPrompt(this.props.prompt.requestId, decision);
+        this.props.model.prompts.resolvePermissionPrompt(this.props.prompt.requestId, decision);
     }
 }
 
-export class SiteExtensionTrustPromptBarView extends VanillaView<{ model: BrowserEditor; prompt: BrowserEditorState["siteExtensionTrustPrompts"][number] }> {
+export class SiteExtensionTrustPromptBarView extends VanillaView<{ model: BrowserEditor; prompt: SiteExtensionTrustPromptData }> {
     private readonly copy = createTextElement("");
     private readonly trust: ButtonView;
     private readonly notNow: ButtonView;
-    public constructor(props: { model: BrowserEditor; prompt: BrowserEditorState["siteExtensionTrustPrompts"][number] }) {
+    public constructor(props: { model: BrowserEditor; prompt: SiteExtensionTrustPromptData }) {
         const root = createPanelElement({ name: "site-extension-trust-prompt", direction: "row", align: "center", gap: "md", paddingX: "md", paddingY: "xs", background: "light", borderBottom: true, shrink: false });
         super(props, root);
         const details = createPanelElement({ name: "site-extension-trust-copy", flex: true, direction: "column", gap: "xs" });
@@ -73,7 +74,7 @@ export class SiteExtensionTrustPromptBarView extends VanillaView<{ model: Browse
         root.append(details, this.trust.root, this.notNow.root);
     }
     protected onMount(): void { this.trust.mount(); this.notNow.mount(); this.sync(); }
-    protected onUpdate(props: { model: BrowserEditor; prompt: BrowserEditorState["siteExtensionTrustPrompts"][number] }): void { this.props = props; this.sync(); }
+    protected onUpdate(props: { model: BrowserEditor; prompt: SiteExtensionTrustPromptData }): void { this.props = props; this.sync(); }
     private sync(): void {
         const { name, host, hosts, fetchHosts, available } = this.props.prompt;
         const otherHosts = hosts.filter((item) => item !== host);
