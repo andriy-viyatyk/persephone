@@ -12,7 +12,7 @@ This page is that review. It is written for the agent doing it; a user reading a
 the same reasoning.
 
 Do this whenever the user asks "can I trust this board?", whenever you are about to call
-`app.boards.registerBoard(root)` on a board they did not author, and again **after an update**
+`boards.registerBoard(root)` on a board they did not author, and again **after an update**
 (see [Re-review triggers](board-review.md#re-review-triggers) — trust survives an update).
 
 ## What trust actually grants
@@ -222,7 +222,7 @@ Report findings with the file and line, what the code does, and why it matters �
 that the user can judge it. Then state a verdict *and its limits*: what you read, what you could
 not verify, and what you would want to see changed.
 
-**The decision is the user's, not yours.** `app.boards.registerBoard(root)` raises the trust
+**The decision is the user's, not yours.** `boards.registerBoard(root)` raises the trust
 dialog, and the dialog is also answerable through the object model
 (`dialogs[i].click("Trust Board")`). Never click it on your own judgement — a clean review is a
 report, not consent. When the user *has* told you to trust the board, follow that instruction:
@@ -253,7 +253,7 @@ folder on disk inert — nothing is trusted and nothing has run — and **regist
 If the target is already installed, downloading the same board updates that folder under its
 existing trust, so re-review it before relying on the updated code. So the review workflow is:
 
-1. `const root = await app.boards.downloadPublished(id)` — or point at the folder the user names.
+1. `const root = await boards.downloadPublished(id)` — or point at the folder the user names.
 2. Read it, using this page.
 3. Report.
-4. Only then `app.boards.registerBoard(root)`, and let the user answer the dialog.
+4. Only then `boards.registerBoard(root)`, and let the user answer the dialog.

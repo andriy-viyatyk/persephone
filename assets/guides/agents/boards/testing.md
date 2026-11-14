@@ -39,7 +39,7 @@ A board never navigates, so it has no navigation members and cannot add or close
 (see next).
 
 For a declared service, run the normal Service-tab request first, then inspect
-`app.boards.list()`/`boards.list()` for the matching `service` payload. Use the public host calls
+`boards.list()` for the matching `service` payload. Use the public host calls
 `app.boards.requestService(root, { op: "echo", value: "no-page" })`, `startService(root)`, and
 `stopService(root)` for no-page requests and lifecycle control. The Demo fixture's service request
 operations are `echo`, `storage-get`, `storage-set`, `storage-delete`, `storage-keys`, `delay`,
@@ -125,6 +125,6 @@ Persephone ships a full **Demo board** that exercises the whole surface (buffere
 stdin/kill/cwd `execute()`, the integration tier, the declared supervised `service.mjs` with
 shared storage and lifecycle failure controls, the `--p-*` theme + token contract, secondary
 views + shared state via `persephone.state.*`, a tabbed layout with a pinned output console).
-For a richer example than the blank template, create one with `app.boards.createDemoBoard(name,
+For a richer example than the blank template, create one with `boards.createDemoBoard(name,
 dir)` and read its files, or read the source under the install's `resources/assets/demo-board/`
 (`index.html`, `app.js`, `style.css`, `board-base.css`).

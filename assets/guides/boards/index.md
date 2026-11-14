@@ -118,7 +118,7 @@ Boards can live **anywhere on disk** — any folder containing a `board-manifest
 
 To install a full working demo board instead, click the caret on the **New board** split-button and choose **Create Demo board**.
 
-**From scripting or an AI agent:**
+**From a script** (an AI agent calls the same members as `call` paths: `boards.createBoard`, `boards.createDemoBoard`, `boards.openBoard`):
 ```javascript
 // Create a blank board in any folder — auto-trusted at creation
 const root = await app.boards.createBoard("My Board", "C:/work/boards");

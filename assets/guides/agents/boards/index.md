@@ -7,9 +7,10 @@ summary: "Boards authoring hub: what a board is, create and open one, the starte
 # Boards — build a custom board/editor for the user
 A **Board** is a small, self-contained web app you (the agent) build for the user:
 a dashboard, tool, viewer, or custom editor. Persephone hosts it in a locked-down,
-cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`. You can
-create one, open it, and develop it end-to-end through **`script.execute`** calling
-the `app` API — no user clicks required.
+cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`. You drive the
+whole loop through the live object model with `call`: scaffold it with `boards.createBoard`, open
+it with `boards.openBoard`, then inspect and test the running page through `pages[i].editor` —
+no user clicks required. Use `script.execute` only for what no call path covers.
 
 Check `persephone.version` before using a bridge member that may not exist in an older app; each bridge release is listed in <!-- board-template:exclude -->[bridge version history](bridge-versions.md)<!-- /board-template:exclude -->`guides.agents.boards["bridge-versions"]`.
 
@@ -71,15 +72,12 @@ a trust prompt; a board you created never does. A later permission increase on y
 shows the permissions-changed dialog, which you answer yourself (see "Who answers the trust
 dialogs").
 
-> The same lifecycle is on the script API too:
-> `app.boards.createBoard(name, dir)` / `createDemoBoard(name, dir)` → returns the board root,
-> and `app.boards.openBoard(root)`. (`app.openRawLink(href)` is a generic opener — files, URLs,
-> in-app links.)
+> These are ordinary `call` paths on the `boards` namespace — drive the lifecycle with `call`, not
+> with `script.execute`. (`app.openRawLink(href)` is a generic opener — files, URLs, in-app links.)
 
-The host agent namespace `boards` and script service `app.boards` expose the same shortcut and
-window operations:
+The `boards` namespace also exposes shortcut and window operations:
 
-- **`boards.createShortcut(boardRoot, opts?)` / `app.boards.createShortcut(boardRoot, opts?)`**
+- **`boards.createShortcut(boardRoot, opts?)`**
   -> `Promise<{ linkPath: string } | null>`: create a Windows `.lnk` that launches the board in
   its board-mode window. The root must be absolute, contain `board-manifest.json`, and be trusted
   or bundled; an untrusted board is rejected with guidance to call `boards.registerBoard(root)`.
@@ -87,7 +85,7 @@ window operations:
   an absolute `.lnk` `opts.linkPath` to skip the dialog; its parent directory must exist, and an
   existing shortcut is refused unless `opts.overwrite` is `true`. The returned `linkPath` is the
   resolved absolute destination. Failures reject to the caller without a UI notification.
-- **`boards.openBoardWindow(boardRoot)` / `app.boards.openBoardWindow(boardRoot)`**
+- **`boards.openBoardWindow(boardRoot)`**
   -> `Promise<void>`: create a visible board-mode window or focus the existing one for that root.
   The absolute root must contain `board-manifest.json` and be trusted or bundled; this agent call
   rejects an untrusted board without opening a trust dialog. Use `boards.openBoard(root)` when the
@@ -114,5 +112,5 @@ blank board contains:
   steps, gotchas) so a future agent has instant context — see the "rewrite this file" note at its
   top. The generic reference is always available in this resource, so it's safe to trim.
 
-Edit these with your own file tools (or `app.fs` inside another `script.execute`). The key
+Edit these with your own file tools (or `app.fs` through `script.execute` when no call path covers it). The key
 surfaces:

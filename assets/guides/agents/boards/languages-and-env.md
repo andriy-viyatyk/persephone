@@ -88,14 +88,14 @@ A board should never store secrets (connection strings, API keys, passwords) in 
 they'd leak the moment the board is copied, shared, or committed. Persephone keeps a single,
 optionally-encrypted `.env.json` file **outside every board folder**, namespaced per board.
 
-**Provision values before the board needs them (you, via `script.execute`):**
+**Provision values before the board needs them (you, with `call` on `boardVars`):**
 
-```js
-const namespace = await app.boardVars.namespaceFor(boardRoot); // author/name, or the root path
-await app.boardVars.set(namespace, "SNOWFLAKE_SERVER", "abc123.snowflakecomputing.com");
-await app.boardVars.list(namespace);        // key names in the namespace
-await app.boardVars.listNamespaces();       // every namespace in the file
-await app.boardVars.show(namespace);        // open the built-in editor, focused there
+```text
+boardVars.namespaceFor(boardRoot)      -> namespace: author/name, or the root path
+boardVars.set(namespace, "SNOWFLAKE_SERVER", "abc123.snowflakecomputing.com")
+boardVars.list(namespace)              -> key names in the namespace
+boardVars.listNamespaces()             -> every namespace in the file
+boardVars.show(namespace)              -> open the built-in editor, focused there
 ```
 
 The namespace uses the trimmed, non-empty `author` + `name` identity pair when both fields are
@@ -106,9 +106,9 @@ and the root fallback remains intentional. If either identity field is later cha
 that already has variables, the old values stay under the old namespace and are orphaned. There is
 no automatic migration; do not assume a trust toggle or restart copies them.
 
-**This call can block on a dialog.** The first-ever `app.boardVars.*` call on a machine with no
+**This call can block on a dialog.** The first-ever `boardVars.*` call on a machine with no
 `.env.json` configured shows the user a "Create environment variables storage" dialog (default
-path, editable) — your `script.execute` call does not resolve until the user responds; declining
+path, editable) — your call does not resolve until the user responds; declining
 rejects it. The same applies if the file is encrypted and locked this session (a decrypt-password
 prompt). Don't treat a slow-to-resolve call as a hang — it is waiting on the user. Always resolve
 the namespace via `namespaceFor` rather than guessing the `author/name` string yourself.
