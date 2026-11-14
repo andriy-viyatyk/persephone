@@ -104,7 +104,7 @@ export class BrowserEditor extends EditorModel<
     get muted(): boolean {
         return this.state.get().pageMuted ?? false;
     }
-    readonly soundButtonWhenSilent = false;
+    readonly soundButtonWhenSilent = true;
     toggleMuteAll = (): void => this.tabs.toggleMuteAll();
     noLanguage = true;
     skipSave = true;
