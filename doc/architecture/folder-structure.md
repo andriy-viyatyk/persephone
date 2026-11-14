@@ -651,9 +651,21 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   └── index.ts
 │   ├── settings/           # Settings page (non-text, no trait)
 │   │   ├── SettingsEditor.ts         # EditorModel
-│   │   ├── SettingsView.ts            # Height-constrained panel stack, fixed Content tree, and scroll linkage
-│   │   ├── settings-catalog.ts        # Built-in groups, sections, setting-row purposes, and stable element names
+│   │   ├── SettingsView.ts            # Shell-owned headers, panel stack, Content tree, and lifecycle
+│   │   ├── SettingsLayoutModel.ts     # Ordered section/group model and selection fallback
+│   │   ├── ScrollSpy.ts               # Settings scroll-to-selection and active-section tracking
+│   │   ├── settings-catalog.ts        # Built-in groups, section descriptors, row purposes, and stable element names
 │   │   ├── settings.css               # Settings page and panel-stack styling
+│   │   ├── fields/                    # Store adapters and settings-specific field views
+│   │   │   ├── settings-store.ts
+│   │   │   ├── CheckboxField.ts
+│   │   │   ├── ChoiceField.ts
+│   │   │   ├── NumberField.ts
+│   │   │   ├── PortField.ts
+│   │   │   ├── PathField.ts
+│   │   │   ├── ShortcutField.ts
+│   │   │   ├── TextListField.ts
+│   │   │   └── BoardSettingFields.ts
 │   │   ├── sections/                  # Focused settings views + component models
 │   │   │   ├── BrowserProfilesSection.ts
 │   │   │   ├── BrowserProfilesSectionModel.ts # Profile CRUD, bookmarks, network + partition cleanup
@@ -664,7 +676,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   │   ├── McpSectionModel.ts    # MCP/Mneme status, validation + actions
 │   │   │   ├── FileSearchSection.ts
 │   │   │   ├── ClipboardSection.ts    # Opt-in clipboard history and item-cap settings
-│   │   │   ├── ClipboardSectionModel.ts
 │   │   │   ├── ThemeSection.ts
 │   │   │   ├── SettingsSections.ts
 │   │   │   ├── BoardSettingsSection.ts # Manifest-declared board controls and reset actions

@@ -24,6 +24,10 @@ import { persephone } from "../theme/themes/persephone";
 
 const PREVIEW_VALIDATION_ID = "custom-preview-draft";
 
+export function isCustomTheme(id: string): boolean {
+    return getCustomThemeFile(id) !== undefined;
+}
+
 function cloneDefinition(theme: RegistryThemeDefinition): ThemeDefinition {
     return {
         ...theme,

@@ -48,7 +48,7 @@ function profileColorLabel(name: string): string {
 function profileColorMenuId(name: string): string {
     return `profile-color-${name.toLowerCase().replace(/\s+/g, "-")}`;
 }
-import { createSectionRoot, helpHeader, helpIcon, panel, settingsFieldLabel, settingsLabel, settingsLink, settingsPlaceholder, text } from "./settings-native";
+import { createSectionRoot, helpIcon, panel, settingsFieldLabel, settingsLabel, settingsLink, settingsPlaceholder, text } from "./settings-native";
 import "../../../uikit/Button/Button.css";
 import "../../../uikit/Checkbox/Checkbox.css";
 import "../../../uikit/Dot/Dot.css";
@@ -470,7 +470,6 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         this.own(() => driver.dispose());
 
         this.root.append(
-            helpHeader(t("settings.browserProfilesTitle"), t("settings.browserProfilesDescription"), (cleanup) => this.own(cleanup)),
         );
         const profilePanel = panel({ direction: "column", gap: "sm", paddingBottom: "lg" });
         this.translateTarget = this.child(new SelectView(this.translateTargetProps()));

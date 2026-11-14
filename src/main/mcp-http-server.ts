@@ -7,6 +7,7 @@ import { createMcpServer } from "./mcp/server-factory";
 import { initializePrivateMcpEndpoints, type PrivateMcpEndpointStartDependencies } from "./mcp/private-session-endpoints";
 import { getSessionSnapshots, type McpSessionSnapshot } from "./mcp/session-snapshots";
 import { coalescePendingCall } from "./coalesce-pending-call";
+import { mcpEndpointUrl } from "../shared/mcp-endpoint";
 
 export type { McpSessionSnapshot } from "./mcp/session-snapshots";
 
@@ -256,7 +257,7 @@ export async function startMcpHttpServer(port?: number): Promise<void> {
             // so this timer never keeps the process alive on its own.
             sessionSweepTimer = setInterval(sweepIdleSessions, SESSION_SWEEP_MS);
             sessionSweepTimer.unref?.();
-            console.log(`MCP HTTP server started: http://127.0.0.1:${currentPort}/mcp`);
+            console.log(`MCP HTTP server started: ${mcpEndpointUrl(currentPort)}`);
             statusChanged();
             resolve();
         });
@@ -306,10 +307,7 @@ export function isMcpHttpServerRunning(): boolean {
 }
 
 export function getMcpUrl(): string {
-    // 127.0.0.1, not "localhost": the server binds IPv4 loopback (see server.listen
-    // above), and an IPv6-first client resolving "localhost" to ::1 can stall instead
-    // of failing over. Addressing the bound IPv4 directly is unambiguous.
-    return `http://127.0.0.1:${currentPort}/mcp`;
+    return mcpEndpointUrl(currentPort);
 }
 
 export function getMcpClientCount(): number {

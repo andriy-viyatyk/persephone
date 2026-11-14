@@ -1,3 +1,27 @@
+## EPIC-166 — Refactoring Phase 6.5 part 1: Settings editor — field kit, declarative sections, shell-owned headers, `SettingsLayoutModel`
+
+Completed 2026-11-14. Roadmap Phase 6.5 part 1 (EDT-1 steps 1–4, EDT-2 steps 1, 2 and 6, EDT-4): a settings field kit
+in `editors/settings/fields/` (`SettingsStore` with `appSettingsStore` and a board-settings store over the bridge;
+`CheckboxField`, `ChoiceField`, `NumberField`, `PortField`, `PathField` value-box and link-or-placeholder,
+`ShortcutField`, `TextListField`, board-local string/multiselect/multiline) with board settings rendered as
+declarations → fields; the simple built-in sections are field lists (`VideoPlayerModel`, `ClipboardSectionModel`, the
+port `DepsGate`s and the copied port rule and Enter handlers are gone); `SettingsSectionDescriptor` with shell-rendered
+headers replaces the shell's id special cases, and eight duplicate `*Title` messages left English and all packs;
+`SettingsLayoutModel` and `ScrollSpy` take the layout and scroll logic out of `SettingsView` (641 → 448), board display
+names are ensured by `board-display-text.ts`, and the `MutationObserver` is gone; Language, Theme and the MCP config
+JSON go through `languages` (`loadLanguageSettings`, `applyLanguageAndReload`), `themes` (`isCustomTheme`) and
+`src/shared/mcp-endpoint.ts` (also used by main). `app.languages.apply()` keeps its scheduled reload. Rendered Settings
+DOM, header texts, `data-name`s, the settings file format and the script API are unchanged (checked with before/after
+structural fingerprints of every section). Part 2 (browser-profiles and microphone services, site-extension listing,
+composite sections on fields) is recorded in the roadmap. Plans by Codex, reviewed against the roadmap guardrails;
+Codex Luna implemented. Epic document: [EPIC-166](EPIC-166.md).
+
+- [x] **Field kit (US-1944).** Store contract and adapters, board settings on fields, `LibraryPathSectionView` over `PathField`.
+- [x] **Simple sections (US-1945).** Field lists for 12 sections; `PortField`, `ShortcutField`, `TextListField`, link-or-placeholder path.
+- [x] **Shell and layout (US-1946).** Shell-rendered headers, `SettingsLayoutModel`, `ScrollSpy`, board display names, duplicate messages removed.
+- [x] **Section services (US-1947).** Language, Theme and MCP config through their services; shared MCP endpoint format.
+- [x] **Epic review.** `/review` no findings; `/document` updated `folder-structure.md` and `key-files.md`; `/userdoc` no change; `i18n:check` complete.
+
 ## EPIC-165 — Refactoring Phase 6.4 part 3: editor framework — panel views without IO, `ExplorerEditor` split, `TreeProviderHost`
 
 Completed 2026-11-14. Roadmap Phase 6.4 part 3 (EDC-9, EDC-10, EDC-11), which completes item 6.4:

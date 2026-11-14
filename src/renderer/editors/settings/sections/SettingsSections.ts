@@ -1,17 +1,14 @@
 import { app } from "../../../api/app";
 import { settings } from "../../../api/settings";
 import { settingDefault, settingOptions, settingRange } from "../../../api/settings-schema";
-import type { AppSettingsKey } from "../../../api/settings-schema";
 import { ui } from "../../../api/ui";
 import { api } from "../../../../ipc/renderer/api";
 import { createComponentModelDriver, TComponentModel, type ComponentModelDriver } from "../../../core/state/model";
-import { fpBasename } from "../../../core/utils/file-path";
 import { ButtonView } from "../../../uikit/Button/ButtonView";
 import { CheckboxView } from "../../../uikit/Checkbox/CheckboxView";
 import type { CheckboxProps } from "../../../uikit/Checkbox/CheckboxView";
 import { DotView } from "../../../uikit/Dot/DotView";
 import { HelpIconView } from "../../../uikit/HelpIcon/HelpIconView";
-import { IconButtonView } from "../../../uikit/IconButton/IconButtonView";
 import { InputView } from "../../../uikit/Input/InputView";
 import type { InputProps } from "../../../uikit/Input/InputView";
 import { SelectView, type SelectViewProps } from "../../../uikit/Select/SelectView";
@@ -19,12 +16,17 @@ import type { IListBoxItem } from "../../../uikit/ListBox/types";
 import { SubtreeSwap } from "../../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { createDepsGate, type DepsGate } from "../../../uikit/shared/deps-gate";
-import { createSectionRoot, helpHeader, helpIcon, helpLabel, panel, settingsFieldLabel, settingsLink, settingsPath, settingsPlaceholder, text } from "./settings-native";
-import { errMessage } from "../../../../shared/utils";
+import { createSectionRoot, helpIcon, helpLabel, panel, settingsFieldLabel, text } from "./settings-native";
 import { t } from "../../../../shared/i18n/t";
-import { normalizeVoiceTypingShortcut, RIGHT_CTRL_SHORTCUT, SHIFT_RIGHT_CTRL_SHORTCUT, voiceTypingShortcutFromKeyboardEvent } from "../../../../shared/voice-typing-shortcut";
 import { AUDIO_SETTINGS_DEVICES, AUDIO_STATUS, AUDIO_STATUS_GET, AUDIO_RETRY, type AudioDevice } from "../../../../ipc/audio-channels";
 import { MICROPHONE_TUNING } from "../../../../shared/microphone-cleaning-types";
+import { createLibraryPathField, PathField } from "../fields/PathField";
+import { appSettingsStore } from "../fields/settings-store";
+import type { SettingsStore } from "../fields/settings-store";
+import { CheckboxField } from "../fields/CheckboxField";
+import { ChoiceField } from "../fields/ChoiceField";
+import { PortField } from "../fields/PortField";
+import { createShortcutCaptureState, ShortcutField } from "../fields/ShortcutField";
 import "../../../uikit/Button/Button.css";
 import "../../../uikit/Checkbox/Checkbox.css";
 import "../../../uikit/Dot/Dot.css";
@@ -43,37 +45,35 @@ const TERMINAL_ITEMS: readonly { value: string; key: "settings.autoDetectTermina
     { value: "wt", key: "settings.windowsTerminal" },
 ];
 
+const voiceTypingChoiceStore: SettingsStore<string> = {
+    get: (id) => {
+        const value = appSettingsStore.get(id);
+        return value instanceof Promise ? value.then((result) => String(result)) : String(value);
+    },
+    set: (id, value) => appSettingsStore.set(id, Number(value)),
+    subscribe: (id, callback) => appSettingsStore.subscribe(id, (value) => callback(String(value))),
+};
 
 export class LinkBehaviorSectionView extends VanillaView<Record<string, never>> {
-    private select: SelectView<IListBoxItem> | undefined;
-
     public constructor(props: Record<string, never>) {
         super(props, createSectionRoot("settings-section"));
     }
 
     protected onMount(): void {
         const host = panel({ maxWidth: 300 });
-        const props = this.selectProps();
-        this.select = this.child(new SelectView(props));
-        host.append(this.select.root);
-        this.select.mount();
+        const field = this.child(new ChoiceField({
+            store: appSettingsStore as SettingsStore<string>,
+            id: "link-open-behavior",
+            items: LINK_ITEMS.map((item) => ({ value: item.value, label: t(item.key) })),
+            ariaLabel: t("settings.groupTitleLinks"),
+        }));
+        host.append(field.root);
+        field.mount();
         this.root.append(host);
-        this.own(settings.watch("link-open-behavior", () => this.select?.update(this.selectProps())));
-    }
-
-    protected onDispose(): void {
-        this.select = undefined;
-    }
-
-    private selectProps(): SelectViewProps<IListBoxItem> {
-        const value = settings.get("link-open-behavior");
-        const items = LINK_ITEMS.map((item) => ({ value: item.value, label: t(item.key) }));
-        return { "aria-label": t("settings.groupTitleLinks"), items, value: items.find((item) => item.value === value) ?? null, onChange: (item) => settings.set("link-open-behavior", item.value as "default-browser" | "internal-browser") };
     }
 }
 
 export class WindowBehaviorSectionView extends VanillaView<Record<string, never>> {
-    private checkbox: CheckboxView | undefined;
     private description: HelpIconView | undefined;
 
     public constructor(props: Record<string, never>) {
@@ -81,11 +81,14 @@ export class WindowBehaviorSectionView extends VanillaView<Record<string, never>
     }
 
     protected onMount(): void {
-        this.root.append(helpHeader(t("settings.groupTitleWindowBehavior"), t("settings.windowBehaviorDescription"), (cleanup) => this.own(cleanup)));
         const row = panel({ direction: "row", align: "center", paddingBottom: "md" });
-        this.checkbox = this.child(new CheckboxView(this.checkboxProps()));
-        row.append(this.checkbox.root);
-        this.checkbox.mount();
+        const checkbox = this.child(new CheckboxField({
+            store: appSettingsStore as SettingsStore<boolean>,
+            id: "window.close-to-tray",
+            label: t("settings.keepRunningTray"),
+        }));
+        row.append(checkbox.root);
+        checkbox.mount();
         this.description = helpIcon(t("settings.keepRunningTray"), t("settings.lastWindowTray"), (cleanup) => this.own(cleanup));
         row.append(this.description.root);
         this.root.append(row);
@@ -94,18 +97,11 @@ export class WindowBehaviorSectionView extends VanillaView<Record<string, never>
     }
 
     protected onDispose(): void {
-        this.checkbox = undefined;
         this.description = undefined;
-    }
-
-    private checkboxProps(): CheckboxProps {
-        const closeToTray = settings.get("window.close-to-tray");
-        return { checked: closeToTray, onChange: () => settings.set("window.close-to-tray", !settings.get("window.close-to-tray")), children: t("settings.keepRunningTray") };
     }
 
     private sync(): void {
         const closeToTray = settings.get("window.close-to-tray");
-        this.checkbox?.update(this.checkboxProps());
         if (this.description) {
             this.description.update({ label: t("settings.moreInformation", { label: t("settings.keepRunningTray") }), text: closeToTray ? t("settings.lastWindowTray") : t("settings.lastWindowQuit") });
         }
@@ -113,32 +109,20 @@ export class WindowBehaviorSectionView extends VanillaView<Record<string, never>
 }
 
 export class EditorBehaviorSectionView extends VanillaView<Record<string, never>> {
-    private checkbox: CheckboxView | undefined;
-
     public constructor(props: Record<string, never>) {
         super(props, createSectionRoot("settings-section"));
     }
 
     protected onMount(): void {
-        this.root.append(helpHeader(t("settings.groupTitleEditorBehavior"), t("settings.editorBehaviorDescription"), (cleanup) => this.own(cleanup)));
         const row = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
-        this.checkbox = this.child(new CheckboxView(this.checkboxProps()));
-        row.append(this.checkbox.root);
-        this.checkbox.mount();
+        const checkbox = this.child(new CheckboxField({
+            store: appSettingsStore as SettingsStore<boolean>,
+            id: "editor.word-wrap",
+            label: t("settings.enableWordWrapDefault"),
+        }));
+        row.append(checkbox.root);
+        checkbox.mount();
         this.root.append(row);
-        this.own(settings.watch("editor.word-wrap", () => this.checkbox?.update(this.checkboxProps())));
-    }
-
-    protected onDispose(): void {
-        this.checkbox = undefined;
-    }
-
-    private checkboxProps(): CheckboxProps {
-        return {
-            checked: settings.get("editor.word-wrap"),
-            onChange: (checked) => settings.set("editor.word-wrap", checked),
-            children: t("settings.enableWordWrapDefault"),
-        };
     }
 }
 
@@ -202,7 +186,6 @@ class GitStatusView extends VanillaView<{ probe: NonNullable<GitIntegrationState
 export class GitIntegrationSectionView extends VanillaView<Record<string, never>> {
     private driver: ComponentModelDriver<GitIntegrationState, { gitEnabled: boolean }, GitIntegrationModel> | undefined;
     private model: GitIntegrationModel | undefined;
-    private checkbox: CheckboxView | undefined;
     private statusSwap: SubtreeSwap<string> | undefined;
 
     public constructor(props: Record<string, never>) {
@@ -210,7 +193,6 @@ export class GitIntegrationSectionView extends VanillaView<Record<string, never>
     }
 
     protected onMount(): void {
-        this.root.append(helpHeader(t("settings.groupTitleGitIntegration"), t("settings.gitHelp"), (cleanup) => this.own(cleanup)));
         const driver = createComponentModelDriver(
             { gitEnabled: settings.get("git.enabled") },
             GitIntegrationModel,
@@ -222,9 +204,13 @@ export class GitIntegrationSectionView extends VanillaView<Record<string, never>
         this.own(() => driver.dispose());
 
         const row = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
-        this.checkbox = this.child(new CheckboxView({ checked: model.props.gitEnabled, onChange: () => settings.set("git.enabled", !settings.get("git.enabled")), children: t("settings.enableGitIntegration") }));
-        row.append(this.checkbox.root);
-        this.checkbox.mount();
+        const checkbox = this.child(new CheckboxField({
+            store: appSettingsStore as SettingsStore<boolean>,
+            id: "git.enabled",
+            label: t("settings.enableGitIntegration"),
+        }));
+        row.append(checkbox.root);
+        checkbox.mount();
         this.root.append(row);
         const host = document.createElement("div");
         host.style.display = "contents";
@@ -242,14 +228,12 @@ export class GitIntegrationSectionView extends VanillaView<Record<string, never>
     protected onDispose(): void {
         this.driver = undefined;
         this.model = undefined;
-        this.checkbox = undefined;
         this.statusSwap = undefined;
     }
 
     private sync(state: GitIntegrationState): void {
         const model = this.model;
         if (!model) return;
-        this.checkbox?.update({ checked: model.props.gitEnabled, onChange: () => settings.set("git.enabled", !settings.get("git.enabled")), children: t("settings.enableGitIntegration") });
         const probe = model.props.gitEnabled ? state.probe : null;
         if (probe) {
             this.statusSwap?.set(`${probe.installed}-${probe.version ?? ""}`, () => {
@@ -262,79 +246,67 @@ export class GitIntegrationSectionView extends VanillaView<Record<string, never>
 }
 
 export class BoardVarsSectionView extends VanillaView<Record<string, never>> {
-    private valuePanel: HTMLDivElement | undefined;
-    private row: HTMLDivElement | undefined;
-    private unlinkButton: ButtonView | undefined;
     private openButton: ButtonView | undefined;
+    private createButton: ButtonView | undefined;
 
     public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
 
     protected onMount(): void {
-        this.root.append(helpHeader(t("settings.boardVarsTitle"), t("settings.boardVarsDescription"), (cleanup) => this.own(cleanup)));
-        this.valuePanel = panel({ flex: true, minWidth: 0, paddingY: "sm", paddingX: "md", background: "dark", border: true, rounded: "sm", overflow: "hidden" });
-        const row = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
-        this.row = row;
-        row.append(this.valuePanel);
-        const browse = new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => void this.handleBrowse(), children: t("settings.browse") });
-        const create = new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => void this.handleCreate(), children: t("settings.create") });
-        this.child(browse); this.child(create);
-        row.append(browse.root, create.root);
-        browse.mount(); create.mount();
+        this.createButton = this.child(new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => void this.handleCreate(), children: t("settings.create") }));
+        const field = this.child(new PathField({
+            store: appSettingsStore as SettingsStore<string>,
+            id: "board-vars.file",
+            title: t("settings.groupTitleBoardVars"),
+            emptyText: t("settings.notConfigured"),
+            browse: this.handleBrowse,
+            clear: () => settings.set("board-vars.file", ""),
+            clearLabel: t("settings.unlink"),
+            fallback: "",
+            extraActions: this.createButton.root,
+            paddingBottom: "lg",
+        }));
         this.openButton = this.child(new ButtonView({ disabled: true, onClick: () => void app.openRawLink(settings.get("board-vars.file"), { editor: "env-vars-view" }), children: t("settings.openEnvironmentVariables") }));
         const openRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
         openRow.append(this.openButton.root);
+        this.root.append(field.root);
+        field.mount();
+        this.createButton.mount();
         this.openButton.mount();
-        this.root.append(row, openRow);
+        this.root.append(openRow);
         this.sync();
         this.own(settings.watch("board-vars.file", () => this.sync()));
     }
 
-    protected onDispose(): void { this.valuePanel = undefined; this.row = undefined; this.unlinkButton = undefined; this.openButton = undefined; }
+    protected onDispose(): void { this.openButton = undefined; this.createButton = undefined; }
 
     private sync(): void {
         const filePath = settings.get("board-vars.file");
-        this.valuePanel?.replaceChildren(filePath ? settingsPath(filePath) : text(t("settings.notConfigured"), { size: "sm", italic: true, color: "light" }));
-        if (filePath && !this.unlinkButton) {
-            const unlinkButton = this.child(new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => settings.set("board-vars.file", ""), children: t("settings.unlink") }));
-            this.unlinkButton = unlinkButton;
-            this.row?.append(unlinkButton.root);
-            unlinkButton.mount();
-        } else if (!filePath && this.unlinkButton) {
-            this.releaseChild(this.unlinkButton);
-            this.unlinkButton = undefined;
-        }
         this.openButton?.update({ disabled: !filePath, onClick: () => void app.openRawLink(filePath, { editor: "env-vars-view" }), children: t("settings.openEnvironmentVariables") });
     }
 
-    private async handleBrowse(): Promise<void> {
+    private readonly handleBrowse = async (): Promise<void> => {
         const { fs } = await import("../../../api/fs");
         const picked = await fs.showOpenDialog({ title: t("settings.chooseEnvironmentFile"), defaultPath: settings.get("board-vars.file") || undefined, filters: [{ name: t("settings.envJsonFilter"), extensions: ["env.json"] }, { name: t("settings.jsonFilter"), extensions: ["json"] }] });
         if (picked?.[0]) settings.set("board-vars.file", picked[0]);
-    }
+    };
 
-    private async handleCreate(): Promise<void> {
+    private readonly handleCreate = async (): Promise<void> => {
         const { showCreateBoardVarsStorageDialog } = await import("../../../ui/dialogs/CreateBoardVarsStorageDialog");
         await showCreateBoardVarsStorageDialog();
-    }
+    };
+
 }
 
 export interface LibraryPathConfig {
     read: () => string | undefined | Promise<string | undefined>;
     subscribe: (listener: () => void) => () => void;
-    title: string;
-    description: string;
     emptyText: string;
     browse: () => Promise<void>;
     reset: () => void | Promise<void>;
     clearLabel: string;
 }
-
 export class LibraryPathSectionView extends VanillaView<Record<string, never>> {
     private readonly config: LibraryPathConfig;
-    private valuePanel: HTMLDivElement | undefined;
-    private row: HTMLDivElement | undefined;
-    private clearButton: ButtonView | undefined;
-    private syncGeneration = 0;
 
     public constructor(_props: Record<string, never>, config: LibraryPathConfig) {
         super(_props, createSectionRoot("settings-section"));
@@ -342,68 +314,9 @@ export class LibraryPathSectionView extends VanillaView<Record<string, never>> {
     }
 
     protected onMount(): void {
-        this.root.append(helpHeader(this.config.title, this.config.description, (cleanup) => this.own(cleanup)));
-        const row = panel({ direction: "row", align: "center", gap: "md" });
-        this.row = row;
-        row.setAttribute("role", "group");
-        row.setAttribute("aria-label", this.config.title);
-        this.valuePanel = panel({ flex: true, minWidth: 0, paddingY: "sm", paddingX: "md", background: "dark", border: true, rounded: "sm", overflow: "hidden" });
-        row.append(this.valuePanel);
-        const browse = this.child(new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => void this.handleBrowse(), children: t("settings.browse") }));
-        row.append(browse.root);
-        browse.mount();
-        this.root.append(row);
-        void this.sync();
-        this.own(this.config.subscribe(() => { void this.sync(); }));
-    }
-
-    protected onDispose(): void {
-        this.syncGeneration++;
-        this.valuePanel = undefined;
-        this.row = undefined;
-        this.clearButton = undefined;
-    }
-
-    private async sync(): Promise<void> {
-        const generation = ++this.syncGeneration;
-        try {
-            const value = await this.config.read();
-            if (this.isDisposed || generation !== this.syncGeneration) return;
-            this.renderValue(value);
-        } catch (error: unknown) {
-            if (!this.isDisposed && generation === this.syncGeneration) {
-                ui.notify(errMessage(error, t("settings.failedRead", { setting: this.config.title.toLowerCase() })), "warning");
-            }
-        }
-    }
-
-    private renderValue(value: string | undefined): void {
-        this.valuePanel?.replaceChildren(value ? settingsPath(value) : text(this.config.emptyText, { size: "sm", italic: true, color: "light" }));
-        if (value && !this.clearButton) {
-            const clearButton = this.child(new ButtonView({ variant: "link", size: "sm", background: "light", onClick: () => void this.handleReset(), children: this.config.clearLabel }));
-            this.clearButton = clearButton;
-            this.row?.append(clearButton.root);
-            clearButton.mount();
-        } else if (!value && this.clearButton) {
-            this.releaseChild(this.clearButton);
-            this.clearButton = undefined;
-        }
-    }
-
-    private async handleBrowse(): Promise<void> {
-        try {
-            await this.config.browse();
-        } catch (error: unknown) {
-            ui.notify(errMessage(error, t("settings.failedChoose", { setting: this.config.title.toLowerCase() })), "warning");
-        }
-    }
-
-    private async handleReset(): Promise<void> {
-        try {
-            await this.config.reset();
-        } catch (error: unknown) {
-            ui.notify(errMessage(error, t("settings.failedReset", { setting: this.config.title.toLowerCase() })), "warning");
-        }
+        const field = this.child(createLibraryPathField({ ...this.config, title: t("settings.groupTitleScriptLibrary") }));
+        this.root.append(field.root);
+        field.mount();
     }
 }
 
@@ -411,8 +324,6 @@ export function createScriptLibrarySection(): LibraryPathSectionView {
     return new LibraryPathSectionView({}, {
         read: () => settings.get("script-library.path"),
         subscribe: (listener) => settings.watch("script-library.path", listener),
-        title: t("settings.groupTitleScriptLibrary"),
-        description: t("settings.scriptLibraryDescription"),
         emptyText: t("settings.notLinked"),
         browse: async () => { const { showLibrarySetupDialog } = await import("../../../ui/dialogs/LibrarySetupDialog"); showLibrarySetupDialog(); },
         reset: () => settings.set("script-library.path", ""),
@@ -420,286 +331,144 @@ export function createScriptLibrarySection(): LibraryPathSectionView {
     });
 }
 
-interface VideoPlayerState { portValue: string; }
-interface VideoPlayerProps { videoStreamPort: number; }
-
-class VideoPlayerModel extends TComponentModel<VideoPlayerState, VideoPlayerProps> {
-    private initialized = false;
-    private readonly videoPortGate: DepsGate = createDepsGate();
-
-    setPortValue = (portValue: string): void => this.state.update((state) => { state.portValue = portValue; });
-
-    init(): void {
-        this.setPortValue(String(this.props.videoStreamPort));
-        this.videoPortGate.prime([this.props.videoStreamPort]);
-        this.initialized = true;
-    }
-
-    setProps = (props: VideoPlayerProps): void => {
-        if (!this.initialized) return;
-        if (this.videoPortGate.changed([props.videoStreamPort])) {
-            this.setPortValue(String(props.videoStreamPort));
-        }
-    };
-}
-
 export class VideoPlayerSectionView extends VanillaView<Record<string, never>> {
-    private driver: ComponentModelDriver<VideoPlayerState, VideoPlayerProps, VideoPlayerModel> | undefined;
-    private model: VideoPlayerModel | undefined;
-    private valuePanel: HTMLDivElement | undefined;
-    private clearButton: IconButtonView | undefined;
-    private input: InputView | undefined;
-
     public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
 
     protected onMount(): void {
-        this.root.append(helpHeader(t("settings.videoPlayerTitle"), t("settings.videoPlayerDescription"), (cleanup) => this.own(cleanup)));
-        const driver = createComponentModelDriver(
-            { videoStreamPort: settings.get("video-stream.port") },
-            VideoPlayerModel,
-            { portValue: String(settings.get("video-stream.port")) },
-        );
-        this.driver = driver;
-        const model = driver.model;
-        this.model = model;
-        this.own(() => driver.dispose());
         const outer = panel({ direction: "column", rounded: "sm", background: "dark" });
         const pathRow = panel({ direction: "row", align: "center", gap: "md", paddingTop: "xs", paddingRight: "md", paddingBottom: "sm", paddingLeft: "xxl" });
-        this.valuePanel = document.createElement("div");
-        this.valuePanel.style.display = "contents";
-        this.listen(this.valuePanel, "click", this.onVlcPathClick);
-        pathRow.append(settingsFieldLabel(t("settings.vlcPathLabel")), this.valuePanel);
+        pathRow.append(settingsFieldLabel(t("settings.vlcPathLabel")));
+        const pathField = this.child(new PathField({
+            store: appSettingsStore as SettingsStore<string>,
+            variant: "link-or-placeholder",
+            id: "vlc-path",
+            title: t("settings.vlcPathLabel"),
+            emptyText: t("settings.autoDetect"),
+            browse: this.handleBrowseVlc,
+            clear: () => settings.set("vlc-path", ""),
+            clearLabel: t("settings.removeVlcPath"),
+            fallback: "",
+        }));
+        pathRow.append(pathField.root);
+        pathField.mount();
         const portRow = panel({ direction: "row", align: "center", gap: "md", paddingTop: "xs", paddingRight: "md", paddingBottom: "sm", paddingLeft: "xxl" });
-        this.input = this.child(new InputView(this.inputProps()));
-        portRow.append(settingsFieldLabel(t("settings.streamPortLabel")), this.input.root);
-        this.input.mount();
+        portRow.append(settingsFieldLabel(t("settings.streamPortLabel")));
+        const portField = this.child(new PortField({
+            store: appSettingsStore as SettingsStore<number>,
+            id: "video-stream.port",
+            range: settingRange("video-stream.port"),
+            width: 56,
+            fallback: settings.get("video-stream.port"),
+        }));
+        portRow.append(portField.root);
+        portField.mount();
         outer.append(pathRow, portRow);
         this.root.append(outer);
-        driver.mount();
-        this.sync();
-        this.bind(model.state, (state) => state.portValue, () => this.input?.update(this.inputProps()));
-        const refresh = (): void => {
-            driver.update({ videoStreamPort: settings.get("video-stream.port") });
-            this.sync();
-        };
-        const videoSettings = ["vlc-path", "video-stream.port"] as const satisfies readonly AppSettingsKey[];
-        for (const key of videoSettings) this.own(settings.watch(key, refresh));
     }
 
-    protected onDispose(): void { this.driver = undefined; this.model = undefined; this.valuePanel = undefined; this.clearButton = undefined; this.input = undefined; }
-
-    private inputProps(): InputProps {
-        const model = this.model;
-        return { size: "sm", width: 56, type: "text", value: model?.state.get().portValue ?? String(settings.get("video-stream.port")), onChange: (value) => model?.setPortValue(value), onBlur: () => this.handlePortBlur(), onKeyDown: (event) => { if (event.key === "Enter") (event.target as HTMLInputElement).blur(); } };
-    }
-
-    private sync(): void {
-        if (!this.valuePanel) return;
-        if (this.clearButton) { this.releaseChild(this.clearButton); this.clearButton = undefined; }
-        this.valuePanel.replaceChildren();
-        const path = settings.get("vlc-path");
-        const filename = path ? fpBasename(path) : "";
-        if (filename) {
-            const link = settingsLink(filename); link.title = path;
-            this.valuePanel.append(link);
-            this.clearButton = this.child(new IconButtonView({ size: "sm", icon: "close", title: t("settings.removeVlcPath"), onClick: () => settings.set("vlc-path", "") }));
-            this.valuePanel.append(this.clearButton.root); this.clearButton.mount();
-        } else {
-            const placeholder = settingsPlaceholder(t("settings.autoDetect")); this.valuePanel.append(placeholder);
-        }
-        this.input?.update(this.inputProps());
-    }
-
-    private readonly onVlcPathClick = (event: MouseEvent): void => {
-        const target = event.target;
-        if (!(target instanceof Element)) return;
-        if (!target.closest('[data-type="settings-link"], [data-type="settings-placeholder"]')) return;
-        void this.handleBrowseVlc();
-    };
-
-    private async handleBrowseVlc(): Promise<void> {
+    private readonly handleBrowseVlc = async (): Promise<void> => {
         const result = await api.showOpenFileDialog({ title: t("settings.selectVlcExe"), filters: [{ name: t("settings.executableFiles"), extensions: ["exe"] }] });
         if (result?.[0]) settings.set("vlc-path", result[0]);
-    }
-
-    private handlePortBlur(): void {
-        const model = this.model;
-        const value = model?.state.get().portValue ?? "";
-        const port = parseInt(value, 10);
-        const range = settingRange("video-stream.port");
-        if (port >= range.min && port <= range.max) settings.set("video-stream.port", port);
-        else model?.setPortValue(String(settings.get("video-stream.port")));
-    }
+    };
 }
 
 export class TerminalSectionView extends VanillaView<Record<string, never>> {
-    private select: SelectView<IListBoxItem> | undefined;
-
     public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
 
     protected onMount(): void {
-        this.root.append(helpHeader(t("settings.terminalTitle"), t("settings.terminalDescription"), (cleanup) => this.own(cleanup)));
         const host = panel({ maxWidth: 360 });
-        this.select = this.child(new SelectView(this.selectProps()));
-        host.append(this.select.root); this.select.mount(); this.root.append(host);
-        this.own(settings.watch("terminal.command", () => this.select?.update(this.selectProps())));
-    }
-
-    protected onDispose(): void { this.select = undefined; }
-
-    private selectProps(): SelectViewProps<IListBoxItem> {
-        const command = settings.get("terminal.command");
-        const items: IListBoxItem[] = TERMINAL_ITEMS.map((item) => ({ value: item.value, label: t(item.key) }));
-        if (command && !items.some((item) => item.value === command)) items.push({ value: command, label: command });
-        return { "aria-label": t("settings.terminalTitle"), items, value: items.find((item) => item.value === command) ?? items[0], onChange: (item) => settings.set("terminal.command", (item?.value as string) ?? "") };
+        const field = this.child(new ChoiceField({
+            store: appSettingsStore as SettingsStore<string>,
+            id: "terminal.command",
+            items: TERMINAL_ITEMS.map((item) => ({ value: item.value, label: t(item.key) })),
+            ariaLabel: t("settings.groupTitleTerminal"),
+            keepUnknownValue: true,
+        }));
+        host.append(field.root);
+        field.mount();
+        this.root.append(host);
     }
 }
 
 export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, never>> {
-    private input: InputView | undefined;
-    private translateInput: InputView | undefined;
-    private silenceSelect: SelectView<IListBoxItem> | undefined;
-    private inactivitySelect: SelectView<IListBoxItem> | undefined;
-    private rightCtrlTapPending: { settingKey: "voice-typing.shortcut" | "voice-typing.translate-shortcut"; shift: boolean } | undefined;
+    private readonly shortcutCaptureState = createShortcutCaptureState();
+    private shortcutField: ShortcutField | undefined;
+    private translateShortcutField: ShortcutField | undefined;
 
     public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
 
     protected onMount(): void {
-        this.root.append(helpHeader(t("settings.voiceTypingSettingTitle"), t("settings.voiceTypingSettingDescription"), (cleanup) => this.own(cleanup)));
         const row = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
         row.append(helpLabel(t("settings.voiceTypingShortcutLabel"), t("settings.voiceTypingShortcutHelp"), (cleanup) => this.own(cleanup)));
-        this.input = this.child(new InputView(this.inputProps()));
-        this.input.root.addEventListener("keyup", (event) => this.captureRightCtrlTap(event));
-        row.append(this.input.root);
-        this.input.mount();
+        this.shortcutField = this.child(new ShortcutField({
+            store: appSettingsStore as SettingsStore<string>,
+            id: "voice-typing.shortcut",
+            width: 180,
+            ariaLabel: t("settings.voiceTypingShortcutLabel"),
+            resetValue: settingDefault("voice-typing.shortcut"),
+            captureState: this.shortcutCaptureState,
+            getOtherShortcut: () => settings.get("voice-typing.translate-shortcut"),
+            onInvalid: () => ui.notify(t("settings.voiceTypingInvalidShortcut"), "warning"),
+        }));
+        row.append(this.shortcutField.root);
+        this.shortcutField.mount();
         const reset = this.child(new ButtonView({
             size: "sm",
             variant: "default",
-            onClick: () => settings.set("voice-typing.shortcut", settingDefault("voice-typing.shortcut")),
+            onClick: () => { void this.shortcutField?.reset(); },
             children: t("settings.voiceTypingResetShortcut"),
         }));
         row.append(reset.root);
         reset.mount();
         const translateRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
         translateRow.append(helpLabel(t("settings.voiceTypingTranslateShortcutLabel"), t("settings.voiceTypingTranslateHint"), (cleanup) => this.own(cleanup)));
-        this.translateInput = this.child(new InputView(this.translateInputProps()));
-        this.translateInput.root.addEventListener("keyup", (event) => this.captureRightCtrlTap(event));
-        translateRow.append(this.translateInput.root);
-        this.translateInput.mount();
+        this.translateShortcutField = this.child(new ShortcutField({
+            store: appSettingsStore as SettingsStore<string>,
+            id: "voice-typing.translate-shortcut",
+            width: 180,
+            ariaLabel: t("settings.voiceTypingTranslateShortcutLabel"),
+            resetValue: settingDefault("voice-typing.translate-shortcut"),
+            captureState: this.shortcutCaptureState,
+            getOtherShortcut: () => settings.get("voice-typing.shortcut"),
+            onInvalid: () => ui.notify(t("settings.voiceTypingInvalidShortcut"), "warning"),
+        }));
+        translateRow.append(this.translateShortcutField.root);
+        this.translateShortcutField.mount();
         const translateReset = this.child(new ButtonView({
             size: "sm",
             variant: "default",
-            onClick: () => settings.set("voice-typing.translate-shortcut", settingDefault("voice-typing.translate-shortcut")),
+            onClick: () => { void this.translateShortcutField?.reset(); },
             children: t("settings.voiceTypingResetShortcut"),
         }));
         translateRow.append(translateReset.root);
         translateReset.mount();
         const silenceRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
         silenceRow.append(helpLabel(t("settings.voiceTypingAutoStopLabel"), t("settings.voiceTypingAutoStopHelp"), (cleanup) => this.own(cleanup)));
-        this.silenceSelect = this.child(new SelectView(this.silenceSelectProps()));
-        silenceRow.append(this.silenceSelect.root);
-        this.silenceSelect.mount();
+        const silenceValues = settingOptions("voice-typing.auto-stop-silence-ms");
+        const silenceSelect = this.child(new ChoiceField({
+            store: voiceTypingChoiceStore,
+            id: "voice-typing.auto-stop-silence-ms",
+            width: 180,
+            items: silenceValues.map((value) => ({ value: String(value), label: value === 0 ? t("settings.voiceTypingAutoStopOff") : t("settings.voiceTypingAutoStopSeconds", { seconds: value / 1000 }) })),
+        }));
+        silenceRow.append(silenceSelect.root);
+        silenceSelect.mount();
         const inactivityRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
         inactivityRow.append(helpLabel(t("settings.voiceTypingInactivityLabel"), t("settings.voiceTypingInactivityHelp"), (cleanup) => this.own(cleanup)));
-        this.inactivitySelect = this.child(new SelectView(this.inactivitySelectProps()));
-        inactivityRow.append(this.inactivitySelect.root);
-        this.inactivitySelect.mount();
+        const inactivityValues = settingOptions("voice-typing.auto-stop-inactivity-ms");
+        const inactivitySelect = this.child(new ChoiceField({
+            store: voiceTypingChoiceStore,
+            id: "voice-typing.auto-stop-inactivity-ms",
+            width: 180,
+            items: inactivityValues.map((value) => ({ value: String(value), label: value === 0 ? t("settings.voiceTypingAutoStopOff") : t("settings.voiceTypingAutoStopSeconds", { seconds: value / 1000 }) })),
+        }));
+        inactivityRow.append(inactivitySelect.root);
+        inactivitySelect.mount();
         this.root.append(row, translateRow, silenceRow, inactivityRow);
-        const refresh = (key: AppSettingsKey): void => {
-            if (key === "voice-typing.shortcut") this.input?.update(this.inputProps());
-            if (key === "voice-typing.translate-shortcut") this.translateInput?.update(this.translateInputProps());
-            if (key === "voice-typing.auto-stop-silence-ms") this.silenceSelect?.update(this.silenceSelectProps());
-            if (key === "voice-typing.auto-stop-inactivity-ms") this.inactivitySelect?.update(this.inactivitySelectProps());
-        };
-        const voiceTypingSettings = [
-            "voice-typing.shortcut", "voice-typing.translate-shortcut",
-            "voice-typing.auto-stop-silence-ms", "voice-typing.auto-stop-inactivity-ms",
-        ] as const satisfies readonly AppSettingsKey[];
-        for (const key of voiceTypingSettings) this.own(settings.watch(key, () => refresh(key)));
     }
 
-    protected onDispose(): void { this.input = undefined; this.translateInput = undefined; this.silenceSelect = undefined; this.inactivitySelect = undefined; }
-
-    private inactivitySelectProps(): SelectViewProps<IListBoxItem> {
-        const values = settingOptions("voice-typing.auto-stop-inactivity-ms");
-        const items: IListBoxItem[] = values.map((value) => ({
-            value,
-            label: value === 0 ? t("settings.voiceTypingAutoStopOff") : t("settings.voiceTypingAutoStopSeconds", { seconds: value / 1000 }),
-        }));
-        const current = settings.get("voice-typing.auto-stop-inactivity-ms");
-        return { width: 180, items, value: items.find((item) => item.value === current) ?? items[0], onChange: (item) => settings.set("voice-typing.auto-stop-inactivity-ms", Number(item?.value ?? 0)) };
-    }
-
-    private silenceSelectProps(): SelectViewProps<IListBoxItem> {
-        const values = settingOptions("voice-typing.auto-stop-silence-ms");
-        const items: IListBoxItem[] = values.map((value) => ({
-            value,
-            label: value === 0 ? t("settings.voiceTypingAutoStopOff") : t("settings.voiceTypingAutoStopSeconds", { seconds: value / 1000 }),
-        }));
-        const current = settings.get("voice-typing.auto-stop-silence-ms");
-        return { width: 180, items, value: items.find((item) => item.value === current) ?? items[0], onChange: (item) => settings.set("voice-typing.auto-stop-silence-ms", Number(item?.value ?? 0)) };
-    }
-
-    private inputProps(): InputProps {
-        return {
-            size: "sm",
-            width: 180,
-            value: settings.get("voice-typing.shortcut"),
-            readOnly: true,
-            "aria-label": t("settings.voiceTypingShortcutLabel"),
-            onKeyDown: (event) => this.captureShortcut(event, "voice-typing.shortcut"),
-        };
-    }
-
-    private translateInputProps(): InputProps {
-        return {
-            size: "sm",
-            width: 180,
-            value: settings.get("voice-typing.translate-shortcut"),
-            readOnly: true,
-            "aria-label": t("settings.voiceTypingTranslateShortcutLabel"),
-            onKeyDown: (event) => this.captureShortcut(event, "voice-typing.translate-shortcut"),
-        };
-    }
-
-    private captureShortcut(event: KeyboardEvent, settingKey: "voice-typing.shortcut" | "voice-typing.translate-shortcut"): void {
-        event.preventDefault();
-        if (event.repeat) return;
-        if (event.code === "ControlRight") {
-            this.rightCtrlTapPending = event.altKey || event.metaKey ? undefined : { settingKey, shift: event.shiftKey };
-            return;
-        }
-        if (event.key === "Shift" && this.rightCtrlTapPending?.settingKey === settingKey) {
-            this.rightCtrlTapPending.shift = true;
-            return;
-        }
-        if (this.rightCtrlTapPending?.settingKey === settingKey) this.rightCtrlTapPending = undefined;
-        if (["Control", "Alt", "Shift", "Meta"].includes(event.key)) return;
-        const shortcut = voiceTypingShortcutFromKeyboardEvent(event);
-        if (!shortcut) {
-            ui.notify(t("settings.voiceTypingInvalidShortcut"), "warning");
-            return;
-        }
-        this.saveShortcut(settingKey, shortcut);
-    }
-
-    private captureRightCtrlTap(event: KeyboardEvent): void {
-        if (event.code !== "ControlRight" || !this.rightCtrlTapPending) return;
-        const { settingKey, shift } = this.rightCtrlTapPending;
-        this.rightCtrlTapPending = undefined;
-        this.saveShortcut(settingKey, shift ? SHIFT_RIGHT_CTRL_SHORTCUT : RIGHT_CTRL_SHORTCUT);
-    }
-
-    private saveShortcut(settingKey: "voice-typing.shortcut" | "voice-typing.translate-shortcut", shortcut: string): void {
-        const otherKey = settingKey === "voice-typing.shortcut" ? "voice-typing.translate-shortcut" : "voice-typing.shortcut";
-        if (normalizeVoiceTypingShortcut(settings.get(otherKey)) === shortcut) {
-            ui.notify(t("settings.voiceTypingInvalidShortcut"), "warning");
-            return;
-        }
-        settings.set(settingKey, shortcut);
-    }
+    protected onDispose(): void { this.shortcutField = undefined; this.translateShortcutField = undefined; }
 }
-
 
 /** Settings for managed microphone capture. */
 type MicrophoneProfileView = CheckboxView | InputView;
@@ -718,7 +487,6 @@ export class MicrophoneAudioSectionView extends VanillaView<Record<string, never
     public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
 
     protected onMount(): void {
-        this.root.append(helpHeader(t("settings.microphoneTitle"), t("settings.microphoneDescription"), (cleanup) => this.own(cleanup)));
 
         const cleanRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
         cleanRow.dataset.name = "microphone.clean";

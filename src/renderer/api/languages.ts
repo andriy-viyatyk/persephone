@@ -3,6 +3,7 @@ import { auditLanguagePack } from "../../shared/i18n/audit-pack";
 import { getActiveLocale } from "../../shared/i18n/active-locale";
 import { hashEnglishMessage } from "../../shared/i18n/hash";
 import { languageCompleteness } from "../../shared/i18n/language-completeness";
+import { resolveLocale } from "../../shared/i18n/resolve-locale";
 import type { LanguagePack, PackMessage } from "../../shared/i18n/pack";
 import { messagePlaceholders, normalizeLanguageCode, validateLanguagePack } from "../../shared/i18n/validate-pack";
 import { fpJoin } from "../core/utils/file-path";
@@ -128,10 +129,67 @@ function combinePacks(builtIn: LanguagePack | undefined, user: LanguagePack | un
     };
 }
 
-async function loadPacks(): Promise<{ builtIn: Map<string, LanguagePack>; user: Map<string, LanguagePack> }> {
-    const { refreshLanguagePacks } = await import("../i18n/startup");
+async function loadPacks(): Promise<{
+    builtIn: Map<string, LanguagePack>;
+    user: Map<string, LanguagePack>;
+    preferredLanguages: readonly string[];
+}> {
+    const { refreshLanguagePacks, getStartupPreferredLanguages } = await import("../i18n/startup");
     const refreshed = await refreshLanguagePacks();
-    return { builtIn: packsByCode(refreshed.builtInPacks), user: packsByCode(refreshed.userPacks) };
+    return {
+        builtIn: packsByCode(refreshed.builtInPacks),
+        user: packsByCode(refreshed.userPacks),
+        preferredLanguages: getStartupPreferredLanguages(),
+    };
+}
+
+interface LanguageSettingsResult {
+    summaries: LanguageSummary[];
+    effective: (requested: string) => { code: string; name: string };
+}
+
+export async function loadLanguageSettings(): Promise<LanguageSettingsResult> {
+    const { builtIn, user, preferredLanguages } = await loadPacks();
+    const codes = new Set([...builtIn.keys(), ...user.keys()]);
+    const summaries = [languageSummary("en", undefined, undefined)];
+    for (const code of codes) {
+        if (code === "en") continue;
+        summaries.push(languageSummary(code, builtIn.get(code), user.get(code)));
+    }
+    if (import.meta.env.DEV) {
+        summaries.push({ code: "en-XA", name: "Pseudo-English", englishName: "Pseudo-English", completeness: 100, builtIn: false, user: false, overridesBuiltIn: false });
+    }
+    const availablePacks = [...builtIn.values(), ...user.values()];
+    return {
+        summaries,
+        effective: (requested: string) => {
+            const code = resolveLocale(requested, preferredLanguages, availablePacks);
+            const summary = summaries.find((item) => item.code.toLowerCase() === code.toLowerCase());
+            return { code, name: summary?.name ?? "English" };
+        },
+    };
+}
+
+async function applyLanguageSetting(code: string): Promise<string> {
+    const normalizedCode = code === "auto" ? "auto" : normalizeSafeLanguageCode(code);
+    const lowerCode = normalizedCode.toLowerCase();
+    if (lowerCode === "en-xa") {
+        if (!import.meta.env.DEV) throw new Error("Pseudo-English (en-XA) is available only in development.");
+    } else if (lowerCode !== "auto" && lowerCode !== "en") {
+        const { builtIn, user } = await loadPacks();
+        if (!builtIn.has(lowerCode) && !user.has(lowerCode)) {
+            throw new Error(`No language pack is available for ${normalizedCode}.`);
+        }
+    }
+
+    settings.set("language", normalizedCode);
+    await flushSettingsSave();
+    return normalizedCode;
+}
+
+export async function applyLanguageAndReload(code: string): Promise<void> {
+    await applyLanguageSetting(code);
+    await api.reloadAllWindows();
 }
 
 function languageSummary(code: string, builtIn: LanguagePack | undefined, user: LanguagePack | undefined): LanguageSummary {
@@ -178,17 +236,7 @@ export const languages: ILanguages = {
     },
 
     async list(): Promise<LanguageSummary[]> {
-        const { builtIn, user } = await loadPacks();
-        const codes = new Set([...builtIn.keys(), ...user.keys()]);
-        const result = [languageSummary("en", undefined, undefined)];
-        for (const code of codes) {
-            if (code === "en") continue;
-            result.push(languageSummary(code, builtIn.get(code), user.get(code)));
-        }
-        if (import.meta.env.DEV) {
-            result.push({ code: "en-XA", name: "Pseudo-English", englishName: "Pseudo-English", completeness: 100, builtIn: false, user: false, overridesBuiltIn: false });
-        }
-        return result;
+        return (await loadLanguageSettings()).summaries;
     },
 
     get: getLanguage,
@@ -288,19 +336,7 @@ export const languages: ILanguages = {
     },
 
     async apply(code: string): Promise<LanguageApplyResult> {
-        const normalizedCode = code === "auto" ? "auto" : normalizeSafeLanguageCode(code);
-        const lowerCode = normalizedCode.toLowerCase();
-        if (lowerCode === "en-xa") {
-            if (!import.meta.env.DEV) throw new Error("Pseudo-English (en-XA) is available only in development.");
-        } else if (lowerCode !== "auto" && lowerCode !== "en") {
-            const { builtIn, user } = await loadPacks();
-            if (!builtIn.has(lowerCode) && !user.has(lowerCode)) {
-                throw new Error(`No language pack is available for ${normalizedCode}.`);
-            }
-        }
-
-        settings.set("language", normalizedCode);
-        await flushSettingsSave();
+        const normalizedCode = await applyLanguageSetting(code);
         window.setTimeout(() => {
             void api.reloadAllWindows();
         }, 100);

@@ -1,99 +1,34 @@
-import { settings } from "../../../api/settings";
-import type { AppSettingsKey } from "../../../api/settings-schema";
-import { TextareaView } from "../../../uikit/Textarea/TextareaView";
-import { t } from "../../../../shared/i18n/t";
-import type { TextareaProps } from "../../../uikit/Textarea/TextareaView";
+import { appSettingsStore } from "../fields/settings-store";
+import type { SettingsStore } from "../fields/settings-store";
+import { TextListField } from "../fields/TextListField";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
-import { createSectionRoot, helpIcon, panel, sectionTitle, settingsFieldLabel } from "./settings-native";
-import "../../../uikit/Textarea/Textarea.css";
+import { t } from "../../../../shared/i18n/t";
+import { createSectionRoot, helpIcon, panel, settingsFieldLabel } from "./settings-native";
 
 export class FileSearchSectionView extends VanillaView<Record<string, never>> {
-    private extensionsTextarea: TextareaView | undefined;
-    private excludeTextarea: TextareaView | undefined;
-    private extensionsValue = "";
-    private excludeValue = "";
-
     public constructor(props: Record<string, never>) {
         super(props, createSectionRoot("settings-section"));
     }
 
     protected onMount(): void {
-        const searchExtensions = settings.get("search-extensions");
-        const searchExclude = settings.get("search-exclude");
-        this.extensionsValue = searchExtensions.join(", ");
-        this.excludeValue = searchExclude.join(", ");
+        this.root.append(panel({ paddingBottom: "md" }, settingsFieldLabel(t("settings.fileSearchExtensionsLabel")), helpIcon(t("settings.fileSearchExtensionsLabel"), t("settings.fileSearchExtensionsDescription"), (cleanup) => this.own(cleanup)).root));
 
-        this.root.append(
-            sectionTitle(t("settings.fileSearchTitle")),
-            panel({ paddingBottom: "md" }, settingsFieldLabel(t("settings.fileSearchExtensionsLabel")), helpIcon(t("settings.fileSearchExtensionsLabel"), t("settings.fileSearchExtensionsDescription"), (cleanup) => this.own(cleanup)).root),
-        );
-
-        this.extensionsTextarea = this.child(new TextareaView(this.textareaProps(
-            t("settings.fileSearchExtensionsLabel"), this.extensionsValue,
-            (value) => { this.extensionsValue = value; },
-            () => this.saveExtensions(),
-        )));
-        this.root.append(this.extensionsTextarea.root);
-        this.extensionsTextarea.mount();
+        const extensions = this.child(new TextListField({
+            store: appSettingsStore as SettingsStore<string[]>,
+            id: "search-extensions",
+            ariaLabel: t("settings.fileSearchExtensionsLabel"),
+        }));
+        this.root.append(extensions.root);
+        extensions.mount();
 
         this.root.append(panel({ paddingTop: "lg", paddingBottom: "md" }, settingsFieldLabel(t("settings.fileSearchExclusionsLabel")), helpIcon(t("settings.fileSearchExclusionsLabel"), t("settings.fileSearchExclusionsDescription"), (cleanup) => this.own(cleanup)).root));
 
-        this.excludeTextarea = this.child(new TextareaView(this.textareaProps(
-            t("settings.fileSearchExclusionsLabel"), this.excludeValue,
-            (value) => { this.excludeValue = value; },
-            () => this.saveExclude(),
-        )));
-        this.root.append(this.excludeTextarea.root);
-        this.excludeTextarea.mount();
-
-        const refreshSearch = (): void => {
-            this.syncExtensions();
-            this.syncExclude();
-        };
-        const settingsKeys = ["search-extensions", "search-exclude"] as const satisfies readonly AppSettingsKey[];
-        for (const key of settingsKeys) this.own(settings.watch(key, refreshSearch));
-    }
-
-    protected onDispose(): void {
-        this.extensionsTextarea = undefined;
-        this.excludeTextarea = undefined;
-    }
-
-    private textareaProps(label: string, value: string, onChange: (value: string) => void, onBlur: () => void): TextareaProps {
-        return {
-            "aria-label": label,
-            value,
-            onChange,
-            onBlur,
-            singleLine: true,
-            maxHeight: 200,
-            size: "sm",
-        };
-    }
-
-    private syncExtensions(): void {
-        this.extensionsValue = settings.get("search-extensions").join(", ");
-        this.extensionsTextarea?.update(this.textareaProps(
-            t("settings.fileSearchExtensionsLabel"), this.extensionsValue,
-            (value) => { this.extensionsValue = value; },
-            () => this.saveExtensions(),
-        ));
-    }
-
-    private syncExclude(): void {
-        this.excludeValue = settings.get("search-exclude").join(", ");
-        this.excludeTextarea?.update(this.textareaProps(
-            t("settings.fileSearchExclusionsLabel"), this.excludeValue,
-            (value) => { this.excludeValue = value; },
-            () => this.saveExclude(),
-        ));
-    }
-
-    private saveExtensions(): void {
-        settings.set("search-extensions", this.extensionsValue.split(",").map((item) => item.trim()).filter(Boolean));
-    }
-
-    private saveExclude(): void {
-        settings.set("search-exclude", this.excludeValue.split(",").map((item) => item.trim()).filter(Boolean));
+        const exclusions = this.child(new TextListField({
+            store: appSettingsStore as SettingsStore<string[]>,
+            id: "search-exclude",
+            ariaLabel: t("settings.fileSearchExclusionsLabel"),
+        }));
+        this.root.append(exclusions.root);
+        exclusions.mount();
     }
 }

@@ -2,8 +2,7 @@ import { app } from "../../api/app";
 import { settings } from "../../api/settings";
 import { ui } from "../../api/ui";
 import { customEditorRegistry, type BoardSettingsRegistration } from "../../api/boards/custom-editor-registry";
-import { readBoardManifest } from "../../api/boards/board-manifest-io";
-import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText } from "../../api/boards/board-display-text";
+import { boardSettingsDisplayName, ensureBoardDisplayNames } from "../../api/boards/board-display-text";
 import { createLinkData } from "../../../shared/link-data";
 import { errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
@@ -11,7 +10,9 @@ import { ButtonView } from "../../uikit/Button/ButtonView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { TreeView } from "../../uikit/Tree/TreeView";
 import { VanillaView, type IOwnedView } from "../../uikit/shared/vanilla-view";
-import { SETTINGS_CATALOG, type SettingsCatalogSection } from "./settings-catalog";
+import { createSettingsSectionDescriptors } from "./settings-catalog";
+import { SettingsLayoutModel, type SettingsContentItem, type SettingsLayoutSection } from "./SettingsLayoutModel";
+import { ScrollSpy } from "./ScrollSpy";
 import { BrowserProfilesSectionView } from "./sections/BrowserProfilesSection";
 import { SiteExtensionsSectionView } from "./sections/SiteExtensionsSection";
 import { ClipboardSectionView } from "./sections/ClipboardSection";
@@ -33,7 +34,7 @@ import {
     VoiceTypingSettingsSectionView,
     MicrophoneAudioSectionView,
 } from "./sections/SettingsSections";
-import { helpHeader } from "./sections/settings-native";
+import { helpHeader, sectionTitle } from "./sections/settings-native";
 import "./settings.css";
 import "../../uikit/Button/Button.css";
 
@@ -41,29 +42,36 @@ export interface SettingsEditorProps {
     model: import("./SettingsEditor").SettingsEditor;
 }
 
-interface SettingsContentItem {
-    readonly kind: "group" | "section";
-    readonly value: string;
-    readonly label: string;
-    readonly items?: SettingsContentItem[];
-}
-
-interface BoardSettingsSectionDescriptor {
-    readonly kind: "board";
-    readonly groupId: string;
-    readonly groupTitle: string;
-    readonly id: string;
-    readonly title: string;
-    readonly description: string;
-    readonly elementName: string;
-    readonly panelName: string;
-    readonly board: BoardSettingsRegistration;
-}
-
-type SettingsSectionDescriptor = SettingsCatalogSection | BoardSettingsSectionDescriptor;
-
 type SettingsChildView = IOwnedView;
 type SettingsBuiltInView = VanillaView<Record<string, never>>;
+
+class SettingsSectionMount implements IOwnedView {
+    private disposed = false;
+
+    public constructor(
+        private readonly view: SettingsChildView,
+        private readonly headerCleanups: Array<() => void>,
+        private readonly mountView: () => void,
+    ) {}
+
+    public get root(): HTMLElement {
+        return this.view.root;
+    }
+
+    public mount(): void {
+        this.mountView();
+    }
+
+    public dispose(): void {
+        if (this.disposed) return;
+        this.disposed = true;
+        try {
+            this.view.dispose();
+        } finally {
+            this.headerCleanups.splice(0).forEach((cleanup) => cleanup());
+        }
+    }
+}
 
 const SECTION_VIEW_FACTORIES: Readonly<Record<string, () => SettingsBuiltInView>> = {
     theme: () => new ThemeSectionView({}),
@@ -87,34 +95,6 @@ const SECTION_VIEW_FACTORIES: Readonly<Record<string, () => SettingsBuiltInView>
 };
 
 
-function createSettingsContentItems(
-    sections: readonly SettingsSectionDescriptor[],
-    isNavigableSection: (sectionId: string) => boolean,
-): SettingsContentItem[] {
-    const groups: SettingsContentItem[] = [];
-    for (const section of sections) {
-        if (!isNavigableSection(section.id)) continue;
-        let group = groups[groups.length - 1];
-        if (!group || group.value !== `group:${section.groupId}`) {
-            group = {
-                kind: "group",
-                value: `group:${section.groupId}`,
-                label: "groupTitleKey" in section
-                    ? t(section.groupTitleKey)
-                    : section.groupId === "editors" ? t("settings.groupEditors") : t("settings.groupBoards"),
-                items: [],
-            };
-            groups.push(group);
-        }
-        group.items?.push({
-            kind: "section",
-            value: `section:${section.id}`,
-            label: "titleKey" in section ? t(section.titleKey) : section.title,
-        });
-    }
-    return groups;
-}
-
 function getSettingsContentChildren(item: SettingsContentItem): SettingsContentItem[] | undefined {
     return item.items;
 }
@@ -125,31 +105,15 @@ function getSettingsContentName(item: SettingsContentItem): string {
         : `settings-content-section-${item.value.slice("section:".length)}`;
 }
 
-interface SettingsNavigationTarget {
-    readonly sectionId: string;
-    readonly wrapper: HTMLDivElement;
-}
-
-interface PendingProgrammaticScroll {
-    readonly selectionValue: string;
-    readonly sectionId: string;
-    readonly targetWrapper: HTMLDivElement;
-    lastScrollTop: number;
-    stableFrameCount: number;
-}
-
-const SCROLL_GEOMETRY_TOLERANCE = 2;
-
 export class SettingsView extends VanillaView<SettingsEditorProps> {
+    private readonly sectionDescriptors = createSettingsSectionDescriptors(SECTION_VIEW_FACTORIES);
+    private readonly layout = new SettingsLayoutModel(this.sectionDescriptors);
     private contentTree: TreeView<SettingsContentItem> | undefined;
-    private readonly sectionViews = new Map<string, SettingsChildView>();
+    private readonly sectionMounts = new Map<string, SettingsSectionMount>();
     private readonly sectionPanels = new Map<string, HTMLDivElement>();
     private readonly sectionWrappers = new Map<string, HTMLDivElement>();
-    private settingsContentItems: SettingsContentItem[] = [];
     private panelsElement: HTMLDivElement | undefined;
-    private pendingProgrammaticScroll: PendingProgrammaticScroll | undefined;
-    private programmaticSettleFrame: number | undefined;
-    private selectedContentValue: string | undefined;
+    private scrollSpy: ScrollSpy | undefined;
     private readonly dynamicSectionIds = new Set<string>();
     private dynamicSectionsGeneration = 0;
     private footerElement: HTMLDivElement | undefined;
@@ -212,7 +176,8 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         this.root.append(title, content);
 
         this.panelsElement = panels;
-        for (const section of SETTINGS_CATALOG) this.appendSectionPanel(section, panels);
+        this.layout.rebuild([], []);
+        for (const section of this.layout.sections) this.appendSectionPanel(section, panels);
         this.own(customEditorRegistry.state.subscribe<readonly BoardSettingsRegistration[]>(
             (settingsBoards) => {
                 if (!this.isDisposed) void this.rebuildDynamicSections(settingsBoards);
@@ -231,16 +196,15 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         treePane.append(tree.root);
         tree.mount();
 
+        this.scrollSpy = new ScrollSpy(
+            () => this.panelsElement,
+            () => this.layout.sections,
+            (sectionId) => this.sectionWrappers.get(sectionId),
+            this.isNavigableSection,
+            this.applyScrollSelection,
+            this.rebuildContentItems,
+        );
         this.listen(panels, "scroll", this.handlePanelsScroll);
-        const hiddenObserver = new MutationObserver(() => {
-            if (!this.isDisposed) this.rebuildContentItems();
-        });
-        hiddenObserver.observe(panels, {
-            attributes: true,
-            attributeFilter: ["hidden"],
-            subtree: true,
-        });
-        this.own(() => hiddenObserver.disconnect());
 
         const footer = createPanelElement({
             direction: "row",
@@ -275,38 +239,51 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
     protected onDispose(): void {
         this.initializationGeneration++;
         this.dynamicSectionsGeneration++;
-        this.cancelProgrammaticScroll();
+        this.scrollSpy?.dispose();
+        this.scrollSpy = undefined;
         this.contentTree = undefined;
         this.panelsElement = undefined;
         this.footerElement = undefined;
-        this.sectionViews.clear();
+        this.sectionMounts.clear();
         this.sectionPanels.clear();
         this.sectionWrappers.clear();
         this.dynamicSectionIds.clear();
-        this.settingsContentItems = [];
     }
 
-    private appendSectionPanel(section: SettingsSectionDescriptor, parent: HTMLDivElement): HTMLDivElement {
+    private appendSectionPanel(section: SettingsLayoutSection, parent: HTMLDivElement): HTMLDivElement {
+        const headerCleanups: Array<() => void> = [];
         let view: SettingsChildView;
-        if ("kind" in section && section.kind === "board") {
-            const boardView = this.child(new BoardSettingsSectionView({
+        let mountView: () => void;
+        if (section.kind === "board" && section.board) {
+            const boardView = new BoardSettingsSectionView({
                 boardRoot: section.board.boardRoot,
-                displayName: boardDisplayText(section.board.boardRoot, undefined, boardMetadataKeys.name, section.board.name),
+                displayName: section.label,
                 declarations: section.board.declarations,
-            }));
-            boardView.mount();
+            });
             view = boardView;
-        } else {
-            const builtInView = this.child(this.createBuiltInSectionView(section as SettingsCatalogSection));
-            builtInView.mount();
+            mountView = () => boardView.mount();
+        } else if (section.descriptor) {
+            const builtInView = section.descriptor.create() as SettingsBuiltInView;
             view = builtInView;
+            mountView = () => builtInView.mount();
+        } else {
+            throw new Error(`No Settings section view registered for ${section.id}.`);
         }
+        const sectionMount = this.child(new SettingsSectionMount(view, headerCleanups, mountView));
+        const header = section.descriptor?.headerPlacement === "section"
+            ? this.createSectionHeader(section.descriptor, headerCleanups)
+            : undefined;
+        if (section.descriptor?.headerPlacement === "section" && header) view.root.prepend(header);
+        sectionMount.mount();
+
         const wrapper = document.createElement("div");
         wrapper.dataset.name = section.elementName;
         wrapper.dataset.part = "section-wrapper";
         wrapper.className = "settings-section-wrapper";
-        if (section.id === "link-behavior") wrapper.append(helpHeader(t("settings.groupTitleLinks"), t("settings.linksIntroduction"), (cleanup) => this.own(cleanup)));
-        if (section.id === "default-browser") wrapper.append(helpHeader(t("settings.groupTitleDefaultBrowser"), t("settings.defaultBrowserDescription"), (cleanup) => this.own(cleanup)));
+        const wrapperHeader = section.descriptor?.headerPlacement === "wrapper"
+            ? this.createSectionHeader(section.descriptor, headerCleanups)
+            : undefined;
+        if (wrapperHeader) wrapper.append(wrapperHeader);
         wrapper.append(view.root);
 
         const sectionPanel = createPanelElement({
@@ -329,50 +306,49 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         sectionPanel.dataset.part = "section-panel";
         sectionPanel.append(wrapper);
         parent.append(sectionPanel);
-        this.sectionViews.set(section.id, view);
+        this.sectionMounts.set(section.id, sectionMount);
         this.sectionPanels.set(section.id, sectionPanel);
         this.sectionWrappers.set(section.id, wrapper);
         return sectionPanel;
     }
 
-    private createBuiltInSectionView(section: SettingsCatalogSection): SettingsBuiltInView {
-        const factory = SECTION_VIEW_FACTORIES[section.id];
-        if (!factory) throw new Error(`No Settings section view registered for ${section.id}.`);
-        return factory();
+    private createSectionHeader(
+        descriptor: NonNullable<SettingsLayoutSection["descriptor"]>,
+        headerCleanups: Array<() => void>,
+    ): HTMLDivElement {
+        const title = t(descriptor.titleKey);
+        const own = (cleanup: () => void): void => { headerCleanups.push(cleanup); };
+        return descriptor.helpKey
+            ? helpHeader(title, t(descriptor.helpKey), own)
+            : sectionTitle(title);
     }
 
     private async rebuildDynamicSections(settingsBoards: readonly BoardSettingsRegistration[]): Promise<void> {
         const generation = ++this.dynamicSectionsGeneration;
-        await Promise.all(settingsBoards.map(async (board) => {
-            try {
-                const manifest = await readBoardManifest(board.boardRoot);
-                if (manifest) await ensureBoardDisplayText(board.boardRoot, manifest);
-            } catch {
-                // English manifest text remains a usable display fallback when a pack cannot load.
-            }
-        }));
+        await ensureBoardDisplayNames(settingsBoards);
         if (generation !== this.dynamicSectionsGeneration || this.isDisposed) return;
         const panels = this.panelsElement;
         if (!panels || this.isDisposed) return;
 
+        const displayNames = settingsBoards.map(boardSettingsDisplayName);
+        this.layout.rebuild(settingsBoards, displayNames);
+
         for (const sectionId of this.dynamicSectionIds) {
-            const view = this.sectionViews.get(sectionId);
-            if (view) this.releaseChild(view);
+            const sectionMount = this.sectionMounts.get(sectionId);
+            if (sectionMount) this.releaseChild(sectionMount);
             const panel = this.sectionPanels.get(sectionId);
             panel?.remove();
-            this.sectionViews.delete(sectionId);
+            this.sectionMounts.delete(sectionId);
             this.sectionPanels.delete(sectionId);
             this.sectionWrappers.delete(sectionId);
         }
         this.dynamicSectionIds.clear();
 
-        const dynamicSections = this.createRuntimeSections(settingsBoards)
-            .filter((section): section is BoardSettingsSectionDescriptor => "kind" in section && section.kind === "board");
-        const runtimeSections = this.createRuntimeSections(settingsBoards);
+        const dynamicSections = this.layout.sections.filter((section) => section.kind === "board");
         for (let index = dynamicSections.length - 1; index >= 0; index--) {
             const section = dynamicSections[index];
-            const runtimeIndex = runtimeSections.findIndex((candidate) => candidate.id === section.id);
-            const nextPanel = runtimeSections
+            const runtimeIndex = this.layout.sections.findIndex((candidate) => candidate.id === section.id);
+            const nextPanel = this.layout.sections
                 .slice(runtimeIndex + 1)
                 .map((candidate) => this.sectionPanels.get(candidate.id))
                 .find((candidate): candidate is HTMLDivElement => candidate !== undefined);
@@ -385,49 +361,10 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         this.rebuildContentItems();
     }
 
-    private createRuntimeSections(settingsBoards: readonly BoardSettingsRegistration[]): SettingsSectionDescriptor[] {
-        const editorSections = settingsBoards
-            .filter((board) => board.editorAssociation !== null)
-            .map((board) => this.createBoardSectionDescriptor(board, "editors", "Editors"));
-        const boardSections = settingsBoards
-            .filter((board) => board.editorAssociation === null)
-            .map((board) => this.createBoardSectionDescriptor(board, "boards", "Boards"));
-        const sections: SettingsSectionDescriptor[] = [...SETTINGS_CATALOG];
-        const lastEditor = sections.reduce(
-            (lastIndex, section, index) => section.groupId === "editors" ? index : lastIndex,
-            -1,
-        );
-        sections.splice(lastEditor + 1, 0, ...editorSections);
-        sections.push(...boardSections);
-        return sections;
-    }
-
-    private createBoardSectionDescriptor(
-        board: BoardSettingsRegistration,
-        groupId: "editors" | "boards",
-        groupTitle: string,
-    ): BoardSettingsSectionDescriptor {
-        // Keyed on the board's portable identity, never on its root path: `data-name` is an
-        // addressability contract (ui-element-contract.md) and a board root changes between dev
-        // and packaged builds and on a reinstall elsewhere.
-        const id = `board-${encodeURIComponent(board.namespace)}`;
-        return {
-            kind: "board",
-            groupId,
-            groupTitle,
-            id,
-            title: boardDisplayText(board.boardRoot, undefined, boardMetadataKeys.name, board.name),
-            description: "",
-            elementName: `settings-section-${id}`,
-            panelName: `settings-panel-${id}`,
-            board,
-        };
-    }
-
-    private isNavigableSection(sectionId: string): boolean {
+    private readonly isNavigableSection = (sectionId: string): boolean => {
         const panel = this.sectionPanels.get(sectionId);
         const wrapper = this.sectionWrappers.get(sectionId);
-        const sectionRoot = this.sectionViews.get(sectionId)?.root;
+        const sectionRoot = this.sectionMounts.get(sectionId)?.root;
         if (!panel || !wrapper || !sectionRoot) return false;
         // Explicit `hidden` only — deliberately NOT geometry. A section that measures 0x0 is not
         // necessarily hidden: this runs during mount before first layout, and a page that is open
@@ -435,43 +372,20 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         // every section non-navigable and rendered an empty Content tree on any mount that happened
         // before layout, which is most of them.
         return !panel.hidden && !wrapper.hidden && !sectionRoot.hidden;
-    }
+    };
 
-    private rebuildContentItems(): void {
-        this.settingsContentItems = createSettingsContentItems(
-            this.createRuntimeSections(customEditorRegistry.settingsBoards),
-            (sectionId) => this.isNavigableSection(sectionId),
-        );
-        if (!this.containsContentValue(this.selectedContentValue)) {
-            this.selectedContentValue = this.firstSectionValue() ?? undefined;
-        }
-        if (this.pendingProgrammaticScroll && !this.isNavigableSection(this.pendingProgrammaticScroll.sectionId)) {
-            this.cancelProgrammaticScroll();
-        }
+    private readonly rebuildContentItems = (): void => {
+        this.layout.rebuildContentItems(this.isNavigableSection);
+        this.scrollSpy?.cancelIfSectionNotNavigable();
         this.contentTree?.update(this.contentTreeProps());
-    }
-
-    private containsContentValue(value: string | undefined): boolean {
-        if (!value) return false;
-        return this.settingsContentItems.some((group) =>
-            group.value === value || group.items?.some((item) => item.value === value) === true,
-        );
-    }
-
-    private firstSectionValue(): string | undefined {
-        for (const group of this.settingsContentItems) {
-            const firstSection = group.items?.[0];
-            if (firstSection) return firstSection.value;
-        }
-        return undefined;
-    }
+    };
 
     private contentTreeProps() {
         return {
             name: "settings-content-tree",
-            items: this.settingsContentItems,
+            items: this.layout.contentItems,
             getChildren: getSettingsContentChildren,
-            isSelected: (item: SettingsContentItem): boolean => item.value === this.selectedContentValue,
+            isSelected: (item: SettingsContentItem): boolean => item.value === this.layout.selectedContentValue,
             onChange: this.handleContentChange,
             defaultExpandAll: true,
             keyboardNav: true,
@@ -484,15 +398,15 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         const target = this.resolveNavigationTarget(item);
         if (!target) return;
 
-        this.selectedContentValue = item.value;
+        this.layout.selectedContentValue = item.value;
         const tree = this.contentTree;
         if (!tree) return;
         tree.update(this.contentTreeProps());
         if (item.kind === "group") tree.model.expandItem(item.value);
-        this.beginProgrammaticScroll(item.value, target);
+        this.scrollSpy?.scrollTo(item.value, target);
     };
 
-    private resolveNavigationTarget(item: SettingsContentItem): SettingsNavigationTarget | undefined {
+    private resolveNavigationTarget(item: SettingsContentItem): { sectionId: string; wrapper: HTMLDivElement } | undefined {
         const sectionId = item.kind === "section"
             ? this.sectionIdFromValue(item.value, "section:")
             : this.firstVisibleSectionId(item.value);
@@ -504,7 +418,7 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
     private firstVisibleSectionId(groupValue: string): string | undefined {
         const groupId = this.sectionIdFromValue(groupValue, "group:");
         if (!groupId) return undefined;
-        return this.createRuntimeSections(customEditorRegistry.settingsBoards).find((section) =>
+        return this.layout.sections.find((section) =>
             section.groupId === groupId && this.isNavigableSection(section.id),
         )?.id;
     }
@@ -513,123 +427,16 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         return value.startsWith(prefix) ? value.slice(prefix.length) : undefined;
     }
 
-    private beginProgrammaticScroll(selectionValue: string, target: SettingsNavigationTarget): void {
-        const panels = this.panelsElement;
-        if (!panels) return;
-
-        this.cancelProgrammaticScroll();
-        this.pendingProgrammaticScroll = {
-            selectionValue,
-            sectionId: target.sectionId,
-            targetWrapper: target.wrapper,
-            lastScrollTop: panels.scrollTop,
-            stableFrameCount: 0,
-        };
-        target.wrapper.scrollIntoView({ behavior: "instant", block: "start", inline: "nearest" });
-        this.queueProgrammaticSettleCheck();
-    }
-
     private readonly handlePanelsScroll = (): void => {
-        if (this.pendingProgrammaticScroll) {
-            this.queueProgrammaticSettleCheck();
-            return;
-        }
-        this.updateSelectionFromScroll();
+        this.scrollSpy?.handleScroll();
     };
 
-    private queueProgrammaticSettleCheck(): void {
-        if (!this.pendingProgrammaticScroll || this.programmaticSettleFrame !== undefined) return;
-        this.programmaticSettleFrame = requestAnimationFrame(() => {
-            this.programmaticSettleFrame = undefined;
-            this.checkProgrammaticScrollSettled();
-        });
-    }
-
-    private checkProgrammaticScrollSettled(): void {
-        const pending = this.pendingProgrammaticScroll;
-        const panels = this.panelsElement;
-        if (!pending || !panels) return;
-        if (!this.isNavigableSection(pending.sectionId)) {
-            this.cancelProgrammaticScroll();
-            this.rebuildContentItems();
-            return;
-        }
-
-        const currentScrollTop = panels.scrollTop;
-        if (currentScrollTop === pending.lastScrollTop) pending.stableFrameCount++;
-        else pending.stableFrameCount = 0;
-        pending.lastScrollTop = currentScrollTop;
-
-        if (pending.stableFrameCount < 2 || !this.isProgrammaticTargetSettled(pending)) {
-            this.queueProgrammaticSettleCheck();
-            return;
-        }
-
-        this.pendingProgrammaticScroll = undefined;
-        this.selectedContentValue = pending.selectionValue;
-        this.contentTree?.update(this.contentTreeProps());
-    }
-
-    private isProgrammaticTargetSettled(pending: PendingProgrammaticScroll): boolean {
-        const panels = this.panelsElement;
-        if (!panels) return false;
-        const viewport = panels.getBoundingClientRect();
-        const target = pending.targetWrapper.getBoundingClientRect();
-        const aligned = Math.abs(target.top - viewport.top) <= SCROLL_GEOMETRY_TOLERANCE;
-        const maximumScrollTop = Math.max(0, panels.scrollHeight - panels.clientHeight);
-        const atBottom = Math.abs(panels.scrollTop - maximumScrollTop) <= SCROLL_GEOMETRY_TOLERANCE;
-        const targetIsVisible = target.bottom > viewport.top && target.top < viewport.bottom;
-        const isFinalTarget = this.lastNavigableSectionId() === pending.sectionId;
-        return aligned || (atBottom && isFinalTarget && targetIsVisible);
-    }
-
-    private updateSelectionFromScroll(): void {
-        const sectionId = this.topmostVisibleSectionId();
-        if (!sectionId) return;
-        const selectionValue = `section:${sectionId}`;
-        if (selectionValue === this.selectedContentValue) return;
-        this.selectedContentValue = selectionValue;
+    private readonly applyScrollSelection = (selectionValue: string, force = false): void => {
+        if (!force && selectionValue === this.layout.selectedContentValue) return;
+        this.layout.selectedContentValue = selectionValue;
         // The spy intentionally updates only the controlled selection. In particular, it must not
         // change activeIndex or call an active-row API, because TreeView would scroll the Content pane.
         this.contentTree?.update(this.contentTreeProps());
-    }
-
-    private topmostVisibleSectionId(): string | undefined {
-        const panels = this.panelsElement;
-        if (!panels) return undefined;
-        const viewport = panels.getBoundingClientRect();
-        let firstVisibleSectionId: string | undefined;
-        for (const section of this.createRuntimeSections(customEditorRegistry.settingsBoards)) {
-            if (!this.isNavigableSection(section.id)) continue;
-            const wrapper = this.sectionWrappers.get(section.id);
-            if (!wrapper) continue;
-            const rect = wrapper.getBoundingClientRect();
-            if (rect.bottom > viewport.top && rect.top < viewport.bottom) {
-                firstVisibleSectionId = section.id;
-                break;
-            }
-        }
-
-        const maximumScrollTop = Math.max(0, panels.scrollHeight - panels.clientHeight);
-        const atBottom = Math.abs(panels.scrollTop - maximumScrollTop) <= SCROLL_GEOMETRY_TOLERANCE;
-        return atBottom ? this.lastNavigableSectionId() ?? firstVisibleSectionId : firstVisibleSectionId;
-    }
-
-    private lastNavigableSectionId(): string | undefined {
-        const sections = this.createRuntimeSections(customEditorRegistry.settingsBoards);
-        for (let index = sections.length - 1; index >= 0; index--) {
-            const section = sections[index];
-            if (this.isNavigableSection(section.id)) return section.id;
-        }
-        return undefined;
-    }
-
-    private cancelProgrammaticScroll(): void {
-        if (this.programmaticSettleFrame !== undefined) {
-            cancelAnimationFrame(this.programmaticSettleFrame);
-            this.programmaticSettleFrame = undefined;
-        }
-        this.pendingProgrammaticScroll = undefined;
     };
 
     private readonly handleOpenSettingsFile = (): void => {

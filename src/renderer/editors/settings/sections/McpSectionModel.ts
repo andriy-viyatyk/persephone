@@ -1,10 +1,7 @@
 import { TComponentModel } from "../../../core/state/model";
 import { toClipboard } from "../../../core/utils/utils";
-import { settings } from "../../../api/settings";
-import { settingRange } from "../../../api/settings-schema";
 import { api } from "../../../../ipc/renderer/api";
 import rendererEvents from "../../../../ipc/renderer/renderer-events";
-import { createDepsGate, type DepsGate } from "../../../uikit/shared/deps-gate";
 
 export interface McpSectionProps {
     agentTipsEnabled: boolean;
@@ -18,55 +15,41 @@ export interface McpSectionProps {
 const defaultMcpSectionState = {
     status: null as { running: boolean; url: string; clientCount: number } | null,
     mnemeStatus: null as { running: boolean; url: string } | null,
-    portValue: "",
-    mnemePortValue: "",
     copied: null as string | null,
 };
 
 export type McpSectionState = typeof defaultMcpSectionState;
 
-/** Coordinates server status subscriptions and editable MCP configuration fields. */
+/** Coordinates server status subscriptions and copied-label state. */
 export class McpSectionModel extends TComponentModel<McpSectionState, McpSectionProps> {
     private copiedTimer: ReturnType<typeof setTimeout> | undefined;
     private initialized = false;
-    private readonly mcpPortGate: DepsGate = createDepsGate();
-    private readonly mnemePortGate: DepsGate = createDepsGate();
-    private readonly mcpEnabledGate: DepsGate = createDepsGate();
-    private readonly mnemeEnabledGate: DepsGate = createDepsGate();
+    private lastMcpEnabled = false;
+    private lastMnemeEnabled = false;
     private mcpStatusDisposer: (() => void) | undefined;
     private mnemeStatusDisposer: (() => void) | undefined;
 
     init(): void {
-        this.state.update((state) => {
-            state.portValue = String(this.props.mcpPort);
-            state.mnemePortValue = String(this.props.mnemePort);
-        });
         this.subscribeMcpStatus();
         this.subscribeMnemeStatus();
         this.own(() => {
             this.stopMcpStatus();
             this.stopMnemeStatus();
         });
-        this.mcpPortGate.prime([this.props.mcpPort]);
-        this.mnemePortGate.prime([this.props.mnemePort]);
-        this.mcpEnabledGate.prime([this.props.mcpEnabled]);
-        this.mnemeEnabledGate.prime([this.props.mnemeEnabled]);
+        this.lastMcpEnabled = this.props.mcpEnabled;
+        this.lastMnemeEnabled = this.props.mnemeEnabled;
         this.initialized = true;
     }
 
     setProps = (props: McpSectionProps): void => {
         if (!this.initialized) return;
-        if (this.mcpPortGate.changed([props.mcpPort])) {
-            this.setPortValue(String(props.mcpPort));
-        }
-        if (this.mnemePortGate.changed([props.mnemePort])) {
-            this.setMnemePortValue(String(props.mnemePort));
-        }
-        if (this.mcpEnabledGate.changed([props.mcpEnabled])) {
+        if (props.mcpEnabled !== this.lastMcpEnabled) {
+            this.lastMcpEnabled = props.mcpEnabled;
             this.stopMcpStatus();
             this.subscribeMcpStatus();
         }
-        if (this.mnemeEnabledGate.changed([props.mnemeEnabled])) {
+        if (props.mnemeEnabled !== this.lastMnemeEnabled) {
+            this.lastMnemeEnabled = props.mnemeEnabled;
             this.stopMnemeStatus();
             this.subscribeMnemeStatus();
         }
@@ -106,32 +89,6 @@ export class McpSectionModel extends TComponentModel<McpSectionState, McpSection
         const disposer = this.mnemeStatusDisposer;
         this.mnemeStatusDisposer = undefined;
         disposer?.();
-    };
-
-    setPortValue = (portValue: string) => this.state.update((state) => { state.portValue = portValue; });
-    setMnemePortValue = (mnemePortValue: string) => this.state.update((state) => { state.mnemePortValue = mnemePortValue; });
-
-    handleAgentTipsToggle = () => settings.set("agent-tips.enabled", !this.props.agentTipsEnabled);
-    handleToggle = () => settings.set("mcp.enabled", !this.props.mcpEnabled);
-    handleMainScriptsToggle = () => settings.set("main.scripting.enabled", !this.props.mainScriptsEnabled);
-    handleMnemeToggle = () => settings.set("mneme.enabled", !this.props.mnemeEnabled);
-
-    handlePortBlur = () => {
-        const port = parseInt(this.state.get().portValue, 10);
-        const range = settingRange("mcp.port");
-        if (port >= range.min && port <= range.max) settings.set("mcp.port", port);
-        else this.setPortValue(String(this.props.mcpPort));
-    };
-
-    handleMnemePortBlur = () => {
-        const port = parseInt(this.state.get().mnemePortValue, 10);
-        const range = settingRange("mneme.port");
-        if (port >= range.min && port <= range.max) settings.set("mneme.port", port);
-        else this.setMnemePortValue(String(this.props.mnemePort));
-    };
-
-    handlePortKeyDown = (event: KeyboardEvent) => {
-        if (event.key === "Enter") (event.target as HTMLInputElement).blur();
     };
 
     handleCopy = (text: string, label: string) => {

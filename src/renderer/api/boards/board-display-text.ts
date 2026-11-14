@@ -4,6 +4,8 @@ import { getActiveLocale } from "../../../shared/i18n/active-locale";
 import { pseudoText } from "../../../shared/i18n/pseudo-text";
 import type { BoardI18nContext } from "../../../ipc/board-bridge/boot";
 import type { NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
+import type { BoardSettingsRegistration } from "./custom-editor-registry";
+import { readBoardManifest } from "./board-manifest-io";
 import { loadBoardI18n } from "./board-i18n";
 
 interface BoardDisplayTextChangedEvent {
@@ -59,6 +61,18 @@ export async function ensureBoardDisplayText(root: string, manifest: NormalizedB
     }
 }
 
+/** Load localized names for Settings without delaying registry publication. */
+export async function ensureBoardDisplayNames(registrations: readonly BoardSettingsRegistration[]): Promise<void> {
+    await Promise.all(registrations.map(async (board) => {
+        try {
+            const manifest = await readBoardManifest(board.boardRoot);
+            if (manifest) await ensureBoardDisplayText(board.boardRoot, manifest);
+        } catch {
+            // English manifest text remains a usable display fallback when a pack cannot load.
+        }
+    }));
+}
+
 /** Replace a board's cached table with the packs already loaded for its registration. */
 export function refreshBoardDisplayText(root: string, context: BoardI18nContext): void {
     const key = BoardRoot.from(root).key;
@@ -76,6 +90,16 @@ export function boardDisplayText(
 ): string {
     if (getActiveLocale() === "en-XA") return pseudoText(english);
     return resolvedTables.get(BoardRoot.from(root).key)?.[key] ?? english;
+}
+
+/** Resolve the Settings name after display metadata is ready, retaining the registration name fallback. */
+export function boardSettingsDisplayName(registration: BoardSettingsRegistration): string {
+    return boardDisplayText(
+        registration.boardRoot,
+        undefined,
+        boardMetadataKeys.name,
+        registration.name,
+    );
 }
 
 export const boardMetadataKeys = {

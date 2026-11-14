@@ -1,24 +1,23 @@
 import { settings } from "../../../api/settings";
 import type { AppSettingsKey } from "../../../api/settings-schema";
+import { settingRange } from "../../../api/settings-schema";
 import { createComponentModelDriver, type ComponentModelDriver } from "../../../core/state/model";
+import { appSettingsStore } from "../fields/settings-store";
+import type { SettingsStore } from "../fields/settings-store";
+import { CheckboxField } from "../fields/CheckboxField";
+import { PortField } from "../fields/PortField";
 import { ColorizedCodeView } from "../../shared/ColorizedCodeView";
 import { ButtonView } from "../../../uikit/Button/ButtonView";
 import type { ButtonProps } from "../../../uikit/Button/ButtonView";
-import { CheckboxView } from "../../../uikit/Checkbox/CheckboxView";
-import type { CheckboxProps } from "../../../uikit/Checkbox/CheckboxView";
 import { DotView } from "../../../uikit/Dot/DotView";
-import { InputView } from "../../../uikit/Input/InputView";
-import type { InputProps } from "../../../uikit/Input/InputView";
 import { SubtreeSwap } from "../../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { t } from "../../../../shared/i18n/t";
+import { mcpEndpointUrl } from "../../../../shared/mcp-endpoint";
 import { McpSectionModel, defaultMcpSectionState, type McpSectionProps, type McpSectionState } from "./McpSectionModel";
 import { createSectionRoot, helpHeader, panel, text } from "./settings-native";
 import "../../../uikit/Button/Button.css";
-import "../../../uikit/Checkbox/Checkbox.css";
 import "../../../uikit/Dot/Dot.css";
-import "../../../uikit/Input/Input.css";
-
 interface StatusProps {
     status: { running: boolean; url: string; clientCount: number } | { running: boolean; url: string };
     mneme: boolean;
@@ -94,12 +93,8 @@ class McpStatusView extends VanillaView<StatusProps> {
 export class McpSectionView extends VanillaView<Record<string, never>> {
     private driver: ComponentModelDriver<McpSectionState, McpSectionProps, McpSectionModel> | undefined;
     private model: McpSectionModel | undefined;
-    private agentTipsCheckbox: CheckboxView | undefined;
-    private mcpEnabledCheckbox: CheckboxView | undefined;
-    private mainScriptsCheckbox: CheckboxView | undefined;
-    private mnemeEnabledCheckbox: CheckboxView | undefined;
-    private portInput: InputView | undefined;
-    private mnemePortInput: InputView | undefined;
+    private mcpPortField: PortField | undefined;
+    private mnemePortField: PortField | undefined;
     private configCode: ColorizedCodeView | undefined;
     private configCopyButton: ButtonView | undefined;
     private mcpStatusSwap: SubtreeSwap<string> | undefined;
@@ -121,42 +116,31 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
         this.own(() => driver.dispose());
 
         this.root.append(
-            helpHeader(t("settings.mcpTitle"), t("settings.mcpDescription"), (cleanup) => this.own(cleanup)),
         );
         const mcpRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
-        this.mcpEnabledCheckbox = this.child(new CheckboxView(this.checkboxProps(
-            model.props.mcpEnabled,
-            model.handleToggle,
-            t("settings.mcpEnable"),
-        )));
-        mcpRow.append(this.mcpEnabledCheckbox.root);
-        this.mcpEnabledCheckbox.mount();
+        const mcpEnabled = this.child(new CheckboxField({ store: appSettingsStore as SettingsStore<boolean>, id: "mcp.enabled", label: t("settings.mcpEnable") }));
+        mcpRow.append(mcpEnabled.root);
+        mcpEnabled.mount();
         this.root.append(mcpRow);
 
         const tipsRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
-        this.agentTipsCheckbox = this.child(new CheckboxView(this.checkboxProps(
-            model.props.agentTipsEnabled, model.handleAgentTipsToggle, t("settings.agentTipsEnable"),
-        )));
-        tipsRow.append(this.agentTipsCheckbox.root);
-        this.agentTipsCheckbox.mount();
+        const agentTips = this.child(new CheckboxField({ store: appSettingsStore as SettingsStore<boolean>, id: "agent-tips.enabled", label: t("settings.agentTipsEnable") }));
+        tipsRow.append(agentTips.root);
+        agentTips.mount();
         this.root.append(tipsRow);
 
         const mainScriptsRow = panel({ direction: "column", gap: "sm", paddingBottom: "lg" });
-        this.mainScriptsCheckbox = this.child(new CheckboxView(this.checkboxProps(
-            model.props.mainScriptsEnabled,
-            model.handleMainScriptsToggle,
-            t("settings.mainScriptsEnable"),
-        )));
-        mainScriptsRow.append(this.mainScriptsCheckbox.root);
+        const mainScripts = this.child(new CheckboxField({ store: appSettingsStore as SettingsStore<boolean>, id: "main.scripting.enabled", label: t("settings.mainScriptsEnable") }));
+        mainScriptsRow.append(mainScripts.root);
         mainScriptsRow.append(text(t("settings.mainScriptsWarning"), { color: "light", size: "xs" }));
-        this.mainScriptsCheckbox.mount();
+        mainScripts.mount();
         this.root.append(mainScriptsRow);
 
         const portRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
         portRow.append(text(t("settings.portLabel"), { size: "sm" }));
-        this.portInput = this.child(new InputView(this.portProps(false)));
-        portRow.append(this.portInput.root);
-        this.portInput.mount();
+        this.mcpPortField = this.child(new PortField({ store: appSettingsStore as SettingsStore<number>, id: "mcp.port", range: settingRange("mcp.port"), fallback: model.props.mcpPort, width: 72, disabled: model.props.mcpEnabled }));
+        portRow.append(this.mcpPortField.root);
+        this.mcpPortField.mount();
         this.root.append(portRow);
 
         const mcpStatusHost = document.createElement("div");
@@ -169,19 +153,15 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
             helpHeader(t("settings.mnemeTitle"), t("settings.mnemeDescription"), (cleanup) => this.own(cleanup)),
         );
         const mnemeRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
-        this.mnemeEnabledCheckbox = this.child(new CheckboxView(this.checkboxProps(
-            model.props.mnemeEnabled,
-            model.handleMnemeToggle,
-            t("settings.mnemeEnable"),
-        )));
-        mnemeRow.append(this.mnemeEnabledCheckbox.root);
-        this.mnemeEnabledCheckbox.mount();
+        const mnemeEnabled = this.child(new CheckboxField({ store: appSettingsStore as SettingsStore<boolean>, id: "mneme.enabled", label: t("settings.mnemeEnable") }));
+        mnemeRow.append(mnemeEnabled.root);
+        mnemeEnabled.mount();
         this.root.append(mnemeRow);
         const mnemePortRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
         mnemePortRow.append(text(t("settings.portLabel"), { size: "sm" }));
-        this.mnemePortInput = this.child(new InputView(this.portProps(true)));
-        mnemePortRow.append(this.mnemePortInput.root);
-        this.mnemePortInput.mount();
+        this.mnemePortField = this.child(new PortField({ store: appSettingsStore as SettingsStore<number>, id: "mneme.port", range: settingRange("mneme.port"), fallback: model.props.mnemePort, width: 72, disabled: model.props.mnemeEnabled }));
+        mnemePortRow.append(this.mnemePortField.root);
+        this.mnemePortField.mount();
         this.root.append(mnemePortRow);
         this.root.append(mnemeStatusHost);
         this.mnemeStatusSwap = new SubtreeSwap(mnemeStatusHost);
@@ -220,12 +200,8 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
     protected onDispose(): void {
         this.driver = undefined;
         this.model = undefined;
-        this.agentTipsCheckbox = undefined;
-        this.mcpEnabledCheckbox = undefined;
-        this.mainScriptsCheckbox = undefined;
-        this.mnemeEnabledCheckbox = undefined;
-        this.portInput = undefined;
-        this.mnemePortInput = undefined;
+        this.mcpPortField = undefined;
+        this.mnemePortField = undefined;
         this.configCode = undefined;
         this.configCopyButton = undefined;
         this.mcpStatusSwap = undefined;
@@ -243,33 +219,15 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
         };
     }
 
-    private checkboxProps(checked: boolean, onChange: (value: boolean) => void, children: string): CheckboxProps {
-        return { checked, onChange, children };
-    }
-
-    private portProps(mneme: boolean): InputProps {
-        const model = this.model;
-        return {
-            size: "sm",
-            width: 72,
-            type: "text",
-            value: mneme ? model?.state.get().mnemePortValue ?? "" : model?.state.get().portValue ?? "",
-            onChange: mneme ? model?.setMnemePortValue : model?.setPortValue,
-            onBlur: mneme ? model?.handleMnemePortBlur : model?.handlePortBlur,
-            onKeyDown: model?.handlePortKeyDown,
-            disabled: mneme ? model?.props.mnemeEnabled : model?.props.mcpEnabled,
-        };
-    }
-
     private configJson(): string {
         const model = this.model;
         const mcpPort = model?.props.mcpPort ?? settings.get("mcp.port");
         const mnemePort = model?.props.mnemePort ?? settings.get("mneme.port");
         const mcpServers: Record<string, { type: string; url: string }> = {
-            persephone: { type: "http", url: `http://127.0.0.1:${mcpPort}/mcp` },
+            persephone: { type: "http", url: mcpEndpointUrl(mcpPort) },
         };
         if (model?.props.mnemeEnabled ?? settings.get("mneme.enabled")) {
-            mcpServers.mneme = { type: "http", url: `http://127.0.0.1:${mnemePort}/mcp` };
+            mcpServers.mneme = { type: "http", url: mcpEndpointUrl(mnemePort) };
         }
         return JSON.stringify({ mcpServers }, null, 2);
     }
@@ -277,12 +235,8 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
     private syncState(state: McpSectionState): void {
         const model = this.model;
         if (!model) return;
-        this.agentTipsCheckbox?.update(this.checkboxProps(model.props.agentTipsEnabled, model.handleAgentTipsToggle, t("settings.agentTipsEnable")));
-        this.mcpEnabledCheckbox?.update(this.checkboxProps(model.props.mcpEnabled, model.handleToggle, t("settings.mcpEnable")));
-        this.mainScriptsCheckbox?.update(this.checkboxProps(model.props.mainScriptsEnabled, model.handleMainScriptsToggle, t("settings.mainScriptsEnable")));
-        this.mnemeEnabledCheckbox?.update(this.checkboxProps(model.props.mnemeEnabled, model.handleMnemeToggle, t("settings.mnemeEnable")));
-        this.portInput?.update(this.portProps(false));
-        this.mnemePortInput?.update(this.portProps(true));
+        this.mcpPortField?.setDisabled(model.props.mcpEnabled);
+        this.mnemePortField?.setDisabled(model.props.mnemeEnabled);
         this.configCode?.update({ code: this.configJson(), language: "json" });
         const copyLabel = state.copied === "config" ? t("settings.copied") : t("settings.copy");
         this.configCopyButton?.update({
@@ -308,7 +262,5 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
         } else this.mnemeStatusSwap?.clear();
     }
 
-    private statusKey(status: { running: boolean; url: string; clientCount?: number }, copied: string | null): string {
-        return `${status.running}-${status.url}-${status.clientCount ?? 0}-${copied ?? ""}`;
-    }
+    private statusKey(status: { running: boolean; url: string; clientCount?: number }, copied: string | null): string { return `${status.running}-${status.url}-${status.clientCount ?? 0}-${copied ?? ""}`; }
 }

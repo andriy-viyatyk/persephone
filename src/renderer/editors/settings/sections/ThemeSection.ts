@@ -1,19 +1,17 @@
-import { themeService } from "../../../api/theme-service";
 import { ui } from "../../../api/ui";
 import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
 import { app } from "../../../api/app";
-import { deleteCustomTheme } from "../../../api/custom-theme-storage";
+import { isCustomTheme, themes as themesApi } from "../../../api/themes";
 import { isCapabilityErrorWithCode } from "../../../api/capability-feedback";
 import { errMessage } from "../../../../shared/utils";
 import { t } from "../../../../shared/i18n/t";
-import { getAvailableThemes } from "../../../theme/themes";
-import type { ThemeDefinition } from "../../../theme/themes/types";
+import type { ThemeDefinition } from "../../../api/types/themes";
 import { themeState } from "../../../theme/theme-state";
 import { applyPanelAttributes, resolvePanelAttributes } from "../../../uikit/Panel/panel-style";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { IconButtonView } from "../../../uikit/IconButton/IconButtonView";
 import "../../../uikit/IconButton/IconButton.css";
-import { createSectionRoot, panel, sectionTitle, text } from "./settings-native";
+import { createSectionRoot, panel, text } from "./settings-native";
 
 interface ThemePreviewProps {
     bgDefault: string;
@@ -93,6 +91,7 @@ interface ThemeOption {
 
 export class ThemeSectionView extends VanillaView<Record<string, never>> {
     private readonly options = new Map<string, ThemeOption>();
+    private readonly renderedBodyNodes: HTMLElement[] = [];
     private createThemeButton: IconButtonView | undefined;
 
     public constructor(props: Record<string, never>) {
@@ -120,19 +119,14 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
         this.options.clear();
     }
 
-    private createGrid(): HTMLDivElement {
-        const grid = panel({ direction: "row", wrap: true, gap: "lg", justify: "start", paddingBottom: "xl" });
-        return grid;
-    }
-
     private renderThemes(): void {
-        const themes = getAvailableThemes();
-        const customThemes = themes.filter((theme) => theme.id.startsWith("custom-")).sort((left, right) =>
+        const themes = themesApi.list();
+        const customThemes = themes.filter((theme) => isCustomTheme(theme.id)).sort((left, right) =>
             left.name.localeCompare(right.name, undefined, { sensitivity: "base" }) || left.id.localeCompare(right.id)
         );
         const groups: { key: "settings.themeDark" | "settings.themeLight" | "settings.themeCustom"; name: string; themes: ThemeDefinition[] }[] = [
-            { key: "settings.themeDark", name: "Dark", themes: themes.filter((theme) => !theme.id.startsWith("custom-") && theme.isDark) },
-            { key: "settings.themeLight", name: "Light", themes: themes.filter((theme) => !theme.id.startsWith("custom-") && !theme.isDark) },
+            { key: "settings.themeDark", name: "Dark", themes: themes.filter((theme) => !isCustomTheme(theme.id) && theme.isDark) },
+            { key: "settings.themeLight", name: "Light", themes: themes.filter((theme) => !isCustomTheme(theme.id) && !theme.isDark) },
             { key: "settings.themeCustom", name: "Custom", themes: customThemes },
         ];
         const activeIds = new Set(themes.map((theme) => theme.id));
@@ -146,10 +140,10 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
             option.element.remove();
             this.options.delete(id);
         }
-        this.root.replaceChildren(sectionTitle(t("settings.groupTitleTheme")));
+        this.renderedBodyNodes.splice(0).forEach((node) => node.remove());
         groups.forEach(({ key, name, themes: groupThemes }) => {
-            this.root.append(panel({ paddingBottom: "md" }, text(t(key), { variant: "uppercased", color: "light", bold: true, size: "xs" })));
-            const grid = this.createGrid();
+            this.renderedBodyNodes.push(this.root.appendChild(panel({ paddingBottom: "md" }, text(t(key), { variant: "uppercased", color: "light", bold: true, size: "xs" }))));
+            const grid = panel({ direction: "row", wrap: true, gap: "lg", justify: "start", paddingBottom: "xl" });
             groupThemes.forEach((theme) => {
                 let option = this.options.get(theme.id);
                 if (!option) option = this.createOption(theme);
@@ -181,7 +175,7 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
                 const createButton = this.getCreateThemeButton();
                 grid.append(createButton.root);
             }
-            this.root.append(grid);
+            this.renderedBodyNodes.push(this.root.appendChild(grid));
         });
     }
 
@@ -243,7 +237,7 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
         editButton.mount();
 
         let removeButton: IconButtonView | undefined;
-        if (theme.id.startsWith("custom-")) {
+        if (isCustomTheme(theme.id)) {
             removeButton = this.child(new IconButtonView({
                 size: "sm", icon: "close", title: t("settings.themeDeleteAria", { name: theme.name }),
                 "aria-label": t("settings.themeDeleteAria", { name: theme.name }),
@@ -265,7 +259,7 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
     }
 
     private handleThemeChange(themeId: string): void {
-        themeService.select(themeId);
+        void themesApi.apply(themeId);
     }
 
     private async handleThemeEdit(themeId: string): Promise<void> {
@@ -336,7 +330,7 @@ export class ThemeSectionView extends VanillaView<Record<string, never>> {
         );
         if (result !== DialogButton.delete) return;
         try {
-            await deleteCustomTheme(themeId);
+            await themesApi.delete(themeId);
         } catch (error) {
             ui.notify(errMessage(error, t("settings.themeDeleteFailed", { name })), "warning");
         }

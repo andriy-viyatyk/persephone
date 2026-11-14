@@ -15,6 +15,7 @@ import { app } from "electron";
 import { openWindows } from "./open-windows";
 import type { MnemeStatus } from "../ipc/contracts/mcp-mneme";
 import { SidecarProcess, SidecarStartResult } from "./sidecar-process";
+import { mcpEndpointUrl } from "../shared/mcp-endpoint";
 
 const DEFAULT_PORT = 7700;
 const READINESS_TIMEOUT_MS = 20_000;
@@ -51,11 +52,7 @@ function log(line: string): void {
 }
 
 export function getMnemeUrl(): string {
-    // Use 127.0.0.1, not "localhost" — mneme binds IPv4 loopback only. On Windows
-    // Chromium resolves "localhost" to ::1 (IPv6) first and, finding nothing there,
-    // hangs the renderer's fetch-based MCP transport until timeout instead of failing
-    // over to IPv4. Addressing the bound IPv4 directly avoids the stall entirely.
-    return `http://127.0.0.1:${currentPort}/mcp`;
+    return mcpEndpointUrl(currentPort);
 }
 
 export function getMnemeStatus(): MnemeStatus {

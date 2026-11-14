@@ -1,5 +1,6 @@
 import type { MessageKey } from "../../../shared/i18n/en";
 import type { AppSettingsKey } from "../../api/settings-schema";
+import type { IOwnedView } from "../../uikit/shared/vanilla-view";
 
 export interface SettingsCatalogRow {
     readonly key: AppSettingsKey | "site-extensions";
@@ -18,6 +19,53 @@ export interface SettingsCatalogSection {
     readonly panelName: string;
     readonly where: string;
     readonly rows: readonly SettingsCatalogRow[];
+}
+
+export interface SettingsSectionDescriptor {
+    readonly catalog: SettingsCatalogSection;
+    readonly create: () => IOwnedView;
+    readonly titleKey: MessageKey;
+    readonly helpKey?: MessageKey;
+    readonly headerPlacement: "section" | "wrapper";
+}
+
+interface SettingsSectionHeaderMetadata {
+    readonly titleKey: MessageKey;
+    readonly helpKey?: MessageKey;
+    readonly headerPlacement: "section" | "wrapper";
+}
+
+export const SETTINGS_SECTION_HEADER_METADATA: Readonly<Record<string, SettingsSectionHeaderMetadata>> = {
+    theme: { titleKey: "settings.groupTitleTheme", headerPlacement: "section" },
+    language: { titleKey: "settings.groupTitleLanguage", helpKey: "settings.languageDescription", headerPlacement: "section" },
+    "window-behavior": { titleKey: "settings.groupTitleWindowBehavior", helpKey: "settings.windowBehaviorDescription", headerPlacement: "section" },
+    "voice-typing": { titleKey: "settings.voiceTypingSettingTitle", helpKey: "settings.voiceTypingSettingDescription", headerPlacement: "section" },
+    "microphone-audio": { titleKey: "settings.microphoneTitle", helpKey: "settings.microphoneDescription", headerPlacement: "section" },
+    clipboard: { titleKey: "settings.groupTitleClipboard", helpKey: "settings.clipboardDescription", headerPlacement: "section" },
+    terminal: { titleKey: "settings.groupTitleTerminal", helpKey: "settings.terminalDescription", headerPlacement: "section" },
+    "file-search": { titleKey: "settings.groupTitleFileSearch", headerPlacement: "section" },
+    "editor-behavior": { titleKey: "settings.groupTitleEditorBehavior", helpKey: "settings.editorBehaviorDescription", headerPlacement: "section" },
+    "script-library": { titleKey: "settings.groupTitleScriptLibrary", helpKey: "settings.scriptLibraryDescription", headerPlacement: "section" },
+    "video-player": { titleKey: "settings.groupTitleVideoPlayer", helpKey: "settings.videoPlayerDescription", headerPlacement: "section" },
+    "site-extensions": { titleKey: "settings.groupTitleSiteExtensions", helpKey: "settings.siteExtensionsAgentDescription", headerPlacement: "section" },
+    "browser-profiles": { titleKey: "settings.groupTitleBrowserProfiles", helpKey: "settings.browserProfilesDescription", headerPlacement: "section" },
+    "default-browser": { titleKey: "settings.groupTitleDefaultBrowser", helpKey: "settings.defaultBrowserDescription", headerPlacement: "wrapper" },
+    "link-behavior": { titleKey: "settings.groupTitleLinks", helpKey: "settings.linksIntroduction", headerPlacement: "wrapper" },
+    mcp: { titleKey: "settings.mcpTitle", helpKey: "settings.mcpDescription", headerPlacement: "section" },
+    "git-integration": { titleKey: "settings.groupTitleGitIntegration", helpKey: "settings.gitHelp", headerPlacement: "section" },
+    "board-vars": { titleKey: "settings.groupTitleBoardVars", helpKey: "settings.boardVarsDescription", headerPlacement: "section" },
+};
+
+export function createSettingsSectionDescriptors(
+    factories: Readonly<Record<string, () => IOwnedView>>,
+): SettingsSectionDescriptor[] {
+    return SETTINGS_CATALOG.map((catalog) => {
+        const metadata = SETTINGS_SECTION_HEADER_METADATA[catalog.id];
+        const create = factories[catalog.id];
+        if (!metadata) throw new Error(`No Settings section header registered for ${catalog.id}.`);
+        if (!create) throw new Error(`No Settings section view registered for ${catalog.id}.`);
+        return { catalog, create, ...metadata };
+    });
 }
 
 export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [

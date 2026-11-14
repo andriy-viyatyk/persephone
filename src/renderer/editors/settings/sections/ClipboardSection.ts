@@ -1,29 +1,16 @@
 import { settings } from "../../../api/settings";
-import { normalizeClipboardMaxItems } from "../../../api/settings-schema";
-import type { AppSettingsKey } from "../../../api/settings-schema";
-import { createComponentModelDriver, type ComponentModelDriver } from "../../../core/state/model";
-import { CheckboxView } from "../../../uikit/Checkbox/CheckboxView";
-import type { CheckboxProps } from "../../../uikit/Checkbox/CheckboxView";
-import { InputView } from "../../../uikit/Input/InputView";
-import type { InputProps } from "../../../uikit/Input/InputView";
+import { normalizeClipboardMaxItems, settingRange } from "../../../api/settings-schema";
+import { appSettingsStore } from "../fields/settings-store";
+import type { SettingsStore } from "../fields/settings-store";
+import { CheckboxField } from "../fields/CheckboxField";
+import { NumberField } from "../fields/NumberField";
 import { NotificationView } from "../../../uikit/Notification/NotificationView";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { t } from "../../../../shared/i18n/t";
-import {
-    ClipboardSectionModel,
-    defaultClipboardSectionState,
-    type ClipboardSectionProps,
-    type ClipboardSectionState,
-} from "./ClipboardSectionModel";
-import { createSectionRoot, helpHeader, panel, text } from "./settings-native";
-import "../../../uikit/Checkbox/Checkbox.css";
-import "../../../uikit/Input/Input.css";
+import { createSectionRoot, panel, text } from "./settings-native";
+import "../../../uikit/Notification/Notification.css";
 
 export class ClipboardSectionView extends VanillaView<Record<string, never>> {
-    private driver: ComponentModelDriver<ClipboardSectionState, ClipboardSectionProps, ClipboardSectionModel> | undefined;
-    private model: ClipboardSectionModel | undefined;
-    private enabledCheckbox: CheckboxView | undefined;
-    private maxItemsInput: InputView | undefined;
     private warning: NotificationView | undefined;
 
     public constructor(props: Record<string, never>) {
@@ -31,92 +18,40 @@ export class ClipboardSectionView extends VanillaView<Record<string, never>> {
     }
 
     protected onMount(): void {
-        const driver = createComponentModelDriver(
-            this.currentProps(),
-            ClipboardSectionModel,
-            defaultClipboardSectionState,
-        );
-        this.driver = driver;
-        const model = driver.model;
-        this.model = model;
-        this.own(() => driver.dispose());
-
-        this.root.append(
-            helpHeader(t("settings.clipboardTitle"), t("settings.clipboardDescription"), (cleanup) => this.own(cleanup)),
-        );
 
         const enabledRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
-        this.enabledCheckbox = this.child(new CheckboxView(this.checkboxProps(
-            model.props.clipboardEnabled,
-            model.handleToggle,
-            t("settings.clipboardEnable"),
-        )));
-        enabledRow.append(this.enabledCheckbox.root);
-        this.enabledCheckbox.mount();
+        const enabled = this.child(new CheckboxField({
+            store: appSettingsStore as SettingsStore<boolean>,
+            id: "clipboard.enabled",
+            label: t("settings.clipboardEnable"),
+        }));
+        enabledRow.append(enabled.root);
+        enabled.mount();
         this.root.append(enabledRow);
 
         const maxItemsRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
         maxItemsRow.append(text(t("settings.clipboardMaximumHistory"), { size: "sm" }));
-        this.maxItemsInput = this.child(new InputView(this.inputProps()));
-        maxItemsRow.append(this.maxItemsInput.root);
-        this.maxItemsInput.mount();
+        const range = settingRange("clipboard.max-items");
+        const maxItems = this.child(new NumberField({
+            store: appSettingsStore as SettingsStore<number>,
+            id: "clipboard.max-items",
+            width: 72,
+            accepts: (value) => Number.isInteger(value) && value >= range.min && value <= range.max,
+            fallback: normalizeClipboardMaxItems(settings.get("clipboard.max-items")),
+            format: (value) => String(normalizeClipboardMaxItems(value)),
+            preserveDraftOnSameValue: true,
+        }));
+        maxItemsRow.append(maxItems.root);
+        maxItems.mount();
         this.root.append(maxItemsRow);
 
-        this.warning = this.child(new NotificationView({
-            type: "warning",
-            message: t("settings.clipboardReadableWarning"),
-        }));
+        this.warning = this.child(new NotificationView({ type: "warning", message: t("settings.clipboardReadableWarning") }));
         this.root.append(this.warning.root);
         this.warning.mount();
 
-        driver.mount();
-        this.bind(model.state, (state) => state, (state) => this.syncState(state));
-        const refresh = (): void => {
-            driver.update(this.currentProps());
-            this.syncState(model.state.get());
-        };
-        const settingsKeys = ["clipboard.enabled", "clipboard.max-items"] as const satisfies readonly AppSettingsKey[];
-        for (const key of settingsKeys) this.own(settings.watch(key, refresh));
     }
 
     protected onDispose(): void {
-        this.driver = undefined;
-        this.model = undefined;
-        this.enabledCheckbox = undefined;
-        this.maxItemsInput = undefined;
         this.warning = undefined;
-    }
-
-    private currentProps(): ClipboardSectionProps {
-        return {
-            clipboardEnabled: settings.get("clipboard.enabled"),
-            clipboardMaxItems: normalizeClipboardMaxItems(settings.get("clipboard.max-items")),
-        };
-    }
-
-    private checkboxProps(checked: boolean, onChange: (value: boolean) => void, children: string): CheckboxProps {
-        return { checked, onChange, children };
-    }
-
-    private inputProps(value = this.model?.state.get().maxItemsValue ?? ""): InputProps {
-        return {
-            size: "sm",
-            width: 72,
-            type: "text",
-            value,
-            onChange: this.model?.setMaxItemsValue,
-            onBlur: this.model?.handleMaxItemsBlur,
-        };
-    }
-
-    private syncState(state: ClipboardSectionState): void {
-        const model = this.model;
-        if (!model) return;
-        this.enabledCheckbox?.update(this.checkboxProps(
-            model.props.clipboardEnabled,
-            model.handleToggle,
-            t("settings.clipboardEnable"),
-        ));
-        this.maxItemsInput?.update(this.inputProps(state.maxItemsValue));
     }
 }

@@ -31,6 +31,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Main-to-renderer RPC request lifecycle (readiness, pending requests, cancellation, timeout selection, renderer lifetime) | `/src/main/renderer-rpc.ts` |
 | Renderer RPC server and bootstrap | `/src/renderer/api/renderer-rpc.ts`, `/src/renderer/api/renderer-rpc-bootstrap.ts` |
 | Shared path containment check | `/src/shared/path-containment.ts` |
+| Shared local MCP endpoint URL format (IPv4 loopback and `/mcp` path) | `/src/shared/mcp-endpoint.ts` |
 | First-owner claim registry shared by main and renderer; callers normalize keys and clear claims by origin | `/src/shared/ownership-registry.ts` |
 | Renderer Vite configuration (preserves Node `process.env` in renderer builds and sets the dev-server port/watch exclusions) | `/vite.renderer.config.ts` |
 | Excalidraw board library snapshot generator (manual, pinned-vendor copy plus dependency import-map scan and validation; not part of the Persephone build) | `/scripts/build-board-lib.mjs` |
@@ -348,8 +349,10 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Tree-provider item icon and HTTP favicon cache (directory/provider icons plus shared favicon lookup for link and browser surfaces) | `/src/renderer/components/icons/icon-elements.ts`, `/src/renderer/components/icons/favicon-cache.ts` |
 | Settings page composition and section models | `/src/renderer/editors/settings/` |
 | Focusable contextual help icon and tooltip | `/src/renderer/uikit/HelpIcon/HelpIconView.ts` |
-| Native settings page and section composition (height-constrained panel stack, fixed two-level Content tree, click-to-scroll/scroll-spy linkage, built-in controls, board-declared controls, and lifecycle ownership) | `/src/renderer/editors/settings/SettingsView.ts`, `/src/renderer/editors/settings/settings-catalog.ts`, `/src/renderer/editors/settings/sections/` |
-| Clipboard settings section (enable toggle, item cap, and on-disk storage warning) | `/src/renderer/editors/settings/sections/ClipboardSection.ts`, `/src/renderer/editors/settings/sections/ClipboardSectionModel.ts` |
+| Native settings page composition (shell-owned section descriptors and headers, height-constrained panel stack, fixed two-level Content tree, and lifecycle ownership) | `/src/renderer/editors/settings/SettingsView.ts`, `/src/renderer/editors/settings/settings-catalog.ts`, `/src/renderer/editors/settings/SettingsLayoutModel.ts` |
+| Settings navigation and reusable field views (scroll settling, settings stores, and built-in/board controls) | `/src/renderer/editors/settings/ScrollSpy.ts`, `/src/renderer/editors/settings/fields/` |
+| Built-in settings sections and board-declared controls | `/src/renderer/editors/settings/sections/` |
+| Clipboard settings section (enable toggle, item cap, and on-disk storage warning) | `/src/renderer/editors/settings/sections/ClipboardSection.ts` |
 | Native link editor page composition, body, and chrome (list/tiles switching, pinned links, and tooltip content) | `/src/renderer/editors/link-editor/LinkEditorView.ts`, `/src/renderer/editors/link-editor/LinkBody.ts`, `/src/renderer/editors/link-editor/PinnedLinksPanelView.ts` |
 | Environment-variables editor page composition | `/src/renderer/editors/env-vars/EnvVarsEditorView.ts` |
 | File-diff editor page composition (toolbar, revisions, and diff body) | `/src/renderer/editors/file-diff/FileDiffEditorView.ts` |
