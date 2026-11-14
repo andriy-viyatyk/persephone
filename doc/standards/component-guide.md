@@ -61,6 +61,11 @@ the original source value and the index is the resolved row index; section and d
 emit it. A double-click still produces the normal click-selection callbacks, so the double-click
 handler is additive and is appropriate for actions such as opening or revealing an item.
 
+When `isSelected` reads caller-owned mutable state, replace the predicate when its answers change,
+or pass a changing `selectionSignal` alongside the stable predicate. `selectionSignal` is an identity-
+based invalidation input that repaints every row; it does not store or interpret the selection value.
+`MultiListBox` uses it to notify its `ListBox` when the externally held selected-key set changes.
+
 When a parent composes a dynamic native child, `child()` establishes ownership only; it does not
 forward later model or prop changes. Retain children whose rendered output can change and update
 each of them from current state in the parent's `sync()`/`onUpdate()` path. Reviewing the update

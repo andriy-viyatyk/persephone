@@ -1,3 +1,29 @@
+## EPIC-171 — Refactoring Phase 6.7 part 3: repaint tracker and pooled-row host
+
+Completed 2026-11-14. Roadmap Phase 6.7 part 3 (UIK-5, UIK-4): `uikit/shared/repaint-tracker.ts` declares each
+component's `{ rows, global, local }` prop keys once and replaces the `applied*`/`live*` mirrors, pending flags,
+repaint signatures and `DepsGate` wiring in `Tree` and `ListBox`; every prop a cell reads is declared (bug #17's repaint
+half, plus `getTrailingVisibility`); `ListBoxModel` is a plain class with one props channel (MultiListBox's selection
+set travels as the new `selectionSignal` prop); `TreeProviderViewImpl.treeProps()` passes stored callbacks, so hover
+no longer re-derives every row. `uikit/shared/pooled-row-host.ts` and `list-shell-arms.ts` own the RenderGrid lifecycle,
+pooled wrappers, once-per-wrapper listeners, kind switching and the loading/empty arms for `ListBoxView`, `TreeView`,
+`FileSearchView`, `LinksListView` and `LinksTilesView`; `LogBodyView` keeps its own `MeasuredRowGrid` pool (recorded).
+`ListBoxView.ts` 559 → 291 and `TreeView.ts` 607 → 437 lines. Recorded changes: a callback-only (or ListBox `id`-only)
+prop change now repaints, the list/tree loading text is the localized "Loading…", and an Autocomplete header renders
+(it never did). DOM and flows otherwise unchanged (structural fingerprints of Explorer, Settings, a Select popup, file
+search, Link list/tiles and Log view at top, middle and bottom of long lists, plus click/hover/keyboard flows, in a
+separate test window). Plans by Codex, reviewed against the roadmap guardrails; Codex Luna implemented. Epic document:
+[EPIC-171](EPIC-171.md).
+
+- [x] **Tree repaint tracker (US-1967).** `repaint-tracker.ts`, Tree key lists, stable provider-tree callbacks.
+- [x] **ListBox repaint tracker (US-1968).** Plain `ListBoxModel`, one props channel, `selectionSignal`.
+- [x] **Pooled-row host (US-1969).** `pooled-row-host.ts`, `list-shell-arms.ts`, `ListBoxView` migrated.
+- [x] **TreeView on the host (US-1970).** Optional `updateWrapper` hook for `draggable`.
+- [x] **File search on the host (US-1971).** `FileSearchRowView` adopts the cell; `LogBodyView` kept local.
+- [x] **Link views on the host (US-1972).** List and tiles adapters, listeners on semantic roots.
+- [x] **Epic review.** `/review` guard fix in file search; `/document` key files, folder structure, component guide,
+  model-view pattern; `/userdoc` no change; `i18n:check` complete.
+
 ## EPIC-170 — Refactoring Phase 6.7 part 2: controlled tree expansion, one lazy-load owner, `ProviderTreeStore` and the `TreeProviderViewModel` split
 
 Completed 2026-11-14. Roadmap Phase 6.7 part 2 (UIK-2, UIK-1): `Tree`'s own lazy-load path, `revision` and the

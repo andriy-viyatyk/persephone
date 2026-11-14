@@ -101,12 +101,13 @@ export interface ListBoxProps<T = IListBoxItem>
      * membership from here, and pairs it with `checkbox` for the visual — `MultiListBox` is that
      * caller.
      *
-     * **The predicate's identity is a repaint input** (see `ListBoxModel.repaintSignature`). A
-     * A direct caller whose selection changed must hand over a *new* function, or the rows will not
-     * redraw. `MultiListBox` is the intentional exception: it uses a stable bound method and sends
-     * its changing selection set through the targeted ListBox signal.
+     * **The predicate's identity is a repaint input.** A direct caller whose selection changed
+     * must hand over a *new* function, or the rows will not redraw. `MultiListBox` keeps its
+     * predicate stable and sends its changing selection set through `selectionSignal`.
      */
     isSelected?: (item: T, index: number) => boolean;
+    /** Identity change repaints every row; for owners that keep `isSelected` stable and change the selection set. */
+    selectionSignal?: unknown;
     /** Index of the currently-highlighted (active) row. Controlled. */
     activeIndex?: number | null;
     /** Fires when the active row changes — mouse hover or internal keyboard nav. */

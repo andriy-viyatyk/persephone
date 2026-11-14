@@ -107,6 +107,9 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Vanilla view lifecycle and ownership (`VanillaView`, `IOwnedView`, guarded `bind`/`listen` with early-release handles, owner-bound scheduling, `ownSubscription`, FIFO cleanup, and single-owner claims) | `/src/renderer/uikit/shared/vanilla-view.ts` |
 | Keyed DOM reconciliation (duplicate-safe keyed records, cursor-based minimal moves, reusable `clear`, and inert `dispose`) | `/src/renderer/uikit/shared/keyed-list.ts` |
 | Conditional subtree ownership (stable `PropertyKey` keys, replacement-before-disposal, and root detachment) | `/src/renderer/uikit/shared/subtree-swap.ts` |
+| Shared repaint input diffing (separate row, global, and local prop keys by identity) | `/src/renderer/uikit/shared/repaint-tracker.ts` |
+| Shared pooled-row host (RenderGrid wrapper pool, retained row views, event routing, and lifecycle) | `/src/renderer/uikit/shared/pooled-row-host.ts` |
+| Shared loading/empty/real list shell transitions | `/src/renderer/uikit/shared/list-shell-arms.ts` |
 | Shared RenderGrid cell geometry and coordinate attributes | `/src/renderer/uikit/shared/cell-style.ts` |
 | Stable repaint/dependency identity gate for fixed-length signatures | `/src/renderer/uikit/shared/deps-gate.ts` |
 | Shared DOM id allocation for generated component elements | `/src/renderer/uikit/shared/element-id.ts` |
@@ -346,6 +349,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Native Mermaid page view and preview body (text page shell and image viewport) | `/src/renderer/editors/mermaid/MermaidEditorView.ts`, `/src/renderer/editors/mermaid/MermaidBodyView.ts` |
 | Converted Toolset editor view (native standalone editor view) | `/src/renderer/editors/toolset/ToolsetEditorView.ts` |
 | Native Explorer Search panel (vanilla secondary view over `FileSearchView`) | `/src/renderer/editors/explorer/SearchSecondaryView.ts` |
+| FileSearch native view and pooled result row | `/src/renderer/components/file-search/FileSearchView.ts`, `/src/renderer/components/file-search/FileSearchRowView.ts` |
 | DOM-first editor icon resolver (tab + sidebar panel headers; `getIconElement`/file-icon fallback, returning `Element` or `null`) | `/src/renderer/components/icons/icon-elements.ts` |
 | DOM icon resolvers (file/language/board icon elements; no renderer `react-dom/server` dependency) | `/src/renderer/components/icons/icon-elements.ts`, `/src/renderer/theme/language-icons.ts`, `/src/renderer/editors/board/board-glyph-element.ts` |
 | Tree-provider item icon and HTTP favicon cache (directory/provider icons plus shared favicon lookup for link and browser surfaces) | `/src/renderer/components/icons/icon-elements.ts`, `/src/renderer/components/icons/favicon-cache.ts` |
@@ -422,7 +426,9 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Fixed-height framework-free virtualization view | `av-grid`'s `RenderGrid`, exposed by `/src/renderer/uikit/DataGrid/index.ts` |
 | Measured-height framework-free virtualization view | `av-grid`'s `MeasuredRowGrid`, exposed by `/src/renderer/uikit/DataGrid/index.ts` |
 | av-grid mounting boundary | `/src/renderer/uikit/DataGrid/index.ts`, `/src/renderer/uikit/DataGrid/DataGridView.ts` |
-| Virtualized list view (DOM rows, keyed reconciliation, selection/scroll projection, additive `onItemDoubleClick` row events, residual-prop hygiene, and `RenderGrid` integration) | `/src/renderer/uikit/ListBox/ListBoxView.ts` |
+| Virtualized list view (DOM rows, keyed reconciliation, selection/scroll projection, additive `onItemDoubleClick` row events, residual-prop hygiene, and pooled-row host integration) | `/src/renderer/uikit/ListBox/ListBoxView.ts` |
+| ListBox plain props model and repaint scope calculation (no component driver) | `/src/renderer/uikit/ListBox/ListBoxModel.ts` |
+| ListBox props including caller-owned selection invalidation signal | `/src/renderer/uikit/ListBox/types.ts` |
 | Virtualized tree view (DOM rows, keyed reconciliation, controlled or local expansion, opt-in secondary-label and trailing slots, DnD/keyboard integration, and `RenderGrid` integration) | `/src/renderer/uikit/Tree/TreeView.ts` |
 | Dropdown composite views (`Select`, `MultiSelect`, and `Autocomplete`) | `/src/renderer/uikit/Select/SelectView.ts`, `/src/renderer/uikit/MultiSelect/MultiSelectView.ts`, `/src/renderer/uikit/Autocomplete/AutocompleteView.ts` |
 | Native input view (controlled field projection, residual DOM attributes, and targeted live event-prop updates) | `/src/renderer/uikit/Input/InputView.ts` |

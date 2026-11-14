@@ -297,20 +297,7 @@ export class MultiListBoxView<T = IListBoxItem> extends VanillaView<MultiListBox
         if (selectAll) this.syncSelectAll(props);
 
         input.update(this.inputProps());
-        const { searchText, activeIndex } = this.model.state.get();
-        const rowHeight = props.rowHeight ?? defaultRowHeight;
-        const maxVisibleItems = props.maxVisibleItems ?? defaultMaxVisibleItems;
-        list.setItems(this.model.listBoxItems);
-        list.setSelection(this.model.isSelected, this.model.selectedKeys);
-        list.setSearchText(searchText);
-        list.setEmptyMessage(props.emptyMessage ?? uikitText("noRows"));
-        list.setLayout({
-            rowHeight,
-            growToHeight: props.height === undefined ? `${maxVisibleItems * rowHeight}px` : undefined,
-            fitToWidth: true,
-            whiteSpaceY: undefined,
-        });
-        list.setActiveIndex(activeIndex);
+        list.update(this.listProps());
     }
 
     /**
@@ -380,6 +367,7 @@ export class MultiListBoxView<T = IListBoxItem> extends VanillaView<MultiListBox
         return {
             items: this.model.listBoxItems,
             isSelected: this.model.isSelected,
+            selectionSignal: this.model.selectedKeys,
             onChange: this.model.toggle,
             activeIndex,
             onActiveChange: this.model.setActiveIndex,

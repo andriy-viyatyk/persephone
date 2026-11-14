@@ -11,6 +11,7 @@ import {
 import { TreeDndModel } from "./TreeDndModel";
 import { TreeKeyboardHandler } from "./TreeKeyboardHandler";
 import { applyExpandedChanges, resolveExpandedValue } from "./tree-expansion-map";
+import { createRepaintTracker } from "../shared/repaint-tracker";
 
 // =============================================================================
 // State
@@ -49,10 +50,26 @@ function runAccessor<R>(source: unknown, accessor: TraitType<R>): R {
     ) as R;
 }
 
-function globalRepaintProps<T>(props: TreeProps<T>): readonly unknown[] {
-    return [props.searchText, props.indentSize, props.isSelected,
-        props.getTooltip, props.getName, props.getSecondaryLabel, props.id, props.traitTypeId,
-        props.getDragData, props.acceptsDrop, props.onDragStartOverride];
+/**
+ * These groups cover inputs that can change emitted row content. Geometry such as `rowHeight`
+ * belongs to the grid, while event-time callbacks such as `getContextMenu` do not repaint cells.
+ * State-derived expansion and drag values reach cells through `mutate()` instead.
+ */
+const treeRowRepaintKeys = [
+    "items", "getChildren", "getHasChildren", "defaultExpandAll", "defaultExpandedValues", "expanded",
+] as const satisfies readonly (keyof TreeProps<unknown>)[];
+
+const treeGlobalRepaintKeys = [
+    "searchText", "indentSize", "isSelected", "getTooltip", "getName", "getSecondaryLabel",
+    "getIconElement", "getHideChevron", "getTrailingVisibility", "renderTrailing", "trailingElement",
+    "id", "traitTypeId", "getDragData", "acceptsDrop", "onDragStartOverride",
+] as const satisfies readonly (keyof TreeProps<unknown>)[];
+
+const treeLocalRepaintKeys = ["value", "activeIndex"] as const satisfies readonly (keyof TreeProps<unknown>)[];
+
+interface TreePropUpdateResult {
+    readonly repaint: RerenderInfo | undefined;
+    readonly contentChanged: boolean;
 }
 
 // =============================================================================
@@ -67,7 +84,7 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
 
     /**
      * The engine, used only for scrolling. Repaints are requested by `mutate()` and by the host
-     * view's props-change gate, never from a state-write site directly.
+     * view's prop-update result, never from a state-write site directly.
      */
     gridRef: RenderGridModel | null = null;
     setGridRef = (ref: RenderGridModel | null) => {
@@ -182,67 +199,78 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
         return items.traits.get(TREE_ITEM_KEY);
     }
 
-    private appliedItems: TreeProps<T>["items"] | undefined = undefined;
-    private appliedValue: TreeProps<T>["value"] | undefined = undefined;
-    private appliedGetChildren: TreeProps<T>["getChildren"] | undefined = undefined;
-    private appliedGetHasChildren: TreeProps<T>["getHasChildren"] | undefined = undefined;
-    private appliedDefaultExpandAll: TreeProps<T>["defaultExpandAll"] | undefined = undefined;
-    private appliedDefaultExpandedValues: TreeProps<T>["defaultExpandedValues"] | undefined = undefined;
-    private appliedExpanded: TreeProps<T>["expanded"] | undefined = undefined;
-    private appliedActiveIndex: TreeProps<T>["activeIndex"] = undefined;
-    private appliedGlobalRepaintProps: readonly unknown[] = [];
-    private hasAppliedProps = false;
-    private pendingGlobalRepaint = false;
-    private pendingRowRepaint = false;
-    private pendingRows: number[] = [];
+    private readonly repaintTracker = createRepaintTracker<TreeProps<T>>({
+        rows: treeRowRepaintKeys as readonly (keyof TreeProps<T>)[],
+        global: treeGlobalRepaintKeys as readonly (keyof TreeProps<T>)[],
+        local: treeLocalRepaintKeys as readonly (keyof TreeProps<T>)[],
+    });
+    private previousProps: TreeProps<T> | undefined;
+    private propUpdateResult: TreePropUpdateResult | undefined;
 
     rows: TreeRow<T>[] = [];
     indexByValue = new Map<string | number, number>();
     selectedKey: string | number | null = null;
 
     setProps = (): void => {
-        const previousRows = this.rows;
-        const rowsChanged = !this.hasAppliedProps
-            || this.appliedItems !== this.props.items
-            || this.appliedGetChildren !== this.props.getChildren
-            || this.appliedGetHasChildren !== this.props.getHasChildren
-            || this.appliedDefaultExpandAll !== this.props.defaultExpandAll
-            || this.appliedDefaultExpandedValues !== this.props.defaultExpandedValues
-            || this.appliedExpanded !== this.props.expanded;
-        const selectionChanged = !this.hasAppliedProps
-            || this.appliedValue !== this.props.value
-            || this.appliedItems !== this.props.items;
-        const nextSelectedKey = this.props.value == null
-            ? null
-            : this.resolveSelectionValue(this.props.value).value;
-        const selectedKeyChanged = !Object.is(this.selectedKey, nextSelectedKey);
-        const activeChanged = this.appliedActiveIndex !== this.props.activeIndex;
-        const globalProps = globalRepaintProps(this.props);
-        const globalChanged = this.hasAppliedProps && globalProps.some(
-            (value, index) => !Object.is(value, this.appliedGlobalRepaintProps[index]),
-        );
+        const previousProps = this.previousProps;
+        const nextProps = this.props;
+        const diff = this.repaintTracker.diff(previousProps, nextProps);
+        this.previousProps = nextProps;
 
-        if (rowsChanged) {
+        if (!previousProps) {
             this.deriveRows(this.state.get().expanded);
-            if (this.hasAppliedProps) this.pendingRows.push(...this.diffRows(previousRows, this.rows));
+            this.selectedKey = nextProps.value == null
+                ? null
+                : this.resolveSelectionValue(nextProps.value).value;
+            this.propUpdateResult = undefined;
+            return;
         }
-        if (selectionChanged) {
-            this.selectedKey = nextSelectedKey;
-        }
-        this.pendingGlobalRepaint ||= globalChanged;
-        this.pendingRowRepaint ||= this.hasAppliedProps && (selectedKeyChanged || activeChanged);
 
-        this.appliedItems = this.props.items;
-        this.appliedValue = this.props.value;
-        this.appliedGetChildren = this.props.getChildren;
-        this.appliedGetHasChildren = this.props.getHasChildren;
-        this.appliedDefaultExpandAll = this.props.defaultExpandAll;
-        this.appliedDefaultExpandedValues = this.props.defaultExpandedValues;
-        this.appliedExpanded = this.props.expanded;
-        this.appliedActiveIndex = this.props.activeIndex;
-        this.appliedGlobalRepaintProps = globalProps;
-        this.hasAppliedProps = true;
+        const previousRows = this.rows;
+        const previousSelectedIndex = this.selectedRowIndex();
+        const previousActiveIndex = previousProps.activeIndex;
+        const rowsChanged = diff?.rows ?? false;
+        const globalChanged = diff?.global ?? false;
+        const selectionInputsChanged = previousProps.value !== nextProps.value
+            || previousProps.items !== nextProps.items;
+        const previousSelectedKey = this.selectedKey;
+
+        if (rowsChanged) this.deriveRows(this.state.get().expanded);
+        if (selectionInputsChanged) {
+            this.selectedKey = nextProps.value == null
+                ? null
+                : this.resolveSelectionValue(nextProps.value).value;
+        }
+
+        const selectedKeyChanged = !Object.is(previousSelectedKey, this.selectedKey);
+        const activeChanged = previousActiveIndex !== nextProps.activeIndex;
+        const changedRows = rowsChanged ? this.diffRows(previousRows, this.rows) : [];
+        let repaint: RerenderInfo | undefined;
+        if (globalChanged) {
+            repaint = { all: true };
+        } else if (rowsChanged || selectedKeyChanged || activeChanged) {
+            const rows = [...changedRows];
+            if (selectedKeyChanged || activeChanged) {
+                rows.push(
+                    ...[
+                        previousActiveIndex,
+                        nextProps.activeIndex,
+                        previousSelectedIndex,
+                        this.selectedRowIndex(),
+                    ].filter((row): row is number => row !== undefined && row !== null && row >= 0),
+                );
+            }
+            repaint = { rows: [...new Set(rows)] };
+        }
+        this.propUpdateResult = { repaint, contentChanged: repaint !== undefined };
     };
+
+    /** Consume the result produced synchronously by the latest prop pump. */
+    takePropUpdateResult(): TreePropUpdateResult | undefined {
+        const result = this.propUpdateResult;
+        this.propUpdateResult = undefined;
+        return result;
+    }
 
     private diffRows(previous: TreeRow<T>[], next: TreeRow<T>[]): number[] {
         const limit = Math.max(previous.length, next.length);
@@ -764,64 +792,12 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
 
     // --- change detection ---
 
-    /**
-     * Everything a rendered cell reads, for the host view's `DepsGate`.
-     *
-     * Fixed length — `depsChanged` reads a length change as "changed". **No reactive state**: a
-     * state change does not pump props in a vanilla driver, so a state slot would be dead code.
-     * `draggingValue` and `dragOverValue` reach the DOM through `mutate()` instead.
-     *
-     * The derived row projection and normalised selected key are compared directly. The row
-     * identity carries expand/collapse changes through the state-write funnel.
-     *
-     * Three signature details reflect the native repaint path: `rowHeight` is dropped (the engine
-     * compares it in `inputChanged()`), `getContextMenu` is dropped (read at event time, changes
-     * no cell DOM), and `id` plus the four DnD-gating props are **added** — they are read on the
-     * cell path, for `itemId()` and for the wrapper's `draggable` attribute.
-     */
-    repaintSignature(): readonly unknown[] {
-        return [
-            this.rows,
-            this.selectedKey,
-            this.props.activeIndex,
-            ...globalRepaintProps(this.props),
-        ];
-    }
-
-    /** Classify changed props into the model-owned row diff, row-local selection/active rows, or all rows. */
-    deriveRepaintChange(
-        contentChanged: boolean,
-        previousActiveIndex: number | null | undefined,
-        previousSelectedIndex: number,
-    ): RerenderInfo | undefined {
-        const globalChanged = this.pendingGlobalRepaint;
-        const rowChanged = this.pendingRowRepaint;
-        const changedRows = this.pendingRows;
-        this.pendingGlobalRepaint = false;
-        this.pendingRowRepaint = false;
-        this.pendingRows = [];
-        if (!contentChanged) return undefined;
-        if (globalChanged) return { all: true };
-        const rows = [...changedRows];
-        if (rowChanged) {
-            rows.push(
-                ...[
-                    previousActiveIndex,
-                    this.props.activeIndex,
-                    previousSelectedIndex,
-                    this.selectedRowIndex(),
-                ].filter((row): row is number => row !== undefined && row !== null && row >= 0),
-            );
-        }
-        return { rows: [...new Set(rows)] };
-    }
-
     // --- lifecycle ---
 
     /**
-     * The two former prop reactions became `repaintSignature()` plus the host view's gate for
-     * props, and `mutate()` for state. The scroll-on-`activeIndex` reaction became the host view's
-     * `syncActiveScroll`, with the unmeasured case now handled by the engine's own pending-scroll
+     * Prop changes are classified synchronously in `setProps()` and consumed by the host view.
+     * State changes flow through `mutate()`; active-row scrolling is synchronized by the host
+     * after the same prop pump, with the unmeasured case handled by the engine pending-scroll
      * register rather than a `setTimeout(0)` that could not test the actual condition.
      */
     dispose() {

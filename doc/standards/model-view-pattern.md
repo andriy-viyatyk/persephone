@@ -405,9 +405,12 @@ fields.
 Every `onX` handler that crosses a props or update boundary is a bound method stored as a field and
 created once. Do not allocate an arrow handler inside a props builder or an update path. The
 A documented example is [`DataGridView.ts`](../../src/renderer/uikit/DataGrid/DataGridView.ts),
-which installs stable callback trampolines and updates their behavior through current props. Do not
-use `TreeProviderViewImpl.treeProps()` as a stable-props example: some callbacks there are created
-as fresh arrows on each call.
+which installs stable callback trampolines and updates their behavior through current props.
+`TreeProviderViewImpl.treeProps()` stores its pure callbacks and keeps a stable `renderTrailing`
+wrapper while the owner callback is unchanged; when the owner supplies a different callback, the
+wrapper identity changes to signal that callback-read row content needs repainting. Other Tree
+consumers may keep fresh callback identities when those identities intentionally signal changed
+callback-read values.
 
 The reason is recorded in the header of
 [`DataGridView.ts:10-32`](../../src/renderer/uikit/DataGrid/DataGridView.ts#L10-L32):
@@ -547,6 +550,24 @@ renderer: in a vanilla view there is no render pass to hide a missing dependency
 depends on a scrollbar or a newly attached container is recomputed from the view's measured DOM,
 and scroll-to-row requests that arrive before a usable paint remain pending until the paint path
 can satisfy them.
+
+`ListBoxModel` is a plain props model, not a `TComponentModel` and has no component driver. It owns
+resolved items and selection projection, compares incoming props through
+[`createRepaintTracker`](../../src/renderer/uikit/shared/repaint-tracker.ts), and returns the
+corresponding dirty-row or full-grid repaint information to `ListBoxView`. The tracker keeps row,
+global, and local inputs in separate identity groups; add a prop to the group matching the rows it
+invalidates, and omit values already detected by `RenderGridModel.inputChanged()`.
+
+For a caller-controlled selection predicate that reads mutable external state, either replace the
+predicate identity when its answers change or pass a changing `ListBoxProps.selectionSignal`.
+`MultiListBox` uses the latter to keep its membership predicate stable while repainting selection
+changes. A signal is invalidation-only; it does not become the selection value.
+
+`PooledRowHost` is the shared boundary for fixed-height row collections built on `RenderGrid`. It
+owns the grid wrapper pool, retained row views, wrapper event routing, and teardown. A view adapter
+supplies row count, kind, create/update, and event behavior. `ListShellArms` owns the stable-root
+loading, empty, and real-list transitions and calls into the pooled host only while real rows are
+shown. Tree and list consumers use these helpers so wrapper and grid lifetime rules stay consistent.
 
 Repaint-signature callback entries are compared by identity. A predicate such as `isSelected` may
 read a mutable set or other model field, but changing that field in place is not an invalidation

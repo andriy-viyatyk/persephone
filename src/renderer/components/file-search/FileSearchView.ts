@@ -1,36 +1,22 @@
-import { RenderGrid } from "../../uikit/DataGrid";
-import type { RenderCellFunc } from "../../uikit/DataGrid";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { InputView } from "../../uikit/Input/InputView";
-import { applyCellStyle } from "../../uikit/shared/cell-style";
-import { createIconElement } from "../../uikit/shared/slots";
+import { PooledRowHost } from "../../uikit/shared/pooled-row-host";
+import type { RowAdapter } from "../../uikit/shared/pooled-row-host";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { Cleanup } from "../../core/utils/DisposableStore";
 import { t } from "../../../shared/i18n/t";
-import { createFileIconElement, subscribeFileIconElements } from "../icons/icon-elements";
+import { subscribeFileIconElements } from "../icons/icon-elements";
 import type { FileSearchProps } from "./FileSearch";
+import { FileSearchRowView } from "./FileSearchRowView";
 import {
     FileSearchModel,
     type FileSearchInternalState,
-    type SearchResultFileRow,
-    type SearchResultLineRow,
     type SearchResultRow,
 } from "./FileSearchModel";
 import "./FileSearch.css";
 
 const ROW_HEIGHT = 22;
 const FULL_WIDTH = () => "100%" as `${number}%`;
-
-interface CellRecord {
-    kind?: "file" | "line";
-    row?: SearchResultRow;
-    chevron?: HTMLSpanElement;
-    fileIcon?: Element;
-    fileName?: HTMLSpanElement;
-    matchCount?: HTMLSpanElement;
-    lineNumber?: HTMLSpanElement;
-    lineText?: HTMLSpanElement;
-}
 
 type ChromeState = Pick<
     FileSearchInternalState,
@@ -50,7 +36,7 @@ interface ResultsProjection {
     firstChangedRow: number;
 }
 
-/** Native owner for the file-search shell and its pooled RenderGrid cells. */
+/** Native owner for the file-search shell and its pooled result rows. */
 export class FileSearchView extends VanillaView<FileSearchProps> {
     private readonly model: FileSearchModel;
     private readonly inputArea = document.createElement("div");
@@ -63,9 +49,8 @@ export class FileSearchView extends VanillaView<FileSearchProps> {
     private readonly includeInput: InputView;
     private readonly excludeInput: InputView;
     private readonly filterButton: IconButtonView;
-    private readonly cellRecords = new WeakMap<HTMLElement, CellRecord>();
     private filtered: SearchResultRow[] = [];
-    private grid: RenderGrid | undefined;
+    private pooledRows: PooledRowHost<"row", FileSearchRowView> | undefined;
     private queryField: HTMLInputElement | undefined;
     private focusFrame: Cleanup | undefined;
     private iconSubscription: (() => void) | undefined;
@@ -78,11 +63,11 @@ export class FileSearchView extends VanillaView<FileSearchProps> {
         this.iconSubscription = subscribeFileIconElements(() => {
             // The shared file-icon projection is globally invalidated, and this view has no
             // per-path dirty set for the visible results.
-            this.grid?.model.update({ all: true });
+            this.pooledRows?.repaint({ all: true });
         });
         this.own(() => this.iconSubscription?.());
+        this.own(() => this.pooledRows?.dispose());
         this.own(() => this.model.dispose());
-        this.own(() => this.leaveGrid());
 
         const state = this.model.state.get();
         this.queryInput = this.child(new InputView({
@@ -128,6 +113,17 @@ export class FileSearchView extends VanillaView<FileSearchProps> {
         this.resultsHost.append(this.gridHost, this.emptyHost);
         this.root.append(this.inputArea, this.statusHost, this.resultsHost);
 
+        this.pooledRows = new PooledRowHost(this, this.gridHost, this.rowAdapter(), {
+            grid: {
+                columnCount: 1,
+                rowHeight: ROW_HEIGHT,
+                columnWidth: FULL_WIDTH,
+                fitToWidth: true,
+            },
+            hostParent: this.resultsHost,
+            hostBefore: this.emptyHost,
+        });
+
         this.queryInput.mount();
         this.queryField = this.queryInput.inputElement;
         this.includeInput.mount();
@@ -159,7 +155,7 @@ export class FileSearchView extends VanillaView<FileSearchProps> {
             if (import.meta.env.DEV && previousRowCount === this.filtered.length && rows.length === 0) {
                 console.warn("FileSearch resultsVersion changed without a published changed row");
             }
-            this.grid?.model.update({ rows });
+            this.pooledRows?.repaint({ rows });
         });
 
         this.focusFrame = this.schedule.raf(() => {
@@ -238,151 +234,38 @@ export class FileSearchView extends VanillaView<FileSearchProps> {
 
     private applyArm(state: Pick<FileSearchInternalState, "query" | "isSearching">): void {
         if (this.filtered.length > 0) {
-            this.enterGrid();
+            this.pooledRows?.enter();
         } else {
-            this.leaveGrid();
+            this.pooledRows?.leave();
         }
 
         const showEmpty = Boolean(this.filtered.length === 0 && state.query.trim() && !state.isSearching);
         this.emptyHost.toggleAttribute("data-hidden", !showEmpty);
     }
 
-    private enterGrid(): void {
-        if (this.grid) return;
-        let grid: RenderGrid;
-        try {
-            grid = new RenderGrid(this.gridHost, {
-                rowCount: () => this.filtered.length,
-                columnCount: 1,
-                rowHeight: ROW_HEIGHT,
-                columnWidth: FULL_WIDTH,
-                renderCell: this.renderCell,
-                fitToWidth: true,
-                keepCellsAttached: true,
-            });
-            this.grid = grid;
-        } catch (error) {
-            this.grid = undefined;
-            this.gridHost.replaceChildren();
-            throw error;
-        }
-    }
-
-    private leaveGrid(): void {
-        const grid = this.grid;
-        if (!grid) return;
-        this.grid = undefined;
-        try {
-            grid.destroy();
-        } finally {
-            grid.root.remove();
-        }
-    }
-
-    private readonly renderCell: RenderCellFunc = (params) => {
-        const row = this.filtered[params.row];
-        if (!row) return undefined;
-
-        const cell = params.previous ?? params.recycle?.() ?? document.createElement("div");
-        let record = this.cellRecords.get(cell);
-        if (!record) {
-            record = { row };
-            this.cellRecords.set(cell, record);
-            const onCellClick = () => {
-                if (!record?.row) return;
-                const current = record.row;
-                if (current.type === "file") {
-                    this.props.onResultClick?.(current.filePath);
-                } else {
-                    this.props.onResultClick?.(current.filePath, current.lineNumber);
-                }
-            };
-            this.listen(cell, "click", onCellClick);
-        }
-        record.row = row;
-        applyCellStyle(
-            cell,
-            params.style,
-            params.row,
-            params.col,
-            params.renderInfo.input.columnCount,
-        );
-
-        if (row.type === "file") this.renderFileCell(cell, record, row);
-        else this.renderLineCell(cell, record, row);
-        return cell;
-    };
-
-    private renderFileCell(cell: HTMLElement, record: CellRecord, row: SearchResultFileRow): void {
-        cell.className = "fs-row fs-file-row";
-        cell.title = row.filePath;
-        if (record.kind !== "file") {
-            cell.replaceChildren();
-            record.kind = "file";
-            record.chevron = document.createElement("span");
-            record.chevron.className = "fs-file-icon";
-            const chevron = record.chevron;
-            const onChevronClick = (event: MouseEvent) => {
-                event.stopPropagation();
-                if (record.row?.type !== "file") return;
-                this.model.toggleFileExpanded(record.row.filePath);
-            };
-            this.listen(chevron, "click", onChevronClick);
-            record.fileName = document.createElement("span");
-            record.fileName.className = "fs-file-name";
-            record.matchCount = document.createElement("span");
-            record.matchCount.className = "fs-match-count";
-            cell.append(record.chevron, record.fileName, record.matchCount);
-        }
-
-        record.chevron!.replaceChildren(createIconElement(
-            row.expanded ? "chevron-down" : "chevron-right",
-            { width: 12, height: 12 },
-        ));
-        const icon = createFileIconElement({ path: row.filePath, width: 16, height: 16 });
-        record.fileIcon?.replaceWith(icon);
-        record.fileIcon = icon;
-        record.chevron!.after(icon);
-        record.fileName!.textContent = row.fileName;
-        record.matchCount!.textContent = String(row.matchedLinesCount);
-    }
-
-    private renderLineCell(cell: HTMLElement, record: CellRecord, row: SearchResultLineRow): void {
-        cell.className = "fs-row fs-line-row";
-        cell.removeAttribute("title");
-        if (record.kind !== "line") {
-            cell.replaceChildren();
-            record.kind = "line";
-            record.lineNumber = document.createElement("span");
-            record.lineNumber.className = "fs-line-number";
-            record.lineText = document.createElement("span");
-            record.lineText.className = "fs-line-text";
-            cell.append(record.lineNumber, record.lineText);
-        }
-        record.lineNumber!.textContent = String(row.lineNumber);
-        this.renderMatchText(record.lineText!, row);
-    }
-
-    /** Keep the FileSearch-specific ellipsis offset; highlightInto has different semantics. */
-    private renderMatchText(host: HTMLSpanElement, row: SearchResultLineRow): void {
-        const contextChars = 60;
-        let displayText = row.lineText.trimStart();
-        const trimmedChars = row.lineText.length - displayText.length;
-        const adjustedStart = row.matchStart - trimmedChars;
-
-        let startOffset = 0;
-        if (adjustedStart > contextChars) {
-            startOffset = adjustedStart - contextChars;
-            displayText = "…" + displayText.substring(startOffset + 1);
-        }
-
-        const highlightStart = adjustedStart - startOffset + (startOffset > 0 ? 1 : 0);
-        const before = displayText.substring(0, highlightStart);
-        const match = displayText.substring(highlightStart, highlightStart + row.matchLength);
-        const after = displayText.substring(highlightStart + row.matchLength);
-        const highlight = document.createElement("span");
-        highlight.className = "highlighted-text";
-        highlight.textContent = match;
-        host.replaceChildren(document.createTextNode(before), highlight, document.createTextNode(after));
+    private rowAdapter(): RowAdapter<"row", FileSearchRowView> {
+        return {
+            events: ["click"],
+            rowCount: () => this.filtered.length,
+            kindFor: (row) => this.filtered[row] ? "row" : undefined,
+            create: (_kind, row, _col, wrapper) => {
+                const result = this.filtered[row];
+                if (!result) throw new Error(`FileSearch row ${row} is missing`);
+                return new FileSearchRowView(wrapper, {
+                    row: result,
+                    onToggleExpanded: this.model.toggleFileExpanded,
+                });
+            },
+            update: (view, row) => {
+                const result = this.filtered[row];
+                if (result) view.update({ row: result, onToggleExpanded: this.model.toggleFileExpanded });
+            },
+            onRowEvent: (_type, row) => {
+                const result = this.filtered[row];
+                if (!result) return;
+                if (result.type === "file") this.props.onResultClick?.(result.filePath);
+                else this.props.onResultClick?.(result.filePath, result.lineNumber);
+            },
+        };
     }
 }

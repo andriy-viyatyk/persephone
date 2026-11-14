@@ -6,14 +6,8 @@ import { TraitTypeId, setTraitDragData } from "../../core/traits";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { ListItemView } from "../../uikit/ListBox/ListItemView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
-import { RenderGrid } from "../../uikit/DataGrid";
-import type {
-    ElementLength,
-    Percent,
-    RenderCellFunc,
-    RenderCellParams,
-} from "../../uikit/DataGrid";
-import { applyCellStyle } from "../../uikit/shared/cell-style";
+import type { ElementLength, Percent, RenderGridOptions } from "../../uikit/DataGrid";
+import { PooledRowHost, type PooledRowView, type RowAdapter } from "../../uikit/shared/pooled-row-host";
 import { attachTooltip, type TooltipAttachment } from "../../uikit/Tooltip/attach-tooltip";
 import { createIconElement } from "../../uikit/shared/slots";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -31,8 +25,11 @@ const ROW_HEIGHT = 24;
 
 const defaultGetId = (link: ILink): string => link.id ?? link.href;
 
-interface CellParts {
-    cell: HTMLElement;
+/** The host retains each record through teardown so pooled child views remain disposable. */
+interface CellParts extends PooledRowView {
+    root: HTMLElement;
+    mount(): HTMLElement;
+    dispose(): void;
     index: number;
     rowWrapper: HTMLElement;
     rowView: ListItemView;
@@ -63,6 +60,7 @@ interface CellParts {
     onDragOver?: LinksListProps["onItemDragOver"];
     onDragLeave?: LinksListProps["onItemDragLeave"];
     onDrop?: LinksListProps["onItemDrop"];
+    removeListeners: (() => void)[];
 }
 
 const columnWidth: ElementLength = (() => "100%" as Percent) as ElementLength;
@@ -82,74 +80,58 @@ function createFocusScope(): HTMLDivElement {
 }
 
 export class LinksListView extends VanillaView<LinksListProps> {
-    private readonly cells = new WeakMap<HTMLElement, CellParts>();
-    private readonly cellRecords = new Set<CellParts>();
-    /** Retains pooled child views so disposal can reach detached cells. */
-    private readonly ownedViews = new Set<ListItemView | IconButtonView>();
     private readonly rowCount = (): number => this.props.links.length;
-    private grid: RenderGrid | undefined;
     private readonly faviconTracker: FaviconRowTracker;
+    private readonly pooledRows: PooledRowHost<"link", CellParts>;
     private subscribedLinks: ILink[] | undefined;
     private inert = false;
 
-    /** Keep this renderer's identity stable: RenderGridModel uses it as an input gate. */
-    private renderCell: RenderCellFunc = (p: RenderCellParams) => {
-        const link = this.props.links[p.row];
-        if (!link) return undefined;
-
-        const cell = p.previous ?? p.recycle?.() ?? document.createElement("div");
-        let record = this.cells.get(cell);
-        if (!record) {
-            record = this.createCell(cell, link, p.row);
-            this.cells.set(cell, record);
-            this.cellRecords.add(record);
-        }
-
-        this.admitCell(record, p, link);
-        return cell;
+    private readonly adapter: RowAdapter<"link", CellParts> = {
+        events: [],
+        rowCount: this.rowCount,
+        kindFor: (row) => this.props.links[row] ? "link" : undefined,
+        create: (_kind, row) => {
+            const link = this.props.links[row];
+            if (!link) throw new Error(`Missing link at row ${row}.`);
+            return this.createCell(link, row);
+        },
+        update: (record, row) => {
+            const link = this.props.links[row];
+            if (link) this.admitCell(record, row, link);
+        },
+        onRowEvent: () => undefined,
+        updateWrapper: (wrapper) => this.updateCellWrapper(wrapper),
     };
 
     public constructor(props: LinksListProps) {
         super(props, createFocusScope());
         this.faviconTracker = new FaviconRowTracker((rows) => {
-            if (!this.inert) this.grid?.model.update({ rows });
+            if (!this.inert) this.pooledRows.repaint({ rows });
+        });
+        this.pooledRows = new PooledRowHost(this, this.root, this.adapter, {
+            grid: this.gridOptions(),
         });
 
         // Match ListBoxView's teardown order: listeners become inert, then the grid releases its
         // pool, then overlay attachments and retained row/button views are disposed.
         this.own(() => { this.inert = true; });
         this.own(() => this.faviconTracker.dispose());
-        this.own(() => {
-            this.grid?.destroy();
-            this.grid = undefined;
-            this.props.onGridModel?.(null);
-        });
-        this.own(() => {
-            this.cellRecords.forEach((record) => record.tooltip.dispose());
-            this.cellRecords.clear();
-        });
-        this.own(() => {
-            this.ownedViews.forEach((view) => view.dispose());
-            this.ownedViews.clear();
-        });
+        this.own(() => this.pooledRows.dispose());
+        this.own(() => this.props.onGridModel?.(null));
     }
 
-    private gridOptions() {
+    private gridOptions(): Omit<RenderGridOptions, "rowCount" | "renderCell" | "keepCellsAttached"> {
         return {
-            rowCount: this.rowCount,
             columnCount: 1,
             rowHeight: ROW_HEIGHT,
             columnWidth,
-            renderCell: this.renderCell,
             fitToWidth: true,
-            keepCellsAttached: true,
         };
     }
 
     protected onMount(): void {
-        const grid = new RenderGrid(this.root, this.gridOptions());
-        this.grid = grid;
-        this.props.onGridModel?.(grid.model);
+        this.pooledRows.enter();
+        this.props.onGridModel?.(this.pooledRows.gridModel);
         this.faviconTracker.track(this.props.links, (index) => index);
         this.subscribedLinks = this.props.links;
     }
@@ -160,15 +142,14 @@ export class LinksListView extends VanillaView<LinksListProps> {
             this.subscribedLinks = props.links;
         }
 
-        // Keep the child's lifecycle callback current without changing any renderer identity.
-        this.grid?.setOptions(this.gridOptions());
+        // Keep the host's geometry options current without changing its stable renderer.
+        this.pooledRows.setOptions(this.gridOptions());
 
-        // All prop-driven row state is read by the stable renderer from this.props. Mark the
-        // current coordinates dirty explicitly; a new closure must never be used as the signal.
-        this.grid?.model.update({ rows: props.links.map((_link, index) => index) });
+        // All prop-driven row state is read from this.props. Mark current coordinates dirty.
+        this.pooledRows.repaint({ rows: props.links.map((_link, index) => index) });
     }
 
-    private createCell(cell: HTMLElement, link: ILink, index: number): CellParts {
+    private createCell(link: ILink, index: number): CellParts {
         const actionsHost = document.createElement("span");
         actionsHost.style.display = "flex";
         actionsHost.style.gap = "2px";
@@ -195,8 +176,6 @@ export class LinksListView extends VanillaView<LinksListProps> {
             drag: { draggable: false },
         });
         rowView.mount();
-        this.ownedViews.add(rowView);
-
         const rowWrapper = document.createElement("div");
         rowWrapper.style.flex = "1 1 0%";
         rowWrapper.style.minWidth = "0";
@@ -211,15 +190,21 @@ export class LinksListView extends VanillaView<LinksListProps> {
             position: "relative",
         }, [rowView.root]);
         rowWrapper.append(rowPanel);
-        cell.append(rowWrapper);
-
         const tooltip = attachTooltip(rowView.root, {
             content: this.tooltipContent(link),
             delayShow: 1200,
         });
 
         const record: CellParts = {
-            cell,
+            root: rowWrapper,
+            mount: () => rowWrapper,
+            dispose: () => {
+                record.removeListeners.forEach((remove) => remove());
+                record.tooltip.dispose();
+                record.editButton?.dispose();
+                record.deleteButton?.dispose();
+                record.rowView.dispose();
+            },
             index,
             rowWrapper,
             rowView,
@@ -231,12 +216,14 @@ export class LinksListView extends VanillaView<LinksListProps> {
             dropTarget: false,
             isDragging: false,
             searchText: "",
+            removeListeners: [],
         };
         this.installCellListeners(record);
+        this.admitCell(record, index, link);
         return record;
     }
 
-    private admitCell(record: CellParts, p: RenderCellParams, link: ILink): void {
+    private admitCell(record: CellParts, row: number, link: ILink): void {
         const props = this.props;
         const getId = props.getId ?? defaultGetId;
         const selected = props.selectedIds
@@ -246,7 +233,7 @@ export class LinksListView extends VanillaView<LinksListProps> {
 
         // This is intentionally a total write. `previous` identifies a coordinate, not an item;
         // after a scroll every one of these values may belong to the previous occupant.
-        record.index = p.row;
+        record.index = row;
         record.link = link;
         record.selected = selected;
         record.dropTarget = dropTarget;
@@ -267,11 +254,6 @@ export class LinksListView extends VanillaView<LinksListProps> {
         record.onDragLeave = props.onItemDragLeave;
         record.onDrop = props.onItemDrop;
 
-        applyCellStyle(record.cell, p.style, p.row, p.col, p.renderInfo.input.columnCount);
-        record.cell.style.boxSizing = "border-box";
-        record.cell.style.padding = "0 4px";
-        record.cell.style.display = "flex";
-        record.cell.style.alignItems = "stretch";
         record.rowWrapper.style.opacity = "";
 
         record.rowView.root.style.fontWeight = link.isDirectory ? "500" : "";
@@ -304,6 +286,25 @@ export class LinksListView extends VanillaView<LinksListProps> {
         });
     }
 
+    private updateCellWrapper(wrapper: HTMLElement): void {
+        wrapper.style.boxSizing = "border-box";
+        wrapper.style.padding = "0 4px";
+        wrapper.style.display = "flex";
+        wrapper.style.alignItems = "stretch";
+    }
+
+    private listenRecord<T extends keyof HTMLElementEventMap>(
+        record: CellParts,
+        target: EventTarget,
+        type: T,
+        listener: (event: HTMLElementEventMap[T]) => void,
+    ): () => void {
+        target.addEventListener(type, listener as EventListener);
+        const remove = () => target.removeEventListener(type, listener as EventListener);
+        record.removeListeners.push(remove);
+        return remove;
+    }
+
     private tooltipContent(link: ILink, record?: CellParts): Node {
         return createLinkTooltipContent({
             link,
@@ -327,7 +328,6 @@ export class LinksListView extends VanillaView<LinksListProps> {
                 record[releaseKey] = undefined;
                 existing.root.remove();
                 existing.dispose();
-                this.ownedViews.delete(existing);
                 record[key] = undefined;
             }
             return;
@@ -343,46 +343,30 @@ export class LinksListView extends VanillaView<LinksListProps> {
         });
         button.mount();
         record.actionsHost.append(button.root);
-        this.ownedViews.add(button);
         record[key] = button;
-
-        record[releaseKey] = this.listen(button.root, "click", (event) => {
-            const current = this.cells.get(record.cell);
-            if (!current) return;
-            event.stopPropagation();
-            current.onSelect?.(current.link);
-            if (kind === "edit") current.onEdit?.(current.link);
-            else current.onDelete?.(current.link, event.ctrlKey);
+        record[releaseKey] = this.listenRecord(record, button.root, "click", (event) => {
+            const click = event as MouseEvent;
+            click.stopPropagation();
+            record.onSelect?.(record.link);
+            if (kind === "edit") record.onEdit?.(record.link);
+            else record.onDelete?.(record.link, click.ctrlKey);
         });
     }
 
     private installCellListeners(record: CellParts): void {
         const row = record.rowView.root;
-        this.listen(row, "click", (event) => {
-            const current = this.cells.get(record.cell);
-            if (!current) return;
-            current.onSelect?.(
-                current.link,
-                event,
-            );
+        this.listenRecord(record, row, "click", (event) => {
+            record.onSelect?.(record.link, event);
         });
-        this.listen(row, "dblclick", () => {
-            const current = this.cells.get(record.cell);
-            if (!current) return;
-            if (current.onDoubleClick) current.onDoubleClick(current.link);
-            else current.onEdit?.(current.link);
+        this.listenRecord(record, row, "dblclick", () => {
+            if (record.onDoubleClick) record.onDoubleClick(record.link);
+            else record.onEdit?.(record.link);
         });
-        this.listen(row, "contextmenu", (event) => {
-            const current = this.cells.get(record.cell);
-            if (!current) return;
-            current.onContextMenu?.(
-                event,
-                current.link,
-            );
+        this.listenRecord(record, row, "contextmenu", (event) => {
+            record.onContextMenu?.(event, record.link);
         });
-        this.listen(row, "dragstart", (event) => {
-            const current = this.cells.get(record.cell);
-            if (!current) return;
+        this.listenRecord(record, row, "dragstart", (event) => {
+            const current = record;
             if (!current.dragSourceId) {
                 event.preventDefault();
                 return;
@@ -400,16 +384,15 @@ export class LinksListView extends VanillaView<LinksListProps> {
             current.isDragging = true;
             current.rowWrapper.style.opacity = "0.4";
         });
-        this.listen(row, "dragend", () => {
-            const current = this.cells.get(record.cell);
-            if (!current) return;
+        this.listenRecord(record, row, "dragend", () => {
+            const current = record;
             current.isDragging = false;
             current.rowWrapper.style.opacity = "";
         });
-        this.listen(row, "dragenter", (event) => this.forwardDrag(record, "onDragEnter", event));
-        this.listen(row, "dragover", (event) => this.forwardDrag(record, "onDragOver", event));
-        this.listen(row, "dragleave", (event) => this.forwardDrag(record, "onDragLeave", event));
-        this.listen(row, "drop", (event) => this.forwardDrag(record, "onDrop", event));
+        this.listenRecord(record, row, "dragenter", (event) => this.forwardDrag(record, "onDragEnter", event as DragEvent));
+        this.listenRecord(record, row, "dragover", (event) => this.forwardDrag(record, "onDragOver", event as DragEvent));
+        this.listenRecord(record, row, "dragleave", (event) => this.forwardDrag(record, "onDragLeave", event as DragEvent));
+        this.listenRecord(record, row, "drop", (event) => this.forwardDrag(record, "onDrop", event as DragEvent));
     }
 
     private forwardDrag(
@@ -417,11 +400,6 @@ export class LinksListView extends VanillaView<LinksListProps> {
         callback: "onDragEnter" | "onDragOver" | "onDragLeave" | "onDrop",
         event: DragEvent,
     ): void {
-        const current = this.cells.get(record.cell);
-        if (!current) return;
-        current[callback]?.(
-            current.link,
-            event,
-        );
+        record[callback]?.(record.link, event);
     }
 }

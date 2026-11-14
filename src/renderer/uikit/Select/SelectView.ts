@@ -203,26 +203,9 @@ export class SelectView<T = IListBoxItem> extends VanillaView<SelectViewProps<T>
     private syncList(): void {
         const list = this.listView;
         if (!list) return;
-
-        const props = this.props;
-        const { activeIndex, popoverResized, itemsLoading, searchText } = this.model.state.get();
-        const { filteredItems } = this.model.filtered;
-        list.setItems(filteredItems);
-        list.setValue(this.model.selectedResolved ?? null);
-        list.setLoading(itemsLoading);
-        list.setSearchText(searchText);
-        list.setEmptyMessage(props.emptyMessage ?? uikitText("noResults"));
-        list.setLayout({
-            rowHeight: this.model.rowHeight,
-            growToHeight: popoverResized
-                ? undefined
-                : `${this.model.maxVisibleItems * this.model.rowHeight}px`,
-            fitToWidth: true,
-            whiteSpaceY: undefined,
-        });
         // Keep the row-set and active-index changes in the same final ListBox consequence so a
         // changed dataset uses scrollToRowAfterPaint.
-        list.setActiveIndex(activeIndex);
+        list.update(this.listProps());
     }
 
     private inputProps(): InputProps {

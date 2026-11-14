@@ -1,7 +1,7 @@
-import { TComponentModel } from "../../core/state/model";
 import { isTraited, resolveTraited, Traited, TraitType } from "../../core/traits/traits";
 import type { RenderGridModel, RerenderInfo, RowAlign } from "../DataGrid";
 import { ContextMenuEvent } from "../../core/events/context-menu";
+import { createRepaintTracker } from "../shared/repaint-tracker";
 import {
     IListBoxItem,
     LIST_ITEM_KEY,
@@ -9,26 +9,37 @@ import {
 } from "./types";
 
 // =============================================================================
-// State
-// =============================================================================
-
-export interface ListBoxState {
-    /**
-     * Unused. Kept only so the model has a state object to own.
-     *
-     * Do **not** wire it into `repaintSignature()`. A state change does not pump props in a vanilla
-     * driver, so a state slot in the signature is dead code, and a revision counter is not an input
-     * a cell reads (uikit/CLAUDE.md, Rule 9). If a repaint is missing, the honest fix is a slot for
-     * the input that actually moved.
-     */
-    revision: number;
-}
-
-export const defaultListBoxState: ListBoxState = { revision: 0 };
-
-// =============================================================================
 // Helpers
 // =============================================================================
+
+/**
+ * Everything a rendered cell reads that the virtualization engine cannot detect for itself.
+ *
+ * - **`items`, not the resolved array.** The resolved field is a pass-through projection of
+ *   `props.items`, so its identity changes exactly when `props.items` does. `selectedKey` is the
+ *   opposite case: its output is a normalised primitive key, so the model compares the *output*
+ *   (a new `value` object resolving to the same key is no change).
+ * - **Only inputs that change cell DOM.** `rowHeight` is deliberately absent because
+ *   `RenderGridModel.inputChanged()` already compares it and repaints on its own; `getContextMenu`
+ *   is absent because it is read live inside the context-menu handler and affects nothing rendered
+ *   — keeping it would repaint the whole list on every update for callers that pass an inline
+ *   arrow. `variant`, `selectionStyle` and `checkbox` are present: each changes every row's DOM.
+ * - **A caller-owned selection needs a signal.** `MultiListBox` passes a stable membership
+ *   predicate and never passes `value`, so checking a row moves no key unless its changing
+ *   `selectedKeys` Set arrives as `selectionSignal`; without it the box would not redraw until an
+ *   unrelated input changed.
+ */
+const listBoxRowsRepaintKeys = ["items"] as const satisfies readonly (keyof ListBoxProps<unknown>)[];
+const listBoxGlobalRepaintKeys = [
+    "id", "searchText", "isSelected", "selectionSignal", "getTooltip", "variant", "selectionStyle",
+    "checkbox",
+] as const satisfies readonly (keyof ListBoxProps<unknown>)[];
+const listBoxLocalRepaintKeys = ["activeIndex"] as const satisfies readonly (keyof ListBoxProps<unknown>)[];
+
+interface ListBoxPropUpdateResult {
+    readonly repaint: RerenderInfo | undefined;
+    readonly contentChanged: boolean;
+}
 
 function runAccessor<R>(source: unknown, accessor: TraitType<R>): R {
     return Object.fromEntries(
@@ -37,112 +48,76 @@ function runAccessor<R>(source: unknown, accessor: TraitType<R>): R {
 }
 
 // =============================================================================
-// ViewModel
+// Model
 // =============================================================================
 
-export class ListBoxModel<T = IListBoxItem> extends TComponentModel<
-    ListBoxState,
-    ListBoxProps<T>
-> {
-    private liveItems: ListBoxProps<T>["items"] | undefined = undefined;
-    private liveValue: ListBoxProps<T>["value"] = undefined;
-    private liveIsSelected: ListBoxProps<T>["isSelected"] = undefined;
-    private liveSelectionSignal: unknown;
-    private liveActiveIndex: ListBoxProps<T>["activeIndex"] = undefined;
-    private liveSearchText: ListBoxProps<T>["searchText"] = undefined;
-    private liveLoading: ListBoxProps<T>["loading"] = undefined;
-    private liveGetTooltip: ListBoxProps<T>["getTooltip"] = undefined;
-    private liveVariant: ListBoxProps<T>["variant"] = undefined;
-    private liveSelectionStyle: ListBoxProps<T>["selectionStyle"] = undefined;
-    private liveCheckbox: ListBoxProps<T>["checkbox"] = undefined;
-    private hasLiveProps = false;
-    private pendingGlobalRepaint = false;
-    private pendingRowRepaint = false;
+export class ListBoxModel<T = IListBoxItem> {
+    public props: ListBoxProps<T>;
 
-    setProps = (props: ListBoxProps<T>): void => {
-        const itemsChanged = this.liveItems !== props.items;
-        const nextSelectedKey = this.resolveSelectedKey(props.value);
-        const selectedKeyChanged = !Object.is(this.selectedKey, nextSelectedKey);
-        const activeChanged = this.liveActiveIndex !== props.activeIndex;
-        const globalChanged = this.hasLiveProps && (
-            itemsChanged
-            || this.liveSearchText !== props.searchText
-            || this.liveIsSelected !== props.isSelected
-            || this.liveGetTooltip !== props.getTooltip
-            || this.liveVariant !== props.variant
-            || this.liveSelectionStyle !== props.selectionStyle
-            || this.liveCheckbox !== props.checkbox
+    private readonly repaintTracker = createRepaintTracker<ListBoxProps<T>>({
+        rows: listBoxRowsRepaintKeys as readonly (keyof ListBoxProps<T>)[],
+        global: listBoxGlobalRepaintKeys as readonly (keyof ListBoxProps<T>)[],
+        local: listBoxLocalRepaintKeys as readonly (keyof ListBoxProps<T>)[],
+    });
+
+    public constructor(props: ListBoxProps<T>) {
+        this.props = props;
+        this.resolved = this.resolveItems(props.items);
+        this.selectedKey = this.resolveSelectedKey(props.value);
+    }
+
+    /** Apply one complete props object and return its corresponding grid repaint consequence. */
+    update(props: ListBoxProps<T>): ListBoxPropUpdateResult {
+        const previousProps = this.props;
+        const diff = this.repaintTracker.diff(previousProps, props);
+        const previousRows = this.resolved;
+        const previousActiveIndex = previousProps.activeIndex;
+        const previousSelectedKey = this.selectedKey;
+        const previousSelectedIndex = this.findSelectedRowIndex(
+            previousRows,
+            previousProps,
+            previousSelectedKey,
         );
-        this.pendingGlobalRepaint ||= globalChanged;
-        this.pendingRowRepaint ||= this.hasLiveProps && (selectedKeyChanged || activeChanged);
-        this.liveItems = props.items;
-        this.liveValue = props.value;
-        this.liveIsSelected = props.isSelected;
-        this.liveActiveIndex = props.activeIndex;
-        this.liveSearchText = props.searchText;
-        this.liveLoading = props.loading;
-        this.liveGetTooltip = props.getTooltip;
-        this.liveVariant = props.variant;
-        this.liveSelectionStyle = props.selectionStyle;
-        this.liveCheckbox = props.checkbox;
-        if (itemsChanged) this.resolved = this.resolveItems(props.items);
-        if (selectedKeyChanged) this.selectedKey = nextSelectedKey;
-        this.hasLiveProps = true;
-    };
+        const nextSelectedKey = this.resolveSelectedKey(props.value);
+        const rowsChanged = diff?.rows ?? false;
+        const globalChanged = diff?.global ?? false;
 
-    setItems = (items: ListBoxProps<T>["items"]): void => {
-        if (this.liveItems === items) return;
-        this.pendingGlobalRepaint = true;
-        this.liveItems = items;
-        this.resolved = this.resolveItems(items);
-    };
-
-    setSelection = (
-        isSelected: ListBoxProps<T>["isSelected"],
-        selectionSignal?: unknown,
-    ): void => {
-        if (this.liveIsSelected !== isSelected || this.liveSelectionSignal !== selectionSignal) {
-            this.pendingGlobalRepaint = true;
-        }
-        this.liveIsSelected = isSelected;
-        this.liveSelectionSignal = selectionSignal;
-    };
-
-    setActiveIndex = (activeIndex: ListBoxProps<T>["activeIndex"]): void => {
-        if (this.liveActiveIndex !== activeIndex) this.pendingRowRepaint = true;
-        this.liveActiveIndex = activeIndex;
-    };
-
-    setSearchText = (searchText: ListBoxProps<T>["searchText"]): void => {
-        if (this.liveSearchText !== searchText) this.pendingGlobalRepaint = true;
-        this.liveSearchText = searchText;
-    };
-
-    setValue = (value: ListBoxProps<T>["value"]): void => {
-        const nextSelectedKey = this.resolveSelectedKey(value);
-        if (Object.is(this.selectedKey, nextSelectedKey)) {
-            this.liveValue = value;
-            return;
-        }
-        this.pendingRowRepaint = true;
-        this.liveValue = value;
+        this.props = props;
+        if (rowsChanged) this.resolved = this.resolveItems(props.items);
         this.selectedKey = nextSelectedKey;
-    };
 
-    setLoading = (loading: ListBoxProps<T>["loading"]): void => {
-        this.liveLoading = loading;
-    };
+        const selectedKeyChanged = !Object.is(previousSelectedKey, this.selectedKey);
+        const activeChanged = previousActiveIndex !== props.activeIndex;
+        const currentSelectedIndex = this.selectedRowIndex();
+        let repaint: RerenderInfo | undefined;
+        if (globalChanged || rowsChanged) {
+            // Items, search, renderer, tooltip, variant, selection-style, and checkbox inputs
+            // change the rendered content of every ListBox row.
+            repaint = { all: true };
+        } else if (selectedKeyChanged || activeChanged) {
+            repaint = {
+                rows: [...new Set([
+                    previousActiveIndex,
+                    props.activeIndex,
+                    previousSelectedIndex,
+                    currentSelectedIndex,
+                ].filter((row): row is number => row !== undefined && row !== null && row >= 0))],
+            };
+        }
+
+        return { repaint, contentChanged: repaint !== undefined };
+    }
 
     get loading(): ListBoxProps<T>["loading"] {
-        return this.liveLoading;
+        return this.props.loading;
     }
 
     get activeIndex(): ListBoxProps<T>["activeIndex"] {
-        return this.liveActiveIndex;
+        return this.props.activeIndex;
     }
 
     get searchText(): ListBoxProps<T>["searchText"] {
-        return this.liveSearchText;
+        return this.props.searchText;
     }
 
     // --- refs ---
@@ -201,7 +176,7 @@ export class ListBoxModel<T = IListBoxItem> extends TComponentModel<
         const { resolved, sources } = this.resolved;
         const item = resolved[idx];
         if (!item || item.section) return false;
-        if (this.liveIsSelected) return this.liveIsSelected(sources[idx], idx);
+        if (this.props.isSelected) return this.props.isSelected(sources[idx], idx);
         const key = this.selectedKey;
         if (key == null) return false;
         return item.value === key;
@@ -209,8 +184,21 @@ export class ListBoxModel<T = IListBoxItem> extends TComponentModel<
 
     /** Visible row index of the current selection, or -1 when no row is selected. */
     selectedRowIndex = (): number => {
-        for (let i = 0; i < this.resolved.resolved.length; i++) {
-            if (this.isSelectedAt(i)) return i;
+        return this.findSelectedRowIndex(this.resolved, this.props, this.selectedKey);
+    };
+
+    private findSelectedRowIndex = (
+        rows: { resolved: IListBoxItem[]; sources: T[] },
+        props: ListBoxProps<T>,
+        selectedKey: string | number | null,
+    ): number => {
+        for (let index = 0; index < rows.resolved.length; index++) {
+            const item = rows.resolved[index];
+            if (!item || item.section) continue;
+            const selected = props.isSelected
+                ? props.isSelected(rows.sources[index], index)
+                : selectedKey != null && item.value === selectedKey;
+            if (selected) return index;
         }
         return -1;
     };
@@ -250,7 +238,7 @@ export class ListBoxModel<T = IListBoxItem> extends TComponentModel<
         const { resolved } = this.resolved;
         const item = resolved[idx];
         if (!item || item.disabled || item.section) return;
-        if (idx !== this.liveActiveIndex) this.props.onActiveChange?.(idx);
+        if (idx !== this.activeIndex) this.props.onActiveChange?.(idx);
     };
 
     onItemContextMenu = (e: MouseEvent, idx: number) => {
@@ -277,7 +265,7 @@ export class ListBoxModel<T = IListBoxItem> extends TComponentModel<
         const { resolved } = this.resolved;
         const n = resolved.length;
         if (n === 0) return;
-        const cur = this.liveActiveIndex ?? -1;
+        const cur = this.activeIndex ?? -1;
         const apply = (target: number) => {
             if (target < 0) return;
             this.props.onActiveChange?.(target);
@@ -331,84 +319,4 @@ export class ListBoxModel<T = IListBoxItem> extends TComponentModel<
         this.gridRef?.scrollToRow(i, align);
     };
 
-    // --- repaint signature ---
-
-    /**
-     * Everything a rendered cell reads that the virtualization engine cannot detect for itself.
-     *
-     * The host view compares this array on every prop pump (see `uikit/shared/deps-gate.ts`) and
-     * repaints only when a slot moved. This keeps the grid's full repaint at the explicit view
-     * boundary where its DOM is available.
-     *
-     * Three rules the list encodes, in case a future input is added:
-     *
-     * - **Fixed length.** A conditionally-pushed slot makes the comparison always report a change.
-     * - **`liveItems`, not the resolved array.** The resolved field is a pass-through projection of
-     *   `props.items`, so its output identity changes exactly when `props.items` does — the two are
-     *   the live input identity is the correct signature slot.
-     *   `selectedKey` is the opposite case: its output is a normalised primitive key, so comparing
-     *   the *output* is strictly better than comparing `props.value` (a new object resolving to the
-     *   same key collapses to no-change).
-     * - **Only inputs that change cell DOM.** `rowHeight` is deliberately absent because
-     *   `RenderGridModel.inputChanged()` already compares it and repaints on its own;
-     *   `getContextMenu` is absent because it is read live inside the context-menu handler and
-     *   affects nothing rendered — keeping it would repaint the whole window on every update for
-     *   callers that pass an inline arrow. `variant` and `selectionStyle` are present even though
-     *   the earlier repaint path omitted them: the old `renderCell` was a fresh closure per render,
-     *   which made the engine repaint unconditionally and hid their absence. `checkbox` is present
-     *   for the same reason as those two — it adds and removes a child of every row.
-     *
-     * One consequence worth stating, because it is invisible from here: a caller-owned selection
-     * reaches this signature **only** through `props.isSelected`'s identity. `MultiListBox` passes a
-     * membership predicate and never passes `value`, so if that predicate were a stable bound method
-     * no slot would move when the user checked a row, and the box would not redraw until an
-     * unrelated input changed. MultiListBox therefore carries its changing `selectedKeys` Set as a
-     * separate signature signal while keeping `isSelected` stable.
-     */
-    repaintSignature(): readonly unknown[] {
-        return [
-            this.liveItems,
-            this.selectedKey,
-            this.liveSelectionSignal,
-            this.liveActiveIndex,
-            this.liveSearchText,
-            this.liveIsSelected,
-            this.props.getTooltip,
-            this.props.variant,
-            this.props.selectionStyle,
-            this.props.checkbox,
-        ];
-    }
-
-    /** Classify a changed signature into row-local selection/active repaint or a global repaint. */
-    deriveRepaintChange(
-        contentChanged: boolean,
-        previousActiveIndex: number | null | undefined,
-        previousSelectedIndex: number,
-    ): RerenderInfo | undefined {
-        const globalChanged = this.pendingGlobalRepaint;
-        const rowChanged = this.pendingRowRepaint;
-        this.pendingGlobalRepaint = false;
-        this.pendingRowRepaint = false;
-        if (!contentChanged) return undefined;
-        if (globalChanged) return { all: true };
-        if (!rowChanged) return { rows: [] };
-        const rows = [...new Set([
-            previousActiveIndex,
-            this.activeIndex,
-            previousSelectedIndex,
-            this.selectedRowIndex(),
-        ].filter((row): row is number => row !== undefined && row !== null && row >= 0))];
-        return { rows };
-    }
-
-    // --- lifecycle ---
-
-    /**
-     * The two former prop reactions became the host view's responsibility: the display-input
-     * repaint is `repaintSignature()` plus the view's gate, and the scroll-into-view on
-     * `activeIndex` is one unconditional `scrollToRow` from the view's update path — the engine now
-     * queues that request itself when it has no usable size yet, which is what the old
-     * `setTimeout(0)` was approximating.
-     */
 }

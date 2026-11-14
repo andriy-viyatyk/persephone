@@ -111,6 +111,12 @@ export interface NativeCSSProperties {
     zIndex?: NativeStyleValue;
 }
 
+/** Normalize numeric CSS lengths before assigning them to a DOM property typed as a string. */
+export function cssLength(value: NativeCSSProperties["height"]): string | undefined {
+    if (value === undefined || value === null) return undefined;
+    return typeof value === "number" ? `${value}px` : String(value);
+}
+
 export interface RestPropsState {
     attributes: Set<string>;
     listeners: Map<string, {

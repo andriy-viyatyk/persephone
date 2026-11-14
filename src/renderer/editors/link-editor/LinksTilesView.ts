@@ -4,11 +4,10 @@ import { TraitTypeId, setTraitDragData } from "../../core/traits";
 import { isArchivePath } from "../../core/utils/file-path";
 import color from "../../theme/color";
 import type { IconName } from "../../theme/icon-registry";
-import { RenderGrid } from "../../uikit/DataGrid";
-import type { ElementLength, GridModelCapability, Percent, RenderCellFunc, RenderCellParams, RenderSizeOptional } from "../../uikit/DataGrid";
+import type { ElementLength, GridModelCapability, Percent, RenderGridOptions, RenderSizeOptional } from "../../uikit/DataGrid";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { createPanelElement, applyPanelAttributes, resolvePanelAttributes } from "../../uikit/Panel/panel-style";
-import { applyCellStyle } from "../../uikit/shared/cell-style";
+import { PooledRowHost, type PooledRowView, type RowAdapter } from "../../uikit/shared/pooled-row-host";
 import { createIconElement } from "../../uikit/shared/slots";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { LinkViewMode } from "./linkTypes";
@@ -36,8 +35,10 @@ const TILE_DIMENSIONS: Record<Exclude<LinkViewMode, "list">, TileDimensions> = {
 const defaultGetId = (link: ILink): string => link.id ?? link.href;
 const columnWidth: ElementLength = (() => "100%" as Percent) as ElementLength;
 
-interface CellRecord {
-    cell: HTMLElement;
+interface CellRecord extends PooledRowView {
+    root: HTMLDivElement;
+    mount(): HTMLElement;
+    dispose(): void;
     tileRoot: HTMLDivElement;
     panel: HTMLDivElement;
     imageHost: HTMLDivElement;
@@ -68,14 +69,12 @@ interface CellRecord {
     onDrop?: LinksTilesProps["onItemDrop"];
     editButton?: IconButtonView;
     deleteButton?: IconButtonView;
+    removeListeners: (() => void)[];
 }
 
 export class LinksTilesView extends VanillaView<LinksTilesProps> {
-    private readonly cells = new WeakMap<HTMLElement, CellRecord>();
-    private readonly cellRecords = new Set<CellRecord>();
-    private readonly ownedViews = new Set<IconButtonView>();
     private readonly imageRows = new Map<string, number[]>();
-    private grid: RenderGrid | undefined;
+    private readonly pooledRows: PooledRowHost<"tile", CellRecord>;
     private columnCountValue = 1;
     private width: number | undefined;
     private subscribedLinks: ILink[] | undefined;
@@ -93,20 +92,14 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
 
     private readonly columnCount = (): number => this.columnCountValue;
 
-    /** Bound field: the model compares renderer identity as an input gate. */
-    private readonly renderCell: RenderCellFunc = (params: RenderCellParams) => {
-        const index = params.row * this.columnCountValue + params.col;
-        const link = this.props.links[index];
-        const cell = params.previous ?? params.recycle?.() ?? document.createElement("div");
-        let record = this.cells.get(cell);
-        if (!record) {
-            record = this.createCell(cell);
-            this.cells.set(cell, record);
-            this.cellRecords.add(record);
-        }
-        if (link) this.admitCell(record, params, link);
-        else this.admitEmptyCell(record, params);
-        return cell;
+    private readonly adapter: RowAdapter<"tile", CellRecord> = {
+        events: [],
+        rowCount: this.rowCount,
+        kindFor: () => "tile",
+        create: (_kind, row, col) => this.createCell(row, col),
+        update: (record, row, col) => this.updateCell(record, row, col),
+        onRowEvent: () => undefined,
+        updateWrapper: (wrapper) => this.writeCellGeometry(wrapper),
     };
 
     private readonly onGridResize = (size: RenderSizeOptional): void => {
@@ -124,7 +117,7 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
         if (widthChanged || columnsChanged) {
             // Width and column-count changes invalidate tile geometry and can change the
             // link-to-row mapping, so every current tile row needs repainting.
-            this.gridModel?.update({ all: true });
+            this.pooledRows.repaint({ all: true });
         }
     };
 
@@ -133,50 +126,35 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
         root.style.display = "contents";
         super(props, root);
         this.faviconTracker = new FaviconRowTracker((rows) => {
-            if (!this.inert) this.grid?.model.update({ rows });
+            if (!this.inert) this.pooledRows.repaint({ rows });
+        });
+        this.pooledRows = new PooledRowHost(this, this.root, this.adapter, {
+            grid: this.gridOptions(),
+            onGridModel: (model) => {
+                this.gridModel = model;
+                this.props.onGridModel?.(model);
+            },
         });
         this.previousViewMode = props.viewMode;
         this.own(() => { this.inert = true; });
         this.own(() => this.faviconTracker.dispose());
         this.own(() => this.disposeAsyncSubscriptions());
-        this.own(() => {
-            this.gridModel = null;
-            this.props.onGridModel?.(null);
-        });
-        this.own(() => {
-            this.grid?.destroy();
-            this.grid = undefined;
-        });
-        this.own(() => {
-            const records = [...this.cellRecords];
-            this.cellRecords.clear();
-            for (const record of records) this.cells.delete(record.cell);
-        });
-        this.own(() => {
-            for (const view of this.ownedViews) view.dispose();
-            this.ownedViews.clear();
-        });
+        this.own(() => this.pooledRows.dispose());
     }
 
-    private gridOptions() {
+    private gridOptions(): Omit<RenderGridOptions, "rowCount" | "renderCell" | "keepCellsAttached"> {
         const dimensions = TILE_DIMENSIONS[this.props.viewMode];
         return {
-            rowCount: this.rowCount,
             columnCount: this.columnCount,
             rowHeight: dimensions.cellHeight,
             columnWidth,
-            renderCell: this.renderCell,
             fitToWidth: true,
             onResize: this.onGridResize,
-            keepCellsAttached: true,
         };
     }
 
     protected onMount(): void {
-        const grid = new RenderGrid(this.root, this.gridOptions());
-        this.grid = grid;
-        this.gridModel = grid.model;
-        this.props.onGridModel?.(grid.model);
+        this.pooledRows.enter();
         this.rebuildAsyncRows(this.props.links);
     }
 
@@ -185,13 +163,13 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
         const viewModeChanged = props.viewMode !== this.previousViewMode;
         if (linksChanged || viewModeChanged) this.rebuildAsyncRows(props.links);
         this.previousViewMode = props.viewMode;
-        this.grid?.setOptions(this.gridOptions());
+        this.pooledRows.setOptions(this.gridOptions());
         if (linksChanged) {
-            this.grid?.model.update({
+            this.pooledRows.repaint({
                 rows: Array.from({ length: this.rowCount() }, (_, row) => row),
             });
         }
-        if (linksChanged || viewModeChanged) void this.grid?.model.scrollToRow(0);
+        if (linksChanged || viewModeChanged) void this.pooledRows.gridModel?.scrollToRow(0);
     }
 
     private rebuildAsyncRows(links: ILink[]): void {
@@ -225,7 +203,7 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
     private repaintImage(source: string, generation: number): void {
         if (this.inert || generation !== this.imageGeneration) return;
         const rows = this.imageRows.get(source);
-        if (rows?.length) this.grid?.model.update({ rows: [...rows] });
+        if (rows?.length) this.pooledRows.repaint({ rows: [...rows] });
     }
 
     private ensureImageResolution(source: string): void {
@@ -233,7 +211,7 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
         void resolvePipeImageSrc(source).then(() => this.repaintImage(source, generation));
     }
 
-    private createCell(cell: HTMLElement): CellRecord {
+    private createCell(row: number, col: number): CellRecord {
         const tileRoot = document.createElement("div");
         tileRoot.style.width = "100%";
         tileRoot.style.height = "100%";
@@ -306,8 +284,6 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
             borderColor: "subtle",
         }, [imageHost, titleHost, additionalIconHost, actionsHost, overlayHost]);
         tileRoot.append(panel);
-        cell.append(tileRoot);
-
         const primaryImage = document.createElement("img");
         primaryImage.loading = "lazy";
         primaryImage.style.maxWidth = "calc(100% - 8px)";
@@ -316,7 +292,13 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
         primaryImage.style.margin = "4px";
 
         const record: CellRecord = {
-            cell,
+            root: tileRoot,
+            mount: () => tileRoot,
+            dispose: () => {
+                record.removeListeners.forEach((remove) => remove());
+                record.editButton?.dispose();
+                record.deleteButton?.dispose();
+            },
             tileRoot,
             panel,
             imageHost,
@@ -330,19 +312,27 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
             dropTarget: false,
             isDragging: false,
             imageSource: null,
+            removeListeners: [],
         };
-        this.listen(primaryImage, "error", () => {
-            const current = this.cells.get(record.cell);
-            if (!current || !current.imageSource) return;
-            current.failedSrc = current.imageSource;
-            this.grid?.model.update({ rows: [current.index] });
+        this.listenRecord(record, primaryImage, "error", () => {
+            if (!record.imageSource) return;
+            record.failedSrc = record.imageSource;
+            this.pooledRows.repaint({ rows: [record.index] });
         });
         this.installCellListeners(record);
+        this.updateCell(record, row, col);
         return record;
     }
 
-    private admitEmptyCell(record: CellRecord, params: RenderCellParams): void {
-        record.index = params.row;
+    private updateCell(record: CellRecord, row: number, col: number): void {
+        const index = row * this.columnCountValue + col;
+        const link = this.props.links[index];
+        if (link) this.admitCell(record, row, col, link);
+        else this.admitEmptyCell(record, row, col);
+    }
+
+    private admitEmptyCell(record: CellRecord, row: number, col: number): void {
+        record.index = row * this.columnCountValue + col;
         record.link = undefined;
         record.selected = false;
         record.dropTarget = false;
@@ -353,11 +343,10 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
         record.tileRoot.draggable = false;
         record.tileRoot.title = "";
         record.tileRoot.style.opacity = "";
-        this.writeCellGeometry(record, params);
         this.clearOptionalHosts(record);
     }
 
-    private admitCell(record: CellRecord, params: RenderCellParams, link: ILink): void {
+    private admitCell(record: CellRecord, row: number, col: number, link: ILink): void {
         const props = this.props;
         const getId = props.getId ?? defaultGetId;
         const dimensions = TILE_DIMENSIONS[props.viewMode];
@@ -368,7 +357,7 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
         const imageSource = this.imageSource(link.imgSrc, props.imageProxy);
 
         // This is intentionally a total write. previous is the same coordinate, not the same item.
-        record.index = params.row;
+        record.index = row * this.columnCountValue + col;
         record.link = link;
         record.selected = selected;
         record.dropTarget = dropTarget;
@@ -393,7 +382,6 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
         record.tileRoot.draggable = !!record.dragSourceId;
         record.tileRoot.title = link.href || link.title;
         record.tileRoot.style.opacity = record.isDragging ? "0.4" : "";
-        this.writeCellGeometry(record, params);
         record.imageHost.style.height = `${dimensions.imageHeight}px`;
         record.titleElement.textContent = link.title || t("links.untitled");
         this.syncPanelState(record);
@@ -404,12 +392,21 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
         this.syncOverlay(record);
     }
 
-    private writeCellGeometry(record: CellRecord, params: RenderCellParams): void {
-        applyCellStyle(record.cell, params.style, params.row, params.col, params.renderInfo.input.columnCount);
-        record.cell.style.boxSizing = "border-box";
-        record.cell.style.padding = "4px";
-        record.cell.style.display = "flex";
-        record.cell.style.alignItems = "stretch";
+    private writeCellGeometry(wrapper: HTMLElement): void {
+        wrapper.style.boxSizing = "border-box";
+        wrapper.style.padding = "4px";
+        wrapper.style.display = "flex";
+        wrapper.style.alignItems = "stretch";
+    }
+
+    private listenRecord<T extends keyof HTMLElementEventMap>(
+        record: CellRecord,
+        target: EventTarget,
+        type: T,
+        listener: (event: HTMLElementEventMap[T]) => void,
+    ): void {
+        target.addEventListener(type, listener as EventListener);
+        record.removeListeners.push(() => target.removeEventListener(type, listener as EventListener));
     }
 
     private syncPanelState(record: CellRecord): void {
@@ -487,16 +484,14 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
             hideUntilParentHover: true,
         });
         button.mount();
-        this.ownedViews.add(button);
         if (kind === "edit") record.editButton = button;
         else record.deleteButton = button;
-        this.listen(button.root, "click", (event) => {
-            const current = this.cells.get(record.cell);
-            if (!current?.link) return;
+        this.listenRecord(record, button.root, "click", (event) => {
+            if (!record.link) return;
             event.stopPropagation();
-            current.onSelect?.(current.link);
-            if (kind === "edit") current.onEdit?.(current.link);
-            else current.onDelete?.(current.link, event.ctrlKey);
+            record.onSelect?.(record.link);
+            if (kind === "edit") record.onEdit?.(record.link);
+            else record.onDelete?.(record.link, event.ctrlKey);
         });
         return button;
     }
@@ -530,25 +525,22 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
 
     private installCellListeners(record: CellRecord): void {
         const tile = record.tileRoot;
-        this.listen(tile, "click", (event) => {
-            const current = this.cells.get(record.cell);
-            if (!current?.link) return;
-            current.onSelect?.(current.link, event);
+        this.listenRecord(record, tile, "click", (event) => {
+            if (!record.link) return;
+            record.onSelect?.(record.link, event);
         });
-        this.listen(tile, "dblclick", () => {
-            const current = this.cells.get(record.cell);
-            if (!current?.link) return;
-            if (current.onDoubleClick) current.onDoubleClick(current.link);
-            else current.onEdit?.(current.link);
+        this.listenRecord(record, tile, "dblclick", () => {
+            if (!record.link) return;
+            if (record.onDoubleClick) record.onDoubleClick(record.link);
+            else record.onEdit?.(record.link);
         });
-        this.listen(tile, "contextmenu", (event) => {
-            const current = this.cells.get(record.cell);
-            if (!current?.link) return;
-            current.onContextMenu?.(event, current.link);
+        this.listenRecord(record, tile, "contextmenu", (event) => {
+            if (!record.link) return;
+            record.onContextMenu?.(event, record.link);
         });
-        this.listen(tile, "dragstart", (event) => {
-            const current = this.cells.get(record.cell);
-            if (!current?.link) return;
+        this.listenRecord(record, tile, "dragstart", (event) => {
+            if (!record.link) return;
+            const current = record;
             if (!current.dragSourceId) {
                 event.preventDefault();
                 return;
@@ -567,16 +559,15 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
             current.isDragging = true;
             current.tileRoot.style.opacity = "0.4";
         });
-        this.listen(tile, "dragend", () => {
-            const current = this.cells.get(record.cell);
-            if (!current) return;
+        this.listenRecord(record, tile, "dragend", () => {
+            const current = record;
             current.isDragging = false;
             current.tileRoot.style.opacity = "";
         });
-        this.listen(tile, "dragenter", (event) => this.forwardDrag(record, "onDragEnter", event));
-        this.listen(tile, "dragover", (event) => this.forwardDrag(record, "onDragOver", event));
-        this.listen(tile, "dragleave", (event) => this.forwardDrag(record, "onDragLeave", event));
-        this.listen(tile, "drop", (event) => this.forwardDrag(record, "onDrop", event));
+        this.listenRecord(record, tile, "dragenter", (event) => this.forwardDrag(record, "onDragEnter", event as DragEvent));
+        this.listenRecord(record, tile, "dragover", (event) => this.forwardDrag(record, "onDragOver", event as DragEvent));
+        this.listenRecord(record, tile, "dragleave", (event) => this.forwardDrag(record, "onDragLeave", event as DragEvent));
+        this.listenRecord(record, tile, "drop", (event) => this.forwardDrag(record, "onDrop", event as DragEvent));
     }
 
     private forwardDrag(
@@ -584,9 +575,7 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
         callback: "onDragEnter" | "onDragOver" | "onDragLeave" | "onDrop",
         event: DragEvent,
     ): void {
-        const current = this.cells.get(record.cell);
-        if (!current?.link) return;
-        const handler = current[callback];
-        handler?.(current.link, event);
+        if (!record.link) return;
+        record[callback]?.(record.link, event);
     }
 }

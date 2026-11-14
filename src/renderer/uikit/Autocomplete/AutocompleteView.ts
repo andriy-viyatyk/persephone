@@ -8,7 +8,6 @@ import { InputView } from "../Input/InputView";
 import { ListBoxView } from "../ListBox/ListBoxView";
 import { PopoverView, type PopoverViewProps } from "../Popover/PopoverView";
 import type { IListBoxItem, ListBoxProps } from "../ListBox/types";
-import type { ListBoxLayout } from "../ListBox/ListBoxView";
 import type { InputProps } from "../Input/InputView";
 import {
     AutocompleteModel,
@@ -74,31 +73,11 @@ class AutocompleteContentView extends VanillaView<AutocompleteContentProps> {
         this.own(() => this.headerCleanup?.());
         this.own(() => this.actionCleanup?.());
 
-        this.sync(this.props);
+        this.syncHeader(this.props.header, this.props.headerAction);
     }
 
     protected onUpdate(props: AutocompleteContentProps): void {
         this.sync(props);
-    }
-
-    public setHeaderSlots(header: SlotContent, headerAction: SlotContent): void {
-        this.syncHeader(header, headerAction);
-    }
-
-    public setItems(items: ListBoxProps<IListBoxItem>["items"]): void {
-        this.list?.setItems(items);
-    }
-
-    public setActiveIndex(activeIndex: ListBoxProps<IListBoxItem>["activeIndex"]): void {
-        this.list?.setActiveIndex(activeIndex);
-    }
-
-    public setEmptyMessage(emptyMessage: ListBoxProps<IListBoxItem>["emptyMessage"]): void {
-        this.list?.setEmptyMessage(emptyMessage);
-    }
-
-    public setLayout(layout: ListBoxLayout): void {
-        this.list?.setLayout(layout);
     }
 
     private sync(props: AutocompleteContentProps): void {
@@ -106,27 +85,18 @@ class AutocompleteContentView extends VanillaView<AutocompleteContentProps> {
         if (!list) return;
 
         this.syncHeader(props.header, props.headerAction);
-        list.setItems(props.list.items);
-        list.setEmptyMessage(props.list.emptyMessage);
-        list.setLayout({
-            rowHeight: props.list.rowHeight,
-            growToHeight: typeof props.list.growToHeight === "number"
-                ? `${props.list.growToHeight}px`
-                : props.list.growToHeight,
-            fitToWidth: true,
-            whiteSpaceY: props.list.whiteSpaceY,
-        });
-        list.setActiveIndex(props.list.activeIndex);
+        list.update(props.list);
     }
 
     private syncHeader(header: SlotContent, headerAction: SlotContent): void {
         const present = header != null && header !== false;
         if (present) {
+            // The row creates both slot hosts, so it must exist before they are read.
+            const row = this.headerRow ?? this.createHeaderRow();
             const headerHost = this.headerHost;
             const actionHost = this.actionHost;
             if (!headerHost || !actionHost) return;
 
-            const row = this.headerRow ?? this.createHeaderRow();
             if (!row.isConnected && this.list) this.root.insertBefore(row, this.list.root);
             this.headerCleanup = fillSlot(headerHost, header);
             this.actionCleanup = fillSlot(actionHost, headerAction);
@@ -301,20 +271,9 @@ export class AutocompleteView extends VanillaView<AutocompleteViewProps> {
         const content = this.contentView;
         if (!content) return;
 
-        const props = this.props;
-        content.setHeaderSlots(props.header, props.headerAction);
-        const { filteredItems } = this.model.filtered;
-        content.setItems(filteredItems);
-        content.setEmptyMessage(props.emptyMessage);
-        content.setLayout({
-            rowHeight: this.model.rowHeight,
-            growToHeight: `${this.model.maxVisibleItems * this.model.rowHeight}px`,
-            fitToWidth: true,
-            whiteSpaceY: undefined,
-        });
-        // The final ListBox operation carries the filtered rows and active index together for
-        // the correct after-paint scroll path.
-        content.setActiveIndex(this.model.state.get().activeIndex);
+        // The final ListBox operation carries the filtered rows and active index together for the
+        // correct after-paint scroll path.
+        content.update(this.contentProps());
     }
 
     private inputProps(): InputProps {

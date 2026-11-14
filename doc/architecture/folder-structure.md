@@ -940,6 +940,9 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │       ├── vanilla-view.ts # Framework-free view lifecycle, ownership, binding, and cleanup
 │       ├── keyed-list.ts   # Keyed DOM reconciliation with minimal cursor moves
 │       ├── subtree-swap.ts # Owned conditional subtree replacement
+│       ├── repaint-tracker.ts # Row/global/local prop identity diff for virtualized repaint decisions
+│       ├── pooled-row-host.ts # Shared RenderGrid wrapper pool and retained row-view lifecycle
+│       ├── list-shell-arms.ts # Loading, empty, and real-list shell transitions
 │       ├── deps-gate.ts    # Fixed-length repaint/dependency identity gate
 │       ├── element-id.ts   # Shared DOM id allocation for generated elements
 │       ├── fill-slot.ts    # Native slot-content filling and generation-safe cleanup
@@ -971,7 +974,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   └── tree-drop-actions.ts # Move/import drop actions, taking a { path, title } target rather than a tree node so both views can call them
 │   ├── file-search/        # FileSearch native view and prop/state types; virtualized results
 │   │   ├── FileSearch.ts  # File-search prop/state types
-│   │   └── FileSearchView.ts # Native search view and RenderGrid renderer
+│   │   ├── FileSearchView.ts # Native search view and pooled result host
+│   │   └── FileSearchRowView.ts # FileSearch-specific pooled result row
 │   ├── file-list/          # FileList.ts core/model + FileListView.ts native flat list
 │   ├── roots-tree-build.ts # Shared compacted tree builder for board and toolset roots
 │   ├── file-grid/          # FileGrid.ts types + FileGridView.ts native DataGrid/av-grid list

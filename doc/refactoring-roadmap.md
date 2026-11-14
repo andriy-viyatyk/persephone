@@ -608,8 +608,17 @@ controlled `expanded` + `onExpandedChange` (uncontrolled consumers unchanged); t
 `tree-search-filter.ts` (shared word match with the folder page), and `ProviderTreeStore` owns the node tree, the
 generation token and one `loadChildren` with explicit load/relist modes; `TreeProviderViewModel` is 816 lines (609 code)
 from 1,139. Recorded changes: restored Explorer expansion is no longer dropped on the next save, and the 1–2 character
-search filters restored expanded folders like any other expanded folder. **Remaining:** UIK-4/5 (pooled-row host,
-repaint tracker), UIK-6 (shared list filter and navigation) and UIK-9 to UIK-12.
+search filters restored expanded folders like any other expanded folder. Part 3 is done
+([EPIC-171](epics/EPIC-171.md), 2026-11-14): UIK-5 — `uikit/shared/repaint-tracker.ts` (`{ rows, global, local }` key
+lists, `Object.is`) replaces the `applied*`/`live*` mirrors, pending flags, signatures and `DepsGate` wiring in `Tree`
+and `ListBox`; every prop a cell reads is declared (bug #17's repaint half); `ListBoxModel` is a plain class with one
+props channel (MultiListBox's selection set is the `selectionSignal` prop); `TreeProviderViewImpl.treeProps()` passes
+stored callbacks. UIK-4 — `uikit/shared/pooled-row-host.ts` and `list-shell-arms.ts` host `ListBoxView`, `TreeView`,
+`FileSearchView`, `LinksListView` and `LinksTilesView`; `LogBodyView` keeps its own pool on `MeasuredRowGrid`
+(recorded: a different cell contract). Recorded changes: changing only a cell-read callback (or a ListBox `id`) now
+repaints the rows, the list/tree loading text is the localized "Loading…", and an Autocomplete header renders.
+**Remaining:** UIK-6 (shared list filter and navigation) and UIK-9 to UIK-12; `EditorsTreeView`, `SettingsView`,
+`GitRefsView` and `AboutGuideBrowserView` still signal repaints through fresh callback identities (EPIC-171 notes).
 
 ### Phase 7: Lock it in
 

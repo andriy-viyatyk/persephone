@@ -454,35 +454,28 @@ policy and DOM observation around the engine.
 
 #### Prop-change detection in a vanilla-driven model
 
-The question "did any of these inputs move?" does not go away. The answer is
-`uikit/shared/deps-gate.ts`: the **model** publishes a fixed-length signature of everything its
-rendered output reads, and the **host view** holds a `DepsGate` and calls it once, at the end of
-`onUpdate`, after the driver has pumped props. `ListBoxModel.repaintSignature()` is the reference
-shape.
+`TreeModel` and `ListBoxModel` declare prop repaint inputs with `createRepaintTracker` from
+`uikit/shared/repaint-tracker.ts`. The tracker classifies prop changes; each model owns derived
+values and row arithmetic, and its host view applies the resulting `RerenderInfo`. `selectedKey` is
+derived and compared by `ListBoxModel`; MultiListBox passes its changing set through the global
+`selectionSignal` prop while keeping `isSelected` stable. `DepsGate` remains for simple views whose
+signature is their complete repaint contract.
 
-Five rules, each of which has already bitten:
+Three rules, each of which has already bitten:
 
-- **Fixed length.** `depsChanged` treats a length change as "changed", so a conditionally-pushed
-  slot silently degenerates into "always repaint".
-- **Gate after the pump, prime at the end of `onMount`.** Gating first compares a stale signature;
-  never priming makes the first update repaint everything for nothing.
 - **Compare the actual derived output at its ownership boundary.** When an output is derived only
   from a prop, the prop *is* the signal and identity-check that input before deriving. When the
   output is a normalized primitive or collection, maintain it synchronously and compare the plain
   field or direct reference that the consumer reads. `ListBoxModel.resolved`, `selectedKey`, and
   `TreeModel.rows` follow this rule.
-- **Do not put reactive state in the signature.** A state change does not pump props in a vanilla
-  driver, so a state slot is dead code. State-driven arms belong in `bind()`, and consequences of
-  the model's own mutations belong at the mutation site.
-- **A caller-owned selection travels through a callback's *identity*.** When a parent owns the
-  selection and passes a predicate rather than a value — `MultiListBox` passes `isSelected` and never
-  passes `value` — that predicate is the only slot that can carry the change. A stable bound method
-  means checking a row moves no slot at all: the gate reports no change and the row keeps its old
-  DOM until an unrelated input moves, so it self-heals on the next mouse move and reads as a
-  rendering glitch rather than a missing repaint. Keep the predicate identity stable and carry the
-  changing selection set as an explicit repaint signal (`MultiListBoxModel.isSelected` plus
-  `selectedKeys`). A `revision` counter is not the fix — it is a proxy for a signal
-  that already has a channel, and a forgotten bump has no compiler or runtime signal at all.
+- **Do not put reactive state in the repaint key set.** A state change does not pump props in a vanilla
+  view, so a state slot is dead code. State-driven arms belong in `bind()`, and consequences of the
+  model's own mutations belong at the mutation site.
+- **A caller-owned selection needs an explicit signal.** When a parent passes a stable predicate
+  rather than a value, checking a row moves no key at all: the row keeps its old DOM until an
+  unrelated input moves, so it self-heals on the next mouse move and reads as a rendering glitch
+  rather than a missing repaint. Send the changing selection set as `selectionSignal`. A `revision`
+  counter is not the fix — a forgotten bump has no compiler or runtime signal at all.
 
 #### Never read a state-derived field from inside a `state.update` producer
 
@@ -498,7 +491,7 @@ silently never applied.
 
 #### A state-driven model in a vanilla view
 
-`ListBox`'s inputs are all props, so its `DepsGate` in the host's `onUpdate` is the whole story.
+`ListBox`'s inputs are all props, so its repaint tracker in the host's `onUpdate` is the whole story.
 `Tree` is the first converted component whose rendered output also depends on **reactive state**
 (expansion and drag state), and props are the only thing a vanilla driver pumps.
 
@@ -537,9 +530,9 @@ For the internal case, the answer is **not** a state subscription:
 - Keep `applyRestProps` off the state path. It removes and re-adds every `on*` listener on every
   call, rest props cannot have changed on a state write, and reinstalling the root's listeners
   during a drag is a hazard rather than churn.
-- Re-prime the `DepsGate` from the state path. Immer gives the mutated slice a new identity, so a
-  eagerly derived output has a new identity and the next props pump would otherwise repaint a second
-  time. Priming is safe there precisely because that path just painted everything.
+- Do not feed state-path results into the prop comparison. The repaint tracker compares caller
+  props only, so rows re-derived by a state write are repainted by the state path and the next props
+  pump does not repaint them a second time.
 
 Why not a subscription **in that case**, concretely (all three points are about a state-driven
 *render pass*; none of them argues against `bind()` for a field that is simply a child's prop):
@@ -574,43 +567,8 @@ assigns the seeded `activeIndex` in the same `state.update` as `loadedItems` for
 `openInto`/`closeInto` exist so a caller that must produce one write can compose draft mutators
 instead of calling two setters.
 
-#### Native slots inside a virtualized row
-
-`ListBox` and `ListItem` use native `SlotContent` values: text, numbers, DOM nodes, or arrays of
-those values. **`icon` is also native** — an icon is a registry name or a DOM node and never a
-`IconName | Node`, so an icon is a registry name or a DOM node and never a framework element. The
-av-grid's `RenderGrid` cell contract is `HTMLElement` and receives only DOM. Four guard rails keep
-slot ownership safe:
-
-- Decide **per slot**, not per row: an `IconName` becomes a DOM `svg` with no root; only a genuine
-  native value goes through `fillSlot`. Never route strings through `fillSlot` for uniformity.
-- A DOM icon node is **single-use**: appending it to a second host *moves* it and blanks the first.
-  Build it at the point of use — never cache, memoise, hoist to module scope, or share one node.
-  `tsc`, lint and the build are all blind to this, and the symptom is an icon disappearing somewhere
-  *other* than the code being changed (this has occurred four times, once per caching mechanism).
-  The fifth was different and is worth naming, because "never cache" alone did not prevent it.
-  `TreeProviderViewImpl.iconCache` legitimately memoises one node per **href**, so no two rows ever
-  want the same node at the same time — yet pooling still moved it: a cell that takes over a row
-  steals the node out of the previous cell's host, and if that cell is later re-pointed at the same
-  row it sees `directIconElement === iconElement` and skips the refill forever. **A cached node is
-  only safe behind a guard that checks the host, not identity** — `node.parentNode === host` — because
-  the host is the source of truth and identity is only a hint about it. `TreeItemView.setIcon` and
-  `setTrailing` both check it.
-- Roots are retained **per pooled element**, never per row. Pass `keepCellsAttached: true` when a
-  cell owns state such as a nested scroller, iframe, or editor; ordinary eviction then hides the
-  pooled element in place and preserves its subtree. The option is off by default because it trades
-  DOM nodes for state. `ListBoxView` and `TreeView` set it explicitly, and `Autocomplete` inherits
-  the ListBox setting; other consumers with retained child views must make the same opt-in. A
-  settled scroll must create zero roots.
-- `onCellAttached` means that a cell entered the active set. `onCellReleased` means that it left
-  the active set and entered the pool, **not** that it was detached from the DOM: with
-  `keepCellsAttached`, the element remains hidden in the document, and only pool overflow detaches
-  it. Use these callbacks for bookkeeping such as measurement mappings, not slot cleanup.
-- Never run a slot cleanup on eviction or on `onCellReleased` — only when a pooled wrapper changes
-  kind and at final view disposal. Track created elements in a real `Set`, because an
-  unmounted-but-undisposed root keeps its subscriptions alive on a detached tree.
-- Key the caller's subtree by the cell key, so a recycled element remounts it rather than letting
-  one row's state bleed into another's.
+Pooled virtual-row native-slot ownership and its enforcement contract are documented in
+`uikit/shared/pooled-row-host.ts`.
 
 ### Structural helpers and native slots
 

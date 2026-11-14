@@ -67,6 +67,8 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
     private activeIndex: number | null = null;
     private iconSubscription: (() => void) | undefined;
     private inert = false;
+    private renderTrailingOwner: ViewProps["renderTrailing"] | undefined;
+    private cachedRenderTrailing: TreeProps<TreeProviderNode>["renderTrailing"] | undefined;
 
     public constructor(props: ViewProps) {
         super(props, document.createElement("div"));
@@ -301,7 +303,6 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
     ): TreeProps<TreeProviderNode> {
         const provider = this.props.provider;
         const writable = provider.writable;
-        const showLinks = this.props.showLinks !== false;
         const osDragEnabled = isLocalFileProvider(provider);
 
         return {
@@ -321,17 +322,12 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
             searchText: state.searchText,
             expanded: state.expandedValues,
             onExpandedChange: this.model.onExpandedChange,
-            getHasChildren: (node) => {
-                if (!node.data.isDirectory) return false;
-                const { hasSubDirectories, hasItems } = node.data;
-                if (hasSubDirectories === undefined && hasItems === undefined) return true;
-                return showLinks ? !!(hasSubDirectories || hasItems) : !!hasSubDirectories;
-            },
+            getHasChildren: this.getHasChildren,
             getTooltip: this.getTooltip,
             getSecondaryLabel: this.getSecondaryLabel,
             getIconElement: this.getIconElement,
-            getHideChevron: (_node, level) => level === 0,
-            renderTrailing: (node) => this.props.renderTrailing?.(node.data),
+            getHideChevron: this.getHideChevron,
+            renderTrailing: this.getTreeRenderTrailing(),
             onItemContextMenu: this.onItemContextMenu,
             traitTypeId: writable
                 ? (provider.dragTraitTypeId && isTraitTypeId(provider.dragTraitTypeId)
@@ -347,25 +343,42 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
         };
     }
 
+    private readonly getHasChildren = (node: TreeProviderNode): boolean => {
+        if (!node.data.isDirectory) return false;
+        const { hasSubDirectories, hasItems } = node.data;
+        if (hasSubDirectories === undefined && hasItems === undefined) return true;
+        return this.props.showLinks !== false
+            ? !!(hasSubDirectories || hasItems)
+            : !!hasSubDirectories;
+    };
+
+    private readonly getHideChevron = (_node: TreeProviderNode, level: number): boolean => level === 0;
+
+    private getTreeRenderTrailing(): TreeProps<TreeProviderNode>["renderTrailing"] {
+        const owner = this.props.renderTrailing;
+        if (!owner) {
+            this.renderTrailingOwner = undefined;
+            this.cachedRenderTrailing = undefined;
+            return undefined;
+        }
+        if (owner !== this.renderTrailingOwner) {
+            this.renderTrailingOwner = owner;
+            this.cachedRenderTrailing = (node) => owner(node.data);
+        }
+        return this.cachedRenderTrailing;
+    }
+
     private isSelected = (node: TreeProviderNode): boolean =>
         this.selectedSet.has(hrefKey(node.data.href));
 
     /**
-     * Hand the Tree a *new* `isSelected` whenever the selection actually changes.
+     * Give Tree a new `isSelected` whenever the selection actually changes. The provider expresses
+     * selection only through that predicate and passes no `value` prop, so `selectedKey` stays null.
+     * Rebuilding `selectedSet` in place would leave Tree with no prop signal that the newly selected
+     * row needs painting and the previous one clearing.
      *
-     * `TreeModel.repaintSignature()` compares `isSelected` by identity, and the tree provider
-     * expresses selection only through that predicate -- it passes no `value` prop, so the model's
-     * `selectedKey` stays null. Rebuilding `selectedSet` in place therefore changed what the
-     * predicate answers while leaving every signature entry untouched, so the repaint gate saw no
-     * change and `deriveRepaintChange` returned `undefined`: the newly selected row never painted
-     * and the previous one never cleared. Rows corrected themselves only when something unrelated
-     * repainted them, which is why hovering appeared to "fix" the highlight.
-     *
-     * Swapping the predicate is the channel the Tree documents for this ("selection predicate" is
-     * one of its listed global-repaint inputs). The predicate identity changes with the set, making
-     * the identity change a truthful signal for the model's repaint gate.
-     * Guarded by a real comparison: reassigning on every `applyState` would force a full-viewport
-     * repaint on unrelated state changes.
+     * Predicate identity is a global repaint key. Swapping it with the set is a truthful signal;
+     * the real comparison below avoids repainting the full viewport for unrelated state updates.
      */
     private syncSelection(selectedValues: readonly string[]): void {
         const next = new Set<string>();
@@ -387,16 +400,12 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
     };
 
     /**
-     * Hover highlight. The Tree paints the hovered row through `[data-active]`, and reports the row
-     * under the pointer here -- so storing the index is only half the job: it has to reach the Tree
-     * as a prop before anything repaints. Updating the Tree props here makes the hover state reach
-     * the row; selection follows `model.setSelection`, which changes model state and runs
-     * `applyState`.
+     * Hover highlight. The Tree paints the hovered row through `[data-active]` and reports the row
+     * under the pointer here, so storing the index is only half the job: it has to reach the Tree as
+     * a prop. Selection follows `model.setSelection`, which changes model state and runs `applyState`.
      *
-     * `tNodesFor` is identity-cached and `activeIndex` alone sets only `pendingRowRepaint` in
-     * `TreeModel`, so this repaints the two affected rows rather than the whole viewport -- which is
-     * also why `getTooltip` is a bound field: it is one of the identities `TreeModel` compares to
-     * decide on a *global* repaint, and a fresh arrow here would force one on every mouseenter.
+     * `tNodesFor` is identity-cached and `activeIndex` is a local repaint input, so this updates
+     * only the previous and current active rows. Stored callbacks keep unrelated prop pumps stable.
      */
     private readonly onActiveChange = (index: number | null): void => {
         if (this.activeIndex === index) return;
