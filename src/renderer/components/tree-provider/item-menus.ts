@@ -1,7 +1,7 @@
 import type { ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
 import type { MenuItem } from "../../uikit/Menu";
 import { isUrlOrCurl } from "../../content/link-utils";
-import { toClipboard } from "../../core/utils/utils";
+import { toClipboard } from "../../api/clipboard";
 import {
     CopyIcon,
     CutIcon,

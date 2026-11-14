@@ -19,7 +19,7 @@ export class PageContentView extends VanillaView<PageContentProps> {
     private pageSubscription: (() => void) | undefined;
     private restoreSubscription: (() => void) | undefined;
     private navSubscription: (() => void) | undefined;
-    private navModel: PageModel["secondaryViewsModel"];
+    private navModel: PageModel["secondaryViewsModel"] | undefined;
     private secondaryView: SecondaryViewsView | undefined;
     private contentRoot: HTMLElement | undefined;
     private renderEditor: RenderEditorView | undefined;

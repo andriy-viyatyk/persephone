@@ -9,7 +9,7 @@
 import type { ITreeProvider } from "../../api/types/io.tree";
 import { api } from "../../../ipc/renderer/api";
 import { ui } from "../../api/ui";
-import { copyPathsInto } from "../../core/utils/copy-files";
+import { copyPathsInto } from "../../api/copy-files";
 import { fpBasename } from "../../core/utils/file-path";
 import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";

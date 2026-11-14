@@ -7,7 +7,7 @@
 ### `src/renderer/uikit/` — standalone component library
 
 - Canonical home for **all new reusable UI primitives**.
-- No imports from `src/renderer/api/`, `src/renderer/ui/`, `src/renderer/editors/`, or any app-specific code. The only allowed dependencies are `core/` (state primitives), `theme/` (design tokens), and other UIKit primitives.
+- No imports from `src/renderer/api/`, `src/renderer/ui/`, `src/renderer/editors/`, or any app-specific code. The only allowed dependencies are `core/` (state primitives and platform-independent type contracts), `theme/` (design tokens), and other UIKit primitives.
 - Pure, prop-driven, testable in isolation.
 - Authoring rules live in [`src/renderer/uikit/CLAUDE.md`](../../src/renderer/uikit/CLAUDE.md) — read that before adding or modifying a primitive.
 - **Future split target:** the folder is structured to be extractable as a separate npm package. Every "must not import from `api/`" rule exists to keep that option open.
@@ -19,7 +19,7 @@
 
   | Folder | What it does | Why it can't live in `uikit/` |
   |--------|--------------|-------------------------------|
-  | `icons/` | `FileIcon`, `LanguageIcon` | Uses Persephone's icon registration system + asset paths |
+  | `icons/` | `FileIcon`, `LanguageIcon`, and board icon cache/glyph | Uses Persephone's icon registration system + asset paths |
   | `page-manager/` | Native page / tab host | Couples to `PageModel` and the page lifecycle |
   | `file-search/` | Standalone file content search with virtualized results | Uses `app.fs` + search service IPC |
   | `tree-provider/` | `TreeProviderView` + `CategoryView` — generic tree and folder page over `ITreeProvider`, with their shared plural / drop actions | Coupled to provider-tree contracts defined in `api/`, and the actions reach `app.fs` and OS clipboard / drag IPC |

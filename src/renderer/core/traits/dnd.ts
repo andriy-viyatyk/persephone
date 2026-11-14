@@ -46,9 +46,10 @@ export function resolveTraits(typeId: string): TraitSet | undefined {
 
 /** Prevent default to allow drop. Call from onDragOver and onDragEnter handlers. */
 export function allowDrop(e: DragEvent): void {
-    if (hasTraitDragData(e.dataTransfer)) {
+    // Native drag events carry a data transfer.
+    if (hasTraitDragData(e.dataTransfer!)) {
         e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
+        e.dataTransfer!.dropEffect = "move";
     }
 }
 
@@ -56,7 +57,7 @@ export function allowDrop(e: DragEvent): void {
 
 /** True if the drag carries OS files. During `dragover` only the type is visible
  *  (the file list/paths become readable at `drop`). */
-export function isFileDrag(dataTransfer: DataTransfer | null): boolean {
+export function isFileDrag(dataTransfer: DataTransfer | null): dataTransfer is DataTransfer {
     if (!dataTransfer) return false;
     return Array.prototype.indexOf.call(dataTransfer.types, "Files") >= 0;
 }
@@ -86,5 +87,6 @@ export function setEventTraitDragData(e: DragEvent, payload: TraitDragPayload): 
  *  The one accessor every drop target uses, so internal trait drags and OS file drags read identically. */
 export function getTraitDragDataFromEvent(e: DragEvent): TraitDragPayload | null {
     const fromEvent = (e as { [LINK_DROP_DESCRIPTOR]?: TraitDragPayload })[LINK_DROP_DESCRIPTOR];
-    return fromEvent ?? getTraitDragData(e.dataTransfer);
+    // Native drag events carry a data transfer.
+    return fromEvent ?? getTraitDragData(e.dataTransfer!);
 }

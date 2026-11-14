@@ -40,7 +40,8 @@ export class CommitDialogAdapter implements DialogAdapter {
 
     async click(button: string): Promise<unknown> {
         const state = this.state;
-        const branchChanged = !!state.branch.trim() && state.branch.trim() !== (state.originalBranch ?? "");
+        // An absent branch still throws at the same trim access as before.
+        const branchChanged = !!state.branch!.trim() && state.branch!.trim() !== (state.originalBranch ?? "");
         const underlyingButtons = state.buttons ?? ["Commit", "Cancel"];
         const idMatches = underlyingButtons.filter((candidate) => candidate === button);
         if (idMatches.length > 1) throw new Error(`Dialog button id ${JSON.stringify(button)} is duplicated.`);

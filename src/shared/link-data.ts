@@ -33,7 +33,10 @@ export function linkToLinkData(link: ILink): ILinkData {
  * Extract an ILink from ILinkData, filling required defaults for missing fields.
  * Used when storing a link back into a `.link.json` collection.
  */
-export function linkDataToLink(data: ILinkData): ILink {
+export function linkDataToLink(data: ILinkData): Omit<ILink, "title" | "href"> & {
+    title: string | undefined;
+    href: string | undefined;
+} {
     return {
         id: data.id,
         title: data.title ?? data.url ?? data.href,

@@ -9,13 +9,13 @@ export function initCdpHandlers(): void {
     guardedIpcHandle(BrowserChannel.handleDialog, (event, key: string, accept: boolean, promptText?: string) => cdpService.handleDialog(event, key, accept, promptText));
     guardedIpcHandle(BrowserChannel.automationBegin, (event, key: string) => cdpService.automationBegin(event, key));
     guardedIpcHandle(BrowserChannel.automationEnd, (_event, key: string) => cdpService.automationEnd(key));
-    guardedIpcHandle(BrowserChannel.armNavigationWait, (_event, key: string, options) => cdpService.armNavigationWait(key, options));
+    guardedIpcHandle(BrowserChannel.armNavigationWait, (_event, key: string, options: Parameters<typeof cdpService.armNavigationWait>[1]) => cdpService.armNavigationWait(key, options));
     guardedIpcHandle(BrowserChannel.awaitNavigationWait, (_event, token: string) => cdpService.awaitNavigationWait(token));
     guardedIpcHandle(BrowserChannel.armResponseWait, (event, key: string, pattern: string | BrowserResponsePattern, options: BrowserResponseWaitOptions) => cdpService.armResponseWait(event, key, pattern, options));
     guardedIpcHandle(BrowserChannel.awaitResponseWait, (_event, token: string) => cdpService.awaitResponseWait(token));
     guardedIpcHandle(BrowserChannel.armDragIntercept, (event, key: string, sessionId?: string) => cdpService.armDragIntercept(event, key, sessionId));
     guardedIpcHandle(BrowserChannel.takeDragIntercept, (_event, token: string, waitMs: number) => cdpService.takeDragIntercept(token, waitMs));
-    guardedIpcHandle(BrowserChannel.cdpAttach, (event, key: string, options) => cdpService.cdpAttach(event, key, options));
+    guardedIpcHandle(BrowserChannel.cdpAttach, (event, key: string, options: Parameters<typeof cdpService.cdpAttach>[2]) => cdpService.cdpAttach(event, key, options));
     guardedIpcHandle(BrowserChannel.cdpDetach, (_event, key: string) => cdpService.cdpDetach(key));
     guardedIpcHandle(BrowserChannel.cdpSend, (event, key: string, method: string, params?: object, sessionId?: string) => cdpService.cdpSend(event, key, method, params, sessionId));
 }

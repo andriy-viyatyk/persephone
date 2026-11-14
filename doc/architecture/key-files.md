@@ -36,6 +36,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Renderer Vite configuration (preserves Node `process.env` in renderer builds and sets the dev-server port/watch exclusions) | `/vite.renderer.config.ts` |
 | Excalidraw board library snapshot generator (manual, pinned-vendor copy plus dependency import-map scan and validation; not part of the Persephone build) | `/scripts/build-board-lib.mjs` |
 | App object model and renderer startup orchestration (services, pages, events, and launch-input dispatch) | `/src/renderer/api/app.ts` |
+| Renderer core bootstrap (guard reporter and app-backed `OsFile` / `ILink` trait registrations) | `/src/renderer/api/core-bootstrap.ts` |
 | Ordered renderer startup phase table and sequencing constraints | `/src/renderer/api/app-startup.ts` |
 | App service descriptor table | `/src/renderer/api/app-service-registry.ts`       |
 | Renderer UI Object Model service (dialogs, notifications, progress, highlights, and alert projection) | `/src/renderer/api/ui.ts` |
@@ -103,7 +104,10 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Node.js HTTP proxy tunnels (SOCKS5 and HTTP CONNECT parsing, handshakes, and pooled agents) | `/src/renderer/api/proxy-tunnel.ts` |
 | Path utilities           | `/src/renderer/core/utils/file-path.ts`           |
 | Element-wise identity comparison for freshly allocated model arrays (`sameItems`) | `/src/renderer/core/utils/utils.ts` |
-| Renderer clipboard helpers (text and PNG via main-process IPC) | `/src/renderer/core/utils/utils.ts`, `/src/renderer/editors/shared/image-actions.ts`, `/src/ipc/main/clipboard-handlers.ts`, `/src/ipc/main/media-handlers.ts` |
+| Renderer clipboard helpers (text and PNG via main-process IPC) | `/src/renderer/api/clipboard.ts`, `/src/renderer/editors/shared/image-actions.ts`, `/src/ipc/main/clipboard-handlers.ts`, `/src/ipc/main/media-handlers.ts` |
+| Native CSS property type contract shared by core and UIKit | `/src/renderer/core/native-css-properties.ts` |
+| File copy and move operations for local tree providers | `/src/renderer/api/copy-files.ts` |
+| Renderer file and directory watchers | `/src/renderer/api/file-watcher.ts` |
 | State primitives         | `/src/renderer/core/state/`                        |
 | Vanilla view lifecycle and ownership (`VanillaView`, `IOwnedView`, `IMountableView`, guarded `bind`/`listen` with early-release handles, owner-bound scheduling, `ownSubscription`, FIFO cleanup, and single-owner claims) | `/src/renderer/uikit/shared/vanilla-view.ts` |
 | Keyed DOM reconciliation (duplicate-safe keyed records, cursor-based minimal moves, reusable `clear`, and inert `dispose`) | `/src/renderer/uikit/shared/keyed-list.ts` |
@@ -134,7 +138,6 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Mounted guide source (composes the packaged corpus with isolated, dynamically resolved trusted-board guide roots) | `/src/shared/guides/mounted-source.ts` |
 | Git-root detection for Markdown wiki links (walk up to nearest `.git`, cached) | `/src/renderer/editors/markdown/detect-git-root.ts` |
 | Markdown heading anchors (GitHub-style slug ids + `-1`/`-2` dedupe; exports `slugifyHeading`, reused by `MarkdownBlock.scrollToAnchor` to match a `#fragment` against heading text so Azure-DevOps and GitHub dialects meet) | `/src/renderer/editors/markdown/rehypeHeadingIds.ts` |
-| File / directory watchers (`FileWatcher`, `DirectoryWatcher`) | `/src/renderer/core/utils/file-watcher.ts` |
 | Shared path-watch service (main-process `fs.watch` ownership, classified move events, file-identity matching, and bounded diagnostics) | `/src/main/path-watch-service.ts` |
 | Path-watch IPC handlers (window-owned subscriptions and cleanup on sender navigation/destruction) | `/src/ipc/main/path-watch-handlers.ts` |
 | Renderer path-watch client (local reference-counted subscriptions and opt-in folder recovery over IPC) | `/src/renderer/api/path-watch.ts` |
@@ -367,7 +370,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Native Explorer Search panel (vanilla secondary view over `FileSearchView`) | `/src/renderer/editors/explorer/SearchSecondaryView.ts` |
 | FileSearch native view and pooled result row | `/src/renderer/components/file-search/FileSearchView.ts`, `/src/renderer/components/file-search/FileSearchRowView.ts` |
 | DOM-first editor icon resolver (tab + sidebar panel headers; `getIconElement`/file-icon fallback, returning `Element` or `null`) | `/src/renderer/components/icons/icon-elements.ts` |
-| DOM icon resolvers (file/language/board icon elements; no renderer `react-dom/server` dependency) | `/src/renderer/components/icons/icon-elements.ts`, `/src/renderer/theme/language-icons.ts`, `/src/renderer/editors/board/board-glyph-element.ts` |
+| DOM icon resolvers (file/language/board icon elements; no renderer `react-dom/server` dependency) | `/src/renderer/components/icons/icon-elements.ts`, `/src/renderer/theme/language-icons.ts`, `/src/renderer/components/icons/board-glyph-element.ts` |
 | Tree-provider item icon and HTTP favicon cache (directory/provider icons plus shared favicon lookup for link and browser surfaces) | `/src/renderer/components/icons/icon-elements.ts`, `/src/renderer/components/icons/favicon-cache.ts` |
 | Settings page composition and section models | `/src/renderer/editors/settings/` |
 | Browser profile persistence rules and permission-decision IPC used by Settings | `/src/renderer/api/browser-profiles.ts`, `/src/shared/browser-partition.ts` |
@@ -475,6 +478,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Board trust permission disclosure copy (human-readable labels for each manifest permission flag) | `/src/renderer/api/boards/board-permission-copy.ts` |
 | Trust-dialog agent guidance (permission lines and when an agent may accept a board it is building) | `/src/renderer/scripting/ai-vision/dialogs/trust-board.ts` |
 | App design-token CSS variables (`APP_TOKEN_VARS`, numeric scale mapper, idempotent `:root` installation) | `/src/renderer/theme/token-vars.ts` |
+| UIKit design token values (spacing, sizing, radius, font size, gaps, and heights) | `/src/renderer/theme/tokens.ts` |
 | Static CSS cascade-layer order | `/src/renderer/theme/style-layers.css` |
 | Static application-root geometry (absolute/flex `#root` layout, loaded before shell measurement) | `/src/renderer/theme/root.css` |
 | Native global-style installer (theme-dependent stylesheet and live theme subscription) | `/src/renderer/theme/global-styles.ts` |
@@ -584,7 +588,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | File tree provider watch classification (coalesces path changes into relist targets or requests a full rebuild) | `/src/renderer/content/tree-providers/FileTreeProvider.ts` |
 | Compacted tree builder shared by the boards and tools trees (path roots to folder and labeled-leaf nodes) | `/src/renderer/components/roots-tree-build.ts` |
 | UIKit nested drag-target and hover tracker (enter/leave counts plus a cancellable pending hover callback) | `/src/renderer/uikit/shared/drop-target-tracker.ts` |
-| Explorer tree OS-clipboard actions (Cut/Copy/Paste ⇄ Windows Explorer — context menu + Ctrl+C/X/V; file provider only; recursive copy/move via `core/utils/copy-files.ts`. `copyPathsToOsClipboard(paths, cut)` is the real entry point — N paths in one CF_HDROP write — with `copyPathToOsClipboard` a single-path shim over it) | `/src/renderer/components/tree-provider/os-clipboard.ts` |
+| Explorer tree OS-clipboard actions (Cut/Copy/Paste ⇄ Windows Explorer — context menu + Ctrl+C/X/V; file provider only; recursive copy/move via `api/copy-files.ts`. `copyPathsToOsClipboard(paths, cut)` is the real entry point — N paths in one CF_HDROP write — with `copyPathToOsClipboard` a single-path shim over it) | `/src/renderer/components/tree-provider/os-clipboard.ts` |
 | Open-with-default-app helper (`shell.openPath` over `Endpoint.openPath`; used by the tree and Recent Files "Open with" submenu's **Default App** leaf and the Explorer panel's file double-click. `shell.openPath` reports failure by RESOLVING with an error string rather than throwing, so this reports it as a toast — the older `showFolder`/`showItemInFolder` endpoints discard it, which is why a separate endpoint exists. See [context-menu.md](context-menu.md) for the files-only rule) | `/src/renderer/content/open-with-default-app.ts` |
 | Local-file Persephone open helper (determines whether an extension resolves to a built-in editor, installed board, or Monaco language; reveals an already-open page or opens the file through the raw-link pipeline) | `/src/renderer/content/open-in-persephone.ts` |
 | File "Open with" candidate list and action (pre-open built-in and board choices; revalidates on selection, switches an already-open page in place, or opens a fresh page with the explicit editor target) | `/src/renderer/editors/base/editor-switch-options.ts`, `/src/renderer/ui/link-menus/open-with-editor.ts` |
@@ -700,7 +704,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Explorer-sibling "Boards" panel (trusted boards and registered toolsets under the Explorer root, in its own optional panel editor) | `/src/renderer/editors/board/BoardsPanelEditorModel.ts`, `/src/renderer/editors/board/BoardsSecondaryView.ts` |
 | Commit-diff panel data loading and generation guards | `/src/renderer/editors/git-tree/CommitDiffPanelModel.ts` |
 | Board theme contract (`computeBoardThemePalette`, `BOARD_TOKEN_VARS`, `--p-*`) | `/src/renderer/editors/board/board-theme.ts` |
-| Board icon cache (module-level SVG/PNG/ICO → data URL cache) | `/src/renderer/editors/board/board-icon-cache.ts` |
+| Board icon cache (module-level SVG/PNG/ICO → data URL cache) | `/src/renderer/components/icons/board-icon-cache.ts` |
 | Reusable boards tree (folder-compacted; single-root + multi-root; board-click / trailing-action / context-menu slots) | `/src/renderer/editors/board/BoardsTreeView.ts` |
 | Shared boards/tools roots-tree builder (path list → compacted folder/labeled-leaf node tree; VS Code-style single-child folder compaction) | `/src/renderer/components/roots-tree-build.ts` |
 | Board bridge composition root (boot context, trust gate, feature creation order, synchronous `window.persephone` assignment, and bridge lifecycle) | `/src/board-shim.ts` |

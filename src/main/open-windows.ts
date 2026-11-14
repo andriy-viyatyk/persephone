@@ -144,7 +144,7 @@ class OpenWindows {
         this.openBoardWindow(identity.path);
     };
 
-    updateBoardIdentity = async (browserWindow: BrowserWindow | undefined, request: { displayName: string; iconDataUrl: string }): Promise<void> => {
+    updateBoardIdentity = async (browserWindow: BrowserWindow | null | undefined, request: { displayName: string; iconDataUrl: string }): Promise<void> => {
         const boardWindow = browserWindow && this.findByWindow(browserWindow);
         if (!boardWindow?.boardRoot) throw new Error("Board identity updates are only available to registered board windows.");
         await boardWindow.updateBoardIdentity(request?.displayName, request?.iconDataUrl);
@@ -223,7 +223,7 @@ class OpenWindows {
     private findWindowDataByOpenWindow = (openWindow: OpenWindow): OpenWindowData | undefined => this.windows.find((w) => w.window === openWindow);
 
     findWindowDataByWindow = (
-        openWindow: BrowserWindow
+        openWindow: BrowserWindow | null | undefined
     ): OpenWindowData | undefined => {
         return this.windows.find((w) => w.window?.window === openWindow);
     };
@@ -235,7 +235,7 @@ class OpenWindows {
     allWindowData = (): OpenWindowData[] => [...this.windows];
     findWindowDataByIndex = (index: number): OpenWindowData | undefined => this.windows.find((record) => record.index === index);
 
-    resolveWindowClose = (browserWindow: BrowserWindow | undefined, result: WindowCloseResolution): void => {
+    resolveWindowClose = (browserWindow: BrowserWindow | null | undefined, result: WindowCloseResolution): void => {
         const data = this.findWindowDataByWindow(browserWindow);
         const win = data?.window;
         if (!win) return;
@@ -264,7 +264,7 @@ class OpenWindows {
      * `doQuit` (set only by tray → Quit) overrides the setting entirely.
      */
     setCanQuit = (
-        browserWindow: BrowserWindow | undefined,
+        browserWindow: BrowserWindow | null | undefined,
         canQuit: boolean
     ) => {
         const openWindowData = this.findWindowDataByWindow(browserWindow);

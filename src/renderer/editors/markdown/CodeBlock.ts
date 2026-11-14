@@ -1,7 +1,7 @@
 import { t } from "../../../shared/i18n/t";
 import { createComponentModelDriver, TComponentModel, type ComponentModelDriver } from "../../core/state/model";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
-import { toClipboard } from "../../core/utils/utils";
+import { toClipboard } from "../../api/clipboard";
 import { app } from "../../api/app";
 import { guard } from "../../core/utils/guard";
 import { CopyIcon, OpenLinkIcon } from "../../theme/icons";

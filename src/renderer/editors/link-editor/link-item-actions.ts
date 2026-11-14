@@ -2,7 +2,7 @@ import { app } from "../../api/app";
 import { ContextMenuEvent } from "../../api/events/events";
 import type { ILink } from "../../api/types/io.tree";
 import { getHostname, requestFaviconSave } from "../../components/icons/favicon-cache";
-import { toClipboard } from "../../core/utils/utils";
+import { toClipboard } from "../../api/clipboard";
 import { appendLinkOpenMenuItems } from "../shared/link-open-menu";
 import { t } from "../../../shared/i18n/t";
 import type { LinkItem, LinkSource } from "./linkTypes";

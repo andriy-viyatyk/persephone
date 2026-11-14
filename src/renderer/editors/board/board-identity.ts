@@ -1,8 +1,8 @@
 import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
 import { readBoardManifest } from "../../api/boards/board-manifest-io";
 import { fpBasename } from "../../core/utils/file-path";
-import { createBoardGlyphElement } from "./board-glyph-element";
-import { subscribeBoardIconChanges } from "./board-icon-cache";
+import { createBoardGlyphElement } from "../../components/icons/board-glyph-element";
+import { subscribeBoardIconChanges } from "../../components/icons/board-icon-cache";
 
 type BoardDisplayTextReason = "resolve" | "refresh" | "invalidate";
 

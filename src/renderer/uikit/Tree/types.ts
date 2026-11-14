@@ -1,4 +1,5 @@
-import type { NativeCSSProperties, NativeHTMLAttributes } from "../shared/dom-props";
+import type { NativeCSSProperties } from "../../core/native-css-properties";
+import type { NativeHTMLAttributes } from "../shared/dom-props";
 import {
     TraitKey,
     Traited,

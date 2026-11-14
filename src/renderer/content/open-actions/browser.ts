@@ -24,7 +24,8 @@ export async function openBrowserAction(
             const { BrowserEditor } = await import("../../editors/browser/BrowserEditor");
             if (editor instanceof BrowserEditor) {
                 const tabMode = data.browserTabMode ?? "addTab";
-                if (tabMode === "navigate") editor.navigate(data.url);
+                // Browser actions are routed with a resolved URL.
+                if (tabMode === "navigate") editor.navigate(data.url!);
                 else editor.addTab(data.url);
             }
         }
@@ -34,15 +35,15 @@ export async function openBrowserAction(
     if (browserMode === "os-default") {
         await launchExternal(data);
     } else if (browserMode === "incognito") {
-        await pages.openUrlInBrowserTab(data.url, { incognito: true });
+        await pages.openUrlInBrowserTab(data.url!, { incognito: true });
     } else if (browserMode?.startsWith("profile:")) {
-        await pages.openUrlInBrowserTab(data.url, { profileName: browserMode.slice("profile:".length) });
+        await pages.openUrlInBrowserTab(data.url!, { profileName: browserMode.slice("profile:".length) });
     } else if (browserMode === "internal") {
-        await pages.openUrlInBrowserTab(data.url, { external: true });
+        await pages.openUrlInBrowserTab(data.url!, { external: true });
     } else {
         const behavior = settings.get("link-open-behavior");
         if (behavior === "internal-browser" || openInBrowser) {
-            await pages.openUrlInBrowserTab(data.url, { external: openInBrowser });
+            await pages.openUrlInBrowserTab(data.url!, { external: openInBrowser });
         } else {
             await launchExternal(data);
         }
@@ -53,10 +54,11 @@ async function launchExternal(data: ILinkData): Promise<void> {
     const decision = await externalLaunchDecision(data);
     if (decision === "deny") return;
     if (decision === "internal") {
-        await pages.openUrlInBrowserTab(data.url, { external: true });
+        // Browser actions are routed with a resolved URL.
+        await pages.openUrlInBrowserTab(data.url!, { external: true });
         return;
     }
-    shell.openExternal(data.url);
+    shell.openExternal(data.url!);
 }
 
 async function externalLaunchDecision(data: ILinkData): Promise<"allow" | "internal" | "deny"> {

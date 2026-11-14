@@ -60,16 +60,16 @@ export class RightPageTabsView extends VanillaView<object> {
     }
 
     private handleDragOver(event: DragEvent): void {
-        const payload = getTraitDragData(event.dataTransfer);
+        const payload = getTraitDragData(event.dataTransfer!);
         if (payload?.typeId !== TraitTypeId.PageTab) return;
         const sourceId = (payload.data as { key: string }).key;
         if (!pages.query.isRightPinned(sourceId)) return;
         event.preventDefault();
-        event.dataTransfer.dropEffect = "move";
+        event.dataTransfer!.dropEffect = "move";
     }
 
     private handleDrop(event: DragEvent): void {
-        const payload = getTraitDragData(event.dataTransfer);
+        const payload = getTraitDragData(event.dataTransfer!);
         if (payload?.typeId !== TraitTypeId.PageTab) return;
         const sourceId = (payload.data as { key: string }).key;
         if (pages.query.isRightPinned(sourceId)) {

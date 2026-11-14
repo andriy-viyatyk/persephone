@@ -119,11 +119,14 @@ The first group (`ILink` through `PinnedLink`) have TraitSets registered, so dro
 
 ### Registration
 
-Registration happens once, at module load time, in the file that defines the trait:
+Registration happens once when the registration module loads. Most trait modules register their own
+sets. The renderer's `api/core-bootstrap.ts` registers `OsFile` and `ILink` because their accessors
+use app-level services; application startup imports this composition module once. Keep those
+registrations there rather than moving them back into the trait definitions.
 
 ```typescript
-// src/renderer/core/traits/linkTraits.ts
-traitRegistry.register(TraitTypeId.ILink, linkTraits);
+// src/renderer/content/tree-providers/mnemeLinkTraits.ts
+traitRegistry.register(TraitTypeId.MnemeLink, mnemeLinkTraits);
 ```
 
 > **Registered TraitSets:** `ILink` (`LINK` *and* `FILE_LINK` — a link to a local file also yields its bytes), `OsFile` (the `FILE_LINK` trait), and `MnemeLink` (both `LINK` *and* `FILE_LINK`). The remaining `TraitTypeId` values (`Note`, etc.) are type discriminators only — their TraitSets are not registered. Cross-type drops include dropping links into the Notes category tree, dropping **OS files, file-tree nodes, or links into a link collection**, and dropping **OS files, local-file links, or Mneme nodes into the Mneme tree** via the `FILE_LINK` trait (see "File content drops" below).
@@ -487,5 +490,6 @@ The `LINK`/`FILE_LINK` split keeps each trait single-purpose: identity lives in 
 | TraitRegistry + TraitTypeId enum | `/src/renderer/core/traits/TraitRegistry.ts` |
 | Drag-and-drop utilities | `/src/renderer/core/traits/dnd.ts` |
 | Public exports | `/src/renderer/core/traits/index.ts` |
-| ILink trait definition + registration | `/src/renderer/core/traits/linkTraits.ts` |
+| ILink trait definition | `/src/renderer/core/traits/linkTraits.ts` |
+| App-backed `OsFile` and `ILink` registrations | `/src/renderer/api/core-bootstrap.ts` |
 | Tree trait props | `/src/renderer/uikit/Tree/TreeModel.ts` |

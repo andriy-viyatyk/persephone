@@ -124,8 +124,9 @@ export class MenuBarModel implements IMenuBar {
     }
 
     private selectFolder(folder: MenuFolder): void {
-        if (!folder.id || folder.id === this.state.get().selectedId) return;
-        this.state.update((state) => { state.selectedId = folder.id; });
+        const id = folder.id;
+        if (!id || id === this.state.get().selectedId) return;
+        this.state.update((state) => { state.selectedId = id; });
     }
 
     private toFolderRecord(folder: MenuFolder): IMenuBarFolder {

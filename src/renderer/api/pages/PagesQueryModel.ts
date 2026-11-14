@@ -20,7 +20,7 @@ export class PagesQueryModel {
         );
     };
 
-    isRightPinned = (id: string): boolean => this.findPage(id)?.pinSide === "right";
+    isRightPinned = (id?: string): boolean => this.findPage(id)?.pinSide === "right";
 
     getFirstRightPinnedIndex = (): number => {
         const pages = this.model.state.get().pages;

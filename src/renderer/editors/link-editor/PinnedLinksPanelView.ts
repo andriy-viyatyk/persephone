@@ -8,7 +8,7 @@ import { KeyedList } from "../../uikit/shared/keyed-list";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { attachTooltip, type TooltipAttachment } from "../../uikit/Tooltip/attach-tooltip";
-import { spacing, height } from "../../uikit/tokens";
+import { spacing, height } from "../../theme/tokens";
 import { t } from "../../../shared/i18n/t";
 import type { LinkItem, LinkSource } from "./linkTypes";
 import { FaviconRowTracker } from "./FaviconRowTracker";

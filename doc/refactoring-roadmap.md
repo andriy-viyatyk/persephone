@@ -712,6 +712,31 @@ ai-vision main services, and the main process hung at startup; the factory is in
 - Add the guardrails in [§7](#7-guardrails-against-the-drift-coming-back) to `doc/agents-common.md` and to the Codex
   delegation brief.
 
+**Phase 7 is done** ([EPIC-177](epics/EPIC-177.md), 2026-11-14), with the remainder below. No zone was a warning any
+more, so the epic added the zones the §4.1 map still lacked, all at error level: `core/` imports only `core/` and
+`shared/` (four exact type-only `api/types/*.d.ts` exceptions); `shared/` imports no renderer or main code (two exact
+script-contract exceptions; `ipc/` contracts allowed); `content/`, `components/`, `uikit/` (Rule 6 over the whole
+map), `theme/`, `audio/`, `automation/`, `guides/` and `i18n/` zones, next to the existing `ui/`, `api/`-board and
+`editors/base` zones. To meet them, the rest of item 2.3's `core/` cleanup landed: `guard()` takes a reporter injected
+by `api/core-bootstrap.ts`, which also registers the link traits; `file-watcher.ts`, `copy-files.ts` and `toClipboard`
+moved to `api/`. The board icon cache and glyph moved to `components/icons/`, `uikit/tokens.ts` to `theme/tokens.ts`,
+`NativeCSSProperties` to `core/`. `overview.md` "Dependency Rules" now lists the enforced zones and, separately, the
+targets with counts. `scripts/typecheck-strict.mjs` (run by `npm run typecheck`) is a per-folder `strictNullChecks` gate
+with one folder list; 18 folders are strict (`shared/`, `ipc/`, `board-shim/`, `module-service-host/`,
+`node-script-host/`, `preload-webview/`, and renderer `api/`, `audio/`, `automation/`, `components/`, `content/`,
+`core/`, `guides/`, `i18n/`, `scripting/`, `theme/`, `types/`, `ui/`). Every null fix is type-only (emitted JavaScript
+unchanged except two value-identical rewrites). The §7 guardrail wording for `doc/agents-common.md` and the delegation
+brief went to the user, since agents may not edit those files.
+
+**Remaining after Phase 7:**
+- **Import targets not enforced** (counts on 2026-11-14): `api/` → `editors/` 72, `api/` → `content/` 20,
+  `api/` → `scripting/` 9, `api/` → `components/` 1 (the creatable-item folder icon, item 2.4); `content/` → `editors/`
+  7 and `components/` → `editors/` 1 through the documented `editors/base` catalog/registry and browser-editor
+  exceptions. Each needs an owner decision (for example an editor-catalog seam in `api/`) before its zone can close.
+- **`strictNullChecks` remainder:** `editors/` 215 errors, `main/` 93, `uikit/` 43. Add a folder to the list in
+  `scripts/typecheck-strict.mjs` once it reports zero.
+- **Guardrails:** the proposed `doc/agents-common.md` and delegation-brief wording awaits the user.
+
 ---
 
 ## 6. Decisions for you

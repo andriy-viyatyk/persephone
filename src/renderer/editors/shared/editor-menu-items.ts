@@ -1,6 +1,6 @@
 import { api } from "../../../ipc/renderer/api";
 import { createLinkData } from "../../../shared/link-data";
-import { toClipboard } from "../../core/utils/utils";
+import { toClipboard } from "../../api/clipboard";
 import { createIconElement } from "../../uikit/shared/slots";
 import type { MenuItem } from "../../uikit/Menu/types";
 import type { TextFileModel } from "../content-host/TextFileModel";

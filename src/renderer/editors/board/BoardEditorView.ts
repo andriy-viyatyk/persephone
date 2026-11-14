@@ -14,7 +14,7 @@ import { BoardToolbarView } from "./BoardToolbar";
 import { ScriptPanelView } from "../base/script-panel/ScriptPanelView";
 import { EditorStatusBarView } from "../base/EditorStatusBarView";
 import type { TextFileModel } from "../content-host/TextFileModel";
-import { spacing } from "../../uikit/tokens";
+import { spacing } from "../../theme/tokens";
 import { BoardStatusBarItems } from "./BoardStatusBarItems";
 import { t } from "../../../shared/i18n/t";
 import { appWindow } from "../../api/window";

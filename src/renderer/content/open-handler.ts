@@ -13,7 +13,8 @@ import { createPageOpenRequest } from "../api/pages/open-request";
  */
 export function registerOpenHandler(): void {
     app.events.openContent.subscribe(async (data) => {
-        const filePath = data.pipe.logicalPath;
+        // Content handlers run after a resolver supplies the pipe.
+        const filePath = data.pipe!.logicalPath;
         const pageId = data.pageId;
         const request = createPageOpenRequest(data, filePath);
 
@@ -25,9 +26,9 @@ export function registerOpenHandler(): void {
                     ...request,
                     pipe: data.pipe,
                 });
-                if (!navigated || data.folderPath !== undefined) data.pipe.dispose();
+                if (!navigated || data.folderPath !== undefined) data.pipe!.dispose();
             } catch (err) {
-                data.pipe.dispose();
+                data.pipe!.dispose();
                 throw err;
             }
         } else {
@@ -39,7 +40,7 @@ export function registerOpenHandler(): void {
                     await page.restore.ready;
                 }
             } catch (err) {
-                data.pipe.dispose();
+                data.pipe!.dispose();
                 throw err;
             }
         }

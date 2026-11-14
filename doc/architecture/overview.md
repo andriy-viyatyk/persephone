@@ -272,22 +272,39 @@ installed by the native `theme/global-styles.ts` module.
 
 ### Dependency Rules
 
-The following are target rules; the current import graph does not yet follow all of them. The `ui/`
-boundary (rule 10) is enforced with an error-level import zone; see
-[refactoring roadmap §2.4](../refactoring-roadmap.md#24-the-documented-layer-rules-are-not-true)
-for the planned phase-by-phase enforcement of the rest.
+The following rules are enforced at error level by `import/no-restricted-paths` in
+`eslint.config.mjs`. They apply to resolved import/export declarations and literal runtime `import()` calls; TypeScript `import("...")` type queries are not visited by this rule. The named exceptions are intentional.
 
-1. **`core/`** is the foundation — no imports from other renderer layers
-2. **`uikit/`** is the standalone library — imports only `core/` and `theme/`. No imports from `api/`, `ui/`, `editors/`, or app-specific code (the contract that lets `uikit/` be split into a separate package later)
-3. **`components/`** is persephone-coupled by definition — each remaining folder (`icons/`, `page-manager/`, `file-search/`, `tree-provider/`, `file-list/`, `file-grid/`, `git-tree/`) uses `api/`, the page model, file system, or scripting. New pure primitives do NOT go here — they go in `uikit/`. Icon resolution is split between the builder-backed `theme/icons.ts`, the language resolver, and the DOM-first `components/icons/icon-elements.ts`; the latter stays decoupled from editors by duck-typing (see [editors.md](./editors.md#editor-icons))
-4. **`api/`** implements the Object Model — imports `core/`, uses IPC, and has no imports from `ui/`
-5. **`content/`** implements the I/O pipeline — imports `core/`, `api/types/`
-6. **`editors/`** implement page types — import `core/`, `uikit/`, `components/`, `api/`, `content/`
-7. **`scripting/`** wraps `api/`, `editors/`, and `content/` for safe script access
-8. **`automation/`** implements the browser-like operations used by Object Model call paths — imports `api/`, `editors/`, `ipc/`; loaded by the renderer's automation facades
-9. **`ui/`** owns shell views and wiring — it orchestrates the application and imports lower layers
-10. **Renderer composition roots** (`src/renderer/index.ts` and `src/renderer.ts`) may import shell code; every other `src/renderer/` directory is forbidden from importing `ui/`, including through lazy imports
-11. Lower layers must NOT import from higher layers
+1. **UI (`uiImportZone`):** the listed renderer directories outside `ui/` do not import `ui/`. The renderer composition roots may import the shell.
+2. **Core (`coreBoundary`):** `core/` imports only `core/` and `shared/`, except the documented `io.tree.d.ts` imports in the two link traits and `html-resources.ts`, and `ui.d.ts` in `guard.ts`.
+3. **Shared (`sharedBoundary`):** `shared/` imports no renderer or main code except the documented script declaration contracts in `link-data.ts` and `types.ts`; IPC contracts are permitted.
+4. **Content (`contentZones`):** `content/` does not import `components/` or `scripting/`; editor imports are limited to the catalog, registry and browser action files. These retain file-to-editor resolution and the browser `instanceof` check.
+5. **Components (`componentsZone`, `componentsScriptingZone`):** non-story `components/` does not import `scripting/`; its only permitted editor module is the generic `editors/base/editor-catalog.ts`.
+6. **UIKit (`uikitZone`, Rule 6):** non-story `uikit/` imports only `core/`, `theme/` and itself among renderer layers; it does not import `shared/`, IPC, main, renderer composition roots, host or preload modules. Stories retain the UI boundary.
+7. **Theme (`themeZones`):** `theme/` does not import UIKit or application layers. Its only permitted IPC module is `ipc/renderer/api`, used for native theme synchronization.
+8. **API (`apiBoardZone`, `capabilitiesBoardZone`):** its board-editor imports are limited by the documented US-1824 exceptions, and capabilities cannot import board-editor implementation.
+9. **Editor base (the `editors/base` zones):** editor base does not import board implementation or domain modules, except the pure `shared/board/board-editor-id.ts` helper.
+10. **Audio (`audioZone`):** `audio/` does not import other renderer layers; IPC and shared contracts remain available.
+11. **Automation (`automationZone`):** `automation/` imports only `api/`, `core/`, IPC and shared contracts among the listed layers.
+12. **Guides (`guidesZone`):** `guides/` does not import audio, automation, components, content, editors, i18n, scripting, theme, renderer types or UIKit.
+13. **Internationalization (`i18nZone`):** `i18n/` does not import API, audio, automation, components, content, editors, guides, scripting, theme or renderer types; UIKit remains allowed.
+
+Layer roles, for orientation (the zones above are the enforced part): `core/` is the foundation; `uikit/` is the
+standalone component library (the contract that lets it become a separate package); `components/` holds
+Persephone-coupled views (`icons/`, `page-manager/`, `file-search/`, `tree-provider/`, `file-list/`, `file-grid/`,
+`git-tree/`, `pipe-status/`), and new pure primitives go in `uikit/` instead; `api/` is the Object Model and service
+layer; `content/` is the link and I/O pipeline; `editors/` implement page types; `scripting/` wraps `api/`, `editors/`
+and `content/` for scripts; `ui/` owns shell views and wiring and imports the lower layers. `scripting/` and `editors/`
+may import every layer below them.
+
+The remaining targets are not enforced as complete boundaries (counts as of EPIC-177, 2026-11-14):
+
+1. **API -> editors:** 72 imports; API page lifecycle, editor models and factories still depend on editors. Roadmap Phase 7 (remaining) records this edge.
+2. **API -> scripting:** 9 imports; script startup, runners and AI-call integration still cross the boundary. Roadmap Phase 7 (remaining) records this edge.
+3. **API -> content:** 20 imports; bootstrap, board providers and page lifecycle use the content pipeline. Roadmap Phase 7 (remaining) records this edge.
+4. **API -> components:** 1 import, the creatable-item folder icon. Roadmap Phase 7 (remaining) records the edge; Phase 2 item 2.4 owns icon boundary cleanup.
+5. **Content -> editors:** 7 imports remain through the documented catalog, registry and browser files. Roadmap Phase 7 (remaining) records these seams.
+6. **Components -> editors:** 1 import remains through the documented generic catalog file. Roadmap Phase 7 (remaining) records this seam.
 
 ## Key Subsystems
 

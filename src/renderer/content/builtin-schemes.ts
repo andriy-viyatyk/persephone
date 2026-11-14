@@ -22,7 +22,8 @@ async function parsePassThrough(data: ILinkData, context: SchemeHookContext): Pr
 }
 
 async function parseMneme(data: ILinkData, context: SchemeHookContext): Promise<void> {
-    const split = splitUrlFragment(data.href);
+    // Scheme dispatch selects this parser from a present href.
+    const split = splitUrlFragment(data.href!);
     data.url = split.url;
     if (split.fragment) data.fragment ??= split.fragment;
     await context.handoff();
@@ -39,7 +40,8 @@ async function parseVirtual(
 }
 
 async function parseFolderEditor(data: ILinkData, context: SchemeHookContext): Promise<void> {
-    const decoded = decodeFolderEditorLink(data.href);
+    // Scheme dispatch selects this parser from a present href.
+    const decoded = decodeFolderEditorLink(data.href!);
     const parsed = decoded && { editorId: decoded.editorId, anchorFolder: decoded.anchorFolder };
     if (!parsed) {
         data.action = { kind: "notice", message: t("api.invalidFolderEditorLink", { href: data.href }), level: "warning" };
@@ -52,7 +54,8 @@ async function parseFolderEditor(data: ILinkData, context: SchemeHookContext): P
 }
 
 async function parseGuide(data: ILinkData, context: SchemeHookContext): Promise<void> {
-    const parsed = parseGuideUrl(data.href);
+    // Scheme dispatch selects this parser from a present href.
+    const parsed = parseGuideUrl(data.href!);
     if (!parsed) {
         data.action = { kind: "notice", message: t("api.invalidGuideLink", { href: data.href }), level: "warning" };
         return;
@@ -83,40 +86,43 @@ async function resolveVirtual(
     data: ILinkData,
     context: SchemeHookContext,
 ): Promise<void> {
+    // Scheme resolution runs after the parser supplies the URL.
     if (data.target === "browser" || data.browserMode) {
-        data.pipeDescriptor = virtualPipeDescriptor(data.url);
+        data.pipeDescriptor = virtualPipeDescriptor(data.url!);
         data.pipe = context.createPipe(data.pipeDescriptor);
         data.action = { kind: "browser" };
         return;
     }
     data.target ||= EditorId.monaco;
-    data.pipeDescriptor = virtualPipeDescriptor(data.url);
+    data.pipeDescriptor = virtualPipeDescriptor(data.url!);
     data.pipe = context.createPipe(data.pipeDescriptor);
     await context.handoff();
 }
 
 async function resolveData(data: ILinkData, context: SchemeHookContext): Promise<void> {
+    // Scheme resolution runs after the parser supplies the URL.
     if (data.target === "image.edit" && data.url?.startsWith("data:image/")) {
         data.action = { kind: "capability", id: "image.edit", payload: { dataUrl: data.url, title: data.title || "drawing" } };
         return;
     }
 
     if (data.target === "browser" || data.browserMode) {
-        data.pipeDescriptor = resolveUrlToPipeDescriptor(data.url, data) ?? undefined;
+        data.pipeDescriptor = resolveUrlToPipeDescriptor(data.url!, data) ?? undefined;
         if (data.pipeDescriptor) data.pipe = context.createPipe(data.pipeDescriptor);
         data.action = { kind: "browser" };
         return;
     }
 
-    data.target = data.target || editorCatalog.resolveFile(data.url, data.url) || EditorId.monaco;
-    data.pipeDescriptor = resolveUrlToPipeDescriptor(data.url, data) ?? undefined;
+    data.target = data.target || editorCatalog.resolveFile(data.url!, data.url!) || EditorId.monaco;
+    data.pipeDescriptor = resolveUrlToPipeDescriptor(data.url!, data) ?? undefined;
     if (!data.pipeDescriptor) return;
     data.pipe = context.createPipe(data.pipeDescriptor);
     await context.handoff();
 }
 
 async function resolveMneme(data: ILinkData, context: SchemeHookContext): Promise<void> {
-    const path = data.url.slice("mneme://".length);
+    // Scheme resolution runs after the parser supplies the URL.
+    const path = data.url!.slice("mneme://".length);
     data.target = data.target || editorRegistry.resolveId(path) || EditorId.monaco;
     data.pipeDescriptor = {
         provider: { type: "mneme", config: { path } },
@@ -127,7 +133,8 @@ async function resolveMneme(data: ILinkData, context: SchemeHookContext): Promis
 }
 
 async function resolveGuide(data: ILinkData, context: SchemeHookContext): Promise<void> {
-    const parsed = parseGuideUrl(data.url);
+    // Scheme resolution runs after the parser supplies the URL.
+    const parsed = parseGuideUrl(data.url!);
     if (!parsed) {
         data.action = { kind: "notice", message: t("api.invalidGuideUrl", { url: data.url }), level: "error" };
         return;
@@ -160,23 +167,24 @@ async function resolveGuide(data: ILinkData, context: SchemeHookContext): Promis
 }
 
 async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise<void> {
+    // Scheme resolution runs after the parser supplies the URL.
     if (data.target === "http.request.open") {
-        const title = requestTitle(data.url);
+        const title = requestTitle(data.url!);
         const payload = {
-            url: data.url,
+            url: data.url!,
             ...(data.method !== undefined ? { method: data.method } : {}),
             ...(data.headers !== undefined ? { headers: data.headers } : {}),
             ...(data.body !== undefined ? { body: data.body } : {}),
             title,
         };
-        data.pipeDescriptor = resolveUrlToPipeDescriptor(data.url, data) ?? undefined;
+        data.pipeDescriptor = resolveUrlToPipeDescriptor(data.url!, data) ?? undefined;
         if (data.pipeDescriptor) data.pipe = context.createPipe(data.pipeDescriptor);
         data.action = { kind: "capability", id: "http.request.open", payload };
         return;
     }
 
     const openInBrowser = data.target === "browser";
-    const effectivePath = effectivePathOf(data.url);
+    const effectivePath = effectivePathOf(data.url!);
     const ext = effectivePath.includes(".")
         ? effectivePath.slice(effectivePath.lastIndexOf(".")).toLowerCase()
         : "";
@@ -201,20 +209,20 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
     // A board that registered this extension as a custom editor (a font, an office document)
     // is content intent too; otherwise the browser would just download the file.
     const boardClaimsExtension = !hasContentExtension && !!ext
-        && isBoardEditorId(editorCatalog.resolveFile(data.url, effectivePath));
+        && isBoardEditorId(editorCatalog.resolveFile(data.url!, effectivePath));
 
     const hasExplicitEditorTarget = data.target && data.target !== "browser";
     const hasContentIntent = hasContentExtension || boardClaimsExtension || !!data.headers || !!data.fallbackTarget;
     const browserMode = data.browserMode;
     if (browserMode || openInBrowser || (!hasContentIntent && !hasExplicitEditorTarget)) {
-        data.pipeDescriptor = resolveUrlToPipeDescriptor(data.url, data) ?? undefined;
+        data.pipeDescriptor = resolveUrlToPipeDescriptor(data.url!, data) ?? undefined;
         if (data.pipeDescriptor) data.pipe = context.createPipe(data.pipeDescriptor);
         data.action = { kind: "browser" };
         return;
     }
 
     const resolvedTarget = hasContentIntent
-        ? editorCatalog.resolveFile(data.url, effectivePath)
+        ? editorCatalog.resolveFile(data.url!, effectivePath)
         : undefined;
     const boardWins = !!resolvedTarget && isBoardEditorId(resolvedTarget);
 
@@ -223,7 +231,7 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
         && !boardWins
         && !hasExplicitEditorTarget
     ) {
-        data.pipeDescriptor = resolveUrlToPipeDescriptor(data.url, data) ?? undefined;
+        data.pipeDescriptor = resolveUrlToPipeDescriptor(data.url!, data) ?? undefined;
         if (data.pipeDescriptor) data.pipe = context.createPipe(data.pipeDescriptor);
         data.action = { kind: "browser" };
         return;
@@ -235,7 +243,7 @@ async function resolveHttp(data: ILinkData, context: SchemeHookContext): Promise
         || headerTarget
         || resolvedTarget;
 
-    const pipeDescriptor = resolveUrlToPipeDescriptor(data.url, data);
+    const pipeDescriptor = resolveUrlToPipeDescriptor(data.url!, data);
     if (!pipeDescriptor) return;
 
     data.pipeDescriptor = pipeDescriptor;

@@ -143,10 +143,10 @@ class BoardLifecycle {
 
     /** Swap an installed board to a specific published version (update, rollback, forward). Never throws (toasts). */
     async installVersion(args: {
-        root: string; id: string; name: string; archive: PublishedBoardArchive; version: string; minAppVersion: string;
+        root: string; id: string; name: string; archive: PublishedBoardArchive; version: string; minAppVersion?: string;
     }): Promise<boolean> {
         if (!publishedBoards.isCompatible(args.minAppVersion)) {
-            void ui.notify(t("api.boardVersionRequiresApp", { version: args.minAppVersion }), "warning");
+            void ui.notify(t("api.boardVersionRequiresApp", { version: args.minAppVersion! }), "warning");
             return false;
         }
         if (!(await this.release(args.root, "updating", false))) return false;

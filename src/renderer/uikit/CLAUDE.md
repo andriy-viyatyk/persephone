@@ -13,7 +13,6 @@ Each component lives in its own subfolder:
 
 ```
 uikit/
-  tokens.ts              ← design token constants
   Button/
     ButtonView.ts
   Input/
@@ -809,9 +808,11 @@ If a needed color is missing from `color.ts`, add it there and in all theme defi
 
 ### Design tokens
 
-Use constants from `uikit/tokens.ts` for all spacing, sizing, border-radius, and font-size values:
+Token constants live in `src/renderer/theme/tokens.ts`.
+
+Use constants from `theme/tokens.ts` for all spacing, sizing, border-radius, and font-size values:
 ```ts
-import { spacing, radius, fontSize, height, gap } from "../tokens";
+import { spacing, radius, fontSize, height, gap } from "../../theme/tokens";
 ```
 
 Never hardcode pixel values that exist in the token scale.

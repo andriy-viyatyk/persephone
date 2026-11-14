@@ -1,4 +1,5 @@
 import type { NativeSlotContent } from "./fill-slot";
+import type { NativeCSSProperties } from "../../core/native-css-properties";
 
 type NativeAttributeValue = string | number | boolean | null | undefined;
 type AriaAttribute = { [K in `aria-${string}`]?: NativeAttributeValue };
@@ -74,42 +75,6 @@ export interface NativeButtonHTMLAttributes<T extends HTMLButtonElement = HTMLBu
 
 export type NativeLabelHTMLAttributes<T extends HTMLLabelElement = HTMLLabelElement> =
     NativeHTMLAttributes<T> & { htmlFor?: string };
-
-type NativeStyleValue = string | number | undefined;
-
-export interface NativeCSSProperties {
-    [key: `--${string}`]: NativeStyleValue;
-    alignItems?: NativeStyleValue;
-    alignSelf?: NativeStyleValue;
-    borderRadius?: NativeStyleValue;
-    bottom?: NativeStyleValue;
-    flex?: NativeStyleValue;
-    flexShrink?: NativeStyleValue;
-    flexWrap?: NativeStyleValue;
-    gap?: NativeStyleValue;
-    height?: NativeStyleValue;
-    inset?: NativeStyleValue;
-    justifyContent?: NativeStyleValue;
-    left?: NativeStyleValue;
-    maxHeight?: NativeStyleValue;
-    maxWidth?: NativeStyleValue;
-    minHeight?: NativeStyleValue;
-    minWidth?: NativeStyleValue;
-    overflow?: NativeStyleValue;
-    overflowX?: NativeStyleValue;
-    overflowY?: NativeStyleValue;
-    paddingBottom?: NativeStyleValue;
-    paddingLeft?: NativeStyleValue;
-    paddingRight?: NativeStyleValue;
-    paddingTop?: NativeStyleValue;
-    position?: NativeStyleValue;
-    right?: NativeStyleValue;
-    top?: NativeStyleValue;
-    whiteSpace?: NativeStyleValue;
-    width?: NativeStyleValue;
-    wordBreak?: NativeStyleValue;
-    zIndex?: NativeStyleValue;
-}
 
 /** Normalize numeric CSS lengths before assigning them to a DOM property typed as a string. */
 /** A DOM property typed as a string does not add `px` to a bare number; normalize numeric lengths before writing it. */

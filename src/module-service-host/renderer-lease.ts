@@ -14,7 +14,7 @@ export interface ProviderSubscription {
     dispose(): void;
     clear(): void;
     timer?: ReturnType<typeof setTimeout>;
-    pending?: ProviderStatusSnapshot | null;
+    pending?: ProviderStatusSnapshot;
     lastSentAt: number;
     settingUp?: boolean;
 }

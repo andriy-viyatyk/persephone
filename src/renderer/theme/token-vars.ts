@@ -1,4 +1,4 @@
-import { fontSize, gap, height, radius, spacing } from "../uikit/tokens";
+import { fontSize, gap, height, radius, spacing } from "./tokens";
 
 /** Convert a token scale key to the kebab-case form used by CSS custom properties. */
 function camelToKebab(value: string): string {

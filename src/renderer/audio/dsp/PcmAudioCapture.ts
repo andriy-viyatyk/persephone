@@ -148,7 +148,7 @@ export class PcmAudioCapture {
                 if (data.frame !== undefined) for (const listener of this.rawListeners) listener(data.data, data.frame);
                 if (this.originMs === undefined && data.frame !== undefined && this.context) {
                     const timestamp = this.context.getOutputTimestamp();
-                    this.originMs = timestamp.performanceTime + (data.frame / this.context.sampleRate - timestamp.contextTime) * 1000 - this.emittedSamples * 1000 / OUTPUT_SAMPLE_RATE;
+                    this.originMs = Number(timestamp.performanceTime) + (data.frame / this.context.sampleRate - Number(timestamp.contextTime)) * 1000 - this.emittedSamples * 1000 / OUTPUT_SAMPLE_RATE;
                 }
                 if (this.alignment && data.frame !== undefined) this.alignment.pushMicrophone(data.data, data.frame);
                 else { this.resetAfterDiscontinuity(data.frame, onChunk); this.consume(data.data, onChunk, this.context?.sampleRate ?? OUTPUT_SAMPLE_RATE); }
@@ -188,7 +188,7 @@ export class PcmAudioCapture {
         if (this.remainder.length) this.emit(onChunk, this.remainder.length);
         this.samples = new Float32Array(0); this.sampleBase = 0; this.nextSample = 0; this.inputRate = 0;
         const timestamp = this.context.getOutputTimestamp();
-        this.originMs = timestamp.performanceTime + (frame / this.context.sampleRate - timestamp.contextTime) * 1000 - this.emittedSamples * 1000 / OUTPUT_SAMPLE_RATE;
+        this.originMs = Number(timestamp.performanceTime) + (frame / this.context.sampleRate - Number(timestamp.contextTime)) * 1000 - this.emittedSamples * 1000 / OUTPUT_SAMPLE_RATE;
         this.discontinuity = false;
     }
 

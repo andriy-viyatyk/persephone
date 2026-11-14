@@ -170,13 +170,13 @@ function createBoardSchemeHooks(providerType: string, boardRoot: string): Scheme
             };
             data.pipe = context.createPipe(data.pipeDescriptor);
             // Source-path reconstruction discards target and title after rebuilding the pipe.
-            const effectivePath = urlPathFileName(data.url);
+            const effectivePath = urlPathFileName(data.url!);
             // Evaluate the empty-name branch before catalog resolution: it substitutes the
             // whole URL via `matchPath || filePath` when effectivePath is empty, then Monaco's
             // unconditional file fallback tier returns "monaco". Every arm after that call is
             // unreachable for a non-empty url, so do not fold this branch into the `||` chain.
             data.target = data.target
-                || (effectivePath ? editorCatalog.resolveFile(data.url, effectivePath) : boardEditorId(boardRoot))
+                || (effectivePath ? editorCatalog.resolveFile(data.url!, effectivePath) : boardEditorId(boardRoot))
                 || EditorId.monaco;
             // Without this the tab is titled with the raw percent-encoded href — for a torrent
             // link, the whole magnet inside the query string. A named link is titled by its file;

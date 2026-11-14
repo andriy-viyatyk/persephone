@@ -311,7 +311,7 @@ export class OwnerScheduler {
 /** Schedules focus after the next paint; selection is additive and never replaces focusing. */
 export function focusAfterPaint(
     element: HTMLElement | null | undefined,
-    options?: { select?: boolean | (() => boolean) },
+    options?: { select?: boolean | (() => boolean | undefined) },
 ): () => void {
     return afterPaint(() => {
         if (!element) return;

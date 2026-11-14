@@ -107,7 +107,7 @@ export class HeaderStatusIndicatorsView extends VanillaView<object> {
         this.mnemeIndicator.replaceChildren(dot, document.createTextNode(" Mneme"));
     }
 
-    private updateChromeVisibility(hideStatusChrome: boolean): void {
+    private updateChromeVisibility(hideStatusChrome: boolean | undefined): void {
         if (hideStatusChrome && !this.hiddenChromeState) {
             this.hiddenChromeState = { hidden: this.mcpIndicator.hidden, display: this.mcpIndicator.style.display };
         } else if (!hideStatusChrome && this.hiddenChromeState) {

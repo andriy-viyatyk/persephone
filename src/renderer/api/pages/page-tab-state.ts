@@ -106,7 +106,7 @@ export function canBeginDetach(page: PageModel): boolean {
     return !page.isLockedBoardPage && !page.isInert;
 }
 
-export function canDuplicateModel(page?: PageModel): boolean {
+export function canDuplicateModel(page?: PageModel): page is PageModel {
     return Boolean(page?.mainEditor) && !page?.isInert;
 }
 

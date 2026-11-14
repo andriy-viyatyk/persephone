@@ -17,7 +17,7 @@
     "i18n:check": "node scripts/i18n-check.mjs",
     "i18n:export": "node scripts/i18n-export.mjs",
     "i18n:check-boards": "node scripts/i18n-check.mjs --boards assets/boards/*",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && node scripts/typecheck-strict.mjs",
     "mneme:build": "cargo build --release --manifest-path mneme/Cargo.toml",
     "mneme:model": "node scripts/dev-mneme-model.mjs",
     "postinstall": "patch-package"

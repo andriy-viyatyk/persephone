@@ -1,3 +1,28 @@
+## EPIC-177 — Refactoring Phase 7: lock it in (error-level layer zones, dependency rules, strictNullChecks per folder)
+
+Completed 2026-11-14. Roadmap Phase 7, the last phase. Every import zone was already an error, so the epic added the
+zones the §4.1 layer map still lacked, at error level: `core/` (only `core/` and `shared/`, four exact type-only
+contract exceptions), `shared/` (no renderer or main code, `ipc/` contracts allowed), `content/`, `components/`,
+`uikit/` (Rule 6 over the whole map), `theme/`, `audio/`, `automation/`, `guides/` and `i18n/`. To meet them, the rest of
+roadmap 2.3's `core/` cleanup landed: `guard()` takes a reporter injected by `api/core-bootstrap.ts`, which also
+registers the link traits, and `file-watcher.ts`, `copy-files.ts` and `toClipboard` moved to `api/`; the board icon
+cache and glyph moved to `components/icons/`, `uikit/tokens.ts` to `theme/tokens.ts`, `NativeCSSProperties` to `core/`.
+`overview.md` "Dependency Rules" lists the enforced zones and, separately, the targets with counts.
+`scripts/typecheck-strict.mjs`, run by `npm run typecheck`, gates `strictNullChecks` on 18 folders; every null fix is
+type-only. Recorded changes: link-trait registration and the `api/ui`/`api/fs` modules evaluate earlier in startup; a
+`guard()` failure before the reporter is registered is queued and delivered on registration (no such path exists).
+Remaining in the roadmap: `api/` → `editors/`/`content/`/`scripting/` targets, strict-null for `editors/`, `main/`,
+`uikit/`. A file, an archive entry, a folder workspace, data and guide links, board icons and theme tokens checked live
+in a separate test window. Plans by Codex (Terra), reviewed against the roadmap guardrails; Codex Luna implemented.
+Epic document: [EPIC-177](EPIC-177.md).
+
+- [x] **`core/` and `shared/` boundary (US-1996).** `api/core-bootstrap.ts`, file services and clipboard to `api/`, zones.
+- [x] **Upper-layer zones (US-1997).** Icon, token and CSS-type owners, eight zones, `overview.md` dependency rules.
+- [x] **`strictNullChecks` wave 1 (US-1998).** `scripts/typecheck-strict.mjs`, `shared/`, `core/`, `content/` and 10 more.
+- [x] **`strictNullChecks` wave 2 (US-1999).** `api/`, `ipc/`, `module-service-host/`, `scripting/`, `ui/`.
+- [x] **Epic review.** `/review` no change; `/document` folder structure, key files, trait system, coding style, UIKit
+  split, typecheck pointer; `/userdoc` no change; `i18n:check` complete.
+
 ## EPIC-176 — Refactoring Phase 2.2 (rest): ui/ as a pure view layer
 
 Completed 2026-11-14. The rest of roadmap item 2.2 (SHL-1, SHL-5), which completes it: the secondary-view host

@@ -73,7 +73,8 @@ export class LogEntryHandle<TEntry extends object> {
 
     private update(property: string, value: unknown): void {
         const config = handleConfigs.get(this);
-        const binding = config?.fields.find((field) => field.property === property);
+        if (!config) return;
+        const binding = config.fields.find((field) => field.property === property);
         if (!binding) return;
         (this as unknown as Record<string, unknown>)[binding.backingSlot] = value;
         this.vm.updateEntryById(this.entryId, (draft) => {

@@ -496,9 +496,10 @@ export class CategoryViewModel extends TComponentModel<
     };
 
     onDragEnter = (item: ITreeProviderItem | null, e: DragEvent) => {
-        if (!this.acceptsDrag(e.dataTransfer)) return;
+        // Native drag events carry a data transfer.
+        if (!this.acceptsDrag(e.dataTransfer!)) return;
         e.preventDefault();
-        e.dataTransfer.dropEffect = isFileDrag(e.dataTransfer) ? "copy" : "move";
+        e.dataTransfer!.dropEffect = isFileDrag(e.dataTransfer) ? "copy" : "move";
 
         const key = this.dropKey(item);
         if (!this.dropTargetTracker.enter(key)) return;
@@ -512,9 +513,10 @@ export class CategoryViewModel extends TComponentModel<
      *  is allowed (the browser cancels it otherwise). The signature mirrors the others so the
      *  view can wire all four the same way. */
     onDragOver = (_item: ITreeProviderItem | null, e: DragEvent) => {
-        if (!this.acceptsDrag(e.dataTransfer)) return;
+        // Native drag events carry a data transfer.
+        if (!this.acceptsDrag(e.dataTransfer!)) return;
         e.preventDefault();
-        e.dataTransfer.dropEffect = isFileDrag(e.dataTransfer) ? "copy" : "move";
+        e.dataTransfer!.dropEffect = isFileDrag(e.dataTransfer) ? "copy" : "move";
     };
 
     onDragLeave = (item: ITreeProviderItem | null, _e: DragEvent) => {

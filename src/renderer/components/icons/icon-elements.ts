@@ -1,5 +1,5 @@
 import type { ITreeProviderItem } from "../../api/types/io.tree";
-import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
+import { createBoardGlyphElement } from "./board-glyph-element";
 import { GitIcon, MemoryIcon, type SvgIconComponent, type SvgIconProps } from "../../theme/icons";
 import { DefaultIcon } from "../../theme/language-icons";
 import { MEMORY_ICON_COLOR } from "../../theme/palette-colors";

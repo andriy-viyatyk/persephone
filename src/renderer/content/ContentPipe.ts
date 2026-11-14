@@ -232,7 +232,8 @@ export class ContentPipe implements IContentPipe {
 
     get watch(): ((callback: (event: string, details?: ProviderWatchDetails) => void, label?: string) => () => void) | undefined {
         if (!this.provider.watch) return undefined;
-        return (callback, label) => this.provider.watch(callback, label);
+        // The getter returns a closure only after checking the watch capability.
+        return (callback, label) => this.provider.watch!(callback, label);
     }
 
     // ── Clone ───────────────────────────────────────────────────────

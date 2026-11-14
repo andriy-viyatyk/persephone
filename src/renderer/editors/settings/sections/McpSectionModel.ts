@@ -1,5 +1,5 @@
 import { TComponentModel } from "../../../core/state/model";
-import { toClipboard } from "../../../core/utils/utils";
+import { toClipboard } from "../../../api/clipboard";
 import { api } from "../../../../ipc/renderer/api";
 import rendererEvents from "../../../../ipc/renderer/renderer-events";
 

@@ -11,7 +11,7 @@ import { showCreateBoardDialog } from "../../api/dialogs/CreateBoardDialog";
 import { showConfirmationDialog } from "../../api/dialogs/ConfirmationDialog";
 import { fpBasename } from "../../core/utils/file-path";
 import { BoardRoot } from "../../../shared/board/board-root";
-import { toClipboard } from "../../core/utils/utils";
+import { toClipboard } from "../../api/clipboard";
 import { DialogButton, dialogButton } from "../../api/dialogs/dialog-buttons";
 import type { MenuItem } from "../../uikit/Menu";
 import type { IconButtonProps } from "../../uikit/IconButton/IconButtonView";

@@ -174,7 +174,7 @@ export function migrateLegacyExplorerPanels(desc: PageDescriptor): PageDescripto
         ...desc,
         editors,
         ...(desc.sidebar && activePanel !== desc.sidebar.activePanel
-            ? { sidebar: { ...desc.sidebar, activePanel } }
+            ? { sidebar: { ...desc.sidebar, activePanel: activePanel! } }
             : {}),
     };
 }

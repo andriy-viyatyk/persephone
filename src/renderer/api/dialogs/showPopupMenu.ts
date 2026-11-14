@@ -3,7 +3,7 @@ import { TPopperModel, type IPopperViewData } from "./dialog-types";
 import type { MenuItem } from "../../uikit/Menu";
 import { CopyIcon, CursorIcon, EmptyIcon } from "../../theme/icons";
 import { TComponentState } from "../../core/state/state";
-import { toClipboard } from "../../core/utils/utils";
+import { toClipboard } from "../clipboard";
 import { restoreFocus } from "../../uikit/shared/focus-restore";
 import { api } from "../../../ipc/renderer/api";
 import { t } from "../../../shared/i18n/t";

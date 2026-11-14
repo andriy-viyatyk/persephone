@@ -1,5 +1,5 @@
-import type { NativeCSSProperties } from "../shared/dom-props";
-import { spacing, gap as gapTokens, radius } from "../tokens";
+import type { NativeCSSProperties } from "../../core/native-css-properties";
+import { spacing, gap as gapTokens, radius } from "../../theme/tokens";
 import "./Panel.css";
 
 export type Size = "none" | "xs" | "sm" | "md" | "lg" | "xl" | "xxl";

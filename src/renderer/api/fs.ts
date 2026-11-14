@@ -505,7 +505,7 @@ class FileSystem implements IFileSystem {
             return;
         }
         const lowerId = id.toLowerCase();
-        const files = this._listDirFiles(this._cachePath).filter((file) => {
+        const files = this._listDirFiles(this._cachePath!).filter((file) => {
             const lowerFile = file.toLowerCase();
             return lowerFile.startsWith(lowerId)
                 && (lowerFile.length === lowerId.length

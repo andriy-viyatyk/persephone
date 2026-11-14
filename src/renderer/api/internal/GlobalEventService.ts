@@ -110,7 +110,7 @@ export class GlobalEventService {
     private handleDragOver = (e: DragEvent) => {
         const types = e.dataTransfer?.types || [];
         if (types.includes("application/persephone-tab")) {
-            e.dataTransfer.dropEffect = "move";
+            e.dataTransfer!.dropEffect = "move";
         }
         e.preventDefault();
         e.stopPropagation();
@@ -150,10 +150,10 @@ export class GlobalEventService {
     private handleFileDropFallback = (e: DragEvent) => {
         const filePaths: string[] = [];
 
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            for (let i = 0; i < e.dataTransfer.files.length; i++) {
+        if (e.dataTransfer!.files && e.dataTransfer!.files.length > 0) {
+            for (let i = 0; i < e.dataTransfer!.files.length; i++) {
                 try {
-                    const path = window.electron.getPathForFile(e.dataTransfer.files[i]);
+                    const path = window.electron.getPathForFile(e.dataTransfer!.files[i]);
                     if (path && fs.fileExistsSync(path)) {
                         filePaths.push(path);
                     }
@@ -164,7 +164,7 @@ export class GlobalEventService {
         }
 
         if (filePaths.length === 0) {
-            const textData = e.dataTransfer.getData("text/plain");
+            const textData = e.dataTransfer!.getData("text/plain");
             const path = textData?.split("\n")[0]?.trim();
             if (path && fs.fileExistsSync(path)) {
                 filePaths.push(path);

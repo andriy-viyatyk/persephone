@@ -52,7 +52,7 @@ function process(data: any): void {
 ### Clipboard writes
 
 Renderer-owned clipboard writes go through typed IPC to Electron's main-process `clipboard` API:
-use `toClipboard()` in `src/renderer/core/utils/utils.ts` for text or the shared image-export helper
+use `toClipboard()` in `src/renderer/api/clipboard.ts` for text or the shared image-export helper
 for PNG data. The text helper is fire-and-forget and logs failures; the PNG helper awaits the write.
 Do not use `navigator.clipboard.writeText()` or `navigator.clipboard.write()` for app-owned
 writes: Chromium marks Web API writes with `CanIncludeInClipboardHistory = 0`. Other Windows
@@ -329,7 +329,7 @@ const nodefs = require("fs");
 - `file-path.ts` itself — the one module that wraps `require("path")`
 - `fs.ts` itself — the one module that wraps `require("fs")`
 - `archive-service.ts` — low-level archive I/O provider that `fs.ts` routes to (using `fs.ts` would create circular dependency)
-- `file-watcher.ts` — synchronous `statSync` snapshot used to keep `FileWatcher.stat` current
+- `src/renderer/api/file-watcher.ts` — synchronous `statSync` snapshot used to keep `FileWatcher.stat` current
 - `path-watch.ts` — synchronous folder recovery probe; importing `app.fs` would create a cycle
 - `content/providers/FileProvider.ts` — low-level binary I/O provider that intentionally bypasses `app.fs` archive transparency
 - `content/providers/CacheFileProvider.ts` — low-level cache I/O provider for content pipe cache files

@@ -53,6 +53,7 @@ persephone/
 │   ├── build-rest-client-lib.mjs # Build the REST Client board's committed CodeMirror browser module
 │   ├── i18n-check.mjs      # Bundle and run the language-pack validation command
 │   ├── i18n-check-entry.ts # Check pack completeness/source hashes and generated en-XA
+│   ├── typecheck-strict.mjs # Per-folder strictNullChecks gate run by `npm run typecheck`
 │   ├── i18n-export.mjs     # Export the English app catalog as pack-drafting JSON
 │   └── vmp-sign.mjs        # electron-builder afterSign hook for Widevine VMP signing
 ├── assets/                 # Static assets
@@ -170,6 +171,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │
 ├── api/                    # Object Model — application interfaces
 │   ├── app.ts              # Root App class (bootstrap orchestrator)
+│   ├── core-bootstrap.ts # Guard reporter and app-backed OsFile/ILink trait registration
 │   ├── app-startup.ts       # Ordered internal startup phases and sequencing constraints
 │   ├── app-service-registry.ts # Descriptor table for lazy app services and optional initialization
 │   ├── capability-error.ts  # Shared renderer capability errors and normalization
@@ -203,6 +205,9 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── editors.ts          # IEditorRegistry implementation
 │   ├── recent.ts           # IRecentFiles implementation
 │   ├── fs.ts               # IFileSystem implementation
+│   ├── file-watcher.ts     # FileWatcher and DirectoryWatcher over the path-watch service
+│   ├── copy-files.ts       # Recursive local file/folder copy and move operations
+│   ├── clipboard.ts        # Renderer text clipboard write through main-process IPC
 │   ├── archive-service.ts  # ArchiveService — archive I/O (libarchive-wasm for reads, jszip for writes), used by fs.ts for archive paths
 │   ├── window.ts           # IWindow implementation and app.window.screen host
 │   ├── window-screen.ts    # Shared automation adapter for the complete app window
@@ -781,7 +786,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── BoardsSecondaryView.ts     # Trusted boards and registered toolsets under the Explorer root
 │   │   ├── BoardsTreeView.ts         # Reusable native boards tree (single-root + multi-root; folder-compacted; click / trailing / context-menu slots)
 │   │   ├── BoardTargetModel.ts       # Board automation host for narrow target interfaces
-│   │   ├── board-icon-cache.ts       # Module-level icon cache (SVG/PNG/ICO → data URL, per board path)
 │   │   ├── board-theme.ts            # computeBoardThemePalette + BOARD_TOKEN_VARS (--p-* contract)
 │   │   ├── UntrustedBoardView.ts      # Shown in place of the board iframe when the board is untrusted (Trust board button)
 │   │   ├── BoardNotFoundView.ts       # Shown when a board root no longer exists on disk (e.g. stale trusted/pinned path)
@@ -908,7 +912,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │                       # live in uikit/CLAUDE.md. See uikit-vs-components-split.md
 │   │                       # for the permanent contract.
 │   ├── CLAUDE.md           # UIKit authoring rules (canonical reference)
-│   ├── tokens.ts           # Design tokens (spacing, sizing, radius, fontSize, gap, height)
 │   ├── Button/             # Button
 │   ├── IconButton/         # Icon-only button (also: chip variant)
 │   ├── SplitButton/        # Primary action + caret dropdown menu (composes IconButton + WithMenu)
@@ -999,7 +1002,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── file-list/          # FileList.ts core/model + FileListView.ts native flat list
 │   ├── roots-tree-build.ts # Shared compacted tree builder for board and toolset roots
 │   ├── file-grid/          # FileGrid.ts types + FileGridView.ts native DataGrid/av-grid list
-│   ├── icons/              # Builder-backed Icon face and DOM icon resolvers
+│   ├── icons/              # Builder-backed Icon face, DOM icon resolvers, and board icon cache/glyph
 │   ├── page-manager/       # Native app-page and browser internal-tab hosts
 │   │   ├── SplitLayout.ts  # Split-pane ratio, sizing and positioning
 │   │   └── GroupContainer.ts # Group host composed with the shared UIKit SplitterView
@@ -1007,6 +1010,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │
 ├── core/                   # Core Infrastructure
 │   ├── startup-environment.ts # Synchronous profile data-folder and appSettings.json reader
+│   ├── native-css-properties.ts # Native CSS property type contract shared with UIKit
 │   ├── state/              # State management primitives
 │   │   ├── MainSnapshotMirror.ts # Revision-guarded renderer mirror for main-owned snapshots
 │   │   ├── state.ts        # TOneState, TComponentState, TGlobalState
@@ -1019,8 +1023,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── traits.ts       # TraitKey<T>, TraitSet, Traited<V>, traited(), isTraited()
 │   │   ├── TraitRegistry.ts # TraitRegistry singleton + TraitTypeId enum
 │   │   ├── dnd.ts          # setTraitDragData, getTraitDragData, hasTraitDragData, resolveTraits
-│   │   ├── fileLinkTraits.ts # FILE_LINK trait definition + registration
-│   │   ├── linkTraits.ts    # ILink trait definition + registration (LINK + FILE_LINK)
+│   │   ├── fileLinkTraits.ts # FILE_LINK trait definition and OsFile payload shape
+│   │   ├── linkTraits.ts    # ILink trait definition (LINK + FILE_LINK)
 │   │   └── index.ts        # Public exports
 │   ├── utils/              # Utility functions
 │   │   ├── utils.ts        # General helpers
@@ -1036,13 +1040,12 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── path-utils.ts   # Markdown link resolution
 │   │   ├── language-mapping.ts  # Extension → Monaco language
 │   │   ├── monaco-languages.ts  # Monaco language config
-│   │   ├── file-watcher.ts      # File change detection
-│   │   ├── copy-files.ts        # Recursive file/folder copy + move onto the local fs (paste backend; guards, progress, per-item errors)
 │   │   ├── focus-utils.ts       # isFocusInSidebar() — editors skip mount/navigation autofocus while focus is in a sidebar panel
 │   │   ├── types.ts             # Type helpers
 │   │   └── index.ts
 │
 ├── theme/                  # Styling
+│   ├── tokens.ts           # Design tokens (spacing, sizing, radius, fontSize, gap, height)
 │   ├── color.ts            # Color tokens (CSS custom properties)
 │   ├── global-styles.ts    # Native theme-dependent global stylesheet
 │   ├── icons.ts             # SVG icon DOM builders and builder contract

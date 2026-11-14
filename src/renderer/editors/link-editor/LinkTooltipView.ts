@@ -1,8 +1,8 @@
 import color from "../../theme/color";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createIconElement } from "../../uikit/shared/slots";
-import { spacing } from "../../uikit/tokens";
-import { toClipboard } from "../../core/utils/utils";
+import { spacing } from "../../theme/tokens";
+import { toClipboard } from "../../api/clipboard";
 import type { ILink } from "../../api/types/io.tree";
 import { resolveRoutedSrc, type ImageRoute } from "./routed-src";
 import { t } from "../../../shared/i18n/t";

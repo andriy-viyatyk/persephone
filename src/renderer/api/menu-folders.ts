@@ -3,7 +3,7 @@ import { TModel } from "../core/state/model";
 import { TGlobalState } from "../core/state/state";
 import { parseObject } from "../core/utils/parse-utils";
 import { fs } from "./fs";
-import { FileWatcher } from "../core/utils/file-watcher";
+import { FileWatcher } from "./file-watcher";
 import type { IMenuFolders, IMenuFolder } from "./types/menu-folders";
 import { api } from "../../ipc/renderer/api";
 import { t } from "../../shared/i18n/t";

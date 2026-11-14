@@ -1,7 +1,7 @@
 import { TModel } from "../../core/state/model";
 import { TGlobalState } from "../../core/state/state";
 import { createEchoGuard } from "../../core/utils/echo-guard";
-import { FileWatcher } from "../../core/utils/file-watcher";
+import { FileWatcher } from "../../api/file-watcher";
 import { fs } from "../../api/fs";
 
 const MAX_ENTRIES = 2000;

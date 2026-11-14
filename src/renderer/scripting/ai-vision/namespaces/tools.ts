@@ -79,7 +79,7 @@ function projectTool(tool: unknown): Record<string, unknown> {
     };
 }
 
-function projectManifest(manifest: RegisteredToolset["manifest"]): Record<string, unknown> | undefined {
+function projectManifest(manifest: RegisteredToolset["manifest"] | undefined): Record<string, unknown> | undefined {
     if (!manifest) return undefined;
     const source = manifest as unknown as Record<string, unknown>;
     const keywords = Array.isArray(source.keywords)

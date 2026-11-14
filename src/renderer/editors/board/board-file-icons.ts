@@ -4,7 +4,7 @@ import { DefaultIcon } from "../../theme/language-icons";
 import { fs } from "../../api/fs";
 import { fpBasename, fpExtname } from "../../core/utils/file-path";
 import { prepareFileIconAsync, resolveFileIcon } from "../../components/icons/language-icon-resolver";
-import { getBoardIconPathSync, resolveBoardIcon } from "./board-icon-cache";
+import { getBoardIconPathSync, resolveBoardIcon } from "../../components/icons/board-icon-cache";
 import { mimeTypeForPath } from "../../../shared/mime-types";
 
 /**

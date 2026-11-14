@@ -185,6 +185,7 @@ npm start           # Development mode (Vite dev server + HMR)
 npm run dist        # Build NSIS installer + ZIP
 npm run dist:publish # Build and publish to GitHub Releases (draft)
 npm run lint        # ESLint
+npm run typecheck   # TypeScript checks plus the strictNullChecks gate in scripts/typecheck-strict.mjs
 ```
 
 If an existing install does not pick up the git-pinned Electron upgrade, a plain `npm install`

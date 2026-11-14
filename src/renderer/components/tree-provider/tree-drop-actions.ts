@@ -13,7 +13,7 @@
 
 import type { IFileLink, ILink, ITreeProvider } from "../../api/types/io.tree";
 import { ui } from "../../api/ui";
-import { copyPathsInto } from "../../core/utils/copy-files";
+import { copyPathsInto } from "../../api/copy-files";
 import { fpDirname, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { isKeyInside } from "../../../shared/path-containment";
 import { pruneNestedItems } from "./plural-actions";

@@ -73,7 +73,7 @@ function emptyEditorProjection(): EditorProjection {
 
 function selectEditorState(
     state: EditorTabState & { boardRoot?: string; props?: { name?: string } },
-    model?: EditorModel,
+    model?: EditorModel | null,
     editor?: EditorModel,
     editorState?: EditorTabState,
     hostState?: EditorTabState,
@@ -647,8 +647,8 @@ export class PageTabView extends VanillaView<PageTabProps> {
             event.preventDefault();
             return;
         }
-        setTraitDragData(event.dataTransfer, TraitTypeId.PageTab, { key: page.id });
-        if (page.pinSide !== "right" && !page.isInert) event.dataTransfer.setData("application/persephone-tab", JSON.stringify(this.getDragData()));
+        setTraitDragData(event.dataTransfer!, TraitTypeId.PageTab, { key: page.id });
+        if (page.pinSide !== "right" && !page.isInert) event.dataTransfer!.setData("application/persephone-tab", JSON.stringify(this.getDragData()));
     }
 
     private handleDragEnd(event: DragEvent): void {
@@ -681,7 +681,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
             event.stopPropagation();
             return;
         }
-        const payload = getTraitDragData(event.dataTransfer);
+        const payload = getTraitDragData(event.dataTransfer!);
         if (payload?.typeId !== TraitTypeId.PageTab) return;
         const sourceId = (payload.data as { key: string }).key;
         if (!canDrag(pages.query.findPage(sourceId))) {
@@ -698,16 +698,16 @@ export class PageTabView extends VanillaView<PageTabProps> {
 
     private handleDragEnter(event: DragEvent): void {
         this.dragEnterCount++;
-        if (!hasTraitDragData(event.dataTransfer)) return;
+        if (!hasTraitDragData(event.dataTransfer!)) return;
         event.preventDefault();
-        event.dataTransfer.dropEffect = "move";
+        event.dataTransfer!.dropEffect = "move";
         this.root.setAttribute("data-drag-over", "");
     }
 
     private handleDragOver(event: DragEvent): void {
-        if (!hasTraitDragData(event.dataTransfer)) return;
+        if (!hasTraitDragData(event.dataTransfer!)) return;
         event.preventDefault();
-        event.dataTransfer.dropEffect = "move";
+        event.dataTransfer!.dropEffect = "move";
     }
 
     private handleDragLeave(): void {

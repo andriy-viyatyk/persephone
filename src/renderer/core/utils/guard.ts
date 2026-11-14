@@ -1,7 +1,16 @@
-import { ui } from "../../api/ui";
 import type { NotificationType } from "../../api/types/ui";
 import { errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
+
+type GuardReporter = (message: string, level: NotificationType) => void;
+
+let reporter: GuardReporter | undefined;
+const pendingReports: Array<{ message: string; level: NotificationType }> = [];
+
+export function setGuardReporter(next: GuardReporter): void {
+    reporter = next;
+    for (const report of pendingReports.splice(0)) next(report.message, report.level);
+}
 
 /**
  * Run `fn`, reporting any failure as a toast instead of letting it escape.
@@ -22,7 +31,9 @@ export async function guard<T>(
     try {
         return await fn();
     } catch (err) {
-        void ui.notify(t("api.actionFailed", { action: label, error: errMessage(err) }), level);
+        const message = t("api.actionFailed", { action: label, error: errMessage(err) });
+        if (reporter) reporter(message, level);
+        else pendingReports.push({ message, level });
         return undefined;
     }
 }

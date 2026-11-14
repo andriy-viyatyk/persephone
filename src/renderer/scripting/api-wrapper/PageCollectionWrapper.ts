@@ -182,6 +182,8 @@ export class PageCollectionWrapper implements IAiVisible {
     /** A wrapper for any OPEN page, editor or not. A page whose main editor was
      *  detached is still a tab the user sees, so `undefined` here means "no such page" and
      *  nothing else — it must never mean "this page has no editor". */
+    private wrap(page: PageModel): PageWrapper;
+    private wrap(page: PageModel | null | undefined): PageWrapper | undefined;
     private wrap(page: PageModel | null | undefined): PageWrapper | undefined {
         if (!page) return undefined;
         return new PageWrapper(

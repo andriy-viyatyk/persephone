@@ -9,7 +9,7 @@ import {
     DEFAULT_VOICE_TYPING_TRANSLATE_SHORTCUT,
     normalizeVoiceTypingShortcut,
 } from "../../../../shared/voice-typing-shortcut";
-import { toClipboard } from "../../../core/utils/utils";
+import { toClipboard } from "../../../api/clipboard";
 import { TOneState } from "../../../core/state/state";
 import { SpeechTranscriptionProvider } from "../SpeechTranscriptionProvider";
 import { VoiceTypingSession, type VoiceTypingMode, type VoiceTypingSessionSnapshot } from "./VoiceTypingSession";

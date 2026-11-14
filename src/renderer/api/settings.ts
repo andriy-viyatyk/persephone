@@ -4,7 +4,7 @@ import { Subscription } from "../core/state/events";
 import { parseJSON5 } from "../core/utils/parse-utils";
 import { createEchoGuard } from "../core/utils/echo-guard";
 import { fs } from "./fs";
-import { FileWatcher } from "../core/utils/file-watcher";
+import { FileWatcher } from "./file-watcher";
 import { wrapSubscription } from "./internal";
 import type { ISettings } from "./types/settings";
 import { load as loadUiPreferences, uiPreferences } from "./ui-preferences";

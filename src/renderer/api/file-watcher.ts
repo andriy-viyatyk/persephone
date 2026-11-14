@@ -1,10 +1,10 @@
 const nodefs = require("fs");
 
-import { FileStats } from "../../../shared/types";
-import type { PathWatchBatch } from "../../../ipc/api-types";
-import { subscribe } from "../../api/path-watch";
-import { fs } from "../../api/fs";
-import { fpRelative, isArchivePath, isAsarPath } from "./file-path";
+import { FileStats } from "../../shared/types";
+import type { PathWatchBatch } from "../../ipc/api-types";
+import { subscribe } from "./path-watch";
+import { fs } from "./fs";
+import { fpRelative, isArchivePath, isAsarPath } from "../core/utils/file-path";
 
 function getFileStats(filePath: string): FileStats {
     try {

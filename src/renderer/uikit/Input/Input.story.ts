@@ -6,7 +6,7 @@ import type { SlotContent } from "../shared/fill-slot";
 import { VanillaView } from "../shared/vanilla-view";
 import { InputView } from "./InputView";
 import type { InputProps } from "./InputView";
-import { height } from "../tokens";
+import { height } from "../../theme/tokens";
 import type { Story } from "../../editors/storybook/storyTypes";
 
 interface InputDemoViewProps {

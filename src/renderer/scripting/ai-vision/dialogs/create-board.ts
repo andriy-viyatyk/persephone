@@ -23,7 +23,7 @@ export class CreateBoardDialogAdapter implements DialogAdapter {
     constructor(public readonly entry: DialogEntry) {}
 
     private get state(): CreateBoardDialogState { return dialogState<CreateBoardDialogState>(this.entry); }
-    get title(): string { return this.state.title; }
+    get title(): string | undefined { return this.state.title; }
     get message(): undefined { return undefined; }
     get template(): string { return this.state.template; }
     get folder(): string { return this.state.folder; }

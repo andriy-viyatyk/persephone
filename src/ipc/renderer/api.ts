@@ -94,7 +94,7 @@ const convenienceMethods: ConvenienceApi = {
     onModuleServicePort: (callback) => window.electron.ipcRenderer.onPort("eModuleServicePort", (rawPayload, ports) => {
         const payload = rawPayload as Partial<ModuleServicePortPayload> | undefined;
         if (typeof payload?.boardRoot !== "string" || payload.boardRoot.length === 0) return;
-        if (!Number.isInteger(payload.generation) || payload.generation < 0) return;
+        if (typeof payload.generation !== "number" || !Number.isInteger(payload.generation) || payload.generation < 0) return;
         if (typeof payload.leaseNonce !== "string" || payload.leaseNonce.length === 0) return;
         const port = ports[0];
         if (!port || typeof port.start !== "function" || typeof port.postMessage !== "function") return;

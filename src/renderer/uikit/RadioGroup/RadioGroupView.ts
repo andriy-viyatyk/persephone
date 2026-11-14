@@ -1,5 +1,5 @@
 import { isTraited, resolveTraited } from "../../core/traits/traits";
-import { gap as gapTokens } from "../tokens";
+import { gap as gapTokens } from "../../theme/tokens";
 import { fillSlot } from "../shared/fill-slot";
 import { KeyedList } from "../shared/keyed-list";
 import { createIconElement, createIconPlaceholderElement, isIconName } from "../shared/slots";

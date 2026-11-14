@@ -1,3 +1,4 @@
+import "./core-bootstrap";
 import { api } from "../../ipc/renderer/api";
 import { AppEvents } from "./events/AppEvents";
 import { createLinkData } from "../../shared/link-data";

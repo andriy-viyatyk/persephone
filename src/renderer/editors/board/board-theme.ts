@@ -7,7 +7,7 @@
  *    vars, resolved to concrete hex for the active theme. Theme-dependent → recomputed
  *    and re-pushed to the board on every theme switch.
  *  • Metric tokens — spacing / gap / radius / size / font scales generated from
- *    `uikit/tokens.ts`. Theme-independent constants → built once, delivered at init only.
+ *    `theme/tokens.ts`. Theme-independent constants → built once, delivered at init only.
  *
  * The `--p-*` names are the public contract; the source mapping below may
  * change behind them. The board host (`board-protocol-service` inject + the bridge
@@ -17,7 +17,7 @@
 import { api } from "../../../ipc/renderer/api";
 import { resolveColor } from "../../theme/themes";
 import { themeState } from "../../theme/theme-state";
-import { fontSize, gap, height, radius, spacing } from "../../uikit/tokens";
+import { fontSize, gap, height, radius, spacing } from "../../theme/tokens";
 import { mapScale } from "../../theme/token-vars";
 import { P_VAR_SOURCES } from "../../theme/p-vars";
 import type { BoardThemePalette } from "../../../ipc/board-bridge/boot";
@@ -50,7 +50,7 @@ export function ensureBoardThemeSubscription(): void {
 
 // --- Metric tokens (static, theme-independent) ---
 
-/** The frozen metric `--p-*` contract, generated from `uikit/tokens.ts`. Built once. */
+/** The frozen metric `--p-*` contract, generated from `theme/tokens.ts`. Built once. */
 export const BOARD_TOKEN_VARS: Record<string, string> = {
     ...mapScale("--p-space", spacing),
     ...mapScale("--p-gap", gap),

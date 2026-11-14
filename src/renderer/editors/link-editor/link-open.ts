@@ -4,7 +4,7 @@ import { fpBasename } from "../../core/utils/file-path";
 
 // Deliberately dependency-light (types + fpBasename only): the sync public API
 // `pages.lifecycle.openLinks` imports this statically, so it must not pull the
-// link-editor chunk (linkTypes' side-effect import of linkTraits) at startup.
+// link-editor chunk (linkTypes' side-effect import of core-bootstrap) at startup.
 
 function normalizeLinksTitle(title?: string): string {
     if (!title) return "untitled.link.json";

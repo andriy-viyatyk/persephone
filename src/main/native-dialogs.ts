@@ -8,7 +8,7 @@ import { rememberDirFromPick, resolveDefaultPath } from "./dialog-folder-memory"
 import { withNativeDialog } from "./native-dialog-tracker";
 
 export async function showOpenFileDialog(
-    browserWindow: Electron.BrowserWindow | undefined,
+    browserWindow: Electron.BrowserWindow | null | undefined,
     params: OpenFileDialogParams
 ): Promise<string[] | undefined> {
     if (!browserWindow) return Promise.resolve(undefined);
@@ -37,7 +37,7 @@ export async function showOpenFileDialog(
 }
 
 export async function showSaveFileDialog(
-    browserWindow: Electron.BrowserWindow | undefined,
+    browserWindow: Electron.BrowserWindow | null | undefined,
     params: SaveFileDialogParams
 ): Promise<string | undefined> {
     if (!browserWindow) return Promise.resolve(undefined);
@@ -58,7 +58,7 @@ export async function showSaveFileDialog(
 }
 
 export async function showOpenFolderDialog(
-    mainWindow: Electron.BrowserWindow | undefined,
+    mainWindow: Electron.BrowserWindow | null | undefined,
     params: OpenFolderDialogParams
 ): Promise<string[] | undefined> {
     if (!mainWindow) return Promise.resolve(undefined);

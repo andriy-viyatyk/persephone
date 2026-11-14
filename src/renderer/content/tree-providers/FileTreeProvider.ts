@@ -6,7 +6,7 @@ import type {
     ICategorySegment,
     IFileLink,
 } from "../../api/types/io.tree";
-import { copyPathsInto } from "../../core/utils/copy-files";
+import { copyPathsInto } from "../../api/copy-files";
 import { encodeCategoryLink } from "./tree-provider-link";
 import { folderEditorLinkFor } from "../folder-editor-link";
 import { editorRegistry } from "../../editors/base/editorRegistry";

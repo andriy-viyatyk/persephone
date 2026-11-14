@@ -12,7 +12,8 @@ import { t } from "../../shared/i18n/t";
 export function registerRawLinkParsers(): void {
     // File parser — fallback for plain file paths and file:// URLs.
     app.events.openRawLink.subscribe(async (data) => runOpenStep(data, async () => {
-        let filePath = data.href;
+        // Raw-link events are created with an href.
+        let filePath = data.href!;
         if (isFileUrl(filePath)) {
             const split = splitUrlFragment(filePath);
             filePath = normalizeFileUrl(split.url);
@@ -28,8 +29,9 @@ export function registerRawLinkParsers(): void {
 
     // Archive parser — registered after the file fallback so LIFO keeps archive ahead of file.
     app.events.openRawLink.subscribe(async (data) => runOpenStep(data, async () => {
-        if (!isArchivePath(data.href)) return;
-        let archivePath = data.href;
+        // Raw-link events are created with an href.
+        if (!isArchivePath(data.href!)) return;
+        let archivePath = data.href!;
         if (isFileUrl(archivePath)) {
             const split = splitUrlFragment(archivePath);
             archivePath = normalizeFileUrl(split.url);
@@ -41,13 +43,15 @@ export function registerRawLinkParsers(): void {
 
     // Registered schemes run before the file fallback but after the cURL/fetch auxiliary parser.
     app.events.openRawLink.subscribe(async (data) => runOpenStep(data, async () => {
-        data.href = canonicalizeScheme(data.href);
+        // Raw-link events are created with an href.
+        data.href = canonicalizeScheme(data.href!);
         await dispatchRegisteredSchemeParse(data, () => app.events.openLink.sendAsync(data));
     }));
 
     // cURL / fetch is an auxiliary parser, not a registry scheme. It must run first for commands.
     app.events.openRawLink.subscribe(async (data) => runOpenStep(data, async () => {
-        const trimmed = data.href.trim();
+        // Raw-link events are created with an href.
+        const trimmed = data.href!.trim();
         if (!/^(curl\s|fetch\()/i.test(trimmed)) return;
 
         const parsed = parseHttpRequest(trimmed);

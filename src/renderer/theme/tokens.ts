@@ -2,7 +2,7 @@
 // Numeric values align with the app's spacing, size, and typography tokens.
 //
 // Usage in UIKit view styles:
-//   import { spacing, gap, radius, height, fontSize } from "../tokens";
+//   import { spacing, gap, radius, height, fontSize } from "./tokens";
 //
 // Values are pixels. Add CSS units when assigning them through CSSOM; static
 // stylesheets use the corresponding theme variables.

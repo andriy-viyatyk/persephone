@@ -1,4 +1,4 @@
-import { resolveBoardIcon } from "./board-icon-cache";
+import { resolveBoardIcon } from "../../components/icons/board-icon-cache";
 import { BoardIcon } from "../../theme/icons";
 
 function boardGlyphImage(): HTMLImageElement {

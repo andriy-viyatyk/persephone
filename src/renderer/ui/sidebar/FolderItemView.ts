@@ -70,7 +70,7 @@ function folderDrag(
                 return;
             }
             event.stopPropagation();
-            setTraitDragData(event.dataTransfer, TraitTypeId.MenuFolder, { id: sourceId });
+            setTraitDragData(event.dataTransfer!, TraitTypeId.MenuFolder, { id: sourceId });
             row.setAttribute("data-dragging", "");
         },
         onDragEnd: (event) => {
@@ -79,21 +79,21 @@ function folderDrag(
         onDragEnter: (event) => {
             const row = event.currentTarget as HTMLElement;
             dragState.dragEnterCount++;
-            if (canDrop && hasTraitDragData(event.dataTransfer)) {
+            if (canDrop && hasTraitDragData(event.dataTransfer!)) {
                 event.preventDefault();
-                event.dataTransfer.dropEffect = "move";
+                event.dataTransfer!.dropEffect = "move";
                 row.setAttribute("data-drag-over", "");
             }
         },
         onDragOver: (event) => {
             const row = event.currentTarget as HTMLElement;
             if (!canDrop) {
-                event.dataTransfer.dropEffect = "none";
+                event.dataTransfer!.dropEffect = "none";
                 return;
             }
-            if (hasTraitDragData(event.dataTransfer)) {
+            if (hasTraitDragData(event.dataTransfer!)) {
                 event.preventDefault();
-                event.dataTransfer.dropEffect = "move";
+                event.dataTransfer!.dropEffect = "move";
                 row.setAttribute("data-drag-over", "");
             }
         },
@@ -112,7 +112,7 @@ function folderDrag(
             row.removeAttribute("data-drag-over");
             if (!canDrop) return;
 
-            const payload = getTraitDragData(event.dataTransfer);
+            const payload = getTraitDragData(event.dataTransfer!);
             if (payload?.typeId !== TraitTypeId.MenuFolder) return;
             const data = payload.data as { id?: string };
             const targetId = props.folder.id;

@@ -91,9 +91,8 @@ async function resolveTotalSize(pipe: IContentPipe, memo: PipeMemo, signal?: Abo
             if (pipe.transformers.length > 0) return (await readBuffered(pipe, memo, signal)).length;
             if (typeof pipe.provider.stat !== "function") return (await readBuffered(pipe, memo, signal)).length;
             const stat = await pipe.stat({ signal });
-            const sizeIsValid = stat.exists && stat.size !== undefined
-                && Number.isSafeInteger(stat.size) && stat.size >= 0;
-            if (!sizeIsValid) {
+            if (!(stat.exists && stat.size !== undefined
+                && Number.isSafeInteger(stat.size) && stat.size >= 0)) {
                 if (canStreamBeforeStat) {
                     throw new Error("The board pipe provider did not report a usable resource size.");
                 }

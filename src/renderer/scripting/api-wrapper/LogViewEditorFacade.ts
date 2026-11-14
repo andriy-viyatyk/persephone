@@ -91,29 +91,30 @@ export class LogViewEditorFacade extends EditorFacadeBase<LogViewEditor> impleme
                 name: this.name,
                 entryCount: this.entryCount,
                 error: this.error,
-                hasUnresolvedDialogs: this.isAttached() ? this.editor.hasUnresolvedDialogs() : undefined,
+                hasUnresolvedDialogs: this.isAttached() ? this.editor!.hasUnresolvedDialogs() : undefined,
             }),
         });
     }
 
     get entries(): ILogEntrySnapshot[] | undefined {
-        return this.isAttached() ? this.editor.getEntriesSnapshot() : undefined;
+        return this.isAttached() ? this.editor!.getEntriesSnapshot() : undefined;
     }
 
     get entryCount(): number | undefined {
-        return this.isAttached() ? this.editor.entryCount : undefined;
+        return this.isAttached() ? this.editor!.entryCount : undefined;
     }
 
     get error(): string | undefined {
-        return this.isAttached() ? this.editor.state.get().error : undefined;
+        return this.isAttached() ? this.editor!.state.get().error : undefined;
     }
 
     get showTimestamps(): boolean | undefined {
-        return this.isAttached() ? this.editor.state.get().showTimestamps : undefined;
+        return this.isAttached() ? this.editor!.state.get().showTimestamps : undefined;
     }
 
     push(entries: ILogPushEntry | ILogPushEntry[]): ILogPushResult {
         this.requireAttached("push");
+        // A missing editor still throws at the same property access, including after reentrant detachment.
         const entryIds: string[] = [];
         const dialogIds: string[] = [];
 
@@ -129,14 +130,14 @@ export class LogViewEditorFacade extends EditorFacadeBase<LogViewEditor> impleme
 
         for (const normalized of normalizedEntries) {
             if (normalized.isDialog) {
-                const entryId = this.editor.addDialogEntryNonBlocking(
+                const entryId = this.editor!.addDialogEntryNonBlocking(
                     normalized.type,
                     normalized.fields as Record<string, unknown>,
                 );
                 entryIds.push(entryId);
                 dialogIds.push(entryId);
             } else {
-                entryIds.push(this.editor.addEntry(normalized.type, normalized.fields).id);
+                entryIds.push(this.editor!.addEntry(normalized.type, normalized.fields).id);
             }
         }
 
@@ -145,7 +146,7 @@ export class LogViewEditorFacade extends EditorFacadeBase<LogViewEditor> impleme
 
     dialogResult(id: string): ILogDialogResult | undefined {
         if (!this.isAttached()) return undefined;
-        const entry = this.editor.getEntrySnapshotById(id);
+        const entry = this.editor!.getEntrySnapshotById(id);
         if (!entry) return undefined;
         if (entry.button === undefined) return { id, status: "unresolved" };
         return { id, status: "resolved", entry };
@@ -153,12 +154,12 @@ export class LogViewEditorFacade extends EditorFacadeBase<LogViewEditor> impleme
 
     clear(): void {
         this.requireAttached("clear");
-        this.editor.clear();
+        this.editor!.clear();
     }
 
     toggleTimestamps(): void {
         this.requireAttached("toggleTimestamps");
-        this.editor.toggleTimestamps();
+        this.editor!.toggleTimestamps();
     }
 
     private isAttached(): boolean {

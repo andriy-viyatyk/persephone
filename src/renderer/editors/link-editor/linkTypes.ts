@@ -2,7 +2,7 @@ import type { ILink } from "../../api/types/io.tree";
 import type { LinkCollection } from "./link-collection";
 
 // Ensure link traits are registered at startup
-import "../../core/traits/linkTraits";
+import "../../api/core-bootstrap";
 
 // =============================================================================
 // Link Item

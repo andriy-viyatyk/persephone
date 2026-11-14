@@ -118,7 +118,7 @@ function panelState(record: RenderedPanel): Record<string, unknown> {
         };
     }
     if (record.model instanceof ClipboardPanelEditor) {
-        const explorer = record.model.page?.findExplorer();
+        const explorer = record.model.page?.findExplorer!();
         if (explorer instanceof ExplorerEditor) {
             return {
                 kind: "explorer", rootPath: explorer.rootPath || undefined,
@@ -301,7 +301,7 @@ export class PagePanelNode implements IAiVisible {
         const elements = createElements(declarations, ui.highlightElement.bind(ui), { scopeSelector, beforeHighlight: host ? () => activatePageAndWaitForLayout(host.id) : undefined, highlightOptions: { all: true } });
         return { kind: this.kind === "generic" ? "PagePanel" : `${this.kind[0].toUpperCase()}${this.kind.slice(1)}Panel`, summary: this.kind === "generic" ? "Generic deferred sidebar panel node." : `Model-backed ${this.kind} sidebar panel node.`, members: [...PANEL_COMMON_MEMBERS, ...panelSpecificMembers(this.kind), ...elements.members], elements: declarations, provide: elements.provide, help: PANEL_HELP, summarize: () => ({ kind: "PagePanel", id: this.id, label: this.label, ownerEditorId: this.ownerEditorId, expanded: this.expanded, state: this.state }) };
     }
-    private explorerOwner(): ExplorerEditor | undefined { const owner = this.owner; if (owner instanceof ExplorerEditor) return owner; if (owner instanceof BoardsPanelEditor || owner instanceof ClipboardPanelEditor) { const explorer = owner.page?.findExplorer(); return explorer instanceof ExplorerEditor ? explorer : undefined; } return undefined; }
+    private explorerOwner(): ExplorerEditor | undefined { const owner = this.owner; if (owner instanceof ExplorerEditor) return owner; if (owner instanceof BoardsPanelEditor || owner instanceof ClipboardPanelEditor) { const explorer = owner.page?.findExplorer!(); return explorer instanceof ExplorerEditor ? explorer : undefined; } return undefined; }
     private requireExplorer(): ExplorerEditor { const owner = this.explorerOwner(); if (!owner) throw new Error("Explorer action unavailable: panel owner is not Explorer."); return owner; }
     private requireBoards(): BoardsPanelEditor { const owner = this.owner; if (!(owner instanceof BoardsPanelEditor)) throw new Error("Explorer action unavailable: panel owner is not Explorer."); return owner; }
     private requireGit(): GitTreeEditorModel { const owner = this.gitOwner(); if (!owner || !owner.state.get().repoRoot) throw new Error("Git action unavailable: no repository is loaded."); return owner; }

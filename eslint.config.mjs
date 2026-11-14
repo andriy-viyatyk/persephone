@@ -602,6 +602,62 @@ const uiImportZone = {
     message: "Nothing outside ui/ imports ui/ (EPIC-176): ui/ holds shell views only. Put models and services in api/, editor-owned views in their editor folder.",
 };
 
+const coreBoundary = (extra = []) => ({
+    target: "./src/renderer/core", from: ".",
+    except: ["node_modules", "src/renderer/core", "src/shared", ...extra],
+    message: "core/ may depend only on core/, shared/ and external packages.",
+});
+const sharedBoundary = (extra = []) => ({
+    target: "./src/shared", from: ".",
+    except: ["node_modules", "src/shared", "src/ipc", ...extra],
+    message: "shared/ may depend only on shared/, ipc/ and external packages.",
+});
+
+const contentZones = [
+    { target: "./src/renderer/content", from: ["./src/renderer/components", "./src/renderer/scripting"],
+        message: "content/ must not import components/ or scripting/." },
+    { target: "./src/renderer/content", from: "./src/renderer/editors",
+        except: ["base/editor-catalog.ts", "base/editorRegistry.ts", "browser/BrowserEditor.ts"],
+        message: "content/ may use only the documented editor catalog, registry, and browser action seams." },
+];
+const componentsZone = { target: "./src/renderer/components", from: "./src/renderer/editors",
+    except: ["base/editor-catalog.ts"],
+    message: "components/ may import only the generic editor catalog from editors/." };
+const componentsScriptingZone = { target: "./src/renderer/components", from: "./src/renderer/scripting",
+    message: "components/ must not import scripting/." };
+const uikitZone = { target: "./src/renderer/uikit", from: "./src",
+    except: ["renderer/uikit", "renderer/core", "renderer/theme"],
+    message: "Rule 6: uikit/ imports only core/, theme/, and itself." };
+const themeZones = [
+    { target: "./src/renderer/theme", from: ["./src/renderer/api", "./src/renderer/audio",
+        "./src/renderer/automation", "./src/renderer/components", "./src/renderer/content",
+        "./src/renderer/editors", "./src/renderer/guides", "./src/renderer/i18n",
+        "./src/renderer/scripting", "./src/renderer/types", "./src/renderer/uikit", "./src/shared", "./src/main"],
+        message: "theme/ must not import application layers or uikit/." },
+    { target: "./src/renderer/theme", from: "./src/ipc", except: ["renderer/api.ts"],
+        message: "theme/ uses IPC only for native theme synchronization." },
+];
+const apiBoardZone = { target: "./src/renderer/api", from: "./src/renderer/editors/board",
+    message: "api/ must not import editors/board/ (US-1824)." };
+const capabilitiesBoardZone = { target: "./src/renderer/api/capabilities", from: "./src/renderer/editors/board",
+    message: "capabilities/ must not import editors/board/ (EPIC-145)." };
+const audioZone = { target: "./src/renderer/audio", from: ["./src/renderer/api", "./src/renderer/automation",
+    "./src/renderer/components", "./src/renderer/content", "./src/renderer/core", "./src/renderer/editors",
+    "./src/renderer/guides", "./src/renderer/i18n", "./src/renderer/scripting", "./src/renderer/theme",
+    "./src/renderer/types", "./src/renderer/uikit"], message: "audio/ must not import other renderer layers." };
+const guidesZone = { target: "./src/renderer/guides", from: ["./src/renderer/audio", "./src/renderer/automation",
+    "./src/renderer/components", "./src/renderer/content", "./src/renderer/editors", "./src/renderer/i18n",
+    "./src/renderer/scripting", "./src/renderer/theme", "./src/renderer/types", "./src/renderer/uikit"],
+    message: "guides/ must not import upper renderer layers." };
+const i18nZone = { target: "./src/renderer/i18n", from: ["./src/renderer/api", "./src/renderer/audio", "./src/renderer/automation",
+    "./src/renderer/components", "./src/renderer/content", "./src/renderer/editors", "./src/renderer/guides",
+    "./src/renderer/scripting", "./src/renderer/theme", "./src/renderer/types"],
+    message: "i18n/ must not import upper application layers." };
+const automationZone = { target: "./src/renderer/automation", from: ["./src/renderer/audio", "./src/renderer/components",
+    "./src/renderer/content", "./src/renderer/editors", "./src/renderer/guides", "./src/renderer/i18n",
+    "./src/renderer/scripting", "./src/renderer/theme", "./src/renderer/types", "./src/renderer/uikit"],
+    message: "automation/ imports only api/, core/, IPC, and shared contracts." };
+
 export default tseslint.config(
     // Global ignores (flat-config replacement for ignorePatterns). The *.{js,jsx,mjs,cjs}
     // globs re-create the old `--ext .ts,.tsx` scope: only TypeScript is linted, so build
@@ -749,28 +805,87 @@ export default tseslint.config(
             "import/no-restricted-paths": ["error", { zones: [uiImportZone] }],
         },
     },
+    {
+        files: ["src/renderer/core/**/*.{ts,tsx}"],
+        ignores: [
+            "src/renderer/core/traits/fileLinkTraits.ts",
+            "src/renderer/core/traits/linkTraits.ts",
+            "src/renderer/core/utils/html-resources.ts",
+            "src/renderer/core/utils/guard.ts",
+        ],
+        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, coreBoundary()] }] },
+    },
+    {
+        files: [
+            "src/renderer/core/traits/fileLinkTraits.ts",
+            "src/renderer/core/traits/linkTraits.ts",
+            "src/renderer/core/utils/html-resources.ts",
+        ],
+        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone,
+            coreBoundary(["src/renderer/api/types/io.tree.d.ts"]),
+        ] }] },
+    },
+    {
+        files: ["src/renderer/core/utils/guard.ts"],
+        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone,
+            coreBoundary(["src/renderer/api/types/ui.d.ts"]),
+        ] }] },
+    },
+    {
+        files: ["src/shared/**/*.{ts,tsx}"],
+        ignores: ["src/shared/link-data.ts", "src/shared/types.ts"],
+        rules: { "import/no-restricted-paths": ["error", { zones: [sharedBoundary()] }] },
+    },
+    {
+        files: ["src/shared/link-data.ts"],
+        rules: { "import/no-restricted-paths": ["error", { zones: [sharedBoundary([
+            "src/renderer/api/types/io.link-data.d.ts", "src/renderer/api/types/io.tree.d.ts",
+        ])] }] },
+    },
+    {
+        files: ["src/shared/types.ts"],
+        rules: { "import/no-restricted-paths": ["error", { zones: [sharedBoundary([
+            "src/renderer/api/types/common.d.ts", "src/renderer/api/types/io.link-data.d.ts",
+        ])] }] },
+    },
 
+    {
+        files: ["src/renderer/content/**/*.{ts,tsx}"],
+        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, ...contentZones] }] },
+    },
+    {
+        files: ["src/renderer/components/**/*.{ts,tsx}"],
+        ignores: ["src/renderer/components/**/*.story.ts", "src/renderer/components/**/*.story.tsx"],
+        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, componentsZone, componentsScriptingZone] }] },
+    },
     // Rule 6: UIKit must not reach into application-layer modules. Stories are harnesses and
     // are intentionally excluded from Rule 6; the ui/ lock still applies to them. Resolved paths
     // distinguish uikit/shared from src/shared.
     {
-        files: ["src/renderer/uikit/**/*.ts", "src/renderer/uikit/**/*.tsx"],
+        files: ["src/renderer/uikit/**/*.{ts,tsx}"],
         ignores: ["src/renderer/uikit/**/*.story.ts", "src/renderer/uikit/**/*.story.tsx"],
-        rules: {
-            "import/no-restricted-paths": ["error", {
-                zones: [uiImportZone, {
-                    target: "./src/renderer/uikit",
-                    from: [
-                        "./src/renderer/api",
-                        "./src/renderer/components",
-                        "./src/shared",
-                    ],
-                    message: "Rule 6: uikit/ imports only core/ and theme/. Take app concepts through props/callbacks, or move the contract to core/.",
-                }],
-            }],
-        },
+        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, uikitZone] }] },
     },
-
+    {
+        files: ["src/renderer/theme/**/*.{ts,tsx}"],
+        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, ...themeZones] }] },
+    },
+    {
+        files: ["src/renderer/audio/**/*.{ts,tsx}"],
+        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, audioZone] }] },
+    },
+    {
+        files: ["src/renderer/guides/**/*.{ts,tsx}"],
+        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, guidesZone] }] },
+    },
+    {
+        files: ["src/renderer/i18n/**/*.{ts,tsx}"],
+        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, i18nZone] }] },
+    },
+    {
+        files: ["src/renderer/automation/**/*.{ts,tsx}"],
+        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, automationZone] }] },
+    },
     // US-1824: api/ may construct board editors only at its three documented exception sites.
     {
         files: ["src/renderer/api/**/*.ts"],
@@ -779,27 +894,11 @@ export default tseslint.config(
             "src/renderer/api/pages/PagesPersistenceModel.ts",
             "src/renderer/api/boards.ts",
         ],
-        rules: {
-            "import/no-restricted-paths": ["error", {
-                zones: [uiImportZone, {
-                    target: "./src/renderer/api",
-                    from: "./src/renderer/editors/board",
-                    message: "api/ must not import editors/board/. Board domain modules live in api/boards/ (US-1824).",
-                }],
-            }],
-        },
+        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, apiBoardZone] }] },
     },
     {
         files: ["src/renderer/api/capabilities/**/*.ts"],
-        rules: {
-            "import/no-restricted-paths": ["error", {
-                zones: [uiImportZone, {
-                    target: "./src/renderer/api/capabilities",
-                    from: "./src/renderer/editors/board",
-                    message: "capabilities/ must not import editors/board/ (EPIC-145, roadmap §4.1).",
-                }],
-            }],
-        },
+        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, apiBoardZone, capabilitiesBoardZone] }] },
     },
 
     {

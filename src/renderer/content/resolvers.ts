@@ -18,31 +18,32 @@ import {
 export function registerResolvers(): void {
     // File resolver — fallback for plain files, archives, and virtual paths.
     app.events.openLink.subscribe(async (data) => runOpenStep(data, async () => {
-        if (isHttpUrl(data.url)) return;
+        // Link resolution runs after a parser supplies the URL.
+        if (isHttpUrl(data.url!)) return;
 
         // Explicit browser intent for a local path → open it in a browser instead of an editor.
         if (data.target === "browser" || data.browserMode) {
-            data.url = toFileUrl(data.url);
+            data.url = toFileUrl(data.url!);
             data.action = { kind: "browser" };
             return;
         }
 
         // Directories open as an empty page with the Explorer panel, not as a content pipe.
-        if (!data.url.includes("://") && !isArchivePath(data.url)) {
-            const stat = await app.fs.stat(data.url);
+        if (!data.url!.includes("://") && !isArchivePath(data.url!)) {
+            const stat = await app.fs.stat(data.url!);
             if (stat.isDirectory) {
-                data.action = { kind: "folder-page", path: data.url };
+                data.action = { kind: "folder-page", path: data.url! };
                 return;
             }
         }
 
-        const pipeDescriptor = resolveUrlToPipeDescriptor(data.url);
+        const pipeDescriptor = resolveUrlToPipeDescriptor(data.url!);
         if (!pipeDescriptor) {
             // Virtual paths do not resolve to a real source but still need Layer 3 to create the
             // requested editor. The registry hooks use the same placeholder descriptor.
-            if (data.url.includes("://")) {
+            if (data.url!.includes("://")) {
                 data.target ||= EditorId.monaco;
-                data.pipeDescriptor = virtualPipeDescriptor(data.url);
+                data.pipeDescriptor = virtualPipeDescriptor(data.url!);
                 data.pipe = createPipeFromDescriptor(data.pipeDescriptor);
                 await handoff(data, () => app.events.openContent.sendAsync(data));
             }
@@ -50,7 +51,7 @@ export function registerResolvers(): void {
         }
 
         data.target = data.target
-            || editorCatalog.resolveFile(data.url, effectivePathOf(data.url))
+            || editorCatalog.resolveFile(data.url!, effectivePathOf(data.url!))
             || EditorId.monaco;
         data.pipeDescriptor = pipeDescriptor;
         data.pipe = createPipeFromDescriptor(pipeDescriptor);

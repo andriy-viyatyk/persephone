@@ -74,8 +74,7 @@ async function ensureFreshLog(toolsetRoot: string, now: number): Promise<void> {
         }
     }
 
-    const stale = createdAt === null || now - createdAt > MAX_AGE_MS;
-    if (stale) {
+    if (createdAt === null || now - createdAt > MAX_AGE_MS) {
         try {
             if (await fs.exists(p)) await fs.delete(p);
         } catch {

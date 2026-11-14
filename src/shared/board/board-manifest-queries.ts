@@ -13,7 +13,7 @@ export function boardManifestCompatibility(manifest: NormalizedBoardManifest | n
     }, { bridgeVersion: BOARD_BRIDGE_VERSION });
 }
 
-export function hostOwnsPipe(kind: BoardEditorKind): boolean {
+export function hostOwnsPipe(kind: BoardEditorKind | undefined): boolean {
     return kind === "content-host" || kind === "stream-host";
 }
 

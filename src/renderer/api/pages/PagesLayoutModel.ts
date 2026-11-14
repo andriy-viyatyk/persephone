@@ -185,7 +185,7 @@ export class PagesLayoutModel {
     };
 
     groupTabs = (
-        id1: string,
+        id1: string | undefined,
         id2: string,
         enforceAdjacency = false
     ) => {
@@ -209,16 +209,16 @@ export class PagesLayoutModel {
             const doMove = Math.abs(idx1 - idx2) !== 1;
             if (idx1 < idx2) {
                 doMove && this.moveTabByIndex(idx2, idx1 + 1);
-                this.group(pageId1, pageId2);
+                this.group(pageId1!, pageId2);
             } else {
                 doMove && this.moveTabByIndex(idx2, idx1 - 1);
-                this.group(pageId2, pageId1);
+                this.group(pageId2, pageId1!);
             }
         } else {
             if (idx1 < idx2) {
-                this.group(pageId1, pageId2);
+                this.group(pageId1!, pageId2);
             } else {
-                this.group(pageId2, pageId1);
+                this.group(pageId2, pageId1!);
             }
         }
     };

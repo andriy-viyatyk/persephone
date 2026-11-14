@@ -63,7 +63,7 @@ import {
 import { fpExtname } from "../../core/utils/file-path";
 import { customEditorRegistry } from "../../api/boards/custom-editor-registry";
 import { editorCatalog } from "../../editors/base/editor-catalog";
-import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
+import { subscribeBoardIconChanges } from "./board-icon-cache";
 
 // =============================================================================
 // Language → Icon mapping

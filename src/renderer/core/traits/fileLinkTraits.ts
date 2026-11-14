@@ -1,8 +1,7 @@
-import { TraitKey, TraitSet } from "./traits";
-import { traitRegistry, TraitTypeId } from "./TraitRegistry";
+import { TraitKey } from "./traits";
+import { TraitTypeId } from "./TraitRegistry";
 import type { TraitDragPayload } from "./dnd";
 import type { IFileLink } from "../../api/types/io.tree";
-import { fs } from "../../api/fs";
 
 // ── Trait interface ──────────────────────────────────────────────────────────
 
@@ -19,8 +18,6 @@ export interface FileLinkTrait {
 /** Trait key for droppable file content. */
 export const FILE_LINK = new TraitKey<FileLinkTrait>("FileLink");
 
-// ── OsFile producer (OS desktop file drops) ───────────────────────────────────
-
 /** Serializable descriptor data for an OS file drop ({ typeId: OsFile, data }). */
 export interface OsFileData {
     files: { name: string; path: string }[];
@@ -35,15 +32,3 @@ export interface OsFileData {
 export function makeOsFileDescriptor(files: OsFileData["files"]): TraitDragPayload {
     return { typeId: TraitTypeId.OsFile, data: { files } };
 }
-
-// The accessor is the factory that rebuilds the real IFileLink items from the
-// serializable descriptor; getBytes reads the file from disk on demand via app.fs.
-const osFileTraits = new TraitSet().add(FILE_LINK, {
-    getFiles: (data) => (data as OsFileData).files.map((f) => ({
-        name: f.name,
-        filePath: f.path,
-        getBytes: async () => fs.readBinary(f.path),
-    })),
-});
-
-traitRegistry.register(TraitTypeId.OsFile, osFileTraits);

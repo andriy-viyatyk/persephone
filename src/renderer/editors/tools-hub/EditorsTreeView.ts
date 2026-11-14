@@ -15,7 +15,7 @@ import { createBoardShortcut } from "../board/board-shortcut";
 import { createFolderIconElement } from "../../components/icons/icon-elements";
 import { fpBasename, fpDirname } from "../../core/utils/file-path";
 import { BoardRoot } from "../../../shared/board/board-root";
-import { toClipboard } from "../../core/utils/utils";
+import { toClipboard } from "../../api/clipboard";
 import { TraitTypeId, getTraitDragData, hasTraitDragData } from "../../core/traits";
 import { TreeView } from "../../uikit/Tree/TreeView";
 import type { TreeProps } from "../../uikit/Tree/types";

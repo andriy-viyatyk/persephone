@@ -1,4 +1,4 @@
-import type { NativeCSSProperties } from "../uikit/shared/dom-props";
+import type { NativeCSSProperties } from "../core/native-css-properties";
 import { themeState } from "./theme-state";
 
 type NativeSVGAttributeValue = string | number | boolean | undefined;

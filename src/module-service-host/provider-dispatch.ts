@@ -30,6 +30,13 @@ export interface ProviderDispatch {
     handleRendererRequest(lease: RendererLease, message: unknown): void;
 }
 
+type ValidatedProviderRequest = ProviderRequest & (
+    | { operation: "readBinary" | "stat" }
+    | { operation: "readRange"; range: { start: number; end: number } }
+    | { operation: "writeBinary"; data: Uint8Array }
+    | { operation: "watchSubscribe" | "watchUnsubscribe" | "statusSubscribe" | "statusUnsubscribe"; subscriptionId: string }
+);
+
 export function createProviderDispatch(dependencies: { rendererLeases(): RendererLeaseManager; entryLoaded(): boolean }): ProviderDispatch {
     const providers = new Map<string, ProviderImplementation>();
     const PROVIDER_STATUS_STATES: ReadonlySet<string> = new Set(["idle", "connecting", "active", "done", "error"]);
@@ -75,7 +82,7 @@ function isProviderOperation(value: unknown): value is ProviderOperation {
     return typeof value === "string" && Object.hasOwn(PROVIDER_OPERATION_POLICY, value);
 }
 
-function isProviderRequest(message: unknown, validation: { message?: string }): message is ProviderRequest {
+function isProviderRequest(message: unknown, validation: { message?: string }): message is ValidatedProviderRequest {
     if (!isRecord(message) || message.kind !== "provider") { validation.message = "Expected a provider request."; return false; }
     if (!isProviderOperation(message.operation)) { validation.message = "Unknown provider operation."; return false; }
     if (typeof message.type !== "string" || message.type.length === 0 || !isRecord(message.config)) {
@@ -117,7 +124,7 @@ function validStat(stat: unknown): stat is ProviderWireStat {
         && (stat.mtime === undefined || typeof stat.mtime === "string");
 }
 
-async function executeProviderRequest(lease: RendererLease, request: ProviderRequest, controller: AbortController): Promise<ProviderResult> {
+async function executeProviderRequest(lease: RendererLease, request: ValidatedProviderRequest, controller: AbortController): Promise<ProviderResult> {
     const implementation = providers.get(request.type);
     if (!implementation) return providerFailure("provider-not-registered", `Provider "${request.type}" is not registered.`);
 
@@ -173,7 +180,8 @@ async function executeProviderRequest(lease: RendererLease, request: ProviderReq
         return { kind: "provider-result", operation: "stat", ok: true, stat };
     }
 
-    const key = providerKey(request.type, request.subscriptionId);
+    const subscriptionId = request.subscriptionId!;
+    const key = providerKey(request.type, subscriptionId);
     if (request.operation === "statusUnsubscribe") {
         const subscription = lease.subscriptions.get(key);
         if (subscription) {
@@ -203,7 +211,7 @@ async function executeProviderRequest(lease: RendererLease, request: ProviderReq
             if (!isCurrent()) return;
             dependencies.rendererLeases().post(lease, {
                 kind: "provider-status-event",
-                subscriptionId: request.subscriptionId,
+                subscriptionId,
                 status,
             });
             subscription.lastSentAt = Date.now();
@@ -212,7 +220,7 @@ async function executeProviderRequest(lease: RendererLease, request: ProviderReq
             if (lease.attached && dependencies.rendererLeases().isCurrent(lease)) {
                 dependencies.rendererLeases().post(lease, {
                     kind: "provider-status-event",
-                    subscriptionId: request.subscriptionId,
+                    subscriptionId,
                     status: null,
                 });
             }
@@ -284,7 +292,7 @@ async function executeProviderRequest(lease: RendererLease, request: ProviderReq
             if (!dependencies.rendererLeases().isCurrent(lease) || !lease.attached || !lease.subscriptions.has(key)) return;
             dependencies.rendererLeases().post(lease, {
                 kind: "provider-event",
-                subscriptionId: request.subscriptionId,
+                subscriptionId,
                 event: typeof event === "string" ? event : String(event),
             });
         });

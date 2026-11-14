@@ -1,6 +1,6 @@
 import { settings } from "./settings";
 import { fs } from "./fs";
-import { DirectoryWatcher } from "../core/utils/file-watcher";
+import { DirectoryWatcher } from "./file-watcher";
 import { fpJoin } from "../core/utils/file-path";
 import { buildCustomTheme, validateCustomThemeFile } from "../theme/custom-theme";
 import { customThemeCatalog, isSafeCustomThemeId } from "../theme/custom-theme-catalog";

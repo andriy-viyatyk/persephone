@@ -1,5 +1,5 @@
 import { t } from "../../../shared/i18n/t";
-import type { NativeCSSProperties } from "../../uikit/shared/dom-props";
+import type { NativeCSSProperties } from "../../core/native-css-properties";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
@@ -12,7 +12,7 @@ import { themeState } from "../../theme/theme-state";
 import { CopyIcon, OpenFileIcon } from "../../theme/icons";
 import { appendLinkOpenMenuItems } from "../shared/link-open-menu";
 import { detectGitRoot } from "./detect-git-root";
-import { toClipboard } from "../../core/utils/utils";
+import { toClipboard } from "../../api/clipboard";
 import type { MarkdownBodyQueue, MarkdownQueueRequest } from "./MarkdownBodyModel";
 import { PERSEPHONE_GUIDE_PREFIX } from "../../../shared/guides/guide-links";
 import { rehypeHeadingIds, slugifyHeading } from "./rehypeHeadingIds";

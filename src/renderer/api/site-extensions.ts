@@ -180,9 +180,10 @@ class SiteExtensionStore {
                     try {
                         parsed = JSON.parse(source) as unknown;
                     } catch {
-                        cached = { mtime: stat.mtime, reason: "manifest is not valid JSON" };
+                        const reason = "manifest is not valid JSON";
+                        cached = { mtime: stat.mtime, reason };
                         this.manifestCache.set(id, cached);
-                        listings.push({ id, status: "invalid", reason: cached.reason });
+                        listings.push({ id, status: "invalid", reason });
                         continue;
                     }
                     const result = validateManifest(parsed, extensionDir);

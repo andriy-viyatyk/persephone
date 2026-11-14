@@ -2,10 +2,10 @@
 // Used by the Explorer tree's clipboard paste; built on `app.fs` per the
 // no-direct-`fs` coding standard.
 
-import { fs } from "../../api/fs";
-import { fpBasename, fpJoin, fpNormalizeForCompare } from "./file-path";
-import { isKeyInside } from "../../../shared/path-containment";
-import { beginPathMove, completePathMove } from "../../api/path-watch";
+import { fs } from "./fs";
+import { fpBasename, fpJoin, fpNormalizeForCompare } from "../core/utils/file-path";
+import { isKeyInside } from "../../shared/path-containment";
+import { beginPathMove, completePathMove } from "./path-watch";
 
 export interface CopyPathsOptions {
     /** Move (cut-paste) instead of copy. Sources are removed only after their
