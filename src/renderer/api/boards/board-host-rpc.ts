@@ -61,7 +61,7 @@ function resolveBoardHost(ownerId: string) {
     if (!boardEditor || typeof boardRoot !== "string" || !boardRoot || !contextEditor || contextEditor.page !== page) {
         throw new Error("The Board is no longer attached to its hosting page.");
     }
-    return { boardEditor, boardRoot, contextEditor };
+    return { page, boardEditor, boardRoot, contextEditor };
 }
 
 function invokeThemeMethod(method: string, callArgs: unknown[]): unknown {
@@ -160,18 +160,26 @@ export function registerBoardHostRpc(server: RendererRpcServer): void {
         const revealLine = typeof params.revealLine === "number" ? params.revealLine : undefined;
         const highlightText = typeof params.highlightText === "string" ? params.highlightText : undefined;
         const reuseKey = typeof params.reuseKey === "string" ? params.reuseKey : undefined;
+        if (params.inPlace !== undefined && typeof params.inPlace !== "boolean") {
+            throw new Error("Invalid board openRawLink inPlace option.");
+        }
+        const inPlace = params.inPlace === true;
         try {
-            if (editor === EditorId.imageView && target.startsWith("data:image/")) {
+            const page = inPlace
+                ? resolveBoardHost(typeof params.ownerId === "string" ? params.ownerId : "").page
+                : undefined;
+            if (!inPlace && editor === EditorId.imageView && target.startsWith("data:image/")) {
                 const blob = await (await fetch(target)).blob();
                 await pages.openImageInNewTab(URL.createObjectURL(blob), "Image");
                 return null;
             }
-            if (editor === EditorId.browserView && reuseKey !== undefined) {
+            if (!inPlace && editor === EditorId.browserView && reuseKey !== undefined) {
                 await pages.boardPageRouter.openBoardRunPage(boardRoot, reuseKey, target);
                 return null;
             }
             await app.events.openRawLink.sendAsync(createLinkData(target, {
                 sourceId: "board", boardRoot, target: editor, revealLine, highlightText, waitForPageReady: true,
+                ...(page ? { pageId: page.id } : {}),
             }));
             return null;
         } catch (error: unknown) {

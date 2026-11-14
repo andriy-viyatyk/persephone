@@ -76,7 +76,10 @@ unsaved changes.
 Bridge **1.46.0+** lets boards await `persephone.openRawLink(path, { revealLine, highlightText })`
 to open a source file at a requested line, reusing and activating an already open matching page.
 This user-visible navigation does not require the board's `fileSystem` grant and returns no file
-contents. A board can run a built local app with
+contents. Bridge **1.57.0+** adds `{ inPlace: true }` to navigate content in the page hosting the
+board, without an `appScripting` grant; normal save/discard/cancel prompts apply, and navigating
+away can dispose the calling board frame before its promise settles. It cannot be combined with
+`reuseKey`. A board can run a built local app with
 `persephone.openRawLink(runUrl, { editor: "browser-view", reuseKey: "my-board:run" })`; the stable
 key gives that board its own reusable Browser page. See the [agent bridge reference](../agents/boards/index.md).
 

@@ -28,6 +28,19 @@ const IMAGE_EXTENSIONS = new Set([
     ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".svg",
 ]);
 
+const parentRow = Symbol("FileTreeProvider.parentRow");
+type ParentRowItem = ITreeProviderItem & { [parentRow]: true };
+
+function isParentRow(item: ITreeProviderItem, rootPath: string): item is ParentRowItem {
+    if ((item as ParentRowItem)[parentRow] === true) return true;
+    // Folder View can pass rows through a script facade that copies only public link
+    // fields, dropping the provider-private symbol. The synthetic parent is the only
+    // row whose href is the parent of its listed category.
+    return item.isDirectory
+        && fpNormalizeForCompare(item.category) !== fpNormalizeForCompare(rootPath)
+        && fpNormalizeForCompare(fpDirname(item.category)) === fpNormalizeForCompare(item.href);
+}
+
 /**
  * ITreeProvider for local filesystem directories.
  *
@@ -113,13 +126,15 @@ export class FileTreeProvider implements ITreeProvider {
         const normalized = dirPath.replace(/\\/g, "/");
         const rootNormalized = this.sourceUrl.replace(/\\/g, "/");
         if (normalized !== rootNormalized) {
-            result.push({
+            const parentItem: ParentRowItem = {
                 title: "..",
                 href: path.dirname(dirPath),
                 category: dirPath,
                 tags: [],
                 isDirectory: true,
-            });
+                [parentRow]: true,
+            };
+            result.push(parentItem);
         }
 
         return [...result, ...folders, ...files];
@@ -145,7 +160,10 @@ export class FileTreeProvider implements ITreeProvider {
 
     getNavigationUrl(item: ITreeProviderItem): string {
         if (!item.isDirectory) return item.href;
-        return folderEditorLinkFor(item.target ?? EditorId.categoryView, item.href, this.sourceUrl);
+        const target = isParentRow(item, this.rootPath)
+            ? EditorId.categoryView
+            : editorCatalog.resolveFolder(item.href) ?? EditorId.categoryView;
+        return folderEditorLinkFor(target, item.href, this.sourceUrl);
     }
 
     async getNavigationUrlByHref(href: string): Promise<string> {

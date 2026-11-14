@@ -61,6 +61,15 @@ page. Persephone closes the tab the return created and leaves the tab the user w
   only when the active tab still shows that URL; if the user switched tabs or navigated away, it
   navigates the owned page back to the requested URL. Web URL path and query case is significant
   when matching the active tab.
+  Bridge **1.57.0** adds `{ inPlace: true }` to navigate the page hosting this board to content.
+  It needs no `appScripting` grant and can be combined with `editor`, `revealLine`, and
+  `highlightText`, but not `reuseKey`. The page is resolved from this board's verified owner, not
+  from whichever tab is active. This uses the normal page navigation lifecycle: save/discard/cancel
+  prompts still apply, and cancel leaves the page in place. A successful navigation can dispose the
+  calling frame before its promise settles, so do not rely on code after `await`; the void API does
+  not report whether a navigation was cancelled. External/action links keep their regular action
+  semantics. In-place image-view requests use the normal data URL pipeline; `image.edit` remains an
+  image-edit action. Declare `minBridgeVersion: "1.57.0"` when using this option.
   This is user-visible page navigation and intentionally does not require a `fileSystem` grant,
   including for local paths and `file://` URLs. It returns no file contents. A navigation failure
   shows an error notification and rejects the promise; await and catch it when the board needs to

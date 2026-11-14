@@ -6,6 +6,10 @@ summary: "Which bridge version added each persephone.* member and manifest field
 
 # Boards — bridge version history and compatibility
 
+Bridge `1.57.0` adds `{ inPlace: true }` to `persephone.openRawLink(href, options)`, navigating
+content in the page hosting the board without an `appScripting` grant. Boards that use it should
+declare `minBridgeVersion: "1.57.0"`.
+
 Bridge `1.49.0` adds toolbar breadcrumbs. Check `persephone.version` before using a bridge member
 that may not exist in an older app. Bridge `1.42.0` adds multiline board settings;
 boards that rely on them must set `minBridgeVersion: "1.42.0"`. Bridge `1.43.0` adds checkbox

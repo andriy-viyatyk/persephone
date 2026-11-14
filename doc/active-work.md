@@ -10,9 +10,6 @@ Overview of all active and planned epics and tasks.
 
 ## Planned
 
-- *(no epic)*
-  - [ ] [US-1873: Board docs — re-verify, then fix folder-editor and in-page navigation gaps](tasks/US-1873-board-docs-folder-editor-navigation/README.md)
-
 ## Scheduled
 
 Tasks that must not start before a date. When the date arrives, move the entry to **Active** (or

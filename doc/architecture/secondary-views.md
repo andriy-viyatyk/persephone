@@ -671,6 +671,13 @@ interface ITreeProvider {
 - **LinkTreeProvider / ArchiveTreeProvider** — `category` is already a `/`-separated **relative** path (`rootPath === ""`). Both delegate to the shared `relativeCategorySegments()` helper in [`tree-provider-link.ts`](../../src/renderer/content/tree-providers/tree-provider-link.ts).
 - **FileTreeProvider** — `category` is an **absolute** OS path (`rootPath === sourceUrl`). Its implementation strips the `rootPath` prefix for the segment labels but keeps `/`-joined absolute paths as each segment's navigation `category` (`readdirSync` accepts `/` on Windows).
 
+For filesystem directory rows, `FileTreeProvider` resolves the current folder-editor claim when
+the row is opened, rather than trusting the `target` cached for its displayed icon at list time.
+This lets Explorer and Folder View honor a trust or manifest refresh without relisting; icons
+update on the next listing. The synthetic parent row keeps Folder View even when its parent folder
+is claimed. It is privately marked when listed, with a category-parent check covering copies that
+pass through a facade and drop the private marker.
+
 The UIKit `Breadcrumb` is used with its opt-in `clipStart` prop: on overflow it shrinks within the toolbar row and clips the **start** (root) side, keeping the trailing (current) folder visible. See [`uikit/CLAUDE.md`](../../src/renderer/uikit/CLAUDE.md) for the component contract.
 
 ### Selection, Drag-and-Drop and Live Refresh

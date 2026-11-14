@@ -19,7 +19,7 @@ import type { BoardServiceStatus } from "../module-service-channels";
 
 export type BoardNotifyType = "info" | "success" | "warning" | "error";
 export interface BoardNotifyMsg { message: string; type?: BoardNotifyType; persistent?: boolean }
-export interface BoardOpenRawLinkOptions { editor?: string; revealLine?: number; highlightText?: string; reuseKey?: string }
+export interface BoardOpenRawLinkOptions { editor?: string; revealLine?: number; highlightText?: string; reuseKey?: string; inPlace?: boolean }
 export type BoardFileEncoding = "utf8" | "base64" | "binary";
 export type BoardWatchOptions = { recursive?: boolean; debounceMs?: number };
 export interface BoardFolderListOptions { recursive?: boolean; masks?: string[]; limit?: number; cursor?: string }

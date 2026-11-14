@@ -81,7 +81,7 @@ openRawLink: { handle: async (entry, href, rawOptions) => {
             throw new BoardRpcError("invalid-argument", "openRawLink options must be an object.");
         }
         const options = (rawOptions ?? {}) as {
-            editor?: unknown; revealLine?: unknown; highlightText?: unknown; reuseKey?: unknown;
+            editor?: unknown; revealLine?: unknown; highlightText?: unknown; reuseKey?: unknown; inPlace?: unknown;
         };
         if (options.editor !== undefined && typeof options.editor !== "string") {
             throw new BoardRpcError("invalid-argument", "openRawLink editor must be a string.");
@@ -96,17 +96,27 @@ openRawLink: { handle: async (entry, href, rawOptions) => {
         if (options.reuseKey !== undefined && typeof options.reuseKey !== "string") {
             throw new BoardRpcError("invalid-argument", "openRawLink reuseKey must be a string.");
         }
+        if (options.inPlace !== undefined && typeof options.inPlace !== "boolean") {
+            throw new BoardRpcError("invalid-argument", "openRawLink inPlace must be a boolean.");
+        }
+        if (options.inPlace === true && options.reuseKey !== undefined) {
+            throw new BoardRpcError("invalid-argument", "openRawLink inPlace cannot be combined with reuseKey.");
+        }
         const editor = typeof options.editor === "string" ? options.editor : undefined;
         const revealLine = typeof options.revealLine === "number" ? options.revealLine : undefined;
         const highlightText = typeof options.highlightText === "string" ? options.highlightText : undefined;
         const reuseKey = typeof options.reuseKey === "string" ? options.reuseKey : undefined;
+        const inPlace = options.inPlace === true;
         let target = href;
         if (/^file:/i.test(trimmedHref)) {
             try { target = fileURLToPath(trimmedHref); }
             catch (error: unknown) { throw new BoardRpcError("invalid-argument", errMessage(error, "Invalid file URL.")); }
         }
         ownerWindow(entry.hostWebContents)?.focus();
-        await dependencies.hostRequest(entry, "openRawLink", { target, editor, revealLine, highlightText, reuseKey, boardRoot: entry.root });
+        await dependencies.hostRequest(entry, "openRawLink", {
+            target, editor, revealLine, highlightText, reuseKey, inPlace, boardRoot: entry.root,
+            ...(inPlace ? { ownerId: entry.ownerId } : {}),
+        });
         return undefined;
     } },
 openBoard: { handle: async (entry, folder) => {
