@@ -16,7 +16,7 @@ Any file a developer meets during the day opens in place — in three tiers:
 
 ## A workspace shared with AI agents
 
-Persephone ships a built-in [MCP](https://modelcontextprotocol.io/) server — enabled with one checkbox in Settings ([setup guide](assets/guides/mcp-setup.md)). It exposes a single tool, `call`, and behind it the whole application as one object model: pages and their editors, files, settings, dialogs, the browser, boards, Git, the window itself. The agent works in the same UI you are looking at:
+Persephone ships a built-in [MCP](https://modelcontextprotocol.io/) server — enabled with one checkbox in Settings ([setup guide](assets/guides/mcp-setup/index.md)). It exposes a single tool, `call`, and behind it the whole application as one object model: pages and their editors, files, settings, dialogs, the browser, boards, Git, the window itself. The agent works in the same UI you are looking at:
 
 - **It shows you things.** An agent opens pages with rendered Markdown, diagrams, sortable grids, and highlighted code — instead of dumping walls of text into a chat.
 - **It sees what you see.** Every open page is addressable — `pages[2].editor` is the grid, the Markdown preview, the browser tab, or the board you are looking at — with its content, selection, and controls. Snapshot, click, and type work on the app itself and on web pages in the built-in browser.
@@ -35,7 +35,7 @@ The engine is published as the standalone **[ai-vision](https://github.com/andri
 
 Boards turn Persephone into a platform for small personal applications: dashboards, data browsers, deployment helpers, tools specific to one project. A board runs locally in a sandboxed webview with **no remote network access**, is trusted per board, and pins to the sidebar next to the built-in editors.
 
-The practical loop: describe the tool you need to your agent — it scaffolds the board, builds it, opens it, and iterates while you watch. Tools that used to stay on a "someday" list become things you get within a coffee break. See the [Boards guide](assets/guides/boards.md).
+The practical loop: describe the tool you need to your agent — it scaffolds the board, builds it, opens it, and iterates while you watch. Tools that used to stay on a "someday" list become things you get within a coffee break. See the [Boards guide](assets/guides/boards/index.md).
 
 ## Also inside
 
@@ -87,15 +87,15 @@ Everything else is network traffic you start yourself: web pages in the built-in
 | **Git Diff** | — | Side-by-side revision comparison for any tracked file *(Git integration)* |
 | **Compare** | any two files | Side-by-side diff view |
 
-More viewers and editors — PDF, Word, Excel, PowerPoint, draw.io, SQLite, and others — install on demand from the **[persephone-boards](https://github.com/andriy-viyatyk/persephone-boards)** catalog: browse it from the **Search boards** tab of the Tools & Editors hub, or just open a matching file. See the [Boards guide](assets/guides/boards.md#published-boards-catalog--discover-install-update).
+More viewers and editors — PDF, Word, Excel, PowerPoint, draw.io, SQLite, and others — install on demand from the **[persephone-boards](https://github.com/andriy-viyatyk/persephone-boards)** catalog: browse it from the **Search boards** tab of the Tools & Editors hub, or just open a matching file. See the [Boards guide](assets/guides/boards/published-boards.md#published-boards-catalog--discover-install-update).
 
 ---
 
 ## Documentation
 
 * **[User Guide](assets/guides/index.md)** — Getting started, editors, keyboard shortcuts
-* **[MCP Setup](assets/guides/mcp-setup.md)** — Connect AI agents to Persephone
-* **[Boards Guide](assets/guides/boards.md)** — Custom viewers, editors, and mini apps
+* **[MCP Setup](assets/guides/mcp-setup/index.md)** — Connect AI agents to Persephone
+* **[Boards Guide](assets/guides/boards/index.md)** — Custom viewers, editors, and mini apps
 * **[Mneme Guide](assets/guides/mneme.md)** — Vector memory / Markdown knowledge base for AI agents
 * **[Scripting Guide](assets/guides/scripting/index.md)** — Script execution, `page`/`app` API, autoload scripts
 * **[API Reference](assets/guides/scripting/api/index.md)** — `app.pages`, `app.fs`, `app.settings`, `app.ui`, `app.fetch`

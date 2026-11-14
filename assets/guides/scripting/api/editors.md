@@ -78,12 +78,12 @@ opts.options.forEach(id =>
 
 Text-bearing editors (`hasContentHost === true`) — Monaco, Grid (JSON/CSV/JSONL), Markdown, Link, SVG, HTML, Mermaid, and Log View — share the same underlying text content and can switch between each other (e.g., JSON text ↔ Grid). REST Client is a bundled board with its own page model.
 
-Standalone editors (`hasContentHost === false`) — Image Viewer, Browser, Archive, Video Player, MCP Inspector, Storybook, About, Settings, Compare — own their own state and do not participate in content-based editor switching. (Persephone no longer ships a built-in PDF viewer — see [Editors — PDF Viewer](../../editors/index.md#pdf-viewer). The `"pdf-view"` editor id no longer exists.)
+Standalone editors (`hasContentHost === false`) — Image Viewer, Browser, Archive, Video Player, MCP Inspector, Storybook, About, Settings, Compare — own their own state and do not participate in content-based editor switching. (Persephone no longer ships a built-in PDF viewer — see [Editors — PDF Viewer](../../boards/published-boards.md#published-boards-catalog--discover-install-update). The `"pdf-view"` editor id no longer exists.)
 
 ## Board Info editor
 
 After narrowing `page.editor.id` to `"board-info"`, `installDir` reads the current published-board
 download parent. `setInstallDir(dir)` selects an explicit filesystem path, while
 `changeInstallDir()` opens the native folder picker. Paths remain visible as real, copyable paths in
-Board Info and trust UI. See [Page API — Board Info](./page.md#board-info-editor-facade) for a
+Board Info and trust UI. See [Page API — Board Info](page-editor-facades.md#board-info-editor-facade) for a
 script example.

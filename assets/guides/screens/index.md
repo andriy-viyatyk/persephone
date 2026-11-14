@@ -238,4 +238,4 @@ those surfaces.
 - [Editors catalogue](../editors/index.md) — what each editor is for and how to open it.
 - [Pages & Windows](../agents/pages.md) — editor IDs, languages, title suffixes, and page operations.
 - [Browser automation](../agents/browser.md) — snapshots, refs, clicking, typing, and app-window driving.
-- [Boards](../boards.md) — building a custom mini web app for the user.
+- [Boards](../boards/index.md) — building a custom mini web app for the user.

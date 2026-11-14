@@ -1,7 +1,7 @@
 ---
-title: Language pack glossary
+title: "Language pack glossary"
 audience: agent
-summary: Approved terminology for interface language packs and product or protocol names that stay English.
+summary: "Approved terminology for interface language packs and product or protocol names that stay English."
 ---
 
 # Language pack glossary

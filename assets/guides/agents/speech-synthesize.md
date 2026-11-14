@@ -6,7 +6,7 @@ summary: "Speak text using a speech synthesis provider."
 
 # Speech synthesis capability
 
-`speech.synthesize@1` provides speech through the unified [capability registry](capabilities.md).
+`speech.synthesize@1` provides speech through the unified [capability registry](capabilities/index.md).
 The Text to Speech board synthesizes locally and plays through Persephone's [audio service](audio.md).
 Install its runtime and model explicitly from the board page; requests do not download them.
 
@@ -54,7 +54,7 @@ An agent calls `capabilities["speech.synthesize"].speak("The build finished.")` 
 
 The board's caller-approval-policy setting may restrict calls to its own page. Board consumers
 declare `uses: [{ "id": "speech.synthesize", "version": 1 }]`; providers require the service
-permission and authorize each call. See [Capabilities](capabilities.md) for declarations,
+permission and authorize each call. See [Capabilities](capabilities/client-and-wire.md) for declarations,
 discovery, caller grants and cancellation.
 
 The legacy `describe` channel returns

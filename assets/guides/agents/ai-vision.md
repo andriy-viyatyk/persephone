@@ -17,7 +17,7 @@ by path — reading properties, calling methods, and pointing at controls on scr
 guessing from an accessibility snapshot.
 
 If instead you are **driving** a board or page that already publishes one, you want the `.app`
-sections of [Boards](./boards.md) and [Browser automation](./browser.md). This page is the other
+sections of [Boards](./boards/index.md) and [Browser automation](./browser.md). This page is the other
 half: how to make `.app` exist.
 
 ## Inspecting a page's content pipe

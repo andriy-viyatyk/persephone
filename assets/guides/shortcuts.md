@@ -9,7 +9,7 @@ summary: "Global and editor-specific keyboard shortcuts."
 ## Application (Global)
 
 These shortcuts work regardless of which editor is active. Browser pages handle zoom shortcuts
-separately when focus is inside the web page; see [Browser](#browser).
+separately when focus is inside the web page; see [Browser](shortcuts.md#browser).
 
 | Shortcut | Action |
 |----------|--------|

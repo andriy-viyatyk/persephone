@@ -1,7 +1,7 @@
 ---
-title: Language packs
+title: "Language packs"
 audience: agent
-summary: Add or fix an interface language pack, update it after catalog changes, or validate a board translation.
+summary: "Add or fix an interface language pack, update it after catalog changes, or validate a board translation."
 ---
 
 # Language packs
@@ -135,7 +135,7 @@ Check the returned page's `entries` for both keys, messages, and `from: "user"`;
 
 ## Workflow D — add a language to a board
 
-Follow **Languages** in [`guides.agents.boards`](boards.md) for the board's `lang/<code>.json` format and its message rules. Read the board's `board-manifest.json` for `languages.folder` and `languages.default`, read the default pack, then write `<folder>/<code>.json` with the same message keys.
+Follow **Languages** in [`guides.agents.boards`](boards/index.md) for the board's `lang/<code>.json` format and its message rules. Read the board's `board-manifest.json` for `languages.folder` and `languages.default`, read the default pack, then write `<folder>/<code>.json` with the same message keys.
 
 A translated pack also carries `manifest.*` keys that the default pack does not have: `manifest.name`, `manifest.description`, and the display titles of views, capabilities, and settings (for example `manifest.views.<id>.title`). They translate the English values in `board-manifest.json`, so their absence from the default pack is expected and not a defect.
 

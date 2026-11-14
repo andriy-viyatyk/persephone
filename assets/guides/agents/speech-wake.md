@@ -28,7 +28,7 @@ permissions, and `uses: [{ "id": "audio", "version": 1 }]`. A consumer board dec
 `uses: [{ "id": "speech.wake", "version": 1 }]`; listening itself does not require that
 consumer to hold audio permissions. A consumer choosing a microphone via `audio.devices()`
 separately declares `audio@1` and the microphone grant. See [Audio](audio.md) and
-[Capabilities](capabilities.md) for the declarations, proxy and authorization.
+[Capabilities](capabilities/index.md) for the declarations, proxy and authorization.
 
 The provider applies its caller policy on every route. The Wake Word board's `accept-granted`
 accepts authorized external callers; `same-board-only` refuses external board, platform and

@@ -13,7 +13,7 @@ the same reasoning.
 
 Do this whenever the user asks "can I trust this board?", whenever you are about to call
 `app.boards.registerBoard(root)` on a board they did not author, and again **after an update**
-(see [Re-review triggers](#re-review-triggers) — trust survives an update).
+(see [Re-review triggers](board-review.md#re-review-triggers) — trust survives an update).
 
 ## What trust actually grants
 
@@ -141,7 +141,7 @@ reductions reconcile silently. When you are reviewing a board for the user, neve
 the Boards guide, "Who answers the trust dialogs".)
 
 For theme operations, verify the board declares `themes: true` and uses only the finite
-`persephone.themes.*` methods documented in the [board guide](./boards.md#the-persephone-themes-bridge).
+`persephone.themes.*` methods documented in the [board guide](./boards/bridge.md#the-persephonethemes-bridge).
 The bridge passes plain JSON values and does not require `appScripting`. Boards using it must set
 `minBridgeVersion: "1.35.0"`. Review preview cleanup and saved-theme changes as user-visible effects.
 Locale and board-pack i18n calls require `minBridgeVersion: "1.36.0"`.
@@ -163,7 +163,7 @@ session-only exact-file read access; source grants never enable writes, and a `f
 board cannot read context siblings.
 
 For the service-versus-`executeNode()` ownership decision, use the canonical wording in the
-[board-authoring guide](./boards.md#declared-services-and-shared-storage)
+[board-authoring guide](./boards/services.md#declared-services-and-shared-storage)
 instead of creating a second rule here.
 
 ## Code that arrives after you trust it

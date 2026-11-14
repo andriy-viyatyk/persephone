@@ -14,7 +14,7 @@ its own caller approval policy.
 The capability is reserved: boards cannot register an `audio` provider. A consumer manifest must
 declare `uses: [{ "id": "audio", "version": 1 }]`, set `minBridgeVersion: "1.52.0"` when using `muteApp` (or `1.51.0` for the other methods), and set
 `minAppVersion: "5.0.18"` or later. Boards using `cancelComputerAudio` require `minBridgeVersion: "1.54.0"` and `minAppVersion: "5.0.19"` or later. A board service also needs `permissions.service: true`. See
-[Capabilities](capabilities.md) for the bridge and channel contract.
+[Capabilities](capabilities/index.md) for the bridge and channel contract.
 
 ## Methods
 

@@ -40,7 +40,7 @@ const BOARD_GUIDE_EXCLUSION_START = "<!-- board-template:exclude -->";
 const BOARD_GUIDE_EXCLUSION_END = "<!-- /board-template:exclude -->";
 
 async function generateBoardAuthoringGuide(assetsRoot: string, boardRoot: string): Promise<void> {
-    const guidePath = fpJoin(assetsRoot, "guides", "agents", "boards.md");
+    const guidePath = fpJoin(assetsRoot, "guides", "agents", "boards", "index.md");
     const headerPath = fpJoin(assetsRoot, "board-template-header.md");
     const boardGuidePath = fpJoin(boardRoot, "CLAUDE.md");
     const temporaryPath = fpJoin(boardRoot, "CLAUDE.md.tmp");
@@ -53,7 +53,7 @@ async function generateBoardAuthoringGuide(assetsRoot: string, boardRoot: string
         await fs.rename(temporaryPath, boardGuidePath);
     } catch (err) {
         await fs.delete(temporaryPath);
-        console.error("Failed to generate the blank-board CLAUDE.md from assets/guides/agents/boards.md.", err);
+        console.error("Failed to generate the blank-board CLAUDE.md from assets/guides/agents/boards/index.md.", err);
         throw err;
     }
 }
@@ -74,13 +74,13 @@ function filterBoardGuideExclusions(guide: string): string {
 
         if (marker[0] === BOARD_GUIDE_EXCLUSION_START) {
             if (excluded) {
-                throw new Error(`Malformed board-template exclusion markers in assets/guides/agents/boards.md: nested opening marker at line ${line}.`);
+                throw new Error(`Malformed board-template exclusion markers in assets/guides/agents/boards/index.md: nested opening marker at line ${line}.`);
             }
             excluded = true;
             openingLine = line;
         } else {
             if (!excluded) {
-                throw new Error(`Malformed board-template exclusion markers in assets/guides/agents/boards.md: unmatched closing marker at line ${line}.`);
+                throw new Error(`Malformed board-template exclusion markers in assets/guides/agents/boards/index.md: unmatched closing marker at line ${line}.`);
             }
             excluded = false;
         }
@@ -90,7 +90,7 @@ function filterBoardGuideExclusions(guide: string): string {
     const remainder = guide.slice(cursor);
     if (!excluded) output += remainder;
     if (excluded) {
-        throw new Error(`Malformed board-template exclusion markers in assets/guides/agents/boards.md: unmatched opening marker at line ${openingLine}.`);
+        throw new Error(`Malformed board-template exclusion markers in assets/guides/agents/boards/index.md: unmatched opening marker at line ${openingLine}.`);
     }
     return output;
 }

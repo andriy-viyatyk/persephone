@@ -243,7 +243,7 @@ if (pageId) {
 ```
 
 Use `openUrlInBrowserTab` for a web page or search query. For a URL naming a file or other content
-source, use [`openUrl`](./pages.md#openurlurl-options--promisevoid) so the normal content pipeline can choose the editor.
+source, use [`openUrl`](pages.md#openurlurl-options--promisevoid) so the normal content pipeline can choose the editor.
 
 ### openUrl(url, options?) → `Promise<void>`
 

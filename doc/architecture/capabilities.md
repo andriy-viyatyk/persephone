@@ -3,7 +3,7 @@
 Capabilities use a main-process registry and router shared by board pages, board services,
 Persephone and agents. They name versioned operations, resolve an eligible provider, authorize the
 bound provider again when invoked, and route each method according to its kind. The normative
-[capability contract](../../assets/guides/agents/capabilities.md) defines manifest declarations,
+[capability contract](../../assets/guides/agents/capabilities/index.md) defines manifest declarations,
 migration and client APIs; this page describes the implementation and lifecycle.
 
 Capabilities are distinct from content links. A link resolves content and an editor through the

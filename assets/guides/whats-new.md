@@ -85,7 +85,7 @@ The move removes note script execution; HTML, Mermaid, and SVG previews; Monaco 
 - **Boards as standalone apps:** Create a Windows shortcut from a board's context menu and open it
   in its own window. The board stays locked in the first tab while pages it opens use regular tabs.
   You can also ask an AI agent to create the shortcut or open the board window for a trusted or
-  bundled board. See the [Boards guide](./boards.md#run-a-board-in-its-own-window).
+  bundled board. See the [Boards guide](./boards/getting-started.md#run-a-board-in-its-own-window).
 - **Recover pages after a restore error:** A page that fails to restore stays available with its
   error and a **Retry** action. Closing it can discard unrecovered changes after confirmation.
 
@@ -221,7 +221,7 @@ The move removes note script execution; HTML, Mermaid, and SVG previews; Monaco 
   types to one board page while other matching files open in place. Boards can step through the
   Explorer folder or Link Editor list a file was opened from, react to page visibility, show the tab's
   mute button, and move an authorized file to the Recycle Bin. Board toolbar inputs get a clear (x)
-  button. See the [Boards guide](./boards.md).
+  button. See the [Boards guide](./boards/index.md).
 - **Boards can watch authorized files and folders:** `persephone.watch()` reports file changes in
   batches, respects the board's existing file access, and stops when access is revoked or the board
   closes.

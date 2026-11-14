@@ -14,7 +14,7 @@ persephone is a Windows Notepad replacement designed for developers. It combines
 - **Monaco Editor** - The same editor that powers VS Code
 - **Syntax Highlighting** - 50+ programming languages
 - **JavaScript & TypeScript Execution** - Run scripts to transform content
-- **Multiple Editors** - Grid view for JSON/CSV, Markdown preview, the bundled Excalidraw and REST Client boards, Video Player, and more (PDF viewing is available as an opt-in [board](./boards.md) install)
+- **Multiple Editors** - Grid view for JSON/CSV, Markdown preview, the bundled Excalidraw and REST Client boards, Video Player, and more (PDF viewing is available as an opt-in [board](./boards/index.md) install)
 - **Tab Management** - Multiple files with drag-and-drop, grouping, and compare
 
 ## Quick Start
@@ -32,16 +32,16 @@ editor when one is available, or the guide contents otherwise.
 - [Getting Started](./getting-started.md) - Installation and first steps
 - [Editors](./editors/index.md) - Overview of all editor types
 - [Grid Editor](./editors/grid.md) - Spreadsheet-like data editor for JSON/CSV
-- [Browser](./editors/browser.md) - Built-in web browser with profiles, bookmarks, downloads, and scripting/MCP automation
+- [Browser](editors/browser/index.md) - Built-in web browser with profiles, bookmarks, downloads, and scripting/MCP automation
 - [Site Extensions](./site-extensions.md) - Trust and manage scripts that add reusable models to browser pages
-- [Scripting](./scripting/index.md) - JavaScript/TypeScript execution and content transformation
+- [Scripting](scripting/index.md) - JavaScript/TypeScript execution and content transformation
 - [Scripting API Reference](./scripting/api/index.md) - Complete API for `page`, `app`, `io`, and other script namespaces
-- [MCP Server Setup](./mcp-setup.md) - Connect AI agents (Claude, ChatGPT, Gemini) to control persephone
-- [Boards](./boards.md) - Build custom HTML-page apps inside a project folder, backed by local scripts and themed to match the app
+- [MCP Server Setup](mcp-setup/index.md) - Connect AI agents (Claude, ChatGPT, Gemini) to control persephone
+- [Boards](./boards/index.md) - Build custom HTML-page apps inside a project folder, backed by local scripts and themed to match the app
 - [Agent audio capability](./agents/audio.md) - Capture and playback contract for board pages and services
 - [Agent Tools](./agent-tools.md) - Register reusable, parameterized tools (scripts in any language) that AI agents discover and run over MCP — executable memory for recurring integrations
 - [Mneme Knowledge Base](./mneme.md) - Local full-text & semantic search over folders of Markdown — browsable in-app and MCP-accessible (optional, off by default)
-- [Tabs & Navigation](./tabs-and-navigation.md) - Tab management, grouping, sidebar, and session restore
+- [Tabs & Navigation](tabs-and-navigation/index.md) - Tab management, grouping, sidebar, and session restore
 - [Encryption](./encryption.md) - Password-based file encryption
 - [Keyboard Shortcuts](./shortcuts.md) - Complete shortcut reference
 

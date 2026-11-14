@@ -16,7 +16,7 @@ Open a trusted board from the Explorer **Boards** panel, a `board-manifest.json`
 tree in **Tools & Editors**. Bundled boards appear under its **Built-in** folder and do not
 ask for trust. Published boards can be installed from the catalog. A trusted or bundled board
 declaring `fileMasks` can appear in the editor switch for matching files; a board declaring
-`folderEditorMasks` can open as the editor for matching folders. See [Boards](../boards.md) for
+`folderEditorMasks` can open as the editor for matching folders. See [Boards](../boards/index.md) for
 the file and folder association details.
 
 ## Layout
@@ -78,7 +78,7 @@ to open a source file at a requested line, reusing and activating an already ope
 This user-visible navigation does not require the board's `fileSystem` grant and returns no file
 contents. A board can run a built local app with
 `persephone.openRawLink(runUrl, { editor: "browser-view", reuseKey: "my-board:run" })`; the stable
-key gives that board its own reusable Browser page. See the [agent bridge reference](../agents/boards.md).
+key gives that board its own reusable Browser page. See the [agent bridge reference](../agents/boards/index.md).
 
 Bridge **1.48.0+** lets a board open a board folder it is authorized to list with
 `persephone.openBoard(folder)`. The target board follows the normal trust flow; set
@@ -117,7 +117,7 @@ A board without a permissions object, including one using the old list format, i
 **Unrestricted** for compatibility. These boards are deprecated and will stop working in a future
 Persephone release. The trust dialog warns on first trust, and opening an already-trusted board
 shows a persistent warning. Ask the agent that built it to add a `permissions` object. For the full
-permission list and file access scopes, see [Boards](../boards.md#service-declarations-in-board-manifestjson).
+permission list and file access scopes, see [Boards](../boards/trust-and-permissions.md#service-declarations-in-board-manifestjson).
 
 ## Agent API
 
@@ -144,4 +144,4 @@ page is rejected is incorrect.
 
 Untrusted content remains restricted until the user answers the trust prompt. A board can be trusted
 but still fail to load because of its manifest, script, or iframe content; use its status and log for
-diagnosis. See [Boards](../boards.md) for manifests and custom editors.
+diagnosis. See [Boards](../boards/index.md) for manifests and custom editors.

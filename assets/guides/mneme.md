@@ -137,7 +137,7 @@ Open it from the **Tools & Editors** panel → **Tools** (or from the **+** menu
 Toolbar buttons:
 
 - **Restart Mneme** — restart the background service.
-- **Open in MCP Inspector** — open the running service in the [MCP Inspector](./editors/index.md#mcp-inspector) to explore its tools and resources.
+- **Open in MCP Inspector** — open the running service in the [MCP Inspector](screens/mcp-inspector.md#mcp-inspector) to explore its tools and resources.
 - **Open Mneme log** — open the service log file in a text editor for troubleshooting.
 
 ## Searching a knowledge base
@@ -170,7 +170,7 @@ The **Mneme** sidebar panel shows the root as a navigable tree — like the File
 
 ## Opening documents & `mneme://` links
 
-Documents and attachments are addressed as `mneme://{root}/{path}`. A relative `mneme://` link inside a document opens its target in Persephone — Markdown in Preview, images in the Image Viewer, and PDFs in the Text Editor unless the [PDF Viewer board](./editors/index.md#pdf-viewer) is installed. Right-clicking a node in the Mneme tree and choosing **Copy Path** copies this full URL to the clipboard so you can paste it anywhere.
+Documents and attachments are addressed as `mneme://{root}/{path}`. A relative `mneme://` link inside a document opens its target in Persephone — Markdown in Preview, images in the Image Viewer, and PDFs in the Text Editor unless the [PDF Viewer board](boards/published-boards.md#published-boards-catalog--discover-install-update) is installed. Right-clicking a node in the Mneme tree and choosing **Copy Path** copies this full URL to the clipboard so you can paste it anywhere.
 
 ## AI agent integration (MCP)
 
@@ -180,4 +180,4 @@ Mneme exposes a single **MCP** interface, so AI agents can read, search, and mai
 - **`search`** — text, vector, or hybrid.
 - **Views & management** — `tree`, `timeline`, `tags`, `add_root`, `reindex`, `status`, `model_update`, and more.
 
-The same running service serves Persephone *and* external agents at the same time. Point any MCP client (Claude Desktop, Claude Code, or the built-in [MCP Inspector](./editors/index.md#mcp-inspector)) at the Mneme URL shown in Settings (e.g. `http://127.0.0.1:7700/mcp`) — the Settings page also shows a ready-to-paste server entry for agent configuration. See [MCP Server Setup](./mcp-setup.md) for how to connect agents.
+The same running service serves Persephone *and* external agents at the same time. Point any MCP client (Claude Desktop, Claude Code, or the built-in [MCP Inspector](screens/mcp-inspector.md#mcp-inspector)) at the Mneme URL shown in Settings (e.g. `http://127.0.0.1:7700/mcp`) — the Settings page also shows a ready-to-paste server entry for agent configuration. See [MCP Server Setup](mcp-setup/available-tools.md) for how to connect agents.

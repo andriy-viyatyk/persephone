@@ -253,7 +253,7 @@ and saved files are copied at the API boundary so callers cannot mutate registry
 The board bridge exposes corresponding asynchronous `persephone.themes.*` methods to boards that
 request the `themes` manifest permission. The permission gates theme operations only; platform
 capability dispatch for `theme.edit` is a separate route. See [Capabilities](capabilities.md#well-known-capability-themeedit)
-and the [board authoring guide](../../assets/guides/agents/boards.md#the-persephonethemes-bridge).
+and the [board authoring guide](../../assets/guides/agents/boards/bridge.md#the-persephonethemes-bridge).
 
 `IFetchOptions` controls the Node.js HTTP request: `method`, `headers`, `body`, `timeout`,
 `maxRedirects`, `signal`, and `rejectUnauthorized` retain their usual meanings. `headers` are sent

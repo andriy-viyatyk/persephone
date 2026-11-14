@@ -106,7 +106,7 @@ MCP `window.menuBar` API.
   category at another folder, open it in Explorer, or unlink it.
 
 Board Info and toolsets are destinations reached from the Menu Bar or its categories, not Menu Bar
-screens. [Boards](../boards.md) owns the `board-info` editor ID, and [Agent Tools](../agent-tools.md)
+screens. [Boards](../boards/index.md) owns the `board-info` editor ID, and [Agent Tools](../agent-tools.md)
 owns `toolset-view`. Similarly, the [Mneme](../mneme.md) guide owns its two editor screens; the
 Menu Bar is only their entry point.
 

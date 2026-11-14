@@ -91,7 +91,7 @@ Registration is deliberately a **user-only** decision — an agent can never sil
 
 - **User-initiated** — you click the **Open Toolset** icon on a `tools-manifest.json` in the **File Explorer**. If the folder isn't registered yet, the same confirmation dialog appears (because that icon can be clicked on any folder you're browsing, including a foreign one); confirming registers it and opens it.
 
-This is stricter than the [Boards](./boards.md) trust gate on purpose: a board is a *visible* artifact you look at, whereas a registered tool later runs **headlessly** whenever an agent calls it — and re-runs after the agent edits it — so registration is your one natural checkpoint on that capability.
+This is stricter than the [Boards](./boards/index.md) trust gate on purpose: a board is a *visible* artifact you look at, whereas a registered tool later runs **headlessly** whenever an agent calls it — and re-runs after the agent edits it — so registration is your one natural checkpoint on that capability.
 
 - Registration is **remembered across restarts** (stored in `%AppData%\persephone\data\trustedTools.txt`).
 - Matching is **per exact folder** — there is no inherited/parent trust (each toolset is registered individually).
@@ -160,7 +160,7 @@ A tool script reads its `args` from stdin and returns its result on stdout using
 ### Using the registry from scripts
 
 The registry is not a direct `app.tools` property, but the same live object model is available to
-scripts through [`app.call()`](./scripting/api/app.md#callpath-options). A script can search and execute a
+scripts through [`app.call()`](scripting/api/app.md#callpath-options). A script can search and execute a
 registered tool, refresh the registry, scaffold a toolset, or unregister one:
 
 ```javascript
@@ -177,7 +177,7 @@ await app.call("tools.unregisterToolset", {
 Tool execution still runs with your user privileges. `tools.createToolset` writes the starter
 files and shows the existing registration confirmation; it never registers or trusts a toolset
 without your approval. Keep credentials in the toolset's `.env` file rather than in `args`, which
-may be recorded in local tool logs. See the [scripting API reference](./scripting/api/page.md#editor-facades) for the
+may be recorded in local tool logs. See the [scripting API reference](scripting/api/page-editor-facades.md#editor-facades) for the
 page editor surfaces that let agents inspect the Tools & Editors hub and an individual toolset.
 `tools.unregisterToolset` does not show a confirmation or delete files; only call it with a root
 you intend to remove from the registry.
@@ -186,6 +186,6 @@ you intend to remove from the registry.
 
 ## Related
 
-- [MCP Server Setup](./mcp-setup.md) — enable the server so agents can use `tools.search` / `tools.execute`.
-- [Boards](./boards.md) — the sibling feature the tools registry mirrors (folder + manifest + trust gate), for building custom UIs instead of headless tools.
+- [MCP Server Setup](mcp-setup/available-tools.md) — enable the server so agents can use `tools.search` / `tools.execute`.
+- [Boards](./boards/index.md) — the sibling feature the tools registry mirrors (folder + manifest + trust gate), for building custom UIs instead of headless tools.
 - [Mneme Knowledge Base](./mneme.md) — the *knowledge* counterpart to the tools registry's *executable* memory.

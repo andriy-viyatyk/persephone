@@ -160,7 +160,7 @@ const EDITORS: EditorRow[] = [
     { id: EditorId.mermaidView, nameKey: "editors.mermaid", guidePath: "editors/mermaid", hasContentHost: true, load: async () => (await import("./mermaid")).mermaidModule },
     { id: EditorId.linkView, nameKey: "editors.links", guidePath: "editors/links", hasContentHost: true, load: async () => (await import("./link-editor")).linkModule },
     { id: EditorId.envVarsView, nameKey: "editors.envVars", guidePath: "editors/env-vars", hasContentHost: true, load: async () => (await import("./env-vars")).envVarsModule },
-    { id: EditorId.browserView, nameKey: "editors.browser", guidePath: "editors/browser", mcpHint: "Use pages.openUrlInBrowserTab(url, options) to open or reuse a URL in the built-in browser, then use pages[i].editor after narrowing editor.id to \"browser-view\".", load: async () => (await import("./browser")).browserModule },
+    { id: EditorId.browserView, nameKey: "editors.browser", guidePath: "editors/browser/index", mcpHint: "Use pages.openUrlInBrowserTab(url, options) to open or reuse a URL in the built-in browser, then use pages[i].editor after narrowing editor.id to \"browser-view\".", load: async () => (await import("./browser")).browserModule },
     { id: EditorId.imageView, nameKey: "editors.imageViewer", guidePath: "editors/image", mcpHint: 'Use script.execute with: await app.pages.openFile("/path/to/image.png")', load: async () => (await import("./image")).imageModule },
     { id: EditorId.archiveView, nameKey: "editors.archive", guidePath: "editors/archive", mcpHint: 'Use script.execute with: await app.pages.openFile("/path/to/archive.zip")', load: async () => (await import("./archive")).archiveModule },
     { id: EditorId.videoView, nameKey: "editors.videoPlayer", guidePath: "editors/video", mcpHint: 'Use script.execute with: await app.pages.openFile("/path/to/video.mp4")', load: async () => (await import("./video")).videoModule },
@@ -182,7 +182,7 @@ const EDITORS: EditorRow[] = [
     {
         id: EditorId.boardInfo,
         nameKey: "editors.boardInfo",
-        guidePath: "boards",
+        guidePath: "boards/index",
         // Host-capable holder: adopts/yields the shared content host WITHOUT rendering
         // it, so `Text ↔ + ↔ installed board` switches transfer the same host with no reload.
         hasContentHost: true,

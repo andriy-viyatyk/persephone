@@ -94,7 +94,7 @@ Once connected, the button becomes **Disconnect**.
 
 For Persephone's own server, first enable MCP in Settings or the settings file, then connect to
 the configured loopback URL. The [Settings guide](./settings.md) explains the chicken-and-egg
-case; [MCP Server Setup](../mcp-setup.md) covers client configuration and server setup.
+case; [MCP Server Setup](../mcp-setup/available-tools.md) covers client configuration and server setup.
 
 ## Connection state and server capabilities
 

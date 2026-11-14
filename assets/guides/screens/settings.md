@@ -170,7 +170,7 @@ permissions** button. Open it to review saved decisions grouped by site. Choose 
 under a site to remove that choice and return it to **Ask**, or choose **Revoke all site
 permissions** to clear all saved choices for that profile. These controls apply to regular profiles;
 Incognito and Tor choices exist only in memory for their session and do not appear in this review.
-See the [Browser guide](../editors/browser.md#site-permissions-and-prompts) for how to set a site's
+See the [Browser guide](../editors/browser/index.md#site-permissions-and-prompts) for how to set a site's
 permissions from the URL bar.
 
 ## Site Extensions
@@ -249,7 +249,7 @@ Persephone owns the values in the application profile's `data\board-settings.jso
 `%APPDATA%\persephone\data\board-settings.json`); a board can only
 read its own declared values through `persephone.settings.get(id)` and subscribe with
 `persephone.settings.onChange(callback)`. The bridge exposes effective values, so a reset sends
-the declaration's default. See [Boards](../boards.md#board-settings) for the manifest and bridge
+the declaration's default. See [Boards](../boards/board-ui.md#board-settings) for the manifest and bridge
 example.
 
 ## Settings worth knowing about

@@ -15,7 +15,7 @@ import type { GuideSource, GuideSourceEntry } from "./index";
 
 /**
  * Top-level branch the installed boards' documentation is mounted under. Deliberately NOT `boards`:
- * `assets/guides/boards.md` already occupies that key and is about *authoring* a board, while this
+ * `assets/guides/boards/` already occupies that key and is about *authoring* a board, while this
  * branch is the documentation of the boards *installed on this machine*. Two nodes sharing the key
  * `boards` would collide in the About tree and make the folder unreachable through `guides.boards`.
  */

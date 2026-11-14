@@ -20,7 +20,7 @@ Folder View and switch back. If a trusted board declares a matching `folderEdito
 folder's Explorer row uses that board's icon and opens the board instead; use the page toolbar's
 Editor switch to move between the board and Folder View. A published folder editor appears as **+**
 in that switch until you install and register it through Board Info. See [Boards — Direct-folder
-boards](../boards.md#direct-folder-boards).
+boards](../boards/custom-editors.md#direct-folder-boards).
 
 ## Layout
 

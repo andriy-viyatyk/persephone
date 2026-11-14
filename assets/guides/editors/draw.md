@@ -45,7 +45,7 @@ Configure the location at **Settings → Editors → Excalidraw → Library fold
 page with an image. A page opened in Excalidraw now exposes the board facade through
 `pages[i].editor`; the old `IDrawEditor`, `DrawEditorFacade`, and `draw-view` editor id no longer
 exist. Board-specific methods are available from the board's own facade/model as described in the
-[Board guide](./board.md) and [scripting API](../scripting/api/page.md#editor-facades).
+[Board guide](./board.md) and [scripting API](../scripting/api/page-editor-facades.md#editor-facades).
 
 To route an image data URL through the general link API, request the capability rather than the
 removed editor id:

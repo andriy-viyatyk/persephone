@@ -266,10 +266,10 @@ export class AboutGuideBrowserView extends VanillaView<AboutGuideBrowserProps> {
             void guard("Failed to open issues", () => shell.openExternal("https://github.com/andriy-viyatyk/persephone/issues"));
         });
         this.appendResourceButton(resourceActions, "about-resource-boards", t("about.boardsCatalogue"), () => {
-            void this.openGuide("boards");
+            void this.openGuide("boards/index");
         });
         this.appendResourceButton(resourceActions, "about-resource-mcp-setup", t("about.mcpSetup", { protocol: untranslated("MCP") }), () => {
-            void this.openGuide("mcp-setup");
+            void this.openGuide("mcp-setup/index");
         });
         resources.append(resourceActions);
 

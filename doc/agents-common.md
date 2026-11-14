@@ -103,6 +103,9 @@ structure — the crate's own `README.md` is its primary documentation.
 
 Steps 2-5 are mandatory unless the user explicitly says to skip.
 
+Work that edits `assets/guides/` also passes `npm run guides:check` (page limit 20,000 characters, hubs
+10,000; see [standards/guide-structure.md](standards/guide-structure.md)).
+
 #### Epic tasks — deferred review model
 
 `/review`, `/document`, `/userdoc` are scoped to the **epic**, not individual tasks (avoids
@@ -148,6 +151,7 @@ complete (`N/N`) with no stale hashes. Work that changed no catalog messages ski
 | Work with scripting system    | [architecture/scripting.md](architecture/scripting.md) |
 | Work with capabilities (board/platform/agent) | [architecture/capabilities.md](architecture/capabilities.md) |
 | Check coding style            | [standards/coding-style.md](standards/coding-style.md) |
+| Write or split a guide page   | [standards/guide-structure.md](standards/guide-structure.md) |
 | Add or update translated UI text | [standards/localization.md](standards/localization.md) |
 | Styling / inline-style inventory | [architecture/styling-inventory.md](architecture/styling-inventory.md) |
 | See active/planned work       | [active-work.md](active-work.md) |

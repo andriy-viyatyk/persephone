@@ -12,7 +12,7 @@ looked. The block shows up to the newest three unseen events. If more unseen eve
 window, so one session does not consume another session's events.
 
 For the remote model behind a shape-change event, see [Browser automation](./browser.md) or
-[Boards](./boards.md).
+[Boards](./boards/index.md).
 
 ## Read and wait
 

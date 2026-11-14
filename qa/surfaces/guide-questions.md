@@ -85,19 +85,18 @@ fetches the whole page and truncates has found a defect in `whatsNew`, not in it
 
 **Request:** "How do I connect a different AI client to Persephone's MCP server?"
 
-**Expected route:** overview → `guides.search("MCP")` → `guides.mcp-setup` (also
-`guides["mcp-setup"]`).
-**Answers from:** `mcp-setup.md`.
-**Tests:** a hyphenated page name, which is the path form most likely to break — `guides.mcp-setup`
-is not a valid identifier, so the bracket form must work and the tree must show a form that resolves.
+**Expected route:** overview → `guides.search("MCP")` → `guides["mcp-setup"].index`.
+**Answers from:** `mcp-setup/index.md`.
+**Tests:** a hyphenated folder name, which is the path form most likely to break — the bracket form
+must work and the tree must show a form that resolves.
 
 ### Q.7 — A feature the user has the wrong word for
 
 **Request:** "When I restart the app my tabs come back. Can I turn that off?"
 
 **Expected route:** overview → `guides.search("session restore")` or `guides.search("tabs")` →
-`guides.tabs-and-navigation`.
-**Answers from:** `tabs-and-navigation.md`.
+`guides["tabs-and-navigation"].index`.
+**Answers from:** `tabs-and-navigation/index.md` (or the relevant mapped sub-page).
 **Tests:** search when the user's words ("tabs come back") are not the corpus's words ("session
 restore"). Expected to be the hardest scenario; a `PARTIAL` here is a finding about the page's
 summary, and possibly the one place a synonym belongs in the prose.
@@ -107,7 +106,7 @@ summary, and possibly the one place a synonym belongs in the prose.
 **Request:** "What is a board, and how do I install one?"
 
 **Expected route:** overview → `guides.search("board")` → `guides.boards`.
-**Answers from:** `boards.md` (user). The agent-facing `agents/boards.md` is the authoring
+**Answers from:** `boards/` (user, hub `index.md`). The agent-facing `agents/boards/` (hub `index.md`) is the authoring
 reference and is the wrong page for "how do I install one".
 **Tests:** that the agent picks the user page for a user question and the authoring page for an
 authoring question. Ask the follow-up in the same run — "now write me one" — and confirm it moves to
@@ -123,9 +122,9 @@ against a separate `agentGuide` root.
 | Q.3 | page fetch, front matter stripped | `encryption.md` |
 | Q.4 | `guides.whatsNew` current-section extraction | `whats-new.md` |
 | Q.5 | agent-audience page in tree + search, summary disambiguation | `formats/links.md` |
-| Q.6 | hyphenated page path, bracket form | `mcp-setup.md` |
-| Q.7 | search across the user's vocabulary gap | `tabs-and-navigation.md` |
-| Q.8 | audience routing between a user and an agent page on one topic | `boards.md`, `agents/boards.md` |
+| Q.6 | hyphenated folder path, bracket form | `mcp-setup/index.md` |
+| Q.7 | search across the user's vocabulary gap | `tabs-and-navigation/index.md` or a mapped sub-page |
+| Q.8 | audience routing between a user and an agent page on one topic | `boards/`, `agents/boards/` (hub `index.md`) |
 
 Eight scenarios, covering the tree, a page, search over headings/body/tables, `whatsNew`, both
 audiences, and the two path forms. `guides.<page>.layout` is deliberately **not** covered: no page

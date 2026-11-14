@@ -14,6 +14,7 @@
     "dist:publish": "node scripts/build-prod.mjs && electron-builder --win --publish always",
     "lint": "eslint .",
     "check:contracts": "node scripts/check-capability-contract.mjs",
+    "guides:check": "node scripts/guides-check.mjs",
     "i18n:check": "node scripts/i18n-check.mjs",
     "i18n:export": "node scripts/i18n-export.mjs",
     "i18n:check-boards": "node scripts/i18n-check.mjs --boards assets/boards/*",

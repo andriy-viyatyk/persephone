@@ -32,7 +32,7 @@ The catalogue families are **Text and code**, **Structured data**, **Viewers and
 | Video Player | `video-view` | Video, audio, and streams | [Video Player](./video.md) |
 | Archive Editor | `archive-view` | Compressed archives and entries | [Archive Editor](./archive.md) |
 | Folder View | `category-view` | Folders and archive directories | [Folder View](./folder.md) |
-| Browser | `browser-view` | Web pages and web resources | [Browser](./browser.md) |
+| Browser | `browser-view` | Web pages and web resources | [Browser](browser/index.md) |
 | Board | `board-view` | Trusted or bundled custom HTML applications | [Board](./board.md) |
 | Git Tree | `git-tree` | Repository history and Git status | [Git Tree](./git-tree.md) |
 | Git Diff | `file-diff` | Revisions of a Git-tracked file | [Git Diff](./file-diff.md) |
@@ -75,11 +75,11 @@ this editor catalogue; `board-info` is the content-host exception to the usual a
 ## Things that are no longer built in
 
 There is no built-in Todo editor. A `.todo.json` file opens as ordinary JSON in Text, with a Grid
-switch when its data is an array of objects. Install the [Todo board](../boards.md#published-boards-catalog--discover-install-update)
+switch when its data is an array of objects. Install the [Todo board](../boards/published-boards.md#published-boards-catalog--discover-install-update)
 for the full task-list experience.
 
 There is no built-in PDF viewer. A local PDF opens in Text and shows a binary warning; a PDF at an
-HTTP URL uses Chromium in [Browser](./browser.md). Install the published [PDF Viewer board](../boards.md#published-boards-catalog--discover-install-update)
+HTTP URL uses Chromium in [Browser](browser/layout.md). Install the published [PDF Viewer board](../boards/published-boards.md#published-boards-catalog--discover-install-update)
 for search, thumbnails, outline, and zoom. Boards are installed from **Tools & Editors** ->
 **Search boards**, then trusted when prompted.
 
@@ -102,5 +102,5 @@ unambiguous destination for each editor.
 
 - [Screen catalogue](../screens/index.md) for application chrome and app-owned pages.
 - [Scripting](../scripting/index.md) and the [page API](../scripting/api/page.md) for facades and page creation.
-- [Boards](../boards.md) for published boards and custom editors.
-- [Browser](./browser.md) for browser, board, and app-window automation.
+- [Boards](../boards/index.md) for published boards and custom editors.
+- [Browser](browser/layout.md) for browser, board, and app-window automation.

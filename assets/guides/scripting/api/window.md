@@ -117,7 +117,7 @@ The shared page automation methods are also available here, including `check()`,
 `root`, `interactive`, `maxNodes`, and `maxChars`; element methods accept either a CSS selector or
 `{ ref: "eN" }` from a snapshot. `waitFor()` accepts exactly one of `selector`, `text`, `textGone`,
 or `time`, with an optional `timeout` in milliseconds. Mouse and keyboard actions use trusted input
-and check target actionability by default. See [Browser, board, and window page automation](./page.md#browser-board-and-window-page-automation)
+and check target actionability by default. See [Browser, board, and window page automation](page-editor-facades.md#browser-board-and-window-page-automation)
 for locator, wait, screenshot, and response details. The `screenshot()` result is an image object
 when the capture is available.
 

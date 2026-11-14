@@ -71,7 +71,7 @@ persephone/
 │   ├── board-base.css      # Shared board stylesheet copied into every board — theme defaults + the opt-in .p-* chrome layer
 │   ├── board-template/     # Starter files copied into every new blank board
 │   ├── board-template-header.md # Board-local header prepended to its generated CLAUDE.md
-│   ├── guides/agents/boards.md # Canonical board authoring guide; filtered into new blank boards
+│   ├── guides/agents/boards/ # Canonical board authoring guide (hub + pages); the hub is filtered into new blank boards
 │   ├── boards/             # Boards shipped inside the installer resources
 │   │   ├── excalidraw/     # Bundled Excalidraw board, manifest, library fetcher, and committed prebuilt lib/
 │   │   └── rest-client/    # Bundled REST Client board (plain JavaScript)

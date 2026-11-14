@@ -96,7 +96,7 @@ Transcript appears when a v1 Speech to Text provider is installed and trusted.
 When a board has registered a TypeScript project and the page edits a `.ts` or `.tsx` file under
 that project, the toolbar adds **Show TypeScript errors** (or **Hide TypeScript errors** while
 enabled), beside Word Wrap. The toggle shows project diagnostics for that page; see the
-[Boards guide](../boards.md) for registration details.
+[Boards guide](../boards/index.md) for registration details.
 
 ## Word Wrap
 
@@ -160,7 +160,7 @@ it. Verified page elements include `text-compare-left`, `text-run-script`, `text
 `text-show-resources`, `text-word-wrap-toggle`, `text-ts-diagnostics-toggle` (only on registered
 project TypeScript pages), `text-toggle-script`, `script-panel-splitter`,
 `script-run`, `script-run-all`, `script-select`, `script-save`, `script-open-tab`, and
-`script-close`. Use [the page API](../scripting/api/page.md) for the facade members.
+`script-close`. Use [the page API](../scripting/api/page-editor-facades.md) for the facade members.
 
 ## Errors and limits
 

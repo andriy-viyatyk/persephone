@@ -30,9 +30,9 @@ refuse the host caller `{ id: "persephone", name: "Persephone" }` under that pol
 channel supplies `info.interface = { id: "text.translate", version: 1 }`. A refusal uses the
 platform close reason `connection-refused`.
 
-For unified declarations and clients see [Capabilities](capabilities.md). Boards discover providers with `persephone.services.list("text.translate")` and open channels with
+For unified declarations and clients see [Capabilities](capabilities/index.md). Boards discover providers with `persephone.services.list("text.translate")` and open channels with
 `persephone.services.connect("text.translate", selector, openMessage)`. Providers handle both
-same-board and cross-board requests with `persephone.service.onChannel`. See the [Boards guide](./boards.md)
+same-board and cross-board requests with `persephone.service.onChannel`. See the [Boards guide](./boards/index.md)
 for channel lifecycle, backpressure, trust, and grants.
 
 ## Opening messages

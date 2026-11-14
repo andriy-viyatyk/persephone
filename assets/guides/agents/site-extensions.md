@@ -121,7 +121,7 @@ source with `app.fs.write(path, source)`.
 After writing the script, the page shows a Trust bar for it (`pages[pageId].editor.siteExtensionTrustPrompt`
 shows its id and hosts). For an extension you built on the user's request, call
 `pages[pageId].editor.trustSiteExtension()` yourself; for any other extension, follow
-[Trust and the data boundary](#trust-and-the-data-boundary). A
+[Trust and the data boundary](site-extensions.md#trust-and-the-data-boundary). A
 `status: "changed"` result means the manifest changed after the bar appeared: re-read the prompt and
 confirm the new hosts before trusting. Then edit and reload as needed:
 

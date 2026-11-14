@@ -194,7 +194,7 @@ the [Page API](../scripting/api/page.md#content-restore-and-pipe-status):
 
 ### Drawn controls without `elements`
 
-- Browser Home, Back, Forward, Reload, address bar, Navigate, Bookmarks, Downloads, More, DevTools, and Close — no entry in this sidebar list: Browser owns its custom toolbar; see the [Browser editor guide](../editors/browser.md) for its editor facade.
+- Browser Home, Back, Forward, Reload, address bar, Navigate, Bookmarks, Downloads, More, DevTools, and Close — no entry in this sidebar list: Browser owns its custom toolbar; see the [Browser editor guide](../editors/browser/index.md) for its editor facade.
 - Board-specific toolbar controls — no entry: custom board content; the embedded switch is the supported anchor.
 - File, board, tool, ref, changed-file, and clipboard history rows — no entry: repeated data rows are addressed through panel state/actions; the dynamic declarations cover stable roots and actions. Clipboard row Copy buttons are repeated controls.
 
@@ -260,7 +260,7 @@ model performs the navigation; do not infer a file path from a repeated visual r
 
 Boards uses the shared frame to show boards and toolsets associated with an Explorer root. Its
 Boards/Tools switch is panel-owned. Board creation and board-specific controls are not shell
-anchors, and the detailed board surface belongs in the [Boards guide](../boards.md).
+anchors, and the detailed board surface belongs in the [Boards guide](../boards/index.md).
 
 For the live panel model, call `page.panels.items`. Each item reports a bare panel ID, label,
 owning editor instance, editor kind, and expanded state. `page.panels.expand(id)` takes that bare

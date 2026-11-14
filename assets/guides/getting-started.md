@@ -86,7 +86,7 @@ editor when available, or the guide contents otherwise.
   - **Grid (CSV)** — Grid editor for CSV data
   - **Browser** — Built-in web browser (or pick a specific profile / incognito)
 
-  The dropdown groups available editors into **Top**, your named categories, and **Other**. Manage categories in the **Tools & Editors** hub (see [Tabs & Navigation](./tabs-and-navigation.md#tools--editors)).
+  The dropdown groups available editors into **Top**, your named categories, and **Other**. Manage categories in the **Tools & Editors** hub (see [Tabs & Navigation](tabs-and-navigation/menu-bar.md#tools--editors)).
 
 ### Opening Files
 - Press `Ctrl+O` to open file dialog
@@ -125,7 +125,7 @@ To manually check for updates:
 2. Click **About** (the info button) to open the About page
 3. Click "Check for Updates"
 
-"Check for Updates" also refreshes the catalog of [boards published by the project](./boards.md#published-boards-catalog--discover-install-update), so a newly published board or board update shows up immediately instead of waiting for the next automatic check.
+"Check for Updates" also refreshes the catalog of [boards published by the project](./boards/published-boards.md#published-boards-catalog--discover-install-update), so a newly published board or board update shows up immediately instead of waiting for the next automatic check.
 
 The About page also shows:
 - Current application version
@@ -168,7 +168,7 @@ Settings file key: `window.close-to-tray` (boolean, default `true`). The tray's 
 
 - Learn about [different editors](./editors/index.md)
 - Explore the [Grid Editor](./editors/grid.md) for JSON/CSV data
-- Try [JavaScript scripting](./scripting/index.md)
-- Learn about [tabs, sidebar, and navigation](./tabs-and-navigation.md)
+- Try [JavaScript scripting](scripting/index.md)
+- Learn about [tabs, sidebar, and navigation](tabs-and-navigation/grouping-session-and-watching.md)
 - Protect files with [encryption](./encryption.md)
 - See all [keyboard shortcuts](./shortcuts.md)

@@ -99,7 +99,7 @@ continues to be the API; MCP Object Model `settings.get` and `settings.set` obse
 Board settings are separate from `app.settings`. A board declares them in its manifest and reads
 its own effective values through `persephone.settings.get(id)` and
 `persephone.settings.onChange(callback)`; Persephone stores those values in
-`board-settings.json`. See [Boards — board settings](../../boards.md#board-settings).
+`board-settings.json`. See [Boards — board settings](../../boards/board-ui.md#board-settings).
 
 ## Common Settings
 
@@ -114,7 +114,7 @@ its own effective values through `persephone.settings.get(id)` and
 | `clipboard.enabled` | `boolean` | `false` | Record supported clipboard items for the Clipboard sidebar panel. History is off by default; copied secrets may remain readable on disk while enabled. |
 | `clipboard.max-items` | `number` | `100` | Maximum retained clipboard history items, from 1 through 1000. Invalid stored values fall back to 100. |
 | `script-library.path` | `string` | `""` | Path to the Script Library folder. When set, a "Script Library" entry appears in the sidebar for quick access to reusable scripts. |
-| `board-vars.file` | `string` | `""` | Path to the board environment-variables file (`.env.json`) — stores per-board variables/secrets outside board folders. Empty means not configured yet. May be encrypted with a password via the file's own encryption menu. See [Boards — Environment variables](../../boards.md#environment-variables--secrets-outside-the-board-folder). |
+| `board-vars.file` | `string` | `""` | Path to the board environment-variables file (`.env.json`) — stores per-board variables/secrets outside board folders. Empty means not configured yet. May be encrypted with a password via the file's own encryption menu. See [Boards — Environment variables](../../boards/env-vars.md#environment-variables--secrets-outside-the-board-folder). |
 
 Settings are stored in `appSettings.json`. You can open this file via Settings → "View Settings File".
 

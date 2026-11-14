@@ -1,7 +1,7 @@
 ---
 title: "app"
-audience: user
-summary: "The root application object and entry point to app functionality in scripts."
+audience: "user"
+summary: "How do scripts read application properties and call common app methods?"
 ---
 
 # app
@@ -31,10 +31,10 @@ app.pages.activePage.content;
 | [editors](./editors.md) | `IEditorRegistry` | Read-only registry of all editors. |
 | [recent](./recent.md) | `IRecentFiles` | Recently opened files. |
 | [downloads](./downloads.md) | `IDownloads` | Global download tracking. |
-| [proc](#proc) | `IProc` | Spawn external programs and stream their output. |
-| [boards](#boards) | `IBoards` | Create and open [Boards](../../boards.md) from scripts or agents. |
-| [capabilities](#capabilities) | `ICapabilities` | Discover and invoke built-in and trusted-board capability handlers. |
-| [boardVars](#boardvars) | `IBoardVars` | Admin access to the [board environment-variables store](../../boards.md#environment-variables--secrets-outside-the-board-folder) — any namespace, not just the calling board's own. |
+| [proc](app-proc-and-boards.md#proc) | `IProc` | Spawn external programs and stream their output. |
+| [boards](app-proc-and-boards.md#boards) | `IBoards` | Create and open [Boards](../../boards/index.md) from scripts or agents. |
+| [capabilities](app-capabilities-and-vars.md#capabilities) | `ICapabilities` | Discover and invoke built-in and trusted-board capability handlers. |
+| [boardVars](app-capabilities-and-vars.md#boardvars) | `IBoardVars` | Admin access to the [board environment-variables store](../../boards/env-vars.md#environment-variables--secrets-outside-the-board-folder) — any namespace, not just the calling board's own. |
 | `menuFolders` | `IMenuFolders` | User-configured sidebar folders. |
 
 ## Methods
@@ -239,262 +239,14 @@ const result = await progress.show(app.runAsync(
 
 **Returns:** `Promise<TResult>` — the value returned by `fn`, cloned back to the renderer.
 
-See [Scripting — Background Workers](../index.md#background-workers-apprunasync) for usage guide and examples.
+See [Scripting — Background Workers](../script-library-and-workers.md#background-workers-apprunasync) for usage guide and examples.
 
 ---
 
-## proc
 
-Spawn external programs and stream their output. Each call to `execute()` returns a handle — consume it either **one-shot** (buffer stdout to completion) or **streaming** (attach event listeners). Do not mix both modes on the same handle.
+## Read next
 
-```javascript
-// One-shot: run a script and parse its JSON output
-const data = await app.proc.execute("python scripts/load.py").getJson();
-
-// One-shot: capture plain text output
-const output = await app.proc.execute("git log --oneline -10").getText();
-
-// Streaming: render output as it arrives
-const h = app.proc.execute("npm run build");
-const dec = new TextDecoder();
-h.on("stdout", (chunk) => console.log(dec.decode(chunk)));
-h.on("exit", ({ code }) => console.log("Done, exit code:", code));
-
-// With options: custom cwd and env
-const result = await app.proc.execute("node index.js", {
-    cwd: "C:/my-project",
-    env: { DEBUG: "1" },
-}).getText();
-```
-
-### Methods
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `execute(command, options?)` | `IExecuteHandle` | Spawn a command line and return a process handle. The command runs through the OS shell by default (so `&&`, pipes, and inline arguments work). |
-
-### IExecuteOptions
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `cwd` | `string?` | app cwd | Working directory for the spawned process. |
-| `env` | `Record<string, string>?` | — | Extra environment variables, merged over the inherited environment. |
-| `shell` | `boolean \| string?` | `true` | Shell to use. `true` = OS default; a string picks a specific shell (`"bash"`, `"pwsh"`); `false` = run the executable directly without a shell. |
-| `name` | `string?` | — | Optional job name. Mainly used by [Boards](../../boards.md#long-running-processes-setboardbusy--getboardbusy--getjobs), where a busy board re-associates its surviving jobs by name after a reload. |
-
-### IExecuteHandle
-
-| Member | Description |
-|--------|-------------|
-| `jobId` | Unique ID for this job. |
-| `getText()` | Buffer stdout to completion and decode as UTF-8 text. Rejects only on a spawn-level error. |
-| `getJson(pattern?)` | Buffer stdout, then `JSON.parse`. Rejects on spawn error, non-zero exit, or parse failure with a `RunnerError` (`err.name === "RunnerError"`) carrying `exitCode` and `stderr`. Pass a `RegExp` to extract JSON from noisy output (the last match is used; capture group 1 if present). |
-| `getBytes()` | Buffer stdout to completion and return the raw `Uint8Array`. |
-| `on("stdout" \| "stderr", cb)` | Stream binary chunks as they arrive. Attaching a listener switches to streaming mode (one-shot getters then throw). Returns an unsubscribe function. |
-| `on("exit", cb)` | Fires once when the process exits. Callback receives `{ code, signal }`. |
-| `on("error", cb)` | Fires once on a spawn-level failure (process never started). |
-| `write(data)` | Write to the process's stdin (`string` or `Uint8Array`). |
-| `endStdin()` | Close the process's stdin. |
-| `kill(signal?)` | Terminate the process (default `"SIGTERM"`). |
-
----
-
-## boards
-
-Create and open [Boards](../../boards.md). Boards created via this API are scaffolded from the built-in template, get a `board-manifest.json` identity file, and are **auto-trusted** — they open without a trust prompt.
-
-```javascript
-// Create a blank board in any folder and open it
-const root = await app.boards.createBoard("My Board", "C:/work/boards");
-await app.boards.openBoard(root);
-
-// Create from the Demo template (rich annotated example)
-const root = await app.boards.createDemoBoard("Demo", "C:/work/boards");
-await app.boards.openBoard(root);
-
-// Open an existing board by its root path
-await app.boards.openBoard("C:/work/boards/Existing Board");
-```
-
-### Methods
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `createBoard(name, dir)` | `Promise<string>` | Create a blank board named `name` inside container folder `dir` (created if needed). Returns the new board's absolute root path. Throws if a board named `name` already exists in `dir`. |
-| `createDemoBoard(name, dir)` | `Promise<string>` | Same as `createBoard`, but scaffolds from the bundled Demo board template — a full working example of the bridge API, theme contract, and multi-tab layout. Returns the board root. |
-| `openBoard(boardRoot)` | `Promise<void>` | Open an existing board by its absolute root folder path (the folder containing `board-manifest.json`). Opens a new tab or reuses an existing one. Boards created by Persephone open immediately; foreign boards prompt for trust. Throws if `boardRoot` is missing or has no `board-manifest.json`. |
-| `list()` | `Promise<BoardListing[]>` | List local trusted, installed, and open boards. Read-only and does not contact the remote catalog. |
-| `requestService(boardRoot, message)` | `Promise<unknown>` | Send an opaque structured-clone message to the board's declared service, starting it lazily when needed. Rejects with a readable lifecycle reason such as `untrusted`, `service-not-declared`, `service-busy`, `service-timeout`, `service-exited`, or `service-failed`. |
-| `startService(boardRoot)` | `Promise<void>` | Explicitly start the board's declared service and reset its restart budget. |
-| `stopService(boardRoot)` | `Promise<void>` | Explicitly stop the board's declared service. |
-| `registerBoard(boardRoot)` | `Promise<boolean>` | Trust an existing board on disk — shows the user a trust dialog; nothing is trusted without that click. Resolves to whether the board ended up trusted (`true` also when already trusted, including via a trusted ancestor folder). Use after downloading/reviewing a board. |
-| `unregisterBoard(boardRoot)` | `Promise<void>` | Untrust a board and remove its pin. No dialog — untrusting only reduces privilege. Idempotent. |
-| `renameBoard(boardRoot, newName)` | `Promise<string>` | Rename a board's folder, carrying its trust, pin, and catalog-install registration to the new path with no dialog, and re-pointing any open page for it. Returns the new root. Throws if the board is busy, not a board, or the new name already exists. |
-
-### Published boards catalog
-
-Persephone ships against a small **catalog of boards published by the project** (ready-made custom editors and tools — see [Boards — Published boards catalog](../../boards.md#published-boards-catalog--discover-install-update)). These methods let a script or AI agent drive the whole discover → download → review → install → update lifecycle, always through the same one-click trust rule as the rest of the API — a script can download and inspect a board, but only the user's dialog click can trust it.
-
-```javascript
-// Find a published board, download it for review, then ask the user to trust it
-const results = await app.boards.searchPublished("drawio");
-const root = await app.boards.downloadPublished(results[0].id); // no trust yet
-// ...inspect the files at `root`...
-const trusted = await app.boards.registerBoard(root); // shows the trust dialog
-
-// Interactive install/update/rollback via the Board Info screen
-await app.boards.installPublished("drawio-viewer");
-await app.boards.installPublished("drawio-viewer", { version: "1.0.0" }); // rollback
-
-// Check for updates and uninstall
-const updates = await app.boards.checkPublishedUpdates(true);
-await app.boards.uninstallBoard("drawio-viewer");
-```
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `searchPublished(query?)` | `Promise<PublishedBoardResult[]>` | Search the catalog by name/description/file mask; each result is annotated with install state (`installed`, `installedVersion`, `updateAvailable`, `compatible`). Read-only, no dialog. |
-| `getPublishedVersions(id)` | `Promise<PublishedVersionResult[]>` | A published board's full version history (newest first), each entry annotated with `compatible` and `installed`. Read-only, no dialog. |
-| `downloadPublished(id, opts?)` | `Promise<string>` | Download + verify (sha256) + extract a board to disk and record it in the install registry — **no dialog, no trust**. The board sits inert on disk, ready to review. `opts: { dir?, version? }`. Returns the install root. |
-| `installPublished(id, opts?)` | `Promise<string \| undefined>` | Interactive install: opens the Board Info page for **Download → Register** (fresh install) or auto-runs a version swap (update/rollback) if `id` is already installed and `opts.version` is given. Resolves the root, or `undefined` if the user abandons it. |
-| `uninstallBoard(id)` | `Promise<boolean>` | Uninstall a catalog-installed board: shows the delete confirmation, then removes its folder, trust, pin, and install-registry entry. |
-| `checkPublishedUpdates(force?)` | `Promise<BoardUpdateInfo[]>` | Refresh the catalog and return installed boards with a compatible newer version available. No dialog. |
-
-`list()` returns one entry per locally known board. Each entry has `root`, optional manifest
-`name`/`description`, `trusted`, optional `installed` metadata (`id`, `version`, and known update
-information), and `openPageIds`. A board with a registered module-service status also has an
-optional `service` object with `state` (`stopped`, `starting`, `running`, `stopping`, or
-`failed`), an optional `reason`, `restartCount`, and optional process fields `pid` and
-`startedAt` (epoch milliseconds). Boards without a registered service status omit the key. It does
-not discover boards from the remote catalog.
-
----
-
-## capabilities
-
-Discover and invoke capabilities supplied by Persephone or eligible Boards; see [Capabilities](../../agents/capabilities.md) for `app.capabilities.get`, providers and method kinds. Discovery is
-read-only and does not open a handler page. The new `get` method uses the same provider selection
-rules as Board `getCapability`; it defaults to major version 1. An unpinned `invoke()` selects an
-eligible provider using `capabilities.preferredProviders` and can use any available major version.
-Pass `id@major` or `options.version` to pin it. See
-[Boards — capability handlers and in-memory intents](../../boards.md#capability-handlers-and-in-memory-intents)
-for the manifest and handler-side contract.
-
-The following `handlers`, `list` and `invoke` examples use legacy discovery and wrappers:
-
-```javascript
-const handlers = app.capabilities.handlers("content.view", { representation: "markdown" });
-const available = app.capabilities.list();
-
-const opened = await app.capabilities.invoke("text.open", {
-    content: "# Report",
-    language: "markdown",
-    title: "Report",
-});
-console.log(opened.pageId);
-```
-
-Well-known capability ids include `http.request.open` (open a REST request collection), `image.edit`
-(open an image in an editor), and `certificate.view` (render a site's certificate chain). A
-`certificate.view` v1 payload has a hostname `title`, a non-empty leaf-first `certificates` array
-of base64 DER strings, and optional `source: { url }`. Persephone validates the certificate data
-and limits decoded chains to 256 KiB before invoking a handler:
-
-```javascript
-// Assuming pages[0] is a browser page.
-const certificate = await pages[0].editor.getCertificate();
-if (certificate) {
-    await app.capabilities.invoke("certificate.view", {
-        title: new URL(certificate.url).hostname,
-        certificates: certificate.certificates,
-        source: { url: certificate.url },
-    }, { version: 1 });
-}
-```
-
-### Methods
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `list()` | `readonly CapabilityInfo[]` | List all indexed platform and trusted-Board capability candidates. |
-| `handlers(id, filter?)` | `readonly CapabilityInfo[]` | List candidates for one id; `filter` may specify a MIME type with `{ mime }` or a content representation with `{ representation }`. |
-| `invoke(id, payload, options?)` | `Promise<unknown>` | Select and invoke an eligible handler. Without a version pin, provider preference and priority choose among available major versions; use `id@major` or `options.version` to pin one. |
-
-`invoke()` options are `version`, `filter: { mime, representation }`, `pageId`, `signal`, and `deadlineMs`.
-`pageId` preserves the originating page when an invocation is part of a page workflow;
-`signal` cancels it and `deadlineMs` bounds how long the caller waits. Built-in open/edit
-capabilities normally return a page result; `diagram.edit` can instead return
-`{ status: "conversion-failed", message }`. Board handlers commonly return
-`{ pageId?, result? }`.
-
-Failures reject with a typed capability error. Its `code` is one of `no-handler`, `untrusted`,
-`handler-closed`, `crashed`, `cancelled`, `timeout`, `cycle`, `payload-too-large`, `busy`, or
-`rejected`. Error codes remain stable; limit errors use concise messages. A timeout or cancellation
-stops waiting and sends a best-effort cancellation to the handler; it cannot stop work that the
-handler has already started.
-
----
-
-## boardVars
-
-Admin-level access to the [board environment-variables store](../../boards.md#environment-variables--secrets-outside-the-board-folder) (a single, optionally password-encrypted `.env.json` file kept outside every board folder). A board's own `persephone.var.*` bridge is locked to its own namespace; `app.boardVars` is unrestricted — since scripts already run with the same trust as `app.fs`/`app.settings`, the agent may target **any** namespace. The typical use is to provision a board's secrets ahead of time, right after scaffolding it, so the board finds its variables already in place the first time it calls `persephone.var.get(...)`.
-
-```javascript
-// Scaffold a board, then provision its connection secrets before the user ever opens it
-const root = await app.boards.createBoard("Snowflake Viewer", "C:/work/boards");
-const namespace = await app.boardVars.namespaceFor(root);
-await app.boardVars.set(namespace, "SNOWFLAKE_SERVER", "abc123.snowflakecomputing.com");
-await app.boardVars.set(namespace, "SNOWFLAKE_USER", "my-user");
-await app.boards.openBoard(root);
-```
-
-Every method may show the user a one-time **"Create environment variables storage"** dialog (no `.env.json` configured yet) or a decrypt-password prompt (the file is encrypted and locked this session) — both are real UI, so the call resolves only after the user responds, and rejects if they decline/cancel.
-
-### Methods
-
-| Method | Returns | Description |
-|--------|---------|--------------|
-| `namespaceFor(boardRoot)` | `Promise<string>` | Resolves `boardRoot`'s vars namespace exactly as the board itself would see it — its manifest's `author`/`name` when both are explicitly set, otherwise the board's root path. Always use this instead of constructing the namespace string by hand. |
-| `get(namespace, name, env?)` | `Promise<string \| undefined>` | A single value from `namespace`'s profile (`default` when `env` is omitted), or `undefined` if unset. |
-| `set(namespace, name, value, env?)` | `Promise<void>` | Write one value into `namespace`'s profile (`default` when `env` is omitted), creating the namespace/profile if needed. Persisted immediately — re-encrypted on save if the file is encrypted. |
-| `list(namespace, env?)` | `Promise<string[]>` | Key names (not values) in `namespace`'s profile (`default` when `env` is omitted). |
-| `listNamespaces()` | `Promise<string[]>` | Every namespace currently present in the configured `.env.json`, including ones a board wrote to itself. |
-| `show(namespace?)` | `Promise<void>` | Open the built-in `.env.json` editor. Focused on `namespace` when given; opens the whole file unscoped when omitted. |
-
----
-
-## menuFolders
-
-Manage sidebar folders (persisted to `menuFolders.json`).
-
-### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `folders` | `IMenuFolder[]` | Current list of configured folders. |
-
-### Methods
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `add({ name, path?, files? })` | `string` | Add a folder. Returns the generated ID. |
-| `remove(id)` | `void` | Remove a folder by ID. |
-| `find(id)` | `IMenuFolder \| undefined` | Find a folder by ID. |
-| `move(sourceId, targetId)` | `void` | Reorder folders. |
-
-### IMenuFolder
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | `string` | Unique folder ID. |
-| `name` | `string` | Display name. |
-| `path` | `string?` | Folder path on disk. |
-| `files` | `string[]?` | Explicit list of file paths (virtual folders). |
-
-```javascript
-// List all sidebar folders
-app.menuFolders.folders.forEach(f => console.log(f.name, f.path));
-
-// Add a project folder
-app.menuFolders.add({ name: "My Project", path: "C:/projects/my-app" });
-```
+| What you need | Page (object-model path) |
+|---|---|
+| Processes and boards | [app-proc-and-boards](app-proc-and-boards.md) - `guides.scripting.api["app-proc-and-boards"]` |
+| Capabilities, board variables and menu folders | [app-capabilities-and-vars](app-capabilities-and-vars.md) - `guides.scripting.api["app-capabilities-and-vars"]` |

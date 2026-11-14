@@ -1,4 +1,4 @@
-<!-- Generated board-local copy. Source: assets/guides/agents/boards.md. -->
+<!-- Generated board-local copy. Source: assets/guides/agents/boards/index.md. -->
 
 > This folder is a new blank Persephone board, scaffolded from these starter files:
 > `index.html`, `app.js`, `scripts/hello.js`, `board-manifest.json`, and `lang/en.json`.

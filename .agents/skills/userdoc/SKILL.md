@@ -35,10 +35,10 @@ The shape of the corpus, which is stable even as pages come and go:
 
 | Area | Holds |
 |------|-------|
-| `index.md`, `getting-started.md`, `shortcuts.md`, `encryption.md`, `tabs-and-navigation.md`, `whats-new.md` | Top-level topics |
+| `index.md`, `getting-started.md`, `shortcuts.md`, `encryption.md`, `tabs-and-navigation/index.md` (+ pages), `whats-new.md` | Top-level topics |
 | `editors/index.md` + one page per editor | The editor a user is looking at; each declares its `editorId` |
 | `screens/*` | Non-editor screens: header strip, Menu Bar, Settings, sidebar, tabs, dialogs, MCP Inspector |
-| `boards.md`, `agent-tools.md`, `mneme.md`, `mcp-setup.md` | Feature topics that also own a screen `editorId` |
+| `boards/index.md` (+ pages), `agent-tools.md`, `mneme.md`, `mcp-setup/index.md` (+ pages) | Feature topics that also own a screen `editorId`; pages stay within the 20,000-character limit (`npm run guides:check`; rules in `doc/standards/guide-structure.md`), new sections go on the page for their topic and a new page gets a hub "Read next" row |
 | `scripting/index.md`, `scripting/api/*` | Scripting guide and API reference |
 | `agents/*`, `formats/*` | `audience: agent` references — out of scope unless the feature changed |
 

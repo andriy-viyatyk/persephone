@@ -768,10 +768,11 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Creatable-items registry (`CreatableItem` list shared by the Editors tree and `+` new-page popover) | `/src/renderer/api/creatable-items.ts` |
 | Editor categories (setting owner, exclusive membership, board-pin pruning, and editor/board ref encoding) | `/src/renderer/api/editor-categories.ts` |
 | Legacy byte-size formatter entry point (`formatBytes`, re-exported from the locale-aware formatter) | `/src/renderer/core/utils/format-bytes.ts` |
-| Canonical board authoring guide (also filtered into new blank boards at scaffold time) | `/assets/guides/agents/boards.md` |
+| Canonical board authoring guide (also filtered into new blank boards at scaffold time) | `/assets/guides/agents/boards/` (hub `index.md`) |
 | Bundled Excalidraw board (manifest, board bootstrap, library downloader, and committed prebuilt vendor `lib/`) | `/assets/boards/excalidraw/` |
 | Bundled REST Client board (manifest, request/response model, views, and board guide) | `/assets/boards/rest-client/` |
-| Agent-facing boards resource | `/assets/guides/agents/boards.md` |
+| Agent-facing boards resource | `/assets/guides/agents/boards/` (hub `index.md`) |
+| Guide corpus check (front matter, 20,000-character page limit, 10,000 hub limit, links, exclude markers; `npm run guides:check`) | `/scripts/guides-check.mjs`, `/scripts/guides-check-entry.ts` |
 | Agent-facing AI Vision authoring resource | `/assets/guides/agents/ai-vision.md` |
 | Shared board stylesheet, copied into every board at creation (theme defaults + the opt-in `.p-*` chrome layer) | `/assets/board-base.css` |
 | Recommended-components catalog (manifest + 11 components, 10 skins) | `/boards-assets/` |
