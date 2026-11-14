@@ -1,7 +1,7 @@
 import { TDialogModel } from "../../core/state/model";
 import { TComponentState } from "../../core/state/state";
-import { showDialog } from "../../ui/dialogs/Dialogs";
-import { registerDialogView } from "../../ui/dialogs/dialog-view-registry";
+import { showDialog } from "../../api/dialogs/dialogs-state";
+import { registerDialogView } from "../../api/dialogs/dialog-view-registry";
 import type { LinkItem } from "./linkTypes";
 import type { ImageRoute } from "./routed-src";
 import { EditLinkDialogView } from "./EditLinkDialogView";

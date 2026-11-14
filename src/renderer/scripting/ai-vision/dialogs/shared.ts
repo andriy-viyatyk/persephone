@@ -1,6 +1,6 @@
-import type { IDialogViewData } from "../../../ui/dialogs/dialog-view-registry";
+import type { IDialogViewData } from "../../../api/dialogs/dialog-types";
 import type { IAiVisionDescriptor, IAiVisible } from "ai-vision";
-import { normalizeDialogButton, type DialogButtonDefinition, type DialogButtonInput } from "../../../ui/dialogs/dialog-buttons";
+import { normalizeDialogButton, type DialogButtonDefinition, type DialogButtonInput } from "../../../api/dialogs/dialog-buttons";
 
 export type DialogEntry = IDialogViewData;
 

@@ -199,7 +199,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Open handler (Layer 3)   | `/src/renderer/content/open-handler.ts`           |
 | HTTP provider (content-only default User-Agent; `nodeFetch` remains header-neutral) | `/src/renderer/content/providers/HttpProvider.ts` |
 | cURL/fetch parser        | `/src/renderer/core/utils/curl-parser.ts`         |
-| Open URL dialog          | `/src/renderer/ui/dialogs/OpenUrlDialog.ts`       |
+| Open URL dialog model    | `/src/renderer/api/dialogs/OpenUrlDialog.ts`     |
 | Script `io` namespace    | `/src/renderer/scripting/api-wrapper/IoNamespace.ts` |
 | Script library service and folder selection/unlink actions | `/src/renderer/api/library-service.ts` |
 | Script autoloading       | `/src/renderer/scripting/AutoloadRunner.ts`       |
@@ -288,9 +288,13 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Native left and right tab strips plus shared tab view (keyed DOM reuse, zone-specific drag/reorder behavior, popover toggle, and activation scroll projection) | `/src/renderer/ui/tabs/PageTabsView.ts`, `/src/renderer/ui/tabs/RightPageTabsView.ts`, `/src/renderer/ui/tabs/PageTabView.ts` |
 | Editor-specific localized page-tab title formatters | `/src/renderer/editors/tab-title-registry.ts`, `/src/renderer/editors/*/*-tab-title.ts` |
 | Page-tab shared contract (tab props, sizing constants, and menu/drag support helpers) | `/src/renderer/ui/tabs/PageTab.ts` |
-| Dialog/popper view registry | `/src/renderer/ui/dialogs/dialog-view-registry.ts` |
-| Native dialog/popper hosts | `/src/renderer/ui/dialogs/DialogsView.ts`, `/src/renderer/ui/dialogs/poppers/PoppersView.ts` |
-| Application popup-menu state and callback activation | `/src/renderer/ui/dialogs/poppers/showPopupMenu.ts` |
+| Dialog/popper state and synchronous close events | `/src/renderer/api/dialogs/dialogs-state.ts` |
+| Dialog/popper data and model contracts | `/src/renderer/api/dialogs/dialog-types.ts` |
+| Dialog/popper view registry | `/src/renderer/api/dialogs/dialog-view-registry.ts` |
+| Shared keyed dialog/popper slot lifecycle | `/src/renderer/ui/dialogs/ModelViewSlotHost.ts` |
+| Native dialog/popper hosts and shell-time registration | `/src/renderer/ui/dialogs/DialogsView.ts`, `/src/renderer/ui/dialogs/poppers/PoppersView.ts`, `/src/renderer/ui/dialogs/register-dialog-views.ts` |
+| Application popup-menu model/state and callback activation | `/src/renderer/api/dialogs/showPopupMenu.ts` |
+| Native application popup-menu view | `/src/renderer/ui/dialogs/poppers/AppPopupMenuView.ts` |
 | Native editor error view (message + optional stack for failures in the native editor path) | `/src/renderer/ui/app/NativeEditorErrorView.ts`, `/src/renderer/ui/app/NativeEditorErrorView.css` |
 | UI element addressing contract (the `data-name` convention, `data-name` vs `data-type`/`data-part`/state attributes, and the shell selector table that MCP UI guides quote — renaming a listed name is a documentation change) | [`ui-element-contract.md`](ui-element-contract.md) |
 | Secondary view registry (single native `VanillaView` panel loader; exact and prefix resolution) | `/src/renderer/ui/secondary-views/secondary-view-registry.ts` |
@@ -481,11 +485,11 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Theme definitions        | `/src/renderer/theme/themes/`                     |
 | Sidecar process lifecycle (main; shared spawn → stdout-readiness → stop machinery for helper exes — tor.exe, mneme.exe, and the clipboard watcher. Owns the parts that are easy to get subtly wrong: in-flight start dedupe (`pending` registered synchronously, so concurrent restarts join one attempt instead of racing two daemons onto the same on-disk state), readiness timeout, the stale-child guard on `close` (a replaced process's late close must not null out its healthy successor), `onUnexpectedExit` for post-readiness deaths only, and stop-and-wait before respawn. Services keep every domain concern and feed `log`/`isReady`/status callbacks) | `/src/main/sidecar-process.ts` |
 | Tor service (main; tor.exe lifecycle + restart-based reconnect, per-partition SOCKS5 proxy, exit-IP/geo lookup through the partition's session. **Fails closed**: `armPartition` applies the proxy *before* the daemon exists — awaited from `BrowserEditor.restore()`, the one path every Tor page takes (session restore included) and always ahead of `addPage`, because an unproxied Electron session is DIRECT and the first webview mounts with `src` already set, so the bootstrap window would otherwise leak the opening navigation; `settleStart` re-applies it on failure too, so a daemon that never bootstraps can't leave a page browsing normally; `armTorProxy` is idempotent because `restore()`/`showBrowserPage`/`reconnectTor` each must guarantee it independently. Arming stays out of `activePartitions` — `isActiveTorPartition` means "live and *bootstrapped*" for `tor-src://`/`checkIp`) | `/src/main/tor-service.ts` |
-| `tor-src://` scheme handler (main; fetches an `http(s)` URL through a Tor partition's session so the SOCKS proxy applies — the app renderer is unproxied, so a Tor page's Link-editor images would otherwise leak direct. Three guards required together: partition-shape regex, live-partition check, `http(s)`-only target; target travels in `?u=` because Chromium canonicalizes standard-scheme paths) | `/src/main/tor-src-protocol.ts` |
+| `tor-src://` scheme policy (main; requires a Tor-shaped host, a live partition and an `http(s)` target; target travels in `?u=` because Chromium canonicalizes standard-scheme paths) | `/src/main/tor-src-protocol.ts`, `/src/main/routed-fetch-protocol.ts` |
 | Routed image-src resolver (renderer; `ImageRoute` + `resolveRoutedSrc` rewrite remote `src` → `tor-src://` or `profile-src://` for a Tor or proxied browser page, pass local schemes through, render nothing while a Tor circuit is down. Lives in `link-editor/` to keep the `browser` → `link-editor` import one-way) | `/src/renderer/editors/link-editor/routed-src.ts` |
 | Piped image-src resolver (`usePipeImageSrc` — an archive-entry `imgSrc` like `deck.pptx!ppt/media/img.png` is unloadable by `<img>`, so it is read through `pipeFromSourcePath` into a blob URL; `http(s)`/`data:`/`blob:`/`file://` **and plain local paths** pass through untouched, since the renderer loads those natively and piping them would force a full in-memory read per visible image. Capped blob-URL cache with oldest-first eviction + `revokeObjectURL`, because tile grids are virtualized and every scroll would otherwise re-read the archive. Runs BEFORE `resolveRoutedSrc` so the resulting `blob:` counts as local and is never proxied) | `/src/renderer/editors/link-editor/pipe-image-src.ts` |
-| Routed-page connection info dialog (Tor: exit IP + location + `check.torproject.org` verdict, Reconnect restarts tor.exe; proxy mode: egress IP + location) | `/src/renderer/ui/dialogs/TorInfoDialog.ts` |
-| Profile network (main; per-partition proxy for browser profiles and Incognito pages — idempotent apply, `profile-src://` token handler, guest WebRTC policy, egress check, `session-src` hand-off) | `/src/main/browser-network-service.ts`, `/src/ipc/browser-network-ipc.ts` |
+| Routed-page connection info dialog model (Tor: exit IP + location + `check.torproject.org` verdict, Reconnect restarts tor.exe; proxy mode: egress IP + location) | `/src/renderer/api/dialogs/TorInfoDialog.ts` |
+| Profile network (main; per-partition proxy for browser profiles and Incognito pages — idempotent apply, `profile-src://` token policy, guest WebRTC policy, egress check, `session-src` hand-off) | `/src/main/browser-network-service.ts`, `/src/ipc/browser-network-ipc.ts`, `/src/main/routed-fetch-protocol.ts` |
 | Session proxy primitives shared by Tor and profile networks (one proxy, no `direct://` fallback, close connections; set direct; geo lookup) | `/src/main/session-proxy.ts` |
 | Browser page profile network (renderer; apply before mount, follow settings edits, fail-closed `networkError`, image route for app-drawn resources) | `/src/renderer/editors/browser/BrowserProfileNetworkModel.ts` |
 | Native-dialog folder memory (last-used directory per dialog kind — `open`/`save`/`folder` — persisted in `electronStore` under `dialog.lastDir.<kind>`. `resolveDefaultPath` owns the precedence: a caller `defaultPath` **carrying a directory** is an explicit choice and wins (so text Save As opens beside the original and a settings picker opens at the configured value), else the remembered directory, else the weak `location?: CommonFolder` param, else the caller's value as-is — a bare file name in `defaultPath` is only a suggested name and gets placed into whichever directory wins. A remembered directory that no longer exists is ignored. Lives in `main/` rather than inside the dialog handlers because `will-download` demands a synchronous dialog, so `download-service` can't route through them) | `/src/main/dialog-folder-memory.ts` |
@@ -500,7 +504,11 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Board-window and shortcut identity (root hash, stable ICO path, launcher selection for packaged/dev builds, and quoted launch-root normalization) | `/src/main/board-window-identity.ts` |
 | System tray (main; Show App / Quit menu, click-toggles-visibility. Quit sets `openWindows.doQuit`, the one flag that overrides close-to-tray) | `/src/main/tray-setup.ts` |
 | Windows browser registration | `/src/main/browser-registration.ts`           |
-| MCP HTTP transport (sessions, HTTP, lifecycle) | `/src/main/mcp-http-server.ts`  |
+| MCP HTTP listener policy and lifecycle | `/src/main/mcp-http-server.ts`, `/src/main/mcp/private-session-endpoints.ts` |
+| Shared MCP transport-session lifecycle and request helpers | `/src/main/mcp/mcp-session-host.ts` |
+| Shared Tor/profile routed-URL parsing and fetch response handling | `/src/main/routed-fetch-protocol.ts` |
+| Tor routed-fetch scheme policy | `/src/main/tor-src-protocol.ts` |
+| Profile and session routed-fetch policy | `/src/main/browser-network-service.ts`, `/src/main/session-src-protocol.ts` |
 | Shared main-process IPC sender authorization (`guardedIpcOn` / `guardedIpcHandle`; validates app partition, live main frame, and owning BrowserWindow) | `/src/main/ipc-sender-guard.ts` |
 | Domain IPC contracts (request signatures and event payload maps, composed as `Api` / `EventApi`) | `/src/ipc/contracts/`, `/src/ipc/api-types.ts`, `/src/ipc/event-types.ts` |
 | Renderer IPC client (contract-keyed requests, shared pending-request handling, default timeout, and convenience port adapters) | `/src/ipc/renderer/api.ts` |
@@ -616,7 +624,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Git "Git" panel — merged secondary view (container: "Git (N)" header, Refresh + "x" close + "Show Git Tree" zone, Changes/Branches/Tags SegmentedControl + body-toolbar AZ toggle for refs segments; persists `gitPanelTab`) | `/src/renderer/editors/git-tree/GitPanelSecondaryView.ts` |
 | Git "Changes" segment body (stage/unstage/reset + Commit button — buttons, double-click, context menu; header-less) | `/src/renderer/editors/git-tree/GitChangesView.ts` |
 | Git "Branches"/"Tags" segment body (`show="branches"` → Branches + Remotes refs tree; `show="tags"` → flat tags; head-green active branch, AZ/historical order, click-to-reveal, Switch context menu; header-less) | `/src/renderer/editors/git-tree/GitRefsView.ts` |
-| Commit dialog (message + author Name/Email + branch; "Commit" / "Commit & Push" actions; `showCommitDialog`) | `/src/renderer/ui/dialogs/CommitDialog.ts` |
+| Commit dialog model (message + author Name/Email + branch; "Commit" / "Commit & Push" actions; `showCommitDialog`) | `/src/renderer/api/dialogs/CommitDialog.ts` |
 | Git Tree "Commit" bottom panel (commit metadata + message) | `/src/renderer/editors/git-tree/CommitInfoPanel.ts` |
 | Git Tree "Diff" bottom panel (changed-file list + inline Monaco diff) | `/src/renderer/editors/git-tree/CommitDiffPanel.ts` |
 | File Diff editor (single shared `fileTree` model) | `/src/renderer/editors/file-diff/FileDiffEditor.ts` |
@@ -647,8 +655,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Board vars bridge orchestration (routes a board's `persephone.var.*` request against its own namespace, resolved by the renderer settings/vars bridge; shows the storage dialog on first use and serializes concurrent requests) | `/src/renderer/api/board-vars/board-vars-bridge.ts`, `/src/renderer/editors/board/frame/settings-and-vars-bridge.ts` |
 | Agent-facing admin API (`app.boardVars` — unrestricted-namespace `get`/`set`/`list`/`listNamespaces`/`namespaceFor`/`show`; unlike the board-side bridge, not limited to the calling board's own namespace since `script.execute` already carries full app trust) | `/src/renderer/api/board-vars/admin-api.ts` |
 | Board vars script types (`IBoardVars`) | `/src/renderer/api/types/board-vars.d.ts` |
-| "Create environment variables storage" dialog (first-use prompt; default path = data folder, editable) | `/src/renderer/ui/dialogs/CreateBoardVarsStorageDialog.ts` |
-| Namespace collision dialog (non-blocking advisory at board registration; Register-anyway / Cancel) | `/src/renderer/ui/dialogs/NamespaceCollisionDialog.ts` |
+| "Create environment variables storage" dialog model (first-use prompt; default path = data folder, editable) | `/src/renderer/api/dialogs/CreateBoardVarsStorageDialog.ts` |
+| Namespace collision dialog model (non-blocking advisory at board registration; Register-anyway / Cancel) | `/src/renderer/api/dialogs/NamespaceCollisionDialog.ts` |
 | `*.env.json` built-in editor (namespace list + profile tabs + a DataGrid name/value editor per profile; target of `persephone.var.show()` / `app.boardVars.show(namespace)`) | `/src/renderer/editors/env-vars/EnvVarsEditor.ts` |
 | Board snapshot broadcast and typed wire contract | `/src/main/board-snapshot-broadcaster.ts`, `/src/ipc/board-snapshot-channels.ts` |
 | Custom-editor registry (reactive file/folder map over trusted or bundled boards; `refresh()` collects provider, scheme, capability, settings, and browser-URL-mask issues before a generation guard, then synchronously rebuilds board claims and reports newly appearing issues; Board Info receives one row per current issue; dynamic board IDs use the shared board ID helper; `resolveEditorIdForFile` and `resolveEditorIdForFolder` merge built-in + board candidates; disabled bundled boards are removed from masks, providers, schemes, and capabilities; folder switch candidates preserve built-ins-first order) | `/src/renderer/api/boards/custom-editor-registry.ts`, `/src/shared/board/board-editor-id.ts` |
@@ -687,8 +695,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Board-pipe range reader (main; resolves ranges, validates replies, and reads bounded continuation chunks for protocol and video-stream responses) | `/src/main/board-pipe-range-reader.ts` |
 | Untrusted-board placeholder (Trust board button) | `/src/renderer/editors/board/UntrustedBoardView.ts` |
 | Board-not-found placeholder (stale trusted/pinned path) | `/src/renderer/editors/board/BoardNotFoundView.ts` |
-| Trust board dialog (`showTrustBoardDialog`; RCE wording) | `/src/renderer/ui/dialogs/TrustBoardDialog.ts` |
-| Create-board dialog (folder picker + name + live target-location label; defaults folder to the Explorer root; both inputs required) | `/src/renderer/ui/dialogs/CreateBoardDialog.ts` |
+| Trust board dialog model (`showTrustBoardDialog`; RCE wording) | `/src/renderer/api/dialogs/TrustBoardDialog.ts` |
+| Create-board dialog model (folder picker + name + live target-location label; defaults folder to the Explorer root; both inputs required) | `/src/renderer/api/dialogs/CreateBoardDialog.ts` |
 | Explorer-sibling "Boards" panel (trusted boards and registered toolsets under the Explorer root, in its own optional panel editor) | `/src/renderer/editors/board/BoardsPanelEditorModel.ts`, `/src/renderer/editors/board/BoardsSecondaryView.ts` |
 | Commit-diff panel data loading and generation guards | `/src/renderer/editors/git-tree/CommitDiffPanelModel.ts` |
 | Board theme contract (`computeBoardThemePalette`, `BOARD_TOKEN_VARS`, `--p-*`) | `/src/renderer/editors/board/board-theme.ts` |
@@ -774,7 +782,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | `persephone-toolset://` link scheme (encode/decode + `openToolset`; dispatched by the registered-scheme adapter to `target: "toolset-view"`) | `/src/renderer/content/persephone-toolset-link.ts` |
 | Per-toolset editor model (`toolset-view`; manifest info + tool list + open-log) | `/src/renderer/editors/toolset/ToolsetEditorModel.ts` |
 | Shared registered-toolsets tree (native `ToolsTreeView` + `buildToolsTree`) | `/src/renderer/editors/tools/ToolsTreeView.ts` |
-| Toolset registration dialog (`showRegisterToolsetDialog`; RCE gate, MCP-initiated only) | `/src/renderer/ui/dialogs/RegisterToolsetDialog.ts` |
+| Toolset registration dialog model (`showRegisterToolsetDialog`; RCE gate, MCP-initiated only) | `/src/renderer/api/dialogs/RegisterToolsetDialog.ts` |
 | Trusted-toolsets sidebar tab (native list with open/remove actions) | `/src/renderer/ui/sidebar/TrustedToolsListView.ts` |
 | Toolset authoring guide (manifest, stdin/stdout contract, `.env`, requirements) | `/assets/tool-template/CLAUDE.md` |
 | Agent-facing tools resource | `/assets/guides/agents/tools.md` |

@@ -1,6 +1,6 @@
 import { t } from "../../../shared/i18n/t";
-import { showConfirmationDialog } from "../dialogs/ConfirmationDialog";
-import { DialogButton, dialogButton } from "../dialogs/dialog-buttons";
+import { showConfirmationDialog } from "../../api/dialogs/ConfirmationDialog";
+import { DialogButton, dialogButton } from "../../api/dialogs/dialog-buttons";
 import { settings } from "../../api/settings";
 import type { AppSettingsKey } from "../../api/settings-schema";
 import { app } from "../../api/app";

@@ -5,7 +5,7 @@ import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import type { TextInputEntry } from "../logTypes";
 import type { LogViewEditor } from "../LogViewEditor";
 import { ButtonsPanelView } from "./ButtonsPanel";
-import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../../api/dialogs/dialog-buttons";
 import { DialogContainerView } from "./DialogContainer";
 import { DialogHeaderView } from "./DialogHeader";
 import type { EntryUpdater } from "../LogEntryContent";

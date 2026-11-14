@@ -2,9 +2,7 @@ import { TDialogModel } from "../../core/state/model";
 import { TComponentState } from "../../core/state/state";
 import { TorChannel, type TorIpInfo } from "../../../ipc/tor-ipc";
 import { BrowserNetworkChannel } from "../../../ipc/browser-network-ipc";
-import { showDialog } from "./Dialogs";
-import { registerDialogView } from "./dialog-view-registry";
-import { TorInfoDialogView } from "./TorInfoDialogView";
+import { showDialog } from "./dialogs-state";
 
 const { ipcRenderer } = require("electron");
 
@@ -90,8 +88,6 @@ export class TorInfoDialogModel extends TDialogModel<TorInfoDialogState, void> {
         this.viewDisposed = true;
     };
 }
-
-registerDialogView(torInfoDialogId, TorInfoDialogView);
 
 export function showTorInfoDialog(partition: string) {
     return openInfoDialog("tor", partition, "");

@@ -13,8 +13,8 @@ import { t } from "../../../shared/i18n/t";
 import { getTextTranslationProvider, type TranslationDescription, type TranslationProgress, type TranslationOperation } from "./TextTranslationProvider";
 import { downloadTranslationRoute, findTranslationRoute, languageDisplayName } from "./TranslationWorkflow";
 import { buildTranslationBatches, createDetectionSample, createTranslationSpans, reconstructTranslation, selectTranslationSpans } from "./translate-text-segmentation";
-import { registerDialogView } from "../dialogs/dialog-view-registry";
-import { showDialog } from "../dialogs/Dialogs";
+import { registerDialogView } from "../../api/dialogs/dialog-view-registry";
+import { showDialog } from "../../api/dialogs/dialogs-state";
 import { TranslateTextDialogView, type TranslateTextDialogModel, type TranslateTextDialogState, type TranslationChoice } from "./TranslateTextDialogView";
 import type { MonacoEditor } from "../../editors/monaco/MonacoEditor";
 

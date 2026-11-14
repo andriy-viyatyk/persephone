@@ -24,7 +24,7 @@ export class BrowserTorModel {
 
     /** Open the Tor connection info dialog (exit IP, location, Reconnect). */
     showInfoDialog = async (): Promise<void> => {
-        const { showTorInfoDialog } = await import("../../ui/dialogs/TorInfoDialog");
+        const { showTorInfoDialog } = await import("../../api/dialogs/TorInfoDialog");
         await showTorInfoDialog(this.model.partition);
     };
 

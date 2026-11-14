@@ -5,7 +5,7 @@ import type { ConfirmEntry } from "../logTypes";
 import type { LogViewEditor } from "../LogViewEditor";
 import { StyledTextView } from "../StyledTextView";
 import { ButtonsPanelView } from "./ButtonsPanel";
-import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../../api/dialogs/dialog-buttons";
 import { DialogContainerView } from "./DialogContainer";
 
 export interface ConfirmDialogViewProps { entry: ConfirmEntry; model: LogViewEditor; }

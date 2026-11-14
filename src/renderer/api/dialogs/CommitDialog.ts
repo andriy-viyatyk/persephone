@@ -1,9 +1,7 @@
 import { TDialogModel } from "../../core/state/model";
 import { TComponentState } from "../../core/state/state";
-import { showDialog } from "./Dialogs";
-import { registerDialogView } from "./dialog-view-registry";
-import { CommitDialogView } from "./CommitDialogView";
-import { DialogButton } from "./dialog-buttons";
+import { showDialog } from "./dialogs-state";
+import { DialogButton } from "../../api/dialogs/dialog-buttons";
 
 export const commitDialogId = Symbol("commitDialog");
 
@@ -89,8 +87,6 @@ export function actionButtonLabel(button: string, branchChanged: boolean): strin
     if (button === DialogButton.commitAndPush) return "& Push";
     return button;
 }
-
-registerDialogView(commitDialogId, CommitDialogView);
 
 export function showCommitDialog(props: CommitDialogProps & { onAction?: CommitAction }) {
     const { onAction, ...rest } = props;

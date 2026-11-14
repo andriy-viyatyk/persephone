@@ -99,7 +99,7 @@ export const BOARD_HELP = `Access via pages[i].editor after narrowing editor.id 
 statusText, busy state, and declared secondary panels. It does not accept or return a trust decision:
 untrusted content remains restricted until the user answers the Trust-this-Board dialog, shown as
 "Trust this board?". The live dialog is dialogs[0]; its implementation is
-src/renderer/ui/dialogs/TrustBoardDialog.ts and its scripting adapter is
+src/renderer/api/dialogs/TrustBoardDialog.ts and its scripting adapter is
 src/renderer/scripting/ai-vision/dialogs/trust-board.ts. restricted() returns text only while
 renderState is "untrusted"; trusted and not-found boards are unrestricted, and not-found means an
 unavailable or empty board rather than a privacy boundary.

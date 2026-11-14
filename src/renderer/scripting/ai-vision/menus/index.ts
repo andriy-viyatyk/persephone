@@ -4,7 +4,7 @@ import {
     activateAppPopupMenuItem,
     closeAppPopupMenu,
     getVisibleAppPopupMenu,
-} from "../../../ui/dialogs/poppers/showPopupMenu";
+} from "../../../api/dialogs/showPopupMenu";
 
 export interface MenuItemInfo {
     readonly id?: string;

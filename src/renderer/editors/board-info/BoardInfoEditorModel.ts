@@ -43,7 +43,7 @@ import type { BoardSettingDeclaration } from "../../../shared/board/board-settin
 import { BoardColorIcon } from "../../theme/icons";
 import { errMessage } from "../../../shared/utils";
 import { moduleServiceStatus } from "../../api/module-service-status";
-import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
+import { DialogButton, dialogButton } from "../../api/dialogs/dialog-buttons";
 import { englishMessage, t } from "../../../shared/i18n/t";
 
 const DELETE_AND_CONTINUE = "Delete & continue";
@@ -532,7 +532,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     async unregister(): Promise<void> {
         const props = this.state.get().props;
         if (!props) return;
-        const { showConfirmationDialog } = await import("../../ui/dialogs/ConfirmationDialog");
+        const { showConfirmationDialog } = await import("../../api/dialogs/ConfirmationDialog");
         const choice = await showConfirmationDialog({
             title: t("board.removeBoardTitle"),
             message: t("board.removeBoardConfirmation", { name: props.name }),
@@ -647,7 +647,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             const tracked = boardInstallRegistry.getByRoot(targetRoot);
             if (!tracked || tracked.id !== entry.id) {
                 const { showConfirmationDialog } = await import(
-                    "../../ui/dialogs/ConfirmationDialog"
+                    "../../api/dialogs/ConfirmationDialog"
                 );
                 const choice = await showConfirmationDialog({
                     title: t("board.folderAlreadyExistsTitle"),

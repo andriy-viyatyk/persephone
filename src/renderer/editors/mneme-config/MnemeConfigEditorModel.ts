@@ -22,7 +22,7 @@ import {
 import type { WikiStatus, WikiRootConfig, WikiReindexProgress, StaleIndexEntry } from "../../api/mneme-types";
 import { errMessage } from "../../../shared/utils";
 import { t, untranslated } from "../../../shared/i18n/t";
-import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
+import { DialogButton, dialogButton } from "../../api/dialogs/dialog-buttons";
 
 export interface MnemeConfigEditorState extends EditorStateBase {
     /** Live MCP connection state to the Mneme sidecar. */
@@ -267,7 +267,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         // Mneme derives the root name from the folder's last segment, which
         // collides for same-named folders (…/personal/wiki vs …/work/wiki) and
         // is then rejected as a duplicate. Prompt for a unique name.
-        const { showInputDialog } = await import("../../ui/dialogs/InputDialog");
+        const { showInputDialog } = await import("../../api/dialogs/InputDialog");
         const res = await showInputDialog({
             title: t("mneme.addRootTitle"),
             message: t("mneme.rootNameHint"),
@@ -462,7 +462,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
     // ── Helpers ───────────────────────────────────────────────────────────
 
     private async confirm(title: string, message: string, confirmLabel: string): Promise<boolean> {
-        const { showConfirmationDialog } = await import("../../ui/dialogs/ConfirmationDialog");
+        const { showConfirmationDialog } = await import("../../api/dialogs/ConfirmationDialog");
         const choice = await showConfirmationDialog({
             title,
             message,

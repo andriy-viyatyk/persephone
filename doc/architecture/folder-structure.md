@@ -207,6 +207,12 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── audio-capture-state.ts # Per-window audio-capture count and IPC revision guard
 │   ├── menu-bar.ts         # MenuBarModel — reactive Menu Bar openness, folder selection, and legacy opener bridge
 │   ├── ui.ts               # IUserInterface implementation
+│   ├── dialogs/            # Dialog and app-popup models, state, types, and public show helpers
+│   │   ├── dialogs-state.ts # Dialog/popper state and close lifecycle events
+│   │   ├── dialog-types.ts  # Shared dialog/popper data and model contracts
+│   │   ├── dialog-view-registry.ts # View ID to native dialog/popover constructor registry
+│   │   ├── showPopupMenu.ts # App popup-menu model/state and callback activation
+│   │   └── grid-context-menu.ts # Grid menu adaptation to app popup menus
 │   ├── downloads.ts        # IDownloads implementation
 │   ├── menu-folders.ts     # IMenuFolders implementation
 │   ├── library-service.ts  # LibraryService — script library scanning, caching, file watching and folder actions
@@ -447,27 +453,23 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── ScriptLibraryPanelView.ts # Native script-library panel
 │   │   ├── FolderItemView.ts        # Native folder tree item
 │   ├── dialogs/            # Application dialogs
-│   │   ├── Dialogs.ts              # Dialog state/actions API
-│   │   ├── DialogsView.ts          # Native dialog host and slot ownership
-│   │   ├── dialog-view-registry.ts # Only dialog/popper view registry; maps view IDs to native constructors
 │   │   ├── DialogsView.ts          # Native dialog host
-│   │   ├── ConfirmationDialog.ts
-│   │   ├── InputDialog.ts
-│   │   ├── PasswordDialog.ts
-│   │   ├── TorInfoDialog.ts         # Routed-page connection info — Tor (exit IP, location, check.torproject.org verdict; Reconnect restarts tor.exe) or proxy mode (egress IP, location)
-│   │   ├── RegisterToolsetDialog.ts # Agent-initiated toolset registration confirmation (Allow/Deny; RCE gate)
-│   │   ├── CreateBoardVarsStorageDialog.ts # First-use "Create environment variables storage" prompt (default path, editable) — shown by both persephone.var.* and app.boardVars.*
-│   │   ├── NamespaceCollisionDialog.ts # Non-blocking advisory at board registration when the new board's author/name namespace collides with an already-registered board
-│   │   ├── TextDialog.ts            # Multi-purpose text dialog (Monaco editor)
+│   │   ├── ModelViewSlotHost.ts    # Shared keyed dialog/popper view reconciler
+│   │   ├── register-dialog-views.ts # Shell-time registrations for native views
+│   │   ├── ConfirmationDialogView.ts
+│   │   ├── InputDialogView.ts
+│   │   ├── PasswordDialogView.ts
+│   │   ├── TorInfoDialogView.ts
+│   │   ├── RegisterToolsetDialogView.ts
+│   │   ├── CreateBoardVarsStorageDialogView.ts
+│   │   ├── NamespaceCollisionDialogView.ts
+│   │   ├── TextDialogView.ts
 │   │   ├── progress/               # Progress overlay, notifications, screen lock
 │   │   │   ├── ProgressModel.ts    # State + API (showProgress, createProgress, notifyProgress, addScreenLock)
 │   │   │   └── ProgressOverlay.ts  # Two-zone overlay model
 │   │   ├── poppers/                # Floating menus
-│   │   │   ├── Poppers.ts
-│   │   │   ├── PoppersView.ts      # Native popper host and slot ownership
-│   │   │   ├── showPopupMenu.ts
-│   │   │   └── types.ts
-│   │   └── index.ts
+│   │   │   ├── PoppersView.ts      # Native popper host
+│   │   │   └── AppPopupMenuView.ts # Native app popup-menu view
 │   └── secondary-views/    # SecondaryViews — native controlled panel host
 │       ├── SecondaryViewsView.ts    # Native panel host; owns the header element (headerHost)
 │       ├── LazySecondaryViewView.ts  # Native dynamic panel loader (vanilla arm)
@@ -1110,7 +1112,8 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── global-mute-service.ts  # Main-owned mute leases and effective audio state across managed application contents
 ├── window-states.ts        # Window state persistence
 ├── pipe-server.ts          # Named Pipe server (launcher integration)
-├── mcp-http-server.ts      # MCP Streamable HTTP transport — sessions (idle reaper, cap), HTTP handling, start/stop lifecycle
+├── mcp-http-server.ts      # Public MCP HTTP policy and listener lifecycle; sessions use the shared MCP host
+├── routed-fetch-protocol.ts # Shared parser and simple routed-fetch handler for Tor/profile schemes
 ├── board-manifest-reader.ts # Main-owned normalized board manifest reader and mtime cache
 ├── board-snapshot-broadcaster.ts # Publishes one full board snapshot to renderer windows
 ├── board-trust-store.ts    # Persisted trusted-board grant store
@@ -1118,8 +1121,9 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── board-trust-subscribers.ts # Wires trust snapshots to main-process consumers and snapshot publication
 ├── board-file-access.ts    # Board file-access grants, sessions and authorization
 ├── mcp/private-session-endpoints.ts # Lazy loopback MCP listener and revocable per-service bearer endpoints for private agent sessions
-├── mcp/                    # What the MCP server offers, separate from how it is served
+├── mcp/                    # MCP server logic and transport-session collaborators
 │   ├── server-factory.ts   # createMcpServer() — assembles manifest + tool groups + guide resources
+│   ├── mcp-session-host.ts # Shared transport-session lifecycle, host checks, and body parsing
 │   ├── manifest.ts         # Server identity, client instructions, guide resource list, mtime-cached guide reader
 │   ├── register-tools.ts   # Generic registrar + the pass-through that implements most tools
 │   ├── sdk.ts              # Lazy MCP SDK + zod loader (loadSdk / requireSdk)
@@ -1151,11 +1155,11 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── sidecar-process.ts      # Shared sidecar lifecycle (spawn → stdout-readiness sentinel → stop) used by tor-service and mneme-service: start dedupe, readiness timeout, stale-child guard, unexpected-death callback, stop-and-wait before respawn
 ├── tor-service.ts          # Tor concerns on top of sidecar-process: per-partition SOCKS5 proxy (fail-closed arming), torrc generation, restart-based reconnect, exit-IP/geo lookup through the partition's session
 ├── session-proxy.ts        # Shared session proxy primitives (one proxy, no direct fallback; set direct; geo lookup) for Tor and profile networks
-├── browser-network-service.ts # Profile/Incognito proxy state, profile-src:// handler (token-guarded), guest WebRTC policy, egress check, session-src hand-off
-├── tor-src-protocol.ts     # tor-src:// scheme handler — fetches an http(s) URL through a Tor partition's session (the app renderer itself is unproxied); guarded by partition shape, live-partition check, and http(s)-only target
+├── browser-network-service.ts # Profile/Incognito proxy state, profile-src:// policy setup, guest WebRTC policy, egress check, session-src hand-off
+├── tor-src-protocol.ts     # tor-src:// scheme policy setup — fetches through a Tor partition session; guarded by partition shape and live-partition check
 ├── git-service.ts          # Git access via simple-git — status, stage/unstage/commit, branch/switch, fetch/push/pull, ahead-behind, log/show, --version probe — main-process only
 ├── download-service.ts     # Browser downloads stage in temp while an async Save As dialog is open; completed files receive Mark-of-the-Web from the final redirect URL
-├── session-src-protocol.ts # Short-lived URL-bound capability; board-bound requests enforce granted network policy and DNS-pin every redirect hop
+├── session-src-protocol.ts # Short-lived URL-bound capability; reuses routed URL parsing and enforces board network policy/DNS pinning per redirect hop
 ├── native-dialog-tracker.ts # Per-window native dialog state, attention snapshots, and helper-backed cancellation
 ├── search-service.ts       # File search host — owns one search-worker thread per sender window, relays its batches to the renderer; cancel/window-close is worker.terminate()
 ├── search-worker.ts        # File search walk — runs in a worker_thread (bundled separately to .vite/build/search-worker.js); never imports electron

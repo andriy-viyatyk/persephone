@@ -9,7 +9,7 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { t } from "../../../shared/i18n/t";
-import type { DialogViewProps } from "../dialogs/dialog-view-registry";
+import type { DialogViewProps } from "../../api/dialogs/dialog-view-registry";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 import "../../uikit/ProgressBar/ProgressBar.css";

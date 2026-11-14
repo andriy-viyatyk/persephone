@@ -286,8 +286,8 @@ export class PagesModel extends TModel<OpenFilesState> {
         await page?.restore.ready;
         return page;
     };
-    openFileWithDialog = async () => (await import("../../ui/dialogs/OpenFileCommands")).openFileWithDialog();
-    openFileFromDialog = async () => (await import("../../ui/dialogs/OpenFileCommands")).openFileFromDialog();
+    openFileWithDialog = async () => (await import("../dialogs/OpenFileCommands")).openFileWithDialog();
+    openFileFromDialog = async () => (await import("../dialogs/OpenFileCommands")).openFileFromDialog();
     showBrowserPage = (options?: {
         profileName?: string;
         incognito?: boolean;

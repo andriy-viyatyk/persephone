@@ -1,7 +1,7 @@
 import type { IAiVisionDescriptor } from "ai-vision";
-import type { NamespaceCollisionDialogProps } from "../../../ui/dialogs/NamespaceCollisionDialog";
+import type { NamespaceCollisionDialogProps } from "../../../api/dialogs/NamespaceCollisionDialog";
 import { cancelDialog, closeWithResult, descriptor, dialogState, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
-import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../../api/dialogs/dialog-buttons";
 
 const REGISTER_ANYWAY = "Register Anyway";
 

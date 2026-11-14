@@ -8,7 +8,7 @@ import { app } from "../../api/app";
 import { BookmarkEvent } from "../../api/events/events";
 import { withTimeout } from "../../core/utils/utils";
 import { DisposableStore } from "../../core/utils/DisposableStore";
-import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
 import { isPrivateBrowserSession } from "./agent-access";
 import { createIconElement } from "../../uikit/shared/slots";
@@ -101,7 +101,7 @@ export class BrowserBookmarksModel {
         }
 
         if (!filePath) {
-            const { showConfirmationDialog } = await import("../../ui/dialogs/ConfirmationDialog");
+            const { showConfirmationDialog } = await import("../../api/dialogs/ConfirmationDialog");
             const choice = await showConfirmationDialog({
                 message: t("browser.bookmarksMissingFile"),
                 title: t("browser.bookmarksFileTitle"),

@@ -1,8 +1,6 @@
-import { showDialog } from "./Dialogs";
+import { showDialog } from "./dialogs-state";
 import { TDialogModel } from "../../core/state/model";
 import { TComponentState } from "../../core/state/state";
-import { registerDialogView } from "./dialog-view-registry";
-import { TrustBoardDialogView } from "./TrustBoardDialogView";
 import type { BoardServiceInterfaceDeclaration, BoardServiceUseDeclaration } from "../../../shared/board/board-service-declarations";
 import type { NormalizedBoardPermissions } from "../../../shared/board/board-permissions";
 import type { BoardPermissionChange } from "../../../shared/board/board-grant";
@@ -27,8 +25,6 @@ export interface TrustBoardDialogProps {
         useChanges: readonly { kind: "added" | "removed"; use: BoardServiceUseDeclaration }[];
     };
 }
-
-registerDialogView(trustBoardDialogId, TrustBoardDialogView);
 
 /** First trust resolves `true`/`false`; a permission change resolves `"accept"` / `"unregister"`.
  *  A dialog dismissed without a button (agent `cancel()`) resolves `undefined`. */

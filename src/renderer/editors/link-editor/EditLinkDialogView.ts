@@ -20,7 +20,7 @@ import type { ImageRoute } from "./routed-src";
 import { resolveRoutedSrc } from "./routed-src";
 import { t } from "../../../shared/i18n/t";
 import type { EditLinkDialogModel } from "./EditLinkDialog";
-import type { DialogViewProps } from "../../ui/dialogs/dialog-view-registry";
+import type { DialogViewProps } from "../../api/dialogs/dialog-view-registry";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 import "../../uikit/Input/Input.css";

@@ -1,8 +1,6 @@
-import { showDialog } from "./Dialogs";
+import { showDialog } from "./dialogs-state";
 import { TDialogModel } from "../../core/state/model";
 import { TComponentState } from "../../core/state/state";
-import { registerDialogView } from "./dialog-view-registry";
-import { ConfirmationDialogView } from "./ConfirmationDialogView";
 import { DialogButton, dialogButton, normalizeDialogButton, type DialogButtonInput } from "./dialog-buttons";
 
 export const confirmationDialogId = Symbol("confirmationDialog");
@@ -18,8 +16,6 @@ const defaultConfirmationDialogProps: ConfirmationDialogProps = {
     message: "",
     buttons: [dialogButton(DialogButton.yes), dialogButton(DialogButton.cancel)],
 };
-
-registerDialogView(confirmationDialogId, ConfirmationDialogView);
 
 export function showConfirmationDialog(props: ConfirmationDialogProps) {
     const modelState = {

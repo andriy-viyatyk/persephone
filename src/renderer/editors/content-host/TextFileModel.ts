@@ -3,7 +3,7 @@ import { TComponentState, TOneState } from "../../core/state/state";
 import { TDialogModel } from "../../core/state/model";
 import { shell } from "../../api/shell";
 import { ui } from "../../api/ui";
-import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { fs as appFs } from "../../api/fs";
 import type { MenuItem } from "../../uikit/Menu/index";
 import { textFileMenuItems } from "../shared/editor-menu-items";

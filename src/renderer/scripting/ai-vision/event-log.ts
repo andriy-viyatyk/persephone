@@ -1,5 +1,6 @@
 import { EventLog } from "ai-vision";
 import type { IAiEvent } from "ai-vision";
+import { onDialogClosed } from "../../api/dialogs/dialogs-state";
 
 /** The event history shared by all AiVision calls in this renderer window. */
 export const eventLog = new EventLog({ cap: 200, hostOrigin: "persephone" });
@@ -77,6 +78,11 @@ export function logDialogAnswered(): void {
         kind: "dialog-answered",
         text: "The user answered a dialog.",
     });
+}
+
+/** Install renderer-lifetime logging for every native dialog close. */
+export function installDialogAnswerEvents(): () => void {
+    return onDialogClosed.subscribe(logDialogAnswered);
 }
 
 /** Record a safe Log View dialog answer without its input or selection values. */

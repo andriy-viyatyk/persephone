@@ -1,6 +1,6 @@
 import type { IAiVisionDescriptor } from "ai-vision";
-import type { ConfirmationDialogProps } from "../../../ui/dialogs/ConfirmationDialog";
-import { normalizeDialogButton } from "../../../ui/dialogs/dialog-buttons";
+import type { ConfirmationDialogProps } from "../../../api/dialogs/ConfirmationDialog";
+import { normalizeDialogButton } from "../../../api/dialogs/dialog-buttons";
 import { cancelDialog, closeWithResult, descriptor, dialogState, resolveDialogButton, type DialogAdapter, type DialogEntry } from "./shared";
 
 const MEMBERS = [

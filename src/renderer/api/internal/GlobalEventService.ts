@@ -1,4 +1,4 @@
-import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
+import { showAppPopupMenu } from "../../api/dialogs/showPopupMenu";
 import { parseObject } from "../../core/utils/parse-utils";
 import { api } from "../../../ipc/renderer/api";
 import { ui } from "../ui";

@@ -8,11 +8,11 @@ import { LabelView } from "../../uikit/Label/LabelView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import type { DialogViewProps } from "./dialog-view-registry";
+import type { DialogViewProps } from "../../api/dialogs/dialog-view-registry";
 import type {
     LibrarySetupDialogModel,
     LibrarySetupDialogState,
-} from "./LibrarySetupDialog";
+} from "../../api/dialogs/LibrarySetupDialog";
 import { t } from "../../../shared/i18n/t";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Checkbox/Checkbox.css";

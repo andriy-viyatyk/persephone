@@ -257,8 +257,8 @@ installed by the native `theme/global-styles.ts` module.
 
 | Layer | Responsibility | Key files |
 |-------|---------------|-----------|
-| **api/** | Object Model interfaces + implementations | `app.ts`, `settings.ts`, `fs.ts`, `pages/`, `internal/`, `types/` |
-| **ui/** | Application shell, tabs, sidebar, dialogs; native views with compatibility faces where required | `MainPageView.ts`, `PagesView.ts`, `PageTabsView.ts` + `PageTabView.ts`, `MenuBarView.ts`, `DialogsView.ts` |
+| **api/** | Object Model interfaces + implementations, including dialog/popover models and state | `app.ts`, `settings.ts`, `fs.ts`, `dialogs/`, `pages/`, `internal/`, `types/` |
+| **ui/** | Application shell, tabs, sidebar, and native dialog/popover views; compatibility faces where required | `MainPageView.ts`, `PagesView.ts`, `PageTabsView.ts` + `PageTabView.ts`, `MenuBarView.ts`, `DialogsView.ts`, `ModelViewSlotHost.ts` |
 | **editors/** | File type handling, content editing | `registry.ts`, `text/`, `grid/`, `browser/`, etc. |
 | **content/** | Content I/O pipeline — providers, transformers, pipes | `ContentPipe.ts`, `parsers.ts`, `resolvers.ts`, `providers/`, `transformers/` |
 | **scripting/** | Script sandbox, API wrappers, facades | `ScriptRunner.ts`, `ScriptContext.ts`, `api-wrapper/` |
@@ -322,7 +322,7 @@ See [scripting.md](./scripting.md).
 
 - External AI agents (Claude Desktop, Claude Code) control persephone via a Streamable HTTP MCP server
 - Protocol: MCP over HTTP at `http://127.0.0.1:{port}/mcp` (default port 7865)
-- Main process: `mcp-http-server.ts` accepts connections using `@modelcontextprotocol/sdk`; the client instructions, 18 focused guide resources, and the single advertised tool live under `main/mcp/` as data plus one generic registrar.
+- Main process: `mcp-http-server.ts` accepts connections using `@modelcontextprotocol/sdk`; `McpSessionHost` owns shared transport session lifecycle, while public and private listeners retain their separate admission and authorization policies. The client instructions, 18 focused guide resources, and the single advertised tool live under `main/mcp/` as data plus one generic registrar.
 - Main-to-renderer requests use the typed RPC in `src/ipc/renderer-rpc.ts`, implemented by `src/main/renderer-rpc.ts` and `src/renderer/api/renderer-rpc.ts`. Its method map covers MCP `call`, board-host operations and capability `open`; the RPC owns readiness, pending-request correlation, cancellation, timeout selection, and wire-error handling. Capability `open` uses the router's deadline and therefore selects the no-timeout mode.
 - The renderer's MCP `call` handler adapts requests to the MCP result shape and records MCP traffic in the request log. Board-host RPC methods use their own handlers and do not appear as MCP requests; they work independently of the optional MCP HTTP server.
 - The manifest advertises exactly one tool, `call`. Agent Tools are reached through the root-only
@@ -346,7 +346,7 @@ See [scripting.md](./scripting.md).
 - Port is configurable via `mcp.port` setting (default `7865`)
 - Script execution uses `ScriptRunner.runWithCapture()` for headless operation with console capture
 - Status broadcasting: main process pushes `eMcpStatusChanged` events to all windows on server start/stop and session connect/disconnect — renderer `Window` class holds reactive `mcpRunning`/`mcpClientCount` state, UI shows a title-bar indicator
-- Session lifecycle: each client gets one Streamable HTTP session (`McpServer` + transport) kept in a `sessions` map. A session is evicted on explicit `DELETE`, on an idle-timeout reaper (closes sessions with no traffic for 30 min; swept every 60 s — each request bumps a per-session `lastActivity`), or on a `MAX_SESSIONS` cap (evicts least-recently-active on `initialize`). All eviction paths funnel through `transport.close()` → `onclose` → map delete. Sessions deliberately outlive a dropped SSE stream so reconnecting clients keep working; without the reaper, clients that quit without sending `DELETE` would leak sessions indefinitely.
+- Session lifecycle: each client gets one Streamable HTTP session (`McpServer` + transport) held by `McpSessionHost`. A session is evicted on explicit `DELETE`, on the public listener's idle-timeout reaper (closes sessions with no traffic for 30 min; swept every 60 s; each request bumps per-session activity), or on a listener's capacity policy. All eviction paths funnel through `transport.close()` and the transport's `onclose` cleanup. Sessions deliberately outlive a dropped SSE stream so reconnecting clients keep working; without the public reaper, clients that quit without sending `DELETE` would leak sessions indefinitely.
 - In-app board agents use a separate lazy HTTP listener bound to `127.0.0.1` on an OS-assigned port. Main issues per-session 32-byte bearer tokens only to running, trusted services whose granted snapshot includes `appScripting`; service identity comes from the supervisor's captured process record. The private endpoint uses the same `createMcpServer()` surface, but its tokens and transports are isolated from the external listener and survive transport idle eviction until explicit or lifecycle revocation. Limits are 64 issued tokens, 64 active private transports, and four transports per token.
 - MCP status retains external `running` and `clientCount` semantics and reports `inAppAgentCount` separately. The header indicator appears for either endpoint; `mcp.enabled` and Settings control only the external listener.
 

@@ -1,7 +1,7 @@
 import type { IAiVisionDescriptor } from "ai-vision";
-import type { LibrarySetupDialogState } from "../../../ui/dialogs/LibrarySetupDialog";
+import type { LibrarySetupDialogState } from "../../../api/dialogs/LibrarySetupDialog";
 import { cancelDialog, descriptor, dialogState, modelWith, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
-import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../../api/dialogs/dialog-buttons";
 
 interface LibrarySetupModel { link(): Promise<void>; }
 

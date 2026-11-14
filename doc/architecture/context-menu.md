@@ -327,5 +327,5 @@ interface MenuItem {
 | Native event augmentation | `/src/renderer/types/events.d.ts` |
 | Global event handler | `/src/renderer/api/internal/GlobalEventService.ts` |
 | Menu view | `/src/renderer/uikit/Menu/MenuView.ts` |
-| showAppPopupMenu | `/src/renderer/ui/dialogs/poppers/showPopupMenu.ts` |
+| showAppPopupMenu | `/src/renderer/api/dialogs/showPopupMenu.ts` |
 | MenuItem type | `/src/renderer/api/types/events.d.ts` |

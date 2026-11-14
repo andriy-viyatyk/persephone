@@ -1,8 +1,8 @@
 import { BoardDialogChannel, type BoardDialogRecord } from "../../../ipc/board-dialog-ipc";
-import { dialogsState } from "./Dialogs";
-import { showConfirmationDialog } from "./ConfirmationDialog";
-import { showInputDialog } from "./InputDialog";
-import { DialogButton } from "./dialog-buttons";
+import { dialogsState } from "../../api/dialogs/dialogs-state";
+import { showConfirmationDialog } from "../../api/dialogs/ConfirmationDialog";
+import { showInputDialog } from "../../api/dialogs/InputDialog";
+import { DialogButton } from "../../api/dialogs/dialog-buttons";
 
 const { ipcRenderer } = require("electron"); // eslint-disable-line @typescript-eslint/no-var-requires
 

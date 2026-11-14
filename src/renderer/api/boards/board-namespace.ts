@@ -62,7 +62,7 @@ export async function confirmNamespaceNotColliding(boardRoot: string): Promise<b
     const collision = await findNamespaceCollision(boardRoot);
     if (!collision) return true;
     const { showNamespaceCollisionDialog } = await import(
-        "../../ui/dialogs/NamespaceCollisionDialog"
+        "../../api/dialogs/NamespaceCollisionDialog"
     );
     return showNamespaceCollisionDialog(collision.namespace, collision.collidingRoot);
 }

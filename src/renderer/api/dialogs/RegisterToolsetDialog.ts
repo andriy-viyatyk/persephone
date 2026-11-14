@@ -1,8 +1,6 @@
-import { showDialog } from "./Dialogs";
+import { showDialog } from "./dialogs-state";
 import { TDialogModel } from "../../core/state/model";
 import { TComponentState } from "../../core/state/state";
-import { registerDialogView } from "./dialog-view-registry";
-import { RegisterToolsetDialogView } from "./RegisterToolsetDialogView";
 
 /**
  * Confirmation dialog gating AGENT-initiated toolset registration.
@@ -20,8 +18,6 @@ export interface RegisterToolsetDialogProps {
     toolsetRoot: string; // absolute toolset-root path, for display
     tools: { name: string; description: string }[];
 }
-
-registerDialogView(registerToolsetDialogId, RegisterToolsetDialogView);
 
 export function showRegisterToolsetDialog(props: RegisterToolsetDialogProps): Promise<boolean> {
     const model = new TDialogModel<RegisterToolsetDialogProps, boolean>(new TComponentState(props));

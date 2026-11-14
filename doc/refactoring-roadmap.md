@@ -667,9 +667,30 @@ table, one ListBox construction, `libraryService.choose()/unlink()`, `menuFolder
 handle instead of `instanceof`; SHL-13 shell aliases removed. Decided against: routing the remaining raw `ipcRenderer`
 callers through `ipc/renderer/api` (a request/reply proxy with a 30 s deadline; raw channels are the pattern in about
 20 modules). Recorded changes: the browser tab's sound button mutes/unmutes again (EPIC-158 regression), board windows
-no longer build the app-only header widgets, and board names warm lazily wherever they are shown. **Remaining
-(part 3):** the SHL-13 dialog items (`Dialogs.ts`, `Poppers.ts`, the `ui/dialogs` barrel, `dialogs-state.ts`, one
-`ModelViewSlotHost`, an `onDialogClosed` event for ai-vision), best done with roadmap item 2.2's dialog slice.
+no longer build the app-only header widgets, and board names warm lazily wherever they are shown. Part 3 is done
+([EPIC-175](epics/EPIC-175.md), 2026-11-14), together with **the dialog slice of item 2.2** (SHL-1 step 2): the SHL-13
+dialog items — `api/dialogs/dialogs-state.ts` (dialog and popper state, `onDialogClosed`, a `Subscription` the ai-vision
+event log subscribes to through `installDialogAnswerEvents()` at the top of `renderer.ts` `bootstrap()`), the dialog
+data types in `api/dialogs/dialog-types.ts`, one `ui/dialogs/ModelViewSlotHost.ts` that `DialogsView` and
+`PoppersView` extend, and `Dialogs.ts`, `Poppers.ts`, `poppers/types.ts`, the `ui/dialogs` barrel and the unused
+`closeDialog` deleted; then `api/dialogs/` owns `dialog-buttons`, the view registry, `OpenFileCommands`, every dialog
+model with its `showXDialog()`, the app popup menu model and the grid context-menu adapter, while the views stay in
+`ui/dialogs/` and are registered by `ui/dialogs/register-dialog-views.ts` from `index.ts`; `api/ui.ts` imports them
+statically; `api/`, `content/`, `components/`, `scripting/` and `editors/` import nothing from `ui/dialogs/`, locked by
+an error-level import zone for the first four. Decided: callers already on the `ui.confirm`/`ui.input` facade stay
+there (no `IConfirmOptions` change); `board-dialog-controller.ts` stays in `ui/`. Recorded change: a throwing
+`dialog-answered` listener no longer prevents a dialog's result from resolving. **Roadmap item 6.8 is complete.** The
+rest of item 2.2 (secondary views, editor categories, transcript/translate contributions) is still open.
+
+**6.9 is done in part** ([EPIC-175](epics/EPIC-175.md), 2026-11-14): MAIN-10 — `main/mcp/mcp-session-host.ts`
+(`McpSessionHost`: session map, Streamable HTTP start with an injected server factory, close in awaited or
+fire-and-forget mode, oldest-session selection with each server's tie rule, idle sweep) plus one
+`isAllowedLoopbackHost` and `parseJsonBody`, wrapped by both MCP servers, which keep their own auth, caps, refusal
+bodies and listener lifecycles; `main/routed-fetch-protocol.ts` (`parseRoutedUrl`, `isHttpUrl`, one `safeProtocol`,
+`createRoutedFetchHandler`) serves `tor-src` and `profile-src`, and `session-src` reuses the parser and HTTP check. Bug
+found during live checks and fixed: importing the server factory into the host closed an import cycle through the
+ai-vision main services, and the main process hung at startup; the factory is injected. **Remaining:** MAIN-14
+(`video-stream-server`, `clipboard-service`), when those files are next touched.
 
 ### Phase 7: Lock it in
 

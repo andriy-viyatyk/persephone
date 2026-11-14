@@ -11,7 +11,7 @@ import { api } from "../../../ipc/renderer/api";
 import { ui } from "../../api/ui";
 import { copyPathsInto } from "../../core/utils/copy-files";
 import { fpBasename } from "../../core/utils/file-path";
-import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
 
 /** Put N files/folders on the OS clipboard (Windows Explorer can paste them).

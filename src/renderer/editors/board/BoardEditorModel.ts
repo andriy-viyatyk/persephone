@@ -36,7 +36,7 @@ import { createBoardGlyphElement } from "./board-glyph-element";
 import { createIconElement } from "../../uikit/shared/slots";
 import { app } from "../../api/app";
 import { ui } from "../../api/ui";
-import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { pages } from "../../api/pages";
 import { errMessage } from "../../../shared/utils";
 import { englishMessage, t } from "../../../shared/i18n/t";

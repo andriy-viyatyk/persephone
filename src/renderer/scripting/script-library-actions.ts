@@ -4,8 +4,8 @@ import { fs } from "../api/fs";
 import { libraryService, type ScriptPanelEntry } from "../api/library-service";
 import { settings } from "../api/settings";
 import { ui } from "../api/ui";
-import { DialogButton, dialogButton } from "../ui/dialogs/dialog-buttons";
-import { showInputDialog } from "../ui/dialogs/InputDialog";
+import { DialogButton, dialogButton } from "../api/dialogs/dialog-buttons";
+import { showInputDialog } from "../api/dialogs/InputDialog";
 import { fpJoin } from "../core/utils/file-path";
 import type { IListBoxItem } from "../uikit/ListBox/types";
 
@@ -76,7 +76,7 @@ export async function saveScriptToLibrary(
 ): Promise<void> {
     let libraryPath = settings.get("script-library.path");
     if (!libraryPath) {
-        const { showLibrarySetupDialog } = await import("../ui/dialogs/LibrarySetupDialog");
+        const { showLibrarySetupDialog } = await import("../api/dialogs/LibrarySetupDialog");
         const result = await showLibrarySetupDialog();
         if (!result) return;
         libraryPath = result;
@@ -112,7 +112,7 @@ export async function saveScriptToLibrary(
     if (!(await fs.exists(scriptPanelDir))) await fs.mkdir(scriptPanelDir);
 
     if (await fs.exists(filePath)) {
-        const { showConfirmationDialog } = await import("../ui/dialogs/ConfirmationDialog");
+        const { showConfirmationDialog } = await import("../api/dialogs/ConfirmationDialog");
         const confirmResult = await showConfirmationDialog({
             message: t("editors.scriptAlreadyExists", { scriptName, folder }),
             buttons: [dialogButton(DialogButton.overwrite), dialogButton(DialogButton.cancel)],

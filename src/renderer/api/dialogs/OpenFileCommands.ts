@@ -4,7 +4,7 @@ import { api } from "../../../ipc/renderer/api";
 import { showOpenUrlDialog } from "./OpenUrlDialog";
 
 async function sendOpenRawLink(href: string): Promise<void> {
-    const { app } = await import("../../api/app");
+    const { app } = await import("../app");
     await app.events.openRawLink.sendAsync(createLinkData(href));
 }
 

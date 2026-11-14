@@ -1,0 +1,46 @@
+import { registerDialogView } from "../../api/dialogs/dialog-view-registry";
+import { confirmationDialogId } from "../../api/dialogs/ConfirmationDialog";
+import { inputDialogId } from "../../api/dialogs/InputDialog";
+import { passwordDialogId } from "../../api/dialogs/PasswordDialog";
+import { textDialogId } from "../../api/dialogs/TextDialog";
+import { openUrlDialogId } from "../../api/dialogs/OpenUrlDialog";
+import { commitDialogId } from "../../api/dialogs/CommitDialog";
+import { createBoardDialogId } from "../../api/dialogs/CreateBoardDialog";
+import { createBoardVarsStorageDialogId } from "../../api/dialogs/CreateBoardVarsStorageDialog";
+import { librarySetupDialogId } from "../../api/dialogs/LibrarySetupDialog";
+import { namespaceCollisionDialogId } from "../../api/dialogs/NamespaceCollisionDialog";
+import { registerToolsetDialogId } from "../../api/dialogs/RegisterToolsetDialog";
+import { torInfoDialogId } from "../../api/dialogs/TorInfoDialog";
+import { trustBoardDialogId } from "../../api/dialogs/TrustBoardDialog";
+import { showAppPopupMenuId } from "../../api/dialogs/showPopupMenu";
+import { ConfirmationDialogView } from "./ConfirmationDialogView";
+import { InputDialogView } from "./InputDialogView";
+import { PasswordDialogView } from "./PasswordDialogView";
+import { TextDialogView } from "./TextDialogView";
+import { OpenUrlDialogView } from "./OpenUrlDialogView";
+import { CommitDialogView } from "./CommitDialogView";
+import { CreateBoardDialogView } from "./CreateBoardDialogView";
+import { CreateBoardVarsStorageDialogView } from "./CreateBoardVarsStorageDialogView";
+import { LibrarySetupDialogView } from "./LibrarySetupDialogView";
+import { NamespaceCollisionDialogView } from "./NamespaceCollisionDialogView";
+import { RegisterToolsetDialogView } from "./RegisterToolsetDialogView";
+import { TorInfoDialogView } from "./TorInfoDialogView";
+import { TrustBoardDialogView } from "./TrustBoardDialogView";
+import { AppPopupMenuView } from "./poppers/AppPopupMenuView";
+
+export function registerDialogViews(): void {
+    registerDialogView(confirmationDialogId, ConfirmationDialogView);
+    registerDialogView(inputDialogId, InputDialogView);
+    registerDialogView(passwordDialogId, PasswordDialogView);
+    registerDialogView(textDialogId, TextDialogView);
+    registerDialogView(openUrlDialogId, OpenUrlDialogView);
+    registerDialogView(commitDialogId, CommitDialogView);
+    registerDialogView(createBoardDialogId, CreateBoardDialogView);
+    registerDialogView(createBoardVarsStorageDialogId, CreateBoardVarsStorageDialogView);
+    registerDialogView(librarySetupDialogId, LibrarySetupDialogView);
+    registerDialogView(namespaceCollisionDialogId, NamespaceCollisionDialogView);
+    registerDialogView(registerToolsetDialogId, RegisterToolsetDialogView);
+    registerDialogView(torInfoDialogId, TorInfoDialogView);
+    registerDialogView(trustBoardDialogId, TrustBoardDialogView);
+    registerDialogView(showAppPopupMenuId, AppPopupMenuView);
+}

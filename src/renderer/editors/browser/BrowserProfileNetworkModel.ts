@@ -149,7 +149,7 @@ export class BrowserProfileNetworkModel {
 
     /** Open the network info dialog (egress IP, location). */
     showInfoDialog = async (): Promise<void> => {
-        const { showBrowserNetworkInfoDialog } = await import("../../ui/dialogs/TorInfoDialog");
+        const { showBrowserNetworkInfoDialog } = await import("../../api/dialogs/TorInfoDialog");
         await showBrowserNetworkInfoDialog(this.model.partition, this.model.state.get().networkLabel);
     };
 

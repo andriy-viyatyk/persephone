@@ -1,8 +1,7 @@
-import { AgentTipsRegistry } from "./mcp/agent-tips";
-import { randomUUID } from "node:crypto";
 import http from "node:http";
 import { cancelRendererRequests } from "./renderer-rpc";
-import { loadSdk, McpTransportInstance, requireSdk, McpServerInstance } from "./mcp/sdk";
+import { loadSdk, requireSdk } from "./mcp/sdk";
+import { McpSessionHost, isAllowedLoopbackHost, parseJsonBody } from "./mcp/mcp-session-host";
 import { createMcpServer } from "./mcp/server-factory";
 import { initializePrivateMcpEndpoints, type PrivateMcpEndpointStartDependencies } from "./mcp/private-session-endpoints";
 import { getSessionSnapshots, type McpSessionSnapshot } from "./mcp/session-snapshots";
@@ -29,8 +28,6 @@ const DEFAULT_PORT = 7865;
 // sessions.delete path as DELETE — eviction stays in one place. We do NOT evict
 // on SSE-stream disconnect: the session is meant to outlive a single connection
 // so reconnecting clients keep working (see typescript-sdk issue #1852).
-const SESSION_IDLE_MS = 30 * 60_000; // close sessions with no traffic for 30 min
-const SESSION_SWEEP_MS = 60_000;     // check for idle sessions once a minute
 const MAX_SESSIONS = 500;            // backstop cap against burst leaks
 
 // ── State ───────────────────────────────────────────────────────────
@@ -38,34 +35,13 @@ const MAX_SESSIONS = 500;            // backstop cap against burst leaks
 let httpServer: http.Server | undefined;
 let currentPort = DEFAULT_PORT;
 let statusChanged: () => void = () => {};
-interface Session { tips: AgentTipsRegistry; server: McpServerInstance; transport: McpTransportInstance; lastActivity: number }
-const sessions = new Map<string, Session>();
-let sessionSweepTimer: ReturnType<typeof setInterval> | undefined;
-
-// Bump a session's activity timestamp so the idle reaper doesn't evict it. Called
-// on every request that carries a valid, known session id.
-function touchSession(sessionId: string | undefined): void {
-    if (!sessionId) return;
-    const session = sessions.get(sessionId);
-    if (session) session.lastActivity = Date.now();
-}
-
-// Periodic sweep: close sessions idle past SESSION_IDLE_MS. transport.close()
-// fires onclose → sessions.delete, so the map and broadcast update there.
-function sweepIdleSessions(): void {
-    const now = Date.now();
-    for (const [sid, session] of sessions) {
-        if (now - session.lastActivity > SESSION_IDLE_MS) {
-            // close() is async and rejects pending streams; if it throws, drop the
-            // entry directly so a wedged transport can't pin the session forever.
-            session.tips.dispose();
-            Promise.resolve(session.transport.close()).catch(() => {
-                sessions.delete(sid);
-                statusChanged();
-            });
-        }
-    }
-}
+const host = new McpSessionHost<undefined>({
+    createServer: createMcpServer,
+    allowedSdkHosts: () => [`127.0.0.1:${currentPort}`, `localhost:${currentPort}`],
+    onChange: () => statusChanged(),
+    // Close sessions with no traffic for 30 min; check for idle sessions once a minute.
+    idle: { sweepMs: 60_000, maxIdleMs: 30 * 60_000 },
+});
 
 // ── Status Broadcast ────────────────────────────────────────────────
 
@@ -74,37 +50,15 @@ export function startMcpHttpServerService(dependencies: PrivateMcpEndpointStartD
     initializePrivateMcpEndpoints(dependencies);
 }
 
-// ── HTTP Body Parser ───────────────────────────────────────────────
-
-function parseJsonBody(req: http.IncomingMessage): Promise<unknown> {
-    return new Promise((resolve, reject) => {
-        let data = "";
-        req.on("data", (chunk: Buffer) => { data += chunk.toString(); });
-        req.on("end", () => {
-            try {
-                resolve(data ? JSON.parse(data) : undefined);
-            } catch {
-                reject(new Error("Invalid JSON"));
-            }
-        });
-        req.on("error", reject);
-    });
-}
-
 // ── HTTP Request Handler ───────────────────────────────────────────
-
-/** Loopback authorities a legitimate client addresses this server by. A DNS-rebinding page
- *  arrives with its own hostname in `Host`, so anything else is refused. */
-function isAllowedHost(host: string | undefined): boolean {
-    if (!host) return false;
-    const value = host.toLowerCase();
-    return value === `127.0.0.1:${currentPort}` || value === `localhost:${currentPort}`;
-}
 
 /** Refuse requests a web page could make: a foreign Host (DNS rebinding) or any Origin.
  *  Agent clients are Node HTTP clients and send no Origin. Returns true when refused. */
 function refuseUntrustedRequest(req: http.IncomingMessage, res: http.ServerResponse): boolean {
-    const reason = !isAllowedHost(req.headers.host)
+    // Loopback authorities a legitimate client addresses this server by. A DNS-rebinding page
+    // arrives with its own hostname in `Host`, so anything else is refused.
+    const reason = !isAllowedLoopbackHost(req.headers.host,
+        [`127.0.0.1:${currentPort}`, `localhost:${currentPort}`], "lowercase")
         ? "Invalid Host header"
         : req.headers.origin !== undefined
             ? "Browser requests are not accepted"
@@ -131,9 +85,9 @@ async function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResp
         if (req.method === "POST") {
             const body = await parseJsonBody(req);
 
-            if (sessionId && sessions.has(sessionId)) {
-                touchSession(sessionId);
-                await sessions.get(sessionId).transport.handleRequest(req, res, body);
+            if (sessionId && host.has(sessionId)) {
+                host.touch(sessionId);
+                await host.handleExisting(sessionId, req, res, body);
             } else if (!sessionId && requireSdk().isInitializeRequest(body)) {
                 await startSession(req, res, body);
             } else {
@@ -147,13 +101,13 @@ async function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResp
         } else if (req.method === "GET" || req.method === "DELETE") {
             // GET opens the SSE stream, DELETE ends the session; the transport handles
             // both, and both require an established session.
-            if (!sessionId || !sessions.has(sessionId)) {
+            if (!sessionId || !host.has(sessionId)) {
                 res.writeHead(400, { "Content-Type": "text/plain" });
                 res.end("Invalid or missing session ID");
                 return;
             }
-            touchSession(sessionId);
-            await sessions.get(sessionId).transport.handleRequest(req, res);
+            host.touch(sessionId);
+            await host.handleExisting(sessionId, req, res);
         } else {
             res.writeHead(405, { "Content-Type": "text/plain" });
             res.end("Method not allowed");
@@ -174,47 +128,13 @@ async function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResp
 /** Admit a new client: build a server + transport for it and let the transport
  *  answer the initialize request that brought us here. */
 async function startSession(req: http.IncomingMessage, res: http.ServerResponse, body: unknown): Promise<void> {
-    const { StreamableHTTPServerTransport } = requireSdk();
-
     // Backstop against a burst of leaked sessions: if we're at the cap,
     // evict the least-recently-active one before admitting a new client.
-    if (sessions.size >= MAX_SESSIONS) {
-        let oldestSid: string | undefined;
-        let oldest = Infinity;
-        for (const [sid, s] of sessions) {
-            if (s.lastActivity < oldest) { oldest = s.lastActivity; oldestSid = sid; }
-        }
-        const victim = oldestSid && sessions.get(oldestSid);
-        if (victim) {
-            victim.tips.dispose();
-            Promise.resolve(victim.transport.close()).catch(() => {
-                sessions.delete(oldestSid);
-                statusChanged();
-            });
-        }
+    if (host.size >= MAX_SESSIONS) {
+        const oldest = host.oldest(() => true, "strict-less");
+        host.closeSession(oldest?.[0], "fire-and-forget");
     }
-
-    const tips = new AgentTipsRegistry();
-    const mcpServer = createMcpServer(tips);
-    const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID(),
-        enableDnsRebindingProtection: true,
-        allowedHosts: [`127.0.0.1:${currentPort}`, `localhost:${currentPort}`],
-        onsessioninitialized: (sid: string) => {
-            sessions.set(sid, { tips, server: mcpServer, transport, lastActivity: Date.now() });
-            statusChanged();
-        },
-    });
-
-    transport.onclose = () => {
-        tips.dispose();
-        const sid = transport.sessionId;
-        if (sid) sessions.delete(sid);
-        statusChanged();
-    };
-
-    await mcpServer.connect(transport);
-    await transport.handleRequest(req, res, body);
+    await host.startSession(undefined, req, res, body);
 }
 
 // ── Server Lifecycle ───────────────────────────────────────────────
@@ -255,8 +175,7 @@ export async function startMcpHttpServer(port?: number): Promise<void> {
             startPromise = null;
             // Reap idle sessions abandoned by clients that never sent DELETE. unref()
             // so this timer never keeps the process alive on its own.
-            sessionSweepTimer = setInterval(sweepIdleSessions, SESSION_SWEEP_MS);
-            sessionSweepTimer.unref?.();
+            host.startIdleSweep();
             console.log(`MCP HTTP server started: ${mcpEndpointUrl(currentPort)}`);
             statusChanged();
             resolve();
@@ -271,17 +190,10 @@ async function stopMcpHttpServerInternal(): Promise<void> {
     if (pending) await pending.catch((): undefined => undefined);
     if (!httpServer) return;
 
-    if (sessionSweepTimer) {
-        clearInterval(sessionSweepTimer);
-        sessionSweepTimer = undefined;
-    }
+    host.stopIdleSweep();
 
     // Close all active sessions
-    for (const [, session] of sessions) {
-        session.tips.dispose();
-        try { await session.transport.close(); } catch { /* ignore cleanup errors */ }
-    }
-    sessions.clear();
+    await host.closeAll();
 
     cancelRendererRequests("Server shutting down");
 
@@ -311,10 +223,10 @@ export function getMcpUrl(): string {
 }
 
 export function getMcpClientCount(): number {
-    return sessions.size;
+    return host.size;
 }
 
 /** Return bounded metadata for the active MCP sessions without exposing SDK objects or full ids. */
 export function getMcpSessionSnapshots(): McpSessionSnapshot[] {
-    return getSessionSnapshots(sessions);
+    return getSessionSnapshots(new Map(host.entries()));
 }

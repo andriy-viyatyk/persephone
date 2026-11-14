@@ -5,11 +5,11 @@ import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { MonacoEditorHostView } from "../../editors/shared/MonacoEditorHostView";
 import type { MonacoEditorHostProps } from "../../editors/shared/MonacoEditorHostView";
-import type { DialogViewProps } from "./dialog-view-registry";
+import type { DialogViewProps } from "../../api/dialogs/dialog-view-registry";
 import type {
     TextDialogModel,
-} from "./TextDialog";
-import { dialogButtonLabel, type DialogButtonDefinition } from "./dialog-buttons";
+} from "../../api/dialogs/TextDialog";
+import { dialogButtonLabel, type DialogButtonDefinition } from "../../api/dialogs/dialog-buttons";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 

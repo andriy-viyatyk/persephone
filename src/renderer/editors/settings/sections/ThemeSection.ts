@@ -1,5 +1,5 @@
 import { ui } from "../../../api/ui";
-import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../../api/dialogs/dialog-buttons";
 import { app } from "../../../api/app";
 import { isCustomTheme, themes as themesApi } from "../../../api/themes";
 import { isCapabilityErrorWithCode } from "../../../api/capability-feedback";

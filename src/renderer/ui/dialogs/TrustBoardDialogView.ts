@@ -5,8 +5,8 @@ import { DialogView } from "../../uikit/Dialog/DialogView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import type { DialogViewProps } from "./dialog-view-registry";
-import type { TrustBoardDialogProps, TrustBoardDialogResult } from "./TrustBoardDialog";
+import type { DialogViewProps } from "../../api/dialogs/dialog-view-registry";
+import type { TrustBoardDialogProps, TrustBoardDialogResult } from "../../api/dialogs/TrustBoardDialog";
 import {
     legacyBoardDeprecationWarningForUi,
 } from "../../api/boards/board-permission-copy";

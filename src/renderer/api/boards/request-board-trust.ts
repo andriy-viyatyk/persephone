@@ -2,7 +2,7 @@ import { boardRegistry } from "./board-registry";
 import { BoardRoot } from "../../../shared/board/board-root";
 import { BoardGrant } from "../../../shared/board/board-grant";
 import { confirmNamespaceNotColliding } from "./board-namespace";
-import { showBoardPermissionChangeDialog, showTrustBoardDialog } from "../../ui/dialogs/TrustBoardDialog";
+import { showBoardPermissionChangeDialog, showTrustBoardDialog } from "../../api/dialogs/TrustBoardDialog";
 import { boardTrustDisclosure } from "../../../shared/board/board-manifest-queries";
 import { readBoardManifest } from "./board-manifest-io";
 import { errMessage } from "../../../shared/utils";

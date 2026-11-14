@@ -1,6 +1,6 @@
 import type { Column, DataGridProps } from "../../uikit/DataGrid";
 import { DataGridView } from "../../uikit/DataGrid/DataGridView";
-import { showGridContextMenu } from "../../ui/dialogs/poppers/grid-context-menu";
+import { showGridContextMenu } from "../../api/dialogs/grid-context-menu";
 import { fpBasename, fpExtname } from "../../core/utils/file-path";
 import { createFileRowIconElement, subscribeFileIconElements } from "../icons/icon-elements";
 import { prepareFileIcon } from "../icons/language-icon-resolver";

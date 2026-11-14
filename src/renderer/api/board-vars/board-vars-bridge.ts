@@ -1,4 +1,4 @@
-import { showCreateBoardVarsStorageDialog } from "../../ui/dialogs/CreateBoardVarsStorageDialog";
+import { showCreateBoardVarsStorageDialog } from "../../api/dialogs/CreateBoardVarsStorageDialog";
 import { boardVars } from "./BoardEnvStore";
 import { openEnvVarsPage } from "../../editors/env-vars/open-env-vars";
 import { errMessage } from "../../../shared/utils";

@@ -3,7 +3,7 @@ import type { BrowserProfile } from "../../../api/settings-schema";
 import type { BrowserNetwork } from "../../../../ipc/browser-network-ipc";
 import { browserProfiles } from "../../../api/browser-profiles";
 import { ui } from "../../../api/ui";
-import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../../api/dialogs/dialog-buttons";
 import { TComponentModel } from "../../../core/state/model";
 import { api } from "../../../../ipc/renderer/api";
 import type { BrowserPermissionDecisionEntry } from "../../../../ipc/browser-ipc";

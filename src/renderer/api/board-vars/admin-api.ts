@@ -19,7 +19,7 @@ class BoardVarsAdmin {
         let load = await boardVars.ensureLoaded();
         if (load.status === "not-configured") {
             const { showCreateBoardVarsStorageDialog } = await import(
-                "../../ui/dialogs/CreateBoardVarsStorageDialog"
+                "../../api/dialogs/CreateBoardVarsStorageDialog"
             );
             const created = await showCreateBoardVarsStorageDialog();
             if (!created) throw new Error("Board environment variables storage is not configured.");

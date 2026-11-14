@@ -1,21 +1,12 @@
-import type { VirtualElement } from "@floating-ui/dom";
-import { TPopperModel } from "./types";
-import { closePopper, showPopper } from "./Poppers";
-import { visiblePoppers } from "./PoppersView";
-import { MenuView } from "../../../uikit/Menu/MenuView";
-import type { MenuProps } from "../../../uikit/Menu/MenuModel";
-import type { MenuItem } from "../../../uikit/Menu";
-import { CopyIcon, CursorIcon, EmptyIcon } from "../../../theme/icons";
-import { VanillaView } from "../../../uikit/shared/vanilla-view";
-import { TComponentState } from "../../../core/state/state";
-import { toClipboard } from "../../../core/utils/utils";
-import { overlayRegistry } from "../../../uikit/shared/overlayRegistry";
-import { restoreFocus } from "../../../uikit/shared/focus-restore";
-import { api } from "../../../../ipc/renderer/api";
-import type { DialogViewProps } from "../dialog-view-registry";
-import type { IPopperViewData } from "./types";
-import { registerDialogView } from "../dialog-view-registry";
-import { t } from "../../../../shared/i18n/t";
+import { closePopper, showPopper, visiblePoppers } from "./dialogs-state";
+import { TPopperModel, type IPopperViewData } from "./dialog-types";
+import type { MenuItem } from "../../uikit/Menu";
+import { CopyIcon, CursorIcon, EmptyIcon } from "../../theme/icons";
+import { TComponentState } from "../../core/state/state";
+import { toClipboard } from "../../core/utils/utils";
+import { restoreFocus } from "../../uikit/shared/focus-restore";
+import { api } from "../../../ipc/renderer/api";
+import { t } from "../../../shared/i18n/t";
 
 const defaultAppPopupMenuState = {
     x: 0,
@@ -25,10 +16,9 @@ const defaultAppPopupMenuState = {
     skipDefaults: false,
 };
 
-type AppPopupMenuState = typeof defaultAppPopupMenuState;
-type AppPopupMenuPositionState = Pick<AppPopupMenuState, "items" | "x" | "y">;
+export type AppPopupMenuState = typeof defaultAppPopupMenuState;
 
-class AppPopupMenuModel extends TPopperModel<AppPopupMenuState, void> {
+export class AppPopupMenuModel extends TPopperModel<AppPopupMenuState, void> {
     addDefaultMenus = async () => {
         if (this.state.get().skipDefaults) return;
         const savedSelection = window.getSelection();
@@ -137,75 +127,7 @@ class AppPopupMenuModel extends TPopperModel<AppPopupMenuState, void> {
     };
 }
 
-const defaultOffset = [8, 0] as [number, number];
-const showAppPopupMenuId = Symbol("AppPopupMenu");
-
-class AppPopupMenuView extends VanillaView<DialogViewProps> {
-    private readonly model: AppPopupMenuModel;
-    private readonly menuView: MenuView;
-    private readonly elementRef: VirtualElement;
-    private registeredRef: HTMLDivElement | null = null;
-
-    public constructor(props: DialogViewProps) {
-        const model = props.model as AppPopupMenuModel;
-        super(props, document.createElement("div"));
-        this.root.style.display = "contents";
-        this.model = model;
-        this.elementRef = {
-            getBoundingClientRect: () => {
-                const { x, y } = model.state.get();
-                return {
-                    x,
-                    y,
-                    top: y,
-                    left: x,
-                    bottom: y,
-                    right: x,
-                    width: 0,
-                    height: 0,
-                };
-            },
-        };
-        this.menuView = this.child(new MenuView(this.menuProps(model.state.get())));
-    }
-
-    protected onMount(): void {
-        this.menuView.mount();
-        this.bind(
-            this.model.state,
-            (state) => ({ items: state.items, x: state.x, y: state.y }),
-            (state) => this.menuView.update(this.menuProps(state)),
-        );
-    }
-
-    private menuProps(state: AppPopupMenuPositionState): MenuProps & {
-        ref: (element: HTMLDivElement | null) => void;
-    } {
-        return {
-            name: "app-popup-menu",
-            open: true,
-            items: state.items,
-            elementRef: this.elementRef,
-            offset: defaultOffset,
-            onClose: () => { void this.model.close(); },
-            ref: this.setMenuRef,
-        };
-    }
-
-    // Callback ref: register the Popover's floated root with overlayRegistry so
-    // page-level Tooltips are suppressed while the menu is open. Tooltips inside
-    // this subtree (e.g. on menu items themselves) remain allowed via
-    // overlayRegistry.isSuppressed's `contains()` check.
-    private readonly setMenuRef = (el: HTMLDivElement | null): void => {
-        if (this.registeredRef) {
-            overlayRegistry.unregister(this.registeredRef);
-        }
-        this.registeredRef = el;
-        if (el) overlayRegistry.register(el);
-    };
-}
-
-registerDialogView(showAppPopupMenuId, AppPopupMenuView);
+export const showAppPopupMenuId = Symbol("AppPopupMenu");
 
 export interface ShowAppPopupMenuOptions {
     /** Skip the default "Inspect" menu item (e.g. when the caller provides its own). */

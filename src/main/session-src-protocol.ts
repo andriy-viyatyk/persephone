@@ -18,6 +18,7 @@ import { torService } from "./tor-service";
 import { errMessage } from "../shared/utils";
 import { BoardGrant } from "../shared/board/board-grant";
 import { assertBoardNetworkAllowed, pinnedLookup, type BoardNetworkAddress } from "../shared/board-network-guard";
+import { isHttpUrl, parseRoutedUrl } from "./routed-fetch-protocol";
 
 
 const SESSION_HANDLE_TTL_MS = 5 * 60 * 1000;
@@ -133,9 +134,10 @@ async function serveSessionSrc(request: Request): Promise<Response> {
     let handle: string;
     let target: string | null;
     try {
-        const parsed = new URL(request.url);
-        handle = parsed.host;
-        target = parsed.searchParams.get("u");
+        const routedUrl = parseRoutedUrl(request.url);
+        handle = routedUrl.host;
+        target = routedUrl.target;
+        const parsed = routedUrl.parsed;
         if (parsed.pathname !== "/" || parsed.hash || parsed.searchParams.getAll("u").length !== 1) {
             return new Response("Malformed session-src URL", { status: 400 });
         }
@@ -146,7 +148,7 @@ async function serveSessionSrc(request: Request): Promise<Response> {
     if (!SESSION_HANDLE_RE.test(handle)) {
         return new Response("Unknown session handle", { status: 403 });
     }
-    if (!target || !/^https?:$/.test(safeProtocol(target))) {
+    if (!target || !isHttpUrl(target)) {
         return new Response("Only http(s) targets are allowed", { status: 403 });
     }
 
@@ -174,7 +176,7 @@ async function serveSessionSrc(request: Request): Promise<Response> {
         let body: ArrayBuffer | undefined;
         if (method !== "GET" && method !== "HEAD") body = await request.arrayBuffer();
         for (let redirects = 0; ; redirects++) {
-            if (!/^https?:$/.test(safeProtocol(currentUrl))) throw new Error("Only http(s) redirect targets are allowed.");
+            if (!isHttpUrl(currentUrl)) throw new Error("Only http(s) redirect targets are allowed.");
             const addresses = entry.boardPolicy
                 ? await assertBoardNetworkAllowed(new URL(currentUrl), entry.boardPolicy.grant.networkPolicy({ mcpUrl: entry.boardPolicy.mcpUrl }), { lookup: dns.lookup, isIP: net.isIP })
                 : undefined;
@@ -305,15 +307,6 @@ function filteredRequestHeaders(headers: Headers): Headers {
 function normalizedUrl(url: string): string {
     try {
         return new URL(url).href;
-    } catch {
-        return "";
-    }
-}
-
-/** Protocol of `url`, or "" when it does not parse. Never throws. */
-function safeProtocol(url: string): string {
-    try {
-        return new URL(url).protocol;
     } catch {
         return "";
     }

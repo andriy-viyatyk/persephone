@@ -7,7 +7,7 @@ import type { LogViewEditor } from "../LogViewEditor";
 import { DIALOG_CONTENT_MAX_HEIGHT } from "../logConstants";
 import type { EntryUpdater } from "../LogEntryContent";
 import { ButtonsPanelView } from "./ButtonsPanel";
-import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../../api/dialogs/dialog-buttons";
 import { DialogContainerView } from "./DialogContainer";
 import { DialogHeaderView } from "./DialogHeader";
 

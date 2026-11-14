@@ -80,7 +80,7 @@ boardRegistry.trust(), or bypasses that dialog. The separate environment-variabl
 confirmation follows the trust prompt. All renderer dialog answers are made through the live
 dialogs[0] adapter: this includes Trust this board?, the namespace-collision dialog, and generic
 confirmations titled "Folder already exists", "Remove board", "Delete board", and "Board is open".
-Trust this board? is implemented by src/renderer/ui/dialogs/TrustBoardDialog.ts and answered by
+Trust this board? is implemented by src/renderer/api/dialogs/TrustBoardDialog.ts and answered by
 src/renderer/scripting/ai-vision/dialogs/trust-board.ts; the namespace-collision dialog uses the
 NamespaceCollisionDialog adapter at src/renderer/scripting/ai-vision/dialogs/namespace-collision.ts;
 and those generic confirmations use src/renderer/scripting/ai-vision/dialogs/confirmation.ts. The

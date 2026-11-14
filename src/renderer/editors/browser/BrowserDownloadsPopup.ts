@@ -20,10 +20,10 @@ import {
     closePopper,
     showPopper,
     visiblePoppers,
-} from "../../ui/dialogs/poppers/Poppers";
-import { TPopperModel } from "../../ui/dialogs/poppers/types";
-import type { DialogViewProps } from "../../ui/dialogs/dialog-view-registry";
-import { registerDialogView } from "../../ui/dialogs/dialog-view-registry";
+} from "../../api/dialogs/dialogs-state";
+import { TPopperModel } from "../../api/dialogs/dialog-types";
+import type { DialogViewProps } from "../../api/dialogs/dialog-view-registry";
+import { registerDialogView } from "../../api/dialogs/dialog-view-registry";
 
 // =============================================================================
 // Module-private model

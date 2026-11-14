@@ -12,11 +12,11 @@ import { createPanelElement, applyPanelAttributes, resolvePanelAttributes } from
 import { createTextElement } from "../../../uikit/Text/text-style";
 import { SubtreeSwap } from "../../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
-import { TPopperModel } from "../../../ui/dialogs/poppers/types";
+import { TPopperModel } from "../../../api/dialogs/dialog-types";
 import { parseBoolean, parseNumber, parseString } from "../../../core/utils/parse-utils";
-import { showPopper, visiblePoppers } from "../../../ui/dialogs/poppers/Poppers";
-import type { DialogViewProps } from "../../../ui/dialogs/dialog-view-registry";
-import { registerDialogView } from "../../../ui/dialogs/dialog-view-registry";
+import { showPopper, visiblePoppers } from "../../../api/dialogs/dialogs-state";
+import type { DialogViewProps } from "../../../api/dialogs/dialog-view-registry";
+import { registerDialogView } from "../../../api/dialogs/dialog-view-registry";
 
 const minWidth = 240;
 const minHeight = 160;

@@ -1,7 +1,7 @@
 import type { IAiVisionDescriptor } from "ai-vision";
-import type { RegisterToolsetDialogProps } from "../../../ui/dialogs/RegisterToolsetDialog";
+import type { RegisterToolsetDialogProps } from "../../../api/dialogs/RegisterToolsetDialog";
 import { cancelDialog, closeWithResult, descriptor, dialogState, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
-import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../../api/dialogs/dialog-buttons";
 
 const REGISTER_TOOLSET = "Register toolset";
 

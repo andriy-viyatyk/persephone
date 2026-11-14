@@ -11,7 +11,7 @@ import {
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { isFocusInSidebar } from "../../core/utils/focus-utils";
-import { showGridContextMenu } from "../../ui/dialogs/poppers/grid-context-menu";
+import { showGridContextMenu } from "../../api/dialogs/grid-context-menu";
 import type { GridEditor, GridEditorState, GridQueueEvent } from "./GridEditor";
 import { getRowKey } from "./utils/grid-utils";
 

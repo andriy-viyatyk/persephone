@@ -83,7 +83,7 @@ export class ScriptLibraryPanelView extends VanillaView<ScriptLibraryPanelProps>
     }
 
     private async selectFolder(): Promise<void> {
-        const { showLibrarySetupDialog } = await import("../dialogs/LibrarySetupDialog");
+        const { showLibrarySetupDialog } = await import("../../api/dialogs/LibrarySetupDialog");
         showLibrarySetupDialog();
     }
 

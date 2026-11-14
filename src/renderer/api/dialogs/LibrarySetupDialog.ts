@@ -5,9 +5,7 @@ import { settings } from "../../api/settings";
 import { ui } from "../../api/ui";
 import { copyExampleScripts } from "../../api/library-service";
 import { api } from "../../../ipc/renderer/api";
-import { showDialog } from "./Dialogs";
-import { registerDialogView } from "./dialog-view-registry";
-import { LibrarySetupDialogView } from "./LibrarySetupDialogView";
+import { showDialog } from "./dialogs-state";
 import { errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
 
@@ -86,8 +84,6 @@ export class LibrarySetupDialogModel extends TDialogModel<LibrarySetupDialogStat
         this.viewDisposed = true;
     };
 }
-
-registerDialogView(librarySetupDialogId, LibrarySetupDialogView);
 
 export function showLibrarySetupDialog(props?: LibrarySetupDialogProps): Promise<string | undefined> {
     const model = new LibrarySetupDialogModel(

@@ -1,6 +1,6 @@
 import { errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
-import { builtInDialogButtonLabel } from "../../ui/dialogs/dialog-buttons";
+import { builtInDialogButtonLabel } from "../../api/dialogs/dialog-buttons";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { LogEntry } from "./logTypes";

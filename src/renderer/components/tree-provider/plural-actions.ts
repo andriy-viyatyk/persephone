@@ -13,7 +13,7 @@ import { toClipboard } from "../../core/utils/utils";
 import { CopyIcon, CutIcon, DeleteIcon } from "../../theme/icons";
 import { copyPathsToOsClipboard } from "./os-clipboard";
 import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
-import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
 
 /**

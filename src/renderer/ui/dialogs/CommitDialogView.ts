@@ -7,14 +7,14 @@ import { TextareaView } from "../../uikit/Textarea/TextareaView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import type { DialogViewProps } from "./dialog-view-registry";
+import type { DialogViewProps } from "../../api/dialogs/dialog-view-registry";
 import {
     actionButtonLabel,
     type CommitDialogModel,
     type CommitDialogProps,
     type CommitResult,
-} from "./CommitDialog";
-import { DialogButton, builtInDialogButtonLabel } from "./dialog-buttons";
+} from "../../api/dialogs/CommitDialog";
+import { DialogButton, builtInDialogButtonLabel } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";

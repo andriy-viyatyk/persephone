@@ -5,8 +5,11 @@ import { loadMonacoNls } from "./renderer/i18n/monaco-nls";
 import "./renderer/theme/root.css";
 import { customThemeCatalog } from "./renderer/theme/custom-theme-catalog";
 import { installThemeAtStartup } from "./renderer/theme/themes";
+import { installDialogAnswerEvents } from "./renderer/scripting/ai-vision/event-log";
 
 async function bootstrap(): Promise<(container: HTMLElement) => () => void> {
+    // A dialog can close programmatically or over MCP before mount, so install before app.startup.
+    installDialogAnswerEvents();
     const nlsReady = loadMonacoNls();
     if (nlsReady) await nlsReady;
 

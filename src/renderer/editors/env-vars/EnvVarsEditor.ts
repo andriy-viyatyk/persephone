@@ -13,7 +13,7 @@ import {
     validateBoardVarsFile,
 } from "../../api/board-vars/types";
 import type { ILinkData } from "../../../shared/link-data";
-import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
 import { EditorId } from "../../../shared/editor-ids";
 

@@ -1,6 +1,6 @@
 import { t } from "../../../shared/i18n/t";
 import { ui } from "../../api/ui";
-import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { pages } from "../../api/pages";
 
 import type { TextFileModel } from "./TextFileModel";

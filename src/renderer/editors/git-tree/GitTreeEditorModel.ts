@@ -23,7 +23,7 @@ import type { ILinkDiffRevision } from "../../api/types/io.link-data";
 import { createIconElement } from "../../uikit/shared/slots";
 import { editorRegistry } from "../base/editorRegistry";
 import { writeGitTreeColumnLayout } from "./git-tree-preferences";
-import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { englishMessage, t, untranslated } from "../../../shared/i18n/t";
 
 export interface GitTreeEditorState extends EditorStateBase {
@@ -343,7 +343,7 @@ export class GitTreeEditorModel extends EditorModel<GitTreeEditorState> {
     createBranchAt = async (hash: string, shortHash: string): Promise<void> => {
         const repoRoot = this.state.get().repoRoot;
         if (!repoRoot) return;
-        const { showInputDialog } = await import("../../ui/dialogs/InputDialog");
+        const { showInputDialog } = await import("../../api/dialogs/InputDialog");
         const res = await showInputDialog({
             title: t("git.createBranchTitle"),
             message: t("git.createBranchAt", { shortHash }),

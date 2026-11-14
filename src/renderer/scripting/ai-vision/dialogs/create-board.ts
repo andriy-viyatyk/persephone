@@ -1,7 +1,7 @@
 import type { IAiVisionDescriptor } from "ai-vision";
-import type { CreateBoardDialogState } from "../../../ui/dialogs/CreateBoardDialog";
+import type { CreateBoardDialogState } from "../../../api/dialogs/CreateBoardDialog";
 import { cancelDialog, descriptor, dialogState, modelWith, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
-import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../../api/dialogs/dialog-buttons";
 
 const CREATE_BOARD = "Create";
 

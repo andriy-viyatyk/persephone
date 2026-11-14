@@ -1,5 +1,5 @@
 import type { IAiVisionDescriptor } from "ai-vision";
-import type { TorInfoDialogState } from "../../../ui/dialogs/TorInfoDialog";
+import type { TorInfoDialogState } from "../../../api/dialogs/TorInfoDialog";
 import { cancelDialog, closeWithResult, descriptor, dialogState, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
 
 const CLOSE_TOR_INFO = "Close";

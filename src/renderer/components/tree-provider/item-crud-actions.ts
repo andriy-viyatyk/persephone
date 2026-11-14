@@ -2,7 +2,7 @@ import type { ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
 import { ui } from "../../api/ui";
 import { errMessage } from "../../../shared/utils";
 import { pasteOsClipboardInto } from "./os-clipboard";
-import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
 
 export interface ItemCrudContext {

@@ -1,7 +1,7 @@
 import type { IAiVisionDescriptor } from "ai-vision";
-import type { OpenUrlDialogState } from "../../../ui/dialogs/OpenUrlDialog";
+import type { OpenUrlDialogState } from "../../../api/dialogs/OpenUrlDialog";
 import { cancelDialog, descriptor, dialogState, modelWith, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
-import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../../api/dialogs/dialog-buttons";
 
 const OPEN_URL = "Open";
 const OPEN_URL_FILE = "Open File";

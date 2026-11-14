@@ -1,8 +1,6 @@
 import { TDialogModel } from "../../core/state/model";
 import { TComponentState } from "../../core/state/state";
-import { showDialog } from "./Dialogs";
-import { registerDialogView } from "./dialog-view-registry";
-import { OpenUrlDialogView } from "./OpenUrlDialogView";
+import { showDialog } from "./dialogs-state";
 
 export const openUrlDialogId = Symbol("openUrlDialog");
 
@@ -36,8 +34,6 @@ class OpenUrlDialogModel extends TDialogModel<OpenUrlDialogState, OpenUrlDialogR
         this.close({ type: "file" });
     };
 }
-
-registerDialogView(openUrlDialogId, OpenUrlDialogView);
 
 export function showOpenUrlDialog(): Promise<OpenUrlDialogResult> {
     const model = new OpenUrlDialogModel(new TComponentState({ value: "" }));

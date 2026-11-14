@@ -1,9 +1,9 @@
 import type { IAiVisionDescriptor } from "ai-vision";
-import type { TrustBoardDialogProps } from "../../../ui/dialogs/TrustBoardDialog";
+import type { TrustBoardDialogProps } from "../../../api/dialogs/TrustBoardDialog";
 import { BOARD_PERMISSION_INTRODUCTION, PERMISSION_CHANGE_TITLE, boardPermissionDiffLines, boardPermissionLines, permissionChangeMessage } from "../../../api/boards/board-permission-copy";
 // After Phase 2 extraction, UI consumers use t(key) and agent-facing output uses englishMessage(key) with the same catalog key.
 import { cancelDialog, closeWithResult, descriptor, dialogState, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
-import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../../api/dialogs/dialog-buttons";
 import { BoardGrant } from "../../../../shared/board/board-grant";
 
 const TRUST_BOARD = "Trust Board";

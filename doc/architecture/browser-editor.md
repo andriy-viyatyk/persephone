@@ -395,13 +395,13 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/main/cdp/CdpTarget.ts` and feature modules | Main | Per-WebContents debugger state and page-event, wait, network, drag, and AiVision owners |
 | `src/main/network-logger.ts` | Main | Per-page HTTP request/response logging via `session.webRequest`, circular buffer, IPC access |
 | `src/main/tor-service.ts` | Main | Tor process lifecycle: spawn/kill tor.exe, restart, per-partition SOCKS5 proxy (armed before the daemon starts so the partition fails closed), torrc generation, exit-IP lookup |
-| `src/main/tor-src-protocol.ts` | Main | `tor-src://` handler — fetches an `http(s)` URL through a Tor partition's session |
+| `src/main/tor-src-protocol.ts`, `src/main/routed-fetch-protocol.ts` | Main | Tor partition policy plus the shared simple routed-fetch implementation |
 | `src/main/session-proxy.ts` | Main | Shared session proxy primitives (apply one proxy with no fallback, set direct, geo lookup) used by Tor and profile networks |
-| `src/main/browser-network-service.ts` | Main | Profile/Incognito proxy state, `profile-src://` handler, guest WebRTC policy, egress check, `session-src` hand-off |
+| `src/main/browser-network-service.ts`, `src/main/routed-fetch-protocol.ts` | Main | Profile/Incognito proxy state and route policy, shared simple routed-fetch implementation, guest WebRTC policy, egress check, `session-src` hand-off |
 | `src/ipc/browser-network-ipc.ts` | Shared | `BrowserNetwork` type, endpoint validation, `browser-network:*` channels |
 | `src/renderer/editors/browser/BrowserProfileNetworkModel.ts` | Renderer | Per-page profile network: apply before mount, follow settings edits, image route for app-drawn resources |
 | `src/renderer/editors/link-editor/routed-src.ts` | Renderer | `ImageRoute` + `resolveRoutedSrc` — rewrites remote `src` values to `tor-src://` or `profile-src://` for a routed page |
-| `src/renderer/ui/dialogs/TorInfoDialog.ts` | Renderer | Connection info for a routed page: Tor (exit IP, location, Reconnect) or proxy (egress IP, location) |
+| `src/renderer/api/dialogs/TorInfoDialog.ts` | Renderer | Connection info dialog model for a routed page: Tor (exit IP, location, Reconnect) or proxy (egress IP, location) |
 | `src/preload-webview.ts` | Guest | Main-frame browser behavior, page-first keyboard handling, title/favicon reporting, image tracking, and the `window.chrome` compatibility shim; installs cinema mode in every preloaded frame |
 | `src/preload-webview/cinema-mode.ts` | Guest | Per-frame cinema runtime, video discovery and controls, iframe-chain messaging, expansion/restoration, and same-origin assisted video support |
 | `src/ipc/browser-ipc.ts` | Shared | IPC channel names and type definitions |
@@ -781,8 +781,9 @@ The route resolver lives in `link-editor/`, not `browser/`, to keep the dependen
 
 #### `tor-src://` scheme
 
-`src/main/tor-src-protocol.ts` registers a handler on the app window's session that fetches an
-arbitrary `http(s)` URL through a Tor partition's session, so the SOCKS proxy applies. Three guards
+`src/main/tor-src-protocol.ts` configures the handler from `src/main/routed-fetch-protocol.ts` on
+the app window's session. The shared handler fetches an arbitrary `http(s)` URL through the
+resolved Tor partition's session, so the SOCKS proxy applies. Three guards
 are load-bearing and required together:
 
 1. The host must match the `browser-tor-<uuid>` partition shape.
@@ -790,7 +791,9 @@ are load-bearing and required together:
    inert whenever no Tor page is running.
 3. The target must be `http:` or `https:`.
 
-The target URL travels in a `?u=` query parameter rather than a path segment: Chromium canonicalizes
+The shared handler owns URL parsing, HTTP(S)-target validation, fetch error formatting, and response
+forwarding; the Tor module owns partition-shape and live-session checks. The target URL travels in a
+`?u=` query parameter rather than a path segment: Chromium canonicalizes
 `standard: true` scheme paths and can rewrite percent-escapes, corrupting a target that carries
 escapes of its own. Responses are returned with `Cache-Control: no-store`, and the scheme is
 registered **without** `corsEnabled` — enabling CORS would turn it into "any document in the app
@@ -853,8 +856,8 @@ in-memory partition, released when the page closes.
 - **Follow edits.** The model subscribes to the three settings and re-applies on change; main
   closes connections, re-issues the `profile-src` token, and re-applies the guest WebRTC policy to
   existing guests. Documents already loaded keep their route until reloaded, so a notice says so.
-- **`profile-src://`.** The `tor-src` counterpart for proxied sessions, registered on the app
-  session. Its host is an opaque token main issues per proxied partition (a partition name such as
+- **`profile-src://`.** The `tor-src` counterpart for proxied sessions, configured by
+  `browser-network-service.ts` with the shared routed-fetch handler. Its host is an opaque token main issues per proxied partition (a partition name such as
   `persist:browser-My Profile` is not a valid URL host); an unknown or revoked token is refused, and
   only `http(s)` targets are fetched. Unlike `tor-src`, it is `corsEnabled` so the favicon cache can
   read the bytes. That is safe here because the host is an unguessable random token that only the

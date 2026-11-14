@@ -69,7 +69,7 @@ export async function createToolsetWithConsent(name: unknown, dir: unknown): Pro
 
     const manifest = await readToolsManifest(toolsetRoot);
     const tools = (manifest?.tools ?? []).map((tool) => ({ name: tool.name, description: tool.description }));
-    const { showRegisterToolsetDialog } = await import("../../ui/dialogs/RegisterToolsetDialog");
+    const { showRegisterToolsetDialog } = await import("../../api/dialogs/RegisterToolsetDialog");
     const allowed = await showRegisterToolsetDialog({
         toolsetName: manifest?.name ?? name,
         toolsetRoot,

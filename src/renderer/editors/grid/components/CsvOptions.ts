@@ -10,10 +10,10 @@ import "../../../uikit/RadioGroup/RadioGroup.css";
 import type { IRadio } from "../../../uikit/RadioGroup/RadioGroup";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { createTextElement } from "../../../uikit/Text/text-style";
-import { TPopperModel } from "../../../ui/dialogs/poppers/types";
-import { showPopper } from "../../../ui/dialogs/poppers/Poppers";
-import type { DialogViewProps } from "../../../ui/dialogs/dialog-view-registry";
-import { registerDialogView } from "../../../ui/dialogs/dialog-view-registry";
+import { showPopper } from "../../../api/dialogs/dialogs-state";
+import { TPopperModel } from "../../../api/dialogs/dialog-types";
+import type { DialogViewProps } from "../../../api/dialogs/dialog-view-registry";
+import { registerDialogView } from "../../../api/dialogs/dialog-view-registry";
 import type { GridEditor } from "../GridEditor";
 
 class CsvOptionsModel extends TPopperModel<null, void> {

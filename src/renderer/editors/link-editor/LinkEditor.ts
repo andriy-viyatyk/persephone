@@ -18,7 +18,7 @@ import type { ILinkSource, LinkItem, LinkEditorData, LinkViewMode } from "./link
 import { LinkCollection, type LinkFilterCriteria } from "./link-collection";
 import { LinkImporter } from "./link-importer";
 import { showEditLinkDialog } from "./EditLinkDialog";
-import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../api/dialogs/dialog-buttons";
 
 const IMPORT_ALL = englishMessage("links.importAll");
 import type { ImageRoute } from "./routed-src";

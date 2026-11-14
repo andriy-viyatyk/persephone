@@ -4,7 +4,7 @@ import { ui } from "../../api/ui";
 import type { MenuItem } from "../../uikit/Menu";
 import { getIcon } from "../../theme/icon-registry";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
-import { closeAppPopupMenu, showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
+import { closeAppPopupMenu, showAppPopupMenu } from "../../api/dialogs/showPopupMenu";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { BrowserEditor } from "./BrowserEditor";
 import type { BrowserEditorState } from "./browser-state";

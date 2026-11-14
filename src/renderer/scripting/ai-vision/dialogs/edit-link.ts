@@ -1,7 +1,7 @@
 import type { IAiVisionDescriptor } from "ai-vision";
 import type { EditLinkDialogModel } from "../../../editors/link-editor/EditLinkDialog";
 import { cancelDialog, descriptor, dialogState, modelWith, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
-import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../../api/dialogs/dialog-buttons";
 
 type EditLinkDialogState = ReturnType<EditLinkDialogModel["state"]["get"]>;
 

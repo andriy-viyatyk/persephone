@@ -1,5 +1,5 @@
 import type { GridColumn } from "../grid/utils/grid-utils";
-import { builtInDialogButtonLabel } from "../../ui/dialogs/dialog-buttons";
+import { builtInDialogButtonLabel } from "../../api/dialogs/dialog-buttons";
 export type { GridColumn };
 
 // =============================================================================

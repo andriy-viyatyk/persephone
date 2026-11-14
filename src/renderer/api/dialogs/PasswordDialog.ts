@@ -1,8 +1,6 @@
-import { showDialog } from "./Dialogs";
+import { showDialog } from "./dialogs-state";
 import { TDialogModel } from "../../core/state/model";
 import { TComponentState } from "../../core/state/state";
-import { registerDialogView } from "./dialog-view-registry";
-import { PasswordDialogView } from "./PasswordDialogView";
 
 export const passwordDialogId = Symbol("passwordDialog");
 
@@ -52,8 +50,6 @@ class PasswordDialogModel extends TDialogModel<PasswordDialogState, string> {
     };
 
 }
-
-registerDialogView(passwordDialogId, PasswordDialogView);
 
 export function showPasswordDialog(props?: Partial<PasswordDialogProps>) {
     const modelState = {

@@ -2,7 +2,7 @@ import type { BrowserEventData } from "../../../ipc/browser-ipc";
 import { app } from "../../api/app";
 import { pages } from "../../api/pages";
 import { ui } from "../../api/ui";
-import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
+import { showAppPopupMenu } from "../../api/dialogs/showPopupMenu";
 import type { MenuItem } from "../../uikit/Menu";
 import { toClipboard, withTimeout } from "../../core/utils/utils";
 import { guard } from "../../core/utils/guard";

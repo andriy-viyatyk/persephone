@@ -3,8 +3,8 @@ import { settings } from "../../api/settings";
 import { shell } from "../../api/shell";
 import { boardRegistry } from "../../api/boards/board-registry";
 import { api } from "../../../ipc/renderer/api";
-import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
-import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
+import { DialogButton, dialogButton } from "../../api/dialogs/dialog-buttons";
+import { showConfirmationDialog } from "../../api/dialogs/ConfirmationDialog";
 import { t } from "../../../shared/i18n/t";
 import type { ILinkAction, ILinkData } from "../../../shared/link-data";
 

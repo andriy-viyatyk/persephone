@@ -10,7 +10,7 @@ import {
     type GridContextMenuEvent,
 } from "../../uikit/DataGrid";
 import type { MenuItem } from "../../uikit/Menu";
-import { showGridContextMenu } from "../../ui/dialogs/poppers/grid-context-menu";
+import { showGridContextMenu } from "../../api/dialogs/grid-context-menu";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { TAG_COLORS } from "../../theme/palette-colors";
 import { REF_COLOR } from "./git-ref-color";

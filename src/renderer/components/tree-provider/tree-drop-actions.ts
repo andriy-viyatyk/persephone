@@ -18,7 +18,7 @@ import { fpDirname, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { isKeyInside } from "../../../shared/path-containment";
 import { pruneNestedItems } from "./plural-actions";
 import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
-import { DialogButton } from "../../ui/dialogs/dialog-buttons";
+import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
 
 /**

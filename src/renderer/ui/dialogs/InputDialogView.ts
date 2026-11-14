@@ -9,12 +9,12 @@ import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { KeyedList } from "../../uikit/shared/keyed-list";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import type { DialogViewProps } from "./dialog-view-registry";
-import type { InputDialogProps, InputResult } from "./InputDialog";
+import type { DialogViewProps } from "../../api/dialogs/dialog-view-registry";
+import type { InputDialogProps, InputResult } from "../../api/dialogs/InputDialog";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Dialog/Dialog.css";
 import "../../uikit/RadioGroup/RadioGroup.css";
-import { dialogButtonLabel, type DialogButtonDefinition } from "./dialog-buttons";
+import { dialogButtonLabel, type DialogButtonDefinition } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
 
 type InputDialogModel = TDialogModel<InputDialogProps, InputResult | undefined> & {

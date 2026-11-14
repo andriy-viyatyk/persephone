@@ -9,7 +9,7 @@ import { boardRegistry } from "../../api/boards/board-registry";
 import { toolsTrust } from "../../api/tools/tools-trust";
 import { registeredTools } from "../../api/tools/registered-tools";
 import { readToolsManifest } from "../../api/tools/tools-manifest";
-import { showRegisterToolsetDialog } from "../../ui/dialogs/RegisterToolsetDialog";
+import { showRegisterToolsetDialog } from "../../api/dialogs/RegisterToolsetDialog";
 import { fpBasename } from "../../core/utils/file-path";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";

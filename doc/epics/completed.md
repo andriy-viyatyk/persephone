@@ -1,3 +1,26 @@
+## EPIC-175 — Refactoring Phase 6.8 part 3 and 6.9: dialog state and host, dialog models in api/dialogs, MCP session host and routed fetch
+
+Completed 2026-11-14. Roadmap Phase 6.8 part 3 (the dialog items of SHL-13), which completes item 6.8, the dialog slice
+of item 2.2 (SHL-1 step 2) and Phase 6.9's MAIN-10: `api/dialogs/dialogs-state.ts` owns dialog and popper state and an
+`onDialogClosed` event the ai-vision event log subscribes to, one `ModelViewSlotHost` serves `DialogsView` and
+`PoppersView`, and the `Dialogs.ts`/`Poppers.ts` shims, the `ui/dialogs` barrel and `closeDialog` are gone;
+`api/dialogs/` owns `dialog-buttons`, the view registry, every dialog model with its show function, the app popup menu
+model and the grid context-menu adapter, the views stay in `ui/dialogs/` and are registered from `index.ts`, and an
+error-level import zone keeps `api/`, `content/`, `components/` and `scripting/` out of `ui/dialogs/`;
+`main/mcp/mcp-session-host.ts` is shared by both MCP servers and `main/routed-fetch-protocol.ts` serves `tor-src` and
+`profile-src`. Bug found and fixed: an import cycle through the MCP server factory hung the main process at startup
+(the factory is injected). Recorded change: a throwing `dialog-answered` listener no longer blocks a dialog's result.
+Dialog DOM, Escape/Enter, stacking, focus, ai-vision dialogs and events, popup and grid menus, and the public MCP
+server's refusals checked live in a separate test window. Plans by Codex, reviewed against the roadmap guardrails;
+Codex Luna implemented. Epic document: [EPIC-175](EPIC-175.md).
+
+- [x] **Dialog state and host (US-1989).** `dialogs-state.ts`, `dialog-types.ts`, `ModelViewSlotHost`, `onDialogClosed`.
+- [x] **Generic dialogs in api/dialogs (US-1990).** Buttons, registry, five generic models, `register-dialog-views.ts`.
+- [x] **Feature dialogs and popper models (US-1991).** Eight feature models, popup menu and grid adapter, lint zone.
+- [x] **MCP session host and routed fetch (US-1992).** `McpSessionHost`, `routed-fetch-protocol.ts`, cycle fix.
+- [x] **Epic review.** `/review` three explicit guards; `/document` folder structure, overview, key files, browser
+  editor, context menu, scripting, coding style; `/userdoc` no change; `i18n:check` complete.
+
 ## EPIC-174 — Refactoring Phase 6.8 part 2: tab state, editor titles and audibility, board identity, main page layout, menu-bar folder table
 
 Completed 2026-11-14. Roadmap Phase 6.8 part 2 (SHL-4, SHL-6, SHL-7, SHL-8 and the shell items of SHL-13):

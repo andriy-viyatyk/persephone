@@ -11,7 +11,7 @@ import {
     type SideBarPanelHeaderHandle,
 } from "../../ui/secondary-views/SideBarPanelHeaderView";
 import { ButtonView } from "../../uikit/Button/ButtonView";
-import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
+import { DialogButton, dialogButton } from "../../api/dialogs/dialog-buttons";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { ListBoxView } from "../../uikit/ListBox/ListBoxView";
 import type { IListBoxItem } from "../../uikit/ListBox/types";
@@ -405,7 +405,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
     }
 
     private async removeItem(id: string): Promise<void> {
-        const { showConfirmationDialog } = await import("../../ui/dialogs/ConfirmationDialog");
+        const { showConfirmationDialog } = await import("../../api/dialogs/ConfirmationDialog");
         const confirmed = await showConfirmationDialog({
             title: t("explorer.removeClipboardItemTitle"),
             message: t("explorer.removeClipboardItemConfirmation"),
@@ -423,7 +423,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
 
     private async clearHistory(): Promise<void> {
         if (this.items.length === 0) return;
-        const { showConfirmationDialog } = await import("../../ui/dialogs/ConfirmationDialog");
+        const { showConfirmationDialog } = await import("../../api/dialogs/ConfirmationDialog");
         const confirmed = await showConfirmationDialog({
             title: t("explorer.clearClipboardHistoryTitle"),
             message: t("explorer.clearClipboardHistoryConfirmation"),

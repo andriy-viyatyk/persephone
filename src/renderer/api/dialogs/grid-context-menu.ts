@@ -22,9 +22,9 @@
  * from the one the previous grid rendered.
  */
 
-import { CopyIcon, DeleteIcon, PasteIcon, PlusIcon } from "../../../theme/icons";
-import type { MenuItem } from "../../../uikit/Menu";
-import type { GridContextMenuEvent } from "../../../uikit/DataGrid";
+import { CopyIcon, DeleteIcon, PasteIcon, PlusIcon } from "../../theme/icons";
+import type { MenuItem } from "../../uikit/Menu";
+import type { GridContextMenuEvent } from "../../uikit/DataGrid";
 import { showAppPopupMenu } from "./showPopupMenu";
 
 /**

@@ -7,7 +7,7 @@ import { DataGridView } from "./DataGridView";
 import type { Column, DataGridInstance, DataGridProps } from "./types";
 import { cycleTheme } from "../../theme/themes";
 // eslint-disable-next-line import/no-restricted-paths
-import { showGridContextMenu } from "../../ui/dialogs/poppers/grid-context-menu";
+import { showGridContextMenu } from "../../api/dialogs/grid-context-menu";
 import color from "../../theme/color";
 import type { Story } from "../../editors/storybook/storyTypes";
 

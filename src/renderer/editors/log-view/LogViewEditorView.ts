@@ -5,8 +5,8 @@ import { LogBodyView } from "./LogBodyView";
 import { TextEditorPageView } from "../base/TextEditorPageView";
 import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
-import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
+import { showConfirmationDialog } from "../../api/dialogs/ConfirmationDialog";
+import { DialogButton, dialogButton } from "../../api/dialogs/dialog-buttons";
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 

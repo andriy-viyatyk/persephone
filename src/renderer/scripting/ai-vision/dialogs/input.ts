@@ -1,6 +1,6 @@
 import type { IAiVisionDescriptor } from "ai-vision";
-import type { InputDialogProps, InputResult } from "../../../ui/dialogs/InputDialog";
-import { normalizeDialogButton } from "../../../ui/dialogs/dialog-buttons";
+import type { InputDialogProps, InputResult } from "../../../api/dialogs/InputDialog";
+import { normalizeDialogButton } from "../../../api/dialogs/dialog-buttons";
 import { cancelDialog, closeWithResult, descriptor, dialogState, resolveDialogButton, type DialogAdapter, type DialogEntry } from "./shared";
 
 const MEMBERS = [

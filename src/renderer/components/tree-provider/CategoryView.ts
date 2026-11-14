@@ -1,4 +1,4 @@
-import { showAppPopupMenu } from "../../ui/dialogs";
+import { showAppPopupMenu } from "../../api/dialogs/showPopupMenu";
 import { createComponentModelDriver, type ComponentModelDriver } from "../../core/state/model";
 import type { GridModelCapability } from "../../uikit/DataGrid";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";

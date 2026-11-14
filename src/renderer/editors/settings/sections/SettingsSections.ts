@@ -280,7 +280,7 @@ export class BoardVarsSectionView extends VanillaView<Record<string, never>> {
     };
 
     private readonly handleCreate = async (): Promise<void> => {
-        const { showCreateBoardVarsStorageDialog } = await import("../../../ui/dialogs/CreateBoardVarsStorageDialog");
+        const { showCreateBoardVarsStorageDialog } = await import("../../../api/dialogs/CreateBoardVarsStorageDialog");
         await showCreateBoardVarsStorageDialog();
     };
 
@@ -314,7 +314,7 @@ export function createScriptLibrarySection(): LibraryPathSectionView {
         read: () => settings.get("script-library.path"),
         subscribe: (listener) => settings.watch("script-library.path", listener),
         emptyText: t("settings.notLinked"),
-        browse: async () => { const { showLibrarySetupDialog } = await import("../../../ui/dialogs/LibrarySetupDialog"); showLibrarySetupDialog(); },
+        browse: async () => { const { showLibrarySetupDialog } = await import("../../../api/dialogs/LibrarySetupDialog"); showLibrarySetupDialog(); },
         reset: () => settings.set("script-library.path", ""),
         clearLabel: t("settings.unlink"),
     });

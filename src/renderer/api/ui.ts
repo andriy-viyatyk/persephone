@@ -17,6 +17,10 @@ import type { IAiHighlightApi } from "ai-vision/dom";
 import { installHighlightOverlay } from "ai-vision/dom";
 import { alertsBarModel, maxAlerts } from "../uikit/Notification/AlertsBar";
 import type { AlertData } from "../uikit/Notification/AlertItem";
+import { showConfirmationDialog } from "./dialogs/ConfirmationDialog";
+import { showInputDialog } from "./dialogs/InputDialog";
+import { showPasswordDialog } from "./dialogs/PasswordDialog";
+import { showTextDialog } from "./dialogs/TextDialog";
 
 export function listAlerts(): IAlert[] {
     return alertsBarModel.state.get().alerts.map((alert, index) => ({
@@ -80,7 +84,6 @@ class UserInterface implements IUserInterface {
     readonly alerts = alerts;
 
     async confirm(message: string, options?: IConfirmOptions): Promise<string | null> {
-        const { showConfirmationDialog } = await import("../ui/dialogs/ConfirmationDialog");
         const result = await showConfirmationDialog({
             message,
             ...options,
@@ -89,7 +92,6 @@ class UserInterface implements IUserInterface {
     }
 
     async input(message: string, options?: IInputOptions): Promise<IInputResult | null> {
-        const { showInputDialog } = await import("../ui/dialogs/InputDialog");
         const result = await showInputDialog({
             message,
             ...options,
@@ -98,7 +100,6 @@ class UserInterface implements IUserInterface {
     }
 
     async password(options?: IPasswordOptions): Promise<string | null> {
-        const { showPasswordDialog } = await import("../ui/dialogs/PasswordDialog");
         const result = await showPasswordDialog(options);
         return result ?? null;
     }
@@ -108,7 +109,6 @@ class UserInterface implements IUserInterface {
     }
 
     async textDialog(options: ITextDialogOptions): Promise<ITextDialogResult | null> {
-        const { showTextDialog } = await import("../ui/dialogs/TextDialog");
         const result = await showTextDialog(options);
         return result ?? null;
     }

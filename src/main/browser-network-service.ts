@@ -28,6 +28,7 @@ import {
 import type { BrowserNetwork, BrowserNetworkApplyResult, EgressIpInfo } from "../ipc/browser-network-ipc";
 import { applySessionProxy, lookupGeo, setSessionDirect } from "./session-proxy";
 import { registerSessionSource } from "./session-src-protocol";
+import { createRoutedFetchHandler, isHttpUrl } from "./routed-fetch-protocol";
 import { torService } from "./tor-service";
 import { errMessage } from "../shared/utils";
 
@@ -139,7 +140,7 @@ class BrowserNetworkService {
 
     /** One-URL `session-src` handle for a proxied profile or live Tor page, else undefined. */
     sessionSource(partition: string, url: string): string | undefined {
-        if (!/^https?:$/.test(safeProtocol(url))) return undefined;
+        if (!isHttpUrl(url)) return undefined;
         if (this.proxied.has(partition)) {
             return registerSessionSource(session.fromPartition(partition), url, undefined, true);
         }
@@ -188,57 +189,17 @@ export const browserNetworkService = new BrowserNetworkService();
 
 /** Register the handler on the app renderer's session. Call once at startup. */
 export function registerProfileSrcProtocol(partition: string): void {
-    session.fromPartition(partition).protocol.handle(PROFILE_SRC_SCHEME, handleProfileSrc);
-}
-
-async function handleProfileSrc(request: Request): Promise<Response> {
-    let token: string;
-    let target: string | null;
-    try {
-        const parsed = new URL(request.url);
-        token = parsed.host;
-        // `?u=` rather than a path segment, as in `tor-src://` — Chromium may
-        // rewrite percent-escapes in standard-scheme paths.
-        target = parsed.searchParams.get("u");
-    } catch {
-        return new Response("Malformed profile-src URL", { status: 400 });
-    }
-    if (!target) return new Response("Missing 'u' target parameter", { status: 400 });
-
-    // The token is the capability: it exists only while its profile is proxied,
-    // so a stale tile fails instead of loading over another route.
-    const partition = browserNetworkService.partitionForToken(token);
-    if (!partition) return new Response("No proxied profile for this token", { status: 403 });
-    if (!/^https?:$/.test(safeProtocol(target))) {
-        return new Response("Only http(s) targets are allowed", { status: 403 });
-    }
-
-    let upstream: Response;
-    try {
-        upstream = await session.fromPartition(partition).fetch(target);
-    } catch (err) {
-        return new Response(`Profile fetch failed: ${errMessage(err)}`, { status: 502 });
-    }
-
-    // Body and content type only; upstream cookies stay out of the app session.
-    // CORS lets the favicon cache read the bytes with renderer `fetch()`.
-    const headers = new Headers({ "Access-Control-Allow-Origin": "*", "Cache-Control": "no-store" });
-    const contentType = upstream.headers.get("content-type");
-    if (contentType) headers.set("Content-Type", contentType);
-    return new Response(upstream.body, {
-        status: upstream.status,
-        statusText: upstream.statusText,
-        headers,
-    });
-}
-
-/** Protocol of `url`, or "" when it does not parse. Never throws. */
-function safeProtocol(url: string): string {
-    try {
-        return new URL(url).protocol;
-    } catch {
-        return "";
-    }
+    session.fromPartition(partition).protocol.handle(PROFILE_SRC_SCHEME, createRoutedFetchHandler({
+        scheme: "profile-src",
+        resolvePartition: host => {
+            // The token is the capability: it exists only while its profile is proxied,
+            // so a stale tile fails instead of loading over another route.
+            const route = browserNetworkService.partitionForToken(host);
+            return route ? { partition: route } : { status: 403, body: "No proxied profile for this token" };
+        },
+        failurePrefix: "Profile fetch failed",
+        extraHeaders: { "Access-Control-Allow-Origin": "*" },
+    }));
 }
 
 export function initializeBrowserNetworkService(): void {

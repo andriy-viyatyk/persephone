@@ -4,9 +4,7 @@ import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
 import { settings } from "../../api/settings";
 import { errMessage } from "../../../shared/utils";
-import { showDialog } from "./Dialogs";
-import { registerDialogView } from "./dialog-view-registry";
-import { CreateBoardVarsStorageDialogView } from "./CreateBoardVarsStorageDialogView";
+import { showDialog } from "./dialogs-state";
 import { t } from "../../../shared/i18n/t";
 
 export const createBoardVarsStorageDialogId = Symbol("createBoardVarsStorageDialog");
@@ -74,8 +72,6 @@ class CreateBoardVarsStorageDialogModel extends TDialogModel<
         this.viewDisposed = true;
     };
 }
-
-registerDialogView(createBoardVarsStorageDialogId, CreateBoardVarsStorageDialogView);
 
 /** Shows the create-storage dialog, defaulting to the currently-configured `board-vars.file`
  *  path if one is set, or the Persephone data folder otherwise. */

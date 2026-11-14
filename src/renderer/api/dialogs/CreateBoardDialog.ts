@@ -4,9 +4,7 @@ import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
 import { createBoardFromTemplate } from "../../api/boards/board-scaffold";
 import { errMessage } from "../../../shared/utils";
-import { showDialog } from "./Dialogs";
-import { registerDialogView } from "./dialog-view-registry";
-import { CreateBoardDialogView } from "./CreateBoardDialogView";
+import { showDialog } from "./dialogs-state";
 import { t } from "../../../shared/i18n/t";
 
 export const createBoardDialogId = Symbol("createBoardDialog");
@@ -86,8 +84,6 @@ class CreateBoardDialogModel extends TDialogModel<CreateBoardDialogState, Create
         this.viewDisposed = true;
     };
 }
-
-registerDialogView(createBoardDialogId, CreateBoardDialogView);
 
 export function showCreateBoardDialog(props?: CreateBoardDialogProps): Promise<CreateBoardResult> {
     const model = new CreateBoardDialogModel(

@@ -1,6 +1,6 @@
 import type { IAiVisionDescriptor } from "ai-vision";
-import { actionButtonLabel, type CommitDialogModel, type CommitDialogProps } from "../../../ui/dialogs/CommitDialog";
-import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
+import { actionButtonLabel, type CommitDialogModel, type CommitDialogProps } from "../../../api/dialogs/CommitDialog";
+import { DialogButton } from "../../../api/dialogs/dialog-buttons";
 import { cancelDialog, descriptor, dialogState, modelWith, type DialogAdapter, type DialogEntry } from "./shared";
 
 const MEMBERS = [

@@ -1,7 +1,7 @@
-import { AgentTipsRegistry } from "./agent-tips";
-import { randomBytes, timingSafeEqual, randomUUID } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import http from "node:http";
-import { loadSdk, requireSdk, type McpServerInstance, type McpTransportInstance } from "./sdk";
+import { loadSdk, requireSdk } from "./sdk";
+import { McpSessionHost, isAllowedLoopbackHost, parseJsonBody } from "./mcp-session-host";
 import { createMcpServer } from "./server-factory";
 import { codedError } from "../../shared/coded-error";
 import { BoardRoot } from "../../shared/board/board-root";
@@ -14,17 +14,9 @@ const MAX_TRANSPORTS_PER_TOKEN = 4;
 // session too; MAX_TRANSPORTS_PER_TOKEN and MAX_ENDPOINTS bound the rest. An idle timeout only broke
 // agents waiting in Wake mode: after 30 quiet minutes their next tool call failed with "Invalid session".
 
-interface PrivateSession {
-    owner: string;
-    tips: AgentTipsRegistry;
-    server: McpServerInstance;
-    transport: McpTransportInstance;
-    lastActivity: number;
-}
 interface EndpointGrant { boardRoot: string; tokenBytes: Buffer }
 
 const grants = new Map<string, EndpointGrant>();
-const sessions = new Map<string, PrivateSession>();
 const pendingTransports = new Map<string, number>();
 let server: http.Server | undefined;
 let startPromise: Promise<string> | undefined;
@@ -37,6 +29,16 @@ export interface PrivateMcpEndpointStartDependencies {
 }
 
 function broadcast(): void { statusChanged?.(); }
+
+const host = new McpSessionHost<string>({
+    createServer: createMcpServer,
+    allowedSdkHosts: () => {
+        const address = server?.address();
+        const port = address && typeof address !== "string" ? address.port : 0;
+        return [`127.0.0.1:${port}`];
+    },
+    onChange: broadcast,
+});
 
 function authorizedToken(req: http.IncomingMessage): string | undefined {
     const header = req.headers.authorization;
@@ -56,24 +58,8 @@ function unauthorized(res: http.ServerResponse): void {
     res.end(JSON.stringify({ error: "Unauthorized" }));
 }
 
-function allowedHost(host: string | undefined, port: number): boolean {
-    return host === `127.0.0.1:${port}`;
-}
-
-async function parseBody(req: http.IncomingMessage): Promise<unknown> {
-    return new Promise((resolve, reject) => {
-        let data = "";
-        req.on("data", (chunk: Buffer) => { data += chunk.toString(); });
-        req.on("end", () => {
-            try { resolve(data ? JSON.parse(data) : undefined); }
-            catch { reject(new Error("Invalid JSON")); }
-        });
-        req.on("error", reject);
-    });
-}
-
 async function startTransport(token: string, req: http.IncomingMessage, res: http.ServerResponse, body: unknown): Promise<void> {
-    const owned = [...sessions.entries()].filter(([, session]) => session.owner === token);
+    const owned = [...host.entries()].filter(([, record]) => record.owner === token);
     const pendingForToken = pendingTransports.get(token) ?? 0;
     if (owned.length + pendingForToken >= MAX_TRANSPORTS_PER_TOKEN) {
         if (owned.length === 0) {
@@ -81,11 +67,11 @@ async function startTransport(token: string, req: http.IncomingMessage, res: htt
             res.end(JSON.stringify({ error: "MCP endpoint busy" }));
             return;
         }
-        const [, oldest] = owned.reduce((a, b) => a[1].lastActivity <= b[1].lastActivity ? a : b);
-        await closeSession(oldest.transport.sessionId);
+        const oldest = host.oldest(record => record.owner === token, "less-or-equal");
+        await host.closeSession(oldest?.[1].transport.sessionId, "awaited");
     }
     const pendingTotal = [...pendingTransports.values()].reduce((sum, count) => sum + count, 0);
-    if (sessions.size + pendingTotal >= MAX_TRANSPORTS) {
+    if (host.size + pendingTotal >= MAX_TRANSPORTS) {
         res.writeHead(503, { "Content-Type": "application/json", "Retry-After": "1" });
         res.end(JSON.stringify({ error: "MCP endpoint busy" }));
         return;
@@ -93,27 +79,7 @@ async function startTransport(token: string, req: http.IncomingMessage, res: htt
     pendingTransports.set(token, (pendingTransports.get(token) ?? 0) + 1);
 
     try {
-        const { StreamableHTTPServerTransport } = requireSdk();
-        const tips = new AgentTipsRegistry();
-        const mcpServer = createMcpServer(tips);
-        const address = server?.address();
-        const port = address && typeof address !== "string" ? address.port : 0;
-        const transport = new StreamableHTTPServerTransport({
-            sessionIdGenerator: () => randomUUID(),
-            enableDnsRebindingProtection: true,
-            allowedHosts: [`127.0.0.1:${port}`],
-            onsessioninitialized: (sid: string) => {
-                sessions.set(sid, { owner: token, tips, server: mcpServer, transport, lastActivity: Date.now() });
-                broadcast();
-            },
-        });
-        transport.onclose = () => {
-            tips.dispose();
-            if (transport.sessionId) sessions.delete(transport.sessionId);
-            broadcast();
-        };
-        await mcpServer.connect(transport);
-        await transport.handleRequest(req, res, body);
+        await host.startSession(token, req, res, body);
     } finally {
         const remaining = (pendingTransports.get(token) ?? 1) - 1;
         if (remaining > 0) pendingTransports.set(token, remaining);
@@ -121,19 +87,10 @@ async function startTransport(token: string, req: http.IncomingMessage, res: htt
     }
 }
 
-async function closeSession(sessionId: string | undefined): Promise<void> {
-    if (!sessionId) return;
-    const session = sessions.get(sessionId);
-    if (!session) return;
-    session.tips.dispose();
-    try { await session.transport.close(); }
-    catch { sessions.delete(sessionId); broadcast(); }
-}
-
 async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
     const address = server?.address();
     const port = address && typeof address !== "string" ? address.port : 0;
-    if (!allowedHost(req.headers.host, port) || req.headers.origin !== undefined) {
+    if (!isAllowedLoopbackHost(req.headers.host, [`127.0.0.1:${port}`], "exact") || req.headers.origin !== undefined) {
         res.writeHead(403, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: "Forbidden" }));
         return;
@@ -148,11 +105,11 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
     try {
         if (req.method === "POST") {
-            const body = await parseBody(req);
-            const session = sessionId ? sessions.get(sessionId) : undefined;
-            if (session?.owner === token) {
-                session.lastActivity = Date.now();
-                await session.transport.handleRequest(req, res, body);
+            const body = await parseJsonBody(req);
+            const session = sessionId ? host.get(sessionId) : undefined;
+            if (sessionId && session?.owner === token) {
+                host.touch(sessionId);
+                await host.handleExisting(sessionId, req, res, body);
             } else if (!sessionId && requireSdk().isInitializeRequest(body)) {
                 await startTransport(token, req, res, body);
             } else {
@@ -160,14 +117,14 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
                 res.end(JSON.stringify({ error: "Invalid session" }));
             }
         } else if (req.method === "GET" || req.method === "DELETE") {
-            const session = sessionId ? sessions.get(sessionId) : undefined;
-            if (!session || session.owner !== token) {
+            const session = sessionId ? host.get(sessionId) : undefined;
+            if (!sessionId || !session || session.owner !== token) {
                 res.writeHead(400, { "Content-Type": "text/plain" });
                 res.end("Invalid or missing session ID");
                 return;
             }
-            session.lastActivity = Date.now();
-            await session.transport.handleRequest(req, res);
+            host.touch(sessionId);
+            await host.handleExisting(sessionId, req, res);
         } else {
             res.writeHead(405, { "Content-Type": "text/plain" });
             res.end("Method not allowed");
@@ -220,7 +177,7 @@ export async function revokePrivateMcpEndpoint(token: string): Promise<void> {
     const grant = grants.get(token);
     if (!grant) return;
     grants.delete(token);
-    for (const [id, session] of [...sessions]) if (session.owner === token) await closeSession(id);
+    for (const [id, record] of [...host.entries()]) if (record.owner === token) await host.closeSession(id, "awaited");
     grant.tokenBytes.fill(0);
     broadcast();
 }
@@ -239,7 +196,7 @@ export async function revokePrivateMcpEndpointsForBoard(boardRoot: string): Prom
         grant?.tokenBytes.fill(0);
         grants.delete(token);
     }
-    for (const [sessionId, session] of [...sessions]) if (tokens.includes(session.owner)) await closeSession(sessionId);
+    for (const [sessionId, record] of [...host.entries()]) if (tokens.includes(record.owner)) await host.closeSession(sessionId, "awaited");
     if (tokens.length > 0) broadcast();
 }
 
@@ -252,7 +209,7 @@ export async function shutdownPrivateMcpEndpoint(): Promise<void> {
         try { await pendingStart; }
         catch { /* Listener startup failed; continue shutdown cleanup. */ }
     }
-    for (const id of [...sessions.keys()]) await closeSession(id);
+    for (const id of [...host.entries()].map(([id]) => id)) await host.closeSession(id, "awaited");
     const current = server;
     server = undefined;
     endpointUrl = undefined;
@@ -260,4 +217,4 @@ export async function shutdownPrivateMcpEndpoint(): Promise<void> {
     if (current) await new Promise<void>((resolve) => current.close((): void => { resolve(); }));
 }
 
-export function getPrivateMcpClientCount(): number { return sessions.size; }
+export function getPrivateMcpClientCount(): number { return host.size; }

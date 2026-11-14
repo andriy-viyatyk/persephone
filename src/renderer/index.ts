@@ -10,9 +10,11 @@ import { installBoardWindowIdentity } from "./editors/board/board-window-identit
 import "./editors/register-editors";
 import { registerEditorSwitchStrategies } from "./editors/register-switch-strategies";
 import { registerTextChromeContributions } from "./editors/register-text-chrome-contributions";
+import { registerDialogViews } from "./ui/dialogs/register-dialog-views";
 
 registerEditorSwitchStrategies();
 registerTextChromeContributions();
+registerDialogViews();
 
 export function mount(container: HTMLElement): () => void {
     const disposeGlobalStyles = installGlobalStyles();

@@ -750,6 +750,30 @@ export default tseslint.config(
         },
     },
 
+    // EPIC-175: lower layers consume dialog models from api/dialogs, not shell views.
+    {
+        files: [
+            "src/renderer/api/**/*.{ts,tsx}",
+            "src/renderer/content/**/*.{ts,tsx}",
+            "src/renderer/components/**/*.{ts,tsx}",
+            "src/renderer/scripting/**/*.{ts,tsx}",
+        ],
+        rules: {
+            "import/no-restricted-paths": ["error", {
+                zones: [{
+                    target: [
+                        "./src/renderer/api",
+                        "./src/renderer/content",
+                        "./src/renderer/components",
+                        "./src/renderer/scripting",
+                    ],
+                    from: "./src/renderer/ui/dialogs",
+                    message: "Dialog models belong in api/dialogs; lower layers must not import ui/dialogs (EPIC-175).",
+                }],
+            }],
+        },
+    },
+
     // US-1824: api/ may construct board editors only at its three documented exception sites.
     {
         files: ["src/renderer/api/**/*.ts"],
@@ -760,11 +784,18 @@ export default tseslint.config(
         ],
         rules: {
             "import/no-restricted-paths": ["error", {
-                zones: [{
-                    target: "./src/renderer/api",
-                    from: "./src/renderer/editors/board",
-                    message: "api/ must not import editors/board/. Board domain modules live in api/boards/ (US-1824).",
-                }],
+                zones: [
+                    {
+                        target: "./src/renderer/api",
+                        from: "./src/renderer/editors/board",
+                        message: "api/ must not import editors/board/. Board domain modules live in api/boards/ (US-1824).",
+                    },
+                    {
+                        target: "./src/renderer/api",
+                        from: "./src/renderer/ui/dialogs",
+                        message: "Dialog models belong in api/dialogs; lower layers must not import ui/dialogs (EPIC-175).",
+                    },
+                ],
             }],
         },
     },
@@ -782,6 +813,11 @@ export default tseslint.config(
                         target: "./src/renderer/api/capabilities",
                         from: "./src/renderer/ui",
                         message: "capabilities/ must not import ui/ (EPIC-145, roadmap §4.1).",
+                    },
+                    {
+                        target: "./src/renderer/api/capabilities",
+                        from: "./src/renderer/ui/dialogs",
+                        message: "Dialog models belong in api/dialogs; lower layers must not import ui/dialogs (EPIC-175).",
                     },
                 ],
             }],

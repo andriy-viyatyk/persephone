@@ -1,8 +1,6 @@
 import { TDialogModel } from "../../core/state/model";
 import { TComponentState } from "../../core/state/state";
-import { showDialog } from "./Dialogs";
-import { registerDialogView } from "./dialog-view-registry";
-import { InputDialogView } from "./InputDialogView";
+import { showDialog } from "./dialogs-state";
 import { DialogButton, dialogButton, dialogButtonLabel, normalizeDialogButton, type DialogButtonInput } from "./dialog-buttons";
 
 export const inputDialogId = Symbol("inputDialog");
@@ -65,8 +63,6 @@ class InputDialogModel extends TDialogModel<InputDialogProps, InputResult | unde
         });
     };
 }
-
-registerDialogView(inputDialogId, InputDialogView);
 
 export function showInputDialog(props: InputDialogProps) {
     const modelState = {
