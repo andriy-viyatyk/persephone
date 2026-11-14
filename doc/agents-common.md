@@ -245,8 +245,14 @@ coming back; a plan or change that breaks one is sent back:
 4. **Plans name the owner.** Every plan says which module owns each new rule and which existing helper it reuses.
    A special case at a call site where an extension point exists (editor sources, switch strategies, traits, open
    interceptors) is sent back.
-5. **Fix import direction, do not dodge it.** No `await import()` to break a cycle.
+5. **Fix import direction, do not dodge it.** The error-level import zones in `eslint.config.mjs` must pass; they are
+   the enforced half of the "Dependency Rules" in [architecture/overview.md](architecture/overview.md). No
+   `await import()` to break a cycle, no wrapper module whose only job is getting past a zone, and a new zone exception
+   states its reason in the config and in `overview.md`.
 6. **A `window.persephone` change bumps `BOARD_BRIDGE_VERSION`** and adds a history line.
+7. **Strict folders stay strict.** Folders listed in `scripts/typecheck-strict.mjs` must pass `strictNullChecks`
+   (`npm run typecheck`). Fix the declared type first; a `!` needs a one-line reason; a null-check fix never changes a
+   runtime condition. Add a folder to the list only when it reports zero errors.
 
 ## Critical Patterns
 

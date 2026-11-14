@@ -726,7 +726,7 @@ with one folder list; 18 folders are strict (`shared/`, `ipc/`, `board-shim/`, `
 `node-script-host/`, `preload-webview/`, and renderer `api/`, `audio/`, `automation/`, `components/`, `content/`,
 `core/`, `guides/`, `i18n/`, `scripting/`, `theme/`, `types/`, `ui/`). Every null fix is type-only (emitted JavaScript
 unchanged except two value-identical rewrites). The §7 guardrail wording for `doc/agents-common.md` and the delegation
-brief went to the user, since agents may not edit those files.
+brief went to the user, since agents may not edit those files; the user approved it and it was applied on 2026-11-15.
 
 **Remaining after Phase 7:**
 - **Import targets not enforced** (counts on 2026-11-14): `api/` → `editors/` 72, `api/` → `content/` 20,
@@ -735,7 +735,7 @@ brief went to the user, since agents may not edit those files.
   exceptions. Each needs an owner decision (for example an editor-catalog seam in `api/`) before its zone can close.
 - **`strictNullChecks` remainder:** `editors/` 215 errors, `main/` 93, `uikit/` 43. Add a folder to the list in
   `scripts/typecheck-strict.mjs` once it reports zero.
-- **Guardrails:** the proposed `doc/agents-common.md` and delegation-brief wording awaits the user.
+- **Guardrails:** done (2026-11-15). Rule 5 now names the error-level import zones and forbids zone-dodging wrappers, rule 7 keeps strict folders strict, and the persephone-codex-dev planning brief and review checklist name the guardrails.
 
 ---
 

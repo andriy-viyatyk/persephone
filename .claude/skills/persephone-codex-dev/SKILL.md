@@ -182,6 +182,8 @@ document structure, and this output contract:
 > guess at file paths, line numbers, or existing patterns; every claim in the document
 > must be verified against the code. Do not implement anything yet. Reply with only the
 > document path and a ≤10-line summary of the approach. Do not paste the document.
+>
+> The plan must satisfy the 'Refactoring guardrails' in `doc/agents-common.md`: name the module that owns each new rule and the existing helper it reuses; add no protocol code, no board rule outside `src/shared/board/` and the board registries, no growth in a roadmap §2.3 god file, no `await import()` or wrapper to get past an import zone, and bump `BOARD_BRIDGE_VERSION` with a history line for any `window.persephone` change. Null-check fixes in a strict folder are type-only unless listed as a recorded change.
 
 Tell it to add the dashboard entry per `doc/agents-common.md`, or note that you will.
 
@@ -198,6 +200,7 @@ rounds of this workflow, the findings that mattered were always the same shape:
 - a cross-document conflict (an epic decision cited from the wrong epic)
 - a silent-failure path: a value that is `undefined`/async/identity-unstable where the
   plan assumes it is present/sync/stable
+- a guardrail breach: a call-site special case, a missing bridge-version bump, a cycle or zone dodged by a lazy import or wrapper, a null-check fix that adds a runtime guard
 
 Grep for the real definition of every load-bearing claim. Read the two or three files the
 plan is actually about. Then write findings as **corrections addressed to Codex**, ordered
