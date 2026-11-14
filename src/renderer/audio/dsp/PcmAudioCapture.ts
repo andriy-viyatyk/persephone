@@ -2,6 +2,7 @@ import { DtlnAudioPipeline } from "./DtlnAudioPipeline";
 import { LoopbackReference, type LoopbackLease } from "./LoopbackReference";
 import type { MicrophoneCleaningOptions } from "../../../shared/microphone-cleaning-types";
 import { errMessage } from "../../../shared/utils";
+import type { AudioProcessingMode } from "../../../ipc/audio-channels";
 
 const OUTPUT_SAMPLE_RATE = 16_000;
 const CHUNK_SAMPLES = 3_200;
@@ -30,7 +31,7 @@ export interface PcmAudioCaptureOptions {
     onLevel?: (level: number, durationMs: number) => void;
     sharedContext?: AudioContext;
     cleaning?: MicrophoneCleaningOptions;
-    onStatus?: (mode: string, reason: string) => void;
+    onStatus?: (mode: AudioProcessingMode, reason: string) => void;
     referenceAcquire?: () => Promise<LoopbackLease>;
     ownsStream?: boolean;
 }
@@ -74,7 +75,7 @@ export class PcmAudioCapture {
     private inputRate = 0;
     private disposers: Array<() => void> = [];
     private onLevel: ((level: number, durationMs: number) => void) | undefined;
-    private status: ((mode: string, reason: string) => void) | undefined;
+    private status: ((mode: AudioProcessingMode, reason: string) => void) | undefined;
     private requestedCleaning: MicrophoneCleaningOptions | undefined;
     private reconfiguring = false;
     private removeTrackListener: (() => void) | undefined;

@@ -857,7 +857,7 @@ class MyViewModel extends TComponentModel<State, Props> {
 | `GridEditor` | `GridEditor` / `GridEditorView` | Grid editor with filters and sorting |
 | `MarkdownEditor` | `MarkdownEditor` / `MarkdownEditorView` | Markdown preview with scroll state |
 | `ImageEditor` | `ImageEditor` / `ImageEditorView` | Image viewer with zoom and pan |
-| Settings sections | `BrowserProfilesSectionModel`, `McpSectionModel`, and models in `SettingsSections.ts` | Async settings operations and external status subscriptions |
+| Settings sections | `BrowserProfilesSectionModel`, `McpSectionModel`, and focused section views such as `MicrophoneAudioSection` | Composite settings operations and external status subscriptions; single-key controls use the reusable settings field views |
 
 ## Benefits
 

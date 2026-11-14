@@ -1,4 +1,5 @@
 import { settings } from "../../api/settings";
+import { browserProfiles } from "../../api/browser-profiles";
 import type { BrowserProfile } from "../../api/settings-schema";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 
@@ -50,10 +51,7 @@ export function resolveBrowserProfile(state: BrowserProfileState): ResolvedBrows
                 return;
             }
 
-            const profiles = settings.get("browser-profiles");
-            settings.set("browser-profiles", profiles.map((item) =>
-                item.name === selection.name ? { ...item, bookmarksFile: path } : item,
-            ));
+            browserProfiles.setBookmarksFile(selection.name, path);
         },
     };
 }

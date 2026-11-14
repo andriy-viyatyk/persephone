@@ -1,4 +1,5 @@
 import { ARM_CHANNEL, AUDIO_SETTINGS_GET, AUDIO_STATUS, CLEAR_CHANNEL } from "../../ipc/audio-channels";
+import type { AudioProcessingMode } from "../../ipc/audio-channels";
 import { SerialQueue } from "../../shared/serial-queue";
 import type { ServiceChannel } from "../../shared/service-channel";
 import { errMessage } from "../../shared/utils";
@@ -182,7 +183,7 @@ export class CaptureSourcePool {
         if (source.source === "microphone") { this.publishChunk(source, data, timeMs); return; }
         for (const gated of source.gate?.push({ data, time: timeMs }) ?? []) this.publishChunk(source, gated.chunk.data, gated.chunk.time);
     }
-    private reportSourceStatus(source: SharedSource, mode: string, reason: string): void {
+    private reportSourceStatus(source: SharedSource, mode: AudioProcessingMode, reason: string): void {
         this.options.send(AUDIO_STATUS, { mode, reason });
         if (mode === "failed") for (const consumer of [...source.subscribers]) consumer.channel.close({ code: "handler-closed", message: reason });
     }

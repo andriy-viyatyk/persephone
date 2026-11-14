@@ -15,9 +15,11 @@ export interface ChoiceFieldProps<V extends string = string> {
     items: readonly ChoiceFieldItem<V>[];
     name?: string;
     ariaLabel?: string;
+    size?: SelectViewProps<IListBoxItem>["size"];
     width?: number | string;
     initialValue?: V;
     keepUnknownValue?: boolean;
+    fallbackToFirst?: boolean;
     onError?: (operation: "read" | "write", error: unknown) => void;
 }
 
@@ -54,7 +56,7 @@ export class ChoiceField<V extends string = string> extends VanillaView<ChoiceFi
 
     private selectProps(): SelectViewProps<IListBoxItem> {
         const items = [...this.props.items];
-        let selected = items.find((item) => item.value === this.value) ?? null;
+        let selected = items.find((item) => item.value === this.value) ?? (this.props.fallbackToFirst ? items[0] ?? null : null);
         if (this.props.keepUnknownValue && this.value !== undefined && selected === null) {
             selected = { value: this.value, label: this.value };
             items.push(selected);
@@ -62,6 +64,7 @@ export class ChoiceField<V extends string = string> extends VanillaView<ChoiceFi
         return {
             name: this.props.name,
             "aria-label": this.props.ariaLabel,
+            size: this.props.size,
             width: this.props.width,
             items,
             value: selected,

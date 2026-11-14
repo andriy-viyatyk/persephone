@@ -1,7 +1,7 @@
 import { pages } from "../../api/pages";
 import { errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
-import { siteExtensionStore, type SiteExtensionListing } from "../../api/site-extensions";
+import { siteExtensionStore, type SiteExtensionListingWithTrust } from "../../api/site-extensions";
 import { sameSiteExtensionHostSet, siteExtensionTrust } from "../../api/site-extension-trust";
 import { confirmAndRemoveSiteExtension, siteExtensionFolder } from "../../api/site-extension-management";
 import { settings } from "../../api/settings";
@@ -21,8 +21,6 @@ import "../../uikit/Switch/Switch.css";
 import "../../uikit/Text/Text.css";
 import "./SiteExtensionsTab.css";
 
-type Grant = { hosts: string[]; fetchHosts: string[]; enabled: boolean };
-type Entry = { listing?: SiteExtensionListing; id: string; grant?: Grant };
 type RowView = ButtonView | IconButtonView | SwitchView;
 
 /**
@@ -36,7 +34,7 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
     private readonly folder = createTextElement("", { color: "light", size: "xs" });
     private readonly rowViews: RowView[] = [];
     private input: InputView | undefined;
-    private entries: Entry[] = [];
+    private entries: SiteExtensionListingWithTrust[] = [];
     private query = "";
     private reloadRequired = false;
     private alive = false;
@@ -106,14 +104,11 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
 
     private async refresh(): Promise<void> {
         try {
-            const [listings] = await Promise.all([siteExtensionStore.list(), siteExtensionTrust.load()]);
+            const entries = await siteExtensionStore.listWithTrust();
             const root = await siteExtensionStore.getRoot();
             if (!this.alive) return;
+            this.entries = entries;
             this.folder.textContent = t("tools.folderPath", { path: root });
-            const grants = siteExtensionTrust.snapshot;
-            const listed = new Set(listings.map((listing) => listing.id));
-            this.entries = listings.map((listing) => ({ listing, id: listing.id, grant: grants[listing.id] }));
-            for (const [id, grant] of Object.entries(grants)) if (!listed.has(id)) this.entries.push({ id, grant });
             this.status.textContent = "";
             this.renderEntries();
         } catch (error) {
@@ -141,7 +136,7 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
         for (const entry of visible) this.list.append(this.createEntry(entry));
     }
 
-    private createEntry(entry: Entry): HTMLElement {
+    private createEntry(entry: SiteExtensionListingWithTrust): HTMLElement {
         const listing = entry.listing;
         const usable = listing && listing.status !== "invalid" ? listing : undefined;
         const row = panel({ direction: "column", rounded: "sm", background: "dark" });
@@ -211,7 +206,7 @@ export class SiteExtensionsTabView extends VanillaView<Record<string, never>> {
     }
 }
 
-function matches(entry: Entry, query: string): boolean {
+function matches(entry: SiteExtensionListingWithTrust, query: string): boolean {
     const listing = entry.listing;
     const texts = [entry.id];
     if (listing && listing.status !== "invalid") texts.push(listing.name, ...listing.hosts, ...listing.fetchHosts);

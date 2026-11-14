@@ -1,4 +1,5 @@
 import { api } from "../../../ipc/renderer/api";
+import type { AudioProcessingMode } from "../../../ipc/audio-channels";
 import { PcmAudioCapture } from "../../audio/dsp/PcmAudioCapture";
 import { resolveMicrophoneDevice } from "../../audio/dsp/microphone-device";
 import { settings } from "../settings";
@@ -12,7 +13,7 @@ export interface MicrophoneCaptureOptions {
     borrowedLoopbackStream?: MediaStream;
     onChunk: (data: ArrayBuffer, captureTimeMs: number) => void;
     onLevel: (level: number, durationMs: number) => void;
-    onStatus?: (mode: string, reason: string) => void;
+    onStatus?: (mode: AudioProcessingMode, reason: string) => void;
     onFailed: (reason: string) => void;
 }
 
@@ -50,7 +51,7 @@ export class MicrophoneCapture {
             const captureContext = context;
             capture = new PcmAudioCapture();
             const startedAt = Date.now();
-            const status = (mode: string, reason: string): void => {
+            const status = (mode: AudioProcessingMode, reason: string): void => {
                 reportMicrophoneStatus(mode, reason);
                 options.onStatus?.(mode, reason);
                 if (mode === "failed") options.onFailed(reason);

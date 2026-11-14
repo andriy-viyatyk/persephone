@@ -559,6 +559,20 @@ owner); `TreeProviderHost` + `TREE_PROVIDER_HOST_TRAIT` + `TreeRevealController`
 fields and a one-time descriptor migration of `boardsOpen`/`clipboardOpen`/`hideExplorer` (EDC-10). One observable
 change: `page.panels.items` names the Boards and Clipboard panels' own owners. **Roadmap item 6.4 is complete.**
 
+**6.5 was split into two epics.** Part 1 is done ([EPIC-166](epics/EPIC-166.md), 2026-11-14): the settings field kit
+in `editors/settings/fields/` with `appSettingsStore` and a board-settings store (EDT-1 steps 1–2, 4), the simple
+sections as field lists, shell-rendered headers through `SettingsSectionDescriptor` (EDT-1 step 3), `SettingsLayoutModel`
+and `ScrollSpy` (EDT-4), and Language, Theme and the MCP config through their services (EDT-2 steps 1, 2, 6). Part 2
+is done ([EPIC-167](epics/EPIC-167.md), 2026-11-14): `api/browser-profiles.ts` owns the profile rules, the
+`"default"` mapping and the profile IPC, with `getPartitionString` in `src/shared/browser-partition.ts` and the
+translation-target list in `TranslationWorkflow` (EDT-2 step 3); `microphoneSettings` in `api/speech/` owns device
+listing, status and retry, with a typed `AudioProcessingMode` union (EDT-2 step 4); `siteExtensionStore.listWithTrust()`
+and `summary()` serve Settings and the Tools hub (EDT-2 step 5); the Browser profiles and Microphone sections use
+`PortField`, `PathField`, `CheckboxField`, `ChoiceField` and `NumberField` where the control matches (EDT-1 step 5).
+Left as custom views on purpose: Theme and Default browser (no settings-key rows), the notch inputs (they resync only
+on profile rebuild), network lines, profile colours and permission lists, and the Site extensions folder row (its
+named Browse/Reset controls differ from `PathField`). **Roadmap item 6.5 is complete.**
+
 ### Phase 7: Lock it in
 
 - Turn the import-zone lint warnings into errors and rewrite `overview.md`'s dependency rules to match.

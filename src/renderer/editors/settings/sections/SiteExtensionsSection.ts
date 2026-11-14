@@ -80,25 +80,20 @@ export class SiteExtensionsSectionView extends VanillaView<Record<string, never>
         try {
             const configured = settings.get("site-extensions.path").trim() !== "";
             const root = await siteExtensionStore.getRoot();
-            const [listings, folderStat] = await Promise.all([siteExtensionStore.list(), fs.stat(root), siteExtensionTrust.load()]);
+            const [siteSummary, folderStat] = await Promise.all([siteExtensionStore.summary(), fs.stat(root)]);
             if (generation !== this.refreshGeneration) return;
             this.folderValue.replaceChildren(settingsPath(root));
             if (!configured) this.folderValue.append(text(t("settings.siteExtensionsDefaultSuffix"), { size: "xs", color: "light" }));
             this.resetButton.root.hidden = !configured;
 
-            const grants = siteExtensionTrust.snapshot;
-            const listed = new Set(listings.map((listing) => listing.id));
-            const trusted = listings.filter((listing) => grants[listing.id]).length;
-            const broken = listings.filter((listing) => listing.status !== "valid").length
-                + Object.keys(grants).filter((id) => !listed.has(id)).length;
-            const summaryParams = { count: listings.length, trusted };
-            this.summary.textContent = listings.length === 0
+            const summaryParams = { count: siteSummary.count, trusted: siteSummary.trusted };
+            this.summary.textContent = siteSummary.count === 0
                 ? t("settings.noSiteExtensions")
                 : t("settings.siteExtensionInstalledTrusted", summaryParams);
             const problems = [
                 // The default folder is created on first use; a configured one should already exist.
                 ...(configured && !folderStat.exists ? [t("settings.siteExtensionFolderMissing")] : []),
-                ...(broken > 0 ? [t("settings.siteExtensionNeedsAttention", { count: broken })] : []),
+                ...(siteSummary.broken > 0 ? [t("settings.siteExtensionNeedsAttention", { count: siteSummary.broken })] : []),
             ];
             this.problems.textContent = problems.join(" ");
             this.problems.hidden = problems.length === 0;

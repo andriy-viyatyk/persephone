@@ -22,6 +22,7 @@ import { McpSectionView } from "./sections/McpSection";
 import { ThemeSectionView } from "./sections/ThemeSection";
 import { LanguageSectionView } from "./sections/LanguageSection";
 import { BoardSettingsSectionView } from "./sections/BoardSettingsSection";
+import { MicrophoneAudioSectionView } from "./sections/MicrophoneAudioSection";
 import {
     BoardVarsSectionView,
     EditorBehaviorSectionView,
@@ -32,7 +33,6 @@ import {
     VideoPlayerSectionView,
     WindowBehaviorSectionView,
     VoiceTypingSettingsSectionView,
-    MicrophoneAudioSectionView,
 } from "./sections/SettingsSections";
 import { helpHeader, sectionTitle } from "./sections/settings-native";
 import "./settings.css";

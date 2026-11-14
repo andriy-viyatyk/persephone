@@ -1,30 +1,30 @@
 import { settings } from "../../../api/settings";
-import type { AppSettingsKey, BrowserProfile } from "../../../api/settings-schema";
+import { settingRange, type AppSettingsKey, type BrowserProfile } from "../../../api/settings-schema";
 import type { BrowserNetwork } from "../../../../ipc/browser-network-ipc";
-import { fpBasename } from "../../../core/utils/file-path";
 import { createComponentModelDriver, type ComponentModelDriver } from "../../../core/state/model";
 import { DEFAULT_BROWSER_COLOR, TAG_COLORS } from "../../../theme/palette-colors";
 import { IncognitoIcon, TorIcon } from "../../../theme/language-icons";
 import { ButtonView } from "../../../uikit/Button/ButtonView";
-import { CheckboxView } from "../../../uikit/Checkbox/CheckboxView";
-import type { CheckboxProps } from "../../../uikit/Checkbox/CheckboxView";
 import { DotView } from "../../../uikit/Dot/DotView";
 import { IconButtonView } from "../../../uikit/IconButton/IconButtonView";
 import { InputView } from "../../../uikit/Input/InputView";
-import type { InputProps } from "../../../uikit/Input/InputView";
-import { SelectView } from "../../../uikit/Select/SelectView";
-import type { SelectViewProps } from "../../../uikit/Select/SelectView";
-import type { IListBoxItem } from "../../../uikit/ListBox/types";
 import { KeyedList } from "../../../uikit/shared/keyed-list";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { openMenu, type MenuHandle } from "../../../uikit/Menu/attach-menu";
 import type { MenuItem } from "../../../uikit/Menu/types";
 import { ProfileNetworkLineView } from "./ProfileNetworkLineView";
 import { BrowserProfilesSectionModel, defaultBrowserProfilesSectionState, type BrowserProfilesSectionProps, type BrowserProfilesSectionState } from "./BrowserProfilesSectionModel";
+import { browserProfiles } from "../../../api/browser-profiles";
 import type { BrowserPermissionDecisionEntry } from "../../../../ipc/browser-ipc";
 import { t } from "../../../../shared/i18n/t";
-import { getTextTranslationProvider } from "../../../ui/translation/TextTranslationProvider";
-import { languageDisplayName } from "../../../ui/translation/TranslationWorkflow";
+import { listBrowserTranslationTargets } from "../../../ui/translation/TranslationWorkflow";
+import { PathField } from "../fields/PathField";
+import { PortField } from "../fields/PortField";
+import { CheckboxField } from "../fields/CheckboxField";
+import { ChoiceField } from "../fields/ChoiceField";
+import type { ChoiceFieldItem, ChoiceFieldProps } from "../fields/ChoiceField";
+import { appSettingsStore } from "../fields/settings-store";
+import type { SettingsStore } from "../fields/settings-store";
 
 const PROFILE_COLOR_MESSAGE_KEYS: Record<string, Parameters<typeof t>[0]> = {
     "Dodger Blue": "browser.profileColorDodgerBlue",
@@ -48,19 +48,12 @@ function profileColorLabel(name: string): string {
 function profileColorMenuId(name: string): string {
     return `profile-color-${name.toLowerCase().replace(/\s+/g, "-")}`;
 }
-import { createSectionRoot, helpIcon, panel, settingsFieldLabel, settingsLabel, settingsLink, settingsPlaceholder, text } from "./settings-native";
+import { createSectionRoot, helpIcon, panel, settingsFieldLabel, settingsLabel, text } from "./settings-native";
 import "../../../uikit/Button/Button.css";
-import "../../../uikit/Checkbox/Checkbox.css";
 import "../../../uikit/Dot/Dot.css";
 import "../../../uikit/IconButton/IconButton.css";
 import "../../../uikit/Input/Input.css";
 import "../../../uikit/Select/Select.css";
-
-interface BookmarksFileLineProps {
-    filePath: string;
-    onBrowse: () => void;
-    onClear: () => void;
-}
 
 function groupPermissionDecisions(entries: BrowserPermissionDecisionEntry[]): Array<[string, BrowserPermissionDecisionEntry[]]> {
     const grouped = new Map<string, BrowserPermissionDecisionEntry[]>();
@@ -72,56 +65,42 @@ function groupPermissionDecisions(entries: BrowserPermissionDecisionEntry[]): Ar
     return [...grouped.entries()];
 }
 
-class BookmarksFileLineView extends VanillaView<BookmarksFileLineProps> {
-    private clearButton: IconButtonView | undefined;
-
-    public constructor(props: BookmarksFileLineProps) {
-        super(props, panel({ direction: "row", align: "center", gap: "md", paddingTop: "xs", paddingRight: "md", paddingBottom: "sm", paddingLeft: "xxl" }));
-    }
-
-    protected onMount(): void {
-        this.listen(this.root, "click", this.onBrowseClick);
-        this.renderLine(this.props);
-    }
-
-    protected onUpdate(props: BookmarksFileLineProps): void {
-        this.renderLine(props);
-    }
-
-    protected onDispose(): void {
-        this.clearButton = undefined;
-    }
-
-    private renderLine(props: BookmarksFileLineProps): void {
-        if (this.clearButton) {
-            this.releaseChild(this.clearButton);
-            this.clearButton = undefined;
-        }
-        this.root.replaceChildren();
-        const filename = props.filePath ? fpBasename(props.filePath) : "";
-        if (filename) this.root.append(settingsLabel(t("settings.bookmarkFileLabel")));
-        this.root.append(settingsLabel("📁"));
-        if (filename) {
-            const link = settingsLink(filename);
-            link.title = props.filePath;
-            this.root.append(link);
-            this.clearButton = this.child(new IconButtonView({
-                size: "sm", icon: "close", title: t("settings.removeBookmarksFile"), onClick: props.onClear,
-            }));
-            this.root.append(this.clearButton.root);
-            this.clearButton.mount();
-        } else {
-            const placeholder = settingsPlaceholder(t("settings.noBookmarksFile"));
-            this.root.append(placeholder);
-        }
-    }
-
-    private readonly onBrowseClick = (event: MouseEvent): void => {
-        const target = event.target;
-        if (!(target instanceof Element)) return;
-        if (!target.closest('[data-type="settings-link"], [data-type="settings-placeholder"]')) return;
-        this.props.onBrowse();
+function profileBookmarksStore(name: string): SettingsStore<string> {
+    return {
+        get: () => browserProfiles.list().find((profile) => profile.name === name)?.bookmarksFile ?? "",
+        subscribe: (_id, callback) => settings.watch("browser-profiles", (profiles) => {
+            callback(profiles.find((profile) => profile.name === name)?.bookmarksFile ?? "");
+        }),
+        set: (_id, value) => browserProfiles.setBookmarksFile(name, value || undefined),
     };
+}
+
+function createBookmarksField(config: {
+    store: SettingsStore<string>;
+    id: string;
+    host: HTMLDivElement;
+    browse: () => void | Promise<void>;
+    clear: () => void | Promise<void>;
+}): PathField {
+    return new PathField({
+        store: config.store,
+        variant: "link-or-placeholder",
+        id: config.id,
+        title: t("settings.bookmarkFileLabel"),
+        emptyText: t("settings.noBookmarksFile"),
+        browse: config.browse,
+        clear: config.clear,
+        clearLabel: t("settings.removeBookmarksFile"),
+        clearTitle: t("settings.removeBookmarksFile"),
+        showPathTitle: true,
+        host: config.host,
+        leadingContent: (hasValue) => [
+            ...(hasValue ? [settingsLabel(t("settings.bookmarkFileLabel"))] : []),
+            settingsLabel("📁"),
+        ],
+        fallback: "",
+        onError: (_operation, error) => { throw error; },
+    });
 }
 
 interface ProfileHeaderProps {
@@ -281,7 +260,7 @@ interface ProfileRowProps {
 
 class ProfileRowView extends VanillaView<ProfileRowProps> {
     private readonly header: ProfileHeaderView;
-    private readonly bookmarks: BookmarksFileLineView;
+    private readonly bookmarks: PathField;
     private readonly network: ProfileNetworkLineView;
 
     public constructor(props: ProfileRowProps) {
@@ -294,10 +273,12 @@ class ProfileRowView extends VanillaView<ProfileRowProps> {
             cleared: props.clearedProfile === props.profile.name,
             model: props.model,
         }));
-        this.bookmarks = this.child(new BookmarksFileLineView({
-            filePath: props.profile.bookmarksFile || "",
-            onBrowse: () => void props.model.handleBrowseProfileBookmarks(props.profile.name),
-            onClear: () => props.model.handleClearProfileBookmarks(props.profile.name),
+        this.bookmarks = this.child(createBookmarksField({
+            store: profileBookmarksStore(props.profile.name),
+            id: props.profile.name,
+            host: panel({ direction: "row", align: "center", gap: "md", paddingTop: "xs", paddingRight: "md", paddingBottom: "sm", paddingLeft: "xxl" }),
+            browse: () => props.model.handleBrowseProfileBookmarks(props.profile.name),
+            clear: () => props.model.handleClearProfileBookmarks(props.profile.name),
         }));
         this.network = this.child(new ProfileNetworkLineView(this.networkProps(props)));
     }
@@ -321,25 +302,19 @@ class ProfileRowView extends VanillaView<ProfileRowProps> {
             cleared: props.clearedProfile === props.profile.name,
             model: props.model,
         });
-        this.bookmarks.update({
-            filePath: props.profile.bookmarksFile || "",
-            onBrowse: () => void props.model.handleBrowseProfileBookmarks(props.profile.name),
-            onClear: () => props.model.handleClearProfileBookmarks(props.profile.name),
-        });
         this.network.update(this.networkProps(props));
     }
 }
 
 interface TorProfileRowProps {
     model: BrowserProfilesSectionModel;
-    torPortValue: string | null;
 }
 
 class TorProfileRowView extends VanillaView<TorProfileRowProps> {
     private exePanel: HTMLDivElement | undefined;
-    private portInput: InputView | undefined;
-    private bookmarks: BookmarksFileLineView | undefined;
-    private exeClearButton: IconButtonView | undefined;
+    private portField: PortField | undefined;
+    private bookmarks: PathField | undefined;
+    private exePath: PathField | undefined;
 
     public constructor(props: TorProfileRowProps) {
         const root = panel({ direction: "column", rounded: "sm", background: "dark" });
@@ -354,77 +329,55 @@ class TorProfileRowView extends VanillaView<TorProfileRowProps> {
         this.root.append(header);
         this.exePanel = panel({ direction: "row", align: "center", gap: "md", paddingTop: "xs", paddingRight: "md", paddingBottom: "sm", paddingLeft: "xxl" });
         this.root.append(this.exePanel);
-        this.listen(this.exePanel, "click", this.onExecutableClick);
-        const portInput = this.child(new InputView(this.inputProps(this.props)));
-        this.portInput = portInput;
+        const exeTarget = document.createElement("div");
+        exeTarget.style.display = "contents";
+        this.exePanel.append(settingsFieldLabel(t("settings.torExeLabel")), exeTarget);
+        const exePath = this.child(new PathField({
+            store: appSettingsStore as SettingsStore<string>,
+            variant: "link-or-placeholder",
+            id: "tor.exe-path",
+            title: t("settings.torExeLabel"),
+            emptyText: t("settings.notConfiguredValue"),
+            browse: () => this.props.model.handleBrowseTorExe(),
+            clear: this.props.model.handleClearTorExe,
+            clearLabel: t("settings.removeTorExePath"),
+            clearTitle: t("settings.removeTorExePath"),
+            showPathTitle: true,
+            host: exeTarget,
+            fallback: "",
+            onError: (_operation, error) => { throw error; },
+        }));
+        this.exePath = exePath;
+        const portField = this.child(new PortField({
+            store: appSettingsStore as SettingsStore<number>,
+            id: "tor.socks-port",
+            range: settingRange("tor.socks-port"),
+            width: 56,
+            fallback: settings.get("tor.socks-port"),
+        }));
+        this.portField = portField;
         const portPanel = panel({ direction: "row", align: "center", gap: "md", paddingTop: "xs", paddingRight: "md", paddingBottom: "sm", paddingLeft: "xxl" });
-        portPanel.append(settingsFieldLabel(t("settings.portLabel")), portInput.root);
+        portPanel.append(settingsFieldLabel(t("settings.portLabel")), portField.root);
         this.root.append(portPanel);
-        const bookmarks = this.child(new BookmarksFileLineView({
-            filePath: this.props.model.props.torBookmarksFile,
-            onBrowse: () => void this.props.model.handleBrowseTorBookmarks(),
-            onClear: this.props.model.handleClearTorBookmarks,
+        const bookmarks = this.child(createBookmarksField({
+            store: appSettingsStore as SettingsStore<string>,
+            id: "tor.bookmarks-file",
+            host: panel({ direction: "row", align: "center", gap: "md", paddingTop: "xs", paddingRight: "md", paddingBottom: "sm", paddingLeft: "xxl" }),
+            browse: () => this.props.model.handleBrowseTorBookmarks(),
+            clear: this.props.model.handleClearTorBookmarks,
         }));
         this.bookmarks = bookmarks;
         this.root.append(bookmarks.root);
-        portInput.mount();
+        exePath.mount();
+        portField.mount();
         bookmarks.mount();
-        this.renderExecutable(this.props);
-    }
-
-    protected onUpdate(props: TorProfileRowProps): void {
-        this.renderExecutable(props);
-        this.portInput?.update(this.inputProps(props));
-        this.bookmarks?.update({
-            filePath: props.model.props.torBookmarksFile,
-            onBrowse: () => void props.model.handleBrowseTorBookmarks(),
-            onClear: props.model.handleClearTorBookmarks,
-        });
     }
 
     protected onDispose(): void {
-        this.exeClearButton = undefined;
-    }
-
-    private renderExecutable(props: TorProfileRowProps): void {
-        if (this.exeClearButton) {
-            this.releaseChild(this.exeClearButton);
-            this.exeClearButton = undefined;
-        }
-        this.exePanel?.replaceChildren(settingsFieldLabel(t("settings.torExeLabel")));
-        const filePath = props.model.props.torExePath;
-        const filename = filePath ? fpBasename(filePath) : "";
-        const target = document.createElement("div");
-        target.style.display = "contents";
-        if (filename) {
-            const link = settingsLink(filename);
-            link.title = filePath;
-            target.append(link);
-            this.exeClearButton = this.child(new IconButtonView({ size: "sm", icon: "close", title: t("settings.removeTorExePath"), onClick: props.model.handleClearTorExe }));
-            target.append(this.exeClearButton.root);
-            this.exeClearButton.mount();
-        } else {
-            const placeholder = settingsPlaceholder(t("settings.notConfiguredValue"));
-            target.append(placeholder);
-        }
-        this.exePanel?.append(target);
-    }
-
-    private readonly onExecutableClick = (event: MouseEvent): void => {
-        const target = event.target;
-        if (!(target instanceof Element)) return;
-        if (!target.closest('[data-type="settings-link"], [data-type="settings-placeholder"]')) return;
-        void this.props.model.handleBrowseTorExe();
-    };
-
-    private inputProps(props: TorProfileRowProps): InputProps {
-        return {
-            size: "sm", width: 56, type: "text",
-            value: props.torPortValue ?? String(props.model.props.torSocksPort),
-            onChange: props.model.setTorPortValue,
-            onBlur: props.model.handleTorPortBlur,
-            onKeyDown: (event) => { if (event.key === "Enter") (event.target as HTMLInputElement).blur(); },
-        };
+        this.exePanel = undefined;
+        this.portField = undefined;
+        this.bookmarks = undefined;
+        this.exePath = undefined;
     }
 }
 
@@ -434,28 +387,20 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
     private profilesList: KeyedList<BrowserProfile, string, HTMLElement> | undefined;
     private profileListHost: HTMLDivElement | undefined;
     private defaultHeader: ProfileHeaderView | undefined;
-    private defaultBookmarks: BookmarksFileLineView | undefined;
+    private defaultBookmarks: PathField | undefined;
     private defaultNetwork: ProfileNetworkLineView | undefined;
-    private incognitoBookmarks: BookmarksFileLineView | undefined;
+    private incognitoBookmarks: PathField | undefined;
     private incognitoNetwork: ProfileNetworkLineView | undefined;
     private torRow: TorProfileRowView | undefined;
     private newNameInput: InputView | undefined;
     private addButton: ButtonView | undefined;
     private colorDots: DotView[] = [];
-    private windowsSso: CheckboxView | undefined;
-    private translateTarget: SelectView<IListBoxItem> | undefined;
-    private translationTargets: IListBoxItem[] = [{ value: "app", label: t("translation.appLanguage") }];
+    private windowsSso: CheckboxField | undefined;
+    private translateTarget: ChoiceField<string> | undefined;
+    private translationTargets: ChoiceFieldItem<string>[] = [{ value: "app", label: t("translation.appLanguage") }];
 
     public constructor(props: Record<string, never>) {
         super(props, createSectionRoot("settings-section"));
-    }
-
-    private windowsSsoProps(): CheckboxProps {
-        return {
-            checked: settings.get("browser-windows-sso"),
-            onChange: () => settings.set("browser-windows-sso", !settings.get("browser-windows-sso")),
-            children: t("settings.allowWindowsSso"),
-        };
     }
 
     protected onMount(): void {
@@ -472,7 +417,14 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         this.root.append(
         );
         const profilePanel = panel({ direction: "column", gap: "sm", paddingBottom: "lg" });
-        this.translateTarget = this.child(new SelectView(this.translateTargetProps()));
+        this.translateTarget = this.child(new ChoiceField({
+            store: appSettingsStore as SettingsStore<string>,
+            id: "browser-translate-target",
+            name: "browser-translate-target",
+            size: "sm",
+            items: this.translationTargets,
+            fallbackToFirst: true,
+        }));
         const translateTargetRow = panel({ direction: "row", align: "center", gap: "md", paddingTop: "sm", paddingBottom: "sm" },
             panel({ flex: true }, settingsFieldLabel(t("translation.targetSetting"))),
             panel({ width: 220 }, this.translateTarget.root),
@@ -481,10 +433,12 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         this.translateTarget.mount();
         const defaultPanel = panel({ direction: "column", rounded: "sm", background: "dark" });
         this.defaultHeader = this.child(new ProfileHeaderView({ name: "", color: DEFAULT_BROWSER_COLOR, isDefault: model.props.defaultProfile === "", cleared: false, model }));
-        this.defaultBookmarks = this.child(new BookmarksFileLineView({
-            filePath: settings.get("browser-default-bookmarks-file"),
-            onBrowse: () => void model.handleBrowseDefaultBookmarks(),
-            onClear: () => settings.set("browser-default-bookmarks-file", ""),
+        this.defaultBookmarks = this.child(createBookmarksField({
+            store: appSettingsStore as SettingsStore<string>,
+            id: "browser-default-bookmarks-file",
+            host: panel({ direction: "row", align: "center", gap: "md", paddingTop: "xs", paddingRight: "md", paddingBottom: "sm", paddingLeft: "xxl" }),
+            browse: () => model.handleBrowseDefaultBookmarks(),
+            clear: () => settings.set("browser-default-bookmarks-file", ""),
         }));
         this.defaultNetwork = this.child(new ProfileNetworkLineView({ network: settings.get("browser-default-network"), onChange: model.handleDefaultNetworkChange }));
         defaultPanel.append(this.defaultHeader.root, this.defaultBookmarks.root, this.defaultNetwork.root);
@@ -522,10 +476,12 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         incognitoIcon.style.flexShrink = "0";
         incognitoHeader.append(incognitoIcon, panel({ flex: true }, text(t("settings.incognito"), { size: "sm" })));
         incognitoPanel.append(incognitoHeader);
-        this.incognitoBookmarks = this.child(new BookmarksFileLineView({
-            filePath: settings.get("browser-incognito-bookmarks-file"),
-            onBrowse: () => void model.handleBrowseIncognitoBookmarks(),
-            onClear: () => settings.set("browser-incognito-bookmarks-file", ""),
+        this.incognitoBookmarks = this.child(createBookmarksField({
+            store: appSettingsStore as SettingsStore<string>,
+            id: "browser-incognito-bookmarks-file",
+            host: panel({ direction: "row", align: "center", gap: "md", paddingTop: "xs", paddingRight: "md", paddingBottom: "sm", paddingLeft: "xxl" }),
+            browse: () => model.handleBrowseIncognitoBookmarks(),
+            clear: () => settings.set("browser-incognito-bookmarks-file", ""),
         }));
         this.incognitoNetwork = this.child(new ProfileNetworkLineView({ network: settings.get("browser-incognito-network"), onChange: model.handleIncognitoNetworkChange }));
         incognitoPanel.append(this.incognitoBookmarks.root, this.incognitoNetwork.root);
@@ -533,7 +489,7 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         this.incognitoNetwork.mount();
         profilePanel.append(incognitoPanel);
 
-        this.torRow = this.child(new TorProfileRowView({ model, torPortValue: model.state.get().torPortValue }));
+        this.torRow = this.child(new TorProfileRowView({ model }));
         profilePanel.append(this.torRow.root);
         this.torRow.mount();
         this.root.append(profilePanel);
@@ -561,7 +517,11 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         this.root.append(addPanel);
 
         const ssoPanel = panel({ direction: "row", align: "center", paddingTop: "lg" });
-        this.windowsSso = this.child(new CheckboxView(this.windowsSsoProps()));
+        this.windowsSso = this.child(new CheckboxField({
+            store: appSettingsStore as SettingsStore<boolean>,
+            id: "browser-windows-sso",
+            label: t("settings.allowWindowsSso"),
+        }));
         ssoPanel.append(
             this.windowsSso.root,
             helpIcon(t("settings.allowWindowsSso"), t("settings.windowsSsoExplanation"), (cleanup) => this.own(cleanup)).root,
@@ -572,18 +532,13 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         driver.mount();
 
         const refresh = (key: AppSettingsKey): void => {
-            if (key === "browser-windows-sso") this.windowsSso?.update(this.windowsSsoProps());
-            if (key === "browser-translate-target") this.translateTarget?.update(this.translateTargetProps());
             if (this.isRelevantSetting(key)) {
                 driver.update(this.currentProps());
                 this.sync(model.state.get());
             }
         };
         const settingsKeys = [
-            "browser-windows-sso", "browser-translate-target", "browser-profiles",
-            "browser-default-profile", "browser-default-bookmarks-file", "browser-default-network",
-            "browser-incognito-network", "browser-incognito-bookmarks-file", "tor.exe-path",
-            "tor.socks-port", "tor.bookmarks-file",
+            "browser-profiles", "browser-default-profile", "browser-default-network", "browser-incognito-network",
         ] as const satisfies readonly AppSettingsKey[];
         for (const key of settingsKeys) this.own(settings.watch(key, () => refresh(key)));
         this.profilesList.update(model.props.profiles);
@@ -610,63 +565,40 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
 
     private currentProps(): BrowserProfilesSectionProps {
         return {
-            profiles: settings.get("browser-profiles"),
+            profiles: browserProfiles.list(),
             defaultProfile: settings.get("browser-default-profile"),
-            torExePath: settings.get("tor.exe-path"),
-            torSocksPort: settings.get("tor.socks-port"),
-            torBookmarksFile: settings.get("tor.bookmarks-file"),
         };
     }
 
     private isRelevantSetting(key: string): boolean {
-        return [
-            "browser-profiles", "browser-default-profile", "browser-default-bookmarks-file", "browser-default-network", "browser-incognito-network",
-            "browser-incognito-bookmarks-file", "browser-translate-target", "tor.exe-path", "tor.socks-port", "tor.bookmarks-file",
-        ].includes(key);
+        return ["browser-profiles", "browser-default-profile", "browser-default-network", "browser-incognito-network"].includes(key);
     }
 
     private sync(state: BrowserProfilesSectionState): void {
         const model = this.model;
         if (!model) return;
         this.defaultHeader?.update({ name: "", color: DEFAULT_BROWSER_COLOR, isDefault: model.props.defaultProfile === "", cleared: state.clearedProfile === "", model });
-        this.defaultBookmarks?.update({ filePath: settings.get("browser-default-bookmarks-file"), onBrowse: () => void model.handleBrowseDefaultBookmarks(), onClear: () => settings.set("browser-default-bookmarks-file", "") });
         this.defaultNetwork?.update({ network: settings.get("browser-default-network"), onChange: model.handleDefaultNetworkChange });
         this.incognitoNetwork?.update({ network: settings.get("browser-incognito-network"), onChange: model.handleIncognitoNetworkChange });
-        this.incognitoBookmarks?.update({ filePath: settings.get("browser-incognito-bookmarks-file"), onBrowse: () => void model.handleBrowseIncognitoBookmarks(), onClear: () => settings.set("browser-incognito-bookmarks-file", "") });
         this.profilesList?.update(model.props.profiles);
-        this.torRow?.update({ model, torPortValue: state.torPortValue });
         this.newNameInput?.update({ size: "sm", placeholder: t("settings.profileNamePlaceholder"), value: state.newName, onChange: model.setNewName, onKeyDown: model.handleKeyDown });
         this.addButton?.update({ variant: "default", size: "sm", background: "light", disabled: !model.canAdd, onClick: model.handleAddProfile, children: t("settings.profileAdd") });
         this.colorDots.forEach((dot, index) => dot.update({ size: "lg", color: TAG_COLORS[index].hex, selected: state.newColor === TAG_COLORS[index].hex, title: profileColorLabel(TAG_COLORS[index].name), onClick: () => model.setNewColor(TAG_COLORS[index].hex) }));
-        this.translateTarget?.update(this.translateTargetProps());
     }
 
-    private translateTargetProps(): SelectViewProps<IListBoxItem> {
-        const value = settings.get<string>("browser-translate-target");
-        const items = this.translationTargets;
+    private translateTargetProps(): ChoiceFieldProps<string> {
         return {
+            store: appSettingsStore as SettingsStore<string>,
+            id: "browser-translate-target",
             name: "browser-translate-target",
             size: "sm",
-            items,
-            value: items.find((item) => item.value === value) ?? items[0],
-            onChange: (item) => settings.set("browser-translate-target", String(item.value)),
+            items: this.translationTargets,
+            fallbackToFirst: true,
         };
     }
 
     private async refreshTranslationTargets(): Promise<void> {
-        const provider = getTextTranslationProvider();
-        try {
-            const providers = await provider.list();
-            const descriptions = await Promise.all(providers.map(async ({ provider: id }) => (await provider.describe(id).promise).pairs));
-            const targets = [...new Set(descriptions.flatMap((pairs) => pairs.map((pair) => pair.to)))].sort();
-            this.translationTargets = [
-                { value: "app", label: t("translation.appLanguage") },
-                ...targets.map((code) => ({ value: code, label: `${languageDisplayName(code)} (${code})` })),
-            ];
-            this.translateTarget?.update(this.translateTargetProps());
-        } catch {
-            this.translationTargets = [{ value: "app", label: t("translation.appLanguage") }];
-            this.translateTarget?.update(this.translateTargetProps());
-        }
+        this.translationTargets = await listBrowserTranslationTargets();
+        this.translateTarget?.update(this.translateTargetProps());
     }
 }

@@ -5,21 +5,13 @@ import { ui } from "../../../api/ui";
 import { api } from "../../../../ipc/renderer/api";
 import { createComponentModelDriver, TComponentModel, type ComponentModelDriver } from "../../../core/state/model";
 import { ButtonView } from "../../../uikit/Button/ButtonView";
-import { CheckboxView } from "../../../uikit/Checkbox/CheckboxView";
-import type { CheckboxProps } from "../../../uikit/Checkbox/CheckboxView";
 import { DotView } from "../../../uikit/Dot/DotView";
 import { HelpIconView } from "../../../uikit/HelpIcon/HelpIconView";
-import { InputView } from "../../../uikit/Input/InputView";
-import type { InputProps } from "../../../uikit/Input/InputView";
-import { SelectView, type SelectViewProps } from "../../../uikit/Select/SelectView";
-import type { IListBoxItem } from "../../../uikit/ListBox/types";
 import { SubtreeSwap } from "../../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { createDepsGate, type DepsGate } from "../../../uikit/shared/deps-gate";
 import { createSectionRoot, helpIcon, helpLabel, panel, settingsFieldLabel, text } from "./settings-native";
 import { t } from "../../../../shared/i18n/t";
-import { AUDIO_SETTINGS_DEVICES, AUDIO_STATUS, AUDIO_STATUS_GET, AUDIO_RETRY, type AudioDevice } from "../../../../ipc/audio-channels";
-import { MICROPHONE_TUNING } from "../../../../shared/microphone-cleaning-types";
 import { createLibraryPathField, PathField } from "../fields/PathField";
 import { appSettingsStore } from "../fields/settings-store";
 import type { SettingsStore } from "../fields/settings-store";
@@ -28,11 +20,8 @@ import { ChoiceField } from "../fields/ChoiceField";
 import { PortField } from "../fields/PortField";
 import { createShortcutCaptureState, ShortcutField } from "../fields/ShortcutField";
 import "../../../uikit/Button/Button.css";
-import "../../../uikit/Checkbox/Checkbox.css";
 import "../../../uikit/Dot/Dot.css";
 import "../../../uikit/IconButton/IconButton.css";
-import "../../../uikit/Input/Input.css";
-import "../../../uikit/Select/Select.css";
 
 const LINK_ITEM_LABELS = ["settings.openDefaultOsBrowser", "settings.openInternalBrowser"] as const;
 const LINK_ITEMS = settingOptions("link-open-behavior").map((value, index) => ({ value, key: LINK_ITEM_LABELS[index] }));
@@ -470,203 +459,3 @@ export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, n
     protected onDispose(): void { this.shortcutField = undefined; this.translateShortcutField = undefined; }
 }
 
-/** Settings for managed microphone capture. */
-type MicrophoneProfileView = CheckboxView | InputView;
-
-export class MicrophoneAudioSectionView extends VanillaView<Record<string, never>> {
-    private device = "";
-    private devices: IListBoxItem[] = [];
-    private deviceSelect: SelectView<IListBoxItem> | undefined;
-    private cleanCheckbox: CheckboxView | undefined;
-    private attenuationInput: InputView | undefined;
-    private attenuationDraft = "";
-    private profileHost: HTMLElement | undefined;
-    private profileViews: MicrophoneProfileView[] = [];
-    private status: HTMLElement | undefined;
-
-    public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
-
-    protected onMount(): void {
-
-        const cleanRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
-        cleanRow.dataset.name = "microphone.clean";
-        this.cleanCheckbox = this.child(new CheckboxView(this.cleanProps()));
-        cleanRow.append(this.cleanCheckbox.root);
-        this.cleanCheckbox.mount();
-        this.root.append(cleanRow);
-
-        this.attenuationDraft = String(settings.get("microphone.attenuation-db"));
-        const attenuationRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
-        attenuationRow.dataset.name = "microphone.attenuation-db";
-        this.attenuationInput = this.child(new InputView(this.attenuationProps()));
-        attenuationRow.append(settingsFieldLabel(t("settings.microphoneAttenuation")), this.attenuationInput.root);
-        this.attenuationInput.mount();
-        this.root.append(attenuationRow);
-
-        const deviceRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
-        const deviceHost = panel({ maxWidth: 640, flex: 1 });
-        this.deviceSelect = this.child(new SelectView(this.deviceProps()));
-        deviceHost.append(this.deviceSelect.root);
-        this.deviceSelect.mount();
-        deviceRow.append(helpLabel(t("settings.microphoneDevice"), t("settings.microphoneDeviceHelp"), (cleanup) => this.own(cleanup)), deviceHost);
-        this.root.append(deviceRow);
-        // Connecting or removing a headset changes the list and the Windows default.
-        const onDeviceChange = (): void => { void this.loadDevices(); };
-        navigator.mediaDevices.addEventListener("devicechange", onDeviceChange);
-        this.own(() => navigator.mediaDevices.removeEventListener("devicechange", onDeviceChange));
-
-        this.profileHost = panel({ direction: "column" });
-        this.profileHost.dataset.name = "microphone.notches";
-        this.root.append(this.profileHost);
-
-        this.status = text("", { color: "light", size: "xs" });
-        this.root.append(panel({ paddingTop: "md" }, this.status));
-        this.root.append(panel({ paddingTop: "sm", paddingBottom: "md" }, text(t("settings.microphoneEnrollment"), { color: "light", size: "xs" })));
-
-        const { ipcRenderer } = require("electron") as typeof import("electron");
-        const statuses = new Map<string, string>();
-        const status = (_event: Electron.IpcRendererEvent, value: { mode: string; reason: string }): void => {
-            if (!this.status) return;
-            const message = value.mode === "reference-ready" ? t("settings.microphoneReferenceReady") : value.mode === "reference-unavailable" ? t("settings.microphoneReferenceUnavailable", { reason: value.reason })
-                : value.mode === "restart" ? t("settings.microphoneRestart") : value.mode === "failed" ? t("settings.microphoneFailed", { reason: value.reason })
-                : value.mode === "load" ? t("settings.microphoneLoad", { ratio: value.reason }) : value.mode === "neural" ? t("settings.microphoneNeural")
-                : t("settings.microphoneUnfiltered", { reason: value.reason });
-            statuses.set(value.mode.startsWith("reference-") ? "reference" : "cleaning", message);
-            this.status.textContent = [...statuses.values()].join(" · ");
-        };
-        ipcRenderer.on(AUDIO_STATUS, status);
-        this.own(() => ipcRenderer.removeListener(AUDIO_STATUS, status));
-        void ipcRenderer.invoke(AUDIO_STATUS_GET).then((values: Array<{ mode: string; reason: string }>) => { for (const value of values ?? []) status({} as Electron.IpcRendererEvent, value); });
-        const retry = this.child(new ButtonView({ size: "sm", variant: "default", children: t("settings.microphoneRetry"), onClick: () => ipcRenderer.send(AUDIO_RETRY) }));
-        this.root.append(retry.root);
-        retry.mount();
-
-        this.own(settings.watch("microphone.clean", () => this.cleanCheckbox?.update(this.cleanProps())));
-        this.own(settings.watch("microphone.attenuation-db", () => {
-            this.attenuationDraft = String(settings.get("microphone.attenuation-db"));
-            this.attenuationInput?.update(this.attenuationProps());
-        }));
-        void this.loadDevices();
-    }
-
-    protected onDispose(): void {
-        this.deviceSelect = undefined;
-        this.cleanCheckbox = undefined;
-        this.attenuationInput = undefined;
-        this.profileHost = undefined;
-        this.profileViews = [];
-        this.status = undefined;
-    }
-
-    private cleanProps(): CheckboxProps {
-        return { checked: settings.get("microphone.clean"), onChange: this.onCleanChange, children: t("settings.microphoneClean") };
-    }
-
-    private readonly onCleanChange = (checked: boolean): void => settings.set("microphone.clean", checked);
-
-    private attenuationProps(): InputProps {
-        return { size: "sm", width: 56, type: "text", value: this.attenuationDraft, onChange: this.onAttenuationChange, onBlur: this.onAttenuationBlur, onKeyDown: blurOnEnter };
-    }
-
-    private readonly onAttenuationChange = (value: string): void => {
-        this.attenuationDraft = value;
-        this.attenuationInput?.update(this.attenuationProps());
-    };
-
-    private readonly onAttenuationBlur = (): void => {
-        const value = Number(this.attenuationDraft);
-        const range = settingRange("microphone.attenuation-db");
-        if (this.attenuationDraft.trim() && Number.isFinite(value) && value >= range.min && value <= range.max) {
-            settings.set("microphone.attenuation-db", value);
-            return;
-        }
-        this.attenuationDraft = String(settings.get("microphone.attenuation-db"));
-        this.attenuationInput?.update(this.attenuationProps());
-    };
-
-    private deviceProps(): SelectViewProps<IListBoxItem> {
-        const items = this.devices.length ? this.devices : [{ value: "", label: t("settings.microphoneNoDevice") }];
-        return { items, value: items.find((item) => item.value === this.device) ?? items[0], onChange: this.onDeviceChange };
-    }
-
-    private readonly onDeviceChange = (item: IListBoxItem | null): void => {
-        this.device = (item?.value as string) ?? "";
-        this.deviceSelect?.update(this.deviceProps());
-        this.renderProfile();
-    };
-
-    private async loadDevices(): Promise<void> {
-        const { ipcRenderer } = require("electron") as typeof import("electron");
-        const devices = await ipcRenderer.invoke(AUDIO_SETTINGS_DEVICES).catch((): AudioDevice[] => []) as AudioDevice[];
-        if (!this.deviceSelect) return;
-        const inputs = devices.filter((item) => item.deviceId && item.deviceId !== "default" && item.deviceId !== "communications");
-        // Chromium labels the pseudo-device "Default - <real label>"; that names the current Windows default.
-        const defaultLabel = devices.find((item) => item.deviceId === "default")?.label.replace(/^Default - /, "");
-        const defaultId = inputs.find((item) => item.label === defaultLabel)?.deviceId;
-        this.devices = inputs.map((item) => {
-            const label = item.label || t("settings.microphoneNoDevice");
-            return { value: item.deviceId, label: item.deviceId === defaultId ? t("settings.microphoneDeviceDefault", { label }) : label };
-        });
-        if (!inputs.some((item) => item.deviceId === this.device)) this.device = defaultId ?? inputs[0]?.deviceId ?? "";
-        this.deviceSelect.update(this.deviceProps());
-        this.renderProfile();
-    }
-
-    /** Rebuilds the per-device notch controls; the device list or a saved change re-runs it. */
-    private renderProfile(): void {
-        const host = this.profileHost;
-        if (!host) return;
-        for (const view of this.profileViews) this.releaseChild(view);
-        this.profileViews = [];
-        host.replaceChildren();
-        if (!this.device) return;
-        const id = this.device;
-        const current = settings.get("microphone.notches")[id] ?? { enabled: false, frequency: MICROPHONE_TUNING.notchFrequency, q: MICROPHONE_TUNING.notchQ, gainDb: MICROPHONE_TUNING.notchGainDb };
-        const update = (change: Partial<typeof current>): void => settings.set("microphone.notches", { ...settings.get("microphone.notches"), [id]: { ...current, ...change } });
-
-        const enabledRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "sm" });
-        const enabled = this.child(new CheckboxView({ checked: current.enabled, onChange: (checked) => { update({ enabled: checked }); this.renderProfile(); }, children: t("settings.microphoneNotch") }));
-        enabledRow.append(enabled.root);
-        enabled.mount();
-        host.append(enabledRow);
-        this.profileViews.push(enabled);
-
-        const fields = panel({ direction: "row", align: "center", gap: "lg", paddingLeft: "xxl" });
-        const notchRange = settingRange("microphone.notches");
-        const frequencyRange = notchRange.frequency;
-        const qRange = notchRange.q;
-        const gainRange = notchRange.gainDb;
-        for (const [key, title, min, max] of [
-            ["frequency", t("settings.microphoneFrequency"), frequencyRange.min, frequencyRange.max],
-            ["q", t("settings.microphoneQ"), qRange.min, qRange.max],
-            ["gainDb", t("settings.microphoneGain"), gainRange.min, gainRange.max],
-        ] as const) {
-            let draft = String(current[key]);
-            const props = (): InputProps => ({
-                size: "sm", width: 64, type: "text", value: draft, disabled: !current.enabled,
-                onChange: (value) => { draft = value; input.update(props()); },
-                onBlur: () => {
-                    const value = Number(draft);
-                    if (draft.trim() && Number.isFinite(value) && value >= min && value <= max) {
-                        if (value !== current[key]) { update({ [key]: value }); this.renderProfile(); }
-                        return;
-                    }
-                    draft = String(current[key]);
-                    input.update(props());
-                },
-                onKeyDown: blurOnEnter,
-            });
-            const input: InputView = this.child(new InputView(props()));
-            const field = panel({ direction: "row", align: "center", gap: "sm" });
-            field.append(settingsFieldLabel(title), input.root);
-            input.mount();
-            fields.append(field);
-            this.profileViews.push(input);
-        }
-        host.append(fields);
-    }
-}
-
-function blurOnEnter(event: KeyboardEvent): void {
-    if (event.key === "Enter") (event.target as HTMLInputElement).blur();
-}

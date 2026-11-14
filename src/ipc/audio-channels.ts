@@ -13,7 +13,8 @@ export const AUDIO_STATUS_GET = "persephone:audio-status-get";
 export const AUDIO_RETRY = "persephone:audio-retry";
 
 export interface AudioDevice { deviceId: string; label: string; isDefault: boolean }
-export interface AudioProcessingStatus { mode: string; reason: string }
+export type AudioProcessingMode = "reference-ready" | "reference-unavailable" | "restart" | "failed" | "neural" | "load" | "unfiltered";
+export interface AudioProcessingStatus { mode: AudioProcessingMode; reason: string }
 export interface AudioDevicesRequest { requestId: string; epoch: number }
 export type AudioDevicesReply =
     | { requestId: string; epoch: number; devices: AudioDevice[] }

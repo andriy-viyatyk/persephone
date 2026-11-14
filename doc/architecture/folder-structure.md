@@ -184,10 +184,13 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── settings.ts         # ISettings runtime store and typed subscriptions
 │   ├── settings-schema.ts  # Ordered setting defaults, normalization, options, ranges, and migrations
 │   ├── settings-effects.ts # Settings-driven process and feature side effects
+│   ├── browser-profiles.ts # Internal browser-profile rules, partition lookup, and permission IPC
+│   ├── site-extensions.ts  # Site-extension validation, listings, and trust summary
 │   ├── speech/             # Shared speech provider, typed session and microphone services
 │   │   ├── SpeechTranscriptionProvider.ts
 │   │   ├── SpeechSessionClient.ts
 │   │   ├── MicrophoneCapture.ts
+│   │   ├── microphone-settings.ts # Microphone capture options; device, status and retry service
 │   │   └── voice-typing/    # App-level service and per-session voice-typing collaborators
 │   ├── board-settings/     # Board-declared settings catalog, persistence, and bridge-facing reads
 │   │   ├── BoardSettingsStore.ts       # Renderer-lifetime board-settings.json store and change notifications
@@ -517,7 +520,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │
 │   ├── browser/            # Built-in browser (non-text, no trait)
 │   │   ├── BrowserEditor.ts          # EditorModel subclass — registry entry point
-│   │   ├── browser-state.ts          # Browser state types, defaults, IDs, title, and partition helpers
+│   │   ├── browser-state.ts          # Browser state types, defaults, tab/group IDs, and title policy
 │   │   ├── BrowserPromptsModel.ts    # Transient blocked-popup and permission-prompt state
 │   │   ├── search-engines.ts         # Search engine definitions and URL detection
 │   │   ├── BrowserTabsModel.ts       # Internal tabs, lazy materialization, committed URLs, favicon caches
@@ -668,7 +671,9 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   │   └── BoardSettingFields.ts
 │   │   ├── sections/                  # Focused settings views + component models
 │   │   │   ├── BrowserProfilesSection.ts
-│   │   │   ├── BrowserProfilesSectionModel.ts # Profile CRUD, bookmarks, network + partition cleanup
+│   │   │   ├── BrowserProfilesSectionModel.ts # Profile form, dialogs, bookmarks/network actions, and clear feedback
+│   │   │   ├── MicrophoneAudioSection.ts # Microphone status and audio-processing settings
+│   │   │   ├── SiteExtensionsSection.ts  # Site-extension folder and installed/trusted summary
 │   │   │   ├── ProfileNetworkLineView.ts # Direct / SOCKS5 / HTTP proxy line for a profile, Default, or Incognito
 │   │   │   ├── DefaultBrowserSection.ts
 │   │   │   ├── DefaultBrowserSection.ts       # Registration status + actions

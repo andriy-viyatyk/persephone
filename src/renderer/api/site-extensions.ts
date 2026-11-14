@@ -1,5 +1,6 @@
 import { isValidSiteExtensionId, isExactSiteExtensionHost } from "../../shared/site-extension-validation";
 export { isValidSiteExtensionId, isExactSiteExtensionHost } from "../../shared/site-extension-validation";
+import type { SiteExtensionTrustGrant } from "../../ipc/api-types";
 import { validateSiteExtensionFetchHosts } from "../../shared/site-extension-hosts";
 import { fpIsInside, fpJoin, fpResolve } from "../core/utils/file-path";
 import { fs } from "./fs";
@@ -37,6 +38,18 @@ export type SiteExtensionListing =
     | { id: string; status: "invalid"; reason: string }
     | (SiteExtensionRecord & { status: "valid" })
     | (SiteExtensionRecord & { status: "conflict"; conflictingHosts: string[] });
+
+export interface SiteExtensionListingWithTrust {
+    id: string;
+    listing?: SiteExtensionListing;
+    grant?: SiteExtensionTrustGrant;
+}
+
+export interface SiteExtensionSummary {
+    count: number;
+    trusted: number;
+    broken: number;
+}
 
 function isObject(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -246,6 +259,27 @@ class SiteExtensionStore {
     /** List every immediate extension directory and its current validation status. */
     async list(): Promise<SiteExtensionListing[]> {
         return (await this.refresh()).listings;
+    }
+
+    /** List every extension together with its trust grant, followed by orphaned grants. */
+    async listWithTrust(): Promise<SiteExtensionListingWithTrust[]> {
+        const [listings] = await Promise.all([this.list(), siteExtensionTrust.load()]);
+        const grants = siteExtensionTrust.snapshot;
+        const listed = new Set(listings.map((listing) => listing.id));
+        const entries: SiteExtensionListingWithTrust[] = listings.map((listing) => ({ listing, id: listing.id, grant: grants[listing.id] }));
+        for (const [id, grant] of Object.entries(grants)) if (!listed.has(id)) entries.push({ id, grant });
+        return entries;
+    }
+
+    /** Summarize installed extensions, granted extensions, and invalid or orphaned entries. */
+    async summary(): Promise<SiteExtensionSummary> {
+        const entries = await this.listWithTrust();
+        return {
+            count: entries.filter((entry) => entry.listing).length,
+            trusted: entries.filter((entry) => entry.listing && entry.grant).length,
+            broken: entries.filter((entry) => entry.listing && entry.listing.status !== "valid").length
+                + entries.filter((entry) => !entry.listing).length,
+        };
     }
 }
 

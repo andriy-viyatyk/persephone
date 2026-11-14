@@ -19,7 +19,11 @@ export interface PathFieldProps {
     browse: () => void | Promise<void>;
     clear: () => void | Promise<void>;
     clearLabel: string;
+    clearTitle?: string;
     fallback?: string;
+    host?: HTMLDivElement;
+    leadingContent?: (hasValue: boolean) => readonly Node[];
+    showPathTitle?: boolean;
     extraActions?: Node | readonly Node[];
     groupLabel?: string;
     paddingBottom?: "none" | "sm" | "md" | "lg" | "xl";
@@ -67,10 +71,10 @@ export class PathField extends VanillaView<PathFieldProps> {
     private syncGeneration = 0;
 
     public constructor(props: PathFieldProps) {
-        const root = props.variant === "link-or-placeholder"
+        const root = props.host ?? (props.variant === "link-or-placeholder"
             ? document.createElement("div") as HTMLDivElement
-            : panel({ direction: "row", align: "center", gap: "md", paddingBottom: props.paddingBottom });
-        if (props.variant === "link-or-placeholder") root.style.display = "contents";
+            : panel({ direction: "row", align: "center", gap: "md", paddingBottom: props.paddingBottom }));
+        if (props.variant === "link-or-placeholder" && !props.host) root.style.display = "contents";
         super(props, root);
     }
 
@@ -136,8 +140,8 @@ export class PathField extends VanillaView<PathFieldProps> {
             }
             const filename = value ? fpBasename(value) : "";
             const contents = filename
-                ? [settingsLink(filename), this.createLinkClearButton()]
-                : [settingsPlaceholder(this.props.emptyText)];
+                ? [...(this.props.leadingContent?.(true) ?? []), this.createLink(filename, value), this.createLinkClearButton()]
+                : [...(this.props.leadingContent?.(false) ?? []), settingsPlaceholder(this.props.emptyText)];
             this.valuePanel?.replaceChildren(...contents);
             return;
         }
@@ -157,12 +161,18 @@ export class PathField extends VanillaView<PathFieldProps> {
         const button = this.child(new IconButtonView({
             size: "sm",
             icon: "close",
-            title: t("settings.removeVlcPath"),
+            title: this.props.clearTitle ?? t("settings.removeVlcPath"),
             onClick: () => void this.handleClear(),
         }));
         this.linkClearButton = button;
         button.mount();
         return button.root;
+    }
+
+    private createLink(filename: string, filePath: string | undefined): HTMLSpanElement {
+        const link = settingsLink(filename);
+        if (this.props.showPathTitle && filePath) link.title = filePath;
+        return link;
     }
 
     private readonly onLinkClick = (event: MouseEvent): void => {

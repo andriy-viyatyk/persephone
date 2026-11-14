@@ -1,5 +1,6 @@
 import { EditorId } from "../../../shared/editor-ids";
 import { PAGE_ZOOM_DEFAULT, isValidPageZoom } from "../../../shared/browser-zoom";
+import { getPartitionString } from "../../../shared/browser-partition";
 import { englishMessage, t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import {
@@ -33,7 +34,6 @@ import {
     createBrowserTab,
     createTabGroupId,
     browserPageTitle,
-    getPartitionString,
     getDefaultBrowserPageState,
 } from "./browser-state";
 import { SEARCH_ENGINES, detectSearchEngine, type SearchEngine } from "./search-engines";

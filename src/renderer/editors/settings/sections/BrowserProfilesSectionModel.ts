@@ -1,67 +1,43 @@
 import { settings } from "../../../api/settings";
-import { settingRange } from "../../../api/settings-schema";
 import type { BrowserProfile } from "../../../api/settings-schema";
 import type { BrowserNetwork } from "../../../../ipc/browser-network-ipc";
+import { browserProfiles } from "../../../api/browser-profiles";
 import { ui } from "../../../api/ui";
 import { DialogButton } from "../../../ui/dialogs/dialog-buttons";
 import { TComponentModel } from "../../../core/state/model";
-import { getPartitionString } from "../../browser/browser-state";
 import { api } from "../../../../ipc/renderer/api";
-import { BrowserChannel, type BrowserPermissionDecisionEntry } from "../../../../ipc/browser-ipc";
+import type { BrowserPermissionDecisionEntry } from "../../../../ipc/browser-ipc";
 import { TAG_COLORS } from "../../../theme/palette-colors";
-import { createDepsGate, type DepsGate } from "../../../uikit/shared/deps-gate";
 import { t } from "../../../../shared/i18n/t";
-
-const { ipcRenderer } = require("electron");
 
 export interface BrowserProfilesSectionProps {
     profiles: BrowserProfile[];
     defaultProfile: string;
-    torExePath: string;
-    torSocksPort: number;
-    torBookmarksFile: string;
 }
 
 const defaultBrowserProfilesSectionState = {
     newName: "",
     newColor: TAG_COLORS[0].hex,
     clearedProfile: null as string | null,
-    torPortValue: null as string | null,
 };
 
 export type BrowserProfilesSectionState = typeof defaultBrowserProfilesSectionState;
 
-/** Owns profile mutations and asynchronous profile-data/bookmark operations. */
+/** Owns the browser-profile form drafts, dialogs, and clear feedback. */
 export class BrowserProfilesSectionModel extends TComponentModel<BrowserProfilesSectionState, BrowserProfilesSectionProps> {
     private clearedTimer: ReturnType<typeof setTimeout> | undefined;
-    private initialized = false;
-    private readonly torSocksPortGate: DepsGate = createDepsGate();
-
-    init(): void {
-        this.state.update((state) => { state.torPortValue = String(this.props.torSocksPort); });
-        this.torSocksPortGate.prime([this.props.torSocksPort]);
-        this.initialized = true;
-    }
-
-    setProps = (props: BrowserProfilesSectionProps): void => {
-        if (!this.initialized) return;
-        if (this.torSocksPortGate.changed([props.torSocksPort])) {
-            this.state.update((state) => { state.torPortValue = String(props.torSocksPort); });
-        }
-    };
 
     setNewName = (newName: string) => this.state.update((state) => { state.newName = newName; });
     setNewColor = (newColor: string) => this.state.update((state) => { state.newColor = newColor; });
 
     get canAdd(): boolean {
-        const name = this.state.get().newName.trim().toLowerCase();
-        return name.length > 0 && !this.props.profiles.some((profile) => profile.name.toLowerCase() === name);
+        return browserProfiles.canAdd(this.state.get().newName);
     }
 
     handleAddProfile = () => {
-        const name = this.state.get().newName.trim();
+        const name = this.state.get().newName;
         if (!this.canAdd) return;
-        settings.set("browser-profiles", [...this.props.profiles, { name, color: this.state.get().newColor }]);
+        browserProfiles.add(name, this.state.get().newColor);
         this.state.update((state) => {
             state.newName = "";
             state.newColor = TAG_COLORS[(this.props.profiles.length + 1) % TAG_COLORS.length].hex;
@@ -74,22 +50,17 @@ export class BrowserProfilesSectionModel extends TComponentModel<BrowserProfiles
                 { title: t("settings.deleteProfileTitle"), buttons: [DialogButton.delete, DialogButton.cancel] },
         );
         if (result !== DialogButton.delete) return;
-        await ipcRenderer.invoke(BrowserChannel.clearProfileData, getPartitionString(name, false));
-        await ipcRenderer.invoke(BrowserChannel.clearPermissionDecisions, name);
-        settings.set("browser-profiles", this.props.profiles.filter((profile) => profile.name !== name));
-        if (this.props.defaultProfile === name) settings.set("browser-default-profile", "");
+        await browserProfiles.remove(name);
     };
 
     getPermissionDecisions = (name: string): Promise<BrowserPermissionDecisionEntry[]> =>
-        ipcRenderer.invoke(BrowserChannel.listPermissionDecisions, name || "default");
+        browserProfiles.listPermissionDecisions(name);
 
     removePermissionDecision = (name: string, entry: BrowserPermissionDecisionEntry): Promise<boolean> =>
-        ipcRenderer.invoke(BrowserChannel.removePermissionDecision, {
-            profileName: name || "default", origin: entry.origin, permission: entry.permission,
-        });
+        browserProfiles.removePermissionDecision(name, entry);
 
     clearPermissionDecisions = (name: string): Promise<boolean> =>
-        ipcRenderer.invoke(BrowserChannel.clearPermissionDecisions, name || "default");
+        browserProfiles.clearPermissionDecisions(name);
 
     handleClearData = async (profileName: string) => {
         const label = profileName || t("settings.defaultProfile");
@@ -98,7 +69,7 @@ export class BrowserProfilesSectionModel extends TComponentModel<BrowserProfiles
                 { title: t("settings.clearProfileDataTitle"), buttons: [DialogButton.clear, DialogButton.cancel] },
         );
         if (result !== DialogButton.clear) return;
-        await ipcRenderer.invoke(BrowserChannel.clearProfileData, getPartitionString(profileName, false));
+        await browserProfiles.clearData(profileName);
         if (!this.isLive) return;
         this.state.update((state) => { state.clearedProfile = profileName; });
         if (this.clearedTimer !== undefined) clearTimeout(this.clearedTimer);
@@ -110,8 +81,8 @@ export class BrowserProfilesSectionModel extends TComponentModel<BrowserProfiles
         }, 2000);
     };
 
-    handleSetDefault = (name: string) => settings.set("browser-default-profile", this.props.defaultProfile === name ? "" : name);
-    handleColorChange = (name: string, color: string) => settings.set("browser-profiles", this.props.profiles.map((profile) => profile.name === name ? { ...profile, color } : profile));
+    handleSetDefault = (name: string) => browserProfiles.setDefault(name);
+    handleColorChange = (name: string, color: string) => browserProfiles.setColor(name, color);
 
     handleBrowseDefaultBookmarks = async () => {
         const filePath = await this.browseBookmarksFile();
@@ -120,7 +91,7 @@ export class BrowserProfilesSectionModel extends TComponentModel<BrowserProfiles
 
     handleBrowseProfileBookmarks = async (name: string) => {
         const filePath = await this.browseBookmarksFile();
-        if (filePath) settings.set("browser-profiles", this.props.profiles.map((profile) => profile.name === name ? { ...profile, bookmarksFile: filePath } : profile));
+        if (filePath) browserProfiles.setBookmarksFile(name, filePath);
     };
 
     handleBrowseIncognitoBookmarks = async () => {
@@ -128,24 +99,11 @@ export class BrowserProfilesSectionModel extends TComponentModel<BrowserProfiles
         if (filePath) settings.set("browser-incognito-bookmarks-file", filePath);
     };
 
-    handleProfileNetworkChange = (name: string, network: BrowserNetwork) => settings.set("browser-profiles", this.props.profiles.map((profile) => profile.name === name ? { ...profile, network } : profile));
+    handleProfileNetworkChange = (name: string, network: BrowserNetwork) => browserProfiles.setNetwork(name, network);
     handleDefaultNetworkChange = (network: BrowserNetwork) => settings.set("browser-default-network", network);
     handleIncognitoNetworkChange = (network: BrowserNetwork) => settings.set("browser-incognito-network", network);
-    handleClearProfileBookmarks = (name: string) => settings.set("browser-profiles", this.props.profiles.map((profile) => profile.name === name ? { ...profile, bookmarksFile: undefined } : profile));
+    handleClearProfileBookmarks = (name: string) => browserProfiles.setBookmarksFile(name, undefined);
     handleKeyDown = (event: KeyboardEvent) => { if (event.key === "Enter") this.handleAddProfile(); };
-
-    get torPortValue(): string {
-        return this.state.get().torPortValue ?? String(this.props.torSocksPort);
-    }
-
-    setTorPortValue = (value: string) => this.state.update((state) => { state.torPortValue = value; });
-
-    handleTorPortBlur = () => {
-        const port = parseInt(this.torPortValue, 10);
-        const range = settingRange("tor.socks-port");
-        if (port >= range.min && port <= range.max) settings.set("tor.socks-port", port);
-        else this.state.update((state) => { state.torPortValue = String(this.props.torSocksPort); });
-    };
 
     handleBrowseTorExe = async () => {
         const result = await api.showOpenFileDialog({ title: t("settings.selectTorExe"), filters: [{ name: t("settings.executableFiles"), extensions: ["exe"] }] });

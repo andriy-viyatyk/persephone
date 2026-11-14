@@ -4,6 +4,20 @@ import { formatBytes } from "../../core/utils/format";
 import { ui } from "../../api/ui";
 import { t } from "../../../shared/i18n/t";
 import type { TextTranslationProvider, TranslationDescription, TranslationDownloadProgress, TranslationOperation, TranslationPair } from "./TextTranslationProvider";
+import { getTextTranslationProvider } from "./TextTranslationProvider";
+
+export async function listBrowserTranslationTargets(): Promise<Array<{ value: string; label: string }>> {
+    const appTarget = { value: "app", label: t("translation.appLanguage") };
+    try {
+        const provider = getTextTranslationProvider();
+        const providers = await provider.list();
+        const descriptions = await Promise.all(providers.map(async ({ provider: id }) => (await provider.describe(id).promise).pairs));
+        const targets = [...new Set(descriptions.flatMap((pairs) => pairs.map((pair) => pair.to)))].sort();
+        return [appTarget, ...targets.map((code) => ({ value: code, label: `${languageDisplayName(code)} (${code})` }))];
+    } catch {
+        return [appTarget];
+    }
+}
 
 export interface TranslationRoute { legs: TranslationPair[]; installed: boolean; missingBytes: number }
 export function languageDisplayName(code: string): string {

@@ -1,3 +1,24 @@
+## EPIC-167 — Refactoring Phase 6.5 part 2: Settings editor — browser-profiles and microphone services, site-extension listing, composite sections on the field kit
+
+Completed 2026-11-14. Roadmap Phase 6.5 part 2 (EDT-1 step 5, EDT-2 steps 3–5), which completes item 6.5:
+`api/browser-profiles.ts` owns the browser-profile rules, the `"default"` mapping and the profile IPC, with
+`getPartitionString` in `src/shared/browser-partition.ts`, the translation-target list in `TranslationWorkflow` and the
+browser editor's named-profile bookmark write through the service; `microphoneSettings` in `api/speech/` owns device
+listing (the `"Default - "` rule), status subscription and retry, with a typed `AudioProcessingMode` union and the
+Microphone section in its own file; `siteExtensionStore.listWithTrust()` and `summary()` serve the Settings section and
+the Tools hub; the Browser profiles section uses `PortField` (Tor port, the model's `DepsGate` gone), `PathField` for
+all five bookmark/Tor path rows (`BookmarksFileLineView` gone), `CheckboxField` and `ChoiceField`, and the Microphone
+attenuation uses `NumberField`. Theme, Default browser, the notch inputs, network lines and the Site extensions folder
+row stay custom (reasons in the epic). Rendered Settings DOM, `data-name`s, settings keys and IPC payloads are
+unchanged (checked with before/after structural fingerprints of every section). Plans by Codex, reviewed against the
+roadmap guardrails; Codex Luna implemented. Epic document: [EPIC-167](EPIC-167.md).
+
+- [x] **Browser-profiles service (US-1948).** Service, shared partition helper, translation targets in `TranslationWorkflow`.
+- [x] **Microphone service (US-1949).** `microphoneSettings`, typed status modes, `MicrophoneAudioSection.ts`, attenuation on `NumberField`.
+- [x] **Site-extension listing (US-1950).** `listWithTrust()` + `summary()` for Settings and the Tools hub.
+- [x] **Browser profiles on fields (US-1951).** `PortField`, `PathField` (opt-in host/title options), `CheckboxField`, `ChoiceField`.
+- [x] **Epic review.** `/review` no findings; `/document` updated four developer docs; `/userdoc` no change; `i18n:check` complete.
+
 ## EPIC-166 — Refactoring Phase 6.5 part 1: Settings editor — field kit, declarative sections, shell-owned headers, `SettingsLayoutModel`
 
 Completed 2026-11-14. Roadmap Phase 6.5 part 1 (EDT-1 steps 1–4, EDT-2 steps 1, 2 and 6, EDT-4): a settings field kit

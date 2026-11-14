@@ -1,5 +1,6 @@
 import { ECHO_TUNING } from "./echo-tuning";
 import { errMessage } from "../../../shared/utils";
+import type { AudioProcessingMode } from "../../../ipc/audio-channels";
 
 const RATE = 16_000;
 const HOP = 128;
@@ -61,7 +62,7 @@ interface LoopbackReferenceOptions {
     context: AudioContext;
     acquire?: () => Promise<LoopbackLease>;
     onPair: (microphone: Float32Array, reference: Float32Array, frame: number, count: number) => void;
-    onStatus: (mode: string, reason: string) => void;
+    onStatus: (mode: AudioProcessingMode, reason: string) => void;
     onReset: () => void;
 }
 

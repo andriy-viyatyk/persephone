@@ -1,6 +1,7 @@
 import { ECHO_TUNING } from "./echo-tuning";
 import type { MicrophoneCleaningOptions } from "../../../shared/microphone-cleaning-types";
 import { errMessage } from "../../../shared/utils";
+import type { AudioProcessingMode } from "../../../ipc/audio-channels";
 
 /** Serial worker client with bounded in-flight hops and an unfiltered fallback. */
 export class DtlnAudioPipeline {
@@ -14,7 +15,7 @@ export class DtlnAudioPipeline {
 
     public constructor(private options: MicrophoneCleaningOptions,
         private readonly onSamples: (samples: Float32Array, frame: number) => void,
-        private readonly onStatus: (mode: string, reason: string) => void,
+        private readonly onStatus: (mode: AudioProcessingMode, reason: string) => void,
         private readonly onDiscontinuity: () => void) {}
 
     public start(): void {

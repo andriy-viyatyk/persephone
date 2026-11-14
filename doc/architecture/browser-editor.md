@@ -356,7 +356,9 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/renderer/editors/browser/browser-profile.ts` | Renderer | Profile, color, and bookmark-file resolution |
 | `src/renderer/editors/browser/BrowserSitePermissionsModel.ts` | Renderer | Site permissions and certificate actions |
 | `src/renderer/editors/browser/BrowserGuestChannel.ts` | Renderer | Browser guest IPC and registration keys |
-| `src/renderer/editors/browser/browser-state.ts` | Renderer | Browser state/defaults, tab/group IDs, title policy, and partition string helper |
+| `src/renderer/editors/browser/browser-state.ts` | Renderer | Browser state/defaults, tab/group IDs, and title policy |
+| `src/shared/browser-partition.ts` | Shared | Partition string mapping for default, named, Incognito, and Tor profiles |
+| `src/renderer/api/browser-profiles.ts` | Renderer | Browser profile settings rules, partition lookup, and permission-decision IPC |
 | `src/renderer/editors/browser/search-engines.ts` | Renderer | Search-engine definitions and URL detection |
 | `src/renderer/editors/browser/BrowserTorModel.ts` | Renderer | Tor proxy arming, daemon listeners/reconnect, and cleanup |
 | `src/renderer/editors/browser/BrowserWebviewModel.ts` | Renderer | Private webview registry, readiness and navigation commands, guest event routing |
@@ -560,7 +562,7 @@ Each browser page is bound to a **profile** that determines its Electron session
 | Incognito | `browser-incognito-<uuid>` | Cleared when page closes |
 | Tor | `browser-tor-<uuid>` | Cleared when page closes |
 
-`getPartitionString()` in `browser-state.ts` computes the partition. `BrowserEditor.partition` is the shared getter because profile state may be set after editor construction in `showBrowserPage()`. Each editor has stable incognito/Tor IDs (random UUIDs generated once per instance) to keep the partition consistent across getter calls. `BrowserTorModel` reads this resolved partition and owns Tor lifecycle only.
+`getPartitionString()` in `src/shared/browser-partition.ts` computes the partition and is shared by `BrowserEditor` and the browser-profiles service. `BrowserEditor.partition` is the shared getter because profile state may be set after editor construction in `showBrowserPage()`. Each editor has stable incognito/Tor IDs (random UUIDs generated once per instance) to keep the partition consistent across getter calls. `BrowserTorModel` reads this resolved partition and owns Tor lifecycle only. The browser-profiles service owns profile persistence rules and permission-decision IPC used by Settings; the editor's `browser-profile.ts` continues to resolve profile presentation and bookmark targets.
 
 ### Permission Policy
 
