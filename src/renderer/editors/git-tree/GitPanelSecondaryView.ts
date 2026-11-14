@@ -1,8 +1,8 @@
-import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view-registry";
+import type { SecondaryViewProps } from "../base/secondary-views/secondary-view-registry";
 import {
     createSideBarPanelHeader,
     type SideBarPanelHeaderHandle,
-} from "../../ui/secondary-views/SideBarPanelHeaderView";
+} from "../base/secondary-views/SideBarPanelHeaderView";
 import { GitTreeEditorModel } from "./GitTreeEditorModel";
 import { GitChangesView } from "./GitChangesView";
 import { GitRefsView } from "./GitRefsView";

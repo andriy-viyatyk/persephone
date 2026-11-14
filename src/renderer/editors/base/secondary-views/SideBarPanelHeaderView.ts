@@ -1,9 +1,9 @@
-import { createPanelElement } from "../../uikit/Panel/panel-style";
-import { createTextElement } from "../../uikit/Text/text-style";
-import { attachTooltip, type TooltipAttachment } from "../../uikit/Tooltip/attach-tooltip";
-import { createIconElement } from "../../uikit/shared/slots";
+import { createPanelElement } from "../../../uikit/Panel/panel-style";
+import { createTextElement } from "../../../uikit/Text/text-style";
+import { attachTooltip, type TooltipAttachment } from "../../../uikit/Tooltip/attach-tooltip";
+import { createIconElement } from "../../../uikit/shared/slots";
 import "./SideBarPanelHeader.css";
-import { t } from "../../../shared/i18n/t";
+import { t } from "../../../../shared/i18n/t";
 
 export interface SideBarPanelHeaderDomProps {
     headerHost: HTMLDivElement | null;

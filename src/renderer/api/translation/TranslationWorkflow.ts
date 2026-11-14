@@ -1,7 +1,7 @@
 import { getActiveLocale } from "../../../shared/i18n/active-locale";
 import { errMessage } from "../../../shared/utils";
 import { formatBytes } from "../../core/utils/format";
-import { ui } from "../../api/ui";
+import { ui } from "../ui";
 import { t } from "../../../shared/i18n/t";
 import type { TextTranslationProvider, TranslationDescription, TranslationDownloadProgress, TranslationOperation, TranslationPair } from "./TextTranslationProvider";
 import { getTextTranslationProvider } from "./TextTranslationProvider";

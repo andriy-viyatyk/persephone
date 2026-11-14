@@ -1,14 +1,14 @@
-import { errMessage } from "../../../shared/utils";
-import { createPanelElement } from "../../uikit/Panel/panel-style";
-import { createTextElement } from "../../uikit/Text/text-style";
-import { guard } from "../../core/utils/guard";
-import { type VanillaViewCtor } from "../../uikit/shared/vanilla-view";
-import { VanillaView } from "../../uikit/shared/vanilla-view";
+import { errMessage } from "../../../../shared/utils";
+import { createPanelElement } from "../../../uikit/Panel/panel-style";
+import { createTextElement } from "../../../uikit/Text/text-style";
+import { guard } from "../../../core/utils/guard";
+import { type VanillaViewCtor } from "../../../uikit/shared/vanilla-view";
+import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import {
     secondaryViewRegistry,
     type SecondaryViewProps,
 } from "./secondary-view-registry";
-import { t } from "../../../shared/i18n/t";
+import { t } from "../../../../shared/i18n/t";
 
 /** Native asynchronous loader for secondary-view definitions on the vanilla arm. */
 export class LazySecondaryViewView extends VanillaView<SecondaryViewProps> {

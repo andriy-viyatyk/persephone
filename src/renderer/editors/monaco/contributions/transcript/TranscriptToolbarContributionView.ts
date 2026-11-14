@@ -1,10 +1,10 @@
-import { MenuView } from "../../uikit/Menu/MenuView";
-import type { MenuItem } from "../../core/events/context-menu";
-import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
-import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { api } from "../../../ipc/renderer/api";
-import { boardRegistry } from "../../api/boards/board-registry";
-import { t } from "../../../shared/i18n/t";
+import { MenuView } from "../../../../uikit/Menu/MenuView";
+import type { MenuItem } from "../../../../core/events/context-menu";
+import { IconButtonView, type IconButtonViewProps } from "../../../../uikit/IconButton/IconButtonView";
+import { VanillaView } from "../../../../uikit/shared/vanilla-view";
+import { api } from "../../../../../ipc/renderer/api";
+import { boardRegistry } from "../../../../api/boards/board-registry";
+import { t } from "../../../../../shared/i18n/t";
 import { TranscriptController, type TranscriptSource, type TranscriptState } from "./TranscriptController";
 import "./TranscriptToolbarContributionView.css";
 

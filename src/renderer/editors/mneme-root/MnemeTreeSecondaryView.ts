@@ -11,8 +11,8 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import {
     createSideBarPanelHeader,
     type SideBarPanelHeaderHandle,
-} from "../../ui/secondary-views/SideBarPanelHeaderView";
-import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view-registry";
+} from "../base/secondary-views/SideBarPanelHeaderView";
+import type { SecondaryViewProps } from "../base/secondary-views/secondary-view-registry";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 import type { MnemeRootEditorModel, MnemeRootEditorState } from "./MnemeRootEditorModel";

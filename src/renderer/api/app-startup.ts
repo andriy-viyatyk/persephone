@@ -183,11 +183,9 @@ export const appStartupEntries: readonly AppStartupEntry[] = [
             const { registerOpenHandler } = await import("../content/open-handler");
             const { registerResolvers } = await import("../content/resolvers");
             const { registerRawLinkParsers } = await import("../content/parsers");
-            const { registerTreeContextMenuHandlers } = await import("../ui/link-menus/tree-context-menus");
             registerOpenHandler();
             registerResolvers();
             registerRawLinkParsers();
-            registerTreeContextMenuHandlers();
             const { initPipeResourceServer } = await import("../content/pipe-resource-server");
             const { resolveBoardPagePipe } = await import("./boards/board-page-pipe");
             initPipeResourceServer({ resolvePagePipe: resolveBoardPagePipe });

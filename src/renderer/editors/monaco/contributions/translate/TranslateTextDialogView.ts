@@ -1,19 +1,19 @@
-import { TDialogModel } from "../../core/state/model";
-import { ButtonView } from "../../uikit/Button/ButtonView";
-import { DialogContentView } from "../../uikit/Dialog/DialogContentView";
-import { DialogView } from "../../uikit/Dialog/DialogView";
-import { ProgressBarView } from "../../uikit/ProgressBar/ProgressBarView";
-import { SelectView } from "../../uikit/Select/SelectView";
-import type { IListBoxItem } from "../../uikit/ListBox/types";
-import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { createPanelElement } from "../../uikit/Panel/panel-style";
-import { createTextElement } from "../../uikit/Text/text-style";
-import { t } from "../../../shared/i18n/t";
-import type { DialogViewProps } from "../../api/dialogs/dialog-view-registry";
-import "../../uikit/Button/Button.css";
-import "../../uikit/Dialog/Dialog.css";
-import "../../uikit/ProgressBar/ProgressBar.css";
-import "../../uikit/Select/Select.css";
+import { TDialogModel } from "../../../../core/state/model";
+import { ButtonView } from "../../../../uikit/Button/ButtonView";
+import { DialogContentView } from "../../../../uikit/Dialog/DialogContentView";
+import { DialogView } from "../../../../uikit/Dialog/DialogView";
+import { ProgressBarView } from "../../../../uikit/ProgressBar/ProgressBarView";
+import { SelectView } from "../../../../uikit/Select/SelectView";
+import type { IListBoxItem } from "../../../../uikit/ListBox/types";
+import { VanillaView } from "../../../../uikit/shared/vanilla-view";
+import { createPanelElement } from "../../../../uikit/Panel/panel-style";
+import { createTextElement } from "../../../../uikit/Text/text-style";
+import { t } from "../../../../../shared/i18n/t";
+import type { DialogViewProps } from "../../../../api/dialogs/dialog-view-registry";
+import "../../../../uikit/Button/Button.css";
+import "../../../../uikit/Dialog/Dialog.css";
+import "../../../../uikit/ProgressBar/ProgressBar.css";
+import "../../../../uikit/Select/Select.css";
 import "./TranslateTextDialogView.css";
 
 export interface TranslationChoice { code: string; label: string; installed: boolean; sizeBytes: number }

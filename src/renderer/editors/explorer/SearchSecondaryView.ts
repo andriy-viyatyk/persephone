@@ -3,11 +3,11 @@ import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { FileSearchView } from "../../components/file-search/FileSearchView";
-import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view-registry";
+import type { SecondaryViewProps } from "../base/secondary-views/secondary-view-registry";
 import {
     createSideBarPanelHeader,
     type SideBarPanelHeaderHandle,
-} from "../../ui/secondary-views/SideBarPanelHeaderView";
+} from "../base/secondary-views/SideBarPanelHeaderView";
 import { fpBasename } from "../../core/utils/file-path";
 import type { ExplorerEditor } from "./ExplorerEditorModel";
 import { t } from "../../../shared/i18n/t";

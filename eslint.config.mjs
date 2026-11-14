@@ -590,6 +590,18 @@ function isWithin(node, ancestor) {
     return false;
 }
 
+const uiImportZone = {
+    target: [
+        "./src/renderer/api", "./src/renderer/audio", "./src/renderer/automation",
+        "./src/renderer/components", "./src/renderer/content", "./src/renderer/core",
+        "./src/renderer/editors", "./src/renderer/guides", "./src/renderer/i18n",
+        "./src/renderer/scripting", "./src/renderer/theme", "./src/renderer/types",
+        "./src/renderer/uikit",
+    ],
+    from: "./src/renderer/ui",
+    message: "Nothing outside ui/ imports ui/ (EPIC-176): ui/ holds shell views only. Put models and services in api/, editor-owned views in their editor folder.",
+};
+
 export default tseslint.config(
     // Global ignores (flat-config replacement for ignorePatterns). The *.{js,jsx,mjs,cjs}
     // globs re-create the old `--ext .ts,.tsx` scope: only TypeScript is linted, so build
@@ -729,46 +741,31 @@ export default tseslint.config(
         },
     },
 
+    // EPIC-175: lower layers consume dialog models from api/dialogs, not shell views.
+    // Every renderer layer now rejects imports from ui/, including dialog views.
+    {
+        files: ["src/renderer/**/*.{ts,tsx}"],
+        rules: {
+            "import/no-restricted-paths": ["error", { zones: [uiImportZone] }],
+        },
+    },
+
     // Rule 6: UIKit must not reach into application-layer modules. Stories are harnesses and
-    // are intentionally excluded; resolved paths distinguish uikit/shared from src/shared.
+    // are intentionally excluded from Rule 6; the ui/ lock still applies to them. Resolved paths
+    // distinguish uikit/shared from src/shared.
     {
         files: ["src/renderer/uikit/**/*.ts", "src/renderer/uikit/**/*.tsx"],
         ignores: ["src/renderer/uikit/**/*.story.ts", "src/renderer/uikit/**/*.story.tsx"],
         rules: {
             "import/no-restricted-paths": ["error", {
-                zones: [{
+                zones: [uiImportZone, {
                     target: "./src/renderer/uikit",
                     from: [
                         "./src/renderer/api",
-                        "./src/renderer/ui",
                         "./src/renderer/components",
                         "./src/shared",
                     ],
                     message: "Rule 6: uikit/ imports only core/ and theme/. Take app concepts through props/callbacks, or move the contract to core/.",
-                }],
-            }],
-        },
-    },
-
-    // EPIC-175: lower layers consume dialog models from api/dialogs, not shell views.
-    {
-        files: [
-            "src/renderer/api/**/*.{ts,tsx}",
-            "src/renderer/content/**/*.{ts,tsx}",
-            "src/renderer/components/**/*.{ts,tsx}",
-            "src/renderer/scripting/**/*.{ts,tsx}",
-        ],
-        rules: {
-            "import/no-restricted-paths": ["error", {
-                zones: [{
-                    target: [
-                        "./src/renderer/api",
-                        "./src/renderer/content",
-                        "./src/renderer/components",
-                        "./src/renderer/scripting",
-                    ],
-                    from: "./src/renderer/ui/dialogs",
-                    message: "Dialog models belong in api/dialogs; lower layers must not import ui/dialogs (EPIC-175).",
                 }],
             }],
         },
@@ -784,18 +781,11 @@ export default tseslint.config(
         ],
         rules: {
             "import/no-restricted-paths": ["error", {
-                zones: [
-                    {
-                        target: "./src/renderer/api",
-                        from: "./src/renderer/editors/board",
-                        message: "api/ must not import editors/board/. Board domain modules live in api/boards/ (US-1824).",
-                    },
-                    {
-                        target: "./src/renderer/api",
-                        from: "./src/renderer/ui/dialogs",
-                        message: "Dialog models belong in api/dialogs; lower layers must not import ui/dialogs (EPIC-175).",
-                    },
-                ],
+                zones: [uiImportZone, {
+                    target: "./src/renderer/api",
+                    from: "./src/renderer/editors/board",
+                    message: "api/ must not import editors/board/. Board domain modules live in api/boards/ (US-1824).",
+                }],
             }],
         },
     },
@@ -803,23 +793,11 @@ export default tseslint.config(
         files: ["src/renderer/api/capabilities/**/*.ts"],
         rules: {
             "import/no-restricted-paths": ["error", {
-                zones: [
-                    {
-                        target: "./src/renderer/api/capabilities",
-                        from: "./src/renderer/editors/board",
-                        message: "capabilities/ must not import editors/board/ (EPIC-145, roadmap §4.1).",
-                    },
-                    {
-                        target: "./src/renderer/api/capabilities",
-                        from: "./src/renderer/ui",
-                        message: "capabilities/ must not import ui/ (EPIC-145, roadmap §4.1).",
-                    },
-                    {
-                        target: "./src/renderer/api/capabilities",
-                        from: "./src/renderer/ui/dialogs",
-                        message: "Dialog models belong in api/dialogs; lower layers must not import ui/dialogs (EPIC-175).",
-                    },
-                ],
+                zones: [uiImportZone, {
+                    target: "./src/renderer/api/capabilities",
+                    from: "./src/renderer/editors/board",
+                    message: "capabilities/ must not import editors/board/ (EPIC-145, roadmap §4.1).",
+                }],
             }],
         },
     },
@@ -828,24 +806,21 @@ export default tseslint.config(
         files: ["src/renderer/editors/base/**/*.ts"],
         rules: {
             "import/no-restricted-paths": ["error", {
-                zones: [
-                    {
-                        target: "./src/renderer/editors/base",
-                        from: [
-                            "./src/renderer/editors/board",
-                            "./src/renderer/editors/board-info",
-                            "./src/renderer/api/boards",
-                            "./src/shared/board-source-context.ts",
-                        ],
-                        message: "editors/base must not depend on board implementation/domain modules; use its generic catalog and traits.",
-                    },
-                    {
-                        target: "./src/renderer/editors/base",
-                        from: "./src/shared/board",
-                        except: ["board-editor-id.ts"],
-                        message: "editors/base may import only the pure board-editor-id helper from shared/board.",
-                    },
-                ],
+                zones: [uiImportZone, {
+                    target: "./src/renderer/editors/base",
+                    from: [
+                        "./src/renderer/editors/board",
+                        "./src/renderer/editors/board-info",
+                        "./src/renderer/api/boards",
+                        "./src/shared/board-source-context.ts",
+                    ],
+                    message: "editors/base must not depend on board implementation/domain modules; use its generic catalog and traits.",
+                }, {
+                    target: "./src/renderer/editors/base",
+                    from: "./src/shared/board",
+                    except: ["board-editor-id.ts"],
+                    message: "editors/base may import only the pure board-editor-id helper from shared/board.",
+                }],
             }],
         },
     },

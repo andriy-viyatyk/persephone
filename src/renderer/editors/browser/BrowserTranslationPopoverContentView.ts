@@ -2,7 +2,7 @@ import { t } from "../../../shared/i18n/t";
 import { SelectView } from "../../uikit/Select/SelectView";
 import type { SelectViewProps } from "../../uikit/Select/SelectView";
 import type { IListBoxItem } from "../../uikit/ListBox/types";
-import { languageDisplayName } from "../../ui/translation/TranslationWorkflow";
+import { languageDisplayName } from "../../api/translation/TranslationWorkflow";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { BrowserTranslationTabState } from "./BrowserTranslationController";
 

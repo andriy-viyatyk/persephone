@@ -27,8 +27,8 @@ import { createTextElement } from "../../uikit/Text/text-style";
 import {
     createSideBarPanelHeader,
     type SideBarPanelHeaderHandle,
-} from "../../ui/secondary-views/SideBarPanelHeaderView";
-import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view-registry";
+} from "../base/secondary-views/SideBarPanelHeaderView";
+import type { SecondaryViewProps } from "../base/secondary-views/secondary-view-registry";
 import type { BoardsPanelEditor, BoardsPanelTab } from "./BoardsPanelEditorModel";
 import { BoardsTreeView } from "./BoardsTreeView";
 import { createBoardShortcut } from "../board/board-shortcut";

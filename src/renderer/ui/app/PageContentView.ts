@@ -3,7 +3,7 @@ import { CompareEditor } from "../../editors/compare/CompareEditor";
 import type { TextFileModel } from "../../editors/content-host/TextFileModel";
 import { pages } from "../../api/pages";
 import type { PageModel } from "../../api/pages/PageModel";
-import { SecondaryViewsView } from "../secondary-views/SecondaryViewsView";
+import { SecondaryViewsView } from "../../editors/base/secondary-views/SecondaryViewsView";
 import { afterDispatch } from "../../core/state/dispatch";
 import { guard } from "../../core/utils/guard";
 import { VanillaView } from "../../uikit/shared/vanilla-view";

@@ -1,9 +1,9 @@
 import { ToolsHubEditor, type HubTab } from "./ToolsHubEditor";
 import { SearchBoardsTabView } from "./SearchBoardsTab";
 import { SiteExtensionsTabView } from "./SiteExtensionsTab";
-import { EditorsTreeView } from "../../ui/sidebar/EditorsTreeView";
-import { EditorCategoriesView } from "../../ui/sidebar/EditorCategoriesView";
-import { TrustedToolsListView } from "../../ui/sidebar/TrustedToolsListView";
+import { EditorsTreeView } from "./EditorsTreeView";
+import { EditorCategoriesView } from "./EditorCategoriesView";
+import { TrustedToolsListView } from "./TrustedToolsListView";
 import { SplitterView } from "../../uikit/Splitter/SplitterView";
 import { InputView } from "../../uikit/Input/InputView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";

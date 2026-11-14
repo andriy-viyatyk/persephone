@@ -5,11 +5,11 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { TreeProviderView } from "../../components/tree-provider/TreeProviderView";
 import type { TreeProviderViewModel } from "../../components/tree-provider/TreeProviderViewModel";
 import { TreeRevealController } from "../base/tree-provider-host";
-import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view-registry";
+import type { SecondaryViewProps } from "../base/secondary-views/secondary-view-registry";
 import {
     createSideBarPanelHeader,
     type SideBarPanelHeaderHandle,
-} from "../../ui/secondary-views/SideBarPanelHeaderView";
+} from "../base/secondary-views/SideBarPanelHeaderView";
 import type { ArchiveEditor } from "./ArchiveEditor";
 import { t } from "../../../shared/i18n/t";
 

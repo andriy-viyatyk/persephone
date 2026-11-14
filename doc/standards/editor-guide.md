@@ -420,7 +420,7 @@ class MyEditor extends EditorModel<MyEditorState> {
 }
 ```
 
-Register the panel in `/src/renderer/ui/secondary-views/secondary-view-registry.ts`. A registration
+Register the panel in `/src/renderer/editors/base/secondary-views/secondary-view-registry.ts`. A registration
 returns `VanillaViewCtor<SecondaryViewProps<MyEditor>>`; use the owning model type so panel views
 retain their model's concrete API. The secondary-view host owns the asynchronous load,
 stable root, and retirement lifecycle. Build headers with `SideBarPanelHeaderView` against the

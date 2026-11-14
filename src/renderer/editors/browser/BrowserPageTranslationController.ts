@@ -1,6 +1,6 @@
 import type { TranslationActivationMessage, TranslationFrameScope, TranslationResultMessage, TranslationUnit, TranslationUnitsMessage } from "../../../ipc/browser-translation-messages";
 import { errMessage } from "../../../shared/utils";
-import { getTextTranslationProvider, type TranslationPriority } from "../../ui/translation/TextTranslationProvider";
+import { getTextTranslationProvider, type TranslationPriority } from "../../api/translation/TextTranslationProvider";
 
 // Page scheduling bounds: keep this tab below the provider's shared four-channel window.
 const MAX_BATCH_ITEMS = 32;

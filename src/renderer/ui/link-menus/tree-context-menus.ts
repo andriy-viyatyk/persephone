@@ -7,8 +7,8 @@ import { t } from "../../../shared/i18n/t";
  * Register default context menu handlers for ILink items.
  *
  * Handlers add type-specific menu items based on the item's href.
- * Call during app bootstrap (same pattern as registerRawLinkParsers). App bootstrap
- * owns these process-lifetime handlers; they are not view/model resources.
+ * The shell composition root calls this during app bootstrap (same pattern as registerRawLinkParsers).
+ * It owns these process-lifetime handlers; they are not view/model resources.
  *
  * Registration order matters (LIFO): last registered runs first.
  */

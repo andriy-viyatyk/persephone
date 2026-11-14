@@ -1,3 +1,23 @@
+## EPIC-176 — Refactoring Phase 2.2 (rest): ui/ as a pure view layer
+
+Completed 2026-11-14. The rest of roadmap item 2.2 (SHL-1, SHL-5), which completes it: the secondary-view host
+(registry, `SecondaryViewsView`, `LazySecondaryViewView`, `SideBarPanelHeaderView`) moved to
+`editors/base/secondary-views/`, the translation services to `api/translation/`, the translate and transcript Monaco
+contributions to `editors/monaco/contributions/`, and the editor-catalog views to `editors/tools-hub/`; the link
+context-menu registration left `api/app-startup.ts` (an `await import()` of `ui/`) for the shell composition root
+`index.ts`; imports of `ui/` from outside it went 41 → 0, locked by one error-level `uiImportZone` over every other
+`src/renderer/` folder. Pure moves. Recorded change: the built-in link context-menu handlers register in the bootstrap
+phase instead of the events phase (same subscriber order). Secondary panels, the Monaco transcript/translate toolbar,
+a microphone transcript, link context menus, the Tools & Editors hub and the categories popover checked live against
+baselines in a separate test window. Plans by Codex, reviewed against the roadmap guardrails; Codex Luna implemented.
+Epic document: [EPIC-176](EPIC-176.md).
+
+- [x] **Secondary-view host (US-1993).** `editors/base/secondary-views/`, 16 importers.
+- [x] **Translation and transcript (US-1994).** `api/translation/`, `editors/monaco/contributions/`.
+- [x] **Editor catalog, link menus, lock (US-1995).** `editors/tools-hub/`, shell registration, `uiImportZone`.
+- [x] **Epic review.** `/review` no change; `/document` folder structure, key files, overview, secondary views, editor
+  guide; `/userdoc` no change; `i18n:check` complete.
+
 ## EPIC-175 — Refactoring Phase 6.8 part 3 and 6.9: dialog state and host, dialog models in api/dialogs, MCP session host and routed fetch
 
 Completed 2026-11-14. Roadmap Phase 6.8 part 3 (the dialog items of SHL-13), which completes item 6.8, the dialog slice

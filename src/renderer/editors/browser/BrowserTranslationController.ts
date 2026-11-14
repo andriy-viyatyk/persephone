@@ -4,8 +4,8 @@ import { t } from "../../../shared/i18n/t";
 import { settings } from "../../api/settings";
 import { ui } from "../../api/ui";
 import { TOneState } from "../../core/state/state";
-import { getTextTranslationProvider, type TranslationDetection, type TranslationOperation } from "../../ui/translation/TextTranslationProvider";
-import { downloadTranslationRoute, findTranslationRoute, languageDisplayName, resolveAppLocaleTarget, resolveModelLanguage } from "../../ui/translation/TranslationWorkflow";
+import { getTextTranslationProvider, type TranslationDetection, type TranslationOperation } from "../../api/translation/TextTranslationProvider";
+import { downloadTranslationRoute, findTranslationRoute, languageDisplayName, resolveAppLocaleTarget, resolveModelLanguage } from "../../api/translation/TranslationWorkflow";
 import { BrowserPageTranslationController, type BrowserPageTranslationState } from "./BrowserPageTranslationController";
 
 // Browser detection bounds: the provider caps a detection sample at 4,096 code points.

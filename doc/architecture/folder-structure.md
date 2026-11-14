@@ -175,6 +175,9 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── capability-error.ts  # Shared renderer capability errors and normalization
 │   ├── capabilities/        # Script capability client, typed-RPC open server, handlers, validators, board dispatcher, frame adapter, and index mirror
 │   ├── editor-categories.ts # EditorCategoriesModel; category setting and exclusive editor/board membership
+│   ├── translation/         # Trusted text-translation provider channel and shared routing/workflow services
+│   │   ├── TextTranslationProvider.ts
+│   │   └── TranslationWorkflow.ts
 │   ├── clipboard-history.ts # ClipboardHistoryModel; history/status state, monitoring, IPC, and race guards
 │   ├── creatable-items.ts   # Creatable-item registry for the Editors tree and new-page menu
 │   ├── ai-vision-call-timeout.ts # Session call-timeout setting owner
@@ -425,15 +428,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── voice-typing/       # Non-interactive app-shell status overlay for speech capture/transcription or translation
 │   │   ├── VoiceTypingOverlayView.ts # App-shell recording/transcribing status overlay
 │   │   └── VoiceTypingOverlayView.css
-│   ├── transcript/         # Page-scoped computer/microphone capture and Monaco Transcript toolbar contribution
-│   │   ├── TranscriptController.ts
-│   │   ├── TranscriptToolbarContributionView.ts
-│   │   └── TranscriptToolbarContributionView.css
-│   ├── translation/        # Trusted text-translation provider channel, shared workflow, and text-page translation UI
-│   │   ├── TextTranslationProvider.ts
-│   │   ├── TranslationWorkflow.ts
-│   │   ├── TranslateTextPageController.ts
-│   │   └── TranslateTextToolbarContributionView.ts
 │   ├── tabs/               # Tab bar
 │   │   ├── PageTabsView.ts         # Native tab strip and scroll projection
 │   │   ├── PageTab.ts              # Tab props/constants and shared helpers
@@ -445,11 +439,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── OpenTabsListView.ts      # Native open-tabs list
 │   │   ├── RecentFileListView.ts    # Native recent-files panel
 │   │   ├── ToolsEditorsPanelView.ts # Native Tools & Editors panel
-│   │   ├── TrustedToolsListView.ts    # Native trusted-toolset list and owned trailing controls
-│   │   ├── EditorsTreeView.ts       # Built-in root plus trusted boards in one tree
-│   │   ├── creatable-item-icon.ts   # Fresh icon-node factory for creatable items
-│   │   ├── EditorCategoriesView.ts  # Hub-only category manager
-│   │   ├── EditorCategoryColumnListView.ts # Shared category/item column-flow layout
 │   │   ├── ScriptLibraryPanelView.ts # Native script-library panel
 │   │   ├── FolderItemView.ts        # Native folder tree item
 │   ├── dialogs/            # Application dialogs
@@ -470,12 +459,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── poppers/                # Floating menus
 │   │   │   ├── PoppersView.ts      # Native popper host
 │   │   │   └── AppPopupMenuView.ts # Native app popup-menu view
-│   └── secondary-views/    # SecondaryViews — native controlled panel host
-│       ├── SecondaryViewsView.ts    # Native panel host; owns the header element (headerHost)
-│       ├── LazySecondaryViewView.ts  # Native dynamic panel loader (vanilla arm)
-│       ├── SideBarPanelHeaderView.ts # React-free DOM header factory
-│       ├── SideBarPanelHeader.css   # Static panel-header styles
-│       └── secondary-view-registry.ts # Registry: panel ID → native view loader
 │
 ├── editors/                # Editor Implementations — each editor is an EditorModel subclass
 │   ├── editor-factory.ts   # Shared editor construction for pages and navigation
@@ -501,6 +484,12 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── script-panel/
 │   │   │   ├── ScriptPanel.ts
 │   │   │   └── ScriptPanelView.ts
+│   │   ├── secondary-views/         # Native controlled sidebar panel host and registry
+│   │   │   ├── SecondaryViewsView.ts
+│   │   │   ├── LazySecondaryViewView.ts
+│   │   │   ├── SideBarPanelHeaderView.ts
+│   │   │   ├── SideBarPanelHeader.css
+│   │   │   └── secondary-view-registry.ts
 │   │   ├── index.ts
 │   ├── content-host/       # File-backed content host (file I/O + encryption)
 │   │   ├── TextFileModel.ts           # File-backed content state and collaborators
@@ -510,6 +499,9 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── monaco/             # Monaco text editor (text-bearing, content-host trait)
 │   │   ├── MonacoEditor.ts           # EditorModel subclass — composes TextFileModel, hosts Monaco
 │   │   ├── MonacoBodyView.ts         # Native Monaco body, project binding and per-page diagnostics
+│   │   ├── contributions/
+│   │   │   ├── translate/            # Text-page translation controller, toolbar, dialog and segmentation
+│   │   │   └── transcript/           # Page-scoped capture and Monaco Transcript toolbar contribution
 │   │   ├── paste-rich-text.ts         # Rich-text paste handler
 │   │   └── index.ts
 │   ├── grid/               # JSON/CSV/JSONL grid editor (text-bearing, content-host trait)
@@ -804,6 +796,11 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── tools-hub/          # Tools & Editors hub ("tools-hub-view") — full-page counterpart of the sidebar panel (singleton via fixed PageModel id)
 │   │   ├── ToolsHubEditor.ts         # EditorModel — Editors / Search / Tools / Site extensions tabs
 │   │   ├── ToolsHubView.ts            # Tab strip and category manager + merged Editors tree layout
+│   │   ├── EditorsTreeView.ts         # Built-in root plus trusted boards in one tree
+│   │   ├── EditorCategoriesView.ts    # Hub-only category manager
+│   │   ├── EditorCategoryColumnListView.ts # Shared category/item column-flow layout
+│   │   ├── TrustedToolsListView.ts    # Native trusted-toolset list and owned trailing controls
+│   │   ├── creatable-item-icon.ts     # Fresh icon-node factory for creatable items
 │   │   ├── SearchBoardsTab.ts         # Published-catalog browse/filter — board cards → Board Info page
 │   │   └── index.ts
 │   ├── toolset/            # Per-toolset viewer (non-text, no trait) — opened via persephone-toolset://

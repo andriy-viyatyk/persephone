@@ -4,11 +4,11 @@ import { TOOLS_MANIFEST_FILE } from "../../api/tools/tools-manifest";
 import { openWithDefaultApp } from "../../content/open-with-default-app";
 import type { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
-import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view-registry";
+import type { SecondaryViewProps } from "../base/secondary-views/secondary-view-registry";
 import {
     createSideBarPanelHeader,
     type SideBarPanelHeaderHandle,
-} from "../../ui/secondary-views/SideBarPanelHeaderView";
+} from "../base/secondary-views/SideBarPanelHeaderView";
 import { TreeProviderView } from "../../components/tree-provider/TreeProviderView";
 import type {
     TreeProviderViewModel,

@@ -1,7 +1,7 @@
-import type { EditorModelInstance as EditorModel } from "../../editors/base";
-import type { IconName } from "../../theme/icon-registry";
-import type { VanillaViewCtor } from "../../uikit/shared/vanilla-view";
-import type { MessageKey } from "../../../shared/i18n/en";
+import type { EditorModelInstance as EditorModel } from "../EditorModel";
+import type { IconName } from "../../../theme/icon-registry";
+import type { VanillaViewCtor } from "../../../uikit/shared/vanilla-view";
+import type { MessageKey } from "../../../../shared/i18n/en";
 
 type EditorModelConstructor<M extends EditorModel> = abstract new (...args: never[]) => M;
 

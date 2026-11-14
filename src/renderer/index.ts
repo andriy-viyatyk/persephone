@@ -11,10 +11,12 @@ import "./editors/register-editors";
 import { registerEditorSwitchStrategies } from "./editors/register-switch-strategies";
 import { registerTextChromeContributions } from "./editors/register-text-chrome-contributions";
 import { registerDialogViews } from "./ui/dialogs/register-dialog-views";
+import { registerTreeContextMenuHandlers } from "./ui/link-menus/tree-context-menus";
 
 registerEditorSwitchStrategies();
 registerTextChromeContributions();
 registerDialogViews();
+registerTreeContextMenuHandlers();
 
 export function mount(container: HTMLElement): () => void {
     const disposeGlobalStyles = installGlobalStyles();

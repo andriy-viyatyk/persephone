@@ -6,8 +6,9 @@ The new-page editor menu and Tools & Editors surfaces use the ordered `editor-ca
 `EditorCategoriesModel` in `api/` owns its `{ id, name, items }` records, exclusive membership, and
 board-pin pruning; Top is fixed first, while Other is derived from eligible unassigned editors.
 Every trusted board is eligible, including file-associated boards; disabled bundled boards are
-excluded. `EditorsTreeView` merges the built-in catalog with the renderer `BoardRegistry`, and
-`EditorCategoriesView` shares its column-flow list with the anchored new-tab popover. The previous
+excluded. The Tools & Editors views in `editors/tools-hub/` include `EditorsTreeView`, which merges
+the built-in catalog with the renderer `BoardRegistry`, and `EditorCategoriesView`, which shares
+its column-flow list with the anchored new-tab popover. The previous
 `pinned-editors` array migrates into Top at settings load and is removed.
 
 > Read this document before creating new modules or making architectural changes.
@@ -206,7 +207,8 @@ quit gate remain explicit by name, with the gate kept in `main-setup.ts`.
 
 After NLS is ready, the entry synchronously loads the custom theme catalog and installs the selected
 theme before importing the app, IPC API, and settings in parallel. It then starts one renderer-index
-import and passes that promise to `app.startup()`. The `bootstrap` row awaits renderer-index
+import and passes that promise to `app.startup()`. The renderer index also registers shell-owned
+link context-menu contributions before the ordered startup phases begin. The `bootstrap` row awaits renderer-index
 readiness together with `app.init()` and `app.initSetup()`; no services begin until all three finish.
 
 `src/renderer/api/app-startup.ts` owns the remaining ordered phases. `services` loads typed app
@@ -270,20 +272,22 @@ installed by the native `theme/global-styles.ts` module.
 
 ### Dependency Rules
 
-The following are target rules; the current import graph does not yet follow them. See
-[refactoring roadmap ?2.4](../refactoring-roadmap.md#24-the-documented-layer-rules-are-not-true)
-for the planned phase-by-phase enforcement.
+The following are target rules; the current import graph does not yet follow all of them. The `ui/`
+boundary (rule 10) is enforced with an error-level import zone; see
+[refactoring roadmap §2.4](../refactoring-roadmap.md#24-the-documented-layer-rules-are-not-true)
+for the planned phase-by-phase enforcement of the rest.
 
 1. **`core/`** is the foundation — no imports from other renderer layers
 2. **`uikit/`** is the standalone library — imports only `core/` and `theme/`. No imports from `api/`, `ui/`, `editors/`, or app-specific code (the contract that lets `uikit/` be split into a separate package later)
 3. **`components/`** is persephone-coupled by definition — each remaining folder (`icons/`, `page-manager/`, `file-search/`, `tree-provider/`, `file-list/`, `file-grid/`, `git-tree/`) uses `api/`, the page model, file system, or scripting. New pure primitives do NOT go here — they go in `uikit/`. Icon resolution is split between the builder-backed `theme/icons.ts`, the language resolver, and the DOM-first `components/icons/icon-elements.ts`; the latter stays decoupled from editors by duck-typing (see [editors.md](./editors.md#editor-icons))
-4. **`api/`** implements the Object Model — imports `core/`, uses IPC
+4. **`api/`** implements the Object Model — imports `core/`, uses IPC, and has no imports from `ui/`
 5. **`content/`** implements the I/O pipeline — imports `core/`, `api/types/`
 6. **`editors/`** implement page types — import `core/`, `uikit/`, `components/`, `api/`, `content/`
 7. **`scripting/`** wraps `api/`, `editors/`, and `content/` for safe script access
 8. **`automation/`** implements the browser-like operations used by Object Model call paths — imports `api/`, `editors/`, `ipc/`; loaded by the renderer's automation facades
-9. **`ui/`** orchestrates everything — imports all layers
-10. Lower layers must NOT import from higher layers
+9. **`ui/`** owns shell views and wiring — it orchestrates the application and imports lower layers
+10. **Renderer composition roots** (`src/renderer/index.ts` and `src/renderer.ts`) may import shell code; every other `src/renderer/` directory is forbidden from importing `ui/`, including through lazy imports
+11. Lower layers must NOT import from higher layers
 
 ## Key Subsystems
 

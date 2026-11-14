@@ -5,8 +5,8 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import {
     createSideBarPanelHeader,
     type SideBarPanelHeaderHandle,
-} from "../../ui/secondary-views/SideBarPanelHeaderView";
-import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view-registry";
+} from "../base/secondary-views/SideBarPanelHeaderView";
+import type { SecondaryViewProps } from "../base/secondary-views/secondary-view-registry";
 import { parseBoardSecondaryPanelId } from "./board-secondary";
 import { BoardWebview } from "./BoardWebview";
 import { BoardEditorModel, type BoardEditorState } from "./BoardEditorModel";

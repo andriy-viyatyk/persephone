@@ -5,11 +5,11 @@ import type { ClipboardHistoryItem } from "../../../ipc/clipboard-ipc";
 import { errMessage } from "../../../shared/utils";
 import { t, untranslated } from "../../../shared/i18n/t";
 import { createFileIconElement, subscribeFileIconElements } from "../../components/icons/icon-elements";
-import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view-registry";
+import type { SecondaryViewProps } from "../base/secondary-views/secondary-view-registry";
 import {
     createSideBarPanelHeader,
     type SideBarPanelHeaderHandle,
-} from "../../ui/secondary-views/SideBarPanelHeaderView";
+} from "../base/secondary-views/SideBarPanelHeaderView";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import { DialogButton, dialogButton } from "../../api/dialogs/dialog-buttons";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";

@@ -8,7 +8,7 @@ import type { EditorCapabilityDeclaration, EditorModule } from "./base/editorReg
 import { EDITOR_MATCHERS } from "./base/editor-matchers";
 import { customEditorRegistry } from "../api/boards/custom-editor-registry";
 import { BOARD_SECONDARY_PREFIX } from "./board/board-secondary";
-import { secondaryViewRegistry } from "../ui/secondary-views/secondary-view-registry";
+import { secondaryViewRegistry } from "./base/secondary-views/secondary-view-registry";
 import { englishMessage } from "../../shared/i18n/t";
 import type { MessageKey } from "../../shared/i18n/en";
 

@@ -1,13 +1,13 @@
 import type * as monaco from "monaco-editor";
-import { api } from "../../../ipc/renderer/api";
-import { errMessage } from "../../../shared/utils";
-import { t } from "../../../shared/i18n/t";
-import { ui } from "../../api/ui";
-import { liveSpeechSessionCoordinator } from "../../api/speech/LiveSpeechSessionCoordinator";
-import { MicrophoneCapture, TranscriptDisplayCapture } from "../../api/speech/MicrophoneCapture";
-import { SpeechSessionClient } from "../../api/speech/SpeechSessionClient";
-import { SpeechTranscriptionProvider } from "../../api/speech/SpeechTranscriptionProvider";
-import { PcmAudioCapture } from "../../audio/dsp/PcmAudioCapture";
+import { api } from "../../../../../ipc/renderer/api";
+import { errMessage } from "../../../../../shared/utils";
+import { t } from "../../../../../shared/i18n/t";
+import { ui } from "../../../../api/ui";
+import { liveSpeechSessionCoordinator } from "../../../../api/speech/LiveSpeechSessionCoordinator";
+import { MicrophoneCapture, TranscriptDisplayCapture } from "../../../../api/speech/MicrophoneCapture";
+import { SpeechSessionClient } from "../../../../api/speech/SpeechSessionClient";
+import { SpeechTranscriptionProvider } from "../../../../api/speech/SpeechTranscriptionProvider";
+import { PcmAudioCapture } from "../../../../audio/dsp/PcmAudioCapture";
 
 export type TranscriptSource = "microphone" | "computer" | "both";
 export interface TranscriptState { status: "idle" | "starting" | "recording" | "transcribing"; level: number }

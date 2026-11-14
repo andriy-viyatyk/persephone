@@ -2,7 +2,7 @@
 
 How sidebar panels work in Persephone. Covers registration, lifecycle hooks, navigation survival, rendering, persistence, and how to add new secondary views.
 
-**Source code:** [`PageModel.ts`](../../src/renderer/api/pages/PageModel.ts), [`SecondaryViewsModel.ts`](../../src/renderer/api/pages/SecondaryViewsModel.ts), [`panel-key.ts`](../../src/renderer/api/pages/panel-key.ts), [`EditorModel.ts`](../../src/renderer/editors/base/EditorModel.ts), [`SecondaryViewsView.ts`](../../src/renderer/ui/secondary-views/SecondaryViewsView.ts), and the native secondary-view registry.
+**Source code:** [`PageModel.ts`](../../src/renderer/api/pages/PageModel.ts), [`SecondaryViewsModel.ts`](../../src/renderer/api/pages/SecondaryViewsModel.ts), [`panel-key.ts`](../../src/renderer/api/pages/panel-key.ts), [`EditorModel.ts`](../../src/renderer/editors/base/EditorModel.ts), [`SecondaryViewsView.ts`](../../src/renderer/editors/base/secondary-views/SecondaryViewsView.ts), and the native secondary-view registry.
 
 ---
 
@@ -36,7 +36,7 @@ model.secondaryView = ["explorer", "search"]; // multiple panels
 model.secondaryView = undefined;
 ```
 
-**Internally**, the setter only updates state; PageModel observes attached editor state. `PageModel.attach(editor)` adds an editor to the page's typed `editors[]` membership. `PageModel.releaseEditor(editor, { dispose })` detaches it before optionally disposing it. The page-owned sidebar state model and composite-key helpers live under `api/pages/`; the native views and registry stay under `ui/secondary-views/`.
+**Internally**, the setter only updates state; PageModel observes attached editor state. `PageModel.attach(editor)` adds an editor to the page's typed `editors[]` membership. `PageModel.releaseEditor(editor, { dispose })` detaches it before optionally disposing it. The page-owned sidebar state model and composite-key helpers live under `api/pages/`; the native views and registry stay under `editors/base/secondary-views/`.
 
 ---
 
@@ -182,7 +182,7 @@ A *rendered* panel's identity is therefore the **composite** of its owning edito
 panelKey(editorId, panelId) → `${editorId}::${panelId}`
 ```
 
-Editor ids are UUIDs and panel-type ids are kebab-case, so `"::"` is an unambiguous separator. `panel-key.ts` exposes `panelKey()`, `parsePanelKey()` (a bare id with no separator parses to `{ editorId: "", panelId }`), `panelIdOf()`, and `isCompositePanelKey()`. These page API helpers are imported from `api/pages/`; the native views and registry remain under `ui/secondary-views/`.
+Editor ids are UUIDs and panel-type ids are kebab-case, so `"::"` is an unambiguous separator. `panel-key.ts` exposes `panelKey()`, `parsePanelKey()` (a bare id with no separator parses to `{ editorId: "", panelId }`), `panelIdOf()`, and `isCompositePanelKey()`. These page API helpers are imported from `api/pages/`; the native views and registry remain under `editors/base/secondary-views/`.
 
 **Bare vs. composite — the split:**
 
@@ -203,7 +203,7 @@ Editor ids are UUIDs and panel-type ids are kebab-case, so `"::"` is an unambigu
 
 ## 6. Rendering in SecondaryViews
 
-**Source:** [`SecondaryViewsView.ts`](../../src/renderer/ui/secondary-views/SecondaryViewsView.ts) and the native secondary-view registry.
+**Source:** [`SecondaryViewsView.ts`](../../src/renderer/editors/base/secondary-views/SecondaryViewsView.ts) and the native secondary-view registry.
 
 The native rendering loop nests: outer loop over models (`flatMap`), inner loop over each model's `secondaryView[]` panel IDs. Every `(model, panelId)` pair is rendered — there is **no** panel-id-uniqueness restriction (the page may render multiple panels of the same type — one per repo). The `CollapsiblePanel` `id` is the **composite** key (§5a); the registry lookup and the `LazySecondaryViewView panelId` prop stay **bare**:
 
@@ -233,7 +233,7 @@ The stable view key stays `${model.id}-${panelId}`; the accordion identity is th
 
 **Panel header icon:** each panel header leads with an icon so panels from different editors are distinguishable at a glance. The icon is resolved here — **per-panel registry override first, owning-editor DOM icon otherwise** — by `createIconElement()` or `createEditorIconElement()`. Editor models that own a no-language glyph may expose `getIconElement()`; language editors use the shared file-icon resolver. The resulting `Node` is passed as `SecondaryViewProps.iconElement` to the native panel and then to `SideBarPanelHeaderView`.
 
-**Native headers — `SideBarPanelHeaderView`:** `CollapsiblePanel` owns the header `<div>` and passes it to each secondary view as `headerHost`. Each secondary view creates a [`SideBarPanelHeaderView`](../../src/renderer/ui/secondary-views/SideBarPanelHeaderView.ts), which adopts its caller-owned `Node` values into that host and lays them out as `[icon] [title group] [actions] [show-main zone]`. It accepts `title: string | Node`, a generic `badge?: Node`, and `actions?: Node`; callers own the lifetime of supplied nodes and must provide fresh nodes for each host/use. Appending a node to another host moves it, so do not cache, memoise, hoist, or share one between panels or other consumers:
+**Native headers — `SideBarPanelHeaderView`:** `CollapsiblePanel` owns the header `<div>` and passes it to each secondary view as `headerHost`. Each secondary view creates a [`SideBarPanelHeaderView`](../../src/renderer/editors/base/secondary-views/SideBarPanelHeaderView.ts), which adopts its caller-owned `Node` values into that host and lays them out as `[icon] [title group] [actions] [show-main zone]`. It accepts `title: string | Node`, a generic `badge?: Node`, and `actions?: Node`; callers own the lifetime of supplied nodes and must provide fresh nodes for each host/use. Appending a node to another host moves it, so do not cache, memoise, hoist, or share one between panels or other consumers:
 
 - the **icon** is rendered first and unwrapped so it stays a direct child of the header `<div>` — the stack's `[data-part="header"] > svg { width: 14; height: 14 }` rule sizes only direct-child SVGs;
 - the **title group** (`badge` + `title`) is a flex-grow `Panel` with `width={0}` + `overflow: hidden`, so the title (`<Text truncate size="md">`) and a `truncate` `Tag` badge ellipsize as the sidebar narrows;
@@ -263,7 +263,7 @@ surfaces that need to persist a settled dimension without handling every pointer
 
 **Reactivity:** attached editors are held outside reactive state; `panelEditors` derives the contributing editors. PageModel's page-state notifications cause the owner to re-read `panelEditors`; it uses element-wise model identity to update the child only when the ordered list changes. Once mounted, `SecondaryViewsView` binds `width` and `activePanel` directly from `SecondaryViewsModel.state`.
 
-**Registry:** [`secondary-view-registry.ts`](../../src/renderer/ui/secondary-views/secondary-view-registry.ts) maps panel IDs to dynamically-loaded `VanillaViewCtor<SecondaryViewProps>` classes. There is one native registration shape with no runtime renderer discriminator. [`LazySecondaryViewView`](../../src/renderer/ui/secondary-views/LazySecondaryViewView.ts) owns a stable host, cancels stale dynamic imports, and explicitly disposes/removes a panel record when it retires. All built-in secondary providers use this native contract; a board secondary panel uses the native `BoardSecondaryView` and its native `BoardWebview` frame, so its panel host does not add a separate framework root.
+**Registry:** [`secondary-view-registry.ts`](../../src/renderer/editors/base/secondary-views/secondary-view-registry.ts) maps panel IDs to dynamically-loaded `VanillaViewCtor<SecondaryViewProps>` classes. There is one native registration shape with no runtime renderer discriminator. [`LazySecondaryViewView`](../../src/renderer/editors/base/secondary-views/LazySecondaryViewView.ts) owns a stable host, cancels stale dynamic imports, and explicitly disposes/removes a panel record when it retires. All built-in secondary providers use this native contract; a board secondary panel uses the native `BoardSecondaryView` and its native `BoardWebview` frame, so its panel host does not add a separate framework root.
 
 Each registration still provides an `id`, `label`, `loadView()` factory, and optional `icon`. Alongside exact-id `register()`, `registerPrefix(prefix, definition)` serves a whole panel-id family; the `board-secondary:` family uses this so one generic `BoardSecondaryView` serves every board-declared secondary view.
 

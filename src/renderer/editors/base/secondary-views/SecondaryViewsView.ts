@@ -1,25 +1,25 @@
-import type { EditorModelInstance as EditorModel } from "../../editors/base/EditorModel";
-import { createEditorIconElement, subscribeFileIconElements } from "../../components/icons/icon-elements";
+import type { EditorModelInstance as EditorModel } from "../EditorModel";
+import { createEditorIconElement, subscribeFileIconElements } from "../../../components/icons/icon-elements";
 import {
     CollapsiblePanelStackView,
-} from "../../uikit/CollapsiblePanelStack/CollapsiblePanelStackView";
+} from "../../../uikit/CollapsiblePanelStack/CollapsiblePanelStackView";
 import type {
     CollapsiblePanelProps,
-} from "../../uikit/CollapsiblePanelStack/CollapsiblePanelStackView";
-import { SplitterView } from "../../uikit/Splitter/SplitterView";
+} from "../../../uikit/CollapsiblePanelStack/CollapsiblePanelStackView";
+import { SplitterView } from "../../../uikit/Splitter/SplitterView";
 import {
     applyPanelAttributes,
     createPanelElement,
     resolvePanelAttributes,
-} from "../../uikit/Panel/panel-style";
-import { createIconElement } from "../../uikit/shared/slots";
-import { guard } from "../../core/utils/guard";
-import { VanillaView } from "../../uikit/shared/vanilla-view";
-import type { SecondaryViewsModel } from "../../api/pages/SecondaryViewsModel";
+} from "../../../uikit/Panel/panel-style";
+import { createIconElement } from "../../../uikit/shared/slots";
+import { guard } from "../../../core/utils/guard";
+import { VanillaView } from "../../../uikit/shared/vanilla-view";
+import type { SecondaryViewsModel } from "../../../api/pages/SecondaryViewsModel";
 import { LazySecondaryViewView } from "./LazySecondaryViewView";
-import { isCompositePanelKey, panelKey } from "../../api/pages/panel-key";
+import { isCompositePanelKey, panelKey } from "../../../api/pages/panel-key";
 import { secondaryViewRegistry } from "./secondary-view-registry";
-import { sameItems } from "../../core/utils/utils";
+import { sameItems } from "../../../core/utils/utils";
 
 export interface SecondaryViewsProps {
     /** Panel-contributing editors supplied by the owner. */

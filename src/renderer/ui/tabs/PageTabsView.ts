@@ -16,7 +16,7 @@ import type { IState } from "../../core/state/state";
 import type { MenuItem } from "../../uikit/Menu/types";
 import { getCreatableItemLabel, getCreatableItems } from "../../api/creatable-items";
 import { editorCategories } from "../../api/editor-categories";
-import { createCreatableItemIcon } from "../sidebar/creatable-item-icon";
+import { createCreatableItemIcon } from "../../editors/tools-hub/creatable-item-icon";
 import { LOCKED_TAB_WIDTH, minTabWidth, pinnedTabEncryptedWidth, pinnedTabWidth } from "./PageTab";
 import { PageTabView } from "./PageTabView";
 import type { PageModel } from "../../api/pages/PageModel";

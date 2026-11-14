@@ -5,11 +5,11 @@ import { MonacoBodyView } from "./MonacoBodyView";
 import { TextEditorPageView } from "../base/TextEditorPageView";
 import { IconButtonView, type IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { TranscriptController } from "../../ui/transcript/TranscriptController";
-import type { TranscriptState } from "../../ui/transcript/TranscriptController";
-import { TranscriptToolbarContributionView } from "../../ui/transcript/TranscriptToolbarContributionView";
-import { TranslateTextPageController } from "../../ui/translation/TranslateTextPageController";
-import { TranslateTextToolbarContributionView } from "../../ui/translation/TranslateTextToolbarContributionView";
+import { TranscriptController } from "./contributions/transcript/TranscriptController";
+import type { TranscriptState } from "./contributions/transcript/TranscriptController";
+import { TranscriptToolbarContributionView } from "./contributions/transcript/TranscriptToolbarContributionView";
+import { TranslateTextPageController } from "./contributions/translate/TranslateTextPageController";
+import { TranslateTextToolbarContributionView } from "./contributions/translate/TranslateTextToolbarContributionView";
 
 
 

@@ -456,6 +456,19 @@ Phase 6 items can run in parallel with Phases 4–5 once their own dependencies 
 | 2.4 | Move contracts out of editor folders: `McpConnectionManager`, `mnemeTypes`, `logTypes`, the link list/tiles views, `storyTypes`, the tools tree. Reshuffle `editors/shared/`. Make UIKit standalone (`ImageViewport` `onCopyImage`, raster code into `core/`). Fix the `components/` boundary (`pipe-status`, icon registration). Move the Monaco setup out of `api/`. | EDT-7, EDC-15, EDC-8 (step 3), UIK-7, UIK-8, PLAT-3 (slice 4) | M |
 | 2.5 | ESLint import zones (warnings), including "`editors/base/**` must not import board modules" | CORE-3 (step 8), EDC-2 (step 4) | S |
 
+**2.2 is done** ([EPIC-176](epics/EPIC-176.md), 2026-11-14), after the speech/DSP slice ([EPIC-162](epics/EPIC-162.md))
+and the dialog slice ([EPIC-175](epics/EPIC-175.md)); `SecondaryViewsModel`, `panel-key` and the editor-category rules
+(`api/editor-categories.ts`) had already moved to `api/`. EPIC-176 moved the secondary-view host (registry,
+`SecondaryViewsView`, `LazySecondaryViewView`, `SideBarPanelHeaderView`) to `editors/base/secondary-views/`; the
+translation services to `api/translation/`; the translate and transcript Monaco contributions to
+`editors/monaco/contributions/{translate,transcript}/`; the editor-catalog views (`EditorsTreeView`,
+`EditorCategoriesView`, `EditorCategoryColumnListView`, `TrustedToolsListView`, `creatable-item-icon`) to
+`editors/tools-hub/`; and the link context-menu registration from an `await import()` in `api/app-startup.ts` to the
+shell composition root (`src/renderer/index.ts`, module level, so it now runs in the bootstrap phase rather than the
+events phase; subscriber order is unchanged). Imports of `ui/` from outside it went 41 → 0, and one error-level
+`uiImportZone` in `eslint.config.mjs` forbids every other `src/renderer/` folder from importing `ui/` (only
+`src/renderer/index.ts` and `src/renderer.ts` may). Pure moves; no behaviour change. **Roadmap item 2.2 is complete.**
+
 ### Phase 3: Board platform ownership (highest value; P1 core)
 
 | Item | What | Findings | Effort |
@@ -680,7 +693,7 @@ statically; `api/`, `content/`, `components/`, `scripting/` and `editors/` impor
 an error-level import zone for the first four. Decided: callers already on the `ui.confirm`/`ui.input` facade stay
 there (no `IConfirmOptions` change); `board-dialog-controller.ts` stays in `ui/`. Recorded change: a throwing
 `dialog-answered` listener no longer prevents a dialog's result from resolving. **Roadmap item 6.8 is complete.** The
-rest of item 2.2 (secondary views, editor categories, transcript/translate contributions) is still open.
+rest of item 2.2 is done in [EPIC-176](epics/EPIC-176.md) (see the note under Phase 2).
 
 **6.9 is done in part** ([EPIC-175](epics/EPIC-175.md), 2026-11-14): MAIN-10 — `main/mcp/mcp-session-host.ts`
 (`McpSessionHost`: session map, Streamable HTTP start with an injected server factory, close in awaited or

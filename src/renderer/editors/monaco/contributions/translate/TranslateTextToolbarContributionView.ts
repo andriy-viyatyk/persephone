@@ -1,12 +1,12 @@
-import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
-import { MenuView } from "../../uikit/Menu/MenuView";
-import type { MenuItem } from "../../core/events/context-menu";
-import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { t } from "../../../shared/i18n/t";
+import { IconButtonView } from "../../../../uikit/IconButton/IconButtonView";
+import { MenuView } from "../../../../uikit/Menu/MenuView";
+import type { MenuItem } from "../../../../core/events/context-menu";
+import { VanillaView } from "../../../../uikit/shared/vanilla-view";
+import { t } from "../../../../../shared/i18n/t";
 import type { TranslateTextPageController } from "./TranslateTextPageController";
-import type { MonacoEditor } from "../../editors/monaco/MonacoEditor";
-import { boardRegistry } from "../../api/boards/board-registry";
-import "../../uikit/Menu/Menu.css";
+import type { MonacoEditor } from "../../MonacoEditor";
+import { boardRegistry } from "../../../../api/boards/board-registry";
+import "../../../../uikit/Menu/Menu.css";
 
 interface Props { controller: TranslateTextPageController; model: MonacoEditor; language: string }
 

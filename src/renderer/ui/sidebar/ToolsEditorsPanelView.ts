@@ -4,8 +4,8 @@ import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { SegmentedControlView, type SegmentedControlProps } from "../../uikit/SegmentedControl/SegmentedControlView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { HubTab } from "../../editors/tools-hub";
-import { EditorsTreeView } from "./EditorsTreeView";
-import { TrustedToolsListView } from "./TrustedToolsListView";
+import { EditorsTreeView } from "../../editors/tools-hub/EditorsTreeView";
+import { TrustedToolsListView } from "../../editors/tools-hub/TrustedToolsListView";
 import "./ToolsEditorsPanel.css";
 
 type PanelTab = "editors" | "tools";

@@ -17,7 +17,7 @@ import { BrowserProfilesSectionModel, defaultBrowserProfilesSectionState, type B
 import { browserProfiles } from "../../../api/browser-profiles";
 import type { BrowserPermissionDecisionEntry } from "../../../../ipc/browser-ipc";
 import { t } from "../../../../shared/i18n/t";
-import { listBrowserTranslationTargets } from "../../../ui/translation/TranslationWorkflow";
+import { listBrowserTranslationTargets } from "../../../api/translation/TranslationWorkflow";
 import { PathField } from "../fields/PathField";
 import { PortField } from "../fields/PortField";
 import { CheckboxField } from "../fields/CheckboxField";

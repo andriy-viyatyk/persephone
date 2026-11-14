@@ -8,7 +8,7 @@ import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { ui } from "../../api/ui";
 import { boardRegistry } from "../../api/boards/board-registry";
-import { boardIdentity } from "../../editors/board/board-identity";
+import { boardIdentity } from "../board/board-identity";
 import { fpBasename } from "../../core/utils/file-path";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { InputView } from "../../uikit/Input/InputView";

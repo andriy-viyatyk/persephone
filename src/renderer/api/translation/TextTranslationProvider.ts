@@ -5,7 +5,7 @@ import { errMessage } from "../../../shared/utils";
 import { codedError } from "../../../shared/coded-error";
 import { openDomServiceChannel } from "../../../shared/service-channel-node";
 import type { ServiceChannel } from "../../../shared/service-channel";
-import { serviceChannelPorts } from "../../api/service-channel-ports";
+import { serviceChannelPorts } from "../service-channel-ports";
 
 const DESCRIBE_TIMEOUT_MS = 4000;
 const MAX_TRANSLATE_CHANNELS = 4;

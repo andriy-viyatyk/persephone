@@ -1,8 +1,8 @@
-import type { SecondaryViewProps } from "../../../ui/secondary-views/secondary-view-registry";
+import type { SecondaryViewProps } from "../../base/secondary-views/secondary-view-registry";
 import {
     createSideBarPanelHeader,
     type SideBarPanelHeaderHandle,
-} from "../../../ui/secondary-views/SideBarPanelHeaderView";
+} from "../../base/secondary-views/SideBarPanelHeaderView";
 import { createPanelElement } from "../../../uikit/Panel/panel-style";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { LinkFilterNavigationPanelView } from "../LinkFilterNavigationPanelView";

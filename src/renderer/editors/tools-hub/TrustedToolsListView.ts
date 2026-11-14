@@ -3,7 +3,7 @@ import { ui } from "../../api/ui";
 import { registeredTools } from "../../api/tools/registered-tools";
 import { toolsTrust } from "../../api/tools/tools-trust";
 import { openToolset } from "../../content/persephone-toolset-link";
-import { ToolsTreeView } from "../../editors/tools/ToolsTreeView";
+import { ToolsTreeView } from "../tools/ToolsTreeView";
 import type { MenuItem } from "../../uikit/Menu";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { createIconElement } from "../../uikit/shared/slots";
