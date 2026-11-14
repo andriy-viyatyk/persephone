@@ -7,7 +7,7 @@
 
 ## Overview
 
-This is the seventeenth epic of the [refactoring roadmap](../refactoring-roadmap.md) and the last part of Phase 5
+This is the seventeenth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and the last part of Phase 5
 (pages, settings, startup and app conventions). It covers roadmap item 5.7 and finding **CORE-11**
 (`doc/reviews/refactoring-2026-11/04-api-core.md`), including its step 4, which is also CORE-3 step 5.
 

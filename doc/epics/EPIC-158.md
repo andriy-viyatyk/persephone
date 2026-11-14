@@ -7,7 +7,7 @@
 
 ## Overview
 
-This is the eighteenth epic of the [refactoring roadmap](../refactoring-roadmap.md) and the first of Phase 6 (feature
+This is the eighteenth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and the first of Phase 6 (feature
 areas). Roadmap item 6.1 (Browser) covers eleven findings (BRW-1, 2, 4, 5, 6, 7, 9, 10, 11, 12 in
 `doc/reviews/refactoring-2026-11/06-browser.md`, plus MAIN-7 in `01-main.md`) — far more than one epic. This epic is
 **6.1 part 1**: the renderer-side model work centred on `BrowserWebviewModel`. The view split, tab state, guest

@@ -7,7 +7,7 @@
 
 ## Overview
 
-The eighth epic of the [refactoring roadmap](../refactoring-roadmap.md), and the third part of Phase 4 (board bridge
+The eighth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md), and the third part of Phase 4 (board bridge
 and runtime decomposition). EPIC-146 typed the frame protocol and EPIC-147 typed the main port. This epic splits the
 code that runs inside the board frame: `src/board-shim.ts`, which builds `window.persephone`.
 
@@ -161,7 +161,7 @@ numbers in the report have drifted a long way (the shim was 2,822 lines then), s
 
 ## Rules for every task in this epic
 
-- **The roadmap guardrails apply** ([§7](../refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back), also
+- **The roadmap guardrails apply** ([§7](../reviews/refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back), also
   in `doc/agents-common.md`). Every plan names the module that owns each rule it touches and the existing helper it
   reuses: `HostFrameChannel`, `PendingRequests`, the wire error, `BoardPortMethods`, `createServiceChannel`,
   `createCapabilityProxy`, `createExecuteHandle`, `formatMessage` and `BOARD_HOST_TEXT_CATALOG`.
@@ -180,7 +180,7 @@ numbers in the report have drifted a long way (the shim was 2,822 lines then), s
   - the AiVision expose and element registry, and its generation counter;
   - `persephone.call()` timeouts and the fetch abort and stream behaviour;
   - the dialog sync-XHR path and its size limit.
-- **Contracts that must not change** ([roadmap §8](../refactoring-roadmap.md#8-execution-notes)): `window.persephone.*`
+- **Contracts that must not change** ([roadmap §8](../reviews/refactoring-roadmap.md#8-execution-notes)): `window.persephone.*`
   (the surface diff above), board-visible error codes and messages, board storage keys, and AiVision and MCP `call`
   behaviour for board frames.
 - **Verification:** run `npm run typecheck`, `npm run lint`, `npm run build-prod`, `npm run i18n:check` and

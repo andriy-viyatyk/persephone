@@ -8,7 +8,7 @@
 
 ## Overview
 
-This is the twenty-ninth epic of the [refactoring roadmap](../refactoring-roadmap.md). It finishes roadmap item **6.6,
+This is the twenty-ninth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md). It finishes roadmap item **6.6,
 Tool editors** (part 2: findings **EDT-11** and **EDT-12** in `doc/reviews/refactoring-2026-11/08-editors-tools.md`)
 and starts item **6.7, Tree and UIKit** with its first slice, **UIK-3** (`doc/reviews/refactoring-2026-11/09-uikit.md`),
 which the roadmap puts at the head of the 6.7 chain (UIK-3 → UIK-2 → UIK-1).

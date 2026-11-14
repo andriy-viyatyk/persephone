@@ -8,10 +8,10 @@
 
 ## Overview
 
-The fifth epic of the [refactoring roadmap](../refactoring-roadmap.md), and the last part of Phase 3 (board platform
+The fifth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md), and the last part of Phase 3 (board platform
 ownership). Today a capability `open` can reach its handler by two live routes, each with its own limits and
 cancellation, and main has four copies of the invoke front door. This epic leaves one route
-([roadmap §4.4](../refactoring-roadmap.md#44-one-capability-pipeline)):
+([roadmap §4.4](../reviews/refactoring-roadmap.md#44-one-capability-pipeline)):
 
 ```
 renderer / board / service caller
@@ -160,7 +160,7 @@ Task documents are written per task when it is picked up. The finding IDs point 
 
 ## Rules for every task in this epic
 
-- **The roadmap guardrails apply** ([§7](../refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back), also
+- **The roadmap guardrails apply** ([§7](../reviews/refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back), also
   in `doc/agents-common.md`). Every plan names the module that owns each rule it touches and the existing helper it
   reuses: the typed RPC, `PendingRequests`, the wire error, `CAPABILITY_ERROR_CODES`, `onWebContentsGone`,
   `ChannelDelivery`, `MainSnapshotMirror` and `BoardRegistry`.
@@ -176,7 +176,7 @@ Task documents are written per task when it is picked up. The finding IDs point 
 - **God files only shrink.** `capability-router.ts`, `board-bridge.ts`, `module-service-supervisor.ts` and
   `core-handlers.ts` end smaller than they start.
 - **No dynamic `import()` to dodge a cycle.** US-1841 removes the router's.
-- **Contracts that must not change** ([roadmap §8](../refactoring-roadmap.md#8-execution-notes)):
+- **Contracts that must not change** ([roadmap §8](../reviews/refactoring-roadmap.md#8-execution-notes)):
   `window.persephone.capabilities.*` (including `{ pageId, result }` from `invoke`), the script API
   (`app.capabilities.*`), the capability ids and method declarations, the agent-facing `capabilities` node in MCP `call`,
   and the error codes callers see. The private wire between main and the renderer may change, since both ship

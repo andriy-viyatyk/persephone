@@ -8,7 +8,7 @@
 
 ## Overview
 
-This is the thirty-third epic of the [refactoring roadmap](../refactoring-roadmap.md). It closes roadmap item **6.7,
+This is the thirty-third epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md). It closes roadmap item **6.7,
 Tree and UIKit**, with finding **UIK-12** (`components/` mixes model generations; two migrations are half done:
 FileList → FileGrid and `ImperativeSplitter` vs `SplitterView`) in `doc/reviews/refactoring-2026-11/09-uikit.md`.
 UIK-12 is three tasks, so this epic also takes an independent first slice of item **6.8, Shell and scripting**:

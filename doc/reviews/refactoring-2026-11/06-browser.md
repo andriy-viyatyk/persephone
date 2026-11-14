@@ -1,4 +1,4 @@
-> Part of the [refactoring roadmap](../../refactoring-roadmap.md). Reviewed at commit `c798129d` (2026-11-10); line numbers drift, so search by symbol when they no longer match.
+> Part of the [refactoring roadmap](../refactoring-roadmap.md). Reviewed at commit `c798129d` (2026-11-10); line numbers drift, so search by symbol when they no longer match.
 
 # 06-browser — built-in browser, automation and AiVision — refactoring review
 

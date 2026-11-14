@@ -7,7 +7,7 @@
 
 ## Overview
 
-This is the twenty-fifth epic of the [refactoring roadmap](../refactoring-roadmap.md) and the third and last part of
+This is the twenty-fifth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and the third and last part of
 roadmap item **6.4, Editor framework**. Part 1 ([EPIC-163](EPIC-163.md)) landed the framework core in `editors/base/`;
 part 2 ([EPIC-164](EPIC-164.md)) the per-editor internals (source watching, `VideoStreamSession`, image actions,
 `TextEditorPageView`, grid codecs). This epic takes the sidebar-panel cluster recorded as part 3: **EDC-9** (panel

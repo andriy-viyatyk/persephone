@@ -7,7 +7,7 @@
 
 ## Overview
 
-This is the fifteenth epic of the [refactoring roadmap](../refactoring-roadmap.md) and the fifth part of Phase 5 (pages,
+This is the fifteenth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and the fifth part of Phase 5 (pages,
 settings, startup and app conventions). It covers roadmap item 5.5 and findings **CORE-7**, **CORE-8**, **CORE-9**
 (`doc/reviews/refactoring-2026-11/04-api-core.md`), **EDT-3** (`08-editors-tools.md`), **PLAT-6**
 (`03-api-platform.md`) and **BND-14** (`02-boundary.md`), plus decision **D12** (the settings storage rule).

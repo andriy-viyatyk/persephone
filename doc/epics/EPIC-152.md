@@ -7,7 +7,7 @@
 
 ## Overview
 
-This is the twelfth epic of the [refactoring roadmap](../refactoring-roadmap.md) and the second part of Phase 5 (pages,
+This is the twelfth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and the second part of Phase 5 (pages,
 settings, startup and app conventions). It covers roadmap item 5.2 and finding **CORE-2**, steps 1–5 and 7
 (`doc/reviews/refactoring-2026-11/04-api-core.md`). Step 6 (finishing the host migration: `EditorOrHost`,
 `unwrapToHost`, the dual `mainEditor`/`mainEditorInstance`) is roadmap 5.4 and is out of scope.
@@ -173,7 +173,7 @@ US-1875, US-1876 and US-1877, one at a time. US-1876 and US-1877 touch disjoint 
 
 ## Rules for every task in this epic
 
-- **The roadmap guardrails apply** ([§7](../refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back), also
+- **The roadmap guardrails apply** ([§7](../reviews/refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back), also
   in `doc/agents-common.md`). Each plan names the owner of each rule it touches and the helper it reuses.
 - **Each job is moved, not wrapped.** A task is done when the old body is gone from `PageModel.ts`. A one-line delegate
   stays only where a public name or an outside caller needs it, and the plan lists each one.

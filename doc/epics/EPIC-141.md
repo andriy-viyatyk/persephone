@@ -8,11 +8,11 @@
 
 ## Overview
 
-This is the first epic of the [refactoring roadmap](../refactoring-roadmap.md) (Phase 0). The roadmap is the result
+This is the first epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) (Phase 0). The roadmap is the result
 of a ten-area review of `src/` at `c798129d`. It found 137 findings and 21 bugs that came up in passing. This epic
 does the cheap, independent work that every later phase benefits from:
 
-- fix the 21 bugs ([roadmap §3](../refactoring-roadmap.md#3-bugs-found-in-passing));
+- fix the 21 bugs ([roadmap §3](../reviews/refactoring-roadmap.md#3-bugs-found-in-passing));
 - delete dead code, so later epics move and split less;
 - give duplicated constants and small helpers a single source;
 - bring the developer docs, guides and code comments back in line with the code.
@@ -169,12 +169,12 @@ task document; do not cast them away.
 
 ## Rules for every task in this epic
 
-- **The roadmap guardrails apply** ([§7](../refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back)).
+- **The roadmap guardrails apply** ([§7](../reviews/refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back)).
   Every plan names the module that owns each rule it touches, and the existing helper it reuses.
 - **Smallest fix at the source.** A bug fix that would need a class split or a layer move is recorded in the task
   document and left for the phase that owns it.
 - **No behaviour change** outside the bug fixes. Deletions and single-source moves are behaviour-neutral.
-- **Contracts that must not change** ([roadmap §8](../refactoring-roadmap.md#8-execution-notes)): persisted data
+- **Contracts that must not change** ([roadmap §8](../reviews/refactoring-roadmap.md#8-execution-notes)): persisted data
   formats and keys, `window.persephone.*`, the script API, AiVision paths and messages, the `data-name` contract,
   MCP `call` behaviour. The only planned exception is the observable error codes in US-1809 (#11), which gets a
   bridge version bump.

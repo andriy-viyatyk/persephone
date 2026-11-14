@@ -7,7 +7,7 @@
 
 ## Overview
 
-This is the nineteenth epic of the [refactoring roadmap](../refactoring-roadmap.md) and the second of three for roadmap
+This is the nineteenth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and the second of three for roadmap
 item 6.1 (Browser). Part 1 ([EPIC-158](EPIC-158.md)) carved `BrowserWebviewModel` into one owner per feature. This
 epic is **6.1 part 2**, the rest of the renderer side: BRW-4, BRW-5, BRW-6, BRW-9 and BRW-10 in
 `doc/reviews/refactoring-2026-11/06-browser.md`. Part 3 (main process, MAIN-7) remains.

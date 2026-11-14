@@ -8,7 +8,7 @@
 
 ## Overview
 
-This is the thirty-fifth epic of the [refactoring roadmap](../refactoring-roadmap.md). It finishes roadmap item
+This is the thirty-fifth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md). It finishes roadmap item
 **6.8, Shell and scripting**, after [EPIC-174](EPIC-174.md) (part 2), with the dialog items of **SHL-13**, and takes the
 **dialog slice of item 2.2** (SHL-1 step 2) with it, as the roadmap recommends. Because the dialog work is three tasks,
 it also takes roadmap item **6.9** (MAIN-10) as a separate part. Findings:

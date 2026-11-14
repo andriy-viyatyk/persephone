@@ -8,7 +8,7 @@
 
 ## Overview
 
-This is the thirty-second epic of the [refactoring roadmap](../refactoring-roadmap.md) and part 4 of roadmap item
+This is the thirty-second epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and part 4 of roadmap item
 **6.7, Tree and UIKit**: findings **UIK-6** (the combobox and list family duplicates trait resolution, filtering and
 keyboard navigation), **UIK-9** (tree-provider views hand-build Panel DOM, `…Impl` naming), **UIK-10** (React-era
 leftovers) and **UIK-11** (DOM-attribute helpers and rest-prop blacklists) in

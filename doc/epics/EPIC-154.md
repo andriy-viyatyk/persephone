@@ -7,7 +7,7 @@
 
 ## Overview
 
-This is the fourteenth epic of the [refactoring roadmap](../refactoring-roadmap.md) and the fourth part of Phase 5 (pages,
+This is the fourteenth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and the fourth part of Phase 5 (pages,
 settings, startup and app conventions). It covers roadmap item 5.4 and findings **CORE-2 step 6**
 (`doc/reviews/refactoring-2026-11/04-api-core.md`), **EDC-3** and **EDC-4** (`07-editors-core.md`).
 

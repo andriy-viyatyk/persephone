@@ -7,7 +7,7 @@
 
 ## Overview
 
-This is the ninth epic of the [refactoring roadmap](../refactoring-roadmap.md) and the fourth part of Phase 4 (board
+This is the ninth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and the fourth part of Phase 4 (board
 bridge and runtime decomposition). EPIC-146 to EPIC-148 handled the board frame side. This epic handles board
 **services**: the Node process a board can run, and the main-process code that supervises it.
 
@@ -233,7 +233,7 @@ Task documents are written per task when it is picked up. The finding IDs point 
 
 ## Rules for every task in this epic
 
-- **The roadmap guardrails apply** ([§7](../refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back), also
+- **The roadmap guardrails apply** ([§7](../reviews/refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back), also
   in `doc/agents-common.md`). Every plan names the module that owns each rule it touches and the existing helper it
   reuses: `PendingRequests`, the wire error, `codedError`, `createServiceChannel` with `service-channel-node.ts`,
   `createCapabilityProxy`, the capability constants, `ModuleServiceStorageAdapter` (as the pattern), the main trust
@@ -255,7 +255,7 @@ Task documents are written per task when it is picked up. The finding IDs point 
   - shutdown handlers running before exit, with the existing timeout;
   - the raw-protocol detection and its queued lifecycle events;
   - the service channel's cap, ack window and backpressure codes.
-- **Contracts that must not change** ([roadmap §8](../refactoring-roadmap.md#8-execution-notes)):
+- **Contracts that must not change** ([roadmap §8](../reviews/refactoring-roadmap.md#8-execution-notes)):
   - the board-service `globalThis.persephone` surface (the diff above);
   - board-visible and service-visible error codes and messages, except the one decided change;
   - board storage keys;

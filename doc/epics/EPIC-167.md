@@ -8,7 +8,7 @@
 
 ## Overview
 
-This is the twenty-seventh epic of the [refactoring roadmap](../refactoring-roadmap.md) and part 2 (the last part) of
+This is the twenty-seventh epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and part 2 (the last part) of
 roadmap item **6.5, Settings editor** (findings **EDT-1** step 5 and **EDT-2** steps 3–5 in
 `doc/reviews/refactoring-2026-11/08-editors-tools.md`). Part 1 ([EPIC-166](EPIC-166.md)) built the field kit in
 `editors/settings/fields/`, turned the simple sections into field lists, moved headers into the shell and routed

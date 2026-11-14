@@ -8,7 +8,7 @@
 
 ## Overview
 
-This is the thirty-first epic of the [refactoring roadmap](../refactoring-roadmap.md) and part 3 of roadmap item
+This is the thirty-first epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and part 3 of roadmap item
 **6.7, Tree and UIKit**: findings **UIK-5** (repaint change-detection) and **UIK-4** (pooled virtual-row hosting) in
 `doc/reviews/refactoring-2026-11/09-uikit.md`. The review says to pair them so the tracker and the pooled host land
 together.

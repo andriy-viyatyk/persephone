@@ -1,7 +1,7 @@
 # Persephone refactoring roadmap
 
 **Date:** 2026-11-10 · **Code reviewed at:** `c798129d` (branch `upcoming-v5.0.19`) · **Status:** accepted 2026-11-10.
-Phase 0 is [EPIC-141](epics/EPIC-141.md); later phases become epics one at a time.
+Phase 0 is [EPIC-141](../epics/EPIC-141.md); later phases become epics one at a time.
 
 This roadmap names what should be refactored and how, so that Persephone keeps logic encapsulated in classes and
 modules with one clear responsibility each. It combines ten area reviews into one plan, ordered by dependency.
@@ -28,16 +28,16 @@ modules with one clear responsibility each. It combines ten area reviews into on
 
 | # | Area | Report | Scope | Findings (P1) |
 |---|---|---|---|---|
-| 01 | Main process | [01-main](reviews/refactoring-2026-11/01-main.md) | `src/main/**` | 14 (4) |
-| 02 | Process boundaries | [02-boundary](reviews/refactoring-2026-11/02-boundary.md) | `src/ipc`, `src/shared`, preload, `board-shim.ts`, module-service host | 14 (4) |
-| 03 | Renderer platform services | [03-api-platform](reviews/refactoring-2026-11/03-api-platform.md) | `api/` boards, capabilities, module service, site extensions, mcp, setup | 13 (3) |
-| 04 | Renderer core | [04-api-core](reviews/refactoring-2026-11/04-api-core.md) | `app`, pages, settings, fs, `core/`, `content/`, theme | 16 (3) |
-| 05 | Board editor | [05-board-editor](reviews/refactoring-2026-11/05-board-editor.md) | `editors/board`, `editors/board-info`, `BoardEditorFacade` | 12 (3) |
-| 06 | Browser | [06-browser](reviews/refactoring-2026-11/06-browser.md) | `editors/browser`, `automation/`, `ai-vision/`, `preload-webview` | 14 (4) |
-| 07 | Editor framework | [07-editors-core](reviews/refactoring-2026-11/07-editors-core.md) | `editors/base`, `shared`, `text`, `monaco`, `grid`, … | 16 (3) |
-| 08 | Tool editors | [08-editors-tools](reviews/refactoring-2026-11/08-editors-tools.md) | settings, link, mcp-inspector, log-view, mneme, … | 13 (4) |
-| 09 | UIKit and components | [09-uikit](reviews/refactoring-2026-11/09-uikit.md) | `uikit/`, `components/` | 12 (3) |
-| 10 | Shell and scripting | [10-shell-scripting](reviews/refactoring-2026-11/10-shell-scripting.md) | `ui/`, `scripting/` | 13 (4) |
+| 01 | Main process | [01-main](refactoring-2026-11/01-main.md) | `src/main/**` | 14 (4) |
+| 02 | Process boundaries | [02-boundary](refactoring-2026-11/02-boundary.md) | `src/ipc`, `src/shared`, preload, `board-shim.ts`, module-service host | 14 (4) |
+| 03 | Renderer platform services | [03-api-platform](refactoring-2026-11/03-api-platform.md) | `api/` boards, capabilities, module service, site extensions, mcp, setup | 13 (3) |
+| 04 | Renderer core | [04-api-core](refactoring-2026-11/04-api-core.md) | `app`, pages, settings, fs, `core/`, `content/`, theme | 16 (3) |
+| 05 | Board editor | [05-board-editor](refactoring-2026-11/05-board-editor.md) | `editors/board`, `editors/board-info`, `BoardEditorFacade` | 12 (3) |
+| 06 | Browser | [06-browser](refactoring-2026-11/06-browser.md) | `editors/browser`, `automation/`, `ai-vision/`, `preload-webview` | 14 (4) |
+| 07 | Editor framework | [07-editors-core](refactoring-2026-11/07-editors-core.md) | `editors/base`, `shared`, `text`, `monaco`, `grid`, … | 16 (3) |
+| 08 | Tool editors | [08-editors-tools](refactoring-2026-11/08-editors-tools.md) | settings, link, mcp-inspector, log-view, mneme, … | 13 (4) |
+| 09 | UIKit and components | [09-uikit](refactoring-2026-11/09-uikit.md) | `uikit/`, `components/` | 12 (3) |
+| 10 | Shell and scripting | [10-shell-scripting](refactoring-2026-11/10-shell-scripting.md) | `ui/`, `scripting/` | 13 (4) |
 
 Finding IDs (`MAIN-n`, `BND-n`, `PLAT-n`, `CORE-n`, `BRD-n`, `BRW-n`, `EDC-n`, `EDT-n`, `UIK-n`, `SHL-n`) refer to
 those reports. Line numbers drift as the code changes; search by symbol when they stop matching.
@@ -456,8 +456,8 @@ Phase 6 items can run in parallel with Phases 4–5 once their own dependencies 
 | 2.4 | Move contracts out of editor folders: `McpConnectionManager`, `mnemeTypes`, `logTypes`, the link list/tiles views, `storyTypes`, the tools tree. Reshuffle `editors/shared/`. Make UIKit standalone (`ImageViewport` `onCopyImage`, raster code into `core/`). Fix the `components/` boundary (`pipe-status`, icon registration). Move the Monaco setup out of `api/`. | EDT-7, EDC-15, EDC-8 (step 3), UIK-7, UIK-8, PLAT-3 (slice 4) | M |
 | 2.5 | ESLint import zones (warnings), including "`editors/base/**` must not import board modules" | CORE-3 (step 8), EDC-2 (step 4) | S |
 
-**2.2 is done** ([EPIC-176](epics/EPIC-176.md), 2026-11-14), after the speech/DSP slice ([EPIC-162](epics/EPIC-162.md))
-and the dialog slice ([EPIC-175](epics/EPIC-175.md)); `SecondaryViewsModel`, `panel-key` and the editor-category rules
+**2.2 is done** ([EPIC-176](../epics/EPIC-176.md), 2026-11-14), after the speech/DSP slice ([EPIC-162](../epics/EPIC-162.md))
+and the dialog slice ([EPIC-175](../epics/EPIC-175.md)); `SecondaryViewsModel`, `panel-key` and the editor-category rules
 (`api/editor-categories.ts`) had already moved to `api/`. EPIC-176 moved the secondary-view host (registry,
 `SecondaryViewsView`, `LazySecondaryViewView`, `SideBarPanelHeaderView`) to `editors/base/secondary-views/`; the
 translation services to `api/translation/`; the translate and transcript Monaco contributions to
@@ -516,27 +516,27 @@ events phase; subscriber order is unchanged). Imports of `ui/` from outside it w
 | 6.8 | **Shell and scripting:** a `PageTabState` projection on the page model, `EditorModel.displayTitle` and `IAudibleEditor`; a board identity service; `MainPageView` reduced to layout; a `MenuBarView` folder-UI table; `ScriptLibrary` + a script engine with one `SCRIPT_GLOBALS` list | SHL-4, 6, 7, 8, 11, 13 |
 | 6.9 | **Main, other:** a `McpSessionHost` shared by both MCP servers and one routed-fetch protocol handler; split `video-stream-server` and `clipboard-service` when they are next touched | MAIN-10, MAIN-14 |
 
-**6.1 is split into three epics.** Part 1 is done ([EPIC-158](epics/EPIC-158.md), 2026-11-13): module shape (BRW-12),
+**6.1 is split into three epics.** Part 1 is done ([EPIC-158](../epics/EPIC-158.md), 2026-11-13): module shape (BRW-12),
 the shared small rules (BRW-11), `BrowserSiteExtensionController`, `BrowserPageRemote`, `BrowserFindModel`, the page
 menu, one shortcut table, a private webview registry (BRW-1, BRW-2) and one translation owner (BRW-7). Part 2 is done
-([EPIC-159](epics/EPIC-159.md), 2026-11-13): `BrowserView.ts` split into one file per view, `BrowserSitePermissionsModel`,
+([EPIC-159](../epics/EPIC-159.md), 2026-11-13): `BrowserView.ts` split into one file per view, `BrowserSitePermissionsModel`,
 guest registration and favicon handling out of the view, one permission-labels table, named toolbar controls (BRW-5);
 the typed `GuestMessage` protocol, `BrowserGuestChannel`, dead title/favicon/find events removed, preload split (BRW-6);
 `BrowserBookmarksModel` + `resolveBrowserProfile` (BRW-9); tab state without mirrors and navigation as an explicit command
 (BRW-4 steps 1–3); `BrowserEditor.createNew` with disposal on refusal (BRW-10). Part 3 is done
-([EPIC-160](epics/EPIC-160.md), 2026-11-13): `BrowserGuest` + `browserGuests` registry with navigation and popup policy
+([EPIC-160](../epics/EPIC-160.md), 2026-11-13): `BrowserGuest` + `browserGuests` registry with navigation and popup policy
 modules, `HostFullscreenController` owned by `OpenWindow` (the `open-windows` cycle is gone), `browser-dom-snapshot.ts`,
 `CdpTarget` with one `resolveTarget` and feature modules under `src/main/cdp/` (MAIN-7); URL-bar, find and prompt state
 slices (BRW-4 step 4). **Roadmap item 6.1 is complete.**
 
-**6.2 is done** ([EPIC-161](epics/EPIC-161.md), 2026-11-13): `operations.ts` split into owner modules with one
+**6.2 is done** ([EPIC-161](../epics/EPIC-161.md), 2026-11-13): `operations.ts` split into owner modules with one
 in-page snippet per rule and narrow target interfaces (BRW-8); one `AutomationSurface` for the browser, board and
 `window.screen` hosts (BRW-3); `EditorFacadeBase`, a typed facade registry and `src/shared/board/board-editor-id.ts`
 (SHL-9); facades call model methods (SHL-10); one Log View entry normaliser and `LogEntryHandle` (SHL-12). Left out on
 purpose: query methods keep first-match selector semantics, and the automation help text stays host-owned because the
 hosts word it differently (one shared constant would have changed `$help`). **Roadmap item 6.2 is complete.**
 
-**6.3 is done** ([EPIC-162](epics/EPIC-162.md), 2026-11-13): speech services in `api/speech/` and DSP in `audio/dsp/`
+**6.3 is done** ([EPIC-162](../epics/EPIC-162.md), 2026-11-13): speech services in `api/speech/` and DSP in `audio/dsp/`
 (the speech/DSP slice of item 2.2); `SpeechSessionClient` and `MicrophoneCapture` shared by voice typing and transcripts;
 `VoiceTypingService` (startup table) with `VoiceTypingSession`, `LiveTextInserter` and `SpeechAutoStop` (SHL-2); the
 audio window split into `CaptureSourcePool` and `PlaybackChannel` (CORE-12); main `VoiceTypingController` composed by
@@ -544,7 +544,7 @@ audio window split into `CaptureSourcePool` and `PlaybackChannel` (CORE-12); mai
 (MAIN-9). D8 resolved (see §6). Left out on purpose: the rest of item 2.2, and collapsing `OneShotFrameGrant`'s
 per-grant arm-order flags (a small behaviour change). **Roadmap item 6.3 is complete.**
 
-**6.4 was split into three epics.** Part 1 is done ([EPIC-163](epics/EPIC-163.md), 2026-11-13): typed editor ids
+**6.4 was split into three epics.** Part 1 is done ([EPIC-163](../epics/EPIC-163.md), 2026-11-13): typed editor ids
 (`shared/editor-ids.ts`, `editors/base/editor-ids.ts`) and the registry dead code (EDC-5 steps 1, 2, 4); one matcher
 contract with named tiers and a declarative `QUERY_RULES` table read by `editorRegistry.rank()` (EDC-5 step 3);
 `EditorCatalog` with `BuiltInEditorSource` and the board-owned `BoardEditorSource`, one switch-candidate path, the
@@ -557,13 +557,13 @@ with a typed request queue and the single-implementer hooks as traits, and an er
 remains:** EDC-7 steps 2 and 4 (`TextEditorPageView<M>`, "Show resources" as an HTML contribution, view file naming),
 EDC-8 image actions, EDC-9 panel views without IO, EDC-10 `ExplorerEditor` split, EDC-11 `TreeProviderHost`, EDC-12
 source watching, EDC-13 `VideoStreamSession`, EDC-14 grid codecs.
-Part 2 is done ([EPIC-164](epics/EPIC-164.md), 2026-11-13): one source-watch helper (`content/source-watch.ts`) for
+Part 2 is done ([EPIC-164](../epics/EPIC-164.md), 2026-11-13): one source-watch helper (`content/source-watch.ts`) for
 the text host, Image and Video (EDC-12); `VideoStreamSession` with recording naming shared with main and mute owned
 outside module scope (EDC-13); shared image actions and one `ImageActionsToolbarView`, with pure raster code in
 `core/utils/image-raster.ts` so `uikit/` no longer imports `editors/` (EDC-8); `TextEditorPageView` for the ten text
 editors, "Show resources" as an HTML text-chrome contribution and the `XxxEditorView.ts` naming rule (EDC-7 steps 2
 and 4); grid codecs and the legacy settings promotion as a descriptor migration (EDC-14). Part 3 is done
-([EPIC-165](epics/EPIC-165.md), 2026-11-14): `ClipboardHistoryModel` (`api/clipboard-history.ts`) consumed by the
+([EPIC-165](../epics/EPIC-165.md), 2026-11-14): `ClipboardHistoryModel` (`api/clipboard-history.ts`) consumed by the
 clipboard panel and the ai-vision namespace, `CommitDiffPanelModel` loading, `MarkdownEditor.followLink`, and typed
 view ports instead of model-held DOM handles (EDC-9; step 2 was already met by `boardLifecycle` and the scaffold
 owner); `TreeProviderHost` + `TREE_PROVIDER_HOST_TRAIT` + `TreeRevealController`, with the Explorer owning its
@@ -572,11 +572,11 @@ owner); `TreeProviderHost` + `TREE_PROVIDER_HOST_TRAIT` + `TreeRevealController`
 fields and a one-time descriptor migration of `boardsOpen`/`clipboardOpen`/`hideExplorer` (EDC-10). One observable
 change: `page.panels.items` names the Boards and Clipboard panels' own owners. **Roadmap item 6.4 is complete.**
 
-**6.5 was split into two epics.** Part 1 is done ([EPIC-166](epics/EPIC-166.md), 2026-11-14): the settings field kit
+**6.5 was split into two epics.** Part 1 is done ([EPIC-166](../epics/EPIC-166.md), 2026-11-14): the settings field kit
 in `editors/settings/fields/` with `appSettingsStore` and a board-settings store (EDT-1 steps 1–2, 4), the simple
 sections as field lists, shell-rendered headers through `SettingsSectionDescriptor` (EDT-1 step 3), `SettingsLayoutModel`
 and `ScrollSpy` (EDT-4), and Language, Theme and the MCP config through their services (EDT-2 steps 1, 2, 6). Part 2
-is done ([EPIC-167](epics/EPIC-167.md), 2026-11-14): `api/browser-profiles.ts` owns the profile rules, the
+is done ([EPIC-167](../epics/EPIC-167.md), 2026-11-14): `api/browser-profiles.ts` owns the profile rules, the
 `"default"` mapping and the profile IPC, with `getPartitionString` in `src/shared/browser-partition.ts` and the
 translation-target list in `TranslationWorkflow` (EDT-2 step 3); `microphoneSettings` in `api/speech/` owns device
 listing, status and retry, with a typed `AudioProcessingMode` union (EDT-2 step 4); `siteExtensionStore.listWithTrust()`
@@ -586,7 +586,7 @@ Left as custom views on purpose: Theme and Default browser (no settings-key rows
 on profile rebuild), network lines, profile colours and permission lists, and the Site extensions folder row (its
 named Browse/Reset controls differ from `PathField`). **Roadmap item 6.5 is complete.**
 
-**6.6 is split into two epics.** Part 1 is done ([EPIC-168](epics/EPIC-168.md), 2026-11-14): `LinkCollection`
+**6.6 is split into two epics.** Part 1 is done ([EPIC-168](../epics/EPIC-168.md), 2026-11-14): `LinkCollection`
 (immutable immer snapshot, one index rebuild per mutation, filter with its incremental cache, pins, view modes,
 `moveCategory`, `linksWithTag`) and `LinkImporter`, with one add path and `LinkEditorEmbedding` for the browser
 (EDT-5); the de-duplicated link views — `createLinksItemsView`, `link-item-actions.ts`, `FaviconRowTracker`,
@@ -598,7 +598,7 @@ keeps `ui_push`'s accepted set), typed view factories, `JsonlLogDocument` and an
 (EDT-9); the typed `mnemeClient` (`api/mneme-client.ts`) with `api/mneme-types.ts` (EDT-10). One behaviour change: the
 Link editor's search cache no longer hides added/deleted/edited links while a search is active. Left as is on purpose:
 the three path normalizers (persisted keys and non-canonical inputs, see the epic). Part 2 is done
-([EPIC-169](epics/EPIC-169.md), 2026-11-14): `publishedBoards.listEntries()` joins catalog, installs and updates with a
+([EPIC-169](../epics/EPIC-169.md), 2026-11-14): `publishedBoards.listEntries()` joins catalog, installs and updates with a
 `detailsKey` that keeps the card rebuild boundary, the update rule in `board-update-query.ts`, `boardUsageGroup` on
 `Pick<RawBoardManifest, …>`, and the Category view mode owned by `CategoryEditorModel` (EDT-11; step 3 was already met
 by `TREE_PROVIDER_HOST_TRAIT`); `MarkdownSearchState` and `createStandaloneMarkdownBodyModel()` shared by Markdown and
@@ -607,13 +607,13 @@ and strict validation in `api/board-vars/types.ts` (the store keeps its loose re
 `EnvVarsEditor.trySetProfileRows`, and `encodeMultiSelect`/`decodeMultiSelect` (EDT-12). **Roadmap item 6.6 is
 complete.**
 
-**6.7 is split into epics.** Part 1 is done ([EPIC-169](epics/EPIC-169.md), 2026-11-14): UIK-3 — the renderer-internal
+**6.7 is split into epics.** Part 1 is done ([EPIC-169](../epics/EPIC-169.md), 2026-11-14): UIK-3 — the renderer-internal
 provider capability contract (`content/tree-providers/tree-provider-capabilities.ts`: `isWatchable`, `isIncremental`,
 `isLocalFileProvider`), `hrefKey` as the one provider-href identity (bug #17's href half; the repaint half stays with
 UIK-5), `ProviderItemController` shared by the tree and the folder page, and `uikit/shared/drop-target-tracker.ts`. Two
 recorded changes: the folder page runs the `linkContextMenu` layer for multi-selections (D9), and the Link editor's
 category panel rebuilds when links change again (its watch callback was handed the links array as a "batch" and
-threw). Part 2 is done ([EPIC-170](epics/EPIC-170.md), 2026-11-14): UIK-2 — `Tree`'s own lazy-load path, `revision`
+threw). Part 2 is done ([EPIC-170](../epics/EPIC-170.md), 2026-11-14): UIK-2 — `Tree`'s own lazy-load path, `revision`
 and the custom `renderItem` kind are deleted (D11 option A, also the `ListBox` custom kind), and `Tree` accepts a
 controlled `expanded` + `onExpandedChange` (uncontrolled consumers unchanged); the provider tree owns one expansion map
 (`ProviderTreeExpansion`), with no `TreeController` back-reference, hint maps or search remount. UIK-1 —
@@ -622,7 +622,7 @@ controlled `expanded` + `onExpandedChange` (uncontrolled consumers unchanged); t
 generation token and one `loadChildren` with explicit load/relist modes; `TreeProviderViewModel` is 816 lines (609 code)
 from 1,139. Recorded changes: restored Explorer expansion is no longer dropped on the next save, and the 1–2 character
 search filters restored expanded folders like any other expanded folder. Part 3 is done
-([EPIC-171](epics/EPIC-171.md), 2026-11-14): UIK-5 — `uikit/shared/repaint-tracker.ts` (`{ rows, global, local }` key
+([EPIC-171](../epics/EPIC-171.md), 2026-11-14): UIK-5 — `uikit/shared/repaint-tracker.ts` (`{ rows, global, local }` key
 lists, `Object.is`) replaces the `applied*`/`live*` mirrors, pending flags, signatures and `DepsGate` wiring in `Tree`
 and `ListBox`; every prop a cell reads is declared (bug #17's repaint half); `ListBoxModel` is a plain class with one
 props channel (MultiListBox's selection set is the `selectionSignal` prop); `TreeProviderViewImpl.treeProps()` passes
@@ -630,7 +630,7 @@ stored callbacks. UIK-4 — `uikit/shared/pooled-row-host.ts` and `list-shell-ar
 `FileSearchView`, `LinksListView` and `LinksTilesView`; `LogBodyView` keeps its own pool on `MeasuredRowGrid`
 (recorded: a different cell contract). Recorded changes: changing only a cell-read callback (or a ListBox `id`) now
 repaints the rows, the list/tree loading text is the localized "Loading…", and an Autocomplete header renders.
-Part 4 is done ([EPIC-172](epics/EPIC-172.md), 2026-11-14): UIK-6 — `resolveTraitedOne`/`resolveTraitAccessor` in
+Part 4 is done ([EPIC-172](../epics/EPIC-172.md), 2026-11-14): UIK-6 — `resolveTraitedOne`/`resolveTraitAccessor` in
 `core/traits/traits.ts`, `uikit/shared/list-filter.ts` (`matchLabel`, `filterParallel`) for Select, Autocomplete and
 MultiListBox, and `uikit/shared/list-navigation.ts` (`nextActiveIndex`) for ListBox, Tree, Select, Autocomplete,
 PathInput, Menu, RadioGroup and SegmentedControl, each stating clamp or wrap explicitly (D9; no `ComboboxPopoverState`:
@@ -643,7 +643,7 @@ The EPIC-171 follow-up is done: `Tree` has a `repaintSignal` prop and the Editor
 store their callbacks. Recorded changes: an open Autocomplete with no active row moves to the first row on
 ArrowUp/PageUp, an open empty Select no longer writes an active index, Label and SplitButton stop leaking own props to
 the DOM, the Category footer and tree-provider panels carry Panel's own `data-type`, and hover no longer repaints every
-row of those four trees. Part 5 is done ([EPIC-173](epics/EPIC-173.md), 2026-11-14): UIK-12 — `isLive` moved to
+row of those four trees. Part 5 is done ([EPIC-173](../epics/EPIC-173.md), 2026-11-14): UIK-12 — `isLive` moved to
 `TModel`, and `FileSearchModel`, `GitTreeModel`, `GitChangesModel` and `GitBranchesModel` extend it (no private
 `disposed` flags or stores); `ImperativeSplitter` is replaced by a `SplitterView` handle positioned by a
 `SplitLayout` controller (same clamp, ratio, double-click reset and compare-mode pause; theme colours from the UIKit
@@ -655,7 +655,7 @@ changes: a direct `TComponentModel.dispose()` also clears `isLive`; the page spl
 and ARIA, stays light after release while hovered, and ends a drag on `pointercancel`. **Roadmap item 6.7 is
 complete.**
 
-**6.8 is split into epics.** Part 1 is done ([EPIC-173](epics/EPIC-173.md), 2026-11-14): SHL-11 and the scripting
+**6.8 is split into epics.** Part 1 is done ([EPIC-173](../epics/EPIC-173.md), 2026-11-14): SHL-11 and the scripting
 items of SHL-13 — `scripting/script-engine.ts` (the implicit-return heuristics moved verbatim) and
 `scripting/ScriptLibrary.ts` (sucrase, transpile, dirty flag, `prepare()`) shared by `ScriptRunner` and
 `AutoloadRunner`, `ScriptRunnerBase` deleted; one `SCRIPT_GLOBALS` list in the leaf `scripting/script-globals.ts`
@@ -666,7 +666,7 @@ with a named 1 s grace window; `runWithResult` without the redundant `pageId`; `
 bug #7 was already fixed). Recorded changes: a non-empty autoload load also clears the dirty library cache, so changed
 transitive library dependencies load fresh on autoload reload; relative requires inside Script Library modules work
 again (a pre-existing bug since US-236, found during live checks: `ScriptContext.moduleRequire`).
-Part 2 is done ([EPIC-174](epics/EPIC-174.md), 2026-11-14):
+Part 2 is done ([EPIC-174](../epics/EPIC-174.md), 2026-11-14):
 SHL-6 — `boardIdentity` (`editors/board/board-identity.ts`: `displayName`, `manifestName`, `glyph`, one merged
 `onChanged`) replaces the per-view caches, and `board-window-identity.ts`, installed by `index.ts` `mount()`, owns the
 board window's title and identity IPC; SHL-4 — `api/pages/page-tab-state.ts` (active with grouped partner, popover,
@@ -681,7 +681,7 @@ handle instead of `instanceof`; SHL-13 shell aliases removed. Decided against: r
 callers through `ipc/renderer/api` (a request/reply proxy with a 30 s deadline; raw channels are the pattern in about
 20 modules). Recorded changes: the browser tab's sound button mutes/unmutes again (EPIC-158 regression), board windows
 no longer build the app-only header widgets, and board names warm lazily wherever they are shown. Part 3 is done
-([EPIC-175](epics/EPIC-175.md), 2026-11-14), together with **the dialog slice of item 2.2** (SHL-1 step 2): the SHL-13
+([EPIC-175](../epics/EPIC-175.md), 2026-11-14), together with **the dialog slice of item 2.2** (SHL-1 step 2): the SHL-13
 dialog items — `api/dialogs/dialogs-state.ts` (dialog and popper state, `onDialogClosed`, a `Subscription` the ai-vision
 event log subscribes to through `installDialogAnswerEvents()` at the top of `renderer.ts` `bootstrap()`), the dialog
 data types in `api/dialogs/dialog-types.ts`, one `ui/dialogs/ModelViewSlotHost.ts` that `DialogsView` and
@@ -693,9 +693,9 @@ statically; `api/`, `content/`, `components/`, `scripting/` and `editors/` impor
 an error-level import zone for the first four. Decided: callers already on the `ui.confirm`/`ui.input` facade stay
 there (no `IConfirmOptions` change); `board-dialog-controller.ts` stays in `ui/`. Recorded change: a throwing
 `dialog-answered` listener no longer prevents a dialog's result from resolving. **Roadmap item 6.8 is complete.** The
-rest of item 2.2 is done in [EPIC-176](epics/EPIC-176.md) (see the note under Phase 2).
+rest of item 2.2 is done in [EPIC-176](../epics/EPIC-176.md) (see the note under Phase 2).
 
-**6.9 is done in part** ([EPIC-175](epics/EPIC-175.md), 2026-11-14): MAIN-10 — `main/mcp/mcp-session-host.ts`
+**6.9 is done in part** ([EPIC-175](../epics/EPIC-175.md), 2026-11-14): MAIN-10 — `main/mcp/mcp-session-host.ts`
 (`McpSessionHost`: session map, Streamable HTTP start with an injected server factory, close in awaited or
 fire-and-forget mode, oldest-session selection with each server's tie rule, idle sweep) plus one
 `isAllowedLoopbackHost` and `parseJsonBody`, wrapped by both MCP servers, which keep their own auth, caps, refusal
@@ -712,7 +712,7 @@ ai-vision main services, and the main process hung at startup; the factory is in
 - Add the guardrails in [§7](#7-guardrails-against-the-drift-coming-back) to `doc/agents-common.md` and to the Codex
   delegation brief.
 
-**Phase 7 is done** ([EPIC-177](epics/EPIC-177.md), 2026-11-14), with the remainder below. No zone was a warning any
+**Phase 7 is done** ([EPIC-177](../epics/EPIC-177.md), 2026-11-14), with the remainder below. No zone was a warning any
 more, so the epic added the zones the §4.1 map still lacked, all at error level: `core/` imports only `core/` and
 `shared/` (four exact type-only `api/types/*.d.ts` exceptions); `shared/` imports no renderer or main code (two exact
 script-contract exceptions; `ipc/` contracts allowed); `content/`, `components/`, `uikit/` (Rule 6 over the whole
@@ -753,7 +753,7 @@ recommendation on 2026-11-10.**
 | D5 | The board template's `CLAUDE.md` (1,886 lines) is a near-copy of `guides/agents/boards.md`, and it already lags behind. | **Generate it from the guide** at build or scaffold time. That gives one source while keeping an offline copy in each board folder. |
 | D6 | Boards never nest, yet main still implements ancestor-coverage trust, and `overview.md:411` documents trust inheritance. | **Collapse to exact-root lookup** and update the overview (MAIN-3). |
 | D7 | Where the board domain lives. | **`api/boards/` plus `shared/board/`**, with no new top-level layer. Keep the rule that it is "not exposed on `app`". |
-| D8 | Whether voice typing and transcripts should keep their own in-window capture stack or use the audio service. | **Defer until 6.3.** After the split, either answer is a small change. Move the DSP classes to `renderer/audio/dsp/` in Phase 2 regardless. **Resolved in [EPIC-162](epics/EPIC-162.md): keep the in-window stack.** The audio service is a board capability (board grants, per-board channel limits, global mute, a separate window process); routing app voice features through it would change their permission model and add a process hop per PCM chunk. Both stacks share `audio/dsp/`, and `MicrophoneCapture` is the single seam to swap later. |
+| D8 | Whether voice typing and transcripts should keep their own in-window capture stack or use the audio service. | **Defer until 6.3.** After the split, either answer is a small change. Move the DSP classes to `renderer/audio/dsp/` in Phase 2 regardless. **Resolved in [EPIC-162](../epics/EPIC-162.md): keep the in-window stack.** The audio service is a board capability (board grants, per-board channel limits, global mute, a separate window process); routing app voice features through it would change their permission model and add a process hop per PCM chunk. Both stacks share `audio/dsp/`, and `MicrophoneCapture` is the single seam to swap later. |
 | D9 | List keyboard navigation (clamp vs wrap) and the multi-selection context-menu rule; both currently differ between controls. | **Clamp everywhere**, with an explicit `wrap` prop where wanted (PathInput). For multi-selection menus, use the tree's behaviour: run the menu layers with the selection. |
 | D10 | `strictNullChecks` per folder. | **Yes, after Phase 2,** starting with `shared/`, `core/` and `content/`. It is compile-time only, and it would have caught bug #18. |
 | D11 | Tree lazy loading: delete `Tree`'s own lazy-load path (used only by Storybook) or move the provider tree onto it. | **Delete it** (UIK-2 option A). The provider store has to keep its own node tree anyway. |

@@ -7,7 +7,7 @@
 
 ## Overview
 
-This is the twenty-third epic of the [refactoring roadmap](../refactoring-roadmap.md) and covers the first part of
+This is the twenty-third epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and covers the first part of
 roadmap item **6.4, Editor framework**: EDC-2, EDC-5, EDC-6 and EDC-7 (step 1 and the shared helpers of step 3) in
 `doc/reviews/refactoring-2026-11/07-editors-core.md`. Item 6.3 closed with [EPIC-162](EPIC-162.md). Item 6.4 lists
 eleven findings (EDC-2, 5–14); they do not fit one epic, so this epic takes the framework core in `editors/base/` and

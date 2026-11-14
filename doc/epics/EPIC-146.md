@@ -8,7 +8,7 @@
 
 ## Overview
 
-The sixth epic of the [refactoring roadmap](../refactoring-roadmap.md), and the first part of Phase 4 (board bridge
+The sixth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md), and the first part of Phase 4 (board bridge
 and runtime decomposition). It covers the renderer side of the board↔host frame bridge: the message contract both ends
 share, and the two god classes that serve it.
 
@@ -185,7 +185,7 @@ BRD-5 and BRD-11 in `05-board-editor.md`). Line numbers in the reports have drif
 
 ## Rules for every task in this epic
 
-- **The roadmap guardrails apply** ([§7](../refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back), also
+- **The roadmap guardrails apply** ([§7](../reviews/refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back), also
   in `doc/agents-common.md`). Every plan names the module that owns each rule it touches and the existing helper it
   reuses: `PendingRequests`, the wire error, `BoardRegistry` (`isPermitted`), `BoardGrant`, the shared page-state
   validation, `BoardFetchBridge`, `BoardCapabilityDispatcher` and the board-editor factory.
@@ -201,7 +201,7 @@ BRD-5 and BRD-11 in `05-board-editor.md`). Line numbers in the reports have drif
 - **God files only shrink.** `BoardWebview.ts`, `BoardEditorModel.ts`, `board-shim.ts`, `BoardToolbarControls.ts` and
   `BoardEditorFacade.ts` end smaller than they start.
 - **No dynamic `import()` to dodge a cycle.** No module-level mutable state in the new modules.
-- **Contracts that must not change** ([roadmap §8](../refactoring-roadmap.md#8-execution-notes)):
+- **Contracts that must not change** ([roadmap §8](../reviews/refactoring-roadmap.md#8-execution-notes)):
   `window.persephone.*` (diff `Object.keys` recursively before and after any shim change), the script API facade
   member names (`BoardEditorFacade`), AiVision paths and agent-facing messages, the `data-name` element contract, board
   storage keys and the `board://` host. The private frame wire may change, since the shim and renderer ship together.

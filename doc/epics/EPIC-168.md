@@ -8,7 +8,7 @@
 
 ## Overview
 
-This is the twenty-eighth epic of the [refactoring roadmap](../refactoring-roadmap.md) and part 1 of roadmap item
+This is the twenty-eighth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and part 1 of roadmap item
 **6.6, Tool editors** (findings **EDT-5, EDT-6, EDT-8, EDT-9, EDT-10** in
 `doc/reviews/refactoring-2026-11/08-editors-tools.md`). Part 2 (EDT-11 and EDT-12) is recorded below and in the roadmap.
 

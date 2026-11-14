@@ -7,7 +7,7 @@
 
 ## Overview
 
-This is the twentieth epic of the [refactoring roadmap](../refactoring-roadmap.md) and the last of three for roadmap
+This is the twentieth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and the last of three for roadmap
 item 6.1 (Browser). Parts 1 and 2 ([EPIC-158](EPIC-158.md), [EPIC-159](EPIC-159.md)) refactored the renderer side. This
 epic is **6.1 part 3**, the main-process side: finding MAIN-7 in `doc/reviews/refactoring-2026-11/01-main.md`. It also
 takes the one renderer step EPIC-159 deferred, BRW-4 step 4 (state slices), so that 6.1 closes completely.

@@ -8,7 +8,7 @@
 
 ## Overview
 
-The second epic of the [refactoring roadmap](../refactoring-roadmap.md). It takes roadmap Phase 1.1 to 1.4 and
+The second epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md). It takes roadmap Phase 1.1 to 1.4 and
 Phase 2.1. These are the enablers that the board-ownership work (Phase 3) and the bridge split (Phase 4) build on:
 
 - one implementation of each cross-process primitive: request correlation, the wire error, the service channel, the
@@ -25,7 +25,7 @@ core, and the next epic can take them with Phase 3.1.
 
 ## Goals
 
-- Each primitive in [roadmap §4.3](../refactoring-roadmap.md#43-protocol-primitives) that Phase 1.1 to 1.3 names
+- Each primitive in [roadmap §4.3](../reviews/refactoring-roadmap.md#43-protocol-primitives) that Phase 1.1 to 1.3 names
   exists once, and every copy the findings list is gone or, for the `.mjs` module-service host that cannot import
   TypeScript, marked as a mirror and checked by `npm run check:contracts`.
 - No `"capability:"`, `"board-frame:"`, `"voice-typing:"` or `"text-translation:"` prefix is parsed out of a `boardId`
@@ -155,7 +155,7 @@ Task documents are written per task when it is picked up. The finding IDs point 
 
 ## Rules for every task in this epic
 
-- **The roadmap guardrails apply** ([§7](../refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back), also
+- **The roadmap guardrails apply** ([§7](../reviews/refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back), also
   in `doc/agents-common.md`). Every plan names the module that owns each rule it touches and the existing helper it
   reuses. A plan that adds a new correlator, ack window, error envelope, manifest reader, root normalizer or
   `kind === "legacy"` branch is sent back.
@@ -164,7 +164,7 @@ Task documents are written per task when it is picked up. The finding IDs point 
   `check:contracts`.
 - **Pure moves first.** When a task both moves files and changes logic, the move is done and verified on its own
   first.
-- **Contracts that must not change** ([roadmap §8](../refactoring-roadmap.md#8-execution-notes)): persisted data
+- **Contracts that must not change** ([roadmap §8](../reviews/refactoring-roadmap.md#8-execution-notes)): persisted data
   formats and keys, `window.persephone.*`, the script API, AiVision paths and messages, the `data-name` contract, MCP
   `call` behaviour. The planned exception is the service-channel behaviour in US-1819, which gets a bridge version
   bump. Private wire protocols between the shim, the host, main and the renderer may change; they ship together.

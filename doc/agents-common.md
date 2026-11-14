@@ -233,7 +233,7 @@ Full details: [architecture/folder-structure.md](architecture/folder-structure.m
 
 ## Refactoring guardrails
 
-The [refactoring roadmap](refactoring-roadmap.md) is removing duplicated rules and protocols. These keep them from
+The [refactoring roadmap](reviews/refactoring-roadmap.md) is removing duplicated rules and protocols. These keep them from
 coming back; a plan or change that breaks one is sent back:
 
 1. **No new protocol code.** A new cross-process message uses the shared primitives for its boundary (service

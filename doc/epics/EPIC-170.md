@@ -8,7 +8,7 @@
 
 ## Overview
 
-This is the thirtieth epic of the [refactoring roadmap](../refactoring-roadmap.md) and part 2 of roadmap item **6.7,
+This is the thirtieth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and part 2 of roadmap item **6.7,
 Tree and UIKit**: findings **UIK-2** and **UIK-1** in `doc/reviews/refactoring-2026-11/09-uikit.md`, in the roadmap's
 order (UIK-3 → UIK-2 → UIK-1; UIK-3 was done in [EPIC-169](EPIC-169.md)).
 

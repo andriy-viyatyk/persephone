@@ -7,7 +7,7 @@
 
 ## Overview
 
-This is the twenty-fourth epic of the [refactoring roadmap](../refactoring-roadmap.md) and the second part of roadmap
+This is the twenty-fourth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and the second part of roadmap
 item **6.4, Editor framework**. Part 1 ([EPIC-163](EPIC-163.md)) landed the framework core in `editors/base/`
 (typed ids, one matcher contract, `EditorCatalog`, switch strategies, a slimmer `EditorModel`, typed editor modules).
 The remaining findings (EDC-7 steps 2 and 4, EDC-8 to EDC-14 in

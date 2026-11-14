@@ -8,7 +8,7 @@
 
 ## Overview
 
-The seventh epic of the [refactoring roadmap](../refactoring-roadmap.md), and the second part of Phase 4 (board bridge
+The seventh epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md), and the second part of Phase 4 (board bridge
 and runtime decomposition). EPIC-146 did the renderer side of the board bridge; this epic does the main side: the
 board↔main `MessagePort` contract and `src/main/board-bridge.ts`, which serves it.
 
@@ -184,7 +184,7 @@ Task documents are written per task when it is picked up. The finding IDs point 
 
 ## Rules for every task in this epic
 
-- **The roadmap guardrails apply** ([§7](../refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back), also
+- **The roadmap guardrails apply** ([§7](../reviews/refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back), also
   in `doc/agents-common.md`). Every plan names the module that owns each rule it touches and the existing helper it
   reuses:
   - `PendingRequests` and the wire error (`shared/wire-error.ts`);
@@ -211,7 +211,7 @@ Task documents are written per task when it is picked up. The finding IDs point 
 - **God files only shrink.** `board-bridge.ts`, `board-shim.ts`, `cdp-service.ts` and `board-handlers.ts` end smaller
   than they start.
 - **No module-level mutable state in the new modules.** Singletons are explicit instances created by one owner.
-- **Contracts that must not change** ([roadmap §8](../refactoring-roadmap.md#8-execution-notes)):
+- **Contracts that must not change** ([roadmap §8](../reviews/refactoring-roadmap.md#8-execution-notes)):
   - `window.persephone.*` (diff `Object.keys` recursively before and after any shim change);
   - board-visible error codes (any change to message text is listed);
   - board storage keys, the `board://` host and `trustedBoards.json`;

@@ -8,7 +8,7 @@
 
 ## Overview
 
-This is the thirty-sixth epic of the [refactoring roadmap](../refactoring-roadmap.md). It finishes roadmap item
+This is the thirty-sixth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md). It finishes roadmap item
 **2.2, Make `ui/` a pure view layer** (SHL-1, SHL-5), after the speech/DSP slice ([EPIC-162](EPIC-162.md)) and the
 dialog slice ([EPIC-175](EPIC-175.md)). Findings: `doc/reviews/refactoring-2026-11/10-shell-scripting.md` (SHL-1,
 SHL-5).

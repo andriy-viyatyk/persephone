@@ -8,7 +8,7 @@
 
 ## Overview
 
-This is the thirty-fourth epic of the [refactoring roadmap](../refactoring-roadmap.md). It continues roadmap item
+This is the thirty-fourth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md). It continues roadmap item
 **6.8, Shell and scripting**, after [EPIC-173](EPIC-173.md) (part 1: SHL-11 and the scripting items of SHL-13). The
 findings are in `doc/reviews/refactoring-2026-11/10-shell-scripting.md`: **SHL-4** (tab presentation and tab-action
 rules live in `PageTabView` and are re-derived elsewhere), **SHL-6** (board name and glyph resolution repeated in six

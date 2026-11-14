@@ -7,7 +7,7 @@
 
 ## Overview
 
-This is the twenty-sixth epic of the [refactoring roadmap](../refactoring-roadmap.md) and part 1 of roadmap item
+This is the twenty-sixth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and part 1 of roadmap item
 **6.5, Settings editor** (findings **EDT-1**, **EDT-2**, **EDT-4** in
 `doc/reviews/refactoring-2026-11/08-editors-tools.md`). EDT-3 (the settings schema with `settingDefault`,
 `settingOptions` and `settingRange`) was already done in [EPIC-155](EPIC-155.md), and `settings.watch` replaced the

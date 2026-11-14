@@ -7,7 +7,7 @@
 
 ## Overview
 
-This is the thirteenth epic of the [refactoring roadmap](../refactoring-roadmap.md) and the third part of Phase 5 (pages,
+This is the thirteenth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and the third part of Phase 5 (pages,
 settings, startup and app conventions). It covers roadmap item 5.3 and findings **CORE-4**, **CORE-5** and **CORE-6**
 (`doc/reviews/refactoring-2026-11/04-api-core.md`). Phases 5.1 (EPIC-151) and 5.2 (EPIC-152) split
 `PagesLifecycleModel` and `PageModel`; this epic removes the three remaining duplications in the pages layer: how an open

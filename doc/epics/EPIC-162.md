@@ -7,7 +7,7 @@
 
 ## Overview
 
-This is the twenty-second epic of the [refactoring roadmap](../refactoring-roadmap.md) and covers roadmap item **6.3,
+This is the twenty-second epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and covers roadmap item **6.3,
 Voice and speech**, in full: SHL-2 in `doc/reviews/refactoring-2026-11/10-shell-scripting.md`, CORE-12 in
 `04-api-core.md`, and MAIN-8 and MAIN-9 in `01-main.md`. Item 6.2 closed with [EPIC-161](EPIC-161.md).
 

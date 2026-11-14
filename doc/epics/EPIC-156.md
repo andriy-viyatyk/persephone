@@ -7,7 +7,7 @@
 
 ## Overview
 
-This is the sixteenth epic of the [refactoring roadmap](../refactoring-roadmap.md) and the sixth part of Phase 5 (pages,
+This is the sixteenth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and the sixth part of Phase 5 (pages,
 settings, startup and app conventions). It covers roadmap item 5.6 and findings **MAIN-6**
 (`doc/reviews/refactoring-2026-11/01-main.md`), **BND-7** and **BND-8** (`02-boundary.md`).
 

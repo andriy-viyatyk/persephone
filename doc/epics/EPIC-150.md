@@ -7,7 +7,7 @@
 
 ## Overview
 
-This is the tenth epic of the [refactoring roadmap](../refactoring-roadmap.md) and the last part of Phase 4 (board
+This is the tenth epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and the last part of Phase 4 (board
 bridge and runtime decomposition). It covers roadmap item 4.6, findings **EDC-1** (`07-editors-core.md`) and **BRD-9**
 (`05-board-editor.md`). Both findings propose the same fix, so it is done once and owned by `editors/base/`.
 
@@ -163,7 +163,7 @@ touch different files, but they run one at a time so that US-1868 reuses whateve
 
 ## Rules for every task in this epic
 
-- **The roadmap guardrails apply** ([§7](../refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back), also
+- **The roadmap guardrails apply** ([§7](../reviews/refactoring-roadmap.md#7-guardrails-against-the-drift-coming-back), also
   in `doc/agents-common.md`). Each plan names the owner of each rule it touches and the helper it reuses.
 - **Each copy is replaced, not wrapped.** A task is done when its copy is gone: no `_hostStateUnsub`, no private
   `_host`/`_pendingHost` fields in the board models, no `lastBoardContent`, no `_changedContent`.

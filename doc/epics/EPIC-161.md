@@ -7,7 +7,7 @@
 
 ## Overview
 
-This is the twenty-first epic of the [refactoring roadmap](../refactoring-roadmap.md) and covers roadmap item **6.2,
+This is the twenty-first epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md) and covers roadmap item **6.2,
 Automation and facades**, in full: findings BRW-3 and BRW-8 in
 `doc/reviews/refactoring-2026-11/06-browser.md`, and SHL-9, SHL-10 and SHL-12 in
 `doc/reviews/refactoring-2026-11/10-shell-scripting.md`. Item 6.1 closed with [EPIC-160](EPIC-160.md).

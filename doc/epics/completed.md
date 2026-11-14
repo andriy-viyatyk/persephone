@@ -692,7 +692,7 @@ Sonnet subagents and reviewed against the roadmap guardrails; Codex implemented.
 
 ## EPIC-141 — Refactoring Phase 0: quick wins and cleanup
 
-Completed 2026-11-10. Phase 0 of the [refactoring roadmap](../refactoring-roadmap.md): delete dead
+Completed 2026-11-10. Phase 0 of the [refactoring roadmap](../reviews/refactoring-roadmap.md): delete dead
 code, give each duplicated contract and helper one source, fix the bugs the November review found,
 and bring the developer docs and code comments back in line with the code. No persisted data,
 `window.persephone`, script API, AiVision, `data-name` or MCP `call` contract changed. Epic

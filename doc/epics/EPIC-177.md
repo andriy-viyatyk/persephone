@@ -8,10 +8,10 @@
 
 ## Overview
 
-This is the thirty-seventh and last epic of the [refactoring roadmap](../refactoring-roadmap.md): **Phase 7, Lock it
+This is the thirty-seventh and last epic of the [refactoring roadmap](../reviews/refactoring-roadmap.md): **Phase 7, Lock it
 in.** It turns the layer map of roadmap §4.1 into error-level import zones, rewrites the `overview.md` dependency rules
 so they state exactly what is enforced, and turns on `strictNullChecks` per folder (decision
-[D10](../refactoring-roadmap.md#6-decisions-for-you), accepted). The third Phase 7 item — the §7 guardrails in
+[D10](../reviews/refactoring-roadmap.md#6-decisions-for-you), accepted). The third Phase 7 item — the §7 guardrails in
 `doc/agents-common.md` and in the Codex delegation brief — is not code: the agent may not edit those files, so the
 proposed wording goes to the user (see Notes).
 
