@@ -5,9 +5,8 @@ import { TextHostEditorModel } from "../base/TextHostEditorModel";
 import { TREE_PROVIDER_HOST_TRAIT, TreeProviderHost } from "../base/tree-provider-host";
 import { TextFileModel } from "../content-host/TextFileModel";
 import { ui } from "../../api/ui";
+import { app } from "../../api/app";
 import { debounce, errMessage } from "../../../shared/utils";
-import { splitWithSeparators } from "../../core/utils/utils";
-import { getHostname } from "../../components/icons/favicon-cache";
 import type { GridModelCapability } from "../../uikit/DataGrid";
 import type { ILink } from "../../api/types/io.tree";
 import type { MenuItem } from "../../uikit/Menu/types";
@@ -16,6 +15,8 @@ import { createLinkData } from "../../../shared/link-data";
 import { LinkTreeProvider } from "./LinkTreeProvider";
 import { englishMessage, t, untranslated } from "../../../shared/i18n/t";
 import type { ILinkSource, LinkItem, LinkEditorData, LinkViewMode } from "./linkTypes";
+import { LinkCollection, type LinkFilterCriteria } from "./link-collection";
+import { LinkImporter } from "./link-importer";
 import { showEditLinkDialog } from "./EditLinkDialog";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 
@@ -27,6 +28,12 @@ export type ExpandedPanel = "tags" | "categories" | "hostnames";
 
 export type LinkQueueEvent = { type: "focus" };
 export type LinkQueueRequest = never;
+
+export interface LinkEditorEmbedding {
+    adjustOpenLink(data: ILinkData): void;
+    extraMenuItems(link: LinkItem): MenuItem[];
+    imageRoute(): ImageRoute | null;
+}
 
 /**
  * HS1 host-slot shape — the five per-window UI selection fields ride
@@ -99,14 +106,9 @@ export class LinkEditor
 
     // LK4 — ref-equality marker.
     private lastSerializedData: LinkEditorData | null = null;
-    // Incremental-filter optimization (today's pattern preserved):
-    private lastFilterState = {
-        searchText: "",
-        selectedCategory: "",
-        selectedTag: "",
-        selectedHostname: "",
-        expandedPanel: "",
-    };
+    private _collection: LinkCollection;
+    private readonly importer = new LinkImporter();
+    private embedding?: LinkEditorEmbedding;
 
     readonly treeProviderHost = new TreeProviderHost<LinkTreeProvider>({
         createProvider: () => this._host
@@ -118,13 +120,14 @@ export class LinkEditor
         return this.treeProviderHost.selectionState;
     }
 
+    get collection(): LinkCollection {
+        return this._collection;
+    }
+
     // View refs (set by view; not on state):
     gridModel: GridModelCapability | null = null;
     containerElement: HTMLElement | null = null;
 
-    // Optional callback fields (LK9 — duck-typed today, preserved on the class):
-    onLinkOpen?: (data: ILinkData) => void;
-    onGetLinkMenuItems?: (link: LinkItem) => MenuItem[];
 
     /**
      * Route fetches through the embedding page's session when its network is routed (for example, a browser bookmark editor on Tor or a proxied profile), so remote link images do not use a direct connection.
@@ -134,11 +137,10 @@ export class LinkEditor
      * this editor is wired up, and this model outlives every blank tab in the page.
      * Left null for standalone `.links.json` editors and direct pages.
      */
-    imageProxySource?: () => ImageRoute | null;
 
     /** Current routing for remote images, read fresh at render time. */
     get imageProxy(): ImageRoute | null {
-        return this.imageProxySource?.() ?? null;
+        return this.embedding?.imageRoute() ?? null;
     }
 
     /**
@@ -154,7 +156,31 @@ export class LinkEditor
 
     constructor(state: TComponentState<LinkEditorState>) {
         super(state);
+        this._collection = new LinkCollection(state.get().data);
         this.traits.add(TREE_PROVIDER_HOST_TRAIT, this.treeProviderHost);
+    }
+
+    publish(updateState?: (state: LinkEditorState) => void): void {
+        const { data, index } = this.collection;
+        this.state.update((s) => {
+            s.data = data;
+            s.categories = index.categories;
+            s.categoriesSize = index.categoriesSize;
+            s.tags = index.tags;
+            s.tagsSize = index.tagsSize;
+            s.hostnames = index.hostnames;
+            s.hostnamesSize = index.hostnamesSize;
+            updateState?.(s);
+        });
+        this.applyFilters();
+    }
+
+    setEmbedding(embedding: LinkEditorEmbedding): void {
+        this.embedding = embedding;
+    }
+
+    extraMenuItems(link: LinkItem): MenuItem[] {
+        return this.embedding?.extraMenuItems(link) ?? [];
     }
 
     /** The trait extracted the host (switch away) — drop the host-bound
@@ -312,9 +338,6 @@ export class LinkEditor
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // BELOW: methods relocated from legacy LinkViewModel.
-    // Substitutions: `this.host` → `this._host!`; `LinkViewModel.cacheName`
-    // mechanics dropped (HS1 host slot replaces the cache file).
     // ────────────────────────────────────────────────────────────────────
 
     // ── Serialization: state → file content ─────────────────
@@ -325,7 +348,7 @@ export class LinkEditor
         if (!this._host) return;
         if (data !== this.lastSerializedData) {
             this.lastSerializedData = data;
-            const content = JSON.stringify({ type: "link-editor", ...data }, null, 4);
+            const content = this.collection.serialize();
             this.writeToHost(content, true);
         }
     };
@@ -334,26 +357,9 @@ export class LinkEditor
 
     loadData = (content: string): void => {
         try {
-            const parsed = content.trim() ? JSON.parse(content) : {};
-            this.state.update((s) => {
-                const links: LinkItem[] = Array.isArray(parsed.links) ? parsed.links : [];
-                // Normalize categories: trim leading/trailing separators
-                for (const link of links) {
-                    if (link.category) {
-                        link.category = link.category.replace(/^[/\\]+|[/\\]+$/g, "");
-                    }
-                }
-                s.data = {
-                    links,
-                    state: parsed.state || {},
-                };
-                s.error = undefined;
-            });
+            this._collection = LinkCollection.parse(content);
+            this.publish((s) => { s.error = undefined; });
             this.lastSerializedData = this.state.get().data;
-            this.loadCategories();
-            this.loadTags();
-            this.loadHostnames();
-            this.applyFilters();
         } catch (e: unknown) {
             const message = errMessage(e);
             this.state.update((s) => {
@@ -424,89 +430,17 @@ export class LinkEditor
 
     // ── Categories ──────────────────────────────────────────────────────
 
-    loadCategories = (): void => {
-        const links = this.state.get().data.links;
-        const categoriesSet = new Set<string>();
-        const categoriesSize: { [key: string]: number } = {};
-
-        links.forEach((link) => {
-            if (link.category) {
-                categoriesSet.add(link.category);
-                const categoryPath = splitWithSeparators(link.category, "/\\");
-                while (categoryPath.length) {
-                    const subCategory = categoryPath.join("/");
-                    categoriesSize[subCategory] = (categoriesSize[subCategory] || 0) + 1;
-                    categoryPath.pop();
-                }
-            }
-            categoriesSize[""] = (categoriesSize[""] || 0) + 1;
-        });
-
-        this.state.update((s) => {
-            s.categories = Array.from(categoriesSet);
-            s.categoriesSize = categoriesSize;
-        });
-    };
-
     getCategoryCount = (category: string): number => {
         return this.state.get().categoriesSize[category] ?? 0;
     };
 
     // ── Tags ────────────────────────────────────────────────────────────
 
-    loadTags = (): void => {
-        const links = this.state.get().data.links;
-        const tagsSet = new Set<string>();
-        const tagsSize: { [key: string]: number } = {};
-        const separator = ":";
-
-        tagsSize[""] = links.length;
-
-        links.forEach((link) => {
-            link.tags?.forEach((tag) => {
-                tagsSet.add(tag);
-                tagsSize[tag] = (tagsSize[tag] || 0) + 1;
-
-                const sepIndex = tag.indexOf(separator);
-                if (sepIndex > 0 && sepIndex < tag.length - 1) {
-                    const parentTag = tag.slice(0, sepIndex) + separator;
-                    tagsSize[parentTag] = (tagsSize[parentTag] || 0) + 1;
-                }
-            });
-        });
-
-        this.state.update((s) => {
-            s.tags = Array.from(tagsSet);
-            s.tagsSize = tagsSize;
-        });
-    };
-
     getTagCount = (tag: string): number => {
         return this.state.get().tagsSize[tag] ?? 0;
     };
 
     // ── Hostnames ───────────────────────────────────────────────────────
-
-    loadHostnames = (): void => {
-        const links = this.state.get().data.links;
-        const hostnamesSize: { [key: string]: number } = {};
-
-        hostnamesSize[""] = links.length;
-
-        links.forEach((link) => {
-            const hostname = getHostname(link.href);
-            if (hostname) {
-                hostnamesSize[hostname] = (hostnamesSize[hostname] || 0) + 1;
-            }
-        });
-
-        const hostnames = Object.keys(hostnamesSize).filter((h) => h !== "").sort();
-
-        this.state.update((s) => {
-            s.hostnames = hostnames;
-            s.hostnamesSize = hostnamesSize;
-        });
-    };
 
     getHostnameCount = (hostname: string): number => {
         return this.state.get().hostnamesSize[hostname] ?? 0;
@@ -516,79 +450,19 @@ export class LinkEditor
 
     applyFilters = (): void => {
         const {
-            data,
             selectedCategory,
             selectedTag,
             selectedHostname,
             expandedPanel,
             searchText,
-            filteredLinks,
         } = this.state.get();
-        const last = this.lastFilterState;
-
-        const searchExtended =
-            searchText.startsWith(last.searchText) && last.searchText !== "";
-        const panelFilterUnchanged =
-            selectedCategory === last.selectedCategory &&
-            selectedTag === last.selectedTag &&
-            selectedHostname === last.selectedHostname &&
-            expandedPanel === last.expandedPanel;
-
-        let filtered: LinkItem[];
-
-        if (searchExtended && panelFilterUnchanged) {
-            filtered = filteredLinks;
-        } else {
-            filtered = data.links;
-
-            if (expandedPanel === "categories" && selectedCategory) {
-                filtered = filtered.filter((link) =>
-                    link.category?.startsWith(selectedCategory),
-                );
-            }
-
-            if (expandedPanel === "tags" && selectedTag) {
-                const separator = ":";
-                if (selectedTag.endsWith(separator)) {
-                    filtered = filtered.filter((link) =>
-                        link.tags?.some((tag) => tag.startsWith(selectedTag) || tag === selectedTag),
-                    );
-                } else {
-                    filtered = filtered.filter((link) => link.tags?.includes(selectedTag));
-                }
-            }
-
-            if (expandedPanel === "hostnames" && selectedHostname) {
-                filtered = filtered.filter(
-                    (link) => getHostname(link.href) === selectedHostname,
-                );
-            }
-        }
-
-        if (searchText.trim()) {
-            const searchWords = searchText.toLowerCase().trim().split(/\s+/);
-            filtered = filtered.filter((link) => {
-                const searchableText = [
-                    link.title || "",
-                    link.href || "",
-                    link.category || "",
-                    ...(link.tags || []),
-                ]
-                    .join(" ")
-                    .toLowerCase();
-
-                return searchWords.every((word) => searchableText.includes(word));
-            });
-        }
-
-        this.lastFilterState = {
-            searchText,
-            selectedCategory,
-            selectedTag,
-            selectedHostname,
-            expandedPanel,
-        };
-
+        const filtered = this.collection.filter({
+            panel: expandedPanel,
+            category: selectedCategory,
+            tag: selectedTag,
+            hostname: selectedHostname,
+            search: searchText,
+        } as LinkFilterCriteria);
         this.state.update((s) => {
             s.filteredLinks = filtered;
         });
@@ -599,70 +473,50 @@ export class LinkEditor
     /**
      * View mode for the current category / tag / hostname.
      *
-     * Pass `snapshot` when calling this from inside a `state.use(...)` selector.
-     * The mode lives under `data.state.*ViewMode`, so a component whose selector
-     * doesn't read those keys will not re-render when the mode changes — reading
-     * it through the selector's own snapshot is what makes it reactive.
      */
     getViewMode = (snapshot?: LinkEditorState): LinkViewMode => {
         const { expandedPanel, selectedCategory, selectedTag, selectedHostname, data } =
             snapshot ?? this.state.get();
-        if (expandedPanel === "tags") {
-            return data.state.tagViewMode?.[selectedTag] ?? "list";
-        }
-        if (expandedPanel === "hostnames") {
-            return data.state.hostnameViewMode?.[selectedHostname] ?? "list";
-        }
-        return data.state.categoryViewMode?.[selectedCategory] ?? "list";
+        const key = expandedPanel === "tags"
+            ? selectedTag
+            : expandedPanel === "hostnames" ? selectedHostname : selectedCategory;
+        return this.collection.viewModeFor(expandedPanel, key, data);
     };
 
     setViewMode = (mode: LinkViewMode): void => {
         const { expandedPanel, selectedCategory, selectedTag, selectedHostname } =
             this.state.get();
-        this.state.update((s) => {
-            if (expandedPanel === "tags") {
-                if (!s.data.state.tagViewMode) {
-                    s.data.state.tagViewMode = {};
-                }
-                s.data.state.tagViewMode[selectedTag] = mode;
-            } else if (expandedPanel === "hostnames") {
-                if (!s.data.state.hostnameViewMode) {
-                    s.data.state.hostnameViewMode = {};
-                }
-                s.data.state.hostnameViewMode[selectedHostname] = mode;
-            } else {
-                if (!s.data.state.categoryViewMode) {
-                    s.data.state.categoryViewMode = {};
-                }
-                s.data.state.categoryViewMode[selectedCategory] = mode;
-            }
-        });
+        const key = expandedPanel === "tags"
+            ? selectedTag
+            : expandedPanel === "hostnames" ? selectedHostname : selectedCategory;
+        this.collection.setViewMode(expandedPanel, key, mode);
+        this.publish();
     };
 
     // ── CRUD ────────────────────────────────────────────────────────────
 
     addLink = (link?: Partial<LinkItem>): LinkItem => {
+        const newLink = this.createLinkItem(link);
+        this.collection.add(newLink);
+        this.publish();
+        return newLink;
+    };
+
+    private getLinkDefaults(): Partial<LinkItem> {
         const { expandedPanel, selectedCategory, selectedTag, searchText } = this.state.get();
+        const defaults: Partial<LinkItem> = {};
+        if (expandedPanel === "categories" && selectedCategory) defaults.category = selectedCategory;
+        if (expandedPanel === "tags" && selectedTag) defaults.tags = [selectedTag];
+        if (searchText.trim()) defaults.title = searchText.trim();
+        return defaults;
+    }
 
-        let category = link?.category ?? "";
-        let tags = link?.tags ?? [];
-        let title = link?.title ?? "";
-
-        if (!link?.category) {
-            if (expandedPanel === "categories" && selectedCategory) {
-                category = selectedCategory;
-            }
-        }
-        if (!link?.tags?.length) {
-            if (expandedPanel === "tags" && selectedTag) {
-                tags = [selectedTag];
-            }
-        }
-        if (!link?.title && searchText.trim()) {
-            title = searchText.trim();
-        }
-
-        const newLink: LinkItem = {
+    private createLinkItem(link?: Partial<LinkItem>): LinkItem {
+        const defaults = this.getLinkDefaults();
+        const category = link?.category || defaults.category || "";
+        const tags = link?.tags?.length ? link.tags : defaults.tags || [];
+        const title = link?.title || defaults.title || "";
+        return {
             id: crypto.randomUUID(),
             title,
             href: link?.href ?? "",
@@ -671,16 +525,7 @@ export class LinkEditor
             isDirectory: false,
             imgSrc: link?.imgSrc,
         };
-
-        this.state.update((s) => {
-            s.data.links.unshift(newLink);
-        });
-        this.loadCategories();
-        this.loadTags();
-        this.loadHostnames();
-        this.applyFilters();
-        return newLink;
-    };
+    }
 
     /**
      * Import one or more ILink items into the collection.
@@ -692,84 +537,41 @@ export class LinkEditor
         items: ILink[],
         opts?: { moveExistingToCategory?: string },
     ): Promise<void> => {
-        const fp = await import("../../core/utils/file-path");
-        const existingHrefs = new Set(
-            this.state.get().data.links.map((l) => l.href.toLowerCase()),
+        let movedCount = 0;
+        const SCAN_LIMIT = 100;
+        const onExistingMoved = (link: LinkItem, category: string): void => {
+            const current = this.getLinkById(link.id);
+            if (current && current.category !== category) {
+                this.moveLinkToCategory(current.id, category);
+                movedCount++;
+            }
+        };
+        let prepared = await this.importer.prepare(
+            items,
+            this.state.get().data.links,
+            opts?.moveExistingToCategory,
+            onExistingMoved,
+            SCAN_LIMIT,
         );
 
-        const directLinks: Partial<LinkItem>[] = [];
-        const foldersToScan: ILink[] = [];
-        let movedCount = 0;
-
-        for (const item of items) {
-            if (item.isDirectory) {
-                foldersToScan.push(item);
-            } else {
-                if (existingHrefs.has(item.href.toLowerCase())) {
-                    // Move-on-duplicate: reassign the existing link to the drop
-                    // target instead of creating a duplicate or silently skipping.
-                    if (opts?.moveExistingToCategory !== undefined) {
-                        const existing = this.state.get().data.links.find(
-                            (l) => l.href.toLowerCase() === item.href.toLowerCase(),
-                        );
-                        if (existing && existing.category !== opts.moveExistingToCategory) {
-                            this.moveLinkToCategory(existing.id, opts.moveExistingToCategory);
-                            movedCount++;
-                        }
-                    }
-                    continue;
-                }
-                existingHrefs.add(item.href.toLowerCase());
-                directLinks.push({
-                    title: item.title,
-                    href: item.href,
-                    category: item.category || "",
-                    tags: item.tags?.length ? item.tags : undefined,
-                    imgSrc: item.imgSrc,
-                });
-            }
-        }
-
-        const SCAN_LIMIT = 100;
-        let folderLinks: Partial<LinkItem>[] = [];
-
-        if (foldersToScan.length) {
-            const scanned = await this.scanFolders(
-                foldersToScan,
-                existingHrefs,
-                fp,
-                SCAN_LIMIT,
+        if (prepared.limitReached) {
+            const choice = await ui.confirm(
+                t("links.importFolderLimit", { count: SCAN_LIMIT }),
+                { title: t("links.importFolderTitle"), buttons: [IMPORT_ALL, DialogButton.cancel] },
             );
-
-            if (scanned.limitReached) {
-                const choice = await ui.confirm(
-                    t("links.importFolderLimit", { count: SCAN_LIMIT }),
-                    { title: t("links.importFolderTitle"), buttons: [IMPORT_ALL, DialogButton.cancel] },
-                );
-                if (choice !== IMPORT_ALL) return;
-
-                const existingHrefs2 = new Set(
-                    this.state.get().data.links.map((l) => l.href.toLowerCase()),
-                );
-                for (const dl of directLinks) {
-                    if (dl.href) existingHrefs2.add(dl.href.toLowerCase());
-                }
-                const fullScan = await this.scanFolders(
-                    foldersToScan,
-                    existingHrefs2,
-                    fp,
-                    0,
-                );
-                folderLinks = fullScan.links;
-            } else {
-                folderLinks = scanned.links;
-            }
+            if (choice !== IMPORT_ALL) return;
+            prepared = await this.importer.prepare(
+                items,
+                this.state.get().data.links,
+                opts?.moveExistingToCategory,
+                onExistingMoved,
+                0,
+            );
         }
 
-        const allLinks = [...directLinks, ...folderLinks];
+        const allLinks = prepared.links;
 
         if (!allLinks.length) {
-            const { app } = await import("../../api/app");
             app.ui.notify(
                 movedCount
                     ? t("links.movedLinks", { count: movedCount })
@@ -779,79 +581,17 @@ export class LinkEditor
             return;
         }
 
-        for (const link of allLinks) {
-            this.addLink(link);
-        }
+        this.collection.addMany(allLinks.map((link) => this.createLinkItem(link)));
+        this.publish();
 
         if (allLinks.length > 1) {
-            const { app } = await import("../../api/app");
             app.ui.notify(t("links.importedLinks", { count: allLinks.length }), "info");
         }
     };
 
-    private scanFolders = async (
-        folders: ILink[],
-        existingHrefs: Set<string>,
-        fp: typeof import("../../core/utils/file-path"),
-        limit: number,
-    ): Promise<{ links: Partial<LinkItem>[]; limitReached: boolean }> => {
-        const { app } = await import("../../api/app");
-        const links: Partial<LinkItem>[] = [];
-        const queue = [...folders];
-
-        while (queue.length > 0) {
-            const folder = queue.shift();
-            let entries: { name: string; isDirectory: boolean }[];
-            try {
-                entries = await app.fs.listDirWithTypes(folder.href);
-            } catch {
-                continue;
-            }
-
-            for (const entry of entries) {
-                const fullPath = fp.fpJoin(folder.href, entry.name);
-                if (entry.isDirectory) {
-                    queue.push({
-                        title: entry.name,
-                        href: fullPath,
-                        category: folder.category || "",
-                        tags: [],
-                        isDirectory: true,
-                    });
-                    continue;
-                }
-                if (existingHrefs.has(fullPath.toLowerCase())) continue;
-                existingHrefs.add(fullPath.toLowerCase());
-                links.push({
-                    title: entry.name,
-                    href: fullPath,
-                    category: folder.category || "",
-                });
-                if (limit > 0 && links.length >= limit) {
-                    return { links, limitReached: true };
-                }
-            }
-        }
-
-        return { links, limitReached: false };
-    };
-
     updateLink = (id: string, updates: Partial<Omit<LinkItem, "id">>): void => {
-        this.state.update((s) => {
-            const link = s.data.links.find((l) => l.id === id);
-            if (link) {
-                if (updates.title !== undefined) link.title = updates.title;
-                if (updates.href !== undefined) link.href = updates.href;
-                if (updates.category !== undefined) link.category = updates.category;
-                if (updates.tags !== undefined) link.tags = updates.tags;
-                if (updates.imgSrc !== undefined) link.imgSrc = updates.imgSrc;
-                if ("target" in updates) link.target = updates.target;
-            }
-        });
-        if (updates.category !== undefined) this.loadCategories();
-        if (updates.tags !== undefined) this.loadTags();
-        if (updates.href !== undefined) this.loadHostnames();
-        this.applyFilters();
+        this.collection.update(id, updates);
+        this.publish();
     };
 
     deleteLink = async (id: string, skipConfirm = false): Promise<void> => {
@@ -865,16 +605,8 @@ export class LinkEditor
             this.containerElement?.focus();
             if (bt !== DialogButton.delete) return;
         }
-        this.state.update((s) => {
-            s.data.links = s.data.links.filter((l) => l.id !== id);
-            if (s.data.state.pinnedLinks) {
-                s.data.state.pinnedLinks = s.data.state.pinnedLinks.filter((pid) => pid !== id);
-            }
-        });
-        this.loadCategories();
-        this.loadTags();
-        this.loadHostnames();
-        this.applyFilters();
+        this.collection.remove(id);
+        this.publish();
     };
 
     getLinkById = (id: string): LinkItem | undefined => {
@@ -884,9 +616,8 @@ export class LinkEditor
     // ── Drag-and-drop ───────────────────────────────────────────────────
 
     moveLinkToCategory = (linkId: string, category: string): void => {
-        const link = this.getLinkById(linkId);
-        if (!link || link.category === category) return;
-        this.updateLink(linkId, { category });
+        if (!this.collection.moveToCategory(linkId, category)) return;
+        this.publish();
     };
 
     moveCategory = async (fromCategory: string, toCategory: string): Promise<void> => {
@@ -911,14 +642,8 @@ export class LinkEditor
 
         if (result !== DialogButton.move) return;
 
-        this.state.update((s) => {
-            for (const link of s.data.links) {
-                if (link.category === fromCategory) {
-                    link.category = newCategory;
-                } else if (link.category.startsWith(fromCategory + "/")) {
-                    link.category = newCategory + link.category.slice(fromCategory.length);
-                }
-            }
+        this.collection.moveCategory(fromCategory, toCategory);
+        this.publish((s) => {
             const sel = s.selectedCategory;
             if (sel === fromCategory) {
                 s.selectedCategory = newCategory;
@@ -926,8 +651,6 @@ export class LinkEditor
                 s.selectedCategory = newCategory + sel.slice(fromCategory.length);
             }
         });
-        this.loadCategories();
-        this.applyFilters();
     };
 
     // ── Pinned links ────────────────────────────────────────────────────
@@ -937,22 +660,13 @@ export class LinkEditor
     };
 
     pinLink = (id: string): void => {
-        this.state.update((s) => {
-            if (!s.data.state.pinnedLinks) {
-                s.data.state.pinnedLinks = [];
-            }
-            if (!s.data.state.pinnedLinks.includes(id)) {
-                s.data.state.pinnedLinks.push(id);
-            }
-        });
+        this.collection.pin(id);
+        this.publish();
     };
 
     unpinLink = (id: string): void => {
-        this.state.update((s) => {
-            if (s.data.state.pinnedLinks) {
-                s.data.state.pinnedLinks = s.data.state.pinnedLinks.filter((pid) => pid !== id);
-            }
-        });
+        this.collection.unpin(id);
+        this.publish();
     };
 
     togglePinLink = (id: string): void => {
@@ -964,16 +678,12 @@ export class LinkEditor
     };
 
     reorderPinnedLink = (fromIndex: number, toIndex: number): void => {
-        this.state.update((s) => {
-            const pinned = s.data.state.pinnedLinks;
-            if (!pinned) return;
-            const [moved] = pinned.splice(fromIndex, 1);
-            pinned.splice(toIndex, 0, moved);
-        });
+        this.collection.reorderPinned(fromIndex, toIndex);
+        this.publish();
     };
 
     getPinnedLinks = (): LinkItem[] => {
-        const { data } = this.state.get();
+        const { data } = this.collection;
         const pinnedIds = data.state.pinnedLinks;
         if (!pinnedIds?.length) return [];
         const linkMap = new Map(data.links.map((l) => [l.id, l]));
@@ -981,11 +691,8 @@ export class LinkEditor
     };
 
     setPinnedPanelWidth = (width: number): void => {
-        this.state.update((s) => {
-            if (!s.data.state.pinnedPanelWidth || s.data.state.pinnedPanelWidth !== width) {
-                s.data.state.pinnedPanelWidth = width;
-            }
-        });
+        this.collection.setPinnedPanelWidth(width);
+        this.publish();
     };
 
     // ── Edit Link dialog ────────────────────────────────────────────────
@@ -994,19 +701,7 @@ export class LinkEditor
         const state = this.state.get();
         const link = linkId ? state.data.links.find((l) => l.id === linkId) : undefined;
 
-        const defaults: Partial<LinkItem> = link ? { ...link } : {};
-        if (!linkId) {
-            const { expandedPanel, selectedCategory, selectedTag, searchText } = state;
-            if (expandedPanel === "categories" && selectedCategory) {
-                defaults.category = selectedCategory;
-            }
-            if (expandedPanel === "tags" && selectedTag) {
-                defaults.tags = [selectedTag];
-            }
-            if (searchText.trim()) {
-                defaults.title = searchText.trim();
-            }
-        }
+        const defaults: Partial<LinkItem> = link ? { ...link } : this.getLinkDefaults();
 
         const result = await showEditLinkDialog({
             title: link ? t("links.editLink") : t("links.addLink"),
@@ -1032,22 +727,22 @@ export class LinkEditor
                     imgSrc: result.imgSrc,
                     target: result.target,
                 };
-                this.state.update((s) => {
-                    s.data.links.unshift(newLink);
-                });
-                this.loadCategories();
-                this.loadTags();
-                this.loadHostnames();
-                this.applyFilters();
+                this.collection.add(newLink);
+                this.publish();
             }
         }
+    };
+
+    toggleTag = (id: string, tag: string): void => {
+        this.collection.toggleTag(id, tag);
+        this.publish();
     };
 
     // ── Link opening ────────────────────────────────────────────────────
 
     /** Open a link clicked in a sidebar panel (Category tree / Tags-Hostnames
      *  bottom list). A single open path:
-     *   - **Embedded (browser):** when `onLinkOpen` is set (only the browser
+     *   - **Embedded (browser):** when an embedding is set (only the browser
      *     sets it), route through `openLink()` so the hook can force
      *     `target:"browser"` + `browserPageId` and navigate the empty tab (or a
      *     new tab when the current tab isn't blank / on Ctrl-click).
@@ -1056,7 +751,7 @@ export class LinkEditor
      *     `_isOpenedFromMe`. Matches the previous single-panel path. */
     openLinkFromPanel = (item: ILink, sourceId: string): void => {
         if (item.id) this.selectLink(item.id);
-        if (this.onLinkOpen) {
+        if (this.embedding) {
             void this.openLink(item);
             return;
         }
@@ -1072,7 +767,7 @@ export class LinkEditor
             ...(sourceId === "link-tag" ? { selectedTag: this.state.get().selectedTag } : undefined),
             ...(this.page ? { pageId: this.page.id, fallbackTarget: EditorId.monaco, title: item.title } : undefined),
         });
-        void import("../../api/app").then(({ app }) => app.events.openRawLink.sendAsync(data));
+        void app.events.openRawLink.sendAsync(data);
     };
 
     openLink = async (link: ILink | { href: string; target?: string }): Promise<void> => {
@@ -1082,9 +777,8 @@ export class LinkEditor
         const linkData = createLinkData(url, { target: link.target || undefined });
 
         // Let owner (e.g., Browser) modify linkData before pipeline dispatch
-        this.onLinkOpen?.(linkData);
+        this.embedding?.adjustOpenLink(linkData);
 
-        const { app } = await import("../../api/app");
         await app.events.openRawLink.sendAsync(linkData);
     };
 

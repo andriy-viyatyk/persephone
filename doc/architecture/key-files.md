@@ -332,7 +332,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Markdown body host/model contract reused by embedded guide rendering | `/src/renderer/editors/markdown/MarkdownBodyModel.ts` |
 | Native Markdown block renderer (unified/remark pipeline, HAST overrides, and owned interactive nodes) | `/src/renderer/editors/markdown/MarkdownBlockView.ts` |
 | Hand-written HAST-to-DOM property and namespace conversion | `/src/renderer/editors/markdown/hast-dom.ts` |
-| Log view editor (plain entry collection with versioned `renderChange` invalidation) | `/src/renderer/editors/log-view/LogViewEditor.ts` |
+| Log View editor and JSONL document (entry collection, rendering invalidation, tolerant parse, line count, and stable entry ID bookkeeping) | `/src/renderer/editors/log-view/LogViewEditor.ts`, `/src/renderer/editors/log-view/JsonlLogDocument.ts` |
+| Log View entry type catalog (DOM-free type metadata, push validation rules, and derived entry predicates) | `/src/renderer/editors/log-view/log-entry-types.ts` |
 | Native Log View page composition | `/src/renderer/editors/log-view/LogViewEditorView.ts` |
 | Syntax-highlighted code (Monaco colorize) | `/src/renderer/editors/shared/ColorizedCodeView.ts` |
 | Find bar (native input/buttons) | `/src/renderer/editors/shared/FindBarView.ts` |
@@ -356,6 +357,10 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Built-in settings sections and board-declared controls | `/src/renderer/editors/settings/sections/` |
 | Clipboard settings section (enable toggle, item cap, and on-disk storage warning) | `/src/renderer/editors/settings/sections/ClipboardSection.ts` |
 | Native link editor page composition, body, and chrome (list/tiles switching, pinned links, and tooltip content) | `/src/renderer/editors/link-editor/LinkEditorView.ts`, `/src/renderer/editors/link-editor/LinkBody.ts`, `/src/renderer/editors/link-editor/PinnedLinksPanelView.ts` |
+| Link editor data owner (parse/serialize, collection indexes, filtering, view modes, pins, and mutations) | `/src/renderer/editors/link-editor/link-collection.ts` |
+| Link editor folder scan and duplicate-aware import | `/src/renderer/editors/link-editor/link-importer.ts` |
+| Shared Link editor list/tile items and row actions | `/src/renderer/editors/link-editor/LinksItemsView.ts`, `/src/renderer/editors/link-editor/link-item-actions.ts`, `/src/renderer/editors/link-editor/FaviconRowTracker.ts` |
+| Shared Link editor Tags/Hostnames navigation panel | `/src/renderer/editors/link-editor/LinkFilterNavigationPanelView.ts` |
 | Environment-variables editor page composition | `/src/renderer/editors/env-vars/EnvVarsEditorView.ts` |
 | File-diff editor page composition (toolbar, revisions, and diff body) | `/src/renderer/editors/file-diff/FileDiffEditorView.ts` |
 | Browser editor coordinator (restore, navigation, active-tab state, page creation and sub-model lifecycle) | `/src/renderer/editors/browser/BrowserEditor.ts` |
@@ -408,7 +413,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Environment variables editor and native grid body | `/src/renderer/editors/env-vars/EnvVarsEditor.ts`, `/src/renderer/editors/env-vars/EnvVarsBodyView.ts` |
 | File diff editor and native revision/diff views | `/src/renderer/editors/file-diff/FileDiffEditor.ts`, `/src/renderer/editors/file-diff/FileDiffBodyView.ts`, `/src/renderer/editors/file-diff/RevisionPickerView.ts`, `/src/renderer/editors/file-diff/FileDiffToolbarView.ts` |
 | Native Git tree view used by revision selection | `/src/renderer/components/git-tree/GitTreeView.ts` |
-| MCP Inspector model      | `/src/renderer/editors/mcp-inspector/McpInspectorEditorModel.ts` |
+| MCP Inspector editor coordinator and request session (connection lifecycle, request timing, and generation-based stale-response guards) | `/src/renderer/editors/mcp-inspector/McpInspectorEditorModel.ts`, `/src/renderer/editors/mcp-inspector/McpSession.ts` |
+| MCP Inspector tool, resource, and prompt state models | `/src/renderer/editors/mcp-inspector/McpToolsModel.ts`, `/src/renderer/editors/mcp-inspector/McpResourcesModel.ts`, `/src/renderer/editors/mcp-inspector/McpPromptsModel.ts` |
 | Native MCP Inspector page and panels (connection, capability panels, result branches, and teardown) | `/src/renderer/editors/mcp-inspector/McpInspectorView.ts`, `/src/renderer/editors/mcp-inspector/*.ts` |
 | Native Mneme editor views (root search and configuration/progress branches) | `/src/renderer/editors/mneme-root/MnemeRootEditorView.ts`, `/src/renderer/editors/mneme-config/` |
 | About editor and guide browser (fixed page, split version card/contents layout, in-pane guide rendering, navigation, and update-status branches) | `/src/renderer/editors/about/AboutEditor.ts`, `/src/renderer/editors/about/AboutView.ts`, `/src/renderer/editors/about/AboutGuideBrowserView.ts`, `/src/renderer/editors/about/AboutGuidePageView.ts` |
@@ -550,6 +556,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Mneme service (Rust)     | `/mneme/` (knowledge-base service; see `/mneme/README.md`) |
 | Mneme shared MCP connection (single auto-reconnecting client; refcounted subscriptions → per-document watchers) | `/src/renderer/api/mneme-connection.ts` |
 | Mneme status prober + reactive status (drives sidecar launch + indicators; auto-opens the config editor once per session when active but unprovisioned) | `/src/renderer/api/mneme-status.ts` |
+| Typed Mneme MCP client and shared tool result types (tool names, timeouts, parsing, progress parsing, and index inventory) | `/src/renderer/api/mneme-client.ts`, `/src/renderer/api/mneme-types.ts` |
 | Mneme content provider (read/write/edit a document, live-refresh) | `/src/renderer/content/providers/MnemeProvider.ts` |
 | Mneme tree provider (browse a root like a filesystem; create/rename/delete; drag-drop import) | `/src/renderer/content/tree-providers/MnemeTreeProvider.ts` |
 | Mneme link traits (`MnemeLink`: `LINK` + `FILE_LINK`) | `/src/renderer/content/tree-providers/mnemeLinkTraits.ts` |

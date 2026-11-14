@@ -4,7 +4,7 @@ import { createTextElement } from "../../uikit/Text/text-style";
 import { KeyedList } from "../../uikit/shared/keyed-list";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { MonacoEditorHostView } from "../shared/MonacoEditorHostView";
-import type { McpToolResult, McpToolResultContent } from "./McpInspectorEditorModel";
+import type { McpToolResult, McpToolResultContent } from "./McpToolsModel";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 import "./mcp-inspector.css";

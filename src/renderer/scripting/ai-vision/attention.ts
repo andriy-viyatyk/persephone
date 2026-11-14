@@ -2,7 +2,7 @@ import { errMessage } from "../../../shared/utils";
 import type { ICallRequest, ICallResult } from "ai-vision";
 import { pages } from "../../api/pages";
 import { LogViewEditor } from "../../editors/log-view";
-import { isDialogEntry, isDialogResolved } from "../../editors/log-view/logTypes";
+import { isDialogEntry, isDialogResolved } from "../../editors/log-view/log-entry-types";
 import { dialogsState } from "../../ui/dialogs/DialogsView";
 import { getVisibleAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 import { DialogsNode, type DialogAdapter } from "./dialogs";

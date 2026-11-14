@@ -6,8 +6,9 @@ import type { IPageHost } from "../../api/pages/IPageHost";
 import type { EditorDescriptor } from "../../../shared/persistence";
 import type { TreeProviderViewSavedState } from "../../components/tree-provider";
 import { mnemeConnection } from "../../api/mneme-connection";
+import { mnemeClient } from "../../api/mneme-client";
+import type { WikiSearchHit } from "../../api/mneme-types";
 import { decodeMnemeFolderLink } from "../../content/mneme-folder-link";
-import { parseToolResult } from "../mneme-config/mnemeTypes";
 import { MnemeTreeProvider } from "../../content/tree-providers/MnemeTreeProvider";
 import { fpJoin } from "../../core/utils/file-path";
 import { editorRegistry } from "../base/editorRegistry";
@@ -16,23 +17,6 @@ import { untranslated } from "../../../shared/i18n/t";
 /** Search mode passed to `search`. Hybrid (FTS + vector) is the default; it
  *  degrades to text until the embedding model is provisioned. */
 export type MnemeSearchMode = "text" | "vector" | "hybrid";
-
-/** One ranked `search` result. `uri` is a scheme-less `{root}/{path}` (e.g.
- *  "TestWiki/work/docker.md"); the markdown renderer prepends `mneme://` to build the
- *  document link. Results arrive already ranked — render in order. */
-export interface WikiSearchHit {
-    uri: string;
-    title: string;
-    tags: string[];
-    snippet: string;
-    score: number;
-}
-
-/** `search` structured result. `note` is set when vector/hybrid degraded to text. */
-export interface WikiSearchResult {
-    results: WikiSearchHit[];
-    note?: string;
-}
 
 export interface MnemeRootEditorState extends EditorStateBase {
     /** State-type discriminator. */
@@ -270,12 +254,7 @@ export class MnemeRootEditorModel extends EditorModel<MnemeRootEditorState> {
 
         this.state.update((s) => { s.resolving = true; s.error = undefined; });
         try {
-            const result = await client.callTool(
-                { name: "list_roots", arguments: {} },
-                undefined,
-                { timeout: 10_000 },
-            );
-            const roots = parseToolResult<{ roots: { name: string; folder: string }[] }>(result)?.roots ?? [];
+            const roots = (await mnemeClient.listRoots(client))?.roots ?? [];
             const target = normPath(rootFolder);
             const match = roots.find((r) => normPath(r.folder) === target);
             if (!match) {
@@ -345,12 +324,7 @@ export class MnemeRootEditorModel extends EditorModel<MnemeRootEditorState> {
         const client = mnemeConnection.getClient();
         if (!client) return;
         try {
-            const result = await client.callTool(
-                { name: "tags", arguments: { subtree: rootName } },
-                undefined,
-                { timeout: 10_000 },
-            );
-            const data = parseToolResult<{ tags: { tag: string; count: number }[] }>(result);
+            const data = await mnemeClient.tags(client, rootName);
             const vocab = (data?.tags ?? []).map((t) => t.tag);
             this.state.update((s) => { s.tagVocab = vocab; s.tagVocabLoaded = true; });
         } catch {
@@ -385,12 +359,7 @@ export class MnemeRootEditorModel extends EditorModel<MnemeRootEditorState> {
 
         this.state.update((s) => { s.searching = true; s.searchError = undefined; });
         try {
-            const result = await client.callTool(
-                { name: "search", arguments: args },
-                undefined,
-                { timeout: 15_000 },
-            );
-            const data = parseToolResult<WikiSearchResult>(result);
+            const data = await mnemeClient.search(client, args);
             this.state.update((s) => {
                 s.results = data?.results ?? [];
                 s.searchNote = data?.note;

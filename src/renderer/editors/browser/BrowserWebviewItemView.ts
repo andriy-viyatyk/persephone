@@ -8,7 +8,7 @@ import color from "../../theme/color";
 import { dismissOverlays } from "../../uikit/shared/overlayLayer";
 import { BrowserSecondaryViewsView } from "./BrowserSecondaryViews";
 import { BrowserBookmarks } from "./BrowserBookmarks";
-import { LinkActionView, LinkBreadcrumbView } from "../link-editor/LinkEditorView";
+import { LinkActionView, LinkBreadcrumbView } from "../link-editor/LinkToolbarViews";
 import { LinkBodyView } from "../link-editor/LinkBody";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const WEBVIEW_PRELOAD_URL = (window as any).webviewPreloadUrl as string;

@@ -15,7 +15,7 @@ export const mcpModule = defineEditorModule(McpInspectorEditorModel, {
 export { McpInspectorEditorModel, getDefaultMcpInspectorEditorState } from "./McpInspectorEditorModel";
 export type {
     McpInspectorEditorState, McpPanelId,
-    McpToolInfo, McpToolResult, McpToolsPanelState,
-    McpResourceInfo, McpResourceContent, McpResourcesPanelState,
-    McpPromptInfo, McpPromptMessage, McpPromptsPanelState,
 } from "./McpInspectorEditorModel";
+export type { McpToolInfo, McpToolResult, McpToolsPanelState } from "./McpToolsModel";
+export type { McpResourceInfo, McpResourceContent, McpResourcesPanelState } from "./McpResourcesModel";
+export type { McpPromptInfo, McpPromptMessage, McpPromptsPanelState } from "./McpPromptsModel";

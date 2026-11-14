@@ -4,8 +4,6 @@
 // (`mneme/src/mcp/results.rs`). Field names match the serialized JSON exactly
 // (camelCase where Rust applies `#[serde(rename)]`, otherwise as-is).
 
-import { tryParseJson } from "../../core/utils/parse-utils";
-
 /** Per-root entry of `status`. Note: `model` here is the model *name*
  *  (a plain string), not the model object — that lives at the top level. */
 export interface WikiRootStatus {
@@ -93,6 +91,29 @@ export interface StaleIndexEntry {
     active: boolean;
 }
 
+/** One ranked `search` result. `uri` is a scheme-less `{root}/{path}`. */
+export interface WikiSearchHit {
+    uri: string;
+    title: string;
+    tags: string[];
+    snippet: string;
+    score: number;
+}
+
+/** `search` structured result. `note` is set when vector/hybrid degraded to text. */
+export interface WikiSearchResult {
+    results: WikiSearchHit[];
+    note?: string;
+}
+
+/** One `tree` entry (flat depth-first node). */
+export interface MnemeTreeEntry {
+    uri: string;
+    name: string;
+    isDir: boolean;
+    depth: number;
+}
+
 /** `modelReady` is the green/yellow signal: a working embedding model exists
  *  iff `wiki_status.model` is present and fully provisioned (`complete`). */
 export function isModelReady(status: WikiStatus | null): boolean {
@@ -118,20 +139,4 @@ export function isStatusBusy(status: WikiStatus | null): boolean {
         status.roots.some((r) => isReindexActive(r.reindex)) ||
         isDownloadActive(status.model?.download)
     );
-}
-
-/** Extract a typed payload from an MCP tool result. Mneme tools that return
- *  structured data populate `structuredContent`; fall back to parsing the text
- *  block for tools that only emit text. Returns null when neither yields JSON.
- *  Typed as `unknown` because the SDK's `callTool` return is a union of the
- *  structured-content result and the legacy `{ toolResult }` shape. */
-export function parseToolResult<T>(result: unknown): T | null {
-    const r = result as { structuredContent?: unknown; content?: Array<{ type?: string; text?: string }> };
-    const structured = r.structuredContent;
-    if (structured && typeof structured === "object") {
-        return structured as T;
-    }
-    const text = r.content?.find((c) => c.type === "text")?.text;
-    if (!text) return null;
-    return tryParseJson<T | null>(text, null);
 }

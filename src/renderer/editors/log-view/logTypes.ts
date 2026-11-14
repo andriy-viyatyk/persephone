@@ -111,14 +111,6 @@ export interface SelectEntry extends LogEntryBase {
     buttonLabel?: string;
 }
 
-export type DialogEntryType =
-    | "input.confirm"
-    | "input.text"
-    | "input.buttons"
-    | "input.checkboxes"
-    | "input.radioboxes"
-    | "input.select";
-
 export interface LogDialogButton {
     id: string;
     label: string;
@@ -186,34 +178,3 @@ export interface McpRequestEntry extends LogEntryBase {
     durationMs: number;
 }
 
-export type OutputEntryType =
-    | "output.progress"
-    | "output.grid"
-    | "output.text"
-    | "output.markdown"
-    | "output.mermaid"
-    | "output.mcp-request";
-
-// =============================================================================
-// Type Guards
-// =============================================================================
-
-const LOG_LEVELS = new Set<string>(["log.log", "log.text", "log.info", "log.warn", "log.error", "log.success"]);
-const DIALOG_TYPES = new Set<string>(["input.confirm", "input.text", "input.buttons", "input.checkboxes", "input.radioboxes", "input.select"]);
-const OUTPUT_TYPES = new Set<string>(["output.progress", "output.grid", "output.text", "output.markdown", "output.mermaid", "output.mcp-request"]);
-
-export function isLogEntry(entry: LogEntry): entry is LogMessageEntry {
-    return LOG_LEVELS.has(entry.type);
-}
-
-export function isDialogEntry(entry: LogEntry): boolean {
-    return DIALOG_TYPES.has(entry.type);
-}
-
-export function isOutputEntry(entry: LogEntry): boolean {
-    return OUTPUT_TYPES.has(entry.type);
-}
-
-export function isDialogResolved(entry: LogEntry): boolean {
-    return isDialogEntry(entry) && entry.button !== undefined;
-}

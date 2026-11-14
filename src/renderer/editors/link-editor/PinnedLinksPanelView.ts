@@ -1,9 +1,6 @@
-import { app } from "../../api/app";
-import { ContextMenuEvent } from "../../api/events/events";
 import { TraitTypeId, getTraitDragData, hasTraitDragData, setTraitDragData } from "../../core/traits";
 import color from "../../theme/color";
 import { createTreeProviderItemIconElement } from "../../components/icons/icon-elements";
-import { getHostname, getFaviconPath, onFaviconReady, requestFaviconSave } from "../../components/icons/favicon-cache";
 import { ListItemView } from "../../uikit/ListBox/ListItemView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createIconElement } from "../../uikit/shared/slots";
@@ -12,15 +9,15 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { attachTooltip, type TooltipAttachment } from "../../uikit/Tooltip/attach-tooltip";
 import { spacing, height } from "../../uikit/tokens";
-import { appendLinkOpenMenuItems } from "../shared/link-open-menu";
 import { t } from "../../../shared/i18n/t";
 import type { LinkItem, LinkSource } from "./linkTypes";
+import { FaviconRowTracker } from "./FaviconRowTracker";
+import { buildLinkContextMenu, openLinkItem } from "./link-item-actions";
 import { createLinkTooltipContent } from "./LinkTooltipView";
 import "../../uikit/ListBox/ListItem.css";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 
-import { toClipboard } from "../../core/utils/utils";
 
 let draggingPinIndex = -1;
 
@@ -217,9 +214,8 @@ export class PinnedLinksPanelView extends VanillaView<PinnedLinksPanelProps> {
     private readonly list: HTMLDivElement;
     private readonly rows = new Map<HTMLElement, PinnedLinkItemView>();
     private keyedRows: KeyedList<LinkItem, string, HTMLElement> | undefined;
-    private faviconUnsubs: Array<() => void> = [];
+    private readonly faviconTracker: FaviconRowTracker;
     private subscribedLinks: LinkItem[] | undefined;
-    private faviconGeneration = 0;
     private inert = false;
 
     public constructor(props: PinnedLinksPanelProps) {
@@ -232,6 +228,9 @@ export class PinnedLinksPanelView extends VanillaView<PinnedLinksPanelProps> {
             width: props.width,
         });
         super(props, root);
+        this.faviconTracker = new FaviconRowTracker((rows) => {
+            if (rows.length && !this.inert) this.keyedRows?.update(this.props.pinnedLinks);
+        });
 
         const header = createPanelElement({
             name: "pinned-links-header",
@@ -293,7 +292,7 @@ export class PinnedLinksPanelView extends VanillaView<PinnedLinksPanelProps> {
             },
         });
         this.own(() => this.keyedRows?.dispose());
-        this.own(() => this.disposeFaviconSubscriptions());
+        this.own(() => this.faviconTracker.dispose());
         this.own(() => { this.inert = true; });
         this.installFaviconSubscriptions(this.props.pinnedLinks);
         this.keyedRows.update(this.props.pinnedLinks);
@@ -313,99 +312,15 @@ export class PinnedLinksPanelView extends VanillaView<PinnedLinksPanelProps> {
     }
 
     private installFaviconSubscriptions(links: LinkItem[]): void {
-        this.disposeFaviconSubscriptions();
-        this.faviconGeneration++;
-        const generation = this.faviconGeneration;
+        this.faviconTracker.track(links, () => 0);
         this.subscribedLinks = links;
-        const hostnames = new Set<string>();
-        for (const link of links) {
-            const hostname = getHostname(link.href);
-            if (hostname) hostnames.add(hostname);
-        }
-        for (const hostname of hostnames) {
-            void getFaviconPath(hostname)
-                .then((path) => {
-                    if (path) this.repaintRows(generation);
-                })
-                .catch((): void => undefined);
-            this.faviconUnsubs.push(onFaviconReady(hostname, () => this.repaintRows(generation)));
-        }
-    }
-
-    private disposeFaviconSubscriptions(): void {
-        this.faviconGeneration++;
-        for (const unsubscribe of this.faviconUnsubs) unsubscribe();
-        this.faviconUnsubs = [];
-    }
-
-    private repaintRows(generation: number): void {
-        if (this.inert || generation !== this.faviconGeneration) return;
-        this.keyedRows?.update(this.props.pinnedLinks);
     }
 
     private readonly openLink = (link: LinkItem): void => {
-        if (!link.href) return;
-        if (!this.props.model.isPrivatePage) requestFaviconSave(getHostname(link.href));
-        void this.props.model.openLink(link);
+        openLinkItem(this.props.model, link);
     };
 
     private readonly contextMenu = (event: MouseEvent, link: LinkItem): void => {
-        const model = this.props.model;
-        model.selectLink(link.id);
-        const contextEvent = ContextMenuEvent.fromNativeEvent(event, "link-pinned") as ContextMenuEvent<LinkItem>;
-        const customItems = model.onGetLinkMenuItems?.(link);
-        if (customItems?.length) contextEvent.items.push(...customItems);
-        contextEvent.items.push({
-            id: "pinned-link-edit",
-            label: t("links.edit"),
-            icon: "rename",
-            onClick: () => { void model.showLinkDialog(link.id); },
-            startGroup: customItems?.length ? true : undefined,
-        });
-        if (link.href) appendLinkOpenMenuItems(contextEvent.items, link.href, { startGroup: true });
-        contextEvent.items.push({
-            id: "pinned-link-copy-url",
-            label: t("links.copyUrl"),
-            icon: "copy",
-            onClick: () => { if (link.href) toClipboard(link.href); },
-            disabled: !link.href,
-        });
-        if (link.imgSrc) {
-            const imageUrl = link.imgSrc;
-            contextEvent.items.push(
-                {
-                    id: "pinned-link-copy-image-url",
-                    label: t("links.copyImageUrl"),
-                    icon: "copy",
-                    onClick: () => toClipboard(imageUrl),
-                    startGroup: true,
-                },
-                {
-                    id: "pinned-link-open-image-in-new-tab",
-                    label: t("links.openImageNewTab"),
-                    icon: "open-file",
-                    onClick: async () => {
-                        const { pages } = await import("../../api/pages");
-                        pages.openImageInNewTab(imageUrl);
-                    },
-                },
-            );
-        }
-        contextEvent.items.push(
-            {
-                id: "pinned-link-unpin",
-                label: t("shell.unpin"),
-                icon: "pin-filled",
-                onClick: () => model.togglePinLink(link.id),
-                startGroup: true,
-            },
-            {
-                id: "pinned-link-delete",
-                label: t("menus.delete"),
-                icon: "delete",
-                onClick: () => { void model.deleteLink(link.id); },
-            },
-        );
-        event.contextMenuPromise = app.events.linkContextMenu.sendAsync(contextEvent);
+        buildLinkContextMenu(this.props.model, link, { pinned: true })(event);
     };
 }

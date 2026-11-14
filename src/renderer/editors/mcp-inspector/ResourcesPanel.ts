@@ -8,7 +8,8 @@ import { TextareaView } from "../../uikit/Textarea/TextareaView";
 import { KeyedList } from "../../uikit/shared/keyed-list";
 import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { extractTemplateParams, type McpInspectorEditorModel, type McpResourceInfo, type McpResourceTemplateInfo, type McpResourcesPanelState } from "./McpInspectorEditorModel";
+import type { McpInspectorEditorModel } from "./McpInspectorEditorModel";
+import { extractTemplateParams, type McpResourceInfo, type McpResourceTemplateInfo, type McpResourcesPanelState } from "./McpResourcesModel";
 import { ResourceContentView } from "./ResourceContentView";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
@@ -58,8 +59,8 @@ export class ResourcesPanelView extends VanillaView<ResourcesPanelProps> {
                     : new ResourceRowView({
                         resource: entry.kind === "resource" ? entry.resource : undefined,
                         template: entry.kind === "template" ? entry.template : undefined,
-                        selectedResource: this.props.model.resourcesState.get().selectedUri,
-                        selectedTemplate: this.props.model.resourcesState.get().selectedTemplateUri,
+                        selectedResource: this.props.model.resources.state.get().selectedUri,
+                        selectedTemplate: this.props.model.resources.state.get().selectedTemplateUri,
                         onSelectResource: this.selectResource,
                         onSelectTemplate: this.selectTemplate,
                     });
@@ -71,8 +72,8 @@ export class ResourcesPanelView extends VanillaView<ResourcesPanelProps> {
                 (element as ResourceRowRoot).view?.update({
                     resource: entry.kind === "resource" ? entry.resource : undefined,
                     template: entry.kind === "template" ? entry.template : undefined,
-                    selectedResource: this.props.model.resourcesState.get().selectedUri,
-                    selectedTemplate: this.props.model.resourcesState.get().selectedTemplateUri,
+                    selectedResource: this.props.model.resources.state.get().selectedUri,
+                    selectedTemplate: this.props.model.resources.state.get().selectedTemplateUri,
                     onSelectResource: this.selectResource,
                     onSelectTemplate: this.selectTemplate,
                     });
@@ -88,7 +89,7 @@ export class ResourcesPanelView extends VanillaView<ResourcesPanelProps> {
         const detailHost = document.createElement("div"); detailHost.style.display = "contents"; this.root.append(detailHost);
         this.detailSwap = new SubtreeSwap(detailHost);
         this.own(() => this.detailSwap.dispose());
-        this.bind(this.props.model.resourcesState, (state) => state, this.sync);
+        this.bind(this.props.model.resources.state, (state) => state, this.sync);
     }
 
     protected onUpdate(_props: ResourcesPanelProps): void {}
@@ -118,8 +119,8 @@ export class ResourcesPanelView extends VanillaView<ResourcesPanelProps> {
         created?.mount();
     };
 
-    private readonly selectResource = (uri: string): void => this.props.model.selectResource(uri);
-    private readonly selectTemplate = (uriTemplate: string): void => this.props.model.selectTemplate(uriTemplate);
+    private readonly selectResource = (uri: string): void => this.props.model.resources.selectResource(uri);
+    private readonly selectTemplate = (uriTemplate: string): void => this.props.model.resources.selectTemplate(uriTemplate);
     private readonly setSidebarWidth = (width: number): void => {
         this.sidebarWidth = width;
         const sidebar = this.root.querySelector<HTMLElement>('[data-name="mcp-resources-sidebar"]');
@@ -133,7 +134,7 @@ class ResourceHeaderView extends VanillaView<Record<string, never>> {
 
 class EmptyResourceView extends VanillaView<{ model: McpInspectorEditorModel }> {
     public constructor(props: { model: McpInspectorEditorModel }) { super(props, createPanelElement({ flex: true, align: "center", justify: "center", overflow: "auto" })); }
-    protected onMount(): void { const state = this.props.model.resourcesState.get(); this.root.append(createTextElement(state.resources.length + state.templates.length === 0 ? t("tools.mcpNoResources") : t("tools.mcpSelectResource"), { size: "md", color: "light" })); }
+    protected onMount(): void { const state = this.props.model.resources.state.get(); this.root.append(createTextElement(state.resources.length + state.templates.length === 0 ? t("tools.mcpNoResources") : t("tools.mcpSelectResource"), { size: "md", color: "light" })); }
 }
 
 interface ResourceRowProps {
@@ -200,7 +201,7 @@ class ResourceDetailView extends VanillaView<ResourceDetailProps> {
     protected onUpdate(props: ResourceDetailProps): void { this.sync(props); }
     protected onDispose(): void { this.argsList?.dispose(); this.argsList = undefined; this.argsHost?.remove(); this.argsHost = undefined; this.contentView = undefined; }
     private sync(props: ResourceDetailProps): void {
-        const state = props.model.resourcesState.get();
+        const state = props.model.resources.state.get();
         const item = props.resource || props.template;
         if (!item) { this.root.replaceChildren(createPanelElement({ flex: true, align: "center", justify: "center" }, [createTextElement(state.resources.length + state.templates.length === 0 ? t("tools.mcpNoResources") : t("tools.mcpSelectResource"), { size: "md", color: "light" })])); return; }
         this.title.textContent = item.name;
@@ -236,8 +237,8 @@ class ResourceDetailView extends VanillaView<ResourceDetailProps> {
         this.contentSwap.set("content", () => { const view = this.contentView = new ResourceContentView({ content }); created = view; return view; });
         created?.mount();
     }
-    private readonly read = (): void => { void this.props.model.readResource(); };
-    private readonly readTemplate = (): void => { void this.props.model.readTemplateResource(); };
+    private readonly read = (): void => { void this.props.model.resources.readResource("static"); };
+    private readonly readTemplate = (): void => { void this.props.model.resources.readResource("template"); };
 }
 
 interface TemplateArgProps { param: string; model: McpInspectorEditorModel; }
@@ -245,8 +246,8 @@ type TemplateArgRoot = HTMLElement & { view?: TemplateArgView };
 class TemplateArgView extends VanillaView<TemplateArgProps> {
     private input: TextareaView | undefined;
     public constructor(props: TemplateArgProps) { super(props, createPanelElement({ direction: "column", gap: "xs" })); (this.root as TemplateArgRoot).view = this; }
-    protected onMount(): void { this.root.append(createTextElement(this.props.param, { size: "sm", color: "default" })); this.input = new TextareaView({ value: "", onChange: (value) => this.props.model.setTemplateArg(this.props.param, value), placeholder: this.props.param, size: "sm" }); this.root.append(this.input.root); this.input.mount(); this.sync(this.props); }
+    protected onMount(): void { this.root.append(createTextElement(this.props.param, { size: "sm", color: "default" })); this.input = new TextareaView({ value: "", onChange: (value) => this.props.model.resources.setTemplateArg(this.props.param, value), placeholder: this.props.param, size: "sm" }); this.root.append(this.input.root); this.input.mount(); this.sync(this.props); }
     protected onUpdate(props: TemplateArgProps): void { this.sync(props); }
     protected onDispose(): void { this.input.dispose(); delete (this.root as TemplateArgRoot).view; }
-    private sync(props: TemplateArgProps): void { const state = props.model.resourcesState.get(); this.input?.update({ value: state.templateArgs[props.param] || "", onChange: (value) => props.model.setTemplateArg(props.param, value), placeholder: props.param, readOnly: state.templateReadLoading, size: "sm" }); }
+    private sync(props: TemplateArgProps): void { const state = props.model.resources.state.get(); this.input?.update({ value: state.templateArgs[props.param] || "", onChange: (value) => props.model.resources.setTemplateArg(props.param, value), placeholder: props.param, readOnly: state.templateReadLoading, size: "sm" }); }
 }

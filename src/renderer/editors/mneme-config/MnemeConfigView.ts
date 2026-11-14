@@ -9,7 +9,7 @@ import { EditorToolbarView } from "../base/EditorToolbarView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { pages } from "../../api/pages";
 import { MnemeConfigEditorModel, type MnemeConfigEditorState } from "./MnemeConfigEditorModel";
-import { isModelReady } from "./mnemeTypes";
+import { isModelReady } from "../../api/mneme-types";
 import { ModelPanelView } from "./ModelPanel";
 import { RootsPanelView } from "./RootsPanel";
 import { t, untranslated } from "../../../shared/i18n/t";

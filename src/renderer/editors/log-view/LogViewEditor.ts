@@ -3,15 +3,11 @@ import { TComponentState } from "../../core/state/state";
 import type { EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
 import { TextFileModel } from "../content-host/TextFileModel";
-import { tryParseJson } from "../../core/utils/parse-utils";
-import { debounce, errMessage } from "../../../shared/utils";
-import { logLogViewDialogAnswered } from "../../scripting/ai-vision/event-log";
-import {
-    isDialogEntry,
-    isDialogResolved,
-    type LogEntry,
-    type StyledText,
-} from "./logTypes";
+import { debounce } from "../../../shared/utils";
+import type { LogEntry, StyledText } from "./logTypes";
+import { isDialogEntry, isDialogResolved } from "./log-entry-types";
+import { JsonlLogDocument } from "./JsonlLogDocument";
+import type { LogViewDialogAnswerReporter } from "./log-view-dialog-answer-reporter";
 
 export type LogQueueEvent =
     | { type: "focus" }
@@ -81,13 +77,14 @@ export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, LogQu
 
     // LogView-specific private fields (verbatim from today's LogViewModel):
     private pendingDialogs = new Map<string, { resolve: (result: LogEntry) => void }>();
-    private nextId = 1;
-    private lastLineCount = 0;
+    private readonly document = new JsonlLogDocument();
     private heightCache = new Map<string, number>();
     private dirtyIndices = new Set<number>();
-    private entries: LogEntry[] = [];
 
-    constructor(state: TComponentState<LogViewEditorState>) {
+    constructor(
+        state: TComponentState<LogViewEditorState>,
+        private readonly options: { readonly reportDialogAnswered: LogViewDialogAnswerReporter },
+    ) {
         super(state);
     }
 
@@ -131,45 +128,11 @@ export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, LogQu
 
     /** Full parse of JSONL content. Used on initial load and when incremental fails. */
     loadContent(content: string): void {
-        const entries: LogEntry[] = [];
-        let error: string | undefined;
-
-        if (content.trim()) {
-            const lines = content.split("\n");
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
-                try {
-                    const parsed = JSON.parse(line);
-                    if (typeof parsed === "object" && parsed !== null && parsed.type && parsed.id) {
-                        entries.push(parsed as LogEntry);
-                    } else {
-                        error = `Line ${i + 1}: not a valid log entry (missing type or id)`;
-                        break;
-                    }
-                } catch (e) {
-                    error = `Line ${i + 1}: ${errMessage(e)}`;
-                    break;
-                }
-            }
-        }
-
-        // Restore ID counter from max existing ID
-        this.nextId = 1;
-        for (const entry of entries) {
-            const numId = parseInt(entry.id, 10);
-            if (!isNaN(numId) && numId >= this.nextId) {
-                this.nextId = numId + 1;
-            }
-        }
-
-        this.lastLineCount = content.trim() ? content.split("\n").length : 0;
-
-        this.entries = entries;
+        const { error } = this.document.parse(content);
         this.state.update((s) => {
             s.renderChange = "all";
             s.entriesVersion += 1;
-            s.entryCount = entries.length;
+            s.entryCount = this.document.entryCount;
             s.error = error;
         });
     }
@@ -179,76 +142,28 @@ export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, LogQu
      * Falls back to full parse if existing lines changed.
      */
     private loadContentIncremental(content: string): void {
-        if (!content.trim()) {
-            this.loadContent(content);
-            return;
-        }
-
-        const lines = content.split("\n");
-        const newLineCount = lines.length;
-        const currentEntries = this.entries;
-
-        // If lines decreased or we have no prior state, full re-parse
-        if (newLineCount < this.lastLineCount || currentEntries.length === 0) {
-            this.loadContent(content);
-            return;
-        }
-
-        // Check if first line matches (simple heuristic for detecting edits in existing lines)
-        const firstLine = lines[0].trim();
-        if (firstLine && currentEntries.length > 0) {
-            const firstParsed = tryParseJson<{ id?: string } | null>(firstLine, null);
-            if (!firstParsed || firstParsed.id !== currentEntries[0].id) {
-                this.loadContent(content);
-                return;
-            }
-        }
-
-        // Parse only new trailing lines
-        const newEntries: LogEntry[] = [];
-        let error: string | undefined;
-
-        for (let i = this.lastLineCount; i < newLineCount; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
-            try {
-                const parsed = JSON.parse(line);
-                if (typeof parsed === "object" && parsed !== null && parsed.type && parsed.id) {
-                    newEntries.push(parsed as LogEntry);
-                } else {
-                    error = `Line ${i + 1}: not a valid log entry (missing type or id)`;
-                    break;
-                }
-            } catch (e) {
-                error = `Line ${i + 1}: ${errMessage(e)}`;
-                break;
-            }
-        }
-
-        if (newEntries.length > 0) {
-            const firstNewEntry = this.entries.length;
-            // Update ID counter
-            for (const entry of newEntries) {
-                const numId = parseInt(entry.id, 10);
-                if (!isNaN(numId) && numId >= this.nextId) {
-                    this.nextId = numId + 1;
-                }
-            }
-
-            for (const entry of newEntries) this.entries.push(entry);
+        const result = this.document.appendIncremental(content);
+        if (result.kind === "full") {
             this.state.update((s) => {
-                s.renderChange = { from: firstNewEntry, to: this.entries.length };
+                s.renderChange = "all";
                 s.entriesVersion += 1;
-                s.entryCount = this.entries.length;
-                if (error) s.error = error;
+                s.entryCount = this.document.entryCount;
+                s.error = result.error;
             });
-        } else if (error) {
+            return;
+        }
+        if (result.newEntries.length > 0) {
             this.state.update((s) => {
-                s.error = error;
+                s.renderChange = { from: result.firstNewEntry, to: this.document.entryCount };
+                s.entriesVersion += 1;
+                s.entryCount = this.document.entryCount;
+                if (result.error) s.error = result.error;
+            });
+        } else if (result.error) {
+            this.state.update((s) => {
+                s.error = result.error;
             });
         }
-
-        this.lastLineCount = newLineCount;
     }
 
     // ── Content serialization ───────────────────────────────────────────
@@ -256,12 +171,8 @@ export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, LogQu
     /** Append a single entry as a JSONL line to host content. */
     private appendToContent(entry: LogEntry): void {
         if (!this._host) return;
-        const line = JSON.stringify(entry);
         const currentContent = this._host.state.get().content;
-        const newContent = currentContent ? currentContent + "\n" + line : line;
-
-        this.lastLineCount = newContent.split("\n").length;
-        this.writeToHost(newContent);
+        this.writeToHost(this.document.serializeAppend(currentContent ?? "", entry));
     }
 
     /** Re-serialize a single entry's line in the host content. */
@@ -269,20 +180,7 @@ export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, LogQu
         if (!this._host) return;
         const content = this._host.state.get().content;
         const lines = content.split("\n");
-        let updated = false;
-
-        for (let i = 0; i < lines.length; i++) {
-            const trimmed = lines[i].trim();
-            if (!trimmed) continue;
-            const parsed = tryParseJson<{ id?: string } | null>(trimmed, null);
-            if (parsed?.id === entry.id) {
-                lines[i] = JSON.stringify(entry);
-                updated = true;
-                break;
-            }
-        }
-
-        if (updated) {
+        if (this.document.serializeEntry(entry.id, entry, lines)) {
             this.writeToHost(lines.join("\n"));
         }
     }
@@ -293,25 +191,7 @@ export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, LogQu
         if (this.dirtyIndices.size === 0) return;
         const content = this._host.state.get().content;
         const lines = content.split("\n");
-        let changed = false;
-
-        for (const idx of this.dirtyIndices) {
-            const entry = this.entries[idx];
-            if (!entry) continue;
-            for (let i = 0; i < lines.length; i++) {
-                const trimmed = lines[i].trim();
-                if (!trimmed) continue;
-                const parsed = tryParseJson<{ id?: string } | null>(trimmed, null);
-                if (parsed?.id === entry.id) {
-                    const updated = JSON.stringify(entry);
-                    if (lines[i] !== updated) {
-                        lines[i] = updated;
-                        changed = true;
-                    }
-                    break;
-                }
-            }
-        }
+        const changed = this.document.serializeDirtyEntries(this.dirtyIndices, lines);
         this.dirtyIndices.clear();
 
         if (changed) {
@@ -327,23 +207,20 @@ export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, LogQu
         const fieldsObj = typeof fields === "object" && fields !== null && !Array.isArray(fields)
             ? (fields as Record<string, unknown>)
             : null;
-        const id = fieldsObj?.id != null ? String(fieldsObj.id) : String(this.nextId++);
-        const numId = parseInt(id, 10);
-        if (!isNaN(numId) && numId >= this.nextId) {
-            this.nextId = numId + 1;
-        }
+        const id = fieldsObj?.id != null ? String(fieldsObj.id) : this.document.nextEntryId();
+        this.document.observeEntryId(id);
 
         // Upsert: if entry with this ID already exists, update it in-place
         if (fieldsObj?.id != null) {
-            const existingIndex = this.entries.findIndex((e) => e.id === id);
+            const existingIndex = this.document.getEntryIndexById(id);
             if (existingIndex >= 0) {
-                const existing = this.entries[existingIndex];
-                this.entries[existingIndex] = { ...existing, ...fieldsObj, type, id };
+                const existing = this.document.getEntryAt(existingIndex)!;
+                this.document.replaceEntry(existingIndex, { ...existing, ...fieldsObj, type, id });
                 this.state.update((s) => {
                     s.renderChange = [existingIndex];
                     s.entriesVersion += 1;
                 });
-                const updatedEntry = this.entries[existingIndex];
+                const updatedEntry = this.document.getEntryAt(existingIndex)!;
                 this.updateEntryInContent(updatedEntry);
                 this.heightCache.delete(id);
                 return updatedEntry;
@@ -356,12 +233,12 @@ export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, LogQu
             ? { type, id, ...fieldsObj, timestamp: Date.now() }
             : { type, id, text: fields as StyledText, timestamp: Date.now() };
 
-        const firstNewEntry = this.entries.length;
-        this.entries.push(entry);
+        const firstNewEntry = this.document.entryCount;
+        this.document.appendEntry(entry);
         this.state.update((s) => {
-            s.renderChange = { from: firstNewEntry, to: this.entries.length };
+            s.renderChange = { from: firstNewEntry, to: this.document.entryCount };
             s.entriesVersion += 1;
-            s.entryCount = this.entries.length;
+            s.entryCount = this.document.entryCount;
         });
 
         this.appendToContent(entry);
@@ -395,19 +272,19 @@ export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, LogQu
 
     /** Resolve a pending dialog with its stable id and displayed answer label. */
     resolveDialog(id: string, button: string, buttonLabel = button): void {
-        const entry = this.entries.find((e) => e.id === id);
+        const entry = this.document.getEntryById(id);
         if (entry) {
             entry.button = button;
             entry.buttonLabel = buttonLabel;
-            logLogViewDialogAnswered(this.page?.id, entry.id, button);
-            const index = this.entries.indexOf(entry);
+            this.options.reportDialogAnswered(this.page?.id, entry.id, button);
+            const index = this.document.getEntryIndexById(id);
             this.state.update((s) => {
                 s.renderChange = [index];
                 s.entriesVersion += 1;
             });
         }
 
-        const updatedEntry = this.entries.find((e) => e.id === id);
+        const updatedEntry = this.document.getEntryById(id);
         if (updatedEntry) {
             this.updateEntryInContent(updatedEntry);
         }
@@ -423,16 +300,16 @@ export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, LogQu
      *  the host-subscription race that would overwrite in-memory styled data
      *  with stale JSONL content. */
     updateEntryText(id: string, text: StyledText): void {
-        const index = this.entries.findIndex((e) => e.id === id);
+        const index = this.document.getEntryIndexById(id);
         if (index < 0) return;
 
-        this.entries[index] = { ...this.entries[index], text };
+        this.document.replaceEntry(index, { ...this.document.getEntryAt(index)!, text });
         this.state.update((s) => {
             s.renderChange = [index];
             s.entriesVersion += 1;
         });
 
-        const updatedEntry = this.entries[index];
+        const updatedEntry = this.document.getEntryAt(index);
         if (updatedEntry) {
             this.updateEntryInContent(updatedEntry);
         }
@@ -440,7 +317,7 @@ export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, LogQu
 
     /** Update entry at index via updater. Marks dirty for debounced JSONL serialization. */
     updateEntryAt(index: number, updater: (draft: LogEntry) => void): void {
-        updater(this.entries[index]);
+        updater(this.document.getEntryAt(index)!);
         this.state.update((s) => {
             s.renderChange = [index];
             s.entriesVersion += 1;
@@ -451,7 +328,7 @@ export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, LogQu
 
     /** Update an entry by ID. Finds the entry and delegates to updateEntryAt. */
     updateEntryById(id: string, updater: (draft: LogEntry) => void): void {
-        const index = this.entries.findIndex((e) => e.id === id);
+        const index = this.document.getEntryIndexById(id);
         if (index >= 0) {
             this.updateEntryAt(index, updater);
         }
@@ -465,9 +342,7 @@ export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, LogQu
         }
         this.pendingDialogs.clear();
 
-        this.nextId = 1;
-        this.lastLineCount = 0;
-        this.entries = [];
+        this.document.reset();
 
         this.state.update((s) => {
             s.renderChange = "all";
@@ -496,23 +371,23 @@ export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, LogQu
     }
 
     getEntryAt(index: number): LogEntry | undefined {
-        return this.entries[index];
+        return this.document.getEntryAt(index);
     }
 
     /** Return deep copies of the parsed entries; callers cannot mutate model state. */
     getEntriesSnapshot(): LogEntry[] {
-        return this.entries.map((entry) => copyLogValue(entry) as LogEntry);
+        return this.document.getEntries().map((entry) => copyLogValue(entry) as LogEntry);
     }
 
     /** Return a deep copy of one parsed entry, if it still exists. */
     getEntrySnapshotById(id: string): LogEntry | undefined {
-        const entry = this.entries.find((item) => item.id === id);
+        const entry = this.document.getEntryById(id);
         return entry ? copyLogValue(entry) as LogEntry : undefined;
     }
 
     /** Whether parsed in-memory entries contain an unanswered inline dialog. */
     hasUnresolvedDialogs(): boolean {
-        return this.entries.some((entry) => isDialogEntry(entry) && !isDialogResolved(entry));
+        return this.document.getEntries().some((entry) => isDialogEntry(entry) && !isDialogResolved(entry));
     }
 
     // ── Height cache (view virtualization — preserves across remounts) ──

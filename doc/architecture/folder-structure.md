@@ -223,6 +223,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   └── toolset-operations.ts # Refresh and create/register toolsets
 │   ├── mneme-connection.ts # Shared, persistent Mneme MCP client — one auto-reconnecting connection; refcounted resource subscriptions fanned out to per-document watchers
 │   ├── mneme-status.ts     # Mneme health prober + reactive status (shared MCP connection; drives sidecar launch, indicators, and auto-opens the config editor when no model is provisioned)
+│   ├── mneme-client.ts     # Typed Mneme tool client — owns tool calls, result parsing, progress parsing, and root index inventory
+│   ├── mneme-types.ts      # Shared Mneme tool result and domain types
 │   ├── proc.ts             # IProc implementation (app.proc.execute) — the ipcRenderer transport for the shared execute() handle (shared/execute-handle.ts); compile-time drift guard keeps it in sync with runner-channels.ts
 │   ├── terminal.ts         # openTerminalAt(dir) helper — reads terminal.command, auto-detects pwsh→powershell→cmd on first use and saves it, then launches ("Open Terminal here")
 │   ├── module-service.ts   # Renderer client for main-routed service requests, direct board channels, and the optional per-window host-renderer lease
@@ -566,6 +568,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   └── index.ts
 │   ├── link-editor/        # Link collection editor (text-bearing, content-host trait)
 │   │   ├── LinkEditor.ts             # EditorModel — links, categories, tags, filters
+│   │   ├── link-collection.ts        # DOM-free link data, indexes, filtering, serialization, and mutations
+│   │   ├── link-importer.ts          # Folder traversal and duplicate-aware link import
 │   │   ├── LinkBody.ts               # Native link body and branch ownership
 │   │   ├── LinkTreeProvider.ts       # ITreeProvider adapter over LinkEditor state; drag-drop import (files→links, links across windows)
 │   │   ├── linkTypes.ts
@@ -583,6 +587,10 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── LinksListView.ts           # Native RenderGrid list renderer
 │   │   ├── LinksTiles.ts             # Native/type module
 │   │   ├── LinksTilesView.ts          # Native RenderGrid tile renderer
+│   │   ├── LinksItemsView.ts          # Shared list/tile item-view implementation
+│   │   ├── link-item-actions.ts       # Shared open, favicon, and link context-menu actions
+│   │   ├── FaviconRowTracker.ts       # Shared row favicon subscriptions
+│   │   ├── LinkFilterNavigationPanelView.ts # Tags/hostnames navigation panel composition
 │   │   ├── LinkTooltipView.ts         # Native tooltip content
 │   │   ├── PinnedLinksPanelView.ts    # Native pinned-links panel
 │   │   ├── EditLinkDialog.ts       # Edit-link dialog model and registration
@@ -602,7 +610,10 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── render-mermaid.ts         # Rendering utilities (shared with Markdown)
 │   │   └── index.ts
 │   ├── log-view/           # Log viewer (text-bearing, content-host trait)
-│   │   ├── LogViewEditor.ts          # EditorModel — JSONL parsing, entry management
+│   │   ├── LogViewEditor.ts          # EditorModel — entry state, host synchronization, and view coordination
+│   │   ├── JsonlLogDocument.ts        # JSONL entry parsing, line count, and ID bookkeeping
+│   │   ├── log-entry-types.ts         # DOM-free entry-type registry and derived predicates
+│   │   ├── log-entry-view-factories.ts # Entry-type to native view factory registry
 │   │   ├── LogBodyView.ts             # Log viewer native view (MeasuredRowGrid + auto-scroll)
 │   │   ├── LogEntryWrapper.ts        # Cell root — subscribes to entries[index]
 │   │   ├── LogEntryContent.ts        # Type router — dispatches to entry renderers
@@ -622,7 +633,11 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── ImageView.ts              # Native page view
 │   │   └── index.ts
 │   ├── mcp-inspector/      # MCP Inspector (non-text, no trait)
-│   │   ├── McpInspectorEditorModel.ts # EditorModel — connection, tools, resources, prompts
+│   │   ├── McpInspectorEditorModel.ts # EditorModel — editor lifecycle and composition of connection and area models
+│   │   ├── McpSession.ts             # MCP request timing, connection generations, and stale-request guards
+│   │   ├── McpToolsModel.ts         # Tool-list, selection, and call state
+│   │   ├── McpResourcesModel.ts     # Resource-list, selection, and read state
+│   │   ├── McpPromptsModel.ts       # Prompt-list, selection, and result state
 │   │   ├── McpInspectorView.ts        # Main view — connection bar, panel routing
 │   │   ├── McpConnectionManager.ts   # MCP SDK Client wrapper
 │   │   ├── McpConnectionStore.ts     # Saved connections store (mcp-connections.json)
@@ -732,7 +747,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── MnemeConfigView.ts        # Main view (single page)
 │   │   ├── RootsPanel.ts             # Roots + include/ignore + reindex/progress
 │   │   ├── ModelPanel.ts             # Embedding-model status + update
-│   │   ├── mnemeTypes.ts             # Shared types + parseToolResult helper
 │   │   └── index.ts
 │   ├── mneme-root/         # Mneme root — search main view + Explorer-like tree sidebar (Pattern B navigation-singleton, per-folder)
 │   │   ├── MnemeRootEditorModel.ts   # EditorModel — root resolve, search (text/vector/hybrid), tree state

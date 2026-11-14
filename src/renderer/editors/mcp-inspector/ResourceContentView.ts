@@ -6,7 +6,7 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { ui } from "../../api/ui";
 import { MarkdownBlockView } from "../markdown/MarkdownBlockView";
 import { MonacoEditorHostView } from "../shared/MonacoEditorHostView";
-import type { McpResourceContent } from "./McpInspectorEditorModel";
+import type { McpResourceContent } from "./McpResourcesModel";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 import "../markdown/MarkdownBlock.css";

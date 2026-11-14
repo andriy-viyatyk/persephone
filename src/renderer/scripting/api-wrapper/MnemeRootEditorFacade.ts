@@ -1,7 +1,8 @@
 import { EditorFacadeBase } from "./EditorFacadeBase";
 import type { IMnemeRootEditor, IMnemeSearchHit, MnemeSearchMode } from "../../api/types/mneme-root-editor";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
-import type { MnemeRootEditorModel, WikiSearchHit } from "../../editors/mneme-root/MnemeRootEditorModel";
+import type { MnemeRootEditorModel } from "../../editors/mneme-root/MnemeRootEditorModel";
+import type { WikiSearchHit } from "../../api/mneme-types";
 
 const MNEME_ROOT_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "mneme-search-input", purpose: "Locate the Mneme search query input.", where: "left side of the Mneme search toolbar" },

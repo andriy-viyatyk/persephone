@@ -1,191 +1,28 @@
 import { EditorId } from "../../../shared/editor-ids";
-import {
-    EditorModel,
-    type EditorStateBase,
-    type RestoreData,
-} from "../base/EditorModel";
+import { EditorModel, type EditorStateBase, type RestoreData } from "../base/EditorModel";
 import type { EditorDescriptor } from "../../../shared/persistence";
 import { TComponentState, TOneState } from "../../core/state/state";
-import { tryParseJson } from "../../core/utils/parse-utils";
 import { untranslated } from "../../../shared/i18n/t";
 import { McpIcon } from "../../theme/icons";
-import {
-    McpConnectionManager,
-    McpConnectionStatus,
-    McpTransportType,
-} from "./McpConnectionManager";
-import { mcpConnectionStore, SavedMcpConnection } from "./McpConnectionStore";
+import { type McpConnectionStatus, type McpTransportType } from "./McpConnectionManager";
+import { mcpConnectionStore, type SavedMcpConnection } from "./McpConnectionStore";
 import { app } from "../../api/app";
 import type { McpRequestEntry } from "../log-view/logTypes";
-import { errMessage } from "../../../shared/utils";
-
-// ============================================================================
-// Types — Tools
-// ============================================================================
-
-export interface McpToolInfo {
-    name: string;
-    description: string;
-    inputSchema: {
-        type: "object";
-        properties?: Record<string, unknown>;
-        required?: string[];
-    };
-    annotations?: {
-        title?: string;
-        readOnlyHint?: boolean;
-        destructiveHint?: boolean;
-    };
-}
-
-export interface McpToolResult {
-    content: McpToolResultContent[];
-    isError?: boolean;
-    durationMs: number;
-}
-
-export type McpToolResultContent =
-    | { type: "text"; text: string }
-    | { type: "image"; data: string; mimeType: string }
-    | { type: "resource"; resource: { uri: string; mimeType?: string; text?: string } }
-    | { type: "resource_link"; uri: string; name: string };
-
-export interface McpToolsPanelState {
-    tools: McpToolInfo[];
-    selectedToolName: string;
-    toolCallLoading: boolean;
-    toolResult: McpToolResult | null;
-    toolArgs: Record<string, string>;
-}
-
-const getDefaultToolsPanelState = (): McpToolsPanelState => ({
-    tools: [],
-    selectedToolName: "",
-    toolCallLoading: false,
-    toolResult: null,
-    toolArgs: {},
-});
-
-// ============================================================================
-// Types — Resources
-// ============================================================================
-
-export interface McpResourceInfo {
-    uri: string;
-    name: string;
-    description: string;
-    mimeType: string;
-}
-
-export interface McpResourceTemplateInfo {
-    uriTemplate: string;
-    name: string;
-    description: string;
-    mimeType: string;
-}
-
-export interface McpResourceContent {
-    uri: string;
-    mimeType: string;
-    text?: string;
-    blob?: string;
-}
-
-export interface McpResourcesPanelState {
-    resources: McpResourceInfo[];
-    templates: McpResourceTemplateInfo[];
-    selectedUri: string;
-    readLoading: boolean;
-    readContent: McpResourceContent | null;
-    readError: string;
-    // Template selection
-    selectedTemplateUri: string;
-    templateArgs: Record<string, string>;
-    templateReadLoading: boolean;
-    templateReadContent: McpResourceContent | null;
-    templateReadError: string;
-}
-
-const getDefaultResourcesPanelState = (): McpResourcesPanelState => ({
-    resources: [],
-    templates: [],
-    selectedUri: "",
-    readLoading: false,
-    readContent: null,
-    readError: "",
-    selectedTemplateUri: "",
-    templateArgs: {},
-    templateReadLoading: false,
-    templateReadContent: null,
-    templateReadError: "",
-});
-
-// ============================================================================
-// Types — Prompts
-// ============================================================================
-
-export interface McpPromptInfo {
-    name: string;
-    description: string;
-    arguments: McpPromptArgInfo[];
-}
-
-export interface McpPromptArgInfo {
-    name: string;
-    description: string;
-    required: boolean;
-}
-
-export interface McpPromptMessage {
-    role: "user" | "assistant";
-    content: McpPromptMessageContent[];
-}
-
-export type McpPromptMessageContent =
-    | { type: "text"; text: string }
-    | { type: "image"; data: string; mimeType: string }
-    | { type: "resource"; resource: { uri: string; mimeType?: string; text?: string; blob?: string } }
-    | { type: "resource_link"; uri: string; name: string };
-
-export interface McpPromptsPanelState {
-    prompts: McpPromptInfo[];
-    selectedPromptName: string;
-    promptArgs: Record<string, string>;
-    getPromptLoading: boolean;
-    promptMessages: McpPromptMessage[] | null;
-    promptError: string;
-}
-
-const getDefaultPromptsPanelState = (): McpPromptsPanelState => ({
-    prompts: [],
-    selectedPromptName: "",
-    promptArgs: {},
-    getPromptLoading: false,
-    promptMessages: null,
-    promptError: "",
-});
-
-// ============================================================================
-// State — Page
-// ============================================================================
+import { McpSession } from "./McpSession";
+import { McpToolsModel, getDefaultToolsPanelState } from "./McpToolsModel";
+import { McpResourcesModel, getDefaultResourcesPanelState } from "./McpResourcesModel";
+import { McpPromptsModel, getDefaultPromptsPanelState } from "./McpPromptsModel";
 
 export type McpPanelId = "info" | "tools" | "resources" | "prompts" | "history";
 
 export interface McpInspectorEditorState extends EditorStateBase {
-    /** State-type discriminator. */
-
-    // Connection config
     url: string;
     transportType: McpTransportType;
     command: string;
     args: string;
     connectionName: string;
-
-    // Connection status
     connectionStatus: McpConnectionStatus;
     errorMessage: string;
-
-    // Server info (populated after connect)
     serverName: string;
     serverTitle: string;
     serverVersion: string;
@@ -195,26 +32,10 @@ export interface McpInspectorEditorState extends EditorStateBase {
     hasTools: boolean;
     hasResources: boolean;
     hasPrompts: boolean;
-
-    // UI state
     activePanel: McpPanelId;
 }
 
-export const getDefaultMcpInspectorEditorState = (): McpInspectorEditorState => ({
-    id: crypto.randomUUID(),
-    title: untranslated("MCP Inspector"),
-    modified: false,
-    editor: EditorId.mcpView,
-
-    url: "",
-    transportType: "http",
-    command: "",
-    args: "",
-    connectionName: "",
-
-    connectionStatus: "disconnected",
-    errorMessage: "",
-
+export const EMPTY_SERVER_INFO = {
     serverName: "",
     serverTitle: "",
     serverVersion: "",
@@ -224,7 +45,21 @@ export const getDefaultMcpInspectorEditorState = (): McpInspectorEditorState => 
     hasTools: false,
     hasResources: false,
     hasPrompts: false,
+};
 
+export const getDefaultMcpInspectorEditorState = (): McpInspectorEditorState => ({
+    id: crypto.randomUUID(),
+    title: untranslated("MCP Inspector"),
+    modified: false,
+    editor: EditorId.mcpView,
+    url: "",
+    transportType: "http",
+    command: "",
+    args: "",
+    connectionName: "",
+    connectionStatus: "disconnected",
+    errorMessage: "",
+    ...EMPTY_SERVER_INFO,
     activePanel: "info",
 });
 
@@ -232,21 +67,18 @@ function assertCredentialFreeUrl(value: string): void {
     if (/^[a-z][a-z\d+.-]*:\/\/[^/?#]*@/i.test(value)) {
         throw new Error("MCP URL must not contain embedded userinfo or credentials.");
     }
-
     let parsed: URL;
     try {
         parsed = new URL(value);
     } catch {
         return;
     }
-
     // Userinfo only. A fragment is not a credential, and rejecting one would refuse a legitimate
     // URL for no gain — the guard is here to stop a secret being written into the call transcript,
     // not to narrow what an MCP endpoint may look like.
     if (parsed.username || parsed.password) {
         throw new Error("MCP URL must not contain embedded credentials (user:password@).");
     }
-
     for (const key of parsed.searchParams.keys()) {
         if (/(?:token|secret|password|passwd|credential|api[_-]?key|auth)/i.test(key)) {
             throw new Error(`MCP URL query parameter "${key}" may contain a secret and is not allowed.`);
@@ -254,38 +86,24 @@ function assertCredentialFreeUrl(value: string): void {
     }
 }
 
-// ============================================================================
-// Model
-// ============================================================================
-
 export class McpInspectorEditorModel extends EditorModel<McpInspectorEditorState> {
-    /** Editor identity. Matches `EditorDescriptor.editorId`. */
     readonly editorId = EditorId.mcpView;
-
     noLanguage = true;
     skipSave = true;
 
-    readonly connection = new McpConnectionManager();
-    readonly toolsState = new TOneState<McpToolsPanelState>(getDefaultToolsPanelState());
-    readonly resourcesState = new TOneState<McpResourcesPanelState>(getDefaultResourcesPanelState());
-    readonly promptsState = new TOneState<McpPromptsPanelState>(getDefaultPromptsPanelState());
-
-    private _history: McpRequestEntry[] = [];
+    readonly session = new McpSession();
+    readonly tools = new McpToolsModel(this.session);
+    readonly resources = new McpResourcesModel(this.session);
+    readonly prompts = new McpPromptsModel(this.session);
+    readonly savedConnections = new TOneState<SavedMcpConnection[]>([]);
     private _disposed = false;
-    private _connectionGeneration = 0;
-    private _toolSelectionGeneration = 0;
-    private _resourceSelectionGeneration = 0;
-    private _templateSelectionGeneration = 0;
-    private _promptSelectionGeneration = 0;
 
     constructor(state: TComponentState<McpInspectorEditorState>) {
         super(state);
-        this.connection.onStatusChange = (status, error) => {
+        this.session.connection.onStatusChange = (status, error) => {
             if (this._disposed) return;
-            if (status === "connecting" || status === "disconnected" || status === "error") {
-                this._connectionGeneration += 1;
-            }
-            const info = this.connection.serverInfo;
+            this.session.onStatusChange(status);
+            const info = this.session.connection.serverInfo;
             this.state.update((s) => {
                 s.connectionStatus = status;
                 s.errorMessage = error || "";
@@ -300,55 +118,41 @@ export class McpInspectorEditorModel extends EditorModel<McpInspectorEditorState
                     s.hasResources = !!info.capabilities.resources;
                     s.hasPrompts = !!info.capabilities.prompts;
                 } else if (status === "disconnected" || status === "error") {
-                    s.serverName = "";
-                    s.serverTitle = "";
-                    s.serverVersion = "";
-                    s.serverDescription = "";
-                    s.serverWebsiteUrl = "";
-                    s.instructions = "";
-                    s.hasTools = false;
-                    s.hasResources = false;
-                    s.hasPrompts = false;
+                    Object.assign(s, EMPTY_SERVER_INFO);
                 }
             });
             if (status === "connected") {
-                this.loadTools();
-                this.loadResources();
-                this.loadPrompts();
+                this.tools.loadTools();
+                this.resources.loadResources();
+                this.prompts.loadPrompts();
                 this.autoSaveConnection();
             } else if (status === "disconnected" || status === "error") {
-                this.toolsState.set(getDefaultToolsPanelState());
-                this.resourcesState.set(getDefaultResourcesPanelState());
-                this.promptsState.set(getDefaultPromptsPanelState());
-                this._history = [];
+                this.tools.state.set(getDefaultToolsPanelState());
+                this.resources.state.set(getDefaultResourcesPanelState());
+                this.prompts.state.set(getDefaultPromptsPanelState());
+                this.session.clearHistory();
             }
         };
     }
 
-    /** Connect using current state config. */
     connect = async (): Promise<void> => {
         if (this._disposed) return;
         const s = this.state.get();
-        await this.connection.connect({
+        await this.session.connection.connect({
             name: s.connectionName || "MCP Server",
             transport: s.transportType,
             url: s.transportType === "http" ? s.url : undefined,
             command: s.transportType === "stdio" ? s.command : undefined,
-            args: s.transportType === "stdio" && s.args
-                ? s.args.split(/\s+/).filter(Boolean)
-                : undefined,
+            args: s.transportType === "stdio" && s.args ? s.args.split(/\s+/).filter(Boolean) : undefined,
         });
     };
 
-    /** Disconnect from the current server. */
     disconnect = async (): Promise<void> => {
         if (this._disposed) return;
-        await this.connection.disconnect();
+        await this.session.connection.disconnect();
     };
 
-    setActivePanel = (panel: McpPanelId): void => {
-        this.state.update((s) => { s.activePanel = panel; });
-    };
+    setActivePanel = (panel: McpPanelId): void => { this.state.update((s) => { s.activePanel = panel; }); };
 
     get availablePanels(): readonly McpPanelId[] {
         const state = this.state.get();
@@ -360,42 +164,27 @@ export class McpInspectorEditorModel extends EditorModel<McpInspectorEditorState
         return panels;
     }
 
-    setTransportType(value: string): void {
-        this.state.update((state) => { state.transportType = value as McpTransportType; });
-    }
+    setTransportType(value: string): void { this.state.update((state) => { state.transportType = value as McpTransportType; }); }
+    setUrl(value: string): void { assertCredentialFreeUrl(value); this.state.update((state) => { state.url = value; }); }
+    setConnectionName(value: string): void { this.state.update((state) => { state.connectionName = value; }); }
 
-    setUrl(value: string): void {
-        assertCredentialFreeUrl(value);
-        this.state.update((state) => { state.url = value; });
-    }
-
-    setConnectionName(value: string): void {
-        this.state.update((state) => { state.connectionName = value; });
-    }
-
-    // -- Connections ----------------------------------------------------------
-
-    /** Auto-save connection config on successful connect. */
-    private autoSaveConnection = async (): Promise<void> => {
-        const client = this.connection.getClient();
-        if (!client) return;
-        const generation = this._connectionGeneration;
-        const s = this.state.get();
-        const name = s.connectionName || s.serverName || s.url || s.command || "MCP Server";
-        await mcpConnectionStore.save({
-            name,
-            transport: s.transportType,
-            url: s.url,
-            command: s.command,
-            args: s.args,
-        });
-        if (!this.isCurrentRequest(client, generation)) return;
-        if (!s.connectionName && name) {
-            this.state.update((st) => { st.connectionName = name; });
-        }
+    loadSavedConnections = async (): Promise<void> => {
+        await mcpConnectionStore.load();
+        this.savedConnections.set(mcpConnectionStore.state.get().connections);
     };
 
-    /** Fill connection bar fields from a saved connection. */
+    private autoSaveConnection = async (): Promise<void> => {
+        const ctx = this.session.begin();
+        if (!ctx) return;
+        const s = this.state.get();
+        const name = s.connectionName || s.serverName || s.url || s.command || "MCP Server";
+        const generation = ctx.generation;
+        await mcpConnectionStore.save({ name, transport: s.transportType, url: s.url, command: s.command, args: s.args });
+        this.savedConnections.set(mcpConnectionStore.state.get().connections);
+        if (!this.session.isCurrent(ctx.client, generation)) return;
+        if (!s.connectionName && name) this.state.update((st) => { st.connectionName = name; });
+    };
+
     fillFromSaved = (conn: SavedMcpConnection): void => {
         this.state.update((s) => {
             s.transportType = conn.transport;
@@ -406,435 +195,18 @@ export class McpInspectorEditorModel extends EditorModel<McpInspectorEditorState
         });
     };
 
-    /** Delete a saved connection from the store. */
     deleteSavedConnection = async (id: string): Promise<void> => {
         await mcpConnectionStore.delete(id);
+        this.savedConnections.set(mcpConnectionStore.state.get().connections);
     };
 
-    // -- Tools ----------------------------------------------------------------
+    get historyCount(): number { return this.session.historyCount; }
+    get history(): ReadonlyArray<McpRequestEntry> { return this.session.history; }
+    clearHistory = (): void => { this.session.clearHistory(); };
 
-    /** Load tools list from connected server. */
-    loadTools = async (): Promise<void> => {
-        const client = this.connection.getClient();
-        if (!client) return;
-        const generation = this._connectionGeneration;
-        const start = Date.now();
-        try {
-            const result = await client.listTools();
-            if (!this.isCurrentRequest(client, generation)) return;
-            this.logRequest("tools/list", null, result, null, Date.now() - start);
-            const tools: McpToolInfo[] = (result.tools || []).map((t) => ({
-                name: t.name,
-                description: t.description || "",
-                inputSchema: t.inputSchema as McpToolInfo["inputSchema"],
-                annotations: t.annotations,
-            }));
-            this.toolsState.update((s) => {
-                s.tools = tools;
-                s.selectedToolName = tools.length > 0 ? tools[0].name : "";
-                s.toolResult = null;
-                s.toolArgs = {};
-            });
-        } catch (err) {
-            if (!this.isCurrentRequest(client, generation)) return;
-            this.logRequest("tools/list", null, null, errMessage(err), Date.now() - start);
-        }
-    };
-
-    /** Select a tool by name. Clears previous args and result. */
-    selectTool = (name: string): void => {
-        this._toolSelectionGeneration += 1;
-        this.toolsState.update((s) => {
-            s.selectedToolName = name;
-            s.toolCallLoading = false;
-            s.toolResult = null;
-            s.toolArgs = {};
-        });
-    };
-
-    /** Update a single tool argument value. */
-    setToolArg = (name: string, value: string): void => {
-        this.toolsState.update((s) => {
-            s.toolArgs = { ...s.toolArgs, [name]: value };
-        });
-    };
-
-    /** Call the currently selected tool with entered arguments. */
-    callTool = async (): Promise<void> => {
-        const client = this.connection.getClient();
-        if (!client) return;
-        const connectionGeneration = this._connectionGeneration;
-        const ts = this.toolsState.get();
-        const tool = ts.tools.find((t) => t.name === ts.selectedToolName);
-        if (!tool) return;
-        const toolSelectionGeneration = this._toolSelectionGeneration;
-
-        // Parse argument strings to proper types based on schema
-        const args: Record<string, unknown> = {};
-        for (const [key, value] of Object.entries(ts.toolArgs)) {
-            if (!value && value !== "false") continue;
-            const propSchema = tool.inputSchema.properties?.[key];
-            const propType = (propSchema && typeof propSchema === "object" && "type" in propSchema)
-                ? (propSchema as { type?: unknown }).type
-                : undefined;
-            if (propType === "number" || propType === "integer") {
-                args[key] = Number(value);
-            } else if (propType === "boolean") {
-                args[key] = value === "true";
-            } else if (propType === "object" || propType === "array") {
-                args[key] = tryParseJson<unknown>(value, value);
-            } else {
-                args[key] = value;
-            }
-        }
-
-        this.toolsState.update((s) => { s.toolCallLoading = true; s.toolResult = null; });
-        const startTime = Date.now();
-        const callParams = { name: tool.name, arguments: args };
-        try {
-            const result = await client.callTool(callParams);
-            const duration = Date.now() - startTime;
-            if (!this.isCurrentRequest(client, connectionGeneration)
-                || toolSelectionGeneration !== this._toolSelectionGeneration
-                || this.toolsState.get().selectedToolName !== tool.name) return;
-            this.logRequest("tools/call", callParams, result, null, duration);
-            this.toolsState.update((s) => {
-                s.toolCallLoading = false;
-                s.toolResult = {
-                    content: (result.content as McpToolResultContent[]) || [],
-                    isError: result.isError as boolean | undefined,
-                    durationMs: duration,
-                };
-            });
-        } catch (err) {
-            const duration = Date.now() - startTime;
-            if (!this.isCurrentRequest(client, connectionGeneration)
-                || toolSelectionGeneration !== this._toolSelectionGeneration
-                || this.toolsState.get().selectedToolName !== tool.name) return;
-            this.logRequest("tools/call", callParams, null, errMessage(err), duration);
-            this.toolsState.update((s) => {
-                s.toolCallLoading = false;
-                s.toolResult = {
-                    content: [{ type: "text", text: errMessage(err) }],
-                    isError: true,
-                    durationMs: duration,
-                };
-            });
-        }
-    };
-
-    // -- Resources ------------------------------------------------------------
-
-    /** Load resources and templates from connected server. */
-    loadResources = async (): Promise<void> => {
-        const client = this.connection.getClient();
-        if (!client) return;
-        const generation = this._connectionGeneration;
-        const start = Date.now();
-        try {
-            // `never[]` fallbacks are assignable to the SDK's typed
-            // `Resource[]` / `ResourceTemplate[]` arrays without `any`.
-            const [resResult, tmplResult] = await Promise.all([
-                client.listResources().catch(() => ({ resources: [] as never[] })),
-                client.listResourceTemplates().catch(() => ({ resourceTemplates: [] as never[] })),
-            ]);
-            if (!this.isCurrentRequest(client, generation)) return;
-            this.logRequest("resources/list", null, { resources: resResult, templates: tmplResult }, null, Date.now() - start);
-            const resources: McpResourceInfo[] = (resResult.resources || []).map((r) => ({
-                uri: r.uri,
-                name: r.name || r.uri,
-                description: r.description || "",
-                mimeType: r.mimeType || "",
-            }));
-            const templates: McpResourceTemplateInfo[] = (tmplResult.resourceTemplates || []).map((t) => ({
-                uriTemplate: t.uriTemplate,
-                name: t.name || t.uriTemplate,
-                description: t.description || "",
-                mimeType: t.mimeType || "",
-            }));
-            this.resourcesState.update((s) => {
-                s.resources = resources;
-                s.templates = templates;
-                s.selectedUri = resources.length > 0 ? resources[0].uri : "";
-                s.readContent = null;
-                s.readError = "";
-            });
-        } catch (err) {
-            if (!this.isCurrentRequest(client, generation)) return;
-            this.logRequest("resources/list", null, null, errMessage(err), Date.now() - start);
-        }
-    };
-
-    /** Select a resource by URI. Clears previous content and deselects template. */
-    selectResource = (uri: string): void => {
-        this._resourceSelectionGeneration += 1;
-        this.resourcesState.update((s) => {
-            s.selectedUri = uri;
-            s.readLoading = false;
-            s.readContent = null;
-            s.readError = "";
-            s.selectedTemplateUri = "";
-            s.templateReadLoading = false;
-            s.templateArgs = {};
-            s.templateReadContent = null;
-            s.templateReadError = "";
-        });
-    };
-
-    /** Select a resource template. Clears static resource selection. */
-    selectTemplate = (uriTemplate: string): void => {
-        this._templateSelectionGeneration += 1;
-        this.resourcesState.update((s) => {
-            s.selectedTemplateUri = uriTemplate;
-            s.templateReadLoading = false;
-            s.templateArgs = {};
-            s.templateReadContent = null;
-            s.templateReadError = "";
-            s.selectedUri = "";
-            s.readLoading = false;
-            s.readContent = null;
-            s.readError = "";
-        });
-    };
-
-    /** Update a single template argument value. */
-    setTemplateArg = (name: string, value: string): void => {
-        this.resourcesState.update((s) => {
-            s.templateArgs = { ...s.templateArgs, [name]: value };
-        });
-    };
-
-    /** Read a resource by expanding the selected template with entered arguments. */
-    readTemplateResource = async (): Promise<void> => {
-        const client = this.connection.getClient();
-        if (!client) return;
-        const connectionGeneration = this._connectionGeneration;
-        const rs = this.resourcesState.get();
-        if (!rs.selectedTemplateUri) return;
-        const templateGeneration = this._templateSelectionGeneration;
-        const selectedTemplateUri = rs.selectedTemplateUri;
-
-        const expandedUri = expandUriTemplate(rs.selectedTemplateUri, rs.templateArgs);
-        this.resourcesState.update((s) => {
-            s.templateReadLoading = true;
-            s.templateReadContent = null;
-            s.templateReadError = "";
-        });
-        const readParams = { uri: expandedUri };
-        const start = Date.now();
-        try {
-            const result = await client.readResource(readParams);
-            if (!this.isCurrentRequest(client, connectionGeneration)
-                || templateGeneration !== this._templateSelectionGeneration
-                || this.resourcesState.get().selectedTemplateUri !== selectedTemplateUri) return;
-            this.logRequest("resources/read", readParams, result, null, Date.now() - start);
-            const first = result.contents?.[0];
-            if (first) {
-                this.resourcesState.update((s) => {
-                    s.templateReadLoading = false;
-                    s.templateReadContent = {
-                        uri: first.uri || expandedUri,
-                        mimeType: first.mimeType || "",
-                        text: "text" in first ? first.text : undefined,
-                        blob: "blob" in first ? first.blob : undefined,
-                    };
-                });
-            } else {
-                this.resourcesState.update((s) => {
-                    s.templateReadLoading = false;
-                    s.templateReadError = "No content returned.";
-                });
-            }
-        } catch (err) {
-            if (!this.isCurrentRequest(client, connectionGeneration)
-                || templateGeneration !== this._templateSelectionGeneration
-                || this.resourcesState.get().selectedTemplateUri !== selectedTemplateUri) return;
-            this.logRequest("resources/read", readParams, null, errMessage(err), Date.now() - start);
-            this.resourcesState.update((s) => {
-                s.templateReadLoading = false;
-                s.templateReadError = errMessage(err);
-            });
-        }
-    };
-
-    /** Read the currently selected resource. */
-    readResource = async (): Promise<void> => {
-        const client = this.connection.getClient();
-        if (!client) return;
-        const connectionGeneration = this._connectionGeneration;
-        const rs = this.resourcesState.get();
-        if (!rs.selectedUri) return;
-        const resourceGeneration = this._resourceSelectionGeneration;
-        const selectedUri = rs.selectedUri;
-
-        this.resourcesState.update((s) => { s.readLoading = true; s.readContent = null; s.readError = ""; });
-        const readParams = { uri: rs.selectedUri };
-        const start = Date.now();
-        try {
-            const result = await client.readResource(readParams);
-            if (!this.isCurrentRequest(client, connectionGeneration)
-                || resourceGeneration !== this._resourceSelectionGeneration
-                || this.resourcesState.get().selectedUri !== selectedUri) return;
-            this.logRequest("resources/read", readParams, result, null, Date.now() - start);
-            const first = result.contents?.[0];
-            if (first) {
-                this.resourcesState.update((s) => {
-                    s.readLoading = false;
-                    s.readContent = {
-                        uri: first.uri || rs.selectedUri,
-                        mimeType: first.mimeType || "",
-                        text: "text" in first ? first.text : undefined,
-                        blob: "blob" in first ? first.blob : undefined,
-                    };
-                });
-            } else {
-                this.resourcesState.update((s) => {
-                    s.readLoading = false;
-                    s.readError = "No content returned.";
-                });
-            }
-        } catch (err) {
-            if (!this.isCurrentRequest(client, connectionGeneration)
-                || resourceGeneration !== this._resourceSelectionGeneration
-                || this.resourcesState.get().selectedUri !== selectedUri) return;
-            this.logRequest("resources/read", readParams, null, errMessage(err), Date.now() - start);
-            this.resourcesState.update((s) => {
-                s.readLoading = false;
-                s.readError = errMessage(err);
-            });
-        }
-    };
-
-    // -- Prompts --------------------------------------------------------------
-
-    /** Load prompts from connected server. */
-    loadPrompts = async (): Promise<void> => {
-        const client = this.connection.getClient();
-        if (!client) return;
-        const generation = this._connectionGeneration;
-        const start = Date.now();
-        try {
-            const result = await client.listPrompts();
-            if (!this.isCurrentRequest(client, generation)) return;
-            this.logRequest("prompts/list", null, result, null, Date.now() - start);
-            const prompts: McpPromptInfo[] = (result.prompts || []).map((p) => ({
-                name: p.name,
-                description: p.description || "",
-                arguments: (p.arguments || []).map((a) => ({
-                    name: a.name,
-                    description: a.description || "",
-                    required: !!a.required,
-                })),
-            }));
-            this.promptsState.update((s) => {
-                s.prompts = prompts;
-                s.selectedPromptName = prompts.length > 0 ? prompts[0].name : "";
-                s.promptArgs = {};
-                s.promptMessages = null;
-                s.promptError = "";
-            });
-        } catch (err) {
-            if (!this.isCurrentRequest(client, generation)) return;
-            this.logRequest("prompts/list", null, null, errMessage(err), Date.now() - start);
-        }
-    };
-
-    /** Select a prompt by name. Clears previous args and messages. */
-    selectPrompt = (name: string): void => {
-        this._promptSelectionGeneration += 1;
-        this.promptsState.update((s) => {
-            s.selectedPromptName = name;
-            s.getPromptLoading = false;
-            s.promptArgs = {};
-            s.promptMessages = null;
-            s.promptError = "";
-        });
-    };
-
-    /** Update a single prompt argument value. */
-    setPromptArg = (name: string, value: string): void => {
-        this.promptsState.update((s) => {
-            s.promptArgs = { ...s.promptArgs, [name]: value };
-        });
-    };
-
-    /** Get the currently selected prompt with entered arguments. */
-    getPrompt = async (): Promise<void> => {
-        const client = this.connection.getClient();
-        if (!client) return;
-        const connectionGeneration = this._connectionGeneration;
-        const ps = this.promptsState.get();
-        const prompt = ps.prompts.find((p) => p.name === ps.selectedPromptName);
-        if (!prompt) return;
-        const promptSelectionGeneration = this._promptSelectionGeneration;
-        const selectedPromptName = prompt.name;
-
-        const args: Record<string, string> = {};
-        for (const [key, value] of Object.entries(ps.promptArgs)) {
-            if (value) args[key] = value;
-        }
-
-        this.promptsState.update((s) => { s.getPromptLoading = true; s.promptMessages = null; s.promptError = ""; });
-        const getParams = { name: prompt.name, arguments: args };
-        const start = Date.now();
-        try {
-            const result = await client.getPrompt(getParams);
-            if (!this.isCurrentRequest(client, connectionGeneration)
-                || promptSelectionGeneration !== this._promptSelectionGeneration
-                || this.promptsState.get().selectedPromptName !== selectedPromptName) return;
-            this.logRequest("prompts/get", getParams, result, null, Date.now() - start);
-            const messages: McpPromptMessage[] = (result.messages || []).map((m) => {
-                const contentBlock = m.content;
-                // content can be a single block or array
-                const contentArray: McpPromptMessageContent[] = Array.isArray(contentBlock)
-                    ? contentBlock.map(normalizePromptContent)
-                    : [normalizePromptContent(contentBlock)];
-                return { role: m.role as "user" | "assistant", content: contentArray };
-            });
-            this.promptsState.update((s) => {
-                s.getPromptLoading = false;
-                s.promptMessages = messages;
-            });
-        } catch (err) {
-            if (!this.isCurrentRequest(client, connectionGeneration)
-                || promptSelectionGeneration !== this._promptSelectionGeneration
-                || this.promptsState.get().selectedPromptName !== selectedPromptName) return;
-            this.logRequest("prompts/get", getParams, null, errMessage(err), Date.now() - start);
-            this.promptsState.update((s) => {
-                s.getPromptLoading = false;
-                s.promptError = errMessage(err);
-            });
-        }
-    };
-
-    // -- History --------------------------------------------------------------
-
-    private logRequest(method: string, params: unknown, result: unknown, error: string | null, durationMs: number): void {
-        this._history.push({
-            type: "output.mcp-request",
-            id: crypto.randomUUID(),
-            timestamp: Date.now(),
-            direction: "outgoing",
-            method,
-            params,
-            result,
-            error,
-            durationMs,
-        });
-    }
-
-    get historyCount(): number {
-        return this._history.length;
-    }
-
-    get history(): ReadonlyArray<McpRequestEntry> {
-        return this._history;
-    }
-
-    /** Open a new one-time log page with all collected history entries. */
     showHistory = async (): Promise<void> => {
-        if (this._history.length === 0) return;
-        const content = this._history.map((e) => JSON.stringify(e)).join("\n");
+        if (this.session.history.length === 0) return;
+        const content = this.session.history.map((e) => JSON.stringify(e)).join("\n");
         await app.capabilities.invoke("content.view", {
             representation: "log",
             content,
@@ -843,21 +215,8 @@ export class McpInspectorEditorModel extends EditorModel<McpInspectorEditorState
         });
     };
 
-    clearHistory = (): void => {
-        this._history = [];
-    };
-
-    // -- Lifecycle ------------------------------------------------------------
-    // No `restore()` override — the base no-op suffices. MCP must NOT
-    // auto-connect on restore (connection is user-initiated).
-
     getRestoreData(): EditorDescriptor {
         const s = this.state.get();
-        // Persist only the connection config; reset all transient runtime state
-        // so a session that quit while connected restores disconnected rather
-        // than showing a stale "connected" header with a dead socket. The three
-        // sub-state stores and `_history` live outside `state` and are excluded
-        // automatically.
         return {
             editorId: this.editorId,
             id: s.id,
@@ -865,15 +224,7 @@ export class McpInspectorEditorModel extends EditorModel<McpInspectorEditorState
                 ...s,
                 connectionStatus: "disconnected",
                 errorMessage: "",
-                serverName: "",
-                serverTitle: "",
-                serverVersion: "",
-                serverDescription: "",
-                serverWebsiteUrl: "",
-                instructions: "",
-                hasTools: false,
-                hasResources: false,
-                hasPrompts: false,
+                ...EMPTY_SERVER_INFO,
             } as unknown as Record<string, unknown>,
         };
     }
@@ -893,59 +244,9 @@ export class McpInspectorEditorModel extends EditorModel<McpInspectorEditorState
     async dispose(): Promise<void> {
         if (this._disposed) return;
         this._disposed = true;
-        this._connectionGeneration += 1;
-        await this.connection.dispose();
+        await this.session.dispose();
         await super.dispose();
     }
 
-    private isCurrentRequest(client: unknown, generation: number): boolean {
-        return !this._disposed
-            && generation === this._connectionGeneration
-            && this.connection.getClient() === client;
-    }
-
     getIconElement = (): SVGElement | undefined => McpIcon.createElement();
-}
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-/** Extract simple `{param}` names from a URI template. */
-export function extractTemplateParams(uriTemplate: string): string[] {
-    const params: string[] = [];
-    const re = /\{([^}]+)\}/g;
-    let match: RegExpExecArray | null;
-    while ((match = re.exec(uriTemplate)) !== null) {
-        params.push(match[1]);
-    }
-    return params;
-}
-
-/** Replace `{param}` placeholders in a URI template with values from args. */
-export function expandUriTemplate(uriTemplate: string, args: Record<string, string>): string {
-    return uriTemplate.replace(/\{([^}]+)\}/g, (_, name) => args[name] ?? "");
-}
-
-function normalizePromptContent(block: unknown): McpPromptMessageContent {
-    if (!block) return { type: "text", text: "" };
-    if (typeof block === "string") return { type: "text", text: block };
-    if (typeof block !== "object") return { type: "text", text: String(block) };
-    const b = block as Record<string, unknown>;
-    if (b.type === "text") return { type: "text", text: String(b.text || "") };
-    if (b.type === "image") return { type: "image", data: String(b.data), mimeType: String(b.mimeType) };
-    if (b.type === "resource") {
-        const r = (b.resource && typeof b.resource === "object" ? b.resource : {}) as Record<string, unknown>;
-        return {
-            type: "resource",
-            resource: {
-                uri: String(r.uri || ""),
-                mimeType: r.mimeType as string | undefined,
-                text: r.text as string | undefined,
-                blob: r.blob as string | undefined,
-            },
-        };
-    }
-    if (b.type === "resource_link") return { type: "resource_link", uri: String(b.uri), name: String(b.name) };
-    return { type: "text", text: JSON.stringify(block) };
 }

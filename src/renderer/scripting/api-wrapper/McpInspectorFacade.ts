@@ -14,15 +14,21 @@ import type {
 import type {
     McpInspectorEditorModel,
     McpPanelId,
+} from "../../editors/mcp-inspector/McpInspectorEditorModel";
+import type {
     McpPromptInfo,
     McpPromptMessage,
     McpPromptMessageContent,
+} from "../../editors/mcp-inspector/McpPromptsModel";
+import type {
     McpResourceInfo,
     McpResourceTemplateInfo,
+} from "../../editors/mcp-inspector/McpResourcesModel";
+import type {
     McpToolInfo,
     McpToolResult,
     McpToolResultContent,
-} from "../../editors/mcp-inspector/McpInspectorEditorModel";
+} from "../../editors/mcp-inspector/McpToolsModel";
 import type { McpRequestEntry } from "../../editors/log-view/logTypes";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { EditorFacadeBase } from "./EditorFacadeBase";
@@ -286,60 +292,60 @@ export class McpInspectorFacade extends EditorFacadeBase<McpInspectorEditorModel
 
     get tools(): readonly IMcpToolSnapshot[] | undefined {
         if (!this.connectedState) return undefined;
-        return this.model.toolsState.get().tools.map(copyTool);
+        return this.model.tools.state.get().tools.map(copyTool);
     }
 
     get selectedTool(): IMcpToolSnapshot | undefined {
         if (!this.connectedState) return undefined;
-        const state = this.model.toolsState.get();
+        const state = this.model.tools.state.get();
         const tool = state.tools.find((item) => item.name === state.selectedToolName);
         return tool ? copyTool(tool) : undefined;
     }
 
     get toolResult(): IMcpToolResultSnapshot | undefined {
         if (!this.connectedState) return undefined;
-        const result = this.model.toolsState.get().toolResult;
+        const result = this.model.tools.state.get().toolResult;
         return result ? copyToolResult(result) : undefined;
     }
 
     get toolCallLoading(): boolean | undefined {
         if (!this.connectedState) return undefined;
-        return this.model.toolsState.get().toolCallLoading;
+        return this.model.tools.state.get().toolCallLoading;
     }
 
     get resources(): readonly IMcpResourceSnapshot[] | undefined {
         if (!this.connectedState) return undefined;
-        return this.model.resourcesState.get().resources.map(copyResource);
+        return this.model.resources.state.get().resources.map(copyResource);
     }
 
     get resourceTemplates(): readonly IMcpResourceTemplateSnapshot[] | undefined {
         if (!this.connectedState) return undefined;
-        return this.model.resourcesState.get().templates.map(copyResourceTemplate);
+        return this.model.resources.state.get().templates.map(copyResourceTemplate);
     }
 
     get selectedResource(): IMcpResourceSnapshot | undefined {
         if (!this.connectedState) return undefined;
-        const state = this.model.resourcesState.get();
+        const state = this.model.resources.state.get();
         const resource = state.resources.find((item) => item.uri === state.selectedUri);
         return resource ? copyResource(resource) : undefined;
     }
 
     get selectedResourceTemplate(): IMcpResourceTemplateSnapshot | undefined {
         if (!this.connectedState) return undefined;
-        const state = this.model.resourcesState.get();
+        const state = this.model.resources.state.get();
         const template = state.templates.find((item) => item.uriTemplate === state.selectedTemplateUri);
         return template ? copyResourceTemplate(template) : undefined;
     }
 
     get resourceContent(): IMcpResourceContentSnapshot | undefined {
         if (!this.connectedState) return undefined;
-        const state = this.model.resourcesState.get();
+        const state = this.model.resources.state.get();
         return state.selectedUri && state.readContent ? copyResourceContent(state.readContent) : undefined;
     }
 
     get templateResourceContent(): IMcpResourceContentSnapshot | undefined {
         if (!this.connectedState) return undefined;
-        const state = this.model.resourcesState.get();
+        const state = this.model.resources.state.get();
         return state.selectedTemplateUri && state.templateReadContent
             ? copyResourceContent(state.templateReadContent)
             : undefined;
@@ -347,39 +353,39 @@ export class McpInspectorFacade extends EditorFacadeBase<McpInspectorEditorModel
 
     get resourceReadLoading(): boolean | undefined {
         if (!this.connectedState) return undefined;
-        return this.model.resourcesState.get().readLoading;
+        return this.model.resources.state.get().readLoading;
     }
 
     get templateReadLoading(): boolean | undefined {
         if (!this.connectedState) return undefined;
-        return this.model.resourcesState.get().templateReadLoading;
+        return this.model.resources.state.get().templateReadLoading;
     }
 
     get resourceReadError(): string | undefined {
         if (!this.connectedState) return undefined;
-        return this.model.resourcesState.get().readError || undefined;
+        return this.model.resources.state.get().readError || undefined;
     }
 
     get templateReadError(): string | undefined {
         if (!this.connectedState) return undefined;
-        return this.model.resourcesState.get().templateReadError || undefined;
+        return this.model.resources.state.get().templateReadError || undefined;
     }
 
     get prompts(): readonly IMcpPromptSnapshot[] | undefined {
         if (!this.connectedState) return undefined;
-        return this.model.promptsState.get().prompts.map(copyPrompt);
+        return this.model.prompts.state.get().prompts.map(copyPrompt);
     }
 
     get selectedPrompt(): IMcpPromptSnapshot | undefined {
         if (!this.connectedState) return undefined;
-        const state = this.model.promptsState.get();
+        const state = this.model.prompts.state.get();
         const prompt = state.prompts.find((item) => item.name === state.selectedPromptName);
         return prompt ? copyPrompt(prompt) : undefined;
     }
 
     get promptMessages(): readonly IMcpPromptMessageSnapshot[] | undefined {
         if (!this.connectedState) return undefined;
-        const state = this.model.promptsState.get();
+        const state = this.model.prompts.state.get();
         return state.selectedPromptName && state.promptMessages !== null
             ? state.promptMessages.map(copyPromptMessage)
             : undefined;
@@ -387,12 +393,12 @@ export class McpInspectorFacade extends EditorFacadeBase<McpInspectorEditorModel
 
     get promptLoading(): boolean | undefined {
         if (!this.connectedState) return undefined;
-        return this.model.promptsState.get().getPromptLoading;
+        return this.model.prompts.state.get().getPromptLoading;
     }
 
     get promptError(): string | undefined {
         if (!this.connectedState) return undefined;
-        return this.model.promptsState.get().promptError || undefined;
+        return this.model.prompts.state.get().promptError || undefined;
     }
 
     private get connectedState() {
@@ -412,9 +418,9 @@ export class McpInspectorFacade extends EditorFacadeBase<McpInspectorEditorModel
         };
         if (state.connectionStatus !== "connected") return summary;
 
-        const toolsState = this.model.toolsState.get();
-        const resourcesState = this.model.resourcesState.get();
-        const promptsState = this.model.promptsState.get();
+        const toolsState = this.model.tools.state.get();
+        const resourcesState = this.model.resources.state.get();
+        const promptsState = this.model.prompts.state.get();
         summary.activePanel = state.activePanel;
         summary.toolCount = toolsState.tools.length;
         summary.resourceCount = resourcesState.resources.length;

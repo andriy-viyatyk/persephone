@@ -6,20 +6,12 @@ import type {
 } from "../../api/types/io.tree";
 import type { IFileLink } from "../../core/traits/fileLinkTraits";
 import { mnemeConnection } from "../../api/mneme-connection";
+import { mnemeClient } from "../../api/mneme-client";
+import type { MnemeTreeEntry } from "../../api/mneme-types";
 import { toMnemeAddress, toMnemeHref } from "../mneme-link";
-import { parseToolResult } from "../../editors/mneme-config/mnemeTypes";
 import { fpExtname } from "../../core/utils/file-path";
 import { TraitTypeId } from "../../core/traits";
 import "./mnemeLinkTraits"; // side-effect: registers the MnemeLink TraitSet (LINK + IFileLink)
-
-/** One `tree` entry (flat depth-first node). `depth` is the absolute
- *  slash count of the address; `uri` is `mneme://{root}/{path}`. */
-interface MnemeTreeEntry {
-    uri: string;
-    name: string;
-    isDir: boolean;
-    depth: number;
-}
 
 /**
  * Read-only ITreeProvider for a single Mneme root.
@@ -71,12 +63,7 @@ export class MnemeTreeProvider implements ITreeProvider {
 
         let entries: MnemeTreeEntry[] = [];
         try {
-            const result = await client.callTool(
-                { name: "tree", arguments: { path, depth: 1 } },
-                undefined,
-                { timeout: 10_000 },
-            );
-            entries = parseToolResult<{ entries: MnemeTreeEntry[] }>(result)?.entries ?? [];
+            entries = (await mnemeClient.tree(client, path))?.entries ?? [];
         } catch {
             return [];
         }
@@ -143,7 +130,7 @@ export class MnemeTreeProvider implements ITreeProvider {
      *  stripped for the `write` tool. */
     async addItem(item: Partial<ILink> & { href: string }): Promise<ILink> {
         const client = this.requireClient();
-        await client.callTool({ name: "write", arguments: { path: toMnemeAddress(item.href), content: "" } });
+        await mnemeClient.write(client, toMnemeAddress(item.href), "");
         const name = item.title || item.href.split("/").pop() || item.href;
         const ext = fpExtname(name).toLowerCase();
         return {
@@ -158,7 +145,7 @@ export class MnemeTreeProvider implements ITreeProvider {
     /** Create an empty folder (≈ mkdir -p). */
     async mkdir(path: string): Promise<void> {
         const client = this.requireClient();
-        await client.callTool({ name: "mkdir", arguments: { path: toMnemeAddress(path) } });
+        await mnemeClient.mkdir(client, toMnemeAddress(path));
     }
 
     /** Rename or move a file or folder (also serves DnD move). The `oldPath` arrives as the
@@ -166,16 +153,13 @@ export class MnemeTreeProvider implements ITreeProvider {
      *  both are normalized to the scheme-less form the `rename` tool expects. */
     async rename(oldPath: string, newPath: string): Promise<void> {
         const client = this.requireClient();
-        await client.callTool({
-            name: "rename",
-            arguments: { from: toMnemeAddress(oldPath), to: toMnemeAddress(newPath) },
-        });
+        await mnemeClient.rename(client, toMnemeAddress(oldPath), toMnemeAddress(newPath));
     }
 
     /** Delete a file, or a folder and everything under it (the `delete` tool is recursive). */
     async deleteItem(href: string): Promise<void> {
         const client = this.requireClient();
-        await client.callTool({ name: "delete", arguments: { path: toMnemeAddress(href) } });
+        await mnemeClient.delete(client, toMnemeAddress(href));
     }
 
     /** Import dropped files into `targetCategory`. Always `upload` (binary-safe, no
@@ -188,10 +172,7 @@ export class MnemeTreeProvider implements ITreeProvider {
         for (const item of items) {
             const path = `${cat}/${item.name}`;
             const bytes = Buffer.from(await item.getBytes());
-            await client.callTool({
-                name: "upload",
-                arguments: { path, contentBase64: bytes.toString("base64") },
-            });
+            await mnemeClient.upload(client, path, bytes.toString("base64"));
         }
     }
 

@@ -14,7 +14,7 @@ import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { IListBoxItem } from "../../uikit/ListBox/types";
 import { MonacoEditorHostView } from "../shared/MonacoEditorHostView";
-import type { McpToolInfo } from "./McpInspectorEditorModel";
+import type { McpToolInfo } from "./McpToolsModel";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 import "../../uikit/Checkbox/Checkbox.css";

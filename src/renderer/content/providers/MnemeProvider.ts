@@ -1,5 +1,6 @@
 import type { IProvider, IProviderDescriptor } from "../../api/types/io.provider";
 import { mnemeConnection } from "../../api/mneme-connection";
+import { mnemeClient } from "../../api/mneme-client";
 
 /**
  * MnemeProvider — reads/writes Mneme wiki documents over MCP.
@@ -33,7 +34,7 @@ export class MnemeProvider implements IProvider {
     async readBinary(): Promise<Buffer> {
         const client = mnemeConnection.getClient();
         if (!client) throw new Error("Mneme is not connected");
-        const result = await client.readResource({ uri: this.uri });
+        const result = await mnemeClient.readResource(client, this.uri);
         const first = result.contents?.[0] as { text?: string; blob?: string } | undefined;
         if (first?.text !== undefined) {
             return Buffer.from(first.text, "utf8");
@@ -49,16 +50,10 @@ export class MnemeProvider implements IProvider {
         if (!client) throw new Error("Mneme is not connected");
         if (looksBinary(data)) {
             // Binary attachment (image/PDF/diagram) → upload (base64; not indexed).
-            await client.callTool({
-                name: "upload",
-                arguments: { path: this.path, contentBase64: data.toString("base64") },
-            });
+            await mnemeClient.upload(client, this.path, data.toString("base64"));
         } else {
             // Text/markdown → write (whole-file UTF-8; indexed synchronously).
-            await client.callTool({
-                name: "write",
-                arguments: { path: this.path, content: data.toString("utf8") },
-            });
+            await mnemeClient.write(client, this.path, data.toString("utf8"));
         }
     }
 

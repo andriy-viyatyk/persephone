@@ -3,6 +3,7 @@ import { showEditLinkDialog } from "../link-editor/EditLinkDialog";
 import { api } from "../../../ipc/renderer/api";
 import type { BrowserEditor } from "./BrowserEditor";
 import type { LinkItem } from "../link-editor/linkTypes";
+import type { LinkEditorEmbedding } from "../link-editor/LinkEditor";
 import { app } from "../../api/app";
 import { BookmarkEvent } from "../../api/events/events";
 import { withTimeout } from "../../core/utils/utils";
@@ -188,19 +189,22 @@ export class BrowserBookmarksModel {
     };
 
     private configureBookmarks = (bookmarks: BrowserBookmarks): void => {
-        bookmarks.linkEditor.onLinkOpen = (data) => {
-            data.target = "browser";
-            data.browserPageId = this.model.page?.id;
-            const currentTab = this.model.activeTab;
-            if (!currentTab?.url || currentTab.url === DEFAULT_URL) data.browserTabMode = "navigate";
+        const embedding: LinkEditorEmbedding = {
+            adjustOpenLink: (data) => {
+                data.target = "browser";
+                data.browserPageId = this.model.page?.id;
+                const currentTab = this.model.activeTab;
+                if (!currentTab?.url || currentTab.url === DEFAULT_URL) data.browserTabMode = "navigate";
+            },
+            extraMenuItems: (link) => link.href ? [{
+                id: "open-in-new-tab",
+                label: t("shell.openInNewTab"),
+                icon: createIconElement("open-link"),
+                onClick: () => this.model.tabs.addTab(link.href),
+            }] : [],
+            imageRoute: () => this.model.network.imageRoute,
         };
-        bookmarks.linkEditor.onGetLinkMenuItems = (link) => link.href ? [{
-            id: "open-in-new-tab",
-            label: t("shell.openInNewTab"),
-            icon: createIconElement("open-link"),
-            onClick: () => this.model.tabs.addTab(link.href),
-        }] : [];
-        bookmarks.linkEditor.imageProxySource = () => this.model.network.imageRoute;
+        bookmarks.linkEditor.setEmbedding(embedding);
         bookmarks.panelHost.setInitialWidth(this.model.state.get().bookmarksSidebarWidth);
         bookmarks.panelHost.onWidthChange = (width) => this.model.state.update((s) => { s.bookmarksSidebarWidth = width; });
     };

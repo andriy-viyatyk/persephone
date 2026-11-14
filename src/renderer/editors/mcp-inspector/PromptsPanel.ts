@@ -8,7 +8,8 @@ import { TextareaView } from "../../uikit/Textarea/TextareaView";
 import { KeyedList } from "../../uikit/shared/keyed-list";
 import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import type { McpInspectorEditorModel, McpPromptInfo, McpPromptMessage, McpPromptMessageContent, McpPromptsPanelState } from "./McpInspectorEditorModel";
+import type { McpInspectorEditorModel } from "./McpInspectorEditorModel";
+import type { McpPromptInfo, McpPromptMessage, McpPromptMessageContent, McpPromptsPanelState } from "./McpPromptsModel";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 import "../../uikit/Textarea/Textarea.css";
@@ -49,7 +50,7 @@ export class PromptsPanelView extends VanillaView<PromptsPanelProps> {
             create: (prompt) => {
                 const row = new PromptRowView({
                     prompt,
-                    selected: prompt.name === this.props.model.promptsState.get().selectedPromptName,
+                    selected: prompt.name === this.props.model.prompts.state.get().selectedPromptName,
                     onSelect: this.selectPrompt,
                 });
                 row.mount();
@@ -58,7 +59,7 @@ export class PromptsPanelView extends VanillaView<PromptsPanelProps> {
             update: (element, prompt) => {
                 (element as PromptRowRoot).view?.update({
                     prompt,
-                    selected: prompt.name === this.props.model.promptsState.get().selectedPromptName,
+                    selected: prompt.name === this.props.model.prompts.state.get().selectedPromptName,
                     onSelect: this.selectPrompt,
                 });
             },
@@ -83,7 +84,7 @@ export class PromptsPanelView extends VanillaView<PromptsPanelProps> {
         this.detailSwap = new SubtreeSwap(detailHost);
         this.own(() => this.detailSwap.dispose());
 
-        this.bind(this.props.model.promptsState, (state) => state, this.sync);
+        this.bind(this.props.model.prompts.state, (state) => state, this.sync);
     }
 
     protected onUpdate(_props: PromptsPanelProps): void {}
@@ -112,7 +113,7 @@ export class PromptsPanelView extends VanillaView<PromptsPanelProps> {
     private detailViewKey = "";
 
     private readonly selectPrompt = (name: string): void => {
-        this.props.model.selectPrompt(name);
+        this.props.model.prompts.selectPrompt(name);
     };
 
     private readonly setSidebarWidth = (width: number): void => {
@@ -124,7 +125,7 @@ export class PromptsPanelView extends VanillaView<PromptsPanelProps> {
 
 class EmptyPromptView extends VanillaView<{ model: McpInspectorEditorModel }> {
     public constructor(props: { model: McpInspectorEditorModel }) { super(props, createPanelElement({ flex: true, align: "center", justify: "center", overflow: "auto" })); }
-    protected onMount(): void { const state = this.props.model.promptsState.get(); this.root.append(createTextElement(state.prompts.length === 0 ? t("tools.mcpNoPrompts") : t("tools.mcpSelectPrompt"), { size: "md", color: "light" })); }
+    protected onMount(): void { const state = this.props.model.prompts.state.get(); this.root.append(createTextElement(state.prompts.length === 0 ? t("tools.mcpNoPrompts") : t("tools.mcpSelectPrompt"), { size: "md", color: "light" })); }
 }
 
 interface PromptRowProps {
@@ -232,7 +233,7 @@ class PromptDetailView extends VanillaView<PromptDetailProps> {
     }
 
     private sync(props: PromptDetailProps): void {
-        const state = props.model.promptsState.get();
+        const state = props.model.prompts.state.get();
         const prompt = props.prompt;
         if (!prompt) {
             this.root.replaceChildren(createPanelElement({ flex: true, align: "center", justify: "center" }, [
@@ -282,7 +283,7 @@ class PromptDetailView extends VanillaView<PromptDetailProps> {
         this.messagesList?.update(messages.map((message, key) => ({ message, key })));
     }
 
-    private readonly getPrompt = (): void => { void this.props.model.getPrompt(); };
+    private readonly getPrompt = (): void => { void this.props.model.prompts.getPrompt(); };
 }
 
 interface PromptArgProps { argument: McpPromptInfo["arguments"][number]; model: McpInspectorEditorModel; }
@@ -293,7 +294,7 @@ class PromptArgView extends VanillaView<PromptArgProps> {
     protected onMount(): void {
         const row = createPanelElement({ direction: "row", gap: "md", align: "center" }, [createTextElement(this.props.argument.name, { size: "sm", color: "default" })]);
         if (this.props.argument.required) row.append(createTextElement(t("tools.mcpRequired"), { size: "xs", color: "error" }));
-        this.input = this.child(new TextareaView({ value: "", onChange: (value) => this.props.model.setPromptArg(this.props.argument.name, value), placeholder: this.props.argument.description, readOnly: false, size: "sm" }));
+        this.input = this.child(new TextareaView({ value: "", onChange: (value) => this.props.model.prompts.setPromptArg(this.props.argument.name, value), placeholder: this.props.argument.description, readOnly: false, size: "sm" }));
         this.root.append(row, this.input.root);
         this.input.mount();
         if (this.props.argument.description) this.root.append(createTextElement(this.props.argument.description, { size: "xs", color: "light" }));
@@ -301,7 +302,7 @@ class PromptArgView extends VanillaView<PromptArgProps> {
     }
     protected onUpdate(props: PromptArgProps): void { this.sync(props); }
     protected onDispose(): void { delete (this.root as PromptArgRoot).view; }
-    private sync(props: PromptArgProps): void { const state = props.model.promptsState.get(); this.input?.update({ value: state.promptArgs[props.argument.name] || "", onChange: (value) => props.model.setPromptArg(props.argument.name, value), placeholder: props.argument.description, readOnly: state.getPromptLoading, size: "sm" }); }
+    private sync(props: PromptArgProps): void { const state = props.model.prompts.state.get(); this.input?.update({ value: state.promptArgs[props.argument.name] || "", onChange: (value) => props.model.prompts.setPromptArg(props.argument.name, value), placeholder: props.argument.description, readOnly: state.getPromptLoading, size: "sm" }); }
 }
 
 interface IndexedMessage { message: McpPromptMessage; key: number; }

@@ -1,5 +1,5 @@
 import type { ILink } from "../../api/types/io.tree";
-import { getFaviconPath, getFaviconPathSync, getHostname, onFaviconReady } from "../../components/icons/favicon-cache";
+import { getFaviconPathSync, getHostname } from "../../components/icons/favicon-cache";
 import { TraitTypeId, setTraitDragData } from "../../core/traits";
 import { isArchivePath } from "../../core/utils/file-path";
 import color from "../../theme/color";
@@ -13,6 +13,7 @@ import { createIconElement } from "../../uikit/shared/slots";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { LinkViewMode } from "./linkTypes";
 import type { LinksTilesProps } from "./LinksTiles";
+import { FaviconRowTracker } from "./FaviconRowTracker";
 import { getPipeImageSrcSync, resolvePipeImageSrc } from "./pipe-image-src";
 import { resolveRoutedSrc, type ImageRoute } from "./routed-src";
 import { t } from "../../../shared/i18n/t";
@@ -73,15 +74,13 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
     private readonly cells = new WeakMap<HTMLElement, CellRecord>();
     private readonly cellRecords = new Set<CellRecord>();
     private readonly ownedViews = new Set<IconButtonView>();
-    private readonly hostnameRows = new Map<string, number[]>();
     private readonly imageRows = new Map<string, number[]>();
     private grid: RenderGrid | undefined;
     private columnCountValue = 1;
     private width: number | undefined;
     private subscribedLinks: ILink[] | undefined;
     private previousViewMode: LinksTilesProps["viewMode"];
-    private faviconUnsubs: Array<() => void> = [];
-    private faviconGeneration = 0;
+    private readonly faviconTracker: FaviconRowTracker;
     private imageGeneration = 0;
     private inert = false;
     private gridModel: GridModelCapability | null = null;
@@ -133,8 +132,12 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
         const root = document.createElement("div");
         root.style.display = "contents";
         super(props, root);
+        this.faviconTracker = new FaviconRowTracker((rows) => {
+            if (!this.inert) this.grid?.model.update({ rows });
+        });
         this.previousViewMode = props.viewMode;
         this.own(() => { this.inert = true; });
+        this.own(() => this.faviconTracker.dispose());
         this.own(() => this.disposeAsyncSubscriptions());
         this.own(() => {
             this.gridModel = null;
@@ -194,35 +197,17 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
     private rebuildAsyncRows(links: ILink[]): void {
         this.disposeAsyncSubscriptions();
         this.subscribedLinks = links;
-        const generation = ++this.faviconGeneration;
         this.imageGeneration++;
-        this.hostnameRows.clear();
         this.imageRows.clear();
-        const hostnames = new Set<string>();
 
         for (let index = 0; index < links.length; index++) {
             const row = Math.floor(index / this.columnCountValue);
             const link = links[index];
-            const hostname = getHostname(link.href);
-            if (hostname) {
-                this.addRow(this.hostnameRows, hostname, row);
-                hostnames.add(hostname);
-            }
             if (link.imgSrc && isArchivePath(link.imgSrc)) {
                 this.addRow(this.imageRows, link.imgSrc, row);
             }
         }
-
-        for (const hostname of hostnames) {
-            void getFaviconPath(hostname)
-                .then((path) => {
-                    if (path) this.repaintHostname(hostname, generation);
-                })
-                .catch((): void => undefined);
-            this.faviconUnsubs.push(
-                onFaviconReady(hostname, () => this.repaintHostname(hostname, generation)),
-            );
-        }
+        this.faviconTracker.track(links, (index) => Math.floor(index / this.columnCountValue));
     }
 
     private addRow(map: Map<string, number[]>, key: string, row: number): void {
@@ -233,18 +218,8 @@ export class LinksTilesView extends VanillaView<LinksTilesProps> {
     }
 
     private disposeAsyncSubscriptions(): void {
-        this.faviconGeneration++;
         this.imageGeneration++;
-        for (const unsubscribe of this.faviconUnsubs) unsubscribe();
-        this.faviconUnsubs = [];
-        this.hostnameRows.clear();
         this.imageRows.clear();
-    }
-
-    private repaintHostname(hostname: string, generation: number): void {
-        if (this.inert || generation !== this.faviconGeneration) return;
-        const rows = this.hostnameRows.get(hostname);
-        if (rows?.length) this.grid?.model.update({ rows: [...rows] });
     }
 
     private repaintImage(source: string, generation: number): void {

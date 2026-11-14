@@ -2,11 +2,6 @@ import type { ILink } from "../../api/types/io.tree";
 import {
     createTreeProviderItemIconElement,
 } from "../../components/icons/icon-elements";
-import {
-    getFaviconPath,
-    getHostname,
-    onFaviconReady,
-} from "../../components/icons/favicon-cache";
 import { TraitTypeId, setTraitDragData } from "../../core/traits";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { ListItemView } from "../../uikit/ListBox/ListItemView";
@@ -26,6 +21,7 @@ import type { IconName } from "../../theme/icon-registry";
 import { createLinkTooltipContent } from "./LinkTooltipView";
 import type { LinksListProps } from "./LinksList";
 import type { ImageRoute } from "./routed-src";
+import { FaviconRowTracker } from "./FaviconRowTracker";
 import { t } from "../../../shared/i18n/t";
 import "../../uikit/IconButton/IconButton.css";
 import "../../uikit/ListBox/ListItem.css";
@@ -90,11 +86,9 @@ export class LinksListView extends VanillaView<LinksListProps> {
     private readonly cellRecords = new Set<CellParts>();
     /** Retains pooled child views so disposal can reach detached cells. */
     private readonly ownedViews = new Set<ListItemView | IconButtonView>();
-    private readonly hostnameRows = new Map<string, number[]>();
     private readonly rowCount = (): number => this.props.links.length;
     private grid: RenderGrid | undefined;
-    private faviconUnsubs: Array<() => void> = [];
-    private faviconGeneration = 0;
+    private readonly faviconTracker: FaviconRowTracker;
     private subscribedLinks: ILink[] | undefined;
     private inert = false;
 
@@ -117,11 +111,14 @@ export class LinksListView extends VanillaView<LinksListProps> {
 
     public constructor(props: LinksListProps) {
         super(props, createFocusScope());
+        this.faviconTracker = new FaviconRowTracker((rows) => {
+            if (!this.inert) this.grid?.model.update({ rows });
+        });
 
         // Match ListBoxView's teardown order: listeners become inert, then the grid releases its
         // pool, then overlay attachments and retained row/button views are disposed.
         this.own(() => { this.inert = true; });
-        this.own(() => this.disposeFaviconSubscriptions());
+        this.own(() => this.faviconTracker.dispose());
         this.own(() => {
             this.grid?.destroy();
             this.grid = undefined;
@@ -153,12 +150,14 @@ export class LinksListView extends VanillaView<LinksListProps> {
         const grid = new RenderGrid(this.root, this.gridOptions());
         this.grid = grid;
         this.props.onGridModel?.(grid.model);
-        this.installFaviconSubscriptions(this.props.links);
+        this.faviconTracker.track(this.props.links, (index) => index);
+        this.subscribedLinks = this.props.links;
     }
 
     protected onUpdate(props: LinksListProps): void {
         if (props.links !== this.subscribedLinks) {
-            this.installFaviconSubscriptions(props.links);
+            this.faviconTracker.track(props.links, (index) => index);
+            this.subscribedLinks = props.links;
         }
 
         // Keep the child's lifecycle callback current without changing any renderer identity.
@@ -167,45 +166,6 @@ export class LinksListView extends VanillaView<LinksListProps> {
         // All prop-driven row state is read by the stable renderer from this.props. Mark the
         // current coordinates dirty explicitly; a new closure must never be used as the signal.
         this.grid?.model.update({ rows: props.links.map((_link, index) => index) });
-    }
-
-    private installFaviconSubscriptions(links: ILink[]): void {
-        this.disposeFaviconSubscriptions();
-        this.faviconGeneration++;
-        const generation = this.faviconGeneration;
-        this.subscribedLinks = links;
-
-        for (let row = 0; row < links.length; row++) {
-            const hostname = getHostname(links[row].href);
-            if (!hostname) continue;
-            const rows = this.hostnameRows.get(hostname);
-            if (rows) rows.push(row);
-            else this.hostnameRows.set(hostname, [row]);
-        }
-
-        for (const hostname of this.hostnameRows.keys()) {
-            void getFaviconPath(hostname)
-                .then((path) => {
-                    if (path) this.repaintHostname(hostname, generation);
-                })
-                .catch((): void => undefined);
-            this.faviconUnsubs.push(
-                onFaviconReady(hostname, () => this.repaintHostname(hostname, generation)),
-            );
-        }
-    }
-
-    private disposeFaviconSubscriptions(): void {
-        this.faviconGeneration++;
-        for (const unsubscribe of this.faviconUnsubs) unsubscribe();
-        this.faviconUnsubs = [];
-        this.hostnameRows.clear();
-    }
-
-    private repaintHostname(hostname: string, generation: number): void {
-        if (this.inert || generation !== this.faviconGeneration) return;
-        const rows = this.hostnameRows.get(hostname);
-        if (rows?.length) this.grid?.model.update({ rows: [...rows] });
     }
 
     private createCell(cell: HTMLElement, link: ILink, index: number): CellParts {

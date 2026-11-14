@@ -1,5 +1,3 @@
-import { app } from "../../api/app";
-import { ContextMenuEvent } from "../../api/events/events";
 import type { ILink } from "../../api/types/io.tree";
 import { getTraitDragData, hasTraitDragData, LINK, resolveTraits } from "../../core/traits";
 import { createPanelElement, applyPanelAttributes, resolvePanelAttributes } from "../../uikit/Panel/panel-style";
@@ -11,17 +9,17 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { LinkItem, LinkViewMode } from "./linkTypes";
 import { LinkEditor, type LinkEditorState } from "./LinkEditor";
 import { LinksListView } from "./LinksListView";
+import { createLinksItemsView } from "./LinksItemsView";
 import type { LinksListProps } from "./LinksList";
 import { LinksTilesView } from "./LinksTilesView";
 import type { LinksTilesProps } from "./LinksTiles";
 import { PinnedLinksPanelView } from "./PinnedLinksPanelView";
-import { getHostname, requestFaviconSave } from "../../components/icons/favicon-cache";
 import { t } from "../../../shared/i18n/t";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Splitter/Splitter.css";
 import "../../uikit/Text/Text.css";
 
-import { toClipboard } from "../../core/utils/utils";
+import { buildLinkContextMenu, openLinkItem } from "./link-item-actions";
 
 interface BodyProjection {
     searchText: string;
@@ -182,7 +180,7 @@ export class LinkBodyView extends VanillaView<{ model: LinkEditor }> {
             if (projection.viewMode === "list" && this.activeBody instanceof LinksListView) {
                 this.activeBody.update(this.listProps(projection));
             } else if (projection.viewMode !== "list" && this.activeBody instanceof LinksTilesView) {
-                this.activeBody.update(this.tilesProps(projection));
+                this.activeBody.update(this.tilesProps(projection, projection.viewMode));
             }
             this.syncCenterDragState();
             return;
@@ -190,13 +188,16 @@ export class LinkBodyView extends VanillaView<{ model: LinkEditor }> {
 
         this.clearActiveBody();
         if (projection.viewMode === "list") {
-            const view = this.child(new LinksListView(this.listProps(projection)));
+            const view = this.child(createLinksItemsView("list", this.listProps(projection)));
             this.activeBody = view;
             this.activeMode = projection.viewMode;
             this.centerPanel.append(view.root);
             view.mount();
         } else {
-            const view = this.child(new LinksTilesView(this.tilesProps(projection)));
+            const view = this.child(createLinksItemsView(
+                projection.viewMode,
+                this.tilesProps(projection, projection.viewMode),
+            ));
             this.activeBody = view;
             this.activeMode = projection.viewMode;
             this.centerPanel.append(view.root);
@@ -288,37 +289,36 @@ export class LinkBodyView extends VanillaView<{ model: LinkEditor }> {
 
     private listProps(projection: BodyProjection): LinksListProps {
         return {
-            links: projection.filteredLinks,
-            selectedId: projection.selectedLinkId,
+            ...this.sharedItemsProps(projection),
             searchText: projection.searchText,
-            onSelect: this.handleListSelect,
-            onDoubleClick: this.handleListOpen,
-            onEdit: this.handleListEdit,
-            onDelete: this.handleListDelete,
-            onContextMenu: this.handleListContextMenu,
-            getAdditionalIcon: (link) => this.getAdditionalIcon(link, projection.pinnedLinkIds),
-            dragSourceId: this.model.treeProvider?.sourceUrl,
             allTags: projection.allTags,
             onToggleTag: this.handleListToggleTag,
-            imageProxy: this.model.imageProxy,
-            onGridModel: this.handleListGridModel,
         };
     }
 
-    private tilesProps(projection: BodyProjection): LinksTilesProps {
+    private tilesProps(
+        projection: BodyProjection,
+        viewMode: Exclude<LinkViewMode, "list">,
+    ): LinksTilesProps {
+        return {
+            ...this.sharedItemsProps(projection),
+            viewMode,
+        };
+    }
+
+    private sharedItemsProps(projection: BodyProjection) {
         return {
             links: projection.filteredLinks,
-            viewMode: projection.viewMode as Exclude<LinkViewMode, "list">,
             selectedId: projection.selectedLinkId,
-            onSelect: this.handleTilesSelect,
-            onDoubleClick: this.handleTilesOpen,
-            onEdit: this.handleTilesEdit,
-            onDelete: this.handleTilesDelete,
-            onContextMenu: this.handleTilesContextMenu,
-            getAdditionalIcon: (link) => this.getAdditionalIcon(link, projection.pinnedLinkIds),
+            onSelect: this.handleSelect,
+            onDoubleClick: this.handleOpen,
+            onEdit: this.handleEdit,
+            onDelete: this.handleDelete,
+            onContextMenu: this.handleContextMenu,
+            getAdditionalIcon: (link: ILink) => this.getAdditionalIcon(link, projection.pinnedLinkIds),
             dragSourceId: this.model.treeProvider?.sourceUrl,
             imageProxy: this.model.imageProxy,
-            onGridModel: this.handleTilesGridModel,
+            onGridModel: this.handleGridModel,
         };
     }
 
@@ -373,115 +373,26 @@ export class LinkBodyView extends VanillaView<{ model: LinkEditor }> {
 
     private readonly handleListToggleTag = (link: ILink, tag: string): void => {
         if (!link.id) return;
-        const current = link.tags ?? [];
-        const tags = current.includes(tag)
-            ? current.filter((item) => item !== tag)
-            : [...current, tag];
-        this.model.updateLink(link.id, { tags });
+        this.model.toggleTag(link.id, tag);
     };
 
-    private readonly handleListGridModel = (gridModel: GridModelCapability | null): void => {
+    private readonly handleGridModel = (gridModel: GridModelCapability | null): void => {
         this.model.gridModel = gridModel;
     };
 
-    private readonly handleTilesGridModel = (gridModel: GridModelCapability | null): void => {
-        this.model.gridModel = gridModel;
-    };
-
-    private readonly handleListSelect = (link: ILink): void => this.model.selectLink(link.id);
-    private readonly handleTilesSelect = (link: ILink): void => this.model.selectLink(link.id);
-
-    private readonly handleListOpen = (link: ILink): void => this.openLink(link);
-    private readonly handleTilesOpen = (link: ILink): void => this.openLink(link);
-
-    private readonly handleListEdit = (link: ILink): void => { void this.model.showLinkDialog(link.id); };
-    private readonly handleTilesEdit = (link: ILink): void => { void this.model.showLinkDialog(link.id); };
-
-    private readonly handleListDelete = (link: ILink, skipConfirm: boolean): void => {
+    private readonly handleSelect = (link: ILink): void => this.model.selectLink(link.id);
+    private readonly handleOpen = (link: ILink): void => openLinkItem(this.model, link);
+    private readonly handleEdit = (link: ILink): void => { void this.model.showLinkDialog(link.id); };
+    private readonly handleDelete = (link: ILink, skipConfirm: boolean): void => {
         void this.model.deleteLink(link.id, skipConfirm);
     };
 
-    private readonly handleTilesDelete = (link: ILink, skipConfirm: boolean): void => {
-        void this.model.deleteLink(link.id, skipConfirm);
+    private readonly handleContextMenu = (event: MouseEvent, link: ILink): void => {
+        buildLinkContextMenu(this.model, link as LinkItem, { pinned: false })(event);
     };
-
-    private readonly handleListContextMenu = (event: MouseEvent, link: ILink): void => {
-        this.showLinkContextMenu(event, link);
-    };
-
-    private readonly handleTilesContextMenu = (event: MouseEvent, link: ILink): void => {
-        this.showLinkContextMenu(event, link);
-    };
-
-    private openLink(link: ILink): void {
-        if (!link.href) return;
-        if (!this.model.isPrivatePage) requestFaviconSave(getHostname(link.href));
-        void this.model.openLink(link);
-    }
 
     private getAdditionalIcon(link: ILink, pinnedLinkIds: Set<string>) {
         return pinnedLinkIds.has(link.id) ? "pin-filled" as const : undefined;
     }
 
-    private showLinkContextMenu(event: MouseEvent, link: ILink): void {
-        this.model.selectLink(link.id);
-        const contextEvent = ContextMenuEvent.fromNativeEvent(event, "link-item") as ContextMenuEvent<ILink>;
-        contextEvent.target = link;
-        const customItems = this.model.onGetLinkMenuItems?.(link as LinkItem);
-        if (customItems?.length) contextEvent.items.push(...customItems);
-        contextEvent.items.push({
-            id: "link-edit",
-            label: t("links.edit"),
-            icon: "rename",
-            onClick: () => { void this.model.showLinkDialog(link.id); },
-            startGroup: customItems?.length ? true : undefined,
-        });
-        contextEvent.items.push({
-            id: "link-copy-url",
-            label: t("links.copyUrl"),
-            icon: "copy",
-            onClick: () => { if (link.href) toClipboard(link.href); },
-            disabled: !link.href,
-        });
-        if (link.imgSrc) {
-            const imageUrl = link.imgSrc;
-            contextEvent.items.push(
-                {
-                    id: "link-copy-image-url",
-                    label: t("links.copyImageUrl"),
-                    icon: "copy",
-                    onClick: () => toClipboard(imageUrl),
-                    startGroup: true,
-                },
-                {
-                    id: "link-open-image-in-new-tab",
-                    label: t("links.openImageNewTab"),
-                    icon: "open-file",
-                    onClick: async () => {
-                        const { pages } = await import("../../api/pages");
-                        pages.openImageInNewTab(imageUrl);
-                    },
-                },
-            );
-        }
-        const isPinned = this.model.isLinkPinned(link.id);
-        contextEvent.items.push(
-            {
-                id: isPinned ? "link-unpin" : "link-pin",
-                label: isPinned ? t("shell.unpin") : t("links.pin"),
-                icon: isPinned ? "pin-filled" : "pin",
-                onClick: () => this.model.togglePinLink(link.id),
-                startGroup: true,
-            },
-            {
-                id: "link-delete",
-                label: t("menus.delete"),
-                icon: "delete",
-                onClick: () => { void this.model.deleteLink(link.id); },
-            },
-        );
-        event.contextMenuPromise = app.events.linkContextMenu.sendAsync(
-            contextEvent as ContextMenuEvent<ILink>,
-        );
-    }
 }

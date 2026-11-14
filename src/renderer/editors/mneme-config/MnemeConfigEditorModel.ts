@@ -14,15 +14,12 @@ import { fpJoin, fpBasename } from "../../core/utils/file-path";
 import { showProgress } from "../../uikit/Progress/progressModel";
 import { mnemeStatusModel } from "../../api/mneme-status";
 import { mnemeConnection } from "../../api/mneme-connection";
+import { mnemeClient } from "../../api/mneme-client";
 import {
-    WikiStatus,
-    WikiRootConfig,
-    WikiReindexProgress,
-    StaleIndexEntry,
-    parseToolResult,
     isModelReady,
     isStatusBusy,
-} from "./mnemeTypes";
+} from "../../api/mneme-types";
+import type { WikiStatus, WikiRootConfig, WikiReindexProgress, StaleIndexEntry } from "../../api/mneme-types";
 import { errMessage } from "../../../shared/utils";
 import { t, untranslated } from "../../../shared/i18n/t";
 import { DialogButton, dialogButton } from "../../ui/dialogs/dialog-buttons";
@@ -46,7 +43,6 @@ export interface MnemeConfigEditorState extends EditorStateBase {
     /** Generic busy flag for a blocking refresh. */
     refreshing: boolean;
 }
-
 export const getDefaultMnemeConfigEditorState = (): MnemeConfigEditorState => ({
     id: crypto.randomUUID(),
     title: untranslated("Mneme"),
@@ -213,8 +209,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         if (!client) return;
         if (!silent) this.state.update((s) => { s.refreshing = true; });
         try {
-            const result = await client.callTool({ name: "status", arguments: {} }, undefined, { timeout: 10_000 });
-            const status = parseToolResult<WikiStatus>(result);
+            const status = await mnemeClient.status(client);
             this.state.update((s) => { s.status = status; });
             this.syncPolling();
         } catch (err) {
@@ -294,7 +289,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         try {
             // Returns immediately — Mneme indexes the new root in the background
             // Poll status so the per-root progress bar fills in.
-            await client.callTool({ name: "add_root", arguments: { folder, name } });
+            await mnemeClient.addRoot(client, folder, name);
             await this.refreshStatus();
             mnemeStatusModel.refresh();
             this.kickPolling();
@@ -314,7 +309,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         const client = mnemeConnection.getClient();
         if (!client) return;
         try {
-            await client.callTool({ name: "remove_root", arguments: { root } });
+            await mnemeClient.removeRoot(client, root);
             await this.refreshStatus();
             ui.notify(t("mneme.rootRemoved", { root }), "success");
         } catch (err) {
@@ -332,22 +327,14 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         this._aborts[key] = abort;
         this.setProgress(key, { phase: "scanning", processed: 0, total: 0 });
         try {
-            await client.callTool(
-                { name: "reindex", arguments: root ? { path: root } : {} },
-                undefined,
-                {
-                    signal: abort.signal,
-                    onprogress: (p: { progress?: number; total?: number; message?: string }) => {
-                        const { rootName, phase } = parseProgressMessage(p.message);
-                        const target = rootName ?? key;
-                        this.setProgress(target, {
-                            phase: phase || "embedding",
-                            processed: p.progress ?? 0,
-                            total: p.total ?? 0,
-                        });
-                    },
-                },
-            );
+            await mnemeClient.reindex(client, root, abort.signal, (p) => {
+                const target = p.rootName ?? key;
+                this.setProgress(target, {
+                    phase: p.phase || "embedding",
+                    processed: p.progress ?? 0,
+                    total: p.total ?? 0,
+                });
+            });
             await this.refreshStatus();
             mnemeStatusModel.refresh();
             ui.notify(root ? t("mneme.reindexedRoot", { root }) : t("mneme.reindexComplete"), "success");
@@ -391,8 +378,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         const client = mnemeConnection.getClient();
         if (!client) return;
         try {
-            const result = await client.callTool({ name: "root_config", arguments: { root } });
-            const cfg = parseToolResult<WikiRootConfig>(result);
+            const cfg = await mnemeClient.rootConfig(client, root);
             if (cfg) {
                 this.state.update((s) => { s.rootConfigs = { ...s.rootConfigs, [root]: cfg }; });
             }
@@ -407,11 +393,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         try {
             // Returns immediately — Mneme reindexes the root in the background
             // Poll status so the per-root progress bar fills in.
-            const result = await client.callTool({
-                name: "root_config",
-                arguments: { root, include, ignore },
-            });
-            const cfg = parseToolResult<WikiRootConfig>(result);
+            const cfg = await mnemeClient.rootConfig(client, root, { include, ignore });
             if (cfg) {
                 this.state.update((s) => { s.rootConfigs = { ...s.rootConfigs, [root]: cfg }; });
             }
@@ -432,7 +414,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         try {
             // Returns immediately — Mneme downloads in the background.
             // Poll status so the Model panel's download bar fills in.
-            await client.callTool({ name: "model_update", arguments: {} });
+            await mnemeClient.modelUpdate(client);
             await this.refreshStatus();
             mnemeStatusModel.refresh();
             this.kickPolling();
@@ -454,43 +436,10 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         if (!status) return;
         const result: Record<string, StaleIndexEntry[]> = {};
         for (const root of status.roots) {
-            result[root.name] = await this.walkRootIndexes(root.folder, root.indexPath);
+            result[root.name] = await mnemeClient.walkRootIndexes(root.folder, root.indexPath);
         }
         this.state.update((s) => { s.staleIndexes = result; });
     };
-
-    private async walkRootIndexes(folder: string, activePath: string): Promise<StaleIndexEntry[]> {
-        const out: StaleIndexEntry[] = [];
-        const mnemeDir = fpJoin(folder, ".mneme");
-        try {
-            const modelDirs = await fs.listDirWithTypes(mnemeDir);
-            for (const md of modelDirs) {
-                if (!md.isDirectory) continue;
-                const modelId = md.name; // "{model}-{precision}"
-                const modelDirPath = fpJoin(mnemeDir, modelId);
-                const files = await fs.listDir(modelDirPath);
-                for (const file of files) {
-                    const match = /^index-v(\d+)\.db$/.exec(file);
-                    if (!match) continue;
-                    const schemaVer = parseInt(match[1], 10);
-                    const dbPath = fpJoin(modelDirPath, file);
-                    const stat = await fs.stat(dbPath);
-                    out.push({
-                        modelId,
-                        schemaVer,
-                        bytes: stat.size,
-                        path: dbPath,
-                        active: normalizePath(dbPath) === normalizePath(activePath),
-                    });
-                }
-            }
-        } catch {
-            // .mneme may not exist yet — no inventory.
-        }
-        // Active first, then descending schema version.
-        out.sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0) || b.schemaVer - a.schemaVer);
-        return out;
-    }
 
     deleteIndex = async (root: string, modelId: string, schemaVer: number): Promise<void> => {
         const choice = await this.confirm(
@@ -502,10 +451,7 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         const client = mnemeConnection.getClient();
         if (!client) return;
         try {
-            await client.callTool({
-                name: "index_delete",
-                arguments: { root, modelId, schemaVer },
-            });
+            await mnemeClient.deleteIndex(client, root, modelId, schemaVer);
             await this.loadIndexInventory();
             ui.notify(t("mneme.indexDeleted"), "success");
         } catch (err) {
@@ -563,19 +509,4 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
         // Do NOT dispose mnemeConnection — it's shared (providers + the health prober).
         await super.dispose();
     }
-}
-
-/** Parse `"{root}: {phase}"` reindex progress messages. */
-function parseProgressMessage(message?: string): { rootName?: string; phase?: string } {
-    if (!message) return {};
-    const idx = message.indexOf(":");
-    if (idx < 0) return { phase: message.trim() };
-    return {
-        rootName: message.slice(0, idx).trim(),
-        phase: message.slice(idx + 1).trim(),
-    };
-}
-
-function normalizePath(p: string): string {
-    return p.replace(/[\\/]+/g, "/").toLowerCase();
 }

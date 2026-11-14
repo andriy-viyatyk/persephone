@@ -215,16 +215,8 @@ export class LinkTreeProvider implements ITreeProvider {
      * Example: renameCategoryPath("A/B", "C") → "A/B"→"C/B", "A/B/D"→"C/B/D"
      */
     async renameCategoryPath(sourcePath: string, targetCategory: string): Promise<void> {
-        const { links } = this.source.state.get().data;
-        const nameStart = sourcePath.lastIndexOf("/") + 1;
-        const prefix = sourcePath + "/";
-        for (const l of links) {
-            if (l.category === sourcePath || l.category?.startsWith(prefix)) {
-                const suffix = l.category.slice(nameStart);
-                const newCategory = targetCategory ? targetCategory + "/" + suffix : suffix;
-                this.source.moveLinkToCategory(l.id, newCategory);
-            }
-        }
+        const changed = this.source.collection.moveCategory(sourcePath, targetCategory);
+        if (changed) this.source.publish();
     }
 
     // =========================================================================
@@ -237,20 +229,10 @@ export class LinkTreeProvider implements ITreeProvider {
     }
 
     getTagItems(tag: string): ILink[] {
-        const links = this.source.state.get().data.links;
+        const links = this.source.collection.linksWithTag(tag);
 
         // Empty tag = "All" — return all items (no filter)
-        if (!tag) return links.map(l => this.linkToItem(l));
-
-        const separator = ":";
-        let filtered: LinkItem[];
-
-        if (tag.endsWith(separator)) {
-            filtered = links.filter(l => l.tags?.some(t => t.startsWith(tag) || t === tag));
-        } else {
-            filtered = links.filter(l => l.tags?.includes(tag));
-        }
-        return filtered.map(l => this.linkToItem(l));
+        return links.map((link) => this.linkToItem(link));
     }
 
     // =========================================================================

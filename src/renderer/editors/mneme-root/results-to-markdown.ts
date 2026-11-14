@@ -1,4 +1,4 @@
-import type { WikiSearchHit } from "./MnemeRootEditorModel";
+import type { WikiSearchHit } from "../../api/mneme-types";
 import { t } from "../../../shared/i18n/t";
 
 // =============================================================================

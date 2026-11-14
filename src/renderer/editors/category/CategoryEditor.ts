@@ -18,6 +18,7 @@ import {
     type CategoryViewMode,
     type CategoryViewProps,
 } from "../../components/tree-provider/CategoryViewModel";
+import { createLinksItemsView } from "../link-editor/LinksItemsView";
 import { LinksListView } from "../link-editor/LinksListView";
 import type { LinksListProps } from "../link-editor/LinksList";
 import { LinksTilesView } from "../link-editor/LinksTilesView";
@@ -281,31 +282,24 @@ export class CategoryEditorView extends VanillaView<{ model: CategoryEditorModel
     private readonly getItemId = (item: ITreeProviderItem): string => item.href;
 
     private readonly createItemsView: CategoryItemsViewFactory = (host, initialProps) => {
-        return initialProps.viewMode === "list"
-            ? this.listHandle(host, new LinksListView(this.listProps(initialProps)))
-            : this.tilesHandle(host, new LinksTilesView(this.tilesProps(initialProps)));
+        if (initialProps.viewMode === "list") {
+            const view = createLinksItemsView("list", {
+                ...this.categoryItemsViewProps(initialProps),
+                searchText: initialProps.searchText,
+            });
+            return this.listHandle(host, view);
+        }
+        const view = createLinksItemsView(initialProps.viewMode, {
+            ...this.categoryItemsViewProps(initialProps),
+            viewMode: initialProps.viewMode,
+        });
+        return this.tilesHandle(host, view);
     };
 
     private listProps(itemProps: CategoryItemsViewProps): LinksListProps {
         return {
-            links: itemProps.items,
-            selectedId: itemProps.selectedId,
-            selectedIds: itemProps.selectedIds,
-            getId: this.getItemId,
+            ...this.categoryItemsViewProps(itemProps),
             searchText: itemProps.searchText,
-            onSelect: itemProps.onSelect,
-            onDoubleClick: itemProps.onDoubleClick,
-            onEdit: itemProps.onEdit,
-            onDelete: itemProps.onDelete,
-            onContextMenu: itemProps.onContextMenu,
-            onGridModel: itemProps.onGridModel,
-            onItemDragEnter: itemProps.onItemDragEnter,
-            onItemDragOver: itemProps.onItemDragOver,
-            onItemDragLeave: itemProps.onItemDragLeave,
-            onItemDrop: itemProps.onItemDrop,
-            dropTargetId: itemProps.dropTargetId,
-            dragSourceId: itemProps.dragSourceId,
-            onDragStartOverride: itemProps.onDragStartOverride,
         };
     }
 
@@ -314,8 +308,14 @@ export class CategoryEditorView extends VanillaView<{ model: CategoryEditorModel
             throw new Error("Category tile view received list props.");
         }
         return {
-            links: itemProps.items,
+            ...this.categoryItemsViewProps(itemProps),
             viewMode: itemProps.viewMode,
+        };
+    }
+
+    private categoryItemsViewProps(itemProps: CategoryItemsViewProps) {
+        return {
+            links: itemProps.items,
             selectedId: itemProps.selectedId,
             selectedIds: itemProps.selectedIds,
             getId: this.getItemId,

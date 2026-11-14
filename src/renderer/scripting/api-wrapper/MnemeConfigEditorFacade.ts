@@ -17,7 +17,7 @@ import type {
     WikiReindexProgress,
     WikiRootConfig,
     WikiRootStatus,
-} from "../../editors/mneme-config/mnemeTypes";
+} from "../../api/mneme-types";
 
 const MNEME_CONFIG_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "mneme-start", purpose: "Locate the visible control that starts the stopped Mneme service.", where: "center of the stopped Mneme page" },

@@ -1,3 +1,26 @@
+## EPIC-168 — Refactoring Phase 6.6 part 1: Tool editors — `LinkCollection`, de-duplicated link views, `McpSession`, log-entry registry, typed Mneme client
+
+Completed 2026-11-14. Roadmap Phase 6.6 part 1 (EDT-5, EDT-6, EDT-8, EDT-9, EDT-10): `LinkCollection` owns the link
+data as an immutable immer snapshot (parse/serialize, index with counts, filter and its cache, view modes, pins,
+category moves, `linksWithTag`) and `LinkImporter` the folder import, with one add path in `LinkEditor` and an explicit
+`LinkEditorEmbedding` from the browser (`LinkEditor.ts` 1,119 → 813); the link views share `createLinksItemsView`,
+`link-item-actions.ts`, `FaviconRowTracker`, one `LinkFilterNavigationPanelView` for Tags/Hostnames and
+`LinkToolbarViews.ts`; the MCP inspector runs every request through `McpSession` with `McpToolsModel`,
+`McpResourcesModel` and `McpPromptsModel` (951 → 252); the Log View derives its predicates, `ui_push` known types and
+view creation from one entry-type registry, with `JsonlLogDocument` and an injected dialog-answer reporter; Mneme tool
+calls go through the typed `mnemeClient` with `api/mneme-types.ts`. One behaviour change: the Link editor's search cache
+no longer hides added, deleted or edited links while a search is active. Rendered DOM, `data-name`s, the Link JSON
+format, JSONL, `ui_push` messages and the script API are unchanged (checked with before/after structural fingerprints
+and facade/push replays). Part 2 (EDT-11, EDT-12) is recorded in the roadmap. Plans by Codex, reviewed against the
+roadmap guardrails; Codex Luna implemented. Epic document: [EPIC-168](EPIC-168.md).
+
+- [x] **`LinkCollection` and `LinkImporter` (US-1952).** Immutable snapshot, one add path, `LinkEditorEmbedding`, search-cache fix.
+- [x] **Link views (US-1953).** Shared items view, item actions, favicon tracker, filter-panel strategies, toolbar views file.
+- [x] **MCP inspector (US-1954).** `McpSession` `begin`/`request`, three area models, `EMPTY_SERVER_INFO`, panel files.
+- [x] **Log View registry (US-1955).** `log-entry-types.ts`, view factories, `JsonlLogDocument`, injected reporter.
+- [x] **Mneme client (US-1956).** `mnemeClient`, `api/mneme-types.ts`, call inventory kept byte-for-byte.
+- [x] **Epic review.** `/review` no defects (non-null assertion style noted); `/document` updated `folder-structure.md` and `key-files.md`; `/userdoc` no change; `i18n:check` complete.
+
 ## EPIC-167 — Refactoring Phase 6.5 part 2: Settings editor — browser-profiles and microphone services, site-extension listing, composite sections on the field kit
 
 Completed 2026-11-14. Roadmap Phase 6.5 part 2 (EDT-1 step 5, EDT-2 steps 3–5), which completes item 6.5:

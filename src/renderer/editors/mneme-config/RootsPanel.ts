@@ -11,9 +11,9 @@ import { claimViewOwnership, VanillaView } from "../../uikit/shared/vanilla-view
 import { KeyedList } from "../../uikit/shared/keyed-list";
 import type { MnemeConfigEditorState } from "./MnemeConfigEditorModel";
 import { MnemeConfigEditorModel } from "./MnemeConfigEditorModel";
-import type { StaleIndexEntry, WikiRootConfig, WikiRootStatus, WikiReindexProgress } from "./mnemeTypes";
+import type { StaleIndexEntry, WikiRootConfig, WikiRootStatus, WikiReindexProgress } from "../../api/mneme-types";
 import { formatBytes } from "../../core/utils/format";
-import { isReindexActive } from "./mnemeTypes";
+import { isReindexActive } from "../../api/mneme-types";
 import { t, untranslated } from "../../../shared/i18n/t";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";

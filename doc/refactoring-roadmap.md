@@ -573,6 +573,22 @@ Left as custom views on purpose: Theme and Default browser (no settings-key rows
 on profile rebuild), network lines, profile colours and permission lists, and the Site extensions folder row (its
 named Browse/Reset controls differ from `PathField`). **Roadmap item 6.5 is complete.**
 
+**6.6 is split into two epics.** Part 1 is done ([EPIC-168](epics/EPIC-168.md), 2026-11-14): `LinkCollection`
+(immutable immer snapshot, one index rebuild per mutation, filter with its incremental cache, pins, view modes,
+`moveCategory`, `linksWithTag`) and `LinkImporter`, with one add path and `LinkEditorEmbedding` for the browser
+(EDT-5); the de-duplicated link views — `createLinksItemsView`, `link-item-actions.ts`, `FaviconRowTracker`,
+`LinkFilterNavigationPanelView` with Tags/Hostnames strategies, `LinkToolbarViews.ts` without the dead rebind code
+(EDT-6); `McpSession` (`begin`/`request` with the staleness guards) and `McpToolsModel`/`McpResourcesModel`/
+`McpPromptsModel`, `EMPTY_SERVER_INFO`, saved connections behind the model and the inspector view re-expanded into
+panel files (EDT-8); the Log View entry-type registry (`log-entry-types.ts`, own-key map lookups, `agentDocumented`
+keeps `ui_push`'s accepted set), typed view factories, `JsonlLogDocument` and an injected dialog-answer reporter
+(EDT-9); the typed `mnemeClient` (`api/mneme-client.ts`) with `api/mneme-types.ts` (EDT-10). One behaviour change: the
+Link editor's search cache no longer hides added/deleted/edited links while a search is active. Left as is on purpose:
+the three path normalizers (persisted keys and non-canonical inputs, see the epic). **Part 2 remains:** EDT-11
+(`publishedBoards.listEntries()`, `boardUsageGroup` on a `Pick`, Category view mode in the model; step 3 already met by
+`TREE_PROVIDER_HOST_TRAIT`) and EDT-12 (`MarkdownSearchState` for About, one roots-tree builder, one board-vars parser,
+multiselect encode/decode).
+
 ### Phase 7: Lock it in
 
 - Turn the import-zone lint warnings into errors and rewrite `overview.md`'s dependency rules to match.

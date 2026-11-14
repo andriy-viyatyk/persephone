@@ -1,4 +1,5 @@
 import type { ILink } from "../../api/types/io.tree";
+import type { LinkCollection } from "./link-collection";
 
 // Ensure link traits are registered at startup
 import "../../core/traits/linkTraits";
@@ -66,6 +67,8 @@ export interface ILinkSource {
         subscribe(listener: () => void): () => void;
         subscribe<R>(listener: (value: R) => void, selector: (state: ILinkSourceSnapshot) => R): () => void;
     };
+    readonly collection: LinkCollection;
+    publish(): void;
     addLink(link?: Partial<LinkItem>): LinkItem;
     importLinks(
         items: ILink[],

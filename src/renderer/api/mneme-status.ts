@@ -3,7 +3,8 @@ import { api } from "../../ipc/renderer/api";
 import ipcRendererEvents from "../../ipc/renderer/renderer-events";
 import { settings } from "./settings";
 import { mnemeConnection } from "./mneme-connection";
-import { WikiStatus, isModelReady, parseToolResult } from "../editors/mneme-config/mnemeTypes";
+import { isModelReady } from "./mneme-types";
+import { mnemeClient } from "./mneme-client";
 
 /**
  * Shared, always-available Mneme health model.
@@ -136,8 +137,7 @@ class MnemeStatusModel {
         }
         this.probing = true;
         try {
-            const result = await client.callTool({ name: "status", arguments: {} }, undefined, { timeout: 10_000 });
-            const status = parseToolResult<WikiStatus>(result);
+            const status = await mnemeClient.status(client);
             const ready = isModelReady(status);
             this.state.update((s) => { s.modelReady = ready; });
             // Mneme without an embedding model is useless, so route the user to the
