@@ -1,5 +1,5 @@
 import { PathInputView } from "../PathInput/PathInputView";
-import type { PathInputProps } from "../PathInput/PathInputModel";
+import type { PathInputProps } from "../PathInput/PathInputProps";
 import { TagView } from "../Tag/TagView";
 import type { TagProps } from "../Tag/TagView";
 import { guard } from "../../core/utils/guard";
@@ -9,19 +9,15 @@ import {
     createRestPropsState,
     type NativeHTMLAttributes,
     type RestPropsState,
+    splitProps,
+    type CompleteKeys,
 } from "../shared/dom-props";
 import { claimViewOwnership, VanillaView } from "../shared/vanilla-view";
 import { KeyedList } from "../shared/keyed-list";
 import { uikitText } from "../shared/uikit-text";
 import "./TagsInput.css";
 
-// --- Types ---
-
-export interface TagsInputProps
-    extends Omit<
-        NativeHTMLAttributes<HTMLDivElement>,
-        "style" | "className" | "onChange"
-    > {
+export interface TagsInputOwnProps {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances in DOM inspector output. Never used for styling. */
     name?: string;
@@ -48,10 +44,27 @@ export interface TagsInputProps
     "aria-label"?: string;
 }
 
+
+
+// --- Types ---
+
+export interface TagsInputProps
+    extends Omit<
+        NativeHTMLAttributes<HTMLDivElement>,
+        "style" | "className" | "onChange"
+    > , TagsInputOwnProps{
+}
+
 interface TagRecord {
     tag: string;
     key: string;
 }
+
+const TAGSINPUT_OWN_KEYS = ["name", "value", "onChange", "items", "separator", "maxDepth", "placeholder", "tagVariant", "size", "disabled", "readOnly", "aria-label"] as const satisfies readonly (keyof TagsInputOwnProps)[];
+const checkedOwnKeys: CompleteKeys<TagsInputOwnProps, typeof TAGSINPUT_OWN_KEYS> = TAGSINPUT_OWN_KEYS;
+const TAGSINPUT_LEGACY_KEYS = ["children"] as const satisfies readonly (keyof TagsInputProps)[];
+
+
 
 export class TagsInputView extends VanillaView<TagsInputProps> {
     private inputSlot: HTMLDivElement | undefined;
@@ -227,22 +240,7 @@ export class TagsInputView extends VanillaView<TagsInputProps> {
     }
 
     private applyConstructionRestProps(props: TagsInputProps): void {
-        const {
-            name: _name,
-            value: _value,
-            onChange: _onChange,
-            items: _items,
-            separator: _separator,
-            maxDepth: _maxDepth,
-            placeholder: _placeholder,
-            tagVariant: _tagVariant,
-            size: _size,
-            disabled: _disabled,
-            readOnly: _readOnly,
-            "aria-label": _ariaLabel,
-            children: _children,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...TAGSINPUT_LEGACY_KEYS] as const);
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 }

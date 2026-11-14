@@ -1,5 +1,5 @@
-import { applyRestProps, clearRestListeners, createRestPropsState } from "../shared/dom-props";
-import type { NativeButtonHTMLAttributes, RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, splitProps, type CompleteKeys, NativeButtonHTMLAttributes, RestPropsState } from "../shared/dom-props";
+
 import { attachTooltip, type TooltipAttachment } from "../Tooltip/attach-tooltip";
 import { createIconElement, createIconPlaceholderElement, isIconName } from "../shared/slots";
 import { fillSlot } from "../shared/fill-slot";
@@ -10,7 +10,7 @@ import type { IconRef } from "../shared/slots";
 // the stylesheet has to travel with the DOM-owning view. Matches `InputView`.
 import "./IconButton.css";
 
-export interface IconButtonProps extends Pick<NativeButtonHTMLAttributes<HTMLButtonElement>, "autoFocus" | "type" | "hidden" | "role" | "tabIndex" | "children" | `aria-${string}` | `data-${string}`> {
+export interface IconButtonOwnProps {
     name?: string;
     title?: string;
     onClick?: (event: MouseEvent) => void;
@@ -25,7 +25,18 @@ export interface IconButtonProps extends Pick<NativeButtonHTMLAttributes<HTMLBut
     strikethrough?: boolean;
 }
 
+
+
+export interface IconButtonProps extends Pick<NativeButtonHTMLAttributes<HTMLButtonElement>, "autoFocus" | "type" | "hidden" | "role" | "tabIndex" | "children" | `aria-${string}` | `data-${string}`> , IconButtonOwnProps{
+}
+
 export type IconButtonViewProps = IconButtonProps;
+
+const ICONBUTTON_OWN_KEYS = ["name", "title", "onClick", "disabled", "icon", "size", "variant", "active", "warning", "hideUntilParentHover", "strikethrough"] as const satisfies readonly (keyof IconButtonOwnProps)[];
+const checkedOwnKeys: CompleteKeys<IconButtonOwnProps, typeof ICONBUTTON_OWN_KEYS> = ICONBUTTON_OWN_KEYS;
+const ICONBUTTON_LEGACY_KEYS = ["hidden", "children"] as const satisfies readonly (keyof IconButtonProps)[];
+
+
 
 export class IconButtonView extends VanillaView<IconButtonViewProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -63,22 +74,8 @@ export class IconButtonView extends VanillaView<IconButtonViewProps> {
     }
 
     private applyProps(props: IconButtonViewProps): void {
-        const {
-            name,
-            size = "md",
-            variant = "default",
-            active,
-            warning,
-            disabled,
-            hidden,
-            title: _title,
-            onClick: _onClick,
-            icon: _icon,
-            hideUntilParentHover,
-            strikethrough,
-            children: _children,
-            ..._rest
-        } = props;
+        const { name, size = "md", variant = "default", active, warning, disabled, hidden, hideUntilParentHover, strikethrough } = props;
+const _rest = splitProps(props, [...checkedOwnKeys, ...ICONBUTTON_LEGACY_KEYS] as const);
         applyRestProps(this.root, _rest as Record<string, unknown>, this.restPropsState);
 
         const button = this.root as HTMLButtonElement;

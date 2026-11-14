@@ -11,22 +11,26 @@ import {
     clearRestListeners,
     createRestPropsState,
     type RestPropsState,
+    splitProps,
+    type CompleteKeys,
 } from "../shared/dom-props";
 import { SubtreeSwap } from "../shared/subtree-swap";
-import { VanillaView, type IOwnedView } from "../shared/vanilla-view";
+import { VanillaView, type IMountableView } from "../shared/vanilla-view";
 import {
     defaultPopoverState,
     PopoverModel,
     type PopoverProps,
+    type PopoverOwnProps,
 } from "./PopoverModel";
 import "./Popover.css";
 
-export type PopoverViewProps = PopoverProps & {
+type PopoverViewOwnProps = PopoverOwnProps & {
     onFloatingRoot?: (root: HTMLDivElement | null) => void;
-    "data-type"?: string;
     /** Internal UIKit seam for a direct vanilla content view. */
-    contentView?: (host: HTMLElement) => IOwnedView;
+    contentView: (host: HTMLElement) => IMountableView;
 };
+
+export type PopoverViewProps = PopoverProps & PopoverViewOwnProps & { "data-type"?: string };
 
 export type PopoverSizing = Pick<
     PopoverProps,
@@ -39,6 +43,12 @@ function isElementOrVirtualElement(
     return value !== null;
 }
 
+const POPOVER_OWN_KEYS = ["name", "open", "onClose", "onKeyDown", "maxHeight", "outsideClickIgnoreSelector", "matchAnchorWidth", "resizable", "onResize", "scroll", "elementRef", "x", "y", "placement", "offset", "onFloatingRoot", "contentView"] as const satisfies readonly (keyof PopoverViewOwnProps)[];
+const checkedOwnKeys: CompleteKeys<PopoverViewOwnProps, typeof POPOVER_OWN_KEYS> = POPOVER_OWN_KEYS;
+const POPOVER_LEGACY_KEYS = [] as const satisfies readonly (keyof PopoverViewProps)[];
+
+
+
 class PopoverFloatingView extends VanillaView<PopoverViewProps> {
     private readonly model: PopoverModel;
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -48,14 +58,11 @@ class PopoverFloatingView extends VanillaView<PopoverViewProps> {
     private positionGeneration = 0;
     private active = true;
     private renderedEdge: "top" | "bottom" | undefined;
-    private contentView: IOwnedView | undefined;
+    private contentView: IMountableView | undefined;
     private nativeResizeHandle: HTMLDivElement | undefined;
 
     public constructor(props: PopoverViewProps, model: PopoverModel) {
         super(props, document.createElement("div"));
-        if (props.contentView && props.children != null) {
-            throw new Error("PopoverView cannot receive both contentView and children.");
-        }
         this.model = model;
         this.model.actualPlacement = props.placement ?? "bottom-start";
         // `data-type` is a caller-visible addressing hook and residual props may override it.
@@ -89,14 +96,10 @@ class PopoverFloatingView extends VanillaView<PopoverViewProps> {
         this.listen(this.root, "keydown", this.onRootKeyDown);
         this.listen(this.root, "pointerdown", this.onResizePointerDown);
 
-        if (!this.props.contentView) {
-            throw new Error("PopoverView requires a native contentView.");
-        }
-
         // The returned view owns all content below this root; this view owns
         // the resize handle itself.
         this.contentView = this.child(this.props.contentView(this.root));
-        (this.contentView as IOwnedView & { mount(): unknown }).mount();
+        this.contentView.mount();
         this.updateNativeResizeHandle();
         this.restartPositioning(this.model.placeRef);
     }
@@ -164,7 +167,6 @@ class PopoverFloatingView extends VanillaView<PopoverViewProps> {
             maxHeight,
             resizable,
             scroll = true,
-            children: _children,
             elementRef: _elementRef,
             x: _x,
             y: _y,
@@ -195,27 +197,7 @@ class PopoverFloatingView extends VanillaView<PopoverViewProps> {
     }
 
     private getRestProps(props: PopoverViewProps): Record<string, unknown> {
-        const {
-            name: _name,
-            open: _open,
-            maxHeight: _maxHeight,
-            resizable: _resizable,
-            scroll: _scroll,
-            children: _children,
-            elementRef: _elementRef,
-            x: _x,
-            y: _y,
-            placement: _placement,
-            offset: _offset,
-            onClose: _onClose,
-            outsideClickIgnoreSelector: _outsideClickIgnoreSelector,
-            onKeyDown: _onKeyDown,
-            matchAnchorWidth: _matchAnchorWidth,
-            onResize: _onResize,
-            contentView: _contentView,
-            onFloatingRoot: _onFloatingRoot,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...POPOVER_LEGACY_KEYS] as const);
         return rest;
     }
 

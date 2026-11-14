@@ -25,7 +25,7 @@
  * Spans rather than `<button>`s for a second reason: `GridInteractions.focusRoot` deliberately
  * declines to take focus when a press lands inside `input, textarea, select, button, a,
  * [contenteditable]`, so a real button would steal focus from the grid root and kill arrow-key
- * navigation until the user clicked a cell. The earlier renderer had that wart.
+ * navigation until the user clicked a cell.
  *
  * The markup carries **no hover or focus state**, so the `innerHTML !== rendered` guard keeps
  * hitting and a hover repaint of this column costs one string comparison per cell.
@@ -55,8 +55,7 @@ export function makeSideSelectCell(
         const sel = ref.current;
         if (!row || !sel) return "";
 
-        // `data-active` is present or absent, never `="false"` — preserving the prior renderer's
-        // `data-active={leftActive || undefined}`, and keeping the attribute order stable.
+        // `data-active` is present or absent, never `="false"`, and the attribute order is kept stable.
         const left = sel.showLeft(row)
             ? `<span class="git-side-toggle" data-side="left" role="button" ` +
               `title="${LEFT_TOGGLE_TITLE}"${sel.isLeftActive(row) ? ` data-active="true"` : ""}>L</span>`

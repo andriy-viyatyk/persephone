@@ -391,9 +391,9 @@ export class AboutGuideBrowserView extends VanillaView<AboutGuideBrowserProps> {
         return {
             name: "about-guide-tree",
             items: this.guideItems,
-            getChildren: (item) => item.items,
+            getChildren: this.getChildren,
             onChange: this.handleGuideTreeChange,
-            getTooltip: (item) => item.node.kind === "page" ? item.node.summary : undefined,
+            getTooltip: this.getTooltip,
             activeIndex: this.activeIndex,
             onActiveChange: this.handleActiveChange,
             renderTrailing: this.renderTreeSummary,
@@ -405,6 +405,11 @@ export class AboutGuideBrowserView extends VanillaView<AboutGuideBrowserProps> {
             emptyMessage: t("about.noGuides"),
         };
     }
+
+    private readonly getChildren = (item: AboutGuideTreeItem): AboutGuideTreeItem[] | undefined => item.items;
+
+    private readonly getTooltip = (item: AboutGuideTreeItem): string | undefined =>
+        item.node.kind === "page" ? item.node.summary : undefined;
 
     private readonly renderTreeSummary = (item: AboutGuideTreeItem): Node | undefined => {
         if (item.node.kind !== "page") return undefined;

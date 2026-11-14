@@ -1,7 +1,7 @@
 import type { ITreeProvider, ITreeProviderItem } from "../../../api/types/io.tree";
 import type { ContextMenuEvent } from "../../../api/events/events";
 import type { SlotText } from "../../../uikit/shared/slots";
-import { TreeProviderViewImpl } from "../../../components/tree-provider/TreeProviderViewImpl";
+import { TreeProviderView } from "../../../components/tree-provider/TreeProviderView";
 import { createPanelElement } from "../../../uikit/Panel/panel-style";
 import "../../../uikit/Panel/Panel.css";
 import { createTextElement } from "../../../uikit/Text/text-style";
@@ -25,7 +25,7 @@ function selectedHref(editor: LinkEditor): string | undefined {
 }
 
 export class LinkCategoryPanelView extends VanillaView<LinkCategoryPanelProps> {
-    private treeProviderView: TreeProviderViewImpl | undefined;
+    private treeProviderView: TreeProviderView | undefined;
     private editorBinding: (() => void) | undefined;
     private boundEditor: LinkEditor | undefined;
 
@@ -76,7 +76,7 @@ export class LinkCategoryPanelView extends VanillaView<LinkCategoryPanelProps> {
         }
 
         if (!this.treeProviderView) {
-            const treeProviderView = this.child(new TreeProviderViewImpl(this.treeProps(editor, provider)));
+            const treeProviderView = this.child(new TreeProviderView(this.treeProps(editor, provider)));
             this.treeProviderView = treeProviderView;
             this.root.append(treeProviderView.root);
             treeProviderView.mount();
@@ -86,7 +86,7 @@ export class LinkCategoryPanelView extends VanillaView<LinkCategoryPanelProps> {
         this.treeProviderView.update(this.treeProps(editor, provider));
     }
 
-    private treeProps(editor: LinkEditor, provider: ITreeProvider | null): ConstructorParameters<typeof TreeProviderViewImpl>[0] {
+    private treeProps(editor: LinkEditor, provider: ITreeProvider | null): ConstructorParameters<typeof TreeProviderView>[0] {
         if (!provider) throw new Error("Link category tree provider is unavailable.");
 
         return {

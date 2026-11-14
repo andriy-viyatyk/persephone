@@ -112,9 +112,37 @@ export interface NativeCSSProperties {
 }
 
 /** Normalize numeric CSS lengths before assigning them to a DOM property typed as a string. */
+/** A DOM property typed as a string does not add `px` to a bare number; normalize numeric lengths before writing it. */
+export function cssLength(value: number | string): string;
+export function cssLength(value: number | string | null | undefined): string | undefined;
 export function cssLength(value: NativeCSSProperties["height"]): string | undefined {
     if (value === undefined || value === null) return undefined;
     return typeof value === "number" ? `${value}px` : String(value);
+}
+
+/** Set an attribute when its value is defined, removing it otherwise. */
+export function setOrRemoveAttr(root: Element, attribute: string, value: string | undefined): void {
+    if (value === undefined) root.removeAttribute(attribute);
+    else root.setAttribute(attribute, value);
+}
+
+/** Reflect a boolean state with an empty attribute value. */
+export function toggleAttr(root: Element, attribute: string, on: boolean): void {
+    if (on) root.setAttribute(attribute, "");
+    else root.removeAttribute(attribute);
+}
+
+export type CompleteKeys<Own, K extends readonly (keyof Own)[]> =
+    Exclude<keyof Own, K[number]> extends never ? K : never;
+
+/** Copy enumerable own properties and remove component-owned keys without changing survivor order. */
+export function splitProps<P extends object, const K extends readonly (keyof P)[]>(
+    props: P,
+    keys: K,
+): Omit<P, K[number]> {
+    const rest = { ...props };
+    for (const key of keys) delete rest[key];
+    return rest;
 }
 
 export interface RestPropsState {

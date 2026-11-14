@@ -902,9 +902,11 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── Switch/             # Controlled accessible on/off switch
 │   ├── RadioGroup/         # Radio group
 │   ├── Select/             # Single-select dropdown (replaces ComboSelect)
+│   │   └── SelectProps.ts   # Select-owned props separated from native root props
 │   ├── MultiSelect/        # Multi-select dropdown (replaces ListMultiselect)
 │   ├── Autocomplete/       # Autocomplete combobox
 │   ├── PathInput/          # File/folder path input with picker
+│   │   └── PathInputProps.ts # PathInput-owned props separated from native root props
 │   ├── SegmentedControl/   # Segmented switch (replaces SwitchButtons)
 │   ├── Slider/             # Range slider
 │   ├── ProgressBar/        # Linear progress
@@ -927,9 +929,9 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── CategoryList/       # Category-style list
 │   ├── ListBox/            # Virtualized list with selection + traits (replaces List)
 │   ├── MultiListBox/       # Two-pane multi-select list
-│   ├── Tree/               # Virtualized tree with controlled expansion and trait drag-drop (replaces TreeView)
+│   ├── Tree/               # Virtualized tree with controlled expansion, explicit repaintSignal, and trait drag-drop (replaces TreeView)
 │   ├── Menu/               # Portal menu + WithMenu wrapper (replaces PopupMenu)
-│   ├── Popover/            # Portal-based floating element (replaces Popper)
+│   ├── Popover/            # Portal-based floating element with required native contentView (replaces Popper)
 │   ├── Tooltip/            # Hover tooltip
 │   ├── HelpIcon/           # Focusable question-mark help with tooltip and accessible description
 │   ├── Dialog/             # Modal dialog
@@ -937,7 +939,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── Progress/           # Progress overlay + screen lock
 │   ├── DataGrid/            # av-grid boundary: RenderGrid, MeasuredRowGrid, and data-grid mounting
 │   └── shared/             # Internal helpers (overlay layer, focus restoration, native slots, and view lifecycle)
-│       ├── vanilla-view.ts # Framework-free view lifecycle, ownership, binding, and cleanup
+│       ├── vanilla-view.ts # Framework-free view lifecycle, ownership, IMountableView, binding, and cleanup
 │       ├── keyed-list.ts   # Keyed DOM reconciliation with minimal cursor moves
 │       ├── subtree-swap.ts # Owned conditional subtree replacement
 │       ├── repaint-tracker.ts # Row/global/local prop identity diff for virtualized repaint decisions
@@ -946,7 +948,9 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │       ├── deps-gate.ts    # Fixed-length repaint/dependency identity gate
 │       ├── element-id.ts   # Shared DOM id allocation for generated elements
 │       ├── fill-slot.ts    # Native slot-content filling and generation-safe cleanup
-│       ├── dom-props.ts    # Native attributes/events, targeted residual props, and listener cleanup
+│       ├── dom-props.ts    # Native attributes/events, typed prop splitting, DOM-attribute helpers, and listener cleanup
+│       ├── list-filter.ts  # Shared list-label matching and parallel item/source filtering
+│       ├── list-navigation.ts # Shared list keyboard movement with explicit clamp/wrap options
 │       ├── focus-restore.ts # Marks synchronous focus restoration so focusin consumers can ignore it
 │       ├── drop-target-tracker.ts # Nested drag-target counts and scheduled hover lifecycle
 │       └── slots.ts        # Neutral icon and slot-content types/resolution
@@ -956,13 +960,13 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │                       # system, or scripting — that's the criterion. No new pure
 │   │                       # primitives go here.
 │   ├── tree-provider/      # TreeProviderView and CategoryView native views over any ITreeProvider
-│   │   ├── TreeProviderViewImpl.ts # Native tree chrome and UIKit Tree wiring
+│   │   ├── TreeProviderView.ts # Native tree chrome and UIKit Tree wiring
 │   │   ├── TreeProviderViewModel.ts # Controlled expansion, search projection, selection, actions, and drops
 │   │   ├── provider-tree-store.ts # Provider tree builds, expanded-child listing, and serialized watch refresh
 │   │   ├── provider-tree-expansion.ts # Saved paths and normal/deep-search expansion state
 │   │   ├── tree-provider-node.ts # Provider tree node transforms and lookup helpers
 │   │   ├── tree-search-filter.ts # Search matching and display-tree filtering
-│   │   ├── CategoryViewImpl.ts # Native folder-content view and bounded editor island
+│   │   ├── CategoryView.ts # Native folder-content view and bounded editor island
 │   │   ├── CategoryViewModel.ts # Folder listing, selection, actions, and drops
 │   │   ├── provider-item-controller.ts # Shared CRUD/menu/key/drag actions for both provider-backed views
 │   │   ├── os-clipboard.ts  # OS file-clipboard actions (Cut/Copy/Paste ⇄ Windows Explorer) shared by the tree + category view models; file provider only

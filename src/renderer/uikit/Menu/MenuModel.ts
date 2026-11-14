@@ -1,6 +1,7 @@
 import { TComponentModel } from "../../core/state/model";
 import type { PopoverPosition } from "../Popover/PopoverModel";
 import type { MenuItem } from "./types";
+import { nextActiveIndex } from "../shared/list-navigation";
 
 // =============================================================================
 // Constants
@@ -85,7 +86,7 @@ export class MenuModel extends TComponentModel<MenuState, MenuProps> {
     private previousOpen: boolean | undefined;
     private previousItems: MenuItem[] | undefined;
 
-    /** Prop-driven state transitions replace the former deferred effects. */
+    /** Prop-driven state transitions are applied in `setProps`. */
     setProps = (): void => {
         const props = this.props;
         const previousOpen = this.previousOpen;
@@ -250,26 +251,30 @@ export class MenuModel extends TComponentModel<MenuState, MenuProps> {
             1,
             Math.floor((this.listRef?.clientHeight ?? MAX_HEIGHT) / ROW_HEIGHT),
         );
-        const move = (n: number) => {
-            if (prepared.length === 0) return;
-            const start = idx >= 0 ? idx : -1;
-            const next = Math.max(0, Math.min(prepared.length - 1, start + n));
+        const move = (key: "ArrowDown" | "ArrowUp" | "PageDown" | "PageUp") => {
+            const next = nextActiveIndex(key, idx, prepared.length, {
+                wrap: false,
+                page: visibleRows,
+                pageStart: "before-first",
+                pageFallback: "none",
+            });
+            if (next === undefined) return;
             this.state.update((s) => {
                 s.hoveredId = prepared[next].id;
             });
         };
         if (e.key === "ArrowDown") {
             e.preventDefault();
-            move(1);
+            move("ArrowDown");
         } else if (e.key === "ArrowUp") {
             e.preventDefault();
-            move(-1);
+            move("ArrowUp");
         } else if (e.key === "PageDown") {
             e.preventDefault();
-            move(visibleRows);
+            move("PageDown");
         } else if (e.key === "PageUp") {
             e.preventDefault();
-            move(-visibleRows);
+            move("PageUp");
         } else if (e.key === "Enter") {
             const target = idx >= 0
                 ? prepared[idx].item

@@ -124,12 +124,30 @@ export function resolveTraited<T>(
 ): T[] {
     const accessor = items.traits.get(key);
     if (!accessor) return items.target as T[];
-    return items.target.map((source) =>
-        Object.fromEntries(
-            (Object.keys(accessor) as (keyof typeof accessor)[]).map((k) => [
-                k,
-                accessor[k](source),
-            ]),
-        ) as T,
-    );
+    return items.target.map((source) => resolveTraitAccessor(source, accessor));
+}
+
+/** Apply each registered accessor to one source, or return the source unchanged when absent. */
+export function resolveTraitAccessor<T>(source: unknown, accessor?: TraitType<T>): T {
+    if (!accessor) return source as T;
+    return Object.fromEntries(
+        (Object.keys(accessor) as (keyof typeof accessor)[]).map((key) => [key, accessor[key](source)]),
+    ) as T;
+}
+
+/**
+ * Resolve one plain or trait-wrapped value to its render shape. Plain values are cast (the caller
+ * assumes the value already has the target shape) unless `plainAccessor` is supplied; wrapped
+ * values use the accessor they carry and return their raw target when that trait key is absent.
+ */
+export function resolveTraitedOne<T>(
+    value: unknown,
+    key: TraitKey<TraitType<T>>,
+    plainAccessor?: TraitType<T>,
+): T {
+    if (isTraited(value)) {
+        const accessor = value.traits.get(key);
+        return accessor ? resolveTraitAccessor(value.target, accessor) : value.target as T;
+    }
+    return plainAccessor ? resolveTraitAccessor(value, plainAccessor) : value as T;
 }

@@ -1,14 +1,9 @@
 import "./Slider.css";
-import { applyRestProps, clearRestListeners, createRestPropsState } from "../shared/dom-props";
-import type { NativeInputHTMLAttributes, RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, splitProps, type CompleteKeys, NativeInputHTMLAttributes, RestPropsState } from "../shared/dom-props";
+
 import { VanillaView } from "../shared/vanilla-view";
 
-export interface SliderProps
-    extends Omit<
-        NativeInputHTMLAttributes<HTMLInputElement>,
-        "value" | "onChange" | "min" | "max" | "step" | "type" | "size" |
-        "style" | "className"
-    > {
+export interface SliderOwnProps {
     name?: string;
     value: number;
     onChange: (value: number) => void;
@@ -22,8 +17,24 @@ export interface SliderProps
     orientation?: "horizontal" | "vertical";
 }
 
+
+
+export interface SliderProps
+    extends Omit<
+        NativeInputHTMLAttributes<HTMLInputElement>,
+        "value" | "onChange" | "min" | "max" | "step" | "type" | "size" |
+        "style" | "className"
+    > , SliderOwnProps{
+}
+
 const ACTIVE_COLOR = "var(--color-border-active, currentColor)";
 const DEFAULT_COLOR = "var(--color-border-default, currentColor)";
+
+const SLIDER_OWN_KEYS = ["name", "value", "onChange", "min", "max", "step", "size", "disabled", "width", "showProgress", "orientation"] as const satisfies readonly (keyof SliderOwnProps)[];
+const checkedOwnKeys: CompleteKeys<SliderOwnProps, typeof SLIDER_OWN_KEYS> = SLIDER_OWN_KEYS;
+const SLIDER_LEGACY_KEYS = ["children"] as const satisfies readonly (keyof SliderProps)[];
+
+
 
 export class SliderView extends VanillaView<SliderProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -86,21 +97,7 @@ export class SliderView extends VanillaView<SliderProps> {
     }
 
     private applyConstructionRestProps(props: SliderProps): void {
-        const {
-            name: _name,
-            value: _value,
-            onChange: _onChange,
-            min: _min,
-            max: _max,
-            step: _step,
-            size: _size,
-            disabled: _disabled,
-            width: _width,
-            showProgress: _showProgress,
-            orientation: _orientation,
-            children: _children,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...SLIDER_LEGACY_KEYS] as const);
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 

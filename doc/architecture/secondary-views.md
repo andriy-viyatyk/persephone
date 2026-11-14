@@ -596,18 +596,20 @@ CategoryEditor is the main content area editor for `tree-category://` links. Its
 `CategoryEditorView` renders CategoryView for any ITreeProvider — file system folders, archive
 subfolders, or future link categories.
 
-`CategoryView` owns provider-backed listing, selection, search, drag-and-drop, and file actions. It
-does not import the link editor's list/tile components. Instead, `CategoryEditor` supplies an
-`itemsView(host, initialProps)` factory that creates the concrete `LinksListView` or
-`LinksTilesView` and returns a typed `CategoryItemsViewHandle`. `CategoryViewImpl` claims that
+`CategoryView` (`components/tree-provider/CategoryView.ts`) owns provider-backed listing, selection,
+search, drag-and-drop, and file actions. The paired tree shell is
+`components/tree-provider/TreeProviderView.ts`; both are direct modules with no folder barrel.
+CategoryView does not import the link editor's list/tile components. Instead, `CategoryEditor`
+supplies an `itemsView(host, initialProps)` factory that creates the concrete `LinksListView` or
+`LinksTilesView` and returns a typed `CategoryItemsViewHandle`. `CategoryView` claims that
 handle as its child, mounts it, updates it from the current projection, and releases it when the
 item arm changes or the content disappears; the stable host remains a structural slot owned by the
 Category view.
 
-This is the same caller-supplied owned-view pattern as `PopoverView`'s
-`contentView(host) => IOwnedView`: the caller selects the concrete view and keeps the import boundary,
-while the receiving view owns the returned handle's lifetime. The typed handle gives CategoryView a
-direct update path instead of a raw `Node`-returning render callback, so projection changes and the
+This is the same caller-supplied owned-view pattern as `PopoverView`'s required
+`contentView(host) => IMountableView`: the caller selects the concrete view and keeps the import
+boundary, while the receiving view owns the returned handle's lifetime. The typed handle gives
+CategoryView a direct update path instead of a raw `Node`-returning render callback, so projection changes and the
 required grid invalidation happen in one synchronous reconciliation. The factory stays in
 `CategoryEditor`, keeping `components/tree-provider/` free of static editor imports.
 

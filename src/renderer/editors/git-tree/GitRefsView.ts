@@ -174,23 +174,30 @@ export class GitRefsView extends VanillaView<GitRefsViewProps> {
         return {
             name: this.show === "branches" ? "git-branches-tree" : "git-tags-tree",
             items: this.items,
-            getChildren: (node) => node.items,
-            getIconElement: (node) => this.getIconElement(node),
+            getChildren: this.getChildren,
+            getIconElement: this.getIconElement,
             onChange: this.onSelect,
             getContextMenu: this.getContextMenu,
-            getTooltip: (node) => node.refName ?? null,
+            getTooltip: this.getTooltip,
+            repaintSignal: this.currentBranch,
             defaultExpandedValues: this.expanded ?? { [BRANCHES_ROOT_VALUE]: true },
             onExpandChange: this.onExpandChange,
             activeIndex: this.activeIndex,
-            onActiveChange: (index) => {
-                this.activeIndex = index;
-                this.tree?.update(this.treeProps());
-            },
+            onActiveChange: this.handleActiveChange,
             emptyMessage: t(this.show === "branches" ? "git.noBranches" : "git.noTags"),
         };
     }
 
-    private getIconElement(node: GitRefNode): Node | undefined {
+    private readonly getChildren = (node: GitRefNode): GitRefNode[] | undefined => node.items;
+
+    private readonly getTooltip = (node: GitRefNode): string | null => node.refName ?? null;
+
+    private readonly handleActiveChange = (index: number | null): void => {
+        this.activeIndex = index;
+        this.tree?.update(this.treeProps());
+    };
+
+    private readonly getIconElement = (node: GitRefNode): Node | undefined => {
         if (node.value === this.currentValue()) {
             return createIconElement("git", {
                 width: ICON_SIZE,
@@ -224,7 +231,7 @@ export class GitRefsView extends VanillaView<GitRefsViewProps> {
             return createIconElement("folder-open");
         }
         return undefined;
-    }
+    };
 
     private readonly onSelect = (node: GitRefNode): void => {
         if (node.kind) this.model.revealRef(node.refName, node.kind);

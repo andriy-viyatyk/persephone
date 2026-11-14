@@ -6,14 +6,15 @@ import {
     createRestPropsState,
     type NativeHTMLAttributes,
     type RestPropsState,
+    splitProps,
+    type CompleteKeys,
 } from "../shared/dom-props";
 import { KeyedList } from "../shared/keyed-list";
 import { VanillaView } from "../shared/vanilla-view";
 import { uikitText } from "../shared/uikit-text";
 import "./CategoryList.css";
 
-export interface CategoryListProps
-    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange"> {
+export interface CategoryListOwnProps {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances in DOM inspector output. Never used for styling. */
     name?: string;
@@ -35,6 +36,12 @@ export interface CategoryListProps
     separator?: string;
     /** Label for the root pseudo-item. Default: `"All"`. */
     rootLabel?: string;
+}
+
+
+
+export interface CategoryListProps
+    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange"> , CategoryListOwnProps{
 }
 
 interface CategoryGroup {
@@ -74,6 +81,12 @@ interface GroupedItems {
     groups: CategoryGroup[];
     children: Map<string, SubCategory[]>;
 }
+
+const CATEGORYLIST_OWN_KEYS = ["name", "items", "value", "onChange", "getCount", "separator", "rootLabel"] as const satisfies readonly (keyof CategoryListOwnProps)[];
+const checkedOwnKeys: CompleteKeys<CategoryListOwnProps, typeof CATEGORYLIST_OWN_KEYS> = CATEGORYLIST_OWN_KEYS;
+const CATEGORYLIST_LEGACY_KEYS = [] as const satisfies readonly (keyof CategoryListProps)[];
+
+
 
 export class CategoryListView extends VanillaView<CategoryListProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -353,16 +366,7 @@ export class CategoryListView extends VanillaView<CategoryListProps> {
     }
 
     private applyConstructionRestProps(props: CategoryListProps): void {
-        const {
-            name: _name,
-            items: _items,
-            value: _value,
-            onChange: _onChange,
-            getCount: _getCount,
-            separator: _separator,
-            rootLabel: _rootLabel,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...CATEGORYLIST_LEGACY_KEYS] as const);
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 }

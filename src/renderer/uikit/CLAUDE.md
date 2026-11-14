@@ -580,8 +580,9 @@ Pooled virtual-row native-slot ownership and its enforcement contract are docume
   then updates every record. `SubtreeSwap` owns one conditional root and inserts a replacement
   before disposing and detaching the old branch. Both helpers detach their managed nodes; this is
   deliberately different from `VanillaView.dispose()`.
-- `PopoverView`'s `contentView?: (host) => IOwnedView` keeps the floating root's children native
-  DOM. A content view must use this seam. The seam has two properties the prop's type does not show. **It never
+- `PopoverView` requires `contentView: (host) => IMountableView` to keep the floating root's children
+  native DOM. A content view must use this seam. The type requires a mountable owned view, but does
+  not encode the host-attachment or update-channel rules. **It never
   appends what the factory returns** — `PopoverFloatingView.onMount` only claims it with `child()` and mounts it, so the
   factory attaches its own DOM (`host.append(view.root)`) or the dropdown renders empty. And **it is
   not an update channel**: `PopoverFloatingView.onUpdate` forwards nothing to the content view, so

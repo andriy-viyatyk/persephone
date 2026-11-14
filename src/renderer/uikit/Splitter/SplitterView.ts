@@ -1,10 +1,9 @@
-import { applyRestProps, clearRestListeners, createRestPropsState } from "../shared/dom-props";
-import type { NativeHTMLAttributes, RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, splitProps, type CompleteKeys, NativeHTMLAttributes, RestPropsState } from "../shared/dom-props";
+
 import { VanillaView } from "../shared/vanilla-view";
 import "./Splitter.css";
 
-export interface SplitterProps
-    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange"> {
+export interface SplitterOwnProps {
     name?: string;
     orientation?: "vertical" | "horizontal";
     value: number;
@@ -18,6 +17,18 @@ export interface SplitterProps
     background?: "default" | "light" | "dark" | "overlay";
     hoverBackground?: "default" | "light" | "dark" | "overlay";
 }
+
+
+
+export interface SplitterProps
+    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange"> , SplitterOwnProps{
+}
+
+const SPLITTER_OWN_KEYS = ["name", "orientation", "value", "onChange", "onEnd", "side", "min", "max", "disabled", "border", "background", "hoverBackground"] as const satisfies readonly (keyof SplitterOwnProps)[];
+const checkedOwnKeys: CompleteKeys<SplitterOwnProps, typeof SPLITTER_OWN_KEYS> = SPLITTER_OWN_KEYS;
+const SPLITTER_LEGACY_KEYS = [] as const satisfies readonly (keyof SplitterProps)[];
+
+
 
 export class SplitterView extends VanillaView<SplitterProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -89,21 +100,7 @@ export class SplitterView extends VanillaView<SplitterProps> {
     }
 
     private applyConstructionRestProps(props: SplitterProps): void {
-        const {
-            name: _name,
-            orientation: _orientation,
-            value: _value,
-            onChange: _onChange,
-            onEnd: _onEnd,
-            side: _side,
-            min: _min,
-            max: _max,
-            disabled: _disabled,
-            border: _border,
-            background: _background,
-            hoverBackground: _hoverBackground,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...SPLITTER_LEGACY_KEYS] as const);
         // Native drag listeners remain authoritative; no production caller uses residual pointers.
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }

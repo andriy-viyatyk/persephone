@@ -1,6 +1,6 @@
-import { applyRestProps, clearRestListeners, createRestPropsState } from "../shared/dom-props";
-import type { NativeHTMLAttributes, RestPropsState } from "../shared/dom-props";
-import { cssLength } from "../Input/InputView";
+import { applyRestProps, clearRestListeners, createRestPropsState, cssLength, setOrRemoveAttr, splitProps, type CompleteKeys, NativeHTMLAttributes, RestPropsState } from "../shared/dom-props";
+
+
 import { IconButtonView } from "../IconButton/IconButtonView";
 import { createIconElement, createIconPlaceholderElement, isIconName, type IconRef } from "../shared/slots";
 import { fillSlot } from "../shared/fill-slot";
@@ -9,10 +9,7 @@ import { SubtreeSwap } from "../shared/subtree-swap";
 import { VanillaView } from "../shared/vanilla-view";
 import { uikitText } from "../shared/uikit-text";
 
-// --- Types ---
-
-export interface DialogContentProps
-    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "title" | "children"> {
+export interface DialogContentOwnProps {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
     name?: string;
@@ -24,7 +21,6 @@ export interface DialogContentProps
     onClose?: () => void;
     /** Inline buttons rendered between the title and the close X. */
     headerButtons?: SlotContent;
-
     /** Sizing — pass through to the root element. Numbers → px. */
     width?: number | string;
     height?: number | string;
@@ -32,8 +28,15 @@ export interface DialogContentProps
     maxWidth?: number | string;
     minHeight?: number | string;
     maxHeight?: number | string;
-
     children?: SlotContent;
+}
+
+
+
+// --- Types ---
+
+export interface DialogContentProps
+    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "title" | "children"> , DialogContentOwnProps{
 }
 
 const SIZING = [
@@ -45,18 +48,15 @@ const SIZING = [
     ["maxHeight", "max-height"],
 ] as const;
 
-function setOptionalDataAttribute(
-    root: HTMLElement,
-    name: string,
-    value: string | undefined,
-): void {
-    if (value === undefined) root.removeAttribute(name);
-    else root.setAttribute(name, value);
-}
-
 function hasSlot(value: SlotContent): boolean {
     return value !== undefined && value !== null && value !== false;
 }
+
+const DIALOG_OWN_KEYS = ["name", "title", "icon", "onClose", "headerButtons", "width", "height", "minWidth", "maxWidth", "minHeight", "maxHeight", "children"] as const satisfies readonly (keyof DialogContentOwnProps)[];
+const checkedOwnKeys: CompleteKeys<DialogContentOwnProps, typeof DIALOG_OWN_KEYS> = DIALOG_OWN_KEYS;
+const DIALOG_LEGACY_KEYS = [] as const satisfies readonly (keyof DialogContentProps)[];
+
+
 
 export class DialogContentView extends VanillaView<DialogContentProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -131,7 +131,7 @@ export class DialogContentView extends VanillaView<DialogContentProps> {
             || props.headerButtons !== undefined;
 
         this.root.dataset.type = "dialog-content";
-        setOptionalDataAttribute(this.root, "data-name", name);
+        setOrRemoveAttr(this.root, "data-name", name);
         if (hasHeader) this.root.dataset.hasHeader = "true";
         else delete this.root.dataset.hasHeader;
         this.writeSizing(props);
@@ -139,21 +139,7 @@ export class DialogContentView extends VanillaView<DialogContentProps> {
     }
 
     private applyConstructionRestProps(props: DialogContentProps): void {
-        const {
-            name: _name,
-            title: _title,
-            icon: _icon,
-            onClose: _onClose,
-            headerButtons: _headerButtons,
-            width: _width,
-            height: _height,
-            minWidth: _minWidth,
-            maxWidth: _maxWidth,
-            minHeight: _minHeight,
-            maxHeight: _maxHeight,
-            children: _children,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...DIALOG_LEGACY_KEYS] as const);
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 

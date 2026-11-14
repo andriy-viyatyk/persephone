@@ -4,6 +4,9 @@ import {
     createRestPropsState,
     type NativeHTMLAttributes,
     type RestPropsState,
+    cssLength,
+    splitProps,
+    type CompleteKeys,
 } from "../shared/dom-props";
 import { VanillaView } from "../shared/vanilla-view";
 import { uikitText } from "../shared/uikit-text";
@@ -11,8 +14,7 @@ import "./ProgressBar.css";
 
 type Variant = "default" | "success" | "warning" | "danger";
 
-export interface ProgressBarProps
-    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className"> {
+export interface ProgressBarOwnProps {
     name?: string;
     value?: number;
     max?: number;
@@ -21,6 +23,12 @@ export interface ProgressBarProps
     height?: number;
     variant?: Variant;
     "aria-label"?: string;
+}
+
+
+
+export interface ProgressBarProps
+    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className"> , ProgressBarOwnProps{
 }
 
 type ProgressState = "completed" | "determinate" | "indeterminate";
@@ -33,9 +41,11 @@ function clampPercent(value: number, max: number): number {
     return pct;
 }
 
-function cssLength(value: number | string): string {
-    return typeof value === "number" ? `${value}px` : value;
-}
+const PROGRESSBAR_OWN_KEYS = ["name", "value", "max", "completed", "width", "height", "variant", "aria-label"] as const satisfies readonly (keyof ProgressBarOwnProps)[];
+const checkedOwnKeys: CompleteKeys<ProgressBarOwnProps, typeof PROGRESSBAR_OWN_KEYS> = PROGRESSBAR_OWN_KEYS;
+const PROGRESSBAR_LEGACY_KEYS = ["children"] as const satisfies readonly (keyof ProgressBarProps)[];
+
+
 
 export class ProgressBarView extends VanillaView<ProgressBarProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -104,18 +114,7 @@ export class ProgressBarView extends VanillaView<ProgressBarProps> {
     }
 
     private applyConstructionRestProps(props: ProgressBarProps): void {
-        const {
-            name: _name,
-            value: _value,
-            max: _max,
-            completed: _completed,
-            width: _width,
-            height: _height,
-            variant: _variant,
-            "aria-label": _ariaLabel,
-            children: _children,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...PROGRESSBAR_LEGACY_KEYS] as const);
         // `ariaProps` precede residual props, so callers can override these attributes.
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }

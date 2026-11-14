@@ -2,7 +2,7 @@ import type { ITreeProviderItem } from "../../api/types/io.tree";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { TreeProviderViewImpl } from "../../components/tree-provider/TreeProviderViewImpl";
+import { TreeProviderView } from "../../components/tree-provider/TreeProviderView";
 import type { TreeProviderViewModel } from "../../components/tree-provider/TreeProviderViewModel";
 import { TreeRevealController } from "../base/tree-provider-host";
 import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view-registry";
@@ -15,7 +15,7 @@ import { t } from "../../../shared/i18n/t";
 
 export default class ArchiveSecondaryView extends VanillaView<SecondaryViewProps<ArchiveEditor>> {
     private archiveModel: ArchiveEditor | undefined;
-    private tree: TreeProviderViewImpl | undefined;
+    private tree: TreeProviderView | undefined;
     private closeButton: IconButtonView | undefined;
     private header: SideBarPanelHeaderHandle | undefined;
     private treeProviderModel: TreeProviderViewModel | undefined;
@@ -37,7 +37,7 @@ export default class ArchiveSecondaryView extends VanillaView<SecondaryViewProps
         if (!archiveModel || !provider) return;
 
         this.archiveModel = archiveModel;
-        this.tree = this.child(new TreeProviderViewImpl(this.treeProps(archiveModel, provider)));
+        this.tree = this.child(new TreeProviderView(this.treeProps(archiveModel, provider)));
         this.root.append(this.tree.root);
 
         this.closeButton = this.child(new IconButtonView({

@@ -4,17 +4,30 @@ import {
     createRestPropsState,
     type NativeHTMLAttributes,
     type RestPropsState,
+    splitProps,
+    type CompleteKeys,
 } from "../shared/dom-props";
 import { VanillaView } from "../shared/vanilla-view";
 import "./Divider.css";
 
-export interface DividerProps extends NativeHTMLAttributes<HTMLDivElement> {
+export interface DividerOwnProps {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances in DOM inspector output. Never used for styling. */
     name?: string;
     /** Line direction. Default: "horizontal". */
     orientation?: "horizontal" | "vertical";
 }
+
+
+
+export interface DividerProps extends NativeHTMLAttributes<HTMLDivElement> , DividerOwnProps{
+}
+
+const DIVIDER_OWN_KEYS = ["name", "orientation"] as const satisfies readonly (keyof DividerOwnProps)[];
+const checkedOwnKeys: CompleteKeys<DividerOwnProps, typeof DIVIDER_OWN_KEYS> = DIVIDER_OWN_KEYS;
+const DIVIDER_LEGACY_KEYS = [] as const satisfies readonly (keyof DividerProps)[];
+
+
 
 export class DividerView extends VanillaView<DividerProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -48,7 +61,7 @@ export class DividerView extends VanillaView<DividerProps> {
     }
 
     private applyConstructionRestProps(props: DividerProps): void {
-        const { name: _name, orientation: _orientation, ...rest } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...DIVIDER_LEGACY_KEYS] as const);
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 }

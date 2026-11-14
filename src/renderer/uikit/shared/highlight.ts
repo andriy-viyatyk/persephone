@@ -1,10 +1,8 @@
 const NBSP = "\u00a0";
 
 /**
- * DOM form of the former highlighter, for a vanilla view that owns its label host.
- *
- * Same tokenizing, same `.highlighted-text` class, same non-breaking-space promotion on leaf
- * non-matches, so a converted row highlights identically to the former implementation.
+ * DOM highlighting for a vanilla view that owns its label host: tokenizing, the `.highlighted-text`
+ * class, and non-breaking-space promotion on leaf non-matches.
  *
  * This function owns `host` outright. It calls `replaceChildren`, so the host must not also be
  * managed by `fillSlot`: a view that switches a label between a plain string and highlighted DOM
@@ -63,7 +61,7 @@ function appendHighlighted(
         }
 
         // Leaf non-match: promote a single leading/trailing space to a non-breaking space so
-        // layout does not collapse the gap next to a matched <span>. Mirrors the former highlighting path.
+        // layout does not collapse the gap next to a matched <span>.
         if (part.startsWith(" ")) {
             parent.appendChild(document.createTextNode(NBSP + part.substring(1)));
         } else if (part.endsWith(" ")) {

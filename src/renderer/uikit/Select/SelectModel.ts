@@ -1,20 +1,17 @@
-import type { NativeHTMLAttributes } from "../shared/dom-props";
 import { TComponentModel } from "../../core/state/model";
-import { isTraited, resolveTraited, Traited, TraitType } from "../../core/traits/traits";
+import { isTraited, resolveTraited, resolveTraitedOne } from "../../core/traits/traits";
 import { IListBoxItem, LIST_ITEM_KEY } from "../ListBox/types";
 import type { InputProps } from "../Input/InputView";
-import type { SlotText } from "../shared/slots";
+import type { NativeHTMLAttributes } from "../shared/dom-props";
+import type { ItemsLike, SelectOwnProps } from "./SelectProps";
+import { filterParallel, matchLabel } from "../shared/list-filter";
+import { nextActiveIndex } from "../shared/list-navigation";
+
+const SELECT_NAVIGATION_OPTIONS = { wrap: false, page: 9, pageStart: "before-first", pageFallback: "none" } as const;
 
 // =============================================================================
 // Public types
 // =============================================================================
-
-type ItemsLike<T> = T[] | Traited<T[]>;
-
-export type ItemsSource<T> =
-    | ItemsLike<T>
-    | Promise<ItemsLike<T>>
-    | (() => ItemsLike<T> | Promise<ItemsLike<T>>);
 
 export interface SelectItemsResult<T> {
     /** Trait-resolved IListBoxItem array. `[]` while loading or before first open of an async source. */
@@ -28,68 +25,7 @@ export interface SelectItemsResult<T> {
 }
 
 export interface SelectProps<T = IListBoxItem>
-    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange"> {
-    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
-     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
-    name?: string;
-    /**
-     * Item source — accepts:
-     *   • `T[]` / `Traited<T[]>` — sync, ready immediately.
-     *   • `Promise<...>` — async; awaited on the first open, not on mount.
-     *   • `() => T[] | Promise<...>` — lazy; invoked on the first open.
-     * Result is cached after first resolution. Changing the `items` reference invalidates the cache.
-     */
-    items: ItemsSource<T>;
-    /**
-     * Currently-selected item. `null` when nothing is selected.
-     * Independent of `items` — Select renders the trigger label without waiting on items to load.
-     *   • Plain `T` — used when `T = IListBoxItem` (item carries `.label` directly).
-     *   • `Traited<T>` — used with custom `T`; Select reads the trait accessor from `value.traits`.
-     */
-    value?: T | Traited<T> | null;
-    /** Fires when the user picks an item from the list. Emits the source `T`. */
-    onChange?: (item: T) => void;
-    /** Optional callback invoked when an async items loader rejects. */
-    onItemsLoadError?: (error: unknown) => void;
-    /** Placeholder shown when no item is selected. */
-    placeholder?: string;
-    /** Disabled state — input cannot be focused, popover cannot open. */
-    disabled?: boolean;
-    /** Read-only state — popover does not open, input is not editable, no chevron interaction. */
-    readOnly?: boolean;
-    /** Control size. Default: "md". */
-    size?: "sm" | "md";
-    /** Filter mode for typeahead. Default: "contains". */
-    filterMode?: "contains" | "startsWith" | "off";
-    /** Custom filter — overrides `filterMode` when set. */
-    filter?: (item: IListBoxItem, query: string) => boolean;
-    /** Renders inside the popover when filtered list is empty. Default: "no results". */
-    emptyMessage?: SlotText;
-    /**
-     * Fires when the user presses Escape while the popover is open. Select also
-     * closes the popover (without firing `onChange`) — the callback exists for
-     * cancel-style flows where the caller needs to react to the cancel beyond
-     * the implicit close (e.g. inline cell edit needs to also abandon the
-     * pending text and exit edit mode).
-     */
-    onEscape?: () => void;
-    /** Maximum number of visible rows in the popover before scrolling. Default: 10. */
-    maxVisibleItems?: number;
-    /** Pixel height of each row. Forwarded to the inner ListBox. Default: 24. */
-    rowHeight?: number;
-    /**
-     * When true, the dropdown gains a resize handle at the bottom-right corner.
-     * Forwarded to the inner Popover. Useful when long item labels exceed the
-     * input width and `matchAnchorWidth` truncates the list.
-     */
-    resizable?: boolean;
-    /** Fixed width — number → px, string passes through. Default: fills parent (100%). Written to
-     *  the Select root's inline style; the inner Input then fills it. */
-    width?: number | string;
-    /** Minimum width — number → px, string passes through. Written to the Select root. */
-    minWidth?: number | string;
-    /** Maximum width — number → px, string passes through. Written to the Select root. */
-    maxWidth?: number | string;
+    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange">, SelectOwnProps<T> {
     "aria-label"?: string;
     "aria-labelledby"?: string;
 }
@@ -97,19 +33,6 @@ export interface SelectProps<T = IListBoxItem>
 // =============================================================================
 // Helpers
 // =============================================================================
-
-function runAccessor<R>(source: unknown, accessor: TraitType<R>): R {
-    return Object.fromEntries(
-        (Object.keys(accessor) as (keyof TraitType<R>)[]).map((k) => [k, accessor[k](source)]),
-    ) as R;
-}
-
-function defaultMatch(item: IListBoxItem, q: string, mode: "contains" | "startsWith" | "off"): boolean {
-    if (mode === "off" || q === "") return true;
-    const label = typeof item.label === "string" ? item.label.toLowerCase() : "";
-    const query = q.toLowerCase();
-    return mode === "startsWith" ? label.startsWith(query) : label.includes(query);
-}
 
 interface ResolvedItems {
     items: IListBoxItem[];
@@ -201,7 +124,7 @@ export class SelectModel<T = IListBoxItem> extends TComponentModel<SelectState, 
 
     // --- ids ---
     /**
-     * Replaces the former generated-ID source. The value is opaque and generated either way; the
+     * The value is opaque and generated; the
      * *relationship* it encodes is the contract — `data-id` on the root is interpolated into the
      * popover's `outsideClickIgnoreSelector`, and `listboxId` is the `Input`'s `aria-controls` and
      * the list's `id`, which `aria-activedescendant` is derived from.
@@ -234,24 +157,11 @@ export class SelectModel<T = IListBoxItem> extends TComponentModel<SelectState, 
     /**
      * One-shot flag set by `commitSelection` so the focus call we issue right after
      * closing doesn't bounce back through `onInputFocus` → `tryOpen` → re-open.
-     * In the original `useCallback`-based code, `tryOpen` saw a stale `open=true`
-     * via closure and short-circuited; the model's `state.get()` reads live state,
-     * so we need an explicit guard.
+     * The model's `state.get()` reads live state, so we need an explicit guard.
      */
     private _suppressFocusOpen = false;
 
     // --- derived ---
-
-    /** Resolve a single value to IListBoxItem. Plain T is cast (assumes T = IListBoxItem);
-     *  Traited<T> uses the accessor it carries. */
-    private resolveSingleValue(v: T | Traited<T>): IListBoxItem {
-        if (isTraited<T>(v)) {
-            const acc = v.traits.get(LIST_ITEM_KEY);
-            if (acc) return runAccessor<IListBoxItem>(v.target, acc);
-            return v.target as unknown as IListBoxItem;
-        }
-        return v as unknown as IListBoxItem;
-    }
 
     selectedResolved: IListBoxItem | null = null;
 
@@ -270,19 +180,13 @@ export class SelectModel<T = IListBoxItem> extends TComponentModel<SelectState, 
     ): { filteredItems: IListBoxItem[]; filteredSources: T[] } {
         const filterMode = this.props.filterMode ?? "contains";
         const customFilter = this.props.filter;
-        const matchFn =
-            customFilter ?? ((it: IListBoxItem) => defaultMatch(it, searchText, filterMode));
-        const items: IListBoxItem[] = [];
-        const sources: T[] = [];
         const skipFilter = !open || filterMode === "off";
-        for (let i = 0; i < loadedItems.length; i++) {
-            const it = loadedItems[i];
-            if (skipFilter || matchFn(it, searchText)) {
-                items.push(it);
-                sources.push(loadedSources[i] as T);
-            }
-        }
-        return { filteredItems: items, filteredSources: sources };
+        const filtered = filterParallel(loadedItems, loadedSources as T[], (item) =>
+            skipFilter || (customFilter
+                ? customFilter(item, searchText)
+                : matchLabel(item, searchText, filterMode)),
+        );
+        return { filteredItems: filtered.items, filteredSources: filtered.sources };
     }
 
     private deriveDisplayText(open: boolean, searchText: string): string {
@@ -334,7 +238,7 @@ export class SelectModel<T = IListBoxItem> extends TComponentModel<SelectState, 
         if (s.activeIndex == null && seedIndex >= 0) s.activeIndex = seedIndex;
     }
 
-    /** Formerly the effect at `:556`. A close is the only thing that resets the query. */
+    /** A close is the only thing that resets the query. */
     private closeInto(s: SelectState): void {
         s.open = false;
         s.searchText = "";
@@ -366,8 +270,7 @@ export class SelectModel<T = IListBoxItem> extends TComponentModel<SelectState, 
     /**
      * Index of the selected item in the list the `ListBox` will actually receive, or -1.
      *
-     * The effect this replaces searched `loadedItems`, but `activeIndex` is in **filtered** index
-     * space everywhere else (`commitSelection` reads `filteredSources[idx]`; the keyboard arms bound
+     * `activeIndex` is in **filtered** index space everywhere else (`commitSelection` reads `filteredSources[idx]`; the keyboard arms bound
      * on `filteredItems.length`). The two spaces coincide only while the query is empty, and they
      * diverge on a reachable path: with a value selected and the popover closed, typing one
      * character opens and filters in the same write, so the old seed indexed the unfiltered array
@@ -386,13 +289,13 @@ export class SelectModel<T = IListBoxItem> extends TComponentModel<SelectState, 
         if (!sel) return -1;
         const filterMode = this.props.filterMode ?? "contains";
         const customFilter = this.props.filter;
-        const matchFn =
-            customFilter ?? ((it: IListBoxItem) => defaultMatch(it, searchText, filterMode));
         // `open` is true at every call site, so `filtered`'s `!open` arm cannot apply here.
         const skipFilter = filterMode === "off";
         let visible = 0;
         for (const it of items) {
-            if (!skipFilter && !matchFn(it, searchText)) continue;
+            if (!skipFilter && !(customFilter
+                ? customFilter(it, searchText)
+                : matchLabel(it, searchText, filterMode))) continue;
             if (it.value === sel.value) return visible;
             visible++;
         }
@@ -462,12 +365,11 @@ export class SelectModel<T = IListBoxItem> extends TComponentModel<SelectState, 
         if (source === undefined) return;
         this.props.onChange?.(source);
         // Set before the write, and now load-bearing for a second reason: the popover subtree is
-        // detached *inside* `closePopover`'s synchronous dispatch, where the previous renderer detached it after the
-        // handler returned. If focus was inside the popover it is on `<body>` by the time `focus()`
+        // detached *inside* `closePopover`'s synchronous dispatch.
+        // If focus was inside the popover it is on `<body>` by the time `focus()`
         // runs, so `focus()` becomes a real focus change and `onInputFocus` fires synchronously.
         this._suppressFocusOpen = true;
-        // `closeInto` is a superset of the write this used to make (`open = false`,
-        // `searchText = ""`), so the merge with the ex-effect's reset is exact.
+        // `closeInto` resets `open` and `searchText` along with the other close state.
         this.closePopover();
         this.inputRef?.focus();
         // Clear the suppression flag after the focus event has had a chance to fire
@@ -498,13 +400,9 @@ export class SelectModel<T = IListBoxItem> extends TComponentModel<SelectState, 
                     this.openPopover();
                     return;
                 }
-                const step = e.key === "PageDown" ? 9 : 1;
-                const cur = activeIndex ?? -1;
-                const next = Math.min(filteredItems.length - 1, cur + step);
-                if (next >= 0) {
-                    this.state.update((s) => {
-                        s.activeIndex = next;
-                    });
+                const next = nextActiveIndex(e.key, activeIndex, filteredItems.length, SELECT_NAVIGATION_OPTIONS);
+                if (next !== undefined) {
+                    this.state.update((s) => { s.activeIndex = next; });
                 }
                 break;
             }
@@ -516,12 +414,10 @@ export class SelectModel<T = IListBoxItem> extends TComponentModel<SelectState, 
                     this.openPopover();
                     return;
                 }
-                const step = e.key === "PageUp" ? 9 : 1;
-                const cur = activeIndex ?? 0;
-                const next = Math.max(0, cur - step);
-                this.state.update((s) => {
-                    s.activeIndex = next;
-                });
+                const next = nextActiveIndex(e.key, activeIndex, filteredItems.length, SELECT_NAVIGATION_OPTIONS);
+                if (next !== undefined) {
+                    this.state.update((s) => { s.activeIndex = next; });
+                }
                 break;
             }
             case "Home":
@@ -560,7 +456,7 @@ export class SelectModel<T = IListBoxItem> extends TComponentModel<SelectState, 
         }
     };
 
-    // --- items loading (formerly useSelectItems) ---
+    // --- items loading ---
 
     private startLoad() {
         const source = this.props.items;
@@ -632,7 +528,7 @@ export class SelectModel<T = IListBoxItem> extends TComponentModel<SelectState, 
         });
     }
 
-    // --- forwarded API for the View — convenience getters used in JSX ---
+    // --- forwarded API for the View — convenience getters ---
     get rowHeight(): number {
         return this.props.rowHeight ?? defaultRowHeight;
     }
@@ -667,7 +563,7 @@ export class SelectModel<T = IListBoxItem> extends TComponentModel<SelectState, 
 
         if (valueChanged) this.selectedResolved = this.props.value == null
             ? null
-            : this.resolveSingleValue(this.props.value);
+            : resolveTraitedOne<IListBoxItem>(this.props.value, LIST_ITEM_KEY);
         if (valueChanged || filterChanged || itemsChanged) {
             const state = this.state.get();
             this.deriveForState(state.open, state.searchText);
@@ -690,10 +586,10 @@ export class SelectModel<T = IListBoxItem> extends TComponentModel<SelectState, 
      * cannot observe a stale token and an in-flight promise from the previous source is already
      * superseded when it settles.
      *
-     * For a sync source this is **one** write where the effect pair produced two: `commitLoaded`
+     * For a sync source this is **one** write: `commitLoaded`
      * already writes all five fields, so a separate clear is redundant. That matters —
-     * `editors/settings/sections/SettingsSections.tsx` rebuilds its `items` array on every render,
-     * so this path runs on every pump of that section. It cannot loop: a state write does not pump
+     * callers can rebuild their `items` array on every render, so this path runs on every pump. It
+     * cannot loop: a state write does not pump
      * props in a vanilla driver, so reset -> load -> bind -> sync never re-enters `setProps`.
      */
     private resetItemsCache(): void {

@@ -1,5 +1,5 @@
-import { applyRestProps, clearRestListeners, createRestPropsState } from "../shared/dom-props";
-import type { RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, setOrRemoveAttr, toggleAttr, splitProps, type CompleteKeys, RestPropsState } from "../shared/dom-props";
+
 import { createComponentModelDriver, type ComponentModelDriver } from "../../core/state/model";
 import { nextElementId } from "../shared/element-id";
 import { fillSlot, type SlotContent } from "../shared/fill-slot";
@@ -13,6 +13,7 @@ import {
     AutocompleteModel,
     defaultAutocompleteState,
     type AutocompleteProps,
+    type AutocompleteOwnProps,
 } from "./AutocompleteModel";
 import "./Autocomplete.css";
 // Borrowed: the header row composes a `[data-type="spacer"]` element directly rather than
@@ -106,8 +107,7 @@ class AutocompleteContentView extends VanillaView<AutocompleteContentProps> {
     }
 
     /**
-     * Replaces the `Panel` + `Spacer` composition the previous implementation used — `Panel`'s
-     * last consumer inside `uikit/`. The two slot hosts are `display: contents`, as
+     * The two slot hosts are `display: contents`, as
      * `fillSlot`'s slot host is, so the header content and the action stay flex items of
      * the row as direct children.
      */
@@ -130,6 +130,12 @@ class AutocompleteContentView extends VanillaView<AutocompleteContentProps> {
     }
 }
 
+const AUTOCOMPLETE_OWN_KEYS = ["name", "value", "onChange", "items", "filterMode", "filter", "openOnFocus", "onSubmit", "onEscape", "header", "headerAction", "emptyMessage", "placeholder", "disabled", "readOnly", "size", "autoFocus", "startSlot", "endSlot", "width", "minWidth", "maxWidth", "maxVisibleItems", "rowHeight"] as const satisfies readonly (keyof AutocompleteOwnProps)[];
+const checkedOwnKeys: CompleteKeys<AutocompleteOwnProps, typeof AUTOCOMPLETE_OWN_KEYS> = AUTOCOMPLETE_OWN_KEYS;
+const AUTOCOMPLETE_LEGACY_KEYS = [] as const satisfies readonly (keyof AutocompleteProps)[];
+
+
+
 /**
  * The typeahead input: an `Input` whose `Popover` hosts a filtered `ListBox`.
  *
@@ -139,9 +145,7 @@ class AutocompleteContentView extends VanillaView<AutocompleteContentProps> {
  * - **`data-state` and "the popover exists" are different facts.** The popover opens on
  *   `model.popoverOpen`, which is false for an open component whose filter matched nothing and that
  *   has no `emptyMessage`. `data-state` still reports `state.open`. Do not collapse them.
- * - **The width props go to the inner `Input`, not to the root.** The previous implementation forwarded
- *   `width`/`minWidth`/`maxWidth` to `Input` and wrote no inline style on the root at all. `Select`
- *   does the opposite. Both are preserved as they were.
+ * - **The width props go to the inner `Input`, not to the root.** Width/minWidth/maxWidth go to `Input` and no inline style is written on the root. Select does the opposite.
  * - **The `contentView` factory does not append anything**, because `AutocompleteContentView` adopts
  *   the host as its root. `SelectView`'s factory must append, because a `ListBoxView` builds its own
  *   detached root. Do not "fix" one to look like the other.
@@ -225,13 +229,12 @@ export class AutocompleteView extends VanillaView<AutocompleteViewProps> {
 
     private applyRoot(props: AutocompleteViewProps): void {
         const root = this.root;
-        setOrRemove(root, "data-name", props.name);
+        setOrRemoveAttr(root, "data-name", props.name);
         root.setAttribute("data-id", this.model.autocompleteId);
-        toggle(root, "data-disabled", !!props.disabled);
-        toggle(root, "data-readonly", !!props.readOnly);
+        toggleAttr(root, "data-disabled", !!props.disabled);
+        toggleAttr(root, "data-readonly", !!props.readOnly);
 
-        // No inline size: the width trio is forwarded to the inner Input, which is what the previous implementation
-        // did. `Autocomplete.css`'s `width: 100%` owns the root.
+        // No inline size: the width trio is forwarded to the inner Input. `Autocomplete.css`'s `width: 100%` owns the root.
     }
 
     // -----------------------------------------------------------------------
@@ -372,33 +375,7 @@ export class AutocompleteView extends VanillaView<AutocompleteViewProps> {
     }
 
     private restProps(props: AutocompleteViewProps): Record<string, unknown> {
-        const {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            name: _name, value: _value, onChange: _onChange, items: _items,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            filterMode: _filterMode, filter: _filter, openOnFocus: _openOnFocus,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            onSubmit: _onSubmit, onEscape: _onEscape, header: _header,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            headerAction: _headerAction, emptyMessage: _emptyMessage, placeholder: _placeholder,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            disabled: _disabled, readOnly: _readOnly, size: _size, autoFocus: _autoFocus,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            startSlot: _startSlot, endSlot: _endSlot, width: _width, minWidth: _minWidth,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            maxWidth: _maxWidth, maxVisibleItems: _maxVisibleItems, rowHeight: _rowHeight,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...AUTOCOMPLETE_LEGACY_KEYS] as const);
         return rest as Record<string, unknown>;
     }
-}
-
-function setOrRemove(root: HTMLElement, attribute: string, value: string | undefined): void {
-    if (value === undefined) root.removeAttribute(attribute);
-    else root.setAttribute(attribute, value);
-}
-
-function toggle(root: HTMLElement, attribute: string, on: boolean): void {
-    if (on) root.setAttribute(attribute, "");
-    else root.removeAttribute(attribute);
 }

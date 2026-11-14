@@ -1,9 +1,6 @@
 import type { NativeHTMLAttributes } from "../shared/dom-props";
 
-// --- Types ---
-
-export interface SectionItemProps
-    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className"> {
+export interface SectionItemOwnProps {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
     name?: string;
@@ -13,3 +10,10 @@ export interface SectionItemProps
     label: string;
 }
 
+
+
+// --- Types ---
+
+export interface SectionItemProps
+    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className"> , SectionItemOwnProps{
+}

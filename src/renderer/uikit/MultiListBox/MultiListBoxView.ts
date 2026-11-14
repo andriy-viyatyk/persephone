@@ -5,6 +5,11 @@ import {
     createRestPropsState,
     type NativeHTMLAttributes,
     type RestPropsState,
+    cssLength,
+    setOrRemoveAttr,
+    toggleAttr,
+    splitProps,
+    type CompleteKeys,
 } from "../shared/dom-props";
 import { createIconElement } from "../shared/slots";
 import { VanillaView } from "../shared/vanilla-view";
@@ -18,12 +23,7 @@ import type { SlotText } from "../shared/slots";
 import { defaultMultiListBoxState, MultiListBoxModel } from "./MultiListBoxModel";
 import "./MultiListBox.css";
 
-// =============================================================================
-// Types
-// =============================================================================
-
-export interface MultiListBoxProps<T = IListBoxItem>
-    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange"> {
+export interface MultiListBoxOwnProps<T = IListBoxItem> {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances in DOM inspector output. Never used for styling. */
     name?: string;
@@ -66,10 +66,26 @@ export interface MultiListBoxProps<T = IListBoxItem>
     height?: number | string;
 }
 
+
+
+// =============================================================================
+// Types
+// =============================================================================
+
+export interface MultiListBoxProps<T = IListBoxItem>
+    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange"> , MultiListBoxOwnProps<T>{
+}
+
 type CheckState = "true" | "mixed" | "false";
 
 const defaultRowHeight = 24;
 const defaultMaxVisibleItems = 10;
+
+const MULTILISTBOX_OWN_KEYS = ["name", "items", "value", "onChange", "disabled", "readOnly", "showSearch", "filterMode", "searchPlaceholder", "selectAll", "selectAllLabel", "rowHeight", "maxVisibleItems", "emptyMessage", "width", "height"] as const satisfies readonly (keyof MultiListBoxOwnProps)[];
+const checkedOwnKeys: CompleteKeys<MultiListBoxOwnProps, typeof MULTILISTBOX_OWN_KEYS> = MULTILISTBOX_OWN_KEYS;
+const MULTILISTBOX_LEGACY_KEYS = [] as const satisfies readonly (keyof MultiListBoxProps)[];
+
+
 
 /**
  * The multi-select list shell: a search box, an optional tri-state select-all header, and a
@@ -255,9 +271,9 @@ export class MultiListBoxView<T = IListBoxItem> extends VanillaView<MultiListBox
      */
     private applyRoot(props: MultiListBoxProps<T>): void {
         const root = this.root;
-        setOrRemove(root, "data-name", props.name);
-        toggle(root, "data-disabled", !!props.disabled);
-        toggle(root, "data-readonly", !!props.readOnly);
+        setOrRemoveAttr(root, "data-name", props.name);
+        toggleAttr(root, "data-disabled", !!props.disabled);
+        toggleAttr(root, "data-readonly", !!props.readOnly);
 
         // When both width values are undefined, leave the inline width empty, leaving the stylesheet's
         // `width: 100%` in charge; an empty string reproduces that exactly.
@@ -384,36 +400,7 @@ export class MultiListBoxView<T = IListBoxItem> extends VanillaView<MultiListBox
     // -----------------------------------------------------------------------
 
     private restProps(props: MultiListBoxProps<T>): Record<string, unknown> {
-        const {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            name: _name, items: _items, value: _value, onChange: _onChange,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            disabled: _disabled, readOnly: _readOnly, showSearch: _showSearch,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            filterMode: _filterMode, searchPlaceholder: _searchPlaceholder,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            selectAll: _selectAll, selectAllLabel: _selectAllLabel, rowHeight: _rowHeight,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            maxVisibleItems: _maxVisibleItems, emptyMessage: _emptyMessage,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            width: _width, height: _height,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...MULTILISTBOX_LEGACY_KEYS] as const);
         return rest as Record<string, unknown>;
     }
-}
-
-/** A DOM property typed as a string does not add `px` to a bare number; normalize numeric lengths before writing it. */
-function cssLength(value: number | string): string {
-    return typeof value === "number" ? `${value}px` : value;
-}
-
-function setOrRemove(root: HTMLElement, attribute: string, value: string | undefined): void {
-    if (value === undefined) root.removeAttribute(attribute);
-    else root.setAttribute(attribute, value);
-}
-
-function toggle(root: HTMLElement, attribute: string, on: boolean): void {
-    if (on) root.setAttribute(attribute, "");
-    else root.removeAttribute(attribute);
 }

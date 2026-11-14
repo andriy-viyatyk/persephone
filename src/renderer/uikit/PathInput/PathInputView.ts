@@ -8,13 +8,15 @@ import {
     clearRestListeners,
     createRestPropsState,
     RestPropsState,
+    splitProps,
+    type CompleteKeys,
 } from "../shared/dom-props";
 import { VanillaView } from "../shared/vanilla-view";
 import {
     defaultPathInputState,
     PathInputModel,
-    PathInputProps,
 } from "./PathInputModel";
+import type { PathInputOwnProps, PathInputProps } from "./PathInputProps";
 import type { PathSuggestion } from "./suggestions";
 import "./PathInput.css";
 
@@ -151,6 +153,12 @@ class PathSuggestionContentView extends VanillaView<PathSuggestionContentProps> 
         this.rowElements.clear();
     }
 }
+
+const PATHINPUT_OWN_KEYS = ["name", "value", "onChange", "paths", "separator", "placeholder", "onBlur", "autoFocus", "maxDepth", "disabled", "readOnly", "size", "aria-label", "aria-labelledby"] as const satisfies readonly (keyof PathInputOwnProps)[];
+const checkedOwnKeys: CompleteKeys<PathInputOwnProps, typeof PATHINPUT_OWN_KEYS> = PATHINPUT_OWN_KEYS;
+const PATHINPUT_LEGACY_KEYS = ["children"] as const satisfies readonly (keyof PathInputProps)[];
+
+
 
 export class PathInputView extends VanillaView<PathInputViewProps> {
     private readonly driver;
@@ -306,24 +314,7 @@ export class PathInputView extends VanillaView<PathInputViewProps> {
     }
 
     private applyConstructionRestProps(props: PathInputViewProps): void {
-        const {
-            name: _name,
-            value: _value,
-            onChange: _onChange,
-            paths: _paths,
-            separator: _separator,
-            placeholder: _placeholder,
-            onBlur: _onBlur,
-            autoFocus: _autoFocus,
-            maxDepth: _maxDepth,
-            disabled: _disabled,
-            readOnly: _readOnly,
-            size: _size,
-            children: _children,
-            "aria-label": _ariaLabel,
-            "aria-labelledby": _ariaLabelledBy,
-            ...attributes
-        } = props;
+        const attributes = splitProps(props, [...checkedOwnKeys, ...PATHINPUT_LEGACY_KEYS] as const);
         applyRestProps(this.root, attributes, this.restPropsState);
     }
 

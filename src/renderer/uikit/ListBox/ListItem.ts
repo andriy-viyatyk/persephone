@@ -3,10 +3,7 @@ import type { IconRef, SlotText } from "../shared/slots";
 import type { SlotContent } from "../shared/fill-slot";
 import type { ListItemDragProps } from "./types";
 
-// --- Types ---
-
-export interface ListItemProps
-    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className"> {
+export interface ListItemOwnProps {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
     name?: string;
@@ -99,3 +96,9 @@ export interface ListItemProps
 }
 
 
+
+// --- Types ---
+
+export interface ListItemProps
+    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className"> , ListItemOwnProps{
+}

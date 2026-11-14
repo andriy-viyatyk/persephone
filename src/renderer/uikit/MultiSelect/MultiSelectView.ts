@@ -1,5 +1,5 @@
-import { applyRestProps, clearRestListeners, createRestPropsState } from "../shared/dom-props";
-import type { RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, cssLength, setOrRemoveAttr, toggleAttr, splitProps, type CompleteKeys, RestPropsState } from "../shared/dom-props";
+
 import { createComponentModelDriver, type ComponentModelDriver } from "../../core/state/model";
 import { nextElementId } from "../shared/element-id";
 import { VanillaView } from "../shared/vanilla-view";
@@ -11,10 +11,16 @@ import type { IListBoxItem } from "../ListBox/types";
 import type { MultiListBoxProps } from "../MultiListBox/MultiListBoxView";
 import type { IconButtonProps } from "../IconButton/IconButtonView";
 import type { InputProps } from "../Input/InputView";
-import { defaultMultiSelectState, MultiSelectModel, type MultiSelectProps } from "./MultiSelectModel";
+import { defaultMultiSelectState, MultiSelectModel, type MultiSelectProps, type MultiSelectOwnProps } from "./MultiSelectModel";
 import "./MultiSelect.css";
 
 export type MultiSelectViewProps<T = IListBoxItem> = MultiSelectProps<T>;
+
+const MULTISELECT_OWN_KEYS = ["name", "items", "value", "onChange", "placeholder", "disabled", "readOnly", "size", "filterMode", "rowHeight", "maxVisibleItems", "selectAll", "selectAllLabel", "emptyMessage", "resizable", "matchAnchorWidth", "formatSelection", "width", "minWidth", "maxWidth"] as const satisfies readonly (keyof MultiSelectOwnProps)[];
+const checkedOwnKeys: CompleteKeys<MultiSelectOwnProps, typeof MULTISELECT_OWN_KEYS> = MULTISELECT_OWN_KEYS;
+const MULTISELECT_LEGACY_KEYS = [] as const satisfies readonly (keyof MultiSelectViewProps)[];
+
+
 
 /**
  * The multi-select dropdown: a read-only `Input` with a chevron button, and a `Popover` hosting a
@@ -121,10 +127,10 @@ export class MultiSelectView<T = IListBoxItem> extends VanillaView<MultiSelectVi
 
     private applyRoot(props: MultiSelectViewProps<T>): void {
         const root = this.root;
-        setOrRemove(root, "data-name", props.name);
+        setOrRemoveAttr(root, "data-name", props.name);
         root.setAttribute("data-id", this.model.multiSelectId);
-        toggle(root, "data-disabled", !!props.disabled);
-        toggle(root, "data-readonly", !!props.readOnly);
+        toggleAttr(root, "data-disabled", !!props.disabled);
+        toggleAttr(root, "data-readonly", !!props.readOnly);
 
         // When all three width values are undefined, leave the inline width empty, leaving `MultiSelect.css`'s
         // `width: 100%` in charge; an empty string reproduces that exactly.
@@ -218,9 +224,7 @@ export class MultiSelectView<T = IListBoxItem> extends VanillaView<MultiSelectVi
 
     /**
      * The icon is an `IconName` string, which takes `IconButtonView.updateIcon`'s DOM branch —
-     * `createIconElement`; the previous implementation passed
-     * `renderIcon("chevron-down")`, so every `MultiSelect` carried a retained icon subtree
-     * inside its chevron even while closed.
+     * `createIconElement`.
      */
     private chevronProps(): IconButtonProps {
         const props = this.props;
@@ -325,38 +329,7 @@ export class MultiSelectView<T = IListBoxItem> extends VanillaView<MultiSelectVi
     }
 
     private restProps(props: MultiSelectViewProps<T>): Record<string, unknown> {
-        const {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            name: _name, items: _items, value: _value, onChange: _onChange,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            placeholder: _placeholder, disabled: _disabled, readOnly: _readOnly, size: _size,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            filterMode: _filterMode, rowHeight: _rowHeight, maxVisibleItems: _maxVisibleItems,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            selectAll: _selectAll, selectAllLabel: _selectAllLabel, emptyMessage: _emptyMessage,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            resizable: _resizable, matchAnchorWidth: _matchAnchorWidth,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            formatSelection: _formatSelection,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            width: _width, minWidth: _minWidth, maxWidth: _maxWidth,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...MULTISELECT_LEGACY_KEYS] as const);
         return rest as Record<string, unknown>;
     }
-}
-
-/** A DOM property typed as a string does not add `px` to a bare number; normalize numeric lengths before writing it. */
-function cssLength(value: number | string): string {
-    return typeof value === "number" ? `${value}px` : value;
-}
-
-function setOrRemove(root: HTMLElement, attribute: string, value: string | undefined): void {
-    if (value === undefined) root.removeAttribute(attribute);
-    else root.setAttribute(attribute, value);
-}
-
-function toggle(root: HTMLElement, attribute: string, on: boolean): void {
-    if (on) root.setAttribute(attribute, "");
-    else root.removeAttribute(attribute);
 }

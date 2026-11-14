@@ -15,7 +15,7 @@ import {
 import { ProviderItemController } from "./provider-item-controller";
 import { getTraitDropAction } from "./drop-dispatch";
 import { DropTargetTracker } from "../../uikit/shared/drop-target-tracker";
-import type { IOwnedView } from "../../uikit/shared/vanilla-view";
+import type { IMountableView } from "../../uikit/shared/vanilla-view";
 import { sameHref, sameHrefs } from "./href-utils";
 import type { GridModelCapability } from "../../uikit/DataGrid";
 import { t } from "../../../shared/i18n/t";
@@ -25,7 +25,7 @@ import { matchesSearchWords } from "./tree-search-filter";
 // Types
 // =============================================================================
 
-/** All modes defined for future use. Only "list" is implemented initially. */
+/** Display modes supported by CategoryView and its caller-provided item view. */
 export type CategoryViewMode =
     | "list"
     | "tiles-landscape"
@@ -55,8 +55,7 @@ export interface CategoryItemsViewProps {
     onDragStartOverride?: (item: ITreeProviderItem, event: DragEvent) => boolean;
 }
 
-export interface CategoryItemsViewHandle extends IOwnedView {
-    mount(): HTMLElement;
+export interface CategoryItemsViewHandle extends IMountableView {
     update(props: CategoryItemsViewProps): void;
 }
 

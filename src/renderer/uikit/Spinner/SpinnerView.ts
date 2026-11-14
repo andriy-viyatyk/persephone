@@ -1,15 +1,26 @@
-import { applyRestProps, clearRestListeners, createRestPropsState } from "../shared/dom-props";
-import type { NativeHTMLAttributes, RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, splitProps, type CompleteKeys, NativeHTMLAttributes, RestPropsState } from "../shared/dom-props";
+
 import { createIconElement } from "../shared/slots";
 import { VanillaView } from "../shared/vanilla-view";
 import { uikitText } from "../shared/uikit-text";
 
-export interface SpinnerProps
-    extends Omit<NativeHTMLAttributes<HTMLSpanElement>, "style" | "className" | "color"> {
+export interface SpinnerOwnProps {
     name?: string;
     size?: number;
     color?: string;
 }
+
+
+
+export interface SpinnerProps
+    extends Omit<NativeHTMLAttributes<HTMLSpanElement>, "style" | "className" | "color"> , SpinnerOwnProps{
+}
+
+const SPINNER_OWN_KEYS = ["name", "size", "color"] as const satisfies readonly (keyof SpinnerOwnProps)[];
+const checkedOwnKeys: CompleteKeys<SpinnerOwnProps, typeof SPINNER_OWN_KEYS> = SPINNER_OWN_KEYS;
+const SPINNER_LEGACY_KEYS = ["children"] as const satisfies readonly (keyof SpinnerProps)[];
+
+
 
 export class SpinnerView extends VanillaView<SpinnerProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -47,7 +58,7 @@ export class SpinnerView extends VanillaView<SpinnerProps> {
     }
 
     private applyConstructionRestProps(props: SpinnerProps): void {
-        const { name: _name, size: _size, color: _color, children: _children, ...rest } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...SPINNER_LEGACY_KEYS] as const);
         // Spinner historically forwards residual props first, then owned data/ARIA/style fields.
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }

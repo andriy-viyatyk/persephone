@@ -4,9 +4,9 @@
  *
  * A dumb painter of one row's swimlane slice (computed by `swimlane-layout.ts`). Under av-grid a
  * `render` hook supplies cell *content* inside the library's own pooled `.avg-data-cell`, so
- * everything the earlier renderer had to paint for itself — the absolute box, the forwarded
- * `className`, the background, the borders, `overflow: hidden` — belongs to the cell now, and the
- * hover and selection tints land on this cell exactly as they land on a text cell.
+ * the absolute box, the forwarded `className`, the background, the borders, and `overflow: hidden`
+ * belong to the cell, and the hover and selection tints land on this cell exactly as they land on a
+ * text cell.
  *
  * The SVG is drawn at a constant width (independent of the cell box) and clipped by the cell:
  * shrinking the column slides the clip edge, never rescales the graph. The

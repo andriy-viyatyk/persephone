@@ -1,23 +1,9 @@
-import { applyRestProps, clearRestListeners, createRestPropsState } from "../shared/dom-props";
-import type { NativeHTMLAttributes, RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, cssLength, setOrRemoveAttr, toggleAttr, splitProps, type CompleteKeys, NativeHTMLAttributes, RestPropsState } from "../shared/dom-props";
+
 import { focusAfterPaint } from "../../core/utils/scheduling";
 import { VanillaView } from "../shared/vanilla-view";
 
-export interface TextareaProps
-    extends Omit<
-        NativeHTMLAttributes<HTMLDivElement>,
-        // Rule 7 — forbid style/className on UIKit components.
-        | "style" | "className"
-        // Reimplemented with a string-value API instead of an event API.
-        | "onChange" | "onInput"
-        // Composed with internal handlers — see `onKeyDown` / `onPaste` prop docs below.
-        | "onPaste" | "onKeyDown"
-        // The component's content comes from `value`, not `children`.
-        | "contentEditable"
-        | "children"
-        // Never makes sense on a contentEditable surface.
-        | "dangerouslySetInnerHTML"
-    > {
+export interface TextareaOwnProps {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
     name?: string;
@@ -72,14 +58,29 @@ export interface TextareaProps
     onPaste?: (event: ClipboardEvent) => void;
 }
 
+
+
+export interface TextareaProps
+    extends Omit<
+        NativeHTMLAttributes<HTMLDivElement>,
+        // Rule 7 — forbid style/className on UIKit components.
+        | "style" | "className"
+        // Reimplemented with a string-value API instead of an event API.
+        | "onChange" | "onInput"
+        // Composed with internal handlers — see `onKeyDown` / `onPaste` prop docs below.
+        | "onPaste" | "onKeyDown"
+        // The component's content comes from `value`, not `children`.
+        | "contentEditable"
+        | "children"
+        // Never makes sense on a contentEditable surface.
+        | "dangerouslySetInnerHTML"
+    > , TextareaOwnProps{
+}
+
 function innerTextToString(text: string): string {
     if (text === "\n") return "";
     if (text.endsWith("\n")) return text.slice(0, -1);
     return text;
-}
-
-function cssLength(value: number | string): string {
-    return typeof value === "number" ? `${value}px` : value;
 }
 
 function flexValue(value: TextareaProps["flex"]): string | undefined {
@@ -88,6 +89,12 @@ function flexValue(value: TextareaProps["flex"]): string | undefined {
     if (typeof value === "number") return `${value} 1 auto`;
     return value;
 }
+
+const TEXTAREA_OWN_KEYS = ["name", "value", "onChange", "placeholder", "disabled", "readOnly", "singleLine", "minHeight", "maxHeight", "width", "minWidth", "maxWidth", "flex", "size", "variant", "autoFocus", "onKeyDown", "onPaste"] as const satisfies readonly (keyof TextareaOwnProps)[];
+const checkedOwnKeys: CompleteKeys<TextareaOwnProps, typeof TEXTAREA_OWN_KEYS> = TEXTAREA_OWN_KEYS;
+const TEXTAREA_LEGACY_KEYS = [] as const satisfies readonly (keyof TextareaProps)[];
+
+
 
 export class TextareaView extends VanillaView<TextareaProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -185,27 +192,7 @@ export class TextareaView extends VanillaView<TextareaProps> {
     }
 
     private applyConstructionRestProps(props: TextareaProps): void {
-        const {
-            name: _name,
-            value: _value,
-            onChange: _onChange,
-            placeholder: _placeholder,
-            disabled: _disabled,
-            readOnly: _readOnly,
-            singleLine: _singleLine,
-            minHeight: _minHeight,
-            maxHeight: _maxHeight,
-            width: _width,
-            minWidth: _minWidth,
-            maxWidth: _maxWidth,
-            flex: _flex,
-            size: _size,
-            variant: _variant,
-            autoFocus: _autoFocus,
-            onKeyDown: _onKeyDown,
-            onPaste: _onPaste,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...TEXTAREA_LEGACY_KEYS] as const);
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 
@@ -244,15 +231,11 @@ export class TextareaView extends VanillaView<TextareaProps> {
     }
 
     private setOptionalDataset(key: string, value: string | undefined): void {
-        const attribute = `data-${key}`;
-        if (value === undefined) this.root.removeAttribute(attribute);
-        else this.root.setAttribute(attribute, value);
+        setOrRemoveAttr(this.root, `data-${key}`, value);
     }
 
     private setBooleanDataset(key: string, value: boolean | undefined): void {
-        const attribute = `data-${key}`;
-        if (value) this.root.setAttribute(attribute, "");
-        else this.root.removeAttribute(attribute);
+        toggleAttr(this.root, `data-${key}`, value ?? false);
     }
 
     private setLengthProperty(name: string, value: number | string | undefined): void {

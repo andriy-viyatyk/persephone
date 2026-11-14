@@ -1,5 +1,5 @@
-import { applyRestProps, clearRestListeners, createRestPropsState, setRestProp } from "../shared/dom-props";
-import type { NativeHTMLAttributes, RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, setRestProp, splitProps, type CompleteKeys, NativeHTMLAttributes, RestPropsState } from "../shared/dom-props";
+
 import { fillSlot, type SlotContent } from "../shared/fill-slot";
 import { createIconElement, createIconPlaceholderElement, isIconName } from "../shared/slots";
 import { VanillaView } from "../shared/vanilla-view";
@@ -7,11 +7,7 @@ import { uikitText } from "../shared/uikit-text";
 import type { IconRef } from "../shared/slots";
 import "./Tag.css";
 
-export interface TagProps
-    extends Omit<
-        NativeHTMLAttributes<HTMLSpanElement>,
-        "style" | "className" | "onClick" | "children"
-    > {
+export interface TagOwnProps {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
     name?: string;
@@ -43,6 +39,21 @@ export interface TagProps
     removeAriaLabel?: string;
     children?: SlotContent;
 }
+
+
+
+export interface TagProps
+    extends Omit<
+        NativeHTMLAttributes<HTMLSpanElement>,
+        "style" | "className" | "onClick" | "children"
+    > , TagOwnProps{
+}
+
+const TAG_OWN_KEYS = ["name", "label", "icon", "onRemove", "onClick", "selected", "disabled", "variant", "tone", "size", "truncate", "removeAffordance", "removeAriaLabel", "children"] as const satisfies readonly (keyof TagOwnProps)[];
+const checkedOwnKeys: CompleteKeys<TagOwnProps, typeof TAG_OWN_KEYS> = TAG_OWN_KEYS;
+const TAG_LEGACY_KEYS = [] as const satisfies readonly (keyof TagProps)[];
+
+
 export class TagView extends VanillaView<TagProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
     private iconHost: HTMLSpanElement | undefined;
@@ -106,23 +117,8 @@ export class TagView extends VanillaView<TagProps> {
     }
 
     private applyConstructionRestProps(props: TagProps): void {
-        const {
-            name: _name,
-            label: _label,
-            icon: _icon,
-            onRemove: _onRemove,
-            onClick,
-            selected: _selected,
-            disabled,
-            variant: _variant,
-            tone: _tone,
-            size: _size,
-            truncate: _truncate,
-            removeAffordance: _removeAffordance,
-            removeAriaLabel: _removeAriaLabel,
-            children: _children,
-            ...rest
-        } = props;
+        const { onClick, disabled } = props;
+const rest = splitProps(props, [...checkedOwnKeys, ...TAG_LEGACY_KEYS] as const);
         this.rootClickEnabled = Boolean(onClick && !disabled);
         applyRestProps(this.root, { ...rest, onClick: this.rootClickEnabled ? this.onRootClick : undefined }, this.restPropsState);
     }

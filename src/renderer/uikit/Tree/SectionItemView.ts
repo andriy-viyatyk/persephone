@@ -1,12 +1,16 @@
-import { applyRestProps, clearRestListeners, createRestPropsState } from "../shared/dom-props";
-import type { RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, splitProps, type CompleteKeys, RestPropsState } from "../shared/dom-props";
 import { fillSlot } from "../shared/fill-slot";
 import { VanillaView } from "../shared/vanilla-view";
 import { TreeIndents } from "./tree-indents";
-import type { SectionItemProps } from "./SectionItem";
+import type { SectionItemProps, SectionItemOwnProps } from "./SectionItem";
 import "./SectionItem.css";
 
 const defaultIndentSize = 16;
+const TREE_OWN_KEYS = ["name", "id", "level", "label", "indentSize"] as const satisfies readonly (keyof SectionItemOwnProps)[];
+const checkedOwnKeys: CompleteKeys<SectionItemOwnProps, typeof TREE_OWN_KEYS> = TREE_OWN_KEYS;
+const TREE_LEGACY_KEYS = [] as const satisfies readonly (keyof SectionItemProps)[];
+
+
 
 /**
  * A non-interactive section header row in a tree.
@@ -62,8 +66,6 @@ export class SectionItemView extends VanillaView<SectionItemProps> {
             level,
             label,
             indentSize = defaultIndentSize,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            ...rest
         } = props;
 
         const labelHost = this.labelHost;
@@ -84,14 +86,7 @@ export class SectionItemView extends VanillaView<SectionItemProps> {
     }
 
     private applyConstructionRestProps(props: SectionItemProps): void {
-        const {
-            name: _name,
-            id: _id,
-            level: _level,
-            label: _label,
-            indentSize: _indentSize,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...TREE_LEGACY_KEYS] as const);
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 

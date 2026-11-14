@@ -1,5 +1,4 @@
-import { applyRestProps, clearRestListeners, createRestPropsState } from "../shared/dom-props";
-import type { RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, setOrRemoveAttr, toggleAttr, splitProps, type CompleteKeys, RestPropsState } from "../shared/dom-props";
 import { fillSlot, type SlotContent } from "../shared/fill-slot";
 import { highlightInto } from "../shared/highlight";
 import { createIconElement, createIconPlaceholderElement, isIconName } from "../shared/slots";
@@ -8,7 +7,7 @@ import { attachTooltip, type TooltipAttachment, type TooltipOptions } from "../T
 import { VanillaView } from "../shared/vanilla-view";
 import { uikitText } from "../shared/uikit-text";
 import { TreeIndents } from "./tree-indents";
-import type { TreeItemProps } from "./TreeItem";
+import type { TreeItemProps, TreeItemOwnProps } from "./TreeItem";
 import "./TreeItem.css";
 
 /** Which of the four shapes the chevron column currently holds. */
@@ -37,6 +36,13 @@ const defaultIndentSize = 16;
  * they are attached and detached rather than left empty in the flex flow.
  */
 export type TreeItemViewProps = TreeItemProps;
+// Consumed by the tooltip attachment, never forwarded to the DOM.
+// The row callback is owned by this view and must not enter the residual-prop listener path.
+const TREE_OWN_KEYS = ["name", "id", "level", "expanded", "hasChildren", "icon", "iconElement", "label", "secondaryLabel", "searchText", "selected", "active", "dragging", "dropActive", "disabled", "tooltip", "indentSize", "hideChevron", "onChevronClick", "onContextMenu", "trailing", "trailingElement", "trailingVisibility"] as const satisfies readonly (keyof TreeItemOwnProps)[];
+const checkedOwnKeys: CompleteKeys<TreeItemOwnProps, typeof TREE_OWN_KEYS> = TREE_OWN_KEYS;
+const TREE_LEGACY_KEYS = [] as const satisfies readonly (keyof TreeItemProps)[];
+
+
 
 export class TreeItemView extends VanillaView<TreeItemViewProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -131,23 +137,11 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
             dragging,
             dropActive,
             disabled,
-            // Consumed by the tooltip attachment, never forwarded to the DOM.
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            tooltip: _tooltip,
             indentSize = defaultIndentSize,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            hideChevron: _hideChevron,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            onChevronClick: _onChevronClick,
-            // The row callback is owned by this view and must not enter the residual-prop listener path.
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            onContextMenu: _onContextMenu,
             secondaryLabel,
             trailing,
             trailingElement,
             trailingVisibility = "always",
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            ...rest
         } = props;
 
         const chevronHost = this.chevronHost;
@@ -185,33 +179,8 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
     }
 
     private applyConstructionRestProps(props: TreeItemViewProps): void {
-        const {
-            name: _name,
-            id: _id,
-            level: _level,
-            expanded: _expanded,
-            hasChildren: _hasChildren,
-            icon: _icon,
-            iconElement: _iconElement,
-            label: _label,
-            searchText: _searchText,
-            selected: _selected,
-            active: _active,
-            dragging: _dragging,
-            dropActive: _dropActive,
-            disabled: _disabled,
-            tooltip: _tooltip,
-            indentSize: _indentSize,
-            hideChevron: _hideChevron,
-            onChevronClick: _onChevronClick,
-            onContextMenu: _onContextMenu,
-            secondaryLabel: _secondaryLabel,
-            trailing: _trailing,
-            trailingElement: _trailingElement,
-            trailingVisibility: _trailingVisibility,
-            ...rest
-        } = props;
-        // Residual props come last, matching the JSX order: a caller-supplied role or aria-* wins.
+        const rest = splitProps(props, [...checkedOwnKeys, ...TREE_LEGACY_KEYS] as const);
+        // Residual props come last: a caller-supplied role or aria-* wins.
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 
@@ -307,7 +276,7 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
             // real DOM move can disturb focus or cancel an in-flight transition.
             //
             // The parent check is load-bearing, not belt-and-braces. Callers cache one icon node
-            // per item (TreeProviderViewImpl.iconCache is keyed by href), and pooling can hand the
+            // per item (TreeProviderView.iconCache is keyed by href), and pooling can hand the
             // same item to a different cell mid-scroll: that cell's fillSlot *moves* the node into
             // its own host, emptying ours while `directIconElement` still names it. Identity alone
             // would then skip the refill forever and the row would render with a blank icon box —
@@ -377,7 +346,7 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
         this.secondaryCleanup = fillSlot(secondaryHost, secondaryLabel);
     }
 
-    /** The earlier renderer attached `<span className="tree-trailing">…` when trailing content was present. */
+    /** The trailing host is attached when trailing content is present. */
     private setTrailing(trailing: SlotContent, trailingElement?: Node): void {
         // A caller-owned DOM node takes the identity-checked arm. Comparing identity first avoids
         // a new fill generation on every virtual-scroll render; `fillSlot` also preserves matching
@@ -436,11 +405,5 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
 }
 
 function setAttr(root: HTMLElement, attribute: string, value: string | undefined): void {
-    if (value === undefined) root.removeAttribute(attribute);
-    else root.setAttribute(attribute, value);
-}
-
-function toggleAttr(root: HTMLElement, attribute: string, on: boolean): void {
-    if (on) root.setAttribute(attribute, "");
-    else root.removeAttribute(attribute);
+    setOrRemoveAttr(root, attribute, value);
 }

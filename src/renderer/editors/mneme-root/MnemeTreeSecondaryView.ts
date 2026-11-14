@@ -1,7 +1,7 @@
 import { app } from "../../api/app";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import { createLinkData } from "../../../shared/link-data";
-import { TreeProviderViewImpl } from "../../components/tree-provider/TreeProviderViewImpl";
+import { TreeProviderView } from "../../components/tree-provider/TreeProviderView";
 import type { TreeProviderViewSavedState } from "../../components/tree-provider/TreeProviderViewModel";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
@@ -32,7 +32,7 @@ export default class MnemeTreeSecondaryView extends VanillaView<SecondaryViewPro
     private closeButton: IconButtonView | undefined;
     private header: SideBarPanelHeaderHandle | undefined;
     private rootTag: TagView | undefined;
-    private treeView: TreeProviderViewImpl | undefined;
+    private treeView: TreeProviderView | undefined;
     private fallbackPanel: HTMLDivElement | undefined;
     private fallbackText: HTMLSpanElement | undefined;
 
@@ -180,7 +180,7 @@ export default class MnemeTreeSecondaryView extends VanillaView<SecondaryViewPro
                 onStateChange: this.handleStateChange,
             };
             if (!this.treeView) {
-                this.treeView = this.child(new TreeProviderViewImpl(treeProps));
+                this.treeView = this.child(new TreeProviderView(treeProps));
                 this.root.append(this.treeView.root);
                 this.treeView.mount();
             } else {

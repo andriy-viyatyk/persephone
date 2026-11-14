@@ -4,7 +4,7 @@ import { MemoryIcon } from "../../theme/icons";
 import { MEMORY_ICON_COLOR } from "../../theme/palette-colors";
 import type { IPageHost } from "../../api/pages/IPageHost";
 import type { EditorDescriptor } from "../../../shared/persistence";
-import type { TreeProviderViewSavedState } from "../../components/tree-provider";
+import type { TreeProviderViewSavedState } from "../../components/tree-provider/TreeProviderViewModel";
 import { mnemeConnection } from "../../api/mneme-connection";
 import { mnemeClient } from "../../api/mneme-client";
 import type { WikiSearchHit } from "../../api/mneme-types";

@@ -4,12 +4,7 @@ import { Traited } from "../../core/traits/traits";
 import type { IListBoxItem } from "../ListBox/types";
 import type { SlotText } from "../shared/slots";
 
-// =============================================================================
-// Public types
-// =============================================================================
-
-export interface MultiSelectProps<T = IListBoxItem>
-    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange"> {
+export interface MultiSelectOwnProps<T = IListBoxItem> {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
     name?: string;
@@ -28,7 +23,6 @@ export interface MultiSelectProps<T = IListBoxItem>
     readOnly?: boolean;
     /** Control size for the trigger Input. Default: "md". */
     size?: "sm" | "md";
-
     // ── Forwarded to the inner MultiListBox ────────────────────────────────────
 
     /** Search filter mode for the in-dropdown search. Default: "contains". */
@@ -43,7 +37,6 @@ export interface MultiSelectProps<T = IListBoxItem>
     selectAllLabel?: string;
     /** Empty-state body shown when no rows match the dropdown filter. Default: "no rows". */
     emptyMessage?: SlotText;
-
     // ── Dropdown chrome ────────────────────────────────────────────────────────
 
     /**
@@ -53,7 +46,6 @@ export interface MultiSelectProps<T = IListBoxItem>
     resizable?: boolean;
     /** Match the popover width to the trigger width. Default: true. */
     matchAnchorWidth?: boolean;
-
     // ── Trigger appearance ────────────────────────────────────────────────────
 
     /**
@@ -62,12 +54,21 @@ export interface MultiSelectProps<T = IListBoxItem>
      *   • non-empty → "(n) selected"
      */
     formatSelection?: (value: T[]) => string;
-
     // ── Width ─────────────────────────────────────────────────────────────────
 
     width?: number | string;
     minWidth?: number | string;
     maxWidth?: number | string;
+}
+
+
+
+// =============================================================================
+// Public types
+// =============================================================================
+
+export interface MultiSelectProps<T = IListBoxItem>
+    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange"> , MultiSelectOwnProps<T>{
 
     "aria-label"?: string;
     "aria-labelledby"?: string;

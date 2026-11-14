@@ -1,5 +1,5 @@
-import { applyRestProps, clearRestListeners, createRestPropsState } from "../shared/dom-props";
-import type { RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, cssLength, setOrRemoveAttr, toggleAttr, splitProps, type CompleteKeys, RestPropsState } from "../shared/dom-props";
+
 import { createComponentModelDriver, type ComponentModelDriver } from "../../core/state/model";
 import { nextElementId } from "../shared/element-id";
 import { VanillaView } from "../shared/vanilla-view";
@@ -12,9 +12,16 @@ import type { IListBoxItem, ListBoxProps } from "../ListBox/types";
 import type { IconButtonProps } from "../IconButton/IconButtonView";
 import type { InputProps } from "../Input/InputView";
 import { defaultSelectState, SelectModel, type SelectProps } from "./SelectModel";
+import type { SelectOwnProps } from "./SelectProps";
 import "./Select.css";
 
 export type SelectViewProps<T = IListBoxItem> = SelectProps<T>;
+
+const SELECT_OWN_KEYS = ["name", "items", "value", "onChange", "onItemsLoadError", "placeholder", "disabled", "readOnly", "size", "filterMode", "filter", "emptyMessage", "onEscape", "maxVisibleItems", "rowHeight", "resizable", "width", "minWidth", "maxWidth"] as const satisfies readonly (keyof SelectOwnProps)[];
+const checkedOwnKeys: CompleteKeys<SelectOwnProps, typeof SELECT_OWN_KEYS> = SELECT_OWN_KEYS;
+const SELECT_LEGACY_KEYS = [] as const satisfies readonly (keyof SelectViewProps)[];
+
+
 
 /**
  * The single-select dropdown: an `Input` with a chevron button, and a `Popover` hosting a `ListBox`.
@@ -22,10 +29,7 @@ export type SelectViewProps<T = IListBoxItem> = SelectProps<T>;
  * Five things in here are load-bearing:
  *
  * - **Zero retained slot subtrees, open or closed.** The dropdown uses `PopoverView`'s `contentView` seam, so
- *   the floating root's children are native DOM, and the chevron's icon is passed as an `IconName`
- *   *string* rather than an icon subtree. The latter is a change in kind: the previous implementation
- *   passed `renderIcon("chevron-down")`, so every `Select` carried a retained icon subtree
- *   inside its chevron even while closed.
+ *   the floating root's children are native DOM. The icon is a string rather than an icon subtree.
  * - **The popover is not an update channel.** `PopoverFloatingView.onUpdate` forwards nothing to its
  *   content view, so this view pushes the `ListBox`'s props itself, from `syncChildren()`. Do not
  *   copy `MenuContentView`'s "props are the model" shape: `Select`'s list output depends on
@@ -146,10 +150,10 @@ export class SelectView<T = IListBoxItem> extends VanillaView<SelectViewProps<T>
      */
     private applyRoot(props: SelectViewProps<T>): void {
         const root = this.root;
-        setOrRemove(root, "data-name", props.name);
+        setOrRemoveAttr(root, "data-name", props.name);
         root.setAttribute("data-id", this.model.selectId);
-        toggle(root, "data-disabled", !!props.disabled);
-        toggle(root, "data-readonly", !!props.readOnly);
+        toggleAttr(root, "data-disabled", !!props.disabled);
+        toggleAttr(root, "data-readonly", !!props.readOnly);
 
         // When all three width values are undefined, leave the inline width empty, leaving `Select.css`'s
         // `width: 100%` in charge; an empty string reproduces that exactly.
@@ -341,36 +345,7 @@ export class SelectView<T = IListBoxItem> extends VanillaView<SelectViewProps<T>
     }
 
     private restProps(props: SelectViewProps<T>): Record<string, unknown> {
-        const {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            name: _name, items: _items, value: _value, onChange: _onChange,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            onItemsLoadError: _onItemsLoadError, placeholder: _placeholder,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            disabled: _disabled, readOnly: _readOnly, size: _size,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            filterMode: _filterMode, filter: _filter, emptyMessage: _emptyMessage,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            onEscape: _onEscape, maxVisibleItems: _maxVisibleItems, rowHeight: _rowHeight,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            resizable: _resizable, width: _width, minWidth: _minWidth, maxWidth: _maxWidth,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...SELECT_LEGACY_KEYS] as const);
         return rest as Record<string, unknown>;
     }
-}
-
-/** A DOM property typed as a string does not add `px` to a bare number; normalize numeric lengths before writing it. */
-function cssLength(value: number | string): string {
-    return typeof value === "number" ? `${value}px` : value;
-}
-
-function setOrRemove(root: HTMLElement, attribute: string, value: string | undefined): void {
-    if (value === undefined) root.removeAttribute(attribute);
-    else root.setAttribute(attribute, value);
-}
-
-function toggle(root: HTMLElement, attribute: string, on: boolean): void {
-    if (on) root.setAttribute(attribute, "");
-    else root.removeAttribute(attribute);
 }

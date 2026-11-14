@@ -13,6 +13,11 @@ export interface IOwnedView {
     dispose(): void;
 }
 
+/** A view that can be mounted after its root is attached to the DOM. */
+export interface IMountableView extends IOwnedView {
+    mount(): unknown;
+}
+
 export type VanillaViewCtor<P> = new (props: P) => VanillaView<P>;
 
 type Cleanup = () => void;

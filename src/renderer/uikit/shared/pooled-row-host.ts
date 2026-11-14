@@ -98,7 +98,7 @@ interface CellRecord<K extends string, V extends PooledRowView> {
  *   `tsc`, lint and the build are all blind to this, and the symptom is an icon disappearing somewhere
  *   other than the code being changed (this has occurred four times, once per caching mechanism).
  *   The fifth was different and is worth naming, because "never cache" alone did not prevent it.
- *   `TreeProviderViewImpl.iconCache` legitimately memoises one node per **href**, so no two rows ever
+ *   `TreeProviderView.iconCache` legitimately memoises one node per **href**, so no two rows ever
  *   want the same node at the same time — yet pooling still moved it: a cell that takes over a row
  *   steals the node out of the previous cell's host, and if that cell is later re-pointed at the same
  *   row it sees `directIconElement === iconElement` and skips the refill forever. **A cached node is
@@ -213,8 +213,7 @@ export class PooledRowHost<K extends string, V extends PooledRowView> {
 
     /**
      * One unconditional call. The engine queues the request itself when it has no usable size yet
-     * and flushes it on its first real measurement, which is what the previous `setTimeout(0)` was
-     * approximating without being able to test the actual condition.
+     * and flushes it on its first real measurement.
      *
      * `afterPaint` is set when the item set changed in the same update. `scrollTop` clamps to the
      * scrollable extent, and the extent is written inside the *next* paint — so a list that grew

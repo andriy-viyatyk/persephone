@@ -69,6 +69,25 @@ Renderer components and editor chrome use native `VanillaView` classes and DOM e
 framework-specific rendering out of the renderer; use the model/view lifecycle and native slots
 described in [model-view-pattern.md](model-view-pattern.md).
 
+### Native root props
+
+Keep a component's consumed props in a named `…OwnProps` interface and compose that with its
+allowed native root attributes. In a view that forwards residual attributes, define the component
+owned keys as a checked tuple:
+
+```typescript
+const OWN_KEYS = ["name", "value", "onChange"] as const
+    satisfies readonly (keyof ExampleOwnProps)[];
+const checkedOwnKeys: CompleteKeys<ExampleOwnProps, typeof OWN_KEYS> = OWN_KEYS;
+const rest = splitProps(props, checkedOwnKeys);
+```
+
+`CompleteKeys` makes a newly added owned prop fail type-checking until the view handles it;
+`splitProps` copies the remaining enumerable props without changing their order. Do not keep a
+separate handwritten rest-prop blacklist. `dom-props.ts` also provides `setOrRemoveAttr`,
+`toggleAttr`, and `cssLength` for shared DOM attribute and CSS-length operations. These helpers are
+in `uikit/shared/` and should be imported directly by path.
+
 ### Hooks at Top Level
 
 ```typescript

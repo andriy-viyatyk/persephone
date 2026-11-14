@@ -8,7 +8,7 @@ import {
 } from "../base/EditorModel";
 import type { EditorDescriptor } from "../../../shared/persistence";
 import type { ILink, ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
-import type { TreeProviderViewModel, TreeProviderViewSavedState } from "../../components/tree-provider";
+import type { TreeProviderViewModel, TreeProviderViewSavedState } from "../../components/tree-provider/TreeProviderViewModel";
 import type { FileSearchState } from "../../components/file-search";
 import { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
 import { TREE_PROVIDER_HOST_TRAIT, TreeProviderHost } from "../base/tree-provider-host";

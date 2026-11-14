@@ -6,17 +6,24 @@ import {
     createRestPropsState,
     type NativeHTMLAttributes,
     type RestPropsState,
+    splitProps,
+    type CompleteKeys,
 } from "../shared/dom-props";
 import { VanillaView } from "../shared/vanilla-view";
 import type { Cleanup } from "../../core/utils/DisposableStore";
 import "./TruncatedText.css";
 
-export interface TruncatedTextProps
-    extends Omit<NativeHTMLAttributes<HTMLSpanElement>, "style" | "className" | "children"> {
+export interface TruncatedTextOwnProps {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances in DOM inspector output. Never used for styling. */
     name?: string;
     children?: SlotContent;
+}
+
+
+
+export interface TruncatedTextProps
+    extends Omit<NativeHTMLAttributes<HTMLSpanElement>, "style" | "className" | "children"> , TruncatedTextOwnProps{
 }
 
 export type TruncatedTextViewProps = TruncatedTextProps;
@@ -27,6 +34,12 @@ function getTextFromSlotContent(children: SlotContent): string {
     if (Array.isArray(children)) return children.map(getTextFromSlotContent).join("");
     return "";
 }
+
+const TRUNCATEDTEXT_OWN_KEYS = ["name", "children"] as const satisfies readonly (keyof TruncatedTextOwnProps)[];
+const checkedOwnKeys: CompleteKeys<TruncatedTextOwnProps, typeof TRUNCATEDTEXT_OWN_KEYS> = TRUNCATEDTEXT_OWN_KEYS;
+const TRUNCATEDTEXT_LEGACY_KEYS = [] as const satisfies readonly (keyof TruncatedTextProps)[];
+
+
 
 export class TruncatedTextView extends VanillaView<TruncatedTextViewProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -76,7 +89,7 @@ export class TruncatedTextView extends VanillaView<TruncatedTextViewProps> {
     }
 
     private applyConstructionRestProps(props: TruncatedTextViewProps): void {
-        const { name: _name, children: _children, ...rest } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...TRUNCATEDTEXT_LEGACY_KEYS] as const);
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 

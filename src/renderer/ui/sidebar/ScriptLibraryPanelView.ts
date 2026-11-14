@@ -2,12 +2,12 @@ import { t } from "../../../shared/i18n/t";
 import { settings } from "../../api/settings";
 import { app } from "../../api/app";
 import { createLinkData } from "../../../shared/link-data";
-import { TreeProviderViewImpl } from "../../components/tree-provider/TreeProviderViewImpl";
+import { TreeProviderView } from "../../components/tree-provider/TreeProviderView";
 import type {
     TreeProviderViewModel,
     TreeProviderViewProps,
     TreeProviderViewSavedState,
-} from "../../components/tree-provider";
+} from "../../components/tree-provider/TreeProviderViewModel";
 import { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import { createTextElement } from "../../uikit/Text/text-style";
@@ -30,7 +30,7 @@ export class ScriptLibraryPanelView extends VanillaView<ScriptLibraryPanelProps>
     private readonly setupButton: ButtonView;
     private libraryPath = "";
     private provider: FileTreeProvider | null = null;
-    private treeView: TreeProviderViewImpl | undefined;
+    private treeView: TreeProviderView | undefined;
 
     public get model(): TreeProviderViewModel | null {
         return this.treeView?.model ?? null;
@@ -101,7 +101,7 @@ export class ScriptLibraryPanelView extends VanillaView<ScriptLibraryPanelProps>
             this.libraryPath = nextPath;
             this.provider = new FileTreeProvider(nextPath);
             this.removeTree();
-            this.treeView = new TreeProviderViewImpl(this.treeProps());
+            this.treeView = new TreeProviderView(this.treeProps());
             this.child(this.treeView).mount();
             this.root.append(this.treeView.root);
         } else {

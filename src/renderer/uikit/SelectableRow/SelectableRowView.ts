@@ -1,11 +1,10 @@
-import { applyRestProps, clearRestListeners, createRestPropsState } from "../shared/dom-props";
-import type { NativeHTMLAttributes, RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, splitProps, type CompleteKeys, NativeHTMLAttributes, RestPropsState } from "../shared/dom-props";
+
 import { fillSlot, type SlotContent } from "../shared/fill-slot";
 import { VanillaView } from "../shared/vanilla-view";
 import "./SelectableRow.css";
 
-export interface SelectableRowProps
-    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "children"> {
+export interface SelectableRowOwnProps {
     /** Optional debug label emitted as `data-name` on the root element. Never used for styling. */
     name?: string;
     /** True when this row is the current selection. */
@@ -14,6 +13,18 @@ export interface SelectableRowProps
     active?: boolean;
     children: SlotContent;
 }
+
+
+
+export interface SelectableRowProps
+    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "children"> , SelectableRowOwnProps{
+}
+
+const SELECTABLEROW_OWN_KEYS = ["name", "selected", "active", "children"] as const satisfies readonly (keyof SelectableRowOwnProps)[];
+const checkedOwnKeys: CompleteKeys<SelectableRowOwnProps, typeof SELECTABLEROW_OWN_KEYS> = SELECTABLEROW_OWN_KEYS;
+const SELECTABLEROW_LEGACY_KEYS = [] as const satisfies readonly (keyof SelectableRowProps)[];
+
+
 
 export class SelectableRowView extends VanillaView<SelectableRowProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -53,8 +64,8 @@ export class SelectableRowView extends VanillaView<SelectableRowProps> {
     }
 
     private applyConstructionRestProps(props: SelectableRowProps): void {
-        const { name: _name, selected: _selected, active: _active, children: _children, ...rest } = props;
-        // Residual props historically came after the owned JSX attributes.
+        const rest = splitProps(props, [...checkedOwnKeys, ...SELECTABLEROW_LEGACY_KEYS] as const);
+        // Residual props come after the owned attributes.
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 

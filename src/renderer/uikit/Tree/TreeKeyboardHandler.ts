@@ -1,5 +1,6 @@
 import type { ITreeItem } from "./types";
 import type { TreeModel } from "./TreeModel";
+import { nextActiveIndex } from "../shared/list-navigation";
 
 /** Keyboard interaction submodel for Tree. Selection remains controlled by Tree props;
  * this class owns only keyboard gesture interpretation and the transient range anchor. */
@@ -40,6 +41,16 @@ export class TreeKeyboardHandler<T = ITreeItem> {
                 this.anchorValue = rows[target]?.value ?? null;
             }
         };
+        const navigate = (key: "ArrowDown" | "ArrowUp" | "Home" | "End" | "PageDown" | "PageUp", page: number) => {
+            const target = nextActiveIndex(key, cur, n, {
+                wrap: false,
+                page,
+                isEnabled: tree.isInteractive,
+                pageStart: "zero",
+                pageFallback: "opposite-end",
+            });
+            if (target !== undefined) applyWithSelection(target);
+        };
 
         if (
             tree.props.multiSelect
@@ -57,32 +68,30 @@ export class TreeKeyboardHandler<T = ITreeItem> {
         switch (e.key) {
             case "ArrowDown":
                 e.preventDefault();
-                applyWithSelection(tree.findNextInteractive(Math.min(n - 1, cur + 1), 1));
+                navigate("ArrowDown", 1);
                 break;
             case "ArrowUp":
                 e.preventDefault();
-                applyWithSelection(tree.findNextInteractive(Math.max(0, cur - 1), -1));
+                navigate("ArrowUp", 1);
                 break;
             case "Home":
                 e.preventDefault();
-                applyWithSelection(tree.findNextInteractive(0, 1));
+                navigate("Home", 1);
                 break;
             case "End":
                 e.preventDefault();
-                applyWithSelection(tree.findNextInteractive(n - 1, -1));
+                navigate("End", 1);
                 break;
             case "PageDown": {
                 e.preventDefault();
                 const page = Math.max(1, tree.gridRef?.visibleRowCount ?? 1);
-                const target = tree.findNextInteractive(Math.min(n - 1, (cur < 0 ? 0 : cur) + page), 1);
-                applyWithSelection(target >= 0 ? target : tree.findNextInteractive(n - 1, -1));
+                navigate("PageDown", page);
                 break;
             }
             case "PageUp": {
                 e.preventDefault();
                 const page = Math.max(1, tree.gridRef?.visibleRowCount ?? 1);
-                const target = tree.findNextInteractive(Math.max(0, (cur < 0 ? 0 : cur) - page), -1);
-                applyWithSelection(target >= 0 ? target : tree.findNextInteractive(0, 1));
+                navigate("PageUp", page);
                 break;
             }
             case "ArrowRight": {

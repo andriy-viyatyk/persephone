@@ -3,32 +3,27 @@ import { TComponentModel } from "../../core/state/model";
 import type { IListBoxItem } from "../ListBox/types";
 import type { SlotContent } from "../shared/fill-slot";
 import type { SlotText } from "../shared/slots";
+import { filterParallel, matchLabel } from "../shared/list-filter";
+import { nextActiveIndex } from "../shared/list-navigation";
 
-// =============================================================================
-// Public types
-// =============================================================================
+const AUTOCOMPLETE_NAVIGATION_OPTIONS = { wrap: false, page: 9, pageStart: "before-first", pageFallback: "none" } as const;
 
-export interface AutocompleteProps
-    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange" | "onSubmit"> {
+export interface AutocompleteOwnProps {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
     name?: string;
-
     /** Current text value. The component is fully controlled. */
     value: string;
     /** Fires on every keystroke and on suggestion commit. */
     onChange: (value: string) => void;
-
     /** Suggestion source. Accepts a flat string list (sugar) or `IListBoxItem[]` for
      *  richer rendering (icons, custom labels). */
     items: string[] | IListBoxItem[];
-
     /** Filter mode for typeahead against `items`. Default: "contains".
      *  When suggestions are pre-filtered upstream by the caller, set to "off". */
     filterMode?: "contains" | "startsWith" | "off";
     /** Custom filter — overrides `filterMode` when set. */
     filter?: (item: IListBoxItem, query: string) => boolean;
-
     /** Open the dropdown automatically when the input receives focus. Default: false —
      *  the dropdown then opens on the first keystroke, which is what `KeyValueEditor` wants.
      *  A URL-bar-style caller would set it true; none exists yet. */
@@ -39,7 +34,6 @@ export interface AutocompleteProps
     /** Fires when the user presses Escape. Receives the value at the moment Escape was
      *  pressed — for "revert to original" patterns. */
     onEscape?: (value: string) => void;
-
     /**
      * Optional header row above the suggestions list — a "Search History" label, say. The row is a
      * view-owned element styled by `[data-type="autocomplete-header"]`, and the selector is
@@ -52,7 +46,6 @@ export interface AutocompleteProps
     /** Empty-state node when there are zero matching suggestions. When omitted, the
      *  popover closes instead of rendering an empty list. */
     emptyMessage?: SlotText | Node;
-
     // Inner Input passthroughs
     placeholder?: string;
     disabled?: boolean;
@@ -67,11 +60,20 @@ export interface AutocompleteProps
     width?: number | string;
     minWidth?: number | string;
     maxWidth?: number | string;
-
     /** Maximum visible rows in the dropdown before it scrolls. Default: 10. */
     maxVisibleItems?: number;
     /** Pixel height of each row. Forwarded to the inner ListBox. Default: 24. */
     rowHeight?: number;
+}
+
+
+
+// =============================================================================
+// Public types
+// =============================================================================
+
+export interface AutocompleteProps
+    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange" | "onSubmit"> , AutocompleteOwnProps{
 
     "aria-label"?: string;
     "aria-labelledby"?: string;
@@ -94,13 +96,6 @@ export const defaultAutocompleteState: AutocompleteState = {
 // =============================================================================
 // Helpers
 // =============================================================================
-
-function defaultMatch(item: IListBoxItem, q: string, mode: "contains" | "startsWith" | "off"): boolean {
-    if (mode === "off" || q === "") return true;
-    const label = typeof item.label === "string" ? item.label.toLowerCase() : "";
-    const query = q.toLowerCase();
-    return mode === "startsWith" ? label.startsWith(query) : label.includes(query);
-}
 
 function isStringArray(items: unknown[]): items is string[] {
     return items.length === 0 || typeof items[0] === "string";
@@ -192,17 +187,12 @@ export class AutocompleteModel extends TComponentModel<AutocompleteState, Autoco
         const filterMode = this.props.filterMode ?? "contains";
         const customFilter = this.props.filter;
         const query = this.props.value ?? "";
-        const matchFn =
-            customFilter ?? ((it: IListBoxItem) => defaultMatch(it, query, filterMode));
-        const filteredItems: IListBoxItem[] = [];
-        const filteredCommits: string[] = [];
-        for (let i = 0; i < items.length; i++) {
-            if (matchFn(items[i], query)) {
-                filteredItems.push(items[i]);
-                filteredCommits.push(commits[i]);
-            }
-        }
-        this.filtered = { filteredItems, filteredCommits };
+        const filtered = filterParallel(items, commits, (item) =>
+            customFilter
+                ? customFilter(item, query)
+                : matchLabel(item, query, filterMode),
+        );
+        this.filtered = { filteredItems: filtered.items, filteredCommits: filtered.sources };
     }
 
     // --- forwarded API for the View ---
@@ -286,14 +276,12 @@ export class AutocompleteModel extends TComponentModel<AutocompleteState, Autoco
         this.state.update((s) => this.closeInto(s));
         this.props.onChange?.(next);
         // Keep focus on the input — many flows (KV editor) expect Tab to move to the next field
-        // after commit. Called inline: the previous implementation deferred this on a microtask to
-        // "defer past the popover close", but closing is not a focus operation — the floating
-        // branch's disposal never touches `document.activeElement`, and this input is a sibling of
-        // the popover rather than inside the closing branch. `SelectModel.commitSelection` calls it
-        // inline for the same reason. The one thing the deferral did buy is ordering against the
-        // *caller's* re-render, which runs from `onChange` above: a consumer that swapped the input
-        // element out in response would leave focus on a detached node. No caller does, and the fix
-        // if one ever does is a re-focus at that call site, not a deferral in here.
+        // after commit. Called inline: closing is not a focus operation — the floating branch's
+        // disposal never touches `document.activeElement`, and this input is a sibling of the popover
+        // rather than inside the closing branch. `SelectModel.commitSelection` calls it inline for
+        // the same reason. The caller's re-render runs from `onChange` above: a consumer that swapped
+        // the input element out in response would leave focus on a detached node. No caller does, and
+        // the fix if one ever does is a re-focus at that call site, not a deferral in here.
         this.inputRef?.focus();
     };
 
@@ -322,11 +310,8 @@ export class AutocompleteModel extends TComponentModel<AutocompleteState, Autoco
                     });
                     return;
                 }
-                if (filteredItems.length === 0) return;
-                const step = e.key === "PageDown" ? 9 : 1;
-                const cur = activeIndex ?? -1;
-                const next = Math.min(filteredItems.length - 1, cur + step);
-                if (next >= 0) {
+                const next = nextActiveIndex(e.key, activeIndex, filteredItems.length, AUTOCOMPLETE_NAVIGATION_OPTIONS);
+                if (next !== undefined) {
                     this.state.update((s) => {
                         s.activeIndex = next;
                     });
@@ -344,13 +329,12 @@ export class AutocompleteModel extends TComponentModel<AutocompleteState, Autoco
                     });
                     return;
                 }
-                if (filteredItems.length === 0) return;
-                const step = e.key === "PageUp" ? 9 : 1;
-                const cur = activeIndex ?? filteredItems.length;
-                const next = Math.max(0, cur - step);
-                this.state.update((s) => {
-                    s.activeIndex = next;
-                });
+                const next = nextActiveIndex(e.key, activeIndex, filteredItems.length, AUTOCOMPLETE_NAVIGATION_OPTIONS);
+                if (next !== undefined) {
+                    this.state.update((s) => {
+                        s.activeIndex = next;
+                    });
+                }
                 break;
             }
             case "Home":

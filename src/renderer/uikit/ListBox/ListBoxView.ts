@@ -1,5 +1,4 @@
-import { applyRestProps, clearRestListeners, createRestPropsState, cssLength } from "../shared/dom-props";
-import type { RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, cssLength, setOrRemoveAttr, toggleAttr, splitProps, type CompleteKeys, RestPropsState } from "../shared/dom-props";
 import { nextElementId } from "../shared/element-id";
 import { VanillaView } from "../shared/vanilla-view";
 import { PooledRowHost } from "../shared/pooled-row-host";
@@ -9,7 +8,7 @@ import type { ElementLength, Percent } from "../DataGrid";
 import { ListItemView } from "./ListItemView";
 import { SectionItemView } from "./SectionItemView";
 import { ListBoxModel } from "./ListBoxModel";
-import type { IListBoxItem, ListBoxProps } from "./types";
+import type { IListBoxItem, ListBoxProps, ListBoxOwnProps } from "./types";
 import "./ListBox.css";
 
 type CellKind = "item" | "section";
@@ -25,6 +24,12 @@ export interface ListBoxLayout {
 
 const columnWidth: ElementLength = (() => "100%" as Percent) as ElementLength;
 const defaultRowHeight = 24;
+
+const LISTBOX_OWN_KEYS = ["name", "items", "value", "onChange", "onItemDoubleClick", "isSelected", "selectionSignal", "activeIndex", "onActiveChange", "searchText", "getTooltip", "getContextMenu", "onContextMenu", "keyboardNav", "loading", "emptyMessage", "rowHeight", "growToHeight", "whiteSpaceY", "variant", "selectionStyle", "checkbox"] as const satisfies readonly (keyof ListBoxOwnProps)[];
+const checkedOwnKeys: CompleteKeys<ListBoxOwnProps, typeof LISTBOX_OWN_KEYS> = LISTBOX_OWN_KEYS;
+const LISTBOX_LEGACY_KEYS = ["id"] as const satisfies readonly (keyof ListBoxProps)[];
+
+
 
 /**
  * The list shell.
@@ -122,8 +127,7 @@ export class ListBoxView<T = IListBoxItem> extends VanillaView<ListBoxProps<T>> 
     /**
      * Let the shell transition its message and grid hosts, then write every root attribute.
      *
-     * Every per-arm attribute is written in both directions. The prior implementation expressed the arms as three
-     * different elements, so an attribute it simply omitted in one arm has to be *removed* here —
+     * Every per-arm attribute is written in both directions. An attribute omitted in one arm has to be *removed* here —
      * and `root.tabIndex = -1` is not the same as no `tabindex` at all.
      */
     private applyRootProps(props: ListBoxProps<T>): void {
@@ -136,10 +140,10 @@ export class ListBoxView<T = IListBoxItem> extends VanillaView<ListBoxProps<T>> 
         if (arm === "real") this.pooledRows?.setOptions(this.layout);
 
         const root = this.root;
-        setOrRemove(root, "id", this.model.rootId);
-        setOrRemove(root, "data-name", props.name);
-        toggle(root, "data-loading", arm === "loading");
-        toggle(root, "data-empty", arm === "empty");
+        setOrRemoveAttr(root, "id", this.model.rootId);
+        setOrRemoveAttr(root, "data-name", props.name);
+        toggleAttr(root, "data-loading", arm === "loading");
+        toggleAttr(root, "data-empty", arm === "empty");
 
         if (arm === "real") {
             const resolvedCount = this.model.resolved.resolved.length;
@@ -152,8 +156,8 @@ export class ListBoxView<T = IListBoxItem> extends VanillaView<ListBoxProps<T>> 
 
             root.setAttribute("role", "listbox");
             root.tabIndex = focusAware ? 0 : -1;
-            toggle(root, "data-focus-selection", props.selectionStyle === "focus");
-            setOrRemove(root, "aria-activedescendant", activeId);
+            toggleAttr(root, "data-focus-selection", props.selectionStyle === "focus");
+            setOrRemoveAttr(root, "aria-activedescendant", activeId);
         } else {
             root.removeAttribute("role");
             root.removeAttribute("tabindex");
@@ -255,37 +259,7 @@ export class ListBoxView<T = IListBoxItem> extends VanillaView<ListBoxProps<T>> 
     // -----------------------------------------------------------------------
 
     private restProps(props: ListBoxProps<T>): Record<string, unknown> {
-        const {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            name: _name, loading: _loading, emptyMessage: _emptyMessage,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            searchText: _searchText, keyboardNav: _keyboardNav,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            rowHeight: _rowHeight, growToHeight: _growToHeight, whiteSpaceY: _whiteSpaceY,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            activeIndex: _activeIndex, getTooltip: _getTooltip, variant: _variant,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            selectionStyle: _selectionStyle, items: _items, value: _value, onChange: _onChange,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            isSelected: _isSelected, selectionSignal: _selectionSignal, onActiveChange: _onActiveChange,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            onItemDoubleClick: _onItemDoubleClick,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            onContextMenu: _onContextMenu, getContextMenu: _getContextMenu, id: _id,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            checkbox: _checkbox,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...LISTBOX_LEGACY_KEYS] as const);
         return rest as Record<string, unknown>;
     }
-}
-
-function setOrRemove(root: HTMLElement, attribute: string, value: string | undefined): void {
-    if (value === undefined) root.removeAttribute(attribute);
-    else root.setAttribute(attribute, value);
-}
-
-function toggle(root: HTMLElement, attribute: string, on: boolean): void {
-    if (on) root.setAttribute(attribute, "");
-    else root.removeAttribute(attribute);
 }

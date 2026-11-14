@@ -1,11 +1,10 @@
-import { applyRestProps, clearRestListeners, createRestPropsState } from "../shared/dom-props";
-import type { NativeLabelHTMLAttributes, RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, splitProps, type CompleteKeys, NativeLabelHTMLAttributes, RestPropsState } from "../shared/dom-props";
+
 import { fillSlot, type SlotContent } from "../shared/fill-slot";
 import { createIconElement } from "../shared/slots";
 import { VanillaView } from "../shared/vanilla-view";
 
-export interface CheckboxProps
-    extends Pick<NativeLabelHTMLAttributes<HTMLLabelElement>, "onClick" | `aria-${string}` | `data-${string}`> {
+export interface CheckboxOwnProps {
     /** Optional debug label emitted as `data-name` on the root element. */
     name?: string;
     /** Checked state (controlled). */
@@ -16,6 +15,18 @@ export interface CheckboxProps
     disabled?: boolean;
     children?: SlotContent;
 }
+
+
+
+export interface CheckboxProps
+    extends Pick<NativeLabelHTMLAttributes<HTMLLabelElement>, "onClick" | `aria-${string}` | `data-${string}`> , CheckboxOwnProps{
+}
+
+const CHECKBOX_OWN_KEYS = ["name", "checked", "onChange", "disabled", "children"] as const satisfies readonly (keyof CheckboxOwnProps)[];
+const checkedOwnKeys: CompleteKeys<CheckboxOwnProps, typeof CHECKBOX_OWN_KEYS> = CHECKBOX_OWN_KEYS;
+const CHECKBOX_LEGACY_KEYS = [] as const satisfies readonly (keyof CheckboxProps)[];
+
+
 
 export class CheckboxView extends VanillaView<CheckboxProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -66,7 +77,7 @@ export class CheckboxView extends VanillaView<CheckboxProps> {
     }
 
     private applyConstructionRestProps(props: CheckboxProps): void {
-        const { name: _name, checked: _checked, onChange: _onChange, disabled: _disabled, children: _children, ...rest } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...CHECKBOX_LEGACY_KEYS] as const);
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 
@@ -82,8 +93,7 @@ export class CheckboxView extends VanillaView<CheckboxProps> {
     }
 
     private readonly handleClick = (event: MouseEvent): void => {
-        // JSX spread was last in the previous implementation, so a caller's
-        // onClick replaced the default toggle handler. Keep that contract.
+        // A caller's onClick replaces the default toggle handler. Keep that contract.
         if (typeof this.props.onClick === "function" || this.props.disabled) return;
         event.preventDefault();
         this.props.onChange(!this.props.checked);

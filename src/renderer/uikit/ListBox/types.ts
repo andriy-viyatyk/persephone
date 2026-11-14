@@ -54,19 +54,7 @@ export interface ListItemDragProps {
 
 export const LIST_ITEM_KEY = new TraitKey<TraitType<IListBoxItem>>("listbox-item");
 
-// =============================================================================
-// Imperative ref
-// =============================================================================
-
-// =============================================================================
-// Props
-// =============================================================================
-
-export interface ListBoxProps<T = IListBoxItem>
-    extends Omit<
-        NativeHTMLAttributes<HTMLDivElement>,
-        "style" | "className" | "onChange" | "onContextMenu"
-    > {
+export interface ListBoxOwnProps<T = IListBoxItem> {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
     name?: string;
@@ -172,4 +160,21 @@ export interface ListBoxProps<T = IListBoxItem>
      * Default: `false`.
      */
     checkbox?: boolean;
+}
+
+
+
+// =============================================================================
+// Imperative ref
+// =============================================================================
+
+// =============================================================================
+// Props
+// =============================================================================
+
+export interface ListBoxProps<T = IListBoxItem>
+    extends Omit<
+        NativeHTMLAttributes<HTMLDivElement>,
+        "style" | "className" | "onChange" | "onContextMenu"
+    > , ListBoxOwnProps<T>{
 }

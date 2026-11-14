@@ -1,13 +1,18 @@
-import { applyRestProps, clearRestListeners, createRestPropsState } from "../shared/dom-props";
-import type { RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, setOrRemoveAttr, toggleAttr, splitProps, type CompleteKeys, RestPropsState } from "../shared/dom-props";
 import { fillSlot, type SlotContent } from "../shared/fill-slot";
 import { highlightInto } from "../shared/highlight";
 import { createIconElement, createIconPlaceholderElement, isIconName } from "../shared/slots";
 import type { IconRef, SlotText } from "../shared/slots";
 import { attachTooltip, type TooltipAttachment, type TooltipOptions } from "../Tooltip/attach-tooltip";
 import { VanillaView } from "../shared/vanilla-view";
-import type { ListItemProps } from "./ListItem";
+import type { ListItemProps, ListItemOwnProps } from "./ListItem";
 import "./ListItem.css";
+// Consumed by the tooltip attachment, never forwarded to the DOM.
+const LISTBOX_OWN_KEYS = ["name", "id", "icon", "iconElement", "rowClass", "label", "searchText", "selected", "active", "disabled", "tooltip", "tooltipDelayShow", "trailing", "trailingElement", "trailingVisibility", "drag", "variant", "selectionStyle", "showSelectionIcon", "checkbox", "dropActive"] as const satisfies readonly (keyof ListItemOwnProps)[];
+const checkedOwnKeys: CompleteKeys<ListItemOwnProps, typeof LISTBOX_OWN_KEYS> = LISTBOX_OWN_KEYS;
+const LISTBOX_LEGACY_KEYS = [] as const satisfies readonly (keyof ListItemProps)[];
+
+
 
 /**
  * The list row, and the single source of truth for its DOM.
@@ -113,11 +118,6 @@ export class ListItemView extends VanillaView<ListItemProps> {
             selected,
             active,
             disabled,
-            // Consumed by the tooltip attachment, never forwarded to the DOM.
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            tooltip: _tooltip,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            tooltipDelayShow: _tooltipDelayShow,
             trailing,
             trailingElement,
             trailingVisibility = "always",
@@ -127,8 +127,6 @@ export class ListItemView extends VanillaView<ListItemProps> {
             showSelectionIcon = true,
             checkbox,
             dropActive,
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            ...rest
         } = props;
 
         const checkHost = this.checkHost;
@@ -174,31 +172,8 @@ export class ListItemView extends VanillaView<ListItemProps> {
     }
 
     private applyConstructionRestProps(props: ListItemProps): void {
-        const {
-            name: _name,
-            id: _id,
-            icon: _icon,
-            iconElement: _iconElement,
-            rowClass: _rowClass,
-            label: _label,
-            searchText: _searchText,
-            selected: _selected,
-            active: _active,
-            disabled: _disabled,
-            tooltip: _tooltip,
-            tooltipDelayShow: _tooltipDelayShow,
-            trailing: _trailing,
-            trailingElement: _trailingElement,
-            trailingVisibility: _trailingVisibility,
-            drag: _drag,
-            variant: _variant,
-            selectionStyle: _selectionStyle,
-            showSelectionIcon: _showSelectionIcon,
-            checkbox: _checkbox,
-            dropActive: _dropActive,
-            ...rest
-        } = props;
-        // Residual props come last, matching the JSX order: a caller-supplied role or aria-* wins.
+        const rest = splitProps(props, [...checkedOwnKeys, ...LISTBOX_LEGACY_KEYS] as const);
+        // Residual props come last: a caller-supplied role or aria-* wins.
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 
@@ -340,11 +315,5 @@ export class ListItemView extends VanillaView<ListItemProps> {
 }
 
 function setAttr(root: HTMLElement, attribute: string, value: string | undefined): void {
-    if (value === undefined) root.removeAttribute(attribute);
-    else root.setAttribute(attribute, value);
-}
-
-function toggleAttr(root: HTMLElement, attribute: string, on: boolean): void {
-    if (on) root.setAttribute(attribute, "");
-    else root.removeAttribute(attribute);
+    setOrRemoveAttr(root, attribute, value);
 }

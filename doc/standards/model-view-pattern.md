@@ -394,11 +394,14 @@ Likewise, editor roots that capture a stable
 model may reject an unexpected model-identity replacement at their boundary. These cases are
 separate from the `VanillaView.update()` equality decision.
 
-The native attribute contract remains intentionally broad. `NativeHTMLAttributes` and its component
-`Omit` surfaces are compatibility types; narrowing them is a per-component API decision, not a
-consequence of adopting construction-time residual props. Residual attributes and listeners are
-applied during the initial mount pass, with targeted setters for the small set of verified live
-fields.
+The native attribute contract remains intentionally broad. `NativeHTMLAttributes` and component
+`Omit` surfaces are compatibility types; each view should define the props it owns separately and
+exclude them from root forwarding with `splitProps`. A checked
+`CompleteKeys<OwnProps, typeof OWN_KEYS>` assignment verifies that the owned-key tuple includes every
+field in `OwnProps`; define the tuple with `as const satisfies readonly (keyof OwnProps)[]`. This
+replaces handwritten rest-prop blacklists. Residual attributes and listeners are applied during the
+initial mount pass, with targeted setters for verified live fields. The shared `dom-props.ts` module
+also owns `setOrRemoveAttr`, `toggleAttr`, and `cssLength`.
 
 ### Stable callbacks are fields
 
@@ -406,11 +409,10 @@ Every `onX` handler that crosses a props or update boundary is a bound method st
 created once. Do not allocate an arrow handler inside a props builder or an update path. The
 A documented example is [`DataGridView.ts`](../../src/renderer/uikit/DataGrid/DataGridView.ts),
 which installs stable callback trampolines and updates their behavior through current props.
-`TreeProviderViewImpl.treeProps()` stores its pure callbacks and keeps a stable `renderTrailing`
-wrapper while the owner callback is unchanged; when the owner supplies a different callback, the
-wrapper identity changes to signal that callback-read row content needs repainting. Other Tree
-consumers may keep fresh callback identities when those identities intentionally signal changed
-callback-read values.
+`TreeProviderView.treeProps()` passes stable callback fields. When a stable callback reads external
+state that affects cell output, the owner supplies the changing value through `TreeProps.repaintSignal`,
+which joins Tree's global repaint inputs. This keeps callback identity separate from rendered data;
+callbacks whose output is fully determined by row items need no additional signal.
 
 The reason is recorded in the header of
 [`DataGridView.ts:10-32`](../../src/renderer/uikit/DataGrid/DataGridView.ts#L10-L32):

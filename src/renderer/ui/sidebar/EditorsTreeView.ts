@@ -19,6 +19,7 @@ import { BoardRoot } from "../../../shared/board/board-root";
 import { toClipboard } from "../../core/utils/utils";
 import { TraitTypeId, getTraitDragData, hasTraitDragData } from "../../core/traits";
 import { TreeView } from "../../uikit/Tree/TreeView";
+import type { TreeProps } from "../../uikit/Tree/types";
 import { createIconElement } from "../../uikit/shared/slots";
 import type { MenuItem } from "../../uikit/Menu";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -58,7 +59,7 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
         this.listen(this.root, "dragenter", this.handleUncategorizeDrag);
         this.listen(this.root, "dragover", this.handleUncategorizeDrag);
         this.listen(this.root, "drop", this.handleUncategorizeDrop);
-        this.lastProps = this.treeProps();
+        this.pushProps();
         this.tree = this.child(new TreeView<EditorTreeNode>(this.lastProps));
         this.root.append(this.tree.root);
         this.tree.mount();
@@ -80,7 +81,11 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
 
     /** Rebuilds the rows; hover changes reuse the last props instead (see handleActiveChange). */
     private pushProps(): void {
-        this.lastProps = this.treeProps();
+        const props = this.treeProps();
+        this.lastProps = {
+            ...props,
+            repaintSignal: this.trailingProjectionKey(props.items),
+        };
         this.tree?.update(this.lastProps);
     }
 
@@ -96,6 +101,53 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
     private readonly handleActiveChange = (index: number | null): void => {
         this.activeIndex = index;
         if (this.lastProps) this.tree?.update({ ...this.lastProps, activeIndex: index });
+    };
+
+    private readonly getChildren = (node: EditorTreeNode): EditorTreeNode[] | undefined =>
+        "items" in node ? node.items as EditorTreeNode[] : undefined;
+
+    private readonly handleTreeChange = (node: EditorTreeNode): void => this.open(node);
+
+    private readonly getIconElement = (node: EditorTreeNode): Node | undefined => node.kind === "builtin"
+        ? createCreatableItemIcon(node.item)
+        : node.kind === "board" ? createBoardGlyphElement(node.root, 16) : node.kind === "folder" ? createFolderIconElement() : undefined;
+
+    private readonly getContextMenu = (node: EditorTreeNode): MenuItem[] | undefined => this.contextMenu(node);
+
+    private readonly renderTrailing = (node: EditorTreeNode): Node | undefined => {
+        const ref = this.refFor(node);
+        const category = ref && editorCategories.categoryOf(ref);
+        const boardRoot = node.kind === "board" ? node.root : undefined;
+        const update = boardRoot
+            ? listBoardUpdates().find((candidate) => BoardRoot.from(candidate.root).equals(boardRoot))
+            : undefined;
+        if (!category && !update) return undefined;
+        const text = document.createElement("span");
+        text.dataset.part = "row-trailing";
+        if (category) {
+            const chip = document.createElement("span");
+            chip.dataset.part = "category-label";
+            chip.textContent = category.id === "top" ? t("shell.editorCategoryTop") : category.name;
+            text.append(chip);
+        }
+        if (update) {
+            const updateButton = document.createElement("button");
+            updateButton.type = "button";
+            updateButton.dataset.name = "editor-tree-board-update";
+            updateButton.textContent = t("shell.update");
+            updateButton.title = t("shell.updateBoard", { version: update.latestVersion });
+            updateButton.addEventListener("click", (event) => {
+                event.stopPropagation();
+                void runBoardUpdate(update).then(this.refresh);
+            });
+            text.append(updateButton);
+        }
+        return text;
+    };
+
+    private readonly getDragData = (node: EditorTreeNode): unknown | null => {
+        const ref = this.refFor(node);
+        return ref ? { kind: "source", ref } : null;
     };
 
     private readonly handleUncategorizeDrag = (event: Event): void => {
@@ -117,7 +169,7 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
         editorCategories.unassign(payload.data.ref);
     };
 
-    private treeProps() {
+    private treeProps(): TreeProps<EditorTreeNode> & { items: EditorTreeNode[] } {
         const builtins: BuiltinEditorNode[] = [
             ...getCreatableItems(settings.get("browser-profiles")).map((item) => ({
                 kind: "builtin" as const, value: item.id, label: getCreatableItemLabel(item), item,
@@ -147,53 +199,41 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
             name: "editors-tree",
             items,
             searchText: query || undefined,
-            getChildren: (node: EditorTreeNode) => "items" in node ? node.items as EditorTreeNode[] : undefined,
+            getChildren: this.getChildren,
             defaultExpandAll: true,
             keyboardNav: true,
             activeIndex: this.activeIndex,
             onActiveChange: this.handleActiveChange,
-            onChange: (node: EditorTreeNode) => this.open(node),
-            getIconElement: (node: EditorTreeNode) => node.kind === "builtin"
-                ? createCreatableItemIcon(node.item)
-                : node.kind === "board" ? createBoardGlyphElement(node.root, 16) : node.kind === "folder" ? createFolderIconElement() : undefined,
-            getContextMenu: (node: EditorTreeNode) => this.contextMenu(node),
-            renderTrailing: (node: EditorTreeNode) => {
-                const ref = this.refFor(node);
-                const category = ref && editorCategories.categoryOf(ref);
-                const boardRoot = node.kind === "board" ? node.root : undefined;
-                const update = boardRoot
-                    ? listBoardUpdates().find((candidate) => BoardRoot.from(candidate.root).equals(boardRoot))
-                    : undefined;
-                if (!category && !update) return undefined;
-                const text = document.createElement("span");
-                text.dataset.part = "row-trailing";
-                if (category) {
-                    const chip = document.createElement("span");
-                    chip.dataset.part = "category-label";
-                    chip.textContent = category.id === "top" ? t("shell.editorCategoryTop") : category.name;
-                    text.append(chip);
-                }
-                if (update) {
-                    const updateButton = document.createElement("button");
-                    updateButton.type = "button";
-                    updateButton.dataset.name = "editor-tree-board-update";
-                    updateButton.textContent = t("shell.update");
-                    updateButton.title = t("shell.updateBoard", { version: update.latestVersion });
-                    updateButton.addEventListener("click", (event) => {
-                        event.stopPropagation();
-                        void runBoardUpdate(update).then(this.refresh);
-                    });
-                    text.append(updateButton);
-                }
-                return text;
-            },
+            onChange: this.handleTreeChange,
+            getIconElement: this.getIconElement,
+            getContextMenu: this.getContextMenu,
+            renderTrailing: this.renderTrailing,
             traitTypeId: TraitTypeId.PinnedEditor,
-            getDragData: (node: EditorTreeNode) => {
-                const ref = this.refFor(node);
-                return ref ? { kind: "source", ref } : null;
-            },
+            getDragData: this.getDragData,
             acceptsDrop: false,
         };
+    }
+
+    private trailingProjectionKey(items: EditorTreeNode[]): string {
+        const updates = listBoardUpdates();
+        const project = (nodes: EditorTreeNode[]): unknown[] => nodes.map((node) => {
+            const ref = this.refFor(node);
+            const category = ref && editorCategories.categoryOf(ref);
+            const boardRoot = node.kind === "board" ? node.root : undefined;
+            const update = boardRoot
+                ? updates.find((candidate) => BoardRoot.from(candidate.root).equals(boardRoot))
+                : undefined;
+            return {
+                category: category
+                    ? [category.id, category.id === "top" ? t("shell.editorCategoryTop") : category.name]
+                    : null,
+                update: update
+                    ? [update.latestVersion, t("shell.update"), t("shell.updateBoard", { version: update.latestVersion })]
+                    : null,
+                children: "items" in node ? project(node.items as EditorTreeNode[]) : undefined,
+            };
+        });
+        return JSON.stringify(project(items));
     }
 
     private refFor(node: EditorTreeNode): CategoryRef | undefined {

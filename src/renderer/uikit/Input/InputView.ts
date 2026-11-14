@@ -1,32 +1,12 @@
-import { applyRestProps, clearRestListeners, createRestPropsState, setRestProp } from "../shared/dom-props";
-import type { NativeInputHTMLAttributes, RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, setRestProp, cssLength, setOrRemoveAttr, toggleAttr, splitProps, type CompleteKeys, NativeInputHTMLAttributes, RestPropsState } from "../shared/dom-props";
+
 import { fillSlot, type SlotContent } from "../shared/fill-slot";
 import { VanillaView } from "../shared/vanilla-view";
 // Owned by the view, not the shim: a vanilla parent may compose `InputView` directly (MultiListBox
 // does), and the stylesheet has to travel with the DOM-owning view.
 import "./Input.css";
 
-export interface InputProps
-    extends Pick<NativeInputHTMLAttributes<HTMLInputElement>,
-        | "autoFocus"
-        | "checked"
-        | "defaultValue"
-        | "disabled"
-        | "readOnly"
-        | "type"
-        | "value"
-        | "min"
-        | "max"
-        | "step"
-        | "placeholder"
-        | "autoComplete"
-        | "onClick"
-        | "onFocus"
-        | "onBlur"
-        | "onContextMenu"
-        | `aria-${string}`
-        | `data-${string}`
-    > {
+export interface InputOwnProps {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
     name?: string;
@@ -67,13 +47,40 @@ export interface InputProps
     maxWidth?: number | string;
 }
 
-export function cssLength(value: number | string): string {
-    return typeof value === "number" ? `${value}px` : value;
+
+
+export interface InputProps
+    extends Pick<NativeInputHTMLAttributes<HTMLInputElement>,
+        | "autoFocus"
+        | "checked"
+        | "defaultValue"
+        | "disabled"
+        | "readOnly"
+        | "type"
+        | "value"
+        | "min"
+        | "max"
+        | "step"
+        | "placeholder"
+        | "autoComplete"
+        | "onClick"
+        | "onFocus"
+        | "onBlur"
+        | "onContextMenu"
+        | `aria-${string}`
+        | `data-${string}`
+    > , InputOwnProps{
 }
 
 function hasSlot(value: SlotContent): boolean {
     return value !== undefined && value !== null && value !== false;
 }
+
+const INPUT_OWN_KEYS = ["name", "onChange", "onKeyDown", "size", "variant", "tone", "startSlot", "endSlot", "invalid", "width", "minWidth", "maxWidth"] as const satisfies readonly (keyof InputOwnProps)[];
+const checkedOwnKeys: CompleteKeys<InputOwnProps, typeof INPUT_OWN_KEYS> = INPUT_OWN_KEYS;
+const INPUT_LEGACY_KEYS = ["disabled", "readOnly", "value", "defaultValue", "checked", "autoFocus"] as const satisfies readonly (keyof InputProps)[];
+
+
 
 export class InputView extends VanillaView<InputProps> {
     private readonly field: HTMLInputElement;
@@ -186,27 +193,8 @@ export class InputView extends VanillaView<InputProps> {
     }
 
     private applyConstructionRestProps(props: InputProps): void {
-        const {
-            name,
-            onChange: _onChange,
-            onKeyDown: _onKeyDown,
-            size: _size,
-            variant: _variant,
-            tone: _tone,
-            disabled: _disabled,
-            readOnly: _readOnly,
-            startSlot: _startSlot,
-            endSlot: _endSlot,
-            invalid: _invalid,
-            width: _width,
-            minWidth: _minWidth,
-            maxWidth: _maxWidth,
-            value: _value,
-            defaultValue: _defaultValue,
-            checked: _checked,
-            autoFocus: _autoFocus,
-            ...rest
-        } = props;
+        const { name } = props;
+const rest = splitProps(props, [...checkedOwnKeys, ...INPUT_LEGACY_KEYS] as const);
         void name;
         applyRestProps(this.field, rest as Record<string, unknown>, this.restPropsState);
     }
@@ -270,21 +258,15 @@ export class InputView extends VanillaView<InputProps> {
     }
 
     private setOptionalDataset(key: string, value: string | undefined): void {
-        const attribute = `data-${key}`;
-        if (value === undefined) this.root.removeAttribute(attribute);
-        else this.root.setAttribute(attribute, value);
+        setOrRemoveAttr(this.root, `data-${key}`, value);
     }
 
     private setBooleanDataset(key: string, value: boolean | undefined): void {
-        const attribute = `data-${key}`;
-        if (value) this.root.setAttribute(attribute, "");
-        else this.root.removeAttribute(attribute);
+        toggleAttr(this.root, `data-${key}`, value ?? false);
     }
 
     private setBooleanDatasetOnField(key: string, value: boolean): void {
-        const attribute = `data-${key}`;
-        if (value) this.field.setAttribute(attribute, "");
-        else this.field.removeAttribute(attribute);
+        toggleAttr(this.field, `data-${key}`, value);
     }
 
     private readonly handleInput = (event: Event): void => {

@@ -1,11 +1,10 @@
 /**
  * Hover a clipped cell, read its full value.
  *
- * The previous grid wrapped every string cell in `<TruncatedText>`, which gave each one
- * an ellipsis and a tooltip; av-grid gives the ellipsis (2.2.3) and no tooltip, because a
- * framework-free published grid cannot own Persephone's tooltip component, its delay, its theme,
- * or its coordination with the app's overlay and drag registries. So the tooltip is restored here,
- * once, in the seam every consumer mounts through.
+ * av-grid gives the ellipsis (2.2.3) and no tooltip, because a framework-free published grid cannot
+ * own Persephone's tooltip component, its delay, its theme, or its coordination with the app's
+ * overlay and drag registries. The tooltip is supplied here, once, in the seam every consumer mounts
+ * through.
  *
  * ## One attachment, many targets
  *

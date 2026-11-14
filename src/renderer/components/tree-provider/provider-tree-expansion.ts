@@ -99,7 +99,7 @@ export class ProviderTreeExpansion {
             const key = hrefKey(node.data.href);
             const entry = this.expansionMap.get(key);
             // Deep search marks every row expanded unless collapsed in this search, leaves
-            // included, as the old `defaultExpandAll` remount did (leaf rows keep `data-state="open"`).
+            // included (leaf rows keep `data-state="open"`).
             expandedValues[node.data.href] = isRoot || (deep
                 ? !this.deepSearchCollapsedKeys.has(key)
                 : node.data.isDirectory && !!entry?.expanded);

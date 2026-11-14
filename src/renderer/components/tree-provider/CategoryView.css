@@ -40,11 +40,8 @@
     .category-view-root .category-footer {
         flex-shrink: 0;
         height: 29px;
-        align-items: center;
         gap: var(--gap-sm, 4px);
         padding-inline: var(--space-sm, 4px);
-        background-color: var(--color-bg-dark);
-        border-top: 1px solid var(--color-border-light);
     }
 
     .category-view-root .cv-footer-count {

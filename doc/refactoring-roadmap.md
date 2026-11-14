@@ -617,8 +617,21 @@ stored callbacks. UIK-4 — `uikit/shared/pooled-row-host.ts` and `list-shell-ar
 `FileSearchView`, `LinksListView` and `LinksTilesView`; `LogBodyView` keeps its own pool on `MeasuredRowGrid`
 (recorded: a different cell contract). Recorded changes: changing only a cell-read callback (or a ListBox `id`) now
 repaints the rows, the list/tree loading text is the localized "Loading…", and an Autocomplete header renders.
-**Remaining:** UIK-6 (shared list filter and navigation) and UIK-9 to UIK-12; `EditorsTreeView`, `SettingsView`,
-`GitRefsView` and `AboutGuideBrowserView` still signal repaints through fresh callback identities (EPIC-171 notes).
+Part 4 is done ([EPIC-172](epics/EPIC-172.md), 2026-11-14): UIK-6 — `resolveTraitedOne`/`resolveTraitAccessor` in
+`core/traits/traits.ts`, `uikit/shared/list-filter.ts` (`matchLabel`, `filterParallel`) for Select, Autocomplete and
+MultiListBox, and `uikit/shared/list-navigation.ts` (`nextActiveIndex`) for ListBox, Tree, Select, Autocomplete,
+PathInput, Menu, RadioGroup and SegmentedControl, each stating clamp or wrap explicitly (D9; no `ComboboxPopoverState`:
+the three models share two assignments, so step 4 was decided against). UIK-9/UIK-10 — the tree-provider views build
+their panels with `createPanelElement`/`createTextElement` and are renamed `TreeProviderView`/`CategoryView` (barrel
+and identity aliases deleted), `IMountableView`, a required Popover `contentView`, `TreeView` calls `model.dnd.*`, and
+the De-React archaeology comments state current invariants. UIK-11 — `setOrRemoveAttr`, `toggleAttr`, one `cssLength`
+and `splitProps` with a compile-time `CompleteKeys` check replace the per-view helper copies and rest-prop blacklists.
+The EPIC-171 follow-up is done: `Tree` has a `repaintSignal` prop and the Editors, Settings, GitRefs and About trees
+store their callbacks. Recorded changes: an open Autocomplete with no active row moves to the first row on
+ArrowUp/PageUp, an open empty Select no longer writes an active index, Label and SplitButton stop leaking own props to
+the DOM, the Category footer and tree-provider panels carry Panel's own `data-type`, and hover no longer repaints every
+row of those four trees. **Remaining:** UIK-12 (components model generations, `ImperativeSplitter`, FileList →
+FileGrid) as part 5, the last 6.7 epic.
 
 ### Phase 7: Lock it in
 

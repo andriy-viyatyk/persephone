@@ -17,11 +17,11 @@ import { createLinkData } from "../../../shared/link-data";
 import { fpBasename } from "../../core/utils/file-path";
 import { ContextMenuEvent } from "../../api/events/events";
 import { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
-import { TreeProviderViewImpl } from "../../components/tree-provider/TreeProviderViewImpl";
+import { TreeProviderView } from "../../components/tree-provider/TreeProviderView";
 import type {
     TreeProviderViewModel,
     TreeProviderViewSavedState,
-} from "../../components/tree-provider";
+} from "../../components/tree-provider/TreeProviderViewModel";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
@@ -485,7 +485,7 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
         this.child(view).mount();
         if (view instanceof RecentFileListView) {
             this.recentFileListView = view;
-        } else if (view instanceof ScriptLibraryPanelView || view instanceof TreeProviderViewImpl) {
+        } else if (view instanceof ScriptLibraryPanelView || view instanceof TreeProviderView) {
             this.treeViewModel = view.model;
         }
     }
@@ -506,7 +506,7 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
                 const folder = menuFolders.find(key);
                 if (!folder?.path) return undefined;
                 const provider = this.getProvider(key, folder.path);
-                return new TreeProviderViewImpl({
+                return new TreeProviderView({
                     provider,
                     initialState: this.expandStateMap.get(key),
                     onStateChange: (state) => this.expandStateMap.set(key, state),

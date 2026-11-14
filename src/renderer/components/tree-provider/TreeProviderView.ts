@@ -6,7 +6,6 @@ import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-
 import { getTraitDropAction } from "./drop-dispatch";
 import {
     TreeProviderViewModel,
-    type TreeProviderViewModelProps,
     type TreeProviderViewProps,
     type TreeProviderViewState,
     defaultTreeProviderViewState,
@@ -22,6 +21,8 @@ import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { TreeView } from "../../uikit/Tree/TreeView";
 import { InputView } from "../../uikit/Input/InputView";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
+import { createPanelElement } from "../../uikit/Panel/panel-style";
+import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
@@ -41,16 +42,15 @@ const tpvNodeTraits = new TraitSet().add(TREE_ITEM_KEY, {
 
 const getNodeChildren = (node: TreeProviderNode): TreeProviderNode[] | undefined => node.items;
 
-export class TreeProviderViewImpl extends VanillaView<ViewProps> {
+export class TreeProviderView extends VanillaView<ViewProps> {
     private readonly driver: ComponentModelDriver<
         ProviderState,
-        TreeProviderViewModelProps,
+        TreeProviderViewProps,
         TreeProviderViewModel
     >;
     private readonly iconCache = new Map<string, Element>();
     private readonly secondaryLabelCache = new Map<string, Node>();
     private selectedSet = new Set<string>();
-    private readonly modelProps = (props: ViewProps): TreeProviderViewModelProps => props;
     private readonly treeSwap: SubtreeSwap<number>;
 
     private treeView: TreeView<TreeProviderNode> | undefined;
@@ -79,7 +79,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
         this.root.append(treeHost);
         this.treeSwap = new SubtreeSwap<number>(treeHost);
         this.driver = createComponentModelDriver(
-            this.modelProps(props),
+            props,
             TreeProviderViewModel,
             defaultTreeProviderViewState,
         );
@@ -132,7 +132,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
     }
 
     protected onUpdate(props: ViewProps): void {
-        this.driver.update(this.modelProps(props));
+        this.driver.update(props);
         this.applyState(this.model.state.get());
     }
 
@@ -204,23 +204,22 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
 
     private showMessage(kind: "error" | "empty", value: string): void {
         if (!this.messagePanel) {
-            this.messagePanel = document.createElement("div");
-            this.messagePanel.className = "panel-root";
-            this.messagePanel.dataset.component = "panel";
+            this.messagePanel = createPanelElement({
+                name: kind === "error" ? "tree-provider-error" : "tree-provider-empty",
+                direction: "row",
+            });
             this.root.append(this.messagePanel);
         }
-        this.messagePanel.dataset.type = kind === "error"
-            ? "tree-provider-error"
-            : "tree-provider-empty";
-        this.messagePanel.dataset.name = kind === "error"
-            ? "tree-provider-error"
-            : "tree-provider-empty";
-        this.messagePanel.dataset.direction = "row";
+        const messageClass = kind === "error" ? "tree-provider-error" : "tree-provider-empty";
+        this.messagePanel.classList.remove("tree-provider-error", "tree-provider-empty");
+        this.messagePanel.classList.add(messageClass);
+        this.messagePanel.dataset.name = messageClass;
         if (!this.messageText) {
-            this.messageText = document.createElement("span");
-            this.messageText.dataset.type = "text";
-            this.messageText.dataset.variant = "default";
-            this.messageText.dataset.size = "sm";
+            this.messageText = createTextElement(value, {
+                variant: "default",
+                size: "sm",
+                color: kind === "error" ? "error" : "light",
+            });
             this.messagePanel.append(this.messageText);
         }
         this.messageText.dataset.color = kind === "error" ? "error" : "light";
@@ -237,13 +236,12 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
     private ensureSearch(): void {
         if (this.searchInput) return;
 
-        this.searchPanel = document.createElement("div");
-        this.searchPanel.className = "panel-root";
-        this.searchPanel.dataset.component = "panel";
-        this.searchPanel.dataset.type = "tree-provider-search";
-        this.searchPanel.dataset.name = "tree-provider-search";
-        this.searchPanel.dataset.direction = "row";
-        this.searchPanel.dataset.borderTop = "";
+        this.searchPanel = createPanelElement({
+            name: "tree-provider-search",
+            direction: "row",
+            borderTop: true,
+        });
+        this.searchPanel.classList.add("tree-provider-search");
 
         this.searchClose = this.child(new IconButtonView({
             name: "tree-provider-search-close",

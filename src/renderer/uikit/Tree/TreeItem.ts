@@ -2,10 +2,7 @@ import type { NativeHTMLAttributes } from "../shared/dom-props";
 import type { SlotContent } from "../shared/fill-slot";
 import type { IconRef, SlotText } from "../shared/slots";
 
-// --- Types ---
-
-export interface TreeItemProps
-    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onContextMenu"> {
+export interface TreeItemOwnProps {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
     name?: string;
@@ -82,4 +79,12 @@ export interface TreeItemProps
      * its action visible) is expressed by passing `"always"` for that row.
      */
     trailingVisibility?: "always" | "hover";
+}
+
+
+
+// --- Types ---
+
+export interface TreeItemProps
+    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onContextMenu"> , TreeItemOwnProps{
 }

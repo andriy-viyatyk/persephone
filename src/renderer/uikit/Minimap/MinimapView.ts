@@ -4,6 +4,8 @@ import {
     clearRestListeners,
     createRestPropsState,
     type NativeHTMLAttributes,
+    splitProps,
+    type CompleteKeys,
 } from "../shared/dom-props";
 import { VanillaView } from "../shared/vanilla-view";
 import {
@@ -13,20 +15,30 @@ import {
 } from "./MinimapModel";
 import "./Minimap.css";
 
-export interface MinimapProps
-    extends Omit<
-        NativeHTMLAttributes<HTMLDivElement>,
-        "style" | "className" | "onClick" | "onMouseEnter"
-    > {
+export interface MinimapOwnProps {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances in DOM inspector output. Never used for styling. */
     name?: string;
-
     /** The scroll container this minimap mirrors and drives. */
     scrollContainer: HTMLElement | null;
     onClick?: (event: MouseEvent) => void;
     onMouseEnter?: (event: MouseEvent) => void;
 }
+
+
+
+export interface MinimapProps
+    extends Omit<
+        NativeHTMLAttributes<HTMLDivElement>,
+        "style" | "className" | "onClick" | "onMouseEnter"
+    > , MinimapOwnProps{
+}
+
+const MINIMAP_OWN_KEYS = ["name", "scrollContainer", "onClick", "onMouseEnter"] as const satisfies readonly (keyof MinimapOwnProps)[];
+const checkedOwnKeys: CompleteKeys<MinimapOwnProps, typeof MINIMAP_OWN_KEYS> = MINIMAP_OWN_KEYS;
+const MINIMAP_LEGACY_KEYS = ["children"] as const satisfies readonly (keyof MinimapProps)[];
+
+
 
 export class MinimapView extends VanillaView<MinimapProps> {
     private readonly driver;
@@ -372,14 +384,7 @@ export class MinimapView extends VanillaView<MinimapProps> {
     };
 
     private getRestProps(props: MinimapProps = this.props): Record<string, unknown> {
-        const {
-            name: _name,
-            scrollContainer: _scrollContainer,
-            children: _children,
-            onClick: _onClick,
-            onMouseEnter: _onMouseEnter,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...MINIMAP_LEGACY_KEYS] as const);
         return rest as Record<string, unknown>;
     }
 

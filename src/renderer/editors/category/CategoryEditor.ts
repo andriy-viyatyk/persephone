@@ -11,7 +11,7 @@ import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { hrefKey } from "../../components/tree-provider/href-utils";
 import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
-import { CategoryViewImpl } from "../../components/tree-provider/CategoryViewImpl";
+import { CategoryView } from "../../components/tree-provider/CategoryView";
 import {
     type CategoryItemsViewFactory,
     type CategoryItemsViewHandle,
@@ -33,7 +33,7 @@ export class CategoryEditorView extends VanillaView<{ model: CategoryEditorModel
     private model: CategoryEditorModel;
     private pageToolbar!: PageToolbarView;
     private breadcrumb: BreadcrumbView | undefined;
-    private categoryView: CategoryViewImpl | undefined;
+    private categoryView: CategoryView | undefined;
     private messagePanel: HTMLDivElement | undefined;
     private searchHost: HTMLDivElement | undefined;
     private host: CategoryTreeProviderHostPair | null = null;
@@ -160,7 +160,7 @@ export class CategoryEditorView extends VanillaView<{ model: CategoryEditorModel
     private ensureCategorySurface(provider: ITreeProvider): void {
         const props = this.categoryViewProps(provider);
         if (!this.categoryView) {
-            this.categoryView = this.child(new CategoryViewImpl(props));
+            this.categoryView = this.child(new CategoryView(props));
             this.root.append(this.categoryView.root);
             this.categoryView.mount();
         } else {

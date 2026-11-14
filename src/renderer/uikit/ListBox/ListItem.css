@@ -126,13 +126,12 @@
     }
 
     /*
-     * The leading checkbox of a `checkbox` row — translated from MultiListBox's `ItemRow`
-     * `[data-part='check']` block, and shaped like `Checkbox.css`, which expresses the same look.
+     * The leading checkbox of a checkbox row uses `[data-part=check]` and is shaped like
+     * `Checkbox.css`, which expresses the same look.
      *
-     * The colour is set explicitly rather than inherited, exactly as before: the row's own `color`
-     * changes on a `variant="select"` hover, and the box must not follow it. The third brightening
-     * arm was `&[data-checked]` on the old row; under `ListItem`'s vocabulary that is
-     * `[data-selected]`, which is the same fact.
+     * The colour is set explicitly rather than inherited: the row's own color changes on a
+     * `variant=select` hover, and the box must not follow it. The third brightening arm uses
+     * `[data-selected]`, the ListItem vocabulary for the checked state.
      */
     [data-type="list-item"] > [data-part="check"] {
         display: inline-flex;

@@ -73,8 +73,6 @@ export interface TreeProviderViewProps {
     multiSelect?: boolean;
 }
 
-export type TreeProviderViewModelProps = TreeProviderViewProps;
-
 export interface TreeProviderViewState {
     tree: TreeProviderNode | null;
     displayTree: TreeProviderNode | null;
@@ -111,7 +109,7 @@ export const defaultTreeProviderViewState: TreeProviderViewState = {
 
 export class TreeProviderViewModel extends TComponentModel<
     TreeProviderViewState,
-    TreeProviderViewModelProps
+    TreeProviderViewProps
 > {
     private readonly expansion = new ProviderTreeExpansion();
     // Props are assigned after construction (`TComponentModel.setPropsInternal`), so the store

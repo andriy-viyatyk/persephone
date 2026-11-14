@@ -5,18 +5,14 @@ import {
     createRestPropsState,
     type NativeHTMLAttributes,
     type RestPropsState,
+    splitProps,
+    type CompleteKeys,
 } from "../shared/dom-props";
 import { VanillaView } from "../shared/vanilla-view";
 import { applyToolbarAttributes } from "./toolbar-style";
 import "./Toolbar.css";
 
-// --- Types ---
-
-export interface ToolbarProps
-    extends Omit<
-        NativeHTMLAttributes<HTMLDivElement>,
-        "style" | "className" | "onKeyDown" | "onFocusCapture" | "children"
-    > {
+export interface ToolbarOwnProps {
     onKeyDown?: (event: KeyboardEvent) => void;
     onFocusCapture?: (event: FocusEvent) => void;
     /**
@@ -29,6 +25,17 @@ export interface ToolbarProps
     borderTop?: boolean;
     borderBottom?: boolean;
     disabled?: boolean;
+}
+
+
+
+// --- Types ---
+
+export interface ToolbarProps
+    extends Omit<
+        NativeHTMLAttributes<HTMLDivElement>,
+        "style" | "className" | "onKeyDown" | "onFocusCapture" | "children"
+    > , ToolbarOwnProps{
     "aria-label"?: string;
 }
 
@@ -48,6 +55,12 @@ function findFocusable(element: Element): HTMLElement | null {
     }
     return null;
 }
+
+const TOOLBAR_OWN_KEYS = ["onKeyDown", "onFocusCapture", "children", "orientation", "background", "borderTop", "borderBottom", "disabled"] as const satisfies readonly (keyof ToolbarOwnProps)[];
+const checkedOwnKeys: CompleteKeys<ToolbarOwnProps, typeof TOOLBAR_OWN_KEYS> = TOOLBAR_OWN_KEYS;
+const TOOLBAR_LEGACY_KEYS = [] as const satisfies readonly (keyof ToolbarProps)[];
+
+
 
 export class ToolbarView extends VanillaView<ToolbarProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -108,17 +121,7 @@ export class ToolbarView extends VanillaView<ToolbarProps> {
     }
 
     private applyConstructionRestProps(props: ToolbarProps): void {
-        const {
-            orientation: _orientation,
-            background: _background,
-            borderTop: _borderTop,
-            borderBottom: _borderBottom,
-            disabled: _disabled,
-            children: _children,
-            onKeyDown: _onKeyDown,
-            onFocusCapture: _onFocusCapture,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...TOOLBAR_LEGACY_KEYS] as const);
         // Toolbar's callbacks remain separate from its roving listeners.
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }

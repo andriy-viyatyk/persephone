@@ -5,6 +5,9 @@ import {
     createRestPropsState,
     type NativeHTMLAttributes,
     type RestPropsState,
+    setOrRemoveAttr,
+    splitProps,
+    type CompleteKeys,
 } from "../shared/dom-props";
 import { overlayRegistry } from "../shared/overlayRegistry";
 import { restoreFocus } from "../shared/focus-restore";
@@ -14,11 +17,7 @@ import { VanillaView } from "../shared/vanilla-view";
 
 export type DialogPosition = "center" | "right";
 
-export interface DialogProps
-    extends Omit<
-        NativeHTMLAttributes<HTMLDivElement>,
-        "style" | "className" | "children" | "onKeyDown" | "onClick"
-    > {
+export interface DialogOwnProps {
     /**
      * Escape shorthand. DialogView calls onKeyDown first. If onKeyDown calls preventDefault(),
      * onEscape is not called. If both hooks are supplied, onKeyDown runs first for every key;
@@ -40,6 +39,15 @@ export interface DialogProps
     children?: SlotContent;
 }
 
+
+
+export interface DialogProps
+    extends Omit<
+        NativeHTMLAttributes<HTMLDivElement>,
+        "style" | "className" | "children" | "onKeyDown" | "onClick"
+    > , DialogOwnProps{
+}
+
 const FOCUSABLE_SELECTOR = [
     "button:not([disabled])",
     "[href]",
@@ -56,15 +64,6 @@ function getFocusable(root: HTMLElement): HTMLElement[] {
     );
 }
 
-function setOptionalDataAttribute(
-    root: HTMLElement,
-    name: string,
-    value: string | undefined,
-): void {
-    if (value === undefined) root.removeAttribute(name);
-    else root.setAttribute(name, value);
-}
-
 function getNativeChildren(children: SlotContent): Node | undefined {
     if (children instanceof Node) return children;
     if (!Array.isArray(children) || !children.every((child) => child instanceof Node)) {
@@ -76,6 +75,12 @@ function getNativeChildren(children: SlotContent): Node | undefined {
     });
     return fragment;
 }
+
+const DIALOG_OWN_KEYS = ["onEscape", "onKeyDown", "onClick", "name", "position", "onBackdropClick", "autoFocus", "children"] as const satisfies readonly (keyof DialogOwnProps)[];
+const checkedOwnKeys: CompleteKeys<DialogOwnProps, typeof DIALOG_OWN_KEYS> = DIALOG_OWN_KEYS;
+const DIALOG_LEGACY_KEYS = [] as const satisfies readonly (keyof DialogProps)[];
+
+
 
 export class DialogView extends VanillaView<DialogProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -159,24 +164,14 @@ export class DialogView extends VanillaView<DialogProps> {
         // Preserve the legacy rest-wins behavior for general attributes. Position is
         // intentionally restored afterward because it selects the component geometry.
         this.root.dataset.type = "dialog";
-        setOptionalDataAttribute(this.root, "data-name", name);
+        setOrRemoveAttr(this.root, "data-name", name);
         this.root.dataset.position = position;
         this.root.tabIndex = -1;
         this.root.classList.add("dialog-shell");
     }
 
     private getRestProps(props: DialogProps): Record<string, unknown> {
-        const {
-            name: _name,
-            position: _position,
-            onBackdropClick: _onBackdropClick,
-            autoFocus: _autoFocus,
-            children: _children,
-            onEscape: _onEscape,
-            onKeyDown: _onKeyDown,
-            onClick: _onClick,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...DIALOG_LEGACY_KEYS] as const);
         return rest as Record<string, unknown>;
     }
 

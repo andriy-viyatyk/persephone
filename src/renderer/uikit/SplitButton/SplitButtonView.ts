@@ -12,6 +12,8 @@ import {
     createRestPropsState,
     type NativeHTMLAttributes,
     type RestPropsState,
+    splitProps,
+    type CompleteKeys,
 } from "../shared/dom-props";
 import { VanillaView } from "../shared/vanilla-view";
 import { uikitText } from "../shared/uikit-text";
@@ -19,10 +21,7 @@ import "./SplitButton.css";
 import "../Button/Button.css";
 import "../IconButton/IconButton.css";
 
-// --- Types ---
-
-export interface SplitButtonProps
-    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onClick" | "title" | "children"> {
+export interface SplitButtonOwnProps {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances in DOM inspector output. Never used for styling. */
     name?: string;
@@ -49,8 +48,22 @@ export interface SplitButtonProps
     children?: SlotContent;
 }
 
+
+
+// --- Types ---
+
+export interface SplitButtonProps
+    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onClick" | "title" | "children"> , SplitButtonOwnProps{
+}
+
 type PrimaryView = ButtonView | IconButtonView;
 type PrimaryProps = Omit<ButtonProps & IconButtonProps, "children"> & { children?: SlotContent };
+
+const SPLITBUTTON_OWN_KEYS = ["name", "icon", "title", "onClick", "items", "onOpenMenu", "disabled", "menuDisabled", "size", "menuTitle", "children"] as const satisfies readonly (keyof SplitButtonOwnProps)[];
+const checkedOwnKeys: CompleteKeys<SplitButtonOwnProps, typeof SPLITBUTTON_OWN_KEYS> = SPLITBUTTON_OWN_KEYS;
+const SPLITBUTTON_LEGACY_KEYS = [] as const satisfies readonly (keyof SplitButtonProps)[];
+
+
 
 export class SplitButtonView extends VanillaView<SplitButtonProps> {
     private separator: HTMLSpanElement | undefined;
@@ -218,19 +231,7 @@ export class SplitButtonView extends VanillaView<SplitButtonProps> {
     }
 
     private applyConstructionRestProps(props: SplitButtonProps): void {
-        const {
-            name: _name,
-            icon: _icon,
-            title: _title,
-            onClick: _onClick,
-            items: _items,
-            disabled: _disabled,
-            menuDisabled: _menuDisabled,
-            size: _size,
-            menuTitle: _menuTitle,
-            children: _children,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...SPLITBUTTON_LEGACY_KEYS] as const);
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 }

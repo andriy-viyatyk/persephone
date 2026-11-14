@@ -6,6 +6,7 @@ import { InputView } from "../../uikit/Input/InputView";
 import { SpacerView } from "../../uikit/Spacer/SpacerView";
 import { createIconElement } from "../../uikit/shared/slots";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
+import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { t } from "../../../shared/i18n/t";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import type { IconName } from "../../theme/icon-registry";
@@ -64,13 +65,13 @@ interface StateSelection {
 }
 
 /** Native shell for CategoryView and its caller-created list/tile item view. */
-export class CategoryViewImpl extends VanillaView<CategoryViewProps> {
+export class CategoryView extends VanillaView<CategoryViewProps> {
     private readonly driver: CategoryModelDriver;
     private readonly content = document.createElement("div");
-    private readonly footer = document.createElement("div");
+    private footer!: HTMLDivElement;
     private readonly footerCount = document.createElement("span");
     private readonly itemsHost = document.createElement("div");
-    private readonly tileScope = document.createElement("div");
+    private tileScope!: HTMLDivElement;
     private inputView: InputView | undefined;
     private clearButton: IconButtonView | undefined;
     private viewModeButton: IconButtonView | undefined;
@@ -169,25 +170,22 @@ export class CategoryViewImpl extends VanillaView<CategoryViewProps> {
         this.root.dataset.type = "category-view";
         this.root.tabIndex = -1;
 
-        this.content.className = "cv-content";
-        this.itemsHost.className = "cv-items-bridge";
-        this.itemsHost.style.display = "contents";
-        this.tileScope.className = "panel-root cv-tile-focus-scope";
-        this.tileScope.dataset.type = "category-tile-focus";
-        this.tileScope.dataset.name = "links-tiles-focus-scope";
-        this.tileScope.dataset.direction = "column";
+        this.tileScope = createPanelElement({ name: "links-tiles-focus-scope", direction: "column" });
+        this.tileScope.classList.add("cv-tile-focus-scope");
         this.tileScope.dataset.focusSelection = "";
         this.tileScope.tabIndex = 0;
 
-        this.footer.className = "panel-root category-footer";
-        this.footer.dataset.type = "category-footer";
-        this.footer.dataset.name = "category-footer";
-        this.footer.dataset.direction = "row";
-        this.footer.dataset.align = "center";
-        this.footer.dataset.gap = "sm";
-        this.footer.dataset.paddingX = "sm";
-        this.footer.dataset.background = "dark";
-        this.footer.dataset.borderTop = "";
+        this.content.className = "cv-content";
+        this.itemsHost.className = "cv-items-bridge";
+        this.itemsHost.style.display = "contents";
+        this.footer = createPanelElement({
+            name: "category-footer",
+            direction: "row",
+            align: "center",
+            background: "dark",
+            borderTop: true,
+        });
+        this.footer.classList.add("category-footer");
         this.footerCount.className = "cv-footer-count";
         this.footer.append(this.footerCount);
 

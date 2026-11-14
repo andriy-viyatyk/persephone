@@ -2,6 +2,7 @@ import { TComponentModel } from "../../core/state/model";
 import { isTraited, traited, Traited } from "../../core/traits/traits";
 import { LIST_ITEM_KEY, type IListBoxItem } from "../ListBox/types";
 import type { MultiListBoxProps } from "./MultiListBoxView";
+import { filterParallel, matchLabel } from "../shared/list-filter";
 
 export interface MultiListBoxState {
     searchText: string;
@@ -46,13 +47,6 @@ function resolveItems<T>(items: T[] | Traited<unknown[]>): ResolvedItems<T> {
         sources: items,
         extractValue: (value) => (value as unknown as IListBoxItem).value,
     };
-}
-
-function matches(item: IListBoxItem, query: string, mode: "contains" | "startsWith" | "off"): boolean {
-    if (mode === "off" || query === "") return true;
-    const label = typeof item.label === "string" ? item.label.toLowerCase() : "";
-    const normalizedQuery = query.toLowerCase();
-    return mode === "startsWith" ? label.startsWith(normalizedQuery) : label.includes(normalizedQuery);
 }
 
 /** Controlled multi-select list state, filtering and selection operations. */
@@ -101,15 +95,8 @@ export class MultiListBoxModel<T = IListBoxItem> extends TComponentModel<
     private deriveFiltered(searchText: string): { sources: T[]; items: IListBoxItem[] } {
         const { resolved, sources } = this.resolvedItems;
         const mode = this.props.filterMode ?? "contains";
-        const filteredSources: T[] = [];
-        const filteredItems: IListBoxItem[] = [];
-        for (let index = 0; index < resolved.length; index++) {
-            if (matches(resolved[index], searchText, mode)) {
-                filteredSources.push(sources[index]);
-                filteredItems.push(resolved[index]);
-            }
-        }
-        return { sources: filteredSources, items: filteredItems };
+        const filtered = filterParallel(resolved, sources, (item) => matchLabel(item, searchText, mode));
+        return { sources: filtered.sources, items: filtered.items };
     }
 
     private deriveListBoxItems(): T[] | Traited<unknown[]> {

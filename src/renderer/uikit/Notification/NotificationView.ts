@@ -1,5 +1,5 @@
-import { applyRestProps, clearRestListeners, createRestPropsState } from "../shared/dom-props";
-import type { NativeHTMLAttributes, RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, splitProps, type CompleteKeys, NativeHTMLAttributes, RestPropsState } from "../shared/dom-props";
+
 import { createIconElement } from "../shared/slots";
 import { applyTextAttributes, resolveTextAttributes } from "../Text/text-style";
 import { SubtreeSwap } from "../shared/subtree-swap";
@@ -15,8 +15,7 @@ import "../IconButton/IconButton.css";
 
 export type NotificationSeverity = "info" | "success" | "warning" | "error";
 
-export interface NotificationProps
-    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onClick"> {
+export interface NotificationOwnProps {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
     name?: string;
@@ -28,6 +27,12 @@ export interface NotificationProps
     onClick?: (event: MouseEvent) => void;
     /** Close-button click handler. When omitted, the close button is not rendered. */
     onClose?: () => void;
+}
+
+
+
+export interface NotificationProps
+    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onClick" | "type"> , NotificationOwnProps{
 }
 
 const SEVERITY_ICON: Record<NotificationSeverity, "info" | "success" | "warning" | "error"> = {
@@ -78,6 +83,12 @@ class CloseButtonView extends VanillaView<CloseButtonProps> {
         this.button.mount();
     }
 }
+
+const NOTIFICATION_OWN_KEYS = ["name", "type", "message", "onClick", "onClose"] as const satisfies readonly (keyof NotificationOwnProps)[];
+const checkedOwnKeys: CompleteKeys<NotificationOwnProps, typeof NOTIFICATION_OWN_KEYS> = NOTIFICATION_OWN_KEYS;
+const NOTIFICATION_LEGACY_KEYS = ["children"] as const satisfies readonly (keyof NotificationProps)[];
+
+
 
 export class NotificationView extends VanillaView<NotificationProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -143,15 +154,7 @@ export class NotificationView extends VanillaView<NotificationProps> {
     }
 
     private applyConstructionRestProps(props: NotificationProps): void {
-        const {
-            name: _name,
-            type: _type,
-            onClick: _onClick,
-            onClose: _onClose,
-            message: _message,
-            children: _children,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...NOTIFICATION_LEGACY_KEYS] as const);
         // Residual attributes are applied after the owned markers so callers can override them.
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }

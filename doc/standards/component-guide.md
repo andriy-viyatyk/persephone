@@ -66,6 +66,13 @@ or pass a changing `selectionSignal` alongside the stable predicate. `selectionS
 based invalidation input that repaints every row; it does not store or interpret the selection value.
 `MultiListBox` uses it to notify its `ListBox` when the externally held selected-key set changes.
 
+`TreeProps.repaintSignal` is the equivalent global invalidation input for Tree cell renderers that
+read external values through stable callbacks. A changed signal repaints every row; keep local
+inputs such as active index in Tree's local repaint group. `list-filter.ts` owns shared label
+matching and parallel item/source filtering. `list-navigation.ts` owns the shared key-to-index
+calculation, while each component explicitly supplies its clamp or wrap policy and retains its own
+open, commit, and cancellation behavior.
+
 When a parent composes a dynamic native child, `child()` establishes ownership only; it does not
 forward later model or prop changes. Retain children whose rendered output can change and update
 each of them from current state in the parent's `sync()`/`onUpdate()` path. Reviewing the update
@@ -73,11 +80,12 @@ calls for sibling asymmetry is a useful check; an unretained local child by itse
 of a defect when its props are static or it is held in another collection.
 
 When the child implementation belongs to another layer, pass a caller-supplied factory such as
-`(host, initialProps) => IOwnedView` instead of returning a raw `Node` or importing the concrete
-child across the layer boundary. The receiving view claims the returned handle with `child()`,
-mounts it, sends later typed projections through its `update()` method, and releases it with the
-same ownership path. `PopoverView`'s `contentView(host)` seam is the established example; Category
-item views use the same pattern while `CategoryEditor` retains the editor-specific imports.
+`(host, initialProps) => IMountableView` instead of returning a raw `Node` or importing the concrete
+child across the layer boundary. `IMountableView` combines the owned root/disposal contract with a
+mount method. The receiving view claims the returned handle with `child()`, mounts it, sends later
+typed projections through its `update()` method, and releases it with the same ownership path.
+`PopoverView` requires `contentView(host)` for its native content; Category item views use the same
+pattern while `CategoryEditor` retains the editor-specific imports.
 
 Views that expose a native `children` slot own that host. Pass the child nodes through the slot and
 retain stable nodes when the slot may be refilled; do not append directly into the other view's
@@ -123,7 +131,7 @@ For persistent context beside a `Tree` row's primary label, use the opt-in `getS
 callback. It receives the source item and row level and returns `SlotContent`; `undefined`, `null`,
 or `false` leaves no secondary host in the row. The default row renderer owns a separate host and
 attaches or detaches it as pooled rows are repointed, so callers returning DOM nodes must keep each
-node reusable and must not share one node between simultaneous rows. `TreeProviderViewImpl` adapts
+node reusable and must not share one node between simultaneous rows. `TreeProviderView` adapts
 this callback for provider items and caches reusable non-fragment nodes by item href.
 
 `Tree` supports consumer-owned expansion through `expanded` and `onExpandedChange`. Supplying

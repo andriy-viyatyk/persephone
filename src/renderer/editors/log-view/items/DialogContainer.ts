@@ -1,10 +1,10 @@
 import { applyPanelAttributes, createPanelElement, resolvePanelAttributes } from "../../../uikit/Panel/panel-style";
-import { VanillaView, type IOwnedView } from "../../../uikit/shared/vanilla-view";
+import { VanillaView, type IMountableView } from "../../../uikit/shared/vanilla-view";
 
 export interface DialogContainerViewProps {
     resolved: boolean;
     children: Node[];
-    ownedChildren?: IOwnedView[];
+    ownedChildren?: IMountableView[];
 }
 
 export class DialogContainerView extends VanillaView<DialogContainerViewProps> {
@@ -24,7 +24,7 @@ export class DialogContainerView extends VanillaView<DialogContainerViewProps> {
 
     protected onMount(): void {
         this.root.append(...this.props.children);
-        for (const child of this.props.ownedChildren ?? []) (child as IOwnedView & { mount(): HTMLElement }).mount();
+        for (const child of this.props.ownedChildren ?? []) child.mount();
         this.applyProps(this.props);
     }
 

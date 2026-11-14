@@ -1,5 +1,5 @@
-import { applyRestProps, clearRestListeners, createRestPropsState, setRestProp } from "../shared/dom-props";
-import type { NativeButtonHTMLAttributes, RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, setRestProp, splitProps, type CompleteKeys, NativeButtonHTMLAttributes, RestPropsState } from "../shared/dom-props";
+
 import { attachTooltip, type TooltipAttachment } from "../Tooltip/attach-tooltip";
 import { createIconElement, createIconPlaceholderElement, isIconName } from "../shared/slots";
 import { fillSlot } from "../shared/fill-slot";
@@ -7,7 +7,7 @@ import { VanillaView } from "../shared/vanilla-view";
 import type { IconRef } from "../shared/slots";
 import type { SlotContent } from "../shared/fill-slot";
 
-export interface ButtonProps extends Pick<NativeButtonHTMLAttributes<HTMLButtonElement>, "autoFocus" | "type" | "onClick" | "role" | "tabIndex" | "hidden" | `aria-${string}` | `data-${string}`> {
+export interface ButtonOwnProps {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
     name?: string;
@@ -21,6 +21,11 @@ export interface ButtonProps extends Pick<NativeButtonHTMLAttributes<HTMLButtonE
     block?: boolean;
     hideUntilParentHover?: boolean;
     children?: SlotContent;
+}
+
+
+
+export interface ButtonProps extends Pick<NativeButtonHTMLAttributes<HTMLButtonElement>, "autoFocus" | "type" | "onClick" | "role" | "tabIndex" | "hidden" | `aria-${string}` | `data-${string}`> , ButtonOwnProps{
 }
 
 export type ButtonViewProps = ButtonProps;
@@ -44,6 +49,12 @@ function appendSimpleChildren(parent: ParentNode, value: SlotContent): void {
     }
     parent.append(document.createTextNode(String(value)));
 }
+
+const BUTTON_OWN_KEYS = ["name", "title", "onKeyDown", "disabled", "variant", "size", "icon", "background", "block", "hideUntilParentHover", "children"] as const satisfies readonly (keyof ButtonOwnProps)[];
+const checkedOwnKeys: CompleteKeys<ButtonOwnProps, typeof BUTTON_OWN_KEYS> = BUTTON_OWN_KEYS;
+const BUTTON_LEGACY_KEYS = [] as const satisfies readonly (keyof ButtonProps)[];
+
+
 
 export class ButtonView extends VanillaView<ButtonViewProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -112,20 +123,7 @@ export class ButtonView extends VanillaView<ButtonViewProps> {
     }
 
     private applyConstructionRestProps(props: ButtonViewProps): void {
-        const {
-            name: _name,
-            variant: _variant,
-            size: _size,
-            background: _background,
-            block: _block,
-            icon: _icon,
-            disabled: _disabled,
-            title: _title,
-            onKeyDown: _onKeyDown,
-            hideUntilParentHover: _hideUntilParentHover,
-            children: _children,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...BUTTON_LEGACY_KEYS] as const);
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 

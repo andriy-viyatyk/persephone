@@ -1,4 +1,4 @@
-import { applyRestProps, clearRestListeners, createRestPropsState, cssLength } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, cssLength, setOrRemoveAttr, toggleAttr } from "../shared/dom-props";
 import type { RestPropsState } from "../shared/dom-props";
 import { createComponentModelDriver, type ComponentModelDriver } from "../../core/state/model";
 import { nextElementId } from "../shared/element-id";
@@ -98,7 +98,7 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
         this.pooledRows?.repaint({ all: true });
     }
 
-    /** Reproduce the provider's former remount scroll sequence after a search boundary. */
+    /** Reset scroll to the top and synchronize the active row after a search boundary. */
     public resetScrollTopAndSyncActive(): void {
         if (this.arm !== "real") return;
         void this.pooledRows?.gridModel?.scrollToRow(0);
@@ -210,8 +210,7 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
     /**
      * Bring the DOM to the arm `props` implies, then write every root attribute.
      *
-     * Every per-arm attribute is written in both directions. The prior implementation expressed the arms as three
-     * different elements, so an attribute it simply omitted in one arm has to be *removed* here —
+     * Every per-arm attribute is written in both directions. An attribute omitted in one arm has to be *removed* here —
      * and `root.tabIndex = -1` is not the same as no `tabindex` at all.
      */
     private applyArm(props: TreeProps<T>): void {
@@ -229,18 +228,18 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
         const root = this.root;
         const focusAware = (props.keyboardNav ?? false) || (props.focusSelection ?? false);
 
-        setOrRemove(root, "id", this.model.rootId);
-        setOrRemove(root, "data-name", props.name);
-        // Unlike ListBox, these two are on all three arms of the former tree renderer.
-        toggle(root, "data-keyboard-nav", props.keyboardNav ?? false);
-        toggle(root, "data-focus-selection", focusAware);
-        toggle(root, "data-loading", arm === "loading");
-        toggle(root, "data-empty", arm === "empty");
+        setOrRemoveAttr(root, "id", this.model.rootId);
+        setOrRemoveAttr(root, "data-name", props.name);
+        // Unlike ListBox, these two are on all three Tree arms.
+        toggleAttr(root, "data-keyboard-nav", props.keyboardNav ?? false);
+        toggleAttr(root, "data-focus-selection", focusAware);
+        toggleAttr(root, "data-loading", arm === "loading");
+        toggleAttr(root, "data-empty", arm === "empty");
 
         if (arm === "real") {
-            toggle(root, "data-multi-select", props.multiSelect ?? false);
+            toggleAttr(root, "data-multi-select", props.multiSelect ?? false);
             root.setAttribute("role", "tree");
-            setOrRemove(root, "aria-multiselectable", props.multiSelect ? "true" : undefined);
+            setOrRemoveAttr(root, "aria-multiselectable", props.multiSelect ? "true" : undefined);
             root.tabIndex = focusAware ? 0 : -1;
             this.applyActiveDescendant(props);
         } else {
@@ -266,7 +265,7 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
             activeIndex != null && activeIndex >= 0 && activeIndex < rowCount
                 ? this.model.itemId(activeIndex)
                 : undefined;
-        setOrRemove(this.root, "aria-activedescendant", activeId);
+        setOrRemoveAttr(this.root, "aria-activedescendant", activeId);
     }
 
     private gridProps(props: TreeProps<T>) {
@@ -276,8 +275,7 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
             rowHeight: props.rowHeight ?? defaultRowHeight,
             overscanRow: 2,
             fitToWidth: true,
-            // `TreeProps.growToHeight` is a CSS height, so it may be a bare number; the engine's
-            // prop is a string, and the old style writer would have added the unit itself.
+            // `TreeProps.growToHeight` is a CSS height, so it may be a bare number; the engine's prop is a string.
             growToHeight: cssLength(props.growToHeight),
             whiteSpaceY: props.whiteSpaceY,
         };
@@ -311,10 +309,10 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
                 else view.update(this.itemProps(item, id, row) as never);
             },
             updateWrapper: (wrapper, row) => {
-                // The prior renderer omitted the attribute when dragging was disabled. Use the IDL property, not
+                // Use the IDL property, not
                 // `setAttribute`: `draggable` is an enumerated attribute whose only valid keywords are
                 // "true" and "false", and "" falls back to "auto", i.e. not draggable.
-                wrapper.draggable = this.model.isDndEnabled && this.model.canDragRow(row);
+                wrapper.draggable = this.model.dnd.isEnabled && this.model.dnd.canDragRow(row);
             },
             /**
              * The drag gates are inside the handlers because a pooled wrapper outlives the row that decided
@@ -327,26 +325,26 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
                 else if (type === "mouseenter") this.model.onItemMouseEnter(row);
                 else if (type === "contextmenu") this.model.onItemContextMenu(event as MouseEvent, row);
                 else if (type === "dragstart") {
-                    if (this.model.isDndEnabled && this.model.canDragRow(row)) {
-                        this.model.onDragStart(event as DragEvent, row);
+                    if (this.model.dnd.isEnabled && this.model.dnd.canDragRow(row)) {
+                        this.model.dnd.onDragStart(event as DragEvent, row);
                     }
                 } else if (type === "dragend") {
-                    if (this.model.isDndEnabled && this.model.canDragRow(row)) this.model.onDragEnd();
+                    if (this.model.dnd.isEnabled && this.model.dnd.canDragRow(row)) this.model.dnd.onDragEnd();
                 } else if (type === "dragenter") {
-                    if (this.model.isDndEnabled && this.model.canDropRow(row)) {
-                        this.model.onDragEnter(event as DragEvent, row);
+                    if (this.model.dnd.isEnabled && this.model.dnd.canDropRow(row)) {
+                        this.model.dnd.onDragEnter(event as DragEvent, row);
                     }
                 } else if (type === "dragover") {
-                    if (this.model.isDndEnabled && this.model.canDropRow(row)) {
-                        this.model.onDragOver(event as DragEvent, row);
+                    if (this.model.dnd.isEnabled && this.model.dnd.canDropRow(row)) {
+                        this.model.dnd.onDragOver(event as DragEvent, row);
                     }
                 } else if (type === "dragleave") {
-                    if (this.model.isDndEnabled && this.model.canDropRow(row)) {
-                        this.model.onDragLeave(event as DragEvent, row);
+                    if (this.model.dnd.isEnabled && this.model.dnd.canDropRow(row)) {
+                        this.model.dnd.onDragLeave(event as DragEvent, row);
                     }
                 } else if (type === "drop") {
-                    if (this.model.isDndEnabled && this.model.canDropRow(row)) {
-                        this.model.onDrop(event as DragEvent, row);
+                    if (this.model.dnd.isEnabled && this.model.dnd.canDropRow(row)) {
+                        this.model.dnd.onDrop(event as DragEvent, row);
                     }
                 }
             },
@@ -377,8 +375,8 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
             searchText: this.props.searchText,
             selected: this.model.isSelectedAt(index),
             active: index === this.props.activeIndex,
-            dragging: this.model.isDraggingAt(index),
-            dropActive: this.model.isDropTargetAt(index),
+            dragging: this.model.dnd.isDraggingAt(index),
+            dropActive: this.model.dnd.isDropTargetAt(index),
             disabled: row.item.disabled,
             tooltip: this.props.getTooltip?.(row.source, row.level),
             name: this.props.getName?.(row.source, row.level),
@@ -408,8 +406,7 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
 
     /**
      * The engine queues the request itself when it has no usable size yet and flushes it on its
-     * first real measurement, which is what the previous `setTimeout(0)` was approximating
-     * without being able to test the actual condition.
+     * first real measurement.
      *
      * `afterPaint` is set when the row set changed in the same update: `scrollTop` clamps to the
      * scrollable extent, and the extent is written inside the *next* paint, so scrolling now would
@@ -424,14 +421,4 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
 
     // -----------------------------------------------------------------------
 
-}
-
-function setOrRemove(root: HTMLElement, attribute: string, value: string | undefined): void {
-    if (value === undefined) root.removeAttribute(attribute);
-    else root.setAttribute(attribute, value);
-}
-
-function toggle(root: HTMLElement, attribute: string, on: boolean): void {
-    if (on) root.setAttribute(attribute, "");
-    else root.removeAttribute(attribute);
 }

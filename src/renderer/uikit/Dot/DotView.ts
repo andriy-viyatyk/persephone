@@ -1,5 +1,5 @@
-import { applyRestProps, clearRestListeners, createRestPropsState } from "../shared/dom-props";
-import type { NativeHTMLAttributes, RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, splitProps, type CompleteKeys, NativeHTMLAttributes, RestPropsState } from "../shared/dom-props";
+
 import color from "../../theme/color";
 import { VanillaView } from "../shared/vanilla-view";
 import "./Dot.css";
@@ -12,17 +12,22 @@ export type DotColor =
     | "neutral"
     | "active";
 
-export interface DotProps
-    extends Omit<
-        NativeHTMLAttributes<HTMLSpanElement>,
-        "style" | "className" | "color" | "children"
-    > {
+export interface DotOwnProps {
     name?: string;
     size?: "xs" | "sm" | "md" | "lg" | number;
     color: DotColor | string;
     bordered?: boolean;
     selected?: boolean;
     hideUntilParentHover?: boolean;
+}
+
+
+
+export interface DotProps
+    extends Omit<
+        NativeHTMLAttributes<HTMLSpanElement>,
+        "style" | "className" | "color" | "children"
+    > , DotOwnProps{
 }
 
 const SIZE_MAP = { xs: 6, sm: 8, md: 12, lg: 18 } as const;
@@ -43,6 +48,12 @@ function resolveFill(c: DotColor | string): string {
         default: return c;
     }
 }
+
+const DOT_OWN_KEYS = ["name", "size", "color", "bordered", "selected", "hideUntilParentHover"] as const satisfies readonly (keyof DotOwnProps)[];
+const checkedOwnKeys: CompleteKeys<DotOwnProps, typeof DOT_OWN_KEYS> = DOT_OWN_KEYS;
+const DOT_LEGACY_KEYS = ["onClick"] as const satisfies readonly (keyof DotProps)[];
+
+
 
 export class DotView extends VanillaView<DotProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -92,16 +103,8 @@ export class DotView extends VanillaView<DotProps> {
     }
 
     private applyConstructionRestProps(props: DotProps): void {
-        const {
-            name: _name,
-            size: _size,
-            color: _color,
-            bordered: _bordered,
-            selected: _selected,
-            hideUntilParentHover: _hideUntilParentHover,
-            onClick,
-            ...rest
-        } = props;
+        const onClick = props.onClick;
+        const rest = splitProps(props, [...checkedOwnKeys, ...DOT_LEGACY_KEYS] as const);
         // Current callers recreate/remove dots instead of changing this callback. If a live dot
         // starts re-pushing `onClick`, this construction-only bridge silently keeps the stale one.
         applyRestProps(this.root, { ...rest, onClick }, this.restPropsState);

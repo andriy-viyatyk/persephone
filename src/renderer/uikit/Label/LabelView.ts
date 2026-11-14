@@ -4,6 +4,8 @@ import {
     createRestPropsState,
     type NativeLabelHTMLAttributes,
     type RestPropsState,
+    splitProps,
+    type CompleteKeys,
 } from "../shared/dom-props";
 import { fillSlot, type SlotContent } from "../shared/fill-slot";
 import { VanillaView } from "../shared/vanilla-view";
@@ -11,11 +13,7 @@ import { applyTextAttributes, resolveTextAttributes, type TextStyleProps } from 
 import "./Label.css";
 import "../Text/Text.css";
 
-// --- Types ---
-
-export interface LabelProps extends
-    Omit<NativeLabelHTMLAttributes<HTMLLabelElement>, "style" | "className" | "color" | "children">,
-    TextStyleProps {
+export interface LabelOwnProps extends TextStyleProps {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances in DOM inspector output. Never used for styling. */
     name?: string;
@@ -25,6 +23,21 @@ export interface LabelProps extends
     disabled?: boolean;
     children?: SlotContent;
 }
+
+
+
+// --- Types ---
+
+export interface LabelProps extends
+    Omit<NativeLabelHTMLAttributes<HTMLLabelElement>, "style" | "className" | "color" | "children">,
+    TextStyleProps , LabelOwnProps{
+}
+// These TextStyleProps are accepted for type compatibility; Label does not apply them.
+const LABEL_OWN_KEYS = ["name", "required", "disabled", "children", "variant", "color", "size", "italic", "bold", "nowrap", "preWrap", "truncate", "align", "hoverUnderline"] as const satisfies readonly (keyof LabelOwnProps)[];
+const checkedOwnKeys: CompleteKeys<LabelOwnProps, typeof LABEL_OWN_KEYS> = LABEL_OWN_KEYS;
+const LABEL_LEGACY_KEYS = [] as const satisfies readonly (keyof LabelProps)[];
+
+
 
 export class LabelView extends VanillaView<LabelProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -67,9 +80,6 @@ export class LabelView extends VanillaView<LabelProps> {
             required: _required,
             disabled,
             children: _children,
-            // These four fields intentionally remain in the residual props. The
-            // The previous Label implementation forwarded them to <label> without applying
-            // them to its nested Text; Epic F owns their eventual cleanup.
             ..._rest
         } = props;
 
@@ -81,19 +91,7 @@ export class LabelView extends VanillaView<LabelProps> {
     }
 
     private applyConstructionRestProps(props: LabelProps): void {
-        const {
-            name: _name,
-            variant: _variant,
-            color: _color,
-            size: _size,
-            italic: _italic,
-            bold: _bold,
-            nowrap: _nowrap,
-            required: _required,
-            disabled: _disabled,
-            children: _children,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...LABEL_LEGACY_KEYS] as const);
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 

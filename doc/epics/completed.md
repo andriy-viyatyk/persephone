@@ -1,3 +1,32 @@
+## EPIC-172 — Refactoring Phase 6.7 part 4: shared list filter and navigation, tree-provider view cleanups, DOM-prop helpers
+
+Completed 2026-11-14. Roadmap Phase 6.7 part 4 (UIK-6, UIK-9, UIK-10, UIK-11) plus the EPIC-171 tree-repaint
+follow-up: `resolveTraitedOne`/`resolveTraitAccessor` in `core/traits/traits.ts` replace three `runAccessor` and three
+single-value copies; `uikit/shared/list-filter.ts` (`matchLabel`, `filterParallel`) serves Select, Autocomplete and
+MultiListBox; `uikit/shared/list-navigation.ts` (`nextActiveIndex`) serves ListBox, Tree, Select, Autocomplete,
+PathInput, Menu, RadioGroup and SegmentedControl, each stating clamp or wrap explicitly (D9). No `ComboboxPopoverState`
+(the three models share two assignments). The tree-provider views build their panels with Panel/Text and are renamed
+`TreeProviderView`/`CategoryView` (barrel and identity aliases gone); `IMountableView`, a required Popover
+`contentView`, `TreeView` on `model.dnd.*`, and the De-React archaeology comments rewritten to current invariants.
+`dom-props.ts` owns `setOrRemoveAttr`, `toggleAttr`, one `cssLength` and `splitProps` with a compile-time
+`CompleteKeys` check, replacing the per-view copies and rest-prop blacklists in 32 UIKit views. `Tree` gains
+`repaintSignal`, and the Editors, Settings, GitRefs and About trees store their callbacks. Recorded changes: an open
+Autocomplete with no active row moves to the first row on ArrowUp/PageUp; an open empty Select no longer writes an
+active index; Label and SplitButton no longer leak own props to the DOM; the Category footer and tree-provider panels
+carry Panel's `data-type`; hover no longer repaints every row of those four trees. DOM and keyboard flows otherwise
+unchanged (before/after fingerprints of Explorer, Settings tree and panels, Category view, MCP log page and a Select
+popup, plus Select and tree keyboard walks, in a separate test window). Plans by Codex, reviewed against the roadmap
+guardrails; Codex Luna implemented. Epic document: [EPIC-172](EPIC-172.md).
+
+- [x] **List filter (US-1973).** `resolveTraitedOne`, `list-filter.ts`.
+- [x] **List navigation (US-1974).** `list-navigation.ts`, explicit clamp/wrap.
+- [x] **Combobox popover state (US-1975).** Decided against a helper; no code change.
+- [x] **Tree-provider view cleanup (US-1976).** Panel/Text, renames, `IMountableView`, Popover, Tree DnD, comments.
+- [x] **DOM-prop helpers (US-1977).** `splitProps` + `CompleteKeys`, shared attribute helpers.
+- [x] **Tree repaint signal (US-1978).** `repaintSignal`, stored callbacks in four app trees.
+- [x] **Epic review.** `/review` no findings; `/document` key files, folder structure, secondary views, component
+  guide, model-view pattern, coding style, UIKit authoring guide; `/userdoc` no change; `i18n:check` complete.
+
 ## EPIC-171 — Refactoring Phase 6.7 part 3: repaint tracker and pooled-row host
 
 Completed 2026-11-14. Roadmap Phase 6.7 part 3 (UIK-5, UIK-4): `uikit/shared/repaint-tracker.ts` declares each

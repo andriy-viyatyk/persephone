@@ -9,7 +9,7 @@ import {
     createSideBarPanelHeader,
     type SideBarPanelHeaderHandle,
 } from "../../ui/secondary-views/SideBarPanelHeaderView";
-import { TreeProviderViewImpl } from "../../components/tree-provider/TreeProviderViewImpl";
+import { TreeProviderView } from "../../components/tree-provider/TreeProviderView";
 import type {
     TreeProviderViewModel,
     TreeProviderViewSavedState,
@@ -34,7 +34,7 @@ import { t } from "../../../shared/i18n/t";
 export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProps<ExplorerEditor>> {
     private model: ExplorerEditor;
     private provider: FileTreeProvider | undefined;
-    private treeProviderView: TreeProviderViewImpl | undefined;
+    private treeProviderView: TreeProviderView | undefined;
     private treeProviderModel: TreeProviderViewModel | undefined;
     private header: SideBarPanelHeaderHandle | undefined;
     private headerActions: HTMLDivElement | undefined;
@@ -232,7 +232,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         this.provider = provider ?? undefined;
 
         if (provider) {
-            const tree = this.child(new TreeProviderViewImpl(this.treeProps(
+            const tree = this.child(new TreeProviderView(this.treeProps(
                 provider,
                 this.model.selectionState.get().selectedHref ?? undefined,
             )));

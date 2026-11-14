@@ -5,6 +5,7 @@ import { VanillaView } from "../shared/vanilla-view";
 import { ButtonView, type ButtonViewProps } from "../Button/ButtonView";
 import type { SlotContent } from "../shared/fill-slot";
 import type { IconRef } from "../shared/slots";
+import { nextActiveIndex } from "../shared/list-navigation";
 
 export interface ISegment {
     value: string;
@@ -117,16 +118,16 @@ export class SegmentedControlView extends VanillaView<SegmentedControlViewProps>
 
     private moveFocus(currentIndex: number, direction: 1 | -1): void {
         const count = this.segments.length;
-        if (count === 0) return;
-        let next = currentIndex;
-        for (let step = 0; step < count; step++) {
-            next = (next + direction + count) % count;
-            if (!this.segments[next].disabled) {
-                this.focusButton(next);
-                this.props.onChange(this.segments[next].value);
-                return;
-            }
-        }
+        const next = nextActiveIndex(direction === 1 ? "ArrowDown" : "ArrowUp", currentIndex, count, {
+            wrap: true,
+            page: 1,
+            pageStart: "before-first",
+            pageFallback: "none",
+            isEnabled: (index) => !this.segments[index].disabled,
+        });
+        if (next === undefined) return;
+        this.focusButton(next);
+        this.props.onChange(this.segments[next].value);
     }
 
     private handleKey(event: KeyboardEvent, index: number): void {
@@ -146,8 +147,14 @@ export class SegmentedControlView extends VanillaView<SegmentedControlViewProps>
             case "Home": {
                 event.preventDefault();
                 event.stopPropagation();
-                const first = this.segments.findIndex((segment) => !segment.disabled);
-                if (first >= 0) {
+                const first = nextActiveIndex("Home", index, this.segments.length, {
+                    wrap: true,
+                    page: 1,
+                    pageStart: "before-first",
+                    pageFallback: "none",
+                    isEnabled: (segmentIndex) => !this.segments[segmentIndex].disabled,
+                });
+                if (first !== undefined) {
                     this.focusButton(first);
                     this.props.onChange(this.segments[first].value);
                 }
@@ -156,12 +163,16 @@ export class SegmentedControlView extends VanillaView<SegmentedControlViewProps>
             case "End": {
                 event.preventDefault();
                 event.stopPropagation();
-                for (let index = this.segments.length - 1; index >= 0; index--) {
-                    if (!this.segments[index].disabled) {
-                        this.focusButton(index);
-                        this.props.onChange(this.segments[index].value);
-                        break;
-                    }
+                const last = nextActiveIndex("End", index, this.segments.length, {
+                    wrap: true,
+                    page: 1,
+                    pageStart: "before-first",
+                    pageFallback: "none",
+                    isEnabled: (segmentIndex) => !this.segments[segmentIndex].disabled,
+                });
+                if (last !== undefined) {
+                    this.focusButton(last);
+                    this.props.onChange(this.segments[last].value);
                 }
                 break;
             }

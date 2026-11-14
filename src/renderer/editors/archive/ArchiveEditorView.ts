@@ -7,7 +7,7 @@ import {
 } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { TreeProviderViewImpl } from "../../components/tree-provider/TreeProviderViewImpl";
+import { TreeProviderView } from "../../components/tree-provider/TreeProviderView";
 import type { TreeProviderViewModel } from "../../components/tree-provider/TreeProviderViewModel";
 import { PageToolbarView, type PageToolbarViewProps } from "../base/PageToolbarView";
 import { EditorStatusBarView } from "../base/EditorStatusBarView";
@@ -24,7 +24,7 @@ export class ArchiveEditorView extends VanillaView<{ model: ArchiveEditor }> {
     private pageToolbar!: PageToolbarView;
     private collapseButton!: IconButtonView;
     private refreshButton!: IconButtonView;
-    private tree!: TreeProviderViewImpl;
+    private tree!: TreeProviderView;
     private buttonHost!: HTMLSpanElement;
     private treeModel: TreeProviderViewModel | null = null;
 
@@ -62,7 +62,7 @@ export class ArchiveEditorView extends VanillaView<{ model: ArchiveEditor }> {
         this.buttonHost.append(this.collapseButton.root, this.refreshButton.root);
 
         this.pageToolbar = this.child(new PageToolbarView(this.pageToolbarProps()));
-        this.tree = this.child(new TreeProviderViewImpl(this.treeProps(provider)));
+        this.tree = this.child(new TreeProviderView(this.treeProps(provider)));
         const statusBar = this.child(new EditorStatusBarView({ name: "archive-status-bar", model: this.model }));
         this.root.append(this.pageToolbar.root, this.tree.root, statusBar.root);
 

@@ -16,8 +16,8 @@
  * constantly.
  *
  *  • **Callbacks** are bound once, at `create()`, as stable trampolines that read `this.props`
- *    live. Their identity is never re-pushed — an inline arrow in JSX changes identity on every
- *    render and would produce a `setOptions` call per render for nothing. Handler *behaviour*
+ *    live. Their identity is never re-pushed — a new callback on every render changes identity and
+ *    would produce a `setOptions` call for nothing. Handler *behaviour*
  *    still updates, because the trampoline reads the current props when it fires. Only a change
  *    in **presence** is pushed, and only because presence is meaningful to av-grid: an
  *    `onGridContextMenu` that exists replaces the built-in menu, a `getRowKey` that exists

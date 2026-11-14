@@ -1,5 +1,5 @@
 import { TComponentModel } from "../../core/state/model";
-import { isTraited, Traited, TraitType } from "../../core/traits/traits";
+import { isTraited, resolveTraitAccessor, resolveTraitedOne, TraitType } from "../../core/traits/traits";
 import type { RenderGridModel, RerenderInfo, RowAlign } from "../DataGrid";
 import { ContextMenuEvent } from "../../core/events/context-menu";
 import {
@@ -44,12 +44,6 @@ export interface TreeStateChange {
 // Helpers
 // =============================================================================
 
-function runAccessor<R>(source: unknown, accessor: TraitType<R>): R {
-    return Object.fromEntries(
-        (Object.keys(accessor) as (keyof TraitType<R>)[]).map((k) => [k, accessor[k](source)]),
-    ) as R;
-}
-
 /**
  * These groups cover inputs that can change emitted row content. Geometry such as `rowHeight`
  * belongs to the grid, while event-time callbacks such as `getContextMenu` do not repaint cells.
@@ -62,7 +56,7 @@ const treeRowRepaintKeys = [
 const treeGlobalRepaintKeys = [
     "searchText", "indentSize", "isSelected", "getTooltip", "getName", "getSecondaryLabel",
     "getIconElement", "getHideChevron", "getTrailingVisibility", "renderTrailing", "trailingElement",
-    "id", "traitTypeId", "getDragData", "acceptsDrop", "onDragStartOverride",
+    "id", "traitTypeId", "getDragData", "acceptsDrop", "onDragStartOverride", "repaintSignal",
 ] as const satisfies readonly (keyof TreeProps<unknown>)[];
 
 const treeLocalRepaintKeys = ["value", "activeIndex"] as const satisfies readonly (keyof TreeProps<unknown>)[];
@@ -144,7 +138,7 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
 
     // --- ids ---
     private _elementId = "";
-    /** Fed by the view from `nextElementId("tree")` — replaces the former generated-ID source. */
+    /** Fed by the view from `nextElementId("tree")`. */
     setElementId = (elementId: string) => {
         this._elementId = elementId;
     };
@@ -166,30 +160,10 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
         source: T,
         accessor: TraitType<ITreeItem> | undefined,
     ): { item: ITreeItem; children: T[] | undefined } {
-        const item = accessor
-            ? runAccessor<ITreeItem>(source, accessor)
-            : (source as unknown as ITreeItem);
+        const item = resolveTraitAccessor<ITreeItem>(source, accessor);
         const children =
             this.props.getChildren?.(source) ?? (item.items as unknown as T[] | undefined);
         return { item, children };
-    }
-
-    /**
-     * Resolve a single Traited<T> | T value (from the `value` prop). Selects the trait
-     * accessor when the value is wrapped, falls back to the items-prop accessor when
-     * passed plain.
-     */
-    private resolveSelectionValue(v: T | Traited<T>): ITreeItem {
-        if (isTraited<T>(v)) {
-            const acc = v.traits.get(TREE_ITEM_KEY);
-            return acc
-                ? runAccessor<ITreeItem>(v.target, acc)
-                : (v.target as unknown as ITreeItem);
-        }
-        const itemsAccessor = this.itemsAccessor;
-        return itemsAccessor
-            ? runAccessor<ITreeItem>(v, itemsAccessor)
-            : (v as unknown as ITreeItem);
     }
 
     /** Trait accessor for the items prop, or undefined when items is a plain array. */
@@ -219,9 +193,12 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
 
         if (!previousProps) {
             this.deriveRows(this.state.get().expanded);
+            // Resolve a single Traited<T> | T value (from the `value` prop). Selects the trait
+            // accessor when the value is wrapped, falls back to the items-prop accessor when
+            // passed plain.
             this.selectedKey = nextProps.value == null
                 ? null
-                : this.resolveSelectionValue(nextProps.value).value;
+                : resolveTraitedOne<ITreeItem>(nextProps.value, TREE_ITEM_KEY, this.itemsAccessor).value;
             this.propUpdateResult = undefined;
             return;
         }
@@ -239,7 +216,7 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
         if (selectionInputsChanged) {
             this.selectedKey = nextProps.value == null
                 ? null
-                : this.resolveSelectionValue(nextProps.value).value;
+                : resolveTraitedOne<ITreeItem>(nextProps.value, TREE_ITEM_KEY, this.itemsAccessor).value;
         }
 
         const selectedKeyChanged = !Object.is(previousSelectedKey, this.selectedKey);
@@ -530,23 +507,6 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
 
     onKeyDown = this.keyboard.onKeyDown;
 
-    // --- drag-and-drop compatibility delegates ---
-
-    get isDndEnabled(): boolean {
-        return this.dnd.isEnabled;
-    }
-
-    canDragRow = this.dnd.canDragRow;
-    canDropRow = this.dnd.canDropRow;
-    isDraggingAt = this.dnd.isDraggingAt;
-    isDropTargetAt = this.dnd.isDropTargetAt;
-    onDragStart = this.dnd.onDragStart;
-    onDragEnd = this.dnd.onDragEnd;
-    onDragEnter = this.dnd.onDragEnter;
-    onDragOver = this.dnd.onDragOver;
-    onDragLeave = this.dnd.onDragLeave;
-    onDrop = this.dnd.onDrop;
-
     // --- imperative API ---
 
     toggleAt = (rowIndex: number) => {
@@ -747,7 +707,7 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
     /**
      * Internal: ensure all ancestors in `chain` are expanded, then scroll to `value`.
      * Used by both fast paths in revealItem; collapses to one queued state update for
-     * the "all already loaded" case, mirroring V1. In controlled mode the owner applies
+     * the "all already loaded" case. In controlled mode the owner applies
      * the ancestor proposal synchronously before this method waits for row derivation.
      */
     private expandAncestorsThenScroll = async (
@@ -798,7 +758,7 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
      * Prop changes are classified synchronously in `setProps()` and consumed by the host view.
      * State changes flow through `mutate()`; active-row scrolling is synchronized by the host
      * after the same prop pump, with the unmeasured case handled by the engine pending-scroll
-     * register rather than a `setTimeout(0)` that could not test the actual condition.
+     * register.
      */
     dispose() {
         this.dnd.dispose();

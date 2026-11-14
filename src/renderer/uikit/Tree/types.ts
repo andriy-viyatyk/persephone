@@ -39,19 +39,7 @@ export interface ITreeItem {
 
 export const TREE_ITEM_KEY = new TraitKey<TraitType<ITreeItem>>("tree-item");
 
-// =============================================================================
-// Imperative ref
-// =============================================================================
-
-// =============================================================================
-// Props
-// =============================================================================
-
-export interface TreeProps<T = ITreeItem>
-    extends Omit<
-        NativeHTMLAttributes<HTMLDivElement>,
-        "style" | "className" | "onChange" | "onContextMenu"
-    > {
+export interface TreeOwnProps<T = ITreeItem> {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
      *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
     name?: string;
@@ -66,7 +54,6 @@ export interface TreeProps<T = ITreeItem>
      * type the accessor against their own shape.
      */
     getChildren?: (source: T) => T[] | undefined;
-
     /**
      * Currently-selected item. `null` when nothing is selected. May reference an item not
      * present in the tree — the selection styling simply doesn't render.
@@ -92,7 +79,6 @@ export interface TreeProps<T = ITreeItem>
      * gesture starts from. Keep it cheap (a `Set` lookup); the Tree stores no selection of its own.
      */
     isSelected?: (item: T, level: number) => boolean;
-
     /**
      * Enables multi-selection gestures: Ctrl+click toggles a row, Shift+click extends a range from
      * the anchor over the flat visible order, a plain click resets the selection to the clicked row.
@@ -112,7 +98,6 @@ export interface TreeProps<T = ITreeItem>
      * this — building a set must not navigate once per row.
      */
     onSelectionChange?: (sources: T[], values: (string | number)[]) => void;
-
     /** Index of the highlighted row (across the flat visible list). Controlled. */
     activeIndex?: number | null;
     /**
@@ -120,7 +105,6 @@ export interface TreeProps<T = ITreeItem>
      * leaving the tree (in which case `null` is emitted to clear the highlight).
      */
     onActiveChange?: (index: number | null) => void;
-
     /** Plain-string label highlight passed to the default `<TreeItem>`. */
     searchText?: string;
     /**
@@ -146,6 +130,11 @@ export interface TreeProps<T = ITreeItem>
     /** Optional direct DOM trailing content for the default row renderer. */
     trailingElement?: (item: T, level: number) => Node | undefined;
     /**
+     * External call-time data read by stable cell callbacks. A changed value or identity
+     * repaints every cell; unchanged values do not trigger a global repaint.
+     */
+    repaintSignal?: unknown;
+    /**
      * Per-row context-menu callback. It is bound on the row root, before the Tree's bubbling
      * container handler, so callers can stamp the native event before background handling runs.
      */
@@ -165,7 +154,6 @@ export interface TreeProps<T = ITreeItem>
      * the tree (no row hit, OR the row's `getContextMenu` returned nothing).
      */
     onContextMenu?: (event: MouseEvent) => void;
-
     /**
      * Initial expansion state when the component mounts. Keys are source `value`s; values are
      * booleans. Items not present in the map use `defaultExpandAll`. After mount the model
@@ -181,17 +169,14 @@ export interface TreeProps<T = ITreeItem>
     onExpandedChange?: (expanded: Readonly<Record<string | number, boolean>>) => void;
     /** Fires whenever a node's expansion changes. Use to persist across remounts. */
     onExpandChange?: (value: string | number, expanded: boolean) => void;
-
     /** Pixel height of each row. Default: 22. */
     rowHeight?: number;
     /** When set, the tree grows to fit content up to this max height. */
     growToHeight?: NativeCSSProperties["height"];
     /** Top/bottom whitespace padding inside the scroll container. */
     whiteSpaceY?: number;
-
     /** Indentation step in pixels per `level`. Default: 16. */
     indentSize?: number;
-
     /** Replaces row rendering with a centered spinner. */
     loading?: boolean;
     /** Renders when the tree resolves to zero rows and not `loading`. */
@@ -225,7 +210,6 @@ export interface TreeProps<T = ITreeItem>
      * rather than accumulate the per-node callbacks.
      */
     collapseDescendants?: boolean;
-
     // ── Externally loaded children ───────────────────────────────────
 
     /**
@@ -238,7 +222,6 @@ export interface TreeProps<T = ITreeItem>
      * walk.
      */
     getHasChildren?: (item: T) => boolean;
-
     // ── Drag-and-drop ────────────────────────────────────────────────
 
     /**
@@ -255,8 +238,7 @@ export interface TreeProps<T = ITreeItem>
     getDragData?: (source: T, level: number) => unknown | null;
     /**
      * When true, rows accept trait drops. Section and disabled rows are never drop
-     * targets, regardless of this prop. Container-level drop (no row hit) is out of
-     * scope for V1 of DnD.
+     * targets, regardless of this prop. Container-level drop (no row hit) is unsupported.
      */
     acceptsDrop?: boolean;
     /**
@@ -293,6 +275,23 @@ export interface TreeProps<T = ITreeItem>
      * A row is only draggable when this hook OR (`traitTypeId` + `getDragData`) is set.
      */
     onDragStartOverride?: (source: T, level: number, e: DragEvent) => boolean;
+}
+
+
+
+// =============================================================================
+// Imperative ref
+// =============================================================================
+
+// =============================================================================
+// Props
+// =============================================================================
+
+export interface TreeProps<T = ITreeItem>
+    extends Omit<
+        NativeHTMLAttributes<HTMLDivElement>,
+        "style" | "className" | "onChange" | "onContextMenu"
+    > , TreeOwnProps<T>{
 }
 
 // =============================================================================

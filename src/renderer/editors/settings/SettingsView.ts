@@ -385,14 +385,20 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
             name: "settings-content-tree",
             items: this.layout.contentItems,
             getChildren: getSettingsContentChildren,
-            isSelected: (item: SettingsContentItem): boolean => item.value === this.layout.selectedContentValue,
+            isSelected: this.isContentSelected,
+            repaintSignal: this.layout.selectedContentValue,
             onChange: this.handleContentChange,
             defaultExpandAll: true,
             keyboardNav: true,
-            getTooltip: (item: SettingsContentItem) => item.label,
+            getTooltip: this.getContentTooltip,
             getName: getSettingsContentName,
         };
     }
+
+    private readonly isContentSelected = (item: SettingsContentItem): boolean =>
+        item.value === this.layout.selectedContentValue;
+
+    private readonly getContentTooltip = (item: SettingsContentItem): string => item.label;
 
     private readonly handleContentChange = (item: SettingsContentItem): void => {
         const target = this.resolveNavigationTarget(item);

@@ -6,6 +6,7 @@ import { createIconElement, createIconPlaceholderElement, isIconName } from "../
 import { VanillaView } from "../shared/vanilla-view";
 import type { IRadio, RadioGroupProps } from "./RadioGroup";
 import { RADIO_KEY } from "./RadioGroup";
+import { nextActiveIndex } from "../shared/list-navigation";
 
 interface RadioItemState {
     item: IRadio;
@@ -167,16 +168,16 @@ export class RadioGroupView extends VanillaView<RadioGroupProps> {
 
     private moveFocus(currentIndex: number, direction: 1 | -1): void {
         const count = this.radios.length;
-        if (count === 0) return;
-        let next = currentIndex;
-        for (let step = 0; step < count; step++) {
-            next = (next + direction + count) % count;
-            if (!this.radios[next].disabled) {
-                this.focusItem(next);
-                this.props.onChange(this.radios[next].value);
-                return;
-            }
-        }
+        const next = nextActiveIndex(direction === 1 ? "ArrowDown" : "ArrowUp", currentIndex, count, {
+            wrap: true,
+            page: 1,
+            pageStart: "before-first",
+            pageFallback: "none",
+            isEnabled: (index) => !this.radios[index].disabled,
+        });
+        if (next === undefined) return;
+        this.focusItem(next);
+        this.props.onChange(this.radios[next].value);
     }
 
     private readonly handleItemClick = (event: Event): void => {
@@ -201,15 +202,26 @@ export class RadioGroupView extends VanillaView<RadioGroupProps> {
                 event.preventDefault(); event.stopPropagation(); this.moveFocus(index, -1); break;
             case "Home": {
                 event.preventDefault(); event.stopPropagation();
-                const first = this.radios.findIndex((radio) => !radio.disabled);
-                if (first >= 0) { this.focusItem(first); this.props.onChange(this.radios[first].value); }
+                const first = nextActiveIndex("Home", index, this.radios.length, {
+                    wrap: true,
+                    page: 1,
+                    pageStart: "before-first",
+                    pageFallback: "none",
+                    isEnabled: (radioIndex) => !this.radios[radioIndex].disabled,
+                });
+                if (first !== undefined) { this.focusItem(first); this.props.onChange(this.radios[first].value); }
                 break;
             }
             case "End": {
                 event.preventDefault(); event.stopPropagation();
-                for (let i = this.radios.length - 1; i >= 0; i--) {
-                    if (!this.radios[i].disabled) { this.focusItem(i); this.props.onChange(this.radios[i].value); break; }
-                }
+                const last = nextActiveIndex("End", index, this.radios.length, {
+                    wrap: true,
+                    page: 1,
+                    pageStart: "before-first",
+                    pageFallback: "none",
+                    isEnabled: (radioIndex) => !this.radios[radioIndex].disabled,
+                });
+                if (last !== undefined) { this.focusItem(last); this.props.onChange(this.radios[last].value); }
                 break;
             }
             case " ":

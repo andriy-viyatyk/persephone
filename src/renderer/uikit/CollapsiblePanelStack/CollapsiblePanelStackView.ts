@@ -7,6 +7,9 @@ import {
     createRestPropsState,
     type NativeHTMLAttributes,
     type RestPropsState,
+    cssLength,
+    splitProps,
+    type CompleteKeys,
 } from "../shared/dom-props";
 import type { IconName } from "../../theme/icon-registry";
 import type { SlotContent } from "../shared/fill-slot";
@@ -26,8 +29,7 @@ export interface CollapsiblePanelProps
     alwaysRenderContent?: boolean;
 }
 
-export interface CollapsiblePanelStackProps
-    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className"> {
+export interface CollapsiblePanelStackOwnProps {
     name?: string;
     activePanel: string;
     setActivePanel: (panelId: string) => void;
@@ -40,6 +42,13 @@ export interface CollapsiblePanelStackProps
     maxHeight?: number | string;
 }
 
+
+
+export interface CollapsiblePanelStackProps
+    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "children"> , CollapsiblePanelStackOwnProps{
+}
+
+type StackViewOwnProps = Omit<CollapsiblePanelStackOwnProps, "children"> & { panels: CollapsiblePanelProps[]; };
 type StackViewProps = Omit<CollapsiblePanelStackProps, "children"> & {
     panels: CollapsiblePanelProps[];
 };
@@ -56,9 +65,11 @@ interface PanelRecord {
     contentCleanup?: () => void;
 }
 
-function cssLength(value: number | string): string {
-    return typeof value === "number" ? `${value}px` : value;
-}
+const COLLAPSIBLEPANELSTACK_OWN_KEYS = ["name", "activePanel", "setActivePanel", "width", "minWidth", "maxWidth", "height", "minHeight", "maxHeight", "panels"] as const satisfies readonly (keyof StackViewOwnProps)[];
+const checkedOwnKeys: CompleteKeys<StackViewOwnProps, typeof COLLAPSIBLEPANELSTACK_OWN_KEYS> = COLLAPSIBLEPANELSTACK_OWN_KEYS;
+const COLLAPSIBLEPANELSTACK_LEGACY_KEYS = [] as const satisfies readonly (keyof StackViewProps)[];
+
+
 
 export class CollapsiblePanelStackView extends VanillaView<StackViewProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -127,19 +138,7 @@ export class CollapsiblePanelStackView extends VanillaView<StackViewProps> {
     }
 
     private applyConstructionRestProps(props: StackViewProps): void {
-        const {
-            name: _name,
-            activePanel: _activePanel,
-            setActivePanel: _setActivePanel,
-            panels: _panels,
-            width: _width,
-            minWidth: _minWidth,
-            maxWidth: _maxWidth,
-            height: _height,
-            minHeight: _minHeight,
-            maxHeight: _maxHeight,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...COLLAPSIBLEPANELSTACK_LEGACY_KEYS] as const);
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 

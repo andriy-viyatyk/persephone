@@ -1,7 +1,7 @@
 /*
  * Autocomplete's root does not receive the width props; they belong to the inner Input.
  * The header uses its own data-type selector because it lives in the popover portal, outside the
- * Autocomplete root. The former Panel class and data attributes have no current consumers.
+ * Autocomplete root.
  */
 @layer uikit {
     [data-type="autocomplete"] {

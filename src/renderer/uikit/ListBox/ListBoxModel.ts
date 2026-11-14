@@ -1,7 +1,8 @@
-import { isTraited, resolveTraited, Traited, TraitType } from "../../core/traits/traits";
+import { isTraited, resolveTraited, resolveTraitedOne } from "../../core/traits/traits";
 import type { RenderGridModel, RerenderInfo, RowAlign } from "../DataGrid";
 import { ContextMenuEvent } from "../../core/events/context-menu";
 import { createRepaintTracker } from "../shared/repaint-tracker";
+import { nextActiveIndex } from "../shared/list-navigation";
 import {
     IListBoxItem,
     LIST_ITEM_KEY,
@@ -39,12 +40,6 @@ const listBoxLocalRepaintKeys = ["activeIndex"] as const satisfies readonly (key
 interface ListBoxPropUpdateResult {
     readonly repaint: RerenderInfo | undefined;
     readonly contentChanged: boolean;
-}
-
-function runAccessor<R>(source: unknown, accessor: TraitType<R>): R {
-    return Object.fromEntries(
-        (Object.keys(accessor) as (keyof TraitType<R>)[]).map((k) => [k, accessor[k](source)]),
-    ) as R;
 }
 
 // =============================================================================
@@ -128,7 +123,7 @@ export class ListBoxModel<T = IListBoxItem> {
 
     // --- ids ---
     private _elementId = "";
-    /** Fed by the view from `nextElementId("lb")` — replaces the former generated-ID source. */
+    /** Fed by the view from `nextElementId("lb")`. */
     setElementId = (elementId: string) => {
         this._elementId = elementId;
     };
@@ -158,16 +153,7 @@ export class ListBoxModel<T = IListBoxItem> {
     }
 
     private resolveSelectedKey(value: ListBoxProps<T>["value"]): string | number | null {
-        return value == null ? null : this.resolveSingleValue(value).value;
-    }
-
-    private resolveSingleValue(v: T | Traited<T>): IListBoxItem {
-        if (isTraited<T>(v)) {
-            const acc = v.traits.get(LIST_ITEM_KEY);
-            if (acc) return runAccessor<IListBoxItem>(v.target, acc);
-            return v.target as unknown as IListBoxItem;
-        }
-        return v as unknown as IListBoxItem;
+        return value == null ? null : resolveTraitedOne<IListBoxItem>(value, LIST_ITEM_KEY).value;
     }
 
     // --- selection / interaction predicates ---
@@ -199,21 +185,6 @@ export class ListBoxModel<T = IListBoxItem> {
                 ? props.isSelected(rows.sources[index], index)
                 : selectedKey != null && item.value === selectedKey;
             if (selected) return index;
-        }
-        return -1;
-    };
-
-    /**
-     * Walk forward (`dir=1`) or backward (`dir=-1`) from `start` until a non-section,
-     * non-disabled item is found. Returns -1 when no candidate exists in that direction.
-     */
-    findNextSelectable = (start: number, dir: 1 | -1): number => {
-        const { resolved } = this.resolved;
-        let i = start;
-        while (i >= 0 && i < resolved.length) {
-            const it = resolved[i];
-            if (it && !it.section && !it.disabled) return i;
-            i += dir;
         }
         return -1;
     };
@@ -271,37 +242,46 @@ export class ListBoxModel<T = IListBoxItem> {
             this.props.onActiveChange?.(target);
             this.gridRef?.scrollToRow(target);
         };
+        const navigate = (key: "ArrowDown" | "ArrowUp" | "Home" | "End" | "PageDown" | "PageUp", page: number) => {
+            const target = nextActiveIndex(key, cur, n, {
+                wrap: false,
+                page,
+                isEnabled: (index) => {
+                    const item = resolved[index];
+                    return !!item && !item.section && !item.disabled;
+                },
+                pageStart: "zero",
+                pageFallback: "opposite-end",
+            });
+            if (target !== undefined) apply(target);
+        };
         switch (e.key) {
             case "ArrowDown":
                 e.preventDefault();
-                apply(this.findNextSelectable(Math.min(n - 1, cur + 1), 1));
+                navigate("ArrowDown", 1);
                 break;
             case "ArrowUp":
                 e.preventDefault();
-                apply(this.findNextSelectable(Math.max(0, cur - 1), -1));
+                navigate("ArrowUp", 1);
                 break;
             case "Home":
                 e.preventDefault();
-                apply(this.findNextSelectable(0, 1));
+                navigate("Home", 1);
                 break;
             case "End":
                 e.preventDefault();
-                apply(this.findNextSelectable(n - 1, -1));
+                navigate("End", 1);
                 break;
             case "PageDown": {
                 e.preventDefault();
                 const page = Math.max(1, this.gridRef?.visibleRowCount ?? 1);
-                const start = (cur < 0 ? 0 : cur) + page;
-                const target = this.findNextSelectable(Math.min(n - 1, start), 1);
-                apply(target >= 0 ? target : this.findNextSelectable(n - 1, -1));
+                navigate("PageDown", page);
                 break;
             }
             case "PageUp": {
                 e.preventDefault();
                 const page = Math.max(1, this.gridRef?.visibleRowCount ?? 1);
-                const start = (cur < 0 ? 0 : cur) - page;
-                const target = this.findNextSelectable(Math.max(0, start), -1);
-                apply(target >= 0 ? target : this.findNextSelectable(0, 1));
+                navigate("PageUp", page);
                 break;
             }
             case "Enter":

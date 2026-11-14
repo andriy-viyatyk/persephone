@@ -4,14 +4,15 @@ import {
     createRestPropsState,
     type NativeHTMLAttributes,
     type RestPropsState,
+    splitProps,
+    type CompleteKeys,
 } from "../shared/dom-props";
 import { splitWithSeparators } from "../../core/utils/utils";
 import { KeyedList } from "../shared/keyed-list";
 import { VanillaView } from "../shared/vanilla-view";
 import "./Breadcrumb.css";
 
-export interface BreadcrumbProps
-    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange"> {
+export interface BreadcrumbOwnProps {
     name?: string;
     rootLabel: string;
     value: string;
@@ -23,6 +24,12 @@ export interface BreadcrumbProps
     clipStart?: boolean;
 }
 
+
+
+export interface BreadcrumbProps
+    extends Omit<NativeHTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange"> , BreadcrumbOwnProps{
+}
+
 interface BreadcrumbPart {
     key: string;
     part: "root" | "separator" | "segment";
@@ -30,6 +37,12 @@ interface BreadcrumbPart {
     current: boolean;
     segmentIndex?: number;
 }
+
+const BREADCRUMB_OWN_KEYS = ["name", "rootLabel", "value", "onChange", "separators", "trailingParentSeparator", "separatorContent", "size", "clipStart"] as const satisfies readonly (keyof BreadcrumbOwnProps)[];
+const checkedOwnKeys: CompleteKeys<BreadcrumbOwnProps, typeof BREADCRUMB_OWN_KEYS> = BREADCRUMB_OWN_KEYS;
+const BREADCRUMB_LEGACY_KEYS = ["children"] as const satisfies readonly (keyof BreadcrumbProps)[];
+
+
 
 export class BreadcrumbView extends VanillaView<BreadcrumbProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
@@ -138,19 +151,7 @@ export class BreadcrumbView extends VanillaView<BreadcrumbProps> {
     };
 
     private applyConstructionRestProps(props: BreadcrumbProps): void {
-        const {
-            name: _name,
-            rootLabel: _rootLabel,
-            value: _value,
-            onChange: _onChange,
-            separators: _separators,
-            trailingParentSeparator: _trailingParentSeparator,
-            separatorContent: _separatorContent,
-            size: _size,
-            clipStart: _clipStart,
-            children: _children,
-            ...rest
-        } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...BREADCRUMB_LEGACY_KEYS] as const);
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 }

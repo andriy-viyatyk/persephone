@@ -1,5 +1,4 @@
 import type { NativeHTMLAttributes } from "../shared/dom-props";
-import type { SlotContent } from "../shared/fill-slot";
 import {
     flip,
     offset as floatingOffset,
@@ -29,9 +28,7 @@ export interface PopoverPosition {
     offset?: [number, number];
 }
 
-export interface PopoverProps
-    extends Pick<NativeHTMLAttributes<HTMLDivElement>, "onMouseDown" | "role" | `aria-${string}` | `data-${string}`>,
-        PopoverPosition {
+export interface PopoverOwnProps extends PopoverPosition {
     /** Optional debug label emitted as `data-name` on the popover's floating root.
      *  Use to disambiguate multiple instances in DOM inspector output. Never used for styling. */
     name?: string;
@@ -74,7 +71,13 @@ export interface PopoverProps
      * popover height.
      */
     scroll?: boolean;
-    children?: SlotContent;
+}
+
+
+
+export interface PopoverProps
+    extends Pick<NativeHTMLAttributes<HTMLDivElement>, "onMouseDown" | "role" | `aria-${string}` | `data-${string}`>,
+        PopoverPosition , PopoverOwnProps{
 }
 
 // =============================================================================

@@ -1,3 +1,4 @@
+import { toggleAttr } from "../shared/dom-props";
 import { createComponentModelDriver } from "../../core/state/model";
 import { CheckIcon, ChevronRightIcon } from "../../theme/icons";
 import { InputView } from "../Input/InputView";
@@ -32,11 +33,6 @@ interface RowParts {
     onMouseEnter: () => void;
     onMouseLeave: () => void;
     onClick: () => void;
-}
-
-function setBooleanAttribute(element: HTMLElement, name: string, value: boolean): void {
-    if (value) element.setAttribute(name, "");
-    else element.removeAttribute(name);
 }
 
 function iconElement(component: { createElement: () => SVGElement }): SVGElement {
@@ -173,10 +169,10 @@ class MenuContentView extends VanillaView<MenuModel> {
         row.dataset.id = record.id;
         if (record.item.id) row.dataset.name = record.item.id;
         else delete row.dataset.name;
-        setBooleanAttribute(row, "data-hovered", this.model.state.get().hoveredId === record.id || this.model.state.get().subMenuItem === record.item);
-        setBooleanAttribute(row, "data-disabled", Boolean(record.item.disabled));
-        setBooleanAttribute(row, "data-start-group", record.startGroup);
-        setBooleanAttribute(row, "data-minor", Boolean(record.item.minor));
+        toggleAttr(row, "data-hovered", this.model.state.get().hoveredId === record.id || this.model.state.get().subMenuItem === record.item);
+        toggleAttr(row, "data-disabled", Boolean(record.item.disabled));
+        toggleAttr(row, "data-start-group", record.startGroup);
+        toggleAttr(row, "data-minor", Boolean(record.item.minor));
 
         const hasIcons = this.model.hasAnyIcon;
         if (hasIcons && !parts.iconHost) {

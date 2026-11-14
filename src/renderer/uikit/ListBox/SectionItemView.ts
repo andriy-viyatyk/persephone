@@ -1,8 +1,13 @@
-import { applyRestProps, clearRestListeners, createRestPropsState } from "../shared/dom-props";
-import type { RestPropsState } from "../shared/dom-props";
+import { applyRestProps, clearRestListeners, createRestPropsState, splitProps, type CompleteKeys, RestPropsState } from "../shared/dom-props";
 import { VanillaView } from "../shared/vanilla-view";
-import type { SectionItemProps } from "./SectionItem";
+import type { SectionItemProps, SectionItemOwnProps } from "./SectionItem";
 import "./SectionItem.css";
+
+const LISTBOX_OWN_KEYS = ["name", "id", "label"] as const satisfies readonly (keyof SectionItemOwnProps)[];
+const checkedOwnKeys: CompleteKeys<SectionItemOwnProps, typeof LISTBOX_OWN_KEYS> = LISTBOX_OWN_KEYS;
+const LISTBOX_LEGACY_KEYS = [] as const satisfies readonly (keyof SectionItemProps)[];
+
+
 
 /**
  * A non-interactive section header row. Pure DOM: its label is a `string`, so there is no slot, no
@@ -40,7 +45,7 @@ export class SectionItemView extends VanillaView<SectionItemProps> {
     }
 
     private applyConstructionRestProps(props: SectionItemProps): void {
-        const { name: _name, id: _id, label: _label, ...rest } = props;
+        const rest = splitProps(props, [...checkedOwnKeys, ...LISTBOX_LEGACY_KEYS] as const);
         applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
     }
 
