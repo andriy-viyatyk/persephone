@@ -5,6 +5,7 @@ import { TGlobalState } from "../../core/state/state";
 import { createLinkData } from "../../../shared/link-data";
 import { fpIsAbsolute, fpResolve, isPlainLocalPath } from "../../core/utils/file-path";
 import { PageModel } from "./PageModel";
+import type { PagePopoverSize } from "./PageModel";
 
 import { PagesQueryModel } from "./PagesQueryModel";
 import { PagesNavigationModel } from "./PagesNavigationModel";
@@ -210,6 +211,20 @@ export class PagesModel extends TModel<OpenFilesState> {
     get popoverPageId(): string | undefined {
         return this.state.get().popoverPageId;
     }
+
+    setPopoverSize = (id: string, size: PagePopoverSize): void => {
+        const page = this.query.findPage(id);
+        if (page) page.popoverSize = size;
+    };
+
+    /** Called after the view updates its manager and listeners to preserve focus ordering. */
+    popoverTransitioned = (previousId: string | undefined, nextId: string | undefined): void => {
+        if (previousId === nextId) return;
+        const focusedPage = nextId !== undefined
+            ? this.query.findPage(nextId)
+            : this.query.activePage;
+        if (focusedPage) this.onFocus.send(focusedPage);
+    };
 
     openPopover = (pageId: string) => {
         const page = this.query.findPage(pageId);

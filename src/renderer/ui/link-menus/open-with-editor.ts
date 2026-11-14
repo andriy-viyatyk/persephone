@@ -4,7 +4,7 @@ import { ui } from "../../api/ui";
 import { pages } from "../../api/pages";
 import { getFileOpenEditorOptions } from "../../editors/base/editor-switch-options";
 import { parseBoardEditorId } from "../../../shared/board/board-editor-id";
-import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
+import { boardIdentity } from "../../editors/board/board-identity";
 import { ArchiveIcon, type SvgIconComponent } from "../../theme/icons";
 import { DefaultIcon, GridIcon, LinkIcon } from "../../theme/language-icons";
 import { openWithDefaultApp } from "../../content/open-with-default-app";
@@ -22,7 +22,7 @@ const BUILT_IN_EDITOR_ICONS: Record<string, SvgIconComponent> = {
 
 function editorOptionIcon(editorId: string): Element {
     const boardRoot = parseBoardEditorId(editorId);
-    if (boardRoot !== null) return createBoardGlyphElement(boardRoot, 16);
+    if (boardRoot !== null) return boardIdentity.glyph(boardRoot, 16);
     return (BUILT_IN_EDITOR_ICONS[editorId] ?? DefaultIcon).createElement({ width: 16, height: 16 });
 }
 

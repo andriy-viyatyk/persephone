@@ -29,6 +29,7 @@ import { t } from "../../../shared/i18n/t";
 import { ui } from "../ui";
 import { PageRestore } from "./PageRestore";
 import { RecoveryPlaceholder } from "./RecoveryPlaceholder";
+import { canCloseNormal, canSetPinSide } from "./page-tab-state";
 
 interface PageModelOptions {
     seedSecondaryViewsWidth?: boolean;
@@ -257,8 +258,7 @@ export class PageModel implements IPageHost {
     }
 
     set pinSide(value: PagePinSide) {
-        if (this.isInert || (this.isLockedBoardPage && value !== undefined)) return;
-        this.state.update((s) => { s.pinSide = value; });
+        if (canSetPinSide(this, value)) this.state.update((s) => { s.pinSide = value; });
     }
 
     get popoverSize(): PagePopoverSize | undefined {
@@ -722,8 +722,7 @@ export class PageModel implements IPageHost {
             this.onClose?.();
             return true;
         }
-        if (this.isLockedBoardPage) return false;
-        if (this.pinSide === "right") return false;
+        if (!canCloseNormal(this)) return false;
         if (this.restore.isRestoring) {
             this.restore.cancel();
             this.onClose?.();

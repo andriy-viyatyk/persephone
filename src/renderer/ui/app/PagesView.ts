@@ -6,7 +6,6 @@ import { PageContentView } from "./PageContentView";
 import "./Pages.css";
 
 type PagesProjection = Pick<OpenFilesState, "pages" | "ordered" | "leftRight" | "rightLeft" | "compareGroups" | "popoverPageId">;
-type PagePopoverSize = { width: number; height: number };
 
 export class PagesView extends VanillaView<object> {
     private readonly manager: AppPageManagerView;
@@ -70,14 +69,9 @@ export class PagesView extends VanillaView<object> {
                 .map((page) => page.id)),
             popoverId: projection.popoverPageId,
             getPopoverSize: (id) => pages.state.get().pages.find((page) => page.id === id)?.popoverSize,
-            onPopoverResize: (id, size) => PagesView.savePopoverSize(id, size),
+            onPopoverResize: (id, size) => pages.setPopoverSize(id, size),
             pageView: PageContentView,
         };
-    }
-
-    private static savePopoverSize(id: string, size: PagePopoverSize): void {
-        const page = pages.state.get().pages.find((candidate) => candidate.id === id);
-        if (page) page.popoverSize = size;
     }
 
     private applyProjection(projection: PagesProjection): void {
@@ -87,11 +81,7 @@ export class PagesView extends VanillaView<object> {
         this.popoverId = nextPopoverId;
         this.setPopoverListeners(nextPopoverId !== undefined);
 
-        if (previousPopoverId === nextPopoverId) return;
-        const focusedPage = nextPopoverId
-            ? projection.pages.find((page) => page.id === nextPopoverId)
-            : pages.query.activePage;
-        if (focusedPage) pages.onFocus.send(focusedPage);
+        pages.popoverTransitioned(previousPopoverId, nextPopoverId);
     }
 
     private setPopoverListeners(active: boolean): void {

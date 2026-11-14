@@ -7,6 +7,8 @@ import { fs } from "./fs";
 import { fpBasename, fpExtname, fpJoin, fpRelative, isArchivePath, isAsarPath } from "../core/utils/file-path";
 import type { PathWatchBatch } from "../../ipc/api-types";
 import { subscribe } from "./path-watch";
+import { api } from "../../ipc/renderer/api";
+import { t } from "../../shared/i18n/t";
 
 // =============================================================================
 // Types
@@ -65,6 +67,15 @@ class LibraryService extends TModel<LibraryServiceState> {
 
     get allFiles(): string[] {
         return this.state.get().allFiles;
+    }
+
+    async choose(): Promise<void> {
+        const result = await api.showOpenFolderDialog({ title: t("shell.selectScriptLibraryFolder") });
+        if (result && result.length > 0) settings.set("script-library.path", result[0]);
+    }
+
+    unlink(): void {
+        settings.set("script-library.path", "");
     }
 
     // ── Private ──────────────────────────────────────────────────────────

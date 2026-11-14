@@ -5,6 +5,9 @@ import { parseObject } from "../core/utils/parse-utils";
 import { fs } from "./fs";
 import { FileWatcher } from "../core/utils/file-watcher";
 import type { IMenuFolders, IMenuFolder } from "./types/menu-folders";
+import { api } from "../../ipc/renderer/api";
+import { t } from "../../shared/i18n/t";
+import { fpBasename } from "../core/utils/file-path";
 
 const menuFoldersFileName = "menuFolders.json";
 
@@ -88,6 +91,14 @@ class MenuFoldersModel extends TModel<MenuFoldersState> implements IMenuFolders 
         });
         this.saveStateDebounced();
         return id;
+    };
+
+    addWithDialog = async (): Promise<void> => {
+        const result = await api.showOpenFolderDialog({ title: t("shell.selectFolderToAdd") });
+        if (result && result.length > 0) {
+            const folderPath = result[0];
+            this.add({ name: fpBasename(folderPath), path: folderPath });
+        }
     };
 
     remove = (id: string) => {

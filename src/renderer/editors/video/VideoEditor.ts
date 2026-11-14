@@ -31,6 +31,7 @@ import { videoSessionStore } from "../../api/video-session-store";
 import { VideoStreamSession } from "./VideoStreamSession";
 import type { VideoStreamStartOptions } from "./VideoStreamSession";
 import { ViewPort } from "../base/view-port";
+import type { IAudibleEditor } from "../base/audible-editor";
 
 interface VideoViewPort {
     mediaElement(): HTMLMediaElement | null;
@@ -79,9 +80,15 @@ export const getDefaultVideoEditorState = (): VideoEditorState => ({
 
 // ── Model ────────────────────────────────────────────────────────────────────
 
-export class VideoEditor extends EditorModel<VideoEditorState> {
+export class VideoEditor extends EditorModel<VideoEditorState> implements IAudibleEditor {
+    readonly audibleEditor = true as const;
     /** Editor identity. Matches `EditorDescriptor.editorId`. */
     readonly editorId = EditorId.videoView;
+    readonly audible = false;
+    readonly soundButtonWhenSilent = true;
+    get muted(): boolean {
+        return this.state.get().pageMuted ?? false;
+    }
 
     noLanguage = true;
     skipSave = true;

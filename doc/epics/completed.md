@@ -1,3 +1,27 @@
+## EPIC-174 — Refactoring Phase 6.8 part 2: tab state, editor titles and audibility, board identity, main page layout, menu-bar folder table
+
+Completed 2026-11-14. Roadmap Phase 6.8 part 2 (SHL-4, SHL-6, SHL-7, SHL-8 and the shell items of SHL-13):
+`boardIdentity` in `editors/board/` replaces the per-view board name and glyph caches, and `board-window-identity.ts`
+(installed by `index.ts` `mount()`) owns the board window's title and identity IPC; `api/pages/page-tab-state.ts`
+holds the tab projection and the predicates the page models reuse, popover size and focus go through `PagesModel`;
+one `editors/tab-title-registry.ts` with per-editor formatters replaces `page-title.ts` for live and remote rows, and
+`IAudibleEditor` replaces the duck-typed mute lookups; `MainPageView` is 67 lines of layout over two header
+compositions and four small views, with snip and audio-capture state in `api/`; `MenuBarView` reads one folder-UI
+table (594 → 400 lines) and the library and folder actions live in their services. Decided against: moving the
+remaining raw `ipcRenderer` callers into `ipc/renderer/api`. Recorded changes: the browser tab's sound button mutes
+again (EPIC-158 regression), board windows no longer build the app-only header widgets, board names warm lazily where
+shown. Tab titles and menus, menu-bar folders and menus, both header DOMs, board window title and recording chrome
+checked live before/after in a separate test window. Plans by Codex, reviewed against the roadmap guardrails; Codex
+Luna implemented. Epic document: [EPIC-174](EPIC-174.md).
+
+- [x] **Board identity (US-1984).** `boardIdentity`, `board-window-identity.ts`.
+- [x] **Tab state (US-1985).** `page-tab-state.ts`, shared predicates, `popoverTransitioned`, one `renderTabs`.
+- [x] **Tab titles and audibility (US-1986).** Title registry and formatters, `IAudibleEditor`, browser mute fixed.
+- [x] **Main page layout (US-1987).** Header compositions, status, mute and recording views, snip and capture state.
+- [x] **Menu-bar folder table (US-1988).** `menu-bar-folder-ui.ts`, service actions, aliases removed.
+- [x] **Epic review.** `/review` one fix (structural board check in the title formatter); `/document` overview, pages
+  architecture, editors, folder structure, key files; `/userdoc` no change; `i18n:check` complete.
+
 ## EPIC-173 — Refactoring Phase 6.7 part 5 and 6.8 part 1: components model generations, page-manager splitter, one file list decision, script engine and library
 
 Completed 2026-11-14. Roadmap Phase 6.7 part 5 (UIK-12), which completes item 6.7, and Phase 6.8 part 1 (SHL-11 and

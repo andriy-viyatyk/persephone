@@ -204,11 +204,12 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── window.ts           # IWindow implementation and app.window.screen host
 │   ├── window-screen.ts    # Shared automation adapter for the complete app window
 │   ├── window-recording.ts # Per-window MediaRecorder capture, crop, state, and lifecycle
+│   ├── audio-capture-state.ts # Per-window audio-capture count and IPC revision guard
 │   ├── menu-bar.ts         # MenuBarModel — reactive Menu Bar openness, folder selection, and legacy opener bridge
 │   ├── ui.ts               # IUserInterface implementation
 │   ├── downloads.ts        # IDownloads implementation
 │   ├── menu-folders.ts     # IMenuFolders implementation
-│   ├── library-service.ts  # LibraryService — script library scanning, caching, file watching
+│   ├── library-service.ts  # LibraryService — script library scanning, caching, file watching and folder actions
 │   ├── autoload-service.ts # Thin wrapper exposing AutoloadRunner to app lifecycle
 │   ├── pages.ts            # PagesModel singleton export
 │   ├── renderer-rpc-bootstrap.ts # Registers renderer RPC handlers and starts the server
@@ -256,6 +257,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │
 │   ├── pages/              # Page collection — composed submodels
 │   │   ├── PageModel.ts            # Tab container — editor membership, sidebar and main editor; restore/recovery collaborators
+│   │   ├── page-tab-state.ts        # Tab presentation and shared tab-action predicates
 │   │   ├── IPageHost.ts            # IPageHost interface — editor↔owner contract (PageModel + BrowserPanelHost)
 │   │   ├── PageRestore.ts          # Deferred restore state, cancellation, readiness and typed retry
 │   │   ├── RecoveryPlaceholder.ts  # Failed-restore descriptor, retry/close coordination and cache protection
@@ -289,7 +291,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── index.ts                 # IShell facade (composes sub-services)
 │   │   ├── shell-calls.ts           # IPC calls to main process
 │   │   ├── encryption.ts            # AES-GCM encryption
-│   │   └── version.ts              # Version info, update checking
+│   │   ├── version.ts              # Version info, update checking
+│   │   └── snip-to-new-page.ts      # Screen-snipping workflow and new-page navigation
 │   │
 │   ├── setup/              # Monaco editor configuration
 │   │   ├── configure-monaco.ts      # Themes, keybindings, type definitions
@@ -401,7 +404,13 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── tree-context-menus.ts # Default context menu handlers for tree provider items
 │   │   └── open-with-editor.ts   # Shared Open with submenu and editor selection action
 │   ├── app/                # Root shell
-│   │   ├── MainPageView.ts         # Native root layout (header, tabs, editors, sidebar)
+│   │   ├── MainPageView.ts         # Native root layout and view lifecycle
+│   │   ├── AppHeaderView.ts        # App-window header composition
+│   │   ├── BoardWindowHeaderView.ts # Board-window header composition
+│   │   ├── HeaderStatusIndicatorsView.ts # App-only status indicators
+│   │   ├── RecordingControlsView.ts # Recording controls and chrome snapshot
+│   │   ├── GlobalMuteButtonView.ts # Shared app-level mute control
+│   │   ├── header-buttons.ts       # Shared window and system-button builders
 │   │   ├── HeaderQuickSettingsPopover.ts # Header snip/record actions and live service switches
 │   │   ├── PagesView.ts            # Native page container/router
 │   │   ├── RenderEditorView.ts      # Native editor dispatcher
@@ -422,10 +431,11 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── tabs/               # Tab bar
 │   │   ├── PageTabsView.ts         # Native tab strip and scroll projection
 │   │   ├── PageTab.ts              # Tab props/constants and shared helpers
-│   │   ├── PageTabView.ts          # Native tab, drag, and activation behavior
+│   │   ├── PageTabView.ts          # Native tab presentation, drag, and activation behavior
 │   │   └── PageTabs.css
 │   ├── sidebar/            # Sidebar/menu panel
 │   │   ├── MenuBarView.ts          # Native top menu bar
+│   │   ├── menu-bar-folder-ui.ts   # Built-in and generic folder UI table
 │   │   ├── OpenTabsListView.ts      # Native open-tabs list
 │   │   ├── RecentFileListView.ts    # Native recent-files panel
 │   │   ├── ToolsEditorsPanelView.ts # Native Tools & Editors panel
@@ -467,8 +477,10 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │
 ├── editors/                # Editor Implementations — each editor is an EditorModel subclass
 │   ├── editor-factory.ts   # Shared editor construction for pages and navigation
+│   ├── tab-title-registry.ts # Editor-specific page-tab display-title formatters
 │   ├── base/               # Shared editor infrastructure
-│   │   ├── EditorModel.ts            # Abstract base class for all editors
+│   │   ├── EditorModel.ts            # Abstract base class for all editors; includes displayTitle
+│   │   ├── audible-editor.ts          # Optional sound-control contract for audio-owning editors
 │   │   ├── TextHostEditorModel.ts    # Base for TextFileModel-wrapping editors — host-adoption lifecycle, subscription registry, content echo guard, host-settings mirror
 │   │   ├── editor-traits.ts          # Content-host, text-selection, and text-navigation transfer contracts
 │   │   ├── editor-traits.ts          # CONTENT_HOST_TRAIT — owner-orchestrated editor switching
@@ -758,6 +770,9 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   └── index.ts
 │   ├── board/              # Board editor, board library/sidebar surfaces (non-text, Pattern B survive-navigation)
 │   │   ├── BoardEditorModel.ts       # EditorModel — single-board lifecycle, per-board trust gate, live iframe ref, icon; file/folder sources keep boardRoot separate from filePath/folderPath; busy keep-alive
+│   │   ├── board-identity.ts         # Shared shell board display-name, glyph, warm state, and change events
+│   │   ├── board-window-identity.ts  # Board-window title and identity IPC lifecycle
+│   │   ├── board-tab-title.ts        # Localized board page-tab title formatter
 │   │   ├── BoardEditorView.ts        # Native four-way board branch host
 │   │   ├── BoardToolbar.ts           # In-board toolbar — File Explorer / board text slot / … menu; hosts the board-declared control group
 │   │   ├── BoardToolbar.css           # Board-control group styling — separates board items from Persephone's own

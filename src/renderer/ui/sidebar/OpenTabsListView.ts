@@ -1,4 +1,3 @@
-import { EditorId } from "../../../shared/editor-ids";
 import { t } from "../../../shared/i18n/t";
 import { api } from "../../../ipc/renderer/api";
 import { pages } from "../../api/pages";
@@ -10,11 +9,8 @@ import { createFileTypeIconElement } from "../../components/icons/icon-elements"
 import { ListBoxView } from "../../uikit/ListBox/ListBoxView";
 import type { IListBoxItem, ListBoxProps } from "../../uikit/ListBox/types";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { displayPageTitle } from "../tabs/page-title";
-import { ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
-import { readBoardManifest } from "../../api/boards/board-manifest-io";
-import { type NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
-import { fpBasename } from "../../core/utils/file-path";
+import { displayPageTitle } from "../../editors/tab-title-registry";
+import { boardIdentity } from "../../editors/board/board-identity";
 
 export interface OpenTabsListProps {
     onClose?: () => void;
@@ -68,8 +64,6 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
     private duplicateTimer: number | undefined;
     private previousOpen: boolean | undefined;
     private live = true;
-    private readonly warmedBoardRoots = new Set<string>();
-    private readonly boardManifests = new Map<string, NormalizedBoardManifest>();
     private readonly pageSubscriptions = new Map<PageModel, {
         editor: EditorModel | null;
         host: EditorModel["contentHost"];
@@ -95,9 +89,8 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
             this.syncPageSubscriptions();
             this.updateList();
         });
-        this.own(onBoardDisplayTextChanged((_root, reason) => {
-            if (reason === "invalidate") this.warmedBoardRoots.clear();
-            this.updateList();
+        this.own(boardIdentity.onChanged((event) => {
+            if (event.kind === "text") this.updateList();
         }));
         this.previousOpen = this.props.open;
         void this.loadWindowPages();
@@ -212,35 +205,13 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
     }
 
     private item(windowIndex: number, page: Partial<IEditorState> & { boardRoot?: string; folderPath?: string }): OpenTabsListItem {
-        const candidateRoot = page.editor === EditorId.boardView && !page.filePath && !page.folderPath
-            ? page.boardRoot
-            : undefined;
-        if (candidateRoot) this.warmBoard(candidateRoot);
-        const manifest = candidateRoot ? this.boardManifests.get(candidateRoot) : undefined;
-        const isPlainBoardTitle = candidateRoot !== undefined && page.title !== undefined
-            && page.title === (manifest?.name?.trim() || fpBasename(candidateRoot));
-        const infoProps = (page as { props?: { name?: string } }).props;
-        const boardInfoRoot = page.editor === EditorId.boardInfo && page.boardRoot && infoProps?.name === page.title
-            ? page.boardRoot
-            : undefined;
-        const boardRoot = isPlainBoardTitle ? candidateRoot : boardInfoRoot;
         return {
             value: page.id ?? `window-${windowIndex}`,
-            label: displayPageTitle(page.editor, page.title, boardRoot),
+            label: displayPageTitle(page, { context: "sidebar" }),
             iconElement: createFileTypeIconElement({ language: page.language, width: 16, height: 16 }),
             windowIndex,
             page,
         };
-    }
-
-    private warmBoard(root: string): void {
-        if (this.warmedBoardRoots.has(root)) return;
-        this.warmedBoardRoots.add(root);
-        void readBoardManifest(root).then((manifest) => {
-            if (!manifest) return;
-            this.boardManifests.set(root, manifest);
-            return ensureBoardDisplayText(root, manifest);
-        }).catch(() => {});
     }
 
     private onClick(item: OpenTabsListItem): void {

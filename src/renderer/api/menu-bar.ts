@@ -8,6 +8,12 @@ export const recentFilesId = "recent-files";
 export const toolsEditorsId = "tools-editors";
 export const scriptLibraryId = "script-library";
 
+export type BuiltinFolderId =
+    | typeof openTabsId
+    | typeof recentFilesId
+    | typeof toolsEditorsId
+    | typeof scriptLibraryId;
+
 interface MenuBarBuiltinFolder extends MenuFolder {
     id: string;
 }

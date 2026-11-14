@@ -73,6 +73,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Main-owned scalar UI preferences and renderer cache (snapshot load, synchronous reads, best-effort writes) | `/src/main/ui-preferences.ts`, `/src/renderer/api/ui-preferences.ts` |
 | Page/tab management (shared page arrays and state; mutation primitives; lazy-loading entrypoints; router and standalone-page composition) | `/src/renderer/api/pages/PagesModel.ts` |
 | Page container (tab; typed editor membership and sidebar composition, inert recovery guard, media-pipe owner readiness, and page-level restore/recovery collaborators) | `/src/renderer/api/pages/PageModel.ts` |
+| Shared page-tab projections and page-action predicates (active/grouped state, sound/menu availability, drag, pin, grouping, close, detach, and duplicate guards) | `/src/renderer/api/pages/page-tab-state.ts` |
 | Deferred page restore attempts (status, cancellation, readiness, typed retry callback and after-ready hooks) | `/src/renderer/api/pages/PageRestore.ts` |
 | Failed session-restore placeholder (retained descriptor, retry/close coordination and cache protection) | `/src/renderer/api/pages/RecoveryPlaceholder.ts` |
 | Reactive sidebar layout model (open state, width and active panel) | `/src/renderer/api/pages/SecondaryViewsModel.ts` |
@@ -148,7 +149,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Synchronous startup environment (profile data folder and parsed `appSettings.json`) | `/src/renderer/core/startup-environment.ts` |
 | UIKit's standalone English defaults and app-supplied text overrides (`uikitText()` / `setUikitText()`) | `/src/renderer/uikit/shared/uikit-text.ts` |
 | Monaco widget message localization (explicit supported-language imports; awaited before Monaco modules load) | `/src/renderer/i18n/monaco-nls.ts`, `/src/renderer.ts` |
-| Localized presentation of app-owned page titles while stored/API titles remain English | `/src/renderer/ui/tabs/page-title.ts` |
+| Editor-owned page-tab presentation titles (default `EditorModel.displayTitle` and editor-id formatter registry) | `/src/renderer/editors/base/EditorModel.ts`, `/src/renderer/editors/tab-title-registry.ts` |
+| Optional editor sound-control contract | `/src/renderer/editors/base/audible-editor.ts` |
 | Main-process locale and pack loading (tray and native dialogs) | `/src/main/i18n-locale.ts` |
 | Locale-aware date, relative-time, number, unit, and byte-size formatting | `/src/renderer/core/utils/format.ts` |
 | Language setting and picker (including completeness and reload-all) | `/src/renderer/editors/settings/sections/LanguageSection.ts`, `/src/renderer/api/settings.ts` |
@@ -164,6 +166,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Board settings bridge (manifest declaration normalization, effective defaults, validation, reset, legacy Excalidraw migration, and frame subscriptions) | `/src/renderer/api/board-settings/board-settings-bridge.ts` |
 | Board settings types (declarations, scalar values, persisted file/change payloads, and multiselect codec) | `/src/renderer/api/board-settings/types.ts` |
 | Menu Bar model (reactive openness, folder discovery/selection, strict model opener, and legacy opener bridge) | `/src/renderer/api/menu-bar.ts` |
+| Sidebar folder collection and folder-add action | `/src/renderer/api/menu-folders.ts` |
 | Event channel system (FIFO `send`, LIFO async pipeline, disposable subscriptions/channels) | `/src/renderer/api/events/EventChannel.ts` |
 | App events namespace     | `/src/renderer/api/events/AppEvents.ts`           |
 | Trait system core (`resolveTraited`, `resolveTraitedOne`, and `resolveTraitAccessor`) | `/src/renderer/core/traits/traits.ts` |
@@ -198,7 +201,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | cURL/fetch parser        | `/src/renderer/core/utils/curl-parser.ts`         |
 | Open URL dialog          | `/src/renderer/ui/dialogs/OpenUrlDialog.ts`       |
 | Script `io` namespace    | `/src/renderer/scripting/api-wrapper/IoNamespace.ts` |
-| Script library service   | `/src/renderer/api/library-service.ts`            |
+| Script library service and folder selection/unlink actions | `/src/renderer/api/library-service.ts` |
 | Script autoloading       | `/src/renderer/scripting/AutoloadRunner.ts`       |
 | Script compilation and execution heuristics | `/src/renderer/scripting/script-engine.ts` |
 | Script globals and generated execution prefixes | `/src/renderer/scripting/script-globals.ts` |
@@ -267,7 +270,10 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Storybook editor and story contract (native gallery shell, browser, property editor, live preview, and heterogeneous typed story registry) | `/src/renderer/editors/storybook/StorybookEditorView.ts`, `/src/renderer/editors/storybook/storyTypes.ts`, `/src/renderer/editors/storybook/storyRegistry.ts` |
 | Story prop preparation (single path for managed values, empty enum cleanup, synthetic icon controls, and generated children; shared by the live preview and verification) | `/src/renderer/editors/storybook/story-props.ts` |
 | Renderer entry and application composition root (`bootstrap()` initializes services/pages/events, opens cold-start file/URL input, then returns the native `mount(container)` callback) | `/src/renderer.ts`, `/src/renderer/index.ts` |
-| App shell composition root (header strip, tab strip, page host, sidebar, status and overlay composition) | `/src/renderer/ui/app/MainPageView.ts` |
+| App shell composition root (header selection, tab strip, page host, sidebar, and overlay lifecycle) | `/src/renderer/ui/app/MainPageView.ts` |
+| App and board-window header compositions and app-only status controls | `/src/renderer/ui/app/AppHeaderView.ts`, `/src/renderer/ui/app/BoardWindowHeaderView.ts`, `/src/renderer/ui/app/HeaderStatusIndicatorsView.ts`, `/src/renderer/ui/app/RecordingControlsView.ts`, `/src/renderer/ui/app/GlobalMuteButtonView.ts`, `/src/renderer/ui/app/header-buttons.ts` |
+| Per-window audio-capture count and revision-guarded IPC subscription | `/src/renderer/api/audio-capture-state.ts` |
+| Screen snip-to-new-page workflow | `/src/renderer/api/shell/snip-to-new-page.ts` |
 | App-level Voice Typing service and per-session capture, insertion, auto-stop, and overlay | `/src/renderer/api/speech/voice-typing/VoiceTypingService.ts`, `/src/renderer/api/speech/voice-typing/VoiceTypingSession.ts`, `/src/renderer/api/speech/voice-typing/LiveTextInserter.ts`, `/src/renderer/api/speech/voice-typing/SpeechAutoStop.ts`, `/src/renderer/ui/voice-typing/VoiceTypingOverlayView.ts` |
 | Per-window main Voice Typing shortcut/session controller and guest input forwarding | `/src/main/voice-typing-controller.ts`, `/src/main/open-window.ts`, `/src/main/browser-service.ts` |
 | Transcript controller and Monaco toolbar contribution (page-scoped live capture sessions, append-only transcript edits, microphone loopback reference, and source menu) | `/src/renderer/ui/transcript/TranscriptController.ts`, `/src/renderer/ui/transcript/TranscriptToolbarContributionView.ts`, `/src/renderer/api/speech/MicrophoneCapture.ts`, `/src/renderer/api/speech/SpeechSessionClient.ts` |
@@ -280,6 +286,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Native page/editor views (page host, editor dispatch, async editor island, and page-content lifecycle) | `/src/renderer/ui/app/PagesView.ts`, `/src/renderer/ui/app/RenderEditorView.ts`, `/src/renderer/ui/app/AsyncEditorView.ts`, `/src/renderer/ui/app/PageContentView.ts` |
 | Native editor failure view (message + optional stack for failures in the native editor path) | `/src/renderer/ui/app/NativeEditorErrorView.ts` |
 | Native left and right tab strips plus shared tab view (keyed DOM reuse, zone-specific drag/reorder behavior, popover toggle, and activation scroll projection) | `/src/renderer/ui/tabs/PageTabsView.ts`, `/src/renderer/ui/tabs/RightPageTabsView.ts`, `/src/renderer/ui/tabs/PageTabView.ts` |
+| Editor-specific localized page-tab title formatters | `/src/renderer/editors/tab-title-registry.ts`, `/src/renderer/editors/*/*-tab-title.ts` |
 | Page-tab shared contract (tab props, sizing constants, and menu/drag support helpers) | `/src/renderer/ui/tabs/PageTab.ts` |
 | Dialog/popper view registry | `/src/renderer/ui/dialogs/dialog-view-registry.ts` |
 | Native dialog/popper hosts | `/src/renderer/ui/dialogs/DialogsView.ts`, `/src/renderer/ui/dialogs/poppers/PoppersView.ts` |
@@ -293,6 +300,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Native shared sidebar panel header (DOM title/badge/actions adoption, `data-part="header-buttons"` action protection, show-main control, and late `headerHost` reparenting) | `/src/renderer/ui/secondary-views/SideBarPanelHeaderView.ts` |
 | Native secondary-panel loader (cancellable dynamic import, vanilla panel mount, semantic error host, and explicit retirement cleanup) | `/src/renderer/ui/secondary-views/LazySecondaryViewView.ts` |
 | Native sidebar/menu views (Menu Bar, panels, lists, pinned rail, and folder rows) | `/src/renderer/ui/sidebar/*View.ts` |
+| Menu Bar folder presentation table and right-view adapters | `/src/renderer/ui/sidebar/menu-bar-folder-ui.ts`, `/src/renderer/ui/sidebar/MenuBarView.ts` |
 | Shared global overlay host | `/src/renderer/uikit/shared/overlayLayer.ts` |
 | Native toolbar styling and DOM helpers (toolbar layout, separators, and static toolbar CSS contract) | `/src/renderer/uikit/Toolbar/toolbar-style.ts`, `/src/renderer/uikit/Toolbar/ToolbarView.ts` |
 | Editor registration (table-driven: one `EDITORS` row per editor with a literal `import()` per row for code splitting; matchers derive from `EDITOR_MATCHERS`; row order breaks equal-tier matches; ends with the `preloadContentHostModules()` warm-up) | `/src/renderer/editors/register-editors.ts` |
@@ -631,6 +639,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Board manifest file I/O (board identity detection, parse through shared schema, creation and update) | `/src/renderer/api/boards/board-manifest-io.ts` |
 | Board language-pack loading and validation (active/base/default fallback, placeholder checks against the default pack, `en-XA` pseudo-text, and registration-time locale/table context) | `/src/renderer/api/boards/board-i18n.ts` |
 | Local board manifest display-text cache (`manifest.*` translations loaded from board packs, with refresh/invalidation events and English fallback) | `/src/renderer/api/boards/board-display-text.ts` |
+| Shell board identity service (shared display-name warming, English manifest-name snapshots, glyph creation, and text/icon change notifications) | `/src/renderer/editors/board/board-identity.ts` |
+| Board-window identity owner (document title and existing window identity IPC lifecycle) | `/src/renderer/editors/board/board-window-identity.ts` |
 | Board environment-variables store (session-singleton over the settings-configured `.env.json`; tolerant runtime reads share the format parser with the strict editor validator; reuses `shell.encryption`/`ui.password`/`TextFileModel.decrypt` for optional password encryption — no new crypto) | `/src/renderer/api/board-vars/BoardEnvStore.ts` |
 | Board environment-variable file format, shared parser, and strict editor-shape validator | `/src/renderer/api/board-vars/types.ts` |
 | Board vars namespace resolution (`resolveBoardNamespace` uses shared `boardIdentity`: manifest `author/name`, then `bundled:<id>` for bundled boards, then the local root path; `findNamespaceCollision`/`confirmNamespaceNotColliding` — advisory at registration) | `/src/renderer/api/boards/board-namespace.ts`, `/src/shared/board/board-stable-identity.ts` |

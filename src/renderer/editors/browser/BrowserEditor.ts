@@ -45,6 +45,7 @@ import { BrowserShortcutTable } from "./BrowserShortcutTable";
 import { BrowserGuestChannel } from "./BrowserGuestChannel";
 import { BrowserSitePermissionsModel } from "./BrowserSitePermissionsModel";
 import { fs as appFs } from "../../api/fs";
+import type { IAudibleEditor } from "../base/audible-editor";
 
 export interface BrowserNewOptions { profileName?: string; incognito?: boolean; tor?: boolean; url?: string; openedByAgent?: boolean; }
 interface BrowserRestoreOptions extends EditorRestoreOptions { retryTorOnFailure?: boolean; }
@@ -57,7 +58,8 @@ export class BrowserEditor extends EditorModel<
     BrowserEditorState,
     BrowserQueueEvent,
     BrowserQueueRequest
-> {
+> implements IAudibleEditor {
+    readonly audibleEditor = true as const;
     static async createNew(options: BrowserNewOptions = {}): Promise<BrowserNewResult> {
         if (options.tor) {
             const torPath = settings.get("tor.exe-path");
@@ -96,6 +98,14 @@ export class BrowserEditor extends EditorModel<
     }
 
     readonly editorId = EditorId.browserView;
+    get audible(): boolean {
+        return this.state.get()._anyTabAudible;
+    }
+    get muted(): boolean {
+        return this.state.get().pageMuted ?? false;
+    }
+    readonly soundButtonWhenSilent = false;
+    toggleMuteAll = (): void => this.tabs.toggleMuteAll();
     noLanguage = true;
     skipSave = true;
     readonly guest: BrowserGuestChannel;

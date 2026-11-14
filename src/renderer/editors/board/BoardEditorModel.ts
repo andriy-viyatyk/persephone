@@ -1,5 +1,6 @@
 import { EditorId } from "../../../shared/editor-ids";
 import { EditorModel, type EditorStateBase } from "../base/EditorModel";
+import type { IAudibleEditor } from "../base/audible-editor";
 import { OPEN_CONTEXT_TRAIT, type EditorOpenContext } from "../../api/boards/board-open-context";
 import { editorRegistry } from "../base/editorRegistry";
 import { api } from "../../../ipc/renderer/api";
@@ -151,7 +152,8 @@ export const getDefaultBoardEditorState = (): BoardEditorState => ({
  * A board does NOT survive navigation — it is a plain main editor, re-opened from
  * the Boards panel or the in-board toolbar.
  */
-export class BoardEditorModel extends EditorModel<BoardEditorState> implements IBoardHostEditor {
+export class BoardEditorModel extends EditorModel<BoardEditorState> implements IBoardHostEditor, IAudibleEditor {
+    readonly audibleEditor = true as const;
     private boardDisplayNameEnglish: string | undefined;
     /** Virtual `board-editor:<root>` when acting as a custom editor for a file (so the
      *  switch widget shows/highlights it and `switchMainEditor` routes correctly), else
@@ -413,9 +415,21 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
         return !!this.state.get().busy && !this.modified;
     }
 
-    /** Read by the page tab: present only while the board has asked for the mute button. */
-    get toggleMuteAll(): (() => void) | undefined {
-        return this.chrome.toggleMuteAll;
+    get audible(): boolean {
+        return false;
+    }
+
+    get muted(): boolean {
+        return this.state.get().pageMuted ?? false;
+    }
+
+    /** True only while the board has asked the tab to show its mute button. */
+    get soundButtonWhenSilent(): boolean {
+        return this.chrome.toggleMuteAll !== undefined;
+    }
+
+    toggleMuteAll(): void {
+        this.chrome.toggleMuteAll?.();
     }
 
     setBoardModified(modified: boolean): void {

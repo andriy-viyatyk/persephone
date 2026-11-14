@@ -1,6 +1,7 @@
 import type { PagesModel } from "./PagesModel";
 import type { PageModel } from "./PageModel";
 import type { EditorModelInstance as EditorModel } from "../../editors/base";
+import { canDrag, canGroupLocked, canPinTo, canUngroup } from "./page-tab-state";
 
 export class PagesLayoutModel {
     constructor(private model: PagesModel) {}
@@ -60,7 +61,7 @@ export class PagesLayoutModel {
         if (!pages[fromIndex] || !pages[toIndex]) return;
         const movedPage = pages[fromIndex];
         const lockedIndex = pages.findIndex((page) => page.isLockedBoardPage);
-        if (movedPage.isLockedBoardPage || (lockedIndex >= 0 && toIndex <= lockedIndex && fromIndex !== lockedIndex)) return;
+        if (!canDrag(movedPage) || (lockedIndex >= 0 && toIndex <= lockedIndex && fromIndex !== lockedIndex)) return;
         if (this.zone(pages[fromIndex]) !== this.zone(pages[toIndex])) return;
         const newPages = [...pages];
         const [moved] = newPages.splice(fromIndex, 1);
@@ -94,7 +95,7 @@ export class PagesLayoutModel {
         const pageIndex = pages.findIndex((p) => p.id === pageId);
         if (pageIndex === -1) return;
         const page = pages[pageIndex];
-        if (page.isLockedBoardPage || page.isInert) return;
+        if (!canPinTo(page)) return;
         if (page.pinSide === side) return;
         const wasRightPinned = this.model.query.isRightPinned(pageId);
         if (side === "right" && this.model.query.isGrouped(pageId)) this.ungroup(pageId);
@@ -132,7 +133,7 @@ export class PagesLayoutModel {
     };
 
     group = (leftPageId: string, rightPageId: string) => {
-        if (this.model.query.findPage(leftPageId)?.isLockedBoardPage || this.model.query.findPage(rightPageId)?.isLockedBoardPage) return;
+        if (!canGroupLocked(this.model.query.findPage(leftPageId)) || !canGroupLocked(this.model.query.findPage(rightPageId))) return;
         if (this.model.query.isRightPinned(leftPageId) || this.model.query.isRightPinned(rightPageId)) {
             throw new Error("Right-pinned pages cannot be grouped.");
         }
@@ -156,7 +157,7 @@ export class PagesLayoutModel {
      */
     ungroup = (pageId: string) => {
         const state = this.model.state.get();
-        if (!state.leftRight.has(pageId) && !state.rightLeft.has(pageId)) return;
+        if (!canUngroup(state, pageId)) return;
 
         const newLeftRight = new Map(state.leftRight);
         const newRightLeft = new Map(state.rightLeft);
@@ -193,7 +194,7 @@ export class PagesLayoutModel {
         const pageId2 = this.model.query.findPage(id2)?.id ?? id2;
         const idx1 = state.pages.findIndex((p) => p.id === pageId1);
         const idx2 = state.pages.findIndex((p) => p.id === pageId2);
-        if (state.pages[idx1]?.isLockedBoardPage || state.pages[idx2]?.isLockedBoardPage) return;
+        if (!canGroupLocked(state.pages[idx1]) || !canGroupLocked(state.pages[idx2])) return;
         if (this.model.query.isRightPinned(pageId1) || this.model.query.isRightPinned(pageId2)) {
             throw new Error("Right-pinned pages cannot be grouped.");
         }

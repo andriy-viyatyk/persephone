@@ -172,23 +172,31 @@ receiving user interaction use `focusedPage`; navigation and script/MCP active-p
 `activePage` semantics. The transient `popoverPageId` is window state, while each page's
 `popoverSize` is persisted in CSS pixels: the size the user dragged to. It does not follow window resizes; the 80% width and full-height limits only clamp what is drawn, so the chosen size returns when the window grows again. Without a saved size the popover opens at half the page area. Ending a drag within 2% of the maximum height saves `fullHeight: true`: the popover then fills the page area's height and follows window resizes, until a drag makes it shorter again.
 
-The right strip is rendered in the header and clicking its tabs toggles the popover. The popover
-uses the existing stable page slot, with CSS geometry and invisible resize strips on its left edge,
+The right strip is rendered in the header and clicking its tabs toggles the popover. The tab-state
+helpers in [`page-tab-state.ts`](../../src/renderer/api/pages/page-tab-state.ts) derive active,
+grouped, sound, popover, and menu-availability values for tab and sidebar views, and provide the
+shared drag, pin, group, close, detach, and duplicate guards used by the page models. Views read
+these projections; page models apply the same guards to their mutations. `PagesModel` owns popover
+size writes and the focus transition after the view updates its manager and listeners.
+
+The popover uses the existing stable page slot, with CSS geometry and invisible resize strips on its left edge,
 bottom edge and bottom-left corner (`PageSlot.ensurePopoverResizeHandles`; the slot clips with
 `overflow: clip` plus a clip margin so the strips can straddle the border, and a drag covers the page
 area with a transparent shield so a webview under the pointer cannot take the drag); it does not
 create a second page view or move the slot, so board iframes and browser webviews keep their live
 documents. `PagesView` handles click-away, focus transfer, and Escape dismissal around the host.
 
-Three page concerns live in their own modules rather than in `PageModel`:
+Several page concerns live in focused modules rather than in `PageModel`:
 [`editor-switch.ts`](../../src/renderer/editors/base/editor-switch.ts) implements the
 switch-widget transition (`switchMainEditor` — the page keeps a dynamic-import delegate, so
 the board/registry switching machinery stays out of the page model);
 [`page-explorer.ts`](../../src/renderer/editors/explorer/page-explorer.ts) provisions the
 sidebar Explorer (`toggleNavigator`, auto-init beside a mandatory sidebar — constructing an
-`ExplorerEditor` is an editor concern, so it lives beside the editor); and
+`ExplorerEditor` is an editor concern, so it lives beside the editor);
 [`NavBackStack.ts`](../../src/renderer/api/pages/NavBackStack.ts) is the Markdown
-back-navigation stack the page owns, mirrors into `navBackCount`, and persists.
+back-navigation stack the page owns, mirrors into `navBackCount`, and persists. The pure
+[`page-tab-state.ts`](../../src/renderer/api/pages/page-tab-state.ts) helpers project page and
+editor state for tab views and centralize the tab-action predicates used by views and page models.
 
 The lazy `secondaryViewsModel` uses the cached learned sidebar width only for newly constructed
 pages. Session restore and cross-window page transfer construct a restore-mode `PageModel`, so

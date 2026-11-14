@@ -10,8 +10,7 @@ import type { AppSettingsKey } from "../../api/settings-schema";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { buildRootsTree, type RootsTreeNode } from "../../components/roots-tree-build";
-import { boardDisplayText, boardMetadataKeys, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
-import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
+import { boardIdentity } from "../../editors/board/board-identity";
 import { createBoardShortcut } from "../../editors/board/board-shortcut";
 import { createFolderIconElement } from "../../components/icons/icon-elements";
 import { fpBasename, fpDirname } from "../../core/utils/file-path";
@@ -67,7 +66,9 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
         this.own(publishedBoards.subscribeCatalog(this.refresh));
         const settingsKeys = ["browser-profiles", "editor-categories"] as const satisfies readonly AppSettingsKey[];
         for (const key of settingsKeys) this.own(settings.watch(key, this.refresh));
-        this.own(onBoardDisplayTextChanged(() => this.refresh()));
+        this.own(boardIdentity.onChanged((event) => {
+            if (event.kind === "text") this.refresh();
+        }));
         void boardRegistry.load().then(this.refresh, this.refresh);
         this.refresh();
     }
@@ -110,7 +111,7 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
 
     private readonly getIconElement = (node: EditorTreeNode): Node | undefined => node.kind === "builtin"
         ? createCreatableItemIcon(node.item)
-        : node.kind === "board" ? createBoardGlyphElement(node.root, 16) : node.kind === "folder" ? createFolderIconElement() : undefined;
+        : node.kind === "board" ? boardIdentity.glyph(node.root, 16) : node.kind === "folder" ? createFolderIconElement() : undefined;
 
     private readonly getContextMenu = (node: EditorTreeNode): MenuItem[] | undefined => this.contextMenu(node);
 
@@ -181,7 +182,7 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
         const nodes = buildRootsTree(
             boardRegistry.roots("trusted").map(root => ({
                 root,
-                label: boardDisplayText(root, undefined, boardMetadataKeys.name, fpBasename(root)),
+                label: boardIdentity.displayName(root, fpBasename(root)),
             })),
             undefined,
             { leafKind: "board", leafIdPrefix: "board:" },

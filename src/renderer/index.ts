@@ -6,6 +6,7 @@ import { PoppersView } from "./ui/dialogs/poppers/PoppersView";
 import { MainPageView } from "./ui/app/MainPageView";
 import { installGlobalStyles } from "./theme/global-styles";
 import { installPageActivationEvents } from "./scripting/ai-vision/page-activation";
+import { installBoardWindowIdentity } from "./editors/board/board-window-identity";
 import "./editors/register-editors";
 import { registerEditorSwitchStrategies } from "./editors/register-switch-strategies";
 import { registerTextChromeContributions } from "./editors/register-text-chrome-contributions";
@@ -17,6 +18,7 @@ export function mount(container: HTMLElement): () => void {
     const disposeGlobalStyles = installGlobalStyles();
     const disposePageActivationEvents = installPageActivationEvents();
 
+    const disposeBoardWindowIdentity = installBoardWindowIdentity();
     const mainPage = new MainPageView({});
     container.append(mainPage.root);
     mainPage.mount();
@@ -53,6 +55,7 @@ export function mount(container: HTMLElement): () => void {
         dialogs.dispose();
         dialogs.root.remove();
         mainPage.dispose();
+        disposeBoardWindowIdentity();
         mainPage.root.remove();
         disposeGlobalStyles();
     };

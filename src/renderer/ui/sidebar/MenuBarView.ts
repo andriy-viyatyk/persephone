@@ -6,22 +6,14 @@ import {
     getMenuBarSourceFolders,
     isBuiltinFolder,
     openTabsId,
-    recentFilesId,
     scriptLibraryId,
-    toolsEditorsId,
 } from "../../api/menu-bar";
 import { recent } from "../../api/recent";
 import { app } from "../../api/app";
 import { settings } from "../../api/settings";
-import { createLinkData } from "../../../shared/link-data";
-import { fpBasename } from "../../core/utils/file-path";
 import { ContextMenuEvent } from "../../api/events/events";
 import { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
-import { TreeProviderView } from "../../components/tree-provider/TreeProviderView";
-import type {
-    TreeProviderViewModel,
-    TreeProviderViewSavedState,
-} from "../../components/tree-provider/TreeProviderViewModel";
+import type { TreeProviderViewSavedState } from "../../components/tree-provider/TreeProviderViewModel";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
@@ -29,18 +21,13 @@ import { SpacerView } from "../../uikit/Spacer/SpacerView";
 import { SplitterView } from "../../uikit/Splitter/SplitterView";
 import { ListBoxView } from "../../uikit/ListBox/ListBoxView";
 import type { ListBoxProps } from "../../uikit/ListBox/types";
-import type { IconRef } from "../../uikit/shared/slots";
 import { createIconElement } from "../../uikit/shared/slots";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { createFolderIconElement } from "../../components/icons/icon-elements";
 import {
     createFolderItemRecord,
     type FolderItemRecord,
 } from "./FolderItemView";
-import { OpenTabsListView } from "./OpenTabsListView";
-import { RecentFileListView } from "./RecentFileListView";
-import { ScriptLibraryPanelView } from "./ScriptLibraryPanelView";
-import { ToolsEditorsPanelView } from "./ToolsEditorsPanelView";
+import { createFolderRightView, getFolderUiEntry, type MenuBarFolderUiContext, type MenuBarRightViewHandle } from "./menu-bar-folder-ui";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Spacer/Spacer.css";
@@ -52,11 +39,8 @@ export interface MenuBarProps {
     onClose?: () => void;
 }
 
-const isStaticFolder = (folder: MenuFolder): boolean =>
-    isBuiltinFolder(folder);
-
 const canOpenInTab = (folder: MenuFolder): boolean =>
-    !isStaticFolder(folder) || folder.id === scriptLibraryId;
+    !isBuiltinFolder(folder) || folder.id === scriptLibraryId;
 
 export class MenuBarView extends VanillaView<MenuBarProps> {
     private readonly content = document.createElement("div");
@@ -121,7 +105,7 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
         icon: "folder-plus",
         title: t("shell.addAFolderToTheSidebar"),
         size: "sm",
-        onClick: () => { void this.addFolder(); },
+        onClick: () => { void menuFolders.addWithDialog(); },
         children: t("shell.addFolder"),
     });
     private readonly folderList: ListBoxView<FolderItemRecord>;
@@ -138,34 +122,15 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
     private readonly folderDragStates = new Map<string, { dragEnterCount: number }>();
     private rightView: VanillaView<unknown> | undefined;
     private rightViewKey = "";
-    private recentFileListView: RecentFileListView | null = null;
-    private treeViewModel: TreeProviderViewModel | null = null;
+    private rightViewHandle: MenuBarRightViewHandle = {};
     private readonly expandStateMap = new Map<string, TreeProviderViewSavedState>();
     private readonly providerMap = new Map<string, FileTreeProvider>();
     private contentWidth = 600;
     private previousOpen: boolean | undefined;
 
     public constructor(props: MenuBarProps) {
-        const holder: { view?: MenuBarView } = {};
-        const list = new ListBoxView<FolderItemRecord>({
-            name: "menubar-folders",
-            items: [],
-            selectionStyle: "focus",
-            variant: "browse",
-            rowHeight: 22,
-            isSelected: (folder) => folder.folder.id === holder.view?.selectedFolderId,
-            onChange: (record) => holder.view?.setLeftItem(record.folder),
-            onItemDoubleClick: (record) => holder.view?.openFolderOnDoubleClick(record.folder),
-            getContextMenu: (record) => {
-                const folder = record.folder;
-                holder.view?.setLeftItem(folder);
-                return holder.view?.getMenuFolderContextMenu(folder) ?? [];
-            },
-            onContextMenu: (event) => holder.view?.onLeftPanelContextMenu(event),
-        });
         super(props);
-        holder.view = this;
-        this.folderList = list;
+        this.folderList = new ListBoxView<FolderItemRecord>(this.folderListProps([]));
     }
 
     protected onMount(): void {
@@ -229,7 +194,7 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
             this.root.classList.remove("open");
             return;
         }
-        void this.treeViewModel?.buildTree();
+        this.rightViewHandle.buildTree?.();
         // Flush the display change before adding `open`, or the opening transform can be skipped.
         this.root.getBoundingClientRect();
         this.root.classList.add("open");
@@ -275,18 +240,18 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
             dragState = { dragEnterCount: 0 };
             this.folderDragStates.set(id, dragState);
         }
-        const label = this.getFolderLabel(folder);
+        const row = getFolderUiEntry(folder).row(folder);
         const props = {
             folder,
             selected: folder.id === this.selectedFolderId,
-            icon: this.getFolderIcon(folder),
-            label,
-            tooltip: isBuiltinFolder(folder) ? label : this.getFolderTooltip(folder) ?? label,
+            icon: row.icon,
+            label: row.label,
+            tooltip: row.tooltip,
             onSelectedIconClick: canOpenInTab(folder)
                 ? (value: MenuFolder) => this.openFolderInTab(value)
                 : undefined,
-            canDrag: !isStaticFolder(folder),
-            canDrop: !isStaticFolder(folder),
+            canDrag: !isBuiltinFolder(folder),
+            canDrop: !isBuiltinFolder(folder),
         };
         return createFolderItemRecord(props, dragState);
     }
@@ -297,118 +262,13 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
         app.window.menuBar.open(nextId);
     }
 
-    private getFolderLabel(folder: MenuFolder): string {
-        // Built-in folders keep their English `name` for scripts; the menu shows the catalog text.
-        switch (folder.id) {
-            case openTabsId: return t("shell.openTabs");
-            case recentFilesId: return t("shell.recentFiles");
-            case toolsEditorsId: return t("editors.toolsAndEditors");
-            case scriptLibraryId: return t("shell.scriptLibrary");
-            default: return folder.name;
-        }
-    }
-
-    private getFolderIcon(folder: MenuFolder): IconRef {
-        switch (folder.id) {
-            case openTabsId: return "tabs";
-            case recentFilesId: return "history";
-            case toolsEditorsId: return "tools";
-            case scriptLibraryId: return createIconElement("script-library");
-            default: return folder.path
-                ? createFolderIconElement()
-                : createIconElement("empty");
-        }
-    }
-
-    private getFolderTooltip(folder: MenuFolder): string | undefined {
-        if (folder.path) return folder.path;
-        return undefined;
-    }
-
-    private async changeLibraryFolder(): Promise<void> {
-        const result = await api.showOpenFolderDialog({ title: t("shell.selectScriptLibraryFolder") });
-        if (result && result.length > 0) settings.set("script-library.path", result[0]);
-    }
-
-    private unlinkLibraryFolder(): void { settings.set("script-library.path", ""); }
-
     private async clearRecentFiles(): Promise<void> {
         await recent.clear();
-        if (this.rightView instanceof RecentFileListView) {
-            await this.rightView.reload();
-        }
+        await this.rightViewHandle.reloadRecent?.();
     }
 
     private getMenuFolderContextMenu(folder: MenuFolder) {
-        if (folder.id === openTabsId) return [];
-        if (folder.id === recentFilesId) {
-            return [{
-                label: t("shell.clearRecentFiles"),
-                icon: createIconElement("clear-list"),
-                onClick: () => { void this.clearRecentFiles(); },
-            }];
-        }
-        if (folder.id === scriptLibraryId) {
-            const libraryPath = settings.get("script-library.path");
-            const items = [{
-                label: t("shell.changeLibraryFolder"),
-                icon: createIconElement("folder-open"),
-                onClick: () => { void this.changeLibraryFolder(); },
-            }];
-            if (libraryPath) {
-                items.push(
-                    {
-                        label: t("shell.openInExplorer"),
-                        icon: createIconElement("folder-open"),
-                        onClick: () => { api.showFolder(libraryPath); },
-                    },
-                    {
-                        label: t("shell.unlinkLibrary"),
-                        icon: createIconElement("remove"),
-                        onClick: () => this.unlinkLibraryFolder(),
-                    },
-                );
-            }
-            return items;
-        }
-        return [
-            {
-                label: t("shell.openInNewTab"),
-                icon: createIconElement("open-file"),
-                onClick: () => this.openFolderInTab(folder),
-            },
-            {
-                label: t("shell.removeFolder"),
-                icon: createIconElement("remove"),
-                onClick: () => {
-                    const folderId = folder.id;
-                    if (folderId) menuFolders.remove(folderId);
-                },
-            },
-            {
-                label: t("shell.showInFileExplorer"),
-                icon: createIconElement("folder-open"),
-                onClick: () => { if (folder.path) api.showFolder(folder.path); },
-            },
-            {
-                label: t("shell.openTerminalHere"),
-                icon: createIconElement("terminal"),
-                onClick: async () => {
-                    const folderPath = folder.path;
-                    if (!folderPath) return;
-                    const { openTerminalAt } = await import("../../api/terminal");
-                    openTerminalAt(folderPath);
-                },
-            },
-        ];
-    }
-
-    private async addFolder(): Promise<void> {
-        const result = await api.showOpenFolderDialog({ title: t("shell.selectFolderToAdd") });
-        if (result && result.length > 0) {
-            const folderPath = result[0];
-            menuFolders.add({ name: fpBasename(folderPath), path: folderPath });
-        }
+        return getFolderUiEntry(folder).menu(this.folderUiContext(), folder);
     }
 
     /**
@@ -447,7 +307,7 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
         contextEvent.items.push({
             label: t("shell.addFolder"),
             icon: createIconElement("folder-plus"),
-            onClick: () => { void this.addFolder(); },
+            onClick: () => { void menuFolders.addWithDialog(); },
         });
     }
 
@@ -469,88 +329,35 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
     private updateRightView(): void {
         const key = this.selectedFolderId;
         if (this.rightView && this.rightViewKey === key) {
-            this.rightView.update(this.rightViewProps(this.rightViewKey));
+            const folder = menuFolders.find(key) ?? getMenuBarSourceFolders().find((item) => item.id === key) ?? { id: key, name: "" };
+            (this.rightView as VanillaView<object>).update(getFolderUiEntry(folder).props(this.folderUiContext(), this.rightViewKey));
             return;
         }
-        this.recentFileListView = null;
-        this.treeViewModel = null;
+        this.rightViewHandle = {};
         this.rightView?.dispose();
         this.rightView?.root.remove();
         this.rightView = undefined;
         this.rightViewKey = key;
-        const view = this.createRightView(key);
+        const folder = menuFolders.find(key) ?? getMenuBarSourceFolders().find((item) => item.id === key) ?? { id: key, name: "" };
+        const entry = getFolderUiEntry(folder);
+        const view = createFolderRightView(entry, this.folderUiContext(), key);
         if (!view) return;
         this.rightView = view;
         this.contentPanel.append(view.root);
         this.child(view).mount();
-        if (view instanceof RecentFileListView) {
-            this.recentFileListView = view;
-        } else if (view instanceof ScriptLibraryPanelView || view instanceof TreeProviderView) {
-            this.treeViewModel = view.model;
-        }
+        this.rightViewHandle = entry.capture(view);
     }
 
-    private createRightView(key: string): VanillaView<unknown> | undefined {
-        switch (key) {
-            case openTabsId: return new OpenTabsListView({ onClose: this.props.onClose, open: this.props.open });
-            case recentFilesId: return new RecentFileListView({
-                onClose: this.props.onClose,
-            });
-            case toolsEditorsId: return new ToolsEditorsPanelView({ onClose: this.props.onClose });
-            case scriptLibraryId: return new ScriptLibraryPanelView({
-                onClose: this.props.onClose,
-                expandState: this.expandStateMap.get(scriptLibraryId),
-                onExpandStateChange: (state) => this.expandStateMap.set(scriptLibraryId, state),
-            });
-            default: {
-                const folder = menuFolders.find(key);
-                if (!folder?.path) return undefined;
-                const provider = this.getProvider(key, folder.path);
-                return new TreeProviderView({
-                    provider,
-                    initialState: this.expandStateMap.get(key),
-                    onStateChange: (state) => this.expandStateMap.set(key, state),
-                    onItemClick: (item) => {
-                        if (!item.isDirectory) {
-                            void app.events.openRawLink.sendAsync(createLinkData(item.href));
-                            this.props.onClose?.();
-                        }
-                    },
-                    onFolderDoubleClick: (item) => this.openFolderPathInTab(item.href),
-                });
-            }
-        }
-    }
-
-    private rightViewProps(key: string): unknown {
-        switch (key) {
-            case openTabsId: return { onClose: this.props.onClose, open: this.props.open };
-            case recentFilesId: return {
-                onClose: this.props.onClose,
-            };
-            case toolsEditorsId: return { onClose: this.props.onClose };
-            case scriptLibraryId: return {
-                onClose: this.props.onClose,
-                expandState: this.expandStateMap.get(scriptLibraryId),
-                onExpandStateChange: (state: TreeProviderViewSavedState) => this.expandStateMap.set(scriptLibraryId, state),
-            };
-            default: {
-                const folder = menuFolders.find(key);
-                if (!folder?.path) return {};
-                return {
-                    provider: this.getProvider(key, folder.path),
-                    initialState: this.expandStateMap.get(key),
-                    onStateChange: (state: TreeProviderViewSavedState) => this.expandStateMap.set(key, state),
-                    onItemClick: (item: { isDirectory: boolean; href: string }) => {
-                        if (!item.isDirectory) {
-                            void app.events.openRawLink.sendAsync(createLinkData(item.href));
-                            this.props.onClose?.();
-                        }
-                    },
-                    onFolderDoubleClick: (item: { href: string }) => this.openFolderPathInTab(item.href),
-                };
-            }
-        }
+    private folderUiContext(): MenuBarFolderUiContext {
+        return {
+            onClose: this.props.onClose,
+            open: this.props.open,
+            expandStateMap: this.expandStateMap,
+            getProvider: (folderId, folderPath) => this.getProvider(folderId, folderPath),
+            openFolderInTab: (folder) => this.openFolderInTab(folder),
+            openFolderPathInTab: (folderPath) => this.openFolderPathInTab(folderPath),
+            clearRecentFiles: () => this.clearRecentFiles(),
+        };
     }
 
     private getProvider(folderId: string, folderPath: string): FileTreeProvider {
@@ -587,8 +394,7 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
             this.props.onClose?.();
         } else if (event.ctrlKey && event.code === "KeyF" && this.selectedFolderId !== openTabsId) {
             event.preventDefault();
-            this.treeViewModel?.showSearch();
-            this.recentFileListView?.showSearch();
+            this.rightViewHandle.showSearch?.();
         }
     }
 }

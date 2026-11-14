@@ -11,11 +11,9 @@ import { EditorCategoryColumnListView, type EditorCategoryColumn, type EditorCat
 import { editorCategories } from "../../api/editor-categories";
 import { getCreatableItems, getCreatableItemLabel } from "../../api/creatable-items";
 import { createCreatableItemIcon } from "../sidebar/creatable-item-icon";
-import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
+import { boardIdentity } from "../../editors/board/board-identity";
 import { fpBasename } from "../../core/utils/file-path";
 import { buildRootsTree, type RootsTreeNode } from "../../components/roots-tree-build";
-import { boardDisplayText, boardMetadataKeys, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
-import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
 import { pages } from "../../api/pages";
 import { InputView } from "../../uikit/Input/InputView";
 import { ButtonView } from "../../uikit/Button/ButtonView";
@@ -61,8 +59,7 @@ export class EditorCategoriesPopoverView extends VanillaView<EditorCategoriesPop
         this.listen(this.root, "keydown", this.onKeyDown);
         this.root.append(this.header, this.resizeHandle);
         this.own(boardRegistry.subscribeMembership(this.refreshBoards));
-        this.own(onBoardDisplayTextChanged(() => this.renderList()));
-        this.own(subscribeBoardIconChanges(() => this.renderList()));
+        this.own(boardIdentity.onChanged(() => this.renderList()));
         const settingsKeys = ["editor-categories", "browser-profiles"] as const satisfies readonly AppSettingsKey[];
         for (const key of settingsKeys) this.own(settings.watch(key, () => this.renderList()));
         this.refreshBoards();
@@ -158,8 +155,8 @@ export class EditorCategoriesPopoverView extends VanillaView<EditorCategoriesPop
         ));
         const boardRows = sortedRoots.map((root) => ({
             ref: editorCategories.encodeRef({ kind: "board", root }),
-            label: boardDisplayText(root, undefined, boardMetadataKeys.name, fpBasename(root)),
-            icon: createBoardGlyphElement(root),
+            label: boardIdentity.displayName(root, fpBasename(root)),
+            icon: boardIdentity.glyph(root),
             create: () => { void app.events.openRawLink.sendAsync(createLinkData(encodePersephoneBoardLink(root))); },
         }));
         const allRows = [...eligible, ...boardRows];

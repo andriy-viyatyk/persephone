@@ -652,9 +652,24 @@ with a named 1 s grace window; `runWithResult` without the redundant `pageId`; `
 `ui/dialogs` import; dead `_releaseList` and stale comments removed (`run()` and the adapter cast were already gone;
 bug #7 was already fixed). Recorded changes: a non-empty autoload load also clears the dirty library cache, so changed
 transitive library dependencies load fresh on autoload reload; relative requires inside Script Library modules work
-again (a pre-existing bug since US-236, found during live checks: `ScriptContext.moduleRequire`). **Remaining
-(part 2):** SHL-4 (`PageTabState`, `displayTitle`, `IAudibleEditor`), SHL-6 (board identity service), SHL-7
-(`MainPageView` reduced to layout), SHL-8 (`MenuBarView` folder-UI table) and the non-scripting SHL-13 items.
+again (a pre-existing bug since US-236, found during live checks: `ScriptContext.moduleRequire`).
+Part 2 is done ([EPIC-174](epics/EPIC-174.md), 2026-11-14):
+SHL-6 — `boardIdentity` (`editors/board/board-identity.ts`: `displayName`, `manifestName`, `glyph`, one merged
+`onChanged`) replaces the per-view caches, and `board-window-identity.ts`, installed by `index.ts` `mount()`, owns the
+board window's title and identity IPC; SHL-4 — `api/pages/page-tab-state.ts` (active with grouped partner, popover,
+sound inputs, `tabMenuAvailability` and the model-guard predicates used by `PagesLayoutModel`/`PagesLifecycleModel`),
+`pages.popoverTransitioned` and `setPopoverSize`, one `editors/tab-title-registry.ts` with per-editor `*-tab-title.ts`
+formatters for live and remote rows (`page-title.ts` deleted; `EditorModel.displayTitle` kept as the raw name because
+board sources and exports read it), and `IAudibleEditor` (`editors/base/audible-editor.ts`); SHL-7 — `MainPageView` is
+67 lines of layout over `AppHeaderView`/`BoardWindowHeaderView`, `GlobalMuteButtonView`, `HeaderStatusIndicatorsView`,
+`RecordingControlsView`, `api/shell/snip-to-new-page.ts` and `api/audio-capture-state.ts`; SHL-8 — `menu-bar-folder-ui.ts`
+table, one ListBox construction, `libraryService.choose()/unlink()`, `menuFolders.addWithDialog()`, a `showSearch`
+handle instead of `instanceof`; SHL-13 shell aliases removed. Decided against: routing the remaining raw `ipcRenderer`
+callers through `ipc/renderer/api` (a request/reply proxy with a 30 s deadline; raw channels are the pattern in about
+20 modules). Recorded changes: the browser tab's sound button mutes/unmutes again (EPIC-158 regression), board windows
+no longer build the app-only header widgets, and board names warm lazily wherever they are shown. **Remaining
+(part 3):** the SHL-13 dialog items (`Dialogs.ts`, `Poppers.ts`, the `ui/dialogs` barrel, `dialogs-state.ts`, one
+`ModelViewSlotHost`, an `onDialogClosed` event for ai-vision), best done with roadmap item 2.2's dialog slice.
 
 ### Phase 7: Lock it in
 

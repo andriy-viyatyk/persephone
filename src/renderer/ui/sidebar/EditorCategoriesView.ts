@@ -8,8 +8,7 @@ import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { ui } from "../../api/ui";
 import { boardRegistry } from "../../api/boards/board-registry";
-import { boardDisplayText, boardMetadataKeys } from "../../api/boards/board-display-text";
-import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
+import { boardIdentity } from "../../editors/board/board-identity";
 import { fpBasename } from "../../core/utils/file-path";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { InputView } from "../../uikit/Input/InputView";
@@ -77,8 +76,8 @@ export class EditorCategoriesView extends VanillaView<EditorCategoriesViewProps>
             icon: createCreatableItemIcon(item),
         }));
         const boardRows = this.boardRoots.map((root) => ({
-            ref: editorCategories.encodeRef({ kind: "board", root }), label: boardDisplayText(root, undefined, boardMetadataKeys.name, fpBasename(root)),
-            categoryId: "", categoryItem: true, icon: createBoardGlyphElement(root),
+            ref: editorCategories.encodeRef({ kind: "board", root }), label: boardIdentity.displayName(root, fpBasename(root)),
+            categoryId: "", categoryItem: true, icon: boardIdentity.glyph(root),
         }));
         const columns: EditorCategoryColumn[] = categories.map((category) => ({
             id: category.id,

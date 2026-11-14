@@ -192,8 +192,8 @@ language-pack catalogs, and UIKit text overrides are ready before views are crea
 awaits `loadMonacoNls()` from `renderer/i18n/monaco-nls.ts` before dynamically importing the app,
 settings, or renderer index modules that can load Monaco. The NLS loader uses explicit imports for
 the languages Monaco ships; unsupported locales leave Monaco's own widgets in English. App-owned
-tab titles are translated for display by `ui/tabs/page-title.ts` while their stored and API values
-remain English.
+tab titles are formatted by editor-specific functions registered in `editors/tab-title-registry.ts`
+and exposed through `EditorModel.displayTitle`; stored and API titles remain English.
 
 The main entry (`src/main.ts`) parses the optional application profile, sets its data paths,
 acquires the single-instance lock, then calls `setupMainProcess()` from `src/main/main-setup.ts`.

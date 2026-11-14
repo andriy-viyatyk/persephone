@@ -19,6 +19,7 @@ import { RestoreFailedEditor } from "../../editors/restore-failed/RestoreFailedE
 import { fpBasename } from "../../core/utils/file-path";
 import { applyOpenHints, prepareOpenedEditor, registerOpenSession } from "./open-request";
 import type { PageOpenRequest } from "./open-request";
+import { canBeginDetach, canBulkClose, canDuplicateModel } from "./page-tab-state";
 
 import type { ILink } from "../../api/types/io.tree";
 import { buildLinkEditorContent } from "../../editors/link-editor/link-open";
@@ -466,12 +467,12 @@ export class PagesLifecycleModel {
         const { pages } = this.model.state.get();
         const anchorIndex = pages.findIndex((page) => page.id === pageId);
         return this.closePages((page, index) =>
-            index > anchorIndex && !page.isLockedBoardPage && page.pinSide === undefined,
+            index > anchorIndex && canBulkClose(page),
         );
     };
 
     closeOtherPages = async (pageId: string) => this.closePages((page) =>
-        page.id !== pageId && !page.isLockedBoardPage && page.pinSide === undefined,
+        page.id !== pageId && canBulkClose(page),
     );
 
     // ── Multi-window operations ──────────────────────────────────────
@@ -555,12 +556,10 @@ export class PagesLifecycleModel {
 
     movePageOut = async (pageId?: string) => {
         const page = this.model.query.findPage(pageId);
-        if (!page) return;
-        if (page.isLockedBoardPage) return;
         // Recovery descriptors own cache protection in this renderer. Until the
         // destination acknowledges ownership, transferring one could expose its
         // cache to source-window cleanup.
-        if (page.isInert) return;
+        if (!page || !canBeginDetach(page)) return;
         if (this.model.popoverPageId === page.id) this.model.closePopover();
         if (this.model.query.isRightPinned(page.id)) {
             throw new Error("Right-pinned pages cannot be moved between windows.");
@@ -601,7 +600,7 @@ export class PagesLifecycleModel {
         if (page && this.model.query.isRightPinned(page.id)) {
             throw new Error("Right-pinned pages cannot be duplicated.");
         }
-        if (!page?.mainEditor || page.isInert) return;
+        if (!canDuplicateModel(page)) return;
 
         const sourceDesc = page.getDescriptor();
         // Fresh ids: page + each editor. Re-point mainEditorId to the new editor id.

@@ -5,12 +5,7 @@ import { settings } from "../../api/settings";
 import type { AppSettingsKey } from "../../api/settings-schema";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
-import { fpBasename } from "../../core/utils/file-path";
-import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
-import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
-import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
-import { readBoardManifest } from "../../api/boards/board-manifest-io";
-import { type NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
+import { boardIdentity } from "../../editors/board/board-identity";
 import type { EditorModelInstance as EditorModel } from "../../editors/base";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { SplitButtonView } from "../../uikit/SplitButton/SplitButtonView";
@@ -22,7 +17,7 @@ import type { MenuItem } from "../../uikit/Menu/types";
 import { getCreatableItemLabel, getCreatableItems } from "../../api/creatable-items";
 import { editorCategories } from "../../api/editor-categories";
 import { createCreatableItemIcon } from "../sidebar/creatable-item-icon";
-import { minTabWidth, pinnedTabEncryptedWidth, pinnedTabWidth } from "./PageTab";
+import { LOCKED_TAB_WIDTH, minTabWidth, pinnedTabEncryptedWidth, pinnedTabWidth } from "./PageTab";
 import { PageTabView } from "./PageTabView";
 import type { PageModel } from "../../api/pages/PageModel";
 import "./PageTabs.css";
@@ -52,8 +47,6 @@ export class PageTabsView extends VanillaView<object> {
     private resizeObserver: ResizeObserver | undefined;
     private showScrollButtons = false;
     private currentPages: PageModel[] = [];
-    private readonly warmedBoardRoots = new Set<string>();
-    private readonly boardManifests = new Map<string, NormalizedBoardManifest>();
     private categoryPopover: PopoverView | undefined;
 
     public constructor(props: object) {
@@ -115,18 +108,14 @@ export class PageTabsView extends VanillaView<object> {
         const settingsSubscriptions = settingsKeys.map((key) => settings.watch(key, () => this.updateAddMenu()));
         this.own(() => settingsSubscriptions.forEach((dispose) => dispose()));
         this.own(boardRegistry.subscribeMembership(() => this.updateAddMenu()));
-        this.own(subscribeBoardIconChanges(() => this.updateAddMenu()));
-        this.own(onBoardDisplayTextChanged((_root, reason) => {
-            if (reason === "invalidate") this.warmedBoardRoots.clear();
-            this.updateAddMenu();
-        }));
+        this.own(boardIdentity.onChanged(() => this.updateAddMenu()));
         this.bind(
             pages.state,
             (state): TabProjection => ({
                 pages: state.pages,
                 activeId: state.ordered[state.ordered.length - 1]?.id,
             }),
-            (projection) => this.updateTabs(projection),
+            (projection) => this.renderTabs(projection, true),
         );
         this.updateAddMenu();
         this.checkScrollButtons();
@@ -158,7 +147,7 @@ export class PageTabsView extends VanillaView<object> {
         this.tabViews.delete(element);
     }
 
-    private updateTabs(projection: TabProjection): void {
+    private renderTabs(projection: TabProjection, scrollToActive: boolean): void {
         const mainPages = projection.pages.filter((page) => !pages.query.isRightPinned(page.id));
         const rightPageCount = projection.pages.filter((page) => pages.query.isRightPinned(page.id)).length;
         if (appWindow.isBoardMode) {
@@ -169,40 +158,32 @@ export class PageTabsView extends VanillaView<object> {
         this.syncPageLayoutSubscriptions(mainPages);
         this.tabs.update(mainPages);
         this.checkScrollButtons();
-        this.scrollToActive(projection.activeId);
+        if (scrollToActive) this.scrollToActive(projection.activeId);
     }
 
-    private refreshTabLayout(): void {
-        const state = pages.state.get();
-        const mainPages = state.pages.filter((page) => !pages.query.isRightPinned(page.id));
-        const rightPageCount = state.pages.filter((page) => pages.query.isRightPinned(page.id)).length;
-        if (appWindow.isBoardMode) {
-            mainPages.sort((left, right) => Number(right.isLockedBoardPage) - Number(left.isLockedBoardPage));
-            this.root.toggleAttribute("data-board-single", mainPages.length <= 1 && rightPageCount === 0);
-        }
-        this.currentPages = mainPages;
-        this.syncPageLayoutSubscriptions(mainPages);
-        this.tabs.update(mainPages);
-        this.checkScrollButtons();
-    }
-
-    private syncPageLayoutSubscriptions(pages: readonly PageModel[]): void {
-        const presentIds = new Set(pages.map((page) => page.id));
+    private syncPageLayoutSubscriptions(currentPages: readonly PageModel[]): void {
+        const presentIds = new Set(currentPages.map((page) => page.id));
         for (const [pageId, subscription] of this.pageLayoutSubscriptions) {
             if (presentIds.has(pageId)) continue;
             subscription.release();
             this.pageLayoutSubscriptions.delete(pageId);
         }
-        for (const page of pages) {
+        for (const page of currentPages) {
             const editor = page.mainEditor;
             const previous = this.pageLayoutSubscriptions.get(page.id);
             if (previous?.page === page && previous.editor === editor) continue;
             previous?.release();
+            const updateLayout = (): void => {
+                const state = pages.state.get();
+                this.renderTabs({
+                    pages: state.pages,
+                    activeId: state.ordered[state.ordered.length - 1]?.id,
+                }, false);
+            };
             const pageUnsubscribe = page.state.subscribe(
-                () => this.refreshTabLayout(),
+                updateLayout,
                 (state) => ({ pinSide: state.pinSide, mainEditorId: state.mainEditorId, version: state.version }),
             );
-            const updateLayout = (): void => this.refreshTabLayout();
             const editorState = editor?.state as unknown as IState<{ encrypted?: boolean; password?: unknown }> | undefined;
             const editorUnsubscribe = editorState?.subscribe(
                 updateLayout,
@@ -237,7 +218,7 @@ export class PageTabsView extends VanillaView<object> {
         for (const candidate of pages) {
             if (candidate === page) break;
             if (candidate.isLockedBoardPage) {
-                left += 208;
+                left += LOCKED_TAB_WIDTH;
                 continue;
             }
             if (!candidate.pinned) continue;
@@ -337,7 +318,7 @@ export class PageTabsView extends VanillaView<object> {
     private updateAddMenu(): void {
         const allItems = getCreatableItems(settings.get("browser-profiles"));
         for (const item of allItems) {
-            if (item.boardRoot) this.warmBoard(item.boardRoot);
+            if (item.boardRoot) boardIdentity.warm(item.boardRoot);
         }
         const items: MenuItem[] = [];
         for (const stored of editorCategories.allRefs()) {
@@ -350,15 +331,10 @@ export class PageTabsView extends VanillaView<object> {
             } else {
                 const root = ref.root;
                 if (!boardRegistry.isTrusted(root)) continue;
-                this.warmBoard(root);
+                boardIdentity.warm(root);
                 items.push({
-                    label: boardDisplayText(
-                        root,
-                        this.boardManifests.get(root),
-                        boardMetadataKeys.name,
-                        this.boardManifests.get(root)?.name?.trim() || fpBasename(root),
-                    ),
-                    icon: createBoardGlyphElement(root),
+                    label: boardIdentity.displayName(root, boardIdentity.manifestName(root)),
+                    icon: boardIdentity.glyph(root),
                     onClick: () => {
                         void app.events.openRawLink.sendAsync(
                             createLinkData(encodePersephoneBoardLink(root)),
@@ -406,13 +382,4 @@ export class PageTabsView extends VanillaView<object> {
         popover.mount();
     }
 
-    private warmBoard(root: string): void {
-        if (this.warmedBoardRoots.has(root)) return;
-        this.warmedBoardRoots.add(root);
-        void readBoardManifest(root).then((manifest) => {
-            if (!manifest) return;
-            this.boardManifests.set(root, manifest);
-            return ensureBoardDisplayText(root, manifest);
-        }).catch(() => {});
-    }
 }

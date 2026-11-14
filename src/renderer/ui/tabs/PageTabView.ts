@@ -1,16 +1,16 @@
 import { EditorId } from "../../../shared/editor-ids";
 import { t } from "../../../shared/i18n/t";
-import { displayPageTitle } from "./page-title";
 import { api } from "../../../ipc/renderer/api";
 import type { PageDragData } from "../../../shared/types";
 import { parseObject } from "../../core/utils/parse-utils";
 import { decodeCategoryLink } from "../../content/tree-providers/tree-provider-link";
 import { ContextMenuEvent } from "../../api/events/events";
 import { pages } from "../../api/pages";
+import { canDrag, tabIsActive, tabIsGrouped, tabMenuAvailability, tabPopoverIsOpen, tabSoundInputs } from "../../api/pages/page-tab-state";
 import { appWindow } from "../../api/window";
 import { settings } from "../../api/settings";
 import type { EditorModelInstance as EditorModel } from "../../editors/base/EditorModel";
-import { BoardEditorModel } from "../../editors/board/BoardEditorModel";
+import { displayPageTitle } from "../../editors/tab-title-registry";
 import { onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
 import { TraitTypeId, getTraitDragData, hasTraitDragData, setTraitDragData } from "../../core/traits";
@@ -52,6 +52,7 @@ interface EditorProjection {
     iconKey: string;
     anyTabAudible: boolean;
     pageMuted: boolean;
+    soundButtonWhenSilent: boolean;
 }
 
 function emptyEditorProjection(): EditorProjection {
@@ -66,10 +67,17 @@ function emptyEditorProjection(): EditorProjection {
         iconKey: "",
         anyTabAudible: false,
         pageMuted: false,
+        soundButtonWhenSilent: false,
     };
 }
 
-function selectEditorState(state: EditorTabState, boardRoot?: string): EditorProjection {
+function selectEditorState(
+    state: EditorTabState & { boardRoot?: string; props?: { name?: string } },
+    model?: EditorModel,
+    editor?: EditorModel,
+    editorState?: EditorTabState,
+    hostState?: EditorTabState,
+): EditorProjection {
     const categoryLink = state.editor === EditorId.categoryView && state.filePath
         ? decodeCategoryLink(state.filePath)
         : null;
@@ -78,7 +86,7 @@ function selectEditorState(state: EditorTabState, boardRoot?: string): EditorPro
             ? t("shell.empty")
             : categoryLink && !categoryLink.category && state.title === "Folder"
             ? t("shell.folder")
-            : displayPageTitle(state.editor, state.title, boardRoot),
+            : displayPageTitle(state, { context: "tab", model, editorStateTitle: editorState?.title }),
         modified: state.modified ?? false,
         language: state.language ?? "",
         filePath: state.filePath ?? "",
@@ -86,8 +94,7 @@ function selectEditorState(state: EditorTabState, boardRoot?: string): EditorPro
         encrypted: state.encrypted ?? false,
         temp: state.temp ?? false,
         iconKey: state.iconKey ?? "",
-        anyTabAudible: state._anyTabAudible ?? false,
-        pageMuted: state.pageMuted ?? false,
+        ...tabSoundInputs(editor, editorState ?? state, hostState),
     };
 }
 
@@ -202,17 +209,11 @@ export class PageTabView extends VanillaView<PageTabProps> {
         );
         this.bind(
             pages.state,
-            (state) => {
-                const activeId = state.ordered[state.ordered.length - 1]?.id;
-                const groupedId = activeId
-                    ? state.leftRight.get(activeId) ?? state.rightLeft.get(activeId)
-                    : undefined;
-                return {
-                    active: this.props.model.id === activeId || this.props.model.id === groupedId,
-                    grouped: state.leftRight.has(this.props.model.id) || state.rightLeft.has(this.props.model.id),
-                    popoverOpen: state.popoverPageId === this.props.model.id,
-                };
-            },
+            (state) => ({
+                active: tabIsActive(state, this.props.model.id),
+                grouped: tabIsGrouped(state, this.props.model.id),
+                popoverOpen: tabPopoverIsOpen(state, this.props.model.id),
+            }),
             ({ active, grouped, popoverOpen }) => {
                 this.isActive = active;
                 this.isGrouped = grouped;
@@ -297,17 +298,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
             ...hostState,
             title: editor.displayTitle,
         } as EditorTabState & { boardRoot?: string; props?: { name?: string } };
-        // Board Info in properties mode is titled with the board's English manifest name.
-        if (state.editor === EditorId.boardInfo && state.boardRoot && state.props?.name === state.title) {
-            return selectEditorState(state, state.boardRoot);
-        }
-        const boardRoot = model instanceof BoardEditorModel
-            && !model.filePath
-            && !model.folderAnchor
-            && (editor.state.get() as EditorTabState).title === model.displayNameEnglish
-            ? model.boardRoot
-            : undefined;
-        return selectEditorState(state, boardRoot);
+        return selectEditorState(state, model, editor, editorState, hostState);
     }
 
     private applyEditorProjection(next: EditorProjection): void {
@@ -336,7 +327,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
         setPresence(this.root, "data-grouped", this.isGrouped);
         setPresence(this.root, "data-has-encryption", hasEncryption);
         setPresence(this.root, "data-popover-open", this.props.mode === "right" && this.isPopoverOpen);
-        this.root.draggable = !lockedBoard;
+        this.root.draggable = canDrag(page);
         if (this.props.mode === "main" && page.pinSide === "left" && this.props.pinnedLeft !== undefined) this.root.style.left = `${this.props.pinnedLeft}px`;
         else this.root.style.removeProperty("left");
 
@@ -353,7 +344,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
             delayShow: 1500,
         });
         this.syncPinnedTooltip(pinned || this.props.mode === "right", this.projection.filePath || this.projection.title);
-        this.syncSoundButton(editor);
+        this.syncSoundButton();
         this.closeButton.update({
             name: "tab-close",
             size: "sm",
@@ -362,7 +353,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
             ...{"data-part": "close-button"},
             onClick: () => this.closeClick(),
         });
-        this.closeButton.root.hidden = lockedBoard;
+        this.closeButton.root.hidden = !canDrag(page);
         this.updateIcons();
         this.updateCloseIcon();
     }
@@ -409,9 +400,8 @@ export class PageTabView extends VanillaView<PageTabProps> {
         }
     }
 
-    private syncSoundButton(editor: EditorModel | null): void {
-        const toggleMuteAll = (editor as { toggleMuteAll?: () => void } | null)?.toggleMuteAll;
-        const show = this.projection.anyTabAudible || this.projection.pageMuted || Boolean(toggleMuteAll);
+    private syncSoundButton(): void {
+        const show = this.projection.anyTabAudible || this.projection.pageMuted || this.projection.soundButtonWhenSilent;
         if (show && !this.soundButton) {
             this.soundButton = this.child(new IconButtonView({
                 name: "tab-sound",
@@ -568,44 +558,42 @@ export class PageTabView extends VanillaView<PageTabProps> {
         const page = this.props.model;
         const editorInstance = page.mainEditor;
         const ctxEvent = ContextMenuEvent.fromNativeEvent(event, "page-tab");
-        const isRight = this.props.mode === "right";
-        const isLeftPinned = page.pinSide === "left";
+        const availability = tabMenuAvailability(page, this.props.mode);
         const menuItems: MenuItem[] = [];
-        if (page.isLockedBoardPage) {
+        if (availability.lockedBoard) {
             const editorItems = editorInstance?.onGetMenuItems() ?? [];
             ctxEvent.items.push(...editorItems);
             return;
         }
-        if (!page.isInert && (isRight || isLeftPinned)) {
+        if (availability.unpin) {
             menuItems.push({
                 label: t("shell.unpin"),
                 id: "page-tab-unpin",
                 onClick: () => pages.layout.unpinTab(page.id),
             });
-            menuItems.push({
-                label: t(isRight ? "shell.pinTabToLeft" : "shell.pinTabToRight"),
-                id: isRight ? "page-tab-pin-to-left" : "page-tab-pin-to-right",
-                onClick: () => pages.layout.pinTab(page.id, isRight ? "left" : "right"),
-            });
-        } else if (!page.isInert) {
+        }
+        if (availability.pinLeft) {
             menuItems.push({
                 label: t("shell.pinTabToLeft"),
                 id: "page-tab-pin-to-left",
                 onClick: () => pages.layout.pinTab(page.id, "left"),
-            }, {
+            });
+        }
+        if (availability.pinRight) {
+            menuItems.push({
                 label: t("shell.pinTabToRight"),
                 id: "page-tab-pin-to-right",
                 onClick: () => pages.layout.pinTab(page.id, "right"),
             });
         }
-        if (!isRight && !page.pinned) {
+        if (availability.close) {
             menuItems.push({
                 label: t("shell.closeTab"),
                 id: "page-tab-close",
                 onClick: () => page.close(),
             });
         }
-        if (!isRight) {
+        if (availability.closeOthers) {
             menuItems.push({
                 label: t("shell.closeOtherTabs"),
                 id: "page-tab-close-other",
@@ -614,23 +602,23 @@ export class PageTabView extends VanillaView<PageTabProps> {
                 startGroup: page.pinned,
             });
         }
-        if (!isRight && !page.pinned) {
-            menuItems.push(
-                {
-                    label: t("shell.closeTabsToTheRight"),
-                    id: "page-tab-close-to-right",
-                    disabled: pages.query.isLastPage(page.id),
-                    onClick: () => pages.lifecycle.closeToTheRight(page.id),
-                },
-                {
-                    label: t("shell.openInNewWindow"),
-                    id: "page-tab-open-in-new-window",
-                    disabled: page.isInert,
-                    onClick: () => api.addDragEvent(this.getDragData()),
-                },
-            );
+        if (availability.closeRight) {
+            menuItems.push({
+                label: t("shell.closeTabsToTheRight"),
+                id: "page-tab-close-to-right",
+                disabled: pages.query.isLastPage(page.id),
+                onClick: () => pages.lifecycle.closeToTheRight(page.id),
+            });
         }
-        if (!isRight && !page.isInert) menuItems.push({
+        if (availability.detach) {
+            menuItems.push({
+                label: t("shell.openInNewWindow"),
+                id: "page-tab-open-in-new-window",
+                disabled: availability.detachDisabled,
+                onClick: () => api.addDragEvent(this.getDragData()),
+            });
+        }
+        if (availability.duplicate) menuItems.push({
             label: t("shell.duplicateTab"),
             id: "page-tab-duplicate",
             icon: createIconElement("duplicate"),
@@ -655,7 +643,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
 
     private handleDragStart(event: DragEvent): void {
         const page = this.props.model;
-        if (page.isLockedBoardPage) {
+        if (!canDrag(page)) {
             event.preventDefault();
             return;
         }
@@ -696,7 +684,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
         const payload = getTraitDragData(event.dataTransfer);
         if (payload?.typeId !== TraitTypeId.PageTab) return;
         const sourceId = (payload.data as { key: string }).key;
-        if (pages.query.findPage(sourceId)?.isLockedBoardPage) {
+        if (!canDrag(pages.query.findPage(sourceId))) {
             event.preventDefault();
             event.stopPropagation();
             return;
@@ -732,7 +720,7 @@ export class PageTabView extends VanillaView<PageTabProps> {
 
     private closeClick(): void {
         const page = this.props.model;
-        if (page.isLockedBoardPage) return;
+        if (!canDrag(page)) return;
         if (this.isGrouped) {
             pages.layout.ungroup(page.id);
             pages.navigation.showPage(page.id);

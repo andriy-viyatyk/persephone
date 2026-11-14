@@ -14,7 +14,7 @@ export interface SettingsEditorState extends EditorStateBase {
 
 export const getDefaultSettingsEditorState = (): SettingsEditorState => ({
     id: SETTINGS_PAGE_ID,
-    // Stored and script-facing title stays English; the tab translates it (ui/tabs/page-title.ts).
+    // Stored and script-facing title stays English; the tab translates it (editors/settings/settings-tab-title.ts).
     title: englishMessage("settings.pageTitle"),
     modified: false,
     editor: EditorId.settingsView,

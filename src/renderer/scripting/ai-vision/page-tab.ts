@@ -4,6 +4,7 @@ import { ui } from "../../api/ui";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { createElements } from "ai-vision/dom";
 import { pageScopeSelector } from "./page-elements";
+import { tabIsActive, tabSoundInputs } from "../../api/pages/page-tab-state";
 
 const TAB_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "page-tab", purpose: "This page's tab-strip root.", where: "in the header tab strip" },
@@ -53,19 +54,13 @@ export class PageTabNode implements IAiVisible {
     get active(): boolean {
         const page = this.page;
         if (!page) return false;
-        const state = pages.state.get();
-        const activeId = state.ordered[state.ordered.length - 1]?.id;
-        const groupedId = activeId
-            ? state.leftRight.get(activeId) ?? state.rightLeft.get(activeId)
-            : undefined;
-        return page.id === activeId || page.id === groupedId;
+        return tabIsActive(pages.state.get(), page.id);
     }
 
     get soundIndicator(): boolean {
         const editor = this.page?.mainEditor;
-        const state = editor?.state.get() as { _anyTabAudible?: boolean; pageMuted?: boolean } | undefined;
-        const toggleMuteAll = (editor as { toggleMuteAll?: () => void } | null)?.toggleMuteAll;
-        return Boolean(state?._anyTabAudible || state?.pageMuted || toggleMuteAll);
+        const sound = tabSoundInputs(editor, editor?.state.get() as { _anyTabAudible?: boolean; pageMuted?: boolean } | undefined);
+        return Boolean(sound.anyTabAudible || sound.pageMuted || sound.soundButtonWhenSilent);
     }
 
     get aiVision(): IAiVisionDescriptor {

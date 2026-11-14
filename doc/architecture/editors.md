@@ -342,6 +342,19 @@ createEditorIconElement({
 
 The Tools & Editors list keeps its **own** per-item icon in [`creatable-items.ts`](../../src/renderer/api/creatable-items.ts) (it lists editor *types*, not live models), so a new editor icon must be set there too if the editor appears in that list.
 
+## Page-tab titles and sound controls
+
+`EditorModel.displayTitle` is the editor-owned presentation title for a page. It defaults to the
+model's English `title`; `tab-title-registry.ts` applies the formatter registered for the editor id
+when the tab or open-tabs sidebar needs a localized display value. The stored editor title and
+script-facing page title remain English. Board titles use the shared `boardIdentity` service for
+localized manifest names while preserving the model's title ownership rules.
+
+Sound controls use the optional `IAudibleEditor` contract in `base/audible-editor.ts`. Editors that
+own audio expose current audibility, mute state, whether to show a sound control while silent, and
+the mute-all action through that contract. Tab presentation can then read audio state without
+depending on individual editor classes; legacy editor-state fields remain a compatibility fallback.
+
 ## Page-tab context menu
 
 A page tab's right-click menu has two tiers. The **tab-level** items (Close, Close Others, Close to Right, Open in New Window, Duplicate, Pin/Unpin) are built with the shared helpers and constants in `PageTab.ts` and are identical for every editor — they call only page/`PagesModel` operations. The **editor-specific** items come from the editor model itself, through a single hook:
