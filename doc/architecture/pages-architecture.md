@@ -652,10 +652,11 @@ Two timing details matter. The scroll is **synchronous and instant** (not the sm
 ---
 
 The About guide pane reuses `MarkdownBodyView` through the narrower `MarkdownBodyModel` host
-interface, with guide contents supplied by the shared renderer `GuideIndex`. It is not a
-`PageModel` or `MarkdownEditor`; its Back action is the guide-browser history, while **Open in
-tab** sends the guide's `persephone-guide://` identity through the ordinary Markdown content
-pipeline.
+interface, with guide contents supplied by the shared renderer `GuideIndex`. The standalone body
+factory and `MarkdownSearchState` keep the same search transitions as the full Markdown editor. It
+is not a `PageModel` or `MarkdownEditor`; its Back action is the guide-browser history, while
+**Open in tab** sends the guide's `persephone-guide://` identity through the ordinary Markdown
+content pipeline.
 
 ## 10. Secondary Editor System
 

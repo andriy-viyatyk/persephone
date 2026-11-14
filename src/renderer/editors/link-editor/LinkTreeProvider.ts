@@ -285,7 +285,7 @@ export class LinkTreeProvider implements ITreeProvider {
         // virtualized rows never refreshed. Selection highlight is driven
         // separately via the `selectedHref` prop, not by `watch`.
         const unsub = this.source.state.subscribe(
-            callback,
+            () => callback(),
             (state) => state.data.links,
         );
         return unsub;

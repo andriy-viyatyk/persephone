@@ -195,7 +195,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── board-settings/     # Board-declared settings catalog, persistence, and bridge-facing reads
 │   │   ├── BoardSettingsStore.ts       # Renderer-lifetime board-settings.json store and change notifications
 │   │   ├── board-settings-bridge.ts    # Effective reads/writes/resets and board-frame change delivery
-│   │   ├── types.ts                    # Board setting declarations, scalar values, and file shape
+│   │   ├── types.ts                    # Board setting declarations, scalar values, file shape, and multiselect codec
 │   │   └── index.ts                    # Board settings exports
 │   ├── editors.ts          # IEditorRegistry implementation
 │   ├── recent.ts           # IRecentFiles implementation
@@ -238,10 +238,10 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── internal.ts         # Disposable utilities (wrapSubscription, etc.)
 │   │
 │   ├── board-vars/         # Board environment-variables store — secrets kept outside the board folder
-│   │   ├── BoardEnvStore.ts    # Session-singleton store over the settings-configured .env.json (namespace → profile → key → value; encryption reuse)
+│   │   ├── BoardEnvStore.ts    # Session-singleton tolerant runtime reader over the settings-configured .env.json (shared parser; encryption reuse)
 │   │   ├── board-vars-bridge.ts # Orchestrates a board's persephone.var.* request against ITS namespace (create-storage dialog, locked handling, serialized chain)
 │   │   ├── admin-api.ts        # BoardVarsAdmin — app.boardVars, unrestricted-namespace admin surface for scripts/agents
-│   │   ├── types.ts            # BoardVarsFile schema, DEFAULT_PROFILE
+│   │   ├── types.ts            # BoardVarsFile schema, shared parser, strict editor validator, DEFAULT_PROFILE
 │   │   └── index.ts            # Barrel
 │   │
 │   ├── tools/              # Internal Agent Tools registry — deliberately not exposed as app.tools
@@ -385,6 +385,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── tree-providers/           # ITreeProvider implementations
 │   │   ├── FileTreeProvider.ts  # Local filesystem directories
 │   │   ├── ArchiveTreeProvider.ts # Archives (ZIP, RAR, 7z, TAR, cab, ISO — read-only)
+│   │   ├── tree-provider-capabilities.ts # Internal watch, incremental-list, and local-file capability predicates
 │   │   ├── tree-provider-link.ts # tree-category:// link format (encode/decode)
 │   │   ├── MnemeTreeProvider.ts  # ITreeProvider over a Mneme root — browse like a filesystem; create/rename/delete; drag-drop import
 │   │   └── mnemeLinkTraits.ts    # MnemeLink TraitSet (LINK + FILE_LINK) for tree drag-drop (move within / copy across roots)
@@ -508,6 +509,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── markdown/           # Markdown preview (text-bearing, content-host trait)
 │   │   ├── MarkdownEditor.ts         # EditorModel — search state, scroll, compact
 │   │   ├── MarkdownBodyModel.ts       # Narrow host/model contract shared with embedded guide rendering
+│   │   ├── MarkdownSearchState.ts     # Shared find-bar transitions for editor and embedded Markdown
 │   │   ├── MarkdownBodyView.ts        # Native body (search, minimap, scroll and host binding)
 │   │   ├── MarkdownBlockView.ts       # Reusable markdown rendering (HAST-to-DOM, search + anchors)
 │   │   ├── MarkdownBlock.css         # Scoped stylesheet for generated Markdown DOM
@@ -769,7 +771,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── BoardsPanelEditorModel.ts # Independent optional "boards" panel editor and Explorer-root binding
 │   │   ├── BoardsSecondaryView.ts     # Trusted boards and registered toolsets under the Explorer root
 │   │   ├── BoardsTreeView.ts         # Reusable native boards tree (single-root + multi-root; folder-compacted; click / trailing / context-menu slots)
-│   │   ├── boards-tree-build.ts      # Pure builder: board path list → compacted folder/board node tree
 │   │   ├── BoardTargetModel.ts       # Board automation host for narrow target interfaces
 │   │   ├── board-icon-cache.ts       # Module-level icon cache (SVG/PNG/ICO → data URL, per board path)
 │   │   ├── board-theme.ts            # computeBoardThemePalette + BOARD_TOKEN_VARS (--p-* contract)
@@ -794,7 +795,6 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   └── index.ts                   # toolsetModule + EditorModule factory (decodes the link)
 │   ├── tools/              # Shared registered-toolsets tree (used by the sidebar Tools panels)
 │   │   ├── ToolsTreeView.ts          # Native Tree of toolsets (folder-compacted; open / trailing / context-menu slots)
-│   │   └── tools-tree-build.ts       # Pure builder: toolset path list → compacted folder/toolset node tree (leaf label = manifest name)
 │   ├── shared/             # Shared editor utilities and Monaco widget hosts
 │   │   ├── link-open-menu.ts
 │   │   ├── MonacoEditorHostView.ts   # VanillaView host for the single editor; owns file-backed project models
@@ -945,6 +945,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │       ├── fill-slot.ts    # Native slot-content filling and generation-safe cleanup
 │       ├── dom-props.ts    # Native attributes/events, targeted residual props, and listener cleanup
 │       ├── focus-restore.ts # Marks synchronous focus restoration so focusin consumers can ignore it
+│       ├── drop-target-tracker.ts # Nested drag-target counts and scheduled hover lifecycle
 │       └── slots.ts        # Neutral icon and slot-content types/resolution
 │
 ├── components/             # Persephone-Coupled Components (KEEP-only)
@@ -956,6 +957,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── TreeProviderViewModel.ts # Tree loading, selection, actions, and drops
 │   │   ├── CategoryViewImpl.ts # Native folder-content view and bounded editor island
 │   │   ├── CategoryViewModel.ts # Folder listing, selection, actions, and drops
+│   │   ├── provider-item-controller.ts # Shared CRUD/menu/key/drag actions for both provider-backed views
 │   │   ├── os-clipboard.ts  # OS file-clipboard actions (Cut/Copy/Paste ⇄ Windows Explorer) shared by the tree + category view models; file provider only
 │   │   ├── plural-actions.ts # Set-shaped actions shared by the tree + folder page: the multi-select gate, nested-item pruning, the plural menu, batch delete
 │   │   ├── item-crud-actions.ts # Shared create/rename/delete/paste operations and refresh handling
@@ -967,6 +969,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── FileSearch.ts  # File-search prop/state types
 │   │   └── FileSearchView.ts # Native search view and RenderGrid renderer
 │   ├── file-list/          # FileList.ts core/model + FileListView.ts native flat list
+│   ├── roots-tree-build.ts # Shared compacted tree builder for board and toolset roots
 │   ├── file-grid/          # FileGrid.ts types + FileGridView.ts native DataGrid/av-grid list
 │   ├── icons/              # Builder-backed Icon face and DOM icon resolvers
 │   ├── page-manager/       # Native app-page and browser internal-tab hosts

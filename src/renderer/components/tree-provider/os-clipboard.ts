@@ -4,7 +4,7 @@
 //
 // Only meaningful for the local-filesystem provider (`provider.type === "file"`,
 // where item hrefs are absolute paths) — callers gate menu items on
-// `supportsOsClipboard`.
+// `isLocalFileProvider`.
 
 import type { ITreeProvider } from "../../api/types/io.tree";
 import { api } from "../../../ipc/renderer/api";
@@ -13,12 +13,6 @@ import { copyPathsInto } from "../../core/utils/copy-files";
 import { fpBasename } from "../../core/utils/file-path";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
-
-/** OS clipboard copy/paste applies only where item hrefs are absolute local
- *  paths. Mneme / Link / Archive providers are excluded. */
-export function supportsOsClipboard(provider: ITreeProvider): boolean {
-    return provider.type === "file";
-}
 
 /** Put N files/folders on the OS clipboard (Windows Explorer can paste them).
  *  `cut: true` marks them for move — pasting (here or in Explorer) relocates them. */

@@ -1,9 +1,8 @@
 import { hrefKey, sameHref } from "./href-utils";
 import { createComponentModelDriver, type ComponentModelDriver } from "../../core/state/model";
 import { TraitSet, traited, type Traited } from "../../core/traits/traits";
-import { TraitTypeId, type TraitDragPayload } from "../../core/traits";
-import { api } from "../../../ipc/renderer/api";
-import { supportsOsClipboard } from "./os-clipboard";
+import { isTraitTypeId, TraitTypeId, type TraitDragPayload } from "../../core/traits";
+import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
 import { getTraitDropAction } from "./drop-dispatch";
 import {
     TreeProviderViewModel,
@@ -299,7 +298,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
         const writable = provider.writable;
         const showLinks = this.props.showLinks !== false;
         const deepSearch = state.searchText.length >= 3;
-        const osDragEnabled = supportsOsClipboard(provider);
+        const osDragEnabled = isLocalFileProvider(provider);
 
         return {
             name: "tree-provider",
@@ -332,7 +331,9 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
             renderTrailing: (node) => this.props.renderTrailing?.(node.data),
             onItemContextMenu: this.onItemContextMenu,
             traitTypeId: writable
-                ? ((provider.dragTraitTypeId as TraitTypeId | undefined) ?? TraitTypeId.ILink)
+                ? (provider.dragTraitTypeId && isTraitTypeId(provider.dragTraitTypeId)
+                    ? provider.dragTraitTypeId
+                    : TraitTypeId.ILink)
                 : undefined,
             getDragData: writable ? this.getDragData : undefined,
             acceptsDrop: writable,
@@ -448,15 +449,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
         node: TreeProviderNode,
         _level: number,
         event: DragEvent,
-    ): boolean => {
-        const href = node.data.href;
-        if (!href || sameHref(href, this.props.provider.rootPath)) return false;
-        const paths = this.model.dragItemsFor(node).map((item) => item.href);
-        if (!paths.length) return false;
-        event.preventDefault();
-        void api.startOsFileDrag(paths);
-        return true;
-    };
+    ): boolean => this.model.handleOsDragStart(node, event);
 
     private readonly canTraitDrop = (
         node: TreeProviderNode,
@@ -471,7 +464,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
             void this.model.moveItems(action.items, node);
         } else if (action.kind === "import-links") {
             void this.model.importLinksTo(action.items, node);
-        } else if (supportsOsClipboard(this.props.provider)) {
+        } else if (isLocalFileProvider(this.props.provider)) {
             void this.model.dropOsFilesInto(action.files, node);
         } else {
             void this.model.importFiles(action.files, node);

@@ -12,6 +12,7 @@ import {
     BoardVarsFile,
     BoardVarsLoadResult,
     DEFAULT_PROFILE,
+    parseBoardVarsText,
 } from "./types";
 import { errMessage } from "../../../shared/utils";
 
@@ -103,8 +104,8 @@ class BoardEnvStore {
 
         try {
             const text = model.state.get().content || "";
-            const parsed = text.trim() ? (JSON.parse(text) as BoardVarsFile) : {};
-            this.parsed = parsed && typeof parsed === "object" ? parsed : {};
+            const parsed = parseBoardVarsText(text);
+            this.parsed = parsed && typeof parsed === "object" ? parsed as BoardVarsFile : {};
         } catch (e) {
             return { status: "error", message: errMessage(e) };
         }

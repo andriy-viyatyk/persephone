@@ -7,7 +7,8 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { createFolderIconElement } from "../../components/icons/icon-elements";
 import { subscribeBoardIconChanges } from "./board-icon-cache";
 import { createBoardGlyphElement } from "./board-glyph-element";
-import { buildBoardsTree, type BoardTreeNode } from "./boards-tree-build";
+import { buildRootsTree, type RootsTreeNode } from "../../components/roots-tree-build";
+import { fpBasename } from "../../core/utils/file-path";
 import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
 import { readBoardManifest } from "../../api/boards/board-manifest-io";
 import { type NormalizedBoardManifest } from "../../../shared/board/board-manifest-schema";
@@ -28,7 +29,7 @@ export interface BoardsTreeViewProps {
 
 export class BoardsTreeView extends VanillaView<BoardsTreeViewProps> {
     private readonly iconElements = new Map<string, Node>();
-    private readonly handleChange = (node: BoardTreeNode): void => {
+    private readonly handleChange = (node: RootsTreeNode<"board">): void => {
         // Paint the clicked row as selected, the way the Explorer file tree does. Only the
         // node's `value` is read back, so keeping the node itself is safe even after the
         // boards list is rebuilt and the stored object is no longer one of `this.nodes`.
@@ -40,11 +41,11 @@ export class BoardsTreeView extends VanillaView<BoardsTreeViewProps> {
         this.activeIndex = index;
         this.tree?.update(this.treeProps());
     };
-    private readonly getContextMenu = (node: BoardTreeNode): MenuItem[] | undefined =>
+    private readonly getContextMenu = (node: RootsTreeNode<"board">): MenuItem[] | undefined =>
         node.kind === "board" && node.root
             ? this.props.getBoardContextMenu?.(node.root)
             : undefined;
-    private readonly getIconElement = (node: BoardTreeNode): Node => {
+    private readonly getIconElement = (node: RootsTreeNode<"board">): Node => {
         const cached = this.iconElements.get(node.value);
         if (cached) return cached;
 
@@ -54,33 +55,33 @@ export class BoardsTreeView extends VanillaView<BoardsTreeViewProps> {
         this.iconElements.set(node.value, icon);
         return icon;
     };
-    private readonly renderTrailing = (node: BoardTreeNode): SlotContent | undefined =>
+    private readonly renderTrailing = (node: RootsTreeNode<"board">): SlotContent | undefined =>
         node.kind === "board" && node.root
             ? this.props.renderTrailing?.(node.root)
             : undefined;
-    private readonly trailingElement = (node: BoardTreeNode): Node | undefined =>
+    private readonly trailingElement = (node: RootsTreeNode<"board">): Node | undefined =>
         node.kind === "board" && node.root
             ? this.props.trailingElement?.(node.root)
             : undefined;
     /** Bound once, like every other callback here: `treeProps()` is on the update path, and a
      *  fresh identity per pump is the props-pump trap the uikit rules call out. */
-    private readonly getDragData = (node: BoardTreeNode): unknown | null =>
+    private readonly getDragData = (node: RootsTreeNode<"board">): unknown | null =>
         node.kind === "board" && node.root
             ? this.props.getBoardDragData?.(node.root) ?? null
             : null;
     /** Fires for folder rows too, hence the `board` guard — only a board leaf announces a pin drag. */
-    private readonly onDragStartOverride = (node: BoardTreeNode, _level: number, event: DragEvent): boolean => {
+    private readonly onDragStartOverride = (node: RootsTreeNode<"board">, _level: number, event: DragEvent): boolean => {
         if (node.kind === "board" && node.root) this.props.onBoardDragStart?.(node.root, event);
         return false;
     };
-    private readonly getTrailingVisibility = (node: BoardTreeNode): "always" | "hover" =>
+    private readonly getTrailingVisibility = (node: RootsTreeNode<"board">): "always" | "hover" =>
         node.kind === "board" && node.root && this.props.trailingVisible
             && !this.props.trailingVisible(node.root)
             ? "hover"
             : "always";
 
-    private tree: TreeView<BoardTreeNode> | undefined;
-    private selectedNode: BoardTreeNode | null = null;
+    private tree: TreeView<RootsTreeNode<"board">> | undefined;
+    private selectedNode: RootsTreeNode<"board"> | null = null;
     private activeIndex: number | null = null;
     private readonly warmedRoots = new Set<string>();
     private readonly manifests = new Map<string, NormalizedBoardManifest>();
@@ -104,7 +105,7 @@ export class BoardsTreeView extends VanillaView<BoardsTreeViewProps> {
             this.tree?.update(this.treeProps());
         }));
 
-        const tree = this.child(new TreeView<BoardTreeNode>(this.treeProps()));
+        const tree = this.child(new TreeView<RootsTreeNode<"board">>(this.treeProps()));
         this.tree = tree;
         this.root.append(tree.root);
         tree.mount();
@@ -143,15 +144,20 @@ export class BoardsTreeView extends VanillaView<BoardsTreeViewProps> {
         };
     }
 
-    private projectNodes(): BoardTreeNode[] {
+    private projectNodes(): RootsTreeNode<"board">[] {
         for (const root of this.props.boards) this.warmBoard(root);
-        return buildBoardsTree(this.props.boards, this.props.baseRoot, (root, fallback) =>
-            boardDisplayText(
+        return buildRootsTree(
+            this.props.boards.map(root => ({
                 root,
-                this.manifests.get(root),
-                boardMetadataKeys.name,
-                this.manifests.get(root)?.name?.trim() || fallback,
-            ),
+                label: boardDisplayText(
+                    root,
+                    this.manifests.get(root),
+                    boardMetadataKeys.name,
+                    fpBasename(root),
+                ),
+            })),
+            this.props.baseRoot,
+            { leafKind: "board", leafIdPrefix: "board:" },
         );
     }
 

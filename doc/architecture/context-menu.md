@@ -187,11 +187,10 @@ File" / "New Folder" scoped to the open category (gated on a writable provider),
 the tree's `onBackgroundContextMenu`.
 
 Where the folder page is multi-selectable it builds the same plural menu from the same
-`buildMultiItemMenuItems` helper as the tree, with one difference: it **skips Layer 2** rather than
-awaiting `contextMenuPromise`. The reason is the one above — a `linkContextMenu` subscriber receives
-a single `event.target`, so letting a plural menu through would invite singular items onto a menu
-that acts on N. The per-row hover action buttons stay singular for the same reason, and always
-confirm.
+`buildMultiItemMenuItems` helper as the tree and runs the Layer 2 event-channel menu subscribers
+for plural selections too. Subscribers receive the ordinary event whose `target` is the
+right-clicked row; they do not receive the selection as part of `ContextMenuEvent`. The per-row
+hover action buttons remain singular and always confirm.
 
 "Open with" is offered on **files only**. It contains the resolved default editor first,
 other compatible built-in editors, eligible file-mask board matches, and a final **Default App**

@@ -8,4 +8,3 @@ export type {
     CategoryViewProps,
     CategoryViewMode,
 } from "./CategoryViewModel";
-export { supportsMultiSelect } from "./plural-actions";

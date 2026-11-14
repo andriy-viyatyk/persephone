@@ -13,7 +13,7 @@ import { getCreatableItems, getCreatableItemLabel } from "../../api/creatable-it
 import { createCreatableItemIcon } from "../sidebar/creatable-item-icon";
 import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
 import { fpBasename } from "../../core/utils/file-path";
-import { buildBoardsTree } from "../../editors/board/boards-tree-build";
+import { buildRootsTree, type RootsTreeNode } from "../../components/roots-tree-build";
 import { boardDisplayText, boardMetadataKeys, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
 import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
 import { pages } from "../../api/pages";
@@ -145,13 +145,17 @@ export class EditorCategoriesPopoverView extends VanillaView<EditorCategoriesPop
             create: item.create,
         }));
         const sortedRoots: string[] = [];
-        const visitBoardNodes = (nodes: ReturnType<typeof buildBoardsTree>): void => {
+        const visitBoardNodes = (nodes: RootsTreeNode<"board">[]): void => {
             for (const node of nodes) {
                 if (node.kind === "board" && node.root) sortedRoots.push(node.root);
                 else if (node.items) visitBoardNodes(node.items);
             }
         };
-        visitBoardNodes(buildBoardsTree(this.eligibleBoards));
+        visitBoardNodes(buildRootsTree(
+            this.eligibleBoards.map(root => ({ root, label: fpBasename(root) })),
+            undefined,
+            { leafKind: "board", leafIdPrefix: "board:" },
+        ));
         const boardRows = sortedRoots.map((root) => ({
             ref: editorCategories.encodeRef({ kind: "board", root }),
             label: boardDisplayText(root, undefined, boardMetadataKeys.name, fpBasename(root)),

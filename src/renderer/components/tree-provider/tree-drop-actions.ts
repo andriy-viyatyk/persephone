@@ -17,7 +17,7 @@ import { copyPathsInto } from "../../core/utils/copy-files";
 import { fpDirname, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { isKeyInside } from "../../../shared/path-containment";
 import { pruneNestedItems } from "./plural-actions";
-import { supportsOsClipboard } from "./os-clipboard";
+import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
 
@@ -41,12 +41,12 @@ export interface DropTarget {
 /**
  * Move `sourceItems` into `target`. Branch order is load-bearing:
  *   1. `moveToCategory` — link/catalog providers, batch, no confirm.
- *   2. `supportsOsClipboard` — the file provider (hrefs are absolute paths): batch move via
+ *   2. `isLocalFileProvider` — the file provider (hrefs are absolute paths): batch move via
  *      `copyPathsInto`, i.e. the same machinery the clipboard paste and the OS-file drop use,
  *      so N items move with one confirm, one progress overlay and collected per-item failures.
  *   3. `provider.rename` with exactly one item — Mneme's provider-level single-item move.
  *
- * Testing `rename` before `supportsOsClipboard` would be a bug: `MnemeTreeProvider` implements
+ * Testing `rename` before `isLocalFileProvider` would be a bug: `MnemeTreeProvider` implements
  * `rename`, but its hrefs are not local absolute paths, so `copyPathsInto` would be handed
  * something it cannot resolve.
  *
@@ -76,7 +76,7 @@ export async function moveItemsInto(
 
     if (provider.moveToCategory && remaining.length) {
         await provider.moveToCategory(remaining.map((i) => i.href), targetPath);
-    } else if (supportsOsClipboard(provider) && remaining.length) {
+    } else if (isLocalFileProvider(provider) && remaining.length) {
         if (!(await moveFilesInto(provider, remaining, target))) return false;
     } else if (provider.rename && remaining.length === 1) {
         const source = remaining[0];

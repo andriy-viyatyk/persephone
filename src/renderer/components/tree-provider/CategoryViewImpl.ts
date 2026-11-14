@@ -9,6 +9,7 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { t } from "../../../shared/i18n/t";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import type { IconName } from "../../theme/icon-registry";
+import { hrefKey } from "./href-utils";
 import {
     CategoryViewModel,
     type CategoryItemsViewHandle,
@@ -328,14 +329,14 @@ export class CategoryViewImpl extends VanillaView<CategoryViewProps> {
     ): CategoryItemsViewProps {
         const provider = this.props.provider;
         const selectedIds = this.props.multiSelect
-            ? new Set(state.selectedHrefs)
+            ? new Set(state.selectedHrefs.map(hrefKey))
             : undefined;
         const acceptsDrops = this.model.acceptsDrops;
         const allowsDrag = this.model.allowsDrag;
         return {
             items: state.filteredItems,
             viewMode,
-            selectedId: this.props.selectedHref ?? undefined,
+            selectedId: this.props.selectedHref ? hrefKey(this.props.selectedHref) : undefined,
             selectedIds,
             searchText: state.searchText,
             onSelect: this.onItemClick,
@@ -348,7 +349,7 @@ export class CategoryViewImpl extends VanillaView<CategoryViewProps> {
             onItemDragOver: acceptsDrops ? this.onItemDragOver : undefined,
             onItemDragLeave: acceptsDrops ? this.onItemDragLeave : undefined,
             onItemDrop: acceptsDrops ? this.onItemDrop : undefined,
-            dropTargetId: state.dropTargetHref,
+            dropTargetId: state.dropTargetHref ? hrefKey(state.dropTargetHref) : null,
             dragSourceId: allowsDrag ? provider.sourceUrl : undefined,
             onDragStartOverride: allowsDrag ? this.onDragStartOverride : undefined,
         };

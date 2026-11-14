@@ -1,4 +1,4 @@
-import type { NormalizedBoardManifest, BoardEditorKind } from "./board-manifest-schema";
+import type { RawBoardManifest, NormalizedBoardManifest, BoardEditorKind } from "./board-manifest-schema";
 import type { NormalizedBoardPermissions } from "./board-permissions";
 import type { BoardServiceInterfaceDeclaration, BoardServiceUseDeclaration } from "./board-service-declarations";
 import { BOARD_BRIDGE_VERSION } from "../board-bridge-version";
@@ -41,7 +41,7 @@ export type BoardUsageGroup = "file-viewer" | "file-editor" | "tool";
  * true (tools/dashboards are inherently standalone), masks → false (a file-bound board
  * must opt in). An explicit boolean always wins.
  */
-function isBoardStandalone(manifest: Pick<NormalizedBoardManifest, "fileMasks" | "standalone"> | null | undefined): boolean {
+function isBoardStandalone(manifest: Pick<RawBoardManifest, "fileMasks" | "standalone"> | null | undefined): boolean {
     if (typeof manifest?.standalone === "boolean") return manifest.standalone;
     return (manifest?.fileMasks ?? []).length === 0;
 }
@@ -51,7 +51,7 @@ function isBoardStandalone(manifest: Pick<NormalizedBoardManifest, "fileMasks" |
  * **File editor** (masks + standalone — e.g. todo), **Tool / App** (no masks). Used by
  * the hub / pin surfaces to group boards.
  */
-export function boardUsageGroup(manifest: Pick<NormalizedBoardManifest, "fileMasks" | "standalone"> | null | undefined): BoardUsageGroup {
+export function boardUsageGroup(manifest: Pick<RawBoardManifest, "fileMasks" | "standalone"> | null | undefined): BoardUsageGroup {
     const hasMasks = (manifest?.fileMasks ?? []).length > 0;
     if (!hasMasks) return "tool";
     return isBoardStandalone(manifest) ? "file-editor" : "file-viewer";

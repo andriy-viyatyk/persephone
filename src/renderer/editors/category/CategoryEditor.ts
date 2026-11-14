@@ -9,7 +9,8 @@ import { BreadcrumbView } from "../../uikit/Breadcrumb/BreadcrumbView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { supportsMultiSelect } from "../../components/tree-provider/plural-actions";
+import { hrefKey } from "../../components/tree-provider/href-utils";
+import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
 import { CategoryViewImpl } from "../../components/tree-provider/CategoryViewImpl";
 import {
     type CategoryItemsViewFactory,
@@ -24,7 +25,6 @@ import type { LinksListProps } from "../link-editor/LinksList";
 import { LinksTilesView } from "../link-editor/LinksTilesView";
 import type { LinksTilesProps } from "../link-editor/LinksTiles";
 import { CategoryEditorModel, type CategoryTreeProviderHostPair } from "./CategoryEditorModel";
-import { folderViewModeService } from "./FolderViewModeService";
 import "../../uikit/Panel/Panel.css";
 import "../../uikit/Text/Text.css";
 
@@ -41,10 +41,6 @@ export class CategoryEditorView extends VanillaView<{ model: CategoryEditorModel
     private observedPage: IPageHost | null = null;
     private pageStateUnsub: (() => void) | undefined;
     private hostSelectionUnsub: (() => void) | undefined;
-    private viewMode: CategoryViewMode = "list";
-    private viewModePath: string | undefined;
-    private viewModeGeneration = 0;
-    private inert = false;
 
     public constructor(props: { model: CategoryEditorModel }) {
         super(props, createPanelElement({
@@ -55,7 +51,6 @@ export class CategoryEditorView extends VanillaView<{ model: CategoryEditorModel
             background: "default",
         }));
         this.model = props.model;
-        this.own(() => { this.inert = true; });
     }
 
     protected onMount(): void {
@@ -79,6 +74,7 @@ export class CategoryEditorView extends VanillaView<{ model: CategoryEditorModel
             (state) => state.filePath,
             () => this.syncSurface(),
         );
+        this.ownSubscription(this.model.viewModeState.subscribe(this.handleViewModeStateChange));
     }
 
     protected onUpdate(props: { model: CategoryEditorModel }): void {
@@ -114,7 +110,6 @@ export class CategoryEditorView extends VanillaView<{ model: CategoryEditorModel
         }
 
         const provider = host?.host.provider ?? null;
-        this.syncViewModeLoad(this.model.categoryPath ?? "");
         if (!provider) {
             this.releaseCategorySurface();
             this.releaseBreadcrumb();
@@ -139,22 +134,10 @@ export class CategoryEditorView extends VanillaView<{ model: CategoryEditorModel
         this.pageToolbar.update(this.pageToolbarProps());
     }
 
-    private syncViewModeLoad(categoryPath: string): void {
-        if (categoryPath === this.viewModePath) return;
-        this.viewModePath = categoryPath;
-        this.viewMode = "list";
-        const generation = ++this.viewModeGeneration;
-        void folderViewModeService.getViewMode(categoryPath).then((viewMode) => {
-            if (
-                this.inert
-                || generation !== this.viewModeGeneration
-                || categoryPath !== (this.model.categoryPath ?? "")
-            ) return;
-            this.viewMode = viewMode;
-            const provider = this.host?.host.provider;
-            if (provider) this.categoryView?.update(this.categoryViewProps(provider));
-        });
-    }
+    private readonly handleViewModeStateChange = (): void => {
+        const provider = this.host?.host.provider;
+        if (provider) this.categoryView?.update(this.categoryViewProps(provider));
+    };
 
     private ensureBreadcrumb(provider: ITreeProvider): void {
         const props = {
@@ -225,10 +208,10 @@ export class CategoryEditorView extends VanillaView<{ model: CategoryEditorModel
         return {
             provider,
             category: this.model.categoryPath ?? "",
-            viewMode: this.viewMode,
+            viewMode: this.model.viewMode,
             onViewModeChange: this.handleViewModeChange,
             selectedHref: this.selectedHref ?? undefined,
-            multiSelect: supportsMultiSelect(provider),
+            multiSelect: isLocalFileProvider(provider),
             onItemClick: this.handleSelect,
             onItemDoubleClick: this.handleNavigate,
             onFolderClick: this.handleNavigate,
@@ -264,11 +247,7 @@ export class CategoryEditorView extends VanillaView<{ model: CategoryEditorModel
     }
 
     private readonly handleViewModeChange = (mode: CategoryViewMode): void => {
-        const categoryPath = this.model.categoryPath ?? "";
-        this.viewMode = mode;
-        const provider = this.host?.host.provider;
-        if (provider) this.categoryView?.update(this.categoryViewProps(provider));
-        void folderViewModeService.setViewMode(categoryPath, mode);
+        this.model.setViewMode(mode);
     };
 
     private readonly handleSelect = (item: ITreeProviderItem): void => {
@@ -279,7 +258,7 @@ export class CategoryEditorView extends VanillaView<{ model: CategoryEditorModel
         void this.model.openItem(item);
     };
 
-    private readonly getItemId = (item: ITreeProviderItem): string => item.href;
+    private readonly getItemId = (item: ITreeProviderItem): string => hrefKey(item.href);
 
     private readonly createItemsView: CategoryItemsViewFactory = (host, initialProps) => {
         if (initialProps.viewMode === "list") {

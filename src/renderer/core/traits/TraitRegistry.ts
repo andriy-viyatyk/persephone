@@ -20,6 +20,10 @@ export enum TraitTypeId {
     MnemeLink = "MnemeLink",
 }
 
+export function isTraitTypeId(value: string): value is TraitTypeId {
+    return Object.values(TraitTypeId).some((typeId) => typeId === value);
+}
+
 /**
  * Maps type identifier strings to TraitSets.
  * Enables cross-window drag-drop: drag payload carries serializable { typeId, data },

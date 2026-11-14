@@ -443,7 +443,7 @@ A drop target dispatches **by trait + source + its own capability** — it never
 
 1. `LINK` present **and** `getSourceId(data) === provider.sourceUrl` → **move** within the provider (file rename, or category reassign for a collection) — same store, even across windows.
 2. else `LINK` present **and** the target implements `importLinks` → **catalog add/move** by href (store link metadata; a duplicate href is *moved* into the target category, not duplicated).
-3. else file content present (`FILE_LINK.getFiles(data).length > 0`) **and** the target implements `importFiles` → **import/copy** the bytes (`getBytes()` → store). For the local-file provider (`supportsOsClipboard`), `TreeProviderView` routes this to `dropOsFilesInto`, which offers a **Move / Copy / Cancel** choice (Move only when the items are real files with a `filePath`) and applies it via `copyPathsInto`; other byte-backed targets (Mneme uploads) use the plain `importFiles` copy.
+3. else file content present (`FILE_LINK.getFiles(data).length > 0`) **and** the target implements `importFiles` → **import/copy** the bytes (`getBytes()` → store). For the local-file provider (`isLocalFileProvider`), `TreeProviderView` routes this to `dropOsFilesInto`, which offers a **Move / Copy / Cancel** choice (Move only when the items are real files with a `filePath`) and applies it via `copyPathsInto`; other byte-backed targets (Mneme uploads) use the plain `importFiles` copy.
 4. else **ignore** — there is no rename fallback, so a file-backed target never feeds a foreign href to `rename`.
 
 Two target capabilities decide branches 2 and 3:

@@ -6,7 +6,12 @@ import { debounce, errMessage } from "../../../shared/utils";
 // Import directly from types.ts (not the api/board-vars barrel) — the barrel re-exports
 // board-vars-bridge.ts, which imports this folder's open-env-vars.ts, so going through the
 // barrel here would create a circular module dependency.
-import { DEFAULT_PROFILE, type BoardVarsFile } from "../../api/board-vars/types";
+import {
+    DEFAULT_PROFILE,
+    parseBoardVarsText,
+    type BoardVarsFile,
+    validateBoardVarsFile,
+} from "../../api/board-vars/types";
 import type { ILinkData } from "../../../shared/link-data";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
@@ -114,9 +119,9 @@ export class EnvVarsEditor extends TextHostEditorModel<EnvVarsEditorState> {
         }
 
         try {
-            const parsed: unknown = JSON.parse(content);
+            const parsed = parseBoardVarsText(content);
             validateBoardVarsFile(parsed);
-            const data = parsed as BoardVarsFile;
+            const data = parsed;
             this.state.update((s) => {
                 s.data = data;
                 s.status = "ok";
@@ -181,16 +186,46 @@ export class EnvVarsEditor extends TextHostEditorModel<EnvVarsEditorState> {
 
     // ── Variable (key) CRUD ───────────────────────────────────────────────
 
-    /** Replace an entire profile's key→value record atomically. The av-grid-based editor
-     *  (`EnvVarsBody`) owns row-level add/edit/delete as a local buffer and only calls this
-     *  once its own validation (no empty/duplicate names) passes — so `record` is always
-     *  well-formed by the time it lands here. */
+    /** Replace an entire profile's validated key→value record atomically. `trySetProfileRows`
+     *  owns row validation and delegates here only after the rows pass. */
     setProfileData = (namespace: string, profile: string, record: Record<string, string>): void => {
         this.state.update((s) => {
             (s.data[namespace] ??= {});
             s.data[namespace][profile] = record;
         });
     };
+
+    trySetProfileRows(
+        namespace: string,
+        profile: string,
+        rows: readonly { name: string; value: string }[],
+    ): string | undefined {
+        const counts = new Map<string, number>();
+        let hasEmpty = false;
+        for (const row of rows) {
+            const name = row.name.trim();
+            if (!name) {
+                hasEmpty = true;
+                continue;
+            }
+            counts.set(name, (counts.get(name) ?? 0) + 1);
+        }
+        const duplicates = [...counts.entries()].filter(([, count]) => count > 1).map(([name]) => name);
+        const reasons: string[] = [];
+        if (hasEmpty) reasons.push(t("board.emptyVariableNames"));
+        if (duplicates.length) {
+            reasons.push(t("board.duplicateVariableName", {
+                count: duplicates.length,
+                names: duplicates.map((name) => `"${name}"`).join(", "),
+            } as never));
+        }
+        if (reasons.length) return t("board.envNotSaved", { reasons: reasons.join("; ") });
+
+        const record: Record<string, string> = {};
+        for (const row of rows) record[row.name.trim()] = row.value;
+        this.setProfileData(namespace, profile, record);
+        return undefined;
+    }
 
     // ── Profile CRUD ───────────────────────────────────────────────────
 
@@ -282,28 +317,5 @@ export class EnvVarsEditor extends TextHostEditorModel<EnvVarsEditorState> {
         // Flush pending debounced save
         this.onDataChanged();
         await super.dispose();
-    }
-}
-
-/** Best-effort shape validation: namespace → profile → key → string. Throws with a
- *  human-readable message on the first violation (surfaced as the "error" status). */
-function validateBoardVarsFile(parsed: unknown): asserts parsed is BoardVarsFile {
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        throw new Error("Expected a JSON object mapping namespace → profile → key → value.");
-    }
-    for (const namespace of Object.values(parsed as Record<string, unknown>)) {
-        if (!namespace || typeof namespace !== "object" || Array.isArray(namespace)) {
-            throw new Error("Expected each namespace to be an object mapping profile → key → value.");
-        }
-        for (const profile of Object.values(namespace as Record<string, unknown>)) {
-            if (!profile || typeof profile !== "object" || Array.isArray(profile)) {
-                throw new Error("Expected each profile to be an object mapping key → value.");
-            }
-            for (const value of Object.values(profile as Record<string, unknown>)) {
-                if (typeof value !== "string") {
-                    throw new Error("Expected each variable value to be a string.");
-                }
-            }
-        }
     }
 }

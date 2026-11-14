@@ -6,7 +6,7 @@
  * separate from the toast (BoardEditorModel) and the sidebar (TrustedBoardsList) so the two
  * surfaces agree on what "an update" is and how it is applied.
  */
-import { compareVersions } from "../../../shared/version-utils";
+import { getBoardUpdateForEntry, listBoardUpdatesByRoot } from "./board-update-query";
 import type { PublishedBoardInfo } from "../../../ipc/api-param-types";
 import { publishedBoards } from "./published-boards";
 import { boardInstallRegistry } from "./board-install-registry";
@@ -32,31 +32,21 @@ export function getBoardUpdate(root: string): BoardUpdate | null {
     const inst = boardInstallRegistry.getByRoot(root);
     if (!inst) return null;
     const cat = publishedBoards.getCatalog().find((board) => board.id === inst.id);
-    if (!cat) return null;
-    if (!publishedBoards.isCompatible(cat.minAppVersion)) return null;
-    // `compareVersions(current, latest)` returns 1 when `latest` (2nd arg) is newer. An update
-    // exists iff the catalog version is newer than the installed one -> installed as current.
-    if (compareVersions(inst.version, cat.version) <= 0) return null;
-    return {
-        root: inst.root,
-        id: inst.id,
-        installedVersion: inst.version,
-        latestVersion: cat.version,
-        entry: cat,
-    };
+    return getBoardUpdateForEntry(inst, cat, publishedBoards.isCompatible(cat?.minAppVersion));
 }
 
 /**
  * All available updates (sync, non-reactive) — the script-call counterpart of `useBoardUpdates`
  * (a hook can't run in an `app.boards` call). Requires the catalog + install registry already
  * loaded (callers await `publishedBoards.load()` / `boardInstallRegistry.load()` first). Reuses
- * `getBoardUpdate` verbatim so this and the reactive surface can't drift.
+ * the shared update query so this and the reactive surface can't drift.
  */
 export function listBoardUpdates(): BoardUpdate[] {
-    return boardInstallRegistry
-        .listInstalled()
-        .map((entry) => getBoardUpdate(entry.root))
-        .filter((update): update is BoardUpdate => !!update);
+    return [...listBoardUpdatesByRoot(
+        boardInstallRegistry.listInstalled(),
+        publishedBoards.getCatalog(),
+        (minAppVersion) => publishedBoards.isCompatible(minAppVersion),
+    ).values()];
 }
 
 /** Update to the catalog-latest version through the shared board lifecycle. */

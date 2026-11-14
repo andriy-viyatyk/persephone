@@ -9,6 +9,7 @@ import { SelectView } from "../../../uikit/Select/SelectView";
 import type { IListBoxItem } from "../../../uikit/ListBox/types";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import type { BoardSettingDeclaration, BoardSettingValue } from "../../../../shared/board/board-settings-declarations";
+import { decodeMultiSelect, encodeMultiSelect } from "../../../api/board-settings/types";
 import type { SettingsStore } from "./settings-store";
 import "../../../uikit/Checkbox/Checkbox.css";
 import "../../../uikit/Input/Input.css";
@@ -245,7 +246,7 @@ export class BoardMultiselectField extends VanillaView<BoardMultiselectFieldProp
             ? { value: option, label: option }
             : { value: option.value, label: option.label ?? option.value });
         const knownValues = new Set(options.map((option) => option.value));
-        const storedTokens = splitSettingTokens(this.valueText);
+        const storedTokens = decodeMultiSelect(this.valueText);
         const unknownTokens = storedTokens.filter((token, index) =>
             !knownValues.has(token) && storedTokens.indexOf(token) === index);
         const items = [...options, ...unknownTokens.map((value) => ({ value, label: value }))];
@@ -263,7 +264,7 @@ export class BoardMultiselectField extends VanillaView<BoardMultiselectFieldProp
                     ...options.filter((option) => selectedValues.has(option.value)).map((option) => option.value),
                     ...unknownTokens.filter((token) => selectedValues.has(token)),
                 ];
-                void this.controller.write(nextValues.join(","));
+                void this.controller.write(encodeMultiSelect(nextValues));
             },
         };
     }
@@ -324,8 +325,4 @@ export class BoardMultilineField extends VanillaView<BoardMultilineFieldProps> {
 
 function settingText(value: BoardSettingValue): string {
     return typeof value === "string" ? value : String(value);
-}
-
-function splitSettingTokens(value: string): string[] {
-    return value.split(",").map((token) => token.trim()).filter(Boolean);
 }

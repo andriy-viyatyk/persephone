@@ -16,6 +16,7 @@ import type { IPageHost } from "../../api/pages/IPageHost";
 import { fpDirname } from "../../core/utils/file-path";
 import { createFolderIconElement } from "../../components/icons/icon-elements";
 import { createLinkData } from "../../../shared/link-data";
+import { hrefKey } from "../../components/tree-provider/href-utils";
 import { untranslated } from "../../../shared/i18n/t";
 
 export interface ExplorerEditorState extends EditorStateBase {
@@ -109,7 +110,7 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
     async openItem(item: ITreeProviderItem): Promise<void> {
         if (!this.page || !this.treeProvider) throw new Error("Explorer action unavailable: no provider is attached.");
         const current = this.selectionState.get().selectedHref;
-        if (current?.toLowerCase() === item.href.toLowerCase()) return;
+        if (current && hrefKey(current) === hrefKey(item.href)) return;
         this.setSelectedHref(item.href);
         const url = this.treeProvider.getNavigationUrl(item);
         await app.events.openRawLink.sendAsync(createLinkData(url, {

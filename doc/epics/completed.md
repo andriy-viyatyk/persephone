@@ -1,3 +1,26 @@
+## EPIC-169 — Refactoring Phase 6.6 part 2 and 6.7 part 1: Tools hub entry list, shared markdown search and roots tree, one board-vars format owner, provider capabilities and `ProviderItemController`
+
+Completed 2026-11-14. Roadmap Phase 6.6 part 2 (EDT-11, EDT-12), which completes item 6.6, and Phase 6.7 part 1
+(UIK-3): `publishedBoards.listEntries()` joins catalog, installs and updates for the Tools hub with a `detailsKey`
+rebuild gate and a pure `board-update-query.ts`; `CategoryEditorModel` owns the folder view mode;
+`MarkdownSearchState` and `createStandaloneMarkdownBodyModel()` serve Markdown and About; one `buildRootsTree` builds
+the boards and tools trees; `api/board-vars/types.ts` owns the `.env.json` parse and strict validation (the store keeps
+its loose read), `EnvVarsEditor.trySetProfileRows` the row validation, and `encodeMultiSelect`/`decodeMultiSelect` the
+multiselect format; the tree-provider capability contract, `hrefKey` as the one href identity,
+`ProviderItemController` for the tree and the folder page, and `uikit/shared/drop-target-tracker.ts`. Recorded
+changes: the folder page runs the `linkContextMenu` layer for multi-selections (D9); a case-different selection paints
+on the folder page; the Link editor category panel rebuilds when links change again (bug fix). DOM, `data-name`s,
+menus, search behaviour, error messages and persisted formats are otherwise unchanged (before/after fingerprints and
+menu replays). Plans by Codex, reviewed against the roadmap guardrails; Codex Luna implemented. Epic document:
+[EPIC-169](EPIC-169.md).
+
+- [x] **Tools hub entry list (US-1957).** `listEntries()` + `detailsKey`, update query, `boardUsageGroup` on a `Pick`, Category view mode in the model.
+- [x] **Markdown search and roots tree (US-1958).** `MarkdownSearchState`, standalone body model with `reset()`, `buildRootsTree`.
+- [x] **Board vars and multiselect (US-1959).** Shared parse, strict editor validation, `trySetProfileRows`, multiselect codec.
+- [x] **Provider capabilities and href identity (US-1960).** Capability guards, `hrefKey`, Link category refresh fix.
+- [x] **`ProviderItemController` (US-1961).** Shared menus, keys, plural targets, drags; `DropTargetTracker`.
+- [x] **Epic review.** `/review` (BOM and encoding repaired), `/document` seven architecture docs, `/userdoc` folder guide, `i18n:check` complete.
+
 ## EPIC-168 — Refactoring Phase 6.6 part 1: Tool editors — `LinkCollection`, de-duplicated link views, `McpSession`, log-entry registry, typed Mneme client
 
 Completed 2026-11-14. Roadmap Phase 6.6 part 1 (EDT-5, EDT-6, EDT-8, EDT-9, EDT-10): `LinkCollection` owns the link

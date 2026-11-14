@@ -674,11 +674,10 @@ The UIKit `Breadcrumb` is used with its opt-in `clipStart` prop: on overflow it 
 ### Selection, Drag-and-Drop and Live Refresh
 
 The folder page is a peer of the Explorer tree, not a read-only preview: where the provider allows
-it, the same gestures work in both. `CategoryEditor` gates this with a single call —
-`multiSelect={supportsMultiSelect(provider)}` — and `supportsMultiSelect` is currently
-`type === "file"`. Archive and Mneme folder pages therefore stay single-select, because the plural
-actions are the file-move / file-import pair and a catalog provider would need the `importLinks`
-branch the tree has.
+it, the same gestures work in both. `CategoryEditor` gates this with the shared internal
+`isLocalFileProvider(provider)` capability, currently true only for file providers. Archive and
+Mneme folder pages therefore stay single-select, because the plural actions are the file-move /
+file-import pair and a catalog provider would need the `importLinks` branch the tree has.
 
 What the gate turns on:
 
@@ -688,9 +687,8 @@ What the gate turns on:
   provider changes and never persisted, because a folder page re-lists from scratch each time it
   opens. `props.selectedHref` remains the singular *primary* item — the one-way channel the
   Explorer tree shares — so the two never fight over one value.
-- **Plural context menu** — replaces the single-row menu and skips the `linkContextMenu` layer
-  entirely, since Layer-2/3 subscribers are written against one item. Counts shown in the labels
-  are the *pruned* counts.
+- **Plural context menu** — replaces the single-row menu and runs the event-channel menu layer,
+  matching the tree's behavior. Counts shown in the labels are the *pruned* counts.
 - **Drops** — onto a folder row (into that folder) or onto whitespace, an empty-folder
   placeholder, or a file row (all meaning *the open folder*, because a file's parent **is** the
   open folder). `drop` stops propagation, which is what suppresses the global

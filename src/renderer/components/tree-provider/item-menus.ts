@@ -13,7 +13,8 @@ import {
     RenameIcon,
     TerminalIcon,
 } from "../../theme/icons";
-import { copyPathToOsClipboard, supportsOsClipboard } from "./os-clipboard";
+import { copyPathToOsClipboard } from "./os-clipboard";
+import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
 import { t } from "../../../shared/i18n/t";
 
 export interface ItemMenuActions {
@@ -100,7 +101,7 @@ export function getFileMenuItems(
         onClick: () => toClipboard(item.href),
     }];
 
-    if (supportsOsClipboard(provider)) {
+    if (isLocalFileProvider(provider)) {
         items.push(
             {
                 startGroup: true,
@@ -158,7 +159,7 @@ export function getFolderMenuItems(options: FolderMenuOptions): MenuItem[] {
         onClick: () => toClipboard(item.href),
     });
 
-    if (supportsOsClipboard(provider)) {
+    if (isLocalFileProvider(provider)) {
         if (!isRoot) {
             items.push({
                 startGroup: true,
@@ -187,7 +188,7 @@ export function getFolderMenuItems(options: FolderMenuOptions): MenuItem[] {
 
     pushEditGroup(items, { provider, item, directory, actions, allowRenameDelete: !isRoot });
 
-    if (supportsOsClipboard(provider)) {
+    if (isLocalFileProvider(provider)) {
         items.push({
             startGroup: true,
             id: "open-terminal-here",
@@ -224,7 +225,7 @@ export function getBackgroundMenuItems(
             },
         );
     }
-    if (supportsOsClipboard(provider)) {
+    if (isLocalFileProvider(provider)) {
         items.push({
             startGroup: items.length > 0,
             id: "paste",

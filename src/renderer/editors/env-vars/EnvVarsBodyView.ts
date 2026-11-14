@@ -271,36 +271,6 @@ function varColumns(): Column<VarRow>[] {
     ];
 }
 
-function validateRows(rows: VarRow[]): string | undefined {
-    const counts = new Map<string, number>();
-    let hasEmpty = false;
-    for (const row of rows) {
-        const name = row.name.trim();
-        if (!name) {
-            hasEmpty = true;
-            continue;
-        }
-        counts.set(name, (counts.get(name) ?? 0) + 1);
-    }
-    const duplicates = [...counts.entries()].filter(([, count]) => count > 1).map(([name]) => name);
-    const reasons: string[] = [];
-    if (hasEmpty) reasons.push(t("board.emptyVariableNames"));
-    if (duplicates.length) {
-        reasons.push(t("board.duplicateVariableName", {
-            count: duplicates.length,
-            names: duplicates.map((name) => `"${name}"`).join(", "),
-        } as never));
-    }
-    if (!reasons.length) return undefined;
-    return t("board.envNotSaved", { reasons: reasons.join("; ") });
-}
-
-function rowsToRecord(rows: VarRow[]): Record<string, string> {
-    const record: Record<string, string> = {};
-    for (const row of rows) record[row.name.trim()] = row.value;
-    return record;
-}
-
 class VariablesGridView extends VanillaView<{
     model: EnvVarsEditor;
     namespace: string;
@@ -314,6 +284,7 @@ class VariablesGridView extends VanillaView<{
     private seedRows: VarRow[] = [];
     private grid: DataGridInstance<VarRow> | undefined;
     private applyQueued = false;
+    private applyingRows = false;
     private live = false;
     private dataGridView: DataGridView<VarRow> | undefined;
     private contentPanel: HTMLDivElement | undefined;
@@ -384,6 +355,10 @@ class VariablesGridView extends VanillaView<{
 
     private syncSeed(props: { namespace: string; profile: string; data: Record<string, string> }): boolean {
         if (!this.depsGate.changed(this.dependencies(props))) return false;
+        if (this.applyingRows) {
+            this.appliedData = props.data;
+            return false;
+        }
         if (props.data === this.appliedData) return false;
 
         this.appliedData = props.data;
@@ -456,12 +431,16 @@ class VariablesGridView extends VanillaView<{
             if (!this.live || !this.grid || this.grid.isDestroyed()) return;
 
             const rows = this.grid.getRows() as VarRow[];
-            const reason = validateRows(rows);
-            this.setWarning(reason);
-            if (!reason) {
-                const record = rowsToRecord(rows);
-                this.appliedData = record;
-                this.props.model.setProfileData(this.props.namespace, this.props.profile, record);
+            this.applyingRows = true;
+            try {
+                const warning = this.props.model.trySetProfileRows(
+                    this.props.namespace,
+                    this.props.profile,
+                    rows,
+                );
+                this.setWarning(warning);
+            } finally {
+                this.applyingRows = false;
             }
         });
     }

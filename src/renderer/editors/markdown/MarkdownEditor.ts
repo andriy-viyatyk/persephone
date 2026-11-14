@@ -7,6 +7,7 @@ import { TextHostEditorModel } from "../base/TextHostEditorModel";
 import { TextFileModel } from "../content-host/TextFileModel";
 import { FRAGMENT_NAV_TRAIT } from "../base/editor-traits";
 import { ViewPort } from "../base/view-port";
+import { MarkdownSearchState } from "./MarkdownSearchState";
 import type {
     MarkdownBodyState,
     MarkdownBodyViewPort,
@@ -58,9 +59,11 @@ export class MarkdownEditor extends TextHostEditorModel<
     protected readonly displayName = "Markdown";
 
     private readonly viewPort = new ViewPort<MarkdownBodyViewPort>();
+    private readonly searchState: MarkdownSearchState<MarkdownEditorState>;
 
     constructor(state: TComponentState<MarkdownEditorState>) {
         super(state);
+        this.searchState = new MarkdownSearchState(state);
         this.traits.add(FRAGMENT_NAV_TRAIT, {
             revealFragment: (fragment) => this.revealFragment(fragment),
         });
@@ -141,53 +144,19 @@ export class MarkdownEditor extends TextHostEditorModel<
         });
     };
 
-    openSearch = (): void => {
-        this.state.update((s) => {
-            s.searchVisible = true;
-        });
-    };
+    openSearch = (): void => this.searchState.open();
 
-    closeSearch = (): void => {
-        this.state.update((s) => {
-            s.searchVisible = false;
-            s.searchText = "";
-            s.currentMatchIndex = 0;
-            s.totalMatches = 0;
-        });
-    };
+    closeSearch = (): void => this.searchState.close();
 
-    setSearchText = (text: string): void => {
-        this.state.update((s) => {
-            s.searchText = text;
-            s.currentMatchIndex = 0;
-        });
-    };
+    setSearchText = (text: string): void => this.searchState.setText(text);
 
     /** Called from the view's `onMatchCountChange` bridge — clamps the index
      *  when the count changes (e.g., user types extra chars and total drops). */
-    setMatchCount = (count: number): void => {
-        this.state.update((s) => {
-            const newIndex = count > 0 && s.currentMatchIndex >= count ? 0 : s.currentMatchIndex;
-            s.totalMatches = count;
-            s.currentMatchIndex = newIndex;
-        });
-    };
+    setMatchCount = (count: number): void => this.searchState.setMatchCount(count);
 
-    nextMatch = (): void => {
-        const { totalMatches, currentMatchIndex } = this.state.get();
-        if (totalMatches === 0) return;
-        this.state.update((s) => {
-            s.currentMatchIndex = (currentMatchIndex + 1) % totalMatches;
-        });
-    };
+    nextMatch = (): void => this.searchState.next();
 
-    prevMatch = (): void => {
-        const { totalMatches, currentMatchIndex } = this.state.get();
-        if (totalMatches === 0) return;
-        this.state.update((s) => {
-            s.currentMatchIndex = (currentMatchIndex - 1 + totalMatches) % totalMatches;
-        });
-    };
+    prevMatch = (): void => this.searchState.prev();
 
     // ── Facade-only accessors ─────────────────────────────────────
 

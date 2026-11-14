@@ -5,11 +5,12 @@ import { TreeView } from "../../uikit/Tree/TreeView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { createFolderIconElement } from "../../components/icons/icon-elements";
 import { createIconElement } from "../../uikit/shared/slots";
-import {
-    buildToolsTree,
-    type ToolTreeNode,
-    type ToolsetTreeInput,
-} from "./tools-tree-build";
+import { buildRootsTree, type RootsTreeNode } from "../../components/roots-tree-build";
+
+export interface ToolsetTreeInput {
+    root: string;
+    name: string;
+}
 
 export interface ToolsTreeViewProps {
     name?: string;
@@ -23,18 +24,18 @@ export interface ToolsTreeViewProps {
 
 export class ToolsTreeView extends VanillaView<ToolsTreeViewProps> {
     private readonly iconElements = new Map<string, Node>();
-    private readonly handleChange = (node: ToolTreeNode): void => {
+    private readonly handleChange = (node: RootsTreeNode<"toolset">): void => {
         if (node.kind === "toolset" && node.root) this.props.onOpenToolset(node.root);
     };
     private readonly handleActiveChange = (index: number | null): void => {
         this.activeIndex = index;
         this.tree?.update(this.treeProps());
     };
-    private readonly getContextMenu = (node: ToolTreeNode): MenuItem[] | undefined =>
+    private readonly getContextMenu = (node: RootsTreeNode<"toolset">): MenuItem[] | undefined =>
         node.kind === "toolset" && node.root
             ? this.props.getContextMenu?.(node.root)
             : undefined;
-    private readonly getIconElement = (node: ToolTreeNode): Node => {
+    private readonly getIconElement = (node: RootsTreeNode<"toolset">): Node => {
         const cached = this.iconElements.get(node.value);
         if (cached) return cached;
 
@@ -44,14 +45,14 @@ export class ToolsTreeView extends VanillaView<ToolsTreeViewProps> {
         this.iconElements.set(node.value, icon);
         return icon;
     };
-    private readonly renderTrailing = (node: ToolTreeNode): SlotContent | undefined =>
+    private readonly renderTrailing = (node: RootsTreeNode<"toolset">): SlotContent | undefined =>
         node.kind === "toolset" && node.root
             ? this.props.renderTrailing?.(node.root)
             : undefined;
 
-    private tree: TreeView<ToolTreeNode> | undefined;
+    private tree: TreeView<RootsTreeNode<"toolset">> | undefined;
     private activeIndex: number | null = null;
-    private nodes: ToolTreeNode[] = [];
+    private nodes: RootsTreeNode<"toolset">[] = [];
     private nodesToolsets: ToolsetTreeInput[] | undefined;
     private nodesBaseRoot: string | undefined;
 
@@ -63,7 +64,7 @@ export class ToolsTreeView extends VanillaView<ToolsTreeViewProps> {
     }
 
     protected onMount(): void {
-        const tree = this.child(new TreeView<ToolTreeNode>(this.treeProps()));
+        const tree = this.child(new TreeView<RootsTreeNode<"toolset">>(this.treeProps()));
         this.tree = tree;
         this.root.append(tree.root);
         tree.mount();
@@ -90,13 +91,17 @@ export class ToolsTreeView extends VanillaView<ToolsTreeViewProps> {
         };
     }
 
-    private projectNodes(): ToolTreeNode[] {
+    private projectNodes(): RootsTreeNode<"toolset">[] {
         if (this.nodesToolsets === this.props.toolsets && this.nodesBaseRoot === this.props.baseRoot) {
             return this.nodes;
         }
         this.nodesToolsets = this.props.toolsets;
         this.nodesBaseRoot = this.props.baseRoot;
-        this.nodes = buildToolsTree(this.props.toolsets, this.props.baseRoot);
+        this.nodes = buildRootsTree(
+            this.props.toolsets.map(({ root, name }) => ({ root, label: name })),
+            this.props.baseRoot,
+            { leafKind: "toolset", leafIdPrefix: "toolset:" },
+        );
         return this.nodes;
     }
 }

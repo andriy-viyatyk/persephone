@@ -11,17 +11,10 @@ import { ui } from "../../api/ui";
 import { isUrlOrCurl } from "../../content/link-utils";
 import { toClipboard } from "../../core/utils/utils";
 import { CopyIcon, CutIcon, DeleteIcon } from "../../theme/icons";
-import { copyPathsToOsClipboard, supportsOsClipboard } from "./os-clipboard";
+import { copyPathsToOsClipboard } from "./os-clipboard";
+import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
 import { DialogButton } from "../../ui/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
-
-/** Ctrl/Shift multi-selection is offered where item hrefs are absolute local paths and
- *  every plural action (OS clipboard, batch move, drag-out) is therefore meaningful.
- *  Archive / Mneme / Link / Boards trees stay single-select. Widening the feature to
- *  another provider is a one-line change here. */
-export function supportsMultiSelect(provider: ITreeProvider): boolean {
-    return provider.type === "file";
-}
 
 /**
  * Drop any selected item that lives inside another selected folder. A folder-level action
@@ -71,7 +64,7 @@ export function buildMultiItemMenuItems(
     // OS file clipboard — Windows Explorer interop, file provider only. No Cut when the
     // tree root is in the set (mirrors the single-row gating). A folder's listed children
     // never include the provider root, so the guard is inert for the folder-content view.
-    if (supportsOsClipboard(provider)) {
+    if (isLocalFileProvider(provider)) {
         if (!hasRoot) {
             menuItems.push({
                 startGroup: true,

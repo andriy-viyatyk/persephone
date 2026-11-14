@@ -71,7 +71,8 @@ folder; for a file row, that is its parent folder.
 
 In local File Explorer folders, use `Ctrl`/`Shift`-click or `Ctrl+A` to select multiple items.
 `Delete` removes selected items after confirmation and `Escape` clears the selection. Copy, cut, and
-delete operate on the selected set.
+delete operate on the selected set. Right-click a selected row to see the set actions with item
+counts; applicable context-menu actions for the row you clicked may also appear.
 
 ### Drag and drop
 

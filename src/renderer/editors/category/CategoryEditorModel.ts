@@ -1,5 +1,5 @@
 import { EditorId } from "../../../shared/editor-ids";
-import { TComponentState } from "../../core/state/state";
+import { TComponentState, TOneState } from "../../core/state/state";
 import { app } from "../../api/app";
 import type { ITreeProvider, ITreeProviderItem, ILink } from "../../api/types/io.tree";
 import { folderViewModeService } from "./FolderViewModeService";
@@ -15,6 +15,7 @@ import type { ITreeProviderHost } from "../base/tree-provider-host";
 import { createLinkData } from "../../../shared/link-data";
 import { editorRegistry } from "../base/editorRegistry";
 import type { IPageHost } from "../../api/pages/IPageHost";
+import type { CategoryViewMode } from "../../components/tree-provider/CategoryViewModel";
 import {
     decodeCategoryLink,
     encodeCategoryLink,
@@ -117,8 +118,22 @@ export class CategoryEditorModel extends EditorModelClass<CategoryEditorModelSta
 
     noLanguage = true;
 
+    readonly viewModeState = new TOneState<CategoryViewMode>("list");
+    private viewModePath: string | undefined;
+    private viewModeGeneration = 0;
+    private disposed = false;
+
     constructor(state?: TComponentState<CategoryEditorModelState>) {
         super(state ?? new TComponentState(getDefaultCategoryEditorModelState()));
+        this.own(this.state.subscribe(
+            () => this.syncViewModeLoad(),
+            (currentState) => currentState.filePath,
+        ));
+        this.own(() => {
+            this.disposed = true;
+            this.viewModeGeneration++;
+        });
+        this.syncViewModeLoad();
     }
 
     getIconElement = (): HTMLElement => {
@@ -153,10 +168,32 @@ export class CategoryEditorModel extends EditorModelClass<CategoryEditorModelSta
         return page && link ? findTreeProviderHost(page.panelEditors, link.type, link.url) : null;
     }
 
-    get viewMode(): import("../../components/tree-provider/CategoryViewModel").CategoryViewMode {
+    get viewMode(): CategoryViewMode {
         const categoryPath = this.categoryPath;
         if (!this.providerHost?.host.provider || categoryPath === undefined) return "list";
-        return folderViewModeService.getViewModeSync(categoryPath);
+        return this.viewModeState.get();
+    }
+
+    setViewMode(mode: CategoryViewMode): void {
+        const categoryPath = this.categoryPath ?? "";
+        this.viewModeState.set(mode);
+        void folderViewModeService.setViewMode(categoryPath, mode);
+    }
+
+    private syncViewModeLoad(): void {
+        const categoryPath = this.categoryPath ?? "";
+        if (categoryPath === this.viewModePath) return;
+        this.viewModePath = categoryPath;
+        this.viewModeState.set("list");
+        const generation = ++this.viewModeGeneration;
+        void folderViewModeService.getViewMode(categoryPath).then((viewMode) => {
+            if (
+                this.disposed
+                || generation !== this.viewModeGeneration
+                || categoryPath !== (this.categoryPath ?? "")
+            ) return;
+            this.viewModeState.set(viewMode);
+        });
     }
 
     async listItems(): Promise<ILink[] | undefined> {

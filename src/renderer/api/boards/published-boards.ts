@@ -13,6 +13,23 @@ import { MainSnapshotMirror } from "../../core/state/MainSnapshotMirror";
 import { getBoardCompatibility } from "../../../shared/version-utils";
 import { normalizeFileMasks, normalizeFolderMasks, matchesFolderEditorMasks } from "../../../shared/board/board-masks";
 import { matchesBoardMasks } from "./board-file-masks";
+import { boardInstallRegistry, type InstalledBoardEntry } from "./board-install-registry";
+import { listBoardUpdatesByRoot } from "./board-update-query";
+import type { BoardUpdate } from "./board-updates";
+import { boardUsageGroup, type BoardUsageGroup } from "../../../shared/board/board-manifest-queries";
+import { getActiveLocale } from "../../../shared/i18n/active-locale";
+import { publishedBoardDisplayText } from "./published-board-display-text";
+import { BoardRoot } from "../../../shared/board/board-root";
+
+export interface PublishedBoardEntry {
+    board: PublishedBoardInfo;
+    display: ReturnType<typeof publishedBoardDisplayText>;
+    usageGroup: BoardUsageGroup;
+    installed?: InstalledBoardEntry;
+    update?: BoardUpdate;
+    compatible: boolean;
+    detailsKey: string;
+}
 
 /** Does an UNINSTALLED catalog board claim this file? Same predicate as a trusted board's
  *  (`matchesBoardMasks`), but over the catalog entry's raw manifest-copied masks — the catalog
@@ -91,6 +108,43 @@ class PublishedBoards extends MainSnapshotMirror<PublishedBoardsCatalog | null> 
     /** All catalog boards (sync, non-reactive). */
     getCatalog(): PublishedBoardInfo[] {
         return this.selectCatalogBoards(this.snapshot);
+    }
+
+    /** Catalog-ordered projection joining display, install, update, and grouping state. */
+    listEntries(): PublishedBoardEntry[] {
+        const catalog = this.getCatalog();
+        const installedEntries = boardInstallRegistry.listInstalled();
+        const installedById = new Map(installedEntries.map((entry) => [entry.id, entry]));
+        const updatesByRoot = listBoardUpdatesByRoot(
+            installedEntries,
+            catalog,
+            (minAppVersion) => this.isCompatible(minAppVersion),
+        );
+        const locale = getActiveLocale();
+        return catalog.map((board) => {
+            const display = publishedBoardDisplayText(board, locale);
+            const installed = installedById.get(board.id);
+            const update = installed ? updatesByRoot.get(BoardRoot.from(installed.root).key) : undefined;
+            const compatible = this.isCompatible(board.minAppVersion);
+            const usageGroup = boardUsageGroup({
+                fileMasks: normalizeFileMasks(board.fileMasks),
+                standalone: board.standalone,
+            });
+            const detailsKey = JSON.stringify([
+                board.id,
+                display.name,
+                board.version,
+                board.archive.size,
+                display.description ?? null,
+                board.fileMasks ? [...board.fileMasks] : null,
+                board.minAppVersion ?? null,
+                installed?.id ?? null,
+                installed?.root ?? null,
+                installed?.version ?? null,
+                update?.latestVersion ?? null,
+            ]);
+            return { board, display, usageGroup, installed, update, compatible, detailsKey };
+        });
     }
 
     subscribeCatalog(listener: () => void): () => void {

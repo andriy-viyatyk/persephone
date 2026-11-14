@@ -9,12 +9,12 @@ import { settings } from "../../api/settings";
 import type { AppSettingsKey } from "../../api/settings-schema";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
-import { buildBoardsTree, type BoardTreeNode } from "../../editors/board/boards-tree-build";
+import { buildRootsTree, type RootsTreeNode } from "../../components/roots-tree-build";
 import { boardDisplayText, boardMetadataKeys, onBoardDisplayTextChanged } from "../../api/boards/board-display-text";
 import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
 import { createBoardShortcut } from "../../editors/board/board-shortcut";
 import { createFolderIconElement } from "../../components/icons/icon-elements";
-import { fpDirname } from "../../core/utils/file-path";
+import { fpBasename, fpDirname } from "../../core/utils/file-path";
 import { BoardRoot } from "../../../shared/board/board-root";
 import { toClipboard } from "../../core/utils/utils";
 import { TraitTypeId, getTraitDragData, hasTraitDragData } from "../../core/traits";
@@ -38,7 +38,7 @@ interface BuiltinEditorNode {
 type EditorTreeNode =
     | { kind: "builtin-root"; value: "builtin-root"; label: string; items: BuiltinEditorNode[] }
     | BuiltinEditorNode
-    | BoardTreeNode;
+    | RootsTreeNode<"board">;
 
 export interface EditorsTreeViewProps { onClose?: () => void; onNewCategory?: (categoryId: string) => void }
 
@@ -126,8 +126,14 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
                 kind: "builtin" as const, value: `disabled:${item.id}`, label: getCreatableItemLabel(item), item, disabled: true,
             })),
         ];
-        const nodes = buildBoardsTree(boardRegistry.roots("trusted"), undefined, (root, fallback) =>
-            boardDisplayText(root, undefined, boardMetadataKeys.name, fallback));
+        const nodes = buildRootsTree(
+            boardRegistry.roots("trusted").map(root => ({
+                root,
+                label: boardDisplayText(root, undefined, boardMetadataKeys.name, fpBasename(root)),
+            })),
+            undefined,
+            { leafKind: "board", leafIdPrefix: "board:" },
+        );
         const query = this.filterText.trim().toLocaleLowerCase();
         const matchingBuiltins = query ? builtins.filter((node) => matches(node.label, query)) : builtins;
         const matchingBoards = query ? filterBoardNodes(nodes, query) : nodes;
@@ -294,8 +300,8 @@ function getBundledBoardContextMenu(item: CreatableItem): MenuItem[] | undefined
 }
 
 /** Keeps matching board leaves and every folder on the path to one; a matching folder keeps all of its boards. */
-function filterBoardNodes(nodes: BoardTreeNode[], query: string): BoardTreeNode[] {
-    const result: BoardTreeNode[] = [];
+function filterBoardNodes(nodes: RootsTreeNode<"board">[], query: string): RootsTreeNode<"board">[] {
+    const result: RootsTreeNode<"board">[] = [];
     for (const node of nodes) {
         if (node.kind === "board") {
             if (matches(node.label, query)) result.push(node);

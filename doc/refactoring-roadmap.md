@@ -584,10 +584,24 @@ panel files (EDT-8); the Log View entry-type registry (`log-entry-types.ts`, own
 keeps `ui_push`'s accepted set), typed view factories, `JsonlLogDocument` and an injected dialog-answer reporter
 (EDT-9); the typed `mnemeClient` (`api/mneme-client.ts`) with `api/mneme-types.ts` (EDT-10). One behaviour change: the
 Link editor's search cache no longer hides added/deleted/edited links while a search is active. Left as is on purpose:
-the three path normalizers (persisted keys and non-canonical inputs, see the epic). **Part 2 remains:** EDT-11
-(`publishedBoards.listEntries()`, `boardUsageGroup` on a `Pick`, Category view mode in the model; step 3 already met by
-`TREE_PROVIDER_HOST_TRAIT`) and EDT-12 (`MarkdownSearchState` for About, one roots-tree builder, one board-vars parser,
-multiselect encode/decode).
+the three path normalizers (persisted keys and non-canonical inputs, see the epic). Part 2 is done
+([EPIC-169](epics/EPIC-169.md), 2026-11-14): `publishedBoards.listEntries()` joins catalog, installs and updates with a
+`detailsKey` that keeps the card rebuild boundary, the update rule in `board-update-query.ts`, `boardUsageGroup` on
+`Pick<RawBoardManifest, …>`, and the Category view mode owned by `CategoryEditorModel` (EDT-11; step 3 was already met
+by `TREE_PROVIDER_HOST_TRAIT`); `MarkdownSearchState` and `createStandaloneMarkdownBodyModel()` shared by Markdown and
+About, one `buildRootsTree` (`components/roots-tree-build.ts`) for the boards and tools trees, the `.env.json` parse
+and strict validation in `api/board-vars/types.ts` (the store keeps its loose read on purpose),
+`EnvVarsEditor.trySetProfileRows`, and `encodeMultiSelect`/`decodeMultiSelect` (EDT-12). **Roadmap item 6.6 is
+complete.**
+
+**6.7 is split into epics.** Part 1 is done ([EPIC-169](epics/EPIC-169.md), 2026-11-14): UIK-3 — the renderer-internal
+provider capability contract (`content/tree-providers/tree-provider-capabilities.ts`: `isWatchable`, `isIncremental`,
+`isLocalFileProvider`), `hrefKey` as the one provider-href identity (bug #17's href half; the repaint half stays with
+UIK-5), `ProviderItemController` shared by the tree and the folder page, and `uikit/shared/drop-target-tracker.ts`. Two
+recorded changes: the folder page runs the `linkContextMenu` layer for multi-selections (D9), and the Link editor's
+category panel rebuilds when links change again (its watch callback was handed the links array as a "batch" and
+threw). **Remaining:** UIK-2 (controlled tree expansion, one lazy-load owner), then UIK-1 (`TreeProviderViewModel`
+split), then UIK-4/5 (pooled-row host, repaint tracker), UIK-6 (shared list filter and navigation) and UIK-9 to UIK-12.
 
 ### Phase 7: Lock it in
 

@@ -1,8 +1,6 @@
 import { EditorId } from "../../../shared/editor-ids";
 import { app } from "../../api/app";
 import { getGuideIndex } from "../../guides";
-import { TComponentState } from "../../core/state/state";
-import { ComponentQueue } from "../../core/state/ComponentQueue";
 import { guard } from "../../core/utils/guard";
 import { createLinkData } from "../../../shared/link-data";
 import type { GuideTreeNode } from "../../../shared/guides";
@@ -14,12 +12,9 @@ import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { IOwnedView } from "../../uikit/shared/vanilla-view";
 import type {
-    MarkdownBodyHostState,
     MarkdownBodyModel,
-    MarkdownBodyState,
-    MarkdownQueueEvent,
-    MarkdownQueueRequest,
 } from "../markdown/MarkdownBodyModel";
+import { createStandaloneMarkdownBodyModel } from "../markdown/MarkdownBodyModel";
 import type { AboutGuideBrowserState, AboutGuideLocation } from "./AboutEditor";
 import { t } from "../../../shared/i18n/t";
 
@@ -33,20 +28,6 @@ interface Breadcrumb {
     label: string;
     path?: string;
 }
-
-const DEFAULT_BODY_STATE: MarkdownBodyState = {
-    compactMode: false,
-    searchVisible: false,
-    searchText: "",
-    currentMatchIndex: 0,
-    totalMatches: 0,
-};
-
-const DEFAULT_HOST_STATE: MarkdownBodyHostState = {
-    content: "",
-    filePath: undefined,
-    title: "",
-};
 
 function humanizeFolderName(name: string): string {
     const words = name.replace(/[-_]+/g, " ").trim();
@@ -64,10 +45,9 @@ function findFolderName(nodes: readonly GuideTreeNode[], path: string): string |
 }
 
 export class AboutGuidePageView extends VanillaView<AboutGuidePageViewProps> {
-    private readonly bodyState = new TComponentState({ ...DEFAULT_BODY_STATE });
-    private readonly bodyHostState = new TComponentState({ ...DEFAULT_HOST_STATE });
-    private readonly bodyQueue = new ComponentQueue<MarkdownQueueEvent, MarkdownQueueRequest>();
+    private readonly standaloneBody: ReturnType<typeof createStandaloneMarkdownBodyModel>;
     private readonly bodyModel: MarkdownBodyModel;
+    private readonly bodyHostState: ReturnType<typeof createStandaloneMarkdownBodyModel>["hostState"];
 
     private readonly breadcrumbs: HTMLDivElement;
     private readonly bodyHost: HTMLDivElement;
@@ -88,20 +68,10 @@ export class AboutGuidePageView extends VanillaView<AboutGuidePageViewProps> {
         }));
         this.root.classList.add("about-guide-page-view");
 
-        this.bodyModel = {
-            state: this.bodyState,
-            host: { state: this.bodyHostState },
-            typedQueue: this.bodyQueue,
-            page: undefined,
-            openSearch: this.openSearch,
-            closeSearch: this.closeSearch,
-            setSearchText: this.setSearchText,
-            setMatchCount: this.setMatchCount,
-            nextMatch: this.nextMatch,
-            prevMatch: this.prevMatch,
-            followLink: this.followLink,
-        };
-        this.own(() => this.bodyQueue.dispose());
+        this.standaloneBody = createStandaloneMarkdownBodyModel(this.followLink);
+        this.bodyModel = this.standaloneBody.model;
+        this.bodyHostState = this.standaloneBody.hostState;
+        this.own(this.standaloneBody.dispose);
 
         const header = createPanelElement({
             direction: "row",
@@ -319,12 +289,11 @@ export class AboutGuidePageView extends VanillaView<AboutGuidePageViewProps> {
     };
 
     private readonly revealFragment = (fragment: string): void => {
-        if (fragment) this.bodyQueue.send({ type: "anchor", fragment });
+        if (fragment) this.standaloneBody.model.typedQueue.send({ type: "anchor", fragment });
     };
 
     private resetBodyProjection(): void {
-        this.bodyState.set({ ...DEFAULT_BODY_STATE });
-        this.bodyHostState.set({ ...DEFAULT_HOST_STATE });
+        this.standaloneBody.reset();
     }
 
     private showLoadError(message: string): void {
@@ -345,48 +314,4 @@ export class AboutGuidePageView extends VanillaView<AboutGuidePageViewProps> {
             && this.props.browser.currentLocation === location;
     }
 
-    private readonly openSearch = (): void => {
-        this.bodyState.update((state) => { state.searchVisible = true; });
-    };
-
-    private readonly closeSearch = (): void => {
-        this.bodyState.update((state) => {
-            state.searchVisible = false;
-            state.searchText = "";
-            state.currentMatchIndex = 0;
-            state.totalMatches = 0;
-        });
-    };
-
-    private readonly setSearchText = (text: string): void => {
-        this.bodyState.update((state) => {
-            state.searchText = text;
-            state.currentMatchIndex = 0;
-        });
-    };
-
-    private readonly setMatchCount = (count: number): void => {
-        this.bodyState.update((state) => {
-            state.totalMatches = count;
-            state.currentMatchIndex = count > 0 && state.currentMatchIndex >= count
-                ? 0
-                : state.currentMatchIndex;
-        });
-    };
-
-    private readonly nextMatch = (): void => {
-        const { totalMatches, currentMatchIndex } = this.bodyState.get();
-        if (totalMatches === 0) return;
-        this.bodyState.update((state) => {
-            state.currentMatchIndex = (currentMatchIndex + 1) % totalMatches;
-        });
-    };
-
-    private readonly prevMatch = (): void => {
-        const { totalMatches, currentMatchIndex } = this.bodyState.get();
-        if (totalMatches === 0) return;
-        this.bodyState.update((state) => {
-            state.currentMatchIndex = (currentMatchIndex - 1 + totalMatches) % totalMatches;
-        });
-    };
 }

@@ -1,4 +1,7 @@
 import type { Cleanup } from "../../core/utils/DisposableStore";
+import { TComponentState } from "../../core/state/state";
+import { ComponentQueue } from "../../core/state/ComponentQueue";
+import { MarkdownSearchState } from "./MarkdownSearchState";
 
 export interface MarkdownBodyState {
     compactMode: boolean;
@@ -62,3 +65,56 @@ export type MarkdownBodyModel = MarkdownBodyModelBase & (
     | { readonly queue: MarkdownBodyQueue; readonly typedQueue?: never }
     | { readonly typedQueue: MarkdownBodyQueue; readonly queue?: never }
 );
+
+const DEFAULT_BODY_STATE: MarkdownBodyState = {
+    compactMode: false,
+    searchVisible: false,
+    searchText: "",
+    currentMatchIndex: 0,
+    totalMatches: 0,
+};
+
+const DEFAULT_HOST_STATE: MarkdownBodyHostState = {
+    content: "",
+    filePath: undefined,
+    title: "",
+};
+
+export interface StandaloneMarkdownBodyModel {
+    readonly model: MarkdownBodyModel;
+    readonly hostState: TComponentState<MarkdownBodyHostState>;
+    reset(): void;
+    dispose(): void;
+}
+
+export function createStandaloneMarkdownBodyModel(
+    followLink: (href: string) => boolean,
+): StandaloneMarkdownBodyModel {
+    const bodyState = new TComponentState<MarkdownBodyState>({ ...DEFAULT_BODY_STATE });
+    const hostState = new TComponentState<MarkdownBodyHostState>({ ...DEFAULT_HOST_STATE });
+    const queue = new ComponentQueue<MarkdownQueueEvent, MarkdownQueueRequest>();
+    const searchState = new MarkdownSearchState(bodyState);
+    const model: MarkdownBodyModel = {
+        state: bodyState,
+        host: { state: hostState },
+        typedQueue: queue,
+        page: undefined,
+        openSearch: () => searchState.open(),
+        closeSearch: () => searchState.close(),
+        setSearchText: text => searchState.setText(text),
+        setMatchCount: count => searchState.setMatchCount(count),
+        nextMatch: () => searchState.next(),
+        prevMatch: () => searchState.prev(),
+        followLink,
+    };
+
+    return {
+        model,
+        hostState,
+        reset: () => {
+            bodyState.set({ ...DEFAULT_BODY_STATE });
+            hostState.set({ ...DEFAULT_HOST_STATE });
+        },
+        dispose: () => queue.dispose(),
+    };
+}

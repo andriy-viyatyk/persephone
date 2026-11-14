@@ -1,12 +1,11 @@
 import { getTraitDragDataFromEvent, hasTraitDragData, isFileDrag, setTraitDragData } from "../../core/traits/dnd";
-import { DragEnterCounter } from "../shared/drag-enter-counter";
+import { DropTargetTracker } from "../shared/drop-target-tracker";
 import type { ITreeItem, TreeRow } from "./types";
 import type { TreeModel, TreeState } from "./TreeModel";
 
 /** Tree's trait/native-file drag-and-drop interaction submodel. */
 export class TreeDndModel<T = ITreeItem> {
-    private readonly dragEnterCounts = new DragEnterCounter<string | number>();
-    private hoverExpandTimer: number | null = null;
+    private readonly dropTargetTracker = new DropTargetTracker<string | number>();
 
     constructor(private readonly tree: TreeModel<T>) {}
 
@@ -71,8 +70,7 @@ export class TreeDndModel<T = ITreeItem> {
     };
 
     onDragEnd = () => {
-        this.dragEnterCounts.clear();
-        this.cancelHoverExpand();
+        this.dropTargetTracker.clear();
         this.update((state) => {
             state.draggingValue = null;
             state.dragOverValue = null;
@@ -85,7 +83,7 @@ export class TreeDndModel<T = ITreeItem> {
         if (!row) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = isFileDrag(e.dataTransfer) ? "copy" : "move";
-        if (this.dragEnterCounts.enter(row.value)) {
+        if (this.dropTargetTracker.enter(row.value)) {
             this.update((state) => { state.dragOverValue = row.value; });
             this.scheduleHoverExpand(row);
         }
@@ -100,8 +98,8 @@ export class TreeDndModel<T = ITreeItem> {
     onDragLeave = (_e: DragEvent, rowIndex: number) => {
         const row = this.tree.rows[rowIndex];
         if (!row) return;
-        if (!this.dragEnterCounts.leave(row.value)) return;
-        this.cancelHoverExpand();
+        if (!this.dropTargetTracker.leave(row.value)) return;
+        this.dropTargetTracker.cancelHover();
         this.update((state) => {
             if (state.dragOverValue === row.value) state.dragOverValue = null;
         });
@@ -111,8 +109,7 @@ export class TreeDndModel<T = ITreeItem> {
         if (!this.canDropRow(rowIndex)) return;
         e.preventDefault();
         e.stopPropagation();
-        this.dragEnterCounts.clear();
-        this.cancelHoverExpand();
+        this.dropTargetTracker.clear();
         const payload = getTraitDragDataFromEvent(e);
         this.update((state) => {
             state.dragOverValue = null;
@@ -127,8 +124,7 @@ export class TreeDndModel<T = ITreeItem> {
     };
 
     dispose() {
-        this.cancelHoverExpand();
-        this.dragEnterCounts.clear();
+        this.dropTargetTracker.dispose();
     }
 
     private acceptsDrag(dataTransfer: DataTransfer): boolean {
@@ -153,20 +149,16 @@ export class TreeDndModel<T = ITreeItem> {
     }
 
     private scheduleHoverExpand(row: TreeRow<T>) {
-        this.cancelHoverExpand();
         const delay = this.tree.props.expandOnDragHoverDelay ?? 500;
-        if (delay <= 0 || !row.hasChildren || row.expanded) return;
-        this.hoverExpandTimer = window.setTimeout(() => {
-            this.hoverExpandTimer = null;
-            if (!this.tree.isLive || this.tree.state.get().dragOverValue !== row.value) return;
-            const index = this.tree.indexByValue.get(row.value);
+        if (delay <= 0 || !row.hasChildren || row.expanded) {
+            this.dropTargetTracker.cancelHover();
+            return;
+        }
+        this.dropTargetTracker.scheduleHover(row.value, delay, (target) => {
+            if (!this.tree.isLive || this.tree.state.get().dragOverValue !== target) return;
+            const index = this.tree.indexByValue.get(target);
             const current = index == null ? undefined : this.tree.rows[index];
             if (index != null && current && !current.expanded) this.tree.toggleAt(index);
-        }, delay);
-    }
-
-    private cancelHoverExpand() {
-        if (this.hoverExpandTimer != null) window.clearTimeout(this.hoverExpandTimer);
-        this.hoverExpandTimer = null;
+        });
     }
 }

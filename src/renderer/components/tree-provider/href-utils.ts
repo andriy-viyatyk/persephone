@@ -1,6 +1,7 @@
 /** Case-insensitive href equality. File paths can reach tree-provider views from the OS with
  * different casing, while selection remains case-insensitive. */
 export function hrefKey(href: string): string {
+    // Provider href identity is case-insensitive; filesystem watch paths use their own boundary key.
     return href.toLowerCase();
 }
 

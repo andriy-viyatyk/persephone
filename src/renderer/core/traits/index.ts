@@ -1,6 +1,6 @@
 export { TraitKey, TraitSet, traited, isTraited, resolveTraited } from './traits';
 export type { Traited, TraitType, PartialTraitType } from './traits';
-export { TraitTypeId, traitRegistry } from './TraitRegistry';
+export { isTraitTypeId, TraitTypeId, traitRegistry } from './TraitRegistry';
 export {
     setTraitDragData,
     getTraitDragData,

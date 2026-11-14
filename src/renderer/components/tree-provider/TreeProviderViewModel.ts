@@ -1,57 +1,29 @@
 import type { SlotContent } from "../../uikit/shared/fill-slot";
 import { TComponentModel } from "../../core/state/model";
 import type { ITreeProvider, ITreeProviderItem, ILink } from "../../api/types/io.tree";
-import type { MenuItem } from "../../uikit/Menu";
 import type { RowAlign } from "../../uikit/DataGrid";
-import { ContextMenuEvent } from "../../api/events/events";
-import { app } from "../../api/app";
 import { ui } from "../../api/ui";
 import { t } from "../../../shared/i18n/t";
 import { SerialQueue } from "../../../shared/serial-queue";
 import { fpBasename, fpDirname, fpIsAbsolute, fpNormalizeForCompare, fpResolve } from "../../core/utils/file-path";
 import type { IFileLink } from "../../core/traits/fileLinkTraits";
-import {
-    copyPathsToOsClipboard,
-    supportsOsClipboard,
-} from "./os-clipboard";
-import {
-    buildMultiItemMenuItems,
-    deleteItemsBatch,
-    pruneNestedItems,
-} from "./plural-actions";
+import { pruneNestedItems } from "./plural-actions";
 import {
     dropOsFilesInto as dropOsFilesIntoTarget,
     importFilesInto,
     moveItemsInto,
     type DropTarget,
 } from "./tree-drop-actions";
-import {
-    createNewFile,
-    createNewFolder,
-    deleteItemAction,
-    pasteIntoDir,
-    renameItem,
-    type ItemCrudContext,
-} from "./item-crud-actions";
-import {
-    getBackgroundMenuItems,
-    getFileMenuItems,
-    getFolderMenuItems,
-    type ItemMenuActions,
-} from "./item-menus";
+import { ProviderItemController } from "./provider-item-controller";
 import { hrefKey, sameHref, sameHrefs } from "./href-utils";
 import { isKeyInside } from "../../../shared/path-containment";
 import type { SlotText } from "../../uikit/shared/slots";
 import type { PathWatchBatch } from "../../../ipc/api-types";
+import { isIncremental, isLocalFileProvider, isWatchable } from "../../content/tree-providers/tree-provider-capabilities";
 
 // =============================================================================
 // Types
 // =============================================================================
-
-/** A provider that can list one folder strictly (throws on read errors) for incremental watch updates. */
-interface IncrementalTreeProvider extends ITreeProvider {
-    listIncremental(dirPath: string): Promise<ITreeProviderItem[]>;
-}
 
 /** Internal tree node wrapping ITreeProviderItem for UIKit Tree rendering. */
 export interface TreeProviderNode {
@@ -161,6 +133,28 @@ export class TreeProviderViewModel extends TComponentModel<
     private treeGeneration = 0;
     private readonly watchQueue = new SerialQueue();
     private disposed = false;
+    private readonly itemController = new ProviderItemController({
+        provider: () => this.props.provider,
+        getItemPath: (item) => this.getItemListPath(item),
+        refresh: () => this.buildTree(),
+        getSelectedItems: () => this.selectedNodes.map((node) => node.data),
+        isMultiSelect: () => !!this.props.multiSelect,
+        setOutsideRightClickSelection: (item) => {
+            if (!this.props.multiSelect) this.setSelection([item.href]);
+        },
+        clearSelection: () => this.setSelection([]),
+        resolvePasteTarget: (item) => !item
+            ? this.props.provider.rootPath
+            : item.isDirectory
+                ? this.getItemListPath(item)
+                : item.category || this.props.provider.rootPath,
+        resolveFileDirectory: (item) => item.category || this.props.provider.rootPath,
+        resolveFolderDirectory: (item) => this.getItemListPath(item),
+        isRoot: (item) => sameHref(item.href, this.props.provider.rootPath),
+        canStartOsDrag: (item) => !!item.href && !sameHref(item.href, this.props.provider.rootPath),
+        excludeRootFromDrag: true,
+        onContextMenu: (event, selection) => this.props.onContextMenu?.(event, selection),
+    });
 
     setProps = () => {
         const props = this.props;
@@ -249,12 +243,6 @@ export class TreeProviderViewModel extends TComponentModel<
     private operationItems = <T extends Pick<ILink, "href" | "isDirectory">>(items: T[]): T[] =>
         pruneNestedItems(items);
 
-    /** Prune `nodes` through `operationItems` (which works on ILink shapes). */
-    private operationNodes = (nodes: TreeProviderNode[]): TreeProviderNode[] => {
-        const keep = new Set(this.operationItems(nodes.map((n) => n.data)).map((d) => hrefKey(d.href)));
-        return nodes.filter((n) => keep.has(hrefKey(n.data.href)));
-    };
-
     /** Sink for the UIKit Tree's `onSelectionChange` (multiSelect mode). */
     setSelection = (hrefs: string[]) => {
         if (sameHrefs(this.state.get().selectedValues, hrefs)) return;
@@ -269,9 +257,9 @@ export class TreeProviderViewModel extends TComponentModel<
         }
         this.watchSubscription?.();
         this.watchSubscription = undefined;
-        const provider = this.props.provider as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-        if (typeof provider.watch === "function") {
-            const unsubscribe = provider.watch((batch?: PathWatchBatch) => this.queueWatchRefresh(batch));
+        const provider = this.props.provider;
+        if (isWatchable(provider)) {
+            const unsubscribe = provider.watch((batch) => this.queueWatchRefresh(batch));
             this.watchSubscription = unsubscribe;
         }
     };
@@ -293,7 +281,7 @@ export class TreeProviderViewModel extends TComponentModel<
             // batch is not a reason to rebuild, but an expansion load or rebuild in between is.
             const generation = ++this.treeGeneration;
             if (!batch || batch.rescan || batch.ended ||
-                batch.changes.length > 100 || typeof (provider as IncrementalTreeProvider).listIncremental !== "function") {
+                batch.changes.length > 100 || !isIncremental(provider)) {
                 await this.buildTree();
                 return;
             }
@@ -334,7 +322,7 @@ export class TreeProviderViewModel extends TComponentModel<
                     // Earlier listings in this batch may already have updated or removed this node.
                     const currentParent = find(next, normalize(parent.data.href));
                     if (!currentParent?.items) continue;
-                    const items = filterTreeItems(await (provider as IncrementalTreeProvider).listIncremental(parent.data.href));
+                    const items = filterTreeItems(await provider.listIncremental(parent.data.href));
                     if (generation !== this.treeGeneration || this.state.get().tree !== original || this.disposed || this.props.provider !== provider) {
                         await this.buildTree(); return;
                     }
@@ -599,28 +587,6 @@ export class TreeProviderViewModel extends TComponentModel<
             ? category + "/" + item.title
             : item.title;
     };
-
-    private get itemCrudContext(): ItemCrudContext {
-        return {
-            provider: this.props.provider,
-            getItemPath: this.getItemListPath,
-            refresh: this.buildTree,
-        };
-    }
-
-    private get itemMenuActions(): ItemMenuActions {
-        return {
-            createFile: (directory) => { void this.createNewFile(directory); },
-            createFolder: (directory) => { void this.createNewFolder(directory); },
-            paste: (directory) => { void this.pasteIntoDir(directory); },
-            rename: (item) => {
-                const tree = this.state.get().tree;
-                const node = tree ? findNode(tree, item.href) : null;
-                if (node) void this.renameItem(node);
-            },
-            deleteItem: (item) => { void this.deleteItemAction(item); },
-        };
-    }
 
     // ── State persistence ────────────────────────────────────────────────
 
@@ -893,10 +859,7 @@ export class TreeProviderViewModel extends TComponentModel<
      */
     onTreeKeyDown = (e: KeyboardEvent): boolean => {
         // The search input (or any editable element) keeps native key behavior.
-        const t = e.target as HTMLElement;
-        if (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable) {
-            return false;
-        }
+        if (ProviderItemController.isEditableTarget(e)) return false;
 
         const { provider } = this.props;
         const nodes = this.selectedNodes;
@@ -913,7 +876,7 @@ export class TreeProviderViewModel extends TComponentModel<
         // never on the root.
         if (!e.ctrlKey && !e.altKey && !e.shiftKey && nodes.length && !hasRoot) {
             if (e.key === "Delete" && provider.writable && provider.deleteItem) {
-                void this.deleteItemsAction(nodes);
+                void this.itemController.deleteItems(nodes.map((selectedNode) => selectedNode.data));
                 return consume();
             }
             if (
@@ -923,7 +886,7 @@ export class TreeProviderViewModel extends TComponentModel<
                 && provider.writable
                 && provider.rename
             ) {
-                void this.renameItem(node);
+                void this.itemController.renameItem(node.data);
                 return consume();
             }
         }
@@ -932,7 +895,7 @@ export class TreeProviderViewModel extends TComponentModel<
         if (!e.ctrlKey || e.altKey || e.shiftKey) return false;
         const key = e.key.toLowerCase();
         if (key !== "c" && key !== "x" && key !== "v") return false;
-        if (!supportsOsClipboard(provider)) return false;
+        if (!isLocalFileProvider(provider)) return false;
 
         if (key === "v") {
             // The primary row decides the target: folder → into it; file → its parent;
@@ -942,171 +905,31 @@ export class TreeProviderViewModel extends TComponentModel<
                 : node.data.isDirectory
                     ? this.getListPath(node)
                     : (node.data.category || provider.rootPath);
-            void this.pasteIntoDir(targetDir);
+            void this.itemController.paste(targetDir);
             return consume();
         }
         if (!nodes.length) return false;
         // Copy is allowed on the root (mirrors the context menu); Cut is not.
         if (hasRoot && key === "x") return false;
         const targets = this.operationItems(nodes.map((n) => n.data));
-        void copyPathsToOsClipboard(targets.map((d) => d.href), key === "x");
+        void this.itemController.copyItemsToClipboard(targets, key === "x");
         return consume();
     };
 
     // ── Context menus ────────────────────────────────────────────────────
 
-    onItemContextMenu = (node: TreeProviderNode, e: MouseEvent) => {
-        // Right-click selects the row (Windows Explorer / VS Code behavior). In multiSelect
-        // mode TreeModel owns that rule (it keeps a right-click inside an existing selection
-        // intact and emits through setSelection first), so only single-select writes here.
-        if (!this.props.multiSelect) {
-            this.setSelection([node.data.href]);
-        }
-        const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "tree-provider-item");
-        ctxEvent.target = node.data;
+    onItemContextMenu = (node: TreeProviderNode, e: MouseEvent) =>
+        this.itemController.onItemContextMenu(node.data, e);
 
-        // Layer 1: Generic items (Copy Path, Rename, Delete). A multi-selection containing
-        // the right-clicked row gets the plural menu; anything else the single-row menu.
-        const multi = this.multiTargets(node);
-        const items = multi
-            ? this.getMultiMenuItems(multi)
-            : node.data.isDirectory
-                ? this.getFolderMenuItems(node)
-                : this.getFileMenuItems(node);
-        ctxEvent.items.push(...items);
-
-        // Layer 2: Event channel — type-specific items added by registered handlers
-        // Layer 3: Parent callback — final additions/modifications
-        // Set contextMenuPromise so GlobalEventService waits for async handlers
-        // before showing the popup menu.
-        const promise = (async () => {
-            const result = await app.events.linkContextMenu.sendAsync(
-                ctxEvent as ContextMenuEvent<ITreeProviderItem>,
-            );
-            this.props.onContextMenu?.(
-                ctxEvent as ContextMenuEvent<ITreeProviderItem>,
-                multi ? multi.map((n) => n.data) : [node.data],
-            );
-            return result;
-        })();
-        e.contextMenuPromise = promise;
-    };
-
-    onBackgroundContextMenu = (e: MouseEvent) => {
-        const ctxEvent = e.contextMenuEvent;
-        const { provider } = this.props;
-        // Only empty space. A file or folder row now builds its own New File / New Folder /
-        // Paste into the edit group, rooted at the right directory; these appended after every
-        // other layer and always targeted the provider root.
-        if (ctxEvent?.target) return;
-
-        const items = getBackgroundMenuItems(provider, provider.rootPath, this.itemMenuActions);
-        if (!items.length) return;
-
-        const bgEvent = ContextMenuEvent.fromNativeEvent(e, "tree-provider-background");
-        bgEvent.items.push(...items);
-    };
-
-    /**
-     * The pruned selection to act on when `node` was right-clicked, or null when the
-     * single-row menu should be built instead — i.e. multiSelect is off, the row is outside
-     * the selection, or pruning collapsed the set to one node. A "Copy (1)" label
-     * over a plural code path is a worse menu than the single-row one, which also offers
-     * Rename, Paste and Open Terminal here.
-     */
-    private multiTargets = (node: TreeProviderNode): TreeProviderNode[] | null => {
-        if (!this.props.multiSelect) return null;
-        const { selectedValues } = this.state.get();
-        if (selectedValues.length < 2) return null;
-        if (!new Set(selectedValues.map(hrefKey)).has(hrefKey(node.data.href))) return null;
-        const targets = this.operationNodes(this.selectedNodes);
-        return targets.length > 1 ? targets : null;
-    };
-
-    /** Set-shaped actions over N selected rows. `nodes` is already pruned, so every count
-     *  shown here is the pruned count. */
-    private getMultiMenuItems = (nodes: TreeProviderNode[]): MenuItem[] =>
-        buildMultiItemMenuItems(
-            this.props.provider,
-            nodes.map((n) => n.data),
-            () => this.deleteItemsAction(nodes),
-        );
-
-    private getFileMenuItems = (node: TreeProviderNode): MenuItem[] =>
-        getFileMenuItems(
-            this.props.provider,
-            node.data,
-            this.itemMenuActions,
-            // Same target the Ctrl+V handler uses for a file row: its parent folder.
-            node.data.category || this.props.provider.rootPath,
-        );
-
-    private getFolderMenuItems = (node: TreeProviderNode): MenuItem[] =>
-        getFolderMenuItems({
-            provider: this.props.provider,
-            item: node.data,
-            directory: this.getListPath(node),
-            isRoot: sameHref(node.data.href, this.props.provider.rootPath),
-            actions: this.itemMenuActions,
-        });
-
-    // ── File operations ──────────────────────────────────────────────────
-
-    /** Paste the OS clipboard's files into `targetDir` and refresh. */
-    private pasteIntoDir = (targetDir: string) => pasteIntoDir(this.itemCrudContext, targetDir);
-
-    private createNewFile = (dirPath: string) => createNewFile(this.itemCrudContext, dirPath);
-
-    private createNewFolder = (dirPath: string) => createNewFolder(this.itemCrudContext, dirPath);
-
-    /** Rename dialog + provider.rename. Public: invoked by both the context menu and F2. */
-    renameItem = (node: TreeProviderNode) => renameItem(this.itemCrudContext, node.data);
-
-    /** Confirm dialog + provider.deleteItem. Public: invoked by both the context menu and Delete. */
-    deleteItemAction = (item: ITreeProviderItem) =>
-        deleteItemAction(this.itemCrudContext, item);
-
-    /**
-     * Confirm once, then delete every node in `nodes`. Public: plural context menu + the
-     * Delete key. Prunes nested selections first, so a folder plus files inside it
-     * deletes the folder only — and the count in the confirm is the pruned count (:
-     * count only, no name list).
-     */
-    deleteItemsAction = async (nodes: TreeProviderNode[]) => {
-        const outcome = await deleteItemsBatch(
-            this.props.provider,
-            nodes.map((n) => n.data),
-            // One item → the existing singular wording, no progress overlay, and
-            // deleteItemAction does its own refresh.
-            this.deleteItemAction,
-        );
-        if (outcome !== "batch") return;
-        // Nothing sensible stays selected after a batch delete.
-        this.setSelection([]);
-        await this.buildTree();
-    };
+    onBackgroundContextMenu = (e: MouseEvent) =>
+        this.itemController.onBackgroundContextMenu(e);
 
     // ── Drag-drop ────────────────────────────────────────────────────────
 
-    /**
-     * The items a drag starting on `node` should carry: the whole selection when the row is
-     * part of it, otherwise just that row (Explorer behavior — dragging an unselected row does
-     * not silently carry the selection). Pruned through `operationItems`, so a folder
-     * dragged together with items inside it carries the folder only, and never includes the
-     * tree root. Single-select trees always get the one row.
-     */
-    dragItemsFor = (node: TreeProviderNode): ITreeProviderItem[] => {
-        const { provider, multiSelect } = this.props;
-        const { selectedValues } = this.state.get();
-        const dragsSelection = !!multiSelect
-            && selectedValues.length > 1
-            && new Set(selectedValues.map(hrefKey)).has(hrefKey(node.data.href));
-        const items = dragsSelection
-            ? this.selectedNodes.map((n) => n.data)
-            : [node.data];
-        return this.operationItems(items).filter((i) => !sameHref(i.href, provider.rootPath));
-    };
+    dragItemsFor = (node: TreeProviderNode): ITreeProviderItem[] => this.itemController.dragItemsFor(node.data);
 
+    handleOsDragStart = (node: TreeProviderNode, event: DragEvent): boolean =>
+        this.itemController.handleOsDragStart(node.data, event);
     // ── Drop targets ─────────────────────────────────────────────────────
     //
     // The tree's only tree-specific job in a drop is turning "where did this land" into a

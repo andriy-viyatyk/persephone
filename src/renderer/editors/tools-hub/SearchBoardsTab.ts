@@ -1,7 +1,6 @@
-import { boardInstallRegistry, type InstalledBoardEntry } from "../../api/boards/board-install-registry";
+import { boardInstallRegistry } from "../../api/boards/board-install-registry";
 import { t, untranslated } from "../../../shared/i18n/t";
-import { listBoardUpdates, type BoardUpdate } from "../../api/boards/board-updates";
-import { publishedBoards } from "../../api/boards/published-boards";
+import { publishedBoards, type PublishedBoardEntry } from "../../api/boards/published-boards";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { ButtonView } from "../../uikit/Button/ButtonView";
@@ -12,13 +11,8 @@ import { claimViewOwnership, VanillaView, type IOwnedView } from "../../uikit/sh
 import { KeyedList } from "../../uikit/shared/keyed-list";
 import { openBoardInfoPage } from "../board-info/open-board-info";
 import { BoardScreenshotView } from "../board-info/BoardScreenshotView";
-import { boardUsageGroup, type BoardUsageGroup } from "../../../shared/board/board-manifest-queries";
-import { normalizeFileMasks } from "../../../shared/board/board-masks";
-import { BoardRoot } from "../../../shared/board/board-root";
+import type { BoardUsageGroup } from "../../../shared/board/board-manifest-queries";
 import { formatBytes } from "../../core/utils/format-bytes";
-import type { PublishedBoardInfo } from "../../../ipc/api-param-types";
-import { getActiveLocale } from "../../../shared/i18n/active-locale";
-import { publishedBoardDisplayText } from "../../api/boards/published-board-display-text";
 import "../../uikit/Button/Button.css";
 import "../../uikit/IconButton/IconButton.css";
 import "../../uikit/Input/Input.css";
@@ -33,65 +27,21 @@ function groupLabel(group: BoardUsageGroup): string {
     return t("tools.boardGroupTools");
 }
 
-function usageGroupOf(board: PublishedBoardInfo): BoardUsageGroup {
-    return boardUsageGroup({
-        fileMasks: normalizeFileMasks(board.fileMasks),
-        standalone: board.standalone,
-    });
-}
-
 interface BoardCardProps {
-    board: PublishedBoardInfo;
-    installed: InstalledBoardEntry[];
-    updates: Map<string, BoardUpdate>;
+    entry: PublishedBoardEntry;
 }
 
 interface BoardGroupProps {
     group: BoardUsageGroup;
-    boards: PublishedBoardInfo[];
-    installed: InstalledBoardEntry[];
-    updates: Map<string, BoardUpdate>;
+    entries: PublishedBoardEntry[];
     createCard: (props: BoardCardProps) => BoardCardView;
     releaseCard: (id: string, card: BoardCardView) => void;
 }
 
-interface BoardDetailsSignature {
-    id: string;
-    name: string;
-    version: string;
-    size: number;
-    description: string | null;
-    fileMasks: string[] | null;
-    minAppVersion: string | null;
-    installedId: string | null;
-    installedRoot: string | null;
-    installedVersion: string | null;
-    updateVersion: string | null;
-}
-
 type BoardGroupRoot = HTMLElement & { view?: BoardGroupView };
 
-function sameBoardDetails(a: BoardDetailsSignature | undefined, b: BoardDetailsSignature): boolean {
-    if (!a
-        || a.id !== b.id
-        || a.name !== b.name
-        || a.version !== b.version
-        || a.size !== b.size
-        || a.description !== b.description
-        || a.minAppVersion !== b.minAppVersion
-        || a.installedId !== b.installedId
-        || a.installedRoot !== b.installedRoot
-        || a.installedVersion !== b.installedVersion
-        || a.updateVersion !== b.updateVersion) return false;
-    if (a.fileMasks === null || b.fileMasks === null) return a.fileMasks === b.fileMasks;
-    return a.fileMasks.length === b.fileMasks.length
-        && a.fileMasks.every((mask, index) => mask === b.fileMasks[index]);
-}
-
 export class SearchBoardsTabView extends VanillaView<Record<string, never>> {
-    private catalog: PublishedBoardInfo[] = [];
-    private installed: InstalledBoardEntry[] = [];
-    private updates = new Map<string, BoardUpdate>();
+    private entries: PublishedBoardEntry[] = [];
     private query = "";
     private refreshing = false;
     private alive = false;
@@ -216,21 +166,15 @@ export class SearchBoardsTabView extends VanillaView<Record<string, never>> {
     }
 
     private syncSources(): void {
-        this.catalog = publishedBoards.getCatalog();
-        this.installed = boardInstallRegistry.listInstalled();
-        this.updates = new Map(listBoardUpdates().map((update) => [
-            BoardRoot.from(update.root).key,
-            update,
-        ]));
+        this.entries = publishedBoards.listEntries();
         this.input?.update(this.inputProps());
         this.renderCards();
     }
 
-    private filteredBoards(): PublishedBoardInfo[] {
+    private filteredEntries(): PublishedBoardEntry[] {
         const query = this.query.trim().toLowerCase();
-        if (!query) return this.catalog;
-        return this.catalog.filter((board) => {
-            const display = publishedBoardDisplayText(board, getActiveLocale());
+        if (!query) return this.entries;
+        return this.entries.filter(({ board, display }) => {
             const haystack = [
                 display.name,
                 display.description ?? "",
@@ -242,16 +186,15 @@ export class SearchBoardsTabView extends VanillaView<Record<string, never>> {
         });
     }
 
-    private groupBoards(boards: PublishedBoardInfo[]): Map<BoardUsageGroup, PublishedBoardInfo[]> {
-        const groups = new Map<BoardUsageGroup, PublishedBoardInfo[]>();
-        for (const board of boards) {
-            const group = usageGroupOf(board);
-            let groupBoards = groups.get(group);
-            if (!groupBoards) {
-                groupBoards = [];
-                groups.set(group, groupBoards);
+    private groupEntries(entries: PublishedBoardEntry[]): Map<BoardUsageGroup, PublishedBoardEntry[]> {
+        const groups = new Map<BoardUsageGroup, PublishedBoardEntry[]>();
+        for (const entry of entries) {
+            let groupEntries = groups.get(entry.usageGroup);
+            if (!groupEntries) {
+                groupEntries = [];
+                groups.set(entry.usageGroup, groupEntries);
             }
-            groupBoards.push(board);
+            groupEntries.push(entry);
         }
         return groups;
     }
@@ -260,9 +203,9 @@ export class SearchBoardsTabView extends VanillaView<Record<string, never>> {
         const groupsList = this.groups;
         const emptyMessage = this.emptyMessage;
         if (!groupsList || !emptyMessage) return;
-        const filtered = this.filteredBoards();
-        const groups = this.groupBoards(filtered);
-        if (this.catalog.length === 0) {
+        const filtered = this.filteredEntries();
+        const groups = this.groupEntries(filtered);
+        if (this.entries.length === 0) {
             groupsList.update([]);
             emptyMessage.textContent = t("tools.noPublishedBoards");
             emptyMessage.hidden = false;
@@ -278,7 +221,7 @@ export class SearchBoardsTabView extends VanillaView<Record<string, never>> {
         emptyMessage.hidden = true;
         groupsList.update(GROUP_ORDER.flatMap((group) => {
             const groupBoards = groups.get(group);
-            return groupBoards ? [{ group, boards: groupBoards }] : [];
+            return groupBoards ? [{ group, entries: groupBoards }] : [];
         }));
     }
 
@@ -303,9 +246,7 @@ export class SearchBoardsTabView extends VanillaView<Record<string, never>> {
     private groupProps(item: BoardGroupItem): BoardGroupProps {
         return {
             group: item.group,
-            boards: item.boards,
-            installed: this.installed,
-            updates: this.updates,
+            entries: item.entries,
             createCard: (props) => this.createCard(props),
             releaseCard: (id, card) => this.releaseCard(id, card),
         };
@@ -313,7 +254,7 @@ export class SearchBoardsTabView extends VanillaView<Record<string, never>> {
 
     private createCard(props: BoardCardProps): BoardCardView {
         const card = this.child(new BoardCardView(props));
-        this.cards.set(props.board.id, card);
+        this.cards.set(props.entry.board.id, card);
         card.mount();
         return card;
     }
@@ -326,22 +267,22 @@ export class SearchBoardsTabView extends VanillaView<Record<string, never>> {
 
 interface BoardGroupItem {
     group: BoardUsageGroup;
-    boards: PublishedBoardInfo[];
+    entries: PublishedBoardEntry[];
 }
 
 class BoardGroupView extends VanillaView<BoardGroupProps> {
-    private cards: KeyedList<PublishedBoardInfo, string, HTMLElement> | undefined;
+    private cards: KeyedList<PublishedBoardEntry, string, HTMLElement> | undefined;
     private readonly cardViews = new Map<HTMLElement, BoardCardView>();
 
     protected onMount(): void {
         const heading = createTextElement(groupLabel(this.props.group), { size: "sm", color: "light", bold: true });
         const cardsHost = createPanelElement({ direction: "column", gap: "sm" });
         this.root.append(heading, cardsHost);
-        this.cards = new KeyedList<PublishedBoardInfo, string, HTMLElement>(cardsHost, {
-            keyOf: (board) => board.id,
-            create: (board) => this.createCard(board),
-            update: (element, board) => this.updateCard(element, board),
-            remove: (element, board) => this.removeCard(element, board),
+        this.cards = new KeyedList<PublishedBoardEntry, string, HTMLElement>(cardsHost, {
+            keyOf: (entry) => entry.board.id,
+            create: (entry) => this.createCard(entry),
+            update: (element, entry) => this.updateCard(element, entry),
+            remove: (element, entry) => this.removeCard(element, entry),
         });
         this.own(() => this.cards?.dispose());
         this.sync(this.props);
@@ -357,22 +298,22 @@ class BoardGroupView extends VanillaView<BoardGroupProps> {
     }
 
     private sync(props: BoardGroupProps): void {
-        this.cards?.update(props.boards);
+        this.cards?.update(props.entries);
     }
 
-    private createCard(board: PublishedBoardInfo): HTMLElement {
-        const view = this.props.createCard({ board, installed: this.props.installed, updates: this.props.updates });
+    private createCard(entry: PublishedBoardEntry): HTMLElement {
+        const view = this.props.createCard({ entry });
         this.cardViews.set(view.root, view);
         return view.root;
     }
 
-    private updateCard(element: HTMLElement, board: PublishedBoardInfo): void {
-        this.cardViews.get(element)?.update({ board, installed: this.props.installed, updates: this.props.updates });
+    private updateCard(element: HTMLElement, entry: PublishedBoardEntry): void {
+        this.cardViews.get(element)?.update({ entry });
     }
 
-    private removeCard(element: HTMLElement, board: PublishedBoardInfo): void {
+    private removeCard(element: HTMLElement, entry: PublishedBoardEntry): void {
         const view = this.cardViews.get(element);
-        if (view) this.props.releaseCard(board.id, view);
+        if (view) this.props.releaseCard(entry.board.id, view);
         this.cardViews.delete(element);
     }
 }
@@ -380,7 +321,7 @@ class BoardGroupView extends VanillaView<BoardGroupProps> {
 export class BoardCardView extends VanillaView<BoardCardProps> {
     private readonly screenshot: BoardScreenshotView;
     private details: HTMLDivElement | undefined;
-    private detailsSignature: BoardDetailsSignature | undefined;
+    private detailsKey: string | undefined;
     private readonly conditionalChildren: IOwnedView[] = [];
 
     public constructor(props: BoardCardProps) {
@@ -394,7 +335,7 @@ export class BoardCardView extends VanillaView<BoardCardProps> {
         });
         root.dataset.type = "board-card";
         super(props, root);
-        this.screenshot = new BoardScreenshotView({ url: props.board.screenshotUrl });
+        this.screenshot = new BoardScreenshotView({ url: props.entry.board.screenshotUrl });
     }
 
     protected onMount(): void {
@@ -406,7 +347,6 @@ export class BoardCardView extends VanillaView<BoardCardProps> {
     }
 
     protected onUpdate(props: BoardCardProps): void {
-        this.screenshot.update({ url: props.board.screenshotUrl });
         this.sync(props);
     }
 
@@ -416,35 +356,15 @@ export class BoardCardView extends VanillaView<BoardCardProps> {
     }
 
     private sync(props: BoardCardProps): void {
+        const { entry } = props;
+        const { board } = entry;
+        this.screenshot.update({ url: board.screenshotUrl });
         const details = this.details;
         if (!details) return;
-        const {
-            id,
-            version,
-            fileMasks,
-            minAppVersion,
-            archive: { size },
-        } = props.board;
-        const display = publishedBoardDisplayText(props.board, getActiveLocale());
-        const installed = props.installed.find((entry) => entry.id === id);
-        const { id: installedId = null, root: installedRoot = null, version: installedVersion = null } = installed ?? {};
-        const update = installed ? props.updates.get(BoardRoot.from(installed.root).key) : undefined;
-        const { latestVersion: updateVersion = null } = update ?? {};
-        const nextDetailsSignature: BoardDetailsSignature = {
-            id,
-            name: display.name,
-            version,
-            size,
-            description: display.description ?? null,
-            fileMasks: fileMasks ? [...fileMasks] : null,
-            minAppVersion: minAppVersion ?? null,
-            installedId,
-            installedRoot,
-            installedVersion,
-            updateVersion,
-        };
-        if (sameBoardDetails(this.detailsSignature, nextDetailsSignature)) return;
-        this.detailsSignature = nextDetailsSignature;
+        const { display, installed, update, compatible } = entry;
+        const { id, version, fileMasks, minAppVersion, archive: { size } } = board;
+        if (this.detailsKey === entry.detailsKey) return;
+        this.detailsKey = entry.detailsKey;
         this.clearConditionalChildren();
         details.replaceChildren();
         const header = createPanelElement({ direction: "row", align: "center", gap: "sm" });
@@ -482,7 +402,6 @@ export class BoardCardView extends VanillaView<BoardCardProps> {
             details.append(masks);
         }
 
-        const compatible = publishedBoards.isCompatible(minAppVersion);
         if (!compatible) {
             details.append(createTextElement(t("tools.requiresPersephone", { product: untranslated("Persephone"), version: minAppVersion }), {
                 size: "sm",

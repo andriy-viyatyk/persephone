@@ -1,17 +1,6 @@
 import { TComponentModel } from "../../core/state/model";
 import type { ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
-import type { MenuItem } from "../../uikit/Menu";
-import { ContextMenuEvent } from "../../api/events/events";
-import { app } from "../../api/app";
-import {
-    supportsOsClipboard,
-} from "./os-clipboard";
-import {
-    buildMultiItemMenuItems,
-    deleteItemsBatch,
-    pruneNestedItems,
-    supportsMultiSelect,
-} from "./plural-actions";
+import { isLocalFileProvider, isWatchable } from "../../content/tree-providers/tree-provider-capabilities";
 import {
     dropOsFilesInto,
     moveItemsInto,
@@ -23,23 +12,9 @@ import {
     hasTraitDragData,
     isFileDrag,
 } from "../../core/traits";
-import { api } from "../../../ipc/renderer/api";
-import {
-    createNewFile,
-    createNewFolder,
-    deleteItemAction,
-    pasteIntoDir,
-    renameItem,
-    type ItemCrudContext,
-} from "./item-crud-actions";
-import {
-    getBackgroundMenuItems,
-    getFileMenuItems,
-    getFolderMenuItems,
-    type ItemMenuActions,
-} from "./item-menus";
+import { ProviderItemController } from "./provider-item-controller";
 import { getTraitDropAction } from "./drop-dispatch";
-import { DragEnterCounter } from "../../uikit/shared/drag-enter-counter";
+import { DropTargetTracker } from "../../uikit/shared/drop-target-tracker";
 import type { IOwnedView } from "../../uikit/shared/vanilla-view";
 import { sameHref, sameHrefs } from "./href-utils";
 import type { GridModelCapability } from "../../uikit/DataGrid";
@@ -109,7 +84,7 @@ export interface CategoryViewProps {
      *  detaches its controls here; it does not own or remove the host element. */
     toolbarHost?: HTMLElement | null;
     /** Allow Ctrl/Shift-click multi-selection and plural actions. Passed only where a plural
-     *  file operation is meaningful (`supportsMultiSelect`) — every other provider's folder
+     *  file operation is meaningful (`isLocalFileProvider`) — every other provider's folder
      *  page stays single-select. */
     multiSelect?: boolean;
     /** Caller-owned factory for the Link-style folder item view. */
@@ -158,6 +133,30 @@ export class CategoryViewModel extends TComponentModel<
     private previousProvider: ITreeProvider | undefined;
     private previousCategory: string | undefined;
     private previousSelectedHref: string | undefined;
+    private readonly itemController = new ProviderItemController({
+        provider: () => this.props.provider,
+        getItemPath: (item) => this.getItemListPath(item),
+        refresh: () => this.loadItems(),
+        getSelectedItems: () => this.selectionItems(),
+        isMultiSelect: () => !!this.props.multiSelect,
+        setOutsideRightClickSelection: (item) => {
+            if (
+                this.props.multiSelect
+                && !this.state.get().selectedHrefs.some((href) => sameHref(href, item.href))
+            ) {
+                this.anchorHref = item.href;
+                this.setSelection([item.href]);
+            }
+        },
+        clearSelection: () => this.setSelection([]),
+        resolvePasteTarget: () => this.props.category,
+        resolveFileDirectory: () => this.props.category,
+        resolveFolderDirectory: (item) => this.getItemListPath(item),
+        isRoot: () => false,
+        onOpenFolder: (item) => this.props.onFolderClick?.(item),
+        canStartOsDrag: () => !!this.props.provider.writable,
+        excludeRootFromDrag: false,
+    });
 
     /** Shift+click / Shift-range anchor, held as an href rather than an index — the visible
      *  order changes with the search filter, which would silently move an index anchor.
@@ -233,8 +232,8 @@ export class CategoryViewModel extends TComponentModel<
         }
         this.watchSubscription?.();
         this.watchSubscription = undefined;
-        const provider = this.props.provider as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-        if (typeof provider.watch === "function") {
+        const provider = this.props.provider;
+        if (isWatchable(provider)) {
             const unsubscribe = provider.watch(() => {
                 // A debounced callback can still arrive after the page closed.
                 if (this.isLive) void this.loadItems();
@@ -382,8 +381,7 @@ export class CategoryViewModel extends TComponentModel<
     onKeyDown = (e: KeyboardEvent) => {
         if (!this.props.multiSelect) return;
         // The search input (or any editable element) keeps native key behavior.
-        const t = e.target as HTMLElement;
-        if (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable) return;
+        if (ProviderItemController.isEditableTarget(e)) return;
 
         const { provider } = this.props;
 
@@ -398,7 +396,7 @@ export class CategoryViewModel extends TComponentModel<
             const items = this.selectionItems();
             if (!items.length) return;
             e.preventDefault();
-            void this.deleteItemsAction(items);
+            void this.itemController.deleteItems(items);
             return;
         }
         if (e.key === "Escape") {
@@ -424,7 +422,7 @@ export class CategoryViewModel extends TComponentModel<
      *  native OS file drag, which needs hrefs that are absolute local paths. */
     get allowsDrag(): boolean {
         const { provider } = this.props;
-        return !!provider.writable && supportsMultiSelect(provider);
+        return !!provider.writable && isLocalFileProvider(provider);
     }
 
     /**
@@ -433,13 +431,7 @@ export class CategoryViewModel extends TComponentModel<
      * row does not silently carry the selection. Pruned, so a folder dragged together with items
      * inside it carries the folder only. Deliberately does NOT write the selection.
      */
-    dragItemsFor = (item: ITreeProviderItem): ITreeProviderItem[] => {
-        const selected = this.selectionItems();
-        const dragsSelection = !!this.props.multiSelect
-            && selected.length > 1
-            && selected.some((i) => sameHref(i.href, item.href));
-        return pruneNestedItems(dragsSelection ? selected : [item]);
-    };
+    dragItemsFor = (item: ITreeProviderItem): ITreeProviderItem[] => this.itemController.dragItemsFor(item);
 
     /**
      * Replace the HTML5 drag with a native OS file drag. `webContents.startDrag` is the only
@@ -450,16 +442,8 @@ export class CategoryViewModel extends TComponentModel<
      * Returns false when there is nothing to drag, letting the caller fall back to the
      * in-process trait drag.
      */
-    handleOsDragStart = (item: ITreeProviderItem, e: DragEvent): boolean => {
-        if (!supportsOsClipboard(this.props.provider)) return false;
-        const paths = this.dragItemsFor(item).map((i) => i.href);
-        if (!paths.length) return false;
-        e.preventDefault();
-        // startDrag renders the icon of paths[0] only — Windows shows no count badge for a
-        // multi-file drag and Electron exposes no way to compose one.
-        void api.startOsFileDrag(paths);
-        return true;
-    };
+    handleOsDragStart = (item: ITreeProviderItem, e: DragEvent): boolean =>
+        this.itemController.handleOsDragStart(item, e);
 
     // ── Drop  ────────────────────────────────────────────────────
     //
@@ -477,14 +461,14 @@ export class CategoryViewModel extends TComponentModel<
     // key perfectly well, which is better than manufacturing an "impossible href" sentinel
     // string — there is no such thing, and the question of whether some path could collide
     // with it simply does not arise this way.
-    private readonly dragEnterCounts = new DragEnterCounter<string | null>();
+    private readonly dropTargetTracker = new DropTargetTracker<string | null>();
 
     /** Whether this view takes drops at all. Gated to the local file provider: the drop
      *  actions below are the file-move / file-import pair, and a catalog provider would need
      *  the `importLinks` branch the Explorer tree has. */
     get acceptsDrops(): boolean {
         const { provider } = this.props;
-        return !!provider.writable && supportsMultiSelect(provider);
+        return !!provider.writable && isLocalFileProvider(provider);
     }
 
     /**
@@ -517,7 +501,7 @@ export class CategoryViewModel extends TComponentModel<
         e.dataTransfer.dropEffect = isFileDrag(e.dataTransfer) ? "copy" : "move";
 
         const key = this.dropKey(item);
-        if (!this.dragEnterCounts.enter(key)) return;
+        if (!this.dropTargetTracker.enter(key)) return;
         this.setDragState((s) => {
             if (key === null) s.dropOverView = true;
             else s.dropTargetHref = key;
@@ -535,7 +519,7 @@ export class CategoryViewModel extends TComponentModel<
 
     onDragLeave = (item: ITreeProviderItem | null, _e: DragEvent) => {
         const key = this.dropKey(item);
-        if (!this.dragEnterCounts.leave(key)) return;
+        if (!this.dropTargetTracker.leave(key)) return;
         this.setDragState((s) => {
             if (key === null) {
                 s.dropOverView = false;
@@ -548,7 +532,7 @@ export class CategoryViewModel extends TComponentModel<
     };
 
     private clearDragState = () => {
-        this.dragEnterCounts.clear();
+        this.dropTargetTracker.clear();
         this.setDragState((s) => {
             s.dropTargetHref = null;
             s.dropOverView = false;
@@ -624,154 +608,18 @@ export class CategoryViewModel extends TComponentModel<
 
     // ── Context menus ────────────────────────────────────────────────────
 
-    onItemContextMenu = (item: ITreeProviderItem, e: MouseEvent) => {
-        // Right-click moves the selection to this row ONLY when the row is outside the current
-        // selection. Right-clicking one of N selected rows must keep all N, so the menu it opens
-        // can act on the whole set (Windows Explorer / VS Code behavior). No navigation — a
-        // right-click never opens anything.
-        if (
-            this.props.multiSelect
-            && !this.state.get().selectedHrefs.some((h) => sameHref(h, item.href))
-        ) {
-            this.anchorHref = item.href;
-            this.setSelection([item.href]);
-        }
+    onItemContextMenu = (item: ITreeProviderItem, event: MouseEvent) =>
+        this.itemController.onItemContextMenu(item, event);
 
-        const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "tree-provider-item");
-        ctxEvent.target = item;
+    onBackgroundContextMenu = (event: MouseEvent) =>
+        this.itemController.onBackgroundContextMenu(event);
 
-        // A multi-selection containing the right-clicked row gets the plural menu INSTEAD of
-        // the single-row one, and skips Layer 2 entirely: those handlers are written against a
-        // single `event.target`, so a plural selection has no meaningful singular actions.
-        const multi = this.multiTargets(item);
-        if (multi) {
-            ctxEvent.items.push(
-                ...buildMultiItemMenuItems(
-                    this.props.provider,
-                    multi,
-                    () => this.deleteItemsAction(multi),
-                ),
-            );
-            return;
-        }
+    renameItem = (item: ITreeProviderItem): Promise<void> => this.itemController.renameItem(item);
 
-        // Layer 1: Generic items (Open, Copy Path, Rename, Delete)
-        const menuItems = item.isDirectory
-            ? this.getFolderMenuItems(item)
-            : this.getFileMenuItems(item);
-        ctxEvent.items.push(...menuItems);
+    deleteItemAction = (item: ITreeProviderItem): Promise<void> => this.itemController.deleteItem(item);
 
-        // Layer 2: Event channel — type-specific items (Open in New Tab/Window,
-        // Show in File Explorer, Open in Browser, …) added by the handlers registered
-        // in tree-context-menus.ts, based solely on the item's href/isDirectory. This
-        // is the same flow the Explorer tree (TreeProviderViewModel) uses, so the
-        // folder-content view gets identical link items from one central place.
-        // Set contextMenuPromise so GlobalEventService waits for the async handlers
-        // before showing the popup menu.
-        e.contextMenuPromise = app.events.linkContextMenu.sendAsync(
-            ctxEvent as ContextMenuEvent<ITreeProviderItem>,
-        );
-    };
-
-    /**
-     * The pruned selection to act on when `item` was right-clicked, or null when the single-row
-     * menu should be built instead — multiSelect off, the row outside the selection, or pruning
-     * collapsed the set to one item. A "Copy (1)" label over a plural code path is a worse menu
-     * than the single-row one, which also offers Open, Rename and Paste.
-     */
-    private multiTargets = (item: ITreeProviderItem): ITreeProviderItem[] | null => {
-        if (!this.props.multiSelect) return null;
-        const selected = this.selectionItems();
-        if (selected.length < 2) return null;
-        if (!selected.some((i) => sameHref(i.href, item.href))) return null;
-        const targets = pruneNestedItems(selected);
-        return targets.length > 1 ? targets : null;
-    };
-
-    // Right-click on empty space (or a file) → New File / New Folder in the currently
-    // viewed directory (this.props.category). Skipped when a folder was the target —
-    // that folder's own menu already carries its New File / New Folder items. Mirrors
-    // TreeProviderViewModel.onBackgroundContextMenu, but rooted at the open category
-    // rather than the provider root.
-    onBackgroundContextMenu = (e: MouseEvent) => {
-        const ctxEvent = e.contextMenuEvent;
-        const { provider } = this.props;
-        // Only empty space — a file or folder row builds its own New File / New Folder into
-        // the edit group, rooted at the right directory rather than the open category.
-        if (ctxEvent?.target) return;
-
-        const items = getBackgroundMenuItems(provider, this.props.category, this.itemMenuActions);
-        if (!items.length) return;
-
-        const bgEvent = ContextMenuEvent.fromNativeEvent(e, "tree-provider-background");
-        bgEvent.items.push(...items);
-    };
-
-    /** Paste the OS clipboard's files into `targetDir` and refresh. */
-    private pasteIntoDir = (targetDir: string) => pasteIntoDir(this.itemCrudContext, targetDir);
-
-    /** Path to pass to provider create/list calls for a folder item: parent category +
-     *  the folder's own name (same convention as TreeProviderViewModel.getListPath). */
     private getItemListPath = (item: ITreeProviderItem): string => {
         return item.category ? item.category + "/" + item.title : item.title;
-    };
-
-    private get itemCrudContext(): ItemCrudContext {
-        return {
-            provider: this.props.provider,
-            getItemPath: this.getItemListPath,
-            refresh: this.loadItems,
-        };
-    }
-
-    private get itemMenuActions(): ItemMenuActions {
-        return {
-            createFile: (directory) => { void this.createNewFile(directory); },
-            createFolder: (directory) => { void this.createNewFolder(directory); },
-            paste: (directory) => { void this.pasteIntoDir(directory); },
-            rename: (item) => { void this.renameItem(item); },
-            deleteItem: (item) => { void this.deleteItemAction(item); },
-        };
-    }
-
-    private getFileMenuItems = (item: ITreeProviderItem): MenuItem[] =>
-        // The open category is the file's parent here, and the folder Paste targets.
-        getFileMenuItems(this.props.provider, item, this.itemMenuActions, this.props.category);
-
-    private getFolderMenuItems = (item: ITreeProviderItem): MenuItem[] =>
-        getFolderMenuItems({
-            provider: this.props.provider,
-            item,
-            directory: this.getItemListPath(item),
-            onOpen: () => this.props.onFolderClick?.(item),
-            actions: this.itemMenuActions,
-        });
-
-    // ── File operations ──────────────────────────────────────────────────
-
-    private createNewFile = (dirPath: string) => createNewFile(this.itemCrudContext, dirPath);
-
-    private createNewFolder = (dirPath: string) => createNewFolder(this.itemCrudContext, dirPath);
-
-    renameItem = (item: ITreeProviderItem) => renameItem(this.itemCrudContext, item);
-
-    deleteItemAction = (item: ITreeProviderItem) =>
-        deleteItemAction(this.itemCrudContext, item);
-
-    /** Confirm once, then delete every item. Public: plural context menu + the Delete key.
-     *  Prunes nested selections first, so a folder plus files inside it deletes the folder
-     *  only — and the count in the confirm is the pruned count. */
-    deleteItemsAction = async (items: ITreeProviderItem[]) => {
-        const outcome = await deleteItemsBatch(
-            this.props.provider,
-            items,
-            // One item → the existing singular wording, and deleteItemAction refreshes itself.
-            this.deleteItemAction,
-        );
-        if (outcome !== "batch") return;
-        // Nothing sensible stays selected after a batch delete.
-        this.setSelection([]);
-        await this.loadItems();
     };
 }
 
