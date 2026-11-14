@@ -1,4 +1,5 @@
 import type { IAiCallContext } from "./ai-vision/root";
+import type { AgentTipCollector } from "./ai-vision/agent-tip-collector";
 import type { EditorModelInstance as EditorModel } from "../editors/base";
 import { pages } from "../api/pages";
 import { AppWrapper } from "./api-wrapper/AppWrapper";
@@ -37,6 +38,14 @@ export interface ScriptOutputFlags {
 const LIBRARY_PREFIX = "library/";
 const nativeRequire = require;
 
+export interface ScriptContextOptions {
+    page?: EditorModel;
+    origin: "user" | "agent" | "autoload" | "board";
+    consoleLogs?: ConsoleLogEntry[];
+    libraryPath?: string;
+    tipCollector?: AgentTipCollector;
+}
+
 /**
  * Script execution context. Owns all context state (app, page, customRequire,
  * console) and serves as the `this` object for script execution via
@@ -63,17 +72,22 @@ export class ScriptContext {
     readonly preventOutput: () => void;
     console: Console | Record<string, unknown>;
     readonly customRequire: NodeRequire;
+    private readonly libraryPath: string | undefined;
 
     // Stack-based ui getter
     private previousUiDescriptor: PropertyDescriptor | undefined;
 
-    constructor(page?: EditorModel, consoleLogs?: ConsoleLogEntry[], libraryPath?: string, callContext?: IAiCallContext) {
-        // consoleLogs is only passed for MCP-originated runs (script.execute, `call`) — that is the
-        // provenance signal: browser pages such a run opens are "opened by agent".
-        const isMcp = !!consoleLogs;
+    constructor(options: ScriptContextOptions) {
+        const { page, origin, consoleLogs, libraryPath } = options;
+        // Agent runs (MCP script.execute, `call`) mark browser pages they open as "opened by agent".
+        const isMcp = origin === "agent";
+        const callContext: IAiCallContext | undefined = "tipCollector" in options
+            ? { tipCollector: options.tipCollector }
+            : undefined;
         this.page = page ? new PageWrapper(page, this.releaseList, this.outputFlags, callContext) : undefined;
         this.app = new AppWrapper(this.releaseList, isMcp, this.page, callContext);
         this.preventOutput = () => { this.outputFlags.outputPrevented = true; };
+        this.libraryPath = libraryPath;
         this.customRequire = this.createCustomRequire(libraryPath);
 
         // MCP mode: basic console capture (replaced with forwarding when ui is accessed)
@@ -101,7 +115,7 @@ export class ScriptContext {
                 uiLogPageId = undefined;
             }
             if (!uiFacade) {
-                const result = initializeUiFacade(page, this.releaseList, this.outputFlags, isMcp);
+                const result = initializeUiFacade(page, this.outputFlags, isMcp);
                 uiFacade = result.facade;
                 uiLogPageId = result.pageId;
                 installConsoleForwarding(uiFacade, this, consoleLogs);
@@ -171,6 +185,33 @@ export class ScriptContext {
         return req;
     }
 
+    /**
+     * The `require` a library module sees (bound by MODULE_CONTEXT_PREFIX): a relative id (`./x`, `../x`)
+     * resolves against the requiring module, as Node would; any other id goes through `customRequire`.
+     * A relative target inside the library folder is re-required fresh, like a `library/...` id, and loads
+     * with this context active so it gets the same globals.
+     */
+    moduleRequire(ownRequire: NodeRequire): NodeRequire {
+        const req = ((id: string) => {
+            if (typeof id !== "string" || !(id.startsWith("./") || id.startsWith("../"))) {
+                return this.customRequire(id);
+            }
+            const resolved = fpResolve(ownRequire.resolve(id));
+            if (this.libraryPath && resolved.startsWith(fpResolve(this.libraryPath))) {
+                delete nativeRequire.cache[resolved];
+            }
+            const previous = globalThis.__activeScriptContext__;
+            globalThis.__activeScriptContext__ = this;
+            try { return ownRequire(resolved); }
+            finally { globalThis.__activeScriptContext__ = previous; }
+        }) as NodeRequire;
+        req.resolve = ownRequire.resolve;
+        req.cache = ownRequire.cache;
+        req.extensions = ownRequire.extensions;
+        req.main = ownRequire.main;
+        return req;
+    }
+
     /** Release all acquired resources (ViewModels, event subscriptions, etc.). */
     dispose() {
         // Restore previous ui getter (stack-based)
@@ -193,7 +234,6 @@ export class ScriptContext {
 
 function initializeUiFacade(
     page: EditorModel | undefined,
-    _releaseList: Array<() => void>,
     outputFlags: ScriptOutputFlags,
     isMcp = false,
 ): { facade: UiFacade; pageId: string } {
@@ -204,9 +244,6 @@ function initializeUiFacade(
     if (page && !wasPresent) {
         pages.layout.groupTabs(page.page?.id ?? page.id, logPageId, false);
     }
-
-    // SF2 + LV9 — acquireViewModelSync + releaseList.push retire entirely
-    // for log-view. The editor IS the consumable surface directly.
 
     outputFlags.groupedContentWritten = true;
 

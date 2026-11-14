@@ -32,6 +32,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
   its explanation. Press Escape to dismiss it. See [Settings](./screens/settings.md).
 - **Explorer remembers restored folders:** Expanding another folder no longer causes previously
   restored expanded folders to disappear the next time the Explorer state is saved.
+- **Autoload refreshes shared scripts:** Reloading autoload scripts also picks up changes in the
+  library modules they import.
+- **Relative requires in Script Library modules:** A library module can import a neighbour with
+  `require("./helper")` or an ES `import` from `"../utils/x"` again; the target gets the same script globals.
 
 ---
 

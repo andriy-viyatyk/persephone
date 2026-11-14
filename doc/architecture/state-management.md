@@ -186,8 +186,9 @@ is needed. The subscription is synchronous and must be disposed with the owning 
 
 ### TModel\<T\>
 
-Base class for stateful business logic. Holds a `state` property and provides protected `own()` plus
-an idempotent `dispose()` for model-owned cleanup functions. Cleanup functions are released in
+Base class for stateful business logic. Holds a `state` property, exposes `isLive` until disposal,
+and provides protected `own()` plus an idempotent `dispose()` for model-owned cleanup functions.
+Disposal sets `isLive` to false before releasing resources. Cleanup functions are released in
 registration order; all are attempted and the first failure is rethrown.
 
 ```typescript

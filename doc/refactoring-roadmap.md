@@ -630,8 +630,31 @@ The EPIC-171 follow-up is done: `Tree` has a `repaintSignal` prop and the Editor
 store their callbacks. Recorded changes: an open Autocomplete with no active row moves to the first row on
 ArrowUp/PageUp, an open empty Select no longer writes an active index, Label and SplitButton stop leaking own props to
 the DOM, the Category footer and tree-provider panels carry Panel's own `data-type`, and hover no longer repaints every
-row of those four trees. **Remaining:** UIK-12 (components model generations, `ImperativeSplitter`, FileList →
-FileGrid) as part 5, the last 6.7 epic.
+row of those four trees. Part 5 is done ([EPIC-173](epics/EPIC-173.md), 2026-11-14): UIK-12 — `isLive` moved to
+`TModel`, and `FileSearchModel`, `GitTreeModel`, `GitChangesModel` and `GitBranchesModel` extend it (no private
+`disposed` flags or stores); `ImperativeSplitter` is replaced by a `SplitterView` handle positioned by a
+`SplitLayout` controller (same clamp, ratio, double-click reset and compare-mode pause; theme colours from the UIKit
+splitter CSS), and the page managers' hand-rolled cleanup loops are `DisposableStore` batches. FileList → FileGrid was
+**decided against**: FileGrid lacks search, the selected-path highlight, item menus and a trailing slot and cannot
+hide its header, so migrating would have put a header, sortable columns and cell focus into the Recent files and
+commit diff lists; both are kept on purpose (docs corrected), sharing one `createFileRowIconElement`. Recorded
+changes: a direct `TComponentModel.dispose()` also clears `isLive`; the page splitter carries `SplitterView`'s DOM
+and ARIA, stays light after release while hovered, and ends a drag on `pointercancel`. **Roadmap item 6.7 is
+complete.**
+
+**6.8 is split into epics.** Part 1 is done ([EPIC-173](epics/EPIC-173.md), 2026-11-14): SHL-11 and the scripting
+items of SHL-13 — `scripting/script-engine.ts` (the implicit-return heuristics moved verbatim) and
+`scripting/ScriptLibrary.ts` (sucrase, transpile, dirty flag, `prepare()`) shared by `ScriptRunner` and
+`AutoloadRunner`, `ScriptRunnerBase` deleted; one `SCRIPT_GLOBALS` list in the leaf `scripting/script-globals.ts`
+generating both prefixes (a leaf rather than `ScriptContext`, which sits in a static import cycle with the runner);
+`new ScriptContext({ page, origin: "user" | "agent" | "autoload" | "board", … })`; `scriptRunner.inRejectionWindow`
+with a named 1 s grace window; `runWithResult` without the redundant `pageId`; `ui.textDialog` instead of a
+`ui/dialogs` import; dead `_releaseList` and stale comments removed (`run()` and the adapter cast were already gone;
+bug #7 was already fixed). Recorded changes: a non-empty autoload load also clears the dirty library cache, so changed
+transitive library dependencies load fresh on autoload reload; relative requires inside Script Library modules work
+again (a pre-existing bug since US-236, found during live checks: `ScriptContext.moduleRequire`). **Remaining
+(part 2):** SHL-4 (`PageTabState`, `displayTitle`, `IAudibleEditor`), SHL-6 (board identity service), SHL-7
+(`MainPageView` reduced to layout), SHL-8 (`MenuBarView` folder-UI table) and the non-scripting SHL-13 items.
 
 ### Phase 7: Lock it in
 

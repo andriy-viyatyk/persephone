@@ -1,7 +1,7 @@
 import { TModel } from "../core/state/model";
 import { TGlobalState } from "../core/state/state";
 import { settings } from "./settings";
-import { scriptRunner } from "../scripting/ScriptRunner";
+import { scriptLibrary } from "../scripting/ScriptLibrary";
 
 import { fs } from "./fs";
 import { fpBasename, fpExtname, fpJoin, fpRelative, isArchivePath, isAsarPath } from "../core/utils/file-path";
@@ -216,7 +216,7 @@ class LibraryService extends TModel<LibraryServiceState> {
 
     private async refreshAfterChange(libraryPath: string): Promise<void> {
         await this.scan(libraryPath);
-        scriptRunner.invalidateLibraryCache();
+        scriptLibrary.invalidateLibraryCache();
 
         // Mark autoload scripts as needing reload (user-controlled via header button)
         const { autoloadService } = await import("./autoload-service");

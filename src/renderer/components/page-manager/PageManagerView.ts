@@ -1,5 +1,6 @@
 import type { VanillaViewCtor } from "../../uikit/shared/vanilla-view";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
+import { DisposableStore } from "../../core/utils/DisposableStore";
 import { PageSlot, type PageSlotViewProps } from "./PageSlot";
 
 export interface PageManagerProps {
@@ -33,22 +34,9 @@ export class PageManagerView extends VanillaView<PageManagerProps> {
         const slots = Array.from(this.slots.values());
         this.slots.clear();
 
-        let firstError: unknown;
-        let hasError = false;
-        for (const slot of slots) {
-            try {
-                slot.dispose();
-            } catch (error) {
-                if (!hasError) {
-                    hasError = true;
-                    firstError = error;
-                }
-            }
-        }
-
-        if (hasError) {
-            throw firstError;
-        }
+        const cleanup = new DisposableStore();
+        for (const slot of slots) cleanup.add(slot);
+        cleanup.dispose();
     }
 
     private reconcile(props: PageManagerProps): void {

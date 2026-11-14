@@ -6,7 +6,7 @@ import type { IListBoxItem, ListBoxProps } from "../../uikit/ListBox/types";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { t } from "../../../shared/i18n/t";
 import { focusAfterPaint } from "../../core/utils/scheduling";
-import { createFileIconElement, createFolderIconElement, subscribeFileIconElements } from "../icons/icon-elements";
+import { createFileRowIconElement, subscribeFileIconElements } from "../icons/icon-elements";
 import { defaultFileListState, FileListModel, type FileListItem, type FileListProps } from "./FileList";
 import "./FileList.css";
 
@@ -155,11 +155,7 @@ export class FileListView extends VanillaView<FileListProps> {
                 value: item.filePath,
                 label: item.title,
                 icon: item.icon,
-                iconElement: item.icon !== undefined
-                    ? undefined
-                    : item.isFolder
-                        ? createFolderIconElement()
-                        : createFileIconElement({ path: item.filePath, width: 16, height: 16 }),
+                iconElement: item.icon !== undefined ? undefined : createFileRowIconElement(item),
                 trailing: getTrailing?.(item),
             }));
             this.filteredSearch = undefined;

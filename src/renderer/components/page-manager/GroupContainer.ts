@@ -1,5 +1,5 @@
-import { DisposableStore } from "../../core/utils/DisposableStore";
-import { ImperativeSplitter } from "./ImperativeSplitter";
+import { SplitterView, type SplitterProps } from "../../uikit/Splitter/SplitterView";
+import { SplitLayout } from "./SplitLayout";
 
 /**
  * Imperative container that visually groups two page placeholders into a
@@ -14,10 +14,11 @@ import { ImperativeSplitter } from "./ImperativeSplitter";
  * Visual structure (all elements are siblings in the main container):
  *   placeholder-left  — positioned via CSS (left: 0, width: N px)
  *   placeholder-right — positioned via CSS (left: N+8 px, right: 0)
- *   splitter-div      — positioned via CSS (left: N px, width: 8px)
+ *   splitter          — positioned via CSS (left: N px, width: 8px)
  */
 export class GroupContainer {
-    readonly splitter: ImperativeSplitter;
+    readonly splitter: SplitterView;
+    private readonly layout: SplitLayout;
     private disposed = false;
     private _compareMode = false;
 
@@ -26,22 +27,55 @@ export class GroupContainer {
         private leftPlaceholder: HTMLDivElement,
         readonly rightPlaceholder: HTMLDivElement,
     ) {
-        // Style placeholders for grouped mode
+        // Style placeholders for grouped mode.
         this.setGroupedStyle(leftPlaceholder, "left");
         this.setGroupedStyle(rightPlaceholder, "right");
 
-        // Create splitter
-        this.splitter = new ImperativeSplitter(
-            container,
-            leftPlaceholder,
-            rightPlaceholder,
-            new DisposableStore(),
-        );
+        let layout: SplitLayout | undefined;
+        const onChange = (value: number): void => layout?.handleChange(value);
+        const onDoubleClick = (): void => layout?.reset();
+        const splitterProps: SplitterProps & { onDoubleClick: () => void } = {
+            name: "page-group-splitter",
+            orientation: "vertical",
+            side: "before",
+            background: "dark",
+            hoverBackground: "light",
+            border: "none",
+            value: 0,
+            onChange,
+            onDoubleClick,
+        };
 
-        // Insert splitter into the container
-        container.appendChild(this.splitter.element);
+        // Create splitter with callbacks that target the layout after initialization.
+        this.splitter = new SplitterView(splitterProps);
+        try {
+            this.layout = new SplitLayout(
+                container,
+                leftPlaceholder,
+                rightPlaceholder,
+                this.splitter,
+                splitterProps,
+            );
+            layout = this.layout;
+            // Insert the handle as the same last sibling, after initial layout is applied.
+            container.appendChild(this.splitter.root);
+            this.splitter.mount();
+        } catch (error) {
+            try {
+                this.layout?.dispose();
+            } finally {
+                try {
+                    this.splitter.dispose();
+                } finally {
+                    this.splitter.root.remove();
+                }
+            }
+            this.setSingleStyle(leftPlaceholder);
+            this.setSingleStyle(rightPlaceholder);
+            throw error;
+        }
 
-        // Both placeholders are visible inside the group
+        // Both placeholders are visible inside the group.
         leftPlaceholder.style.display = "flex";
         rightPlaceholder.style.display = "flex";
     }
@@ -51,12 +85,12 @@ export class GroupContainer {
     /** Enter compare mode — pause splitter layout */
     setCompareMode(enabled: boolean) {
         this._compareMode = enabled;
-        this.splitter.paused = enabled;
+        this.layout.paused = enabled;
         if (!enabled) {
             // Exiting compare mode — restore grouped layout
             this.setGroupedStyle(this.leftPlaceholder, "left");
             this.setGroupedStyle(this.rightPlaceholder, "right");
-            this.splitter.reapplyLayout();
+            this.layout.reapplyLayout();
             this.leftPlaceholder.style.display = "flex";
             this.rightPlaceholder.style.display = "flex";
         }
@@ -66,11 +100,10 @@ export class GroupContainer {
         if (this.disposed) return;
         this.disposed = true;
 
-        // Dispose splitter and remove its element
+        // Preserve teardown order: layout observer, view listeners/capture, then handle root.
+        this.layout.dispose();
         this.splitter.dispose();
-        if (this.splitter.element.parentNode) {
-            this.splitter.element.parentNode.removeChild(this.splitter.element);
-        }
+        this.splitter.root.remove();
 
         // Restore placeholders to standalone style (no reparenting needed)
         this.setSingleStyle(this.leftPlaceholder);

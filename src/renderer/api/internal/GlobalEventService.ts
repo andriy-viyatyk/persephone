@@ -250,7 +250,7 @@ export class GlobalEventService {
             e.preventDefault();
             return;
         }
-        if (scriptRunner.handlePromiseException) {
+        if (scriptRunner.inRejectionWindow) {
         ui.notify(t("api.unhandledPromiseRejection", { reason: e.reason }), "error");
         }
     };

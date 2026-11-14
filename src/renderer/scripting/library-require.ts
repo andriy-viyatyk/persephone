@@ -1,24 +1,10 @@
 import { settings } from "../api/settings";
-import { getSucraseTransform } from "./transpile";
+import { MODULE_CONTEXT_PREFIX } from "./script-globals";
 
 const fs = require("fs") as typeof import("fs");
 import { fpJoin, fpResolve } from "../core/utils/file-path";
 
 let extensionsRegistered = false;
-
-/**
- * Prefix injected at the top of every library module loaded via require().
- * Reads context from globalThis.__activeScriptContext__ which is set by
- * ScriptContext.customRequire() before calling native require().
- *
- * `ui` is NOT included — it's a lazy getter on globalThis (stack-based per context).
- */
-const MODULE_CONTEXT_PREFIX =
-    "var __ctx=globalThis.__activeScriptContext__" +
-    ",app=__ctx?.app,page=__ctx?.page,io=__ctx?.io" +
-    ",styledText=__ctx?.styledText,preventOutput=__ctx?.preventOutput" +
-    ",require=__ctx?.customRequire||require" +
-    ",console=__ctx?.console||console;\n";
 
 /**
  * Register custom extension handlers for Node.js require():
@@ -32,9 +18,13 @@ const MODULE_CONTEXT_PREFIX =
  * The `.js` handler only applies to files inside the library folder to avoid
  * breaking non-library CommonJS modules.
  *
- * Must be called after `ensureSucraseLoaded()`.
+ * Must be called after sucrase is loaded. The transform getter is supplied by
+ * ScriptLibrary so this module does not depend on the library preparation owner.
  */
-export function registerLibraryExtensions(getLibraryPath: () => string | undefined): void {
+export function registerLibraryExtensions(
+    getLibraryPath: () => string | undefined,
+    getSucraseTransform: () => typeof import("sucrase").transform | undefined,
+): void {
     if (extensionsRegistered) return;
     extensionsRegistered = true;
 

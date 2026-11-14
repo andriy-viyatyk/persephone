@@ -2,7 +2,7 @@ import type { Column, DataGridProps } from "../../uikit/DataGrid";
 import { DataGridView } from "../../uikit/DataGrid/DataGridView";
 import { showGridContextMenu } from "../../ui/dialogs/poppers/grid-context-menu";
 import { fpBasename, fpExtname } from "../../core/utils/file-path";
-import { createFileIconElement, createFolderIconElement, subscribeFileIconElements } from "../icons/icon-elements";
+import { createFileRowIconElement, subscribeFileIconElements } from "../icons/icon-elements";
 import { prepareFileIcon } from "../icons/language-icon-resolver";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { FileGridItem, FileGridProps } from "./FileGrid";
@@ -68,9 +68,7 @@ export class FileGridView extends VanillaView<FileGridProps> {
                 key: "icon",
                 name: "",
                 width: 28,
-                render: (cell) => cell.row.isFolder
-                    ? createFolderIconElement()
-                    : createFileIconElement({ path: cell.row.filePath, width: 16, height: 16 }),
+                render: (cell) => createFileRowIconElement(cell.row),
                 rowCompare: (a, b) => fpExtname(a.filePath).localeCompare(fpExtname(b.filePath)),
                 formatValue: () => "",
             },

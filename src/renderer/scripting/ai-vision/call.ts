@@ -21,7 +21,7 @@ export async function aiCall(
     collectTips = false,
 ): Promise<ICallResult> {
     const tipCollector = collectTips ? new AgentTipCollector() : undefined;
-    const context = new ScriptContext(undefined, []);
+    const context = new ScriptContext({ origin: "agent", consoleLogs: [] });
     try {
         // script.execute owns a retained run registry and its dialog/running pending handles;
         // resolveWithAttention decorates it with events but skips the generic early dialog race.

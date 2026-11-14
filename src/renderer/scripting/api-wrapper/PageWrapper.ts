@@ -287,7 +287,7 @@ export class PageWrapper implements IAiVisible {
         const { isScriptLanguage } = await import("../transpile");
         if (!isScriptLanguage(language)) throw new Error("runScript() is only available for javascript/typescript pages");
         const { scriptRunner } = await import("../ScriptRunner");
-        return scriptRunner.runWithResult(this.model.id, this.content, this.model, language);
+        return scriptRunner.runWithResult(this.content, this.model, language);
     }
 }
 

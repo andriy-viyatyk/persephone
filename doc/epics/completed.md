@@ -1,3 +1,27 @@
+## EPIC-173 — Refactoring Phase 6.7 part 5 and 6.8 part 1: components model generations, page-manager splitter, one file list decision, script engine and library
+
+Completed 2026-11-14. Roadmap Phase 6.7 part 5 (UIK-12), which completes item 6.7, and Phase 6.8 part 1 (SHL-11 and
+the scripting items of SHL-13): `isLive` on `TModel`, with `FileSearchModel` and the three git models extending it;
+the page splitter is a `SplitterView` positioned by a `SplitLayout` controller (`ImperativeSplitter` deleted) and the
+page managers' cleanup loops are `DisposableStore` batches; FileList and FileGrid are kept on purpose (migrating would
+have put a header, sortable columns and cell focus into the Recent files and commit diff lists) and share
+`createFileRowIconElement`; `scripting/script-engine.ts` and `ScriptLibrary.ts` replace `ScriptRunnerBase` and serve
+both runners; `scripting/script-globals.ts` generates both prefixes from one `SCRIPT_GLOBALS` list; `ScriptContext`
+takes an explicit `origin`; `scriptRunner.inRejectionWindow` with a named grace window. Recorded changes: a direct
+`TComponentModel.dispose()` clears `isLive`; the page splitter carries `SplitterView`'s DOM/ARIA, stays light after
+release while hovered and ends a drag on `pointercancel`; autoload loads clear the dirty library cache; relative
+requires inside Script Library modules work again (pre-existing bug fixed). Splitter, git panels, file search, Recent
+files and commit diff lists, script runs and library requires checked live before/after in a separate test window.
+Plans by Codex, reviewed against the roadmap guardrails; Codex Luna implemented. Epic document: [EPIC-173](EPIC-173.md).
+
+- [x] **Models on `TModel` (US-1979).** `isLive` in `TModel`; file-search and git models.
+- [x] **Page-manager splitter (US-1980).** `SplitterView` + `SplitLayout`, store batches.
+- [x] **One file list (US-1981).** Decided: keep both; shared row icon; docs corrected.
+- [x] **Script engine and library (US-1982).** `script-engine.ts`, `ScriptLibrary.ts`, `ScriptRunnerBase` deleted.
+- [x] **Script globals and context origin (US-1983).** `script-globals.ts`, `origin`, `inRejectionWindow`.
+- [x] **Epic review.** `/review` no findings; `/document` folder structure, key files, pages architecture, state
+  management; `/userdoc` scripting guide and what's new; relative library requires fixed; `i18n:check` complete.
+
 ## EPIC-172 — Refactoring Phase 6.7 part 4: shared list filter and navigation, tree-provider view cleanups, DOM-prop helpers
 
 Completed 2026-11-14. Roadmap Phase 6.7 part 4 (UIK-6, UIK-9, UIK-10, UIK-11) plus the EPIC-171 tree-repaint

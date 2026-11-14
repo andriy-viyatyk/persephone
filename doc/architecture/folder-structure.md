@@ -810,9 +810,11 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   └── types.ts            # View-module prop types (required native EditorModule.View)
 │
 ├── scripting/              # Script Execution
-│   ├── ScriptRunnerBase.ts # Core execution engine (transpile, execute, library)
-│   ├── ScriptRunner.ts     # Orchestrator (context lifecycle, result handling)
+│   ├── script-engine.ts    # Stateless top-level compile/execute heuristics
+│   ├── ScriptLibrary.ts    # Lazy transpilation, library registration and cache preparation
+│   ├── ScriptRunner.ts     # Orchestrator (context lifecycle, result handling, rejection window)
 │   ├── ScriptContext.ts    # Execution scope class (context proxy, cleanup)
+│   ├── script-globals.ts   # Ordered script globals and generated execution prefixes
 │   ├── AutoloadRunner.ts   # Autoload registration scripts from library/autoload/
 │   ├── script-utils.ts     # Utilities (convertToText)
 │   ├── transpile.ts        # TypeScript transpilation via sucrase (lazy-loaded)
@@ -985,6 +987,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── file-grid/          # FileGrid.ts types + FileGridView.ts native DataGrid/av-grid list
 │   ├── icons/              # Builder-backed Icon face and DOM icon resolvers
 │   ├── page-manager/       # Native app-page and browser internal-tab hosts
+│   │   ├── SplitLayout.ts  # Split-pane ratio, sizing and positioning
+│   │   └── GroupContainer.ts # Group host composed with the shared UIKit SplitterView
 │   └── git-tree/           # GitTreeView.ts native history view and git submodels
 │
 ├── core/                   # Core Infrastructure

@@ -614,7 +614,7 @@ export function register() {
 - Autoload scripts can import shared modules with `require("library/...")` just like regular scripts
 - The `app` global is available (but not `page` — autoload scripts run outside any specific page context)
 
-**Reloading:** When library files change on disk, a yellow reload indicator button appears in the header. Click it to reload all autoload scripts — the previous session is disposed (all event subscriptions removed) and scripts are loaded fresh.
+**Reloading:** When library files change on disk, a yellow reload indicator button appears in the header. Click it to reload all autoload scripts and refresh the library modules they import — the previous session is disposed (all event subscriptions removed) and scripts are loaded fresh.
 
 ## Node.js Access
 

@@ -200,8 +200,10 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Script `io` namespace    | `/src/renderer/scripting/api-wrapper/IoNamespace.ts` |
 | Script library service   | `/src/renderer/api/library-service.ts`            |
 | Script autoloading       | `/src/renderer/scripting/AutoloadRunner.ts`       |
-| Script execution (core)  | `/src/renderer/scripting/ScriptRunnerBase.ts`     |
-| Script execution         | `/src/renderer/scripting/ScriptRunner.ts`         |
+| Script compilation and execution heuristics | `/src/renderer/scripting/script-engine.ts` |
+| Script globals and generated execution prefixes | `/src/renderer/scripting/script-globals.ts` |
+| Script library preparation and cache invalidation | `/src/renderer/scripting/ScriptLibrary.ts` |
+| Script execution orchestration and unhandled-rejection window | `/src/renderer/scripting/ScriptRunner.ts` |
 | MCP agent-tip session registry and request-scoped browser observations | `/src/main/mcp/agent-tips.ts`, `/src/renderer/scripting/ai-vision/agent-tip-collector.ts` |
 | AiVision core package (help search, result shaping, and path resolution; external npm dependency 1.3.0) | `ai-vision` npm package |
 | Renderer AiVision root and namespace descriptors (the renderer side of path calls, including bounded `script.execute`/`script.result` handles) | `/src/renderer/scripting/ai-vision/` |
@@ -398,6 +400,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Browser Downloads popup (progress, file actions, dismissal, and completed-download open actions) | `/src/renderer/editors/browser/BrowserDownloadsPopup.ts` |
 | Browser internal-tab native host (append-only placeholders and retained per-tab native views) | `/src/renderer/components/page-manager/PageManagerView.ts` |
 | Application page host and popover behavior (native page constructor arm, lazy activation, grouping, compare mode, right-pinned stable-slot popover geometry/resize, and click-away/focus/Escape handling) | `/src/renderer/components/page-manager/AppPageManagerView.ts`, `/src/renderer/components/page-manager/AppPageManagerView.css`, `/src/renderer/ui/app/PagesView.ts` |
+| Application page-group splitter and absolute pane layout | `/src/renderer/components/page-manager/GroupContainer.ts`, `/src/renderer/components/page-manager/SplitLayout.ts`, `/src/renderer/uikit/Splitter/SplitterView.ts` |
 | Page-manager placeholder ownership bridge (stable page slots with one native view arm and detach-before-dispose teardown) | `/src/renderer/components/page-manager/PageSlot.ts` |
 | Browser Tor lifecycle model (fail-closed proxy arming, listeners/reconnect, window-close cleanup; consumes `BrowserEditor.partition`) | `/src/renderer/editors/browser/BrowserTorModel.ts` |
 | Browser webview context-menu builder (bounded DOM/SVG/resource probes and menu actions) | `/src/renderer/editors/browser/webview-context-menu.ts` |

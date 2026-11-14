@@ -78,6 +78,13 @@ export function createFolderIconElement(): HTMLSpanElement {
     return element;
 }
 
+/** The 16px row icon of a flat file list (`FileListView`, `FileGridView`): folder emoji or file-type icon. */
+export function createFileRowIconElement(item: { filePath: string; isFolder?: boolean }): Element {
+    return item.isFolder
+        ? createFolderIconElement()
+        : createFileIconElement({ path: item.filePath, width: 16, height: 16 });
+}
+
 function createFaviconOrFallback(href: string): Element {
     const hostname = getHostname(href);
     const path = getFaviconPathSync(hostname);

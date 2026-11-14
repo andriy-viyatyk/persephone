@@ -1,12 +1,12 @@
 const RENDERER_INTERNAL_STACK_PATHS = [
-    "src/renderer/scripting/ScriptRunnerBase.ts",
+    "src/renderer/scripting/script-engine.ts",
     "src/renderer/scripting/ScriptRunner.ts",
     "node_modules/ai-vision/dist/core/resolver.js",
 ] as const;
 
 /**
  * A frame from the submitted script, e.g.
- * `at failHere (eval at executeInternal (http://…/ScriptRunnerBase.ts:74:14), <anonymous>:3:29)`.
+ * `at failHere (eval at execute (http://…/script-engine.ts:74:14), <anonymous>:3:29)`.
  *
  * These must be **kept**, not dropped: the `<anonymous>:line:column` is the caller's own script
  * location and the only debuggable thing in the whole trace. They are only recognisable as script

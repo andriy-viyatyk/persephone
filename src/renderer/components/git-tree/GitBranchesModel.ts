@@ -13,6 +13,7 @@
  * git activity happens at all.
  */
 import { TComponentState } from "../../core/state/state";
+import { TModel } from "../../core/state/model";
 import { settings } from "../../api/settings";
 import { git } from "../../api/git";
 import { ui } from "../../api/ui";
@@ -48,11 +49,13 @@ const defaultGitBranchesState: GitBranchesState = {
     pulling: false,
 };
 
-export class GitBranchesModel {
-    readonly state = new TComponentState<GitBranchesState>({ ...defaultGitBranchesState });
+export class GitBranchesModel extends TModel<GitBranchesState> {
+
+    constructor() {
+        super(new TComponentState<GitBranchesState>({ ...defaultGitBranchesState }));
+    }
 
     private repoRoot: string | undefined;
-    private disposed = false;
 
     /** Set true by `markStale()` when a repo change happened while this panel was
      *  hidden; cleared by the next `reload()`. The owning editor reloads on reveal
@@ -91,7 +94,7 @@ export class GitBranchesModel {
         }
         this.write((s) => { s.loading = true; });
         const probe = await git.probe();
-        if (this.disposed) return;
+        if (!this.isLive) return;
         if (!probe.installed) {
             this.write((s) => {
                 s.gitOk = false;
@@ -105,7 +108,7 @@ export class GitBranchesModel {
             git.refs(this.repoRoot),
             git.aheadBehind(this.repoRoot),
         ]);
-        if (this.disposed) return;
+        if (!this.isLive) return;
         this.write((s) => {
             s.gitOk = true;
             s.refs = refs;
@@ -192,17 +195,13 @@ export class GitBranchesModel {
         const s0 = this.state.get();
         if (s0.fetching || s0.pushing || s0.pulling) return;
         const ab = await git.aheadBehind(this.repoRoot);
-        if (this.disposed) return;
+        if (!this.isLive) return;
         this.write((s) => { s.aheadBehind = ab; });
     };
 
-    dispose(): void {
-        this.disposed = true;
-    }
-
     /** State write guarded against late async writes after dispose. */
     private write(fn: (s: GitBranchesState) => void): void {
-        if (this.disposed) return;
+        if (!this.isLive) return;
         this.state.update(fn);
     }
 }

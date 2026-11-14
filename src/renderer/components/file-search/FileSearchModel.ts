@@ -7,6 +7,7 @@
  * Extracted from NavigationSearchModel for reuse outside NavigationPanel.
  */
 import { TComponentState } from "../../core/state/state";
+import { TModel } from "../../core/state/model";
 import { debounce } from "../../../shared/utils";
 import {
     SearchChannel,
@@ -19,7 +20,6 @@ import {
 } from "../../../ipc/search-ipc";
 import { settings } from "../../api/settings";
 import { fpBasename } from "../../core/utils/file-path";
-import { DisposableStore } from "../../core/utils/DisposableStore";
 
 const { ipcRenderer } = require("electron");
 
@@ -100,22 +100,15 @@ export const defaultFileSearchState: FileSearchInternalState = {
 
 let searchIdCounter = 0;
 
-export class FileSearchModel {
-    state: TComponentState<FileSearchInternalState>;
-
+export class FileSearchModel extends TModel<FileSearchInternalState> {
     /** Accumulated result rows — deliberately outside the immer-managed state (see above). */
     private allResults: SearchResultRow[] = [];
 
     private currentSearchId: string | null = null;
-    private disposed = false;
-    private readonly disposables = new DisposableStore();
     private rootPath: string;
     private onStateChange?: (state: FileSearchState) => void;
 
     constructor(rootPath: string, savedState?: FileSearchState, onStateChange?: (state: FileSearchState) => void) {
-        this.rootPath = rootPath;
-        this.onStateChange = onStateChange;
-
         // Restore from saved state or use defaults
         const initial: FileSearchInternalState = savedState
             ? {
@@ -127,9 +120,11 @@ export class FileSearchModel {
                   truncated: false,
               }
             : { ...defaultFileSearchState };
-        this.allResults = savedState?.results ?? [];
+        super(new TComponentState<FileSearchInternalState>(initial));
 
-        this.state = new TComponentState<FileSearchInternalState>(initial);
+        this.rootPath = rootPath;
+        this.onStateChange = onStateChange;
+        this.allResults = savedState?.results ?? [];
         this.subscribeToIpc();
     }
 
@@ -137,7 +132,7 @@ export class FileSearchModel {
 
     private onIpc<T>(channel: string, callback: (data: T) => void) {
         const handler = (_event: unknown, data: T) => {
-            if (!this.disposed) callback(data);
+            if (this.isLive) callback(data);
         };
         ipcRenderer.on(channel, handler);
         this.disposables.add(() => ipcRenderer.removeListener(channel, handler));
@@ -216,7 +211,7 @@ export class FileSearchModel {
     // ── Search ────────────────────────────────────────────────────────
 
     private sendSearch = () => {
-        if (this.disposed) return;
+        if (!this.isLive) return;
         const { query, includePattern, excludePattern, searchFolder } = this.state.get();
         if (!query.trim()) {
             this.cancelSearch();
@@ -255,7 +250,7 @@ export class FileSearchModel {
     private sendSearchDebounced = debounce(this.sendSearch, 500);
 
     private cancelSearch = () => {
-        if (this.disposed) return;
+        if (!this.isLive) return;
         if (this.currentSearchId) {
             const cancel: SearchCancel = { searchId: this.currentSearchId };
             ipcRenderer.send(SearchChannel.cancel, cancel);
@@ -384,9 +379,9 @@ export class FileSearchModel {
     };
 
     dispose = () => {
-        if (this.disposed) return;
+        if (!this.isLive) return;
         const searchId = this.currentSearchId;
-        this.disposed = true;
+        this.isLive = false;
         this.currentSearchId = null;
         // Cancel carries this view's own search id, so disposal can stop its worker
         // instead of letting it walk a tree nobody is watching. Safe even if another view has
@@ -397,6 +392,6 @@ export class FileSearchModel {
             const cancel: SearchCancel = { searchId };
             ipcRenderer.send(SearchChannel.cancel, cancel);
         }
-        this.disposables.dispose();
+        super.dispose();
     };
 }

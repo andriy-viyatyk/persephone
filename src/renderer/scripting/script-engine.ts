@@ -1,67 +1,28 @@
-import { transpileIfNeeded, ensureSucraseLoaded } from "./transpile";
-import { registerLibraryExtensions, clearLibraryRequireCache } from "./library-require";
-import { settings } from "../api/settings";
 import type { ScriptContext } from "./ScriptContext";
+import { SCRIPT_PREFIX } from "./script-globals";
+
+interface CompiledScript {
+    script: string;
+    hasStatements: boolean;
+}
 
 /**
- * Prefix for top-level scripts executed via fn.call(context).
- * Reads context properties from `this` (the ScriptContext instance).
- * `ui` is NOT included — it's a lazy getter on globalThis (stack-based per context).
- */
-const SCRIPT_PREFIX =
-    "var app=this.app,page=this.page,io=this.io" +
-    ",styledText=this.styledText,preventOutput=this.preventOutput" +
-    ",require=this.customRequire" +
-    ",console=this.console;\n";
-
-/**
- * Core script execution engine. Handles TypeScript transpilation, Script Library
- * registration, expression/statement detection, implicit return wrapping,
- * and async await. Stateless singleton — context is passed as a parameter.
+ * Compile top-level scripts for execution with a ScriptContext.
+ * Context globals are injected via SCRIPT_PREFIX reading from `this` (context).
  *
  * Two injection mechanisms:
- * - Top-level scripts: fn.call(context) with SCRIPT_PREFIX reading from `this`
- * - Library modules: extension handler reads globalThis.__activeScriptContext__
- *   (set by ScriptContext.customRequire before native require)
+ * - Top-level scripts (here): fn.call(context) with SCRIPT_PREFIX reading from `this`
+ * - Library modules (`library-require.ts`): the extension handler reads
+ *   globalThis.__activeScriptContext__ (set by ScriptContext.customRequire before native require)
  */
-export class ScriptRunnerBase {
-    protected libraryDirty = true;
-
-    /** Mark library cache as dirty. Called by file watcher when library files change. */
-    invalidateLibraryCache = () => {
-        this.libraryDirty = true;
-    };
-
-    /**
-     * Prepare and execute a script string with a given context.
-     * Handles transpilation (TS → JS) and Script Library registration
-     * before executing. Returns the script result.
-     */
-    protected async execute(script: string, context: ScriptContext, language?: string): Promise<unknown> {
-        const prepared = await this.prepare(script, language);
-        return this.executeInternal(prepared, context);
-    }
-
-    /**
-     * Transpile TypeScript, ensure sucrase loaded for library require(),
-     * and register Script Library extensions.
-     */
-    protected async prepare(script: string, language?: string): Promise<string> {
-        script = await transpileIfNeeded(script, language);
-
-        await ensureSucraseLoaded();
-
-        const libraryPath = settings.get("script-library.path") as string | undefined;
-        if (libraryPath) {
-            registerLibraryExtensions(() => settings.get("script-library.path"));
-            // Only clear cache when files actually changed (file watcher sets libraryDirty)
-            if (this.libraryDirty) {
-                clearLibraryRequireCache(libraryPath);
-                this.libraryDirty = false;
-            }
-        }
-
-        return script;
+class ScriptEngine {
+    compile(script: string): CompiledScript {
+        // Check if script contains statement keywords at the start
+        const trimmedScript = script.trim();
+        const statementKeywords =
+            /^(const|let|var|if|for|while|do|switch|function|class|try|throw|return)\s/;
+        const hasStatements = statementKeywords.test(trimmedScript);
+        return { script, hasStatements };
     }
 
     /**
@@ -69,13 +30,8 @@ export class ScriptRunnerBase {
      * Context globals are injected via SCRIPT_PREFIX reading from `this` (context).
      * Handles expression/statement detection, implicit return, and async await.
      */
-    private async executeInternal(script: string, context: ScriptContext): Promise<unknown> {
-        // Check if script contains statement keywords at the start
-        const trimmedScript = script.trim();
-        const statementKeywords =
-            /^(const|let|var|if|for|while|do|switch|function|class|try|throw|return)\s/;
-        const hasStatements = statementKeywords.test(trimmedScript);
-
+    async execute(compiled: CompiledScript, context: ScriptContext): Promise<unknown> {
+        const { script, hasStatements } = compiled;
         if (!hasStatements) {
             // Try as expression first (for simple cases like "5 + 5" or "'hello'")
             const expressionScript = `return (async function() {\n${SCRIPT_PREFIX}return (${script});\n}).call(this);`;
@@ -135,7 +91,7 @@ export class ScriptRunnerBase {
             return `return (async function() {\n${SCRIPT_PREFIX}${beforeLast}\nreturn (${expressionPart});\n}).call(this);`;
         }
 
-        // If last line is a statement/block but has a trailing expression after the
+        // If the last line is a statement/block but has a trailing expression after the
         // last '}', extract it as the return value.
         // e.g., "function foo() { return 1; } foo();" → return foo()
         if ((isStatement || isBlockCloser) && /\}\s*\S/.test(lastLine)) {
@@ -199,3 +155,5 @@ export class ScriptRunnerBase {
         return false;
     }
 }
+
+export const scriptEngine = new ScriptEngine();

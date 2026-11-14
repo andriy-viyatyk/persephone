@@ -1,4 +1,12 @@
 @layer app {
+    .pages-container > div > [data-type="splitter"] {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 8px;
+        z-index: 1;
+    }
+
     /* Each page is its own stacking context, so a z-index inside a page (the minimap indicator, for one)
        cannot rise above the pinned-page popover. */
     .pages-container [data-name="page-slot"] {

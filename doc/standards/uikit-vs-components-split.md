@@ -23,8 +23,8 @@
   | `page-manager/` | Native page / tab host | Couples to `PageModel` and the page lifecycle |
   | `file-search/` | Standalone file content search with virtualized results | Uses `app.fs` + search service IPC |
   | `tree-provider/` | `TreeProviderView` + `CategoryView` — generic tree and folder page over `ITreeProvider`, with their shared plural / drop actions | Coupled to provider-tree contracts defined in `api/`, and the actions reach `app.fs` and OS clipboard / drag IPC |
-  | `file-list/` | Flat file list (`ListBox` + `FileIcon`) | Couples to the `FileIcon` registration system |
-  | `file-grid/` | `DataGrid`-based file list (range select, sorting, range-copy) | Couples to `FileIcon`; the eventual `FileList` replacement |
+  | `file-list/` | Single-column click-to-open file list (`ListBox` + `FileIcon`: search, selected path, item menus) | Couples to the `FileIcon` registration system |
+  | `file-grid/` | `DataGrid`-based file list (range select, sorting, range-copy) | Couples to `FileIcon`; a multi-column grid kept beside `file-list/` on purpose (EPIC-173) |
   | `git-tree/` | Git history view + git data submodels (`GitTreeModel`, `GitChangesModel`) | Couples to `api/git` + the page model |
 
 ## What goes where, in practice

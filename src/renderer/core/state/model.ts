@@ -21,6 +21,7 @@ export interface IModel<T> {
 
 export class TModel<T> implements IModel<T> {
     state: IState<T>;
+    isLive = true;
     postCreate?: () => void;
     private readonly disposers = new DisposableStore();
     private readonly scheduler = new OwnerScheduler(this.disposers);
@@ -39,6 +40,7 @@ export class TModel<T> implements IModel<T> {
     }
 
     dispose(): void {
+        this.isLive = false;
         this.disposers.dispose();
     }
 
@@ -94,7 +96,6 @@ export class TDialogModel<T = unknown, R = unknown>
 
 export class TComponentModel<T, P> extends TModel<T> {
     props!: P;
-    isLive = true;
     setProps?: (props: P) => void | Promise<void>;
     init?(): void;
     dispose(): void {

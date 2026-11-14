@@ -106,7 +106,7 @@ async function handleBoardCall(params: BoardCallParams): Promise<unknown> {
         ...(requestData.timeoutMs !== undefined ? { timeoutMs: requestData.timeoutMs } : {}),
     };
     const { boardRoot, contextEditor } = resolveBoardHost(ownerId);
-    const context = new ScriptContext(contextEditor);
+    const context = new ScriptContext({ page: contextEditor, origin: "board" });
     try {
         if (!boardRegistry.grant(boardRoot)?.allows("appScripting")) throw new Error(BoardGrant.deny("appScripting").message);
         const result = await resolveAiCall(context, request, undefined, {

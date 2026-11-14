@@ -43,5 +43,5 @@ export async function runPageScript(
     }
 
     if (!isScriptLanguage(language)) return;
-    await scriptRunner.runWithResult(editor.id, script, editor, language);
+    await scriptRunner.runWithResult(script, editor, language);
 }

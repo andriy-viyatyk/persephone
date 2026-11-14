@@ -12,6 +12,7 @@
  * git activity happens at all.
  */
 import { TComponentState } from "../../core/state/state";
+import { TModel } from "../../core/state/model";
 import { settings } from "../../api/settings";
 import { git } from "../../api/git";
 import type { DataGridInstance } from "../../uikit/DataGrid";
@@ -55,14 +56,11 @@ const defaultGitTreeState: GitTreeState = {
     gitOk: true,
 };
 
-export class GitTreeModel {
-    readonly state = new TComponentState<GitTreeState>({ ...defaultGitTreeState });
-
+export class GitTreeModel extends TModel<GitTreeState> {
     private repoRoot: string | undefined;
     private file: string | undefined;
     private readonly pageSize: number;
     private loaded = false;
-    private disposed = false;
 
     /** Live grid handle, registered by the `<GitTree>` view on mount.
      *  Present only while the grid is rendered (i.e. the Git Tree is the page's
@@ -83,6 +81,7 @@ export class GitTreeModel {
     }
 
     constructor(opts?: { pageSize?: number }) {
+        super(new TComponentState<GitTreeState>({ ...defaultGitTreeState }));
         this.pageSize = opts?.pageSize ?? GIT_TREE_PAGE;
     }
 
@@ -120,7 +119,7 @@ export class GitTreeModel {
         }
         this.write((s) => { s.loading = true; });
         const probe = await git.probe();
-        if (this.disposed) return;
+        if (!this.isLive) return;
         if (!probe.installed) {
             this.loaded = true;
             this.write((s) => {
@@ -132,7 +131,7 @@ export class GitTreeModel {
             return;
         }
         const list = await git.log(this.repoRoot, { maxCount: this.pageSize, file: this.file, all: !this.file });
-        if (this.disposed) return;
+        if (!this.isLive) return;
         this.loaded = true;
         this.write((s) => {
             s.gitOk = true;
@@ -152,7 +151,7 @@ export class GitTreeModel {
             file: this.file,
             all: !this.file,
         });
-        if (this.disposed) return;
+        if (!this.isLive) return;
         this.write((s) => {
             s.commits = [...s.commits, ...list];
             s.hasMore = list.length === this.pageSize;
@@ -168,7 +167,7 @@ export class GitTreeModel {
         if (this.state.get().loadingMore || !this.repoRoot) return;
         this.write((s) => { s.loadingMore = true; });
         const list = await git.log(this.repoRoot, { maxCount: 0, file: this.file, all: !this.file });
-        if (this.disposed) return;
+        if (!this.isLive) return;
         this.write((s) => {
             s.commits = list;
             s.hasMore = false;
@@ -218,13 +217,14 @@ export class GitTreeModel {
     }
 
     dispose(): void {
-        this.disposed = true;
+        this.isLive = false;
         this.grid = undefined;
+        super.dispose();
     }
 
     /** State write guarded against late async writes after dispose. */
     private write(fn: (s: GitTreeState) => void): void {
-        if (this.disposed) return;
+        if (!this.isLive) return;
         this.state.update(fn);
     }
 }

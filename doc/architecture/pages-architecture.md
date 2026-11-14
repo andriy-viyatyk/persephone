@@ -251,8 +251,9 @@ same native slot contract for browser internal tabs; there is no page-manager Re
 page views dispose synchronously after the placeholder is detached. This prevents iframes,
 webviews, and canvas elements from reloading when pages are closed, reordered, grouped, or
 ungrouped. Placeholders are never reparented (moved between containers) — grouping is achieved
-purely via CSS absolute positioning among siblings in the same container. See `GroupContainer` and
-`ImperativeSplitter` in the same folder.
+purely via CSS absolute positioning among siblings in the same container. `GroupContainer` composes
+the UIKit `SplitterView`; `SplitLayout` owns the pane ratio, resize observation and absolute
+positions in the same folder.
 `PageSlot` treats page-view construction and mounting as one rollback scope: if `onMount()`
 fails, the partially built view and its registered resources are rolled back before the error is
 re-thrown.

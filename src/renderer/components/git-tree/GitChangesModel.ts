@@ -12,6 +12,7 @@
  * git activity happens at all.
  */
 import { TComponentState } from "../../core/state/state";
+import { TModel } from "../../core/state/model";
 import { settings } from "../../api/settings";
 import { git } from "../../api/git";
 import { ui } from "../../api/ui";
@@ -38,11 +39,13 @@ const defaultGitChangesState: GitChangesState = {
     gitOk: true,
 };
 
-export class GitChangesModel {
-    readonly state = new TComponentState<GitChangesState>({ ...defaultGitChangesState });
+export class GitChangesModel extends TModel<GitChangesState> {
+
+    constructor() {
+        super(new TComponentState<GitChangesState>({ ...defaultGitChangesState }));
+    }
 
     private repoRoot: string | undefined;
-    private disposed = false;
 
     /** Point the model at a repo. Resets the lists when the target changes. */
     configure(repoRoot: string | undefined): void {
@@ -69,7 +72,7 @@ export class GitChangesModel {
         }
         this.write((s) => { s.loading = true; });
         const probe = await git.probe();
-        if (this.disposed) return;
+        if (!this.isLive) return;
         if (!probe.installed) {
             this.write((s) => {
                 s.gitOk = false;
@@ -80,7 +83,7 @@ export class GitChangesModel {
             return;
         }
         const result = await git.status(this.repoRoot);
-        if (this.disposed) return;
+        if (!this.isLive) return;
         this.write((s) => {
             s.gitOk = true;
             s.unstaged = result.unstaged;
@@ -155,13 +158,9 @@ export class GitChangesModel {
         return r.ok;
     };
 
-    dispose(): void {
-        this.disposed = true;
-    }
-
     /** State write guarded against late async writes after dispose. */
     private write(fn: (s: GitChangesState) => void): void {
-        if (this.disposed) return;
+        if (!this.isLive) return;
         this.state.update(fn);
     }
 }

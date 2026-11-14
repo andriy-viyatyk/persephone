@@ -1,6 +1,5 @@
 import { ScriptContext } from "./ScriptContext";
-import { ensureSucraseLoaded } from "./transpile";
-import { registerLibraryExtensions } from "./library-require";
+import { scriptLibrary } from "./ScriptLibrary";
 import { settings } from "../api/settings";
 import { fpJoin, fpResolve } from "../core/utils/file-path";
 import { fs } from "../api/fs";
@@ -95,11 +94,10 @@ class AutoloadRunner {
         if (files.length === 0) return;
 
         // Ensure sucrase is loaded and library extensions registered
-        await ensureSucraseLoaded();
-        registerLibraryExtensions(() => settings.get("script-library.path"));
+        await scriptLibrary.prepare();
 
         // Create shared ScriptContext (no page, no consoleLogs)
-        this.scriptContext = new ScriptContext(undefined, undefined, libraryPath);
+        this.scriptContext = new ScriptContext({ origin: "autoload", libraryPath });
 
         try {
             for (const file of files) {

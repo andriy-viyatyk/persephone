@@ -9,8 +9,8 @@ Remaining folders:
 - `page-manager/` — coupled to `PageModel` lifecycle
 - `file-search/` — uses `app.fs`
 - `tree-provider/` — coupled to `ITreeProvider` contracts; holds both the tree (`TreeProviderView`) and the folder page it navigates to (`CategoryView`), plus the plural / drop actions they share
-- `file-list/` — flat file list (icons + single-click) built on `ListBox` + `FileIcon`; reused by the Recent files panel and the Git Tree "Changes" panel
-- `file-grid/` — `DataGrid`/av-grid-based flat file list (icon / path / status columns, header-as-label, sorting, range selection + range-copy, single/double click, context-menu passthrough); built on `DataGrid` + `FileIcon`. Used by the Git Tree "Changes" panel; designed as the eventual `FileList` replacement
+- `file-list/` — single-column flat file list (icons + single-click, title search, selected-path highlight, per-item menu, trailing slot) built on `ListBox` + `FileIcon`; used by the Recent files panel and the Git Tree commit diff file list
+- `file-grid/` — `DataGrid`/av-grid-based flat file list (icon / path / status columns, header-as-label, sorting, range selection + range-copy, single/double click, context-menu passthrough); built on `DataGrid` + `FileIcon`. Used by the Git Tree "Changes" panel. Kept beside `file-list/` on purpose (EPIC-173): a header, cell focus and sorting suit the multi-select Changes panel, not a click-to-open list. Both build row icons with `createFileRowIconElement`
 - `git-tree/` — Git Tree component (`DataGrid`/av-grid + SVG branch graph) and the git data submodels (`GitTreeModel`, `GitChangesModel`)
 
 See [`/doc/standards/uikit-vs-components-split.md`](../../../doc/standards/uikit-vs-components-split.md) for the permanent contract.

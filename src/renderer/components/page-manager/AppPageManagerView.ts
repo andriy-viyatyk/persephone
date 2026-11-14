@@ -1,5 +1,6 @@
 import type { VanillaViewCtor } from "../../uikit/shared/vanilla-view";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
+import { DisposableStore } from "../../core/utils/DisposableStore";
 import { GroupContainer } from "./GroupContainer";
 import { PageSlot, type PageSlotViewProps, type PopoverResizeEdge } from "./PageSlot";
 import {
@@ -78,25 +79,10 @@ export class AppPageManagerView extends VanillaView<AppPageManagerProps> {
         this.slots.clear();
         this.hasBeenActive.clear();
 
-        let firstError: unknown;
-        let hasError = false;
-        const runCleanup = (cleanup: () => void): void => {
-            try {
-                cleanup();
-            } catch (error) {
-                if (!hasError) {
-                    hasError = true;
-                    firstError = error;
-                }
-            }
-        };
-
-        groups.forEach((group) => runCleanup(() => group.dispose()));
-        slots.forEach((slot) => runCleanup(() => slot.dispose()));
-
-        if (hasError) {
-            throw firstError;
-        }
+        const cleanup = new DisposableStore();
+        for (const group of groups) cleanup.add(group);
+        for (const slot of slots) cleanup.add(slot);
+        cleanup.dispose();
     }
 
     getSlotElement(id: string): HTMLDivElement | undefined {
@@ -138,26 +124,22 @@ export class AppPageManagerView extends VanillaView<AppPageManagerProps> {
             }
         }
 
-        let firstError: unknown;
-        let hasError = false;
-        const runCleanup = (cleanup: () => void): void => {
-            try {
-                cleanup();
-            } catch (error) {
-                if (!hasError) {
-                    hasError = true;
-                    firstError = error;
-                }
-            }
-        };
+        const cleanup = new DisposableStore();
 
         for (const [leftId, group] of Array.from(this.groupContainers)) {
             const rightId = validGrouping.get(leftId);
             const expectedRight = rightId ? this.slots.get(rightId)?.element : undefined;
             if (!expectedRight || group.rightPlaceholder !== expectedRight) {
                 this.groupContainers.delete(leftId);
-                runCleanup(() => group.dispose());
+                cleanup.add(group);
             }
+        }
+
+        let deferred: { error: unknown } | undefined;
+        try {
+            cleanup.dispose();
+        } catch (error) {
+            deferred = { error };
         }
 
         for (const leftId of validGrouping.keys()) {
@@ -251,11 +233,11 @@ export class AppPageManagerView extends VanillaView<AppPageManagerProps> {
                     if (rightSlot) rightSlot.element.style.display = display;
                 }
             }
-            group.splitter.element.style.display = isActive && !inCompareMode ? "" : "none";
+            group.splitter.root.style.display = isActive && !inCompareMode ? "" : "none";
         }
 
-        if (hasError) {
-            throw firstError;
+        if (deferred) {
+            throw deferred.error;
         }
     }
 
