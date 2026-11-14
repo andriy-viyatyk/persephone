@@ -14,7 +14,9 @@ import { editorCatalog } from "../../editors/base/editor-catalog";
 import type { PathWatchBatch } from "../../../ipc/api-types";
 import { subscribe } from "../../api/path-watch";
 import { fs } from "../../api/fs";
-import { isArchivePath, isAsarPath } from "../../core/utils/file-path";
+import { fpDirname, fpNormalizeForCompare, isArchivePath, isAsarPath } from "../../core/utils/file-path";
+import { isKeyInside } from "../../../shared/path-containment";
+import type { ClassifiedTreeWatchBatch } from "./tree-provider-capabilities";
 
 // Direct Node.js imports — FileTreeProvider is a low-level filesystem provider
 // that intentionally bypasses app.fs archive transparency. Listed in
@@ -212,12 +214,50 @@ export class FileTreeProvider implements ITreeProvider {
         }
     }
 
+    /** Turn a raw path-watch batch into the tree's relist targets, or a full rebuild. */
+    private classifyWatchBatch(batch: PathWatchBatch): ClassifiedTreeWatchBatch {
+        if (batch.rescan || batch.ended || batch.changes.length > 100) return { rebuild: true };
+
+        const normalize = fpNormalizeForCompare;
+        const root = normalize(this.rootPath);
+        const relist = new Map<string, { href: string; changedPaths?: string[] }>();
+        const addTarget = (href: string, changedPath?: string) => {
+            const key = normalize(href);
+            const existing = relist.get(key);
+            if (changedPath === undefined) {
+                if (existing) delete existing.changedPaths;
+                else relist.set(key, { href });
+            } else if (existing) {
+                existing.changedPaths?.push(changedPath);
+            } else {
+                relist.set(key, { href, changedPaths: [changedPath] });
+            }
+        };
+
+        for (const change of batch.changes) {
+            const paths = change.type === "moved" ? [change.path, change.to] : [change.path];
+            for (const path of paths) {
+                const key = normalize(path);
+                if (!isKeyInside(root, key, { allowSame: false })) return { rebuild: true };
+
+                const parent = fpDirname(path);
+                addTarget(parent, change.type === "changed" ? path : undefined);
+                const marker = key.endsWith("/.git/head") || key.endsWith("/.git/objects");
+                if (marker && change.type !== "changed") {
+                    addTarget(fpDirname(fpDirname(parent)));
+                }
+            }
+        }
+
+        return { relist: [...relist.values()] };
+    }
+
     /**
      * Watch the root directory recursively for changes.
      * Uses the shared main-process watcher with a 500ms per-subscriber batch delay.
      * Returns a disposer to stop watching.
      */
-    watch(callback: (batch?: PathWatchBatch) => void): () => void {
+    watch(callback: (batch?: ClassifiedTreeWatchBatch) => void): () => void {
         if (isArchivePath(this.sourceUrl) || isAsarPath(this.sourceUrl)) return () => {};
 
         let hasReceivedBatch = false;
@@ -226,11 +266,11 @@ export class FileTreeProvider implements ITreeProvider {
             if (isEnded) return;
             if (batch.ended && batch.ended !== "removed") {
                 isEnded = true;
-                if (hasReceivedBatch) callback(batch);
+                if (hasReceivedBatch) callback(this.classifyWatchBatch(batch));
                 return;
             }
             hasReceivedBatch = true;
-            if (batch.changes.length || batch.rescan || batch.ended) callback(batch);
+            if (batch.changes.length || batch.rescan || batch.ended) callback(this.classifyWatchBatch(batch));
         }, {
             recursive: true,
             recoverRemoved: true,

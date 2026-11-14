@@ -19,6 +19,7 @@ import type { IOwnedView } from "../../uikit/shared/vanilla-view";
 import { sameHref, sameHrefs } from "./href-utils";
 import type { GridModelCapability } from "../../uikit/DataGrid";
 import { t } from "../../../shared/i18n/t";
+import { matchesSearchWords } from "./tree-search-filter";
 
 // =============================================================================
 // Types
@@ -631,8 +632,5 @@ function filterItems(items: ITreeProviderItem[], searchText: string): ITreeProvi
     if (!searchText) return items;
     const words = searchText.toLowerCase().split(" ").filter(Boolean);
     if (words.length === 0) return items;
-    return items.filter((item) => {
-        const nameLower = item.title.toLowerCase();
-        return words.every((w) => nameLower.includes(w));
-    });
+    return items.filter((item) => matchesSearchWords(item.title, words));
 }

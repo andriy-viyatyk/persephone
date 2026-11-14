@@ -500,14 +500,14 @@ silently never applied.
 
 `ListBox`'s inputs are all props, so its `DepsGate` in the host's `onUpdate` is the whole story.
 `Tree` is the first converted component whose rendered output also depends on **reactive state**
-(expansion, lazy-load flags, drag state), and props are the only thing a vanilla driver pumps.
+(expansion and drag state), and props are the only thing a vanilla driver pumps.
 
 **Two mechanisms exist, and the choice between them is not stylistic.** Ask what the state *feeds*:
 
 | The state is… | Use | Example |
 |---|---|---|
 | a **child's prop** — the view's job is to push it down | one compound `bind()` on the fields, applying through a single `syncChildren()` | `MultiListBox` (`searchText`, `activeIndex`); `MenuView` |
-| **internal** — the consequence is a render pass the children cannot express (root attributes included) | a `mutate()` funnel on the model calling one host-registered callback | `Tree` (expansion, lazy-load flags, drag state) |
+| **internal** — the consequence is a render pass the children cannot express (root attributes included) | a `mutate()` funnel on the model calling one host-registered callback | `Tree` (expansion and drag state) |
 
 Two secondary signals point the same way. Write-site count: `Tree` has ~8 across three files, so a
 funnel that makes `grep "state.update"` return exactly one hit buys a checkable convention;
@@ -702,7 +702,7 @@ the cross-file source-order dependency.
 **Two traps this split leaves behind.** First, `Tree`'s focused override lives on the *container*,
 so its CSS selector must keep a `[data-type="tree"]` anchor — the Emotion original was scoped to the
 component's generated class, and an unanchored translation becomes a global rule that paints any
-`TreeItem` under any opted-in container, including one rendered through a `ListBox`'s `renderItem`.
+`TreeItem` under any opted-in container.
 Second, `TreeItem.css` deliberately does **not** carry `ListItem`'s `:not([data-drop-active])`
 carve-out: Tree's override outranks its drop rule on specificity (0,5,0 against 0,2,0) rather than
 on source order, so adding the exclusion would change behaviour rather than preserve it.
@@ -712,7 +712,7 @@ than a reusable UIKit primitive.
 
 **How a container opts in:** set `data-focus-selection` **and** `tabIndex={0}` on the scroll
 container so `:focus-within` can trigger on click. `ListBox` does this for you via
-`selectionStyle="focus"` (works even with a custom `renderItem`); `Tree` via its `focusSelection`
+`selectionStyle="focus"`; `Tree` via its `focusSelection`
 prop (or `keyboardNav`, which implies it). For a plain container you own, pass `tabIndex={0}` +
 `data-focus-selection=""` directly on the container.
 

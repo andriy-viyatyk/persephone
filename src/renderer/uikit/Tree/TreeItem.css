@@ -7,8 +7,7 @@
  *    against this file's drop rule at (0,2,0), so it already outranks the drop feedback today.
  *    Adding the `:not()` would change behaviour: it would let the drop highlight paint a selected
  *    row in a focused tree, which it does not do now.
- * 2. There is no `[data-loading]` rule. Loading state is represented by the chevron and does not
- *    change the row's styling.
+ * 2. Row-level loading state has no DOM hook; the Tree root retains its separate loading arm.
  *
  * The level guides live in `tree-indents.css`, shared with the section row. This file owns only the
  * selected-state override of their border colour, which is far more specific than the base rule, so

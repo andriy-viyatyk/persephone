@@ -55,22 +55,6 @@ export interface ListItemDragProps {
 export const LIST_ITEM_KEY = new TraitKey<TraitType<IListBoxItem>>("listbox-item");
 
 // =============================================================================
-// Render context (for custom renderItem)
-// =============================================================================
-
-export interface ListItemRenderContext<T> {
-    /** Resolved item shape (post-trait). */
-    item: IListBoxItem;
-    /** Original source item (pre-trait). Equal to `item` when `T = IListBoxItem`. */
-    source: T;
-    index: number;
-    selected: boolean;
-    active: boolean;
-    /** Stable DOM id — must be set on the rendered row when callers want `aria-activedescendant`. */
-    id: string;
-}
-
-// =============================================================================
 // Imperative ref
 // =============================================================================
 
@@ -132,8 +116,6 @@ export interface ListBoxProps<T = IListBoxItem>
     /**
      * Per-row tooltip. Returning `null`, `undefined`, `false`, or an empty string suppresses
      * the tooltip on that row. Forwarded to the default `<ListItem>` via the `tooltip` prop.
-     * When a custom `renderItem` is supplied, the caller is responsible for wiring the
-     * tooltip themselves — `getTooltip` is not invoked by `ListBox` in that path.
      */
     getTooltip?: (item: T, index: number) => SlotText;
     /**
@@ -148,8 +130,6 @@ export interface ListBoxProps<T = IListBoxItem>
      * Use this to add list-background actions ("New file", "Refresh", etc.).
      */
     onContextMenu?: (event: MouseEvent) => void;
-    /** Custom row renderer. Receives a context with the resolved item + flags. */
-    renderItem?: (ctx: ListItemRenderContext<T>) => SlotContent;
     /** When true, the ListBox handles ArrowUp/ArrowDown/Home/End/Enter on its root. Default: false. */
     keyboardNav?: boolean;
     /** Spinner state — replaces item rendering with a loading row. */
@@ -169,8 +149,6 @@ export interface ListBoxProps<T = IListBoxItem>
      *   • `"browse"` — soft hover background. Use for sidebar / browse-style
      *     lists where hover is a navigation cue, not a selection prompt.
      *
-     * Ignored when a custom `renderItem` is supplied — caller is responsible for
-     * setting the variant on its own `<ListItem>`.
      */
     variant?: "select" | "browse";
     /**
@@ -183,7 +161,6 @@ export interface ListBoxProps<T = IListBoxItem>
      *     blurred, blue + outline when focused. Pair with `variant="browse"`. No
      *     default trailing icon.
      *
-     * Ignored when a custom `renderItem` is supplied.
      */
     selectionStyle?: "check" | "accent" | "focus";
     /**
@@ -191,7 +168,7 @@ export interface ListBoxProps<T = IListBoxItem>
      * suppresses the default trailing selection icon. Presentational only — pair it with
      * `isSelected` (which owns the actual multi-select set) and read that prop's note on identity.
      *
-     * Ignored when a custom `renderItem` is supplied. Default: `false`.
+     * Default: `false`.
      */
     checkbox?: boolean;
 }

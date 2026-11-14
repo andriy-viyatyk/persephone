@@ -4,7 +4,6 @@ import { fillSlot, type SlotContent } from "../shared/fill-slot";
 import { highlightInto } from "../shared/highlight";
 import { createIconElement, createIconPlaceholderElement, isIconName } from "../shared/slots";
 import type { IconRef, SlotText } from "../shared/slots";
-import { SpinnerView } from "../Spinner/SpinnerView";
 import { attachTooltip, type TooltipAttachment, type TooltipOptions } from "../Tooltip/attach-tooltip";
 import { VanillaView } from "../shared/vanilla-view";
 import { uikitText } from "../shared/uikit-text";
@@ -13,7 +12,7 @@ import type { TreeItemProps } from "./TreeItem";
 import "./TreeItem.css";
 
 /** Which of the four shapes the chevron column currently holds. */
-type ChevronMode = "none" | "spinner" | "chevron" | "stub";
+type ChevronMode = "none" | "chevron" | "stub";
 
 const defaultIndentSize = 16;
 
@@ -55,7 +54,6 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
     private chevronRelease: (() => void) | undefined;
     private chevronIcon: SVGElement | undefined;
     private chevronExpanded: boolean | undefined;
-    private chevronSpinner: SpinnerView | undefined;
 
     private iconCleanup: (() => void) | undefined;
     private directIconElement: Node | undefined;
@@ -132,10 +130,6 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
             active,
             dragging,
             dropActive,
-            // `data-loading` carries no style of its own — the visible change is the
-            // chevron-to-spinner swap below. The attribute is kept as the documented hook for a
-            // future dim-while-loading rule, which is why there is no rule for it in the CSS.
-            loading,
             disabled,
             // Consumed by the tooltip attachment, never forwarded to the DOM.
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -173,7 +167,6 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
         toggleAttr(root, "data-active", !!active);
         toggleAttr(root, "data-dragging", !!dragging);
         toggleAttr(root, "data-drop-active", !!dropActive);
-        toggleAttr(root, "data-loading", !!loading);
         toggleAttr(root, "data-disabled", !!disabled);
         root.dataset.trailingVisibility = trailingVisibility;
         root.setAttribute("role", "treeitem");
@@ -206,7 +199,6 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
             active: _active,
             dragging: _dragging,
             dropActive: _dropActive,
-            loading: _loading,
             disabled: _disabled,
             tooltip: _tooltip,
             indentSize: _indentSize,
@@ -228,17 +220,14 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
     // -----------------------------------------------------------------------
 
     /**
-     * Transcribed from the former ternary chain: hidden, else spinner while loading, else a button
-     * when the row is expandable, else a same-width stub so every row's content lines up.
+     * Keep a same-width stub for ordinary rows without a chevron so their content lines up.
      */
     private setChevron(props: TreeItemProps): void {
         const mode: ChevronMode = props.hideChevron
             ? "none"
-            : props.loading
-                ? "spinner"
-                : props.hasChildren
-                    ? "chevron"
-                    : "stub";
+            : props.hasChildren
+                ? "chevron"
+                : "stub";
 
         if (mode === this.chevronMode) {
             // Only the chevron's own icon and aria-label can change without a mode change.
@@ -250,18 +239,6 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
         this.chevronMode = mode;
 
         if (mode === "none") return;
-
-        if (mode === "spinner") {
-            const stub = document.createElement("div");
-            stub.dataset.part = "chevron-stub";
-            stub.setAttribute("aria-label", uikitText("loading"));
-            const spinner = new SpinnerView({ size: 12 });
-            spinner.mount();
-            this.chevronSpinner = spinner;
-            stub.append(spinner.root);
-            this.chevronHost.append(stub);
-            return;
-        }
 
         if (mode === "stub") {
             const stub = document.createElement("div");
@@ -298,8 +275,6 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
     private clearChevron(): void {
         this.chevronRelease?.();
         this.chevronRelease = undefined;
-        this.chevronSpinner?.dispose();
-        this.chevronSpinner = undefined;
         this.chevronButton = undefined;
         this.chevronIcon = undefined;
         this.chevronExpanded = undefined;

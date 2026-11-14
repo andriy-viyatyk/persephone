@@ -22,7 +22,7 @@ import type { IListBoxItem, ListBoxProps } from "./types";
 import "./ListBox.css";
 
 type Arm = "loading" | "empty" | "real";
-type CellKind = "item" | "section" | "custom";
+type CellKind = "item" | "section";
 
 export interface ListBoxLayout {
     rowHeight?: ElementLength;
@@ -399,13 +399,9 @@ export class ListBoxView<T = IListBoxItem> extends VanillaView<ListBoxProps<T>> 
         applyCellStyle(wrapper, p.style, p.row, p.col, p.renderInfo.input.columnCount);
 
         const id = this.model.itemId(p.row);
-        const kind: CellKind = item.section
-            ? "section"
-            : this.props.renderItem
-                ? "custom"
-                : "item";
+        const kind: CellKind = item.section ? "section" : "item";
 
-        if (record.kind !== kind || (kind !== "custom" && !record.view)) {
+        if (record.kind !== kind || !record.view) {
             this.releaseCell(record);
             record.kind = kind;
             if (kind === "section") {
@@ -425,18 +421,6 @@ export class ListBoxView<T = IListBoxItem> extends VanillaView<ListBoxProps<T>> 
             record.view?.update({ id, label: item.label } as never);
         } else if (kind === "item") {
             record.view?.update(this.itemProps(item, id, p.row, sources) as never);
-        }
-
-        if (kind === "custom") {
-            const node = this.props.renderItem?.({
-                item,
-                source: sources[p.row],
-                index: p.row,
-                selected: this.model.isSelectedAt(p.row),
-                active: p.row === this.model.activeIndex,
-                id,
-            });
-            record.slotCleanup = fillSlot(wrapper, node);
         }
 
         return wrapper;
@@ -537,7 +521,7 @@ export class ListBoxView<T = IListBoxItem> extends VanillaView<ListBoxProps<T>> 
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             name: _name, loading: _loading, emptyMessage: _emptyMessage,
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            searchText: _searchText, renderItem: _renderItem, keyboardNav: _keyboardNav,
+            searchText: _searchText, keyboardNav: _keyboardNav,
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             rowHeight: _rowHeight, growToHeight: _growToHeight, whiteSpaceY: _whiteSpaceY,
             // eslint-disable-next-line @typescript-eslint/no-unused-vars

@@ -119,9 +119,13 @@ callback. It receives the source item and row level and returns `SlotContent`; `
 or `false` leaves no secondary host in the row. The default row renderer owns a separate host and
 attaches or detaches it as pooled rows are repointed, so callers returning DOM nodes must keep each
 node reusable and must not share one node between simultaneous rows. `TreeProviderViewImpl` adapts
-this callback for provider items and caches reusable non-fragment nodes by item href. Custom
-`renderItem` implementations own their complete row markup and must render secondary content
-themselves; `getSecondaryLabel` is not applied on that path.
+this callback for provider items and caches reusable non-fragment nodes by item href.
+
+`Tree` supports consumer-owned expansion through `expanded` and `onExpandedChange`. Supplying
+`expanded` makes the supplied map authoritative; the callback receives the complete proposed map
+for an operation. For trees whose children are fetched on demand, use `getHasChildren` to advertise
+unloaded children and handle expansion through `onExpandChange`, then update `items` when the
+children arrive. The tree renders the data it receives and does not load children itself.
 
 `ListBox` uses the same trailing-slot contract. Set `trailingVisibility: "hover"` when trailing
 content is a per-row action rather than persistent row information; it is hidden at rest and shown

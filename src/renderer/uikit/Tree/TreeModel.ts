@@ -10,6 +10,7 @@ import {
 } from "./types";
 import { TreeDndModel } from "./TreeDndModel";
 import { TreeKeyboardHandler } from "./TreeKeyboardHandler";
+import { applyExpandedChanges, resolveExpandedValue } from "./tree-expansion-map";
 
 // =============================================================================
 // State
@@ -17,24 +18,11 @@ import { TreeKeyboardHandler } from "./TreeKeyboardHandler";
 
 export interface TreeState {
     /**
-     * Per-source-value expansion state. The model writes here when the user toggles a row
-     * (or the imperative API runs); on subsequent renders `rows` consults this map first,
-     * falling back to `defaultExpandedValues` and `defaultExpandAll` for keys not yet present.
+     * Per-source-value expansion state for uncontrolled Trees. Controlled Trees derive from
+     * `props.expanded` and leave this map untouched; uncontrolled rows fall back to
+     * `defaultExpandedValues` and `defaultExpandAll` for keys not yet present here.
      */
     expanded: Record<string | number, boolean>;
-    /**
-     * Per-source-value loading flag. Set true when `loadChildren` begins, cleared on
-     * resolve OR reject. Affects the chevron (replaced by spinner) and `data-loading`
-     * on the row; does NOT alter the rows output (a loading row is still in `rows`,
-     * just with a spinner where its chevron normally is).
-     */
-    loading: Record<string | number, boolean>;
-    /**
-     * Bumped after every successful `loadChildren` resolution to force the rows derivation to
-     * re-walk even when the consumer mutated the source tree in place (i.e., `props.items`
-     * reference is stable). Co-opted by from the V1 declaration.
-     */
-    revision: number;
     /** Source `value` of the row currently being dragged. Null when no drag in progress. */
     draggingValue: string | number | null;
     /** Source `value` of the row currently under the drag cursor. Null when none. */
@@ -43,8 +31,6 @@ export interface TreeState {
 
 export const defaultTreeState: TreeState = {
     expanded: {},
-    loading: {},
-    revision: 0,
     draggingValue: null,
     dragOverValue: null,
 };
@@ -64,7 +50,7 @@ function runAccessor<R>(source: unknown, accessor: TraitType<R>): R {
 }
 
 function globalRepaintProps<T>(props: TreeProps<T>): readonly unknown[] {
-    return [props.searchText, props.renderItem, props.indentSize, props.isSelected,
+    return [props.searchText, props.indentSize, props.isSelected,
         props.getTooltip, props.getName, props.getSecondaryLabel, props.id, props.traitTypeId,
         props.getDragData, props.acceptsDrop, props.onDragStartOverride];
 }
@@ -107,14 +93,17 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
      *
      * Do not call `this.state.update` anywhere else in this folder — `grep "state.update"
      * uikit/Tree/` must return exactly one hit, which is what makes the convention checkable.
+     * Controlled expansion proposals go through `onExpandedChange`; the funnel also preserves the
+     * existing expansion-map identity when other transient state changes are written.
      */
     private mutate(updater: (state: TreeState) => void, deriveRows = true): void {
         const current = this.state.get();
         const previousRows = this.rows;
         const next = {
             ...current,
-            expanded: { ...current.expanded },
-            loading: { ...current.loading },
+            expanded: this.props.expanded === undefined
+                ? { ...current.expanded }
+                : current.expanded,
         };
         updater(next);
         if (deriveRows) this.deriveRows(next.expanded);
@@ -199,6 +188,7 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
     private appliedGetHasChildren: TreeProps<T>["getHasChildren"] | undefined = undefined;
     private appliedDefaultExpandAll: TreeProps<T>["defaultExpandAll"] | undefined = undefined;
     private appliedDefaultExpandedValues: TreeProps<T>["defaultExpandedValues"] | undefined = undefined;
+    private appliedExpanded: TreeProps<T>["expanded"] | undefined = undefined;
     private appliedActiveIndex: TreeProps<T>["activeIndex"] = undefined;
     private appliedGlobalRepaintProps: readonly unknown[] = [];
     private hasAppliedProps = false;
@@ -217,7 +207,8 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
             || this.appliedGetChildren !== this.props.getChildren
             || this.appliedGetHasChildren !== this.props.getHasChildren
             || this.appliedDefaultExpandAll !== this.props.defaultExpandAll
-            || this.appliedDefaultExpandedValues !== this.props.defaultExpandedValues;
+            || this.appliedDefaultExpandedValues !== this.props.defaultExpandedValues
+            || this.appliedExpanded !== this.props.expanded;
         const selectionChanged = !this.hasAppliedProps
             || this.appliedValue !== this.props.value
             || this.appliedItems !== this.props.items;
@@ -247,6 +238,7 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
         this.appliedGetHasChildren = this.props.getHasChildren;
         this.appliedDefaultExpandAll = this.props.defaultExpandAll;
         this.appliedDefaultExpandedValues = this.props.defaultExpandedValues;
+        this.appliedExpanded = this.props.expanded;
         this.appliedActiveIndex = this.props.activeIndex;
         this.appliedGlobalRepaintProps = globalProps;
         this.hasAppliedProps = true;
@@ -290,15 +282,13 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
     ): number[] {
         const changedValues = new Set<string | number>();
         for (const row of previousRows) {
-            if (previous.loading[row.value] !== next.loading[row.value]
-                || (previous.draggingValue === row.value) !== (next.draggingValue === row.value)
+            if ((previous.draggingValue === row.value) !== (next.draggingValue === row.value)
                 || (previous.dragOverValue === row.value) !== (next.dragOverValue === row.value)) {
                 changedValues.add(row.value);
             }
         }
         for (const row of nextRows) {
-            if (previous.loading[row.value] !== next.loading[row.value]
-                || (previous.draggingValue === row.value) !== (next.draggingValue === row.value)
+            if ((previous.draggingValue === row.value) !== (next.draggingValue === row.value)
                 || (previous.dragOverValue === row.value) !== (next.dragOverValue === row.value)) {
                 changedValues.add(row.value);
             }
@@ -309,23 +299,23 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
     }
 
     /** Derive the visible rows and its lookup together, before a state notification can run. */
-    private deriveRows(expanded: Record<string | number, boolean>): void {
+    private deriveRows(stateExpanded: Readonly<Record<string | number, boolean>>): void {
         const items = this.props.items;
         const accessor = this.itemsAccessor;
         const sources = (isTraited<unknown[]>(items) ? items.target : items) as T[];
-        const expandAll = !!this.props.defaultExpandAll;
+        const expanded = this.props.expanded;
         const rows: TreeRow<T>[] = [];
         const walk = (src: T, level: number) => {
             const { item, children } = this.resolveOne(src, accessor);
             const hasChildren = !!children && children.length > 0;
             const lazyChildren = !hasChildren && !!this.props.getHasChildren?.(src);
-            const fromState = expanded[item.value];
-            const fromHint = this.props.defaultExpandedValues?.[item.value];
-            const isExpanded = fromState !== undefined
-                ? fromState
-                : fromHint !== undefined
-                    ? fromHint
-                    : expandAll;
+            const isExpanded = resolveExpandedValue(
+                item.value,
+                expanded,
+                stateExpanded,
+                this.props.defaultExpandedValues,
+                !!this.props.defaultExpandAll,
+            );
             rows.push({
                 item,
                 source: src,
@@ -529,65 +519,6 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
     onDragLeave = this.dnd.onDragLeave;
     onDrop = this.dnd.onDrop;
 
-    // --- lazy children loading ---
-
-    /**
-     * True when the row at `idx` has unresolved children that should be fetched on expand.
-     * The condition is: row is a lazy folder (predicate true, no walked children) AND
-     * `loadChildren` is set.
-     */
-    private needsLazyLoad = (rowIndex: number): boolean => {
-        if (!this.props.loadChildren) return false;
-        const r = this.rows[rowIndex];
-        if (!r) return false;
-        return r.lazyChildren;
-    };
-
-    isLoadingAt = (rowIndex: number): boolean => {
-        const r = this.rows[rowIndex];
-        return !!r && !!this.state.get().loading[r.value];
-    };
-
-    /**
-     * Run `loadChildren` for a row. Sets expanded=true + loading=true atomically before
-     * the await; on resolve clears loading + bumps revision (forces a rows re-walk);
-     * on reject clears loading + sets expanded=false + invokes `onLoadError`.
-     *
-     * Re-checks `isLive` at every awaited boundary so an unmount mid-load is safe.
-     */
-    private runLoadAndExpand = async (r: TreeRow<T>): Promise<void> => {
-        const loader = this.props.loadChildren;
-        if (!loader) return;
-        const v = r.value;
-
-        this.mutate((s) => {
-            s.expanded[v] = true;
-            s.loading[v] = true;
-        });
-        this.props.onExpandChange?.(v, true);
-
-        try {
-            await loader(r.source);
-        } catch (err) {
-            if (!this.isLive) return;
-            // `onLoadError` is raised BEFORE the state write, because the write it used to follow
-            // was deferred: with the microtask gone, keeping the statement order would flip the
-            // observable order of `onLoadError` and `onExpandChange(v, false)`.
-            this.props.onLoadError?.(v, err);
-            this.mutate((s) => {
-                s.loading[v] = false;
-                s.expanded[v] = false;
-            });
-            this.props.onExpandChange?.(v, false);
-            return;
-        }
-        if (!this.isLive) return;
-        this.mutate((s) => {
-            s.loading[v] = false;
-            s.revision += 1;
-        });
-    };
-
     // --- imperative API ---
 
     toggleAt = (rowIndex: number) => {
@@ -601,35 +532,30 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
             return;
         }
 
-        // Already loading? Ignore re-toggles during an inflight load -- the user must wait
-        // for resolution before collapsing. Avoids a race where collapse-then-resolve
-        // would flip a row open that the user explicitly closed.
-        if (this.state.get().loading[r.value]) return;
-
-        if (r.lazyChildren && !r.expanded && this.needsLazyLoad(rowIndex)) {
-            // Lazy expand path -- runLoadAndExpand sets expanded=true + loading=true atomically.
-            void this.runLoadAndExpand(r);
-            return;
-        }
-
         const next = !r.expanded;
         // Collapsing with `collapseDescendants`: close the whole subtree in the same state
-        // write, so re-expanding this row reveals a fully-closed subtree -- and, for lazy
-        // trees, so no descendant is left flagged expanded after its children are dropped.
+        // write, so re-expanding this row reveals a fully-closed subtree.
         const descendants =
             !next && this.props.collapseDescendants
                 ? this.collectDescendantValues(r.source)
                 : null;
-        // Written inline because every caller of this method is a DOM event, a timer or an
-        // explicit imperative call. The write still precedes `onExpandChange`, so a consumer that
-        // reads `getExpandedMap()` from that callback still sees the new map.
-        this.mutate((s) => {
-            s.expanded[r.value] = next;
-            if (descendants) {
-                for (const v of descendants) s.expanded[v] = false;
-            }
-        });
-        this.props.onExpandChange?.(r.value, next);
+        // In uncontrolled mode, write before `onExpandChange` so a consumer that reads
+        // `getExpandedMap()` from that callback sees the new map. Controlled mode proposes the
+        // complete next map to its owner; the owner synchronously publishes new props.
+        if (this.props.expanded !== undefined) {
+            const changes: Record<string | number, boolean> = { [r.value]: next };
+            if (descendants) for (const value of descendants) changes[value] = false;
+            this.props.onExpandedChange?.(applyExpandedChanges(this.props.expanded, changes));
+            this.props.onExpandChange?.(r.value, next);
+        } else {
+            this.mutate((s) => {
+                s.expanded[r.value] = next;
+                if (descendants) {
+                    for (const v of descendants) s.expanded[v] = false;
+                }
+            });
+            this.props.onExpandChange?.(r.value, next);
+        }
     };
 
     /**
@@ -665,15 +591,10 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
     };
 
     /**
-     * Expand every node that currently has loaded children. Lazy/unloaded nodes are NOT
-     * traversed -- `loadChildren` is fired-and-awaited only via user expansion or via
-     * `revealItem`. Consumers that want to fully unfold a lazy tree must walk and
-     * `revealItem` each leaf themselves.
+     * Expand every node that currently has loaded children. Advertised but unloaded children
+     * remain expandable through the ordinary row toggle and caller-owned loading callback.
      */
     expandAll = () => {
-        // Walk the SOURCE tree (not the visible-rows view) so collapsed subtrees are also
-        // marked expanded. Otherwise expandAll would only expand currently-visible nodes,
-        // requiring multiple invocations to fully open the tree.
         const items = this.props.items;
         const accessor = this.itemsAccessor;
         const sources = (isTraited<unknown[]>(items) ? items.target : items) as T[];
@@ -687,14 +608,19 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
         };
         for (const src of sources) walk(src);
 
-        this.mutate((s) => {
-            Object.assign(s.expanded, map);
-        });
+        // Walk the SOURCE tree (not the visible-rows view) so collapsed subtrees are also
+        // proposed as expanded. Otherwise expandAll would only expand currently-visible nodes,
+        // requiring multiple invocations to fully open the tree.
+        if (this.props.expanded !== undefined) {
+            this.props.onExpandedChange?.(applyExpandedChanges(this.props.expanded, map));
+        } else {
+            this.mutate((s) => {
+                Object.assign(s.expanded, map);
+            });
+        }
     };
 
     collapseAll = () => {
-        // Set expanded[value] = false for every node that has children, INCLUDING those
-        // currently collapsed (so subsequent defaultExpandAll / hints don't re-expand them).
         const items = this.props.items;
         const accessor = this.itemsAccessor;
         const sources = (isTraited<unknown[]>(items) ? items.target : items) as T[];
@@ -708,13 +634,19 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
         };
         for (const src of sources) walk(src);
 
-        this.mutate((s) => {
-            Object.assign(s.expanded, map);
-        });
+        // Set expanded[value] = false for every node that has children, INCLUDING those
+        // currently collapsed (so subsequent defaultExpandAll / hints don't re-expand them).
+        if (this.props.expanded !== undefined) {
+            this.props.onExpandedChange?.(applyExpandedChanges(this.props.expanded, map));
+        } else {
+            this.mutate((s) => {
+                Object.assign(s.expanded, map);
+            });
+        }
     };
 
     getExpandedMap = (): Record<string | number, boolean> => {
-        return { ...this.state.get().expanded };
+        return { ...(this.props.expanded ?? this.state.get().expanded) };
     };
 
     scrollToItem = (value: string | number, align?: RowAlign) => {
@@ -761,17 +693,12 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
     };
 
     /**
-     * Expand every ancestor of `value` (awaiting `loadChildren` for any unresolved
-     * ancestor), then scroll the row into view. Returns when the row is visible (or
-     * unreachable). Sync callers may ignore the returned promise -- this is a drop-in
-     * for the V1 sync revealItem.
-     *
-     * Reaches not-yet-loaded values only when `getAncestorValues` is supplied. Without
-     * it, no-ops on unknown values (V1-compatible).
+     * Expand the loaded ancestor chain of `value`, then scroll the row into view. Unknown
+     * values are ignored. Sync callers may ignore the returned promise.
      */
     revealItem = async (value: string | number, align?: RowAlign): Promise<void> => {
         // Fast path 1 -- already-visible value with all ancestors expanded: just scroll.
-        const expandedNow = this.state.get().expanded;
+        const expandedNow = this.props.expanded ?? this.state.get().expanded;
         const chainNow = this.findAncestorChain(value);
         if (chainNow != null && chainNow.every((a) => expandedNow[a])) {
             const idx = this.indexByValue.get(value);
@@ -779,54 +706,21 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
             return;
         }
 
-        // Fast path 2 -- value loaded but some ancestors collapsed: sync expand all + scroll.
+        // Fast path 2 -- value loaded but some ancestors collapsed: synchronously propose
+        // expansion to the controlled owner, then scroll after the resulting row update.
         if (chainNow != null) {
             await this.expandAncestorsThenScroll(chainNow, value, align);
             return;
         }
 
-        // Slow path -- value not yet loaded. Defer to consumer-supplied resolver.
-        const resolver = this.props.getAncestorValues;
-        if (!resolver) return; // legacy not-found semantics: silent no-op.
-
-        let ancestors: (string | number)[];
-        try {
-            ancestors = await resolver(value);
-        } catch {
-            return;
-        }
-        if (!this.isLive) return;
-
-        // Sequentially expand each ancestor -- for any that is unloaded, runLoadAndExpand
-        // resolves only after children land. Then walk the next.
-        for (const a of ancestors) {
-            const idx = this.indexByValue.get(a);
-            if (idx == null) return; // chain is broken -- bail.
-            const row = this.rows[idx];
-            if (!row) return;
-            if (row.expanded) continue;
-
-            if (this.needsLazyLoad(idx)) {
-                await this.runLoadAndExpand(row);
-            } else if (row.hasChildren) {
-                // No wait after the toggle: the state write is synchronous and rows are derived
-                // before listeners run, so `indexByValue` on the next iteration already reflects the new rows. The
-                // `setTimeout(0)` this replaces existed only to outlive `toggleAt`'s microtask.
-                this.toggleAt(idx);
-            }
-            if (!this.isLive) return;
-        }
-
-        // Final ancestor pass + scroll, now that every ancestor is loaded + expanded.
-        const finalChain = this.findAncestorChain(value);
-        if (finalChain == null) return;
-        await this.expandAncestorsThenScroll(finalChain, value, align);
+        return;
     };
 
     /**
      * Internal: ensure all ancestors in `chain` are expanded, then scroll to `value`.
      * Used by both fast paths in revealItem; collapses to one queued state update for
-     * the "all already loaded" case, mirroring V1.
+     * the "all already loaded" case, mirroring V1. In controlled mode the owner applies
+     * the ancestor proposal synchronously before this method waits for row derivation.
      */
     private expandAncestorsThenScroll = async (
         chain: (string | number)[],
@@ -835,12 +729,23 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
     ): Promise<void> => {
         let expandedRows = false;
         if (chain.length > 0) {
-            const expanded = this.state.get().expanded;
-            if (chain.some((a) => !expanded[a])) {
-                this.mutate((s) => {
-                    for (const a of chain) s.expanded[a] = true;
-                });
-                expandedRows = true;
+            if (this.props.expanded !== undefined) {
+                const changes: Record<string | number, boolean> = {};
+                for (const ancestor of chain) {
+                    if (!this.props.expanded[ancestor]) changes[ancestor] = true;
+                }
+                if (Object.keys(changes).length) {
+                    this.props.onExpandedChange?.(applyExpandedChanges(this.props.expanded, changes));
+                    expandedRows = true;
+                }
+            } else {
+                const expanded = this.state.get().expanded;
+                if (chain.some((ancestor) => !expanded[ancestor])) {
+                    this.mutate((s) => {
+                        for (const ancestor of chain) s.expanded[ancestor] = true;
+                    });
+                    expandedRows = true;
+                }
             }
         }
         if (!this.isLive) return;
@@ -864,7 +769,7 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
      *
      * Fixed length — `depsChanged` reads a length change as "changed". **No reactive state**: a
      * state change does not pump props in a vanilla driver, so a state slot would be dead code.
-     * `draggingValue`, `dragOverValue` and `loading` reach the DOM through `mutate()` instead.
+     * `draggingValue` and `dragOverValue` reach the DOM through `mutate()` instead.
      *
      * The derived row projection and normalised selected key are compared directly. The row
      * identity carries expand/collapse changes through the state-write funnel.

@@ -20,10 +20,11 @@ import { SectionItemView } from "./SectionItemView";
 import { defaultTreeState, TreeModel } from "./TreeModel";
 import type { TreeStateChange } from "./TreeModel";
 import type { ITreeItem, TreeProps, TreeRow } from "./types";
+import { getTreeViewRestProps } from "./tree-view-props";
 import "./Tree.css";
 
 type Arm = "loading" | "empty" | "real";
-type CellKind = "item" | "section" | "custom";
+type CellKind = "item" | "section";
 
 /**
  * Per-wrapper state for a pooled cell.
@@ -52,15 +53,15 @@ const defaultIndentSize = 16;
  * - **`renderCell` is a bound field, not a closure.** `RenderGridModel.inputChanged()` compares it
  *   by identity, so a per-update closure would make the engine repaint every visible cell on every
  *   update — which would repaint every visible cell on every update, and what the repaint gate exists to stop.
- * - **A state change arrives through `model.onStateApplied`, not through props.** Expansion, lazy
- *   loading and drag state all live in `TreeState`, and a vanilla driver pumps only props. The
- *   model's `mutate()` funnel calls `refresh()` here, and `refresh` updates the root projection and
- *   only the rows named by the model — see the comment on it.
- * - **The three arms are three DOM states of one stable root.** The prior implementation returned three different
- *   trees; here `applyArm()` owns every attribute that differs between them, including the removals.
- * - **The engine is created on entry to the real arm and disposed on leaving it**, which is what
- *   The prior implementation did. Keeping it alive behind `display: none` would be cheaper but would hand a stale
- *   scroll offset to a dataset that was replaced while the tree showed a spinner.
+ * - **A state change arrives through `model.onStateApplied`, not through props.** Uncontrolled
+ *   expansion and drag state live in `TreeState`; controlled expansion arrives through props, and
+ *   the vanilla driver pumps both into the model. The model's `mutate()` funnel calls `refresh()` here,
+ *   and `refresh` updates the root projection and only the rows named by the model — see its comment.
+ * - **The three arms are three DOM states of one stable root.** `applyArm()` owns every attribute
+ *   that differs between them, including the removals.
+ * - **The engine is created on entry to the real arm and disposed on leaving it.** Keeping it alive
+ *   behind `display: none` would hand a stale scroll offset to a dataset that was replaced while the
+ *   tree showed a spinner.
  */
 export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
     private readonly driver: ComponentModelDriver<
@@ -137,6 +138,13 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
         this.grid?.model.update({ all: true });
     }
 
+    /** Reproduce the provider's former remount scroll sequence after a search boundary. */
+    public resetScrollTopAndSyncActive(): void {
+        if (this.arm !== "real") return;
+        void this.grid?.model.scrollToRow(0);
+        this.syncActiveScroll(this.props.activeIndex, false);
+    }
+
     protected onMount(): void {
         this.model.setFocusRootRef(this.focusRoot);
         this.messageHost = document.createElement("div");
@@ -159,7 +167,7 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
         });
 
         this.applyArm(this.props);
-        applyRestProps(this.root, this.restProps(this.props), this.restPropsState);
+        applyRestProps(this.root, getTreeViewRestProps(this.props), this.restPropsState);
 
         // The driver is mounted after the grid arm exists, so owners can use `view.model` once
         // this child has mounted.
@@ -207,10 +215,11 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
      *   call. Rest props cannot have changed on a state write, and reinstalling the root's listeners
      *   during a drag is a hazard rather than mere churn;
      * - it does not evaluate the arm work unless the arm actually changed (see below);
-     * - it does not skip re-priming the gate. Immer gives `expanded` a new identity, so `rows.value`
-     *   is a new array and the next props pump — any pump — would otherwise report "changed" and
-     *   repaint a second time. Priming is safe here because this method just painted the model's
-     *   changed rows, so the gate and those row cells agree.
+     * - it does not skip re-priming the gate. Uncontrolled state writes can give `expanded` a new
+     *   identity, and controlled row changes replace the props projection, so `rows.value` is a new
+     *   array. The next props pump would otherwise report "changed" and repaint a second time.
+     *   Priming is safe here because this method just painted the model's changed rows, so the gate
+     *   and those row cells agree.
      */
     private refresh = (change: TreeStateChange): void => {
         if (this.inert) return;
@@ -400,13 +409,9 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
         wrapper.draggable = canDrag;
 
         const id = this.model.itemId(p.row);
-        const kind: CellKind = row.item.section
-            ? "section"
-            : this.props.renderItem
-                ? "custom"
-                : "item";
+        const kind: CellKind = row.item.section ? "section" : "item";
 
-        if (record.kind !== kind || (kind !== "custom" && !record.view)) {
+        if (record.kind !== kind || !record.view) {
             this.releaseCell(record);
             record.kind = kind;
             if (kind === "section") {
@@ -426,11 +431,6 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
             record.view?.update(this.sectionProps(row, id) as never);
         } else if (kind === "item") {
             record.view?.update(this.itemProps(row, id, p.row) as never);
-        }
-
-        if (kind === "custom") {
-            const node = this.props.renderItem?.(this.renderContext(row, id, p.row));
-            record.slotCleanup = fillSlot(wrapper, node);
         }
 
         return wrapper;
@@ -462,7 +462,6 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
             active: index === this.props.activeIndex,
             dragging: this.model.isDraggingAt(index),
             dropActive: this.model.isDropTargetAt(index),
-            loading: this.model.isLoadingAt(index),
             disabled: row.item.disabled,
             tooltip: this.props.getTooltip?.(row.source, row.level),
             name: this.props.getName?.(row.source, row.level),
@@ -483,24 +482,6 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
             onChevronClick: (event: MouseEvent) => {
                 this.model.onChevronClick(event, index);
             },
-        };
-    }
-
-    private renderContext(row: TreeRow<T>, id: string, index: number) {
-        return {
-            item: row.item,
-            source: row.source,
-            level: row.level,
-            expanded: row.expanded,
-            hasChildren: row.hasChildren || row.lazyChildren,
-            rowIndex: index,
-            selected: this.model.isSelectedAt(index),
-            active: index === this.props.activeIndex,
-            dragging: this.model.isDraggingAt(index),
-            dropActive: this.model.isDropTargetAt(index),
-            loading: this.model.isLoadingAt(index),
-            id,
-            toggleExpanded: () => this.model.toggleAt(index),
         };
     }
 
@@ -607,37 +588,6 @@ export class TreeView<T = ITreeItem> extends VanillaView<TreeProps<T>> {
 
     // -----------------------------------------------------------------------
 
-    private restProps(props: TreeProps<T>): Record<string, unknown> {
-        const {
-            /* eslint-disable @typescript-eslint/no-unused-vars */
-            name: _name, searchText: _searchText, renderItem: _renderItem,
-            keyboardNav: _keyboardNav, focusSelection: _focusSelection,
-            multiSelect: _multiSelect, rowHeight: _rowHeight, indentSize: _indentSize,
-            growToHeight: _growToHeight, whiteSpaceY: _whiteSpaceY, activeIndex: _activeIndex,
-            getTooltip: _getTooltip, getName: _getName, loading: _loading, emptyMessage: _emptyMessage,
-            getIconElement: _getIconElement, getHideChevron: _getHideChevron,
-            getSecondaryLabel: _getSecondaryLabel,
-            getTrailingVisibility: _getTrailingVisibility,
-            renderTrailing: _renderTrailing, trailingElement: _trailingElement,
-            onItemContextMenu: _onItemContextMenu,
-            items: _items, value: _value, onChange: _onChange,
-            onItemDoubleClick: _onItemDoubleClick, isSelected: _isSelected,
-            onSelectionChange: _onSelectionChange, onActiveChange: _onActiveChange,
-            onContextMenu: _onContextMenu, getContextMenu: _getContextMenu,
-            getChildren: _getChildren, defaultExpandedValues: _defaultExpandedValues,
-            defaultExpandAll: _defaultExpandAll, onExpandChange: _onExpandChange, id: _id,
-            getHasChildren: _getHasChildren, loadChildren: _loadChildren,
-            onLoadError: _onLoadError, getAncestorValues: _getAncestorValues,
-            canCollapse: _canCollapse, traitTypeId: _traitTypeId, getDragData: _getDragData,
-            acceptsDrop: _acceptsDrop, canTraitDrop: _canTraitDrop, onTraitDrop: _onTraitDrop,
-            expandOnDragHoverDelay: _expandOnDragHoverDelay, acceptsFileDrop: _acceptsFileDrop,
-            onDragStartOverride: _onDragStartOverride,
-            collapseDescendants: _collapseDescendants,
-            /* eslint-enable @typescript-eslint/no-unused-vars */
-            ...rest
-        } = props;
-        return rest as Record<string, unknown>;
-    }
 }
 
 /** A DOM property typed as a string does not add `px` to a bare number; normalize numeric lengths before writing it. */

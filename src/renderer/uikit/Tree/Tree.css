@@ -37,12 +37,11 @@
     /*
      * Focused-list selection visuals (grey when blurred -> blue + outline when the tree is focused).
      * Gated on `data-focus-selection`, set for keyboardNav or focusSelection trees; opt-out trees
-     * are unaffected. Descendant selectors, because rows may be consumer-rendered via `renderItem`
-     * (they still render a TreeItem carrying `data-type="tree-item"`).
+     * are unaffected. Descendant selectors target the default TreeItem rows carrying
+     * `data-type="tree-item"`.
      *
      * The `[data-type="tree"]` anchor is load-bearing. Without it, this becomes a global rule that paints
-     * any TreeItem under any container that opted in with `data-focus-selection` — including a
-     * TreeItem rendered inside a ListBox's `renderItem`.
+     * any TreeItem under any container that opted in with `data-focus-selection`.
      */
     [data-type="tree"][data-focus-selection]:focus-within [data-type="tree-item"][data-selected] {
         background-color: var(--color-bg-tree-selection, transparent);

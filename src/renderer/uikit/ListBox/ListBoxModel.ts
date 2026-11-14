@@ -51,7 +51,6 @@ export class ListBoxModel<T = IListBoxItem> extends TComponentModel<
     private liveActiveIndex: ListBoxProps<T>["activeIndex"] = undefined;
     private liveSearchText: ListBoxProps<T>["searchText"] = undefined;
     private liveLoading: ListBoxProps<T>["loading"] = undefined;
-    private liveRenderItem: ListBoxProps<T>["renderItem"] = undefined;
     private liveGetTooltip: ListBoxProps<T>["getTooltip"] = undefined;
     private liveVariant: ListBoxProps<T>["variant"] = undefined;
     private liveSelectionStyle: ListBoxProps<T>["selectionStyle"] = undefined;
@@ -68,7 +67,6 @@ export class ListBoxModel<T = IListBoxItem> extends TComponentModel<
         const globalChanged = this.hasLiveProps && (
             itemsChanged
             || this.liveSearchText !== props.searchText
-            || this.liveRenderItem !== props.renderItem
             || this.liveIsSelected !== props.isSelected
             || this.liveGetTooltip !== props.getTooltip
             || this.liveVariant !== props.variant
@@ -83,7 +81,6 @@ export class ListBoxModel<T = IListBoxItem> extends TComponentModel<
         this.liveActiveIndex = props.activeIndex;
         this.liveSearchText = props.searchText;
         this.liveLoading = props.loading;
-        this.liveRenderItem = props.renderItem;
         this.liveGetTooltip = props.getTooltip;
         this.liveVariant = props.variant;
         this.liveSelectionStyle = props.selectionStyle;
@@ -375,7 +372,6 @@ export class ListBoxModel<T = IListBoxItem> extends TComponentModel<
             this.liveSelectionSignal,
             this.liveActiveIndex,
             this.liveSearchText,
-            this.props.renderItem,
             this.liveIsSelected,
             this.props.getTooltip,
             this.props.variant,

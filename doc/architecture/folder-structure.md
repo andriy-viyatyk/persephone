@@ -385,7 +385,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── tree-providers/           # ITreeProvider implementations
 │   │   ├── FileTreeProvider.ts  # Local filesystem directories
 │   │   ├── ArchiveTreeProvider.ts # Archives (ZIP, RAR, 7z, TAR, cab, ISO — read-only)
-│   │   ├── tree-provider-capabilities.ts # Internal watch, incremental-list, and local-file capability predicates
+│   │   ├── tree-provider-capabilities.ts # Classified watch batches and internal provider capability predicates
 │   │   ├── tree-provider-link.ts # tree-category:// link format (encode/decode)
 │   │   ├── MnemeTreeProvider.ts  # ITreeProvider over a Mneme root — browse like a filesystem; create/rename/delete; drag-drop import
 │   │   └── mnemeLinkTraits.ts    # MnemeLink TraitSet (LINK + FILE_LINK) for tree drag-drop (move within / copy across roots)
@@ -927,7 +927,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── CategoryList/       # Category-style list
 │   ├── ListBox/            # Virtualized list with selection + traits (replaces List)
 │   ├── MultiListBox/       # Two-pane multi-select list
-│   ├── Tree/               # Virtualized tree with trait drag-drop (replaces TreeView)
+│   ├── Tree/               # Virtualized tree with controlled expansion and trait drag-drop (replaces TreeView)
 │   ├── Menu/               # Portal menu + WithMenu wrapper (replaces PopupMenu)
 │   ├── Popover/            # Portal-based floating element (replaces Popper)
 │   ├── Tooltip/            # Hover tooltip
@@ -954,7 +954,11 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │                       # primitives go here.
 │   ├── tree-provider/      # TreeProviderView and CategoryView native views over any ITreeProvider
 │   │   ├── TreeProviderViewImpl.ts # Native tree chrome and UIKit Tree wiring
-│   │   ├── TreeProviderViewModel.ts # Tree loading, selection, actions, and drops
+│   │   ├── TreeProviderViewModel.ts # Controlled expansion, search projection, selection, actions, and drops
+│   │   ├── provider-tree-store.ts # Provider tree builds, expanded-child listing, and serialized watch refresh
+│   │   ├── provider-tree-expansion.ts # Saved paths and normal/deep-search expansion state
+│   │   ├── tree-provider-node.ts # Provider tree node transforms and lookup helpers
+│   │   ├── tree-search-filter.ts # Search matching and display-tree filtering
 │   │   ├── CategoryViewImpl.ts # Native folder-content view and bounded editor island
 │   │   ├── CategoryViewModel.ts # Folder listing, selection, actions, and drops
 │   │   ├── provider-item-controller.ts # Shared CRUD/menu/key/drag actions for both provider-backed views

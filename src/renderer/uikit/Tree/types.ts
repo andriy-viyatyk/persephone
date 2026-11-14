@@ -40,39 +40,6 @@ export interface ITreeItem {
 export const TREE_ITEM_KEY = new TraitKey<TraitType<ITreeItem>>("tree-item");
 
 // =============================================================================
-// Render context (for custom renderItem)
-// =============================================================================
-
-export interface TreeItemRenderContext<T> {
-    /** Resolved item shape (post-trait). */
-    item: ITreeItem;
-    /** Original source item (pre-trait). Equal to `item` when `T = ITreeItem`. */
-    source: T;
-    /** Depth — 0 for root rows, +1 per level. */
-    level: number;
-    /** True when this row is currently expanded. */
-    expanded: boolean;
-    /** True when the row has children (chevron should render). */
-    hasChildren: boolean;
-    /** Index inside the flat visible-row array consumed by the RenderGrid-backed fixed-height view. */
-    rowIndex: number;
-    /** True when the row is the current selection (per `value` or `isSelected`). */
-    selected: boolean;
-    /** True when the row is the current `activeIndex`. */
-    active: boolean;
-    /** Stable DOM id — must be set on the rendered row when callers want `aria-activedescendant`. */
-    id: string;
-    /** True when the row is the source of an active drag. Default false. */
-    dragging?: boolean;
-    /** True when the row is the current drop target under the drag cursor. Default false. */
-    dropActive?: boolean;
-    /** True when `loadChildren` is currently in flight for this row. Default false. */
-    loading?: boolean;
-    /** Imperative API: toggle this row's expansion. */
-    toggleExpanded: () => void;
-}
-
-// =============================================================================
 // Imperative ref
 // =============================================================================
 
@@ -159,8 +126,6 @@ export interface TreeProps<T = ITreeItem>
     /**
      * Per-row tooltip. Returning `null`, `undefined`, `false`, or empty string suppresses the
      * tooltip on that row. Forwarded to the default `<TreeItem>` via the `tooltip` prop.
-     * When a custom `renderItem` is supplied, the caller is responsible for wiring the
-     * tooltip themselves — `getTooltip` is not invoked by `Tree` in that path.
      */
     getTooltip?: (item: T, level: number) => SlotText;
     /** Optional stable DOM name for each default-rendered row. */
@@ -201,9 +166,6 @@ export interface TreeProps<T = ITreeItem>
      */
     onContextMenu?: (event: MouseEvent) => void;
 
-    /** Custom row renderer. Receives a context with the resolved item + flags. */
-    renderItem?: (ctx: TreeItemRenderContext<T>) => SlotContent;
-
     /**
      * Initial expansion state when the component mounts. Keys are source `value`s; values are
      * booleans. Items not present in the map use `defaultExpandAll`. After mount the model
@@ -213,6 +175,10 @@ export interface TreeProps<T = ITreeItem>
     defaultExpandedValues?: Record<string | number, boolean>;
     /** When true, every node is expanded on first build. Default: false. */
     defaultExpandAll?: boolean;
+    /** Controlled expansion state. When supplied, `Tree` never stores expansion in its model. */
+    expanded?: Readonly<Record<string | number, boolean>>;
+    /** Receives the complete proposed expansion map for one expansion operation. */
+    onExpandedChange?: (expanded: Readonly<Record<string | number, boolean>>) => void;
     /** Fires whenever a node's expansion changes. Use to persist across remounts. */
     onExpandChange?: (value: string | number, expanded: boolean) => void;
 
@@ -260,59 +226,18 @@ export interface TreeProps<T = ITreeItem>
      */
     collapseDescendants?: boolean;
 
-    // ── Lazy children loading ────────────────────────────────────────
+    // ── Externally loaded children ───────────────────────────────────
 
     /**
      * Predicate: "does this row have children, even if `getChildren` would currently return
-     * undefined / empty?". When true, the chevron renders, and expanding the row triggers
-     * `loadChildren` (when supplied) instead of treating the row as a leaf.
+     * undefined / empty?". When true, the chevron renders and expanding the row fires
+     * `onExpandChange`; child loading is owned by the caller.
      *
      * Receives the SOURCE item (pre-trait) so consumers can type the predicate against
      * their own shape. When omitted, chevron visibility is decided solely by the children
      * walk.
      */
     getHasChildren?: (item: T) => boolean;
-
-    /**
-     * Async children loader. Called when the user expands a row whose source children are
-     * currently unresolved (`getChildren(source)` returns undefined / empty array AND
-     * `getHasChildren?.(source)` returned true).
-     *
-     * Contract:
-     *   • Resolve after the consumer has updated their source tree to include the children.
-     *     The model bumps `state.revision` after the await, forcing the rows derivation to re-walk.
-     *     Either pass a fresh `items` reference OR mutate the existing tree in place — both
-     *     work, because revision is a row-derivation input.
-     *   • Reject to signal load failure. The model collapses the row, clears the loading
-     *     flag, and invokes `onLoadError`. The model does NOT cache failures — re-expand
-     *     re-invokes `loadChildren`. Consumers that want to suppress retry must cache or
-     *     resolve with an empty children array.
-     */
-    loadChildren?: (source: T) => Promise<void>;
-
-    /**
-     * Called when `loadChildren` rejects. Default behavior (always applied): the row
-     * collapses, `state.loading[value]` clears. This callback only adds consumer-side
-     * reaction (e.g. show a notification). Receives the source `value` (not T) so
-     * consumers can correlate against their own data without holding a row reference.
-     */
-    onLoadError?: (value: string | number, error: unknown) => void;
-
-    /**
-     * Optional async resolver for `revealItem` to walk to a value that is NOT yet present
-     * in the loaded source tree. Returns the chain of ancestor values from root to the
-     * row's parent (NOT including the target itself), in root → parent order.
-     *
-     * When `loadChildren` is set:
-     *   • If `value` is already loaded — `revealItem` walks the loaded tree, ignores this prop.
-     *   • If `value` is NOT loaded AND this prop is set — `revealItem` calls it, then
-     *     sequentially expands each returned ancestor (awaiting `loadChildren` per node),
-     *     then walks the loaded tree to find `value` and scroll.
-     *   • If `value` is NOT loaded AND this prop is unset — `revealItem` no-ops silently
-     *     (same as V1 not-found behavior). Consumers that need cross-window deep reveal
-     *     are expected to supply this.
-     */
-    getAncestorValues?: (value: string | number) => Promise<(string | number)[]>;
 
     // ── Drag-and-drop ────────────────────────────────────────────────
 
@@ -371,7 +296,7 @@ export interface TreeProps<T = ITreeItem>
 }
 
 // =============================================================================
-// Internal flat-row shape (exported for custom renderItem callers and tests)
+// Internal flat-row shape used by the tree model and keyboard handler
 // =============================================================================
 
 export interface TreeRow<T = ITreeItem> {
@@ -387,9 +312,8 @@ export interface TreeRow<T = ITreeItem> {
     hasChildren: boolean;
     /**
      * True when `getHasChildren?.(source)` returned truthy AND the walk yielded no
-     * children — indicates the row is a lazy folder waiting to load. Independent of
-     * `hasChildren` so that chevron visibility (`hasChildren || lazyChildren`) and
-     * descend logic (`hasChildren`) stay separable.
+     * children. Independent of `hasChildren` so advertised children remain expandable
+     * while the caller loads them after `onExpandChange`.
      */
     lazyChildren: boolean;
     /** Source `value` — same as `item.value`, hoisted for fast lookups. */

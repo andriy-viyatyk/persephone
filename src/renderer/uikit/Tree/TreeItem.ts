@@ -35,8 +35,6 @@ export interface TreeItemProps
     dragging?: boolean;
     /** True when this row is the drop target under the drag cursor. */
     dropActive?: boolean;
-    /** True when `loadChildren` is currently in flight for this row. */
-    loading?: boolean;
     /** True when this item should not respond to clicks. */
     disabled?: boolean;
     /**

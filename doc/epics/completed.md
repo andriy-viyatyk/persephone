@@ -1,3 +1,24 @@
+## EPIC-170 — Refactoring Phase 6.7 part 2: controlled tree expansion, one lazy-load owner, `ProviderTreeStore` and the `TreeProviderViewModel` split
+
+Completed 2026-11-14. Roadmap Phase 6.7 part 2 (UIK-2, UIK-1): `Tree`'s own lazy-load path, `revision` and the
+custom `renderItem` kind (also in `ListBox`) are deleted; `Tree` accepts controlled `expanded` + `onExpandedChange`
+while uncontrolled consumers keep `defaultExpanded*`; the provider tree owns one href-keyed expansion map in
+`ProviderTreeExpansion` (deep search as a temporary collapsed-key set, no `TreeView` remount, no `TreeController`
+back-reference); `FileTreeProvider` classifies watch batches; `tree-search-filter.ts` holds the pure display filters and
+the word match shared with the folder page; `ProviderTreeStore` owns the node tree, the generation token and one
+`loadChildren` with explicit load/relist modes. `TreeProviderViewModel.ts` 1,139 → 816 lines. Recorded changes:
+restored Explorer expansion survives the next save (it used to be dropped), and the 1–2 character tree search filters
+restored expanded folders like other expanded folders. Rows, menus, watch refresh, search, reveal and DOM are
+otherwise unchanged (row-by-row flows and structural fingerprints in a separate test window). Plans by Codex, reviewed
+against the roadmap guardrails; Codex Luna implemented. Epic document: [EPIC-170](EPIC-170.md).
+
+- [x] **Tree lazy-load removal (US-1962).** Loader, `revision`, slow reveal, row spinner and custom `renderItem` deleted.
+- [x] **Controlled expansion (US-1963).** `expanded`/`onExpandedChange`, one provider expansion owner, persistence fix.
+- [x] **Search filter (US-1964).** `tree-search-filter.ts`, `matchesSearchWords`, `tree-provider-node.ts`.
+- [x] **Watch classification (US-1965).** `ClassifiedTreeWatchBatch` from `FileTreeProvider`.
+- [x] **`ProviderTreeStore` (US-1966).** One `loadChildren`, `ProviderTreeExpansion`, node utilities; mount bug fixed before merge.
+- [x] **Epic review.** `/review` no defects; `/document` component guide, folder structure, key files; `/userdoc` what's new; `i18n:check` complete.
+
 ## EPIC-169 — Refactoring Phase 6.6 part 2 and 6.7 part 1: Tools hub entry list, shared markdown search and roots tree, one board-vars format owner, provider capabilities and `ProviderItemController`
 
 Completed 2026-11-14. Roadmap Phase 6.6 part 2 (EDT-11, EDT-12), which completes item 6.6, and Phase 6.7 part 1

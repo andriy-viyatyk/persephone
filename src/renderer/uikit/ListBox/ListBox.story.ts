@@ -1,9 +1,7 @@
-import { IconButtonView } from "../IconButton/IconButtonView";
 import { createPanelElement } from "../Panel/panel-style";
 import { VanillaView } from "../shared/vanilla-view";
 import { ListBoxView } from "./ListBoxView";
-import { ListItemView } from "./ListItemView";
-import type { IListBoxItem, ListBoxProps, ListItemRenderContext } from "./types";
+import type { IListBoxItem, ListBoxProps } from "./types";
 import { ContextMenuEvent } from "../../api/events/events";
 import type { MenuItem } from "../Menu";
 import type { Story } from "../../editors/storybook/storyTypes";
@@ -31,31 +29,20 @@ interface DemoProps {
     searchText?: string;
     keyboardNav?: boolean;
     loading?: boolean;
-    customRow?: boolean;
     tooltip?: boolean;
     contextMenu?: boolean;
     predicateSelection?: boolean;
     sections?: boolean;
     variant?: "select" | "browse";
     selectionStyle?: "check" | "accent" | "focus";
-    dropActive?: boolean;
-}
-
-interface CustomRowEntry {
-    row: ListItemView;
-    removeButton: IconButtonView;
 }
 
 class ListBoxDemoView extends VanillaView<DemoProps> {
     private value: IListBoxItem | null = null;
     private active = 0;
-    private removed = new Set<IListBoxItem["value"]>();
     private items: IListBoxItem[] = [];
     private itemsKey = "";
-    private removedVersion = 0;
-    private wasCustomRow = false;
     private list: ListBoxView<IListBoxItem> | undefined;
-    private customRows = new Map<IListBoxItem["value"], CustomRowEntry>();
 
     public constructor(props: DemoProps) {
         super(props, createPanelElement({ direction: "column", width: 360, height: 300 }));
@@ -67,14 +54,11 @@ class ListBoxDemoView extends VanillaView<DemoProps> {
         this.list = list;
         this.root.append(list.root);
         list.mount();
-        this.wasCustomRow = this.props.customRow ?? false;
     }
 
     protected onUpdate(props: DemoProps): void {
-        if (this.wasCustomRow && !props.customRow) this.disposeCustomRows();
         this.syncItems(props);
         this.list?.update(this.listProps(props));
-        this.wasCustomRow = props.customRow ?? false;
     }
 
     private readonly onChange = (item: IListBoxItem): void => {
@@ -87,16 +71,8 @@ class ListBoxDemoView extends VanillaView<DemoProps> {
         this.list?.update(this.listProps(this.props));
     };
 
-    private readonly removeItem = (value: IListBoxItem["value"]): void => {
-        this.removed = new Set(this.removed).add(value);
-        this.removedVersion++;
-        this.itemsKey = "";
-        this.syncItems(this.props);
-        this.list?.update(this.listProps(this.props));
-    };
-
     private syncItems(props: DemoProps): void {
-        const key = `${props.sections ?? false}:${props.rowCount ?? 60}:${this.removedVersion}`;
+        const key = `${props.sections ?? false}:${props.rowCount ?? 60}`;
         if (key === this.itemsKey) return;
         this.itemsKey = key;
         if (props.sections) {
@@ -104,8 +80,7 @@ class ListBoxDemoView extends VanillaView<DemoProps> {
             return;
         }
         const count = Math.max(0, Math.min(props.rowCount ?? 60, MAX_REGULAR_ITEMS));
-        const base = REGULAR_ITEMS.slice(0, count);
-        this.items = this.removed.size === 0 ? base : base.filter((item) => !this.removed.has(item.value));
+        this.items = REGULAR_ITEMS.slice(0, count);
     }
 
     private listProps(props: DemoProps): ListBoxProps<IListBoxItem> {
@@ -117,7 +92,6 @@ class ListBoxDemoView extends VanillaView<DemoProps> {
             activeIndex: this.active,
             onActiveChange: this.onActiveChange,
             searchText: props.searchText,
-            renderItem: props.customRow ? this.renderCustomRow : undefined,
             keyboardNav: props.keyboardNav,
             loading: props.loading,
             emptyMessage: "no rows",
@@ -145,55 +119,7 @@ class ListBoxDemoView extends VanillaView<DemoProps> {
         context.items.push({ label: "List background action", onClick: () => undefined });
     };
 
-    private readonly renderCustomRow = (context: ListItemRenderContext<IListBoxItem>): Node => {
-        let entry = this.customRows.get(context.item.value);
-        if (!entry) {
-            const removeButton = this.child(new IconButtonView({
-                icon: "close",
-                size: "sm",
-                "aria-label": "Remove",
-                onClick: () => this.removeItem(context.item.value),
-            }));
-            const row = this.child(new ListItemView({
-                id: context.id,
-                icon: context.item.icon,
-                label: context.item.label,
-                searchText: this.props.searchText,
-                selected: context.selected,
-                active: context.active,
-                dropActive: this.props.dropActive && context.index === 2,
-                tooltip: this.props.tooltip ? `Tooltip: ${context.item.label}` : undefined,
-                trailingElement: removeButton.root,
-            }));
-            removeButton.mount();
-            row.mount();
-            entry = { row, removeButton };
-            this.customRows.set(context.item.value, entry);
-        }
-        entry.row.update({
-            id: context.id,
-            icon: context.item.icon,
-            label: context.item.label,
-            searchText: this.props.searchText,
-            selected: context.selected,
-            active: context.active,
-            dropActive: this.props.dropActive && context.index === 2,
-            tooltip: this.props.tooltip ? `Tooltip: ${context.item.label}` : undefined,
-            trailingElement: entry.removeButton.root,
-        });
-        return entry.row.root;
-    };
-
-    private disposeCustomRows(): void {
-        for (const entry of this.customRows.values()) {
-            entry.row.dispose();
-            entry.removeButton.dispose();
-        }
-        this.customRows.clear();
-    }
-
     protected onDispose(): void {
-        this.disposeCustomRows();
         this.list = undefined;
     }
 }
@@ -208,13 +134,11 @@ export const listBoxStory: Story<DemoProps> = {
         { name: "searchText", type: "string", default: "apple" },
         { name: "keyboardNav", type: "boolean", default: true },
         { name: "loading", type: "boolean", default: false },
-        { name: "customRow", type: "boolean", default: false },
         { name: "tooltip", type: "boolean", default: false },
         { name: "contextMenu", type: "boolean", default: false },
         { name: "predicateSelection", type: "boolean", default: false },
         { name: "sections", type: "boolean", default: false },
         { name: "variant", type: "enum", options: ["select", "browse"], default: "select" },
         { name: "selectionStyle", type: "enum", options: ["check", "accent", "focus"], default: "check" },
-        { name: "dropActive", type: "boolean", default: false },
     ],
 };

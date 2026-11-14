@@ -1,9 +1,12 @@
-import type { PathWatchBatch } from "../../../ipc/api-types";
 import type { ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
 
-/** A provider that signals changes and optionally supplies a local-file watch batch. */
+export type ClassifiedTreeWatchBatch =
+    | { relist: Array<{ href: string; changedPaths?: string[] }> }
+    | { rebuild: true };
+
+/** A provider that signals changes and optionally supplies a classified watch batch. */
 export interface WatchableTreeProvider extends ITreeProvider {
-    watch(callback: (batch?: PathWatchBatch) => void): () => void;
+    watch(callback: (batch?: ClassifiedTreeWatchBatch) => void): () => void;
 }
 
 /** A provider that can list one directory strictly for incremental watch updates. */

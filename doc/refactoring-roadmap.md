@@ -600,8 +600,16 @@ provider capability contract (`content/tree-providers/tree-provider-capabilities
 UIK-5), `ProviderItemController` shared by the tree and the folder page, and `uikit/shared/drop-target-tracker.ts`. Two
 recorded changes: the folder page runs the `linkContextMenu` layer for multi-selections (D9), and the Link editor's
 category panel rebuilds when links change again (its watch callback was handed the links array as a "batch" and
-threw). **Remaining:** UIK-2 (controlled tree expansion, one lazy-load owner), then UIK-1 (`TreeProviderViewModel`
-split), then UIK-4/5 (pooled-row host, repaint tracker), UIK-6 (shared list filter and navigation) and UIK-9 to UIK-12.
+threw). Part 2 is done ([EPIC-170](epics/EPIC-170.md), 2026-11-14): UIK-2 — `Tree`'s own lazy-load path, `revision`
+and the custom `renderItem` kind are deleted (D11 option A, also the `ListBox` custom kind), and `Tree` accepts a
+controlled `expanded` + `onExpandedChange` (uncontrolled consumers unchanged); the provider tree owns one expansion map
+(`ProviderTreeExpansion`), with no `TreeController` back-reference, hint maps or search remount. UIK-1 —
+`FileTreeProvider` classifies watch batches (`ClassifiedTreeWatchBatch`), the display filters are the pure
+`tree-search-filter.ts` (shared word match with the folder page), and `ProviderTreeStore` owns the node tree, the
+generation token and one `loadChildren` with explicit load/relist modes; `TreeProviderViewModel` is 816 lines (609 code)
+from 1,139. Recorded changes: restored Explorer expansion is no longer dropped on the next save, and the 1–2 character
+search filters restored expanded folders like any other expanded folder. **Remaining:** UIK-4/5 (pooled-row host,
+repaint tracker), UIK-6 (shared list filter and navigation) and UIK-9 to UIK-12.
 
 ### Phase 7: Lock it in
 

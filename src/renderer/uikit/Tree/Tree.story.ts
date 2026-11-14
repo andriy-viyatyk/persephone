@@ -3,11 +3,10 @@ import { createPanelElement } from "../Panel/panel-style";
 import { createTextElement } from "../Text/text-style";
 import { VanillaView } from "../shared/vanilla-view";
 import { TreeView } from "./TreeView";
-import type { ITreeItem, TreeItemRenderContext, TreeProps } from "./types";
+import type { ITreeItem, TreeProps } from "./types";
 import { createFileTypeIconElement, createFolderIconElement } from "../../components/icons/icon-elements";
 import { ContextMenuEvent } from "../../api/events/events";
 import type { MenuItem } from "../Menu";
-import color from "../../theme/color";
 import { TraitSet } from "../../core/traits/traits";
 import { traitRegistry, TraitTypeId } from "../../core/traits/TraitRegistry";
 import type { TraitDragPayload } from "../../core/traits/dnd";
@@ -63,22 +62,6 @@ function findByValue(items: StoryTreeItem[], value: string | number): StoryTreeI
     return null;
 }
 
-const LAZY_NESTED_CHILDREN: Record<string, StoryTreeItem[]> = {
-    "lazy/dirA": [leaf("lazy/dirA/file1.ts", "file1.ts"), leaf("lazy/dirA/file2.ts", "file2.ts"), leaf("lazy/dirA/README.md", "README.md")],
-    "lazy/dirB": [leaf("lazy/dirB/notes.md", "notes.md")],
-    "lazy/dirC": [{ value: "lazy/dirC/inner", label: "inner", storyIcon: "folder", items: undefined }, leaf("lazy/dirC/x.ts", "x.ts")],
-    "lazy/dirC/inner": [leaf("lazy/dirC/inner/deep.ts", "deep.ts")],
-};
-
-function makeLazyTree(): StoryTreeItem[] {
-    return [
-        { value: "lazy/dirA", label: "dirA", storyIcon: "folder", items: undefined },
-        { value: "lazy/dirB", label: "dirB", storyIcon: "folder", items: undefined },
-        { value: "lazy/dirC", label: "dirC (deeper)", storyIcon: "folder", items: undefined },
-        leaf("lazy/standalone.txt", "standalone.txt"),
-    ];
-}
-
 const SECTIONED_TREE: StoryTreeItem[] = [
     { value: "section-recent", label: "Recent", section: true, items: [leaf("recent/Tree.tsx", "Tree.tsx"), leaf("recent/TreeModel.ts", "TreeModel.ts"), leaf("recent/types.ts", "types.ts")] },
     { value: "section-pinned", label: "Pinned", section: true, items: [leaf("pinned/active-work.md", "active-work.md"), leaf("pinned/CLAUDE.md", "CLAUDE.md")] },
@@ -93,9 +76,9 @@ function makeDeepTree(): StoryTreeItem[] {
 const DEEP_TREE = makeDeepTree();
 
 interface DemoProps {
-    searchText?: string; keyboardNav?: boolean; loading?: boolean; customRow?: boolean; tooltip?: boolean;
+    searchText?: string; keyboardNav?: boolean; loading?: boolean; tooltip?: boolean;
     contextMenu?: boolean; predicateSelection?: boolean; multiSelect?: boolean; sections?: boolean;
-    defaultExpandAll?: boolean; dnd?: boolean; lazy?: boolean; deep?: boolean;
+    defaultExpandAll?: boolean; dnd?: boolean; deep?: boolean;
 }
 
 class TreeDemoView extends VanillaView<DemoProps> {
@@ -105,7 +88,6 @@ class TreeDemoView extends VanillaView<DemoProps> {
     private selectedValues = new Set<StoryTreeItem["value"]>();
     private active: number | null = 0;
     private removed = new Set<StoryTreeItem["value"]>();
-    private lazyTree: StoryTreeItem[] | null = null;
     private items: StoryTreeItem[] = [];
     private itemsKey = "";
     private selectionVersion = 0;
@@ -115,7 +97,6 @@ class TreeDemoView extends VanillaView<DemoProps> {
     private isSelected: TreeProps<StoryTreeItem>["isSelected"];
     private selectionRow: HTMLElement | undefined;
     private treeHost: HTMLElement | undefined;
-    private readonly pendingLazyTimers = new Set<number>();
 
     public constructor(props: DemoProps) {
         super(props, createPanelElement({ direction: "column", gap: "sm", width: 420, height: 460 }));
@@ -136,7 +117,6 @@ class TreeDemoView extends VanillaView<DemoProps> {
         this.treeHost = tree.root;
         this.root.append(controls, tree.root);
         expand.mount(); collapse.mount(); reveal.mount(); tree.mount();
-        this.listen(tree.root, "click", this.onCustomRowClick, { capture: true });
         this.syncSelectionRow();
         this.syncSelectionRowVisibility();
     }
@@ -176,13 +156,10 @@ class TreeDemoView extends VanillaView<DemoProps> {
     };
 
     private syncItems(props: DemoProps): void {
-        if (props.lazy && !this.lazyTree) this.lazyTree = makeLazyTree();
-        if (!props.lazy) this.lazyTree = null;
-        const key = `${props.lazy ?? false}:${props.deep ?? false}:${props.sections ?? false}:${this.removedVersion}`;
+        const key = `${props.deep ?? false}:${props.sections ?? false}:${this.removedVersion}`;
         if (key === this.itemsKey) return;
         this.itemsKey = key;
-        if (props.lazy) this.items = this.lazyTree ?? [];
-        else if (props.deep) this.items = DEEP_TREE;
+        if (props.deep) this.items = DEEP_TREE;
         else {
             const base = props.sections ? SECTIONED_TREE : REGULAR_TREE;
             if (this.removed.size === 0) this.items = base;
@@ -221,7 +198,6 @@ class TreeDemoView extends VanillaView<DemoProps> {
             activeIndex: this.active,
             onActiveChange: this.onActiveChange,
             searchText: props.searchText,
-            renderItem: props.customRow ? this.renderCustomRow : undefined,
             getTooltip: props.tooltip ? this.getTooltip : undefined,
             getIconElement: this.getIconElement,
             getContextMenu: props.contextMenu ? this.getContextMenu : undefined,
@@ -235,9 +211,6 @@ class TreeDemoView extends VanillaView<DemoProps> {
             acceptsDrop: props.dnd,
             canTraitDrop: props.dnd ? this.canTraitDrop : undefined,
             onTraitDrop: props.dnd ? this.onTraitDrop : undefined,
-            getHasChildren: props.lazy ? this.getHasChildren : undefined,
-            loadChildren: props.lazy ? this.loadChildren : undefined,
-            onLoadError: props.lazy ? this.onLoadError : undefined,
         };
     }
 
@@ -251,49 +224,6 @@ class TreeDemoView extends VanillaView<DemoProps> {
     private readonly getDragData = (item: StoryTreeItem): unknown => ({ value: item.value, label: typeof item.label === "string" ? item.label : String(item.value) });
     private readonly canTraitDrop = (target: StoryTreeItem, payload: TraitDragPayload): boolean => (payload.data as { value: string | number }).value !== target.value;
     private readonly onTraitDrop = (target: StoryTreeItem, payload: TraitDragPayload): void => { const data = payload.data as { value: string | number; label: string }; /* eslint-disable-next-line no-console */ console.log(`[Tree dnd demo] drop "${data.label}" on "${String(target.value)}"`); };
-    private readonly getHasChildren = (item: StoryTreeItem): boolean => typeof item.value === "string" && LAZY_NESTED_CHILDREN[item.value] !== undefined;
-    private readonly loadChildren = (source: StoryTreeItem): Promise<void> => new Promise((resolve) => {
-        const timer = window.setTimeout(() => { this.pendingLazyTimers.delete(timer); const children = LAZY_NESTED_CHILDREN[String(source.value)]; if (children) source.items = children.map((child) => ({ ...child })); resolve(); }, 400);
-        this.pendingLazyTimers.add(timer);
-    });
-    private readonly onLoadError = (value: string | number, error: unknown): void => { console.warn("[Tree lazy demo] load error", value, error); };
-
-    private readonly renderCustomRow = (context: TreeItemRenderContext<StoryTreeItem>): Node => {
-        const row = document.createElement("div");
-        row.id = context.id;
-        row.dataset.treeDemoCustomRow = "";
-        row.dataset.treeDemoHasChildren = String(context.hasChildren);
-        row.style.display = "flex";
-        row.style.alignItems = "center";
-        row.style.height = "100%";
-        row.style.paddingLeft = `${4 + context.level * 16}px`;
-        row.style.paddingRight = "8px";
-        row.style.fontFamily = "monospace";
-        row.style.fontSize = "12px";
-        row.style.color = color.text.default;
-        row.style.backgroundColor = context.selected ? color.background.light : context.active ? color.background.message : "";
-        row.style.cursor = "pointer";
-        row.style.whiteSpace = "nowrap";
-        row.style.overflow = "hidden";
-        row.style.textOverflow = "ellipsis";
-        row.setAttribute("role", "treeitem");
-        row.setAttribute("aria-level", String(context.level + 1));
-        if (context.hasChildren) row.setAttribute("aria-expanded", String(context.expanded));
-        const chevron = document.createElement("span"); chevron.style.opacity = "0.5"; chevron.style.marginRight = "6px"; chevron.textContent = context.hasChildren ? (context.expanded ? "▼" : "▶") : "·";
-        const level = document.createElement("span"); level.style.opacity = "0.6"; level.style.marginRight = "6px"; level.textContent = `L${context.level}`;
-        row.append(chevron, level, document.createTextNode(typeof context.item.label === "string" ? context.item.label : String(context.item.value)));
-        return row;
-    };
-
-    private readonly onCustomRowClick = (event: MouseEvent): void => {
-        const target = (event.target as Element | null)?.closest<HTMLElement>("[data-tree-demo-custom-row]");
-        if (!target || !this.treeHost?.contains(target) || target.dataset.treeDemoHasChildren !== "true") return;
-        const model = this.model;
-        if (!model) return;
-        const rowIndex = model.rows.findIndex((_row, index) => model.itemId(index) === target.id);
-        if (rowIndex >= 0) model.toggleAt(rowIndex);
-    };
-
     private syncSelectionRowVisibility(): void {
         if (!this.selectionRow) return;
         const visible = this.props.multiSelect === true;
@@ -307,8 +237,6 @@ class TreeDemoView extends VanillaView<DemoProps> {
     }
 
     protected onDispose(): void {
-        this.pendingLazyTimers.forEach((timer) => window.clearTimeout(timer));
-        this.pendingLazyTimers.clear();
         this.tree = undefined;
         this.model = null;
     }
@@ -318,10 +246,10 @@ export const treeStory: Story<DemoProps> = {
     id: "tree", name: "Tree", section: "Lists", view: TreeDemoView,
     props: [
         { name: "searchText", type: "string", default: "" }, { name: "keyboardNav", type: "boolean", default: true },
-        { name: "loading", type: "boolean", default: false }, { name: "customRow", type: "boolean", default: false },
+        { name: "loading", type: "boolean", default: false },
         { name: "tooltip", type: "boolean", default: false }, { name: "contextMenu", type: "boolean", default: false },
         { name: "predicateSelection", type: "boolean", default: false }, { name: "multiSelect", type: "boolean", default: false },
         { name: "sections", type: "boolean", default: false }, { name: "defaultExpandAll", type: "boolean", default: false },
-        { name: "dnd", type: "boolean", default: false }, { name: "lazy", type: "boolean", default: false }, { name: "deep", type: "boolean", default: false },
+        { name: "dnd", type: "boolean", default: false }, { name: "deep", type: "boolean", default: false },
     ],
 };

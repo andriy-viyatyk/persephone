@@ -9,9 +9,9 @@ import {
     type TreeProviderViewModelProps,
     type TreeProviderViewProps,
     type TreeProviderViewState,
-    type TreeProviderNode,
     defaultTreeProviderViewState,
 } from "./TreeProviderViewModel";
+import type { TreeProviderNode } from "./tree-provider-node";
 import { createTreeProviderItemIconElement, subscribeFileIconElements } from "../icons/icon-elements";
 import { t } from "../../../shared/i18n/t";
 import { TREE_ITEM_KEY } from "../../uikit/Tree/types";
@@ -61,7 +61,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
     private messagePanel: HTMLDivElement | undefined;
     private messageText: HTMLSpanElement | undefined;
     private arm: Arm | undefined;
-    private searchKey: number | undefined;
+    private previousDeepSearch: boolean | undefined;
     private lastDisplayTree: TreeProviderNode | null | undefined;
     private lastTNodes: Traited<TreeProviderNode[]> | null = null;
     private activeIndex: number | null = null;
@@ -85,13 +85,12 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
         // The driver is constructed here, so its cleanup is registered here as well. Children are
         // VanillaView disposes owned children before these FIFO disposers. Keep that ordering:
         // Tree and search views must release their DOM and listeners before the driver disposes
-        // TreeProviderViewModel and clears its tree-model handoff.
+        // TreeProviderViewModel and clears its one-way reveal request.
         this.own(() => { this.inert = true; });
         this.own(() => this.treeSwap.dispose());
         this.own(() => this.driver.dispose());
-        // VanillaView disposes Tree/search children before these FIFO disposers. Clear the
-        // model's tree handoff only after those children have released their resources.
-        this.own(() => this.model.setTreeModel(null));
+        // Children release their reveal request before the model driver is disposed.
+        this.own(() => this.model.setRevealRequest(undefined));
     }
 
     public get model(): TreeProviderViewModel {
@@ -123,7 +122,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
                 error: state.error,
                 searchText: state.searchText,
                 searchVisible: state.searchVisible,
-                searchKey: state.searchKey,
+                expandedValues: state.expandedValues,
                 selectedValues: state.selectedValues,
             }),
             this.applyState,
@@ -153,13 +152,19 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
         }
 
         this.removeMessage();
-        if (!this.treeView || this.searchKey !== state.searchKey) {
-            this.leaveTreeArm();
-            this.searchKey = state.searchKey;
+        const deepSearch = state.searchText.length >= 3;
+        const crossedSearchBoundary = this.previousDeepSearch !== undefined
+            && this.previousDeepSearch !== deepSearch;
+        if (!this.treeView) {
             this.enterTreeArm(tNodes, state);
         } else {
             this.treeView.update(this.treeProps(tNodes, state));
         }
+        if (crossedSearchBoundary && this.treeView) {
+            this.treeView.model.keyboard.setAnchor(null);
+            this.treeView.resetScrollTopAndSyncActive();
+        }
+        this.previousDeepSearch = deepSearch;
         this.arm = "tree";
         this.updateSearch(state);
     };
@@ -175,14 +180,14 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
 
     private enterTreeArm(tNodes: Traited<TreeProviderNode[]>, state: ProviderState): void {
         let created: TreeView<TreeProviderNode> | undefined;
-        this.treeSwap.set(state.searchKey, () => {
+        this.treeSwap.set(0, () => {
             created = new TreeView<TreeProviderNode>(this.treeProps(tNodes, state));
             return created;
         });
         if (!created) return;
         this.treeView = created;
         created.mount();
-        this.model.setTreeModel(created.model);
+        this.model.setRevealRequest((href) => created?.model.revealItem(href) ?? Promise.resolve());
     }
 
     private leaveTreeArm(): void {
@@ -191,7 +196,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
             this.treeSwap.clear();
         } finally {
             this.treeView = undefined;
-            this.model.setTreeModel(null);
+            this.model.setRevealRequest(undefined);
         }
     }
 
@@ -297,7 +302,6 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
         const provider = this.props.provider;
         const writable = provider.writable;
         const showLinks = this.props.showLinks !== false;
-        const deepSearch = state.searchText.length >= 3;
         const osDragEnabled = isLocalFileProvider(provider);
 
         return {
@@ -315,9 +319,8 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
             onChange: this.model.onItemClick,
             onItemDoubleClick: this.model.onItemDoubleClick,
             searchText: state.searchText,
-            defaultExpandedValues: this.model.initialExpandMap,
-            defaultExpandAll: deepSearch,
-            onExpandChange: this.onExpandChange,
+            expanded: state.expandedValues,
+            onExpandedChange: this.model.onExpandedChange,
             getHasChildren: (node) => {
                 if (!node.data.isDirectory) return false;
                 const { hasSubDirectories, hasItems } = node.data;
@@ -424,10 +427,6 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
 
     private readonly canCollapse = (node: TreeProviderNode): boolean =>
         !sameHref(node.data.href, this.props.provider.rootPath);
-
-    private readonly onExpandChange = (value: string | number, expanded: boolean): void => {
-        this.model.onExpandChange(String(value), expanded);
-    };
 
     private readonly getIconElement = (node: TreeProviderNode): Node => {
         const href = node.data.href;

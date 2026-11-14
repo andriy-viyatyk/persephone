@@ -30,6 +30,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
   the stable `permission-denied` code while keeping their existing messages.
 - **Settings help:** Hover over a **?** beside a setting or section, or focus it with Tab, to read
   its explanation. Press Escape to dismiss it. See [Settings](./screens/settings.md).
+- **Explorer remembers restored folders:** Expanding another folder no longer causes previously
+  restored expanded folders to disappear the next time the Explorer state is saved.
 
 ---
 

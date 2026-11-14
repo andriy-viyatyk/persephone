@@ -1,10 +1,10 @@
 import type { SlotContent } from "../../uikit/shared/fill-slot";
 import { TComponentModel } from "../../core/state/model";
 import type { ITreeProvider, ITreeProviderItem, ILink } from "../../api/types/io.tree";
-import type { RowAlign } from "../../uikit/DataGrid";
+import type { ContextMenuEvent } from "../../api/events/events";
 import { ui } from "../../api/ui";
 import { t } from "../../../shared/i18n/t";
-import { SerialQueue } from "../../../shared/serial-queue";
+import { errMessage } from "../../../shared/utils";
 import { fpBasename, fpDirname, fpIsAbsolute, fpNormalizeForCompare, fpResolve } from "../../core/utils/file-path";
 import type { IFileLink } from "../../core/traits/fileLinkTraits";
 import { pruneNestedItems } from "./plural-actions";
@@ -16,21 +16,20 @@ import {
 } from "./tree-drop-actions";
 import { ProviderItemController } from "./provider-item-controller";
 import { hrefKey, sameHref, sameHrefs } from "./href-utils";
-import { isKeyInside } from "../../../shared/path-containment";
 import type { SlotText } from "../../uikit/shared/slots";
-import type { PathWatchBatch } from "../../../ipc/api-types";
-import { isIncremental, isLocalFileProvider, isWatchable } from "../../content/tree-providers/tree-provider-capabilities";
+import { findNode, findParent, type TreeProviderNode } from "./tree-provider-node";
+import { computeDisplayTree, getExpandedPaths } from "./tree-search-filter";
+import {
+    isLocalFileProvider,
+    isWatchable,
+    type ClassifiedTreeWatchBatch,
+} from "../../content/tree-providers/tree-provider-capabilities";
+import { ProviderTreeExpansion } from "./provider-tree-expansion";
+import { ProviderTreeStore } from "./provider-tree-store";
 
 // =============================================================================
 // Types
 // =============================================================================
-
-/** Internal tree node wrapping ITreeProviderItem for UIKit Tree rendering. */
-export interface TreeProviderNode {
-    data: ITreeProviderItem;
-    /** undefined = not loaded (lazy), [] = empty directory */
-    items?: TreeProviderNode[];
-}
 
 export interface TreeProviderViewSavedState {
     expandedPaths: string[];
@@ -53,7 +52,7 @@ export interface TreeProviderViewProps {
      *  for a multi-selection containing the right-clicked row. Handlers that add singular actions
      *  (rename-like, navigate-like) should bail out when `selection.length > 1`. */
     onContextMenu?: (
-        event: import("../../api/events/events").ContextMenuEvent<ITreeProviderItem>,
+        event: ContextMenuEvent<ITreeProviderItem>,
         selection: ITreeProviderItem[],
     ) => void;
     selectedHref?: string;
@@ -81,8 +80,8 @@ export interface TreeProviderViewState {
     displayTree: TreeProviderNode | null;
     searchText: string;
     searchVisible: boolean;
-    /** Bumped only when crossing the deep ↔ shallow search boundary, to remount Tree. */
-    searchKey: number;
+    /** Controlled expansion for the current display-tree projection. */
+    expandedValues: Readonly<Record<string | number, boolean>>;
     error: string | null;
     /**
      * The tree's own selection (hrefs of the selected rows — files OR folders), in flat
@@ -101,18 +100,10 @@ export const defaultTreeProviderViewState: TreeProviderViewState = {
     displayTree: null,
     searchText: "",
     searchVisible: false,
-    searchKey: 0,
+    expandedValues: {},
     error: null,
     selectedValues: [],
 };
-
-interface TreeController {
-    getExpandedMap: () => Record<string | number, boolean>;
-    collapseAll: () => void;
-    expandItem: (value: string | number) => void;
-    toggleItem: (value: string | number) => void;
-    revealItem: (value: string | number, align?: RowAlign) => Promise<void>;
-}
 
 // =============================================================================
 // Model
@@ -122,17 +113,18 @@ export class TreeProviderViewModel extends TComponentModel<
     TreeProviderViewState,
     TreeProviderViewModelProps
 > {
-    treeModel: TreeController | null = null;
-    savedExpandMap: Record<string, boolean> | null = null;
-    initialExpandMap: Record<string, boolean> | undefined = undefined;
+    private readonly expansion = new ProviderTreeExpansion();
+    // Props are assigned after construction (`TComponentModel.setPropsInternal`), so the store
+    // receives its provider in the first `setProps`, not here.
+    private readonly store = new ProviderTreeStore(
+        (node, provider) => this.getItemListPath(node.data, provider),
+    );
+    private revealRequest: ((href: string) => Promise<void>) | undefined;
     private watchSubscription?: () => void;
     private watchOwnerRegistered = false;
     private previousProvider: ITreeProvider | undefined;
     private previousShowLinks: boolean | undefined;
     private previousSelectedHref: string | undefined;
-    private treeGeneration = 0;
-    private readonly watchQueue = new SerialQueue();
-    private disposed = false;
     private readonly itemController = new ProviderItemController({
         provider: () => this.props.provider,
         getItemPath: (item) => this.getItemListPath(item),
@@ -171,12 +163,9 @@ export class TreeProviderViewModel extends TComponentModel<
         this.previousSelectedHref = props.selectedHref;
 
         if (first) {
+            this.store.adoptProvider(props.provider);
             if (props.initialState?.expandedPaths?.length) {
-                const map: Record<string, boolean> = {};
-                for (const p of props.initialState.expandedPaths) {
-                    map[p] = true;
-                }
-                this.initialExpandMap = map;
+                this.expansion.adoptExpandedPaths(props.initialState.expandedPaths);
             }
             // Restore the persisted plural selection when it is consistent with the incoming
             // `selectedHref` (the Explorer seeds that from its own navigation state, which on
@@ -194,6 +183,7 @@ export class TreeProviderViewModel extends TComponentModel<
             this.initializeTree();
             this.subscribeWatch();
         } else if (providerChanged) {
+            this.store.adoptProvider(props.provider);
             this.subscribeWatch();
             this.buildTree();
         } else if (showLinksChanged) {
@@ -265,304 +255,210 @@ export class TreeProviderViewModel extends TComponentModel<
     };
 
     dispose = () => {
-        this.disposed = true;
-        this.treeGeneration++;
+        this.store.dispose();
         this.watchSubscription?.();
         this.watchSubscription = undefined;
-        // The host owns Tree/search children and VanillaView disposes them before this driver.
-        // Keep the model handoff clear only after those children have released their resources.
+        // Release watch resources when the owner disposes this model.
     };
 
-    private queueWatchRefresh = (batch?: PathWatchBatch) => {
+    private queueWatchRefresh = (batch?: ClassifiedTreeWatchBatch) => {
         const provider = this.props.provider;
-        void this.watchQueue.run(async () => {
-            if (this.disposed || this.props.provider !== provider) return;
-            // Batches run one at a time, so the generation is taken when this one starts: a later
-            // batch is not a reason to rebuild, but an expansion load or rebuild in between is.
-            const generation = ++this.treeGeneration;
-            if (!batch || batch.rescan || batch.ended ||
-                batch.changes.length > 100 || !isIncremental(provider)) {
-                await this.buildTree();
-                return;
-            }
-            const original = this.state.get().tree;
+        this.store.enqueueWatch(provider, async (operation, currentBatch) => {
+            const original = this.store.snapshot;
             if (!original) { await this.buildTree(); return; }
-            const normalize = fpNormalizeForCompare;
-            const root = normalize(provider.rootPath);
-            const find = (node: TreeProviderNode, path: string): TreeProviderNode | null => {
-                if (normalize(node.data.href) === path) return node;
-                for (const child of node.items ?? []) {
-                    const found = find(child, path);
-                    if (found) return found;
-                }
-                return null;
-            };
-            const parents = new Map<string, TreeProviderNode>();
-            const addParent = (path: string) => {
-                const key = normalize(path);
-                const node = find(original, key);
-                if (node?.items) parents.set(key, node);
-            };
-            for (const change of batch.changes) {
-                const paths = change.type === "moved" ? [change.path, change.to] : [change.path];
-                for (const path of paths) {
-                    const key = normalize(path);
-                    if (!isKeyInside(root, key, { allowSame: false })) { await this.buildTree(); return; }
-                    const node = find(original, key);
-                    if (change.type === "changed" && !node?.data.isDirectory) continue;
-                    const parent = fpDirname(path);
-                    addParent(parent);
-                    const marker = key.endsWith("/.git/head") || key.endsWith("/.git/objects");
-                    if (marker && change.type !== "changed") addParent(fpDirname(fpDirname(parent)));
-                }
-            }
-            let next = original;
             try {
-                for (const parent of parents.values()) {
-                    // Earlier listings in this batch may already have updated or removed this node.
-                    const currentParent = find(next, normalize(parent.data.href));
-                    if (!currentParent?.items) continue;
-                    const items = filterTreeItems(await provider.listIncremental(parent.data.href));
-                    if (generation !== this.treeGeneration || this.state.get().tree !== original || this.disposed || this.props.provider !== provider) {
-                        await this.buildTree(); return;
-                    }
-                    const children = items.map(item => {
-                        const old = currentParent.items.find(child => normalize(child.data.href) === normalize(item.href));
-                        if (old && old.data.isDirectory !== item.isDirectory) throw new Error("Directory type changed");
-                        return { data: item, items: item.isDirectory ? old?.items : undefined };
+                const result = await this.store.refreshWatchBatch(
+                    original,
+                    currentBatch,
+                    () => operation.isCurrent() && this.store.snapshot === original,
+                );
+                if (!result) { await this.buildTree(); return; }
+                if (result.shouldPublish) {
+                    const next = result.tree;
+                    const searchText = this.state.get().searchText;
+                    const displayTree = computeDisplayTree(
+                        next,
+                        searchText,
+                        this.props.showLinks !== false,
+                        getExpandedPaths(this.expansion.normalExpansionRecord()),
+                    );
+                    const expandedValues = this.expansion.getDisplayExpansion(displayTree, searchText);
+                    this.store.setSnapshot(next);
+                    this.state.update(state => {
+                        state.tree = next;
+                        state.displayTree = displayTree;
+                        state.expandedValues = expandedValues;
+                        // Keep every selected href that still exists in the patched tree (watch paths
+                        // compare with the filesystem key), as the pre-split watch patch did.
+                        state.selectedValues = state.selectedValues.filter(href => !!findNode(
+                            next,
+                            fpNormalizeForCompare(href),
+                            (nodeHref, target) => fpNormalizeForCompare(nodeHref) === target,
+                        ));
                     });
-                    next = updateNodeChildren(next, parent.data.href, children);
                 }
-                if (parents.size) this.state.update(state => {
-                    state.tree = next;
-                    state.displayTree = this.computeDisplayTree(next, state.searchText);
-                    state.selectedValues = state.selectedValues.filter(href => !!find(next, normalize(href)));
-                });
             } catch {
                 await this.buildTree();
             }
-        }).catch(error => { console.warn("Tree watch refresh failed", error); });
+        }, batch);
     };
 
     private initializeTree = async () => {
-        // buildTree seeds `initialExpandMap` with `{ rootPath: true, descendants: false }`
-        // before its state.update, so the first render with `state.displayTree` already
-        // has the correct `defaultExpandedValues` and the (chevron-less) root opens.
+        // buildTree seeds the canonical map before publishing the first display tree, so its
+        // projection already keeps the root open and can include restored-but-unloaded entries.
         await this.buildTree();
 
-        // Pre-load children for restored expanded paths
+        // Pre-load children for restored expanded paths.
         if (this.props.initialState?.expandedPaths?.length) {
             await this.loadChildrenForPaths(this.props.initialState.expandedPaths);
         }
     };
 
-    private buildAllCollapsedMap = (tree: TreeProviderNode): Record<string, boolean> => {
-        const map: Record<string, boolean> = {};
-        const walk = (node: TreeProviderNode, isRoot: boolean) => {
-            if (node.data.isDirectory) {
-                map[node.data.href] = isRoot;
-            }
-            if (node.items) {
-                for (const child of node.items) {
-                    walk(child, false);
-                }
-            }
-        };
-        walk(tree, true);
-        return map;
+    private publishExpansionChange = (pruneSelection = false): void => {
+        this.expansion.invalidateProjection();
+        const { displayTree, searchText } = this.state.get();
+        const expandedValues = this.expansion.getDisplayExpansion(displayTree, searchText);
+        const selectedValues = pruneSelection
+            ? this.selectionVisibleValues()
+            : this.state.get().selectedValues;
+        this.state.update((state) => {
+            state.expandedValues = expandedValues;
+            state.selectedValues = selectedValues;
+        });
+        this.props.onStateChange?.(this.getState());
     };
 
-    setTreeModel = (model: TreeController | null) => {
-        this.treeModel = model;
+    setRevealRequest = (request: ((href: string) => Promise<void>) | undefined): void => {
+        this.revealRequest = request;
     };
 
     collapseAll = () => {
-        const rootPath = this.props.provider.rootPath;
-        this.treeModel?.collapseAll();
-        this.treeModel?.expandItem(rootPath);
-        this.pruneSelectionToVisible();
-        this.props.onStateChange?.({ ...this.getState(), expandedPaths: [rootPath] });
+        const { displayTree, searchText } = this.state.get();
+        this.expansion.collapseAll(this.props.provider.rootPath, displayTree, searchText);
+        this.publishExpansionChange(true);
     };
 
     // ── Tree building ────────────────────────────────────────────────────
 
     buildTree = async () => {
-        const { provider } = this.props;
-        const generation = ++this.treeGeneration;
+        const operation = this.store.beginBuild();
+        const { provider } = operation;
 
-        // Capture currently-expanded paths before rebuild. We need the EFFECTIVE expansion
-        // — both user-toggled state from Tree (state.expanded) AND restored hints
-        // (initialExpandMap entries set to true). Without the hint contribution, a refresh
-        // fired before any user interaction (e.g. FileTreeProvider's FS watcher firing
-        // moments after mount) would lose the restored expansion: getExpandedMap returns
-        // only state.expanded, which is empty for hint-only expansions, so the rebuild
-        // wouldn't reload grandchildren — leaving expanded chevrons with no children.
-        // User-toggled state wins where both are defined (so an explicitly collapsed
-        // hint-expanded folder stays collapsed across refresh).
-        const treeStateMap = this.treeModel?.getExpandedMap() ?? {};
-        const isExpanded = this.expandedResolver(treeStateMap);
-        const allKeys = new Set<string>([
-            ...Object.keys(treeStateMap).map((k) => String(k)),
-            ...Object.keys(this.initialExpandMap ?? {}),
-        ]);
-        const expandedPaths: string[] = [];
-        for (const key of allKeys) {
-            if (isExpanded(key)) expandedPaths.push(key);
-        }
+        // Read the canonical map, including restored paths whose nodes are not loaded yet. The
+        // loaded Tree projection cannot represent those entries, but refresh must still reload
+        // their descendants before publishing the rebuilt tree.
+        const { displayTree, searchText } = this.state.get();
+        const expandedPaths = this.expansion.expandedPaths(displayTree, searchText);
 
         try {
-            const items = filterTreeItems(await provider.list(provider.rootPath));
-            let workingTree: TreeProviderNode = {
-                data: {
-                    // The root node's href is the provider's rootPath verbatim. Some
-                    // providers (e.g. Mneme) emit a scheme-qualified href for child
-                    // nodes while keeping rootPath scheme-less — leave this as-is: the
-                    // root is expand-only (never navigated or stored as a link) and all
-                    // equality checks compare against rootPath, so the asymmetry is
-                    // intentional, not a bug to "fix".
-                    title: this.props.rootLabel ?? provider.displayName,
-                    href: provider.rootPath,
-                    category: "",
-                    tags: [],
-                    isDirectory: true,
-                },
-                items: items.map(toNode),
-            };
+            const workingTree = await this.store.buildTree(expandedPaths, this.props.rootLabel, operation);
+            if (!workingTree) return;
+            this.expansion.seedTree(workingTree, provider.rootPath);
 
-            // Refresh children for every expanded directory INLINE, before publishing the
-            // new tree. Doing this atomically avoids an intermediate render where the tree
-            // is shrunk to root-only entries (all child folders' `items` momentarily
-            // undefined). That shrink would force the native RenderGrid model through its
-            // over-large-offset clamp in the grid model, wiping the user's scroll
-            // position on every FS watch tick — exactly what an AI agent
-            // editing files in the project folder triggers repeatedly.
-            //
-            // Sorted by length so parent paths are populated before child paths — needed
-            // for findNode/updateNodeChildren to locate the deeper expanded entries.
-            // Sequential await is fine: FileTreeProvider.watch is debounced 500ms, and the
-            // OLD tree remains visible the entire time (no intermediate state.update).
-            const sorted = [...expandedPaths].sort((a, b) => a.length - b.length);
-            for (const href of sorted) {
-                if (sameHref(href, provider.rootPath)) continue;
-                const node = findNode(workingTree, href);
-                if (!node || !node.data.isDirectory) continue;
-                const listPath = this.getListPath(node);
-                try {
-                    const childItems = filterTreeItems(await provider.list(listPath));
-                    workingTree = updateNodeChildren(workingTree, href, childItems.map(toNode));
-                } catch {
-                    workingTree = updateNodeChildren(workingTree, href, []);
-                }
-            }
+            const displayTree = computeDisplayTree(
+                workingTree,
+                searchText,
+                this.props.showLinks !== false,
+                getExpandedPaths(this.expansion.normalExpansionRecord()),
+            );
+            const expandedValues = this.expansion.getDisplayExpansion(displayTree, searchText);
+            const visible = this.expansion.visibleHrefs(workingTree, searchText);
 
-            // Seed `initialExpandMap` BEFORE the state update so the very first render with
-            // `state.displayTree` reads `defaultExpandedValues={ rootPath: true, ... }` and
-            // expands the root (whose chevron is hidden — only this default keeps it open).
-            // Subsequent builds skip the seed: once the root is in the map, user state in
-            // Tree's own `state.expanded` overrides the hint anyway.
-            if (this.disposed || this.props.provider !== provider || generation !== this.treeGeneration) return;
-            if (!this.initialExpandMap || !new Set(Object.keys(this.initialExpandMap).map(hrefKey)).has(hrefKey(provider.rootPath))) {
-                const collapsedMap = this.buildAllCollapsedMap(workingTree);
-                this.initialExpandMap = { ...collapsedMap, ...this.initialExpandMap };
-            }
-
-            const { searchText } = this.state.get();
-            const displayTree = this.computeDisplayTree(workingTree, searchText);
-
+            this.store.setSnapshot(workingTree);
             this.state.update((s) => {
                 s.tree = workingTree;
                 s.displayTree = displayTree;
+                s.expandedValues = expandedValues;
+                s.selectedValues = s.selectedValues.filter((href) => visible.has(hrefKey(href)));
                 s.error = null;
             });
         } catch (err) {
-            if (this.disposed || this.props.provider !== provider || generation !== this.treeGeneration) return;
+            if (!operation.isCurrent()) return;
+            this.store.setSnapshot(null);
+            const expandedValues = this.expansion.getDisplayExpansion(null, this.state.get().searchText);
             this.state.update((s) => {
                 s.tree = null;
                 s.displayTree = null;
-                s.error = err.message || "Failed to list directory";
+                s.expandedValues = expandedValues;
+                s.error = errMessage(err, "Failed to list directory");
             });
         }
     };
 
-    // ── Lazy loading ─────────────────────────────────────────────────────
-
     private loadChildrenIfNeeded = async (href: string) => {
         const { tree } = this.state.get();
-        const provider = this.props.provider;
-        const generation = this.treeGeneration;
+        const operation = this.store.currentOperation();
+        const { provider, generation } = operation;
         if (!tree) return;
 
         const node = findNode(tree, href);
         if (!node || !node.data.isDirectory || node.items !== undefined) return;
 
-        // Determine the path to list: for root node use rootPath,
-        // otherwise use the category path that the provider expects
-        const listPath = this.getListPath(node);
-
-        try {
-            const items = filterTreeItems(await provider.list(listPath));
-            if (this.disposed || provider !== this.props.provider) return;
-            if (generation !== this.treeGeneration || this.state.get().tree !== tree) {
+        const newTree = await this.store.loadChildren(
+            tree,
+            [href],
+            "load-unloaded",
+            () => operation.isCurrent() && this.state.get().tree === tree,
+        );
+        if (!newTree) {
+            if (!this.store.isProviderActive(provider)) return;
+            if (!this.store.isGenerationCurrent(generation) || this.state.get().tree !== tree) {
                 this.queueWatchRefresh();
-                return;
             }
-            const newTree = updateNodeChildren(tree, href, items.map(toNode));
-            const { searchText } = this.state.get();
-            const displayTree = this.computeDisplayTree(newTree, searchText);
-
-            this.state.update((s) => {
-                s.tree = newTree;
-                s.displayTree = displayTree;
-            });
-        } catch {
-            if (this.disposed || provider !== this.props.provider || generation !== this.treeGeneration || this.state.get().tree !== tree) return;
-            // Mark as loaded but empty on error
-            const newTree = updateNodeChildren(tree, href, []);
-            this.state.update((s) => {
-                s.tree = newTree;
-                s.displayTree = this.computeDisplayTree(newTree, s.searchText);
-            });
+            return;
         }
+        const { searchText } = this.state.get();
+        const displayTree = computeDisplayTree(
+            newTree,
+            searchText,
+            this.props.showLinks !== false,
+            getExpandedPaths(this.expansion.normalExpansionRecord()),
+        );
+        const expandedValues = this.expansion.getDisplayExpansion(displayTree, searchText);
+        this.store.setSnapshot(newTree);
+        this.state.update((s) => {
+            s.tree = newTree;
+            s.displayTree = displayTree;
+            s.expandedValues = expandedValues;
+        });
     };
 
+    // ── Lazy loading ─────────────────────────────────────────────────────
+
     private loadChildrenForPaths = async (paths: string[]) => {
-        let { tree } = this.state.get();
+        const { tree } = this.state.get();
         if (!tree) return;
         const original = tree;
-        const provider = this.props.provider;
-        const generation = this.treeGeneration;
-
-        const sorted = [...paths].sort((a, b) => a.length - b.length);
-        let changed = false;
-
-        for (const href of sorted) {
-            const node = findNode(tree, href);
-            if (node && node.data.isDirectory && node.items === undefined) {
-                const listPath = this.getListPath(node);
-                try {
-                    const items = filterTreeItems(await provider.list(listPath));
-                    tree = updateNodeChildren(tree, href, items.map(toNode));
-                    changed = true;
-                } catch {
-                    tree = updateNodeChildren(tree, href, []);
-                    changed = true;
-                }
-            }
-        }
-
-        if (changed) {
-            if (this.disposed || provider !== this.props.provider) return;
-            if (generation !== this.treeGeneration || this.state.get().tree !== original) {
+        const operation = this.store.currentOperation();
+        const { provider, generation } = operation;
+        const next = await this.store.loadChildren(
+            tree,
+            paths,
+            "load-unloaded",
+            () => operation.isCurrent() && this.state.get().tree === original,
+        );
+        if (!next) {
+            if (!this.store.isProviderActive(provider)) return;
+            if (!this.store.isGenerationCurrent(generation) || this.state.get().tree !== original) {
                 this.queueWatchRefresh();
-                return;
             }
-            const { searchText } = this.state.get();
-            const displayTree = this.computeDisplayTree(tree, searchText);
-            this.state.update((s) => {
-                s.tree = tree;
-                s.displayTree = displayTree;
-            });
+            return;
         }
+        if (next === original) return;
+        const { searchText } = this.state.get();
+        const displayTree = computeDisplayTree(
+            next,
+            searchText,
+            this.props.showLinks !== false,
+            getExpandedPaths(this.expansion.normalExpansionRecord()),
+        );
+        const expandedValues = this.expansion.getDisplayExpansion(displayTree, searchText);
+        this.store.setSnapshot(next);
+        this.state.update((s) => {
+            s.tree = next;
+            s.displayTree = displayTree;
+            s.expandedValues = expandedValues;
+        });
     };
 
     /** Get the path to pass to provider.list() for a given node. */
@@ -572,15 +468,14 @@ export class TreeProviderViewModel extends TComponentModel<
 
     /** Path flavor expected by provider list/create/rename calls. Archive hrefs include the
      * archive prefix, so non-root items are rebuilt from category plus title. */
-    private getItemListPath = (item: ITreeProviderItem): string => {
-        const { provider } = this.props;
+    private getItemListPath = (item: ITreeProviderItem, provider = this.props.provider): string => {
+        if (sameHref(item.href, provider.rootPath)) {
+            return provider.rootPath;
+        }
         // For FileTreeProvider: href is the absolute path, use it directly
         // For ArchiveTreeProvider: href is "archive.zip!inner/path", we need inner path
         // The category of children = the directory path the provider understands
         // For root node, category is "" and we use provider.rootPath
-        if (sameHref(item.href, provider.rootPath)) {
-            return provider.rootPath;
-        }
         // For child directories, build the inner path from category + name
         const category = item.category;
         return category
@@ -591,10 +486,7 @@ export class TreeProviderViewModel extends TComponentModel<
     // ── State persistence ────────────────────────────────────────────────
 
     getState = (): TreeProviderViewSavedState => {
-        const expandMap = this.treeModel?.getExpandedMap() ?? {};
-        const expandedPaths = Object.entries(expandMap)
-            .filter(([, expanded]) => expanded)
-            .map(([id]) => id);
+        const expandedPaths = this.expansion.getSavedExpandedPaths();
         const selectedValues = this.state.get().selectedValues;
         return {
             expandedPaths,
@@ -605,62 +497,26 @@ export class TreeProviderViewModel extends TComponentModel<
         };
     };
 
-    onExpandChange = (id: string, expanded: boolean) => {
-        if (expanded) {
-            this.loadChildrenIfNeeded(id);
-        } else {
-            // Only visible rows may stay selected. The Tree fires this for the
-            // toggled row only, even with `collapseDescendants` — fine, because
-            // pruneSelectionToVisible recomputes the whole visible set.
-            this.pruneSelectionToVisible();
-        }
-        this.props.onStateChange?.(this.getState());
+    onExpandedChange = (proposed: Readonly<Record<string | number, boolean>>): void => {
+        const searchText = this.state.get().searchText;
+        const currentProjection = this.expansion.getDisplayExpansion(
+            this.state.get().displayTree,
+            searchText,
+        );
+        const result = this.expansion.applyProposal(proposed, currentProjection, searchText);
+        if (!result.changed) return;
+        for (const href of result.expandedHrefs) this.loadChildrenIfNeeded(href);
+        this.publishExpansionChange(result.collapsed);
     };
 
-    // ── Visible-row selection pruning ─────────────────────────
+    // ── Visible-row selection pruning ────────────────────────────────────
 
-    /** Resolve effective expansion the way `buildTree` does: user-toggled Tree state wins
-     *  where defined, restored hints (`initialExpandMap`) fill in, default collapsed. */
-    private expandedResolver = (
-        map: Record<string, boolean> = this.treeModel?.getExpandedMap() ?? {},
-    ) => {
-        const stateByKey = new Map(Object.entries(map).map(([key, value]) => [hrefKey(key), value]));
-        const hintsByKey = new Map(Object.entries(this.initialExpandMap ?? {}).map(([key, value]) => [hrefKey(key), value]));
-        return (href: string): boolean => {
-            const key = hrefKey(href);
-            const fromState = stateByKey.get(key);
-            return fromState !== undefined ? !!fromState : !!hintsByKey.get(key);
-        };
-    };
-
-    /** Every href currently rendered as a row: walk from the root, descending into a
-     *  directory only when it is effectively expanded. The root is always expanded (it is
-     *  chevron-less and `canCollapse` blocks collapsing it). */
-    private visibleHrefs = (): Set<string> => {
-        const { tree } = this.state.get();
-        const out = new Set<string>();
-        if (!tree) return out;
-        const isExpanded = this.expandedResolver();
-        const walk = (node: TreeProviderNode, isRoot: boolean) => {
-            out.add(hrefKey(node.data.href));
-            if (!node.data.isDirectory || !node.items) return;
-            if (!isRoot && !isExpanded(node.data.href)) return;
-            for (const child of node.items) walk(child, false);
-        };
-        walk(tree, true);
-        return out;
-    };
-
-    /** Drop selected rows that are no longer visible (their folder was collapsed).
-     *  No-op — no state write, no onStateChange — when nothing changed. */
-    pruneSelectionToVisible = () => {
-        const { selectedValues } = this.state.get();
-        if (!selectedValues.length) return;
-        const visible = this.visibleHrefs();
-        const kept = selectedValues.filter((href) => visible.has(hrefKey(href)));
-        if (kept.length === selectedValues.length) return;
-        this.state.update((s) => { s.selectedValues = kept; });
-        this.props.onStateChange?.(this.getState());
+    /** Resolve current visibility from the provider-owned normal map or the active deep-search
+     *  collapsed-key set. The root remains open in both projections. */
+    private selectionVisibleValues = (): string[] => {
+        const { tree, searchText } = this.state.get();
+        const visible = this.expansion.visibleHrefs(tree, searchText);
+        return this.state.get().selectedValues.filter((href) => visible.has(hrefKey(href)));
     };
 
     // ── Search ───────────────────────────────────────────────────────────
@@ -671,20 +527,21 @@ export class TreeProviderViewModel extends TComponentModel<
 
     hideSearch = () => {
         const wasDeep = this.state.get().searchText.length >= 3;
-
-        if (wasDeep) {
-            this.initialExpandMap = this.savedExpandMap ?? undefined;
-            this.savedExpandMap = null;
-        }
-
+        if (wasDeep) this.expansion.enterSearchBoundary(false);
+        const displayTree = computeDisplayTree(
+            this.state.get().tree,
+            "",
+            this.props.showLinks !== false,
+            getExpandedPaths(this.expansion.normalExpansionRecord()),
+        );
+        const expandedValues = this.expansion.getDisplayExpansion(displayTree, "");
         this.state.update((s) => {
             s.searchText = "";
             s.searchVisible = false;
-            s.displayTree = this.computeDisplayTree(s.tree, "");
-            if (wasDeep) {
-                s.searchKey++;
-            }
+            s.displayTree = displayTree;
+            s.expandedValues = expandedValues;
         });
+        if (wasDeep) this.props.onStateChange?.(this.getState());
     };
 
     setSearchText = (text: string) => {
@@ -692,88 +549,37 @@ export class TreeProviderViewModel extends TComponentModel<
         const wasDeep = prevText.length >= 3;
         const isDeep = text.length >= 3;
 
-        let keyDelta = 0;
-        if (wasDeep !== isDeep) {
-            keyDelta = 1;
-            if (isDeep) {
-                // Capture the EFFECTIVE expansion, not just Tree's explicit toggles.
-                // `getExpandedMap()` returns only `state.expanded`, which is empty for a tree
-                // whose expansion came from the `initialExpandMap` hint — i.e. every restored
-                // or freshly-built tree the user has not clicked in yet. Saving the raw map
-                // there stores `{}`, so clearing the search restores nothing and the tree
-                // collapses to its root. `buildTree` already merges the two the same
-                // way (`:310-327`); `expandedResolver` is that rule, so reuse it rather than
-                // restate it. Order matters: it reads `initialExpandMap`, which is cleared below.
-                const stateMap = Object.fromEntries(
-                    Object.entries(this.treeModel?.getExpandedMap() ?? {})
-                        .map(([k, v]) => [String(k), !!v]),
-                );
-                const isExpanded = this.expandedResolver(stateMap);
-                const keys = new Set<string>([
-                    ...Object.keys(stateMap),
-                    ...Object.keys(this.initialExpandMap ?? {}),
-                ]);
-                const effective: Record<string, boolean> = {};
-                for (const key of keys) effective[key] = isExpanded(key);
-                this.savedExpandMap = effective;
-                this.initialExpandMap = undefined;
-            } else {
-                this.initialExpandMap = this.savedExpandMap ?? undefined;
-                this.savedExpandMap = null;
-            }
-        }
+        if (wasDeep !== isDeep) this.expansion.enterSearchBoundary(isDeep);
 
-        const displayTree = this.computeDisplayTree(tree, text);
+        const displayTree = computeDisplayTree(
+            tree,
+            text,
+            this.props.showLinks !== false,
+            getExpandedPaths(this.expansion.normalExpansionRecord()),
+        );
+        const expandedValues = this.expansion.getDisplayExpansion(displayTree, text);
         this.state.update((s) => {
             s.searchText = text;
             s.displayTree = displayTree;
-            s.searchKey += keyDelta;
+            s.expandedValues = expandedValues;
         });
+        if (wasDeep && !isDeep) this.props.onStateChange?.(this.getState());
     };
 
     /** Recompute displayTree from the current raw tree (e.g., after showLinks changes). */
     private recomputeDisplayTree = () => {
         const { tree, searchText } = this.state.get();
-        const displayTree = this.computeDisplayTree(tree, searchText);
-        this.state.update((s) => { s.displayTree = displayTree; });
-    };
-
-    private computeDisplayTree = (
-        tree: TreeProviderNode | null,
-        searchText: string,
-    ): TreeProviderNode | null => {
-        if (!tree) return null;
-
-        let result = tree;
-
-        // Apply showLinks filter
-        if (this.props.showLinks === false) {
-            result = filterDirectoriesOnly(result);
-        }
-
-        // Apply search filter
-        if (searchText) {
-            const words = searchText.toLowerCase().split(" ").filter(Boolean);
-            if (words.length > 0) {
-                if (searchText.length >= 3) {
-                    result = filterTreeDeep(result, words);
-                } else {
-                    const expandedPaths = this.getExpandedPaths();
-                    result = filterTreeShallow(result, words, expandedPaths);
-                }
-            }
-        }
-
-        return result;
-    };
-
-    private getExpandedPaths = (): Set<string> => {
-        const map = this.treeModel?.getExpandedMap() ?? {};
-        return new Set(
-            Object.entries(map)
-                .filter(([, expanded]) => expanded)
-                .map(([id]) => hrefKey(id)),
+        const displayTree = computeDisplayTree(
+            tree,
+            searchText,
+            this.props.showLinks !== false,
+            getExpandedPaths(this.expansion.normalExpansionRecord()),
         );
+        const expandedValues = this.expansion.getDisplayExpansion(displayTree, searchText);
+        this.state.update((s) => {
+            s.displayTree = displayTree;
+            s.expandedValues = expandedValues;
+        });
     };
 
     // ── Reveal item ───────────────────────────────────────────────────────
@@ -798,12 +604,17 @@ export class TreeProviderViewModel extends TComponentModel<
             parent = fpDirname(current);
         }
 
-        // Load children for all ancestor paths (no-op for already loaded)
+        // Load children for all ancestor paths (no-op for already loaded).
         const allPaths = [provider.rootPath, ...ancestors];
         await this.loadChildrenForPaths(allPaths);
 
-        // UIKit Tree's revealItem expands ancestors found in the loaded tree, then scrolls.
-        await this.treeModel?.revealItem(href);
+        const changed = this.expansion.openPaths([provider.rootPath, ...ancestors]);
+        if (changed) {
+            this.publishExpansionChange();
+        }
+        // The controlled map is published synchronously before this one-way request so Tree's
+        // reveal fast path sees the newly visible ancestors and only needs to scroll.
+        await this.revealRequest?.(href);
     };
 
     /** Tree items are keyed by the provider's href, so an agent's "C:/a/b" must become "C:\a\b". */
@@ -814,16 +625,18 @@ export class TreeProviderViewModel extends TComponentModel<
         await this.revealItem(href);
         // revealItem loads the ancestors' children only; the folder's own children load here.
         await this.loadChildrenForPaths([href]);
-        this.treeModel?.expandItem(href);
+        if (this.expansion.expandPath(href, this.state.get().searchText.length >= 3)) {
+            this.publishExpansionChange();
+        }
     };
 
     collapsePath = async (path: string): Promise<void> => {
         const href = this.toItemHref(path);
         await this.revealItem(href);
-        const expanded = this.treeModel?.getExpandedMap() ?? {};
-        const originalKeys = new Map(Object.keys(expanded).map((key) => [hrefKey(key), key]));
-        const original = originalKeys.get(hrefKey(href));
-        if (original !== undefined && expanded[original]) this.treeModel?.toggleItem(original);
+        const deep = this.state.get().searchText.length >= 3;
+        if (this.expansion.collapsePath(href, this.state.get().tree, deep)) {
+            this.publishExpansionChange(true);
+        }
     };
 
     // ── Click handlers ───────────────────────────────────────────────────
@@ -834,8 +647,8 @@ export class TreeProviderViewModel extends TComponentModel<
         if (!this.props.multiSelect) {
             this.setSelection([node.data.href]);
         }
-        // Expansion is chevron-only (TreeProviderView.renderItem onChevronClick, plus
-        // ArrowRight/ArrowLeft) — clicking the label selects + navigates without toggling.
+        // Expansion is handled by the Tree's chevron and ArrowRight/ArrowLeft callbacks —
+        // clicking the label selects + navigates without toggling.
         // Fire onItemClick for all items (files and folders).
         // Parent decides whether to navigate based on selection state.
         this.props.onItemClick?.(node.data);
@@ -908,8 +721,8 @@ export class TreeProviderViewModel extends TComponentModel<
             void this.itemController.paste(targetDir);
             return consume();
         }
-        if (!nodes.length) return false;
         // Copy is allowed on the root (mirrors the context menu); Cut is not.
+        if (!nodes.length) return false;
         if (hasRoot && key === "x") return false;
         const targets = this.operationItems(nodes.map((n) => n.data));
         void this.itemController.copyItemsToClipboard(targets, key === "x");
@@ -995,145 +808,9 @@ export class TreeProviderViewModel extends TComponentModel<
         try {
             await provider.importLinks(items, targetCategory);
         } catch (err) {
-            ui.notify(err.message || t("menus.failedToImportLinks"), "warning");
+            ui.notify(errMessage(err, t("menus.failedToImportLinks")), "warning");
             return;
         }
         await this.buildTree();
     };
-}
-
-// =============================================================================
-// Pure utility functions
-// =============================================================================
-
-/** Filter out ".." parent navigation entries (used by FileTreeProvider for flat views, not trees). */
-function filterTreeItems(items: ITreeProviderItem[]): ITreeProviderItem[] {
-    return items.filter((item) => item.title !== "..");
-}
-
-function toNode(item: ITreeProviderItem): TreeProviderNode {
-    return {
-        data: item,
-        items: item.isDirectory ? undefined : undefined,
-        // directories: items = undefined (lazy), files: no items needed
-    };
-}
-
-function findNode(tree: TreeProviderNode, href: string): TreeProviderNode | null {
-    if (sameHref(tree.data.href, href)) return tree;
-    if (tree.items) {
-        for (const child of tree.items) {
-            const found = findNode(child, href);
-            if (found) return found;
-        }
-    }
-    return null;
-}
-
-function findParent(tree: TreeProviderNode | null, href: string): TreeProviderNode | null {
-    if (!tree || !tree.items) return null;
-    for (const child of tree.items) {
-        if (sameHref(child.data.href, href)) return tree;
-        const found = findParent(child, href);
-        if (found) return found;
-    }
-    return null;
-}
-
-function updateNodeChildren(
-    node: TreeProviderNode,
-    href: string,
-    children: TreeProviderNode[],
-): TreeProviderNode {
-    if (sameHref(node.data.href, href)) {
-        return { ...node, items: children };
-    }
-    if (node.items) {
-        return {
-            ...node,
-            items: node.items.map(child => updateNodeChildren(child, href, children)),
-        };
-    }
-    return node;
-}
-
-// ── Tree filters ─────────────────────────────────────────────────────────
-
-function filterDirectoriesOnly(node: TreeProviderNode): TreeProviderNode {
-    return {
-        ...node,
-        items: node.items
-            ?.filter(child => child.data.isDirectory)
-            .map(filterDirectoriesOnly),
-    };
-}
-
-function filterTreeDeep(
-    node: TreeProviderNode,
-    words: string[],
-): TreeProviderNode {
-    return {
-        ...node,
-        items: filterChildrenDeep(node.items, words),
-    };
-}
-
-function filterChildrenDeep(
-    items: TreeProviderNode[] | undefined,
-    words: string[],
-): TreeProviderNode[] {
-    if (!items) return [];
-    const result: TreeProviderNode[] = [];
-    for (const item of items) {
-        if (item.data.isDirectory) {
-            const filteredChildren = filterChildrenDeep(item.items, words);
-            if (filteredChildren.length > 0) {
-                result.push({ ...item, items: filteredChildren });
-            }
-        } else {
-            const nameLower = item.data.title.toLowerCase();
-            if (words.every(w => nameLower.includes(w))) {
-                result.push(item);
-            }
-        }
-    }
-    return result;
-}
-
-function filterTreeShallow(
-    node: TreeProviderNode,
-    words: string[],
-    expandedPaths: Set<string>,
-): TreeProviderNode {
-    return {
-        ...node,
-        items: filterChildrenShallow(node.items, words, expandedPaths),
-    };
-}
-
-function filterChildrenShallow(
-    items: TreeProviderNode[] | undefined,
-    words: string[],
-    expandedPaths: Set<string>,
-): TreeProviderNode[] {
-    if (!items) return [];
-    const result: TreeProviderNode[] = [];
-    for (const item of items) {
-        if (item.data.isDirectory) {
-            if (expandedPaths.has(hrefKey(item.data.href))) {
-                result.push({
-                    ...item,
-                    items: filterChildrenShallow(item.items, words, expandedPaths),
-                });
-            } else {
-                result.push(item);
-            }
-        } else {
-            const nameLower = item.data.title.toLowerCase();
-            if (words.every(w => nameLower.includes(w))) {
-                result.push(item);
-            }
-        }
-    }
-    return result;
 }
