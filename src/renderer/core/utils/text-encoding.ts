@@ -16,6 +16,12 @@ export interface DecodedText {
 }
 
 const LARGE_FILE_THRESHOLD = 20 * 1024 * 1024; // 20MB
+/**
+ * Lowest jschardet confidence we trust. jschardet 4 scores correct single-byte answers low
+ * (Cyrillic windows-1251 text 0.11–0.43, German windows-1252 0.06), while UTF-8 and ASCII score
+ * 0.8–1.0. Noise such as `cp720@0.03` on an ASCII file with one `©` stays below it.
+ */
+const DETECTION_MIN_CONFIDENCE = 0.05;
 
 /**
  * Decode a binary buffer to string with automatic encoding detection.
@@ -24,7 +30,7 @@ const LARGE_FILE_THRESHOLD = 20 * 1024 * 1024; // 20MB
  * 1. BOM (UTF-8-BOM, UTF-16LE, UTF-16BE) — O(1)
  * 2. Skip detection for files >20MB (use UTF-8)
  * 3. Explicit encoding override (if provided)
- * 4. jschardet detection (>70% confidence)
+ * 4. jschardet detection (above DETECTION_MIN_CONFIDENCE)
  * 5. UTF-8 without replacement characters
  * 6. Fallback: Windows-1251
  */
@@ -57,7 +63,7 @@ export function decodeBuffer(buffer: Buffer, encoding?: string, diagnostic?: Cod
 
     // jschardet detection
     const detected = jschardet.detect(buffer);
-    if (detected && detected.encoding && detected.confidence > 0.7) {
+    if (detected && detected.encoding && detected.confidence > DETECTION_MIN_CONFIDENCE) {
         try {
             let detectedEncoding = detected.encoding.toLowerCase();
             if (detectedEncoding === "ascii") {
