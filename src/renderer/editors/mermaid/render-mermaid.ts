@@ -144,6 +144,10 @@ export async function renderMermaidSvg(
     mermaid.initialize({
         startOnLoad: false,
         theme: lightMode ? "default" : "dark",
+        // Mermaid 12 defaults several diagram types to the "neo" look and the ELK layout.
+        // Keep the classic look and dagre layout that the contrast fix in svgToDataUrl targets.
+        look: "classic",
+        layout: "dagre",
         securityLevel: "strict",
     });
 

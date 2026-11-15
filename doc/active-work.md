@@ -11,7 +11,7 @@ Overview of all active and planned epics and tasks.
 - **EPIC-179** — [Dependency refresh](epics/EPIC-179.md)
   - [ ] [US-2010: Remove d3; in-range updates; `@types/node` 24](tasks/US-2010-dependency-refresh-in-range/README.md)
   - [ ] [US-2011: Monaco 0.57](tasks/US-2011-monaco-0-57/README.md)
-  - [ ] US-2012: Mermaid 12 and mermaid-to-excalidraw 3
+  - [ ] [US-2012: Mermaid 12 and mermaid-to-excalidraw 3](tasks/US-2012-mermaid-12/README.md)
   - [ ] US-2013: electron-store 12
   - [ ] US-2014: simple-git 4
   - [ ] US-2015: jschardet 4

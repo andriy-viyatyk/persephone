@@ -83,7 +83,7 @@ Mermaid brings its own copy of d3 as one of its dependencies.
 |---|---|---|---|
 | [US-2010](../tasks/US-2010-dependency-refresh-in-range/README.md) | Remove d3; in-range updates; `@types/node` 24 | — | Also rebuild both board libraries and rename the Vite plugin patch |
 | [US-2011](../tasks/US-2011-monaco-0-57/README.md) | Monaco 0.57 | US-2010 | Redo the patch, check the worker setup and the translated menu text |
-| US-2012 | Mermaid 12 and mermaid-to-excalidraw 3 | US-2010 | Rebuild the Excalidraw lib; check every place a diagram renders |
+| [US-2012](../tasks/US-2012-mermaid-12/README.md) | Mermaid 12 and mermaid-to-excalidraw 3 | US-2010 | Rebuild the Excalidraw lib; check every place a diagram renders |
 | US-2013 | electron-store 12 | US-2010 | Settings must survive the upgrade; check whether 12 requires a newer Electron or ESM |
 | US-2014 | simple-git 4 | US-2010 | Go through the Git editor and Git service API calls |
 | US-2015 | jschardet 4 | US-2010 | Encoding detection on sample files |
