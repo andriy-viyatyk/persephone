@@ -8,18 +8,6 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-179** — [Dependency refresh](epics/EPIC-179.md)
-  - [ ] [US-2010: Remove d3; in-range updates; `@types/node` 24](tasks/US-2010-dependency-refresh-in-range/README.md)
-  - [ ] [US-2011: Monaco 0.57](tasks/US-2011-monaco-0-57/README.md)
-  - [ ] [US-2012: Mermaid 12 and mermaid-to-excalidraw 3](tasks/US-2012-mermaid-12/README.md)
-  - [ ] US-2013: electron-store 12
-  - [ ] US-2014: simple-git 4
-  - [ ] US-2015: jschardet 4
-  - [ ] US-2016: ESLint 10
-  - [ ] US-2018: video.js 10
-  - [ ] [US-2019: Dependency refresh (recurring)](tasks/US-2019-dependency-refresh/README.md) — task document created; first round scheduled 2027-02-15
-  - [ ] [US-2021: TypeScript 6](tasks/US-2021-typescript-6/README.md)
-  - [ ] [US-2020: Mermaid view look and layout switches (classic / neo / hand-drawn, dagre / ELK)](tasks/US-2020-mermaid-look-layout/README.md)
 
 ## Planned
 

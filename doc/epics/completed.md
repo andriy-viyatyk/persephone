@@ -1,3 +1,37 @@
+## EPIC-179 — Dependency refresh
+
+Completed 2026-11-15. User policy: keep dependencies current instead of letting them age into migrations. Unused `d3`
+packages removed; every in-range update taken; each major in its own commit with a live check. **Majors:** Monaco 0.57
+(patch reduced to the platform/process hunks; nls imports moved), Mermaid 12 (classic + dagre pinned for the contrast
+fix; `mermaid-to-excalidraw` dropped), electron-store 12 (no code change), simple-git 4 (its `GIT_*` environment guard
+broke status, refs, fetch and push; `git-service.ts` now builds every instance through `gitAt()`), jschardet 4 (new
+confidence scale; threshold `DETECTION_MIN_CONFIDENCE = 0.05`; windows-1252 and BOM-less UTF-16 now detected),
+ESLint 10 (`eslint-plugin-import` → `eslint-plugin-import-x`; zones verified to still fail; 46 new-rule sites fixed,
+including a latent `TextTranslationProvider` unassigned-resolver bug), TypeScript 6 (`baseUrl` removed, `"strict":
+false` stated, three `HTMLElement.hidden` type fixes). **video.js removed** (user decision): v10 is a different product,
+and it only skinned HLS; HLS now uses native controls over our hls.js. **TypeScript 7 blocked** (typescript-eslint
+requires `<6.1`); tracked on the Watch list of the new recurring task US-2019, first round scheduled 2027-02-15.
+**Added feature (US-2020):** Look (classic / neo / hand-drawn) and Layout (dagre / ELK) menus on the Mermaid toolbar,
+saved per page, with a serialized Mermaid render queue. Seven labels translated in all 17 packs (`i18n:check`
+1683/1683). **Verified live:** every major in a cold-started app, the Mermaid look/layout menus and dark-theme
+contrast, HLS playback, encoding samples, git operations, settings round-trip. **Not verified:** Mermaid choices
+across a restart; git stage/commit/push/switch; HLS with custom headers. Implementation mostly by Claude (Codex has no
+network for installs); US-2020 planned by Codex (Terra) and implemented by Codex (Luna); ESLint 10 rule fixes and the
+completion skills by Codex (Luna). Epic document: [EPIC-179](EPIC-179.md).
+
+- [x] **In-range refresh (US-2010).** d3 removed, in-range bumps, `@types/node` 24, board libraries rebuilt.
+- [x] **Monaco 0.57 (US-2011).** Patch reduced; translated menu text still loads.
+- [x] **Mermaid 12 (US-2012).** Classic look and dagre layout pinned; Excalidraw lib rebuilt.
+- [x] **electron-store 12 (US-2013), simple-git 4 (US-2014), jschardet 4 (US-2015).**
+- [x] **ESLint 10 (US-2016)** with `eslint-plugin-import-x`.
+- [x] **TypeScript 7 (US-2017).** Blocked; folded into US-2019's Watch list.
+- [x] **video.js (US-2018).** Removed; HLS on native controls.
+- [x] **Recurring refresh (US-2019).** Task document `doc/tasks/US-2019-dependency-refresh/`, kept; scheduled 2027-02-15.
+- [x] **Mermaid look and layout (US-2020).**
+- [x] **TypeScript 6 (US-2021).**
+- [x] **Epic review.** `/review` no findings; `/document` content-pipeline, editors, folder-structure, key-files,
+  refactoring docs; `/userdoc` Mermaid and video guides, three What's New entries; translations complete.
+
 ## EPIC-178 — Page navigation history (Back / Forward for every page)
 
 Completed 2026-11-15. User idea: browser-style Back / Forward for every page, whatever navigated it (Explorer clicks,

@@ -163,7 +163,7 @@ Answers to the questions in the brief:
   5. **`content` menus.** Move `tree-context-menus.ts`, `open-with-editor.ts` and `open-with-default-app.ts` to `ui/link-menus/` (or `editors/shared/`).
   6. **`content` → pages/dialogs/trust.** See CORE-11: Layer 2 records an action, and Layer 3 (which may depend on `api/pages`) executes it.
   7. **`api` → `ui`.** See CORE-2 step 7. `settings.ts` takes `MICROPHONE_TUNING`/`MicrophoneNotch` from a `shared/` module.
-  8. **Lock it in** with `eslint-plugin-import` `no-restricted-paths` zones mirroring `overview.md:232-241`. This is a lint rule, not a test. Then correct the overview wherever a real, deliberate edge remains (for example "`content` providers may use `api/fs`").
+  8. **Lock it in** with `eslint-plugin-import-x` `no-restricted-paths` zones mirroring `overview.md:232-241`. This is a lint rule, not a test. Then correct the overview wherever a real, deliberate edge remains (for example "`content` providers may use `api/fs`").
 - **Risk / notes:** Each step is small and mechanical. The lint rule should start as a warning listing the known exceptions, then tighten as CORE-1, CORE-2 and CORE-11 land. This affects the `uikit` reviewer (guard) and the editors reviewer (resolver ownership).
 
 ### CORE-4: Open-hint handling is implemented four times; pipe "logical path" knowledge leaks into four modules

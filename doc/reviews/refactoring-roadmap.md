@@ -272,7 +272,7 @@ Key decisions behind the map:
 
 - **No new top-level layer.** `api/` is the service layer. Speech, translation, dialogs, editor categories and the board
   domain move *into* it, out of `ui/` and `editors/`.
-- **Enforcement:** add `eslint-plugin-import` `no-restricted-paths` zones that mirror the map.
+- **Enforcement:** add `eslint-plugin-import-x` `no-restricted-paths` zones that mirror the map.
   - Start them as warnings that list today's exceptions, and tighten them as each phase lands.
   - Then rewrite `overview.md` "Dependency Rules" so it states the enforced map.
   - This is a lint rule, not a test.

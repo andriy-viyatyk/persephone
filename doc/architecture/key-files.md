@@ -191,7 +191,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Guide provider (read-only packaged guide content; scheme identity and front-matter stripping) | `/src/renderer/content/providers/GuideProvider.ts` |
 | Board provider delegate (read/write, optional ranged read, stat and watch over the renderer service lease; operation deadlines and control cap are policy-driven) | `/src/renderer/content/providers/ProxyProvider.ts` |
 | Board pipe content-type helper (logical extension and archive-entry MIME mapping for ranged resource responses) | `/src/renderer/content/board-pipe-utils.ts` |
-| Shared text codec (`decodeBuffer` / `encodeString`) | `/src/renderer/core/utils/text-encoding.ts` |
+| Shared text codec (`decodeBuffer` / `encodeString`; jschardet confidence floor is `DETECTION_MIN_CONFIDENCE`) | `/src/renderer/core/utils/text-encoding.ts` |
 | Link parsers (Layer 1)   | `/src/renderer/content/parsers.ts`                |
 | Typed link-action dispatch (clears caller input and executes the action recorded by each parser/resolver step) | `/src/renderer/content/open-actions/dispatch.ts` |
 | Non-content link actions (browser routing, folder pages, capabilities and notices) | `/src/renderer/content/open-actions/` |
@@ -369,6 +369,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Category editor view (native page toolbar and provider-backed category surface) | `/src/renderer/editors/category/CategoryEditor.ts` |
 | Board Info editor view (native install/properties surface) | `/src/renderer/editors/board-info/BoardInfoEditorView.ts` |
 | Native Mermaid page view and preview body (text page shell and image viewport) | `/src/renderer/editors/mermaid/MermaidEditorView.ts`, `/src/renderer/editors/mermaid/MermaidBodyView.ts` |
+| Mermaid page look/layout option types, validation and classic/dagre defaults | `/src/renderer/editors/mermaid/mermaid-options.ts` |
 | Converted Toolset editor view (native standalone editor view) | `/src/renderer/editors/toolset/ToolsetEditorView.ts` |
 | Native Explorer Search panel (vanilla secondary view over `FileSearchView`) | `/src/renderer/editors/explorer/SearchSecondaryView.ts` |
 | FileSearch native view and pooled result row | `/src/renderer/components/file-search/FileSearchView.ts`, `/src/renderer/components/file-search/FileSearchRowView.ts` |
@@ -610,7 +611,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Mneme root/search editor (+ Explorer-like tree sidebar; Pattern B per-folder singleton) | `/src/renderer/editors/mneme-root/MnemeRootEditorModel.ts` |
 | VMP signing (build hook) | `/scripts/vmp-sign.mjs`                           |
 | Packaged Electron fuses (disable RunAsNode, Node environment/inspector overrides; enable cookie encryption and asar integrity) | `/electron-builder.yml` |
-| Git service (main)       | `/src/main/git-service.ts`                        |
+| Git service (main; `gitAt()` creates simple-git 4 instances with the allow-list for explicit `GIT_*` variables) | `/src/main/git-service.ts` |
 | Git IPC types            | `/src/ipc/git-ipc.ts`                             |
 | Clipboard IPC types and renderer event payloads (`ClipboardHistoryItem.dropEffect` for file lists) | `/src/ipc/clipboard-ipc.ts` |
 | Browser URL-claim snapshot IPC (renderer-to-main generation-numbered claims and endpoint validation) | `/src/ipc/contracts/boards.ts`, `/src/ipc/renderer/api.ts`, `/src/ipc/main/board-handlers.ts` |

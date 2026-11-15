@@ -621,9 +621,10 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── HtmlBodyView.ts            # Native sandboxed preview body
 │   │   └── index.ts
 │   ├── mermaid/            # Mermaid diagram preview (text-bearing, content-host trait)
-│   │   ├── MermaidEditor.ts          # EditorModel — SVG URL, loading, error, light mode
+│   │   ├── MermaidEditor.ts          # EditorModel — SVG URL, loading, error, and per-page look/layout/theme
 │   │   ├── MermaidBodyView.ts         # Native preview body
 │   │   ├── render-mermaid.ts         # Rendering utilities (shared with Markdown)
+│   │   ├── mermaid-options.ts         # Look/layout types, validation, and defaults
 │   │   └── index.ts
 │   ├── log-view/           # Log viewer (text-bearing, content-host trait)
 │   │   ├── LogViewEditor.ts          # EditorModel — entry state, host synchronization, and view coordination

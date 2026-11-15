@@ -7,8 +7,8 @@ editorId: "mermaid-view"
 
 # Mermaid Diagram Viewer
 
-Mermaid Viewer renders diagrams from Mermaid source with zoom, pan, theme selection, image export,
-and two different Excalidraw handoffs.
+Mermaid Viewer renders diagrams from Mermaid source with zoom, pan, theme, look, and layout choices,
+image export, and two different Excalidraw handoffs.
 
 ## How to Open
 
@@ -20,7 +20,7 @@ choose **Mermaid** from the tab's language menu and then choose **Mermaid** in t
 
 ```
 +---------------------------------------------------------------------+
-| [Nav] [Back][Forward] [Compare] [Theme] [Open] [Convert] [Save] [Copy] [Switch] | toolbar: history and compare left; Mermaid actions and switch right
+| [Nav] [Back][Forward] [Theme] [Look] [Layout] [Open] [Convert] [Save] [Copy] [Switch] | toolbar: navigation left; Mermaid actions and editor switch right
 +---------------------------------------------------------------------+
 | [Mermaid diagram]                                                   |  rendered Mermaid preview below the toolbar
 +---------------------------------------------------------------------+
@@ -30,12 +30,24 @@ choose **Mermaid** from the tab's language menu and then choose **Mermaid** in t
 
 - Compare → `text-compare-left`
 - Theme → `mermaid-theme`
+- Look → `mermaid-look`; menu choices: Classic (`mermaid-look-classic`), Neo (`mermaid-look-neo`), Hand-drawn (`mermaid-look-handDrawn`)
+- Layout → `mermaid-layout`; menu choices: Dagre (`mermaid-layout-dagre`), ELK (`mermaid-layout-elk`)
 - Open in Drawing → `mermaid-open-draw`
 - Convert to Excalidraw → `mermaid-convert-excalidraw`
 - Save → `mermaid-save`
 - Copy → `mermaid-copy`
 - Page navigation and Editor switch → no entry: shell-owned controls
 - Generated Mermaid SVG/image internals → no entry: generated preview content
+
+### When a comparable page is grouped on the left
+
+```
++---------------------------------------------------------------------+
+| [Compare with left page]                                           | available when a comparable page is grouped on the left
++---------------------------------------------------------------------+
+```
+
+Compare maps to `text-compare-left`. The menu choices show a check on the current Look or Layout.
 
 ### When Mermaid rendering is loading or has an error
 
@@ -60,9 +72,13 @@ choose **Mermaid** from the tab's language menu and then choose **Mermaid** in t
 
 ## Rendering and export
 
-All Mermaid diagram types render with live, debounced updates. The light/dark diagram theme is
-independent of the app theme. **Copy** places the rendered diagram on the clipboard and **Save as
-PNG** rasterizes it with Persephone's renderer.
+All Mermaid diagram types render with live, debounced updates. Use **Theme** to switch the diagram's
+light or dark theme independently of the app theme. **Look** selects Classic, Neo, or Hand-drawn;
+**Layout** selects Dagre or ELK. Each page saves its own Look and Layout choices and rerenders as soon
+as you change one. New pages start with Classic and Dagre. These choices apply only to Mermaid
+Viewer pages; Mermaid diagrams in Markdown Preview and Log View keep the Classic look and Dagre
+layout. **Copy** places the rendered diagram on the clipboard and **Save as PNG** rasterizes it with
+Persephone's renderer.
 
 **Convert to Excalidraw** turns flowchart, sequence, and class diagrams into individually editable
 shapes. **Open in Drawing** embeds any diagram type as one flat image for annotation; state,

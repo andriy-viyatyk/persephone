@@ -391,6 +391,13 @@ creating DOM nodes. Script, frame, form, style, and other active-content element
 URL-bearing properties are checked against the Markdown link and image scheme allowlists.
 Mermaid diagrams render with `securityLevel: "strict"`.
 
+The Mermaid page toolbar offers **Look** choices (Classic, Neo, Hand-drawn) and **Layout** choices
+(Dagre, ELK). The selected values are saved in the page's editor-state slot and restored per page;
+new pages and invalid or absent saved values use Classic and Dagre. A selection rerenders the page
+immediately. Markdown code blocks and Log View Mermaid output keep the shared renderer's Classic
+look and Dagre layout, independent of Mermaid page settings. The option types, validators, and
+defaults live in `editors/mermaid/mermaid-options.ts`.
+
 ## CONTENT_HOST_TRAIT
 
 Switchable text-bearing editors expose `CONTENT_HOST_TRAIT` so any owner can transfer their host to a new editor instance:

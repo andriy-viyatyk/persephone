@@ -38,6 +38,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
   library modules they import.
 - **Relative requires in Script Library modules:** A library module can import a neighbour with
   `require("./helper")` or an ES `import` from `"../utils/x"` again; the target gets the same script globals.
+- **Mermaid diagram choices:** choose a Classic, Neo, or Hand-drawn look and a Dagre or ELK layout in
+  the Mermaid toolbar. Each page remembers its choices; Markdown and Log View diagrams keep the
+  Classic look and Dagre layout.
+- **HLS stream controls:** HLS playback now uses the browser's native media controls.
+- **More text files open with the right encoding:** Windows-1252 and BOM-less UTF-16 files are now
+  detected when opened.
 
 ---
 

@@ -7,8 +7,8 @@ editorId: "video-view"
 
 # Video Player
 
-Video Player handles local media, URLs, HLS streams, and audio. Audio files use the same native
-HTML media controls as video for play/pause, seeking, and volume.
+Video Player handles local media, URLs, HLS streams, and audio. HLS streams and audio files use the
+browser's native HTML media controls, like video, for play/pause, seeking, and volume.
 
 ## How to Open
 
@@ -50,7 +50,7 @@ long); it collapses again when it loses focus. Press **Enter** to play.
 ## Playback
 
 Audio plays in the dark media area through the browser's native controls for play/pause, seek, and
-volume. Video playback keeps its native controls, and `.m3u8` sources use HLS playback when
+volume. Video and HLS playback use those same native controls; `.m3u8` sources use HLS playback when
 supported.
 Local and archive-hosted media use the streaming server where needed, so seeking does not require
 loading the entire source first. If Chromium cannot decode a file, **Open in VLC** appears when VLC
