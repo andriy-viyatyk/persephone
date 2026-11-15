@@ -84,7 +84,7 @@ Mermaid brings its own copy of d3 as one of its dependencies.
 | [US-2010](../tasks/US-2010-dependency-refresh-in-range/README.md) | Remove d3; in-range updates; `@types/node` 24 | — | Also rebuild both board libraries and rename the Vite plugin patch |
 | [US-2011](../tasks/US-2011-monaco-0-57/README.md) | Monaco 0.57 | US-2010 | Redo the patch, check the worker setup and the translated menu text |
 | [US-2012](../tasks/US-2012-mermaid-12/README.md) | Mermaid 12 and mermaid-to-excalidraw 3 | US-2010 | Rebuild the Excalidraw lib; check every place a diagram renders |
-| US-2013 | electron-store 12 | US-2010 | Settings must survive the upgrade; check whether 12 requires a newer Electron or ESM |
+| US-2013 | electron-store 12 | US-2010 | Settings must survive the upgrade; check whether 12 requires a newer Electron or ESM. **Done (no task doc):** 12.0.0 needs Electron ≥ 35 (we ship 44) and pulls `conf` 16. Its breaking changes cover migrations, schema, encryption and invalid dot paths; `e-store.ts` passes no options and every key is a plain dotted string, so no code changed. A cold start read the existing `config.json` intact |
 | US-2014 | simple-git 4 | US-2010 | Go through the Git editor and Git service API calls |
 | US-2015 | jschardet 4 | US-2010 | Encoding detection on sample files |
 | US-2016 | ESLint 10 | US-2010 | Blocked until `eslint-plugin-import` supports 10, or replace it with `eslint-plugin-import-x`. The import zones must keep failing the build on a violation |
