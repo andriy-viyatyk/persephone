@@ -157,13 +157,30 @@ export class TranscriptController {
             source.stream = stream;
             const capture = new PcmAudioCapture();
             source.capture = capture;
-            await capture.start({ stream, onChunk: (data) => this.queueAudio(source, data), onLevel: (level) => this.updateLevel(source, level), sharedContext: this.audioContext });
+            await capture.start({
+                stream,
+                onChunk: (data) => this.queueAudio(source, data),
+                onLevel: (level) => this.updateLevel(source, level),
+                sharedContext: this.audioContext,
+                onStatus: (mode, reason) => {
+                    if (mode !== "failed" || !isCurrent()) return;
+                    ui.notify(reason || t("transcript.failed"), "warning");
+                    void this.cancel();
+                },
+                // Windows can end the loopback track when the default speakers change; capture the new ones.
+                reopenStream: async () => {
+                    const next = await TranscriptDisplayCapture.open(isCurrent);
+                    if (!next?.getAudioTracks().length) throw new Error(t("transcript.failed"));
+                    source.stream = next;
+                    return { stream: next };
+                },
+            });
         } else {
             const opened = await MicrophoneCapture.open({
                 purpose: "transcript",
                 isCurrent,
                 sharedContext: this.audioContext,
-                borrowedLoopbackStream: this.sources.find((item) => item.kind === "computer")?.stream,
+                borrowedLoopbackStream: () => this.sources.find((item) => item.kind === "computer")?.stream,
                 onChunk: (data) => this.queueAudio(source, data),
                 onLevel: (level) => this.updateLevel(source, level),
                 onFailed: () => { void this.cancel(); },

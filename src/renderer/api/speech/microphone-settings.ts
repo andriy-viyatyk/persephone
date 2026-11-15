@@ -46,24 +46,43 @@ export function reportMicrophoneStatus(mode: AudioProcessingMode, reason: string
     ipcRenderer.send(AUDIO_STATUS, { mode, reason });
 }
 
+/** True when Windows now routes the default input to a different device than the captured track's. */
+async function defaultMicrophoneMoved(track: MediaStreamTrack): Promise<boolean> {
+    const devices = await navigator.mediaDevices.enumerateDevices().catch((): MediaDeviceInfo[] => []);
+    const current = devices.find((device) => device.kind === "audioinput" && device.deviceId === "default")?.groupId;
+    const captured = track.getSettings().groupId;
+    return !!current && !!captured && current !== captured;
+}
+
 export function watchMicrophoneSettings(capture: PcmAudioCapture, stream: MediaStream): void {
+    // The capture replaces its stream when the default device changes, so always read the live one.
+    const options = (): MicrophoneCleaningOptions => microphoneOptions(capture.mediaStream ?? stream);
     capture.onStop(settings.watch("microphone.clean", () => {
-        void capture.reconfigureMicrophone(microphoneOptions(stream));
+        void capture.reconfigureMicrophone(options());
     }));
     capture.onStop(settings.watch("microphone.attenuation-db", () => {
-        capture.updateCleaning(microphoneOptions(stream));
+        capture.updateCleaning(options());
     }));
     capture.onStop(settings.watch("microphone.notches", () => {
-        capture.updateCleaning(microphoneOptions(stream));
+        capture.updateCleaning(options());
     }));
     const { ipcRenderer } = require("electron") as typeof import("electron");
-    const retry = (): void => capture.retryMicrophone(microphoneOptions(stream));
+    const retry = (): void => capture.retryMicrophone(options());
     ipcRenderer.on(AUDIO_RETRY, retry);
     capture.onStop(() => ipcRenderer.removeListener(AUDIO_RETRY, retry));
+    // A device was added or removed: follow a new default microphone (a headset plugged back in);
+    // otherwise retry the echo reference, which may have moved with the default speakers. An ended
+    // track (the device unplugged) is handled by the capture itself.
+    const followDefault = async (): Promise<void> => {
+        const track = capture.mediaStream?.getAudioTracks()[0];
+        if (track?.readyState !== "live") return;
+        if (await defaultMicrophoneMoved(track)) capture.switchStream();
+        else retry();
+    };
     let deviceTimer: ReturnType<typeof setTimeout> | undefined;
     const deviceChanged = (): void => {
         clearTimeout(deviceTimer);
-        deviceTimer = setTimeout(retry, 300);
+        deviceTimer = setTimeout(() => { void followDefault(); }, 300);
     };
     navigator.mediaDevices.addEventListener("devicechange", deviceChanged);
     capture.onStop(() => { clearTimeout(deviceTimer); navigator.mediaDevices.removeEventListener("devicechange", deviceChanged); });

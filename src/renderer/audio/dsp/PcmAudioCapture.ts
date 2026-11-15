@@ -34,7 +34,14 @@ export interface PcmAudioCaptureOptions {
     onStatus?: (mode: AudioProcessingMode, reason: string) => void;
     referenceAcquire?: () => Promise<LoopbackLease>;
     ownsStream?: boolean;
+    /**
+     * Opens a replacement stream when the current track ends (a device was unplugged) or when
+     * `switchStream()` is called. Without it, an ended microphone track reports `failed` and stops.
+     */
+    reopenStream?: () => Promise<ReopenedStream>;
 }
+
+export interface ReopenedStream { stream: MediaStream; cleaning?: MicrophoneCleaningOptions }
 
 function loadWorklet(context: AudioContext): Promise<void> {
     let loading = workletModules.get(context);
@@ -80,21 +87,28 @@ export class PcmAudioCapture {
     private reconfiguring = false;
     private removeTrackListener: (() => void) | undefined;
     private discontinuity = false;
-    public async start({ stream, onChunk, onLevel = () => {}, sharedContext, cleaning, onStatus, referenceAcquire, ownsStream = true }: PcmAudioCaptureOptions): Promise<void> {
+    private reopenStream: (() => Promise<ReopenedStream>) | undefined;
+    private streamSwitchRequested = false;
+    public async start({ stream, onChunk, onLevel = () => {}, sharedContext, cleaning, onStatus, referenceAcquire, ownsStream = true, reopenStream }: PcmAudioCaptureOptions): Promise<void> {
         this.stream = stream;
         this.onChunk = onChunk;
         this.onLevel = onLevel;
         this.status = onStatus;
         this.referenceAcquire = referenceAcquire;
+        this.reopenStream = reopenStream;
         this.loopbackRequested = Boolean(referenceAcquire);
         this.ownsContext = !sharedContext;
         this.ownsStream = ownsStream;
         this.removeTrackListener?.();
         const track = stream.getAudioTracks()[0];
-        if (track && cleaning) {
+        if (track && (cleaning || reopenStream)) {
             const effective = track.getSettings();
-            console.info("Microphone capture settings", { echoCancellation: effective.echoCancellation, noiseSuppression: effective.noiseSuppression, autoGainControl: effective.autoGainControl, sampleRate: effective.sampleRate });
-            const ended = (): void => { this.status?.("failed", "Microphone disconnected"); void this.stop(); };
+            if (cleaning) console.info("Microphone capture settings", { echoCancellation: effective.echoCancellation, noiseSuppression: effective.noiseSuppression, autoGainControl: effective.autoGainControl, sampleRate: effective.sampleRate });
+            const ended = (): void => {
+                if (this.reopenStream) { this.switchStream(); return; }
+                this.status?.("failed", "Microphone disconnected");
+                void this.stop();
+            };
             track.addEventListener("ended", ended);
             this.removeTrackListener = () => track.removeEventListener("ended", ended);
         }
@@ -194,6 +208,16 @@ export class PcmAudioCapture {
 
     public onStop(dispose: () => void): void { if (this.stopped) dispose(); else this.disposers.push(dispose); }
 
+    /** The stream currently captured; it changes when `switchStream()` replaces it. */
+    public get mediaStream(): MediaStream | undefined { return this.stream; }
+
+    /** Replace the captured stream through `reopenStream`, keeping the consumer callbacks. */
+    public switchStream(): void {
+        if (!this.reopenStream || this.stopped) return;
+        this.streamSwitchRequested = true;
+        void this.runRestarts();
+    }
+
     public subscribeRaw(listener: (samples: Float32Array, frame: number) => void): () => void {
         this.rawListeners.add(listener);
         return () => this.rawListeners.delete(listener);
@@ -203,13 +227,21 @@ export class PcmAudioCapture {
     public async reconfigureMicrophone(options: MicrophoneCleaningOptions): Promise<void> {
         if (this.loopbackRequested && this.cleaning) { this.cleaning.update(options); return; }
         this.requestedCleaning = options;
+        await this.runRestarts();
+    }
+
+    /** Applies queued cleaning changes and stream switches one at a time. */
+    private async runRestarts(): Promise<void> {
         if (this.reconfiguring || this.stopped) return;
         this.reconfiguring = true;
         try {
-            while (this.requestedCleaning && !this.stopped) {
-                const next = this.requestedCleaning;
+            while ((this.requestedCleaning || this.streamSwitchRequested) && !this.stopped) {
+                const switching = this.streamSwitchRequested;
+                this.streamSwitchRequested = false;
+                let next = this.requestedCleaning;
                 this.requestedCleaning = undefined;
-                const stream = this.stream, chunk = this.onChunk, level = this.onLevel;
+                let stream = this.stream;
+                const chunk = this.onChunk, level = this.onLevel;
                 if (!stream || !chunk || !level) return;
                 this.status?.("restart", "");
                 await this.flush();
@@ -223,10 +255,20 @@ export class PcmAudioCapture {
                 this.context = undefined; this.source = undefined; this.node = undefined; this.mute = undefined;
                 this.samples = new Float32Array(0); this.sampleBase = 0; this.nextSample = 0; this.inputRate = 0; this.originMs = undefined;
                 if (this.stopped) return;
-                await stream.getAudioTracks()[0]?.applyConstraints({ channelCount: 1, echoCancellation: !this.loopbackRequested, noiseSuppression: !(next.enabled || this.loopbackRequested), autoGainControl: true });
+                if (switching && this.reopenStream) {
+                    this.removeTrackListener?.(); this.removeTrackListener = undefined;
+                    const reopened = await this.reopenStream();
+                    if (this.stopped) { reopened.stream.getTracks().forEach((track) => track.stop()); return; }
+                    if (this.ownsStream) stream.getTracks().forEach((track) => track.stop());
+                    stream = reopened.stream;
+                    this.stream = stream;
+                    next = reopened.cleaning;
+                } else if (next) {
+                    await stream.getAudioTracks()[0]?.applyConstraints({ channelCount: 1, echoCancellation: !this.loopbackRequested, noiseSuppression: !(next.enabled || this.loopbackRequested), autoGainControl: true });
+                }
                 if (this.stopped) return;
                 await this.start({ stream, onChunk: chunk, onLevel: level, sharedContext, cleaning: next, onStatus: this.status,
-                    referenceAcquire: this.referenceAcquire, ownsStream: this.ownsStream });
+                    referenceAcquire: this.referenceAcquire, ownsStream: this.ownsStream, reopenStream: this.reopenStream });
             }
         } catch (error) {
             this.status?.("failed", errMessage(error, "Microphone restart failed"));
