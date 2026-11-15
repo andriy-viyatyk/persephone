@@ -73,6 +73,9 @@ export class PagesModel extends TModel<OpenFilesState> {
 
     attachPage = (page: PageModel) => {
         const pageId = page.id;
+        page.history.setNavigator((historyPageId, filePath, options) =>
+            this.lifecycle.navigatePageTo(historyPageId, filePath, options),
+        );
         const editorSubs = new Map<string, () => void>();
 
         const reconcileEditorSubs = () => {

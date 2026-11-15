@@ -102,17 +102,17 @@ class MarkdownBackButtonView extends VanillaView<{ model: MarkdownEditor }> {
             this.pageSubscription = undefined;
             this.boundPage = page;
             if (page) {
-                this.pageSubscription = page.state.subscribe<number>(
-                    (navBackCount) => this.sync(navBackCount),
-                    (state) => state.navBackCount,
+                this.pageSubscription = page.state.subscribe<boolean>(
+                    (canGoBack) => this.sync(canGoBack),
+                    (state) => state.canGoBack ?? false,
                 );
             }
         }
-        this.sync(page?.state.get().navBackCount ?? 0);
+        this.sync(page?.state.get().canGoBack ?? false);
     }
 
-    private sync(navBackCount: number): void {
-        if (navBackCount <= 0) {
+    private sync(canGoBack: boolean): void {
+        if (!canGoBack) {
             if (this.button) {
                 this.releaseChild(this.button);
                 this.button = undefined;

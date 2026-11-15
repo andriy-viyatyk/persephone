@@ -3,7 +3,6 @@ import type { EditorModelInstance as EditorModel } from "../../editors/base";
 import type { IContentPipe } from "../types/io.pipe";
 import type { ISecondaryViewsState, SecondaryViewsModel } from "./SecondaryViewsModel";
 import type { IPageState } from "./PageModel";
-import type { NavEntry } from "../../../shared/persistence";
 
 /**
  * The editor↔owner contract that `EditorModel.page` is typed as. `PageModel`
@@ -42,9 +41,9 @@ export interface IPageHost {
     toggleNavigator(pipe?: IContentPipe | null, filePath?: string): Promise<void>;
     releaseEditor(editor: EditorModel, options: { dispose: boolean }): Promise<void>;
 
-    // Markdown in-page back-navigation history 
-    pushNavBack(entry: NavEntry): void;
-    popNavBack(): NavEntry | undefined;
+    readonly history?: {
+        back(): Promise<void>;
+    };
 
     // ── OPTIONAL — page-tab property (an embedded host isn't a pinnable tab) ──
     pinned?: boolean;

@@ -80,19 +80,9 @@ export class MarkdownEditor extends TextHostEditorModel<
         if (fragment) this.queue.send({ type: "anchor", fragment });
     }
 
-    /** Back-navigate the page to the previous Markdown document. Pops
-     *  the page's back stack and re-opens that entry in place. Goes straight
-     *  through `openRawLink` (not the link interceptor), so it does not push a
-     *  new history entry. No-op when there's no page or no history. */
+    /** Back-navigate the owning page through its shared history model. */
     navigateBack = async (): Promise<void> => {
-        const page = this.page;
-        const pageId = page?.id;
-        if (!page || !pageId) return;
-        const entry = page.popNavBack();
-        if (!entry) return;
-        await app.events.openRawLink.sendAsync(
-            createLinkData(entry.href, { pageId, target: EditorId.mdView }),
-        );
+        await this.page?.history?.back();
     };
 
     followLink(href: string): boolean {
@@ -100,10 +90,6 @@ export class MarkdownEditor extends TextHostEditorModel<
         const pageId = page?.id;
         if (!page || !pageId) return false;
 
-        const current = this.host?.state.get();
-        if (current?.filePath) {
-            page.pushNavBack({ href: current.filePath, title: current.title });
-        }
         void app.events.openRawLink.sendAsync(
             createLinkData(href, { pageId, target: EditorId.mdView, sourceId: "markdown-link" }),
         );

@@ -1,5 +1,5 @@
 import { InternalEditorIds } from "../../editors/base/editor-ids";
-import type { EditorDescriptor, PageDescriptor } from "../../../shared/persistence";
+import type { EditorDescriptor, PageDescriptor, PageHistoryEntry } from "../../../shared/persistence";
 import { EditorId } from "../../../shared/editor-ids";
 import {
     decodePersephoneBoardLink,
@@ -7,6 +7,7 @@ import {
 } from "../../content/persephone-board-link";
 import { boardRegistry } from "../boards/board-registry";
 import { resolveBoardEditorId } from "../boards/custom-editor-registry";
+import { isFileUrl, normalizeFileUrl } from "../../content/link-utils";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -42,19 +43,63 @@ async function repairBoardLink(value: unknown): Promise<unknown> {
 export async function migratePersistedBoardLinks(desc: PageDescriptor): Promise<PageDescriptor> {
     const editors = await Promise.all(desc.editors.map(async (descriptor) => {
         const sourceLink = descriptor.state.sourceLink;
-        if (!isRecord(sourceLink)) return descriptor;
-        const normalizedSourceLink = { ...sourceLink };
-        if ("href" in sourceLink) normalizedSourceLink.href = await repairBoardLink(sourceLink.href);
-        if ("url" in sourceLink) normalizedSourceLink.url = await repairBoardLink(sourceLink.url);
-        return { ...descriptor, state: { ...descriptor.state, sourceLink: normalizedSourceLink } };
+        const state = { ...descriptor.state };
+        if (isRecord(sourceLink)) state.sourceLink = await repairStoredSourceLink(sourceLink);
+        const host = descriptor.host
+            ? { ...descriptor.host, ...(descriptor.host.pipe ? { pipe: await repairPipePath(descriptor.host.pipe) } : {}) }
+            : undefined;
+        return { ...descriptor, state, ...(host ? { host } : {}) };
     }));
-    const navBack = desc.navBack
-        ? await Promise.all(desc.navBack.map(async (entry) => ({
+    const repairStack = async (entries: PageHistoryEntry[] | undefined) => entries
+        ? Promise.all(entries.map(async (entry) => ({
             ...entry,
-            href: String(await repairBoardLink(entry.href)),
+            filePath: String(await repairBoardLink(entry.filePath)),
+            target: await resolveBoardEditorId(entry.target),
+            ...(entry.sourceLink ? { sourceLink: await repairStoredSourceLink(entry.sourceLink) } : {}),
         })))
         : undefined;
-    return { ...desc, editors, navBack };
+    const historyBack = await repairStack(desc.historyBack);
+    const historyForward = await repairStack(desc.historyForward);
+    const { navBack: _legacyNavBack, ...normalized } = desc;
+    return { ...normalized, editors, historyBack, historyForward };
+}
+
+async function repairPipePath<T extends { provider: { config: Record<string, unknown> } }>(pipe: T): Promise<T> {
+    const path = pipe.provider.config.path;
+    if (typeof path !== "string") return pipe;
+    const repairedPath = await repairBoardLink(path);
+    return repairedPath === path ? pipe : {
+        ...pipe,
+        provider: { ...pipe.provider, config: { ...pipe.provider.config, path: repairedPath } },
+    };
+}
+
+async function repairStoredSourceLink<T extends object>(sourceLink: T): Promise<T> {
+    const values = sourceLink as Record<string, unknown>;
+    const repaired = { ...values };
+    if ("href" in values) repaired.href = await repairBoardLink(values.href);
+    if ("url" in values) repaired.url = await repairBoardLink(values.url);
+    const pipeDescriptor = values.pipeDescriptor;
+    if (isRecord(pipeDescriptor) && isRecord(pipeDescriptor.provider) && isRecord(pipeDescriptor.provider.config)) {
+        repaired.pipeDescriptor = await repairPipePath(pipeDescriptor as {
+            provider: { config: Record<string, unknown> };
+        });
+    }
+    return repaired as T;
+}
+
+/** Added 2026-11-15: migrate the old Markdown-only stack into the page history shape. */
+export function migrateLegacyPageHistory(desc: PageDescriptor): PageDescriptor {
+    const historyBack = desc.historyBack ?? desc.navBack?.map((entry) => {
+        const filePath = isFileUrl(entry.href) ? normalizeFileUrl(entry.href) : entry.href;
+        return { filePath, target: EditorId.mdView, title: entry.title ?? entry.href };
+    });
+    const { navBack: _legacyNavBack, ...normalized } = desc;
+    return {
+        ...normalized,
+        historyBack,
+        historyForward: desc.historyForward ?? [],
+    };
 }
 
 /** Added 2026-10-24: preserve legacy left pins and discard unsupported pin values. */
@@ -184,5 +229,5 @@ export async function normalizePageDescriptor(desc: PageDescriptor): Promise<Pag
         .map(migrateLegacyEditorStateType)
         .map(promoteLegacyGridSettings);
     const withEditorMigrations = migrateLegacyExplorerPanels({ ...desc, editors: withBoardIds });
-    return migratePersistedBoardLinks(withEditorMigrations);
+    return migratePersistedBoardLinks(migrateLegacyPageHistory(withEditorMigrations));
 }

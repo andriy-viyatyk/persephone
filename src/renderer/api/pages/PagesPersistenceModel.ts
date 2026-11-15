@@ -122,7 +122,7 @@ export class PagesPersistenceModel {
             && popoverSize.width > 1 && popoverSize.height > 1
             ? { width: popoverSize.width, height: popoverSize.height, ...(popoverSize.fullHeight === true ? { fullHeight: true } : {}) }
             : undefined;
-        page.seedNavBack(desc.navBack);
+        page.history.seed({ back: desc.historyBack ?? [], forward: desc.historyForward ?? [] });
         const folderFallbacks: { sourceEditorId: string; folderPath: string }[] = [];
 
         const editors = await Promise.all(

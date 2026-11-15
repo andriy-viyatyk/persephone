@@ -26,10 +26,31 @@ export interface EditorDescriptor {
     host?: HostDescriptor;
 }
 
-/** One entry in a page's Markdown back-navigation history. `href` is a file
- *  path (or `file://` URL) re-openable via `openRawLink` — today the push site
- *  stores a plain OS path; `title` is the document title (Back button tooltip). */
-export interface NavEntry {
+/** One restorable entry in a page's Back or Forward history. */
+export interface PageHistoryEntry {
+    filePath: string;
+    target: string;
+    title: string;
+    sourceLink?: PersistedPageSourceLink;
+}
+
+/** Storage-cleaned link metadata needed to rebuild a history entry. */
+export interface PersistedPageSourceLink {
+    [key: string]: unknown;
+    href?: string;
+    url?: string;
+    title?: string;
+    target?: string;
+    pipeDescriptor?: PipeDescriptor;
+}
+
+export interface PageHistorySnapshot {
+    readonly back: readonly PageHistoryEntry[];
+    readonly forward: readonly PageHistoryEntry[];
+}
+
+/** Legacy Markdown history entry retained as migration input only. */
+export interface LegacyNavEntry {
     href: string;
     title?: string;
 }
@@ -52,10 +73,11 @@ export interface PageDescriptor {
         /** Values: "explorer", "search", or a panel id from one of `editors[]`. */
         activePanel: string;
     };
-    /** Markdown in-page back-navigation history (oldest first). Persisted so it
-     *  survives app restart and moving the page to another window. Omitted when
-     *  empty. */
-    navBack?: NavEntry[];
+    /** Page navigation history, oldest first. Empty stacks are omitted. */
+    historyBack?: PageHistoryEntry[];
+    historyForward?: PageHistoryEntry[];
+    /** Legacy Markdown history, accepted only as dated migration input. */
+    navBack?: LegacyNavEntry[];
 }
 
 /** Top-level shape persisted to `<userData>/openFiles.txt`.

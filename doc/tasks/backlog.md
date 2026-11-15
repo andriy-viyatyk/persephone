@@ -160,6 +160,19 @@ The remaining items are one user sentence each from being settled; none is block
   somewhere different.
 - **The per-toolbar "?" button is declined** (EPIC-095). Additive if wanted anyway.
 
+## Editor ideas
+
+- [ ] **TypeScript project IntelliSense without a board.** Today project IntelliSense and the
+  **Show TypeScript errors** toolbar toggle on `.ts`/`.tsx` pages exist only for folders an open
+  board registered with `persephone.registerTypeScriptProject(root)` (bridge 1.47.0); a `.ts` file in
+  an ordinary folder with a `tsconfig.json` gets neither. Idea: discover the nearest `tsconfig.json`
+  above an opened `.ts`/`.tsx` file and register that folder automatically. The registry
+  (`src/renderer/api/ts-project-registry.ts`) is keyed by owner ids that are board frame ids today,
+  so this needs a non-board owner (e.g. the page) and a release rule when the last page closes. Open
+  questions: cost of loading a large project on every `.ts` open (a setting, or only on demand when
+  the user turns the toggle on?), and how it coexists with a board that registers the same root.
+  Raised 2026-11-15 while fixing US-2002 (the toggle wrongly appeared after a word-wrap toggle).
+
 ## Recorded Epics (not currently planned)
 
 Epics with a written design that are **not** scheduled work — recorded ideas kept out of the

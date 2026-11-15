@@ -7,7 +7,7 @@ import {
     autoInitExplorer,
     toggleNavigator as togglePageNavigator,
 } from "../../editors/explorer/page-explorer";
-import type { NavEntry, PageDescriptor } from "../../../shared/persistence";
+import type { PageDescriptor } from "../../../shared/persistence";
 import {
     DEFAULT_WIDTH,
     MAX_WIDTH,
@@ -20,7 +20,7 @@ import {
 import type { IPageHost } from "./IPageHost";
 import type { IContentPipe } from "../types/io.pipe";
 import { fs } from "../fs";
-import { NavBackStack } from "./NavBackStack";
+import { PageHistory } from "./PageHistory";
 import { secondaryViewsToggled, panelExpanded, Subscription } from "../../core/state/events";
 import { panelKey, parsePanelKey, panelIdOf, isCompositePanelKey } from "./panel-key";
 import { DisposableStore } from "../../core/utils/DisposableStore";
@@ -72,7 +72,8 @@ export interface IPageState {
     hasSidebar: boolean;
     /** Length of the Markdown back-navigation stack. Drives the Markdown view's
      *  Back button visibility (shown iff > 0). */
-    navBackCount: number;
+    canGoBack?: boolean;
+    canGoForward?: boolean;
 }
 
 const defaultPageState: IPageState = {
@@ -81,7 +82,8 @@ const defaultPageState: IPageState = {
     mainEditorId: null,
     version: 0,
     hasSidebar: false,
-    navBackCount: 0,
+    canGoBack: false,
+    canGoForward: false,
 };
 
 export class PageModel implements IPageHost {
@@ -187,31 +189,18 @@ export class PageModel implements IPageHost {
         return this.lockedBoardRoot !== undefined;
     }
 
-    // ── Markdown back-navigation history ────────────────────────────────
+    // ── Page navigation history ─────────────────────────────────────────
 
-    /** Back-navigation stack for the Markdown view — see NavBackStack. Owned
-     *  by the page so it survives editor swaps; count mirrored into state. */
-    private _navBack = new NavBackStack((count) => {
-        this.state.update((s) => { s.navBackCount = count; });
-    });
-
-    /** Push the document being navigated away from onto the back stack. */
-    pushNavBack(entry: NavEntry): void {
-        this._navBack.push(entry);
-    }
-
-    /** Pop and return the most recent back entry, or undefined when empty. */
-    popNavBack(): NavEntry | undefined {
-        return this._navBack.pop();
-    }
-
-    /** Seed the back stack from a persisted descriptor (restore path). */
-    seedNavBack(entries: NavEntry[] | undefined): void {
-        this._navBack.seed(entries);
-    }
-
+    readonly history: PageHistory;
     constructor(id?: string, options: PageModelOptions = {}) {
         this.id = id ?? crypto.randomUUID();
+        this.history = new PageHistory(this, () => {
+            const snapshot = this.history.snapshot();
+            this.state.update((state) => {
+                state.canGoBack = snapshot.back.length > 0;
+                state.canGoForward = snapshot.forward.length > 0;
+            });
+        });
         this.seedSecondaryViewsWidth = options.seedSecondaryViewsWidth ?? true;
     }
 
@@ -773,6 +762,7 @@ export class PageModel implements IPageHost {
     getDescriptor(): PageDescriptor {
         if (this.recovery) return this.recovery.descriptor;
         const navState = this.secondaryViewsModel?.state.get();
+        const history = this.history.snapshot();
         return {
             id: this.id,
             pinned: this.pinned,
@@ -788,7 +778,8 @@ export class PageModel implements IPageHost {
                     activePanel: this.activePanel,
                 }
                 : undefined,
-            navBack: this._navBack.snapshot(),
+            ...(history.back.length ? { historyBack: [...history.back] } : {}),
+            ...(history.forward.length ? { historyForward: [...history.forward] } : {}),
         };
     }
 

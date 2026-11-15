@@ -14,7 +14,6 @@ const defaultPageState: IPageState = {
     mainEditorId: null,
     version: 0,
     hasSidebar: false,
-    navBackCount: 0,
 };
 
 /**

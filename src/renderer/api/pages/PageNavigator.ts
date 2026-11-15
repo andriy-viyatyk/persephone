@@ -4,6 +4,7 @@ import type { PageModel } from "./PageModel";
 import type { EditorModelInstance as EditorModel } from "../../editors/base";
 import type { ILinkData } from "../../../shared/link-data";
 import type { IContentPipe } from "../types/io.pipe";
+import type { PageHistoryEntry } from "../../../shared/persistence";
 import { newTextFileModel } from "../../editors/content-host/TextFileModel";
 import { isFocusInSidebar } from "../../core/utils/focus-utils";
 import { fileIdentity, fpBasename, isVirtualPath } from "../../core/utils/file-path";
@@ -35,6 +36,13 @@ import {
 export interface NavigatePageToOptions extends Omit<PageOpenRequest, "sourceLink"> {
     sourceLink?: ILinkData;
     pipe?: IContentPipe;
+    historyMove?: HistoryMove;
+}
+
+export interface HistoryMove {
+    direction: "back" | "forward";
+    entry: PageHistoryEntry;
+    committed?: boolean;
 }
 
 /** Shared exit for every successful navigation path: repaint, focus (unless
@@ -88,6 +96,7 @@ async function reuseNavigationTarget(
         (e) => e.matchesNavigationTarget?.(navTarget, newFilePath),
     );
     if (!existing) return false;
+    options?.pipe?.dispose();
     if (page.mainEditor !== existing) {
         await page.setMainEditor(existing);
     }
@@ -132,6 +141,7 @@ async function buildEditor(
 ): Promise<EditorModel> {
     if (!isVirtualPath(newFilePath) && !(await appFs.exists(newFilePath))) {
         ui.notify(t("api.fileNotFound", { name: fpBasename(newFilePath) }), "error");
+        if (options?.historyMove) throw new Error("History source no longer exists.");
         const host = newTextFileModel("");
         host.state.update((s) => {
             s.title = fpBasename(newFilePath);
@@ -168,6 +178,7 @@ async function buildEditor(
             t("api.failedToOpenNamedFileWithError", { name: fpBasename(newFilePath), error: errMessage(err) }),
             "error",
         );
+        if (options?.historyMove) throw err;
         const host = newTextFileModel("");
         const editor = createEditorFromContentHost(host);
         await host.restore();
@@ -184,6 +195,7 @@ export async function navigatePageTo(
     const page = model.query.findPage(pageId);
     if (!page || page.isInert) return false;
     await page.restore.ready;
+    const leavingEntry = page.history.capture(page.mainEditor);
     const request: PageOpenRequest = {
         ...options,
         filePath: newFilePath,
@@ -212,23 +224,50 @@ export async function navigatePageTo(
     if (await reuseNavigationTarget(model, page, newFilePath, options)) {
         const editor = page.mainEditor;
         if (editor) applyOpenHints(page, editor, request, { exit: "reuse" });
+        commitHistory(page, leavingEntry, options, newFilePath);
         finishNavigation(model, page);
         return true;
     }
     if (await reuseEditorForFile(model, page, newFilePath, options)) {
         const editor = page.mainEditor;
         if (editor) applyOpenHints(page, editor, request, { exit: "reuse" });
+        commitHistory(page, leavingEntry, options, newFilePath);
         finishNavigation(model, page);
         return true;
     }
 
     const editor = await buildEditor(newFilePath, options);
-    prepareOpenedEditor(editor, request);
-
-    await page.setMainEditor(editor);
-    registerOpenSession(editor, request);
-    applyOpenHints(page, editor, request, { exit: "fresh", newPage: false });
+    try {
+        prepareOpenedEditor(editor, request);
+        await page.setMainEditor(editor);
+        registerOpenSession(editor, request);
+        applyOpenHints(page, editor, request, { exit: "fresh", newPage: false });
+    } catch (error) {
+        if (!page.editors.includes(editor)) {
+            await editor.dispose();
+            options?.pipe?.dispose();
+        }
+        throw error;
+    }
+    if (options?.historyMove && options.folderPath !== undefined) options.pipe?.dispose();
+    commitHistory(page, leavingEntry, options, newFilePath);
 
     finishNavigation(model, page);
     return true;
+}
+
+function commitHistory(
+    page: PageModel,
+    leavingEntry: PageHistoryEntry | undefined,
+    options: NavigatePageToOptions | undefined,
+    destinationPath: string,
+): void {
+    const editor = page.mainEditor;
+    if (!editor) return;
+    const filePath = editor.filePath ?? editor.sourceLink?.url ?? destinationPath;
+    const committed = page.history.commitNavigation(leavingEntry, options?.historyMove, {
+        filePath,
+        target: editor.editorId,
+    });
+    if (options?.historyMove && committed) options.historyMove.committed = true;
 }
