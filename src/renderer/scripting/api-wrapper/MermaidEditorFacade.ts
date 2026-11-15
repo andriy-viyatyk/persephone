@@ -7,7 +7,9 @@ import { errMessage } from "../../../shared/utils";
 const MERMAID_ELEMENTS = [
     { name: "text-compare-left", purpose: "Compare this page with the left grouped page.", where: "left side of the Mermaid text toolbar, when comparison is available" },
     { name: "mermaid-theme", purpose: "Toggle the Mermaid preview's light/dark rendering mode.", where: "right side of the Mermaid toolbar" },
-    { name: "mermaid-open-draw", purpose: "Open the rendered diagram in the Drawing Editor.", where: "right side of the Mermaid toolbar, after Theme" },
+    { name: "mermaid-look", purpose: "Choose the requested Mermaid look for this page.", where: "right side of the Mermaid toolbar, after Theme" },
+    { name: "mermaid-layout", purpose: "Choose the requested Mermaid layout for this page.", where: "right side of the Mermaid toolbar, after Look" },
+    { name: "mermaid-open-draw", purpose: "Open the rendered diagram in the Drawing Editor.", where: "right side of the Mermaid toolbar, after Layout" },
     { name: "mermaid-convert-excalidraw", purpose: "Convert the Mermaid source to editable Excalidraw shapes.", where: "right side of the Mermaid toolbar, after Open in Drawing" },
     { name: "mermaid-save", purpose: "Save the rendered diagram as a PNG.", where: "right side of the Mermaid toolbar, after Convert" },
     { name: "mermaid-copy", purpose: "Copy the rendered diagram as a PNG to the clipboard.", where: "right edge of the Mermaid toolbar" },
@@ -28,7 +30,7 @@ const MERMAID_EDITOR_MEMBERS: readonly IAiMember[] = [
 ];
 
 const MERMAID_EDITOR_HELP = `Access via pages[i].editor after narrowing editor.id to "mermaid-view".
-Mermaid preview facade with controls text-compare-left, mermaid-theme, mermaid-open-draw,
+Mermaid preview facade with controls text-compare-left, mermaid-theme, mermaid-look, mermaid-layout, mermaid-open-draw,
 mermaid-convert-excalidraw, mermaid-save, and mermaid-copy. The Save Image native file dialog is
 opened by mermaid-save. mermaid-open-draw opens a Drawing Editor page; conversion opens an
 Excalidraw page and can notify when the diagram is image-only or falls back to an image. The
@@ -47,7 +49,7 @@ retained slot layout.`;
  * Implements the IMermaidEditor interface from api/types/mermaid-editor.d.ts.
  *
  * - svgUrl is the rendered SVG as a data URL (recomputed by the editor's
- *   400 ms debounced render pipeline on host content / lightMode change).
+ *   400 ms debounced render pipeline on host content change; theme, look and layout render immediately).
  * - loading/error indicate rendering state.
  * - All reads sync.
  */

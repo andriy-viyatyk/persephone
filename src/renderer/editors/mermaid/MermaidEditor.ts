@@ -15,6 +15,13 @@ import { t } from "../../../shared/i18n/t";
 import type { DiagramEditResult } from "../../api/types/capabilities";
 import { ui } from "../../api/ui";
 import { errMessage } from "../../../shared/utils";
+import {
+    DEFAULT_MERMAID_RENDER_OPTIONS,
+    isMermaidLayout,
+    isMermaidLook,
+    type MermaidLayout,
+    type MermaidLook,
+} from "./mermaid-options";
 
 export type MermaidQueueEvent = { type: "focus" };
 
@@ -27,12 +34,18 @@ export type MermaidQueueRequest = never;
  */
 interface MermaidViewSettings {
     lightMode?: boolean;
+    look?: MermaidLook;
+    layout?: MermaidLayout;
+    [key: string]: unknown;
 }
 
 export interface MermaidEditorState extends EditorStateBase {
     // HS1 — rides host.editorSettings["mermaid-view"]. Bounded boolean.
     // Default seeded from the active theme in the constructor.
     lightMode: boolean;
+    lightModeOverride?: boolean;
+    look: MermaidLook;
+    layout: MermaidLayout;
     // View-derived — present on state for in-session reactivity, stripped
     // from getRestoreData per PV5 / MO5 pattern. Recomputed on every render.
     svgUrl: string;
@@ -46,6 +59,8 @@ export const defaultMermaidEditorState: MermaidEditorState = {
     modified: false,
     secondaryView: undefined,
     lightMode: false,
+    look: DEFAULT_MERMAID_RENDER_OPTIONS.look,
+    layout: DEFAULT_MERMAID_RENDER_OPTIONS.layout,
     svgUrl: "",
     error: "",
     loading: true,
@@ -63,6 +78,7 @@ export class MermaidEditor
 
     private _renderTimer: ReturnType<typeof setTimeout> | undefined;
     private _syncingTheme = false;
+    private _renderGeneration = 0;
 
     constructor(state: TComponentState<MermaidEditorState>) {
         super(state);
@@ -79,6 +95,7 @@ export class MermaidEditor
     }
 
     adoptHost(host: TextFileModel): void {
+        this.invalidateRender();
         super.adoptHost(host);
 
         // HS1 — seed `lightMode` from host slot (sync, no flicker; retains the
@@ -86,19 +103,35 @@ export class MermaidEditor
         // changes back. Slice-bound so svgUrl/error/loading mutations (the
         // dominant write source) never trigger a host-slot write.
         const saved = host.getEditorState<MermaidViewSettings>(this.editorId);
-        if (saved?.lightMode === undefined) {
-            this.state.update((s) => { s.lightMode = !themeState.get().isDark; });
-        }
+        const look = isMermaidLook(saved?.look) ? saved.look : DEFAULT_MERMAID_RENDER_OPTIONS.look;
+        const layout = isMermaidLayout(saved?.layout) ? saved.layout : DEFAULT_MERMAID_RENDER_OPTIONS.layout;
+        const lightModeOverride = typeof saved?.lightMode === "boolean" ? saved.lightMode : undefined;
+        this.state.update((s) => {
+            s.look = look;
+            s.layout = layout;
+            s.lightModeOverride = lightModeOverride;
+            s.lightMode = lightModeOverride ?? !themeState.get().isDark;
+        });
         this.mirrorHostSettings<MermaidViewSettings>(
             (saved) => {
-                if (saved.lightMode !== undefined) {
-                    this.state.update((s) => {
-                        s.lightMode = saved.lightMode;
-                    });
-                }
+                const restoredLook = isMermaidLook(saved.look) ? saved.look : DEFAULT_MERMAID_RENDER_OPTIONS.look;
+                const restoredLayout = isMermaidLayout(saved.layout) ? saved.layout : DEFAULT_MERMAID_RENDER_OPTIONS.layout;
+                const restoredLightMode = typeof saved.lightMode === "boolean" ? saved.lightMode : undefined;
+                this.state.update((s) => {
+                    s.look = restoredLook;
+                    s.layout = restoredLayout;
+                    s.lightModeOverride = restoredLightMode;
+                    s.lightMode = restoredLightMode ?? !themeState.get().isDark;
+                });
             },
-            (s) => ({ lightMode: s.lightMode }),
-            (s) => s.lightMode,
+            (s) => {
+                const current = this._host?.getEditorState<MermaidViewSettings>(this.editorId) ?? {};
+                const snapshot: MermaidViewSettings = { ...current, look: s.look, layout: s.layout };
+                if (s.lightModeOverride === undefined) delete snapshot.lightMode;
+                else snapshot.lightMode = s.lightModeOverride;
+                return snapshot;
+            },
+            (s) => ({ lightModeOverride: s.lightModeOverride, look: s.look, layout: s.layout }),
             () => !this._syncingTheme,
         );
 
@@ -106,7 +139,7 @@ export class MermaidEditor
         // explicit editor toggle writes the HS1 slot.
         this.registerHostSubscription(
             themeState.subscribe((isDark: boolean) => {
-                    if (this._host?.getEditorState<MermaidViewSettings>(this.editorId)?.lightMode !== undefined) {
+                    if (this.state.get().lightModeOverride !== undefined) {
                         return;
                     }
                     const lightMode = !isDark;
@@ -126,48 +159,74 @@ export class MermaidEditor
         // Content changes retrigger the debounced render.
         this.subscribeHostContent(() => this.renderDebounced());
 
-        // PV5 — lightMode changes retrigger render.
+        // Theme and render-option changes render immediately; source typing stays debounced.
         this.registerHostSubscription(
             this.state.subscribe(
-                () => this.renderDebounced(),
-                (s) => s.lightMode,
+                () => this.renderImmediately(),
+                (s) => ({ lightMode: s.lightMode, look: s.look, layout: s.layout }),
             ),
         );
 
         // MR3 — initial render against the freshly-adopted host.
         // TOneState.subscribe doesn't fire on first attach, so an explicit
         // kickoff is required.
-        this.renderDebounced();
+        this.renderImmediately();
     }
 
     // ── Render pipeline (PV5 — relocated from MermaidViewModel) ─────────
 
     private renderDebounced(): void {
         clearTimeout(this._renderTimer);
+        const generation = ++this._renderGeneration;
         this.state.update((s) => {
             s.loading = true;
+            s.svgUrl = "";
+            s.error = "";
         });
 
         this._renderTimer = setTimeout(() => {
-            const content = this._host?.state.get().content ?? "";
-            const { lightMode } = this.state.get();
-
-            renderMermaid(content, lightMode)
-                .then((url) => {
-                    this.state.update((s) => {
-                        s.svgUrl = url;
-                        s.error = "";
-                        s.loading = false;
-                    });
-                })
-                .catch((e) => {
-                    this.state.update((s) => {
-                        s.svgUrl = "";
-                        s.error = errMessage(e, "Failed to render diagram");
-                        s.loading = false;
-                    });
-                });
+            this.renderRequest(generation);
         }, 400);
+    }
+
+    private renderImmediately(): void {
+        clearTimeout(this._renderTimer);
+        this._renderTimer = undefined;
+        const generation = ++this._renderGeneration;
+        this.state.update((s) => {
+            s.loading = true;
+            s.svgUrl = "";
+            s.error = "";
+        });
+        this.renderRequest(generation);
+    }
+
+    private renderRequest(generation: number): void {
+        const content = this._host?.state.get().content ?? "";
+        const { lightMode, look, layout } = this.state.get();
+        void renderMermaid(content, lightMode, { look, layout })
+            .then((url) => {
+                if (generation !== this._renderGeneration) return;
+                this.state.update((s) => {
+                    s.svgUrl = url;
+                    s.error = "";
+                    s.loading = false;
+                });
+            })
+            .catch((error: unknown) => {
+                if (generation !== this._renderGeneration) return;
+                this.state.update((s) => {
+                    s.svgUrl = "";
+                    s.error = errMessage(error, "Failed to render diagram");
+                    s.loading = false;
+                });
+            });
+    }
+
+    private invalidateRender(): void {
+        clearTimeout(this._renderTimer);
+        this._renderTimer = undefined;
+        this._renderGeneration++;
     }
 
     // ── State mutators ──────────────────────────────────────────────────
@@ -175,9 +234,18 @@ export class MermaidEditor
     toggleLightMode = (): void => {
         this.state.update((s) => {
             s.lightMode = !s.lightMode;
+            s.lightModeOverride = s.lightMode;
         });
-        // The slice-subscribe on `s.lightMode` (set up in adoptHost) fires
-        // automatically and triggers renderDebounced. No explicit call needed.
+    };
+
+    setLook = (look: MermaidLook): void => {
+        if (look === this.state.get().look) return;
+        this.state.update((s) => { s.look = look; });
+    };
+
+    setLayout = (layout: MermaidLayout): void => {
+        if (layout === this.state.get().layout) return;
+        this.state.update((s) => { s.layout = layout; });
     };
 
     // ── Image export (IImageExport) ─────────────────────────────────────
@@ -245,7 +313,8 @@ export class MermaidEditor
             throw new Error(`Mermaid preview cannot ${action} because the source is empty or unavailable.`);
         }
         try {
-            const url = await renderMermaid(source, this.state.get().lightMode);
+            const { lightMode, look, layout } = this.state.get();
+            const url = await renderMermaid(source, lightMode, { look, layout });
             if (!url) throw new Error("rendering returned no SVG");
             return url;
         } catch (error) {
@@ -256,7 +325,7 @@ export class MermaidEditor
     // ── Dispose ─────────────────────────────────────────────────────────
 
     async dispose(): Promise<void> {
-        clearTimeout(this._renderTimer);
+        this.invalidateRender();
         await super.dispose();
     }
 }

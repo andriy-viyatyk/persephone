@@ -11,6 +11,15 @@ import { notifyEditCapabilityFailure } from "../../api/capability-feedback";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 
 function mermaidItems(model: MermaidEditor, state: MermaidEditorState): ReadonlyArray<ImageToolbarItem> {
+    const lookLabels = {
+        classic: t("editors.mermaidLookClassic"),
+        neo: t("editors.mermaidLookNeo"),
+        handDrawn: t("editors.mermaidLookHandDrawn"),
+    };
+    const layoutLabels = {
+        dagre: t("editors.mermaidLayoutDagre"),
+        elk: t("editors.mermaidLayoutElk"),
+    };
     const themeButtonProps: IconButtonProps = {
         name: "mermaid-theme",
         size: "sm",
@@ -32,6 +41,40 @@ function mermaidItems(model: MermaidEditor, state: MermaidEditorState): Readonly
     };
     return [
         { kind: "control", key: "theme", props: themeButtonProps },
+        {
+            kind: "menu",
+            buttonName: "mermaid-look",
+            menuName: "mermaid-look-menu",
+            title: t("editors.mermaidLookButton", { look: lookLabels[state.look] }),
+            icon: "edit",
+            entries: (["classic", "neo", "handDrawn"] as const).map((look) => ({
+                kind: "entry" as const,
+                key: `mermaid-look-${look}`,
+                item: {
+                    id: `mermaid-look-${look}`,
+                    label: lookLabels[look],
+                    selected: state.look === look,
+                    onClick: () => model.setLook(look),
+                },
+            })),
+        },
+        {
+            kind: "menu",
+            buttonName: "mermaid-layout",
+            menuName: "mermaid-layout-menu",
+            title: t("editors.mermaidLayoutButton", { layout: layoutLabels[state.layout] }),
+            icon: "graph-group",
+            entries: (["dagre", "elk"] as const).map((layout) => ({
+                kind: "entry" as const,
+                key: `mermaid-layout-${layout}`,
+                item: {
+                    id: `mermaid-layout-${layout}`,
+                    label: layoutLabels[layout],
+                    selected: state.layout === layout,
+                    onClick: () => model.setLayout(layout),
+                },
+            })),
+        },
         { kind: "action", action: "draw" },
         { kind: "control", key: "convert-excalidraw", props: convertButtonProps },
         { kind: "action", action: "save" },

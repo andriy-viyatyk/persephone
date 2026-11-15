@@ -91,6 +91,7 @@ Mermaid brings its own copy of d3 as one of its dependencies.
 | US-2017 | TypeScript 7 | US-2016 | Blocked until typescript-eslint supports it. `typecheck-strict.mjs` uses the JS compiler API, which 7 may not ship |
 | US-2018 | video.js 10 | US-2010 | Migration investigation first. If 10 does not fit, record the reason and stay on the latest 8.x |
 | US-2019 | Dependency refresh (recurring) | — | Scheduled about every 3 months, like US-1757 |
+| [US-2020](../tasks/US-2020-mermaid-look-layout/README.md) | Mermaid view look and layout switches | US-2012 | Per-page look and layout comparison with immediate rendering |
 
 ### Ordering and rules
 

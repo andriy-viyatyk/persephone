@@ -3,7 +3,10 @@
 // Used by both MermaidView (standalone .mmd viewer) and Markdown inline diagrams
 // ============================================================================
 
+import { DEFAULT_MERMAID_RENDER_OPTIONS, type MermaidRenderOptions } from "./mermaid-options";
+
 let renderCounter = 0;
+let renderQueue: Promise<void> = Promise.resolve();
 
 // ============================================================================
 // SVG text contrast fix
@@ -65,6 +68,33 @@ function fixTextContrast(doc: ParentNode): void {
         if (!rgb) continue;
         const lum = relativeLuminance(...rgb);
         applyTextColor(node, lum > 0.4 ? "#333333" : "#f0f0f0");
+    }
+
+    // Hand-drawn nodes use g.rough-node and place their background in a nested
+    // RoughJS group. Hachure color is a fillSketch stroke; ignore other strokes.
+    for (const node of doc.querySelectorAll("g.rough-node")) {
+        const roughGroup = node.querySelector("g");
+        if (!roughGroup) continue;
+        let fill = getFillColor(roughGroup);
+        if (!fill) {
+            const solidFillPath = Array.from(roughGroup.querySelectorAll("path"))
+                .find((path) => path.getAttribute("fill") !== "none" && getFillColor(path));
+            fill = solidFillPath ? getFillColor(solidFillPath) : null;
+        }
+        if (!fill) {
+            const paths = Array.from(roughGroup.querySelectorAll('path[fill="none"]'));
+            const fillSketchStroke = paths[0]?.getAttribute("stroke") ?? "";
+            const outlineStroke = paths.at(-1)?.getAttribute("stroke") ?? "";
+            // RoughJS emits hachure before the outline. Only use it when the two
+            // paths are distinguishable; a lone outline is never a background.
+            if (paths.length > 1 && fillSketchStroke !== outlineStroke
+                && /^#[0-9a-f]{3,8}$/i.test(fillSketchStroke)) {
+                fill = fillSketchStroke;
+            }
+        }
+        const rgb = fill ? parseHexColor(fill) : null;
+        if (!rgb) continue;
+        applyTextColor(node, relativeLuminance(...rgb) > 0.4 ? "#333333" : "#f0f0f0");
     }
 
     // Fix cluster (subgraph) labels: only the cluster's own label, not nested nodes
@@ -138,22 +168,24 @@ export function svgToDataUrl(svg: string, backgroundColor?: string, fixContrast?
  */
 export async function renderMermaidSvg(
     content: string,
-    lightMode: boolean
+    lightMode: boolean,
+    options: MermaidRenderOptions = DEFAULT_MERMAID_RENDER_OPTIONS,
 ): Promise<string> {
-    const mermaid = (await import("mermaid")).default;
-    mermaid.initialize({
-        startOnLoad: false,
-        theme: lightMode ? "default" : "dark",
-        // Mermaid 12 defaults several diagram types to the "neo" look and the ELK layout.
-        // Keep the classic look and dagre layout that the contrast fix in svgToDataUrl targets.
-        look: "classic",
-        layout: "dagre",
-        securityLevel: "strict",
+    const operation = renderQueue.then(async () => {
+        const mermaid = (await import("mermaid")).default;
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: lightMode ? "default" : "dark",
+            look: options.look,
+            layout: options.layout,
+            securityLevel: "strict",
+        });
+        const id = `mermaid-render-${++renderCounter}`;
+        const { svg } = await mermaid.render(id, content);
+        return svg;
     });
-
-    const id = `mermaid-render-${++renderCounter}`;
-    const { svg } = await mermaid.render(id, content);
-    return svg;
+    renderQueue = operation.then((): void => undefined, (): void => undefined);
+    return operation;
 }
 
 /**
@@ -162,8 +194,9 @@ export async function renderMermaidSvg(
  */
 export async function renderMermaid(
     content: string,
-    lightMode: boolean
+    lightMode: boolean,
+    options: MermaidRenderOptions = DEFAULT_MERMAID_RENDER_OPTIONS,
 ): Promise<string> {
-    const svg = await renderMermaidSvg(content, lightMode);
+    const svg = await renderMermaidSvg(content, lightMode, options);
     return svgToDataUrl(svg, lightMode ? "white" : undefined, !lightMode);
 }

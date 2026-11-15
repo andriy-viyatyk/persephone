@@ -97,6 +97,7 @@ export class ImageActionsToolbarView extends VanillaView<ImageActionsToolbarView
                 name: item.buttonName,
                 size: "sm",
                 title: item.title,
+                "aria-label": item.title,
                 icon: item.icon,
                 hidden: item.buttonName === "image-save" && !this.modelStateUrl,
                 disabled: item.buttonName === "html-more" && capturing,
