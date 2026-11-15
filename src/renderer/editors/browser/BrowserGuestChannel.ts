@@ -10,10 +10,12 @@ const { ipcRenderer } = require("electron");
 
 /** Owns the renderer IPC surface and registration keys for one browser editor. */
 export class BrowserGuestChannel {
-    constructor(private readonly editorId: string) {}
+    /** Reads the editor id per call: a restored page receives its saved id after construction,
+     *  and keys must match the `tabId` its guests register with (the current `model.id`). */
+    constructor(private readonly editorId: () => string) {}
 
     key(tabId: string): string {
-        return `${this.editorId}/${tabId}`;
+        return `${this.editorId()}/${tabId}`;
     }
 
     register(request: BrowserRegisterRequest): void { ipcRenderer.send(BrowserChannel.register, request); }

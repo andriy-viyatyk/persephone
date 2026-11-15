@@ -129,7 +129,7 @@ export class BrowserEditor extends EditorModel<
 
     constructor(state: TComponentState<BrowserEditorState>) {
         super(state);
-        this.guest = new BrowserGuestChannel(this.id);
+        this.guest = new BrowserGuestChannel(() => this.id);
         this.tabs = new BrowserTabsModel(this);
         this.bookmarks = new BrowserBookmarksModel(this);
         this.tor = new BrowserTorModel(this);
