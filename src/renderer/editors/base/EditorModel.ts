@@ -261,10 +261,11 @@ export abstract class EditorModel<
 
     get displayTitle(): string { return this.title; }
 
-    /** Optional language change — base no-op; per-editor subclasses override
-     *  when the editor reacts to language changes. */
-    changeLanguage(_language: string | undefined): void {
-        // Override in subclasses.
+    /** Change the page language. Text-bearing editors keep the language on
+     *  their content host, so the base forwards there; an editor without a
+     *  host has no language and ignores the call. */
+    changeLanguage(language: string | undefined): void {
+        this.contentHost?.changeLanguage(language);
     }
 
     // ── Content-host accessor ───────────────────────────────────────────

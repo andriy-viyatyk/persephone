@@ -38,7 +38,6 @@ class MonacoToolbarBitsView extends VanillaView<MonacoToolbarBitsProps> {
         this.diagnosticsButton = this.child(new IconButtonView(this.diagnosticsButtonProps()));
         this.root.append(this.diagnosticsButton.root);
         this.diagnosticsButton.mount();
-        this.diagnosticsButton.root.hidden = !this.projectActive;
         this.transcript.mount();
         this.root.append(this.transcript.root);
         this.translate.mount();
@@ -65,7 +64,7 @@ class MonacoToolbarBitsView extends VanillaView<MonacoToolbarBitsProps> {
 
     public updateProjectActive(active: boolean): void {
         this.projectActive = active;
-        if (this.diagnosticsButton) this.diagnosticsButton.root.hidden = !active;
+        this.diagnosticsButton?.update(this.diagnosticsButtonProps());
     }
 
     public updateTranscriptState(state: TranscriptState): void {
@@ -96,6 +95,8 @@ class MonacoToolbarBitsView extends VanillaView<MonacoToolbarBitsProps> {
         return {
             name: "text-ts-diagnostics-toggle",
             size: "sm",
+            // Visibility travels with the props: every update() re-applies `hidden`.
+            hidden: !this.projectActive,
             active: diagnostics,
             title: diagnostics ? t("editors.turnTsDiagnosticsOff") : t("editors.turnTsDiagnosticsOn"),
             icon: "warning",
