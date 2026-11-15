@@ -1,15 +1,12 @@
-import videojs from "video.js";
 // hls.js's default export is also re-exported as a named `Hls`; the default is correct here.
 // eslint-disable-next-line import-x/no-named-as-default
 import Hls from "hls.js";
 import type { HlsConfig } from "hls.js";
-import type Player from "video.js/dist/types/player";
 import type { ParsedHttpRequest } from "../../core/utils/curl-parser";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import type { PlayerState, VideoFormat } from "./video-types";
 import { createNodeFetchLoaderClass } from "./NodeFetchHlsLoader";
-import "video.js/dist/video-js.css";
 import "../../uikit/Panel/Panel.css";
 import "./video-editor.css";
 
@@ -24,17 +21,17 @@ export interface VPlayerProps {
     onMediaElementChange?: (element: HTMLMediaElement | null) => void;
 }
 
+/** "hls" plays through hls.js attached to the element; "native" sets `src` directly. Both use the
+ *  browser's own media controls. */
 type ActiveMode = "none" | "hls" | "native";
 
 export class VPlayerView extends VanillaView<VPlayerProps> {
     private video!: HTMLVideoElement;
-    private player: Player | null = null;
     private hls: Hls | null = null;
     private activeMode: ActiveMode = "none";
     private hlsSource = "";
     private hlsHeadersKey = "";
     private lastReloadKey = 0;
-    private inert = false;
 
     public constructor(props: VPlayerProps) {
         super(props, createPanelElement({
@@ -58,19 +55,19 @@ export class VPlayerView extends VanillaView<VPlayerProps> {
         this.root.append(this.video);
 
         this.listen(this.video, "loadstart", () => {
-            if (this.activeMode === "native") this.props.onStateChange?.("loading");
+            if (this.activeMode !== "none") this.props.onStateChange?.("loading");
         });
         this.listen(this.video, "playing", () => {
-            if (this.activeMode === "native") this.props.onStateChange?.("playing");
+            if (this.activeMode !== "none") this.props.onStateChange?.("playing");
         });
         this.listen(this.video, "pause", () => {
-            if (this.activeMode === "native") this.props.onStateChange?.("paused");
+            if (this.activeMode !== "none") this.props.onStateChange?.("paused");
         });
         this.listen(this.video, "volumechange", () => {
-            if (this.activeMode === "native") this.props.onMutedChange?.(this.video.muted);
+            if (this.activeMode !== "none") this.props.onMutedChange?.(this.video.muted);
         });
         this.listen(this.video, "error", () => {
-            if (this.activeMode !== "native") return;
+            if (this.activeMode === "none") return;
             const error = this.video.error;
             if (error?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
                 this.props.onStateChange?.("unsupported format", error);
@@ -79,7 +76,6 @@ export class VPlayerView extends VanillaView<VPlayerProps> {
             }
         });
 
-        this.own(() => { this.inert = true; });
         this.own(() => this.disposeVideoAdapter());
         this.own(() => this.props.onMediaElementChange?.(null));
         this.props.onMediaElementChange?.(this.video);
@@ -88,7 +84,6 @@ export class VPlayerView extends VanillaView<VPlayerProps> {
 
     protected onUpdate(props: VPlayerProps): void {
         this.video.muted = props.muted ?? false;
-        if (this.player) this.player.muted(props.muted ?? false);
         this.syncMode();
     }
 
@@ -109,12 +104,7 @@ export class VPlayerView extends VanillaView<VPlayerProps> {
 
         this.video.hidden = nextMode !== "hls" && nextMode !== "native";
 
-        if (nextMode === "hls") {
-            this.video.removeAttribute("data-audio-only");
-            this.props.onMediaElementChange?.(this.video);
-            this.ensureVideoJsPlayer();
-            this.syncHlsSource(source, reloadChanged);
-        } else if (nextMode === "native") {
+        if (nextMode === "hls" || nextMode === "native") {
             this.props.onMediaElementChange?.(this.video);
             this.video.className = "native";
             // Chromium draws an audio-only element with its grey pill-shaped bar; the CSS restyles it like video.
@@ -122,37 +112,17 @@ export class VPlayerView extends VanillaView<VPlayerProps> {
             this.video.controls = true;
             this.video.autoplay = true;
             this.video.muted = this.props.muted ?? false;
-            if (this.video.getAttribute("src") !== source) this.video.src = source;
-            else if (reloadChanged) this.video.load();
+            if (nextMode === "hls") {
+                this.syncHlsSource(source, reloadChanged);
+            } else if (this.video.getAttribute("src") !== source) {
+                this.video.src = source;
+            } else if (reloadChanged) {
+                this.video.load();
+            }
         } else {
             this.props.onMediaElementChange?.(null);
             this.video.removeAttribute("src");
         }
-    }
-
-    private ensureVideoJsPlayer(): void {
-        if (this.player) return;
-        if (this.video.parentNode !== this.root) this.root.append(this.video);
-        this.video.className = "video-js";
-        this.player = videojs(this.video, {
-            controls: true,
-            autoplay: true,
-            preload: "auto",
-            muted: this.props.muted ?? false,
-            fill: true,
-        });
-        // video.js owns these player callbacks and releases them with the player; they
-        // must not be routed through a view store that could outlive/reuse the player.
-        this.player.on("loadstart", () => { if (!this.inert) this.props.onStateChange?.("loading"); });
-        this.player.on("playing", () => { if (!this.inert) this.props.onStateChange?.("playing"); });
-        this.player.on("pause", () => { if (!this.inert) this.props.onStateChange?.("paused"); });
-        this.player.on("volumechange", () => { if (!this.inert) this.props.onMutedChange?.(this.player?.muted() ?? false); });
-        this.player.on("error", () => {
-            if (this.inert) return;
-            const error = this.player?.error();
-            if (error?.code === 4) this.props.onStateChange?.("unsupported format", error);
-            else this.props.onStateChange?.("error", error ?? undefined);
-        });
     }
 
     private syncHlsSource(source: string, forceReload: boolean): void {
@@ -182,12 +152,7 @@ export class VPlayerView extends VanillaView<VPlayerProps> {
         this.hls = null;
         this.hlsSource = "";
         this.hlsHeadersKey = "";
-        if (this.player) {
-            this.player.dispose();
-            this.player = null;
-        }
         this.video?.removeAttribute("src");
         this.video?.load();
-        if (this.video && this.video.parentNode !== this.root) this.root.append(this.video);
     }
 }

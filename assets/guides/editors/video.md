@@ -37,7 +37,7 @@ long); it collapses again when it loses focus. Press **Enter** to play.
 - Video URL ? `video-url-input`
 - Save as... / Discard map to `video-recording-save` and `video-recording-discard` (temporary recordings only)
 - Open in VLC ? `video-open-vlc`
-- Native media and video.js controls ? no entry: media-internal controls
+- Native media controls ? no entry: media-internal controls
 
 ### When VLC fallback is available
 

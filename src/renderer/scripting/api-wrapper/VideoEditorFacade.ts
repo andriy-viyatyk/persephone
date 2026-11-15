@@ -40,7 +40,7 @@ play() rejects and pause()/seek() throw "Media action requires a mounted media e
 available.
 
 elements is the page-scoped curated inventory of video-url-input and video-open-vlc. VLC controls are
-conditional; hidden controls remain in the inventory with visible: false. Native/video.js controls,
+conditional; hidden controls remain in the inventory with visible: false. Native media controls,
 structural roots, status labels, transient
 menus, tracks, and subtitles are not surfaced. The page-tab popup menu owns standard Pin, Close,
 Duplicate, and Open in New Window actions. There is no video-specific onGetMenuItems contribution;
