@@ -42,7 +42,7 @@ export interface IPageHost {
     releaseEditor(editor: EditorModel, options: { dispose: boolean }): Promise<void>;
 
     readonly history?: {
-        back(): Promise<void>;
+        back(): Promise<boolean>;
     };
 
     // ── OPTIONAL — page-tab property (an embedded host isn't a pinnable tab) ──

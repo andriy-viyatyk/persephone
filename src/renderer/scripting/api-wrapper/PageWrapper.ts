@@ -14,6 +14,7 @@ import { agentMayAccessBrowserPage, privateBrowserRefusal } from "../../editors/
 import { editorFacadeRegistry, type IEditorFacade } from "./editor-facade-registry";
 import type { IAiCallContext } from "../ai-vision/root";
 import { PageEditorSwitchesNode } from "../ai-vision/page-editor-switches";
+import { PageHistoryNode } from "../ai-vision/page-history";
 import { PagePanelsNode } from "../ai-vision/page-panels";
 import { PageTabNode } from "../ai-vision/page-tab";
 import { isArchiveFile, isArchivePath, isPlainLocalPath } from "../../core/utils/file-path";
@@ -32,6 +33,7 @@ const PAGE_MEMBERS: readonly IAiMember[] = [
     { name: "tab", kind: "property", node: true, summary: "This page's tab-strip entry and its visible controls." },
     { name: "editor", kind: "property", node: true, summary: "Current editor facade; inspect its id to discover the available operations. A tab left open after its editor was closed reports an empty id and no .editor child — open a file into it with pages.navigatePageTo, or close it." },
     { name: "editorSwitches", kind: "property", node: true, summary: "The current editor, toolbar-identical switch options, and unrestricted editor switching." },
+    { name: "history", kind: "property", node: true, summary: "This page's live page-model Back and Forward history." },
     { name: "data", kind: "property", summary: "Free-form per-page data bag shared between scripts." },
     { name: "panels", kind: "property", node: true, summary: "Live sidebar panels, writable persistent width, bare-id expansion, and whole-sidebar toggle." },
     { name: "grouped", kind: "property", summary: "The page shown beside this one.", caution: "reading it CREATES a grouped page if none exists" },
@@ -47,7 +49,8 @@ union (for example, if page.editor.id is "grid-json", page.editor.addRows(5) is 
 exposes the toolbar's merged options and switchTo(id), which accepts any registered editor id.
 tab is this page's tab-strip entry and its curated controls; its title remains available even when a
 pinned tab hides title text. Use pages.showPage, closePage, pinTab, unpinTab, and moveTab for tab
-actions. The panels node is a live view of the page's sidebar. Grouped is a side-by-side page and
+actions. history is this page's live Back and Forward history; it exposes page-model destinations,
+not Browser webview history. The panels node is a live view of the page's sidebar. Grouped is a side-by-side page and
 creates one when none exists. A successful content read or assignment reports the raw source, not
 that a structured editor rendered it successfully. Parse JSON before writing structured content,
 or REST content, then activate the page and use window.screen.snapshot() when you need to verify the
@@ -179,6 +182,10 @@ export class PageWrapper implements IAiVisible {
         return new PageEditorSwitchesNode(() => this.page);
     }
 
+    get history(): PageHistoryNode {
+        return new PageHistoryNode(() => pages.query.findPage(this.id));
+    }
+
     get tab(): PageTabNode { return new PageTabNode(() => this.page); }
 
     // An editorless page has no editor to hold a script data bag. Hand back a fresh object so a
@@ -198,7 +205,7 @@ export class PageWrapper implements IAiVisible {
     get aiVision(): IAiVisionDescriptor {
         return {
             kind: "Page",
-            summary: "One open page (tab): its text, content pipe status, language, editor facade, editor switches, live sidebar panels, and grouped page.",
+            summary: "One open page (tab): its text, content pipe status, language, editor facade, editor switches, page history, live sidebar panels, and grouped page.",
             members: PAGE_MEMBERS,
             help: PAGE_HELP,
             identity: () => `pages[${JSON.stringify(this.id)}]`,

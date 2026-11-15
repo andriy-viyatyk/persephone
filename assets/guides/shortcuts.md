@@ -8,8 +8,9 @@ summary: "Global and editor-specific keyboard shortcuts."
 
 ## Application (Global)
 
-These shortcuts work regardless of which editor is active. Browser pages handle zoom shortcuts
-separately when focus is inside the web page; see [Browser](shortcuts.md#browser).
+These shortcuts are handled by the app shell when the keyboard or mouse event reaches it; an editor
+or another document may consume an event first. Browser pages keep separate webview history and
+handle their own navigation when the page receives the input; see [Browser](shortcuts.md#browser).
 
 | Shortcut | Action |
 |----------|--------|
@@ -22,6 +23,9 @@ separately when focus is inside the web page; see [Browser](shortcuts.md#browser
 | `Ctrl+F4` | Close tab (alternative) |
 | `Ctrl+Tab` | Next tab |
 | `Ctrl+Shift+Tab` | Previous tab |
+| `Alt+Left` | Back in the active page's history |
+| `Alt+Right` | Forward in the active page's history |
+| Physical mouse button 4 / 5 | Back / Forward in the active page's history |
 | `Ctrl++` | Zoom in |
 | `Ctrl+-` | Zoom out |
 | `Ctrl+0` | Reset zoom |
@@ -98,8 +102,6 @@ text is not shown or inserted. Only one Transcript or Voice Typing session can r
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+G` | Go to line |
-| `Alt+Left` | Go back |
-| `Alt+Right` | Go forward |
 | `F12` | Go to definition |
 | `Alt+F12` | Peek definition |
 
@@ -194,8 +196,8 @@ All navigation keys (except Tab) support **Shift** to extend selection.
 | `Ctrl+R` | Reload page |
 | `Ctrl+Shift+R` | Hard reload (bypass cache) |
 | `F12` | Open this browser page's DevTools |
-| `Alt+Left` | Go back |
-| `Alt+Right` | Go forward |
+| `Alt+Left` | Go back in this Browser page's webview history |
+| `Alt+Right` | Go forward in this Browser page's webview history |
 | `Alt+Home` | Go to tab's home page |
 | `Escape` | Close find bar / stop loading unless the page handles it / revert URL bar |
 

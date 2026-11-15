@@ -8,16 +8,15 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
+- **EPIC-178** — [Page navigation history (Back / Forward for every page)](epics/EPIC-178.md)
+  - [ ] [US-2003: `PageHistory` — record in `navigatePageTo`, replay, persistence and `navBack` migration](tasks/US-2003-page-history-model/README.md)
+  - [ ] [US-2004: Back / Forward UI](tasks/US-2004-page-history-ui/README.md) — header buttons, shortcuts (Browser pages untouched), remove Markdown Back
+  - [ ] [US-2005: Object model `page.history` and guides](tasks/US-2005-page-history-object-model/README.md)
 - *(no epic)*
   - [ ] US-2001: Fix: changing a page's language from the tab menu (or `page.language`) did nothing after EPIC-154 — `EditorModel.changeLanguage` now forwards to the content host
   - [ ] US-2002: Fix: toggling word wrap un-hid the "Show TypeScript errors" toolbar button on non-project pages — its visibility now travels with its props (`MonacoEditorView.ts`)
 
 ## Planned
-
-- **EPIC-178** — [Page navigation history (Back / Forward for every page)](epics/EPIC-178.md)
-  - [ ] [US-2003: `PageHistory` — record in `navigatePageTo`, replay, persistence and `navBack` migration](tasks/US-2003-page-history-model/README.md)
-  - [ ] [US-2004: Back / Forward UI](tasks/US-2004-page-history-ui/README.md) — header buttons, shortcuts (Browser pages untouched), remove Markdown Back
-  - [ ] US-2005: Object model `page.history` and guides
 
 ## Scheduled
 

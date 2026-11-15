@@ -52,7 +52,7 @@ the top, and everything below it is the page area.
 
 ```
 +-------------------------------------------------------------------------+
-| [P] [tab] [tab] … [+]          [right-pin] [right-pin] [-] [box] [x] |  work tabs, right-pinned chips, and window controls
+| [P] [Back] [Forward] [tab] … [+] [right-pin] [-] [box] [x] |  history controls, work tabs, right-pinned chips, and window controls
 |                                                    ... Mneme  * MCP     |  status indicators
 +-------------------------------------------------------------------------+
 |                      |                                                  |

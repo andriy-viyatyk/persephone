@@ -79,6 +79,7 @@ The always-visible chrome, top to bottom.
 |---|---|
 | Header strip | `[data-name="app-header"]` |
 | Menu button (Persephone glyph) — opens the Menu Bar | `[data-name="persephone-menu"]` |
+| Page-history Back / Forward (active work page; disabled on Browser) | `[data-name="page-history-back"]`, `[data-name="page-history-forward"]` |
 | Tab strip | `[data-name="page-tabs"]` |
 | Right-pinned tab strip | `[data-name="right-page-tabs"]` |
 | Tab strip scroll area | `[data-name="page-tabs-wrapper"]` |

@@ -36,6 +36,7 @@ export interface IMarkdownEditor {
     readonly totalMatches: number;
 
     revealFragment(fragment: string): void;
+    /** Compatibility alias for this page's Back history; discards the result. Prefer page.history.back(). */
     navigateBack(): Promise<void>;
     toggleCompact(): void;
     openSearch(): void;

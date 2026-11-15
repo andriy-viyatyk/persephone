@@ -19,6 +19,7 @@ import type { IGenericEditor } from "./generic-editor";
 import type { IPageEditorSwitches } from "./page-editor-switches";
 import type { IPagePanels } from "./page-panels";
 import type { IPageTab } from "./page-tab";
+import type { IPageHistory } from "./page-history";
 import type { IContentPipe } from "./io.pipe";
 import type { IFolderViewEditor } from "./folder-view-editor";
 import type { IGitTreeEditor } from "./git-tree-editor";
@@ -82,6 +83,8 @@ export interface IPage {
     readonly editor: IEditorFacade;
     /** The toolbar's switch projection and editor-switch operation. */
     readonly editorSwitches: IPageEditorSwitches;
+    /** This page's navigation history; Browser webview history is separate. */
+    readonly history: IPageHistory;
     readonly tab: IPageTab;
     readonly data: Record<string, any>;
     readonly panels: IPagePanels;

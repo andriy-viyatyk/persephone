@@ -41,6 +41,19 @@ If a file has unsaved changes, you'll be prompted to save before closing.
 When you activate a tab that is outside the visible part of the tab bar, the tab bar scrolls just
 enough to bring it into view. Activating a tab that is already visible does not recenter the tab bar.
 
+## Page history
+
+Each page keeps its own Back and Forward destinations when it navigates in place. Use the Back and
+Forward buttons in the regular header, `Alt+Left` / `Alt+Right`, or physical mouse buttons 4 / 5.
+The controls act on the active work page; opening a right-pinned page in its popover does not make
+it the active page. A new navigation after going Back clears Forward. History is restored with the
+session. A declined save prompt leaves the page and its stacks unchanged, and untitled content with
+no addressable source does not get a history entry. Browser pages keep separate webview history;
+the shell history controls are disabled while a Browser page is active.
+
+See [Header Strip](../screens/header.md) for button placement and [the page scripting API](../scripting/api/page.md#pagehistory)
+for reading and driving a page's history.
+
 ### Slow content opens
 
 Some editors opt to show a page while its content is still restoring, so the tab is available

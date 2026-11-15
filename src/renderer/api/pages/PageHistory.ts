@@ -125,14 +125,14 @@ export class PageHistory {
         return true;
     }
 
-    back = async (): Promise<void> => this.replay("back");
-    forward = async (): Promise<void> => this.replay("forward");
+    back = async (): Promise<boolean> => this.replay("back");
+    forward = async (): Promise<boolean> => this.replay("forward");
 
-    private async replay(direction: HistoryDirection): Promise<void> {
-        if (this.busy || this.page.isInert || !this.navigate) return;
+    private async replay(direction: HistoryDirection): Promise<boolean> {
+        if (this.busy || this.page.isInert || !this.navigate) return false;
         const entries = direction === "back" ? this.backEntries : this.forwardEntries;
         const entry = entries.at(-1);
-        if (!entry) return;
+        if (!entry) return false;
         this.busy = true;
         let pipe: Awaited<ReturnType<typeof pipeFromPersistedSource>> | undefined;
         try {
@@ -140,7 +140,7 @@ export class PageHistory {
                 entries.pop();
                 this.onChanged();
                 ui.notify(t("api.fileNotFound", { name: fpBasename(entry.filePath) }), "error");
-                return;
+                return false;
             }
             try {
                 pipe = await pipeFromPersistedSource(entry.sourceLink, entry.filePath, { unknownScheme: "reject" });
@@ -166,6 +166,7 @@ export class PageHistory {
             // A taken interceptor owns the pipe; a navigator commit transfers it or disposes it.
             if (!moved) pipe.dispose();
             pipe = undefined;
+            return move.committed === true;
         } finally {
             pipe?.dispose();
             this.busy = false;

@@ -1,7 +1,7 @@
 ---
 title: "Page API"
 audience: "user"
-summary: "How do scripts read page state, switch editors, and run page scripts?"
+summary: "How do scripts read page state, navigate page history, switch editors, and run page scripts?"
 ---
 
 # Page API
@@ -22,6 +22,7 @@ available as `page.editor`, and editor switching is available as `page.editorSwi
 | `pipe` | Current primary content pipe, when this page has one |
 | `editor` | Read-only current editor facade; narrow on `editor.id` |
 | `editorSwitches` | Current id, toolbar-identical options, and `switchTo(id)` |
+| `history` | This page's Back and Forward stacks and navigation methods |
 | `tab` | This page's tab state and scoped tab-strip controls |
 | `data` | Per-page in-memory data bag |
 | `panels` | Page sidebar state and controls |
@@ -79,6 +80,24 @@ if (pipe) {
     // Call unsubscribe when observation is no longer needed.
 }
 ```
+
+## `page.history`
+
+Each page has its own Back and Forward stacks. `entries.back` and `entries.forward` are fresh copies,
+oldest first; the last entry is the next destination. Each entry exposes `title`, `filePath` (a
+logical local path or virtual URL), and `target` (editor id). Replay metadata is not exposed.
+
+```javascript
+console.log(page.history.entries);
+const moved = await page.history.back();
+console.log(moved); // true only when navigation committed; false for a normal no-op
+```
+
+`back()` and `forward()` return `true` for a committed move and `false` for a normal no-op, including
+an empty or busy stack, a cancelled save prompt, or an intercepted request. Actual navigation
+errors reject. Browser pages report page-model history here; their webview history is separate and
+is not controlled by these methods. The Markdown facade's `page.editor.navigateBack()` remains as a
+compatibility alias and discards the boolean result; prefer `page.history.back()`.
 
 ## `page.tab`
 

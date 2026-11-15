@@ -20,7 +20,7 @@ every state.
 
 ```
 +---------------------------------------------------------------------+
-| [P] [tab] [tab] … [+ ▾]        [right-pin] [right-pin] [–] [□] [×] |  header strip: work tabs left; right-pinned chips before window controls
+| [P] [Back] [Forward] [tab] [tab] … [+ ▾] [right-pin] [–] [□] [×] |  header: history buttons between menu and tabs; right-pins before controls
 |                                                  [Snip][Mneme][MCP] |  status cluster bottom-right
 +---------------------------------------------------------------------+
 | Page area                                                           |  everything below the header strip
@@ -31,6 +31,8 @@ every state.
 
 - Header strip → `app-header`
 - Persephone menu → `persephone-menu`
+- Back → `page-history-back`
+- Forward → `page-history-forward`
 - Page tabs → `page-tabs` (regular window: immediately right of the menu; board window: flush left)
 - Page tabs wrapper → `page-tabs-wrapper`
 - Right-pinned page chips → `right-page-tabs`
@@ -66,7 +68,8 @@ cluster; its locked board tab cannot be closed or moved to another window. Pages
 appear as normal tabs beside it. The **+** button is absent and `Ctrl+N` is ignored in this window.
 
 The page-tab strip begins flush with the left edge of the header in a board window. In a regular
-window it sits immediately to the right of the Persephone menu.
+window the Back and Forward buttons follow the Persephone menu, and the tabs follow those buttons.
+The separate board-window header has no history buttons.
 
 ### When global mute is active
 
@@ -171,6 +174,7 @@ Evidence: `MainPageView.ts:108-129,160-201`, `MainPage.css:16-28`, and `PageTabs
 |---|---|---|
 | Header strip | The top application chrome | `[data-name="app-header"]` |
 | Persephone glyph | Opens the Menu Bar, the app's only menu | `[data-name="persephone-menu"]` |
+| Back / Forward | Navigate the active work page to its previous or next page-history destination; disabled when that direction is empty or when a Browser page is active. Tooltips name the destination and shortcut. | `[data-name="page-history-back"]`, `[data-name="page-history-forward"]` |
 | Tab strip | Work pages and left-pinned tabs; tabs can be reordered, moved to another window, or opened in the tab menu | `[data-name="page-tabs"]` |
 | Tab strip scroll area | The scrollable wrapper around tabs | `[data-name="page-tabs-wrapper"]` |
 | Scroll arrows | Appear only when tabs overflow | `[data-name="page-tabs-scroll-left"]`, `[data-name="page-tabs-scroll-right"]` |
@@ -181,7 +185,10 @@ Evidence: `MainPageView.ts:108-129,160-201`, `MainPage.css:16-28`, and `PageTabs
 | Window controls | Minimize, maximize/restore, and close | `[data-name="window-minimize"]`, `[data-name="window-toggle"]`, `[data-name="window-close"]` |
 | Global mute indicator | Before window controls while one or more boards mute Persephone playback; click to release every board mute across app windows | `[data-name="global-mute"]` |
 
-The `+` button creates an empty page with `Ctrl+N`; its arrow offers the editors and browser
+The history buttons sit between the menu and tabs. They act on the active work page, including while
+a right-pinned popover is open. Their tooltips name the destination and shortcut. They are disabled
+when the corresponding history stack is empty and when a Browser page is active. The separate
+board-window header has no history buttons. The `+` button creates an empty page with `Ctrl+N`; its arrow offers the editors and browser
 profiles the user can start from. `Ctrl+Shift+N` opens a new window. The tab strips' language,
 close, sound, title, and state controls belong to [Page Tabs](./tabs.md). Right-pinned chips sit
 after the flexible space and before window controls; selecting one opens or closes its page

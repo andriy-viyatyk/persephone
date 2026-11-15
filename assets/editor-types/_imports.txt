@@ -38,6 +38,7 @@ mermaid-editor.d.ts
 mneme-config-editor.d.ts
 mneme-root-editor.d.ts
 page-editor-switches.d.ts
+page-history.d.ts
 page-panels.d.ts
 page-tab.d.ts
 page.d.ts

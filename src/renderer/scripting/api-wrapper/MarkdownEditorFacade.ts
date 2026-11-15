@@ -22,7 +22,7 @@ const MARKDOWN_EDITOR_MEMBERS: readonly IAiMember[] = [
     { name: "currentMatchIndex", kind: "property", summary: "Zero-based index of the current Markdown match." },
     { name: "totalMatches", kind: "property", summary: "Number of matches for the current Markdown find text." },
     { name: "revealFragment", kind: "method", signature: "revealFragment(fragment: string): void", summary: "Reveal a heading fragment in the rendered Markdown.", caution: "changes the visible preview position" },
-    { name: "navigateBack", kind: "method", signature: "navigateBack(): Promise<void>", summary: "Return to the previous Markdown document in page history.", caution: "navigates the current page" },
+    { name: "navigateBack", kind: "method", signature: "navigateBack(): Promise<void>", summary: "Compatibility alias for this page's Back history; discards the result.", caution: "navigates the current page" },
     { name: "toggleCompact", kind: "method", signature: "toggleCompact(): void", summary: "Toggle compact Markdown rendering.", caution: "changes the visible preview" },
     { name: "openSearch", kind: "method", signature: "openSearch(): void", summary: "Open the Markdown find bar.", caution: "changes the visible page UI" },
     { name: "closeSearch", kind: "method", signature: "closeSearch(): void", summary: "Close the Markdown find bar and clear its state.", caution: "changes the visible page UI" },
@@ -32,11 +32,12 @@ const MARKDOWN_EDITOR_MEMBERS: readonly IAiMember[] = [
 ];
 
 const MARKDOWN_EDITOR_HELP = `Access via pages[i].editor after narrowing editor.id to "md-view".
-Markdown preview facade with rendered HTML, navigation, compact mode, and find controls.
+Markdown preview facade with rendered HTML, a compatibility Back alias, compact mode, and find controls.
 There is no manual refresh or re-render control: the preview re-renders automatically whenever the
 page content changes, so "refresh the preview" is not an action a user or an agent performs here.
 Assign pages[i].content to change what is rendered; markdown-compact-toggle only changes spacing and
-typography of the already-rendered document. Its
+typography of the already-rendered document. navigateBack() delegates to this page's general
+history and discards its boolean result; prefer page.history.back(). Its
 persistent controls are text-compare-left, markdown-compact-toggle, find-input,
 find-prev, find-next, and find-close; conditional controls report visible: false when absent.
 The markdown-link context menu appears only after right-clicking a rendered link and offers Open

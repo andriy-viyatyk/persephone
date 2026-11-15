@@ -1,7 +1,7 @@
 ---
 title: "Markdown Preview"
 audience: both
-summary: "GitHub-flavored Markdown preview with search, navigation, code blocks, Mermaid, and local assets."
+summary: "GitHub-flavored Markdown preview with search, page-wide navigation, code blocks, Mermaid, and local assets."
 editorId: "md-view"
 ---
 
@@ -22,7 +22,7 @@ page, choose **Markdown** from the tab's language menu and then choose **Preview
 
 ```
 +---------------------------------------------------------------------+
-| [Nav] [Compare] [Back]                     [Compact] [Switch]       |  toolbar: shared actions at left, compact and switch at right
+| [Nav] [Compare]                         [Compact] [Switch]          |  toolbar: shared actions at left, compact and switch at right
 +---------------------------------------------------------------------+
 | [Markdown preview] [scroll]                                         |  Markdown preview and scroll region below the toolbar
 +---------------------------------------------------------------------+
@@ -31,7 +31,6 @@ page, choose **Markdown** from the tab's language menu and then choose **Preview
 ### User-facing label → `elements` name
 
 - Compare → `text-compare-left`
-- Back → `markdown-back`
 - Compact → `markdown-compact-toggle`
 - Find field → `find-input`
 - Previous → `find-prev`
@@ -65,16 +64,19 @@ page, choose **Markdown** from the tab's language menu and then choose **Preview
 
 Use `Ctrl+F`, `F3`, and `Shift+F3` to search. Code blocks have Monaco highlighting and copy buttons;
 YAML front matter is shown as code. Relative images resolve from disk and their hover toolbar can
-copy a PNG or open the Image Viewer. Links to local Markdown files navigate in the same tab with a
-Back button, and stable anchor links work within and across documents. Azure DevOps wiki links and
+copy a PNG or open the Image Viewer. Links to local Markdown files navigate in the same tab and use
+the app-wide Back and Forward controls in the header; see
+[Tabs & Navigation](../tabs-and-navigation/index.md#page-history). Stable anchor links work within
+and across documents. Azure DevOps wiki links and
 `/.attachments/` images resolve against a repository root.
 
 ## Agent API
 
 The Markdown facade exposes the preview state. Its verified elements include `text-compare-left`,
-`markdown-compact-toggle`, `markdown-back`, `find-input`, `find-prev`, `find-next`, and `find-close`.
-Use the page facade after narrowing `page.editor.id` to `md-view`; local guide links should use
-relative `.md` paths so they work in both GitHub and the guide browser.
+`markdown-compact-toggle`, `find-input`, `find-prev`, `find-next`, and `find-close`. Use
+`page.history.back()` for page-wide navigation; `page.editor.navigateBack()` remains as a
+compatibility alias. See the [Page API](../scripting/api/page.md#pagehistory). Local guide links
+should use relative `.md` paths so they work in both GitHub and the guide browser.
 
 ## Errors and limits
 
