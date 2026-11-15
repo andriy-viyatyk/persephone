@@ -1,22 +1,26 @@
 import { EditorId } from "../../../shared/editor-ids";
 import { pages } from "../pages";
+import type { IPageHost } from "../pages/IPageHost";
 
 export type PageHistoryDirection = "back" | "forward";
 
 /** Shared owner for user initiated page-history actions. Script calls use PageHistory directly. */
 export class PageHistoryControls {
-    isEligiblePage(): boolean {
-        const page = pages.query.activePage;
-        return !!page && page.mainEditor?.editorId !== EditorId.browserView;
+    /** A page whose history the user can drive: it has one, and it is not a Browser page
+     *  (the Browser keeps its own webview history). */
+    isEligiblePage(page: IPageHost | undefined = pages.query.activePage): boolean {
+        return !!page?.history && page.mainEditor?.editorId !== EditorId.browserView;
     }
 
-    go(direction: PageHistoryDirection): void {
-        const page = pages.query.activePage;
-        if (!page || page.mainEditor?.editorId === EditorId.browserView) return;
-        if (direction === "back" ? !page.history.canGoBack : !page.history.canGoForward) return;
+    /** Moves `page` (the active page for shortcuts and mouse buttons) one step in its history. */
+    go(direction: PageHistoryDirection, page: IPageHost | undefined = pages.query.activePage): void {
+        if (!page || !this.isEligiblePage(page)) return;
+        const history = page.history;
+        if (!history) return;
+        if (direction === "back" ? !history.canGoBack : !history.canGoForward) return;
 
-        const action = direction === "back" ? page.history.back : page.history.forward;
-        void action().catch((error: unknown) => {
+        const move = direction === "back" ? history.back() : history.forward();
+        void move.catch((error: unknown) => {
             console.error(`Failed to navigate page history ${direction}:`, error);
         });
     }

@@ -19,9 +19,9 @@ layout anchors.
 
 ```
 +---------------------------------------------------------------------+
-| [page-nav] [left-slot controls]              [right-slot] [switch]  |  shared TextChrome/PageToolbar row
-| [Home] [Back] [Forward] [Reload] [url-input] … [Close]              |  Browser's own toolbar, with no generic navigation or switch
-| [board controls]                              [editor switch]       |  custom BoardToolbarView row
+| [page-nav] [Back][Forward] [left-slot controls] [right-slot] [switch] |  shared TextChrome/PageToolbar row
+| [Home] [Back] [Forward] [Reload] [url-input] … [Close]              |  Browser's own toolbar (webview history), no page history or switch
+| [Explorer] [Back][Forward] [board controls]   [editor switch]       |  custom BoardToolbarView row
 +---------------------------------------------------------------------+
 | [sidebar panel stack] [sidebar splitter] | [active page editor]     |  sidebar left of the page content; splitter at its right edge
 |                                          | [script] … [pipe status] [provider] | [encoding] |  editor status bar (footer)
@@ -31,6 +31,8 @@ layout anchors.
 ### User-facing label → `elements` name
 
 - Page navigation → `page-nav-panel`
+- Page Back → `page-history-back` (right after page navigation, or after `board-toolbar-explorer` on a board)
+- Page Forward → `page-history-forward`
 - Sidebar container → `secondary-views-container`
 - Sidebar stack → `secondary-views-stack`
 - Sidebar splitter → `secondary-views-splitter`
@@ -206,6 +208,7 @@ Evidence: `PageContentView.ts:91-125`, `SecondaryViewsView.ts:69-80`, `PageToolb
 |---|---|---|
 | Content region below the header | The page area | `[data-name="app-content"]` |
 | Page navigation control | Opens the file Explorer sidebar | `[data-name="page-nav-panel"]` |
+| Page Back / Forward | On the page toolbar after File Explorer (on a board, after `board-toolbar-explorer`). Move that toolbar's page to its previous or next page-history destination; disabled when that direction is empty, absent on Browser pages. Tooltips name the destination and shortcut. | `[data-name="page-history-back"]`, `[data-name="page-history-forward"]` |
 | Page host | Every page lives here | `[data-name="pages-container"]` |
 | Active page editor container | The editor body for the active page | `[data-name="page-editor"]` |
 | Page pipe status | Shows source loading, completion, or error; opens stage details when clicked | `[data-name="page-pipe-status"]` |

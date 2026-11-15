@@ -65,7 +65,7 @@ page, choose **Markdown** from the tab's language menu and then choose **Preview
 Use `Ctrl+F`, `F3`, and `Shift+F3` to search. Code blocks have Monaco highlighting and copy buttons;
 YAML front matter is shown as code. Relative images resolve from disk and their hover toolbar can
 copy a PNG or open the Image Viewer. Links to local Markdown files navigate in the same tab and use
-the app-wide Back and Forward controls in the header; see
+the page Back and Forward buttons on the toolbar; see
 [Tabs & Navigation](../tabs-and-navigation/index.md#page-history). Stable anchor links work within
 and across documents. Azure DevOps wiki links and
 `/.attachments/` images resolve against a repository root.

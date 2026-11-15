@@ -20,7 +20,7 @@ every state.
 
 ```
 +---------------------------------------------------------------------+
-| [P] [Back] [Forward] [tab] [tab] … [+ ▾] [right-pin] [–] [□] [×] |  header: history buttons between menu and tabs; right-pins before controls
+| [P] [tab] [tab] [tab] … [+ ▾]       [right-pin] [–] [□] [×] |  header: tabs follow the menu; right-pins before controls
 |                                                  [Snip][Mneme][MCP] |  status cluster bottom-right
 +---------------------------------------------------------------------+
 | Page area                                                           |  everything below the header strip
@@ -31,8 +31,6 @@ every state.
 
 - Header strip → `app-header`
 - Persephone menu → `persephone-menu`
-- Back → `page-history-back`
-- Forward → `page-history-forward`
 - Page tabs → `page-tabs` (regular window: immediately right of the menu; board window: flush left)
 - Page tabs wrapper → `page-tabs-wrapper`
 - Right-pinned page chips → `right-page-tabs`
@@ -68,8 +66,8 @@ cluster; its locked board tab cannot be closed or moved to another window. Pages
 appear as normal tabs beside it. The **+** button is absent and `Ctrl+N` is ignored in this window.
 
 The page-tab strip begins flush with the left edge of the header in a board window. In a regular
-window the Back and Forward buttons follow the Persephone menu, and the tabs follow those buttons.
-The separate board-window header has no history buttons.
+window the tabs follow the Persephone menu. Page Back and Forward are not header controls: they sit
+on each page's toolbar, after File Explorer (see [Sidebar](sidebar.md)).
 
 ### When global mute is active
 
@@ -174,7 +172,6 @@ Evidence: `MainPageView.ts:108-129,160-201`, `MainPage.css:16-28`, and `PageTabs
 |---|---|---|
 | Header strip | The top application chrome | `[data-name="app-header"]` |
 | Persephone glyph | Opens the Menu Bar, the app's only menu | `[data-name="persephone-menu"]` |
-| Back / Forward | Navigate the active work page to its previous or next page-history destination; disabled when that direction is empty or when a Browser page is active. Tooltips name the destination and shortcut. | `[data-name="page-history-back"]`, `[data-name="page-history-forward"]` |
 | Tab strip | Work pages and left-pinned tabs; tabs can be reordered, moved to another window, or opened in the tab menu | `[data-name="page-tabs"]` |
 | Tab strip scroll area | The scrollable wrapper around tabs | `[data-name="page-tabs-wrapper"]` |
 | Scroll arrows | Appear only when tabs overflow | `[data-name="page-tabs-scroll-left"]`, `[data-name="page-tabs-scroll-right"]` |

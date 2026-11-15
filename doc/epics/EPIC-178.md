@@ -85,8 +85,9 @@ sidebar panel is promoted by the existing reuse steps (`reuseNavigationTarget`, 
 restores that instance with its edits.
 
 **UI.**
-- App header: Back and Forward icon buttons after the menu button, acting on the active page, disabled when the stack
-  is empty, tooltip naming the destination's title and shortcut.
+- Page toolbar: Back and Forward icon buttons right after the File Explorer button (`PageToolbarView` and the
+  board's `BoardToolbarView`), acting on that toolbar's page, disabled when the stack is empty, tooltip naming the
+  destination's title and shortcut. (First shipped in the app header; moved 2026-11-15, see Notes.)
 - Shortcuts: `Alt+Left` / `Alt+Right` and mouse buttons 4/5, registered in `KeyboardService`.
 - Browser pages are left alone: no Browser code changes, the header buttons are disabled while a Browser page is
   active, and the page-history shortcuts do nothing there, so the Browser's own `Alt+Left` / `Alt+Right` keep working
@@ -128,5 +129,8 @@ US-2003 is the core and comes first; US-2004 and US-2005 both depend only on it.
 - Requested by the user: Back / Forward for the page in general, whatever navigated it (Explorer, links, boards,
   scripts).
 - Header placement chosen over per-editor toolbars because boards and the Browser have no `PageToolbarView`.
+- After trying them, the user moved the buttons from the app header to the editor toolbar, after File Explorer: in
+  the header they read as tab navigation. The editors without a `PageToolbarView` (Browser, MCP Inspector, Mneme
+  config) have no buttons; the shortcuts still work there except on Browser pages.
 - User confirmed: header buttons, remove the Markdown Back button. The Browser is a separate thing (not an editor a
   page navigates to or from) and this epic must not touch Browser logic.

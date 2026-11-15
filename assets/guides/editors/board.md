@@ -34,6 +34,7 @@ the file and folder association details.
 ### User-facing label → `elements` name
 
 - File Explorer → `board-toolbar-explorer`
+- Page Back / Forward → `page-history-back`, `page-history-forward` (right after File Explorer)
 - Board controls → `board-toolbar-control-<id>`, one per control the open board declares, in the order it declared them; absent when the board declares none
 - Board status items → `board-status-bar-item-<id>`, one per visible item the trusted main frame declares; hidden items have no entry
 - Toolbar text → no entry: a label, not a control, and empty unless the open board fills it

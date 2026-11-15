@@ -15,7 +15,6 @@ import { GlobalMuteButtonView } from "./GlobalMuteButtonView";
 import { HeaderQuickSettingsPopoverView } from "./HeaderQuickSettingsPopover";
 import { HeaderStatusIndicatorsView } from "./HeaderStatusIndicatorsView";
 import { RecordingControlsView } from "./RecordingControlsView";
-import { PageHistoryButtonsView } from "./PageHistoryButtonsView";
 import { snipToNewPage } from "../../api/shell/snip-to-new-page";
 
 export interface AppHeaderViewProps {
@@ -40,7 +39,6 @@ export class AppHeaderView extends VanillaView<AppHeaderViewProps> {
     private readonly toggleWindowButton = createWindowToggleButton((button, listener) => this.listen(button, "click", listener), () => app.window.toggleWindow());
     /** Retained so the theme binding can rebuild its glyph. */
     private readonly menuButton = document.createElement("button");
-    private readonly historyButtons = this.child(new PageHistoryButtonsView());
     private quickSettingsOpen = false;
     private readonly toggleSnipMenu = (): void => {
         this.quickSettingsOpen = !this.quickSettingsOpen;
@@ -92,13 +90,12 @@ export class AppHeaderView extends VanillaView<AppHeaderViewProps> {
         const profileLabel = profileName ? document.createElement("span") : undefined;
         if (profileLabel && profileName) profileLabel.textContent = ` — ${profileName}`;
 
-        this.root.append(this.menuButton, this.historyButtons.root, this.props.pageTabs, spacer, this.props.rightPageTabs, this.globalMute.root);
+        this.root.append(this.menuButton, this.props.pageTabs, spacer, this.props.rightPageTabs, this.globalMute.root);
         if (profileLabel) this.root.append(profileLabel);
         this.root.append(this.autoloadWrap, this.zoomButton, this.recording.root, minimizeButton, this.toggleWindowButton, closeButton, this.status.root);
 
         this.listen(this.status.snipButton, "click", this.toggleSnipMenu);
         this.status.mount();
-        this.historyButtons.mount();
         this.globalMute.mount();
         this.recording.mount();
         this.autoloadButton.mount();

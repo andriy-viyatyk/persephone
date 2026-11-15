@@ -1,0 +1,13 @@
+@layer editor {
+    /* Back / Forward sit right after File Explorer as one tight pair; the toolbar's own gap
+     * separates the pair from its neighbours. */
+    [data-part="page-history"] {
+        display: inline-flex;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    [data-part="page-history"][hidden] {
+        display: none;
+    }
+}

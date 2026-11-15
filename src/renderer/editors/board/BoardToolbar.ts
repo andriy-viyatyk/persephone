@@ -14,6 +14,7 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { openMenu, type MenuHandle } from "../../uikit/Menu/attach-menu";
 import type { MenuItem } from "../../core/events/context-menu";
 import { SwitchWidgetView } from "../base/PageToolbarView";
+import { PageHistoryButtonsView } from "../base/PageHistoryButtonsView";
 import { openBoardInfo } from "../board-info/open-board-info";
 import type { BoardEditorModel } from "./BoardEditorModel";
 import { BoardToolbarControls } from "./BoardToolbarControls";
@@ -40,6 +41,7 @@ export class BoardToolbarView extends VanillaView<{
     });
     private readonly explorerButton: IconButtonView;
     private readonly moreButton: IconButtonView;
+    private readonly historyButtons: PageHistoryButtonsView;
     private readonly switchWidget: SwitchWidgetView;
     private readonly boardControls: BoardToolbarControls;
     private menu: MenuHandle | undefined;
@@ -74,6 +76,7 @@ export class BoardToolbarView extends VanillaView<{
             icon: createIconElement("more-horiz", { width: 14, height: 14 }),
             onClick: () => this.openBoardMenu(),
         });
+        this.historyButtons = new PageHistoryButtonsView({ model: props.model });
         this.switchWidget = new SwitchWidgetView({ model: props.model });
         this.boardControls = new BoardToolbarControls({ model: props.model, onAction: props.onAction });
         this.boardControls.onBreadcrumbVisibilityChange = (visible) => {
@@ -86,6 +89,7 @@ export class BoardToolbarView extends VanillaView<{
         this.morePanel.append(this.moreButton.root);
         this.root.append(
             this.explorerButton.root,
+            this.historyButtons.root,
             this.boardControls.startRoot,
             this.pathPanel,
             this.boardControls.breadcrumbRoot,
@@ -94,6 +98,7 @@ export class BoardToolbarView extends VanillaView<{
             this.switchWidget.root,
         );
         this.child(this.explorerButton).mount();
+        this.child(this.historyButtons).mount();
         this.child(this.moreButton).mount();
         this.child(this.switchWidget).mount();
         this.child(this.boardControls).mount();

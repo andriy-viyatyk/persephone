@@ -79,7 +79,6 @@ The always-visible chrome, top to bottom.
 |---|---|
 | Header strip | `[data-name="app-header"]` |
 | Menu button (Persephone glyph) — opens the Menu Bar | `[data-name="persephone-menu"]` |
-| Page-history Back / Forward (active work page; disabled on Browser) | `[data-name="page-history-back"]`, `[data-name="page-history-forward"]` |
 | Tab strip | `[data-name="page-tabs"]` |
 | Right-pinned tab strip | `[data-name="right-page-tabs"]` |
 | Tab strip scroll area | `[data-name="page-tabs-wrapper"]` |
@@ -230,6 +229,7 @@ Boards group is not rendered.
 | Element | Selector |
 |---|---|
 | Page navigation control (opens the Explorer sidebar) | `[data-name="page-nav-panel"]` |
+| Page-history Back / Forward (page toolbar after the Explorer control, board toolbar after `board-toolbar-explorer`; acts on that toolbar's page; absent on Browser pages) | `[data-name="page-history-back"]`, `[data-name="page-history-forward"]` |
 | Content region below the header | `[data-name="app-content"]` |
 | Page host (all pages live here) | `[data-name="pages-container"]` |
 | The active page's editor container | `[data-name="page-editor"]` |

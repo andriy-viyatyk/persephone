@@ -4,6 +4,7 @@ import type { IPageHost } from "../../api/pages/IPageHost";
 import type { EditorModelInstance as EditorModel, EditorStateBase } from "./EditorModel";
 import { editorCatalog } from "./editor-catalog";
 import { EditorToolbarView } from "./EditorToolbarView";
+import { PageHistoryButtonsView } from "./PageHistoryButtonsView";
 import { TextHostEditorModel } from "./TextHostEditorModel";
 import type { TextFileEditorModelState, TextFileModel } from "../content-host/TextFileModel";
 import type { IconButtonViewProps } from "../../uikit/IconButton/IconButtonView";
@@ -345,11 +346,12 @@ export class PageToolbarView extends VanillaView<PageToolbarViewProps> {
         this.setSlots(this.props.children, this.props.rightContributions);
 
         const navPanel = this.child(new NavPanelButtonView({ model: this.props.model }));
+        const history = this.child(new PageHistoryButtonsView({ model: this.props.model }));
         const switchWidget = this.child(new SwitchWidgetView({ model: this.props.model }));
         this.navPanel = navPanel;
         this.switchWidget = switchWidget;
 
-        content.append(navPanel.root, childrenHost);
+        content.append(navPanel.root, history.root, childrenHost);
         if (!this.props.noSpacer) {
             this.spacer = this.child(new SpacerView({}));
             content.append(this.spacer.root);
@@ -358,6 +360,7 @@ export class PageToolbarView extends VanillaView<PageToolbarViewProps> {
         content.append(switchWidget.root);
 
         navPanel.mount();
+        history.mount();
         this.spacer?.mount();
         switchWidget.mount();
 

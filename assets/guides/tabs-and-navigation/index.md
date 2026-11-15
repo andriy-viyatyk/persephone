@@ -44,8 +44,9 @@ enough to bring it into view. Activating a tab that is already visible does not 
 ## Page history
 
 Each page keeps its own Back and Forward destinations when it navigates in place. Use the Back and
-Forward buttons in the regular header, `Alt+Left` / `Alt+Right`, or physical mouse buttons 4 / 5.
-The controls act on the active work page; opening a right-pinned page in its popover does not make
+Forward buttons on the page toolbar (right after File Explorer), `Alt+Left` / `Alt+Right`, or
+physical mouse buttons 4 / 5. Toolbar buttons act on the page whose toolbar they are on; the
+shortcuts act on the active work page, and opening a right-pinned page in its popover does not make
 it the active page. A new navigation after going Back clears Forward. History is restored with the
 session. A declined save prompt leaves the page and its stacks unchanged, and untitled content with
 no addressable source does not get a history entry. Browser pages keep separate webview history;
