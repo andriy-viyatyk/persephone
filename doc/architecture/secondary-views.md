@@ -674,9 +674,12 @@ interface ITreeProvider {
 For filesystem directory rows, `FileTreeProvider` resolves the current folder-editor claim when
 the row is opened, rather than trusting the `target` cached for its displayed icon at list time.
 This lets Explorer and Folder View honor a trust or manifest refresh without relisting; icons
-update on the next listing. The synthetic parent row keeps Folder View even when its parent folder
-is claimed. It is privately marked when listed, with a category-parent check covering copies that
-pass through a facade and drop the private marker.
+update on the next listing. The root row uses the same folder-presentation helper through the
+provider's optional `describeRoot()` hint, so it shows the same board or editor folder icon as a
+child row for that folder; providers without the hint keep the default root folder icon. The
+synthetic parent row keeps Folder View even when its parent folder is claimed. It is privately
+marked when listed, with a category-parent check covering copies that pass through a facade and
+drop the private marker.
 
 The UIKit `Breadcrumb` is used with its opt-in `clipStart` prop: on overflow it shrinks within the toolbar row and clips the **start** (root) side, keeping the trailing (current) folder visible. See [`uikit/CLAUDE.md`](../../src/renderer/uikit/CLAUDE.md) for the component contract.
 

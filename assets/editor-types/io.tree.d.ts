@@ -40,6 +40,11 @@ export interface ITreeProvider {
      *  Useful for panel switch navigation where only the href is stored. */
     getNavigationUrlByHref(href: string): Promise<string>;
 
+    /** Icon hints for the tree's root row, matching what a child row for the same folder
+     *  would carry (e.g. the board glyph of a board that claims the root folder). Optional —
+     *  without it the root row shows the default folder icon. */
+    describeRoot?(): Pick<ILink, "icon" | "boardIconRoot">;
+
     /** Whether this tree supports root navigation (move up to parent, make subfolder root). */
     readonly navigable: boolean;
 

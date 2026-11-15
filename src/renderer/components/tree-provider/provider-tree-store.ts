@@ -130,6 +130,7 @@ export class ProviderTreeStore {
                 category: "",
                 tags: [],
                 isDirectory: true,
+                ...provider.describeRoot?.(),
             },
             items: items.map(toNode),
         };

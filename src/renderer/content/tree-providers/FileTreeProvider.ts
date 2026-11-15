@@ -41,6 +41,19 @@ function isParentRow(item: ITreeProviderItem, rootPath: string): item is ParentR
         && fpNormalizeForCompare(fpDirname(item.category)) === fpNormalizeForCompare(item.href);
 }
 
+/** The folder editor a folder opens in, and the icon that editor gives it (a claiming
+ *  board's glyph, or an editor's folder icon such as Git). Shared by child rows and the
+ *  root row so both show the same icon for the same folder. */
+function folderPresentation(folderPath: string): Pick<ITreeProviderItem, "target" | "icon" | "boardIconRoot"> {
+    const target = editorCatalog.resolveFolder(folderPath) ?? EditorId.categoryView;
+    const board = editorCatalog.describe(target);
+    return {
+        target,
+        icon: board?.boardRoot ? "board" : editorRegistry.getById(target)?.folderIcon,
+        boardIconRoot: board?.boardRoot,
+    };
+}
+
 /**
  * ITreeProvider for local filesystem directories.
  *
@@ -61,6 +74,11 @@ export class FileTreeProvider implements ITreeProvider {
     constructor(public readonly sourceUrl: string) {
         this.displayName = path.basename(sourceUrl);
         this.rootPath = sourceUrl;
+    }
+
+    describeRoot(): Pick<ITreeProviderItem, "icon" | "boardIconRoot"> {
+        const { icon, boardIconRoot } = folderPresentation(this.rootPath);
+        return { icon, boardIconRoot };
     }
 
     async list(dirPath: string): Promise<ITreeProviderItem[]> {
@@ -86,17 +104,13 @@ export class FileTreeProvider implements ITreeProvider {
             const isDir = entry.isDirectory();
 
             if (isDir) {
-                const target = editorCatalog.resolveFolder(fullPath) ?? EditorId.categoryView;
-                const board = editorCatalog.describe(target);
                 folders.push({
                     title: entry.name,
                     href: fullPath,
                     category: dirPath,
                     tags: [],
                     isDirectory: true,
-                    target,
-                    icon: board?.boardRoot ? "board" : editorRegistry.getById(target)?.folderIcon,
-                    boardIconRoot: board?.boardRoot,
+                    ...folderPresentation(fullPath),
                 });
             } else {
                 const ext = path.extname(entry.name).toLowerCase();
