@@ -10,9 +10,21 @@
  * v1 exposes exactly two operations — availability probe + repo detection.
  * Log/show/diff arrive with as further endpoints.
  */
-import { simpleGit } from "simple-git";
+import { simpleGit, type SimpleGit, type SimpleGitOptions } from "simple-git";
 import type { GitAheadBehind, GitCommit, GitFetchOptions, GitFileChange, GitIdentity, GitLogOptions, GitMutationResult, GitProbeResult, GitPullOptions, GitPullResult, GitPushOptions, GitPushResult, GitRef, GitRefs, GitRepoInfo, GitStatusResult, GitSwitchTarget } from "../ipc/git-ipc";
 import { errMessage } from "../shared/utils";
+
+/**
+ * The `GIT_*` variables this module sets through `.env()`. simple-git 4 guards every
+ * `GIT_*` variable: it strips inherited ones and throws when one is set explicitly
+ * unless it is listed in `allowEnvironment`.
+ */
+const ALLOWED_GIT_ENV = ["GIT_OPTIONAL_LOCKS", "GIT_TERMINAL_PROMPT"];
+
+/** A simple-git instance for `dir` that may set the variables in `ALLOWED_GIT_ENV`. */
+function gitAt(dir: string, options?: Partial<SimpleGitOptions>): SimpleGit {
+    return simpleGit(dir, { ...options, allowEnvironment: ALLOWED_GIT_ENV });
+}
 
 /**
  * Run a mutating git op under this module's "never throws" contract: success is
@@ -49,7 +61,7 @@ export async function probeGit(): Promise<GitProbeResult> {
  */
 export async function detectRepo(dir: string): Promise<GitRepoInfo | null> {
     try {
-        const git = simpleGit(dir);
+        const git = gitAt(dir);
         const root = (await git.revparse(["--show-toplevel"])).trim();
         if (!root) return null;
         let branch = "HEAD";
@@ -147,7 +159,7 @@ function parseLog(raw: string): GitCommit[] {
 export async function log(dir: string, opts: GitLogOptions = {}): Promise<GitCommit[]> {
     const max = opts.maxCount ?? 500;
     try {
-        const git = simpleGit(dir);
+        const git = gitAt(dir);
         const args = [
             "log",
             "--topo-order",
@@ -191,7 +203,7 @@ export async function status(dir: string): Promise<GitStatusResult> {
         // watch → refresh → status → rewrite index → watch → … The two-arg
         // `.env(name, value)` SUPPLEMENTS the inherited process env (PATH etc.);
         // the single-object form would replace it.
-        const s = await simpleGit(dir).env("GIT_OPTIONAL_LOCKS", "0").status();
+        const s = await gitAt(dir).env("GIT_OPTIONAL_LOCKS", "0").status();
         const staged: GitFileChange[] = [];
         const unstaged: GitFileChange[] = [];
         for (const f of s.files) {
@@ -232,7 +244,7 @@ export async function status(dir: string): Promise<GitStatusResult> {
 export async function refs(dir: string): Promise<GitRefs> {
     const empty: GitRefs = { localBranches: [], remotes: [], remoteBranches: [], tags: [] };
     try {
-        const git = simpleGit(dir).env("GIT_OPTIONAL_LOCKS", "0");
+        const git = gitAt(dir).env("GIT_OPTIONAL_LOCKS", "0");
         // Sorted most-recent-first: branches/remotes by commit date, tags by
         // creation date (`creatordate` covers both lightweight + annotated tags).
         // The renderer re-sorts alphabetically on demand; this is the default order.
@@ -280,7 +292,7 @@ export async function refs(dir: string): Promise<GitRefs> {
 export async function remoteUrl(dir: string, remote: string): Promise<string> {
     if (!remote) return "";
     try {
-        const git = simpleGit(dir).env("GIT_OPTIONAL_LOCKS", "0");
+        const git = gitAt(dir).env("GIT_OPTIONAL_LOCKS", "0");
         const raw = await git.raw(["remote", "get-url", remote]);
         return raw.trim();
     } catch {
@@ -298,7 +310,7 @@ export async function remoteUrl(dir: string, remote: string): Promise<string> {
  */
 export async function show(dir: string, rev: string, path: string): Promise<string> {
     try {
-        const git = simpleGit(dir);
+        const git = gitAt(dir);
         return await git.raw(["show", `${rev}:${path}`]);
     } catch {
         return ""; // absent at that rev (new file) / git missing → empty side
@@ -313,7 +325,7 @@ export async function show(dir: string, rev: string, path: string): Promise<stri
  */
 export async function commitMessage(dir: string, hash: string): Promise<string> {
     try {
-        return (await simpleGit(dir).raw(["show", "-s", "--format=%B", hash])).trimEnd();
+        return (await gitAt(dir).raw(["show", "-s", "--format=%B", hash])).trimEnd();
     } catch {
         return "";
     }
@@ -328,7 +340,7 @@ export async function commitMessage(dir: string, hash: string): Promise<string> 
  */
 export async function commitFiles(dir: string, hash: string): Promise<GitFileChange[]> {
     try {
-        const raw = await simpleGit(dir).raw([
+        const raw = await gitAt(dir).raw([
             "diff-tree", "--no-commit-id", "--name-status", "-r", "--root", hash,
         ]);
         const out: GitFileChange[] = [];
@@ -361,7 +373,7 @@ export async function commitFiles(dir: string, hash: string): Promise<GitFileCha
 export async function stage(dir: string, paths: string[]): Promise<GitMutationResult> {
     if (!paths.length) return { ok: true };
     return mutation(async () => {
-        await simpleGit(dir).add(paths);
+        await gitAt(dir).add(paths);
     });
 }
 
@@ -374,7 +386,7 @@ export async function stage(dir: string, paths: string[]): Promise<GitMutationRe
  */
 export async function unstage(dir: string, paths: string[]): Promise<GitMutationResult> {
     if (!paths.length) return { ok: true };
-    const git = simpleGit(dir);
+    const git = gitAt(dir);
     try {
         await git.reset(["--", ...paths]);
         return { ok: true };
@@ -399,7 +411,7 @@ export async function discard(
     untrackedPaths: string[],
 ): Promise<GitMutationResult> {
     if (!trackedPaths.length && !untrackedPaths.length) return { ok: true };
-    const git = simpleGit(dir);
+    const git = gitAt(dir);
     return mutation(async () => {
         if (trackedPaths.length) await git.raw(["checkout", "--", ...trackedPaths]);
         if (untrackedPaths.length) await git.raw(["clean", "-f", "--", ...untrackedPaths]);
@@ -415,7 +427,7 @@ export async function discard(
 export async function getIdentity(dir: string): Promise<GitIdentity> {
     const read = async (key: string): Promise<string> => {
         try {
-            return (await simpleGit(dir).raw(["config", key])).trim();
+            return (await gitAt(dir).raw(["config", key])).trim();
         } catch {
             return ""; // key unset (or git unavailable) → empty
         }
@@ -446,7 +458,7 @@ export async function commit(
         const opts = identity && (identity.name || identity.email)
             ? { config: [`user.name=${identity.name}`, `user.email=${identity.email}`] }
             : undefined;
-        await simpleGit(dir, opts).commit(message);
+        await gitAt(dir, opts).commit(message);
     });
 }
 
@@ -463,7 +475,7 @@ export async function commit(
  */
 export async function switchTo(dir: string, target: GitSwitchTarget): Promise<GitMutationResult> {
     return mutation(async () => {
-        const git = simpleGit(dir);
+        const git = gitAt(dir);
         switch (target.type) {
             case "branch":
                 await git.raw(["switch", target.name]);
@@ -506,7 +518,7 @@ export async function createBranch(
 ): Promise<GitMutationResult> {
     if (!name.trim()) return { ok: false, error: "Empty branch name" };
     return mutation(async () => {
-        const git = simpleGit(dir);
+        const git = gitAt(dir);
         const args = checkout
             ? ["switch", "-c", name, ...(startPoint ? [startPoint] : [])]
             : ["branch", name, ...(startPoint ? [startPoint] : [])];
@@ -521,7 +533,7 @@ export async function createBranch(
  */
 export async function fetch(dir: string, opts: GitFetchOptions = {}): Promise<GitMutationResult> {
     return mutation(async () => {
-        const git = simpleGit(dir).env("GIT_TERMINAL_PROMPT", "0");
+        const git = gitAt(dir).env("GIT_TERMINAL_PROMPT", "0");
         if (opts.remote) {
             await git.raw(["fetch", "--prune", opts.remote]);
         } else {
@@ -540,7 +552,7 @@ export async function fetch(dir: string, opts: GitFetchOptions = {}): Promise<Gi
  */
 export async function aheadBehind(dir: string): Promise<GitAheadBehind> {
     try {
-        const git = simpleGit(dir).env("GIT_OPTIONAL_LOCKS", "0").env("GIT_TERMINAL_PROMPT", "0");
+        const git = gitAt(dir).env("GIT_OPTIONAL_LOCKS", "0").env("GIT_TERMINAL_PROMPT", "0");
         // Get the upstream name for display.
         let upstream: string | undefined;
         try {
@@ -573,7 +585,7 @@ export async function aheadBehind(dir: string): Promise<GitAheadBehind> {
  */
 export async function push(dir: string, opts: GitPushOptions = {}): Promise<GitPushResult> {
     try {
-        const git = simpleGit(dir).env("GIT_TERMINAL_PROMPT", "0");
+        const git = gitAt(dir).env("GIT_TERMINAL_PROMPT", "0");
 
         // Resolve the remote: use opts.remote if given, else "origin", else the sole remote.
         let remote = opts.remote;
@@ -635,7 +647,7 @@ export async function push(dir: string, opts: GitPushOptions = {}): Promise<GitP
  */
 export async function pull(dir: string, opts: GitPullOptions = {}): Promise<GitPullResult> {
     try {
-        const git = simpleGit(dir)
+        const git = gitAt(dir)
             .env("GIT_OPTIONAL_LOCKS", "0")
             .env("GIT_TERMINAL_PROMPT", "0");
 
