@@ -18,7 +18,7 @@ interface RecordingParts {
 
 export class RecordingControlsView extends VanillaView<object> {
     private parts: RecordingParts | undefined;
-    private hiddenChromeState: { hidden: boolean; display: string } | undefined;
+    private hiddenChromeState: { hidden: HTMLElement["hidden"]; display: string } | undefined;
 
     public constructor(props: object) {
         super(props, document.createElement("div"));

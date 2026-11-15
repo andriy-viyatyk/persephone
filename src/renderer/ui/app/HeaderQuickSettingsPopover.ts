@@ -119,7 +119,8 @@ class HeaderQuickSettingsContentView extends VanillaView<HeaderQuickSettingsCont
         chevron.append(createIconElement("chevron-right"));
         row.append(icon, labelElement, chevron);
         this.listen(row, "click", () => {
-            const open = this.recordChoices[0]?.hidden ?? false;
+            // `hidden` is boolean | "until-found"; any hidden state means the choices are closed.
+            const open = Boolean(this.recordChoices[0]?.hidden);
             this.recordChoices.forEach((choice) => { choice.hidden = !open; });
             row.toggleAttribute("data-expanded", open);
         });

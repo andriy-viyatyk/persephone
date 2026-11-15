@@ -20,7 +20,7 @@ export class HeaderStatusIndicatorsView extends VanillaView<object> {
     private readonly mcpIndicator = document.createElement("span");
     private readonly audioCaptureIndicator = document.createElement("span");
     private readonly audioCaptureState = new AudioCaptureState();
-    private hiddenChromeState: { hidden: boolean; display: string } | undefined;
+    private hiddenChromeState: { hidden: HTMLElement["hidden"]; display: string } | undefined;
 
     public constructor(props: object) {
         super(props, document.createElement("div"));

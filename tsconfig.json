@@ -5,9 +5,11 @@
         "allowJs": true,
         "skipLibCheck": true,
         "esModuleInterop": true,
+        // TypeScript 6 turned `strict` on by default. The project is not strict: strictNullChecks
+        // is enforced per folder by scripts/typecheck-strict.mjs (US-2021).
+        "strict": false,
         "noImplicitAny": true,
         "sourceMap": true,
-        "baseUrl": ".",
         "outDir": "dist",
         // "bundler", not "node": every entry point is bundled by Vite/rolldown, and node10
         // resolution cannot read a package's `exports` map — which is the only way `ai-vision`
