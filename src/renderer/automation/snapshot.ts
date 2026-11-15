@@ -200,7 +200,7 @@ async function getOwnedIframeTargets(
     host: "browser" | "app",
 ): Promise<{ ownId?: string; targets: TargetInfo[] }> {
     let ownTargetId: string | undefined;
-    let targetInfos: TargetInfo[] = [];
+    let targetInfos: TargetInfo[];
     try {
         const current = await cdp.send("Target.getTargetInfo");
         const info = current.targetInfo as TargetInfo | undefined;

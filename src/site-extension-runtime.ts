@@ -72,7 +72,7 @@ if (!target.__persephoneSiteRuntime) {
             try { value = await handler(); } catch (error) {
                 let message = "Action handler failed";
                 try { message = (error instanceof Error ? error.message : String(error)).slice(0, 512); } catch { /* Use fallback. */ }
-                throw new Error(message);
+                throw new Error(message, { cause: error });
             }
             let estimatedBytes = 0;
             const limit = 2 * 1024 * 1024;

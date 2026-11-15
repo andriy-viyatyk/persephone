@@ -79,6 +79,7 @@ export class ContentOpenBridge {
                 timedOut
                     ? "content.open() timed out while resolving the resource."
                     : errMessage(error, "The content resource could not be opened."),
+                { cause: error },
             );
         } finally {
             if (timer !== undefined) clearTimeout(timer);

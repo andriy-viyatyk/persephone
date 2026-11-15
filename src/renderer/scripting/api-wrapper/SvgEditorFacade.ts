@@ -71,7 +71,7 @@ export class SvgEditorFacade extends EditorFacadeBase<SvgEditor> implements IAiV
         try {
             return await writePngToFile(this.editor, filePath);
         } catch (error) {
-            throw new Error(`SVG preview cannot save PNG: ${errMessage(error)}`);
+            throw new Error(`SVG preview cannot save PNG: ${errMessage(error)}`, { cause: error });
         }
     }
 

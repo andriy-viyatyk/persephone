@@ -51,7 +51,7 @@ export class SvgEditor extends TextHostEditorModel<SvgEditorState, SvgQueueEvent
         try {
             return await rasterToPngBlob(`data:image/svg+xml,${encodeURIComponent(content)}`);
         } catch (error) {
-            throw new Error(`SVG preview cannot export PNG because rasterisation failed: ${errMessage(error)}`);
+            throw new Error(`SVG preview cannot export PNG because rasterisation failed: ${errMessage(error)}`, { cause: error });
         }
     }
 

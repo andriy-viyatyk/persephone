@@ -149,6 +149,7 @@ export class AboutEditorFacade extends EditorFacadeBase<AboutEditor> implements 
             throw new Error(
                 `Unable to validate About guide ${JSON.stringify(parsed.path)}: ${errMessage(error)}. `
                 + `${GUIDE_DISCOVERY} ${GUIDE_EXAMPLE}`,
+                { cause: error },
             );
         }
         if (!page) {
@@ -159,6 +160,7 @@ export class AboutEditorFacade extends EditorFacadeBase<AboutEditor> implements 
                 throw new Error(
                     `Unable to inspect About guide folder ${JSON.stringify(parsed.path)}: ${errMessage(error)}. `
                     + `${GUIDE_DISCOVERY} ${GUIDE_EXAMPLE}`,
+                    { cause: error },
                 );
             }
             const folder = findGuideFolder(tree, parsed.path);
@@ -171,6 +173,7 @@ export class AboutEditorFacade extends EditorFacadeBase<AboutEditor> implements 
                 throw new Error(
                     `Unable to validate About guide folder index ${JSON.stringify(indexPath)}: ${errMessage(error)}. `
                     + `${GUIDE_DISCOVERY} ${GUIDE_EXAMPLE}`,
+                    { cause: error },
                 );
             }
             if (!page) throw folderWithoutIndexError(parsed.path, folder);

@@ -161,7 +161,7 @@ async function loadStore(context: BoardStorageContext): Promise<BoardStorageStat
             cache.set(context.boardKey, { state: empty });
             return empty;
         }
-        throw new Error(`Failed to read board storage: ${errMessage(error)}`);
+        throw new Error(`Failed to read board storage: ${errMessage(error)}`, { cause: error });
     }
 
     if (Buffer.byteLength(content, "utf8") > MAX_BOARD_STORAGE_BYTES) {
@@ -172,14 +172,14 @@ async function loadStore(context: BoardStorageContext): Promise<BoardStorageStat
     try {
         parsed = JSON.parse(content);
     } catch (error) {
-        throw new Error(`Board storage contains invalid JSON: ${errMessage(error)}`);
+        throw new Error(`Board storage contains invalid JSON: ${errMessage(error)}`, { cause: error });
     }
 
     let state: BoardStorageState;
     try {
         state = validateStore(parsed);
     } catch (error) {
-        throw new Error(`Board storage has an invalid structure: ${errMessage(error)}`);
+        throw new Error(`Board storage has an invalid structure: ${errMessage(error)}`, { cause: error });
     }
     cache.set(context.boardKey, { state });
     return state;
@@ -191,7 +191,7 @@ function serializeStore(state: BoardStorageState): string {
     try {
         content = JSON.stringify(state, null, 2);
     } catch (error) {
-        throw new Error(`Board storage could not be serialized: ${errMessage(error)}`);
+        throw new Error(`Board storage could not be serialized: ${errMessage(error)}`, { cause: error });
     }
     if (Buffer.byteLength(content, "utf8") > MAX_BOARD_STORAGE_BYTES) {
         throw new RangeError(`Board storage exceeds the ${MAX_BOARD_STORAGE_BYTES}-byte limit.`);
@@ -203,7 +203,7 @@ async function ensureMetadata(context: BoardStorageContext): Promise<void> {
     try {
         await fs.promises.mkdir(context.folderPath, { recursive: true });
     } catch (error) {
-        throw new Error(`Failed to create board storage: ${errMessage(error)}`);
+        throw new Error(`Failed to create board storage: ${errMessage(error)}`, { cause: error });
     }
 
     try {
@@ -231,7 +231,7 @@ async function ensureMetadata(context: BoardStorageContext): Promise<void> {
             await refreshBundledMetadata(context);
             return;
         }
-        throw new Error(`Failed to create board storage metadata: ${errMessage(error)}`);
+        throw new Error(`Failed to create board storage metadata: ${errMessage(error)}`, { cause: error });
     }
 }
 
@@ -265,7 +265,7 @@ async function persistStore(context: BoardStorageContext, state: BoardStorageSta
     try {
         await fs.promises.writeFile(context.storePath, content, "utf8");
     } catch (error) {
-        throw new Error(`Failed to persist board storage: ${errMessage(error)}`);
+        throw new Error(`Failed to persist board storage: ${errMessage(error)}`, { cause: error });
     }
 }
 

@@ -272,7 +272,7 @@ installed by the native `theme/global-styles.ts` module.
 
 ### Dependency Rules
 
-The following rules are enforced at error level by `import/no-restricted-paths` in
+The following rules are enforced at error level by `import-x/no-restricted-paths` in
 `eslint.config.mjs`. They apply to resolved import/export declarations and literal runtime `import()` calls; TypeScript `import("...")` type queries are not visited by this rule. The named exceptions are intentional.
 
 1. **UI (`uiImportZone`):** the listed renderer directories outside `ui/` do not import `ui/`. The renderer composition roots may import the shell.

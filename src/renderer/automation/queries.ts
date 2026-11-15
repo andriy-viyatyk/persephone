@@ -183,7 +183,7 @@ export async function waitFor(target: IAutomationTarget, options: WaitForOptions
         const started = Date.now();
         const cdp = target.cdp(options.tabId);
         while (true) {
-            let satisfied = false;
+            let satisfied: boolean;
             if (mode.kind === "selector") {
                 const state = mode.state ?? "attached";
                 const selector = JSON.stringify(mode.selector);

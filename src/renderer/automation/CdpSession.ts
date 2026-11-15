@@ -73,7 +73,7 @@ async function invokeUnwrapped<T>(channel: string, ...args: unknown[]): Promise<
     try {
         return await ipcRenderer.invoke(channel, ...args);
     } catch (error: unknown) {
-        throw new Error(errMessage(error).replace(/^Error invoking remote method '[^']*': (?:Error: )?/, ""));
+        throw new Error(errMessage(error).replace(/^Error invoking remote method '[^']*': (?:Error: )?/, ""), { cause: error });
     }
 }
 

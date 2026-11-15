@@ -177,7 +177,7 @@ export async function fillForm(target: IAutomationTarget & ISyntheticInputHost, 
                 default: throw new Error("action must be type, select, check, or uncheck.");
             }
         } catch (error: unknown) {
-            throw new Error(`fillForm field ${JSON.stringify(field.name)}: ${errMessage(error, "Operation failed.")}`);
+            throw new Error(`fillForm field ${JSON.stringify(field.name)}: ${errMessage(error, "Operation failed.")}`, { cause: error });
         }
     }
 }

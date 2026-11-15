@@ -1,6 +1,6 @@
 import videojs from "video.js";
 // hls.js's default export is also re-exported as a named `Hls`; the default is correct here.
-// eslint-disable-next-line import/no-named-as-default
+// eslint-disable-next-line import-x/no-named-as-default
 import Hls from "hls.js";
 import type { HlsConfig } from "hls.js";
 import type Player from "video.js/dist/types/player";

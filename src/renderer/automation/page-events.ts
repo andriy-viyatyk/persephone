@@ -56,7 +56,7 @@ export async function withAutomationActivity<T>(
     } catch (error: unknown) {
         // The pending-dialog preflight rejects here; hand the agent its message without
         // Electron's "Error invoking remote method '…': Error: " framing.
-        throw new Error(errMessage(error).replace(/^Error invoking remote method '[^']*': (?:Error: )?/, ""));
+        throw new Error(errMessage(error).replace(/^Error invoking remote method '[^']*': (?:Error: )?/, ""), { cause: error });
     }
     try {
         return await operation();

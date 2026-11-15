@@ -6,7 +6,7 @@ import { PopoverView, type PopoverViewProps } from "../Popover/PopoverView";
 import { DataGridView } from "./DataGridView";
 import type { Column, DataGridInstance, DataGridProps } from "./types";
 import { cycleTheme } from "../../theme/themes";
-// eslint-disable-next-line import/no-restricted-paths
+// eslint-disable-next-line import-x/no-restricted-paths
 import { showGridContextMenu } from "../../api/dialogs/grid-context-menu";
 import color from "../../theme/color";
 import type { Story } from "../../editors/storybook/storyTypes";

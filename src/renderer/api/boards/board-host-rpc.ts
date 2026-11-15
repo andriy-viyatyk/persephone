@@ -116,7 +116,7 @@ async function handleBoardCall(params: BoardCallParams): Promise<unknown> {
         if (result.error) throw new Error(result.error);
         return result.result;
     } catch (error: unknown) {
-        throw new Error(errMessage(error, "Board call failed."));
+        throw new Error(errMessage(error, "Board call failed."), { cause: error });
     } finally {
         context.dispose();
     }
@@ -139,7 +139,7 @@ async function handleBoardThemes(params: RendererRpcMethods["boardThemes"]["para
         }
         return cloneJson(result === undefined ? null : result);
     } catch (error: unknown) {
-        throw new Error(errMessage(error, "Board call failed."));
+        throw new Error(errMessage(error, "Board call failed."), { cause: error });
     }
 }
 

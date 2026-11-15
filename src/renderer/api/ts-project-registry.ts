@@ -45,7 +45,7 @@ async function readConfig(root: string, tsconfigPath: string): Promise<ParsedCon
     try {
         text = await fs.read(tsconfigPath);
     } catch (error: unknown) {
-        throw new Error(`Could not read tsconfig.json in the project folder: ${errMessage(error)}`);
+        throw new Error(`Could not read tsconfig.json in the project folder: ${errMessage(error)}`, { cause: error });
     }
     let parseError: unknown;
     const parsed = parseJSON5(text, (error) => { parseError = error; });

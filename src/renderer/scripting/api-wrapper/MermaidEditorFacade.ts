@@ -99,7 +99,7 @@ export class MermaidEditorFacade extends EditorFacadeBase<MermaidEditor> impleme
         try {
             return await writePngToFile(this.editor, filePath);
         } catch (error) {
-            throw new Error(`Mermaid preview cannot save PNG: ${errMessage(error)}`);
+            throw new Error(`Mermaid preview cannot save PNG: ${errMessage(error)}`, { cause: error });
         }
     }
 

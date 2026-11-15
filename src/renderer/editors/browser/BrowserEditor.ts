@@ -239,7 +239,7 @@ export class BrowserEditor extends EditorModel<
             });
             if (!retryOnFailure) return;
             try { await this.tor.armProxy(); }
-            catch (retryError) { throw new Error(t("browser.browserTorSecureFailed", { error: errMessage(retryError) })); }
+            catch (retryError) { throw new Error(t("browser.browserTorSecureFailed", { error: errMessage(retryError) }), { cause: retryError }); }
         }
     }
 

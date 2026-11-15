@@ -283,7 +283,7 @@ export class BrowserGuest {
             let candidate: { area: number; playing: boolean } | null;
             try { candidate = await frame.executeJavaScript(code, true) as typeof candidate; }
             catch (error) {
-                if (selector !== undefined) throw new Error(`Invalid selector or unavailable frame: ${errMessage(error)}`);
+                if (selector !== undefined) throw new Error(`Invalid selector or unavailable frame: ${errMessage(error)}`, { cause: error });
                 continue;
             }
             if (candidate && (!best || (candidate.playing && !best.playing) || (candidate.playing === best.playing && candidate.area > best.area))) {
@@ -303,7 +303,7 @@ export class BrowserGuest {
         try {
             await Promise.race([best.frame.executeJavaScript(code, true), new Promise((_, reject) => setTimeout(() => reject(new Error("Fullscreen request timed out")), 4000))]);
         } catch (error) {
-            throw new Error(`Browser fullscreen failed: ${errMessage(error)}. If iframe permission is denied, click the player's fullscreen button using browser automation.`);
+            throw new Error(`Browser fullscreen failed: ${errMessage(error)}. If iframe permission is denied, click the player's fullscreen button using browser automation.`, { cause: error });
         }
         this.assertCurrent(generation);
         const deadline = Date.now() + 3000;

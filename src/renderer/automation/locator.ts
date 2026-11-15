@@ -145,7 +145,7 @@ export async function resolveActionablePoint(
     const input = target.inputCdp(options.tabId, sessionId);
     const timeout = Math.min(Math.max(0, options.timeout ?? DEFAULT_ACTION_TIMEOUT), MAX_ACTION_TIMEOUT);
     const deadline = Date.now() + timeout;
-    let lastReason = "Element not found or not visible.";
+    let lastReason: string;
     while (true) {
         try {
             const script = `(${actionabilityFunction()})(`+
@@ -158,7 +158,7 @@ export async function resolveActionablePoint(
             return { ...result, ...point, locator, cdp: input.cdp, sessionId: input.sessionId };
         } catch (error: unknown) {
             const message = errMessage(error, "Mouse action failed.");
-            if (message.includes("ACTIONABILITY_FATAL:")) throw new Error(message.replace("ACTIONABILITY_FATAL: ", ""));
+            if (message.includes("ACTIONABILITY_FATAL:")) throw new Error(message.replace("ACTIONABILITY_FATAL: ", ""), { cause: error });
             if (message.includes("ACTIONABILITY_TRANSIENT:")) {
                 lastReason = message.replace("ACTIONABILITY_TRANSIENT: ", "");
             } else if ("ref" in locator && /stale|removed|detached|No node with given id/i.test(message)) {
@@ -166,7 +166,7 @@ export async function resolveActionablePoint(
             } else {
                 throw error;
             }
-            if (Date.now() >= deadline) throw new Error(`Timed out after ${timeout} ms: ${lastReason}`);
+            if (Date.now() >= deadline) throw new Error(`Timed out after ${timeout} ms: ${lastReason}`, { cause: error });
             await new Promise(resolve => setTimeout(resolve, Math.min(RETRY_INTERVAL, deadline - Date.now())));
         }
     }

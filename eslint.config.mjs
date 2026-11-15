@@ -1,10 +1,12 @@
 // @ts-check
-// Flat ESLint config (ESLint 9). Replaces the legacy .eslintrc.json.
+// Flat ESLint config (ESLint 10). Replaces the legacy .eslintrc.json.
 // Scope is deliberately ts/tsx-only, matching the old `--ext .ts,.tsx` behavior —
 // js/mjs/cjs (build scripts, this config) stay unlinted, exactly as before.
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
-import importPlugin from "eslint-plugin-import";
+// eslint-plugin-import-x replaces eslint-plugin-import, which does not support ESLint 10 (US-2016).
+import { importX, createNodeResolver } from "eslint-plugin-import-x";
+import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
 import globals from "globals";
 import { dirname, resolve } from "node:path";
 
@@ -695,9 +697,9 @@ export default tseslint.config(
             js.configs.recommended,
             // Array; bundles eslint-recommended (core-rule disables) + recommended TS rules.
             ...tseslint.configs.recommended,
-            importPlugin.flatConfigs.recommended,
-            importPlugin.flatConfigs.electron,
-            importPlugin.flatConfigs.typescript,
+            importX.flatConfigs.recommended,
+            importX.flatConfigs.electron,
+            importX.flatConfigs.typescript,
         ],
         plugins: {
             "vanilla-view": vanillaViewPlugin,
@@ -711,19 +713,16 @@ export default tseslint.config(
             },
         },
         settings: {
-            // Classic resolver form. eslint-plugin-import@2.32 does not honor the newer
-            // `import/resolver-next`, so the string form is required; eslint-import-resolver
-            // -typescript@4 remains backward-compatible with it.
-            "import/resolver": {
-                typescript: { alwaysTryTypes: true },
-                node: true,
-            },
+            "import-x/resolver-next": [
+                createTypeScriptImportResolver({ alwaysTryTypes: true }),
+                createNodeResolver(),
+            ],
         },
         rules: {
             // ---- carried over verbatim from .eslintrc.json ----
             "no-useless-escape": "off",
             "@typescript-eslint/no-empty-function": "off",
-            "import/no-named-as-default-member": "off",
+            "import-x/no-named-as-default-member": "off",
             "@typescript-eslint/no-unused-vars": [
                 "warn",
                 {
@@ -756,7 +755,7 @@ export default tseslint.config(
             // `types` condition (`./dist/esm/*.d.ts`) can't satisfy the `.js`-suffixed deep
             // imports the SDK requires at runtime/bundle time — the TS resolver reports them
             // unresolved even though they build and run. Exempt just that package.
-            "import/no-unresolved": ["error", { ignore: ["^@modelcontextprotocol/sdk/"] }],
+            "import-x/no-unresolved": ["error", { ignore: ["^@modelcontextprotocol/sdk/"] }],
 
             "vanilla-view/no-constructor-listeners": "error",
             "vanilla-view/no-constructor-timers": "error",
@@ -802,7 +801,7 @@ export default tseslint.config(
     {
         files: ["src/renderer/**/*.{ts,tsx}"],
         rules: {
-            "import/no-restricted-paths": ["error", { zones: [uiImportZone] }],
+            "import-x/no-restricted-paths": ["error", { zones: [uiImportZone] }],
         },
     },
     {
@@ -813,7 +812,7 @@ export default tseslint.config(
             "src/renderer/core/utils/html-resources.ts",
             "src/renderer/core/utils/guard.ts",
         ],
-        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, coreBoundary()] }] },
+        rules: { "import-x/no-restricted-paths": ["error", { zones: [uiImportZone, coreBoundary()] }] },
     },
     {
         files: [
@@ -821,42 +820,42 @@ export default tseslint.config(
             "src/renderer/core/traits/linkTraits.ts",
             "src/renderer/core/utils/html-resources.ts",
         ],
-        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone,
+        rules: { "import-x/no-restricted-paths": ["error", { zones: [uiImportZone,
             coreBoundary(["src/renderer/api/types/io.tree.d.ts"]),
         ] }] },
     },
     {
         files: ["src/renderer/core/utils/guard.ts"],
-        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone,
+        rules: { "import-x/no-restricted-paths": ["error", { zones: [uiImportZone,
             coreBoundary(["src/renderer/api/types/ui.d.ts"]),
         ] }] },
     },
     {
         files: ["src/shared/**/*.{ts,tsx}"],
         ignores: ["src/shared/link-data.ts", "src/shared/types.ts"],
-        rules: { "import/no-restricted-paths": ["error", { zones: [sharedBoundary()] }] },
+        rules: { "import-x/no-restricted-paths": ["error", { zones: [sharedBoundary()] }] },
     },
     {
         files: ["src/shared/link-data.ts"],
-        rules: { "import/no-restricted-paths": ["error", { zones: [sharedBoundary([
+        rules: { "import-x/no-restricted-paths": ["error", { zones: [sharedBoundary([
             "src/renderer/api/types/io.link-data.d.ts", "src/renderer/api/types/io.tree.d.ts",
         ])] }] },
     },
     {
         files: ["src/shared/types.ts"],
-        rules: { "import/no-restricted-paths": ["error", { zones: [sharedBoundary([
+        rules: { "import-x/no-restricted-paths": ["error", { zones: [sharedBoundary([
             "src/renderer/api/types/common.d.ts", "src/renderer/api/types/io.link-data.d.ts",
         ])] }] },
     },
 
     {
         files: ["src/renderer/content/**/*.{ts,tsx}"],
-        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, ...contentZones] }] },
+        rules: { "import-x/no-restricted-paths": ["error", { zones: [uiImportZone, ...contentZones] }] },
     },
     {
         files: ["src/renderer/components/**/*.{ts,tsx}"],
         ignores: ["src/renderer/components/**/*.story.ts", "src/renderer/components/**/*.story.tsx"],
-        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, componentsZone, componentsScriptingZone] }] },
+        rules: { "import-x/no-restricted-paths": ["error", { zones: [uiImportZone, componentsZone, componentsScriptingZone] }] },
     },
     // Rule 6: UIKit must not reach into application-layer modules. Stories are harnesses and
     // are intentionally excluded from Rule 6; the ui/ lock still applies to them. Resolved paths
@@ -864,27 +863,27 @@ export default tseslint.config(
     {
         files: ["src/renderer/uikit/**/*.{ts,tsx}"],
         ignores: ["src/renderer/uikit/**/*.story.ts", "src/renderer/uikit/**/*.story.tsx"],
-        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, uikitZone] }] },
+        rules: { "import-x/no-restricted-paths": ["error", { zones: [uiImportZone, uikitZone] }] },
     },
     {
         files: ["src/renderer/theme/**/*.{ts,tsx}"],
-        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, ...themeZones] }] },
+        rules: { "import-x/no-restricted-paths": ["error", { zones: [uiImportZone, ...themeZones] }] },
     },
     {
         files: ["src/renderer/audio/**/*.{ts,tsx}"],
-        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, audioZone] }] },
+        rules: { "import-x/no-restricted-paths": ["error", { zones: [uiImportZone, audioZone] }] },
     },
     {
         files: ["src/renderer/guides/**/*.{ts,tsx}"],
-        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, guidesZone] }] },
+        rules: { "import-x/no-restricted-paths": ["error", { zones: [uiImportZone, guidesZone] }] },
     },
     {
         files: ["src/renderer/i18n/**/*.{ts,tsx}"],
-        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, i18nZone] }] },
+        rules: { "import-x/no-restricted-paths": ["error", { zones: [uiImportZone, i18nZone] }] },
     },
     {
         files: ["src/renderer/automation/**/*.{ts,tsx}"],
-        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, automationZone] }] },
+        rules: { "import-x/no-restricted-paths": ["error", { zones: [uiImportZone, automationZone] }] },
     },
     // US-1824: api/ may construct board editors only at its three documented exception sites.
     {
@@ -894,17 +893,17 @@ export default tseslint.config(
             "src/renderer/api/pages/PagesPersistenceModel.ts",
             "src/renderer/api/boards.ts",
         ],
-        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, apiBoardZone] }] },
+        rules: { "import-x/no-restricted-paths": ["error", { zones: [uiImportZone, apiBoardZone] }] },
     },
     {
         files: ["src/renderer/api/capabilities/**/*.ts"],
-        rules: { "import/no-restricted-paths": ["error", { zones: [uiImportZone, apiBoardZone, capabilitiesBoardZone] }] },
+        rules: { "import-x/no-restricted-paths": ["error", { zones: [uiImportZone, apiBoardZone, capabilitiesBoardZone] }] },
     },
 
     {
         files: ["src/renderer/editors/base/**/*.ts"],
         rules: {
-            "import/no-restricted-paths": ["error", {
+            "import-x/no-restricted-paths": ["error", {
                 zones: [uiImportZone, {
                     target: "./src/renderer/editors/base",
                     from: [

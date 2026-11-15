@@ -114,11 +114,13 @@ export async function resolveRef(cdp: CdpSession, ref: string): Promise<string> 
             throw new Error(
                 `Ref "${ref}" belongs to a different document — it was taken from another frame or `
                 + "tab than the one being acted on. Take a snapshot of this one and use a ref from it.",
+                { cause: err },
             );
         }
         if (msg.includes("No node with given id")) {
             throw new Error(
                 `Ref "${ref}" is stale — the element is no longer in the DOM. Re-take the snapshot.`,
+                { cause: err },
             );
         }
         throw err;

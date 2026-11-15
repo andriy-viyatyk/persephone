@@ -63,7 +63,7 @@ export async function createToolsetWithConsent(name: unknown, dir: unknown): Pro
             await scaffoldToolset(name, dir);
             created = true;
         } catch (err) {
-            throw new Error(errMessage(err));
+            throw new Error(errMessage(err), { cause: err });
         }
     }
 

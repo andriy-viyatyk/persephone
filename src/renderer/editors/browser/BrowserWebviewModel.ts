@@ -198,12 +198,12 @@ export class BrowserWebviewModel {
     private restoreClaimedNavigation(
         internalTabId: string,
         previousUrl: string | undefined,
-        reportedCanGoBack: boolean | undefined,
+        _reportedCanGoBack: boolean | undefined,
     ): void {
         if (!this.model.state.get().tabs.some((tab) => tab.id === internalTabId)) return;
         const webview = this.get(internalTabId);
         if (webview && this.isReady(internalTabId)) {
-            let canGoBack = !!reportedCanGoBack;
+            let canGoBack: boolean;
             try {
                 canGoBack = webview.canGoBack();
             } catch {

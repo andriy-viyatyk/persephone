@@ -86,7 +86,6 @@ function line(kind: string, textKey: MessageKey, textParams?: Record<string, str
 /** Plain-language line for one enabled flag. */
 function flagLine(key: FlagKey, value: Exclude<FlagValue, false>): BoardPermissionLine {
     let textKey = FLAG_COPY[key];
-    let textParams: Record<string, string | number> | undefined;
     if (key === "fileSystem") {
         textKey = value === "board" ? "board.permissionFileSystemBoard" : "board.permissionFileSystemFull";
     } else if (key === "network") {
@@ -96,7 +95,7 @@ function flagLine(key: FlagKey, value: Exclude<FlagValue, false>): BoardPermissi
     return line(
         `${key}:${value}`,
         textKey,
-        textParams,
+        undefined,
         key === "execute" || key === "service" || key === "appScripting"
             || (key === "fileSystem" && value === "full")
             || (key === "network" && value === "full"),

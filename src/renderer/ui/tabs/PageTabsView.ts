@@ -285,7 +285,7 @@ export class PageTabsView extends VanillaView<object> {
         const leftInPort = tabRect.left - wrapperLeft;
         const rightInPort = tabRect.right - wrapperLeft;
 
-        let delta = 0;
+        let delta: number;
         if (leftInPort < inset) delta = leftInPort - inset;
         else if (rightInPort > wrapper.clientWidth) delta = rightInPort - wrapper.clientWidth;
         else return;

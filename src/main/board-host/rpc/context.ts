@@ -27,6 +27,6 @@ export async function hostRequest<M extends RendererRpcMethod>(
     try {
         return await requestRenderer(method, params, { webContents: entry.hostWebContents }, timeoutMs);
     } catch (error: unknown) {
-        throw new Error(errMessage(error));
+        throw new Error(errMessage(error), { cause: error });
     }
 }

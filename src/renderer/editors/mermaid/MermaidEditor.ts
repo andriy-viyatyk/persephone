@@ -257,7 +257,7 @@ export class MermaidEditor
         try {
             return await rasterToPngBlob(url);
         } catch (error) {
-            throw new Error(`Mermaid preview cannot export PNG because rasterisation failed: ${errMessage(error)}`);
+            throw new Error(`Mermaid preview cannot export PNG because rasterisation failed: ${errMessage(error)}`, { cause: error });
         }
     }
 
@@ -286,7 +286,7 @@ export class MermaidEditor
             result = await app.capabilities.invoke("diagram.edit", { source, title });
         } catch (error) {
             if (getMissingEditCapabilityMessage(error, "diagram.edit")) throw error;
-            throw new Error(`Mermaid preview cannot open the Excalidraw page: ${errMessage(error)}`);
+            throw new Error(`Mermaid preview cannot open the Excalidraw page: ${errMessage(error)}`, { cause: error });
         }
         if (result.status === "conversion-failed") {
             ui.notify(
@@ -318,7 +318,7 @@ export class MermaidEditor
             if (!url) throw new Error("rendering returned no SVG");
             return url;
         } catch (error) {
-            throw new Error(`Mermaid preview cannot ${action} because rendering failed: ${errMessage(error)}`);
+            throw new Error(`Mermaid preview cannot ${action} because rendering failed: ${errMessage(error)}`, { cause: error });
         }
     }
 

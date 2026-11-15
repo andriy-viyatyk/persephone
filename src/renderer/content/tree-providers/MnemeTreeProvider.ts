@@ -61,7 +61,7 @@ export class MnemeTreeProvider implements ITreeProvider {
         const client = mnemeConnection.getClient();
         if (!client) return [];
 
-        let entries: MnemeTreeEntry[] = [];
+        let entries: MnemeTreeEntry[];
         try {
             entries = (await mnemeClient.tree(client, path))?.entries ?? [];
         } catch {

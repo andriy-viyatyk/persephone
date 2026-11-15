@@ -83,7 +83,7 @@ export class HtmlEditorFacade extends EditorFacadeBase<HtmlEditor> implements IA
         try {
             return await writePngToFile(this.editor, filePath);
         } catch (error) {
-            throw new Error(`HTML preview cannot save PNG: ${errMessage(error)}`);
+            throw new Error(`HTML preview cannot save PNG: ${errMessage(error)}`, { cause: error });
         }
     }
 

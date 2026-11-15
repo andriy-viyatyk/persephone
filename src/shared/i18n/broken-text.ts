@@ -39,7 +39,7 @@ export function checkTranslatedMessage(message: PackMessage, english: EnglishMes
     const issues: MessageCheckIssue[] = [];
     if (typeof english !== "string") {
         if (!Object.hasOwn(translatedForms, "other")) issues.push({ kind: "missing-other" });
-        let categories: string[] = [];
+        let categories: string[];
         try {
             categories = new Intl.PluralRules(code).resolvedOptions().pluralCategories;
         } catch {

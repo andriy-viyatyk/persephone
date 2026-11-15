@@ -44,6 +44,7 @@ interface OperationState<T> {
     channel?: ServiceChannel;
     cancelled: boolean;
     settled: boolean;
+    promise: Promise<T>;
     resolve(value: T): void;
     reject(error: Error): void;
     cancel(): void;
@@ -114,8 +115,12 @@ export class TextTranslationProvider {
     private createState<T>(provider: string, request: unknown, scope: string, expected: string[], translate: boolean, priority: TranslationPriority, onProgress?: (message: TranslationDownloadProgress | TranslationProgress) => void): OperationState<T> {
         let resolvePromise!: (value: T) => void;
         let rejectPromise!: (error: Error) => void;
+        const promise = new Promise<T>((resolve, reject) => {
+            resolvePromise = resolve;
+            rejectPromise = reject;
+        });
         const state: OperationState<T> = {
-            provider, request, scope, expected, translate, priority, onProgress,
+            provider, request, scope, expected, translate, priority, onProgress, promise,
             cancelled: false, settled: false,
             resolve: (value: T) => { state.settled = true; resolvePromise(value); },
             reject: (error: Error) => { state.settled = true; rejectPromise(error); },
@@ -133,10 +138,7 @@ export class TextTranslationProvider {
     }
 
     private promiseFor<T>(state: OperationState<T>): Promise<T> {
-        return new Promise<T>((resolve, reject) => {
-            state.resolve = (value) => { state.settled = true; resolve(value); };
-            state.reject = (error) => { state.settled = true; reject(error); };
-        });
+        return state.promise;
     }
 
     private async run<T>(state: OperationState<T>): Promise<void> {

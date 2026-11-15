@@ -22,7 +22,7 @@ function parseSettingsFile(text: string): BoardSettingsFile {
     try {
         parsed = text.trim() ? JSON.parse(text) : {};
     } catch (error: unknown) {
-        throw new Error(`The board settings file contains invalid JSON: ${errMessage(error)}`);
+        throw new Error(`The board settings file contains invalid JSON: ${errMessage(error)}`, { cause: error });
     }
     if (!isPlainObject(parsed)) {
         throw new Error("The board settings file must contain a namespace object.");
@@ -127,7 +127,7 @@ class BoardSettingsStore {
         } catch (error: unknown) {
             await model.dispose();
             this.loadError = `Failed to load board settings: ${errMessage(error)}`;
-            throw new Error(this.loadError);
+            throw new Error(this.loadError, { cause: error });
         }
     }
 
