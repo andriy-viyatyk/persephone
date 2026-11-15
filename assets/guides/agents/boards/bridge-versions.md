@@ -6,6 +6,10 @@ summary: "Which bridge version added each persephone.* member and manifest field
 
 # Boards — bridge version history and compatibility
 
+Bridge `1.58.0` adds `persephone.setWorkingFolder(path)`, which sets or clears the transient folder
+used as the board page's initial File Explorer root. It requires no manifest permission; only the
+trusted main frame may call it. Boards using it should declare `minBridgeVersion: "1.58.0"`.
+
 Bridge `1.57.0` adds `{ inPlace: true }` to `persephone.openRawLink(href, options)`, navigating
 content in the page hosting the board without an `appScripting` grant. Boards that use it should
 declare `minBridgeVersion: "1.57.0"`.

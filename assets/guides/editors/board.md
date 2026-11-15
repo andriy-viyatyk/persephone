@@ -74,6 +74,11 @@ reload the board, show its log, and switch declared secondary views. Custom edit
 local file I/O or use a content host for Persephone-managed encoding, encryption, autosave, and
 unsaved changes.
 
+The File Explorer button opens a new Explorer at the board's declared working folder when it
+exists. Otherwise it uses the claimed folder, the edited file's folder, or the board's folder, in
+that order. If the page already has an Explorer or sidebar, the button toggles it and keeps its
+current folder.
+
 Bridge **1.46.0+** lets boards await `persephone.openRawLink(path, { revealLine, highlightText })`
 to open a source file at a requested line, reusing and activating an already open matching page.
 This user-visible navigation does not require the board's `fileSystem` grant and returns no file

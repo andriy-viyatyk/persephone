@@ -102,6 +102,7 @@ export async function toggleNavigator(
     page: PageModel,
     pipe?: IContentPipe | null,
     filePath?: string,
+    options?: { rootPath?: string },
 ): Promise<void> {
     const existing = page.findExplorer();
     if (existing || page.secondaryViewsModel) {
@@ -110,8 +111,10 @@ export async function toggleNavigator(
         return;
     }
 
-    let rootPath = "";
-    if (pipe?.provider.type === "file" && pipe.provider.sourceUrl) {
+    let rootPath = options?.rootPath ?? "";
+    if (rootPath) {
+        // Explicit roots are already folders; do not reinterpret them as file targets.
+    } else if (pipe?.provider.type === "file" && pipe.provider.sourceUrl) {
         rootPath = fpDirname(pipe.provider.sourceUrl);
     } else if (filePath) {
         rootPath = fpDirname(filePath);

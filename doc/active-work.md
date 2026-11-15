@@ -8,9 +8,6 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- *(no epic)*
-  - [ ] US-2007: Transcript and voice typing keep running when the default microphone or speakers change (headset unplugged / plugged back in)
-
 ## Planned
 
 ## Scheduled

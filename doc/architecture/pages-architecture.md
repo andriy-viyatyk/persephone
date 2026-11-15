@@ -416,6 +416,13 @@ claim is rejected in favor of a usable Folder View path rather than deriving a f
 board installation root. The same folder identity is carried by a host-less Board Info install
 page so Download → Register can return to the folder context.
 
+A board may also declare a working folder for its page's File Explorer. That declaration is held
+in a board-owned transient collaborator, scoped to the trusted main-frame generation, and cleared
+on retirement; it is not part of the persisted page descriptor or folder claim. Explorer creation
+validates the declaration and falls back to the claimed folder, current file's folder, then the
+installed board folder. If an Explorer or sidebar already exists, the board toolbar only toggles
+it and leaves its root untouched.
+
 Every persisted Board Info descriptor is restored through the registered `board-info` editor,
 whether or not it has a content host or a `folderPath`. The editor applies its durable install,
 properties, and file/folder source state, then restores an optional host when present; the generic

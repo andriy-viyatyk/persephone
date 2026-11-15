@@ -80,6 +80,9 @@ export function createSourceApi(deps: { hostFrame: HostFrameChannel; whenHandsha
             },
             getSourceUrl(): Promise<string | undefined> { return sourceUrl.get(); },
             async getFolderPath(): Promise<string | undefined> { await whenHandshake(); return folderPathValue; },
+            setWorkingFolder(path?: string | null): Promise<void> {
+                return hostFrame.request("setWorkingFolder", { path });
+            },
             source: {
                 get initialSourceContext(): BoardSourceContext | undefined { return initialSourceContext; },
                 get initialSourcePrivateSession(): boolean { return initialSourcePrivateSession; },

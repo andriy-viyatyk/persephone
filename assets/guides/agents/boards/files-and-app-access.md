@@ -109,6 +109,17 @@ summary: "Native file dialogs, listFolder, watch, folder grants, trashFile, Type
   waits for the same handshake as `getFilePath()`. `boardRoot` is where the board app is installed,
   while `folderPath` is the claimed directory it operates on. Folder mode never supplies a file path,
   and `editorKind: "content-host"` / `"stream-host"` applies only to the file association.
+- `await persephone.setWorkingFolder(path)` (bridge 1.58.0) declares the folder to open when the
+  board page's File Explorer is created. Pass an existing absolute ordinary filesystem directory;
+  relative paths, archive paths, missing paths, and files reject with a descriptive error and leave
+  the previous declaration unchanged. Pass `null` or `undefined` to clear it. This Promise requires
+  no manifest permission and is available only to the trusted main frame. The declaration lasts for
+  that main-frame generation: reload, navigation, trust loss, closing, and restart clear it, so
+  declare it again during each board load. The folder is a navigation hint and grants no filesystem
+  access. Explorer root selection falls back from the declared folder to the claimed folder, the
+  edited file's folder, then the board folder. An existing Explorer or sidebar only toggles; it
+  keeps its current root. See the [folder-editor](folder-editor.md) and
+  [toolbar](toolbar-and-footer.md) guides for the related behavior.
 - `persephone.call(path, options?)` — requires `appScripting: true`; resolve the same bounded AiVision descriptor tree as the
   <!-- board-template:exclude -->MCP `call` tool<!-- /board-template:exclude -->, rooted at the page hosting this Board. The Board must be trusted; trust is checked
   again when each call resolves, so revoking trust also blocks an already-mounted Board. The call

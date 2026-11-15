@@ -50,7 +50,10 @@ The board must be trusted for the folder claim to apply. The Explorer shows the 
 claimed folder. Opening it switches to the board, and the page editor switch offers Folder View and
 the matching board so the user can switch to Folder View and back without opening another tab.
 In Folder View, `await persephone.getFolderPath()` returns the claimed folder; `boardRoot` remains
-the directory where the board app is installed. `getFilePath()` is not set for folder mode.
+the directory where the board app is installed. `getFilePath()` is not set for folder mode. The claim
+remains the folder-switching identity. To choose a different initial File Explorer root without
+changing that claim, see [`persephone.setWorkingFolder()`](files-and-app-access.md) and the
+[toolbar Explorer behavior](toolbar-and-footer.md).
 
 After editing the board manifest, toggle trust off and on to refresh the registered claim. Explorer
 clicks resolve the current claim at click time, so an already-listed folder opens the newly claimed

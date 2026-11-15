@@ -1,4 +1,6 @@
 import { app } from "../../api/app";
+import { fs as appFs } from "../../api/fs";
+import { fpDirname } from "../../core/utils/file-path";
 import { publishedBoards } from "../../api/boards/published-boards";
 import { boardInstallRegistry } from "../../api/boards/board-install-registry";
 import { listBoardUpdates } from "../../api/boards/board-updates";
@@ -17,6 +19,8 @@ import { SwitchWidgetView } from "../base/PageToolbarView";
 import { PageHistoryButtonsView } from "../base/PageHistoryButtonsView";
 import { openBoardInfo } from "../board-info/open-board-info";
 import type { BoardEditorModel } from "./BoardEditorModel";
+import { getBoardWorkingFolder } from "./model/BoardWorkingFolder";
+import { resolveBoardExplorerRoot } from "../../../shared/board/board-explorer-root";
 import { BoardToolbarControls } from "./BoardToolbarControls";
 import type { ToolbarAction } from "./chrome/board-chrome-protocol";
 import "../../uikit/Panel/Panel.css";
@@ -65,7 +69,7 @@ export class BoardToolbarView extends VanillaView<{
         this.explorerButton = new IconButtonView({
             name: "board-toolbar-explorer", size: "sm", title: t("board.fileExplorer"),
             icon: createIconElement("nav-panel", { width: 14, height: 14 }),
-            onClick: () => void this.model.page?.toggleNavigator(null, this.boardRoot),
+            onClick: () => this.openExplorer(),
         });
         // Reload / log / properties are recovery and inspection actions: on a board that
         // works they are never needed, and three permanent icons beside the board's OWN
@@ -114,6 +118,28 @@ export class BoardToolbarView extends VanillaView<{
         // Persephone sidebar on it, so the locked board page hides the button.
         const page = this.model.page;
         if (page) this.bind(page.state, (state) => state.version, this.sync);
+    }
+
+    private openExplorer(): void {
+        const page = this.model.page;
+        if (!page) return;
+        if (page.findExplorer?.() || page.secondaryViewsModel) {
+            void page.toggleNavigator();
+            return;
+        }
+
+        const filePath = this.model.currentFilePath();
+        void resolveBoardExplorerRoot({
+            workingFolder: getBoardWorkingFolder(this.model).value,
+            claimedFolder: this.model.folderPath,
+            fileFolder: filePath ? fpDirname(filePath) : undefined,
+            boardRoot: this.boardRoot,
+        }, async (path) => {
+            const stat = await appFs.stat(path);
+            return stat.exists && stat.isDirectory;
+        }).then((rootPath) => {
+            if (rootPath) void page.toggleNavigator(null, undefined, { rootPath });
+        });
     }
 
     protected onUpdate(): void {

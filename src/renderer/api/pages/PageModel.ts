@@ -686,9 +686,9 @@ export class PageModel implements IPageHost {
 
     /** Toggle the SecondaryViews panel. Creates an ExplorerEditor if needed —
      *  implementation in editors/explorer/page-explorer.ts. */
-    async toggleNavigator(pipe?: IContentPipe | null, filePath?: string): Promise<void> {
+    async toggleNavigator(pipe?: IContentPipe | null, filePath?: string, options?: { rootPath?: string }): Promise<void> {
         if (this.isInert) return;
-        return togglePageNavigator(this, pipe, filePath);
+        return togglePageNavigator(this, pipe, filePath, options);
     }
 
     /** Whether the navigator can be opened. */

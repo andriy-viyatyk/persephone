@@ -6,6 +6,12 @@ summary: "Board toolbar controls, breadcrumbs, menus, placement, the host footer
 
 # Boards — host-rendered toolbar, footer and .p-* classes
 
+The Persephone File Explorer button opens a new Explorer at the board's declared working folder
+(see [`persephone.setWorkingFolder()`](files-and-app-access.md)), then falls back to the claimed
+folder, edited file's folder, and board folder. The declared folder must still exist when the button
+is clicked. If an Explorer or sidebar model already exists, the button only toggles it and preserves
+its root and state. The ordinary file toolbar keeps opening at the file's folder.
+
 ## Host-rendered board toolbar
 
 A `breadcrumb` (bridge 1.49.0) is `{ id, type: "breadcrumb", rootLabel, value, separators?,

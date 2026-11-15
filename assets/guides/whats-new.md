@@ -21,6 +21,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 ### Improvements
 
 - **Page-wide navigation history:** Back and Forward work across page navigation with page-toolbar buttons next to File Explorer, keyboard and mouse shortcuts, and the `page.history` scripting API. Browser webview history remains separate.
+- **Transcript and voice typing follow default audio devices:** If the microphone or speakers change while recording, capture reconnects to the current default device and continues.
 - **Capability selection:** Unpinned `app.capabilities.invoke()` and board `persephone.capabilities.invoke()` calls honor `capabilities.preferredProviders` and can select any eligible major version. A board's declared `methods.open.timeoutMs` also applies when an app script opens it.
 - **Board lifecycle:** Disabling a bundled board makes its open pages unavailable until it is enabled again. Removing a board closes its pages and stops its service; renaming preserves its category pin and position.
 - **Board frame cleanup:** Requests fail immediately when board trust is removed, with an `untrusted`

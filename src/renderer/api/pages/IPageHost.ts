@@ -39,7 +39,7 @@ export interface IPageHost {
     ensureSecondaryViewsModel(): SecondaryViewsModel;
     findExplorer?(): EditorModel | undefined;
     canOpenNavigator(pipe?: IContentPipe | null, filePath?: string): boolean;
-    toggleNavigator(pipe?: IContentPipe | null, filePath?: string): Promise<void>;
+    toggleNavigator(pipe?: IContentPipe | null, filePath?: string, options?: { rootPath?: string }): Promise<void>;
     releaseEditor(editor: EditorModel, options: { dispose: boolean }): Promise<void>;
 
     /** The page's navigation history (`PageModel` owns a `PageHistory`; an embedded host has none). */

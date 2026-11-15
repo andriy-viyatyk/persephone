@@ -60,6 +60,7 @@ export interface FrameMethod<P, R> { params: P; result: R }
 
 export interface BoardToHostRequests {
     filePath: FrameMethod<NoPayload, string | undefined>;
+    setWorkingFolder: FrameMethod<{ path?: string | null }, void>;
     fileIcons: FrameMethod<{ names: string[] }, BoardFileIconsResult>;
     contentOpen: FrameMethod<{ link: string; timeoutMs?: number }, BoardContentOpenResult>;
     openContent: FrameMethod<{ request: BoardOpenContentRequest }, string>;

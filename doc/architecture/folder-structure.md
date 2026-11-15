@@ -157,6 +157,9 @@ manifest I/O, trust and grant handling, root identity, board localization, bundl
 registries, published-catalog access, install/update flows, and board-host helper services. The
 board editor directory retains the editor model, views, webview, automation adapter, and visual
 components; its `BoardsPanelEditorModel` and `BoardsSecondaryView` own the optional Boards panel.
+The process-neutral `src/shared/board/board-explorer-root.ts` owns the fallback order for a new
+board-page Explorer. `src/renderer/editors/board/model/BoardWorkingFolder.ts` owns a transient
+working-folder declaration, and `frame/working-folder-bridge.ts` routes its trusted main-frame API.
 The optional Clipboard panel has a separate editor and view under `src/renderer/editors/clipboard/`,
 while its history state and IPC operations live in `src/renderer/api/clipboard-history.ts`; board://
 pipe resources are served from `src/renderer/content/pipe-resource-server.ts`.
@@ -746,7 +749,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   └── index.ts
 │   ├── explorer/           # File explorer (non-text, sidebar-only)
 │   │   ├── ExplorerEditorModel.ts    # EditorModel — tree provider, selection, search, root navigation
-│   │   ├── page-explorer.ts          # Explorer provisioning for a page — toggleNavigator, auto-init
+│   │   ├── page-explorer.ts          # Explorer provisioning for a page — toggleNavigator, explicit root, auto-init
 │   │   ├── ExplorerSecondaryView.ts   # "explorer" panel — tree view with native header
 │   │   ├── SearchSecondaryView.ts  # "search" panel — file search with native header
 │   │   ├── index.ts
@@ -773,12 +776,12 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── board-window-identity.ts  # Board-window title and identity IPC lifecycle
 │   │   ├── board-tab-title.ts        # Localized board page-tab title formatter
 │   │   ├── BoardEditorView.ts        # Native four-way board branch host
-│   │   ├── BoardToolbar.ts           # In-board toolbar — File Explorer / board text slot / … menu; hosts the board-declared control group
+│   │   ├── BoardToolbar.ts           # In-board toolbar — File Explorer root selection / board text slot / … menu; hosts board controls
 │   │   ├── BoardToolbar.css           # Board-control group styling — separates board items from Persephone's own
 │   │   ├── BoardToolbarControls.ts    # Board-declared control catalog — descriptor validation, keyed reconciliation, action events
 │   │   ├── chrome/                    # Board chrome protocol validators shared by model and views
-│   │   ├── frame/                     # Per-frame session, typed endpoint, router composition, and feature bridges
-│   │   ├── model/                     # Frame registry, chrome, AiVision, source, page-state, and content-resource owners
+│   │   ├── frame/                     # Per-frame session, typed endpoint, router composition, working-folder and other feature bridges
+│   │   ├── model/                     # Frame registry, chrome, AiVision, source, page-state, working-folder and content-resource owners
 │   │   ├── board-toolbar-icon.ts      # Toolbar icon resolution — registry name, sanitized inline SVG, or a file confined to the board root
 │   │   ├── board-file-icons.ts         # Resolves board-requested file names to deduplicated data URLs using Persephone's file-icon resolver
 │   │   ├── BoardWebview.ts            # Thin native iframe view; creates and retires its BoardFrameSession

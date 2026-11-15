@@ -10,6 +10,7 @@ import type { ChromeBridge } from "./chrome-bridge";
 import type { SharedStateBridge } from "./shared-state-bridge";
 import type { AiVisionBridge } from "./ai-vision-bridge";
 import type { NotifyBridge } from "./notify-bridge";
+import type { WorkingFolderBridge } from "./working-folder-bridge";
 import { codedError } from "../../../../shared/coded-error";
 import type {
     BoardToHostEvents,
@@ -127,6 +128,7 @@ export interface BoardHostFeatures {
     sharedStateBridge: SharedStateBridge;
     aiVisionBridge: AiVisionBridge;
     notifyBridge: NotifyBridge;
+    workingFolderBridge: WorkingFolderBridge;
 }
 
 export class BoardHostRouter {
@@ -137,6 +139,16 @@ export class BoardHostRouter {
                 { kind: "trusted" },
                 {
                     handle: (params, context) => this.features.contentHostBridge.filePath(params, context),
+                }
+            ),
+            setWorkingFolder: request(
+                "setWorkingFolder",
+                {
+                    kind: "mainTrusted",
+                    rejectionLog: "Ignored working-folder declaration from a secondary or unavailable board frame.",
+                },
+                {
+                    handle: (params, context) => this.features.workingFolderBridge.set(params, context),
                 }
             ),
             fileIcons: request(

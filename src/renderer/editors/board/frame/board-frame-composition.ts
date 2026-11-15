@@ -18,6 +18,7 @@ import { PageStateBridge } from "./page-state-bridge";
 import { ContentOpenBridge } from "./content-open-bridge";
 import { SharedStateBridge } from "./shared-state-bridge";
 import { ContentHostBridge } from "./content-host-bridge";
+import { WorkingFolderBridge } from "./working-folder-bridge";
 
 export interface BoardFrameCompositionOptions {
     model: BoardEditorModel;
@@ -47,10 +48,12 @@ export class BoardFrameComposition {
     ) {
         const { model, boardRoot, isMain } = options;
         const hostEvents = new BoardHostEvents(model, session);
+        const workingFolderBridge = new WorkingFolderBridge(model, boardRoot, session);
         if (isMain) {
             this.subscriptions.push(session.onRetire(({ generation }) => {
                 model.setWorking(false);
                 model.chrome.retireFrame({ token: session, generation });
+                workingFolderBridge.clearGeneration(generation);
             }));
         }
         const fetchHandler = new FetchBridgeHandler(boardRoot, session, endpoint);
@@ -142,6 +145,7 @@ export class BoardFrameComposition {
                 sharedStateBridge,
                 contentHostBridge,
                 notifyBridge,
+                workingFolderBridge,
             },
         );
     }
