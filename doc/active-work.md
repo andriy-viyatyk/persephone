@@ -15,6 +15,7 @@ Overview of all active and planned epics and tasks.
 - *(no epic)*
   - [ ] US-2001: Fix: changing a page's language from the tab menu (or `page.language`) did nothing after EPIC-154 — `EditorModel.changeLanguage` now forwards to the content host
   - [ ] US-2002: Fix: toggling word wrap un-hid the "Show TypeScript errors" toolbar button on non-project pages — its visibility now travels with its props (`MonacoEditorView.ts`)
+  - [ ] US-2006: Fix: a Git Tree panel left beside a file hid the toolbar's File Explorer button and kept the sidebar from closing — `PageModel.sidebarMandatory` now forces the sidebar only while a panel contributor is the page's content
 
 ## Planned
 

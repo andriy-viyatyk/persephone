@@ -285,14 +285,17 @@ export class PageModel implements IPageHost {
         return this.editors.some((e) => e.contributesPanels()) || this.secondaryViewsModel !== null;
     }
 
-    /** Sidebar is closeable only when the Explorer is the *sole* panel
-     *  contributor. Any other secondary view (Link/Archive/Todo/…
-     *  panels) makes it mandatory and non-closeable. */
+    /** The sidebar is mandatory (forced open, non-closeable) when a non-optional
+     *  panel contributor (Link/Archive/Todo/Git/…) is the page's content: the page
+     *  has no main editor, or the main editor is that contributor. A contributor
+     *  left as a sidebar panel beside an unrelated main editor (a Git Tree that
+     *  survived navigation to a file) does not force it: closing the sidebar there
+     *  hides nothing the page needs. Explorer, Boards and Clipboard are optional. */
     get sidebarMandatory(): boolean {
-        return this.editors.some(
-            (e) => e.contributesPanels()
-                && !e.sidebarOptional,
-        );
+        const forcesSidebar = (e: EditorModel): boolean => e.contributesPanels() && !e.sidebarOptional;
+        if (!this.editors.some(forcesSidebar)) return false;
+        const main = this.mainEditor;
+        return !main || forcesSidebar(main);
     }
 
     // ── Membership primitives ─────────────────────────────────────────

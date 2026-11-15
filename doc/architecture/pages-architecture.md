@@ -569,7 +569,7 @@ PageModel is the tab container that owns the sidebar layout (open/close/width vi
 
 ### Mandatory sidebar and auto-Explorer
 
-`PageModel.sidebarMandatory` is a computed boolean. It is `true` when an attached panel editor contributes panels and does not opt into an optional sidebar. Explorer, Boards, and Clipboard panel editors are optional; Link, Archive, and board-declared secondary views keep the sidebar mandatory.
+`PageModel.sidebarMandatory` is a computed boolean. It is `true` when an attached panel editor contributes panels, does not opt into an optional sidebar, **and** that kind of editor is the page's content: the page has no main editor, or the main editor is itself such a contributor. Explorer, Boards, and Clipboard panel editors are optional; Link, Archive, Git Tree, and board-declared secondary views keep the sidebar mandatory while they are the content. A contributor that only survives as a sidebar panel beside an unrelated main editor (a Git Tree after the page navigated on to a file) does not, so the sidebar stays closeable and the toolbar's File Explorer toggle stays visible.
 
 When `sidebarMandatory` is `true`:
 - `setSecondaryViewsState({ open: false })` is ignored — the close request is silently clamped to `open: true`.

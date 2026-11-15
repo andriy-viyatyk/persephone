@@ -337,8 +337,8 @@ export class PagePanelsNode implements IAiVisible {
         // for an agent that read `isOpen: false` and called this to open it.
         const sidebar = host.secondaryViewsModel;
         const open = sidebar ? sidebar.state.get().open : false;
-        // PageModel.setSecondaryViewsState silently rewrites `open: false` to `true` while a
-        // non-Explorer panel is present (its "mandatory-open clamp"). Reporting success for a
+        // PageModel.setSecondaryViewsState silently rewrites `open: false` to `true` while the
+        // sidebar is mandatory (its "mandatory-open clamp"; see `PageModel.sidebarMandatory`). Reporting success for a
         // close that cannot happen is the silent failure this surface exists to eliminate.
         if (open && host.sidebarMandatory) {
             throw new Error(
