@@ -19,7 +19,7 @@ archive tree appears in the sidebar and an entry opens in the main area.
 
 ```
 +---------------------------------------------------------------------+
-| [Nav] [Collapse all] [Refresh]                 [Switch]             |  archive toolbar: navigation and actions at left, switch at right
+| [Nav] [Back][Forward] [Collapse all] [Refresh] [Switch]             |  archive toolbar: history and actions at left, switch at right
 +---------------------------------------------------------------------+
 | [Archive tree] [selected entry preview]                             |  archive content below the toolbar
 +---------------------------------------------------------------------+

@@ -20,7 +20,7 @@ Links switch. Agents can use `pages.addEditorPage("link-view", "json", title, co
 
 ```
 +---------------------------------------------------------------------+
-| [Nav] [Breadcrumb]                     [Add] [View] [Search]        |  shared links toolbar: breadcrumb left, actions right
+| [Nav] [Back][Forward] [Breadcrumb]       [Add] [View] [Search]      |  shared links toolbar: history and breadcrumb left, actions right
 +---------------------------------------------------------------------+
 | [Links body]                                                        |  links body below the toolbar
 +---------------------------------------------------------------------+

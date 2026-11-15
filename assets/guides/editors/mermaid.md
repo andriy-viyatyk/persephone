@@ -20,7 +20,7 @@ choose **Mermaid** from the tab's language menu and then choose **Mermaid** in t
 
 ```
 +---------------------------------------------------------------------+
-| [Nav] [Compare] [Theme] [Open] [Convert] [Save] [Copy] [Switch]     |  toolbar: compare at left; Mermaid actions and switch at right
+| [Nav] [Back][Forward] [Compare] [Theme] [Open] [Convert] [Save] [Copy] [Switch] | toolbar: history and compare left; Mermaid actions and switch right
 +---------------------------------------------------------------------+
 | [Mermaid diagram]                                                   |  rendered Mermaid preview below the toolbar
 +---------------------------------------------------------------------+

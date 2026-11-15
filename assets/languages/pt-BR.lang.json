@@ -1871,7 +1871,11 @@
     "shell.ungroup": "Desagrupar",
     "shell.mutePage": "Silenciar página",
     "shell.unmutePage": "Ativar som da página",
-    "tools.siteExtensionActionFailed": "Falha na ação da extensão do site."
+    "tools.siteExtensionActionFailed": "Falha na ação da extensão do site.",
+    "shell.pageHistoryBack": "Voltar para {title} (Alt+Left)",
+    "shell.pageHistoryBackEmpty": "Voltar (Alt+Left)",
+    "shell.pageHistoryForward": "Avançar para {title} (Alt+Right)",
+    "shell.pageHistoryForwardEmpty": "Avançar (Alt+Right)"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3545,6 +3549,10 @@
     "shell.unmutePage": "af4c43a2",
     "tools.siteExtensionActionFailed": "96558212",
     "api.boardBusyRemoving": "fc62a483",
-    "api.boardOpenRemoving": "6426988c"
+    "api.boardOpenRemoving": "6426988c",
+    "shell.pageHistoryBack": "11144331",
+    "shell.pageHistoryBackEmpty": "912b177e",
+    "shell.pageHistoryForward": "5c000bca",
+    "shell.pageHistoryForwardEmpty": "ca1b9197"
   }
 }

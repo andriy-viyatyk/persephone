@@ -1773,7 +1773,11 @@
     "shell.ungroup": "取消分组",
     "shell.mutePage": "静音页面",
     "shell.unmutePage": "取消页面静音",
-    "tools.siteExtensionActionFailed": "网站扩展操作失败。"
+    "tools.siteExtensionActionFailed": "网站扩展操作失败。",
+    "shell.pageHistoryBack": "后退到{title} (Alt+Left)",
+    "shell.pageHistoryBackEmpty": "后退 (Alt+Left)",
+    "shell.pageHistoryForward": "前进到{title} (Alt+Right)",
+    "shell.pageHistoryForwardEmpty": "前进 (Alt+Right)"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3447,6 +3451,10 @@
     "shell.unmutePage": "af4c43a2",
     "tools.siteExtensionActionFailed": "96558212",
     "api.boardBusyRemoving": "fc62a483",
-    "api.boardOpenRemoving": "6426988c"
+    "api.boardOpenRemoving": "6426988c",
+    "shell.pageHistoryBack": "11144331",
+    "shell.pageHistoryBackEmpty": "912b177e",
+    "shell.pageHistoryForward": "5c000bca",
+    "shell.pageHistoryForwardEmpty": "ca1b9197"
   }
 }

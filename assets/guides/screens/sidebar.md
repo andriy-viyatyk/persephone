@@ -19,7 +19,7 @@ layout anchors.
 
 ```
 +---------------------------------------------------------------------+
-| [page-nav] [Back][Forward] [left-slot controls] [right-slot] [switch] |  shared TextChrome/PageToolbar row
+| [page-nav] [Back][Forward] [left-slot controls] [right-slot] [switch] |  shared editor toolbar; history follows File Explorer
 | [Home] [Back] [Forward] [Reload] [url-input] … [Close]              |  Browser's own toolbar (webview history), no page history or switch
 | [Explorer] [Back][Forward] [board controls]   [editor switch]       |  custom BoardToolbarView row
 +---------------------------------------------------------------------+
@@ -267,6 +267,8 @@ anchors, and the detailed board surface belongs in the [Boards guide](../boards/
 
 For the live panel model, call `page.panels.items`. Each item reports a bare panel ID, label,
 owning editor instance, editor kind, and expanded state. `page.panels.expand(id)` takes that bare
-ID. `page.panels.toggleSidebar()` flips the existing sidebar, throws when there are no panels or a
-non-Explorer panel keeps it open, and does not create an Explorer. There is no uniform
+ID. `page.panels.toggleSidebar()` flips the existing sidebar and does not create an Explorer. It
+throws when there are no panels or when a non-optional panel belongs to the page's main editor (or
+the page has no main editor). A panel beside an unrelated main editor does not keep the sidebar
+open; Explorer, Boards, and Clipboard are optional. There is no uniform
 `page.panels.close(id)`: each panel header owns its hide/dispose lifecycle.

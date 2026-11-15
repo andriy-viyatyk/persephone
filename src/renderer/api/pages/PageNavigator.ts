@@ -140,8 +140,8 @@ async function buildEditor(
     options?: NavigatePageToOptions,
 ): Promise<EditorModel> {
     if (!isVirtualPath(newFilePath) && !(await appFs.exists(newFilePath))) {
-        ui.notify(t("api.fileNotFound", { name: fpBasename(newFilePath) }), "error");
         if (options?.historyMove) throw new Error("History source no longer exists.");
+        ui.notify(t("api.fileNotFound", { name: fpBasename(newFilePath) }), "error");
         const host = newTextFileModel("");
         host.state.update((s) => {
             s.title = fpBasename(newFilePath);
@@ -158,7 +158,7 @@ async function buildEditor(
                 options.folderPath,
             );
         } catch (err) {
-            ui.notify(t("api.failedToOpenFolder", { error: errMessage(err) }), "error");
+            if (!options.historyMove) ui.notify(t("api.failedToOpenFolder", { error: errMessage(err) }), "error");
             throw err;
         }
     }
@@ -174,11 +174,11 @@ async function buildEditor(
             },
         );
     } catch (err) {
+        if (options?.historyMove) throw err;
         ui.notify(
             t("api.failedToOpenNamedFileWithError", { name: fpBasename(newFilePath), error: errMessage(err) }),
             "error",
         );
-        if (options?.historyMove) throw err;
         const host = newTextFileModel("");
         const editor = createEditorFromContentHost(host);
         await host.restore();

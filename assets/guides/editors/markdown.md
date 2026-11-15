@@ -22,7 +22,7 @@ page, choose **Markdown** from the tab's language menu and then choose **Preview
 
 ```
 +---------------------------------------------------------------------+
-| [Nav] [Compare]                         [Compact] [Switch]          |  toolbar: shared actions at left, compact and switch at right
+| [Nav] [Back][Forward] [Compare]          [Compact] [Switch]          |  toolbar: history and shared actions at left, compact and switch right
 +---------------------------------------------------------------------+
 | [Markdown preview] [scroll]                                         |  Markdown preview and scroll region below the toolbar
 +---------------------------------------------------------------------+

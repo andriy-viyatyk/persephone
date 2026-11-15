@@ -1920,7 +1920,11 @@
     "shell.ungroup": "Zrušiť zoskupenie",
     "shell.mutePage": "Stlmiť stránku",
     "shell.unmutePage": "Zapnúť zvuk stránky",
-    "tools.siteExtensionActionFailed": "Akcia rozšírenia lokality zlyhala."
+    "tools.siteExtensionActionFailed": "Akcia rozšírenia lokality zlyhala.",
+    "shell.pageHistoryBack": "Späť na {title} (Alt+Left)",
+    "shell.pageHistoryBackEmpty": "Späť (Alt+Left)",
+    "shell.pageHistoryForward": "Dopredu na {title} (Alt+Right)",
+    "shell.pageHistoryForwardEmpty": "Dopredu (Alt+Right)"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3594,6 +3598,10 @@
     "shell.unmutePage": "af4c43a2",
     "tools.siteExtensionActionFailed": "96558212",
     "api.boardBusyRemoving": "fc62a483",
-    "api.boardOpenRemoving": "6426988c"
+    "api.boardOpenRemoving": "6426988c",
+    "shell.pageHistoryBack": "11144331",
+    "shell.pageHistoryBackEmpty": "912b177e",
+    "shell.pageHistoryForward": "5c000bca",
+    "shell.pageHistoryForwardEmpty": "ca1b9197"
   }
 }

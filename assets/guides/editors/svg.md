@@ -22,7 +22,7 @@ file remains in Text Editor.
 
 ```
 +---------------------------------------------------------------------+
-| [Nav] [Compare]                 [Open] [Save] [Copy] [Switch]       |  toolbar: compare at left; SVG actions and switch at right
+| [Nav] [Back][Forward] [Compare]   [Open] [Save] [Copy] [Switch]     |  toolbar: history and compare left; SVG actions and switch right
 +---------------------------------------------------------------------+
 | [SVG preview]                                                       |  rendered SVG preview below the toolbar
 +---------------------------------------------------------------------+

@@ -22,7 +22,7 @@ with `pages.addEditorPage("monaco", language, title, content)`.
 
 ```
 +---------------------------------------------------------------------+
-| [Nav] [Compare] [Run] [Run all]      [Resources] [Mic] [Translate] [Wrap] [Switch] |  toolbar: script actions at left; resources, microphone, Translate (when a provider is available), Word Wrap, and switch at right
+| [Nav] [Back][Forward] [Compare] [Run] [Run all] [Resources] [Mic] [Translate] [Wrap] [Switch] | toolbar: history and script actions left; resources, microphone, Translate (when available), Word Wrap, and switch right
 +---------------------------------------------------------------------+
 | [Monaco editor]                                                     |  Monaco editing surface below the toolbar
 +---------------------------------------------------------------------+
@@ -76,7 +76,7 @@ with `pages.addEditorPage("monaco", language, title, content)`.
 
 ```
 +---------------------------------------------------------------------+
-| [Nav] [Compare] [Run] [Run all]      [Resources] [Stop] [Audio level] [Translate] [Wrap] [Switch] |  toolbar: active Transcript places Stop and audio level between Resources and Translate
+| [Nav] [Back][Forward] [Compare] [Run] [Run all] [Resources] [Stop] [Audio level] [Translate] [Wrap] [Switch] | history and script actions left; active Transcript places Stop and audio level between Resources and Translate
 +---------------------------------------------------------------------+
 ```
 
@@ -89,7 +89,7 @@ Transcript appears when a v1 Speech to Text provider is installed and trusted.
 
 ```
 +---------------------------------------------------------------------+
-| [Nav] [Compare] [Run] [Run all]      [Resources] [Mic] [Translate] [Wrap] [TS errors] [Switch] |  toolbar: project TypeScript errors toggle appears beside Word Wrap
+| [Nav] [Back][Forward] [Compare] [Run] [Run all] [Resources] [Mic] [Translate] [Wrap] [TS errors] [Switch] | history and script actions left; project TypeScript errors toggle beside Word Wrap
 +---------------------------------------------------------------------+
 ```
 

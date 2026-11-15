@@ -20,7 +20,7 @@ matching `"type": "log.*"`; arbitrary JSONL is not sufficient.
 
 ```
 +---------------------------------------------------------------------+
-| [Nav] [Clear] [Timestamps]                              [Switch]    |  left side of the Log View toolbar
+| [Nav] [Back][Forward] [Clear] [Timestamps]              [Switch]    |  left side of the Log View toolbar
 +---------------------------------------------------------------------+
 | [Grid output] [Markdown output] [Mermaid output] [Text output]      |  Log View output body, with each output card's actions revealed on hover
 | [inline dialog]                                                     |  Log View dialog surface below its output entries

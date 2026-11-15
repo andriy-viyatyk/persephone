@@ -26,7 +26,7 @@ boards](../boards/custom-editors.md#direct-folder-boards).
 
 ```
 +---------------------------------------------------------------------+
-| [Page nav] [Breadcrumb]                         [Switch]            |  toolbar: breadcrumb at left and switch at right
+| [Page nav] [Back][Forward] [Breadcrumb]          [Switch]            |  toolbar: history and breadcrumb at left, switch at right
 +---------------------------------------------------------------------+
 | [Category tree] [folder items]                                      |  folder content below the toolbar
 +---------------------------------------------------------------------+

@@ -52,7 +52,7 @@ session. A declined save prompt leaves the page and its stacks unchanged, and un
 no addressable source does not get a history entry. Browser pages keep separate webview history;
 the shell history controls are disabled while a Browser page is active.
 
-See [Header Strip](../screens/header.md) for button placement and [the page scripting API](../scripting/api/page.md#pagehistory)
+See [Page Area and Sidebar](../screens/sidebar.md) for toolbar placement and [the page scripting API](../scripting/api/page.md#pagehistory)
 for reading and driving a page's history.
 
 ### Slow content opens

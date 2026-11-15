@@ -19,7 +19,7 @@ The editor id is `env-vars-view`; it is not a general-purpose `.env` text editor
 
 ```
 +---------------------------------------------------------------------+
-| [Page nav]                                             [Switch]     |  shared text chrome around the environment variables body
+| [Page nav] [Back][Forward]                             [Switch]     |  shared text chrome around the environment variables body
 +---------------------------------------------------------------------+
 | [Namespace column]                         [Selected pane]          |  environment-variable body: namespace navigation at left
 | [Add namespace]                                                     |  bottom of the namespace column

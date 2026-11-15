@@ -1,3 +1,31 @@
+## EPIC-178 — Page navigation history (Back / Forward for every page)
+
+Completed 2026-11-15. User idea: browser-style Back / Forward for every page, whatever navigated it (Explorer clicks,
+links, boards, scripts). `PageHistory` (`api/pages/PageHistory.ts`) replaces the Markdown-only `NavBackStack`: every
+in-place navigation is recorded in `PageNavigator.navigatePageTo` after a successful reuse or fresh build (not for a
+reveal, a cancelled save prompt, an interceptor take or an untitled page), and replay rebuilds the pipe with
+`pipeFromPersistedSource` and navigates with a `historyMove`, so the stacks never move ahead of what the page shows.
+Entries are `{ filePath, target, title, sourceLink? }`, persisted as `historyBack` / `historyForward` (50 each) with a
+dated migration of the old `navBack`. Back / Forward buttons sit on the editor toolbar after File Explorer
+(`editors/base/PageHistoryButtonsView.ts`, also on the board toolbar) and act on that toolbar's page; they first
+shipped in the app header and moved after the user tried them (header placement read as tab navigation).
+`Alt+Left` / `Alt+Right` and mouse buttons 4 / 5 act on the active page; Browser pages and Browser code are untouched.
+The Markdown Back button is gone (`navigateBack()` remains as an alias); scripts and agents get `page.history`
+(`canGoBack`, `canGoForward`, `entries`, `back()`, `forward()` returning whether the page moved). Review moved replay
+failure reporting so it notifies once. Four tooltip messages translated in all 17 packs (`i18n:check` 1676/1676).
+**Verified live:** recording and branch clearing, deleted file skipped with a toast, Markdown links, cancelled save
+prompt, guides and plain boards, persistence descriptor, `Alt+Left` with Monaco focused, synthetic mouse buttons,
+toolbar placement and tooltips on text, Markdown and board pages, Browser exclusion, `page.history`. **Not verified:**
+restart migration of an old `navBack`, folder boards, a right-pinned popover, an interceptor taking the navigation.
+Plans by Codex (Terra), reviewed by Claude; Codex Luna implemented and ran the completion skills; the toolbar move by
+Claude. Epic document: [EPIC-178](EPIC-178.md).
+
+- [x] **History model (US-2003).** `PageHistory`, record and replay in the navigator, persistence, `navBack` migration.
+- [x] **Back / Forward UI (US-2004).** Toolbar buttons after File Explorer, shortcuts, Markdown Back removed.
+- [x] **Object model (US-2005).** `page.history`, typings, guides.
+- [x] **Epic review.** `/review` single failure toast on replay; `/document` pages-architecture, key-files; `/userdoc`
+  19 guide pages (toolbar layouts, header, sidebar, tabs and navigation); translations complete.
+
 ## EPIC-177 — Refactoring Phase 7: lock it in (error-level layer zones, dependency rules, strictNullChecks per folder)
 
 Completed 2026-11-14. Roadmap Phase 7, the last phase. Every import zone was already an error, so the epic added the

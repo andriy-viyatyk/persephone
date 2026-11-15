@@ -20,7 +20,7 @@ open a selected change in this editor.
 
 ```
 +---------------------------------------------------------------------+
-| [Nav] [From] [To] [Compare]             [Resources] [Switch]        |  toolbar: revision selectors and compare at left; resources and switch at right
+| [Nav] [Back][Forward] [From] [To] [Compare] [Resources] [Switch]    |  toolbar: history and revision selectors at left; resources and switch right
 +---------------------------------------------------------------------+
 | [From revision]                         [To revision]               |  diff panes below the toolbar
 +---------------------------------------------------------------------+

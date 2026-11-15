@@ -1920,7 +1920,11 @@
     "shell.ungroup": "Розгрупувати",
     "shell.mutePage": "Вимкнути звук сторінки",
     "shell.unmutePage": "Увімкнути звук сторінки",
-    "tools.siteExtensionActionFailed": "Не вдалося виконати дію розширення сайту."
+    "tools.siteExtensionActionFailed": "Не вдалося виконати дію розширення сайту.",
+    "shell.pageHistoryBack": "Назад до {title} (Alt+Left)",
+    "shell.pageHistoryBackEmpty": "Назад (Alt+Left)",
+    "shell.pageHistoryForward": "Уперед до {title} (Alt+Right)",
+    "shell.pageHistoryForwardEmpty": "Уперед (Alt+Right)"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3594,6 +3598,10 @@
     "shell.unmutePage": "af4c43a2",
     "tools.siteExtensionActionFailed": "96558212",
     "api.boardBusyRemoving": "fc62a483",
-    "api.boardOpenRemoving": "6426988c"
+    "api.boardOpenRemoving": "6426988c",
+    "shell.pageHistoryBack": "11144331",
+    "shell.pageHistoryBackEmpty": "912b177e",
+    "shell.pageHistoryForward": "5c000bca",
+    "shell.pageHistoryForwardEmpty": "ca1b9197"
   }
 }

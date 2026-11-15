@@ -1871,7 +1871,11 @@
     "shell.ungroup": "Separa gruppo",
     "shell.mutePage": "Disattiva audio pagina",
     "shell.unmutePage": "Riattiva audio pagina",
-    "tools.siteExtensionActionFailed": "Azione dell’estensione del sito non riuscita."
+    "tools.siteExtensionActionFailed": "Azione dell’estensione del sito non riuscita.",
+    "shell.pageHistoryBack": "Indietro a {title} (Alt+Left)",
+    "shell.pageHistoryBackEmpty": "Indietro (Alt+Left)",
+    "shell.pageHistoryForward": "Avanti a {title} (Alt+Right)",
+    "shell.pageHistoryForwardEmpty": "Avanti (Alt+Right)"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3545,6 +3549,10 @@
     "shell.unmutePage": "af4c43a2",
     "tools.siteExtensionActionFailed": "96558212",
     "api.boardBusyRemoving": "fc62a483",
-    "api.boardOpenRemoving": "6426988c"
+    "api.boardOpenRemoving": "6426988c",
+    "shell.pageHistoryBack": "11144331",
+    "shell.pageHistoryBackEmpty": "912b177e",
+    "shell.pageHistoryForward": "5c000bca",
+    "shell.pageHistoryForwardEmpty": "ca1b9197"
   }
 }

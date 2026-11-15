@@ -22,7 +22,7 @@ off by default.
 
 ```
 +---------------------------------------------------------------------+
-| [Page nav] [Repository tag] [Pull] [Push] [Refresh] [Switch]        |  Git toolbar: repository actions left, refresh and switch right
+| [Page nav] [Back][Forward] [Repository tag] [Pull] [Push] [Refresh] [Switch] |  Git toolbar: history and repository actions left; refresh and switch right
 +---------------------------------------------------------------------+
 | [Commit history] [Changes]                                          |  Git content below the toolbar
 | [Commit] [Diff]                                                     |  bottom Git panel tabs

@@ -21,7 +21,7 @@ remains available in Text Editor; agents can create an HTML content page with
 
 ```
 +---------------------------------------------------------------------+
-| [Nav] [Compare]             [Resources] [Copy] [Globe] [More] [Switch] | toolbar: compare at left; resources and preview actions at right
+| [Nav] [Back][Forward] [Compare] [Resources] [Copy] [Globe] [More] [Switch] | toolbar: history and compare left; resources and preview actions right
 +---------------------------------------------------------------------+
 | [HTML preview]                                                      |  sandboxed HTML preview below the toolbar
 +---------------------------------------------------------------------+

@@ -52,17 +52,20 @@ the top, and everything below it is the page area.
 
 ```
 +-------------------------------------------------------------------------+
-| [P] [Back] [Forward] [tab] … [+] [right-pin] [-] [box] [x] |  history controls, work tabs, right-pinned chips, and window controls
+| [P] [tab] … [+] [right-pin] [-] [box] [x]               |  work tabs, right-pinned chips, and window controls
 |                                                    ... Mneme  * MCP     |  status indicators
 +-------------------------------------------------------------------------+
-|                      |                                                  |
-|  sidebar panels      |   the active page, rendered by its editor         |  page area
+|                      | [File Explorer] [Back] [Forward] [editor controls]|
+|  sidebar panels      | [active page, rendered by its editor]              |  page area
 |  (when the page      |                                                  |
 |   has any open)      |                                                  |
 +-------------------------------------------------------------------------+
 ```
 
-The header's detailed controls and conditional status indicators are in [Header Strip](./header.md).
+Back and Forward are on each non-Browser editor toolbar, after File Explorer; Browser keeps its own
+navigation toolbar. See [Page Area and Sidebar](./sidebar.md) for placement and
+[Tabs & Navigation](../tabs-and-navigation/index.md#page-history) for behavior. The header's detailed
+controls and conditional status indicators are in [Header Strip](./header.md).
 Tabs, grouping, and restore behavior are in [Page Tabs](./tabs.md). The shared page-area frame and
 its page-owned panels are in [Page Area and Sidebar](./sidebar.md). The Menu Bar is the app's file
 browser, tab switcher, and Settings entry point; its controls and destinations are in [Menu Bar](./menu-bar.md).

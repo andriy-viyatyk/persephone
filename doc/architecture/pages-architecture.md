@@ -84,6 +84,7 @@ PageModel (one per tab — stable identity, never changes during navigation)
 ├── restore: PageRestore                // deferred restore attempt, readiness, state, typed retry
 ├── recovery?: RecoveryPlaceholder      // retained descriptor and cache protection after failed session restore
 ├── isInert                             // true while a recovery placeholder owns the page
+├── history: PageHistory                // page-wide Back/Forward stacks and replay
 ├── mainEditor: EditorModel | null      // the actual editor instance
 ├── editors: EditorModel[]              // attached editors; panelEditors is the sidebar projection
 ├── secondaryViewsModel                 // sidebar open/close/width (model lives in api/pages)
@@ -193,8 +194,10 @@ the board/registry switching machinery stays out of the page model);
 [`page-explorer.ts`](../../src/renderer/editors/explorer/page-explorer.ts) provisions the
 sidebar Explorer (`toggleNavigator`, auto-init beside a mandatory sidebar — constructing an
 `ExplorerEditor` is an editor concern, so it lives beside the editor);
-[`NavBackStack.ts`](../../src/renderer/api/pages/NavBackStack.ts) is the Markdown
-back-navigation stack the page owns, mirrors into `navBackCount`, and persists. The pure
+[`PageHistory.ts`](../../src/renderer/api/pages/PageHistory.ts) owns each page's bounded Back
+and Forward stacks, captures navigations, replays destinations through the page navigator, and
+provides the persisted snapshot. `PageHistoryControls` in `api/internal/` applies the user-input
+policy shared by editor-toolbar controls and shell gestures. The pure
 [`page-tab-state.ts`](../../src/renderer/api/pages/page-tab-state.ts) helpers project page and
 editor state for tab views and centralize the tab-action predicates used by views and page models.
 
@@ -644,15 +647,40 @@ case remain significant. Ordinary `openUrlInBrowserTab()` searches skip board-ow
 
 **`notifyMainEditorChanged()`** calls `onMainEditorChanged(newMainEditor)` on each secondary view. Each editor reacts independently: ExplorerEditor clears selection if the new editor wasn't opened from Explorer, ArchiveEditorModel checks if the new main editor was opened from its archive — if not, it clears `secondaryView` and is cleaned up.
 
+### Page-wide navigation history
+
+`PageModel.history` is a `PageHistory` shared across editor swaps, so each tab remembers its own
+navigation destinations regardless of which editor opened them. New in-place page navigations
+capture the current addressable editor on Back; a successful replay transfers the departing editor
+to the opposite stack. A committed new navigation clears Forward. Each stack holds at most 50 entries,
+ordered oldest first, with the next destination at the end. Untitled content without a file path or
+source URL cannot be captured.
+
+`PageHistory` persists `historyBack` and `historyForward` in the page descriptor, so stacks survive
+session restore and page transfer. Descriptor migration converts the earlier Markdown-only
+`navBack` entries to the new Back stack. Entries retain a source-link descriptor internally so the
+original editor and content pipe can be reconstructed; the script-facing `page.history.entries`
+projection exposes only `title`, `filePath`, and `target`.
+
+Each editor toolbar places Back and Forward immediately after its File Explorer button. The buttons
+show the next destination in their tooltip and disable when that direction is empty; they are hidden
+for Browser pages. Alt+Left/Right and physical mouse buttons 4/5 invoke the same page-history
+actions for the active non-Browser page. A right-pinned page popover remains part of the active
+work page. Browser webview navigation keeps its independent history and controls.
+
+`page.history` and `pages[i].history` expose `canGoBack`, `canGoForward`, both projected stacks,
+and `back()` / `forward()`. The methods resolve `true` only when a move commits, `false` for a
+normal no-op, and reject on an actual failure. Replay failures are reported once to the user before
+the rejection reaches script callers; toolbar and gesture callers handle the rejection without a
+second notification. `MarkdownEditor.navigateBack()` remains as a compatibility alias that
+discards the boolean result.
+
 ### Markdown in-page navigation
 
-The Markdown ("Preview") view navigates **within the current page** when the user clicks a link to a local markdown file, keeps a per-page **back history** so the user can return to the previously-viewed document, and scrolls to `#fragment` anchors.
+The Markdown ("Preview") view navigates within the current page when the user clicks a link to a local Markdown file, and scrolls to `#fragment` anchors.
 
-- **Interception.** `MarkdownBodyView` installs a capture-phase native click listener on its scroll container. A plain left-click on an anchor whose resolved href is a local markdown file — detected by `isLocalMarkdownHref` (`src/renderer/editors/markdown/markdown-nav.ts`: a `file://` URL ending in `.md`/`.markdown`, fragment ignored for the extension test) — is intercepted: the handler pushes the current document onto the page's back stack and dispatches `openRawLink` with `pageId` set (so the pipeline navigates this page in place rather than opening a new tab) and `target: "md-view"` (so the target stays in the rendered Preview). A **same-document** link (a bare `#fragment`) is intercepted too, but only scrolls — it is not a document change, so nothing is pushed onto the back stack and no link event is dispatched. Every other link — non-markdown files, `http(s)`, images, `mailto:` — is left untouched and keeps its normal behavior.
-- **History storage.** `PageModel` owns the back stack — a [`NavBackStack`](../../src/renderer/api/pages/NavBackStack.ts) instance behind the `pushNavBack` / `popNavBack` delegates declared on the `IPageHost` contract. It lives on the page, not the editor, so it survives the editor swaps each in-place navigation creates. `IPageState.navBackCount` mirrors the stack depth and drives the Back button's visibility. The stack is **persisted** as `PageDescriptor.navBack` (`NavEntry[]` in [`/src/shared/persistence.ts`](../../src/shared/persistence.ts)) and re-seeded in `PagesPersistenceModel.restorePage` via `seedNavBack`, so history survives app restart and window-to-window transfer.
-- **Back.** `MarkdownEditor.navigateBack()` (wired to the Back button in the Markdown toolbar) pops the stack and re-opens that entry in place — going straight through `openRawLink`, so it does not push a new entry. History is not cleared on unrelated in-page navigation; it lives for the page's lifetime.
+- **Interception.** `MarkdownBodyView` installs a capture-phase native click listener on its scroll container. A plain left-click on an anchor whose resolved href is a local markdown file — detected by `isLocalMarkdownHref` (`src/renderer/editors/markdown/markdown-nav.ts`: a `file://` URL ending in `.md`/`.markdown`, fragment ignored for the extension test) — is intercepted and dispatches `openRawLink` with `pageId` set (so the pipeline navigates this page in place rather than opening a new tab) and `target: "md-view"` (so the target stays in the rendered Preview). A **same-document** link (a bare `#fragment`) is intercepted too, but only scrolls — it is not a document change, so no link event is dispatched. Every other link — non-markdown files, `http(s)`, images, `mailto:` — is left untouched and keeps its normal behavior. Page-wide history is captured by the ordinary page-navigation path.
 - **Anchors.** A cross-document anchor arrives as the `fragment` navigation hint and reaches the editor through `revealFragment`, which queues an `anchor` event on the editor's `ComponentQueue`; a same-document one is handled directly by the click interceptor. `MarkdownBodyView` retries the queued scroll command over a short `requestAnimationFrame` ladder while its `MarkdownBlockView` is rendering. Heading ids come from the `rehypeHeadingIds` plugin (sibling of `rehypeHighlight`), which slugs heading text GitHub-style and disambiguates duplicates with `-1`, `-2`; author-supplied ids arriving as raw HTML are never overwritten.
-- `BrowserPanelHost` (the other `IPageHost`) implements the back-stack methods as inert no-ops — it has no main-editor navigation.
 
 Anchor resolution is deliberately tolerant, trying three passes in order: the exact id, a case-insensitive id, then the slug of the fragment against the slug of each heading's text. The third pass is what absorbs the difference between anchor dialects — Azure DevOps writes `#rtb.rul.2` for a heading GitHub would slug as `rtbrul2` — since slugifying both sides makes them meet. All queries are scoped to the block's root element rather than `document`, because several Markdown views can be mounted at once and the Minimap additionally clones the rendered content, so ids are not unique document-wide. A fragment that matches nothing leaves the document at the top with no error.
 

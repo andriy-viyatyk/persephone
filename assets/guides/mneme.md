@@ -30,7 +30,7 @@ Mneme is **off by default** and runs as a separate local service (`mneme.exe`) t
 
 ```
 +---------------------------------------------------------------------+
-| [Page nav]                                  [Editor switch]          |  page toolbar: navigation at left and switch at right
+| [Page nav] [Back][Forward]                  [Editor switch]          |  page toolbar: history and navigation at left, switch at right
 +---------------------------------------------------------------------+
 | [Search query] [Text/Vector/Hybrid] [Filters]             [Search]  |  Mneme search toolbar, query and mode at left, Search at right
 +---------------------------------------------------------------------+

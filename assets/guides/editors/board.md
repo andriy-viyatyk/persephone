@@ -23,7 +23,7 @@ the file and folder association details.
 
 ```
 +---------------------------------------------------------------------+
-| [Explorer] [Text]        [Board controls] […] [Switch]               |  Board toolbar: Explorer and text left, the board's own controls then Persephone's … menu and the switch at right
+| [Explorer] [Back][Forward] [Text] [Board controls] […] [Switch]     |  Board toolbar: history follows Explorer; board controls and menu follow
 +---------------------------------------------------------------------+
 | [Board]                                  [Script panel]             |  board content and optional script panel
 +---------------------------------------------------------------------+

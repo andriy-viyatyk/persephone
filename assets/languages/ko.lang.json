@@ -1773,7 +1773,11 @@
     "shell.ungroup": "그룹 해제",
     "shell.mutePage": "페이지 음소거",
     "shell.unmutePage": "페이지 음소거 해제",
-    "tools.siteExtensionActionFailed": "사이트 확장 프로그램 작업에 실패했습니다."
+    "tools.siteExtensionActionFailed": "사이트 확장 프로그램 작업에 실패했습니다.",
+    "shell.pageHistoryBack": "{title}(으)로 뒤로 (Alt+Left)",
+    "shell.pageHistoryBackEmpty": "뒤로 (Alt+Left)",
+    "shell.pageHistoryForward": "{title}(으)로 앞으로 (Alt+Right)",
+    "shell.pageHistoryForwardEmpty": "앞으로 (Alt+Right)"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3447,6 +3451,10 @@
     "shell.unmutePage": "af4c43a2",
     "tools.siteExtensionActionFailed": "96558212",
     "api.boardBusyRemoving": "fc62a483",
-    "api.boardOpenRemoving": "6426988c"
+    "api.boardOpenRemoving": "6426988c",
+    "shell.pageHistoryBack": "11144331",
+    "shell.pageHistoryBackEmpty": "912b177e",
+    "shell.pageHistoryForward": "5c000bca",
+    "shell.pageHistoryForwardEmpty": "ca1b9197"
   }
 }

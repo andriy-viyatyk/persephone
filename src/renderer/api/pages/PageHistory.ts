@@ -142,15 +142,7 @@ export class PageHistory {
                 ui.notify(t("api.fileNotFound", { name: fpBasename(entry.filePath) }), "error");
                 return false;
             }
-            try {
-                pipe = await pipeFromPersistedSource(entry.sourceLink, entry.filePath, { unknownScheme: "reject" });
-            } catch (error) {
-                ui.notify(t("api.failedToOpenNamedFileWithError", {
-                    name: fpBasename(entry.filePath),
-                    error: errMessage(error),
-                }), "error");
-                throw error;
-            }
+            pipe = await pipeFromPersistedSource(entry.sourceLink, entry.filePath, { unknownScheme: "reject" });
             const folderLink = decodeFolderEditorLink(entry.sourceLink?.url ?? entry.filePath);
             const move = this.createMove(direction, entry);
             const moved = await this.navigate(this.page.id, entry.filePath, {
@@ -167,6 +159,12 @@ export class PageHistory {
             if (!moved) pipe.dispose();
             pipe = undefined;
             return move.committed === true;
+        } catch (error) {
+            ui.notify(t("api.failedToOpenNamedFileWithError", {
+                name: fpBasename(entry.filePath),
+                error: errMessage(error),
+            }), "error");
+            throw error;
         } finally {
             pipe?.dispose();
             this.busy = false;

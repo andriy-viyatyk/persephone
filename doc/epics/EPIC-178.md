@@ -2,8 +2,9 @@
 
 ## Status
 
-**Status:** Planned
+**Status:** Completed
 **Created:** 2026-11-15
+**Completed:** 2026-11-15
 
 ## Overview
 
@@ -48,8 +49,9 @@ before, whatever moved it, with the familiar shortcuts.
   link written by `prepareOpenedEditor`; it carries `href`/`url`, `target` and a `pipeDescriptor`. Resolvers rebuild a
   pipe from the URL (`content/builtin-schemes.ts`), so replaying `openRawLink(href, { pageId, target })` reopens files,
   archive entries, HTTP URLs and virtual links (folder views, boards, guides).
-- **No page-wide toolbar exists.** `PageToolbarView` is used by 8 editors (not boards, not the Browser), so a control
-  that must work on every page belongs in the app header (`ui/app/AppHeaderView.ts:93-95`), next to the menu button.
+- **Toolbar placement.** `PageToolbarView` is used by the regular editors; Boards have their own `BoardToolbarView`,
+  while the Browser has no editor toolbar. Back / Forward follow File Explorer in the regular and Board toolbars.
+  They are hidden on Browser pages and unavailable in standalone board windows, which use a separate window header.
 - **The Browser is not part of this.** A Browser page is not an editor a page navigates to or from (the UI cannot
   move a page into or out of the Browser), and it keeps its own webview history with `Alt+Left` / `Alt+Right`
   (`editors/browser/BrowserShortcutTable.ts:70-79`). This epic does not touch Browser code.
@@ -87,9 +89,9 @@ restores that instance with its edits.
 **UI.**
 - Page toolbar: Back and Forward icon buttons right after the File Explorer button (`PageToolbarView` and the
   board's `BoardToolbarView`), acting on that toolbar's page, disabled when the stack is empty, tooltip naming the
-  destination's title and shortcut. (First shipped in the app header; moved 2026-11-15, see Notes.)
+  destination's title and shortcut.
 - Shortcuts: `Alt+Left` / `Alt+Right` and mouse buttons 4/5, registered in `KeyboardService`.
-- Browser pages are left alone: no Browser code changes, the header buttons are disabled while a Browser page is
+- Browser pages are left alone: no Browser code changes, the page-history buttons are hidden while a Browser page is
   active, and the page-history shortcuts do nothing there, so the Browser's own `Alt+Left` / `Alt+Right` keep working
   unchanged.
 - The Markdown toolbar Back button is removed; Markdown links simply record through `navigatePageTo`, and
@@ -103,9 +105,11 @@ other. (A board-facing `history.back()` would need a `BOARD_BRIDGE_VERSION` bump
 
 | Task | Title | Status |
 |------|-------|--------|
-| [US-2003](../tasks/US-2003-page-history-model/README.md) | `PageHistory`: record in `navigatePageTo`, direct replay (`pipeFromPersistedSource` + `navigatePageTo`), persistence and dated `navBack` migration | Implemented (e2584077) |
-| [US-2004](../tasks/US-2004-page-history-ui/README.md) | Back / Forward UI: header buttons, `Alt+Left/Right` and mouse buttons (inactive on Browser pages), remove the Markdown Back button, i18n | Implemented (f79a99d2) |
-| [US-2005](../tasks/US-2005-page-history-object-model/README.md) | Object model `page.history` and guides (scripting `page`, screens, ai-vision help) | Planned |
+| US-2003 | `PageHistory`: record in `navigatePageTo`, direct replay (`pipeFromPersistedSource` + `navigatePageTo`), persistence and dated `navBack` migration | Done (e2584077) |
+| US-2004 | Back / Forward toolbar buttons after File Explorer, `Alt+Left/Right` and mouse buttons (inactive on Browser pages), remove the Markdown Back button, i18n | Done (f79a99d2; toolbar move e4c50e93) |
+| US-2005 | Object model `page.history` and guides (scripting `page`, screens, ai-vision help) | Done (9897675e) |
+
+Task folders were deleted at epic close; their plans are in git history.
 
 US-2003 is the core and comes first; US-2004 and US-2005 both depend only on it.
 
@@ -128,9 +132,8 @@ US-2003 is the core and comes first; US-2004 and US-2005 both depend only on it.
 ### 2026-11-15
 - Requested by the user: Back / Forward for the page in general, whatever navigated it (Explorer, links, boards,
   scripts).
-- Header placement chosen over per-editor toolbars because boards and the Browser have no `PageToolbarView`.
-- After trying them, the user moved the buttons from the app header to the editor toolbar, after File Explorer: in
-  the header they read as tab navigation. The editors without a `PageToolbarView` (Browser, MCP Inspector, Mneme
-  config) have no buttons; the shortcuts still work there except on Browser pages.
-- User confirmed: header buttons, remove the Markdown Back button. The Browser is a separate thing (not an editor a
+- Initial header placement was changed after the user found the buttons read as tab navigation. Back / Forward now
+  follow File Explorer in the editor toolbar; the Board toolbar has the same placement. Editors without these
+  toolbars (Browser, MCP Inspector, Mneme config) have no buttons; the shortcuts still work there except on Browser pages.
+- User confirmed: toolbar buttons after File Explorer and removal of the Markdown Back button. The Browser is a separate thing (not an editor a
   page navigates to or from) and this epic must not touch Browser logic.

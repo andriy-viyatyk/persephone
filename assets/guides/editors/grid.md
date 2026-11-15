@@ -24,7 +24,7 @@ then choose the matching **Grid** option in the page toolbar.
 
 ```
 +---------------------------------------------------------------------+
-| [Edit Columns] [CSV Options]             [Search ⌕] [Editor switch] |  toolbar: columns at the left, search and switch at the right
+| [Nav] [Back][Forward] [Edit Columns] [CSV Options] [Search ⌕] [Editor switch] | toolbar: history and column controls left; search and switch right
 +---------------------------------------------------------------------+
 | Column headers — click to sort, drag to reorder. A filter button    |  each column header carries a filter button at its right edge,
 | appears at the right edge of a header when you hover it.            |  shown on hover or while that column is filtered

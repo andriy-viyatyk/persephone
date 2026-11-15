@@ -1773,7 +1773,11 @@
     "shell.ungroup": "グループ解除",
     "shell.mutePage": "ページをミュート",
     "shell.unmutePage": "ページのミュートを解除",
-    "tools.siteExtensionActionFailed": "サイト拡張機能の操作に失敗しました。"
+    "tools.siteExtensionActionFailed": "サイト拡張機能の操作に失敗しました。",
+    "shell.pageHistoryBack": "{title} に戻る (Alt+Left)",
+    "shell.pageHistoryBackEmpty": "戻る (Alt+Left)",
+    "shell.pageHistoryForward": "{title} に進む (Alt+Right)",
+    "shell.pageHistoryForwardEmpty": "進む (Alt+Right)"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3447,6 +3451,10 @@
     "shell.unmutePage": "af4c43a2",
     "tools.siteExtensionActionFailed": "96558212",
     "api.boardBusyRemoving": "fc62a483",
-    "api.boardOpenRemoving": "6426988c"
+    "api.boardOpenRemoving": "6426988c",
+    "shell.pageHistoryBack": "11144331",
+    "shell.pageHistoryBackEmpty": "912b177e",
+    "shell.pageHistoryForward": "5c000bca",
+    "shell.pageHistoryForwardEmpty": "ca1b9197"
   }
 }
