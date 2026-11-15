@@ -102,8 +102,8 @@ other. (A board-facing `history.back()` would need a `BOARD_BRIDGE_VERSION` bump
 
 | Task | Title | Status |
 |------|-------|--------|
-| [US-2003](../tasks/US-2003-page-history-model/README.md) | `PageHistory`: record in `navigatePageTo`, direct replay (`pipeFromPersistedSource` + `navigatePageTo`), persistence and dated `navBack` migration | Planned |
-| US-2004 | Back / Forward UI: header buttons, `Alt+Left/Right` and mouse buttons (inactive on Browser pages), remove the Markdown Back button, i18n | Planned |
+| [US-2003](../tasks/US-2003-page-history-model/README.md) | `PageHistory`: record in `navigatePageTo`, direct replay (`pipeFromPersistedSource` + `navigatePageTo`), persistence and dated `navBack` migration | Implemented (e2584077) |
+| [US-2004](../tasks/US-2004-page-history-ui/README.md) | Back / Forward UI: header buttons, `Alt+Left/Right` and mouse buttons (inactive on Browser pages), remove the Markdown Back button, i18n | Planned |
 | US-2005 | Object model `page.history` and guides (scripting `page`, screens, ai-vision help) | Planned |
 
 US-2003 is the core and comes first; US-2004 and US-2005 both depend only on it.

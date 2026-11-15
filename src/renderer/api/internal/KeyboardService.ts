@@ -9,6 +9,7 @@ import { BOARD_GUIDES_PREFIX, BOARD_SELF_EDITOR_ID } from "../../../shared/guide
 import { errMessage } from "../../../shared/utils";
 import { guard } from "../../core/utils/guard";
 import { t } from "../../../shared/i18n/t";
+import { pageHistoryControls } from "./PageHistoryControls";
 
 function findGuidePath(
     nodes: readonly GuideTreeNode[],
@@ -73,11 +74,22 @@ export class KeyboardService {
         // App.initEvents() owns this process-wide shortcut listener; it must outlive
         // individual views and models and is released with the renderer process.
         document.addEventListener("keydown", this.handleKeyDown);
+        document.addEventListener("mousedown", this.handleMouseDown);
+        document.addEventListener("auxclick", this.handleAuxClick);
     }
 
     private handleKeyDown = (e: KeyboardEvent) => {
         // Broadcast to all subscribers
         globalKeyDown.send(e);
+
+        if ((e.code === "ArrowLeft" || e.code === "ArrowRight")
+            && e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey
+            && !e.isComposing && !e.defaultPrevented
+            && pageHistoryControls.isEligiblePage()) {
+            e.preventDefault();
+            pageHistoryControls.go(e.code === "ArrowLeft" ? "back" : "forward");
+            return;
+        }
 
         // Handle specific shortcuts
         switch (e.code) {
@@ -145,6 +157,19 @@ export class KeyboardService {
                 }
                 break;
         }
+    };
+
+    private handleMouseDown = (event: MouseEvent): void => {
+        if (event.defaultPrevented || (event.button !== 3 && event.button !== 4)
+            || !pageHistoryControls.isEligiblePage()) return;
+        event.preventDefault();
+        pageHistoryControls.go(event.button === 3 ? "back" : "forward");
+    };
+
+    private handleAuxClick = (event: MouseEvent): void => {
+        if (event.defaultPrevented || (event.button !== 3 && event.button !== 4)
+            || !pageHistoryControls.isEligiblePage()) return;
+        event.preventDefault();
     };
 }
 

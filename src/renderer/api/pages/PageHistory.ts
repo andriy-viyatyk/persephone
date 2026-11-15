@@ -9,6 +9,7 @@ import { t } from "../../../shared/i18n/t";
 import { fileIdentity, fpBasename, isVirtualPath } from "../../core/utils/file-path";
 import { pipeFromPersistedSource } from "../../content/rebuild-pipe";
 import { decodeFolderEditorLink } from "../../content/folder-editor-link";
+import { errMessage } from "../../../shared/utils";
 
 export const MAX_PAGE_HISTORY_ENTRIES = 50;
 
@@ -141,7 +142,15 @@ export class PageHistory {
                 ui.notify(t("api.fileNotFound", { name: fpBasename(entry.filePath) }), "error");
                 return;
             }
-            pipe = await pipeFromPersistedSource(entry.sourceLink, entry.filePath, { unknownScheme: "reject" });
+            try {
+                pipe = await pipeFromPersistedSource(entry.sourceLink, entry.filePath, { unknownScheme: "reject" });
+            } catch (error) {
+                ui.notify(t("api.failedToOpenNamedFileWithError", {
+                    name: fpBasename(entry.filePath),
+                    error: errMessage(error),
+                }), "error");
+                throw error;
+            }
             const folderLink = decodeFolderEditorLink(entry.sourceLink?.url ?? entry.filePath);
             const move = this.createMove(direction, entry);
             const moved = await this.navigate(this.page.id, entry.filePath, {

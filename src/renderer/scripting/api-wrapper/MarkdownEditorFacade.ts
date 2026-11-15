@@ -5,7 +5,6 @@ import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 const MARKDOWN_ELEMENTS = [
     { name: "text-compare-left", purpose: "Compare this page with the left grouped page.", where: "left side of the Markdown text toolbar, when comparison is available" },
     { name: "markdown-compact-toggle", purpose: "Toggle compact spacing and typography in the rendered Markdown.", where: "right side of the Markdown toolbar, before the editor switch" },
-    { name: "markdown-back", purpose: "Return to the previous Markdown document in the page's navigation history.", where: "left side of the Markdown toolbar, after shared text actions" },
     { name: "find-input", purpose: "Enter the text to find in the rendered Markdown.", where: "in the Markdown find bar, left side, when the find bar is open" },
     { name: "find-prev", purpose: "Move to the previous Markdown match.", where: "in the Markdown find bar, after the find field, when the find bar is open" },
     { name: "find-next", purpose: "Move to the next Markdown match.", where: "in the Markdown find bar, after Previous, when the find bar is open" },
@@ -38,7 +37,7 @@ There is no manual refresh or re-render control: the preview re-renders automati
 page content changes, so "refresh the preview" is not an action a user or an agent performs here.
 Assign pages[i].content to change what is rendered; markdown-compact-toggle only changes spacing and
 typography of the already-rendered document. Its
-persistent controls are text-compare-left, markdown-compact-toggle, markdown-back, find-input,
+persistent controls are text-compare-left, markdown-compact-toggle, find-input,
 find-prev, find-next, and find-close; conditional controls report visible: false when absent.
 The markdown-link context menu appears only after right-clicking a rendered link and offers Open
 in New Tab, Copy Link, and browser-opening variants; inspect it through menus. The page-tab popup
@@ -114,8 +113,8 @@ export class MarkdownEditorFacade extends EditorFacadeBase<MarkdownEditor> imple
         this.editor.revealFragment(fragment);
     }
 
-    navigateBack(): Promise<void> {
-        return this.editor.navigateBack();
+    async navigateBack(): Promise<void> {
+        await this.editor.page?.history?.back();
     }
 
     toggleCompact(): void {

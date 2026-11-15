@@ -80,11 +80,6 @@ export class MarkdownEditor extends TextHostEditorModel<
         if (fragment) this.queue.send({ type: "anchor", fragment });
     }
 
-    /** Back-navigate the owning page through its shared history model. */
-    navigateBack = async (): Promise<void> => {
-        await this.page?.history?.back();
-    };
-
     followLink(href: string): boolean {
         const page = this.page;
         const pageId = page?.id;

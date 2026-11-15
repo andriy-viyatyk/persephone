@@ -16,7 +16,7 @@ Overview of all active and planned epics and tasks.
 
 - **EPIC-178** — [Page navigation history (Back / Forward for every page)](epics/EPIC-178.md)
   - [ ] [US-2003: `PageHistory` — record in `navigatePageTo`, replay, persistence and `navBack` migration](tasks/US-2003-page-history-model/README.md)
-  - [ ] US-2004: Back / Forward UI — header buttons, shortcuts (Browser pages untouched), remove Markdown Back
+  - [ ] [US-2004: Back / Forward UI](tasks/US-2004-page-history-ui/README.md) — header buttons, shortcuts (Browser pages untouched), remove Markdown Back
   - [ ] US-2005: Object model `page.history` and guides
 
 ## Scheduled
