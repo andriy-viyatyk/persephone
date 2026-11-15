@@ -83,7 +83,7 @@ export class ColorizedCodeView extends VanillaView<ColorizedCodeProps> {
             if (generation !== this.requestGeneration || !html) return;
             // Safe exception: Monaco escapes source text (< and >) and emits only code-owned
             // <span class="mtk-*"> markup; this is not a general runtime-data innerHTML path.
-            // Roadmap section 3.4; source escaping: node_modules/monaco-editor/esm/vs/editor/common/viewLayout/viewLineRenderer.js:856-860.
+            // Roadmap section 3.4; source escaping: node_modules/monaco-editor/esm/vs/editor/common/viewLayout/viewLineRenderer.js:905-910.
             if (this.root.innerHTML !== html) this.root.innerHTML = html;
         });
     }
