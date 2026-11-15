@@ -59,7 +59,10 @@ ureq = { version = "3", default-features = false, features = ["rustls"] }
 # small int8 model). The prebuilt runtime still references directml.dll/d3d12.dll/dxgi.dll in the
 # import table (a link-time leftover, never called), satisfied at load from Windows System32 — so
 # no DLLs are bundled with the installer. Pinned to the rc — `ort = "2"` would not match a pre-release.
-ort = { version = "=2.0.0-rc.12" }
+# Default features minus `copy-dylibs`: that step copies the prebuilt DirectML.dll next to the build
+# output, which we never ship, and in rc.12 it panics under Rust 1.100's deeper build-dir layout
+# (it climbs a fixed number of folders from OUT_DIR and copies into a missing `build/examples`).
+ort = { version = "=2.0.0-rc.12", default-features = false, features = ["std", "ndarray", "tracing", "download-binaries", "tls-native", "api-24"] }
 # HuggingFace tokenizer; `fancy-regex` (pure Rust) avoids a C toolchain dep, and we load
 # `tokenizer.json` from disk so the `http`/`hf-hub` downloaders are off.
 tokenizers = { version = "0.23", default-features = false, features = ["fancy-regex"] }
