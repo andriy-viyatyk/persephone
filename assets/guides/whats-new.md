@@ -6,22 +6,39 @@ summary: "Release notes, newest first — the last 10 releases in full, older on
 
 # What's New
 
-Managed microphone capture now uses DTLN noise removal, with an optional per-device resonance cut
-in Microphone Audio settings. On Windows, Transcript, voice typing, and compatible boards can also
-cancel computer sound while preserving noise removal if the reference is unavailable. Boards can
-request raw capture through `audio@1`. Voice Typing also has an optional timer that stops when a
-live transcription provider sends no new text, even if background noise keeps the microphone active.
-
 Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 5.0.19 (Upcoming)
+## Version 5.0.20 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 5.0.19
+
+### New Features
+
+- **Microphone noise removal:** managed microphone capture uses DTLN noise removal, with an
+  optional per-device resonance cut in Microphone Audio settings. On Windows, Transcript, voice
+  typing, and compatible boards can also cancel computer sound, keeping noise removal when that
+  reference is unavailable. Boards can request raw capture through `audio@1`.
+- **Page-wide navigation history:** Back and Forward work across page navigation with page-toolbar buttons next to File Explorer, keyboard and mouse shortcuts, and the `page.history` scripting API. Browser webview history remains separate.
+- **Mermaid diagram choices:** choose a Classic, Neo, or Hand-drawn look and a Dagre or ELK layout in
+  the Mermaid toolbar. Each page remembers its choices; Markdown and Log View diagrams keep the
+  Classic look and Dagre layout.
+- **Settings help:** Hover over a **?** beside a setting or section, or focus it with Tab, to read
+  its explanation. Press Escape to dismiss it. See [Settings](./screens/settings.md).
 
 ### Improvements
 
-- **Page-wide navigation history:** Back and Forward work across page navigation with page-toolbar buttons next to File Explorer, keyboard and mouse shortcuts, and the `page.history` scripting API. Browser webview history remains separate.
 - **Transcript and voice typing follow default audio devices:** If the microphone or speakers change while recording, capture reconnects to the current default device and continues.
+- **Voice Typing stops on transcription inactivity:** an optional timer stops voice typing when the
+  live transcription provider sends no new text, even if background noise keeps the microphone active.
+- **HLS stream controls:** HLS playback now uses the browser's native media controls.
+- **More text files open with the right encoding:** Windows-1252 and BOM-less UTF-16 files are now
+  detected when opened.
 - **Capability selection:** Unpinned `app.capabilities.invoke()` and board `persephone.capabilities.invoke()` calls honor `capabilities.preferredProviders` and can select any eligible major version. A board's declared `methods.open.timeoutMs` also applies when an app script opens it.
 - **Board lifecycle:** Disabling a bundled board makes its open pages unavailable until it is enabled again. Removing a board closes its pages and stops its service; renaming preserves its category pin and position.
 - **Board frame cleanup:** Requests fail immediately when board trust is removed, with an `untrusted`
@@ -30,20 +47,15 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Board bridge reliability:** Late messages or replies from a replaced board port are ignored,
   stale folder cursors return `invalid-argument`, and service or dialog permission denials expose
   the stable `permission-denied` code while keeping their existing messages.
-- **Settings help:** Hover over a **?** beside a setting or section, or focus it with Tab, to read
-  its explanation. Press Escape to dismiss it. See [Settings](./screens/settings.md).
+
+### Bug Fixes
+
 - **Explorer remembers restored folders:** Expanding another folder no longer causes previously
   restored expanded folders to disappear the next time the Explorer state is saved.
 - **Autoload refreshes shared scripts:** Reloading autoload scripts also picks up changes in the
   library modules they import.
 - **Relative requires in Script Library modules:** A library module can import a neighbour with
   `require("./helper")` or an ES `import` from `"../utils/x"` again; the target gets the same script globals.
-- **Mermaid diagram choices:** choose a Classic, Neo, or Hand-drawn look and a Dagre or ELK layout in
-  the Mermaid toolbar. Each page remembers its choices; Markdown and Log View diagrams keep the
-  Classic look and Dagre layout.
-- **HLS stream controls:** HLS playback now uses the browser's native media controls.
-- **More text files open with the right encoding:** Windows-1252 and BOM-less UTF-16 files are now
-  detected when opened.
 
 ---
 
@@ -271,27 +283,9 @@ The move removes note script execution; HTML, Mermaid, and SVG previews; Monaco 
 
 ### New Features
 
-- **Create and manage custom themes:** Persephone derives a full palette from background, text, and
-  accent colors. Install the Theme Editor board from **Tools & Editors** to create, edit, export,
-  and import themes; saved themes appear in Settings and theme cycling. Scripts and MCP can also
-  inspect, preview, save, and apply themes through [`app.themes`](./scripting/api/themes.md).
-- **Persephone themes and a new starting theme:** Choose the dark **Persephone** theme or the light
-  **Persephone Light** theme. New settings use Persephone by default; an existing valid saved theme
-  remains selected.
-- **Browser pages can provide WebMCP tools to agents:** tools registered through
-  `document.modelContext` appear in the page's agent model, with cautions for tools that may have
-  side effects. This integration is disabled in Incognito and Tor.
-
-### Bug Fixes
-
-- **Browser find-in-page keeps searches responsive:** typing updates the current search without
-  freezing the app, and Enter/F3 or Shift+Enter/Shift+F3 moves through matches in the same search.
-- **Boards can open web links without external-launch permission:** when link behavior is set to
-  the OS default browser, HTTP(S) links from boards without `openExternal` open in an internal
-  Browser tab and are noted in the board log. Other external schemes remain blocked.
-- **Lists and trees fit their scrollbar right away:** when expanding or collapsing items in Explorer
-  (or any list or grid) shows or hides the scrollbar, the rows and the selection resize at once
-  instead of on the next mouse move.
+- **Custom themes:** derive a full palette from three colors with the Theme Editor board, or through `app.themes`.
+- **Persephone and Persephone Light themes:** new installs start on the dark Persephone theme.
+- **WebMCP tools:** tools a page registers through `document.modelContext` appear in its agent model.
 
 ---
 
