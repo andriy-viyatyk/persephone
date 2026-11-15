@@ -4,14 +4,14 @@
 
 **Website:** [andriy-viyatyk.github.io/persephone](https://andriy-viyatyk.github.io/persephone/) — demo videos, features and use cases, plus the [board catalog](https://andriy-viyatyk.github.io/boards/).
 
-![Demo Video](https://github.com/user-attachments/assets/bb1e393d-5470-4eb8-8ebc-55d6e47260e9)
+![Demo Video](https://github.com/user-attachments/assets/4ce53cd9-62b9-4a03-b59a-f92e3f877bf2)
 
 ## One viewer for everything
 
 Any file a developer meets during the day opens in place — in three tiers:
 
-- **Built in** — code with syntax highlighting (Monaco, 50+ languages), JSON/CSV grids, Markdown, Mermaid diagrams, SVG and HTML previews, images, audio/video, archives (ZIP, RAR, 7z — including a look inside `.docx`/`.xlsx`), side-by-side diffs, and more. See the [full list](#built-in-editors) below.
-- **Installable** — the **[persephone-boards](https://github.com/andriy-viyatyk/persephone-boards)** catalog adds viewers and editors on demand: Word, Excel, PowerPoint, PDF, draw.io diagrams, SQLite databases, Windows executables, todo lists. Open a matching file and an install offer appears right in the editor-switch control; each board is downloaded, checksum-verified, and trusted only after you accept it. The catalog keeps growing.
+- **Built in** — code with syntax highlighting (Monaco, 50+ languages), JSON/CSV grids, Markdown, Mermaid diagrams, SVG and HTML previews, images, audio/video, archives (ZIP, RAR, 7z, TAR, ISO — including a look inside `.docx`/`.xlsx`), Excalidraw drawings, side-by-side diffs, and more. See the [full list](#built-in-editors) below.
+- **Installable** — the **[persephone-boards](https://github.com/andriy-viyatyk/persephone-boards)** catalog adds viewers and editors on demand: Word, Excel, PowerPoint, PDF, draw.io diagrams, SQLite databases, Windows executables, notebooks, todo lists, force-directed graphs, an audio player, local speech-to-text and translation, and more. Open a matching file and an install offer appears right in the editor-switch control; each board is downloaded, checksum-verified, and trusted only after you accept it. The catalog keeps growing.
 - **Made to order** — if no viewer exists for your file, ask an AI agent to build one. A viewer is a **Board**: a folder of plain HTML/JS/CSS with optional backend scripts. A simple viewer takes an agent a few minutes to create, and it plugs in like a native editor.
 
 ## A workspace shared with AI agents
@@ -42,6 +42,11 @@ The practical loop: describe the tool you need to your agent — it scaffolds th
 - **Web browser** — tabs with profiles, incognito mode, Tor routing, bookmarks, DRM video support, and [WebMCP](https://developer.chrome.com/docs/ai/webmcp): tools a site registers with `document.modelContext` become callable methods for your agent. Links from Markdown and code open in the nearest browser tab.
 - **Git integration** *(off by default)* — a commit-graph editor across all branches, staging and committing, push/pull, and revision diffs for any tracked file.
 - **Mneme — vector memory** *(off by default)* — turns any folder of Markdown notes into a locally indexed knowledge base with hybrid full-text + semantic search, exposed over MCP so agents remember across sessions. See the [Mneme guide](assets/guides/mneme.md).
+- **Screen snip and recording** — capture a region of the screen into the Excalidraw board for annotation, or record the window, a page, or the editor area to video.
+- **Voice typing** — dictate with a shortcut (`Alt+V`), or dictate and translate to English (`Alt+Shift+V`), using the local Speech to Text board from the catalog.
+- **Agent Tools** — turn a working integration script (any language) into a reusable, parameterized tool that agents discover and run over MCP. See the [Agent Tools guide](assets/guides/agent-tools.md).
+- **Site extensions** — trusted scripts that give a website a model your agent can call, instead of re-reading the page every time. See the [Site Extensions guide](assets/guides/site-extensions.md).
+- **Themes and languages** — eight built-in color themes plus your own, and the interface in 18 languages.
 - **Scripting** — the `app.*` API behind the agent's object model is yours too, in a JavaScript/TypeScript tab with full Node.js access. See the [Scripting guide](assets/guides/scripting/index.md).
 
 ## Download (Windows)
@@ -68,17 +73,17 @@ Everything else is network traffic you start yourself: web pages in the built-in
 | **Text Editor** | all files | Monaco-powered editor with syntax highlighting for 50+ languages |
 | **JSON Grid** | `.json` | Sortable, filterable table view for JSON arrays |
 | **CSV Grid** | `.csv`, `.tsv` | Spreadsheet-like view with auto-detected delimiters |
-| **JSONL Grid** | `.grid.jsonl`, `.jsonl` | Grid view for JSONL/NDJSON data — one JSON object per line |
+| **JSONL Grid** | `.grid.jsonl`, `.jsonl`, `.ndjson` | Grid view for JSONL/NDJSON data — one JSON object per line |
 | **Log View** | `.log.jsonl` | Structured viewer for JSONL log files with log-level filtering |
-| **Markdown Preview** | `.md` | Rendered markdown with live updates |
-| **Mermaid Diagrams** | `.mmd`, `.mermaid` | Rendered diagram preview with light/dark toggle |
+| **Markdown Preview** | `.md` | Rendered markdown with live updates and Mermaid diagrams |
+| **Mermaid Diagrams** | `.mmd`, `.mermaid` | Rendered diagram with theme, look (Classic / Neo / Hand-drawn) and layout (Dagre / ELK) choices, image export, and conversion to Excalidraw |
 | **SVG Preview** | `.svg` | Rendered SVG with zoom and pan |
 | **HTML Preview** | `.html` | Sandboxed rendered preview with script support |
 | **Image Viewer** | `.png`, `.jpg`, `.gif`, `.webp`, `.bmp`, `.ico` | Image viewer with zoom and pan |
-| **Audio / Video Player** | `.mp4`, `.mkv`, `.webm`, `.mov`, `.mp3`, `.flac`, `.wav`, `.m3u8` | Plays local and streamed media, with HLS support and an audio spectrum visualizer |
-| **Archive** | `.zip`, `.rar`, `.7z`, `.tar`, `.docx`, `.xlsx`, `.epub`, `.iso` | Browse archive contents as a file tree; open entries inline (ZIP-based formats are writable) |
-| **Notebook** | `.note.json` | Structured notes with categories, tags, and search |
-| **Drawing** | `.excalidraw` | Excalidraw-based drawing editor with library persistence, export, and screen snip |
+| **Audio / Video Player** | `.mp4`, `.mkv`, `.webm`, `.mov`, `.avi`, `.mp3`, `.flac`, `.wav`, `.m4a`, `.m3u8` | Plays local and streamed media, with HLS streams and a VLC fallback for formats Chromium cannot play |
+| **Archive** | `.zip`, `.rar`, `.7z`, `.tar`, `.tar.gz`, `.cab`, `.iso`, `.docx`, `.xlsx`, `.epub` | Browse archive contents as a file tree; open entries inline (ZIP-based formats are writable) |
+| **Folder View** | folders | Browse a folder or an archive directory as a list |
+| **Excalidraw board** | `.excalidraw` | Bundled Excalidraw drawing editor with libraries, image export, and screen snips |
 | **Links** | `.link.json` | Bookmark/link manager with tiles, list view, categories, and pinned links |
 | **REST Client board** | `.rest.json` | HTTP request builder with collections, body types, and response viewer |
 | **Board** | folder w/ `board-manifest.json` | Sandboxed custom HTML mini-app — dashboard, tool, viewer, or custom editor |
@@ -87,7 +92,7 @@ Everything else is network traffic you start yourself: web pages in the built-in
 | **Git Diff** | — | Side-by-side revision comparison for any tracked file *(Git integration)* |
 | **Compare** | any two files | Side-by-side diff view |
 
-More viewers and editors — PDF, Word, Excel, PowerPoint, draw.io, SQLite, and others — install on demand from the **[persephone-boards](https://github.com/andriy-viyatyk/persephone-boards)** catalog: browse it from the **Search boards** tab of the Tools & Editors hub, or just open a matching file. See the [Boards guide](assets/guides/boards/published-boards.md#published-boards-catalog--discover-install-update).
+More viewers and editors — PDF, Word, Excel, PowerPoint, draw.io, SQLite, Notebook (`.note.json`), Todo, and others — install on demand from the **[persephone-boards](https://github.com/andriy-viyatyk/persephone-boards)** catalog: browse it from the **Search boards** tab of the Tools & Editors hub, or just open a matching file. See the [Boards guide](assets/guides/boards/published-boards.md#published-boards-catalog--discover-install-update).
 
 ---
 
@@ -98,7 +103,8 @@ More viewers and editors — PDF, Word, Excel, PowerPoint, draw.io, SQLite, and 
 * **[Boards Guide](assets/guides/boards/index.md)** — Custom viewers, editors, and mini apps
 * **[Mneme Guide](assets/guides/mneme.md)** — Vector memory / Markdown knowledge base for AI agents
 * **[Scripting Guide](assets/guides/scripting/index.md)** — Script execution, `page`/`app` API, autoload scripts
-* **[API Reference](assets/guides/scripting/api/index.md)** — `app.pages`, `app.fs`, `app.settings`, `app.ui`, `app.fetch`
+* **[API Reference](assets/guides/scripting/api/index.md)** — `app` (`pages`, `fs`, `settings`, `fetch`, …), `page`, `io`, `ui` (Log View), `editors`, `window`
+* **[What's New](assets/guides/whats-new.md)** — Recent changes
 
 ---
 
@@ -112,12 +118,12 @@ Contributions, bug reports, and feature requests are more than welcome!
 
 ### For Contributors
 
-This project is developed with **Claude AI** assistance. Before contributing, please review:
+This project is developed with AI coding agents (**Claude Code** and **Codex**). Before contributing, please review:
 
 * **[CONTRIBUTING.md](CONTRIBUTING.md)** - Setup guide and coding standards
 * **[Developer Docs](doc/README.md)** - Architecture and standards
 * **[Active Work](doc/active-work.md)** - Current epics and tasks
-* **[CLAUDE.md](CLAUDE.md)** - Project context for AI-assisted development
+* **[Agent guidelines](doc/agents-common.md)** - Project context shared by all coding agents ([CLAUDE.md](CLAUDE.md) and [AGENTS.md](AGENTS.md) point to it)
 
 ---
 
