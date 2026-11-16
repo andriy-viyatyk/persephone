@@ -8,11 +8,12 @@ import { parseApplicationProfile } from "./main/application-profile";
 // the profile's setPath below still takes effect for everything.
 import { setupMainProcess } from "./main/main-setup";
 
-function startWithProfile(name: string | undefined): void {
+function startWithProfile(profile: ReturnType<typeof parseApplicationProfile>): void {
+    const { name, directory: profileDirectory } = profile;
     if (name) {
         // A named profile gets its own data root; Chromium's single-instance lock is keyed on the
         // userData directory, so setting it before requestSingleInstanceLock separates the lock too.
-        const directory = path.join(app.getPath("appData"), "persephone-profiles", name);
+        const directory = profileDirectory ?? path.join(app.getPath("appData"), "persephone-profiles", name);
         fs.mkdirSync(directory, { recursive: true });
         app.setPath("userData", directory);
         if (app.getPath("sessionData") !== directory) app.setPath("sessionData", directory);
@@ -23,13 +24,11 @@ function startWithProfile(name: string | undefined): void {
     else setupMainProcess();
 }
 
-let profileName: string | undefined;
-let validProfile = true;
+let profile: ReturnType<typeof parseApplicationProfile> | undefined;
 try {
-    profileName = parseApplicationProfile(process.argv.slice(1)).name;
+    profile = parseApplicationProfile(process.argv.slice(1));
 } catch {
-    validProfile = false;
     dialog.showErrorBox(t("main.profileErrorTitle"), t("main.profileError"));
     app.quit();
 }
-if (validProfile) startWithProfile(profileName);
+if (profile) startWithProfile(profile);

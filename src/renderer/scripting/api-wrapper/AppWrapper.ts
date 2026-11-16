@@ -5,7 +5,7 @@ import { PageCollectionWrapper } from "./PageCollectionWrapper";
 import type { PageWrapper } from "./PageWrapper";
 import type { EventChannel, EventHandler } from "../../api/events/EventChannel";
 import type { IApp, IAppCallOptions } from "../../api/types/app";
-import { resolveCall } from "ai-vision";
+import { getAiVision, resolveCall } from "ai-vision";
 import { UNBOUNDED_CALL_MAX_LENGTH } from "../ai-vision/call-limits";
 import { AiRoot } from "../ai-vision/root";
 import { isPositiveIntegerTimeout } from "../../../shared/ai-vision-timeout";
@@ -102,6 +102,9 @@ class AppWrapperImplementation {
             this._fs = new Proxy({} as typeof app.fs, {
                 get: (_target, property) => {
                     const filesystem = app.fs;
+                    // The descriptor is registered on the real `fs` instance; without this the
+                    // call tree sees a plain object and returns `fs.read` as a value instead of calling it.
+                    if (property === "aiVision") return getAiVision(filesystem);
                     if (property === "watch") return (...args: Parameters<typeof filesystem.watch>) => {
                         const dispose = filesystem.watch(...args);
                         this.releaseList.push(dispose);

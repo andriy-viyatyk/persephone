@@ -115,6 +115,7 @@ persephone/
 │   ├── surfaces/           # Tests grouped by the application surface under test
 │   │   └── editors/        # Manual call-only checks for editor facades and controls
 │   └── runs/               # Recorded test-agent runs
+├── integration-test/       # Developer-only scripted UI smoke suite, fixtures, and isolated run profile
 ├── patches/                # Dependency patches (patch-package)
 ├── .mcp.json               # MCP server config for Claude Code (points to MCP HTTP server)
 ├── doc/                    # Developer documentation
@@ -126,6 +127,10 @@ persephone/
 
 The user-facing pages in `/assets/guides/` are the canonical in-app copy; users read them in the
 About page or with `F1`.
+
+The separate UI smoke suite in `/integration-test/` runs from Node and drives an owned app instance
+through its MCP call tree. Its profile and reports are disposable; see
+`/doc/standards/integration-tests.md` for the runner contract and workflow.
 
 Guide indexing is shared across processes: `/src/shared/guides/` owns the corpus contract and
 mounted-source composition, `/src/main/mcp/ai-vision/` resolves trusted-board guide mounts for MCP,

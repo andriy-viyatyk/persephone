@@ -1,4 +1,4 @@
-import { applicationProfileName } from "./application-profile";
+import { applicationProfileDirectory, applicationProfileName } from "./application-profile";
 import { app, nativeImage, shell } from "electron";
 import path from "node:path";
 import fs from "node:fs/promises";
@@ -51,14 +51,15 @@ export function boardAppId(boardRoot: string): string {
 
 export function boardProfileArgument(): string {
     const name = applicationProfileName();
-    return name ? ` --profile ${name}` : "";
+    const directory = applicationProfileDirectory();
+    return name ? ` --profile ${name}${directory ? ` --profile-dir "${boardRootForLaunchArgs(directory)}"` : ""}` : "";
 }
 
 export function boardWindowIconPath(boardRoot: string): string {
     return path.join(app.getPath("userData"), "board-icons", `${boardWindowKey(BoardRoot.from(boardRoot))}.ico`);
 }
 
-/** Resolve a board root for a quoted `--board` argument without a trailing slash. */
+/** Resolve board roots and profile directories for quoted launch arguments, preserving root separators. */
 export function boardRootForLaunchArgs(boardRoot: string): string {
     const resolved = path.resolve(boardRoot);
     const root = path.parse(resolved).root;

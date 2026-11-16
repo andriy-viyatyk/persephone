@@ -126,6 +126,7 @@ fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
     let mut raw_args = Vec::new();
     let mut profile: Option<String> = None;
+    let mut profile_dir: Option<String> = None;
     let mut index = 0;
     while index < args.len() {
         let arg = &args[index];
@@ -137,12 +138,31 @@ fn main() {
                 return;
             }
             profile = Some(normalized);
+        } else if arg == "--profile-dir" || arg.starts_with("--profile-dir=") {
+            let value = if arg == "--profile-dir" { index += 1; args.get(index).map(String::as_str) } else { Some(&arg["--profile-dir=".len()..]) };
+            if profile_dir.is_some() || value.is_none() || value == Some("") || value.is_some_and(|value| value.starts_with("--")) {
+                spawn_electron(&args);
+                return;
+            }
+            let absolute = match std::path::absolute(value.unwrap()) {
+                Ok(path) => path.to_string_lossy().to_string(),
+                Err(_) => {
+                    spawn_electron(&args);
+                    return;
+                }
+            };
+            profile_dir = Some(absolute);
         } else { raw_args.push(arg.clone()); }
         index += 1;
+    }
+    if profile_dir.is_some() && profile.is_none() {
+        spawn_electron(&args);
+        return;
     }
     let spawn = |operands: &[String]| {
         let mut args = operands.to_vec();
         if let Some(name) = &profile { args.push("--profile".to_string()); args.push(name.clone()); }
+        if let Some(dir) = &profile_dir { args.push("--profile-dir".to_string()); args.push(dir.clone()); }
         spawn_electron(&args);
     };
 

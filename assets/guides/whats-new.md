@@ -12,7 +12,15 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.20 (Upcoming)
 
-*No changes yet.*
+### Bug Fixes
+
+- **Agent file access over MCP:** `call` on `fs.read`, `fs.write`, `fs.exists` and the other `fs`
+  methods ran nothing and returned a "function" placeholder instead. Agents can call them again.
+- **Named profiles kept some data in the default profile:** a `--profile` instance read and wrote the
+  default profile's window position, board and site-extension trust, site permissions, download and
+  UI preferences. Each profile now keeps these in its own folder.
+- **Clipboard history limit:** setting `clipboard.max-items` outside 1–1000 through a script or the
+  settings file stored the invalid value. It now falls back to 100, as the setting describes.
 
 ---
 

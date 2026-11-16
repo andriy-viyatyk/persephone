@@ -12,6 +12,8 @@
     "dist": "node scripts/build-prod.mjs && electron-builder --win",
     "dist:zip": "node scripts/build-prod.mjs && electron-builder --win zip",
     "dist:publish": "node scripts/build-prod.mjs && electron-builder --win --publish always",
+    "test:ui": "node integration-test/run.mjs",
+    "test:ui:call": "node integration-test/call.mjs",
     "lint": "eslint .",
     "check:contracts": "node scripts/check-capability-contract.mjs",
     "guides:check": "node scripts/guides-check.mjs",

@@ -16,3 +16,6 @@ patches/*.patch text eol=lf
 # from the package it was copied from, and leave all ~186 files perpetually "modified".
 # -text disables every text transformation for that tree.
 assets/boards/*/lib/** -text
+# Integration-test fixtures and seed are compared byte-for-byte: never convert line endings.
+integration-test/fixtures/** -text
+integration-test/seed/** -text

@@ -1,3 +1,49 @@
+## EPIC-181 — UI test coverage, phase 1: foundation and core app
+
+Completed 2026-11-16. Phase 1 of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md), retesting the core app
+after the refactoring roadmap. **Runner (US-2027):** `--open` (seeded instance left running for test authoring),
+`--attach` (run tests against it; how Codex runs tests, since it cannot launch Electron), `requires` tags with
+`--with` opt-in and a built-in `launch` tag, a skipped status, an in-process fixture HTTP server (`ctx.httpUrl`),
+`ctx.launchSecondInstance`, a two-level `tests/<area>/<module>/` layout with `--area` prefixes and `--list`, and a
+profile re-seed between modules. **Tests (US-2028..US-2032):** 32 new tests over startup and second launch,
+settings/themes/language, session restore, files/encodings/recent/encryption, scripting and the MCP surface; the
+suite is 44 tests, about 130 s. **App bugs found and fixed:** named profiles read and wrote the default profile's
+electron-store (`e-store.ts` built the store before `--profile` applied); `clipboard.max-items` stored out-of-range
+values (schema `normalize` added). **Guide fixed:** `encryption.md` described an automatic password prompt that does
+not exist. **Uncovered:** Save As (native picker), the restore-failed page, focus after a second launch, dirty-page
+external-change conflicts, Windows-1252 detection on very short text. Working model (user decision): Codex (Luna)
+writes, runs and triages tests and reports app bugs without fixing them; Claude reviews the tests, fixes the bugs and
+runs the full suite per epic. Runner planned by Codex (Terra), implemented by Codex (Luna); completion skills by Codex
+(Luna). Epic document: [EPIC-181](EPIC-181.md).
+
+- [x] **Runner additions (US-2027).**
+- [x] **Startup, single instance, window (US-2028).**
+- [x] **Settings, themes, language (US-2029).**
+- [x] **Session restore (US-2030).**
+- [x] **Files, encoding, recent, encryption (US-2031).**
+- [x] **Scripting core and MCP surface (US-2032).**
+
+## EPIC-180 — Scripted UI integration tests
+
+Completed 2026-11-16. User goal: a full-UI regression run before releases that costs no LLM tokens. `integration-test/`
+holds a plain Node runner (`npm run test:ui`) that starts Persephone in an isolated `uitest` profile kept inside the repo,
+resets it from `seed/` and `fixtures/`, and drives the app through the MCP `call` tree. It writes `reports/latest.md`,
+`latest.json` and `last-failed.json` with a screenshot for each failure. Dev mode against a running `npm start` is the
+default. `--prod` (build, then run) and `--app <persephone.exe>` are an optional post-check on a draft release.
+`--keep-open`, `--rerun-failed` and `npm run test:ui:call` (with `--close`) support triage. **New app option (US-2022):**
+`--profile-dir <path>`, which requires `--profile`, in the app, the launcher and board windows. **Bug found by the
+pilot:** every `fs.*` method called over MCP returned a function placeholder (the US-1758 fs Proxy hid the ai-vision
+descriptor); fixed in `AppWrapper.ts`. **Verified live:** 12 of 12 in dev and 12 of 12 in prod; keep-open, call,
+close, rerun-failed and the occupied-port refusal. **Not verified:** `--app` (no release build with US-2022 yet).
+Planned by Codex (Terra), corrected by Claude, implemented by Codex (Luna); runner fixes and the fs bug fix by Claude;
+the completion skills by Codex (Luna). Epic document: [EPIC-180](EPIC-180.md).
+
+- [x] **`--profile-dir` (US-2022).**
+- [x] **Runner foundation, dev target (US-2023).**
+- [x] **Pilot tests: text, grid, rename dialog (US-2024).**
+- [x] **Agent workflow and docs (US-2025):** `ui-tests` skill, `doc/standards/integration-tests.md`.
+- [x] **`--prod` and `--app` targets (US-2026).**
+
 ## EPIC-179 — Dependency refresh
 
 Completed 2026-11-15. User policy: keep dependencies current instead of letting them age into migrations. Unused `d3`

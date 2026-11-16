@@ -832,7 +832,9 @@ The `releaseList` is shared across all wrappers: `AppWrapper → PageCollectionW
 `AppWrapper.fs` lazily proxies the current filesystem singleton, binding ordinary methods to it and
 tracking the idempotent disposer returned by `watch`. Folder watches recover after removal and emit
 a rescan when re-established; errors and revocations are terminal. Archive and asar paths report
-an asynchronous error. The callback-based API is intended for scripts rather than direct MCP calls.
+an asynchronous error. It also forwards the filesystem's AiVision descriptor so call-tree paths such
+as `fs.read` resolve as methods rather than plain values. The callback-based API is intended for
+scripts rather than direct MCP calls.
 
 ## Wrapper Architecture
 

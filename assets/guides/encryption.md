@@ -19,9 +19,10 @@ The file content is now encrypted. A lock icon appears on the tab to indicate th
 
 ## Opening an Encrypted File
 
-When you open a file that was previously encrypted:
+A file that was previously encrypted opens read-only, showing its encrypted text, with a closed lock
+(🔒) on its tab. To read or edit it:
 
-1. The encryption panel appears automatically
+1. Click the lock on the tab, or right-click the tab and select **Decrypt**
 2. Enter the password
 3. Click **Decrypt**
 

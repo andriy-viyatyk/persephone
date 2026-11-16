@@ -20,7 +20,8 @@ import "./check-capability-contract.mjs";
 import { createServer, build } from "vite";
 import { spawn } from "node:child_process";
 import { builtinModules } from "node:module";
-import { rmSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import electronPath from "electron";
 
 const nodeExternals = [
@@ -177,6 +178,18 @@ let restartTimer = null;
 let shuttingDown = false;
 const watchers = [];
 let server = null;
+const devServerMarker = join(process.cwd(), ".vite", "dev-server.json");
+
+function removeOwnDevServerMarker() {
+    try {
+        const marker = JSON.parse(readFileSync(devServerMarker, "utf8"));
+        if (marker.pid === process.pid) rmSync(devServerMarker, { force: true });
+    } catch {
+        // A missing or unreadable marker needs no cleanup.
+    }
+}
+
+process.on("exit", removeOwnDevServerMarker);
 
 function startElectron() {
     // Arguments after `npm start --` reach the app as a cold-start file or URL.
@@ -252,6 +265,7 @@ function watchBuild(name, config, { restartOnChange }) {
 function shutdown(code) {
     if (shuttingDown) return;
     shuttingDown = true;
+    removeOwnDevServerMarker();
     if (restartTimer) clearTimeout(restartTimer);
     for (const w of watchers) {
         try {
@@ -290,6 +304,12 @@ await server.listen();
 server.printUrls();
 
 const devServerUrl = server.resolvedUrls?.local?.[0] ?? "http://localhost:5273/";
+mkdirSync(".vite", { recursive: true });
+writeFileSync(devServerMarker, JSON.stringify({
+    url: devServerUrl,
+    pid: process.pid,
+    startedAt: new Date().toISOString(),
+}), "utf8");
 const audioWindowUrl = new URL("audio.html", devServerUrl).href;
 console.log(`\x1b[36m[dev]\x1b[0m Renderer at ${devServerUrl}`);
 

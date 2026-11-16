@@ -52,6 +52,17 @@ Named profiles default to MCP port 7965, Mneme 7800, video streaming 7966 and To
 These are configurable per profile; multiple named profiles use the same defaults, so change ports
 when running their services simultaneously. An existing customized Tor configuration is preserved.
 
+For advanced launches, `--profile-dir <path>` stores a named profile's data in a specific folder
+instead of `%APPDATA%\persephone-profiles\<name>`. It requires `--profile <name>` and accepts
+paths with spaces when quoted:
+
+```text
+persephone.exe --profile demo --profile-dir "D:\Persephone Data\demo"
+```
+
+The profile name still identifies the instance; only its data folder changes. You can use a relative
+path, which is resolved from the current working directory.
+
 ### From Source
 
 ```bash

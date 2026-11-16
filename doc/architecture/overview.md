@@ -60,6 +60,11 @@ acquiring the single-instance lock, and the launcher and pipe server route reque
 Board window identities and shortcuts retain the profile as well. This application profile is
 separate from the browser profiles that select session partitions within an application instance.
 
+`--profile-dir <path>` overrides the data root for a named profile and requires `--profile <name>`;
+using it alone is an argument error. The path is resolved to an absolute path. The profile name
+still determines the instance identity, ports and pipe routing, and board-window relaunches retain
+both options.
+
 Main passes the profile name to renderer windows at creation. Unconfigured named profiles use
 ports 7965 (MCP), 7800 (Mneme), 7966 (video streaming), and 9052 (Tor); explicit settings
 still take precedence. Named profiles do not register as the system default browser or run the
@@ -76,7 +81,8 @@ Trust, permission decisions, UI preferences, open windows and recent downloads u
 loss-tolerant scalars and caches that nothing validates, migrates or reasons about for security:
 window geometry (`open-window.ts`, keys `windowState` and `boardWindowState.<key>`), update-check timestamps
 (`version-service.ts`), the published-boards catalog cache and its timestamp (`published-boards-service.ts`), and the
-last-used folder per dialog kind (`dialog-folder-memory.ts`, `dialog.lastDir.<kind>`). Anything with a versioned
+last-used folder per dialog kind (`dialog-folder-memory.ts`, `dialog.lastDir.<kind>`). The wrapper creates its
+store on first access so Electron has already applied the active profile's `userData` path. Anything with a versioned
 shape, a security meaning (grants, trust, decisions) or a migration goes in a `JsonFileStore` file; user-meaningful
 configuration goes in `appSettings.json`, geometry and MRU lists in `uiPreferences` (roadmap D12). A new electron-store
 key needs a reason from that list.
