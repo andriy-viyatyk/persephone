@@ -23,27 +23,21 @@ export class PagesNavigationModel {
         }
     };
 
-    showNext = () => {
-        const pages = this.model.state.get().ordered;
-        if (!pages.length) return;
-        const activePage = this.model.query.activePage;
-        let nextIndex = pages.findIndex((p) => p === activePage) + 1;
-        if (nextIndex >= pages.length) {
-            nextIndex = 0;
-        }
-        this.showPage(pages[nextIndex].id);
-    };
+    showNext = () => this.showAdjacent(1);
 
-    showPrevious = () => {
-        const pages = this.model.state.get().ordered;
+    showPrevious = () => this.showAdjacent(-1);
+
+    /** Ctrl+Tab order is the visible tab-strip order (`pages`), not the activation order (`ordered`,
+     *  whose last entry is the active page). Right-pinned pages sit outside the strip and are skipped. */
+    private showAdjacent(step: 1 | -1): void {
+        const pages = this.model.state.get().pages.filter((p) => !this.model.query.isRightPinned(p.id));
         if (!pages.length) return;
-        const activePage = this.model.query.activePage;
-        let prevIndex = pages.findIndex((p) => p === activePage) - 1;
-        if (prevIndex < 0) {
-            prevIndex = pages.length - 1;
-        }
-        this.showPage(pages[prevIndex].id);
-    };
+        const index = pages.indexOf(this.model.query.activePage as PageModel);
+        const next = index < 0
+            ? (step > 0 ? 0 : pages.length - 1)
+            : (index + step + pages.length) % pages.length;
+        this.showPage(pages[next].id);
+    }
 
     focusPage = (page: PageModel) => {
         this.model.onFocus.send(page);

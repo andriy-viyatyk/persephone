@@ -85,6 +85,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Typed editor↔page host contract (editor membership, sidebar operations, optional main-editor navigation and history) | `/src/renderer/api/pages/IPageHost.ts` |
 | Fixed-ID standalone page registry (lazy editor/custom page builders, text-host log pages, stable persisted IDs and after-show actions) | `/src/renderer/api/pages/standalone-pages.ts` |
 | Page creation/opening, generic open-interceptor registration and dispatch, close, transfer, duplicate, deferred-open retry (`retryOpen`) and recovery-placeholder rebuild (`recoverPage`) | `/src/renderer/api/pages/PagesLifecycleModel.ts` |
+| Page activation and next/previous visible-tab navigation (right-pinned pages are skipped) | `/src/renderer/api/pages/PagesNavigationModel.ts` |
 | Editor construction (text-host attachment, editor-by-id/file/folder creation, Monaco synchronous floor and board editor routing) | `/src/renderer/editors/editor-factory.ts` |
 | Board page routing (single-instance interception, source-context handoff, bundled board pages, capability-handler pages, Run pages and board queries) | `/src/renderer/api/boards/board-page-router.ts` |
 | Window session save/restore (`openFiles{windowIndex}.json`; restore save gate; page history stacks persist in descriptors; legacy `draw-view` descriptors normalize to the bundled board; board and folder restoration retain their specialized data; persisted active panels are validated against composed keys) | `/src/renderer/api/pages/PagesPersistenceModel.ts` |

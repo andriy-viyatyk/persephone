@@ -9,6 +9,7 @@ import { newTextFileModel } from "../../editors/content-host/TextFileModel";
 import { attachExplorer } from "../../editors/explorer/page-explorer";
 import { api } from "../../../ipc/renderer/api";
 import { recent } from "../recent";
+import { fs as appFs } from "../fs";
 import { editorRegistry } from "../../editors/base/editorRegistry";
 import { PageModel } from "./PageModel";
 import { navigatePageTo, type NavigatePageToOptions } from "./PageNavigator";
@@ -602,11 +603,17 @@ export class PagesLifecycleModel {
         }
         if (!canDuplicateModel(page)) return;
 
+        // Flush unsaved content to the cache first: the copy restores from its own copy of it.
+        await page.saveState();
         const sourceDesc = page.getDescriptor();
-        // Fresh ids: page + each editor. Re-point mainEditorId to the new editor id.
-        const editorsWithFreshIds = sourceDesc.editors.map((e) => ({
-            ...e,
-            id: crypto.randomUUID(),
+        // Fresh ids: page + each editor. Re-point mainEditorId to the new editor id. A text host
+        // carries the editor id too (adoption copies it back onto the editor, and the cache is keyed
+        // by it), so it gets the same fresh id and its own copy of the cache files.
+        const editorsWithFreshIds = await Promise.all(sourceDesc.editors.map(async (e) => {
+            const id = crypto.randomUUID();
+            if (!e.host) return { ...e, id };
+            await appFs.copyCacheFiles(e.id, id);
+            return { ...e, id, host: { ...e.host, state: { ...e.host.state, id } } };
         }));
         const oldMainIndex = sourceDesc.editors.findIndex(
             (e) => e.id === sourceDesc.mainEditorId,

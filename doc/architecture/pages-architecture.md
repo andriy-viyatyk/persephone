@@ -226,8 +226,12 @@ descriptors rather than restored sidebar state.
   with their current status details.
 - **Active/Inactive:** `showPage(pageId)` moves a normal page to the end of `ordered[]`; a
   right-pinned page opens in the popover and remains outside `ordered[]`.
+- **Next/previous tab:** `showNext()` and `showPrevious()` cycle through `pages[]` in visible
+  tab-strip order, skipping right-pinned pages. This is separate from `ordered[]`, which tracks
+  activation order.
 - **Navigation:** `await page.setMainEditor(newEditor)` — full lifecycle swap (beforeNavigateAway, dispose old, notify secondaries)
 - **Reopen:** `PagesLifecycleModel.openFile()` shows an existing page and invokes its main editor's optional `onReopen(pipe?)` hook with the newly resolved pipe. The hook returns `true` to take ownership; otherwise the lifecycle disposes the pipe. Editors can use this to retry a failed source without replacing the page.
+- **Duplicate:** `duplicatePage()` flushes the source page before copying its descriptor, then assigns fresh page/editor identities. For editors with a content host, the host state uses the fresh editor id and its cache files are copied under that id so the duplicate restores independently.
 - **Closed:** `page.close()` → checks unsaved → `onClose()` → `detachPage` → `removePage` → `page.dispose()`
 
 An editorless page that has contributed panels is closed automatically when its composed panel set

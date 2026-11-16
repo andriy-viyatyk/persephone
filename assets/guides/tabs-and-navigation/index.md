@@ -38,6 +38,9 @@ If a file has unsaved changes, you'll be prompted to save before closing.
 | `Ctrl+Shift+Tab` | Switch to previous tab |
 | Click a tab | Switch to that tab |
 
+The keyboard shortcuts follow the tabs from left to right in the main tab strip, wrapping at either
+end. Right-pinned pages are outside that strip and are skipped.
+
 When you activate a tab that is outside the visible part of the tab bar, the tab bar scrolls just
 enough to bring it into view. Activating a tab that is already visible does not recenter the tab bar.
 
@@ -122,7 +125,7 @@ the tab contains.
 | Close Other Tabs | Close all tabs except this one (skips pinned tabs) |
 | Close Tabs to the Right | Close all tabs after this one (skips pinned tabs; not available for pinned tabs) |
 | Open in New Window | Move this tab to a new window (not available for pinned tabs) |
-| Duplicate Tab | Create a copy of this tab grouped side-by-side (not available on right-pinned chips) |
+| Duplicate Tab | Create a copy of this tab grouped side-by-side, with the same editor and current content (including unsaved changes; not available on right-pinned chips) |
 | Pin to the left / Pin to the right / Unpin | Choose a pin side or remove the pin |
 
 **Editor-specific items:**

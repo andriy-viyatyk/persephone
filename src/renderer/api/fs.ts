@@ -498,20 +498,34 @@ class FileSystem implements IFileSystem {
         }
     };
 
-    deleteCacheFiles = async (id: string): Promise<void> => {
-        await this.wait();
-        if (this.isCacheIdProtected(id)) {
-            console.debug(`[cache] Skipping protected cache deletion for ${id}`);
-            return;
-        }
+    /** Cache file names owned by `id`: `{id}.txt` and `{id}_{name}.txt`. */
+    private _cacheFilesOf(id: string): string[] {
         const lowerId = id.toLowerCase();
-        const files = this._listDirFiles(this._cachePath!).filter((file) => {
+        return this._listDirFiles(this._cachePath!).filter((file) => {
             const lowerFile = file.toLowerCase();
             return lowerFile.startsWith(lowerId)
                 && (lowerFile.length === lowerId.length
                     || lowerFile[lowerId.length] === "_"
                     || lowerFile[lowerId.length] === ".");
         });
+    }
+
+    /** Copy every cache file of `fromId` to the same name under `toId` (used when duplicating a page). */
+    copyCacheFiles = async (fromId: string, toId: string): Promise<void> => {
+        await this.wait();
+        for (const file of this._cacheFilesOf(fromId)) {
+            const target = toId + file.slice(fromId.length);
+            await nodefs.promises.copyFile(path.join(this._cachePath, file), path.join(this._cachePath, target));
+        }
+    };
+
+    deleteCacheFiles = async (id: string): Promise<void> => {
+        await this.wait();
+        if (this.isCacheIdProtected(id)) {
+            console.debug(`[cache] Skipping protected cache deletion for ${id}`);
+            return;
+        }
+        const files = this._cacheFilesOf(id);
         for (const file of files) {
             if (this.isCacheIdProtected(file)) continue;
             this._unlinkFile(path.join(this._cachePath, file));

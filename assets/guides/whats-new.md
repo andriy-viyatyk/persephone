@@ -21,6 +21,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
   UI preferences. Each profile now keeps these in its own folder.
 - **Clipboard history limit:** setting `clipboard.max-items` outside 1–1000 through a script or the
   settings file stored the invalid value. It now falls back to 100, as the setting describes.
+- **Duplicate Tab:** duplicating a text page opened an empty tab with no editor. The copy now opens
+  in the same editor with the same content, including unsaved changes.
+- **Ctrl+Tab order:** `Ctrl+Tab` and `Ctrl+Shift+Tab` moved through tabs in the order they were last
+  used, so from the active tab they often jumped to the first tab. They now follow the tab strip.
 
 ---
 

@@ -1,3 +1,25 @@
+## EPIC-182 — UI test coverage, phase 2: shell
+
+Completed 2026-11-16. Phase 2 of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 43 new tests under
+`integration-test/tests/shell/` (tabs, grouping and compare, menu bar/header/folders, dialogs, popup and context
+menus, global shortcuts) with shared helpers in `tests/helpers/shell-helpers.mjs`; the suite is 87 tests, about 200 s.
+**App bugs found and fixed:** Duplicate Tab opened an editor-less "Empty" page (the text host kept the source editor's
+id, which adoption copied back onto the new editor; the copy now gets a fresh host id and its own cache files via
+`fs.copyCacheFiles`); `Ctrl+Tab` / `Ctrl+Shift+Tab` walked the activation order instead of the tab strip (a pages
+refactor regression; `PagesNavigationModel` now steps through `state.pages`). **Harness finding:** the zoom keys are
+handled in the main process's `before-input-event`, which CDP key events never reach; those tests send native input
+through `main.script.execute`. **Uncovered:** native pickers (Add Folder, `Ctrl+O`, `Ctrl+Shift+S`), `Ctrl+Shift+N`,
+`F12`, the global mute button (needs an audio lease), and the Tor info, Commit and namespace-collision dialogs. Same
+working model as EPIC-181 (Codex on Luna writes/runs/triages; Claude reviews and fixes bugs); completion skills by
+Codex (Luna). Epic document: [EPIC-182](EPIC-182.md).
+
+- [x] **Tabs (US-2033).**
+- [x] **Grouping and compare (US-2034).**
+- [x] **Menu bar, header, folders (US-2035).**
+- [x] **Dialogs (US-2036).**
+- [x] **Popup and context menus (US-2037).**
+- [x] **Keyboard shortcuts (US-2038).**
+
 ## EPIC-181 — UI test coverage, phase 1: foundation and core app
 
 Completed 2026-11-16. Phase 1 of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md), retesting the core app
