@@ -268,6 +268,7 @@ export class PagesLifecycleModel {
         const editor = createEditorFromContentHost(editorModel);
         editor.secondaryView = ["link-category"];
         page.attach(editor);
+        page.assignMain(editor.id);
         page.ensureSecondaryViewsModel();
         page.expandPanel("link-category");
 

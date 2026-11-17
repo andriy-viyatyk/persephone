@@ -818,6 +818,14 @@ ranking, the named `CONTENT_DETECTED` tier (60) outranks Monaco's `MONACO_HOST` 
 bundled REST Client board independently recognizes its collection marker through manifest
 `contentMasks`; board content matching remains outside file-open resolution.
 
+### Link editor serialization
+
+`LinkEditor` serializes structured changes to its text host after a short debounce. Its `modified`
+state also compares current data with the last serialized snapshot, so a change still inside that
+debounce is treated as unsaved. It flushes serialization before the release prompt and before the
+host is extracted during an editor switch, ensuring the prompt and the next editor see the latest
+collection.
+
 ## Bundled board exception
 
 Boards shipped under `assets/boards/<id>/` are app-owned registrations. They render without a

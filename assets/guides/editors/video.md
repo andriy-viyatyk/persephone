@@ -32,12 +32,12 @@ long); it collapses again when it loses focus. Press **Enter** to play.
 +---------------------------------------------------------------------+
 ```
 
-### User-facing label ? `elements` name
+### User-facing label → `elements` name
 
-- Video URL ? `video-url-input`
+- Video URL → `video-url-input`
 - Save as... / Discard map to `video-recording-save` and `video-recording-discard` (temporary recordings only)
-- Open in VLC ? `video-open-vlc`
-- Native media controls ? no entry: media-internal controls
+- Open in VLC → `video-open-vlc`
+- Native media controls → no entry: media-internal controls
 
 ### When VLC fallback is available
 
@@ -53,8 +53,9 @@ Audio plays in the dark media area through the browser's native controls for pla
 volume. Video and HLS playback use those same native controls; `.m3u8` sources use HLS playback when
 supported.
 Local and archive-hosted media use the streaming server where needed, so seeking does not require
-loading the entire source first. If Chromium cannot decode a file, **Open in VLC** appears when VLC
-is configured in Settings.
+loading the entire source first. If Chromium cannot play a source, **Open in VLC** appears below the
+player. It uses the VLC path from Settings, or a standard VLC install when the path is empty; if
+neither exists, it says where to set the path.
 
 Recordings opened in Video Player are temporary until saved. Use **Save as...** to choose a permanent
 location, or **Discard** to delete the recording and close its page. Closing an unsaved recording's

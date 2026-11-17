@@ -84,7 +84,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Composite panel-key construction and parsing | `/src/renderer/api/pages/panel-key.ts` |
 | Typed editor↔page host contract (editor membership, sidebar operations, optional main-editor navigation and history) | `/src/renderer/api/pages/IPageHost.ts` |
 | Fixed-ID standalone page registry (lazy editor/custom page builders, text-host log pages, stable persisted IDs and after-show actions) | `/src/renderer/api/pages/standalone-pages.ts` |
-| Page creation/opening, generic open-interceptor registration and dispatch, close, transfer, duplicate, deferred-open retry (`retryOpen`) and recovery-placeholder rebuild (`recoverPage`) | `/src/renderer/api/pages/PagesLifecycleModel.ts` |
+| Page creation/opening (including assigning the Link editor as main for `openLinks`), generic open-interceptor registration and dispatch, close, transfer, duplicate, deferred-open retry (`retryOpen`) and recovery-placeholder rebuild (`recoverPage`) | `/src/renderer/api/pages/PagesLifecycleModel.ts` |
 | Page activation and next/previous visible-tab navigation (right-pinned pages are skipped) | `/src/renderer/api/pages/PagesNavigationModel.ts` |
 | Editor construction (text-host attachment, editor-by-id/file/folder creation, Monaco synchronous floor and board editor routing) | `/src/renderer/editors/editor-factory.ts` |
 | Board page routing (single-instance interception, source-context handoff, bundled board pages, capability-handler pages, Run pages and board queries) | `/src/renderer/api/boards/board-page-router.ts` |
@@ -386,6 +386,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Built-in settings sections and board-declared controls | `/src/renderer/editors/settings/sections/` |
 | Clipboard settings section (enable toggle, item cap, and on-disk storage warning) | `/src/renderer/editors/settings/sections/ClipboardSection.ts` |
 | Native link editor page composition, body, and chrome (list/tiles switching, pinned links, and tooltip content) | `/src/renderer/editors/link-editor/LinkEditorView.ts`, `/src/renderer/editors/link-editor/LinkBody.ts`, `/src/renderer/editors/link-editor/PinnedLinksPanelView.ts` |
+| Link editor model lifecycle (host-backed structured data, pending-serialize dirty state, release and host-extraction flushes) | `/src/renderer/editors/link-editor/LinkEditor.ts` |
 | Link editor data owner (parse/serialize, collection indexes, filtering, view modes, pins, and mutations) | `/src/renderer/editors/link-editor/link-collection.ts` |
 | Link editor folder scan and duplicate-aware import | `/src/renderer/editors/link-editor/link-importer.ts` |
 | Shared Link editor list/tile items and row actions | `/src/renderer/editors/link-editor/LinksItemsView.ts`, `/src/renderer/editors/link-editor/link-item-actions.ts`, `/src/renderer/editors/link-editor/FaviconRowTracker.ts` |

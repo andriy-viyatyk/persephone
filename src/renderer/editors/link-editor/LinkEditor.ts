@@ -183,9 +183,10 @@ export class LinkEditor
         return this.embedding?.extraMenuItems(link) ?? [];
     }
 
-    /** The trait extracted the host (switch away) — drop the host-bound
-     *  tree provider. */
+    /** The trait extracted the host (switch away) — flush the pending serialize
+     *  while the host is still attached, then drop the host-bound tree provider. */
     protected onHostExtracted(): void {
+        this.onDataChanged();
         this.treeProviderHost.reset();
     }
 
@@ -790,9 +791,22 @@ export class LinkEditor
      *  (sidebar-only, no main editor) would report `modified=false` and
      *  `page.close()` would skip the save prompt — the close loop reads
      *  `editor.modified` on each entry in `editors[]` and only the main-editor
-     *  branch reads host-owned state through `contentHost`. */
+     *  branch reads host-owned state through `contentHost`. A change still
+     *  waiting for the serialize debounce counts too, so a close right after
+     *  an edit prompts instead of dropping it. */
     get modified(): boolean {
-        return this._host ? this._host.modified : super.modified;
+        return this._host ? this._host.modified || this.hasUnserializedChanges : super.modified;
+    }
+
+    private get hasUnserializedChanges(): boolean {
+        const { data, error } = this.state.get();
+        return !error && this.lastSerializedData !== null && data !== this.lastSerializedData;
+    }
+
+    /** Flush the pending serialize so a Save from the release prompt writes the latest data. */
+    async confirmRelease(closing?: boolean): Promise<boolean> {
+        this.onDataChanged();
+        return super.confirmRelease(closing);
     }
 
     async saveState(): Promise<void> {

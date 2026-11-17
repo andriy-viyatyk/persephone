@@ -31,6 +31,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
   row handed the drag to a Windows file drag, which waits for a real mouse release. That drag now
   fails at once with an error that points to the Explorer's own commands, and the app stays
   responsive.
+- **Links pages opened as Empty tabs:** **Show Resources** (HTML and Browser), `app.pages.openLinks`,
+  site-extension link lists, and several files or a folder dropped on the window opened an `Empty`
+  tab with no editor. They now open in the Link editor.
+- **Link editor changes lost on a quick close or switch:** a change made in the Link editor less than
+  a moment before closing the tab or switching to Text Editor was dropped without a save prompt. The
+  tab now counts it as unsaved and keeps it when you switch.
 
 ---
 

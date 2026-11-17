@@ -10,6 +10,9 @@ Overview of all active and planned epics and tasks.
 
 ## Planned
 
+- *(no epic)*
+  - [ ] [US-2054: Site extensions for local dev servers (port-scoped loopback hosts)](tasks/US-2054-site-extensions-local-dev-servers/README.md)
+
 ## Scheduled
 
 Tasks that must not start before a date. When the date arrives, move the entry to **Active** (or
