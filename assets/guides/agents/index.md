@@ -67,6 +67,7 @@ guide to read for which task. It is intentionally short — read it once per ses
 | Read or edit what's open | `call` at `pages` and `pages[i].content` | `pages.$help` and `persephone://guides/pages` |
 | Run code, use `app.*`, touch files | `script.execute` | `script.$help` and `persephone://guides/scripting` |
 | Open a web page or search query | `pages.openUrlInBrowserTab(url, options)` → returns `pageId` | `pages.$help` and `persephone://guides/browser` |
+| Write and triage repeatable web-app checks | `.test.mjs` with `test()` and `ctx.openBrowser()` | [Web-app regression tests](./web-app-tests.md) |
 | Open a URL naming a file | `pages.openUrl(url, options)` | `pages.$help` and `persephone://guides/browser` |
 | Build a reusable model for a web page with no `.app` model | `siteExtensions.create` → `app.fs.write` → `siteExtensions.reload` | [Site extensions](./site-extensions.md) / `guides.agents["site-extensions"]` / `persephone://guides/site-extensions` |
 | Attach a temporary test script to one browser page | `pages[id].editor.attachTestExtension(...)` | [Temporary site extensions](./temporary-site-extensions.md) / `guides.agents["temporary-site-extensions"]` |

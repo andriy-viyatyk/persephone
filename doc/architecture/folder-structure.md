@@ -13,6 +13,8 @@ persephone/
 │   ├── shared/             # Shared types, constants, cross-process helpers, board manifest/value objects and service-channel protocol, plus i18n runtime/catalogs
 │   ├── module-service-host/ # Typed utility-process host, split into lifecycle, request, provider, capability, and service-API modules
 │   ├── node-script-host/    # Typed entry point for Node-style scripts executed in an Electron utility process
+│   ├── test-host/           # Web-app and UI test host, context APIs, app proxy, runner, and reports
+│   ├── ipc/                # Cross-process contracts, including test-host startup and test-instance options
 │   ├── renderer.ts          # Locale/NLS and synchronous theme preflight; app bootstrap and mount
 │   ├── preload.ts          # Preload script (main renderer)
 │   ├── board-shim.ts       # Browser IIFE composition root; installs collaborators and assigns window.persephone
@@ -42,7 +44,7 @@ persephone/
 │   │   ├── service-port-inbox.ts # Early service-channel port buffering and delivery
 │   │   ├── board-context-menu.ts # Board-frame context menu and image/editable-field actions
 │   │   └── board-console-mirror.ts # Board errors and console warnings/errors sent to the host
-├── launcher/               # Rust launcher (Named Pipe client)
+├── launcher/               # Rust launchers (Named Pipe client and console test-runner shim)
 │   ├── src/main.rs
 │   ├── build.rs
 │   └── Cargo.toml
@@ -115,7 +117,7 @@ persephone/
 │   ├── surfaces/           # Tests grouped by the application surface under test
 │   │   └── editors/        # Manual call-only checks for editor facades and controls
 │   └── runs/               # Recorded test-agent runs
-├── integration-test/       # Developer-only scripted UI smoke suite, fixtures, and isolated run profile
+├── integration-test/       # Developer-only UI suite wrapper, tests, fixtures, and isolated run profile
 ├── patches/                # Dependency patches (patch-package)
 ├── .mcp.json               # MCP server config for Claude Code (points to MCP HTTP server)
 ├── doc/                    # Developer documentation
@@ -128,9 +130,11 @@ persephone/
 The user-facing pages in `/assets/guides/` are the canonical in-app copy; users read them in the
 About page or with `F1`.
 
-The separate UI smoke suite in `/integration-test/` runs from Node and drives an owned app instance
-through its MCP call tree. Its profile and reports are disposable; see
-`/doc/standards/integration-tests.md` for the runner contract and workflow.
+The UI integration suite wrapper in `/integration-test/` owns suite discovery, fixture seeding,
+profile lifecycle, area/name filters and aggregate reports. Generic test execution lives in
+`/src/test-host/` and `/src/main/test-mode/`, and can also run tests against a user's web-app
+profile. See `/doc/standards/integration-tests.md` for process ownership, runner options and
+workflow.
 
 Guide indexing is shared across processes: `/src/shared/guides/` owns the corpus contract and
 mounted-source composition, `/src/main/mcp/ai-vision/` resolves trusted-board guide mounts for MCP,
@@ -1108,6 +1112,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ```
 /src/main/
 ├── main-setup.ts           # Application setup and window creation
+├── test-mode/              # Windowless test controller, child-instance options, and test-mode logging
 ├── main-services.ts        # Ordered app-level service startup, phase boundaries, and reverse disposal
 ├── capability-client.ts    # Per-caller-owner capability list/get/invoke client
 ├── capability-router.ts    # Main capability resolution, authorization, limits and dispatch

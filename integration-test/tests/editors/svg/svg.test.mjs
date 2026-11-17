@@ -28,14 +28,14 @@ export default [
             );
             ctx.expect(initialSnapshot).toContain('generic "100%"');
 
-            await ctx.call("window.screen.pressKey", ["=", { target: "[data-type=\"image-view\"]" }]);
+            await ctx.app.window.screen.pressKey("=", { target: "[data-type=\"image-view\"]" });
             const zoomedSnapshot = await ctx.waitFor(
                 (activeContext) => activeContext.callText("window.screen.snapshot", [{ maxChars: 12000 }]),
                 (snapshot) => snapshot.includes('generic "120%"'),
             );
             ctx.expect(zoomedSnapshot).toContain('generic "120%"');
 
-            await ctx.call("window.screen.pressKey", ["0", { target: "[data-type=\"image-view\"]" }]);
+            await ctx.app.window.screen.pressKey("0", { target: "[data-type=\"image-view\"]" });
             const resetSnapshot = await ctx.waitFor(
                 (activeContext) => activeContext.callText("window.screen.snapshot", [{ maxChars: 12000 }]),
                 (snapshot) => snapshot.includes('generic "100%"'),
@@ -50,31 +50,29 @@ export default [
         let page;
         try {
             page = await openSvgPage(ctx, "us-2048/svg/live-edit", "graphic.svg", initialSvg);
-            ctx.expect(await ctx.call(`${page.root}.editor.id`)).toBe("svg-view");
-            ctx.expect(await ctx.call(`${page.root}.editor.svg`)).toBe(initialSvg);
-            ctx.expect(await ctx.call(`${page.root}.editor.viewMounted`)).toBe(true);
+            ctx.expect(await ctx.app.pages[page.id].editor.id).toBe("svg-view");
+            ctx.expect(await ctx.app.pages[page.id].editor.svg).toBe(initialSvg);
+            ctx.expect(await ctx.app.pages[page.id].editor.viewMounted).toBe(true);
 
-            await ctx.call(`${page.root}.editorSwitches.switchTo`, ["monaco"]);
-            await ctx.waitFor(`${page.root}.editor.id`, (editor) => editor === "monaco");
-            await ctx.call("window.screen.pressKey", ["Control+a", { target: ".monaco-editor-host-root .monaco-editor" }]);
-            await ctx.call(`${page.root}.editor.replaceSelection`, [updatedSvg]);
+            await ctx.app.pages[page.id].editorSwitches.switchTo("monaco");
+            await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.id, (editor) => editor === "monaco");
+            await ctx.app.window.screen.pressKey("Control+a", { target: ".monaco-editor-host-root .monaco-editor" });
+            await ctx.app.pages[page.id].editor.replaceSelection(updatedSvg);
             ctx.expect(await ctx.waitFor(
-                (activeContext) => activeContext.callText(`${page.root}.content`),
+                (activeContext) => activeContext.callText(`pages[${JSON.stringify(page.id)}].content`),
                 (content) => content === updatedSvg,
             )).toBe(updatedSvg);
 
-            await ctx.call(`${page.root}.editorSwitches.switchTo`, ["svg-view"]);
-            await ctx.waitFor(`${page.root}.editor.id`, (editor) => editor === "svg-view");
-            ctx.expect(await ctx.call(`${page.root}.editor.svg`)).toBe(updatedSvg);
+            await ctx.app.pages[page.id].editorSwitches.switchTo("svg-view");
+            await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.id, (editor) => editor === "svg-view");
+            ctx.expect(await ctx.app.pages[page.id].editor.svg).toBe(updatedSvg);
             const renderedImageSource = await ctx.waitFor(
-                (activeContext) => activeContext.call("window.screen.evaluate", [
-                    '() => document.querySelector(\'[data-type="image-view"] img\')?.getAttribute("src") ?? ""',
-                ]),
+                (activeContext) => activeContext.app.window.screen.evaluate('() => document.querySelector(\'[data-type="image-view"] img\')?.getAttribute("src") ?? ""'),
                 (source) => source.startsWith("data:image/svg+xml,")
                     && decodeURIComponent(source).includes("Updated label"),
             );
             ctx.expect(decodeURIComponent(renderedImageSource)).toContain("Updated label");
-            ctx.expect(await ctx.call(`${page.root}.modified`)).toBe(true);
+            ctx.expect(await ctx.app.pages[page.id].modified).toBe(true);
         } finally {
             await closeEditorPage(ctx, page);
         }
@@ -85,11 +83,11 @@ export default [
         try {
             page = await openSvgPage(ctx, "us-2048/svg/export", "graphic.svg", initialSvg);
             const pngPath = ctx.fixture("us-2048/svg/export/graphic.png");
-            ctx.expect(await ctx.call(`${page.root}.editor.savePngToFile`, [pngPath])).toBe(pngPath);
+            ctx.expect(await ctx.app.pages[page.id].editor.savePngToFile(pngPath)).toBe(pngPath);
             const summary = await readPngSummary(ctx, pngPath);
             ctx.expect(summary.size > 8).toBe(true);
             ctx.expect(summary.signature).toEqual(pngSignature);
-            ctx.expect(await ctx.call(`${page.root}.editor.copyImageToClipboard`, [])).toBe(null);
+            ctx.expect(await ctx.app.pages[page.id].editor.copyImageToClipboard()).toBe(null);
         } finally {
             await closeEditorPage(ctx, page);
         }
@@ -100,19 +98,19 @@ export default [
         let drawingPage;
         try {
             page = await openSvgPage(ctx, "us-2048/svg/drawing", "graphic.svg", initialSvg);
-            const pagesBefore = await ctx.call("pages.all");
+            const pagesBefore = await ctx.app.pages.all;
             await waitForDrawingToastToClear(ctx);
             let actionError;
             try {
-                await ctx.call(`${page.root}.editor.openInDrawingEditor`, []);
+                await ctx.app.pages[page.id].editor.openInDrawingEditor();
             } catch (error) {
                 actionError = String(error);
             }
 
-            const pagesAfterAction = await ctx.call("pages.all");
+            const pagesAfterAction = await ctx.app.pages.all;
             drawingPage = pagesAfterAction.find((entry) => !pagesBefore.some((previous) => previous.id === entry.id));
             if (actionError?.includes("No image editor is registered")) {
-                await ctx.call("window.screen.click", [`[data-page-id="${page.id}"] [data-name="svg-open-draw"]`]);
+                await ctx.app.window.screen.click(`[data-page-id="${page.id}"] [data-name="svg-open-draw"]`);
                 const snapshot = await ctx.waitFor(
                     (activeContext) => activeContext.callText("window.screen.snapshot", [{ maxChars: 12000 }]),
                     (value) => value.includes("No image editor is registered."),

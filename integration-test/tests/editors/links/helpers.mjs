@@ -14,19 +14,19 @@ export async function openLinksPage(ctx, folder, filename = "collection.link.jso
 }
 
 export async function reopenLinksPage(ctx, filePath) {
-    const page = await ctx.call("pages.openFile", [filePath]);
-    const root = `pages[${JSON.stringify(page.id)}]`;
-    await ctx.waitFor(`${root}.editor.id`, (editor) => editor === "link-view");
-    return { ...page, root, filePath };
+    const page = await ctx.app.pages.openFile(filePath);
+    const node = ctx.handle(ctx.app.pages[page.id]);
+    await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.id, (editor) => editor === "link-view");
+    return { ...page, node, filePath };
 }
 
 export async function closeLinksPage(ctx, page) {
     if (!page) return;
-    if (await ctx.call(`${page.root}.modified`)) {
-        await ctx.call(`${page.root}.editorSwitches.switchTo`, ["monaco"]);
-        await ctx.waitFor(`${page.root}.editor.id`, (editor) => editor === "monaco");
-        await ctx.call(`${page.root}.editor.saveFile`, []);
-        await ctx.waitFor(`${page.root}.modified`, (modified) => modified === false);
+    if (await ctx.app.pages[page.id].modified) {
+        await ctx.app.pages[page.id].editorSwitches.switchTo("monaco");
+        await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.id, (editor) => editor === "monaco");
+        await ctx.app.pages[page.id].editor.saveFile();
+        await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].modified, (modified) => modified === false);
     }
     await close(ctx, page.id);
 }

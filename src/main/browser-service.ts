@@ -104,7 +104,7 @@ async function exitHtmlFullscreen(key: string): Promise<void> {
 }
 
 function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest): void {
-    const { tabId, internalTabId, webContentsId } = request;
+    const { tabId, pageId, internalTabId, webContentsId } = request;
     const key = `${tabId}/${internalTabId}`;
     const contents = webContents.fromId(webContentsId);
     if (!contents || contents.isDestroyed() || contents.hostWebContents !== event.sender) return;
@@ -132,7 +132,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest): 
         },
     };
     const guest = new BrowserGuest({
-        key, tabId, internalTabId, webContents: contents, senderWebContents: sender,
+        key, tabId, pageId, internalTabId, webContents: contents, senderWebContents: sender,
         zoomPercent: validZoomPercent(request.zoomPercent) ? request.zoomPercent : PAGE_ZOOM_DEFAULT,
         hooks: {
             host: hostHooks,

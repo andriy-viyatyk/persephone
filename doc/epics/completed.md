@@ -1,3 +1,32 @@
+## EPIC-186 — Persephone test runner for web applications
+
+Completed 2026-11-18. `persephone.exe --test <file|folder>` (and the console wrapper `persephone-test.exe`) runs
+`.test.mjs` regression checks against the user's own web apps without an LLM: a windowless controller starts a test
+host utility process, which launches an owned app instance (or attaches with `--attach`) and drives it over MCP. Tests
+use an `app` stand-in that maps property chains to `call` paths, `ctx.openBrowser` with a logged-in browser profile,
+per-test cleanup of pages and pop-ups, `report.md|json`, `last-failed.json` / `--rerun-failed`, failure screenshots,
+and JSON Lines logs (`tests.log`, `app-main.log`, `app-console.log`, `site-console.log`, `network.log`; no headers or
+bodies). Agent guide: `guides/agents/web-app-tests.md`. **Proof:** the 188-test integration suite moved onto the
+product runner (`integration-test/run.mjs` is now a wrapper with `--test-setup`, `--test-selection`, `--with`,
+`--baseline`) and was rewritten to the `app` object; the final owned run matched the baseline exactly (185 passed, the
+known EPIC-185 env-vars failure, 2 opt-in skips). The packaged `--app` target passed smoke and all startup tests.
+**App fixes found by the suite:** clicks right after a sidebar panel expands could hit the neighbouring row (actionability
+now needs two stable frames); the reported failing step is the step that threw, not a later cleanup step.
+**Open:** browser `reload()` resolves before the navigation commits, so a site-extension test can race on fast builds;
+the `app` stand-in cannot pass call options (`{ dialog: true }`, `maxLength`), so about 150 test calls keep `ctx.call`;
+`--prod` was not run (needs the dev server stopped). Completion skills by Codex (Luna). Epic document:
+[EPIC-186](EPIC-186.md).
+
+- [x] **`--test` controller mode (US-2056).**
+- [x] **`app` object over `call` paths (US-2057).**
+- [x] **Test helpers, results and logs options (US-2058).**
+- [x] **Test-mode console and network logs (US-2059).**
+- [x] **Agent guide for web-app tests (US-2060).**
+- [x] **Integration suite on the product runner (US-2061).**
+- [x] **Rewrite `core` and `sidebar` tests (US-2062).**
+- [x] **Rewrite `shell` tests (US-2063).**
+- [x] **Rewrite `editors` tests (US-2064).**
+
 ## EPIC-185 — UI test coverage, phase 4b: viewer editors
 
 Completed 2026-11-17. Second half of Phase 4 of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 34 new

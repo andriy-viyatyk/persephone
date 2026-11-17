@@ -89,7 +89,7 @@ The `boards` namespace also exposes shortcut and window operations:
   resolved absolute destination. Failures reject to the caller without a UI notification.
 - **`boards.openBoardWindow(boardRoot)`**
   -> `Promise<void>`: create a visible board-mode window or focus the existing one for that root.
-  The absolute root must contain `board-manifest.json` and be trusted or bundled; this agent call
+  The root must contain `board-manifest.json` and be trusted or bundled; this agent call
   rejects an untrusted board without opening a trust dialog. Use `boards.openBoard(root)` when the
   desired result is an ordinary tab in the current window.
 

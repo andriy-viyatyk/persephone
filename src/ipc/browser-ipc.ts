@@ -89,6 +89,7 @@ export const BrowserChannel = {
 // Renderer → Main: register a webview
 export interface BrowserRegisterRequest {
     tabId: string;
+    pageId?: string;
     internalTabId: string;
     webContentsId: number;
     zoomPercent: number;

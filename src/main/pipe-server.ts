@@ -4,8 +4,7 @@ import os from "node:os";
 import { openWindows } from "./open-windows";
 import { parseLaunchArguments } from "./utils";
 
-function pipePath(): string {
-    const profile = applicationProfileName();
+export function getPipePath(profile = applicationProfileName()): string {
     return `\\\\.\\pipe\\persephone-${os.userInfo().username}${profile ? `-${profile}` : ""}`;
 }
 
@@ -80,7 +79,7 @@ export function startPipeServer(): void {
         if (err.code === "EADDRINUSE") {
             // Stale pipe from a crashed instance — remove and retry once
             server = undefined;
-            net.connect(pipePath())
+            net.connect(getPipePath())
                 .on("error", () => {
                     // Nobody listening — safe to reclaim
                     retryPipeServer();
@@ -94,7 +93,7 @@ export function startPipeServer(): void {
         }
     });
 
-    server.listen(pipePath());
+    server.listen(getPipePath());
 }
 
 function retryPipeServer(): void {
@@ -102,7 +101,7 @@ function retryPipeServer(): void {
     server.on("error", (err) => {
         console.error("Pipe server retry failed:", err);
     });
-    server.listen(pipePath());
+    server.listen(getPipePath());
 }
 
 export function stopPipeServer(): void {

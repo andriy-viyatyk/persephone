@@ -10,17 +10,6 @@ Overview of all active and planned epics and tasks.
 
 ## Planned
 
-- **EPIC-186** — [Persephone test runner for web applications](epics/EPIC-186.md)
-  - [ ] US-2056: `--test` controller mode, test host and child instance launch
-  - [ ] US-2057: `app` object over `call` paths
-  - [ ] US-2058: Test helpers, results and `--log` / `--log-dir`
-  - [ ] US-2059: Test-mode console and network logs in the app instance
-  - [ ] US-2060: Agent workflow and guide for web-app tests
-  - [ ] US-2061: Move `integration-test` onto the product runner
-  - [ ] US-2062: Rewrite `core` and `sidebar` tests to the `app` object
-  - [ ] US-2063: Rewrite `shell` tests to the `app` object
-  - [ ] US-2064: Rewrite `editors` tests to the `app` object
-
 ## Scheduled
 
 Tasks that must not start before a date. When the date arrives, move the entry to **Active** (or

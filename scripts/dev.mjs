@@ -144,12 +144,12 @@ function searchWorkerConfig() {
     };
 }
 
-function nodeEsmEntryConfig(name, input, outDir) {
+function nodeEsmEntryConfig(name, input, outDir, { bundleDependencies = false } = {}) {
     return {
         configFile: false,
         mode: "development",
         resolve: { conditions: ["node"] },
-        ssr: { target: "node" },
+        ssr: { target: "node", ...(bundleDependencies ? { noExternal: true } : {}) },
         build: {
             ssr: true,
             outDir,
@@ -294,6 +294,7 @@ process.on("SIGTERM", () => shutdown(0));
 rmSync(".vite/build", { recursive: true, force: true });
 rmSync(".vite/module-service-host", { recursive: true, force: true });
 rmSync(".vite/node-script-host", { recursive: true, force: true });
+rmSync(".vite/test-host", { recursive: true, force: true });
 
 console.log("\x1b[36m[dev]\x1b[0m Starting renderer dev server...");
 server = await createServer({
@@ -329,6 +330,7 @@ await Promise.all([
     // Each new service process reads the current external host entry from disk.
     watchBuild("module-service-host", nodeEsmEntryConfig("module-service-host", "src/module-service-host/index.ts", ".vite/module-service-host"), { restartOnChange: false }),
     watchBuild("node-script-host", nodeEsmEntryConfig("node-script-host", "src/node-script-host/index.ts", ".vite/node-script-host"), { restartOnChange: false }),
+    watchBuild("test-host", nodeEsmEntryConfig("test-host", "src/test-host/index.ts", ".vite/test-host", { bundleDependencies: true }), { restartOnChange: false }),
 ]);
 
 console.log("\x1b[36m[dev]\x1b[0m Launching Electron...");

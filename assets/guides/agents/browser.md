@@ -6,6 +6,8 @@ summary: "Snapshot, refs, clicks, typing, waits, screenshots, dialogs, and priva
 
 # Browser automation
 
+For repeatable web-app regression checks, see [Web-app regression tests](./web-app-tests.md).
+
 ## Video and element fullscreen
 
 TV recipe: `moveToDisplay('largest')` first, then `pages[id].editor.fullscreen()`. A video already in
@@ -118,7 +120,8 @@ element and retains an unknown-element value-setter fallback. It is not strict o
 Selector actions resolve visible matches strictly: multiple visible matches fail immediately.
 Narrow the selector, use a snapshot ref, or choose a zero-based `{ nth }` index among visible
 matches. Actions retry until the default 5-second timeout (or `timeout`) while checking that the
-element is attached, visible, stable, enabled, and receives pointer events. `{ force: true }`
+element is attached, visible, stable, enabled, and receives pointer events. Stability means the
+element keeps the same bounding box across two consecutive animation frames. `{ force: true }`
 skips all those checks and dispatches anyway. `position` is relative to the element border-box.
 
 `hover()` sends trusted pointer events, but CSS `:hover` does not apply inside browser webviews.

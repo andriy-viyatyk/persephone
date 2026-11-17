@@ -30,6 +30,7 @@ export class BrowserWebviewModel {
             if (this.get(tabId) !== webview) return;
             const request: BrowserRegisterRequest = {
                 tabId: this.model.id,
+                pageId: this.model.page?.id,
                 internalTabId: tabId,
                 webContentsId: webview.getWebContentsId(),
                 zoomPercent: this.model.findTab(tabId)?.zoomPercent ?? PAGE_ZOOM_DEFAULT,

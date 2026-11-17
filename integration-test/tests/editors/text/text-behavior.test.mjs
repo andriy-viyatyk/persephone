@@ -7,8 +7,8 @@ async function openPage(ctx, folder, filename, content, editor = "monaco") {
 
 async function closePage(ctx, page) {
     if (!page) return;
-    const modified = await ctx.call(`${page.root}.modified`);
-    if (modified) await ctx.call(`${page.root}.editor.saveFile`, []);
+    const modified = await ctx.app.pages[page.id].modified;
+    if (modified) await ctx.app.pages[page.id].editor.saveFile();
     await close(ctx, page.id);
 }
 
@@ -18,32 +18,32 @@ export default [
         let page;
         try {
             page = await openPage(ctx, "us-2043/undo-redo", "notes.txt", initial);
-            ctx.expect(await ctx.call(`${page.root}.modified`)).toBe(false);
+            ctx.expect(await ctx.app.pages[page.id].modified).toBe(false);
 
-            await ctx.call(`${page.root}.editor.insertText`, ["typed-"]);
+            await ctx.app.pages[page.id].editor.insertText("typed-");
             const typed = await ctx.waitFor(
-                (activeContext) => activeContext.callText(`${page.root}.content`),
+                (activeContext) => activeContext.callText(`pages[${JSON.stringify(page.id)}].content`),
                 (content) => content !== initial,
             );
             ctx.expect(typed).toContain("typed-");
-            ctx.expect(await ctx.waitFor(`${page.root}.modified`, (modified) => modified)).toBe(true);
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].modified, (modified) => modified)).toBe(true);
 
-            await ctx.call("window.screen.pressKey", ["Control+z", { target: ".monaco-editor-host-root .monaco-editor" }]);
+            await ctx.app.window.screen.pressKey("Control+z", { target: ".monaco-editor-host-root .monaco-editor" });
             ctx.expect(await ctx.waitFor(
-                (activeContext) => activeContext.callText(`${page.root}.content`),
+                (activeContext) => activeContext.callText(`pages[${JSON.stringify(page.id)}].content`),
                 (content) => content === initial,
             )).toBe(initial);
             // `modified` means "edited since the last save", not "differs from disk": undo back to the
             // saved text keeps the page modified, like Windows Notepad.
-            ctx.expect(await ctx.call(`${page.root}.modified`)).toBe(true);
+            ctx.expect(await ctx.app.pages[page.id].modified).toBe(true);
 
-            await ctx.call("window.screen.pressKey", ["Control+Shift+z", { target: ".monaco-editor-host-root .monaco-editor" }]);
+            await ctx.app.window.screen.pressKey("Control+Shift+z", { target: ".monaco-editor-host-root .monaco-editor" });
             const redone = await ctx.waitFor(
-                (activeContext) => activeContext.callText(`${page.root}.content`),
+                (activeContext) => activeContext.callText(`pages[${JSON.stringify(page.id)}].content`),
                 (content) => content === typed,
             );
             ctx.expect(redone).toBe(typed);
-            ctx.expect(await ctx.waitFor(`${page.root}.modified`, (modified) => modified)).toBe(true);
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].modified, (modified) => modified)).toBe(true);
         } finally {
             await closePage(ctx, page);
         }
@@ -54,19 +54,19 @@ export default [
         let page;
         try {
             page = await openPage(ctx, "us-2043/find-replace", "colors.txt", initial);
-            await ctx.call(`${page.root}.editor.openReplace`, []);
+            await ctx.app.pages[page.id].editor.openReplace();
 
-            await ctx.call("window.screen.type", [".monaco-editor .find-widget .find-part .input", "red"]);
-            await ctx.call("window.screen.type", [".monaco-editor .find-widget .replace-part .input", "blue"]);
-            await ctx.call("window.screen.click", [".monaco-editor .find-widget .replace-actions .button", { nth: 0 }]);
+            await ctx.app.window.screen.type(".monaco-editor .find-widget .find-part .input", "red");
+            await ctx.app.window.screen.type(".monaco-editor .find-widget .replace-part .input", "blue");
+            await ctx.app.window.screen.click(".monaco-editor .find-widget .replace-actions .button", { nth: 0 });
             ctx.expect(await ctx.waitFor(
-                (activeContext) => activeContext.callText(`${page.root}.content`),
+                (activeContext) => activeContext.callText(`pages[${JSON.stringify(page.id)}].content`),
                 (content) => content !== initial,
             )).toBe("blue red red\n");
 
-            await ctx.call("window.screen.click", [".monaco-editor .find-widget .replace-actions .button", { nth: 1 }]);
+            await ctx.app.window.screen.click(".monaco-editor .find-widget .replace-actions .button", { nth: 1 });
             ctx.expect(await ctx.waitFor(
-                (activeContext) => activeContext.callText(`${page.root}.content`),
+                (activeContext) => activeContext.callText(`pages[${JSON.stringify(page.id)}].content`),
                 (content) => content === "blue blue blue\n",
             )).toBe("blue blue blue\n");
         } finally {
@@ -78,17 +78,13 @@ export default [
         let page;
         try {
             page = await openPage(ctx, "us-2043/language", "sample.txt", '{ "enabled": true }\n');
-            const before = await ctx.call("window.screen.evaluate", [
-                "() => document.querySelector('.monaco-editor .view-line')?.innerHTML",
-            ]);
+            const before = await ctx.app.window.screen.evaluate("() => document.querySelector('.monaco-editor .view-line')?.innerHTML");
 
             await ctx.script('page.language = "json"; return page.language;');
-            ctx.expect(await ctx.waitFor(`${page.root}.language`, (language) => language === "json")).toBe("json");
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].language, (language) => language === "json")).toBe("json");
 
             const after = await ctx.waitFor(
-                (activeContext) => activeContext.call("window.screen.evaluate", [
-                    "() => document.querySelector('.monaco-editor .view-line')?.innerHTML",
-                ]),
+                (activeContext) => activeContext.app.window.screen.evaluate("() => document.querySelector('.monaco-editor .view-line')?.innerHTML"),
                 (markup) => typeof markup === "string" && markup.length > 0 && markup !== before,
             );
             ctx.expect(after).toContain("enabled");
@@ -102,19 +98,19 @@ export default [
         let original;
         try {
             page = await openPage(ctx, "us-2043/word-wrap", "long-line.txt", "A deliberately long line for checking the page-local word wrap control.\n");
-            original = await ctx.call(`${page.root}.editor.wordWrap`);
-            if (original) await ctx.call(`${page.root}.editor.toggleWordWrap`, []);
-            ctx.expect(await ctx.call(`${page.root}.editor.wordWrap`)).toBe(false);
+            original = await ctx.app.pages[page.id].editor.wordWrap;
+            if (original) await ctx.app.pages[page.id].editor.toggleWordWrap();
+            ctx.expect(await ctx.app.pages[page.id].editor.wordWrap).toBe(false);
 
-            await ctx.call(`${page.root}.editor.toggleWordWrap`, []);
-            ctx.expect(await ctx.waitFor(`${page.root}.editor.wordWrap`, (wordWrap) => wordWrap)).toBe(true);
+            await ctx.app.pages[page.id].editor.toggleWordWrap();
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.wordWrap, (wordWrap) => wordWrap)).toBe(true);
 
-            await ctx.call(`${page.root}.editor.toggleWordWrap`, []);
-            ctx.expect(await ctx.waitFor(`${page.root}.editor.wordWrap`, (wordWrap) => !wordWrap)).toBe(false);
+            await ctx.app.pages[page.id].editor.toggleWordWrap();
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.wordWrap, (wordWrap) => !wordWrap)).toBe(false);
         } finally {
             if (page && original !== undefined) {
-                const current = await ctx.call(`${page.root}.editor.wordWrap`);
-                if (current !== original) await ctx.call(`${page.root}.editor.toggleWordWrap`, []);
+                const current = await ctx.app.pages[page.id].editor.wordWrap;
+                if (current !== original) await ctx.app.pages[page.id].editor.toggleWordWrap();
             }
             await closePage(ctx, page);
         }
@@ -124,15 +120,15 @@ export default [
         let page;
         try {
             page = await openPage(ctx, "us-2043/multi-cursor", "two-lines.txt", "one\ntwo\n");
-            await ctx.call("window.screen.pressKey", ["Control+Home", { target: ".monaco-editor-host-root .monaco-editor" }]);
-            await ctx.call("window.screen.pressKey", ["Control+Alt+ArrowDown"]);
-            await ctx.call("window.screen.pressKey", ["X"]);
+            await ctx.app.window.screen.pressKey("Control+Home", { target: ".monaco-editor-host-root .monaco-editor" });
+            await ctx.app.window.screen.pressKey("Control+Alt+ArrowDown");
+            await ctx.app.window.screen.pressKey("X");
 
             ctx.expect(await ctx.waitFor(
-                (activeContext) => activeContext.callText(`${page.root}.content`),
+                (activeContext) => activeContext.callText(`pages[${JSON.stringify(page.id)}].content`),
                 (content) => content === "Xone\nXtwo\n",
             )).toBe("Xone\nXtwo\n");
-            ctx.expect(await ctx.waitFor(`${page.root}.modified`, (modified) => modified)).toBe(true);
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].modified, (modified) => modified)).toBe(true);
         } finally {
             await closePage(ctx, page);
         }
@@ -143,10 +139,10 @@ export default [
         let page;
         try {
             page = await openPage(ctx, "us-2043/format-json", "record.json", initial);
-            await ctx.call("window.screen.pressKey", ["Shift+Alt+f", { target: ".monaco-editor-host-root .monaco-editor" }]);
+            await ctx.app.window.screen.pressKey("Shift+Alt+f", { target: ".monaco-editor-host-root .monaco-editor" });
 
             const formatted = await ctx.waitFor(
-                (activeContext) => activeContext.callText(`${page.root}.content`),
+                (activeContext) => activeContext.callText(`pages[${JSON.stringify(page.id)}].content`),
                 (content) => content !== initial,
             );
             ctx.expect(JSON.parse(formatted)).toEqual({ name: "Ada", active: true, items: [1, 2] });
@@ -161,19 +157,19 @@ export default [
         let page;
         try {
             page = await openPage(ctx, "us-2043/save", "save.txt", initial);
-            await ctx.call(`${page.root}.editor.insertText`, ["updated-"]);
+            await ctx.app.pages[page.id].editor.insertText("updated-");
             const changed = await ctx.waitFor(
-                (activeContext) => activeContext.callText(`${page.root}.content`),
+                (activeContext) => activeContext.callText(`pages[${JSON.stringify(page.id)}].content`),
                 (content) => content !== initial,
             );
-            ctx.expect(await ctx.waitFor(`${page.root}.modified`, (modified) => modified)).toBe(true);
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].modified, (modified) => modified)).toBe(true);
 
-            ctx.expect(await ctx.call(`${page.root}.editor.saveFile`, [])).toBe(true);
+            ctx.expect(await ctx.app.pages[page.id].editor.saveFile()).toBe(true);
             ctx.expect(await ctx.waitFor(
                 (activeContext) => activeContext.callText("fs.read", [page.filePath]),
                 (content) => content === changed,
             )).toBe(changed);
-            ctx.expect(await ctx.waitFor(`${page.root}.modified`, (modified) => !modified)).toBe(false);
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].modified, (modified) => !modified)).toBe(false);
         } finally {
             await closePage(ctx, page);
         }

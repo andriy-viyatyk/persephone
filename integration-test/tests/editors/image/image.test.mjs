@@ -11,9 +11,7 @@ async function readPngSummary(ctx, path) {
 }
 
 async function zoomText(ctx, page) {
-    return ctx.call("window.screen.evaluate", [
-        `() => document.querySelector('[data-page-id="${page.id}"] [data-type="image-view"] [data-part="zoom-indicator"]')?.textContent ?? ""`,
-    ]);
+    return ctx.app.window.screen.evaluate(`() => document.querySelector('[data-page-id="${page.id}"] [data-type="image-view"] [data-part="zoom-indicator"]')?.textContent ?? ""`);
 }
 
 export default [
@@ -49,19 +47,19 @@ export default [
         try {
             page = await openImagePage(ctx, "us-2049/image/zoom", "graphic.png", makePng(64, 32));
             const initial = await ctx.waitFor((activeContext) => zoomText(activeContext, page), (value) => value.endsWith("%"));
-            await ctx.call("window.screen.pressKey", ["=", { target: '[data-type="image-view"]' }]);
+            await ctx.app.window.screen.pressKey("=", { target: '[data-type="image-view"]' });
             const zoomedIn = await ctx.waitFor((activeContext) => zoomText(activeContext, page), (value) => value !== initial);
             ctx.expect(Number.parseInt(zoomedIn, 10) > Number.parseInt(initial, 10)).toBe(true);
 
-            await ctx.call("window.screen.pressKey", ["-", { target: '[data-type="image-view"]' }]);
+            await ctx.app.window.screen.pressKey("-", { target: '[data-type="image-view"]' });
             const zoomedOut = await ctx.waitFor((activeContext) => zoomText(activeContext, page), (value) => value !== zoomedIn);
             ctx.expect(Number.parseInt(zoomedOut, 10) < Number.parseInt(zoomedIn, 10)).toBe(true);
 
-            await ctx.call("window.screen.pressKey", ["=", { target: '[data-type="image-view"]' }]);
-            await ctx.call("window.screen.pressKey", ["=", { target: '[data-type="image-view"]' }]);
+            await ctx.app.window.screen.pressKey("=", { target: '[data-type="image-view"]' });
+            await ctx.app.window.screen.pressKey("=", { target: '[data-type="image-view"]' });
             const zoomedFurther = await ctx.waitFor((activeContext) => zoomText(activeContext, page), (value) => Number.parseInt(value, 10) > Number.parseInt(initial, 10));
             ctx.expect(zoomedFurther).toBeTruthy();
-            await ctx.call("window.screen.pressKey", ["0", { target: '[data-type="image-view"]' }]);
+            await ctx.app.window.screen.pressKey("0", { target: '[data-type="image-view"]' });
             ctx.expect(await ctx.waitFor((activeContext) => zoomText(activeContext, page), (value) => value === initial)).toBe(initial);
         } finally {
             await closePage(ctx, page?.id);
@@ -72,18 +70,18 @@ export default [
         let page;
         try {
             page = await openImagePage(ctx, "us-2049/image/export", "source.png", makePng(8, 4));
-            await ctx.call("window.screen.click", [`[data-page-id="${page.id}"] [data-name="image-save"]`]);
+            await ctx.app.window.screen.click(`[data-page-id="${page.id}"] [data-name="image-save"]`);
             const saveMenu = await ctx.waitFor(
                 (activeContext) => activeContext.callText("window.screen.snapshot", [{ maxChars: 12000 }]),
                 (snapshot) => snapshot.includes("Save as .png") && snapshot.includes("Save original"),
             );
             ctx.expect(saveMenu).toContain("Save original");
             const pngPath = ctx.fixture("us-2049/image/export/exported.png");
-            ctx.expect(await ctx.call(`${page.root}.editor.savePngToFile`, [pngPath])).toBe(pngPath);
+            ctx.expect(await ctx.app.pages[page.id].editor.savePngToFile(pngPath)).toBe(pngPath);
             const summary = await readPngSummary(ctx, pngPath);
             ctx.expect(summary.size > 8).toBe(true);
             ctx.expect(summary.signature).toEqual(pngSignature);
-            ctx.expect(await ctx.call(`${page.root}.editor.copyImageToClipboard`, [])).toBe(null);
+            ctx.expect(await ctx.app.pages[page.id].editor.copyImageToClipboard()).toBe(null);
         } finally {
             await closePage(ctx, page?.id);
         }
@@ -93,17 +91,17 @@ export default [
         const url = ctx.httpUrl("/image.png");
         let pageId;
         try {
-            await ctx.call("pages.openUrl", [url]);
+            await ctx.app.pages.openUrl(url);
             const imagePage = await ctx.waitFor(
                 async (activeContext) => {
-                    const pages = await activeContext.call("pages.all");
+                    const pages = await ctx.app.pages.all;
                     return pages.find((entry) => entry.filePath === url && entry.editor === "image-view");
                 },
                 (entry) => entry !== undefined,
             );
             pageId = imagePage.id;
-            const root = `pages[${JSON.stringify(pageId)}]`;
-            ctx.expect(await ctx.waitFor(`${root}.editor.id`, (editor) => editor === "image-view")).toBe("image-view");
+            const node = ctx.handle(ctx.app.pages[pageId]);
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[pageId].editor.id, (editor) => editor === "image-view")).toBe("image-view");
             const dimensions = JSON.parse(await ctx.script(`
                 const image = await page.editor.read({ maxDimension: 16 });
                 return JSON.stringify({ width: image.width, height: image.height, originalWidth: image.originalWidth, originalHeight: image.originalHeight });
@@ -112,10 +110,10 @@ export default [
             ctx.expect(dimensions.height).toBe(2);
             ctx.expect(dimensions.originalWidth).toBe(2);
             ctx.expect(dimensions.originalHeight).toBe(2);
-            ctx.expect(await ctx.call(`${root}.editor.source`)).toBe(url);
+            ctx.expect(await node.editor.source).toBe(url);
         } finally {
             if (!pageId) {
-                const existing = (await ctx.call("pages.all")).find((entry) => entry.filePath === url && entry.editor === "image-view");
+                const existing = (await ctx.app.pages.all).find((entry) => entry.filePath === url && entry.editor === "image-view");
                 pageId = existing?.id;
             }
             await closePage(ctx, pageId);

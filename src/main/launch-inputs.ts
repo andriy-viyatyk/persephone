@@ -1,5 +1,6 @@
 import type { LaunchInput } from "../shared/launch-input";
 import { launchOperands, parseLaunchArguments } from "./utils";
+import { hasTestControllerArguments } from "./test-mode/arguments";
 
 let startupInputs: LaunchInput[] = parseLaunchInputs(process.argv, process.cwd());
 let boardStartupInput: Extract<LaunchInput, { kind: "board" }> | undefined;
@@ -10,6 +11,8 @@ startupInputs = startupInputs.filter((input) => {
 });
 
 export function parseLaunchInputs(commandLine: string[], workingDirectory: string): LaunchInput[] {
+    // Controller arguments and their separate values are not files to open in the app window.
+    if (hasTestControllerArguments(commandLine)) return [];
     return parseLaunchArguments(launchOperands(commandLine), workingDirectory);
 }
 

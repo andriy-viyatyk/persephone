@@ -4,18 +4,18 @@ export const json = '[{"name":"Ada","city":"Kyiv"},{"name":"Bo","city":"Lviv"},{
 
 export async function open(ctx, file, content, editor) {
     const filePath = ctx.fixture(file);
-    await ctx.call('fs.write', [filePath, content]);
-    const page = await ctx.call('pages.openFile', [filePath]);
+    await ctx.app.fs.write(filePath, content);
+    const page = await ctx.app.pages.openFile(filePath);
     ctx.expect(typeof page.id).toBe('string');
-    const root = `pages[${JSON.stringify(page.id)}]`;
-    await ctx.call(`${root}.editorSwitches.switchTo`, [editor]);
-    await ctx.waitFor(c => c.callText(`${root}.editor.id`), v => v === editor);
+    const node = ctx.handle(ctx.app.pages[page.id]);
+    await ctx.app.pages[page.id].editorSwitches.switchTo(editor);
+    await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.id, (value) => value === editor);
     if (editor.startsWith('grid-')) {
-        await ctx.waitFor(`${root}.editor.rowCount`, n => n > 0);
+        await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.rowCount, (count) => count > 0);
     }
-    return { root, id: page.id, filePath };
+    return { node, id: page.id, filePath };
 }
 
 export async function close(ctx, id) {
-    ctx.expect(await ctx.call('pages.closePage', [id])).toBe(true);
+    ctx.expect(await ctx.app.pages.closePage(id)).toBe(true);
 }

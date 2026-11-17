@@ -1,7 +1,7 @@
 import { test } from "../../../lib/context.mjs";
 
 export default test("open fixture text", async (ctx) => {
-    await ctx.call("pages.openFile", [ctx.fixture("smoke.txt")]);
+    await ctx.app.pages.openFile(ctx.fixture("smoke.txt"));
     const content = await ctx.waitFor(
         (activeContext) => activeContext.callText("page.content"),
         (value) => value === "Hello, integration runner!\n",

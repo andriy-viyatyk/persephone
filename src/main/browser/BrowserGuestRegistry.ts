@@ -1,12 +1,34 @@
 import type { WebContents } from "electron";
 import type { BrowserGuest } from "./BrowserGuest";
 
+export interface BrowserContentsAttachment {
+    type: "attach" | "detach";
+    webContents: WebContents;
+    pageId?: string;
+    editorId: string;
+    popupId?: string;
+}
+
 export class BrowserGuestRegistry {
     private readonly guests = new Map<string, BrowserGuest>();
     private readonly watchedSenders = new WeakSet<WebContents>();
+    private readonly attachmentListeners = new Set<(attachment: BrowserContentsAttachment) => void>();
+
+    subscribeAttachments(listener: (attachment: BrowserContentsAttachment) => void): () => void {
+        this.attachmentListeners.add(listener);
+        for (const guest of this.guests.values()) listener(this.attachment(guest, "attach"));
+        return () => this.attachmentListeners.delete(listener);
+    }
+
+    private attachment(guest: BrowserGuest, type: BrowserContentsAttachment["type"]): BrowserContentsAttachment {
+        return { type, webContents: guest.webContents, pageId: guest.pageId, editorId: guest.tabId };
+    }
 
     register(guest: BrowserGuest): void {
+        const previous = this.guests.get(guest.key);
+        if (previous) this.publish(this.attachment(previous, "detach"));
         this.guests.set(guest.key, guest);
+        this.publish(this.attachment(guest, "attach"));
     }
 
     unregister(key: string, options: { keepCdpState?: boolean } = {}): void {
@@ -14,7 +36,9 @@ export class BrowserGuestRegistry {
     }
 
     removeIfCurrent(guest: BrowserGuest): void {
-        if (this.guests.get(guest.key) === guest) this.guests.delete(guest.key);
+        if (this.guests.get(guest.key) !== guest) return;
+        this.guests.delete(guest.key);
+        this.publish(this.attachment(guest, "detach"));
     }
 
     get(key: string): BrowserGuest | undefined {
@@ -57,6 +81,10 @@ export class BrowserGuestRegistry {
 
     entries(): IterableIterator<[string, BrowserGuest]> {
         return this.guests.entries();
+    }
+
+    private publish(attachment: BrowserContentsAttachment): void {
+        for (const listener of this.attachmentListeners) listener(attachment);
     }
 
     watchSender(sender: WebContents, onBlur: () => void): void {

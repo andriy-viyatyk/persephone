@@ -1,56 +1,90 @@
 # Integration tests
 
-This suite starts an isolated instance of Persephone and calls its MCP API. It requires the US-2022 `--profile-dir` implementation. The default `dev` target requires a live `npm start`; optional `--prod` and `--app <exe>` targets support a user-chosen draft-release post-check. Neither is a mandatory release step. The runner resets its own `integration-test/.profile` directory once the selected target passes preflight.
+`npm run test:ui` keeps suite behavior in this folder and delegates each runnable module to
+Persephone's shipped `--test` runner. The wrapper owns test discovery, `--area` and `--test`
+filters, requirement tags, seed/profile resets, HTTP fixtures, target selection, the optional
+`--baseline` comparison, and aggregate reports. The product host owns descriptor execution, context APIs, per-test page
+cleanup, screenshots, and each module's detailed artifacts.
 
-The isolated app uses profile identity `uitest`, fixed loopback ports (MCP 17865, video 17866, Mneme 17700 and Tor 19052), and a clean copy of `seed/`. The runner refuses occupied ports, a live `uitest` named pipe, unsafe profile paths, or a concurrent runner lock. It never connects to or stops the user's ordinary app. To delete test state manually, close the isolated app and remove `integration-test/.profile`; the next run recreates it from the seed. Do not run `npm run build-prod` while using the dev target; a production build can replace `.vite/build`, so restart `npm start` afterward.
+## Run the suite
 
-Run the full suite or select by area/name:
+Start `npm start`, then select the full suite or a subset:
 
 ```powershell
 npm run test:ui
 npm run test:ui -- --area core
 npm run test:ui -- --area editors/grid
-npm run test:ui -- --area core/smoke,editors/grid
-npm run test:ui -- --list
-npm run test:ui -- --list --area editors
 npm run test:ui -- --test "open fixture"
-npm run test:ui -- --area core/smoke --timeout-scale 1.5
-npm run test:ui -- --keep-open
+npm run test:ui -- --with network,mic
+npm run test:ui -- --list --area editors
 npm run test:ui -- --rerun-failed
+npm run test:ui -- --timeout-scale 1.5
+npm run test:ui -- --keep-open
 npm run test:ui -- --prod
 npm run test:ui -- --app "C:\release\win-unpacked\persephone.exe"
 npm run test:ui -- --open
-npm run test:ui -- --attach --area smoke
-npm run test:ui -- --with network,mic
+npm run test:ui -- --attach --area core/smoke
 ```
 
-`--prod` and `--app <exe>` are mutually exclusive. The production target builds `.vite/build` once and reports `The dev bundle was replaced; run npm start again before dev tests.` after the build exits; it refuses while a live dev marker is present. Restart `npm start` before returning to dev tests. The executable target launches the supplied absolute path directly and requires a compatible installed or unpacked Persephone executable that includes US-2022 profile support; for example, use `release/win-unpacked/persephone.exe` from a Windows unpacked build. Paths with spaces are supported. Invalid options and executable paths fail before profile reset. Reports identify the selected target as `dev`, `prod`, or `exe`, and retain the absolute executable path in the selection.
+The default target is `dev`. `--prod` performs one guarded build and replaces `.vite/build`; it
+refuses to run while a live dev marker exists. Restart `npm start` before returning to dev tests.
+`--app` validates `persephone.exe` and uses its sibling `persephone-test.exe`. These target options
+are mutually exclusive. Paths are passed as separate OS arguments, including paths with spaces.
+`--open` directly launches the selected app and leaves reports unchanged. Use
+`npm run test:ui:call -- --close` to close a retained app before a profile reset.
 
-Tests live at `tests/<area>/<module>/<feature>.test.mjs`; deeper module paths are allowed. The area/module id is the test path under `tests/` with its filename removed, such as `core/smoke` or `editors/grid/sort`. `--area` takes a comma-separated list of path prefixes on whole segments: `core` selects `core/smoke` and `core/settings`, but not `core-x`; `editors/grid` selects that module and its submodules. Unknown prefixes fail before profile reset and list known module ids. `--test` selects names containing the given substring. `--rerun-failed` selects current exact IDs from `reports/last-failed.json`; moved or removed IDs are reported as gone and ignored. `--with` opts into external requirements. Tests can declare `requires: ["network", "mic", "tor", "git", "mneme"]`; every listed tag must be supplied once in the comma-separated option or the selected test is reported as skipped. `launch` is built in for normal runs and must not be passed to `--with`. Reports separate passed, failed and skipped counts and include skip reasons. The generated profile is reset from the seed once per normal invocation, then fixtures are copied into `.profile/work/`. Tests should use `ctx.fixture(relativePath)` to get that isolated editable copy.
+The isolated profile is `integration-test/.profile`, identity `uitest`, with MCP 17865, video
+17866, Mneme 17700, and Tor 19052. A normal run seeds the profile and copies fixtures before
+every module id, including nested modules. The local HTTP fixture server runs once on port 17867
+for the wrapper run. The wrapper refuses occupied ports, an existing `uitest` pipe, an unsafe
+profile path, or a concurrent `.runner.lock`. It does not stop the user's ordinary app.
 
-`--list` discovers tests and prints the area/module tree with test counts and counts skipped by requirements. It starts no app and takes no runner lock; use `--area` to narrow the listing. `--with` and `--attach` affect the skip counts. A module should stay under about 50 tests and about 3 minutes. Split larger modules into feature submodules, never into numbered chunks. Add a test to the module that owns its feature; create a new module folder if the feature has no suitable module. Add an area only with a new roadmap phase. Between modules a normal run stops the app, re-seeds the profile from `seed/` and `fixtures/`, and starts it again, so each module starts from the seeded profile (a plain restart would keep the previous module's session).
+`--area` accepts comma-separated whole-segment prefixes: `core` includes `core/smoke` but not
+`core-x`. `--test` selects a substring of the descriptor name. `--list` prints the area/module
+tree without launching an app. `--rerun-failed` uses exact file/name identities from
+`reports/last-failed.json` and reports removed identities as gone. Suite requirement tags are
+`network`, `mic`, `tor`, `git`, and `mneme`; each missing tag skips its test with a reason. The
+built-in `launch` requirement works on owned runs and is skipped by the product host under
+`--attach`.
 
-`--open` validates and resets the selected profile, starts the app, writes the retained-app record and exits without tests or report changes. It accepts the target options (`--prod`, `--app`) and `--timeout-scale`; close it with `npm run test:ui:call -- --close`. `--attach` requires a valid live `reports/keep-open.json` created by `--open`, connects to that app without resetting or restarting it, refreshes fixture copies while preserving other work files, and writes reports with target `attach`. It accepts selection, `--with` and timeout options, but no target override or `--keep-open`. Both modes hold the runner lock. The fixture HTTP server exists only during test runs, not while an app is retained.
+Attach uses the selected `reports/keep-open.json` record and PID, refreshes fixtures over the
+existing work directory, and never resets or stops the app. The product controller connects using
+the profile directory's MCP settings and verifies `main.runtime.paths.userData` before accepting
+the connection. Attach does not capture test-mode app logs from the already running app.
 
-The runner starts an in-process loopback fixture service at `http://127.0.0.1:17867` during normal and attach test runs. `ctx.httpUrl("/sample.txt")` builds a confined local URL and preserves its query string. Static files under `fixtures/http/` support GET and HEAD, return `text/plain; charset=utf-8`, 404 when absent, and 405 for other methods. Dynamic routes are `/echo` (any method; JSON with method, URL, headers and UTF-8 body; 413 above 1 MiB), `/delay?ms=N` (GET/HEAD, text `delayed` after 0–5000 ms), `/status?code=N` (GET/HEAD, status 200–599), and `/redirect?to=%2Fpath&status=302` (GET/HEAD, local redirect using 301, 302, 303, 307 or 308). Invalid route values and paths return 400; unsupported methods return 405. The listener binds only to 127.0.0.1 and closes with the runner.
+## Wrapper and product artifacts
 
-Each test module default-exports one descriptor or an array. The `test` helper returns `{ name, run }`:
+Every selected module gets a versioned exact `{ file, name }` selection manifest. The wrapper runs
+one product invocation for each runnable module and passes the suite setup module plus `--with`
+and `--timeout-scale`. It passes `--keep-open` only to the last runnable module. Product options
+are documented in the [web-app test guide](../assets/guides/agents/web-app-tests.md); the suite
+setup adds only `ctx.fixture()`, `ctx.httpUrl()`, and the compatibility `ctx._getClient()` helper.
+Existing `test` imports remain in `lib/context.mjs`.
 
-```js
-import { test } from "../../lib/context.mjs";
+Product reports, logs, and screenshots are staged under
+`reports/runs/<run-id>/<module-id>/`. The wrapper keeps aggregate
+`reports/latest.md`, `latest.json`, `last-failed.json`, and `screenshots/`. Aggregate results retain
+the original `tests/...` file names and map product skip reasons. `--baseline <file>` compares each
+selected test's status with an earlier `latest.json` and fails the run on any difference; without
+it there is no comparison.
 
-export default test("example", async (ctx) => {
-    const structured = await ctx.call("pages.count");
-    const text = await ctx.callText("page.content");
-    ctx.expect(structured).toBeTruthy();
-    ctx.expect(text).toContain("example");
-});
-```
+`tests.log` records per-test steps and outcomes. Under each staged module folder, `app-main.log`,
+`app-console.log`, `site-console.log`, and `network.log` provide product-host diagnostics. App
+logs stay staged; setup/launch failures link to the module's `app-main.log` from `latest.md`.
 
-Use `ctx.call(path?, args?, { maxLength, dialog } = {})` for structured values: it parses the primary text as JSON when possible and otherwise returns a string. JSON-looking string values are ambiguous in the MCP wire format. Use `ctx.callText(...)` for content and other text whose spelling must be preserved. Calls request `hints: "never"`; malformed replies, errors, pending work, unexpected attention and truncation fail with the raw response retained. Truncation fails unless that call explicitly supplies `maxLength`; with it, the delivered body is returned and the truncation marker remains in diagnostics. The opt-in `{ dialog: true }` accepts the app's dialog-pending response as `{ pending: true }` and strips at most one attention block from a normal response while a dialog is open. It still rejects script pending, MCP and body errors, unexpected content and truncation without `maxLength`.
+## Test layout and context
 
-The context also provides `ctx.waitFor(pathOrFunction, predicate, { timeout })`, `ctx.expect(value)` with `toBe`, `toEqual`, `toContain`, and `toBeTruthy`, `ctx.script(code)`, `ctx.restartApp()`, and `ctx.launchSecondInstance(args = [])`. Tests using either launch helper declare `requires: ["launch"]`; second-instance tests use `ctx.fixture(...)` for existing file arguments and poll the primary app with `ctx.waitFor`. Wait timeouts are in milliseconds and scale with `--timeout-scale`. `ctx.script` reports completed text and fails on script errors or pending runs; dialogs are not handled unattended.
+Tests live at `tests/<area>/<module>/<feature>.test.mjs`; nested module paths are allowed. Add a
+test to the module that owns the feature and split by feature when a module grows too large. Tests
+import `test()` from `lib/context.mjs` and export one descriptor or an array. Declare
+`requires: ["launch"]` for tests that restart the app or launch another instance.
 
-Put steps shared by areas in `tests/helpers/`; put steps shared within one area in `tests/<area>/helpers.mjs` and promote them only when another area uses them. Tests should not import another area's helpers. Attach tests share no state: each test closes the pages it opens, and files it creates go under a per-test folder returned by `ctx.fixture(...)`.
+Product context members include `app`, `openBrowser`, `handle`, `call`, `callText`, `waitFor`,
+`expect`, `script`, `restartApp`, `launchSecondInstance`, `file`, and `log`. The suite setup adds
+`fixture(relativePath)` constrained to `.profile/work`, `httpUrl(path)` constrained to the local
+HTTP fixture server, and `_getClient()` with raw MCP `call` and `listTools()` access. Path calls
+support `{ dialog: true }`; the app stand-in is available for future object-style suite rewrites.
+The product host closes pages and pop-ups opened during a test after that test finishes.
 
-Reports are written to `integration-test/reports/latest.json`, `latest.md`, and `last-failed.json`. Failure capture also saves a screenshot when possible, or records why capture failed. `--keep-open` leaves a healthy test instance open only after a failure. It records the owned PID and profile under `reports/keep-open.json`; close it with `npm run test:ui:call -- --close` before a normal rerun. Attach runs reuse the retained instance without resetting it. The call CLI uses the isolated test MCP endpoint, accepts an optional JSON argument array, and supports `--text`, `--dialog`, and `--max-length N`. For example, `npm run test:ui:call -- pages.count`, `npm run test:ui:call -- page.content --text`, or `npm run test:ui:call -- window.screen.screenshot` saves a PNG/JPEG under `reports/screenshots/`. See [the developer standard](../doc/standards/integration-tests.md) for the full workflow and API contract. A clean passing run otherwise closes its owned app. The runner never sends process-name kills.
+For full API, target, timeout, lifecycle, and report details, see
+[`doc/standards/integration-tests.md`](../doc/standards/integration-tests.md).

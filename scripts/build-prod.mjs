@@ -32,11 +32,11 @@ const nodeResolve = {
     conditions: ["node"],
 };
 
-function nodeEsmEntryConfig(name, input, outDir) {
+function nodeEsmEntryConfig(name, input, outDir, { bundleDependencies = false } = {}) {
     return {
         configFile: false,
         resolve: nodeResolve,
-        ssr: { target: "node" },
+        ssr: { target: "node", ...(bundleDependencies ? { noExternal: true } : {}) },
         build: {
             ssr: true,
             outDir,
@@ -227,6 +227,9 @@ await build(nodeEsmEntryConfig("module-service-host", "src/module-service-host/i
 
 console.log("\nBuilding node-script-host...");
 await build(nodeEsmEntryConfig("node-script-host", "src/node-script-host/index.ts", ".vite/node-script-host"));
+
+console.log("\nBuilding test-host...");
+await build(nodeEsmEntryConfig("test-host", "src/test-host/index.ts", ".vite/test-host", { bundleDependencies: true }));
 
 console.log("\n🔨 Building renderer...");
 await build({

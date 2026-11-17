@@ -42,6 +42,7 @@ export class BrowserGuest {
     readonly key: string;
     readonly tabId: string;
     readonly internalTabId: string;
+    readonly pageId?: string;
     readonly webContents: WebContents;
     readonly senderWebContents: WebContents;
     readonly listeners: Array<{ event: string; handler: AnyEventHandler }> = [];
@@ -57,6 +58,7 @@ export class BrowserGuest {
         key: string;
         tabId: string;
         internalTabId: string;
+        pageId?: string;
         webContents: WebContents;
         senderWebContents: WebContents;
         zoomPercent: number;
@@ -65,6 +67,7 @@ export class BrowserGuest {
         this.key = args.key;
         this.tabId = args.tabId;
         this.internalTabId = args.internalTabId;
+        this.pageId = args.pageId;
         this.webContents = args.webContents;
         this.senderWebContents = args.senderWebContents;
         this.zoomPercent = args.zoomPercent;

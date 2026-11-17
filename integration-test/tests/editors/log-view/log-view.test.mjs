@@ -2,7 +2,7 @@ import { test } from "../../../lib/context.mjs";
 import { closeNewManagedLogPage, closePage, openLogViewPage } from "../helpers.mjs";
 
 async function pageIds(ctx) {
-    return (await ctx.call("pages.all")).map((page) => page.id);
+    return (await ctx.app.pages.all).map((page) => page.id);
 }
 
 async function finishManagedLog(ctx, previousPageIds) {
@@ -10,7 +10,7 @@ async function finishManagedLog(ctx, previousPageIds) {
 }
 
 async function clickLogControl(ctx, name) {
-    await ctx.call("window.screen.click", [`[data-page-id="mcp-ui-log"] [data-name="${name}"]`], { dialog: true });
+    await /* ctx.call remains because the app stand-in cannot pass call options such as { dialog: true } or maxLength. */ ctx.call("window.screen.click", [`[data-page-id="mcp-ui-log"] [data-name="${name}"]`], { dialog: true });
 }
 
 async function logSnapshot(ctx) {
@@ -25,7 +25,7 @@ async function pushDialog(ctx, entry) {
         attention = error.message;
     }
     ctx.expect(attention).toContain("An inline Log View dialog is unanswered");
-    const pushed = (await ctx.call("pages.logView.entries")).find((item) => item.type === entry.type);
+    const pushed = (await ctx.app.pages.logView.entries).find((item) => item.type === entry.type);
     ctx.expect(pushed).toBeTruthy();
     return { dialogIds: [pushed.id] };
 }
@@ -40,30 +40,30 @@ export default [
                 { id: "fixture-info", type: "log.info", text: "Fixture log entry" },
                 { id: "fixture-warn", type: "log.warn", text: "Second fixture entry" },
             ]);
-            ctx.expect(await ctx.waitFor(`${logPage.root}.editor.entryCount`, (count) => count === 2)).toBe(2);
-            ctx.expect(await ctx.call(`${logPage.root}.editor.error`)).toBe(null);
-            ctx.expect((await ctx.call(`${logPage.root}.editor.entries`)).some((entry) => entry.type === "log.info" && entry.text === "Fixture log entry")).toBe(true);
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[logPage.id].editor.entryCount, (count) => count === 2)).toBe(2);
+            ctx.expect(await ctx.app.pages[logPage.id].editor.error).toBe(null);
+            ctx.expect((await ctx.app.pages[logPage.id].editor.entries).some((entry) => entry.type === "log.info" && entry.text === "Fixture log entry")).toBe(true);
             ctx.expect(await ctx.waitFor(
                 (activeContext) => activeContext.callText("window.screen.snapshot", [{ maxChars: 12000 }]),
                 (snapshot) => snapshot.includes("Fixture log entry") && snapshot.includes("Second fixture entry"),
             )).toContain("Fixture log entry");
 
             const plainPath = ctx.fixture("us-2050/open-log/plain.jsonl");
-            await ctx.call("fs.write", [plainPath, '{"type":"record","value":"plain JSONL"}\n']);
-            plainPage = await ctx.call("pages.openFile", [plainPath]);
-            const plainRoot = `pages[${JSON.stringify(plainPage.id)}]`;
-            await ctx.waitFor(`${plainRoot}.editor.id`, (editor) => editor === "monaco");
-            ctx.expect((await ctx.call(`${plainRoot}.editorSwitches.options`)).some((option) => option.id === "log-view")).toBe(false);
+            await ctx.app.fs.write(plainPath, '{"type":"record","value":"plain JSONL"}\n');
+            plainPage = await ctx.app.pages.openFile(plainPath);
+            const plainRoot = ctx.handle(ctx.app.pages[plainPage.id]);
+            await ctx.waitFor((activeContext) => activeContext.app.pages[plainPage.id].editor.id, (editor) => editor === "monaco");
+            ctx.expect((await plainRoot.editorSwitches.options).some((option) => option.id === "log-view")).toBe(false);
 
             const markedPath = ctx.fixture("us-2050/open-log/marked.jsonl");
-            await ctx.call("fs.write", [markedPath, '{"id":"marked-info","type":"log.info","text":"marked entry"}\n']);
-            markedPage = await ctx.call("pages.openFile", [markedPath]);
-            const markedRoot = `pages[${JSON.stringify(markedPage.id)}]`;
-            await ctx.waitFor(`${markedRoot}.editor.id`, (editor) => editor === "monaco");
-            ctx.expect((await ctx.call(`${markedRoot}.editorSwitches.options`)).some((option) => option.id === "log-view")).toBe(true);
-            await ctx.call(`${markedRoot}.editorSwitches.switchTo`, ["log-view"]);
-            ctx.expect(await ctx.waitFor(`${markedRoot}.editor.entryCount`, (count) => count === 1)).toBe(1);
-            ctx.expect((await ctx.call(`${markedRoot}.editor.entries`)).some((entry) => entry.type === "log.info" && entry.text === "marked entry")).toBe(true);
+            await ctx.app.fs.write(markedPath, '{"id":"marked-info","type":"log.info","text":"marked entry"}\n');
+            markedPage = await ctx.app.pages.openFile(markedPath);
+            const markedRoot = ctx.handle(ctx.app.pages[markedPage.id]);
+            await ctx.waitFor((activeContext) => activeContext.app.pages[markedPage.id].editor.id, (editor) => editor === "monaco");
+            ctx.expect((await markedRoot.editorSwitches.options).some((option) => option.id === "log-view")).toBe(true);
+            await markedRoot.editorSwitches.switchTo("log-view");
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[markedPage.id].editor.entryCount, (count) => count === 1)).toBe(1);
+            ctx.expect((await markedRoot.editor.entries).some((entry) => entry.type === "log.info" && entry.text === "marked entry")).toBe(true);
         } finally {
             if (markedPage) await closePage(ctx, markedPage.id);
             if (plainPage) await closePage(ctx, plainPage.id);
@@ -74,17 +74,17 @@ export default [
     test("pages.logView.push creates the managed page and renders each documented output kind", async (ctx) => {
         const previousPageIds = await pageIds(ctx);
         try {
-            const result = await ctx.call("pages.logView.push", [[
+            const result = await ctx.app.pages.logView.push([
                 "Plain pushed log line",
                 { type: "output.text", title: "Text output", text: "Read-only text payload" },
                 { type: "output.markdown", title: "Markdown output", text: "## Markdown payload\n\nRendered paragraph" },
                 { type: "output.mermaid", title: "Mermaid output", text: "flowchart TD\n  A[Start] --> B[Finish]" },
                 { type: "output.grid", title: "Grid output", content: '[{"name":"Ada","city":"Kyiv"}]' },
-            ]]);
+            ]);
             ctx.expect(result.entryIds.length).toBe(5);
             ctx.expect(result.dialogIds).toEqual([]);
-            ctx.expect(await ctx.waitFor("pages.logView.entryCount", (count) => count === 5)).toBe(5);
-            const entries = await ctx.call("pages.logView.entries");
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages.logView.entryCount, (count) => count === 5)).toBe(5);
+            const entries = await ctx.app.pages.logView.entries;
             ctx.expect(entries.map((entry) => entry.type)).toEqual([
                 "log.info", "output.text", "output.markdown", "output.mermaid", "output.grid",
             ]);
@@ -110,23 +110,23 @@ export default [
         const previousPageIds = await pageIds(ctx);
         let openedPageId;
         try {
-            await ctx.call("pages.logView.push", [{ type: output.type, title: output.title, text: output.text, content: output.content }]);
+            await ctx.app.pages.logView.push({ type: output.type, title: output.title, text: output.text, content: output.content });
             const panel = `[data-page-id="mcp-ui-log"] [data-name="${output.panel}"]`;
             await ctx.waitFor(
-                (activeContext) => activeContext.call("pages.logView.elements"),
+                (activeContext) => activeContext.app.pages.logView.elements,
                 (elements) => elements.some((element) => element.name === output.control),
             );
-            await ctx.call("window.screen.hover", [panel]);
-            await ctx.call("window.screen.click", [`[data-page-id="mcp-ui-log"] [data-name="${output.control}"]`]);
+            await ctx.app.window.screen.hover(panel);
+            await ctx.app.window.screen.click(`[data-page-id="mcp-ui-log"] [data-name="${output.control}"]`);
             const pages = await ctx.waitFor(
-                (activeContext) => activeContext.call("pages.all"),
+                (activeContext) => activeContext.app.pages.all,
                 (current) => current.some((page) => !previousPageIds.includes(page.id) && page.editor === output.editor),
             );
             const opened = pages.find((page) => !previousPageIds.includes(page.id) && page.editor === output.editor);
             openedPageId = opened.id;
-            const root = `pages[${JSON.stringify(opened.id)}]`;
+            const node = ctx.handle(ctx.app.pages[opened.id]);
             const content = output.contentCheck ?? output.content;
-            const openedContent = await ctx.waitFor(`${root}.content`, (value) => JSON.stringify(value).includes(content));
+            const openedContent = await ctx.waitFor((activeContext) => activeContext.app.pages[opened.id].content, (value) => JSON.stringify(value).includes(content));
             ctx.expect(JSON.stringify(openedContent)).toContain(content);
         } finally {
             if (openedPageId) await closePage(ctx, openedPageId);
@@ -137,25 +137,25 @@ export default [
     test("Log View toolbar toggles timestamps and clears entries after confirmation", async (ctx) => {
         const previousPageIds = await pageIds(ctx);
         try {
-            await ctx.call("pages.logView.push", [{ type: "log.info", text: "Entry to clear" }]);
-            ctx.expect(await ctx.waitFor("pages.logView.showTimestamps", (enabled) => enabled === false)).toBe(false);
+            await ctx.app.pages.logView.push({ type: "log.info", text: "Entry to clear" });
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages.logView.showTimestamps, (enabled) => enabled === false)).toBe(false);
             await clickLogControl(ctx, "log-toggle-timestamps");
-            ctx.expect(await ctx.waitFor("pages.logView.showTimestamps", (enabled) => enabled === true)).toBe(true);
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages.logView.showTimestamps, (enabled) => enabled === true)).toBe(true);
             await clickLogControl(ctx, "log-toggle-timestamps");
-            ctx.expect(await ctx.waitFor("pages.logView.showTimestamps", (enabled) => enabled === false)).toBe(false);
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages.logView.showTimestamps, (enabled) => enabled === false)).toBe(false);
 
             await clickLogControl(ctx, "log-clear");
             await ctx.waitFor(
                 (activeContext) => activeContext.callText("dialogs[0].message", undefined, { dialog: true }),
                 (message) => message.toLowerCase().includes("clear"),
             );
-            await ctx.call("dialogs[0].click", ["Yes"], { dialog: true });
+            await /* ctx.call remains because the app stand-in cannot pass call options such as { dialog: true } or maxLength. */ ctx.call("dialogs[0].click", ["Yes"], { dialog: true });
             await ctx.waitFor(
                 (activeContext) => activeContext.callText("window.screen.snapshot", [{ maxChars: 12000 }]),
                 (snapshot) => !snapshot.includes("Clear all log entries?"),
             );
-            ctx.expect(await ctx.waitFor("pages.logView.entryCount", (count) => count === 0)).toBe(0);
-            ctx.expect(await ctx.call("pages.logView.entries")).toEqual([]);
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages.logView.entryCount, (count) => count === 0)).toBe(0);
+            ctx.expect(await ctx.app.pages.logView.entries).toEqual([]);
         } finally {
             await finishManagedLog(ctx, previousPageIds);
         }
@@ -168,11 +168,11 @@ export default [
                 type: "input.radioboxes", title: "Choose size", items: ["Small", "Large"], buttons: ["Cancel", "OK"],
             });
             const id = dialogIds[0];
-            ctx.expect(await ctx.call("pages.logView.dialogResult", [id])).toEqual({ id, status: "unresolved" });
-            await ctx.call("window.screen.click", ["text=Large"]);
+            ctx.expect(await ctx.app.pages.logView.dialogResult(id)).toEqual({ id, status: "unresolved" });
+            await ctx.app.window.screen.click("text=Large");
             await clickLogControl(ctx, "log-button-OK");
             const result = await ctx.waitFor(
-                (activeContext) => activeContext.call("pages.logView.dialogResult", [id]),
+                (activeContext) => activeContext.app.pages.logView.dialogResult(id),
                 (value) => value?.status === "resolved",
             );
             ctx.expect(result.entry.checked).toBe("Large");
@@ -190,11 +190,11 @@ export default [
                 type: "input.select", title: "Choose format", items: ["JSON", "CSV"], buttons: ["Cancel", "Use"],
             });
             dialogId = result.dialogIds[0];
-            await ctx.call("window.screen.click", ['[data-name="log-select"]']);
-            await ctx.call("window.screen.click", ["text=CSV"]);
+            await ctx.app.window.screen.click('[data-name="log-select"]');
+            await ctx.app.window.screen.click("text=CSV");
             await clickLogControl(ctx, "log-button-Use");
             const answer = await ctx.waitFor(
-                (activeContext) => activeContext.call("pages.logView.dialogResult", [dialogId]),
+                (activeContext) => activeContext.app.pages.logView.dialogResult(dialogId),
                 (value) => value?.status === "resolved",
             );
             ctx.expect(answer.entry.selected).toBe("CSV");
@@ -211,10 +211,10 @@ export default [
             const { dialogIds } = await pushDialog(ctx, {
                 type: "input.text", title: "Enter a label", placeholder: "Label", buttons: ["Cancel", "Submit"],
             });
-            await ctx.call("window.screen.type", ['[data-name="log-text-input"] input', "release note"]);
+            await ctx.app.window.screen.type('[data-name="log-text-input"] input', "release note");
             await clickLogControl(ctx, "log-button-Submit");
             const answer = await ctx.waitFor(
-                (activeContext) => activeContext.call("pages.logView.dialogResult", [dialogIds[0]]),
+                (activeContext) => activeContext.app.pages.logView.dialogResult(dialogIds[0]),
                 (value) => value?.status === "resolved",
             );
             ctx.expect(answer.id).toBe(dialogIds[0]);
@@ -231,10 +231,10 @@ export default [
             const { dialogIds } = await pushDialog(ctx, {
                 type: "input.checkboxes", title: "Choose items", items: [{ label: "Keep" }, { label: "Remove" }], buttons: ["Cancel", "Apply"],
             });
-            await ctx.call("window.screen.click", ['[data-name="log-checkbox-1"]']);
+            await ctx.app.window.screen.click('[data-name="log-checkbox-1"]');
             await clickLogControl(ctx, "log-button-Apply");
             const answer = await ctx.waitFor(
-                (activeContext) => activeContext.call("pages.logView.dialogResult", [dialogIds[0]]),
+                (activeContext) => activeContext.app.pages.logView.dialogResult(dialogIds[0]),
                 (value) => value?.status === "resolved",
             );
             ctx.expect(answer.id).toBe(dialogIds[0]);
@@ -253,7 +253,7 @@ export default [
             });
             await clickLogControl(ctx, "log-button-Discard");
             const answer = await ctx.waitFor(
-                (activeContext) => activeContext.call("pages.logView.dialogResult", [dialogIds[0]]),
+                (activeContext) => activeContext.app.pages.logView.dialogResult(dialogIds[0]),
                 (value) => value?.status === "resolved",
             );
             ctx.expect(answer.id).toBe(dialogIds[0]);

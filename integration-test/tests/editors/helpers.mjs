@@ -68,21 +68,21 @@ export function makeWav(seconds = 4, sampleRate = 8000) {
 export async function openVideoPage(ctx, folder, filename = "audio.wav", bytes = makeWav()) {
     const filePath = ctx.fixture(`${folder}/${filename}`);
     await ctx.script(`await app.fs.writeBinary(${JSON.stringify(filePath)}, Buffer.from(${JSON.stringify(bytes.toString("base64"))}, "base64"));`);
-    const page = await ctx.call("pages.openFile", [filePath]);
-    const root = `pages[${JSON.stringify(page.id)}]`;
-    await ctx.waitFor(`${root}.editor.id`, (editor) => editor === "video-view");
-    await ctx.waitFor(`${root}.editor.mediaMounted`, (mounted) => mounted === true);
-    return { root, id: page.id, filePath };
+    const page = await ctx.app.pages.openFile(filePath);
+    const node = ctx.handle(ctx.app.pages[page.id]);
+    await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.id, (editor) => editor === "video-view");
+    await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.mediaMounted, (mounted) => mounted === true);
+    return { node, id: page.id, filePath };
 }
 
 export async function openImagePage(ctx, folder, filename, bytes) {
     const filePath = ctx.fixture(`${folder}/${filename}`);
     await ctx.script(`await app.fs.writeBinary(${JSON.stringify(filePath)}, Buffer.from(${JSON.stringify(bytes.toString("base64"))}, "base64"));`);
-    const page = await ctx.call("pages.openFile", [filePath]);
-    const root = `pages[${JSON.stringify(page.id)}]`;
-    await ctx.waitFor(`${root}.editor.id`, (editor) => editor === "image-view");
-    await ctx.waitFor(`${root}.editor.elements`, (elements) => elements.some((element) => element.name === "image-copy" && element.visible));
-    return { root, id: page.id, filePath };
+    const page = await ctx.app.pages.openFile(filePath);
+    const node = ctx.handle(ctx.app.pages[page.id]);
+    await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.id, (editor) => editor === "image-view");
+    await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.elements, (elements) => elements.some((element) => element.name === "image-copy" && element.visible));
+    return { node, id: page.id, filePath };
 }
 
 export async function openHtmlPage(ctx, folder, filename, content) {
@@ -95,51 +95,51 @@ export async function openSvgPage(ctx, folder, filename, content) {
 
 export async function openLogViewPage(ctx, folder, filename, entries) {
     const filePath = ctx.fixture(`${folder}/${filename}`);
-    await ctx.call("fs.write", [filePath, `${entries.map((entry) => JSON.stringify(entry)).join("\n")}\n`]);
-    const page = await ctx.call("pages.openFile", [filePath]);
-    const root = `pages[${JSON.stringify(page.id)}]`;
-    await ctx.waitFor(`${root}.editor.id`, (editor) => editor === "log-view");
-    return { root, id: page.id, filePath };
+    await ctx.app.fs.write(filePath, `${entries.map((entry) => JSON.stringify(entry)).join("\n")}\n`);
+    const page = await ctx.app.pages.openFile(filePath);
+    const node = ctx.handle(ctx.app.pages[page.id]);
+    await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.id, (editor) => editor === "log-view");
+    return { node, id: page.id, filePath };
 }
 
 export async function closeNewManagedLogPage(ctx, previousPageIds) {
     const clearMessage = await ctx.callText("dialogs[0].message", undefined, { dialog: true }).catch(() => "");
     if (clearMessage.toLowerCase().includes("clear all log entries")) {
-        await ctx.call("dialogs[0].click", ["Yes"], { dialog: true });
+        await /* ctx.call remains because the app stand-in cannot pass call options such as { dialog: true } or maxLength. */ ctx.call("dialogs[0].click", ["Yes"], { dialog: true });
     }
-    const pages = await ctx.call("pages.all");
+    const pages = await ctx.app.pages.all;
     const page = pages.find((entry) => entry.id === "mcp-ui-log" && !previousPageIds.includes(entry.id));
     if (page) await closePage(ctx, page.id);
 }
 
 export async function closeEditorPage(ctx, page) {
     if (!page) return;
-    if (await ctx.call(`${page.root}.modified`)) {
-        await ctx.call(`${page.root}.editorSwitches.switchTo`, ["monaco"]);
-        await ctx.waitFor(`${page.root}.editor.id`, (editor) => editor === "monaco");
-        await ctx.call(`${page.root}.editor.saveFile`, []);
-        await ctx.waitFor(`${page.root}.modified`, (modified) => modified === false);
+    if (await ctx.app.pages[page.id].modified) {
+        await ctx.app.pages[page.id].editorSwitches.switchTo("monaco");
+        await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.id, (editor) => editor === "monaco");
+        await ctx.app.pages[page.id].editor.saveFile();
+        await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].modified, (modified) => modified === false);
     }
     await closePage(ctx, page.id);
 }
 
 export async function closePage(ctx, pageId) {
     if (!pageId) return;
-    const closed = await ctx.call("pages.closePage", [pageId], { dialog: true });
+    const closed = await /* ctx.call remains because the app stand-in cannot pass call options such as { dialog: true } or maxLength. */ ctx.call("pages.closePage", [pageId], { dialog: true });
     if (closed?.pending) {
         await ctx.waitFor(
             (activeContext) => activeContext.callText("dialogs[0].title", undefined, { dialog: true }),
             (title) => title === "Unsaved Changes",
         );
-        await ctx.call("dialogs[0].click", ["Don't Save"], { dialog: true });
+        await /* ctx.call remains because the app stand-in cannot pass call options such as { dialog: true } or maxLength. */ ctx.call("dialogs[0].click", ["Don't Save"], { dialog: true });
     }
-    await ctx.waitFor("pages.all", (pages) => !pages.some((page) => page.id === pageId));
+    await ctx.waitFor((activeContext) => activeContext.app.pages.all, (pages) => !pages.some((page) => page.id === pageId));
 }
 
 export async function waitForDrawingToastToClear(ctx) {
     const snapshot = await ctx.callText("window.screen.snapshot", [{ maxChars: 12000 }]);
     if (snapshot.includes("Failed to open SVG in Drawing Editor")) {
-        await ctx.call("window.screen.click", ['[role="alert"] [data-part="close"] button']);
+        await ctx.app.window.screen.click('[role="alert"] [data-part="close"] button');
     }
     await ctx.waitFor(
         (activeContext) => activeContext.callText("window.screen.snapshot", [{ maxChars: 12000 }]),

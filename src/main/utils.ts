@@ -4,6 +4,7 @@ import fs from 'fs';
 import { app } from 'electron';
 import type { LaunchInput } from "../shared/launch-input";
 import { isKeyInside, type PathContainmentOptions } from "../shared/path-containment";
+import { stripTestInstanceOptions } from "./test-mode/instance-options";
 
 /** Comparison key for non-board paths. Board roots use BoardRoot.key. */
 export function comparePathKey(filePath: string): string {
@@ -127,7 +128,7 @@ export function isValidOpenPath(filePath: string | undefined): boolean {
 
 /** Select launch operands from either packaged or `electron <appPath>` argv. */
 export function launchOperands(argv: string[]): string[] {
-    const { remainingArgs: raw } = parseApplicationProfile(argv.slice(1));
+    const { remainingArgs: raw } = parseApplicationProfile(stripTestInstanceOptions(argv.slice(1)));
     const operands: string[] = [];
     for (let index = 0; index < raw.length; index += 1) {
         if (raw[index] === "--board" && raw[index + 1]) {

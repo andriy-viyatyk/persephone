@@ -11,10 +11,9 @@ A right-pinned page may display in a popover over it without becoming active; in
 `pages.popoverPage` for that page. The `pages` node discovers `openPopover(id)`, `closePopover()`,
 and `pinTab(id, side?)`; page and page-tab nodes expose `pinSide`, while `pinned` means left-pinned.
 
-This page is for the agent **building** a board (or a web app the user opens in Persephone's
-browser). It tells you how to publish that app's own object model so another agent can drive it
-by path — reading properties, calling methods, and pointing at controls on screen — instead of
-guessing from an accessibility snapshot.
+This page is for agents building a board or web app opened in Persephone. Learn to publish its
+object model so another agent can drive it by path — reading properties, calling methods, and
+pointing at controls — instead of guessing from a snapshot.
 
 If instead you are **driving** a board or page that already publishes one, you want the `.app`
 sections of [Boards](./boards/index.md) and [Browser automation](./browser.md). This page is the other

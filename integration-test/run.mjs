@@ -1,20 +1,23 @@
-import { mkdir, open, readFile, readdir, rename, unlink, writeFile } from "node:fs/promises";
+import { access, mkdir, open, readFile, readdir, rename, unlink, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
+import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { createContext, REQUIREMENT_TAGS, validateRequirements } from "./lib/context.mjs";
-import { createTimeouts, HTTP_FIXTURE_PORT, KEEP_OPEN_PATH, LOCK_PATH, MCP_URL, PROFILE_ROOT, REPORT_ROOT, RUNNER_ROOT, TEST_ROOT } from "./lib/config.mjs";
+import { REQUIREMENT_TAGS, validateRequirements } from "./lib/context.mjs";
+import { createTimeouts, DEV_MAIN_PATH, HTTP_FIXTURE_PORT, KEEP_OPEN_PATH, LOCK_PATH, MCP_URL, PROFILE_ROOT, REPORT_ROOT, REPOSITORY_ROOT, RUNNER_ROOT, RUNS_ROOT, TEST_ROOT, TEST_SETUP_PATH } from "./lib/config.mjs";
 import { APP_PORTS, assertPortsFree, assertProductionBuildAllowed, buildProduction, createLauncher, prepareProfile, refreshFixtures, validateExecutable, verifyDevTarget } from "./lib/launcher.mjs";
 import { McpClient } from "./lib/client.mjs";
 import { startHttpFixtures } from "./lib/http-fixtures.mjs";
-import { captureFailure, writeReports } from "./lib/report.mjs";
+import { collectModuleReport, writeAggregateReport } from "./lib/aggregate-report.mjs";
+import electronPath from "electron";
 
 function parseArguments(args) {
-    const options = { target: "dev", app: undefined, area: undefined, test: undefined, keepOpen: false, rerunFailed: false, open: false, attach: false, list: false, with: [], timeoutScale: 1 };
+    const options = { target: "dev", app: undefined, area: undefined, test: undefined, keepOpen: false, rerunFailed: false, open: false, attach: false, list: false, with: [], timeoutScale: 1, baseline: undefined };
     const seen = new Set();
     for (let index = 0; index < args.length; index += 1) {
         const flag = args[index];
-        if (!["--area", "--test", "--keep-open", "--rerun-failed", "--timeout-scale", "--prod", "--app", "--open", "--attach", "--with", "--list"].includes(flag)) throw new Error(`Unknown option: ${flag}`);
+        if (!["--area", "--test", "--keep-open", "--rerun-failed", "--timeout-scale", "--prod", "--app", "--open", "--attach", "--with", "--list", "--baseline"].includes(flag)) throw new Error(`Unknown option: ${flag}`);
         if (seen.has(flag)) throw new Error(`Duplicate option: ${flag}`);
         seen.add(flag);
         if (flag === "--prod") { options.target = "prod"; continue; }
@@ -33,6 +36,10 @@ function parseArguments(args) {
             options.area = areas;
         }
         else if (flag === "--test") options.test = value;
+        else if (flag === "--baseline") {
+            options.baseline = path.resolve(value);
+            if (!existsSync(options.baseline)) throw new Error(`--baseline file not found: ${options.baseline}`);
+        }
         else if (flag === "--timeout-scale") {
             const scale = Number(value);
             if (!Number.isFinite(scale) || scale <= 0) throw new Error("--timeout-scale must be a positive finite number.");
@@ -53,8 +60,8 @@ function parseArguments(args) {
         throw new Error("--list cannot be combined with --open, --keep-open or --rerun-failed.");
     }
     if (options.attach) options.target = "attach";
-    if (options.open && ["--area", "--test", "--rerun-failed", "--with", "--keep-open"].some((flag) => seen.has(flag))) {
-        throw new Error("--open cannot be combined with --area, --test, --rerun-failed, --with or --keep-open.");
+    if (options.open && ["--area", "--test", "--rerun-failed", "--with", "--keep-open", "--baseline"].some((flag) => seen.has(flag))) {
+        throw new Error("--open cannot be combined with --area, --test, --rerun-failed, --with, --keep-open or --baseline.");
     }
     if (options.attach && ["--keep-open", "--prod", "--app"].some((flag) => seen.has(flag))) {
         throw new Error("--attach cannot be combined with --keep-open, --prod or --app.");
@@ -95,7 +102,7 @@ async function discoverTests() {
             if (segments.length < 4 || segments[0] !== "tests") {
                 throw new Error(`Test ${relativeFile} must be under tests/<area>/<module>/<feature>.test.mjs.`);
             }
-            descriptors.push({ ...descriptor, requires: requirements, file: relativeFile, area: segments.slice(1, -1).join("/") });
+            descriptors.push({ ...descriptor, requires: requirements, file: relativeFile, absoluteFile: file, area: segments.slice(1, -1).join("/") });
         }
     }
     return descriptors;
@@ -116,6 +123,7 @@ async function selectTests(options, discovered) {
         const failedIds = new Set(saved.failed.map((id) => `${id.file}\0${id.name}`));
         const knownIds = new Set(discovered.map((test) => `${test.file}\0${test.name}`));
         const gone = [...failedIds].filter((id) => !knownIds.has(id));
+        options.gone = gone.map((id) => { const [file, name] = id.split("\0"); return { file, name }; });
         if (gone.length) console.warn(`Gone failed test IDs (no longer present): ${gone.map((id) => id.replace("\0", " — ")).join(", ")}`);
         const currentFailed = [...failedIds].filter((id) => knownIds.has(id));
         if (failedIds.size > 0 && currentFailed.length === 0) return [];
@@ -240,17 +248,18 @@ async function main() {
     const runnable = selection.filter((descriptor) => !skipped.has(descriptor));
     const results = [];
     const timeouts = createTimeouts(options.timeoutScale);
+    const runId = `${startedAt.replaceAll(/[^0-9T]/g, "-")}-${randomUUID()}`;
     let releaseLock;
     let launcher;
     let attachClient;
     let httpServer;
     let profilePath;
-    let currentModule;
     let interrupted = false;
     let openRetained = false;
+    let currentChild;
     const buildAbort = new AbortController();
     let unhandledFailure = null;
-    const stopOnSignal = () => { interrupted = true; buildAbort.abort(); };
+    const stopOnSignal = () => { interrupted = true; buildAbort.abort(); currentChild?.kill(); };
     process.on("SIGINT", stopOnSignal);
     process.on("SIGTERM", stopOnSignal);
 
@@ -268,8 +277,8 @@ async function main() {
             if (options.target === "prod") await assertProductionBuildAllowed();
             profilePath = await prepareProfile(timeouts);
             if (options.target === "prod") await buildProduction({ signal: buildAbort.signal });
-            launcher = createLauncher({ profilePath, timeouts, target: options.target, appPath: options.app });
             if (options.open) {
+                launcher = createLauncher({ profilePath, timeouts, target: options.target, appPath: options.app });
                 await launcher.start();
                 if (interrupted) throw new Error("Open run interrupted.");
                 await writeKeepOpen({ pid: launcher.child.pid, url: MCP_URL, profileDir: path.resolve(profilePath), startedAt: new Date().toISOString() });
@@ -281,51 +290,70 @@ async function main() {
             }
             httpServer = await startHttpFixtures({ closeTimeout: timeouts.shutdown });
         }
-
-        if (runnable.length) {
-            if (options.attach) {
-                // The retained process owns the application; only its independent client is used here.
-            } else await launcher.start();
-        }
+        const byModule = new Map();
         for (const descriptor of selection) {
-            const skipReason = skipped.get(descriptor);
-            if (skipReason) {
-                results.push({ ...descriptor, status: "skipped", durationMs: 0, skipReason });
-                continue;
-            }
+            const moduleTests = byModule.get(descriptor.area) ?? [];
+            moduleTests.push(descriptor);
+            byModule.set(descriptor.area, moduleTests);
+        }
+        const runnableModules = [...byModule].filter(([, tests]) => tests.some((test) => !skipped.has(test)));
+        for (const [moduleId, moduleTests] of byModule) {
             if (interrupted) {
-                results.push(failureResult(descriptor, "Run interrupted by a termination signal.", "interrupted"));
+                for (const descriptor of moduleTests) results.push(failureResult(descriptor, "Run interrupted by a termination signal.", "interrupted"));
                 continue;
             }
-            const startTime = Date.now();
-            const context = createContext({ client: options.attach ? attachClient : launcher.client, launcher: options.attach ? {} : launcher, fixtureRoot: path.join(profilePath, "work"), timeouts, attach: options.attach });
+            const runnableTests = moduleTests.filter((test) => !skipped.has(test));
+            if (!runnableTests.length) {
+                for (const descriptor of moduleTests) results.push({ ...descriptor, status: "skipped", durationMs: 0, skipReason: skipped.get(descriptor) });
+                continue;
+            }
+
+            const stageDirectory = path.join(RUNS_ROOT, runId, moduleId.replaceAll(/[\\/]/g, path.sep));
+            await mkdir(stageDirectory, { recursive: true });
+            const manifestPath = path.join(stageDirectory, "selection.json");
+            await writeFile(manifestPath, `${JSON.stringify({ version: 1, tests: moduleTests.map(({ absoluteFile, name }) => ({ file: absoluteFile, name })) }, null, 2)}\n`, "utf8");
+
             try {
-                if (!options.attach && currentModule !== undefined && currentModule !== descriptor.area) {
-                    // A restart alone keeps the previous module's session (pages, settings); re-seed the
-                    // profile so every module starts from the committed seed.
-                    await launcher.stop();
-                    await prepareProfile(timeouts, { ports: APP_PORTS });
-                    await launcher.start();
-                    context._setClient(launcher.client);
+                if (!options.attach) profilePath = await prepareProfile(timeouts, { ports: APP_PORTS });
+                const testFolder = path.join(TEST_ROOT, moduleId);
+                const productArgs = ["--profile", "uitest", "--profile-dir", profilePath];
+                if (options.attach) productArgs.push("--attach");
+                productArgs.push("--test-selection", manifestPath, "--test-setup", TEST_SETUP_PATH, "--log-dir", stageDirectory, "--timeout-scale", String(options.timeoutScale));
+                if (options.with.length) productArgs.push("--with", options.with.join(","));
+                if (!options.attach) productArgs.push("--mcp-port", "17865");
+                if (options.keepOpen && !options.attach && runnableModules.at(-1)?.[0] === moduleId) productArgs.push("--keep-open");
+                let executable;
+                let args;
+                if (options.target === "exe") {
+                    const testRunner = path.join(path.dirname(options.app), "persephone-test.exe");
+                    await access(testRunner);
+                    executable = testRunner;
+                    args = [testFolder, ...productArgs];
+                } else {
+                    executable = electronPath;
+                    args = [DEV_MAIN_PATH, "--test", testFolder, ...productArgs];
                 }
-                currentModule = descriptor.area;
-                await descriptor.run(context);
-                results.push({ ...descriptor, status: "passed", durationMs: Date.now() - startTime });
+                const exitCode = await runProduct(executable, args, (child) => { currentChild = child; });
+                currentChild = undefined;
+                const collected = await collectModuleReport(stageDirectory, moduleTests, {
+                    name: options.target === "attach" ? "attach" : options.target, attach: options.attach, with: options.with,
+                });
+                results.push(...collected);
+                const productReport = JSON.parse(await readFile(path.join(stageDirectory, "report.json"), "utf8")).retainedApp;
+                if (productReport) await writeKeepOpen({ pid: productReport.pid, url: MCP_URL, profileDir: path.resolve(profilePath), startedAt: new Date().toISOString() });
+                if (exitCode !== 0 && !collected.some((result) => result.status === "failed")) throw new Error(`Product runner exited with code ${exitCode} without reporting a failure.`);
             } catch (error) {
-                context._state.failure = { message: error?.stack ?? error?.message ?? String(error) };
-                const failure = await captureFailure(context, path.join(REPORT_ROOT, "screenshots"), descriptor);
-                failure.message = context._state.failure.message;
-                results.push({ ...descriptor, status: "failed", durationMs: Date.now() - startTime, failure });
-                if (!options.attach && !launcher.healthy()) {
-                    try { await launcher.restart(); }
-                    catch (restartError) {
-                        unhandledFailure = new Error(`Could not restart after ${descriptor.name}: ${restartError.message}`);
-                        for (const remaining of selection.slice(selection.indexOf(descriptor) + 1)) {
-                            const reason = skipped.get(remaining);
-                            results.push(reason ? { ...remaining, status: "skipped", durationMs: 0, skipReason: reason } : failureResult(remaining, `App recovery failed: ${restartError.message}`, "restart owned app"));
-                        }
-                        break;
+                currentChild = undefined;
+                unhandledFailure ??= error;
+                const known = new Set(results.filter((item) => item.status !== "skipped").map((item) => `${item.file}\0${item.name}`));
+                for (const descriptor of moduleTests) if (!known.has(`${descriptor.file}\0${descriptor.name}`)) {
+                    if (skipped.has(descriptor)) {
+                        results.push({ ...descriptor, status: "skipped", durationMs: 0, skipReason: skipped.get(descriptor) });
+                        continue;
                     }
+                    const result = failureResult(descriptor, error.message, "product runner setup or launch");
+                    result.appMainLog = path.join(stageDirectory, "app-main.log");
+                    results.push(result);
                 }
             }
         }
@@ -358,8 +386,8 @@ async function main() {
         }
         if (!options.open && results.length) {
             try {
-                const summary = await writeReports(results, { directory: REPORT_ROOT, target: options.target === "attach" ? "attach" : options.target, selection: options.selection, startedAt });
-                if (summary.failed || unhandledFailure) process.exitCode = 1;
+                const summary = await writeAggregateReport(results, { target: options.target, selection: selection.map(({ file, name }) => ({ file, name })), startedAt, gone: options.gone, baselinePath: options.baseline });
+                if (summary.failed || summary.changed || unhandledFailure) process.exitCode = 1;
             } catch (error) { console.error(`Could not write integration reports: ${error.message}`); process.exitCode = 1; }
         }
         if (unhandledFailure) { console.error(unhandledFailure.message); process.exitCode ??= 1; }
@@ -367,6 +395,15 @@ async function main() {
         process.off("SIGINT", stopOnSignal);
         process.off("SIGTERM", stopOnSignal);
     }
+}
+
+async function runProduct(executable, args, onChild) {
+    const child = spawn(executable, args, { cwd: REPOSITORY_ROOT, stdio: "inherit", windowsHide: true });
+    onChild(child);
+    return new Promise((resolve, reject) => {
+        child.once("error", reject);
+        child.once("exit", (code, signal) => resolve(signal ? 1 : code ?? 1));
+    });
 }
 
 await main();

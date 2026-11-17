@@ -14,6 +14,7 @@ import {
 import {
     createBrowserPermissionPromptHandler,
     getBrowserRegistrationKeyForWebContents,
+    getBrowserLogAttributionForWebContents,
     getBrowserWebContentsForCdp,
     sendBrowserAiVisionSignal,
 } from "./browser-service-composition";
@@ -28,6 +29,7 @@ import { initHtmlPreviewProtocol } from "./html-preview-protocol";
 import { getBoardRootForHost, initBoardProtocol } from "./board-protocol-service";
 import { initializeRecordingService } from "./recording-service";
 import { initNetworkLogger } from "./network-logger";
+import { startTestModeLog, disposeTestModeLog } from "./test-mode/TestModeLog";
 import { moduleServiceSupervisor } from "./module-service-supervisor";
 import { shutdownClipboard } from "./clipboard-service";
 import { shutdownMneme } from "./mneme-service";
@@ -92,6 +94,7 @@ const browserCompositionDependencies = {
     },
     networkLogger: {
         resolveWebContentsId: getBrowserRegistrationKeyForWebContents,
+        resolveAttribution: getBrowserLogAttributionForWebContents,
         resolveResponseBodies: resolveNetworkResponseBodies,
     },
 };
@@ -280,6 +283,12 @@ const mainServiceTable: readonly MainServiceRow[] = [
             },
         },
         startPhase: "ready",
+    },
+    {
+        name: "test-mode logs",
+        service: { start: startTestModeLog, dispose: disposeTestModeLog },
+        startPhase: "ready",
+        disposalPhase: "quit",
     },
     {
         name: "window restoration",

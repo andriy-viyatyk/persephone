@@ -90,11 +90,17 @@ function actionabilityFunction(): string {
                 new Promise(resolve => requestAnimationFrame(resolve)),
                 new Promise(resolve => setTimeout(resolve, 50)),
             ]);
+            /* Stable means the same box for two consecutive frames: a CSS transition (the sidebar panel
+               stack animates flex) can still sit at its start value one frame after the state change. */
+            const sameBox = (a, b) => a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
             const first = el.getBoundingClientRect();
             await waitFrame();
             if (!el.isConnected) throw new Error('ACTIONABILITY_TRANSIENT: Element is detached.');
             const second = el.getBoundingClientRect();
-            if (first.x !== second.x || first.y !== second.y || first.width !== second.width || first.height !== second.height)
+            await waitFrame();
+            if (!el.isConnected) throw new Error('ACTIONABILITY_TRANSIENT: Element is detached.');
+            const third = el.getBoundingClientRect();
+            if (!sameBox(first, second) || !sameBox(second, third))
                 throw new Error('ACTIONABILITY_TRANSIENT: Element is unstable.');
             if (el.disabled || el.getAttribute('aria-disabled') === 'true')
                 throw new Error('ACTIONABILITY_TRANSIENT: Element is disabled.');

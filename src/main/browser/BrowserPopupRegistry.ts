@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { BrowserWindow, WebContents } from "electron";
 import type { BrowserEvent, BrowserPopupSnapshot } from "../../ipc/browser-ipc";
 import { browserGuests } from "./BrowserGuestRegistry";
+import type { BrowserContentsAttachment } from "./BrowserGuestRegistry";
 import { clearCdpTargetState } from "../cdp-service";
 import { clearNetworkLog } from "../network-logger";
 
@@ -16,6 +17,8 @@ interface PopupEntry {
     readonly immediateOpener: WebContents;
     readonly window: BrowserWindow;
     readonly webContents: WebContents;
+    readonly pageId?: string;
+    readonly editorId: string;
     readonly listeners: Array<{ event: string; handler: (...args: never[]) => void }>;
     openerDestroyed?: () => void;
     senderDestroyed?: () => void;
@@ -37,8 +40,21 @@ interface PopupCleanup {
 /** Owns the runtime-only relationship between browser pages and real popup windows. */
 export class BrowserPopupRegistry {
     private readonly entries = new Map<string, PopupEntry>();
+    private readonly attachmentListeners = new Set<(attachment: BrowserContentsAttachment) => void>();
 
     constructor(private readonly cleanup: PopupCleanup) {}
+
+    subscribeAttachments(listener: (attachment: BrowserContentsAttachment) => void): () => void {
+        this.attachmentListeners.add(listener);
+        for (const entry of this.entries.values()) {
+            if (this.isLive(entry)) listener(this.attachment(entry, "attach"));
+        }
+        return () => this.attachmentListeners.delete(listener);
+    }
+
+    private attachment(entry: PopupEntry, type: BrowserContentsAttachment["type"]): BrowserContentsAttachment {
+        return { type, webContents: entry.webContents, pageId: entry.pageId, editorId: entry.editorId, popupId: entry.id };
+    }
 
     register(args: {
         window: BrowserWindow;
@@ -52,10 +68,13 @@ export class BrowserPopupRegistry {
         if (window.isDestroyed() || contents.isDestroyed() || sender.isDestroyed() || immediateOpener.isDestroyed()) return undefined;
         let id = randomUUID();
         while (this.entries.has(id) || [...browserGuests.entries()].some(([, guest]) => guest.internalTabId === id)) id = randomUUID();
+        const rootGuest = browserGuests.get(rootKey);
         const entry: PopupEntry = {
-            id, openerId, rootKey, sender, immediateOpener, window, webContents: contents, listeners: [], removed: false,
+            id, openerId, rootKey, sender, immediateOpener, window, webContents: contents,
+            pageId: rootGuest?.pageId, editorId: rootGuest?.tabId ?? "", listeners: [], removed: false,
         };
         this.entries.set(id, entry);
+        this.publishAttachment(this.attachment(entry, "attach"));
         const on = (event: string, handler: (...args: never[]) => void): void => {
             (contents as unknown as { on(name: string, callback: (...args: never[]) => void): void }).on(event, handler);
             entry.listeners.push({ event, handler });
@@ -110,6 +129,11 @@ export class BrowserPopupRegistry {
             if (entry.webContents.id === webContentsId && this.isLive(entry)) return popupKey(entry);
         }
         return undefined;
+    }
+
+    getAttribution(webContentsId: number): { pageId?: string; editorId: string; popupId?: string } | undefined {
+        const entry = [...this.entries.values()].find((candidate) => candidate.webContents.id === webContentsId && this.isLive(candidate));
+        return entry ? { pageId: entry.pageId, editorId: entry.editorId, popupId: entry.id } : undefined;
     }
 
     async close(id: string, rootKey: string, sender: WebContents): Promise<void> {
@@ -187,6 +211,7 @@ export class BrowserPopupRegistry {
     private remove(entry: PopupEntry): void {
         if (entry.removed) return;
         entry.removed = true;
+        this.publishAttachment(this.attachment(entry, "detach"));
         this.publish(entry, "popup-closed");
         this.entries.delete(entry.id);
         for (const { event, handler } of entry.listeners) {
@@ -200,6 +225,10 @@ export class BrowserPopupRegistry {
         const key = popupKey(entry);
         this.cleanup.clearCdpTargetState(key);
         this.cleanup.clearNetworkLog(key);
+    }
+
+    private publishAttachment(attachment: BrowserContentsAttachment): void {
+        for (const listener of this.attachmentListeners) listener(attachment);
     }
 
     private closeDescendants(openerId: string): void {

@@ -5,8 +5,8 @@ import { closePage } from "../helpers.mjs";
 const pageText = "US-2055 popup fixture";
 let lastPopupOpenedAt = 0;
 
-function browserRoot(pageId) {
-    return `pages[${JSON.stringify(pageId)}].editor`;
+function browserRoot(ctx, pageId) {
+    return ctx.handle(ctx.app.pages[pageId].editor);
 }
 
 async function startServer() {
@@ -72,24 +72,22 @@ async function startServer() {
 
 async function openBrowser(ctx, server, folder, options) {
     ctx.fixture(`us-2055/${folder}/`);
-    const pageId = await ctx.call("pages.openUrlInBrowserTab", options === undefined
-        ? [`${server.url}/parent`]
-        : [`${server.url}/parent`, options]);
+    const pageId = await ctx.app.pages.openUrlInBrowserTab(...(options === undefined ? [`${server.url}/parent`] : [`${server.url}/parent`, options]));
     ctx.expect(pageId).toBeTruthy();
-    const root = browserRoot(pageId);
-    await ctx.waitFor(`${root}.id`, (id) => id === "browser-view");
-    await ctx.call(`${root}.waitFor`, [{ text: pageText, timeout: 10000 }]);
-    return { id: pageId, root };
+    const root = browserRoot(ctx, pageId);
+    await ctx.waitFor((activeContext) => activeContext.app.pages[pageId].editor.id, (id) => id === "browser-view");
+    await root.waitFor({ text: pageText, timeout: 10000 });
+    return { id: pageId, node: root };
 }
 
 async function openSeparateBrowser(ctx, server, folder) {
     ctx.fixture(`us-2055/${folder}/`);
-    const previousIds = new Set((await ctx.call("pages.all")).map((item) => item.id));
-    await ctx.call("pages.showBrowserPage", [{ url: `${server.url}/parent` }]);
-    const items = await ctx.waitFor("pages.all", (pages) => pages.some((item) => !previousIds.has(item.id) && item.editor === "browser-view"));
+    const previousIds = new Set((await ctx.app.pages.all).map((item) => item.id));
+    await ctx.app.pages.showBrowserPage({ url: `${server.url}/parent` });
+    const items = await ctx.waitFor((activeContext) => activeContext.app.pages.all, (pages) => pages.some((item) => !previousIds.has(item.id) && item.editor === "browser-view"));
     const entry = items.find((item) => !previousIds.has(item.id) && item.editor === "browser-view");
-    const page = { id: entry.id, root: browserRoot(entry.id) };
-    await ctx.call(`${page.root}.waitFor`, [{ text: pageText, timeout: 10000 }]);
+    const page = { id: entry.id, node: browserRoot(ctx, entry.id) };
+    await ctx.app.pages[page.id].editor.waitFor({ text: pageText, timeout: 10000 });
     return page;
 }
 
@@ -97,7 +95,7 @@ async function waitForPopupRateWindow(ctx, page) {
     if (!lastPopupOpenedAt) return;
     const readyAt = lastPopupOpenedAt + 2100;
     await ctx.waitFor(
-        (activeContext) => activeContext.call(`${page.root}.evaluate`, ["Date.now()"]),
+        (activeContext) => activeContext.app.pages[page.id].editor.evaluate("Date.now()"),
         (now) => now >= readyAt,
         { timeout: 5000 },
     );
@@ -105,17 +103,18 @@ async function waitForPopupRateWindow(ctx, page) {
 
 async function openPopup(ctx, page, selector = "#open", pathname = "/popup") {
     await waitForPopupRateWindow(ctx, page);
-    await ctx.call(`${page.root}.click`, [selector]);
-    const popups = await ctx.waitFor(`${page.root}.popups`, (items) => items.some((item) => item.url.includes(pathname) && !item.loading));
+    await ctx.app.pages[page.id].editor.click(selector);
+    const popups = await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.popups, (items) => items.some((item) => item.url.includes(pathname) && !item.loading));
     lastPopupOpenedAt = Date.now();
     return popups.find((item) => item.url.includes(pathname));
 }
 
 async function closePopups(ctx, page) {
     if (!page?.id) return;
-    const root = browserRoot(page.id);
-    const popups = await ctx.call(`${root}.popups`).catch(() => []);
-    for (const popup of popups) await ctx.call(`${root}.closePopup`, [popup.id]).catch(() => {});
+    const root = browserRoot(ctx, page.id);
+    let popups = [];
+    try { popups = await root.popups; } catch { /* the opener page may already be gone */ }
+    for (const popup of popups) await root.closePopup(popup.id).catch(() => {});
 }
 
 async function closeBrowser(ctx, page) {
@@ -149,32 +148,32 @@ export default [
         let page;
         try {
             page = await openBrowser(ctx, server, "listing-metadata");
-            const tabId = (await ctx.call(`${page.root}.activeTab`)).id;
+            const tabId = (await ctx.app.pages[page.id].editor.activeTab).id;
             const popup = await openPopup(ctx, page);
-            const ready = await ctx.waitFor(`${page.root}.popups`, (items) => items.find((item) => item.id === popup.id && item.loading === false && item.title === "US-2055 Popup"));
+            const ready = await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.popups, (items) => items.find((item) => item.id === popup.id && item.loading === false && item.title === "US-2055 Popup"));
             const readyPopup = ready.find((item) => item.id === popup.id);
             ctx.expect(popup.openerId).toBe(tabId);
             ctx.expect(popup.url).toContain("/popup");
             ctx.expect(readyPopup.title).toBe("US-2055 Popup");
             ctx.expect(readyPopup.loading).toBe(false);
-            ctx.expect((await ctx.call(`${page.root}.tabs`)).length).toBe(1);
+            ctx.expect((await ctx.app.pages[page.id].editor.tabs).length).toBe(1);
 
-            await ctx.call(`${page.root}.evaluate`, ["document.title = 'US-2055 Popup Renamed'", { tabId: popup.id }]);
-            ctx.expect(await ctx.waitFor(`${page.root}.popups`, (items) => items.some((item) => item.id === popup.id && item.title === "US-2055 Popup Renamed"))).toBeTruthy();
+            await ctx.app.pages[page.id].editor.evaluate("document.title = 'US-2055 Popup Renamed'", { tabId: popup.id });
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.popups, (items) => items.some((item) => item.id === popup.id && item.title === "US-2055 Popup Renamed"))).toBeTruthy();
 
             await waitForPopupRateWindow(ctx, page);
-            await ctx.call(`${page.root}.click`, ["#slow"]);
-            const slowItems = await ctx.waitFor(`${page.root}.popups`, (items) => items.length === 2);
+            await ctx.app.pages[page.id].editor.click("#slow");
+            const slowItems = await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.popups, (items) => items.length === 2);
             const slowPopup = slowItems.find((item) => item.id !== popup.id);
             lastPopupOpenedAt = Date.now();
             await server.waitForSlowRequest();
-            ctx.expect(await ctx.waitFor(`${page.root}.popups`, (items) => items.some((item) => item.id === slowPopup.id && item.loading))).toBeTruthy();
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.popups, (items) => items.some((item) => item.id === slowPopup.id && item.loading))).toBeTruthy();
             server.releaseSlow();
-            ctx.expect(await ctx.waitFor(`${page.root}.popups`, (items) => items.some((item) => item.id === slowPopup.id && !item.loading && item.title === "US-2055 Slow"))).toBeTruthy();
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.popups, (items) => items.some((item) => item.id === slowPopup.id && !item.loading && item.title === "US-2055 Slow"))).toBeTruthy();
 
-            await ctx.call(`${page.root}.closePopup`, [slowPopup.id]);
-            await ctx.call(`${page.root}.closePopup`, [popup.id]);
-            ctx.expect(await ctx.waitFor(`${page.root}.popups`, (items) => items.length === 0)).toEqual([]);
+            await ctx.app.pages[page.id].editor.closePopup(slowPopup.id);
+            await ctx.app.pages[page.id].editor.closePopup(popup.id);
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.popups, (items) => items.length === 0)).toEqual([]);
         } finally {
             await cleanup(ctx, server, page);
         }
@@ -185,10 +184,10 @@ export default [
         let page;
         try {
             page = await openBrowser(ctx, server, "tab-disposition");
-            await ctx.call(`${page.root}.click`, ["#tab-disposition"]);
-            const tabs = await ctx.waitFor(`${page.root}.tabs`, (items) => items.some((item) => item.url?.includes("/tab-disposition")));
+            await ctx.app.pages[page.id].editor.click("#tab-disposition");
+            const tabs = await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.tabs, (items) => items.some((item) => item.url?.includes("/tab-disposition")));
             ctx.expect(tabs.length).toBe(2);
-            ctx.expect(await ctx.call(`${page.root}.popups`)).toEqual([]);
+            ctx.expect(await ctx.app.pages[page.id].editor.popups).toEqual([]);
         } finally {
             await cleanup(ctx, server, page);
         }
@@ -201,39 +200,39 @@ export default [
             page = await openBrowser(ctx, server, "content-methods");
             const popup = await openPopup(ctx, page);
             const options = { tabId: popup.id };
-            const snapshot = await ctx.call(`${page.root}.snapshot`, [options]);
+            const snapshot = await ctx.app.pages[page.id].editor.snapshot(options);
             ctx.expect(snapshot).toContain("Popup ready");
-            ctx.expect(await ctx.call(`${page.root}.evaluate`, ["document.querySelector('#heading').textContent", options])).toBe("Popup ready");
-            ctx.expect(await ctx.call(`${page.root}.evaluate`, ["document.querySelector('#heading').id", options])).toBe("heading");
-            ctx.expect(await ctx.call(`${page.root}.evaluate`, ["document.querySelector('#heading').outerHTML", options])).toContain("Popup ready");
-            await ctx.call(`${page.root}.type`, ["#name", "synthetic input", { ...options, synthetic: true }]);
-            ctx.expect(await ctx.call(`${page.root}.evaluate`, ["document.querySelector('#name').value", options])).toBe("synthetic input");
-            await ctx.call(`${page.root}.type`, ["#name", "CDP input", options]);
-            await ctx.call(`${page.root}.pressKey`, ["Control+a", { ...options, target: "#name" }]);
-            await ctx.call(`${page.root}.type`, ["#name", "typed by CDP", options]);
-            ctx.expect(await ctx.call(`${page.root}.evaluate`, ["document.querySelector('#name').value", options])).toBe("typed by CDP");
-            await ctx.call(`${page.root}.hover`, ["#action", options]);
-            await ctx.call(`${page.root}.keyDown`, ["Shift", options]);
-            await ctx.call(`${page.root}.keyUp`, ["Shift", options]);
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("document.querySelector('#heading').textContent", options)).toBe("Popup ready");
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("document.querySelector('#heading').id", options)).toBe("heading");
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("document.querySelector('#heading').outerHTML", options)).toContain("Popup ready");
+            await ctx.app.pages[page.id].editor.type("#name", "synthetic input", { ...options, synthetic: true });
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("document.querySelector('#name').value", options)).toBe("synthetic input");
+            await ctx.app.pages[page.id].editor.type("#name", "CDP input", options);
+            await ctx.app.pages[page.id].editor.pressKey("Control+a", { ...options, target: "#name" });
+            await ctx.app.pages[page.id].editor.type("#name", "typed by CDP", options);
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("document.querySelector('#name').value", options)).toBe("typed by CDP");
+            await ctx.app.pages[page.id].editor.hover("#action", options);
+            await ctx.app.pages[page.id].editor.keyDown("Shift", options);
+            await ctx.app.pages[page.id].editor.keyUp("Shift", options);
 
-            await ctx.call(`${page.root}.select`, ["#flavor", "vanilla", options]);
-            ctx.expect(await ctx.call(`${page.root}.evaluate`, ["document.querySelector('#flavor').value", options])).toBe("vanilla");
-            await ctx.call(`${page.root}.fillForm`, [[
+            await ctx.app.pages[page.id].editor.select("#flavor", "vanilla", options);
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("document.querySelector('#flavor').value", options)).toBe("vanilla");
+            await ctx.app.pages[page.id].editor.fillForm([
                 { name: "name", locator: "#name", action: "type", value: "form input", options },
-            ]]);
-            ctx.expect(await ctx.call(`${page.root}.evaluate`, ["document.querySelector('#name').value", options])).toBe("form input");
-            await ctx.call(`${page.root}.evaluate`, ["console.log('us2055-clicked', 1); console.warn('us2055-warning')", options]);
-            ctx.expect((await ctx.call(`${page.root}.consoleMessages`, [options])).some((message) => message.args.join(" ").includes("us2055-clicked"))).toBe(true);
-            ctx.expect((await ctx.call(`${page.root}.consoleMessages`, [{ ...options, level: "warning" }])).some((message) => message.args.join(" ").includes("us2055-warning"))).toBe(true);
-            ctx.expect((await ctx.call(`${page.root}.pageErrors`, [options])).length).toBe(0);
-            ctx.expect((await ctx.call(`${page.root}.dialogs`, [options])).policy).toBeTruthy();
+            ]);
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("document.querySelector('#name').value", options)).toBe("form input");
+            await ctx.app.pages[page.id].editor.evaluate("console.log('us2055-clicked', 1); console.warn('us2055-warning')", options);
+            ctx.expect((await ctx.app.pages[page.id].editor.consoleMessages(options)).some((message) => message.args.join(" ").includes("us2055-clicked"))).toBe(true);
+            ctx.expect((await ctx.app.pages[page.id].editor.consoleMessages({ ...options, level: "warning" })).some((message) => message.args.join(" ").includes("us2055-warning"))).toBe(true);
+            ctx.expect((await ctx.app.pages[page.id].editor.pageErrors(options)).length).toBe(0);
+            ctx.expect((await ctx.app.pages[page.id].editor.dialogs(options)).policy).toBeTruthy();
 
             const filePath = ctx.fixture("us-2055/content-methods/upload.txt");
-            await ctx.call("fs.write", [filePath, "popup upload fixture\n"]);
-            await ctx.call(`${page.root}.setInputFiles`, ["#upload", [filePath], options]);
-            ctx.expect(await ctx.call(`${page.root}.evaluate`, ["document.querySelector('#upload').files[0].name", options])).toBe("upload.txt");
-            await ctx.call(`${page.root}.setViewport`, [{ ...options, width: 800, height: 600 }]);
-            await ctx.call(`${page.root}.clearViewport`, [options]);
+            await ctx.app.fs.write(filePath, "popup upload fixture\n");
+            await ctx.app.pages[page.id].editor.setInputFiles("#upload", [filePath], options);
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("document.querySelector('#upload').files[0].name", options)).toBe("upload.txt");
+            await ctx.app.pages[page.id].editor.setViewport({ ...options, width: 800, height: 600 });
+            await ctx.app.pages[page.id].editor.clearViewport(options);
         } finally {
             await cleanup(ctx, server, page);
         }
@@ -246,27 +245,27 @@ export default [
             page = await openBrowser(ctx, server, "waits-network");
             const popup = await openPopup(ctx, page);
             const options = { tabId: popup.id };
-            await ctx.call(`${page.root}.waitForSelector`, ["#fetch", { ...options, timeout: 10000 }]);
+            await ctx.app.pages[page.id].editor.waitForSelector("#fetch", { ...options, timeout: 10000 });
 
-            const responsePromise = ctx.call(`${page.root}.waitForResponse`, [`${server.url}/echo?from=popup`, { ...options, timeout: 10000, includeBody: true }]);
-            await ctx.call(`${page.root}.evaluate`, ["fetch('/echo?from=popup').then(() => true)", options]);
+            const responsePromise = ctx.app.pages[page.id].editor.waitForResponse(`${server.url}/echo?from=popup`, { ...options, timeout: 10000, includeBody: true });
+            await ctx.app.pages[page.id].editor.evaluate("fetch('/echo?from=popup').then(() => true)", options);
             const response = await responsePromise;
             ctx.expect(response.status).toBe(200);
             ctx.expect(response.body).toBe("popup response body");
-            const requests = await ctx.call(`${page.root}.networkRequests`, [{ ...options, includeBodies: true }]);
+            const requests = await ctx.app.pages[page.id].editor.networkRequests({ ...options, includeBodies: true });
             ctx.expect(requests.some((request) => request.url.includes("/echo?from=popup") && request.statusCode === 200)).toBe(true);
 
-            const navigationPromise = ctx.call(`${page.root}.waitForURL`, [`${server.url}/destination`, { ...options, timeout: 10000 }]);
-            await ctx.call(`${page.root}.evaluate`, ["location.href = '/destination'", options]);
+            const navigationPromise = ctx.app.pages[page.id].editor.waitForURL(`${server.url}/destination`, { ...options, timeout: 10000 });
+            await ctx.app.pages[page.id].editor.evaluate("location.href = '/destination'", options);
             const navigation = await navigationPromise;
             ctx.expect(navigation.url).toContain("/destination");
-            ctx.expect(await ctx.call(`${page.root}.evaluate`, ["document.body.textContent.trim()", options])).toBe("Navigation completed");
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("document.body.textContent.trim()", options)).toBe("Navigation completed");
 
-            const lifecyclePromise = ctx.call(`${page.root}.waitForNavigation`, [{ ...options, timeout: 10000 }]);
-            await ctx.call(`${page.root}.evaluate`, ["location.href = '/next-navigation'", options]);
+            const lifecyclePromise = ctx.app.pages[page.id].editor.waitForNavigation({ ...options, timeout: 10000 });
+            await ctx.app.pages[page.id].editor.evaluate("location.href = '/next-navigation'", options);
             const lifecycle = await lifecyclePromise;
             ctx.expect(lifecycle.url).toContain("/next-navigation");
-            ctx.expect(await ctx.call(`${page.root}.evaluate`, ["document.body.textContent.trim()", options])).toBe("Next navigation completed");
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("document.body.textContent.trim()", options)).toBe("Next navigation completed");
         } finally {
             await cleanup(ctx, server, page);
         }
@@ -279,9 +278,9 @@ export default [
             page = await openBrowser(ctx, server, "clear-input");
             const popup = await openPopup(ctx, page);
             const options = { tabId: popup.id };
-            await ctx.call(`${page.root}.type`, ["#name", "value to clear", options]);
-            await ctx.call(`${page.root}.clear`, ["#name", options]);
-            ctx.expect(await ctx.call(`${page.root}.evaluate`, ["document.querySelector('#name').value", options])).toBe("");
+            await ctx.app.pages[page.id].editor.type("#name", "value to clear", options);
+            await ctx.app.pages[page.id].editor.clear("#name", options);
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("document.querySelector('#name').value", options)).toBe("");
         } finally {
             await cleanup(ctx, server, page);
         }
@@ -293,8 +292,8 @@ export default [
         try {
             page = await openBrowser(ctx, server, "click-action");
             const popup = await openPopup(ctx, page);
-            await ctx.call(`${page.root}.click`, ["#action", { tabId: popup.id }]);
-            ctx.expect(await ctx.call(`${page.root}.evaluate`, ["window.__clicked", { tabId: popup.id }])).toBe(1);
+            await ctx.app.pages[page.id].editor.click("#action", { tabId: popup.id });
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("window.__clicked", { tabId: popup.id })).toBe(1);
         } finally {
             await cleanup(ctx, server, page);
         }
@@ -306,8 +305,8 @@ export default [
         try {
             page = await openBrowser(ctx, server, "check-input");
             const popup = await openPopup(ctx, page);
-            await ctx.call(`${page.root}.check`, ["#agree", { tabId: popup.id }]);
-            ctx.expect(await ctx.call(`${page.root}.evaluate`, ["document.querySelector('#agree').checked", { tabId: popup.id }])).toBe(true);
+            await ctx.app.pages[page.id].editor.check("#agree", { tabId: popup.id });
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("document.querySelector('#agree').checked", { tabId: popup.id })).toBe(true);
         } finally {
             await cleanup(ctx, server, page);
         }
@@ -319,9 +318,9 @@ export default [
         try {
             page = await openBrowser(ctx, server, "uncheck-input");
             const popup = await openPopup(ctx, page);
-            await ctx.call(`${page.root}.evaluate`, ["document.querySelector('#agree').checked = true", { tabId: popup.id }]);
-            await ctx.call(`${page.root}.uncheck`, ["#agree", { tabId: popup.id }]);
-            ctx.expect(await ctx.call(`${page.root}.evaluate`, ["document.querySelector('#agree').checked", { tabId: popup.id }])).toBe(false);
+            await ctx.app.pages[page.id].editor.evaluate("document.querySelector('#agree').checked = true", { tabId: popup.id });
+            await ctx.app.pages[page.id].editor.uncheck("#agree", { tabId: popup.id });
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("document.querySelector('#agree').checked", { tabId: popup.id })).toBe(false);
         } finally {
             await cleanup(ctx, server, page);
         }
@@ -334,7 +333,7 @@ export default [
             page = await openBrowser(ctx, server, "popup-events-agent-close");
             const popup = await openPopup(ctx, page);
             const openedEvents = await ctx.waitFor(
-                (activeContext) => activeContext.call("events.recent", [50], { maxLength: 8000 }),
+                (activeContext) => /* ctx.call remains because the app stand-in cannot pass the maxLength call option. */ activeContext.call("events.recent", [50], { maxLength: 8000 }),
                 (events) => events.some((event) => event.kind === "popup-opened" && event.text.includes(popup.id)),
             );
             const opened = openedEvents.find((event) => event.kind === "popup-opened" && event.text.includes(popup.id));
@@ -342,9 +341,9 @@ export default [
             ctx.expect(opened.text.includes(popup.openerId)).toBe(true);
             ctx.expect(opened.text.includes(popup.url)).toBe(false);
 
-            await ctx.call(`${page.root}.closePopup`, [popup.id]);
+            await ctx.app.pages[page.id].editor.closePopup(popup.id);
             const closedEvents = await ctx.waitFor(
-                (activeContext) => activeContext.call("events.recent", [50], { maxLength: 8000 }),
+                (activeContext) => /* ctx.call remains because the app stand-in cannot pass the maxLength call option. */ activeContext.call("events.recent", [50], { maxLength: 8000 }),
                 (events) => events.some((event) => event.kind === "popup-closed" && event.text.includes(popup.id)),
             );
             const closed = closedEvents.find((event) => event.kind === "popup-closed" && event.text.includes(popup.id));
@@ -360,10 +359,10 @@ export default [
         try {
             page = await openBrowser(ctx, server, "popup-events-self-close");
             const popup = await openPopup(ctx, page);
-            await ctx.call(`${page.root}.evaluate`, ["window.close()", { tabId: popup.id }]);
-            ctx.expect(await ctx.waitFor(`${page.root}.popups`, (items) => items.length === 0)).toEqual([]);
+            await ctx.app.pages[page.id].editor.evaluate("window.close()", { tabId: popup.id });
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.popups, (items) => items.length === 0)).toEqual([]);
             const events = await ctx.waitFor(
-                (activeContext) => activeContext.call("events.recent", [50], { maxLength: 8000 }),
+                (activeContext) => /* ctx.call remains because the app stand-in cannot pass the maxLength call option. */ activeContext.call("events.recent", [50], { maxLength: 8000 }),
                 (items) => items.some((event) => event.kind === "popup-closed" && event.text.includes(popup.id)),
             );
             const closed = events.find((event) => event.kind === "popup-closed" && event.text.includes(popup.id));
@@ -380,8 +379,8 @@ export default [
             page = await openBrowser(ctx, server, "popup-drag");
             const popup = await openPopup(ctx, page);
             const options = { tabId: popup.id, force: true };
-            await ctx.call(`${page.root}.drag`, ["#drag-source", "#drop-target", options]);
-            ctx.expect(await ctx.call(`${page.root}.evaluate`, ["document.querySelector('#drop-result').textContent", options])).toBe("drag payload");
+            await ctx.app.pages[page.id].editor.drag("#drag-source", "#drop-target", options);
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("document.querySelector('#drop-result').textContent", options)).toBe("drag payload");
         } finally {
             await cleanup(ctx, server, page);
         }
@@ -393,17 +392,17 @@ export default [
         try {
             page = await openBrowser(ctx, server, "oauth-postback");
             const popup = await openPopup(ctx, page, "#oauth", "/oauth");
-            ctx.expect(await ctx.call(`${page.root}.evaluate`, ["window.opener !== null", { tabId: popup.id }])).toBe(true);
-            await ctx.call(`${page.root}.type`, ["#email", "agent@example.test", { tabId: popup.id }]);
-            ctx.expect(await ctx.call(`${page.root}.evaluate`, ["document.querySelector('#email').value", { tabId: popup.id }])).toBe("agent@example.test");
-            await ctx.call(`${page.root}.evaluate`, ["window.opener.postMessage('oauth-complete','*')", { tabId: popup.id }]);
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("window.opener !== null", { tabId: popup.id })).toBe(true);
+            await ctx.app.pages[page.id].editor.type("#email", "agent@example.test", { tabId: popup.id });
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("document.querySelector('#email').value", { tabId: popup.id })).toBe("agent@example.test");
+            await ctx.app.pages[page.id].editor.evaluate("window.opener.postMessage('oauth-complete','*')", { tabId: popup.id });
             ctx.expect(await ctx.waitFor(
-                (activeContext) => activeContext.call(`${page.root}.evaluate`, ["document.querySelector('#message').textContent"]),
+                (activeContext) => activeContext.app.pages[page.id].editor.evaluate("document.querySelector('#message').textContent"),
                 (value) => value === "oauth-complete",
                 { timeout: 10000 },
             )).toBe("oauth-complete");
-            await ctx.call(`${page.root}.evaluate`, ["window.close()", { tabId: popup.id }]);
-            ctx.expect(await ctx.waitFor(`${page.root}.popups`, (items) => items.length === 0)).toEqual([]);
+            await ctx.app.pages[page.id].editor.evaluate("window.close()", { tabId: popup.id });
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.popups, (items) => items.length === 0)).toEqual([]);
         } finally {
             await cleanup(ctx, server, page);
         }
@@ -415,13 +414,13 @@ export default [
         try {
             page = await openBrowser(ctx, server, "oauth-button");
             const popup = await openPopup(ctx, page, "#oauth", "/oauth");
-            await ctx.call(`${page.root}.click`, ["#finish", { tabId: popup.id }]);
+            await ctx.app.pages[page.id].editor.click("#finish", { tabId: popup.id });
             ctx.expect(await ctx.waitFor(
-                (activeContext) => activeContext.call(`${page.root}.evaluate`, ["document.querySelector('#message').textContent"]),
+                (activeContext) => activeContext.app.pages[page.id].editor.evaluate("document.querySelector('#message').textContent"),
                 (value) => value === "oauth-complete",
                 { timeout: 10000 },
             )).toBe("oauth-complete");
-            ctx.expect(await ctx.waitFor(`${page.root}.popups`, (items) => items.length === 0)).toEqual([]);
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.popups, (items) => items.length === 0)).toEqual([]);
         } finally {
             await cleanup(ctx, server, page);
         }
@@ -434,16 +433,16 @@ export default [
             page = await openBrowser(ctx, server, "nested-activation");
             const opener = await openPopup(ctx, page);
             await waitForPopupRateWindow(ctx, page);
-            await ctx.call(`${page.root}.click`, ["#nested", { tabId: opener.id }]);
+            await ctx.app.pages[page.id].editor.click("#nested", { tabId: opener.id });
             const outcome = await ctx.waitFor(async (activeContext) => {
-                const items = await activeContext.call(`${page.root}.popups`);
+                const items = await activeContext.app.pages[page.id].editor.popups;
                 if (items.some((item) => item.url.includes("/leaf"))) return { items, blockedNotice: false };
                 const screen = await activeContext.callText("window.screen.snapshot", [{ maxChars: 12000 }]);
                 return { items, blockedNotice: screen.includes("blocked on this page") };
             }, (state) => state.items.some((item) => item.url.includes("/leaf")) || state.blockedNotice, { timeout: 10000 });
             const leafAtOpen = outcome.items.find((item) => item.url.includes("/leaf"));
             if (!leafAtOpen) ctx.expect(outcome.blockedNotice).toBe(false);
-            const nested = await ctx.waitFor(`${page.root}.popups`, (items) => items.some((item) => item.url.includes("/leaf") && item.title === "US-2055 Nested"), { timeout: 10000 });
+            const nested = await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.popups, (items) => items.some((item) => item.url.includes("/leaf") && item.title === "US-2055 Nested"), { timeout: 10000 });
             const leaf = nested.find((item) => item.url.includes("/leaf"));
             ctx.expect(leaf.openerId).toBe(opener.id);
             ctx.expect(leaf.title).toBe("US-2055 Nested");
@@ -459,7 +458,7 @@ export default [
             page = await openBrowser(ctx, server, "popup-rate-limit");
             await waitForPopupRateWindow(ctx, page);
             for (let attempt = 0; attempt < 4; attempt += 1) {
-                await ctx.call(`${page.root}.click`, ["#open"]);
+                await ctx.app.pages[page.id].editor.click("#open");
             }
             const screen = await ctx.waitFor(
                 (activeContext) => activeContext.callText("window.screen.snapshot", [{ maxChars: 12000 }]),
@@ -480,9 +479,9 @@ export default [
             page = await openBrowser(ctx, server, "id-errors-primary");
             otherPage = await openSeparateBrowser(ctx, server, "id-errors-foreign");
             const popup = await openPopup(ctx, page);
-            const unknown = await captureError(() => ctx.call(`${page.root}.evaluate`, ["document.title", { tabId: "unknown-us2055-popup" }]));
+            const unknown = await captureError(() => ctx.app.pages[page.id].editor.evaluate("document.title", { tabId: "unknown-us2055-popup" }));
             ctx.expect(unknown?.message.includes("unknown-us2055-popup")).toBe(true);
-            const foreign = await captureError(() => ctx.call(`${otherPage.root}.evaluate`, ["document.title", { tabId: popup.id }]));
+            const foreign = await captureError(() => ctx.app.pages[otherPage.id].evaluate("document.title", { tabId: popup.id }));
             ctx.expect(foreign?.message.includes(popup.id)).toBe(true);
 
             for (const [method, args] of [
@@ -493,14 +492,14 @@ export default [
                 ["forward", [{ tabId: popup.id }]],
                 ["navigateAndWait", [`${server.url}/destination`, { tabId: popup.id }]],
             ]) {
-                const error = await captureError(() => ctx.call(`${page.root}.${method}`, args));
+                const error = await captureError(() => page.node[method](...args));
                 ctx.expect(error).toBeTruthy();
             }
-            const activeOnly = await captureError(() => ctx.call(`${page.root}.navigateAndWait`, [`${server.url}/destination`, { tabId: popup.id }]));
+            const activeOnly = await captureError(() => ctx.app.pages[page.id].editor.navigateAndWait(`${server.url}/destination`, { tabId: popup.id }));
             ctx.expect(activeOnly?.message.includes("active tab only")).toBe(true);
-            await ctx.call(`${page.root}.closePopup`, [popup.id]);
-            ctx.expect(await ctx.waitFor(`${page.root}.popups`, (items) => items.length === 0)).toEqual([]);
-            const closed = await captureError(() => ctx.call(`${page.root}.evaluate`, ["document.title", { tabId: popup.id }]));
+            await ctx.app.pages[page.id].editor.closePopup(popup.id);
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.popups, (items) => items.length === 0)).toEqual([]);
+            const closed = await captureError(() => ctx.app.pages[page.id].editor.evaluate("document.title", { tabId: popup.id }));
             ctx.expect(closed?.message.includes(popup.id)).toBe(true);
         } finally {
             await cleanup(ctx, server, otherPage, page);
@@ -513,8 +512,8 @@ export default [
         try {
             page = await openBrowser(ctx, server, "tab-descendants");
             const popup = await openPopup(ctx, page);
-            await ctx.call(`${page.root}.closeTab`, [popup.openerId]);
-            ctx.expect(await ctx.waitFor(`${page.root}.popups`, (items) => items.length === 0)).toEqual([]);
+            await ctx.app.pages[page.id].editor.closeTab(popup.openerId);
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.popups, (items) => items.length === 0)).toEqual([]);
         } finally {
             await cleanup(ctx, server, page);
         }
@@ -526,11 +525,11 @@ export default [
         try {
             page = await openBrowser(ctx, server, "beforeunload-refusal");
             const popup = await openPopup(ctx, page);
-            await ctx.call(`${page.root}.evaluate`, ["window.onbeforeunload = () => 'Stay here'", { tabId: popup.id }]);
-            const error = await captureError(() => ctx.call(`${page.root}.closePopup`, [popup.id]));
+            await ctx.app.pages[page.id].editor.evaluate("window.onbeforeunload = () => 'Stay here'", { tabId: popup.id });
+            const error = await captureError(() => ctx.app.pages[page.id].editor.closePopup(popup.id));
             ctx.expect(error).toBeTruthy();
             ctx.expect(error.message).toContain("refused to close");
-            ctx.expect(await ctx.waitFor(`${page.root}.popups`, (items) => items.some((item) => item.id === popup.id))).toBeTruthy();
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.popups, (items) => items.some((item) => item.id === popup.id))).toBeTruthy();
         } finally {
             await cleanup(ctx, server, page);
         }
@@ -544,9 +543,9 @@ export default [
             await openPopup(ctx, page);
             const priorPageId = page.id;
             await ctx.restartApp();
-            const pages = await ctx.call("pages.all");
+            const pages = await ctx.app.pages.all;
             const restored = pages.find((item) => item.id === priorPageId && item.editor === "browser-view");
-            if (restored) ctx.expect(await ctx.call(`${browserRoot(restored.id)}.popups`)).toEqual([]);
+            if (restored) ctx.expect(await browserRoot(ctx, restored.id).popups).toEqual([]);
             else ctx.expect(pages.some((item) => item.id === priorPageId)).toBe(false);
             page = undefined;
         } finally {

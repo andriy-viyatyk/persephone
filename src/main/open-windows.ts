@@ -8,6 +8,7 @@ import { PageDescriptor, WindowPages } from "../shared/types";
 import type { LaunchInput } from "../shared/launch-input";
 import { BoardRoot } from "../shared/board/board-root";
 import { parseLaunchInputs } from "./launch-inputs";
+import { isTestInstance } from "./test-mode/instance-options";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -37,8 +38,22 @@ const windowsStore = new JsonFileStore<PersistedOpenWindow[]>("openWindows.json"
 class OpenWindows {
     windows: OpenWindowData[] = [];
     doQuit = false;
+    private readonly windowListeners = new Set<(window: BrowserWindow) => void>();
     private lastFocusedNormalWindow: number | undefined;
     private boardHostRootLookup?: BoardHostRootLookup;
+
+    subscribeWindowCreated(listener: (window: BrowserWindow) => void): () => void {
+        this.windowListeners.add(listener);
+        for (const record of this.windows) {
+            const window = record.window?.window;
+            if (window && !window.isDestroyed()) listener(window);
+        }
+        return () => this.windowListeners.delete(listener);
+    }
+
+    private notifyWindowCreated(window: OpenWindow): void {
+        for (const listener of this.windowListeners) listener(window.window);
+    }
 
     setBoardOriginLookup(lookup: BoardHostRootLookup): void {
         this.boardHostRootLookup = lookup;
@@ -100,6 +115,7 @@ class OpenWindows {
             this.windows.push(windowData);
         }
         windowData.window = newWindow;
+        this.notifyWindowCreated(newWindow);
         windowData.whenReady = new Promise<void>((resolve) => {
             windowData.ready = () => {
                 resolve();
@@ -131,6 +147,7 @@ class OpenWindows {
         this.trackRendererAvailability(win);
         win.window.on("focus", () => { if (!win.boardRoot) this.lastFocusedNormalWindow = win.window.id; });
         data.window = win;
+        this.notifyWindowCreated(win);
         data.whenReady = new Promise<void>((resolve) => { data.ready = () => { resolve(); data.ready = undefined; }; });
         this.windows.push(data);
         return win;
@@ -245,7 +262,7 @@ class OpenWindows {
             win.quitTimeout = null;
             return;
         }
-        this.setCanQuit(browserWindow, data.boardRoot ? true : result.canQuit);
+        this.setCanQuit(browserWindow, data.boardRoot || isTestInstance() ? true : result.canQuit);
     };
 
     /**

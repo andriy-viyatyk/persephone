@@ -43,3 +43,9 @@ export function getBrowserRegistrationKeyForWebContents(webContentsId: number): 
     return guest && !guest.webContents.isDestroyed() ? guest.key : browserPopups.getRegistrationKey(webContentsId);
 }
 
+export function getBrowserLogAttributionForWebContents(webContentsId: number): { pageId?: string; editorId: string; popupId?: string } | undefined {
+    const guest = browserGuests.getByWebContentsId(webContentsId);
+    if (guest && !guest.webContents.isDestroyed()) return { pageId: guest.pageId, editorId: guest.tabId };
+    return browserPopups.getAttribution(webContentsId);
+}
+

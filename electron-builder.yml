@@ -11,6 +11,7 @@ files:
   - .vite/**/*
   - "!.vite/module-service-host/**"
   - "!.vite/node-script-host/**"
+  - "!.vite/test-host/**"
   - "!node_modules/**/{CHANGELOG.md,README.md,readme.md,LICENSE,license,LICENCE}"
   - "!node_modules/**/*.{ts,map}"
 
@@ -22,6 +23,8 @@ extraResources:
     to: assets/module-service-host.mjs
   - from: .vite/node-script-host/node-script-host.mjs
     to: assets/node-script-host.mjs
+  - from: .vite/test-host/test-host.mjs
+    to: assets/test-host.mjs
 
 # Rust binaries sit next to the main exe (outside asar)
 extraFiles:
@@ -34,6 +37,8 @@ extraFiles:
     to: README.txt
   - from: launcher/target/release/persephone-launcher.exe
     to: persephone-launcher.exe
+  - from: launcher/target/release/persephone-test.exe
+    to: persephone-test.exe
   - from: snip-tool/target/release/persephone-snip.exe
     to: persephone-snip.exe
   # Mneme sidecar. ONNX Runtime is statically linked; the leftover directml.dll

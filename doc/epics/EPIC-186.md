@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Planned
+**Status:** Completed 2026-11-18
 **Created:** 2026-11-17
 
 ## Overview
@@ -107,6 +107,9 @@ Rules (fixed in the task document):
   (`const site = app.pages[id].editor`), not a returned value.
 - Functions cannot be passed as arguments (callbacks, event subscriptions). The stand-in rejects
   them with a message that points to `waitFor({ selector })` and `ctx.script(code)`.
+- A stand-in is awaitable, so returning one from an async function reads it. Helpers that return a
+  stand-in wrap it in `ctx.handle(node)` (US-2057): same path, not read by `await`, children still
+  awaitable. `openBrowser` returns a handle.
 - No static type checking. A wrong path is caught at run time: the `call` tree answers an unknown
   member with the node's valid member list (`src/renderer/scripting/ai-vision/root.ts:210`). The
   failure in the report and `tests.log` carries that answer unchanged, so the agent can fix the
@@ -161,8 +164,7 @@ A crash then loses at most the line being written.
 - Network: `src/main/network-logger.ts` already hooks `webRequest` on every session and keeps a
   200-entry buffer per page. It gains a subscriber hook so `TestModeLog` sees every completed or
   failed request, not a capped buffer. The file gets method, URL, status, resource type, page id
-  and timing. `Cookie`, `Set-Cookie`, `Authorization` and `Proxy-Authorization` are redacted, as is
-  the Windows single sign-on proof already redacted today. No request or response bodies.
+  and timing. No request or response headers and no bodies are logged.
 - Site console: browser guests register in `BrowserGuestRegistry` and pop-ups in
   `BrowserPopupRegistry`. Those registries (not `browser-service.ts` or `cdp-service.ts`, which are
   roadmap §2.3 god files) emit the attach events `TestModeLog` listens to. Electron's
@@ -184,15 +186,15 @@ A crash then loses at most the line being written.
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-2056 | `--test` controller mode: windowless main, test host utility process, child instance launch with forced MCP port, profile probe and `--attach`, summary and exit code. Runs path-style tests (`ctx.call`) using the library moved from `integration-test/lib` | Planned |
-| US-2057 | `app` object: stand-in that maps property chains to `call` paths, rejects function arguments, passes the app's error text (member lists included) into the failure; port two existing integration tests to prove parity | Planned |
-| US-2058 | Test helpers and results: `openBrowser`, per-test cleanup of pages and pop-ups, failure screenshots, run-all-then-report with every failure's step and error text, `--rerun-failed`, `tests.log`, report files, `--log` / `--log-dir` | Planned |
-| US-2059 | Test-mode logs in the app instance: `TestModeLog`, network-logger subscriber hook, console capture for app windows, guests and pop-ups, redaction | Planned |
-| US-2060 | Agent workflow: guide for writing tests from an exploration session, running them and triaging from the logs | Planned |
-| US-2061 | Move `integration-test/run.mjs` onto the product runner: it becomes a thin wrapper that resets the profile from `seed/`, starts the HTTP fixture server and calls `--test` with the selected files. Keeps `--area`/`--test` filters, `requires` tags, `--keep-open`, `--rerun-failed` and the dev/prod/exe targets. The unchanged path-style tests must pass as before | Planned |
-| US-2062 | Rewrite the `core` and `sidebar` tests to the `app` object (12 files, 54 tests) | Planned |
-| US-2063 | Rewrite the `shell` tests to the `app` object (9 files, 44 tests) | Planned |
-| US-2064 | Rewrite the `editors` tests to the `app` object (16 files, 91 tests) | Planned |
+| US-2056 | `--test` controller mode: windowless main, test host utility process, child instance launch with forced MCP port, profile probe and `--attach`, summary and exit code. Runs path-style tests (`ctx.call`) using the library moved from `integration-test/lib` | Done |
+| US-2057 | `app` object: stand-in that maps property chains to `call` paths, rejects function arguments, passes the app's error text (member lists included) into the failure; port two existing integration tests to prove parity | Done |
+| US-2058 | Test helpers and results: `openBrowser`, per-test cleanup of pages and pop-ups, failure screenshots, run-all-then-report with every failure's step and error text, `--rerun-failed`, `tests.log`, report files, `--log` / `--log-dir` | Done |
+| US-2059 | Test-mode logs in the app instance: `TestModeLog`, network-logger subscriber hook, console capture for app windows, guests and pop-ups, redaction | Done |
+| US-2060 | Agent workflow: guide for writing tests from an exploration session, running them and triaging from the logs | Done |
+| US-2061 | Move `integration-test/run.mjs` onto the product runner: it becomes a thin wrapper that resets the profile from `seed/`, starts the HTTP fixture server and calls `--test` with the selected files. Keeps `--area`/`--test` filters, `requires` tags, `--keep-open`, `--rerun-failed` and the dev/prod/exe targets. The unchanged path-style tests must pass as before | Done |
+| US-2062 | Rewrite the `core` and `sidebar` tests to the `app` object (12 files, 54 tests) | Done |
+| US-2063 | Rewrite the `shell` tests to the `app` object (9 files, 44 tests) | Done |
+| US-2064 | Rewrite the `editors` tests to the `app` object (16 files, 91 tests) | Done |
 
 US-2056 comes first: it gives a runnable end-to-end path that each later task extends. US-2061
 to US-2064 come last and are the epic's proof. The suite was written for the old runner and covers

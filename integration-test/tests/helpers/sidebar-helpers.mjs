@@ -1,27 +1,27 @@
-import { closeOwnedPages, shellPagePath } from "./shell-helpers.mjs";
+import { closeOwnedPages } from "./shell-helpers.mjs";
 
 export async function clickSidebarText(ctx, label) {
-    await ctx.call("window.screen.click", [`text=${JSON.stringify(label)}`]);
+    await ctx.app.window.screen.click(`text=${JSON.stringify(label)}`);
 }
 
 export async function clickSidebarRow(ctx, selector, label) {
-    const index = await ctx.call("window.screen.evaluate", [
+    const index = await ctx.app.window.screen.evaluate(
         `() => Array.from(document.querySelectorAll(${JSON.stringify(selector)})).findIndex((row) => row.innerText.includes(${JSON.stringify(label)}))`,
-    ]);
+    );
     if (index < 0) throw new Error(`Could not find sidebar row ${JSON.stringify(label)} in ${selector}.`);
-    await ctx.call("window.screen.click", [selector, { nth: index }]);
+    await ctx.app.window.screen.click(selector, { nth: index });
 }
 
 export async function openExplorerFixture(ctx, folder, files) {
     const folderPath = ctx.fixture(folder);
-    await ctx.call("fs.removeDir", [folderPath, true]);
-    await ctx.call("fs.mkdir", [folderPath]);
+    await ctx.app.fs.removeDir(folderPath, true);
+    await ctx.app.fs.mkdir(folderPath);
     for (const [relativePath, content] of Object.entries(files)) {
-        await ctx.call("fs.write", [ctx.fixture(`${folder}/${relativePath}`), content]);
+        await ctx.app.fs.write(ctx.fixture(`${folder}/${relativePath}`), content);
     }
-    const page = await ctx.call("pages.openFile", [folderPath]);
-    const pageRoot = `pages[${JSON.stringify(page.id)}].`;
-    await ctx.waitFor(`${pageRoot}panels.explorer`, Boolean);
+    const page = await ctx.app.pages.openFile(folderPath);
+    const pageRoot = ctx.handle(ctx.app.pages[page.id]);
+    await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].panels.explorer, Boolean);
     const expectedTitles = [...new Set(Object.keys(files).map((relativePath) => relativePath.split(/[\\/]/, 1)[0]))];
     await explorerItems(ctx, page.id, expectedTitles);
     return { pageId: page.id, pageRoot, folderPath };
@@ -33,7 +33,7 @@ export async function closeExplorerFixture(ctx, fixture) {
 
 export async function explorerItems(ctx, pageId, expectedTitles = []) {
     return ctx.waitFor(
-        (activeContext) => activeContext.call(`${shellPagePath(pageId, "panels.explorer")}.listItems`, []),
+        (activeContext) => activeContext.app.pages[pageId].panels.explorer.listItems(),
         (items) => Array.isArray(items) && expectedTitles.every((title) => items.some((item) => item.title === title)),
     );
 }
@@ -46,9 +46,9 @@ export async function waitForExplorerEntry(ctx, pageId, title, present = true) {
 }
 
 export async function selectedExplorerRows(ctx) {
-    return ctx.call("window.screen.evaluate", [
+    return ctx.app.window.screen.evaluate(
         '() => Array.from(document.querySelectorAll(\'[data-type="tree-provider-view"] [role="treeitem"][aria-selected="true"]\')).map((row) => row.innerText.trim())',
-    ]);
+    );
 }
 
 export async function explorerRowRefs(ctx, names) {
@@ -77,11 +77,14 @@ export async function explorerRowRef(ctx, name) {
 
 export async function openTreeContextMenu(ctx, name) {
     const ref = await explorerRowRef(ctx, name);
+    // ctx.call remains because dialog-aware calls cannot be expressed by the app stand-in.
     await ctx.call("window.screen.click", [{ ref }, { button: "right" }], { dialog: true });
+    // ctx.call remains because dialog-aware calls cannot be expressed by the app stand-in.
     await ctx.call("menus[0].items", undefined, { dialog: true });
 }
 
 export async function chooseTreeMenuItem(ctx, itemId) {
+    // ctx.call remains because dialog-aware calls cannot be expressed by the app stand-in.
     await ctx.call("menus[0].click", [itemId], { dialog: true });
 }
 
@@ -94,16 +97,20 @@ export async function answerInputDialog(ctx, value, buttonLabel) {
     const input = inputs.at(-1);
     const ref = input?.match(/\bref=(e\d+)\b/)?.[1] ?? input?.match(/\b(e\d+)\s+textbox\b/)?.[1];
     if (!ref) throw new Error("Could not find the text input in the open dialog.");
+    // ctx.call remains because dialog-aware calls cannot be expressed by the app stand-in.
     await ctx.call("window.screen.click", [{ ref }], { dialog: true });
+    // ctx.call remains because dialog-aware calls cannot be expressed by the app stand-in.
     await ctx.call("window.screen.pressKey", ["Control+A"], { dialog: true });
+    // ctx.call remains because dialog-aware calls cannot be expressed by the app stand-in.
     await ctx.call("window.screen.type", [{ ref }, value], { dialog: true });
+    // ctx.call remains because dialog-aware calls cannot be expressed by the app stand-in.
     await ctx.call("window.screen.click", [`text=${JSON.stringify(buttonLabel)}`], { dialog: true });
 }
 
 export async function readSidebarRows(ctx, selector) {
-    return ctx.call("window.screen.evaluate", [
+    return ctx.app.window.screen.evaluate(
         `() => Array.from(document.querySelectorAll(${JSON.stringify(selector)})).map((row) => row.innerText.trim())`,
-    ]);
+    );
 }
 
 export async function closePages(ctx, pageIds) {

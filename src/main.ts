@@ -7,6 +7,9 @@ import { parseApplicationProfile } from "./main/application-profile";
 // could miss. No module in its graph reads userData at load time (data paths resolve lazily), so
 // the profile's setPath below still takes effect for everything.
 import { setupMainProcess } from "./main/main-setup";
+import { parseTestControllerArguments } from "./main/test-mode/arguments";
+import { startTestController } from "./main/test-mode/controller";
+import { errMessage } from "./shared/utils";
 
 function startWithProfile(profile: ReturnType<typeof parseApplicationProfile>): void {
     const { name, directory: profileDirectory } = profile;
@@ -26,9 +29,18 @@ function startWithProfile(profile: ReturnType<typeof parseApplicationProfile>): 
 
 let profile: ReturnType<typeof parseApplicationProfile> | undefined;
 try {
-    profile = parseApplicationProfile(process.argv.slice(1));
-} catch {
-    dialog.showErrorBox(t("main.profileErrorTitle"), t("main.profileError"));
-    app.quit();
+    const startupArguments = process.argv.slice(process.defaultApp ? 2 : 1);
+    profile = parseApplicationProfile(startupArguments);
+    const testArguments = parseTestControllerArguments(profile.remainingArgs);
+    if (testArguments) {
+        void startTestController(profile, testArguments);
+    } else startWithProfile(profile);
+} catch (error) {
+    if (process.argv.some((argument) => argument === "--test" || argument.startsWith("--test="))) {
+        console.error(`Test runner arguments: ${errMessage(error)}`);
+        app.exit(1);
+    } else {
+        dialog.showErrorBox(t("main.profileErrorTitle"), t("main.profileError"));
+        app.quit();
+    }
 }
-if (profile) startWithProfile(profile);

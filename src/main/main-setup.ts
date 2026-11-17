@@ -6,8 +6,16 @@ import { errMessage } from "../shared/utils";
 import { moduleServiceSupervisor } from "./module-service-supervisor";
 import { openWindows } from "./open-windows";
 import { disposeMainServices, startMainServices } from "./main-services";
+import { hasTestInstanceOptions, parseTestInstanceOptions, stripTestInstanceOptions } from "./test-mode/instance-options";
+import { configureTestModeMcp, startTestModeMcp } from "./test-mode/mcp";
+import { configureTestModeLog } from "./test-mode/TestModeLog";
 
 export function setupMainProcess(): void {
+    let testInstance: ReturnType<typeof parseTestInstanceOptions>["options"];
+    try { testInstance = parseTestInstanceOptions(process.argv.slice(process.defaultApp ? 2 : 1)).options; }
+    catch (error) { console.error(error); app.exit(1); return; }
+    configureTestModeMcp(testInstance);
+    configureTestModeLog(testInstance?.logDirectory);
     void startMainServices("setup-before-certificate");
 
     app.on("select-client-certificate", (event, webContents, _url, _list, callback) => {
@@ -31,6 +39,8 @@ export function setupMainProcess(): void {
         }
 
         await startMainServices("ready");
+        try { await startTestModeMcp(); }
+        catch (error: unknown) { console.error("Test MCP bind failed:", error); app.exit(1); }
     });
 
     let serviceQuitGateStarted = false;
@@ -73,5 +83,8 @@ export function setupMainProcess(): void {
         }
     });
 
-    app.on("second-instance", (_event, commandLine, workingDirectory) => openWindows.handleSecondInstance(commandLine, workingDirectory));
+    app.on("second-instance", (_event, commandLine, workingDirectory) => {
+        if (hasTestInstanceOptions(commandLine)) return;
+        openWindows.handleSecondInstance(stripTestInstanceOptions(commandLine), workingDirectory);
+    });
 }

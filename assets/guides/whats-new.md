@@ -12,6 +12,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.20 (Upcoming)
 
+### New Features
+
+- **Web-app regression tests:** Write `.test.mjs` checks for a web app and run them with
+  `persephone-test.exe` in a Persephone profile, reusing a logged-in browser profile. Reports,
+  screenshots, console output, and network logs help diagnose failures. See [Web-app regression
+  tests](./agents/web-app-tests.md).
+
 ### Bug Fixes
 
 - **Agent file access over MCP:** `call` on `fs.read`, `fs.write`, `fs.exists` and the other `fs`

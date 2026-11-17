@@ -27,9 +27,9 @@ export default [
         let page;
         try {
             page = await openHtmlPage(ctx, "us-2048/html/live-edit", "page.html", initial);
-            ctx.expect(await ctx.call(`${page.root}.editor.id`)).toBe("html-view");
-            ctx.expect(await ctx.call(`${page.root}.editor.viewMounted`)).toBe(true);
-            ctx.expect(await ctx.call(`${page.root}.editor.html`)).toBe(initial);
+            ctx.expect(await ctx.app.pages[page.id].editor.id).toBe("html-view");
+            ctx.expect(await ctx.app.pages[page.id].editor.viewMounted).toBe(true);
+            ctx.expect(await ctx.app.pages[page.id].editor.html).toBe(initial);
 
             const scriptSnapshot = await ctx.waitFor(
                 (activeContext) => activeContext.callText("window.screen.snapshot", [{ maxChars: 12000 }]),
@@ -37,23 +37,23 @@ export default [
             );
             ctx.expect(scriptSnapshot).toContain("Original heading");
 
-            await ctx.call(`${page.root}.editorSwitches.switchTo`, ["monaco"]);
-            await ctx.waitFor(`${page.root}.editor.id`, (editor) => editor === "monaco");
-            await ctx.call("window.screen.pressKey", ["Control+a", { target: ".monaco-editor-host-root .monaco-editor" }]);
-            await ctx.call(`${page.root}.editor.replaceSelection`, [updated]);
+            await ctx.app.pages[page.id].editorSwitches.switchTo("monaco");
+            await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.id, (editor) => editor === "monaco");
+            await ctx.app.window.screen.pressKey("Control+a", { target: ".monaco-editor-host-root .monaco-editor" });
+            await ctx.app.pages[page.id].editor.replaceSelection(updated);
             ctx.expect(await ctx.waitFor(
-                (activeContext) => activeContext.callText(`${page.root}.content`),
+                (activeContext) => activeContext.callText(`pages[${JSON.stringify(page.id)}].content`),
                 (content) => content === updated,
             )).toBe(updated);
 
-            await ctx.call(`${page.root}.editorSwitches.switchTo`, ["html-view"]);
-            await ctx.waitFor(`${page.root}.editor.id`, (editor) => editor === "html-view");
+            await ctx.app.pages[page.id].editorSwitches.switchTo("html-view");
+            await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.id, (editor) => editor === "html-view");
             const updatedSnapshot = await ctx.waitFor(
                 (activeContext) => renderedSnapshot(activeContext),
                 (snapshot) => snapshot.includes("Updated heading"),
             );
             ctx.expect(updatedSnapshot).toContain("Script ran");
-            ctx.expect(await ctx.call(`${page.root}.modified`)).toBe(true);
+            ctx.expect(await ctx.app.pages[page.id].modified).toBe(true);
         } finally {
             await closeEditorPage(ctx, page);
         }
@@ -76,7 +76,7 @@ export default [
             "</body></html>",
             "",
         ].join("\n");
-        await ctx.call("fs.write", [ctx.fixture(`${folder}/graphic.svg`), image]);
+        await ctx.app.fs.write(ctx.fixture(`${folder}/graphic.svg`), image);
         let page;
         try {
             page = await openHtmlPage(ctx, folder, "page.html", html);
@@ -101,22 +101,22 @@ export default [
             "",
         ].join("\n");
         let page;
-        const existingIds = new Set((await ctx.call("pages.all")).map((entry) => entry.id));
+        const existingIds = new Set((await ctx.app.pages.all).map((entry) => entry.id));
         let pageIds = new Set();
         try {
             page = await openHtmlPage(ctx, folder, "index.html", source);
             pageIds.add(page.id);
-            await ctx.call(`${page.root}.editorSwitches.switchTo`, ["monaco"]);
-            await ctx.waitFor(`${page.root}.editor.id`, (editor) => editor === "monaco");
-            const countBefore = (await ctx.call("pages.all")).length;
-            const resourceButton = (await ctx.call(`${page.root}.editor.elements`))
+            await ctx.app.pages[page.id].editorSwitches.switchTo("monaco");
+            await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.id, (editor) => editor === "monaco");
+            const countBefore = (await ctx.app.pages.all).length;
+            const resourceButton = (await ctx.app.pages[page.id].editor.elements)
                 .find((element) => element.name === "text-show-resources");
             ctx.expect(resourceButton.visible).toBe(true);
             await waitForDrawingToastToClear(ctx);
-            await ctx.call("window.screen.click", [`[data-page-id="${page.id}"] [data-name="text-show-resources"]`]);
+            await ctx.app.window.screen.click(`[data-page-id="${page.id}"] [data-name="text-show-resources"]`);
             const pagesAfterClick = await ctx.waitFor(
                 async (activeContext) => {
-                    const pages = await activeContext.call("pages.all");
+                    const pages = await ctx.app.pages.all;
                     pageIds = new Set([...pageIds, ...pages.filter((entry) => !existingIds.has(entry.id)).map((entry) => entry.id)]);
                     return pages;
                 },
@@ -148,13 +148,13 @@ export default [
         let page;
         try {
             page = await openHtmlPage(ctx, "us-2048/html/capture", "page.html", "<!doctype html><h1>Capture this page</h1>\n");
-            await ctx.waitFor(`${page.root}.editor.viewMounted`, (mounted) => mounted === true);
+            await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.viewMounted, (mounted) => mounted === true);
             const pngPath = ctx.fixture("us-2048/html/capture/page.png");
-            ctx.expect(await ctx.call(`${page.root}.editor.savePngToFile`, [pngPath])).toBe(pngPath);
+            ctx.expect(await ctx.app.pages[page.id].editor.savePngToFile(pngPath)).toBe(pngPath);
             const summary = await readPngSummary(ctx, pngPath);
             ctx.expect(summary.size > 8).toBe(true);
             ctx.expect(summary.signature).toEqual(pngSignature);
-            ctx.expect(await ctx.call(`${page.root}.editor.copyImageToClipboard`, [])).toBe(null);
+            ctx.expect(await ctx.app.pages[page.id].editor.copyImageToClipboard()).toBe(null);
         } finally {
             await closeEditorPage(ctx, page);
         }

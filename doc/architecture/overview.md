@@ -70,6 +70,21 @@ ports 7965 (MCP), 7800 (Mneme), 7966 (video streaming), and 9052 (Tor); explicit
 still take precedence. Named profiles do not register as the system default browser or run the
 automatic application update check.
 
+### UI test runner
+
+The built-in UI test runner keeps execution outside the window being tested. A windowless main-
+process controller starts a test-host utility process and a separate Persephone instance with a
+visible window. The host imports the test file, sends requests through the instance's per-run MCP
+endpoint, gathers per-test results, and returns the final exit code. This lets the host survive a
+renderer crash or an app restart. `persephone-test.exe` is the console entry point that forwards
+arguments and exposes the runner's output and exit status to command shells.
+
+The product runner owns test execution, context APIs, page cleanup, screenshots, and per-run
+reports. The repository's `integration-test/run.mjs` stays a suite wrapper: it owns test discovery,
+fixtures, profile seeding, suite filters and aggregate reports. The suite contract and user guide
+are documented in [UI integration tests](../standards/integration-tests.md) and the
+[web-app test guide](../../assets/guides/agents/web-app-tests.md).
+
 ### Main-process persistence
 
 **JSON files in the data folder** (`<userData>/data/`) are read and written through `JsonFileStore`
