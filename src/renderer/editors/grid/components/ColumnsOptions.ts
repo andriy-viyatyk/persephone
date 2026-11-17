@@ -489,6 +489,9 @@ class ColumnsOptionsView extends VanillaView<DialogViewProps> {
             open: true,
             placement: "bottom-start",
             resizable: true,
+            // The editing grid's own popovers (a select cell's option list) are portaled outside
+            // this popover; a click on an option is not a click outside Edit Columns.
+            outsideClickIgnoreSelector: ".avg-popover",
             ...(this.model.pageId != null ? { "data-page-id": this.model.pageId } : {}),
             onClose: () => {
                 if (visiblePoppers().length === 1 && !this.model.state.get().changed) {

@@ -17,7 +17,9 @@ export const jsonlCodec: GridCodec<CsvCodecOptions> = {
                         : { value: parsed },
                 );
             } catch (error) {
-                return { rows, error: new Error(`Line ${i + 1}: ${errMessage(error)}`) };
+                // No partial rows: the grid would show a truncated table, and an edit would
+                // re-serialize only the lines before the bad one, dropping the rest of the file.
+                return { rows: [], error: new Error(`Line ${i + 1}: ${errMessage(error)}`) };
             }
         }
         return { rows };

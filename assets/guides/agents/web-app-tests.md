@@ -25,7 +25,9 @@ file. The test `app` stand-in maps object chains to the same call paths:
 `$help` works on stand-in nodes in tests. Each read or call is a request, so await it. Keep a
 stand-in such as `site`; a returned value is JSON data, not a live editor object. When an async
 helper must return a stand-in, wrap it with `ctx.handle(node)`. Use `ctx.call(path, args)` for a
-call-tree path the stand-in cannot represent. Function arguments are rejected because calls carry
+call-tree path the stand-in cannot represent. A string result comes back as plain text and is parsed
+when it is valid JSON, so a string such as `"true"` or `"42"` arrives as a boolean or number; use
+`ctx.callText(path, args)` when the exact string matters. Function arguments are rejected because calls carry
 JSON; use a browser editor's `waitFor({ selector })` for page readiness or `ctx.script(code)` for
 app scripting.
 

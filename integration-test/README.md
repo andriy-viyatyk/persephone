@@ -34,7 +34,9 @@ are mutually exclusive. Paths are passed as separate OS arguments, including pat
 `npm run test:ui:call -- --close` to close a retained app before a profile reset.
 
 The isolated profile is `integration-test/.profile`, identity `uitest`, with MCP 17865, video
-17866, Mneme 17700, and Tor 19052. A normal run seeds the profile and copies fixtures before
+17866, Mneme 17700, and Tor 19052. The seed's `config.json` marks the published-boards catalog as
+checked far in the future, so the app never fetches the catalog from GitHub and starts with an
+empty catalog. A normal run seeds the profile and copies fixtures before
 every module id, including nested modules. The local HTTP fixture server runs once on port 17867
 for the wrapper run. The wrapper refuses occupied ports, an existing `uitest` pipe, an unsafe
 profile path, or a concurrent `.runner.lock`. It does not stop the user's ordinary app.

@@ -28,6 +28,14 @@ Release notes and changelog for Persephone (formerly js-notepad).
   UI preferences. Each profile now keeps these in its own folder.
 - **Clipboard history limit:** setting `clipboard.max-items` outside 1–1000 through a script or the
   settings file stored the invalid value. It now falls back to 100, as the setting describes.
+- **Highlights in the app window:** highlighting a Settings section, page element, or UI control works
+  again.
+- **Settings scroll-spy:** after clicking an entry in the Content tree, scrolling the panels before the
+  jump settled stopped the tree from following the scroll until the next click. It follows again.
+- **JSONL in the grid:** a file with a malformed line showed the lines before it as a table, and an
+  edit there would save only those lines. The grid now shows only the parse error, as for JSON.
+- **Grid Edit Columns:** picking a filter type with the mouse closed the Edit Columns popup without
+  applying the change. The choice now stays in the popup.
 - **Duplicate Tab:** duplicating a text page opened an empty tab with no editor. The copy now opens
   in the same editor with the same content, including unsaved changes.
 - **Ctrl+Tab order:** `Ctrl+Tab` and `Ctrl+Shift+Tab` moved through tabs in the order they were last

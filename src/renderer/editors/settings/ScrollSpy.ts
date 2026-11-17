@@ -93,13 +93,21 @@ export class ScrollSpy {
         else pending.stableFrameCount = 0;
         pending.lastScrollTop = currentScrollTop;
 
-        if (pending.stableFrameCount < 2 || !this.isProgrammaticTargetSettled(pending)) {
+        if (pending.stableFrameCount < 2) {
             this.queueProgrammaticSettleCheck();
             return;
         }
 
         this.pendingProgrammaticScroll = undefined;
-        this.onActiveChange(pending.selectionValue, true);
+        // A target that stops short of the top (it sits near the end) but is visible keeps the
+        // chosen entry. One scrolled out of view means the user (or a script) scrolled during the
+        // navigation; keeping the scroll pending would ignore every later scroll, so hand control
+        // back to the spy.
+        if (this.isProgrammaticTargetSettled(pending) || this.isTargetVisible(pending)) {
+            this.onActiveChange(pending.selectionValue, true);
+            return;
+        }
+        this.updateSelectionFromScroll();
     }
 
     private isProgrammaticTargetSettled(pending: PendingProgrammaticScroll): boolean {
@@ -113,6 +121,14 @@ export class ScrollSpy {
         const targetIsVisible = target.bottom > viewport.top && target.top < viewport.bottom;
         const isFinalTarget = this.lastNavigableSectionId() === pending.sectionId;
         return aligned || (atBottom && isFinalTarget && targetIsVisible);
+    }
+
+    private isTargetVisible(pending: PendingProgrammaticScroll): boolean {
+        const panels = this.panelsElement();
+        if (!panels) return false;
+        const viewport = panels.getBoundingClientRect();
+        const target = pending.targetWrapper.getBoundingClientRect();
+        return target.bottom > viewport.top && target.top < viewport.bottom;
     }
 
     private updateSelectionFromScroll(): void {

@@ -14,7 +14,7 @@ import type {
     INotifyOptions,
 } from "./types/ui";
 import type { IAiHighlightApi } from "ai-vision/dom";
-import { installHighlightOverlay } from "ai-vision/dom";
+import { highlightOverlaySource, installHighlightOverlay } from "ai-vision/dom";
 import { alertsBarModel, maxAlerts } from "../uikit/Notification/AlertsBar";
 import type { AlertData } from "../uikit/Notification/AlertItem";
 import { showConfirmationDialog } from "./dialogs/ConfirmationDialog";
@@ -168,7 +168,13 @@ let highlightLoader: Promise<IHighlightApi> | undefined;
 function loadHighlight(): Promise<IHighlightApi> {
     if (!highlightLoader) {
         highlightLoader = Promise.resolve()
-            .then(() => installHighlightOverlay())
+            .then(() => {
+                // installHighlightOverlay() runs the overlay through an inline <script>, which the
+                // main window's hash-only CSP blocks. The CSP allows 'unsafe-eval', so evaluate the
+                // same source globally first; the package then finds the installed overlay.
+                if (!window.__aiVisionHighlight) (0, eval)(highlightOverlaySource);
+                return installHighlightOverlay();
+            })
             .catch((error) => {
                 highlightLoader = undefined;
                 throw error;

@@ -1,3 +1,25 @@
+## EPIC-187 — UI test coverage, phase 5a: Grid, Settings, Tools hub, About
+
+Completed 2026-11-18. First half of Phase 5 of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 33 new
+tests, 16 in `integration-test/tests/editors/grid/` and 17 in the new `tools` area (`settings-page`, `tools-hub`,
+`guides`); the suite is 221 tests. First coverage epic on the product runner: Codex (Luna) planned and wrote every test
+blind (it cannot start the app), Claude ran and triaged, and every wrong guess about the API went into
+[ai-vision-feedback.md](../reviews/ai-vision-feedback.md) (21 entries). **App bugs fixed:** every app-window highlight
+failed because the CSP blocked the overlay's inline script; the Settings scroll-spy stopped following the scroll after
+a scroll made while a Content tree jump settled; a JSONL file with a bad line showed a partial table (an edit would
+have dropped the rest of the file); a mouse pick in Edit Columns' filter-type list closed the popup. **Runner fix:**
+the test app fetched the published-boards catalog from GitHub at every start; the seed now keeps it offline.
+**Open:** the guide says sorting or filtering disables grid row insertion, but the editor always allows it (test stays
+failing); runner cleanup does not answer a stray "Unsaved Changes" dialog, so one can fail the rest of a module; the
+EPIC-185 env-vars failure is carried over. **Uncovered:** grid column drag, populated Search boards filtering, F1's
+fallback to the contents. Final launched run (`--with git`): 218 passed, 2 failed, 1 skipped. Completion skills by
+Codex (Luna). Epic document: [EPIC-187](EPIC-187.md).
+
+- [x] **Grid editor (US-2065).**
+- [x] **Settings page (US-2066).**
+- [x] **Tools & Editors hub (US-2067).**
+- [x] **About page and guides (US-2068).**
+
 ## EPIC-186 — Persephone test runner for web applications
 
 Completed 2026-11-18. `persephone.exe --test <file|folder>` (and the console wrapper `persephone-test.exe`) runs
