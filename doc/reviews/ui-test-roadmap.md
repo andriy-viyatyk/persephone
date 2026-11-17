@@ -1,6 +1,6 @@
 # UI test coverage roadmap
 
-**Date:** 2026-11-16 · **Status:** accepted 2026-11-16; Phase 1 is [EPIC-181](../epics/EPIC-181.md) (completed 2026-11-16); Phase 2 is [EPIC-182](../epics/EPIC-182.md) (completed 2026-11-16); Phase 3 is [EPIC-183](../epics/EPIC-183.md) (completed 2026-11-17) · **Builds on:** [EPIC-180](../epics/EPIC-180.md) (runner,
+**Date:** 2026-11-16 · **Status:** accepted 2026-11-16; Phase 1 is [EPIC-181](../epics/EPIC-181.md) (completed 2026-11-16); Phase 2 is [EPIC-182](../epics/EPIC-182.md) (completed 2026-11-16); Phase 3 is [EPIC-183](../epics/EPIC-183.md) (completed 2026-11-17); Phase 4a is [EPIC-184](../epics/EPIC-184.md) (completed 2026-11-17) · **Builds on:** [EPIC-180](../epics/EPIC-180.md) (runner,
 `uitest` profile, pilot tests).
 
 The refactoring roadmap touched almost the whole codebase. This roadmap retests every screen and feature once, and
@@ -138,7 +138,8 @@ Tracked in [EPIC-183](../epics/EPIC-183.md) (completed 2026-11-17).
 
 ### Phase 4: Text and document editors
 
-One epic, or split in two if the checklist runs long.
+Split in two. Phase 4a (Monaco, Markdown, Mermaid, compare and Git diff, editor switching) is tracked in
+[EPIC-184](../epics/EPIC-184.md) (completed 2026-11-17); phase 4b (the viewer editors) follows.
 
 - **Monaco:** edit, undo, find and replace, language switch, multi-cursor (as far as `call` reaches), word wrap,
   save, format.
