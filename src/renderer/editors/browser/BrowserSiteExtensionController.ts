@@ -21,6 +21,10 @@ import { withTimeout } from "../../core/utils/utils";
 import { SiteActionDocument } from "./SiteActionDocument";
 import { TComponentState } from "../../core/state/state";
 import type { SiteExtensionTrustPromptData } from "./site-extension-trust-prompt";
+import { TemporarySiteExtensions } from "./TemporarySiteExtensions";
+import type { TemporarySiteExtensionEntry, TemporarySiteExtensionOptions } from "./TemporarySiteExtensions";
+import { matchTemporarySiteExtensionHost } from "../../../shared/temporary-site-extension";
+import { SiteExtensionInjection, temporarySiteExtensionPredicate } from "./SiteExtensionInjection";
 
 interface BrowserSiteExtensionState {
     siteExtensionTrustPrompts: SiteExtensionTrustPromptData[];
@@ -47,6 +51,7 @@ function pageExtensionError(message: string): string {
 export class BrowserSiteExtensionController {
     private readonly model: BrowserEditor;
     readonly state = new TComponentState<BrowserSiteExtensionState>({ siteExtensionTrustPrompts: [] });
+    readonly temporary = new TemporarySiteExtensions();
     private readonly siteDocuments = new Map<string, number>();
     private readonly injectedSiteExtensions = new Map<string, { documentId: number; name: string }>();
     readonly actionDocuments = new Map<string, SiteActionDocument>();
@@ -96,6 +101,7 @@ export class BrowserSiteExtensionController {
 
     onNavigation(tabId: string): void {
         this.clear(tabId);
+        this.temporary.forgetTab(tabId);
         this.siteDocuments.set(tabId, this.documentId(tabId) + 1);
         this.clearTrustPrompt(tabId);
         for (const key of this.dismissedExtensionPrompts) {
@@ -105,6 +111,7 @@ export class BrowserSiteExtensionController {
 
     onTabReleased(tabId: string): void {
         this.clear(tabId);
+        this.temporary.forgetTab(tabId);
     }
 
     onActiveTabChanged(tabId: string): void {
@@ -155,6 +162,100 @@ export class BrowserSiteExtensionController {
         } catch { return false; }
     }
 
+    listTemporary(): ReturnType<TemporarySiteExtensions["list"]> { return this.temporary.list(); }
+
+    async attachTemporary(options: TemporarySiteExtensionOptions): Promise<{
+        host: string;
+        targets: { id: string; status: "injected" | "deferred" | "error"; error?: string }[];
+    }> {
+        const { entry, previous } = await this.temporary.attach(options);
+        const targets: { id: string; status: "injected" | "deferred" | "error"; error?: string }[] = [];
+        const tabs = this.model.state.get().tabs;
+        const cleanupFailures = previous
+            ? new Map((await this.cleanupTemporaryRevision(previous, tabs.map((tab) => tab.id))).map((failure) => [failure.id, failure.error]))
+            : new Map<string, string>();
+        for (const prompt of [...this.state.get().siteExtensionTrustPrompts]) {
+            const promptTab = this.model.webview.get(prompt.internalTabId);
+            if (!promptTab) continue;
+            try {
+                if (this.temporary.match(new URL(promptTab.getURL())) === entry) {
+                    this.clearTrustPrompt(prompt.internalTabId, prompt.documentId);
+                }
+            } catch { /* A prompt for a non-HTTP document remains governed by the saved path. */ }
+        }
+        for (const tab of tabs) {
+            const webview = this.model.webview.get(tab.id);
+            let url: URL;
+            try { url = new URL(webview?.getURL() ?? tab.url); } catch { continue; }
+            if (this.temporary.match(url) !== entry) continue;
+            const cleanupError = cleanupFailures.get(tab.id);
+            if (cleanupError) {
+                targets.push({ id: tab.id, status: "error", error: cleanupError });
+                this.temporary.record(entry, tab.id, { status: "error", error: cleanupError });
+                continue;
+            }
+            if (!webview || !this.model.webview.isReady(tab.id)) {
+                targets.push({ id: tab.id, status: "deferred" });
+                this.temporary.record(entry, tab.id, { status: "deferred" });
+                continue;
+            }
+            this.temporary.record(entry, tab.id, { status: "pending" });
+            const result = await this.injectTemporaryExtension(tab.id, entry);
+            if (result.status === "injected") {
+                targets.push({ id: tab.id, status: "injected" });
+                this.temporary.record(entry, tab.id, { status: "injected" });
+            } else if (result.status === "extension-error") {
+                targets.push({ id: tab.id, status: "error", error: result.error });
+                this.temporary.record(entry, tab.id, { status: "error", error: result.error });
+            } else {
+                targets.push({ id: tab.id, status: "deferred" });
+                this.temporary.record(entry, tab.id, { status: "deferred" });
+            }
+        }
+        return { host: entry.host, targets };
+    }
+
+    async detachTemporary(host: string): Promise<{ status: "detached" | "not-found"; errors: { id: string; error: string }[] }> {
+        const entry = this.temporary.remove(host);
+        if (!entry) return { status: "not-found", errors: [] };
+        const errors = await this.cleanupTemporaryRevision(entry, this.model.state.get().tabs.map((tab) => tab.id));
+        return { status: "detached", errors };
+    }
+
+    private async cleanupTemporaryRevision(entry: TemporarySiteExtensionEntry, tabIds: string[]): Promise<{ id: string; error: string }[]> {
+        const errors: { id: string; error: string }[] = [];
+        for (const tabId of tabIds) {
+            const doc = this.actionDocuments.get(tabId);
+            if (!doc || doc.source.kind !== "temporary" || doc.source.entry.revision !== entry.revision) continue;
+            doc.cancel();
+            const webview = this.model.webview.get(tabId);
+            const current = (): boolean => this.documentId(tabId) === doc.documentId && this.actionDocuments.get(tabId) === doc
+                && !!webview && this.model.webview.get(tabId) === webview && this.model.webview.isReady(tabId) && doc.isCurrentDocument();
+            if (!webview || !this.model.webview.isReady(tabId) || !current()) {
+                this.clear(tabId, false);
+                this.model.pageRemote.clear(tabId);
+                errors.push({ id: tabId, error: "The document became unavailable before extension cleanup; reload the tab to undo page effects." });
+                continue;
+            }
+            try {
+                const teardown = SiteExtensionInjection.createTeardownExpression(temporarySiteExtensionPredicate(entry.hostname, entry.explicitPort), doc.id);
+                const result = await evaluateInTarget(this.model.target, teardown, tabId);
+                if (!current() || String(result) !== "ok") {
+                    errors.push({ id: tabId, error: "The extension cleanup could not be confirmed; reload the tab to undo page effects." });
+                }
+            } catch (error) {
+                errors.push({ id: tabId, error: boundExtensionError(errMessage(error, "Extension cleanup failed.")) });
+            }
+            if (this.actionDocuments.get(tabId) === doc) {
+                this.clear(tabId);
+                this.model.pageRemote.clear(tabId);
+                this.model.pageRemote.resetForSiteExtensionReload(tabId);
+                void this.model.pageRemote.probeForSiteExtensionReload(tabId).catch((): undefined => undefined);
+            }
+        }
+        return errors;
+    }
+
     private clear(tabId: string, targetAttached = true): void {
         const actions = this.actionDocuments.get(tabId);
         if (targetAttached) actions?.cancel();
@@ -169,6 +270,7 @@ export class BrowserSiteExtensionController {
     dispose(): void {
         this.unsubscribeTrust();
         for (const tabId of new Set([...this.injectedSiteExtensions.keys(), ...this.actionDocuments.keys()])) this.clear(tabId, false);
+        this.temporary.clear();
         this.siteDocuments.clear();
         this.dismissedExtensionPrompts.clear();
         this.actionChoices.clear();
@@ -212,6 +314,19 @@ export class BrowserSiteExtensionController {
     async reload(): Promise<SiteExtensionReloadResult> {
         const tabId = this.model.state.get().activeTabId;
         const documentId = this.documentId(tabId);
+        const activeWebview = this.model.webview.get(tabId);
+        if (activeWebview) {
+            try {
+                const temporary = this.temporary.match(new URL(activeWebview.getURL()));
+                if (temporary) {
+                    if (!this.model.webview.isReady(tabId)) return { status: "not-current", registered: false };
+                    const injected = await this.injectTemporaryExtension(tabId, temporary, true);
+                    if (injected.status === "extension-error") return { status: "extension-error", registered: false, error: injected.error };
+                    if (injected.status !== "injected") return { status: "not-current", registered: false };
+                    return { status: "injected", registered: this.model.pageRemote.getRegistration(tabId) !== undefined };
+                }
+            } catch { /* Saved-extension selection handles non-URL documents. */ }
+        }
         const currentHost = (): string | undefined => {
             if (isPrivateBrowserSession(this.model.state.get())) return undefined;
             const webview = this.model.webview.get(tabId);
@@ -254,12 +369,7 @@ export class BrowserSiteExtensionController {
                 this.showTrustPrompt(tabId, documentId, extension, host);
                 return { status: "waiting-for-user", registered: false };
             }
-            const teardown = `(() => {
-    if (location.protocol !== "https:" || location.hostname !== ${JSON.stringify(host)}) return "host-mismatch";
-    window.__persephoneSiteRuntime?.dispose?.();
-    delete window.__persephoneSiteExtension;
-    return "ok";
-})()`;
+            const teardown = SiteExtensionInjection.createTeardownExpression(`location.protocol === "https:" && location.hostname === ${JSON.stringify(host)}`, extension.id);
             this.clear(tabId);
             const teardownResult = await evaluateInTarget(this.model.target, teardown, tabId);
             if (!isCurrent(host)) return notCurrent();
@@ -298,14 +408,23 @@ export class BrowserSiteExtensionController {
     }
 
     private async inject(tabId: string): Promise<void> {
-        await siteExtensionTrust.load().catch((): undefined => undefined);
-        if (isPrivateBrowserSession(this.model.state.get())) return;
         const webview = this.model.webview.get(tabId);
         if (!webview) return;
         let pageUrl: URL;
         try { pageUrl = new URL(webview.getURL()); } catch { return; }
-        if (pageUrl.protocol !== "https:") return;
         const documentId = this.documentId(tabId);
+        const temporary = this.temporary.match(pageUrl);
+        if (temporary) {
+            this.clearTrustPrompt(tabId);
+            const result = await this.injectTemporaryExtension(tabId, temporary);
+            this.temporary.record(temporary, tabId, result.status === "injected"
+                ? { status: "injected" }
+                : result.status === "extension-error" ? { status: "error", error: result.error } : { status: "deferred" });
+            return;
+        }
+        await siteExtensionTrust.load().catch((): undefined => undefined);
+        if (isPrivateBrowserSession(this.model.state.get())) return;
+        if (pageUrl.protocol !== "https:") return;
         const extension = await siteExtensionStore.findForHost(pageUrl.hostname).catch((): undefined => undefined);
         if (!extension || !this.currentDocument(tabId, documentId, pageUrl.hostname)) return;
         const grant = siteExtensionTrust.get(extension.id);
@@ -325,74 +444,154 @@ export class BrowserSiteExtensionController {
         documentId: number,
         probeAfterInjection = true,
     ): Promise<{ status: "injected" } | { status: "not-current" } | { status: "extension-error"; error: string }> {
+        return this.injectSelectedExtension({ kind: "saved", extension }, tabId, documentId, probeAfterInjection);
+    }
+
+    private async injectTemporaryExtension(
+        tabId: string,
+        entry: TemporarySiteExtensionEntry,
+        force = false,
+    ): Promise<{ status: "injected" } | { status: "not-current" } | { status: "extension-error"; error: string }> {
+        return this.injectSelectedExtension({ kind: "temporary", entry }, tabId, this.documentId(tabId), true, force);
+    }
+
+    private async injectSelectedExtension(
+        selection: { kind: "saved"; extension: SiteExtensionRecord } | { kind: "temporary"; entry: TemporarySiteExtensionEntry },
+        tabId: string,
+        documentId: number,
+        probeAfterInjection = true,
+        force = false,
+    ): Promise<{ status: "injected" } | { status: "not-current" } | { status: "extension-error"; error: string }> {
         const webview = this.model.webview.get(tabId);
-        if (!webview || isPrivateBrowserSession(this.model.state.get())) return { status: "not-current" };
+        if (!webview || (selection.kind === "saved" && isPrivateBrowserSession(this.model.state.get()))) return { status: "not-current" };
         let pageUrl: URL;
         try { pageUrl = new URL(webview.getURL()); } catch { return { status: "not-current" }; }
-        const isAllowed = (): boolean => !isPrivateBrowserSession(this.model.state.get())
-            && siteExtensionTrust.isGranted(extension) && extension.hosts.includes(pageUrl.hostname)
-            && this.currentDocument(tabId, documentId, pageUrl.hostname);
-        if (pageUrl.protocol !== "https:" || !isAllowed()) return { status: "not-current" };
+        const id = selection.kind === "saved"
+            ? selection.extension.id
+            : `temporary-${selection.entry.revision}-${crypto.randomUUID()}`;
+        const name = selection.kind === "saved"
+            ? selection.extension.name
+            : selection.entry.name ?? selection.entry.scriptPath ?? "inline script";
+        const host = selection.kind === "saved" ? pageUrl.hostname : selection.entry.hostname;
+        const pageIdentityCurrent = (): boolean => {
+            if (this.documentId(tabId) !== documentId) return false;
+            const target = this.model.webview.get(tabId);
+            if (!target) return false;
+            try {
+                const current = new URL(target.getURL());
+                if (selection.kind === "saved") return current.protocol === "https:" && current.hostname === host;
+                return selection.kind === "temporary"
+                    && matchTemporarySiteExtensionHost(current, [selection.entry])?.entry === selection.entry;
+            } catch { return false; }
+        };
+        const isAllowed = (): boolean => selection.kind === "saved"
+            ? !isPrivateBrowserSession(this.model.state.get()) && siteExtensionTrust.isGranted(selection.extension)
+                && selection.extension.hosts.includes(pageUrl.hostname) && this.currentDocument(tabId, documentId, pageUrl.hostname)
+            : this.temporary.isCurrent(selection.entry) && pageIdentityCurrent();
+        const pagePredicate = selection.kind === "saved"
+            ? `location.protocol === "https:" && location.hostname === ${JSON.stringify(host)}`
+            : temporarySiteExtensionPredicate(selection.entry.hostname, selection.entry.explicitPort);
+        if ((selection.kind === "saved" && pageUrl.protocol !== "https:") || !isAllowed()) return { status: "not-current" };
         let expression: string;
         try {
-            const [source, runtime] = await Promise.all([fs.read(extension.scriptPath), api.getSiteExtensionRuntime()]);
+            const sourcePromise = selection.kind === "saved"
+                ? fs.read(selection.extension.scriptPath)
+                : selection.entry.source !== undefined
+                    ? Promise.resolve(selection.entry.source)
+                    : fs.read(selection.entry.scriptPath);
+            const [source, runtime] = await Promise.all([sourcePromise, api.getSiteExtensionRuntime()]);
             if (!isAllowed()) return { status: "not-current" };
-            expression = `(() => {
-    const host = ${JSON.stringify(pageUrl.hostname)};
-    if (location.protocol !== "https:" || location.hostname !== host) return "host-mismatch";
-    if (window.__persephoneSiteExtension) return "already-injected";
-    Object.defineProperty(window, "__persephoneSiteExtension", {
-        value: { id: ${JSON.stringify(extension.id)}, host }, enumerable: false, configurable: true,
-    });
-${runtime}
-    try {
-${source}
-    } catch (error) {
-        console.error("[site-extension] " + ${JSON.stringify(extension.id)} + ":", error);
-        let message = "Unknown page error";
-        try { message = error && typeof error === "object" && typeof error.message === "string" ? error.message : String(error); }
-        catch { /* retain the safe fallback */ }
-        return "extension-error:" + message;
-    }
-    return "ok";
-})()`;
+            expression = SiteExtensionInjection.createExpression({
+                host,
+                id,
+                policyExpression: pagePredicate,
+                params: selection.kind === "temporary" ? selection.entry.serializedParams : "{}",
+                runtime,
+                source,
+            });
         } catch (error) {
-            console.warn(`[site-extension] ${extension.id}: extension files could not be read`);
+            console.warn(`[site-extension] ${id}: extension files could not be read`);
             return { status: "extension-error", error: boundExtensionError(`Extension files could not be read: ${errMessage(error, "read failed")}`) };
         }
         if (!isAllowed()) return { status: "not-current" };
         let result: unknown;
         let actionDocument: SiteActionDocument | undefined;
         const clearOwnActions = (): void => {
-            if (actionDocument && this.actionDocuments.get(tabId) === actionDocument) this.clear(tabId);
+            if (!actionDocument || this.actionDocuments.get(tabId) !== actionDocument) return;
+            if (actionDocument.source.kind === "temporary") {
+                actionDocument.cancel();
+                actionDocument.pending = undefined;
+                actionDocument.items = [];
+                this.model.pageRemote.notifyChanged();
+            } else this.clear(tabId);
         };
         try {
             const cdp = this.model.target.cdp(tabId);
             if (!await cdp.attach({ aiVisionBinding: true })) {
-                console.warn(`[site-extension] ${extension.id}: CDP attach failed`);
-                return { status: "not-current" };
+                console.warn(`[site-extension] ${id}: CDP attach failed`);
+                return selection.kind === "temporary"
+                    ? { status: "extension-error", error: "Browser target could not be attached for injection." }
+                    : { status: "not-current" };
             }
             if (!isAllowed()) return { status: "not-current" };
             await ensureTargetReady(this.model.target, tabId);
             if (!isAllowed()) return { status: "not-current" };
             const existing = this.actionDocuments.get(tabId);
-            if (existing && existing.isCurrent(false)) return existing.injected ? { status: "injected" } : { status: "not-current" };
+            if (!existing && selection.kind === "temporary") {
+                const teardown = SiteExtensionInjection.createExistingTeardownExpression(pagePredicate);
+                const tornDown = await evaluateInTarget(this.model.target, teardown, tabId);
+                if (!isAllowed()) return { status: "not-current" };
+                if (String(tornDown) !== "none" && String(tornDown) !== "ok") {
+                    return { status: "extension-error", error: "A previous page extension could not be cleaned up." };
+                }
+                if (String(tornDown) === "ok") {
+                    this.model.pageRemote.clear(tabId);
+                    this.model.pageRemote.resetForSiteExtensionReload(tabId);
+                }
+            }
+            if (existing) {
+                const sameTemporary = selection.kind === "temporary" && existing.source.kind === "temporary"
+                    && existing.source.entry.revision === selection.entry.revision;
+                const sameSaved = selection.kind === "saved" && existing.source.kind === "saved" && existing.id === id;
+                if ((sameTemporary || sameSaved) && existing.isCurrent(false) && !force) {
+                    return existing.injected ? { status: "injected" } : { status: "not-current" };
+                }
+                if (pageIdentityCurrent()) {
+                    const existingPolicy = existing.source.kind === "temporary"
+                        ? temporarySiteExtensionPredicate(existing.source.entry.hostname, existing.source.entry.explicitPort)
+                        : `location.protocol === "https:" && location.hostname === ${JSON.stringify(existing.host)}`;
+                    const teardown = SiteExtensionInjection.createTeardownExpression(existingPolicy, existing.id);
+                    const tornDown = await evaluateInTarget(this.model.target, teardown, tabId);
+                    if (!isAllowed()) return { status: "not-current" };
+                    if (String(tornDown) !== "ok") return selection.kind === "temporary"
+                        ? { status: "extension-error", error: "The previous page extension could not be cleaned up." }
+                        : { status: "not-current" };
+                }
+                this.clear(tabId);
+                this.model.pageRemote.clear(tabId);
+                this.model.pageRemote.resetForSiteExtensionReload(tabId);
+            }
             this.clear(tabId);
-            actionDocument = new SiteActionDocument(this.model, tabId, documentId, pageUrl.hostname, extension.id,
-                [...extension.hosts], [...extension.fetchHosts], this.model.target,
-                () => this.currentDocument(tabId, documentId, pageUrl.hostname));
+            const hosts = selection.kind === "saved" ? [...selection.extension.hosts] : [selection.entry.hostname];
+            const fetchHosts = selection.kind === "saved" ? [...selection.extension.fetchHosts] : [];
+            actionDocument = new SiteActionDocument(this.model, tabId, documentId, pageUrl.hostname, id,
+                hosts, fetchHosts, this.model.target,
+                pageIdentityCurrent,
+                selection.kind === "temporary"
+                    ? { kind: "temporary", entry: selection.entry, isCurrent: () => this.temporary.isCurrent(selection.entry) }
+                    : { kind: "saved" });
             this.actionDocuments.set(tabId, actionDocument);
             result = await evaluateInTarget(this.model.target, expression, tabId);
         } catch (error) {
             clearOwnActions();
-            console.warn(`[site-extension] ${extension.id}: ${errMessage(error, "injection failed").slice(0, 256)}`);
+            console.warn(`[site-extension] ${id}: ${errMessage(error, "injection failed").slice(0, 256)}`);
             return { status: "extension-error", error: boundExtensionError(`Extension evaluation failed: ${errMessage(error, "injection failed")}`) };
         }
         if (!isAllowed() || this.actionDocuments.get(tabId) !== actionDocument) { clearOwnActions(); return { status: "not-current" }; }
         const detail = String(result);
         if (detail !== "ok") clearOwnActions();
         if (detail.startsWith("extension-error:")) {
-            console.warn(`[site-extension] ${extension.id}: extension script failed`);
+            console.warn(`[site-extension] ${id}: extension script failed`);
             return { status: "extension-error", error: pageExtensionError(detail.slice("extension-error:".length)) };
         }
         if (detail === "host-mismatch" || detail === "already-injected") return { status: "not-current" };
@@ -402,7 +601,7 @@ ${source}
             actions.injected = true;
             this.model.pageRemote.notifyChanged();
         }
-        this.setMarker(tabId, documentId, extension.name);
+        this.setMarker(tabId, documentId, name);
         if (probeAfterInjection) this.model.pageRemote.probeAfterSiteExtensionInjection(tabId);
         return { status: "injected" };
     }
@@ -416,7 +615,7 @@ ${source}
                 && (doc.contextId === undefined || doc.contextId === data.executionContextId)
                 && Object.keys(signal).length === 1 && doc.isCurrent(false)) {
                 doc.fetchRequests.clear();
-                void api.cancelSiteExtensionFetches(doc.fetchKey).catch((): undefined => undefined);
+                if (doc.source.kind === "saved") void api.cancelSiteExtensionFetches(doc.fetchKey).catch((): undefined => undefined);
             }
             return true;
         }
@@ -436,6 +635,10 @@ ${source}
         doc.contextId = data.executionContextId;
         const id = request.id as number;
         if (doc.fetchRequests.has(id)) return;
+        if (doc.source.kind === "temporary") {
+            doc.resolveFetch(id, { error: "Fetch is unavailable for temporary site extensions" });
+            return;
+        }
         const respond = (result: { text?: string; error?: string }): void => {
             if (!doc.fetchRequests.has(id) || !doc.isCurrent(false) || doc.contextId !== data.executionContextId) return;
             doc.resolveFetch(id, result);

@@ -43,6 +43,7 @@ import { BrowserFindModel } from "./BrowserFindModel";
 import { BrowserPromptsModel } from "./BrowserPromptsModel";
 import { BrowserShortcutTable } from "./BrowserShortcutTable";
 import { BrowserGuestChannel } from "./BrowserGuestChannel";
+import { BrowserPopupModel } from "./BrowserPopupModel";
 import { BrowserSitePermissionsModel } from "./BrowserSitePermissionsModel";
 import { fs as appFs } from "../../api/fs";
 import type { IAudibleEditor } from "../base/audible-editor";
@@ -109,6 +110,7 @@ export class BrowserEditor extends EditorModel<
     noLanguage = true;
     skipSave = true;
     readonly guest: BrowserGuestChannel;
+    readonly popups: BrowserPopupModel;
     readonly webview: BrowserWebviewModel;
     readonly find: BrowserFindModel;
     readonly prompts: BrowserPromptsModel;
@@ -130,6 +132,7 @@ export class BrowserEditor extends EditorModel<
     constructor(state: TComponentState<BrowserEditorState>) {
         super(state);
         this.guest = new BrowserGuestChannel(() => this.id);
+        this.popups = new BrowserPopupModel(this);
         this.tabs = new BrowserTabsModel(this);
         this.bookmarks = new BrowserBookmarksModel(this);
         this.tor = new BrowserTorModel(this);
@@ -179,9 +182,10 @@ export class BrowserEditor extends EditorModel<
     armProfileNetwork = async (): Promise<void> => this.network.armProxy();
     showNetworkInfoDialog = async (): Promise<void> => this.network.showInfoDialog();
     retryProfileNetwork = async (): Promise<void> => { try { await this.network.armProxy(); } catch { /* `networkError` carries the error-panel reason. */ } };
-    releaseTab = (internalTabId: string): void => { this.webview.clearPendingLoad(internalTabId); this.siteExtensions.onTabReleased(internalTabId); this.translation.onTabReleased(internalTabId); this.pageRemote.onTabReleased(internalTabId); };
+    releaseTab = (internalTabId: string): void => { this.popups.releaseTab(internalTabId); this.webview.clearPendingLoad(internalTabId); this.siteExtensions.onTabReleased(internalTabId); this.translation.onTabReleased(internalTabId); this.pageRemote.onTabReleased(internalTabId); };
 
     async dispose(): Promise<void> {
+        this.popups.dispose();
         this.webview.dispose();
         this.translation.dispose();
         this.siteExtensions.dispose();

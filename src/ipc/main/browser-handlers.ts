@@ -1,10 +1,16 @@
 import { BrowserChannel, type BrowserRegisterRequest, type BrowserSetZoomRequest, type BrowserSitePermissionRegistrationRequest, type SetBrowserSitePermissionRequest } from "../browser-ipc";
 import { browserService } from "../../main/browser-service";
+import { browserPopupService } from "../../main/browser/browser-popup-service";
 import { guardedIpcHandle, guardedIpcOn } from "../../main/ipc-sender-guard";
 
 export function initBrowserHandlers(): void {
     guardedIpcHandle(BrowserChannel.fullscreen, (event, request: { key: string; selector?: string }) => browserService.enterFullscreen(event, request));
     guardedIpcHandle(BrowserChannel.exitFullscreen, (event, request: { key: string }) => browserService.exitFullscreen(event, request));
+    guardedIpcHandle(BrowserChannel.closePopup, (event, request: { registrationKey: string; popupId: string }) => browserPopupService.closePopup(event, request));
+    guardedIpcHandle(BrowserChannel.closeOwnedPopups, (event, request: { registrationKey: string }) => browserPopupService.closeOwnedPopups(event, request));
+    guardedIpcHandle(BrowserChannel.focusPopup, (event, request: { registrationKey: string; popupId: string }) => browserPopupService.focusPopup(event, request));
+    guardedIpcHandle(BrowserChannel.insertPopupText, (event, request: { registrationKey: string; popupId: string; text: string }) => browserPopupService.insertPopupText(event, request));
+    guardedIpcHandle(BrowserChannel.listPopups, (event, request: { registrationKey: string }) => browserPopupService.listPopups(event, request));
     guardedIpcHandle(BrowserChannel.setZoom, (event, request: BrowserSetZoomRequest) => browserService.setZoom(event, request));
     guardedIpcHandle(BrowserChannel.getSitePermissions, (event, request: BrowserSitePermissionRegistrationRequest) => browserService.getSitePermissions(event, request));
     guardedIpcHandle(BrowserChannel.setSitePermission, (event, request: SetBrowserSitePermissionRequest) => browserService.setSitePermission(event, request));

@@ -1,6 +1,7 @@
 import type { WebContents } from "electron";
 import type { PermissionPromptHandler } from "./permission-policy-service";
 import { browserGuests } from "./browser/BrowserGuestRegistry";
+import { browserPopups } from "./browser/BrowserPopupRegistry";
 
 export function createBrowserPermissionPromptHandler(): PermissionPromptHandler {
     return (contents, permissionRequest) => {
@@ -15,7 +16,7 @@ export function createBrowserPermissionPromptHandler(): PermissionPromptHandler 
 
 export function getBrowserWebContentsForCdp(key: string): WebContents | undefined {
     const guest = browserGuests.get(key);
-    return guest && !guest.webContents.isDestroyed() ? guest.webContents : undefined;
+    return guest && !guest.webContents.isDestroyed() ? guest.webContents : browserPopups.getWebContents(key);
 }
 
 export function sendBrowserAiVisionSignal(
@@ -39,6 +40,6 @@ export function sendBrowserAiVisionSignal(
 
 export function getBrowserRegistrationKeyForWebContents(webContentsId: number): string | undefined {
     const guest = browserGuests.getByWebContentsId(webContentsId);
-    return guest && !guest.webContents.isDestroyed() ? guest.key : undefined;
+    return guest && !guest.webContents.isDestroyed() ? guest.key : browserPopups.getRegistrationKey(webContentsId);
 }
 

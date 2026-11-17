@@ -10,6 +10,7 @@ import type { SiteActionDefinition } from "./shared/site-extension-actions";
 
 interface SiteRuntime {
     readonly schemaVersion: number;
+    readonly params: Readonly<Record<string, unknown>>;
     readonly expose: typeof expose;
     readonly onDispose: (callback: () => void) => void;
     readonly dispose: () => void;
@@ -19,6 +20,9 @@ interface SiteRuntime {
     readonly invokeAction: (id: string) => Promise<string>;
     readonly createElements: (declarations: readonly IAiElementDeclaration[]) => ReturnType<typeof createElements>;
 }
+
+// The host's injected expression supplies this lexical value before evaluating the bundle.
+declare const params: Readonly<Record<string, unknown>>;
 
 const target = window as unknown as { __persephoneSiteRuntime?: SiteRuntime };
 if (!target.__persephoneSiteRuntime) {
@@ -33,6 +37,7 @@ if (!target.__persephoneSiteRuntime) {
     };
     const runtime: SiteRuntime = {
         schemaVersion: AI_VISION_SCHEMA_VERSION,
+        params,
         expose(root) {
             remote?.dispose();
             remote = expose(root);

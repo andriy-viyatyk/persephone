@@ -104,6 +104,7 @@ export async function clearViewport(target: IAutomationTarget, options: { tabId?
 }
 
 export async function networkRequests(target: IAutomationTarget & ITabInfoTarget, tabId?: string, options: { includeBodies?: boolean; maxBodyBytes?: number } = {}): Promise<NetworkLogEntry[]> {
+    // BrowserTargetModel includes live popup targets here without exposing them in the public tab strip.
     const tab = tabId ? target.tabs.find(item => item.id === tabId) : target.activeTab;
     if (!tab) throw new Error(tabId ? `No tab with id "${tabId}"` : "No active tab");
     return ipcRenderer.invoke(BrowserChannel.getNetworkLog, target.cdp(tab.id).registrationKey, options);

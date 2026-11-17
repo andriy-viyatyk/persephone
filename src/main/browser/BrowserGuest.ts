@@ -34,6 +34,8 @@ export interface BrowserGuestHooks {
     removeFromRegistry(guest: BrowserGuest): void;
     unregisterFromRegistry(guest: BrowserGuest): void;
     isCurrent(guest: BrowserGuest): boolean;
+    registerPopup(window: BrowserWindow, rootKey: string, openerId: string, opener: WebContents, sender: WebContents): string | undefined;
+    sendPopupEvent(rootKey: string, sender: WebContents, type: BrowserEvent["type"], data: BrowserEvent["data"]): void;
 }
 
 export class BrowserGuest {
@@ -97,6 +99,11 @@ export class BrowserGuest {
 
     attach(): void {
         const contents = this.webContents as unknown as EventTarget;
+        const rootKey = this.key;
+        const rootSender = this.senderWebContents;
+        const rootTabId = this.internalTabId;
+        const rootContents = this.webContents;
+        const hooks = this.hooks;
         const on = (event: string, handler: AnyEventHandler): void => {
             contents.on(event, handler);
             this.listeners.push({ event, handler });
@@ -167,7 +174,11 @@ export class BrowserGuest {
         on("did-create-window", (childWindow: BrowserWindow, details: Electron.DidCreateWindowDetails) => {
             if (destroyPopupWithNodeIntegration(childWindow, details)) return;
             this.releaseLostPress("a popup window");
-            guardPopupWindow(childWindow, this.senderWebContents, (type, data) => this.sendEvent(type, data));
+            const sendPopupEvent = (type: BrowserEvent["type"], data: BrowserEvent["data"]): void =>
+                hooks.sendPopupEvent(rootKey, rootSender, type, data);
+            const registerPopup = (window: BrowserWindow, openerId: string, opener: WebContents): string | undefined =>
+                hooks.registerPopup(window, rootKey, openerId, opener, rootSender);
+            guardPopupWindow(childWindow, rootSender, sendPopupEvent, registerPopup, rootTabId, rootContents);
         });
         on("destroyed", () => this.hooks.unregisterFromRegistry(this));
     }

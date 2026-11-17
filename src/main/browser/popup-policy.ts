@@ -58,6 +58,9 @@ export function guardPopupWindow(
     childWindow: BrowserWindow,
     sender: WebContents,
     sendEvent: SendEvent,
+    registerPopup: (window: BrowserWindow, openerId: string, opener: WebContents) => string | undefined,
+    openerId: string,
+    opener: WebContents,
 ): void {
     let userActivated = false;
     childWindow.once("focus", () => { userActivated = true; });
@@ -92,8 +95,10 @@ export function guardPopupWindow(
             },
         };
     });
+    const popupId = registerPopup(childWindow, openerId, opener);
+    if (!popupId) return;
     childContents.on("did-create-window", (grandchild, details) => {
         if (destroyPopupWithNodeIntegration(grandchild, details)) return;
-        guardPopupWindow(grandchild, sender, sendEvent);
+        guardPopupWindow(grandchild, sender, sendEvent, registerPopup, popupId, childContents);
     });
 }

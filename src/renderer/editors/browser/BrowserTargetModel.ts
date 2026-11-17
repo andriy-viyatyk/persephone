@@ -17,7 +17,8 @@ export class BrowserTargetModel implements IAutomationTarget, ISyntheticInputHos
 
     async ensureReady(tabId?: string): Promise<void> {
         const id = tabId || this.model.state.get().activeTabId;
-        if (!this.model.state.get().tabs.some((tab) => tab.id === id)) return;
+        if (this.model.popups.has(id)) return;
+        if (!this.model.state.get().tabs.some((tab) => tab.id === id)) throw new Error(`Unknown, closed, or foreign browser target "${id}".`);
         const ready = this.model.webview.waitForLoaded(id);
         this.model.tabs.materialize(id);
         await ready;
@@ -26,7 +27,7 @@ export class BrowserTargetModel implements IAutomationTarget, ISyntheticInputHos
     cdp(tabId?: string): CdpSession {
         const state = this.model.state.get();
         const targetTab = tabId || state.activeTabId;
-        return new CdpSession(this.model.guest.key(targetTab));
+        return new CdpSession(this.registrationKey(targetTab));
     }
 
     inputCdp(tabId?: string, sessionId?: string) {
@@ -36,6 +37,10 @@ export class BrowserTargetModel implements IAutomationTarget, ISyntheticInputHos
     focusWebview(tabId?: string): void {
         const state = this.model.state.get();
         const targetTab = tabId || state.activeTabId;
+        if (this.model.popups.has(targetTab)) {
+            void this.model.popups.focus(targetTab).catch((): undefined => undefined);
+            return;
+        }
         const webview = this.model.webview.get(targetTab);
         webview?.focus();
     }
@@ -44,6 +49,10 @@ export class BrowserTargetModel implements IAutomationTarget, ISyntheticInputHos
         const state = this.model.state.get();
         const targetTab = tabId || state.activeTabId;
         await this.ensureReady(targetTab);
+        if (this.model.popups.has(targetTab)) {
+            await this.model.popups.insertText(targetTab, text);
+            return;
+        }
         const webview = this.model.webview.get(targetTab);
         if (!webview) throw new Error("Browser tab webview is not ready.");
         if (webview) {
@@ -70,13 +79,15 @@ export class BrowserTargetModel implements IAutomationTarget, ISyntheticInputHos
 
     get tabs(): ReadonlyArray<ITargetTab> {
         const state = this.model.state.get();
-        return state.tabs.map(t => ({
+        return [...state.tabs.map(t => ({
             id: t.id,
             url: t.url,
             title: t.pageTitle,
             loading: t.loading,
             active: t.id === state.activeTabId,
-        }));
+        })), ...this.model.popups.list().map(popup => ({
+            id: popup.id, url: popup.url, title: popup.title, loading: popup.loading, active: false,
+        }))];
     }
 
     get activeTab(): ITargetTab | undefined {
@@ -101,6 +112,21 @@ export class BrowserTargetModel implements IAutomationTarget, ISyntheticInputHos
     }
 
     switchTab(tabId: string): void {
+        if (this.model.popups.has(tabId)) throw new Error("switchTab() accepts browser tab IDs; popup IDs cannot be switched in the tab strip.");
+        if (!this.model.findTab(tabId)) throw new Error(`Unknown browser tab "${tabId}".`);
         this.model.tabs.switchTab(tabId);
+    }
+
+    isPopup(id: string): boolean { return this.model.popups.has(id); }
+
+    assertTabId(id: string, method: string): void {
+        if (this.model.popups.has(id)) throw new Error(`${method} accepts browser tab IDs; popup IDs are not supported.`);
+        if (!this.model.findTab(id)) throw new Error(`${method} received an unknown browser tab ID "${id}".`);
+    }
+
+    private registrationKey(id: string): string {
+        if (this.model.popups.has(id)) return this.model.popups.key(id);
+        if (!this.model.findTab(id)) throw new Error(`Unknown, closed, or foreign browser target "${id}".`);
+        return this.model.guest.key(id);
     }
 }

@@ -1279,6 +1279,31 @@ script's registered disposers, clears its remote model, reads the script again, 
 trust, host, enabled, and privacy gates as normal injection. Trust or enabled-state changes do not
 remove code already running in an open document; navigate or reload that document to apply them.
 
+#### Temporary test extensions
+
+`TemporarySiteExtensions` is owned by the page's `BrowserSiteExtensionController`, outside browser
+restore data and tab state. The browser facade validates the caller's private-page access before
+delegating attach, detach, or list. Entries are held only in renderer memory and disappear with the
+browser page. Host rules use the separate `shared/temporary-site-extension` authority parser: exact
+HTTP(S) hostname and effective port, with an explicit-port match taking precedence over a no-port
+default rule. The controller selects a matching temporary entry before saved trust, privacy, or
+saved-store checks; a temporary error does not fall back to saved injection.
+
+Saved and temporary sources share the same guarded injection pipeline and `SiteActionDocument`.
+The document's discriminated source policy retains saved grant and non-private requirements, while
+temporary policy checks the live entry revision and document URL and permits agent-authorized
+Incognito and Tor tabs. The runtime receives the validated, frozen `params` value through the
+injection expression's lexical scope. Temporary fetch requests are answered unavailable in the
+renderer before the existing main-process broker call; the saved broker and grant checks are
+unchanged. Detach invalidates the registry entry first, cancels its document resources, disposes the
+runtime in a matching current document, and clears remote registration. Cleanup errors are returned
+per tab because arbitrary page effects cannot always be reversed.
+
+Temporary entries have no page-level UI (a marker bar was removed by user decision): the agent
+reads `testExtensions` (`injectedTabs`, `failedTabs` with errors), and an injected script that exposes a
+model shows the ordinary site-extension indicator in the address bar. Rules apply to internal browser tabs, including tab-disposition links and `window.open`,
+but not separate `BrowserWindow` pop-ups; that target integration is tracked independently.
+
 The renderer trust mirror receives authoritative snapshots over IPC. The main-process trust service
 serializes file mutations and broadcasts updates to every application window. Renderer management
 helpers keep folder removal and trust revocation together, while the Tools & Editors hub's Site
@@ -1428,6 +1453,36 @@ response URL (exact string or regular expression) and resolves at response heade
 body. Arm the wait before the action that causes the request. These bodies may contain sensitive
 page data, so the API does not log or persist them. Unlike `networkRequests()` body enrichment,
 this wait can return a body for browser pages, boards, and `window.screen`.
+
+## Real popup ownership and automation
+
+`BrowserPopupRegistry` in `src/main/browser/BrowserPopupRegistry.ts` is the main-process owner of
+real BrowserWindow pop-ups created by browser guests. It assigns opaque runtime IDs, keeps the root
+guest key and sender, and records each immediate opener WebContents and opener ID. Nested windows
+remain owned by the root browser page. `BrowserGuest` registers a kept window only after the
+Node-integration policy allows it; `popup-policy.ts` retains the navigation guards, mute setup,
+rate limit, nested-window activation gate, and recursive registration. Popup lifecycle events are
+sent through the current `BrowserGuest` resolved by root key, so re-registering the same webContents
+does not strand the popup event route.
+
+`BrowserPopupModel` in the renderer subscribes to the existing `BrowserGuestChannel` event stream
+and keeps a page-local projection outside browser tab state and restore data. It verifies that the
+root tab and immediate opener still belong to the page, and translates a live popup ID to the same
+`${editorId}/${id}` key used by tab CDP. `BrowserTargetModel` routes existing automation operations
+through that key; the main CDP service resolves it by first checking registered tab guests and
+then the popup registry. The browser target's internal automation tab list includes live pop-ups
+for network log lookup, while the public `tabs` property and tab strip contain only actual tabs.
+Network logging uses the same WebContents-ID resolver and is cleared with CDP target state on close.
+
+Agent close requests use typed browser-service invoke handlers that validate the sender, owning
+root registration, and popup ID. They call `BrowserWindow.close()` and wait up to three seconds for
+`closed`, allowing `beforeunload`; a refusal leaves the popup live. Tab release, changed WebContents,
+page teardown, and sender destruction destroy owned pop-ups. A popup's WebContents destruction
+destroys its descendants. Registry cleanup is idempotent and clears CDP and network state. The
+renderer's existing browser-page privacy check guards popup discovery, close, and automation.
+Popup state is never persisted. Temporary site extensions remain tab-scoped. Popup navigation
+continues through guarded page actions such as `evaluate()` rather than adding a separate navigation
+command.
 ## Link Open Menu Helper
 
 `appendLinkOpenMenuItems()` in `src/renderer/editors/shared/link-open-menu.ts` is a reusable function that appends "Open in..." browser menu items to a `MenuItem[]` array. It generates items for: OS default browser, internal browser, all configured user profiles, and incognito. Used by Link Editor (list, tiles, pinned links) and Markdown Preview link context menus.

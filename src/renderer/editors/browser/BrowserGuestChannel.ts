@@ -1,6 +1,7 @@
 import {
     BrowserChannel,
     type BrowserEvent,
+    type BrowserPopupSnapshot,
     type BrowserRegisterRequest,
     type BrowserSitePermissionKey,
     type BrowserSitePermissions,
@@ -50,6 +51,21 @@ export class BrowserGuestChannel {
     }
     exitFullscreen(key: string): Promise<{ fullscreen: boolean }> {
         return ipcRenderer.invoke(BrowserChannel.exitFullscreen, { key });
+    }
+    listPopups(registrationKey: string): Promise<BrowserPopupSnapshot[]> {
+        return ipcRenderer.invoke(BrowserChannel.listPopups, { registrationKey });
+    }
+    closePopup(registrationKey: string, popupId: string): Promise<void> {
+        return ipcRenderer.invoke(BrowserChannel.closePopup, { registrationKey, popupId });
+    }
+    closeOwnedPopups(registrationKey: string): Promise<void> {
+        return ipcRenderer.invoke(BrowserChannel.closeOwnedPopups, { registrationKey });
+    }
+    focusPopup(registrationKey: string, popupId: string): Promise<void> {
+        return ipcRenderer.invoke(BrowserChannel.focusPopup, { registrationKey, popupId });
+    }
+    insertPopupText(registrationKey: string, popupId: string, text: string): Promise<void> {
+        return ipcRenderer.invoke(BrowserChannel.insertPopupText, { registrationKey, popupId, text });
     }
     onEvent(listener: (event: Electron.IpcRendererEvent, browserEvent: BrowserEvent) => void): () => void {
         ipcRenderer.on(BrowserChannel.event, listener);

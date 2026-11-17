@@ -389,7 +389,8 @@ Text-bearing editors hold a `TextFileModel` through `contentHost`. The trait tra
 Markdown rendering parses raw HTML for compatibility, then sanitizes the resulting HAST before
 creating DOM nodes. Script, frame, form, style, and other active-content elements are removed, and
 URL-bearing properties are checked against the Markdown link and image scheme allowlists.
-Mermaid diagrams render with `securityLevel: "strict"`.
+Mermaid diagrams render with `securityLevel: "strict"`; error rendering is suppressed and the
+temporary body container is removed after each render, including when parsing fails.
 
 The Mermaid page toolbar offers **Look** choices (Classic, Neo, Hand-drawn) and **Layout** choices
 (Dagre, ELK). The selected values are saved in the page's editor-state slot and restored per page;

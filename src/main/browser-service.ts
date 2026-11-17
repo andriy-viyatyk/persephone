@@ -17,6 +17,7 @@ import { openWindows } from "./open-windows";
 import { collectDom, collectLoadedResources } from "./browser-dom-snapshot";
 import { BrowserGuest, BrowserGuestHostHooks } from "./browser/BrowserGuest";
 import { browserGuests } from "./browser/BrowserGuestRegistry";
+import { browserPopups } from "./browser/BrowserPopupRegistry";
 import {
     BrowserChannel,
     BrowserRegisterRequest,
@@ -110,6 +111,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest): 
     globalMuteService.register(contents, "webview");
     const previous = browserGuests.get(key);
     if (previous && previous.senderWebContents !== event.sender) return;
+    if (previous && previous.webContents.id !== webContentsId) browserPopups.closeOwned(key, event.sender);
     browserGuests.unregister(key, { keepCdpState: previous?.webContents.id === webContentsId });
 
     const sender = event.sender;
@@ -143,6 +145,8 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest): 
             removeFromRegistry: (current) => browserGuests.removeIfCurrent(current),
             unregisterFromRegistry: (current) => browserGuests.unregister(current.key),
             isCurrent: (current) => browserGuests.get(current.key) === current,
+            registerPopup: (window, rootKey, openerId, opener, popupSender) => browserPopups.register({ window, rootKey, openerId, immediateOpener: opener, sender: popupSender }),
+            sendPopupEvent: (rootKey, popupSender, type, data) => browserPopups.sendEvent(rootKey, popupSender, type, data),
         },
     });
     browserGuests.register(guest);
@@ -201,10 +205,7 @@ export function initializeBrowserService(): void {
 }
 
 function ownedRegistration(event: IpcMainInvokeEvent, key: unknown): BrowserGuest | undefined {
-    if (typeof key !== "string" || key.length > 240) return undefined;
-    const registration = browserGuests.get(key);
-    if (!registration || registration.senderWebContents !== event.sender || registration.webContents.isDestroyed()) return undefined;
-    return registration;
+    return browserGuests.owned(key, event.sender);
 }
 
 function requireFullscreenRegistration(event: IpcMainInvokeEvent, key: unknown): BrowserGuest {

@@ -239,3 +239,20 @@ document. Drag source and target must be in the same frame; cross-frame drag fai
 After several pages of a site are automated, MCP may offer an optional site-extension suggestion. Finish the current task first, then ask whether the work recurs and offer an extension if appropriate. Read `guides.agents["site-extensions"]` before building one. The user can disable agent tips in Settings → MCP Server / Mneme.
 
 After restore, tab metadata is available without loading background tabs. Guest operations targeting a background tab can start it without switching the active tab.
+
+## Real browser pop-ups
+
+`editor.popups` lists live real windows opened by this page, including nested windows. Each entry
+has a runtime-only `id`, immediate `openerId`, `url`, `title`, and `loading`; tab dispositions still
+appear as ordinary tabs. Use popup IDs with content methods' `{ tabId }` option, including
+`evaluate()`, input, screenshots, and navigation waits. An OAuth page can return its result through
+`window.opener.postMessage`; wait on the popup with `waitForURL()` or `waitForNavigation()` while
+the opener receives the message. `closePopup(id)` runs the popup's `beforeunload` handler and
+rejects if the page refuses to close. Close pop-ups when finished. `closeTab()`, `switchTab()`,
+`fullscreen()`, `back()`, `forward()`, and `navigateAndWait()` accept tabs only; back/forward and
+`navigateAndWait()` operate on the active tab. Pop-ups close with their opener tab or page and are
+never restored. Browser privacy rules still apply.
+
+A `popup-opened` event in the call event feed announces each new pop-up with its ID, so you do not
+have to poll `popups` after a click; `popup-closed` follows when it closes, including when the page
+closes itself after sign-in. Wait for either with `events.wait()`.

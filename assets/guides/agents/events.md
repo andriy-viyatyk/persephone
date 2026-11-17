@@ -43,7 +43,8 @@ walkthrough is over.
 ## What is recorded
 
 The log records board refreshes and reloads, navigation in a browser tab that has registered a
-model, answered dialogs, guide-card button presses, and relevant active-page changes. When a page
+model, answered dialogs, guide-card button presses, browser pop-ups opening and closing
+(`popup-opened` / `popup-closed`, for pages you may access), and relevant active-page changes. When a page
 you have addressed becomes hidden, a `page-activated` event tells you which page is active now —
 re-activate yours before reading anything geometry-dependent, because a hidden page has no layout
 box. Switches you asked for yourself are not reported, and neither is moving between two pages

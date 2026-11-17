@@ -4,12 +4,18 @@ import { api } from "../../../ipc/renderer/api";
 import type { BrowserEditor } from "./BrowserEditor";
 import type { BrowserTargetModel } from "./BrowserTargetModel";
 import { isPrivateBrowserSession } from "./agent-access";
+import type { TemporarySiteExtensionEntry } from "./TemporarySiteExtensions";
+
+export type SiteActionSource =
+    | { kind: "saved" }
+    | { kind: "temporary"; entry: TemporarySiteExtensionEntry; isCurrent: () => boolean };
 
 export class SiteActionDocument {
     readonly tabId: string;
     readonly target: BrowserTargetModel;
     readonly model: BrowserEditor;
     readonly isCurrentDocument: () => boolean;
+    readonly source: SiteActionSource;
     private cancelled = false;
 
     documentId: number;
@@ -39,6 +45,7 @@ export class SiteActionDocument {
         fetchHosts: string[],
         target: BrowserTargetModel,
         isCurrentDocument: () => boolean,
+        source: SiteActionSource = { kind: "saved" },
     ) {
         this.model = model;
         this.tabId = tabId;
@@ -49,6 +56,7 @@ export class SiteActionDocument {
         this.fetchHosts = fetchHosts;
         this.target = target;
         this.isCurrentDocument = isCurrentDocument;
+        this.source = source;
         this.fetchKey = model.guest.key(tabId);
         this.fetchRequests = new Set();
         this.injected = false;
@@ -60,11 +68,12 @@ export class SiteActionDocument {
 
     isCurrent(active: boolean): boolean {
         const state = this.model.state.get();
-        return this.model.siteExtensions.actionDocuments.get(this.tabId) === this
-            && !isPrivateBrowserSession(state)
+        return !this.cancelled
+            && this.model.siteExtensions.actionDocuments.get(this.tabId) === this
+            && (this.source.kind === "temporary" || !isPrivateBrowserSession(state))
             && (!active || state.activeTabId === this.tabId)
             && state.tabs.some((tab) => tab.id === this.tabId)
-            && siteExtensionTrust.isGranted(this)
+            && (this.source.kind === "temporary" ? this.source.isCurrent() : siteExtensionTrust.isGranted(this))
             && this.isCurrentDocument();
     }
 
@@ -93,7 +102,7 @@ export class SiteActionDocument {
         this.timer = undefined;
         this.cancelRun?.();
         this.cancelRun = undefined;
-        void api.cancelSiteExtensionFetches(this.fetchKey).catch((): undefined => undefined);
+        if (this.source.kind === "saved") void api.cancelSiteExtensionFetches(this.fetchKey).catch((): undefined => undefined);
         if (resolvePending) {
             for (const id of this.fetchRequests) this.resolveFetch(id, { error: "Fetch cancelled" });
         }

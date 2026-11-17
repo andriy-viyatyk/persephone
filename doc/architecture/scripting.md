@@ -347,10 +347,12 @@ deleting the extension and revoking its trust. The `siteExtensions` AiVision nod
 and authoring/removal operations. Its browser-page `trustSiteExtension()` and
 `dismissSiteExtensionTrustPrompt()` methods may answer an active bar under the same trust policy.
 
-Trust is owned by the main process and bound to the configured extension folder and the extension's
-exact host list. Editing the script does not invalidate consent; changing its hosts does. Incognito
-and Tor browser pages never run site extensions. See [Browser Editor Architecture](./browser-editor.md#site-extensions)
-for the injection, prompt, and remote-model lifecycle.
+Trust for saved extensions is owned by the main process and bound to the configured extension
+folder and the extension's exact host list. Editing the script does not invalidate consent;
+changing its hosts does. Saved extensions do not run in Incognito or Tor. An agent may attach a
+temporary extension to an agent-accessible private browser page; it remains page-scoped and has no
+privileged fetch broker. See [Browser Editor Architecture](./browser-editor.md#site-extensions) for
+the injection, prompt, and remote-model lifecycle.
 
 ### `app.proc` — Process Execution
 
@@ -1016,7 +1018,9 @@ timeout, preserving the invariant renderer bound < bridge timeout < client timeo
 renderer clamps an old cursor back to the new log's sequence space.
 
 The renderer producers currently record `shape-changed`, `board-reloaded`, `navigated`,
-`page-activated`, `dialog-answered`, `remote-notify`, `alert-raised`, and `guide-button`.
+`page-activated`, `dialog-answered`, `remote-notify`, `alert-raised`, `guide-button`, and
+`popup-opened` / `popup-closed` (from `BrowserPopupModel`, only for browser pages the agent may
+access; the text carries the pop-up ID but never its URL).
 The alert watcher subscribes to the renderer alert model during app bootstrap and forwards only
 new `error` and `warning` toasts; routine `info` and `success` notifications stay out of the event
 feed. Page activation is

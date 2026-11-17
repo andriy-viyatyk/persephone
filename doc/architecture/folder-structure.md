@@ -556,7 +556,10 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── SitePermissionsPopover.ts # Site-permission popover content
 │   │   ├── PageZoomPopover.ts        # Page zoom popover content
 │   │   ├── BrowserWebviewModel.ts    # Private guest registry, readiness, navigation, event routing
-│   │   ├── BrowserSiteExtensionController.ts # Trust, injection, site actions, and fetch routing
+│   │   ├── BrowserSiteExtensionController.ts # Saved/temporary extension selection, injection, actions, and fetch routing
+│   │   ├── SiteExtensionInjection.ts  # Shared guarded injection and in-document teardown expressions
+│   │   ├── TemporarySiteExtensions.ts # Page-memory test-extension registry, validation, and outcomes
+│   │   ├── BrowserPopupModel.ts       # Page-local live popup projection and browser event lifecycle
 │   │   ├── BrowserSiteActionsView.ts  # Site action toolbar popover content
 │   │   ├── BrowserPageRemote.ts      # Page-authored AiVision/WebMCP registration and requests
 │   │   ├── BrowserFindModel.ts       # Find-in-page state and commands
@@ -1147,6 +1150,8 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── browser-service-composition.ts # Injects shared guest lookup into browser/CDP/network services
 ├── browser/                # Browser guest registration and per-guest policies
 │   ├── BrowserGuestRegistry.ts # Key/WebContents lookup and guest registration ownership
+│   ├── BrowserPopupRegistry.ts # Real popup ownership, metadata, events, and teardown
+│   ├── browser-popup-service.ts # Sender-validated popup close, teardown, focus, and text operations
 │   ├── BrowserGuest.ts     # Per-registration listeners, state, and disposal
 │   ├── navigation-scheme-policy.ts # Browser guest navigation scheme decisions
 │   └── popup-policy.ts     # Browser popup admission and rate-limit policy

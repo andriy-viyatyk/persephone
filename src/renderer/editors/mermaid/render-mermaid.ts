@@ -179,10 +179,18 @@ export async function renderMermaidSvg(
             look: options.look,
             layout: options.layout,
             securityLevel: "strict",
+            // Without this, a parse error draws Mermaid's "Syntax error in text" picture into a
+            // temporary container on document.body and leaves it there, under the app shell.
+            suppressErrorRendering: true,
         });
         const id = `mermaid-render-${++renderCounter}`;
-        const { svg } = await mermaid.render(id, content);
-        return svg;
+        try {
+            const { svg } = await mermaid.render(id, content);
+            return svg;
+        } finally {
+            // Mermaid renders inside a temporary `#d<id>` body container; never let one outlive the call.
+            document.getElementById(`d${id}`)?.remove();
+        }
     });
     renderQueue = operation.then((): void => undefined, (): void => undefined);
     return operation;

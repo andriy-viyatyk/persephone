@@ -76,6 +76,11 @@ export const BrowserChannel = {
     exitHtmlFullscreen: "browser:exit-html-fullscreen",
     fullscreen: "browser:fullscreen",
     exitFullscreen: "browser:exit-fullscreen",
+    closePopup: "browser:close-popup",
+    closeOwnedPopups: "browser:close-owned-popups",
+    focusPopup: "browser:focus-popup",
+    insertPopupText: "browser:insert-popup-text",
+    listPopups: "browser:list-popups",
 
     // Main → Renderer
     event: "browser:event",
@@ -92,6 +97,14 @@ export interface BrowserRegisterRequest {
 export interface BrowserSetZoomRequest {
     registrationKey: string;
     zoomPercent: number;
+}
+
+export interface BrowserPopupSnapshot {
+    id: string;
+    openerId: string;
+    url: string;
+    title: string;
+    loading: boolean;
 }
 
 export interface CdpAttachOptions {
@@ -182,7 +195,10 @@ export type BrowserEventType =
     | "audio-state-changed"
     | "popups-blocked"
     | "permission-request"
-    | "ai-vision-signal";
+    | "ai-vision-signal"
+    | "popup-opened"
+    | "popup-changed"
+    | "popup-closed";
 
 export type BrowserPermissionKey =
     | "camera" | "microphone" | "geolocation" | "notifications" | "midi" | "midiSysex"
@@ -239,6 +255,7 @@ export interface BrowserEventData {
     executionContextId?: number;
     mainContext?: boolean;
     permissionRequest?: BrowserPermissionPromptData;
+    popup?: BrowserPopupSnapshot;
 }
 
 export interface BrowserPermissionDecisionEntry {

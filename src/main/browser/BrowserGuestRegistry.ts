@@ -21,6 +21,14 @@ export class BrowserGuestRegistry {
         return this.guests.get(key);
     }
 
+    /** The live guest registered under `key` by `sender`, or undefined for a foreign, stale or malformed key. */
+    owned(key: unknown, sender: WebContents): BrowserGuest | undefined {
+        if (typeof key !== "string" || key.length > 240) return undefined;
+        const guest = this.guests.get(key);
+        if (!guest || guest.senderWebContents !== sender || guest.webContents.isDestroyed()) return undefined;
+        return guest;
+    }
+
     getByWebContents(contents: WebContents): BrowserGuest | undefined {
         for (const guest of this.guests.values()) {
             if (guest.webContents === contents) return guest;

@@ -69,6 +69,7 @@ guide to read for which task. It is intentionally short — read it once per ses
 | Open a web page or search query | `pages.openUrlInBrowserTab(url, options)` → returns `pageId` | `pages.$help` and `persephone://guides/browser` |
 | Open a URL naming a file | `pages.openUrl(url, options)` | `pages.$help` and `persephone://guides/browser` |
 | Build a reusable model for a web page with no `.app` model | `siteExtensions.create` → `app.fs.write` → `siteExtensions.reload` | [Site extensions](./site-extensions.md) / `guides.agents["site-extensions"]` / `persephone://guides/site-extensions` |
+| Attach a temporary test script to one browser page | `pages[id].editor.attachTestExtension(...)` | [Temporary site extensions](./temporary-site-extensions.md) / `guides.agents["temporary-site-extensions"]` |
 | Drive a web page / board / the app UI | `pages[i].editor` / `window.screen` | node `$help` and `persephone://guides/browser` |
 | Build a custom dashboard/tool/editor | `boards.createBoard`, `boards.openBoard`, `pages[i].editor` | `boards.$help` and `persephone://guides/boards` |
 | Call a capability or build a provider or consumer | `capabilities.$help` / `persephone.getCapability(...)` | [Capabilities](capabilities/client-and-wire.md) / `guides.agents.capabilities.index` / `persephone://guides/capabilities` |

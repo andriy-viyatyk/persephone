@@ -50,6 +50,30 @@ export function logBrowserNavigated(pageId: string): void {
 }
 
 /**
+ * Record a real pop-up window opening from a browser page the agent may access.
+ * The URL is left out on purpose: sign-in pop-ups carry tokens in it, and `popups` already lists it.
+ */
+export function logBrowserPopupOpened(pageId: string, popupId: string, openerId: string): void {
+    const path = pagePath(pageId, ".editor");
+    eventLog.push({
+        kind: "popup-opened",
+        path,
+        text: `A pop-up window ${JSON.stringify(popupId)} opened from ${JSON.stringify(openerId)}; read ${path}.popups, `
+            + `drive it with { tabId: ${JSON.stringify(popupId)} } and close it with ${path}.closePopup(${JSON.stringify(popupId)}).`,
+    });
+}
+
+/** Record a real pop-up window of a browser page closing, whether the page, the user or the agent closed it. */
+export function logBrowserPopupClosed(pageId: string, popupId: string): void {
+    const path = pagePath(pageId, ".editor");
+    eventLog.push({
+        kind: "popup-closed",
+        path,
+        text: `The pop-up window ${JSON.stringify(popupId)} of ${path} closed.`,
+    });
+}
+
+/**
  * Record the active page changing under an agent that was working with one of the two.
  *
  * Deliberately does NOT say the user did it. Switches the agent itself asks for are suppressed

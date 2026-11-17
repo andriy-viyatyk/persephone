@@ -5,8 +5,9 @@ import type { SiteAction, SiteActionOutcome } from "./site-extensions";
  *
  * Obtained via `page.editor`. Only available for browser pages.
  *
- * All automation methods accept an optional `{ tabId }` option to target
- * a specific tab. Defaults to the active tab.
+ * Content automation methods accept tab IDs or live popup IDs in `{ tabId }`;
+ * defaults to the active tab. Tab management and active-tab navigation methods
+ * accept tab IDs only.
  *
  * @example
  * const browser = page.editor;
@@ -152,6 +153,10 @@ export interface IBrowserPageError {
 export interface IBrowserEditor {
     readonly id: "browser-view";
     readonly name: string;
+    /** Live real BrowserWindow pop-ups opened by this page. Popup IDs are runtime-only content targets. */
+    readonly popups: IBrowserPopup[];
+    /** Close one owned popup and wait for its beforeunload handler to finish. */
+    closePopup(id: string): Promise<void>;
     /** Fullscreen the largest visible selector match in the main frame, or a playing video across frames. */
     fullscreen(selector?: string, options?: { tabId?: string }): Promise<{ fullscreen: boolean }>;
     /** Exit this guest's HTML fullscreen without clearing independent host fullscreen. */
@@ -162,6 +167,12 @@ export interface IBrowserEditor {
     runSiteAction(id: string): Promise<SiteActionOutcome>;
     /** Consume a video choice returned by runSiteAction. */
     chooseSiteActionResult(token: string, index: number): Promise<SiteActionOutcome>;
+    /** Attach a page-scoped test script for one exact HTTP(S) host authority. */
+    attachTestExtension(options: ITemporarySiteExtensionOptions): Promise<ITemporarySiteExtensionAttachResult>;
+    /** Detach the temporary rule for a host authority and clean up its current documents. */
+    detachTestExtension(host: string): Promise<ITemporarySiteExtensionDetachResult>;
+    /** Read attached temporary test extensions without exposing their source or params. */
+    readonly testExtensions: ITemporarySiteExtensionListItem[];
     /** Current URL of the active tab. */
     readonly url: string | undefined;
 
@@ -355,6 +366,41 @@ export interface IBrowserEditor {
     keyDown(key: string, options?: IBrowserKeyboardOptions): Promise<void>;
     /** Release a key held by keyDown. */
     keyUp(key: string, options?: IBrowserKeyboardOptions): Promise<void>;
+}
+
+/** Current metadata for one real browser pop-up window. */
+export interface IBrowserPopup {
+    readonly id: string;
+    /** Immediate opener tab ID or popup ID. */
+    readonly openerId: string;
+    readonly url: string;
+    readonly title: string;
+    readonly loading: boolean;
+}
+
+export interface ITemporarySiteExtensionOptions {
+    host: string;
+    name?: string;
+    scriptPath?: string;
+    source?: string;
+    params?: Record<string, IBrowserJsonValue>;
+}
+export interface ITemporarySiteExtensionAttachResult {
+    host: string;
+    targets: { id: string; status: "injected" | "deferred" | "error"; error?: string }[];
+}
+export interface ITemporarySiteExtensionDetachResult {
+    status: "detached" | "not-found";
+    errors: { id: string; error: string }[];
+}
+export interface ITemporarySiteExtensionListItem {
+    host: string;
+    name?: string;
+    scriptPath?: string;
+    inline: boolean;
+    injectedTabs: string[];
+    /** Tabs whose last injection attempt failed, with the reason (for example an unreadable scriptPath). */
+    failedTabs: Array<{ tabId: string; error: string }>;
 }
 
 export type IBrowserWaitState = "attached" | "detached" | "visible" | "hidden";

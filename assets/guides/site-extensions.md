@@ -10,6 +10,8 @@ A site extension is a script that runs on matching websites in Persephone's Brow
 build one when you want a reusable model of a web app: it can help the agent work with structured
 page information instead of repeatedly reading browser snapshots. Extensions are optional; browser
 pages work without them. For the authoring workflow, see the [agent guide](./agents/site-extensions.md).
+For app testing, agents can also attach a temporary script to one browser page; see the
+[temporary site extension recipe](./agents/temporary-site-extensions.md).
 
 ## Trust a site extension
 
@@ -24,6 +26,13 @@ choose **Trust** yourself, or ask an agent to check the script and trust it for 
 The trust decision applies to the extension's listed hosts. If that host list changes, Persephone
 asks again before the extension runs on the changed set. The prompt also appears again if you change
 the site extensions folder in Settings.
+
+Temporary test extensions are separate from saved extensions. They add no extra controls to the
+page; like a saved extension, an injected one shows the site-extension indicator in the address bar
+when it exposes a model. Temporary rules can match HTTP or HTTPS and do
+not show a Trust prompt. Detaching stops future injection and asks the runtime to remove its model,
+actions, and registered disposers; reload a tab if cleanup reports an error. Arbitrary script effects
+cannot always be undone.
 
 ## Use site actions
 
@@ -73,8 +82,10 @@ change.
 
 ## Private browser pages
 
-Site extensions never run in **Incognito** or **Browser (Tor)** pages. Use a regular browser page
-for a site extension.
+Saved site extensions never run in **Incognito** or **Browser (Tor)** pages. A temporary test
+extension may run there only when the agent opened the private page and is allowed to access it.
+Temporary extensions do not receive privileged cross-host text access. User-owned private pages
+remain inaccessible to agents.
 
 After an agent automates several pages on a site, it may offer to build a site extension for recurring work after finishing the current task. This optional suggestion can be disabled with **Allow optional agent tips** in Settings → MCP Server / Mneme.
 

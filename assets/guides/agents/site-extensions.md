@@ -13,6 +13,10 @@ inspection, keep using browser snapshots and actions. If the user will reuse thi
 recurring task, an extension can turn repeated snapshot parsing into stable properties and methods.
 Follow the user's requested scope; do not add unrelated page features.
 
+For repeatable app testing that needs an in-memory script on one browser page, see
+[Temporary site extensions](./temporary-site-extensions.md). They do not require saved-extension trust
+and never receive the privileged fetch broker.
+
 ## Trust and the data boundary
 
 A site extension runs in the signed-in page's main world and can do anything that page can do.

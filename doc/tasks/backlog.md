@@ -221,6 +221,17 @@ written; the doc carries the research notes.
 
 ## Architecture Improvements
 
+### Agent-answered browser JavaScript dialogs leave Electron's native box open
+
+*(Recorded 2026-11-17 during US-2055.)* A web page's `alert`, `confirm` and `prompt` in a browser tab
+or pop-up show Electron's native message box. An agent answers it through CDP (`dialogs()` /
+`handleDialog()`, or the automation auto-dismiss policy) and the page gets the answer, but the box
+stays on screen: Chromium asks the dialog manager to clean up its UI (`CancelDialogs`), and
+Electron's implementation does nothing. Boards avoid this because `src/board-shim/dialogs.ts`
+replaces the three functions with an in-app dialog; arbitrary web pages have no such host route.
+Pursue only if Electron gains a way to close or replace its JavaScript dialog UI. Until then the UI
+integration tests must not open JavaScript dialogs in browser pages.
+
 ### `settleHostContent()` fires `onContentChange` for the snapshot that settles `getContent()`
 
 Found while debugging US-1488 (EPIC-109), and **deliberately not fixed there** — the fix was written,
