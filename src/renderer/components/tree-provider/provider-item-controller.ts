@@ -157,6 +157,10 @@ export class ProviderItemController {
     };
 
     handleOsDragStart = (item: ITreeProviderItem, event: DragEvent): boolean => {
+        // A drag something else already cancelled must not become an OS drag. Automation cancels
+        // the drag it causes in the app window, because the OS drag loop would block the main
+        // process until a real mouse button is released (see guardAppWindowDragStart in automation/mouse.ts).
+        if (event.defaultPrevented) return false;
         const provider = this.options.provider();
         if (!isLocalFileProvider(provider) || !this.options.canStartOsDrag(item)) return false;
         const paths = this.dragItemsFor(item).map((target) => target.href);

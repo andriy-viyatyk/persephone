@@ -25,6 +25,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
   in the same editor with the same content, including unsaved changes.
 - **Ctrl+Tab order:** `Ctrl+Tab` and `Ctrl+Shift+Tab` moved through tabs in the order they were last
   used, so from the active tab they often jumped to the first tab. They now follow the tab strip.
+- **Open Tabs list:** the sidebar's Open Tabs list could keep showing only the pages it listed first.
+  Pages opened later were missing until the list was rebuilt. It now updates as pages open and close.
+- **App-window drag automation:** `window.screen.drag` on an Explorer file row froze Persephone. The
+  row handed the drag to a Windows file drag, which waits for a real mouse release. That drag now
+  fails at once with an error that points to the Explorer's own commands, and the app stays
+  responsive.
 
 ---
 

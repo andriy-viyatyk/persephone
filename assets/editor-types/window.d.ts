@@ -93,6 +93,7 @@ export interface IWindowScreen {
     check(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void>;
     uncheck(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void>;
     clear(locator: IBrowserElementLocator, options?: IBrowserTypeOptions): Promise<void>;
+    /** Drag one app-window element onto another. An HTML5 drag-and-drop (a draggable source, such as an Explorer row) is not supported in the app window and fails with an error; use the panel's own commands instead. */
     drag(source: IBrowserElementLocator, destination: IBrowserElementLocator, options?: IBrowserDragOptions): Promise<void>;
     /** Drag between app-window viewport CSS pixel coordinates using the shared drag dispatch. */
     dragTo(options: { from: { x: number; y: number }; to: { x: number; y: number } }): Promise<void>;

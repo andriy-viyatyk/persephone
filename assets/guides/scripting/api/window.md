@@ -130,7 +130,10 @@ targets.
 `clickAt({ x, y })` and `dragTo({ from, to })` use trusted input at renderer viewport CSS pixels,
 originating at the top-left. Get coordinates from `window.screen.evaluate()` and
 `getBoundingClientRect()`. `clickAt()` bypasses locator actionability; ordinary `click()` keeps its
-checks. `dragTo()` uses the same dispatch path as `drag()` and preserves HTML5 drag data.
+checks. `dragTo()` uses the same dispatch path as `drag()` and preserves HTML5 drag data on
+browser-page targets. In Persephone's app window, a drag that starts an HTML5 drag is cancelled and
+reports an error instead of starting a Windows file drag; use the Explorer's context-menu actions
+or object-model methods for those operations. Pointer drags such as resizing a splitter still work.
 
 The app-window host follows the browser privacy guard: it cannot automate a user-opened incognito or
 Tor page while that page is active. Agent-opened private pages remain available to that agent.

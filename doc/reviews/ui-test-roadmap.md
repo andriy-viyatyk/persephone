@@ -1,6 +1,6 @@
 # UI test coverage roadmap
 
-**Date:** 2026-11-16 · **Status:** accepted 2026-11-16; Phase 1 is [EPIC-181](../epics/EPIC-181.md) (completed 2026-11-16); Phase 2 is [EPIC-182](../epics/EPIC-182.md) (completed 2026-11-16) · **Builds on:** [EPIC-180](../epics/EPIC-180.md) (runner,
+**Date:** 2026-11-16 · **Status:** accepted 2026-11-16; Phase 1 is [EPIC-181](../epics/EPIC-181.md) (completed 2026-11-16); Phase 2 is [EPIC-182](../epics/EPIC-182.md) (completed 2026-11-16); Phase 3 is [EPIC-183](../epics/EPIC-183.md) (completed 2026-11-17) · **Builds on:** [EPIC-180](../epics/EPIC-180.md) (runner,
 `uitest` profile, pilot tests).
 
 The refactoring roadmap touched almost the whole codebase. This roadmap retests every screen and feature once, and
@@ -126,6 +126,8 @@ Grows the runner, then covers what every other area relies on.
 - **Keyboard shortcuts:** the global shortcuts from `shortcuts.md` that the call tree can send.
 
 ### Phase 3: Page sidebar and Explorer
+
+Tracked in [EPIC-183](../epics/EPIC-183.md) (completed 2026-11-17).
 
 - **Explorer panel:** browse, expand and collapse, open file, create file and folder, rename, delete, copy and move,
   drag-drop (if `call` can drive it), reveal the active file.

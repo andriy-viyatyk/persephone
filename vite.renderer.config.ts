@@ -139,7 +139,14 @@ export default defineConfig({
       // copied in while the dev server runs; a multi-megabyte file still being written fails the
       // watch with EBUSY and kills the dev server. They change only when a dependency is updated,
       // and a module imported from there still bundles without being watched.
+      //
+      // `integration-test/` holds the UI test runner, its tests and the test instance's profile.
+      // None of it is imported. Chokidar keeps an open handle on each folder it watches, and on
+      // Windows a folder with an open handle cannot finish being deleted. A test that renames a
+      // fixture folder and then deletes it left that folder stuck in "delete pending" until the
+      // dev server exited, and every later profile reset failed on it with EPERM.
       ignored: [
+        '**/integration-test/**',
         '**/doc/**',
         '**/assets/vendor/**',
         '**/snip-tool/target/**',

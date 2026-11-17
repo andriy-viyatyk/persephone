@@ -119,7 +119,7 @@ export async function dragElements(
 ): Promise<void> {
     const from = await resolveActionablePoint(target, source, options);
     const to = await resolveActionablePoint(target, destination, { ...options, position: options.targetPosition });
-    await dispatchDragPoints(from, to, options);
+    await dispatchDragPoints(target, from, to, options);
 }
 
 /** Dispatch a trusted click at viewport CSS pixels without locator actionability. */
@@ -140,10 +140,35 @@ export async function dragCoordinates(target: IAutomationTarget, fromPosition: M
     const input = target.inputCdp(options.tabId);
     const from = { ...input.mapPoint(fromPosition, []), cdp: input.cdp, sessionId: input.sessionId };
     const to = { ...input.mapPoint(toPosition, []), cdp: input.cdp, sessionId: input.sessionId };
-    await dispatchDragPoints(from, to, options);
+    await dispatchDragPoints(target, from, to, options);
+}
+
+/**
+ * Chromium does not intercept an HTML5 drag that starts in the app window itself, the way it does
+ * for a browser page. The drag becomes a native OS drag, whose modal loop blocks the main process
+ * (and with it MCP) until a real mouse button is released, which synthetic input never sends. In
+ * the app window, cancel any `dragstart` the synthetic drag causes and report it, rather than
+ * freezing the app. A pointer-driven drag (a splitter, a slider) fires no `dragstart` and is not
+ * affected. The guard runs in this renderer because `window.screen` always targets the window
+ * that runs it.
+ */
+function guardAppWindowDragStart(target: IAutomationTarget): { readonly blocked: boolean; dispose(): void } | undefined {
+    if (target.id !== "app") return undefined;
+    const guard = {
+        blocked: false,
+        dispose: () => window.removeEventListener("dragstart", onDragStart, true),
+    };
+    const onDragStart = (event: DragEvent) => {
+        if (!event.isTrusted) return;
+        event.preventDefault();
+        guard.blocked = true;
+    };
+    window.addEventListener("dragstart", onDragStart, true);
+    return guard;
 }
 
 async function dispatchDragPoints(
+    target: IAutomationTarget,
     from: Pick<ActionablePoint, "x" | "y" | "cdp" | "sessionId">,
     to: Pick<ActionablePoint, "x" | "y" | "cdp" | "sessionId">,
     options: DragOptions,
@@ -156,6 +181,7 @@ async function dispatchDragPoints(
     let pressed = false;
     let intercepted = false;
     const modifierFlags = getModifierFlags(options.modifiers);
+    const appDragGuard = guardAppWindowDragStart(target);
     try {
         await cdp.send("Input.setInterceptDrags", { enabled: true }, sessionId);
         intercepted = true;
@@ -179,7 +205,11 @@ async function dispatchDragPoints(
         }
         await dispatchMouseEvent(cdp, sessionId, { type: "mouseReleased", x: to.x, y: to.y, button: "left", buttons: 0, clickCount: 1, modifiers: modifierFlags });
         pressed = false;
+        if (appDragGuard?.blocked) {
+            throw new Error("drag cannot perform HTML5 drag-and-drop in the app window: the source element is draggable. Use the panel's own commands (context menu, object-model methods) instead.");
+        }
     } finally {
+        appDragGuard?.dispose();
         if (token) await ipcRenderer.invoke(BrowserChannel.takeDragIntercept, token, 0).catch((): null => null);
         if (intercepted) await cdp.send("Input.setInterceptDrags", { enabled: false }, sessionId).catch((): undefined => undefined);
         if (pressed) await dispatchMouseEvent(cdp, sessionId, {

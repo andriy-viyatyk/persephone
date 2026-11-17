@@ -38,6 +38,8 @@ export class TreeDndModel<T = ITreeItem> {
     };
 
     onDragStart = (e: DragEvent, rowIndex: number) => {
+        // A drag that a capture-phase listener already cancelled starts nothing here.
+        if (e.defaultPrevented) return;
         const row = this.tree.rows[rowIndex];
         if (!row || row.item.section || row.item.disabled) {
             e.preventDefault();

@@ -46,7 +46,7 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
         item.page?.id === pages.query.activePage?.id;
     private readonly getListItemTooltip = (item: OpenTabsListItem): string | undefined =>
         item.page?.filePath;
-    private readonly listProps: ListBoxProps<OpenTabsListItem> = {
+    private listProps: ListBoxProps<OpenTabsListItem> = {
         name: "sidebar-open-tabs",
         items: [],
         rowHeight: 22,
@@ -158,8 +158,9 @@ export class OpenTabsListView extends VanillaView<OpenTabsListProps> {
         }
 
         if (this.listProps.items === items && this.listProps.activeIndex === this.activeIndex) return;
-        this.listProps.items = items;
-        this.listProps.activeIndex = this.activeIndex;
+        // A new props object each time: ListBox finds what changed by comparing the previous props
+        // object with the next one, so a mutated object looks unchanged and the rows go stale.
+        this.listProps = { ...this.listProps, items, activeIndex: this.activeIndex };
         this.list.update(this.listProps);
     }
 
