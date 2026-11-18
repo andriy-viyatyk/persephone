@@ -91,6 +91,7 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
                 store: this.store as unknown as SettingsStore<string | undefined>,
                 id,
                 title: label,
+                name,
                 emptyText: t("settings.boardSettingNotSet"),
                 fallback: typeof declaration.default === "string" ? declaration.default : undefined,
                 browse: async () => {
@@ -133,7 +134,7 @@ export class BoardSettingsSectionView extends VanillaView<BoardSettingsSectionPr
         let below: HTMLElement | undefined;
         if (declaration.type === "boolean") {
             const checkboxRow = panel({ direction: "row", align: "center" });
-            field = new BoardCheckboxField({ store: this.store, id, fallback: declaration.default as boolean, label, onError });
+            field = new BoardCheckboxField({ store: this.store, id, fallback: declaration.default as boolean, label, name, onError });
             checkboxRow.append(field.root);
             if (help) checkboxRow.append(help);
             row.append(checkboxRow);

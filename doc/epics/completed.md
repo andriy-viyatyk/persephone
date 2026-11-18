@@ -1,3 +1,28 @@
+## EPIC-197 — UI test coverage, phase 8d: published audio and speech boards
+
+Completed 2026-11-18. Phase 8d of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 19 new tests.
+**Added:** test instances get a profile-local `%LOCALAPPDATA%` (`src/main/test-mode/local-app-data.ts`, set before any
+child process starts), so the Speech to Text, Text to Speech and Wake Word services keep their data in the test
+profile; a guard test checks a board service sees it. `--open`/attach instances are not test instances, so every test
+here requires `launch`. Tests in `integration-test/tests/published-boards/`: audio-player (4, synthetic WAVs, an
+`.m3u` and a catalog written at test start), speech-to-text (6) and text-to-speech (4) in their not-installed state
+(no download is ever clicked), wake-word (4, the fake microphone's synthetic signal is rejected and nothing is stored).
+Codex (Luna) planned and wrote the tests; Claude reviewed, ran and triaged, and recorded 10 cases in
+[ai-vision-feedback.md](../reviews/ai-vision-feedback.md). **Fixed:** boolean and folder board settings had no
+`data-name="board-setting-<id>"`. **Open:** Audio Player board bug (`editor.app.next()` replaces an imported playlist
+with a one-item source queue, `audio-player/ai-vision.js:222`, `app.js:122-131`; its test stays failing); coded errors
+lose their code over `call` (`call-tools.ts` `toCallResult`); board doc notes for the owner (wake-word README's
+loudness gate, Audio Player light mode has no model); carried over: the EPIC-187 grid decision and the EPIC-194 Theme
+Editor board bug. **Uncovered:** transcription, synthesis and wake detection (model downloads, real speech), installs,
+Audio Player folder import, catalog edits and PLS. Final launched run (`--with git,mneme`), 497 tests: 492 passed,
+3 failed (the three open board/decision items), 2 skipped (Tor). Next: Phase 9b, the last phase. Completion skills by
+Codex (Luna). Epic document: [EPIC-197](EPIC-197.md).
+
+- [x] **Profile-local `%LOCALAPPDATA%` in test instances (US-2112).**
+- [x] **Tests: Audio Player (US-2113).**
+- [x] **Tests: Speech to Text, Text to Speech (US-2114).**
+- [x] **Tests: Wake Word (US-2115).**
+
 ## EPIC-196 — UI test coverage, phase 9a: audio capture source, audio and voice typing
 
 Completed 2026-11-18. Phase 9a of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md); Phase 9 was split,

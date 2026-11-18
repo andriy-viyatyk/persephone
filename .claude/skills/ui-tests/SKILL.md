@@ -19,6 +19,12 @@ owned module launches. The main process uses the WAV only for test instances. `-
 `--attach` do not receive the fake media device or WAV path, so tests that use capture, playback, or
 voice paths declare `requires: ["launch"]`.
 
+Owned test instances redirect the main process's `%LOCALAPPDATA%` to
+`<userData>/test-local-app-data` before child processes start, so board services keep their runtimes,
+models, and enrollments inside the test profile. `--open` and `--attach` instances are not test
+instances and retain the user's real `%LOCALAPPDATA%`; board tests that open a service must declare
+`requires: ["launch"]`.
+
 ## Run and fix
 
 1. For the default dev target, ensure `npm start` is running. Check `.vite/dev-server.json`; if absent, start `npm start` in the background. A marker can be stale: if the runner cannot validate its PID, server, or exact dev bundle URL, restart `npm start`. For the optional production target, stop `npm start` first; it rebuilds `.vite/build` and prints `The dev bundle was replaced; run npm start again before dev tests.` after the build exits. Restart `npm start` before dev tests. `--prod` and `--app <exe>` are mutually exclusive. The executable target needs a compatible installed or unpacked `persephone.exe` with US-2022 profile support.
@@ -55,7 +61,8 @@ Published-board tests live separately under
 `tests/published-boards/<board-id>/<board-id>.test.mjs`, one module per board, with shared opening
 and cleanup in `tests/published-boards/helpers.mjs`. Use `openPublishedSample(ctx, boardId,
 sampleRel)` for a file-backed viewer, or `openPublishedBoard(ctx, boardId)` for a board opened
-directly without a sample file. Both register the local board copy, verify the editor/root, activate
+directly without a sample file. `sampleRel` is relative to `fixtures/boards-samples/` (for example,
+`audio-player/sample.wav`). Both register the local board copy, verify the editor/root, and activate
 the page, and wait for `editor.frameReady`. The returned `editor` is a stand-in; wait for
 `editor.app` methods or state to be ready before asserting board data. Close every handle in
 `finally` with `closePublishedSample()`;

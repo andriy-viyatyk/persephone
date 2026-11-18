@@ -77,6 +77,12 @@ process accepts this path only in test instances and only for an existing WAV fi
 `--attach` do not install the fake device or pass the WAV path. Tests needing media capture,
 playback, or voice paths must declare `requires: ["launch"]`.
 
+Owned test instances also redirect the main process's `%LOCALAPPDATA%` to
+`<userData>/test-local-app-data` before child processes start. Board services inherit this profile-local
+path, keeping board runtimes, models, and enrollment data out of the user's real profile. `--open`
+and `--attach` instances are not test instances and retain the real `%LOCALAPPDATA%`; tests that open
+a board service must declare `requires: ["launch"]`.
+
 Attach uses the selected `reports/keep-open.json` record and PID, refreshes fixtures over the
 existing work directory, and never resets or stops the app. The product controller connects using
 the profile directory's MCP settings and verifies `main.runtime.paths.userData` before accepting
@@ -139,8 +145,9 @@ for dialog options and exact strings, and `ctx.set` for writable property assign
 Published-board tests live under `tests/published-boards/<board-id>/`, one module per board.
 `tests/published-boards/helpers.mjs` provides `openPublishedSample(ctx, boardId, sampleRel)` for
 file-backed viewers and `openPublishedBoard(ctx, boardId)` for boards opened directly without a
-sample file. Both register the local checkout board and return a handle with `id`, `editor`, and
-`root`; the sample helper also returns `file`. The sample helper opens a sample from
+sample file. `sampleRel` is relative to `fixtures/boards-samples/` (for example,
+`audio-player/sample.wav`). Both register the local checkout board and return a handle with `id`,
+`editor`, and `root`; the sample helper also returns `file`. The sample helper opens a sample from
 `fixtures/boards-samples/` through `app.pages.openFile()`, verifies that the matching board editor
 and root opened, activates the page, and waits for `editor.frameReady`. Use the returned `editor`
 stand-in for structured calls such as `editor.app.getStats()`; use `ctx.call` or `ctx.callText`

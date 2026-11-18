@@ -46,6 +46,12 @@ ids receive separate app instances too. The manifest limits that invocation to i
 it does not bypass `requires`. The product host checks requirements for every run: `launch` is
 skipped with `--attach`, and other tags run only when supplied by `--with`.
 
+Owned test instances set the main process's `%LOCALAPPDATA%` to
+`<userData>/test-local-app-data` before child processes start. Board services inherit this value, so
+board runtimes, models, and enrollment data stay inside the selected test profile. `--open` and
+`--attach` instances are not test instances and keep the user's real `%LOCALAPPDATA%`; any board
+test that opens a board service must declare `requires: ["launch"]` and run in an owned instance.
+
 The HTTP fixture server also serves `/refused`, which redirects to an unused loopback port for
 transport-failure tests. Its `/boards-catalog/` route serves the fake published-board catalog,
 version manifests, screenshots, and ZIP archives. The archives are built from
@@ -201,6 +207,8 @@ the board in a `finally` block with `closePublishedSample()`. Declare both `laun
 handle with `closePublishedSample()` in `finally`. Closing a
 page can begin asynchronous board-process shutdown, so registration cleanup retries removal of an
 old copied board directory before copying the next one.
+`sampleRel` is relative to `fixtures/boards-samples/`, for example
+`audio-player/sample.wav`.
 The copy filters `.git`, `node_modules`, `ui.log`, ZIP files, and simple ignored file or directory
 names from the board checkout's `.gitignore`; tests should create runtime data in the isolated copy
 and must not depend on a developer's ignored checkout files.

@@ -30,12 +30,19 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Fake board catalog in web-app tests:** an app launched by the test runner reads the published-boards
   catalog from the loopback URL in `PERSEPHONE_TEST_BOARDS_CATALOG_URL` and never from GitHub, so catalog
   install, update and roll back can be tested offline. Outside a test run the variable is ignored.
+- **Board data stays in the test profile:** in an app launched by the test runner, `%LOCALAPPDATA%`
+  points at the profile's `test-local-app-data` folder for the app and every process it starts, so
+  boards that keep models or enrollments there (Speech to Text, Text to Speech, Wake Word) never
+  read or change your own data during a test. Outside a test run nothing changes.
 - **Assigning properties in web-app tests:** `ctx.set(path, value)` assigns a writable call-tree
   property, such as a board model's `searchText`. Assigning through `ctx.app` used to do nothing
   silently; it now throws and names `ctx.set`.
 
 ### Bug Fixes
 
+- **Board on/off settings could not be found by name:** a board's checkbox and folder settings on
+  the Settings page had no `data-name`, unlike its text, number and choice settings. They now carry
+  `board-setting-<id>` like the others, so automation and tests can address them.
 - **`call` results with a `pending` field:** a value that happened to contain `pending: true`, such
   as a board model's status object, was reported as "script execution is still in progress" and
   could not be read. Only a running `script.execute` is reported as pending now.

@@ -1391,3 +1391,73 @@ Append only. Add new entries at the end and never rewrite old ones. Do not inclu
 - **What actually happened:** Transcript had modified the page, so close raised Unsaved Changes, the next call (`boards.unregisterBoard`) failed and cleanup reported a leftover dialog.
 - **How it was resolved:** The test leaves the unsaved page for runner cleanup, which answers Don't Save.
 - **Suggested improvement:** The `closePage` summary could mention the prompt for modified pages and the `{ dialog: true }` pattern.
+
+### 2026-11-18 · EPIC-197 / US-2113 · Codex Luna (plan)
+- **Area:** board model (Audio Player `editor.app`)
+- **What the agent expected:** Opening a `.wav` sample in the Audio Player to expose its `pages[i].editor.app` model.
+- **What actually happened:** A plain audio file opens the board in light mode, which never creates the model (`audio-player/app.js:284-317`); only a catalog, a playlist or the bare board gets one. Nothing in the model's `$help` or the board docs says which open paths have it.
+- **How it was resolved:** Found in source; the playback test opens the bare board and calls `editor.app.play(path)`, and a separate light-mode test checks the DOM only.
+- **Suggested improvement:** Board owner: say in the board's `CLAUDE.md`/`$help` summary that light mode (an audio file opened directly) has no model. Generally, `boards` guides could tell agents to expect a missing `editor.app` when a board has several modes.
+
+### 2026-11-18 · EPIC-197 / US-2113 · Codex Luna (plan)
+- **Area:** board model (Audio Player)
+- **What the agent expected:** A `previous()` method next to `next()`.
+- **What actually happened:** The model has `play`, `pause` and `next` only; the plan called `previous()`. Caught in review against the member list (`ai-vision.js:159-205`).
+- **How it was resolved:** The test clicks the board's `[data-name="previous-track"]` button.
+- **Suggested improvement:** Recurrence of "guessed members"; reading `$help` before writing calls avoids it. Board owner could add `previous()` for symmetry.
+
+### 2026-11-18 · EPIC-197 / US-2113 · Codex Luna (plan)
+- **Area:** test helper (`openPublishedSample`)
+- **What the agent expected:** `openPublishedSample(ctx, id, sampleRel)` to open a file generated anywhere under `ctx.fixture(...)`.
+- **What actually happened:** It opens `ctx.fixture("boards-samples/" + sampleRel)` (`tests/published-boards/helpers.mjs:14-19`); generated files elsewhere cannot be opened through it. The ui-tests skill only says reusable samples live under `fixtures/boards-samples/<board-id>/`.
+- **How it was resolved:** Caught in review; generated samples go under `boards-samples/<board-id>/<test>/`.
+- **Suggested improvement:** One line in the ui-tests skill: `sampleRel` is relative to `boards-samples/`, and generated samples must be written there.
+
+### 2026-11-18 · EPIC-197 / US-2113 · Codex Luna (implementation) / Claude (run)
+- **Area:** board DOM vs model values
+- **What the agent expected:** The light-mode track chip to show the same title as `getNowPlaying().title` (file name with `.wav`).
+- **What actually happened:** The chip strips the extension (`visualizer.js` `getTrackInfo`); the model keeps it. The test timed out on the wrong title.
+- **How it was resolved:** Claude fixed the expectation (one line).
+- **Suggested improvement:** None for Persephone; a guess about display text should be checked against the code that renders it.
+
+### 2026-11-18 · EPIC-197 / US-2115 · Codex Luna (plan, implementation) / Claude (run)
+- **Area:** board docs (Wake Word), synthetic audio
+- **What the agent expected:** From the board README's loudness fallback, that the fake microphone's synthetic sweep would pass enrollment and open the review dialog, so the plan dropped EPIC-197's "rejected as non-speech" expectation.
+- **What actually happened:** Enrollment rejected it with a quality reason ("Check recording") and no review dialog; two tests timed out. The board's `CLAUDE.md` (Silero VAD rejects synthetic audio) was right and the README's fallback describes only the case where the VAD model fails to load.
+- **How it was resolved:** Claude probed the status sequence; Codex rewrote the tests to assert the rejection and that nothing is stored, and listening without an enrollment reports `no-enrollments`. Positive listen/stop is uncovered.
+- **Suggested improvement:** Board owner: README should say the loudness gate is a fallback only when the VAD model fails to load.
+
+### 2026-11-18 · EPIC-197 / US-2114, US-2115 · Codex Luna (plan)
+- **Area:** call path `capabilities[...]` (channels, hidden methods)
+- **What the agent expected:** To call `describe`, `delete`, `enroll`, `listen` and `transcribe` through `capabilities["<id>"]`.
+- **What actually happened:** Channel methods are discovery-only and `agent: false` methods are hidden from the agent tree; only `call`-kind, agent-visible methods run. The guide says so, but `$help` lists `describe` with "Channel is discovery-only for agents", which reads like a callable method at first.
+- **How it was resolved:** Tests open the board page's own service channel through `editor.evaluate(() => persephone.service.openChannel(...))`.
+- **Suggested improvement:** `capabilities.$help` could suggest the alternative for testing a provider's channel (the provider page's own service channel, or a fixture consumer board).
+
+### 2026-11-18 · EPIC-197 / US-2114 · Codex Luna (implementation) / Claude (run)
+- **Area:** call path (error codes)
+- **What the agent expected:** A rejected capability call to throw an error with `code: "rejected"`, as `agents/capabilities/errors-agent-calls-examples.md` lists codes and says unknown ids "throw `no-handler`".
+- **What actually happened:** The renderer throws a coded error, but the `call` envelope carries only the message (`src/main/mcp/tools/call-tools.ts` `toCallResult`: `Error: <message> (resolved up to ...)`), so `.code` is gone for agents and tests. Two tests failed on `null`.
+- **How it was resolved:** Tests assert the provider's documented message and that the call rejects. Recorded as an open item.
+- **Suggested improvement:** Carry the error code in the call envelope (`Error [rejected]: …`) and in `ctx.call` errors, or say in the guide that agents see only the message.
+
+### 2026-11-18 · EPIC-197 / US-2114 · Codex Luna (implementation) / Claude (run)
+- **Area:** board UI text
+- **What the agent expected:** Not-installed rows and status to contain the word "missing" (the message keys are `models.missing` and `missing`).
+- **What actually happened:** The English strings are "Not installed" and "Install the runtime and model to get started."; four waits timed out.
+- **How it was resolved:** Tests read the strings from the board's `lang/en.json`.
+- **Suggested improvement:** Recurrence of guessed display text; assert pack strings, never key names.
+
+### 2026-11-18 · EPIC-197 / US-2114 · Codex Luna (implementation) / Claude (run)
+- **Area:** screen (Settings page, board settings)
+- **What the agent expected:** Every board setting row to carry `data-name="board-setting-<id>"`.
+- **What actually happened:** Checkbox and folder settings had no `data-name` (`BoardSettingsSection.ts` did not pass `name` to them), so the `use-gpu` row was not found.
+- **How it was resolved:** Product bug, fixed by Claude; the test passes unchanged.
+- **Suggested improvement:** Done.
+
+### 2026-11-18 · EPIC-197 / US-2114, US-2115 · Codex Luna (plan)
+- **Area:** board models
+- **What the agent expected:** An `editor.app` model on the speech boards.
+- **What actually happened:** Speech to Text, Text to Speech and Wake Word expose none; tests drive their DOM and service channels.
+- **How it was resolved:** DOM selectors from board source.
+- **Suggested improvement:** Recurrence of the EPIC-195 "no board model" entry.
