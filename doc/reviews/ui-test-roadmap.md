@@ -1,6 +1,6 @@
 # UI test coverage roadmap
 
-**Date:** 2026-11-16 · **Status:** accepted 2026-11-16; Phase 1 is [EPIC-181](../epics/EPIC-181.md) (completed 2026-11-16); Phase 2 is [EPIC-182](../epics/EPIC-182.md) (completed 2026-11-16); Phase 3 is [EPIC-183](../epics/EPIC-183.md) (completed 2026-11-17); Phase 4a is [EPIC-184](../epics/EPIC-184.md) (completed 2026-11-17); Phase 4b is [EPIC-185](../epics/EPIC-185.md) (completed 2026-11-17); Phase 5a is [EPIC-187](../epics/EPIC-187.md) (completed 2026-11-18) · **Builds on:** [EPIC-180](../epics/EPIC-180.md) (runner,
+**Date:** 2026-11-16 · **Status:** accepted 2026-11-16; Phase 1 is [EPIC-181](../epics/EPIC-181.md) (completed 2026-11-16); Phase 2 is [EPIC-182](../epics/EPIC-182.md) (completed 2026-11-16); Phase 3 is [EPIC-183](../epics/EPIC-183.md) (completed 2026-11-17); Phase 4a is [EPIC-184](../epics/EPIC-184.md) (completed 2026-11-17); Phase 4b is [EPIC-185](../epics/EPIC-185.md) (completed 2026-11-17); Phase 5a is [EPIC-187](../epics/EPIC-187.md) (completed 2026-11-18); Phase 5b is [EPIC-188](../epics/EPIC-188.md) (completed 2026-11-18) · **Builds on:** [EPIC-180](../epics/EPIC-180.md) (runner,
 `uitest` profile, pilot tests).
 
 The refactoring roadmap touched almost the whole codebase. This roadmap retests every screen and feature once, and
@@ -153,7 +153,7 @@ Split in two. Phase 4a (Monaco, Markdown, Mermaid, compare and Git diff, editor 
 ### Phase 5: Data and tool editors
 
 Split in two. Phase 5a (Grid, Settings page, Tools & Editors hub, About and guides) is tracked in
-[EPIC-187](../epics/EPIC-187.md) (completed 2026-11-18); phase 5b takes clipboard history, the MCP inspector, category pages, the toolset
+[EPIC-187](../epics/EPIC-187.md) (completed 2026-11-18); phase 5b ([EPIC-188](../epics/EPIC-188.md), completed 2026-11-18) takes clipboard history, the MCP inspector, category pages, the toolset
 editor, agent tools, and the optional Git tree and Mneme tests.
 
 - **Grid:** extends the pilot. JSON and CSV editing, sort, filter, add and delete rows, Excel paste, keyboard

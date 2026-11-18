@@ -1,3 +1,26 @@
+## EPIC-188 — UI test coverage, phase 5b: clipboard, MCP inspector, Folder View, agent tools, Git, Mneme
+
+Completed 2026-11-18. Second half of Phase 5 of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 20 new
+tests in `integration-test/tests/tools/` (`clipboard`, `mcp-inspector`, `agent-tools`, `git` with `requires: ["git"]`,
+`mneme` with `requires: ["mneme"]`) and `integration-test/tests/editors/folder/`; the suite is 241 tests. Codex (Luna)
+planned and wrote every test blind; Claude reviewed, ran and triaged, and recorded 24 cases in
+[ai-vision-feedback.md](../reviews/ai-vision-feedback.md). **Runner fix (EPIC-187 leftover):** per-test cleanup now
+discards a test's own unsaved pages, dismisses a leftover renderer dialog or popup menu (failing the test that left it),
+and closes editorless workspace pages, so one stray dialog no longer fails the rest of a module. **App bug fixed:**
+stopping Mneme while its page loaded the status showed "Mneme status failed: Connection closed". **Guide fix:**
+`folder.md` says a subfolder inherits its parent's layout. **Open:** the EPIC-187 grid row-insertion decision and the
+EPIC-185 env-vars failure are carried over. **Uncovered:** Git Pull/Push and remembered layout, Mneme vector/hybrid
+search and model download, Mneme's native Add root picker. Final launched run (`--with git,mneme`): 238 passed, 2
+failed, 1 skipped. Completion skills by Codex (Luna). Epic document: [EPIC-188](EPIC-188.md).
+
+- [x] **Runner cleanup answers a stray "Unsaved Changes" dialog (US-2069).**
+- [x] **Clipboard history (US-2070).**
+- [x] **MCP Inspector (US-2071).**
+- [x] **Folder View (US-2072).**
+- [x] **Agent tools and toolset editor (US-2073).**
+- [x] **Git Tree (US-2074).**
+- [x] **Mneme (US-2075).**
+
 ## EPIC-187 — UI test coverage, phase 5a: Grid, Settings, Tools hub, About
 
 Completed 2026-11-18. First half of Phase 5 of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 33 new

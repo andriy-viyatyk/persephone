@@ -87,6 +87,13 @@ await site.waitFor({ selector: "[data-testid='account-home']" });
 The runner snapshots pages and pop-ups before each test, then closes pages and pop-ups first
 opened during that test. It does not close ids from the baseline, including in attached runs.
 Cleanup also covers pages opened through `ctx.call`, not only those created by `openBrowser`.
+When an owned page has unsaved changes, cleanup answers its renderer prompt with `Don't Save`.
+Cleanup answers renderer dialogs only: it sweeps open renderer dialogs before taking its page
+snapshot and after closing owned pages, choosing `Don't Save` for `Unsaved Changes` and neutral
+`cancel()` for other dialogs. A dialog the test left open is dismissed and logged, but the test
+fails; the expected prompt raised by cleanup while closing an owned page does not fail the test.
+A popup menu left open is closed and fails the test the same way. Workspace pages (a folder opened
+with `pages.openFile`) are owned pages too. Native OS dialogs are outside the runner's cleanup scope.
 
 ## Run tests
 

@@ -166,3 +166,171 @@ Append only. Add new entries at the end and never rewrite old ones. Do not inclu
 - **What actually happened:** Since the av-grid move the editor always passes `canAddRows: true`, so Ctrl+Insert adds a row while sorted.
 - **How it was resolved:** Still open: the test stays failing and is listed in EPIC-187's open items.
 - **Suggested improvement:** Either restore the rule in `GridBodyView` (its projection must react to sort and filter changes) or change the guide.
+
+### 2026-11-18 · EPIC-188 / US-2072 · Codex Luna (plan)
+- **Area:** app object / guide editors/folder
+- **What the agent expected:** That `pages.openFile(folderPath)` opens the folder in Folder View, based on the guide's short instruction to click a folder in File Explorer.
+- **What actually happened:** `pages.openFile(folderPath)` opens an editorless workspace page with Explorer rooted at that folder. To reach `category-view`, the test must open a parent workspace and double-click a child-folder row; the facade has no direct folder-opening method.
+- **How it was resolved:** Read the `pages.openFile` help in `PageCollectionWrapper.ts`, the Explorer panel node in `page-panels.ts`, and `FileTreeProvider.getNavigationUrl`; use a snapshot ref and `window.screen.click(..., { clickCount: 2 })` on a child folder row.
+- **Suggested improvement:** Add a short test-authoring note to `folder.md` that `pages.openFile(folder)` creates a workspace page, and show how a folder row opens Folder View.
+
+### 2026-11-18 · EPIC-188 / US-2072 · Codex Luna (plan)
+- **Area:** $help / guide editors/folder / screen
+- **What the agent expected:** A stable named control or facade setter for switching Folder View between list and tile modes.
+- **What actually happened:** The guide and facade expose the current mode, but the facade has no setter and only `category-breadcrumb` is curated. The view-mode button has no accessible label or `data-name`; source inspection found its `data-type="icon-button"` under `[data-name="category-search-host"]`. Its popup menu exposes mode ids through `menus[0]`.
+- **How it was resolved:** Use `[data-name="category-search-host"] button[data-type="icon-button"]` when the search input is empty, then `app.menus[0].click("tiles-landscape")` / `click("list")`; verify `editor.viewMode`.
+- **Suggested improvement:** Add the View Mode button and mode-menu ids to the guide or add a curated Folder View element/action.
+
+### 2026-11-18 · EPIC-188 / US-2071 · Codex Luna (plan) / Claude (run)
+- **Area:** $help / screen (MCP Inspector)
+- **What the agent expected:** Stable names for the Inspector's tool-argument fields, and `<textarea>` elements for string arguments.
+- **What actually happened:** `McpInspectorFacade` `$help` says argument fields are not listed; the plan typed into `[data-type="mcp-tool-arg-form"] textarea` by `nth`. That selector hit Monaco's hidden textarea of the `args` field ("covered by view-line"); UIKit's Textarea is a contenteditable `div[data-type="textarea"]`.
+- **How it was resolved:** Test types into `[data-type="mcp-tool-arg-form"] [data-type="textarea"]` with `nth`, and fills only the string `path` argument (object/array arguments are Monaco editors).
+- **Suggested improvement:** Name each argument field (`mcp-arg-<name>`) in `ToolArgForm`, and say in the UIKit/screens guide that Textarea is contenteditable.
+
+### 2026-11-18 · EPIC-188 / US-2071 · Codex Luna (plan)
+- **Area:** guide screens/mcp-inspector
+- **What the agent expected:** An end-to-end example: open the Inspector, select a tool, enter schema-driven arguments, call it, read the result.
+- **What actually happened:** Neither the guide nor `web-app-tests.md` has one, and the facade has no `callTool`; the flow (and that a self-connection to the app's own MCP endpoint works) was inferred from source.
+- **How it was resolved:** Plan derived from source; the self-connection worked at run time.
+- **Suggested improvement:** Add a short "call a tool from the Inspector" recipe to `screens/mcp-inspector.md`.
+
+### 2026-11-18 · EPIC-188 / US-2071 · Claude (run)
+- **Area:** screen
+- **What the agent expected:** `window.screen.click("text=Tools")` to click the Tools segment.
+- **What actually happened:** Unquoted `text=` is a substring match: it also matched `<code>tools.search()</code>` and `tools.execute(...)` in the server instructions and failed as ambiguous.
+- **How it was resolved:** Test uses the exact quoted form `text="Tools"`.
+- **Suggested improvement:** State in `window.screen` `$help` that `text=foo` is a case-insensitive substring match and `text="Foo"` is exact, and suggest the exact form first.
+
+### 2026-11-18 · EPIC-188 / US-2071 · Claude (run)
+- **Area:** app object
+- **What the agent expected:** `ctx.expect(await editor.availablePanels).toBe(undefined)` for a disconnected Inspector, as the facade says "undefined".
+- **What actually happened:** Values cross the call boundary as JSON, so `undefined` arrives as `null`.
+- **How it was resolved:** Test compares with `null`.
+- **Suggested improvement:** Say in `web-app-tests.md` that `undefined` results arrive as `null`.
+
+### 2026-11-18 · EPIC-188 / US-2071 · Claude (run)
+- **Area:** app object / call options
+- **What the agent expected:** Reading `editor.history` through the stand-in.
+- **What actually happened:** The history holds full tool and resource payloads; the read was truncated ("truncated without maxLength"), and the stand-in cannot pass `maxLength` (EPIC-186 open item).
+- **How it was resolved:** Test reads it with `ctx.call(path, undefined, { maxLength: 2000000 })`.
+- **Suggested improvement:** Let the stand-in pass call options, or raise the default reply size for test runs.
+
+### 2026-11-18 · EPIC-188 / US-2069 · Codex Luna (implementation) / Claude (run)
+- **Area:** $help dialogs
+- **What the agent expected:** A documented way to tell "no dialog is open" when reading `dialogs[0]`.
+- **What actually happened:** `dialogs` `$help` documents `cancel()` but not the empty case. The implementation guessed the error text "Cannot read properties of undefined (reading 'title')"; the real error is `No item 0 in "dialogs"`. It also read `dialogs[0].cancel` without `[]` arguments, which reads the member instead of calling it.
+- **How it was resolved:** Claude fixed both in `browser-helpers.ts`; a probe run confirmed the cleanup.
+- **Suggested improvement:** Document in the `dialogs` `$help` that an empty index fails with `No item 0 in "dialogs"`, and expose `dialogs.length`.
+
+### 2026-11-18 · EPIC-188 / US-2074 · Codex Luna (plan) / Claude (run)
+- **Area:** app object (pages.openFile)
+- **What the agent expected:** That `pages.openFile(<repo>/.git)` opens Git Tree, because the `.git` folder matcher routes it there.
+- **What actually happened:** `openFile(folder)` always opens an editorless workspace page rooted at that folder (`editor: null`); Git Tree opens from the Explorer's `.git` row. Recurrence of the EPIC-188 / US-2072 `pages.openFile(folderPath)` entry above.
+- **How it was resolved:** Test opens the repository as a workspace page and clicks the `.git` row in its Explorer.
+- **Suggested improvement:** Say in `git-tree.md` and the `pages.openFile` `$help` that folder markers (`.git`, `.mneme`) apply to Explorer rows, not to `openFile`.
+
+### 2026-11-18 · EPIC-188 / US-2074, US-2072 · Claude (run)
+- **Area:** screen (accessibility snapshot)
+- **What the agent expected:** Explorer rows named by the item name (`treeitem ".git"`, `treeitem "project"`).
+- **What actually happened:** Row names carry prefixes: `treeitem "Expand .git"`, `treeitem "Expand 📁 project"`, Folder View rows are `generic "📁 project"`, and in tile mode a row is named by its full path. The root row's name carries the full path, so a substring match on "project" hit it through `C:\projects\…`.
+- **How it was resolved:** Tests match the whole name with up to two prefix tokens or a preceding path separator.
+- **Suggested improvement:** Give tree rows an `aria-label` equal to the item name, and keep the expand chevron's label out of the row name.
+
+### 2026-11-18 · EPIC-188 / US-2074 · Claude (run)
+- **Area:** screen / Git Tree
+- **What the agent expected:** Commit rows in an interactive snapshot, to click one by ref.
+- **What actually happened:** History rows are drawn grid cells and an interactive snapshot does not list them.
+- **How it was resolved:** Test waits with `window.screen.waitFor({ text })` and clicks `text="update notes"`.
+- **Suggested improvement:** Say in `git-tree.md` that commit rows are reached by text locators (or add `selectCommit(hash)` to the facade).
+
+### 2026-11-18 · EPIC-188 / US-2074 · Codex Luna (implementation) / Claude (run)
+- **Area:** other (test structure)
+- **What the agent expected:** That removing the fixture folder in `finally` is safe.
+- **What actually happened:** `rmSync` threw EPERM (the app still watched the folder for a moment) and the `finally` error replaced the real assertion error in the report.
+- **How it was resolved:** Fixture folders are reset at test start only.
+- **Suggested improvement:** Add to the authoring rules in `web-app-tests.md`: never let `finally` throw; reset fixtures at the start.
+
+### 2026-11-18 · EPIC-188 / US-2072 · Claude (run)
+- **Area:** app object (Folder View facade)
+- **What the agent expected:** `editor.rootPath` to be the opened folder.
+- **What actually happened:** It is the tree provider's root (the workspace folder); `categoryPath` is the opened folder.
+- **How it was resolved:** Test asserts both.
+- **Suggested improvement:** Say "the provider root, e.g. the workspace folder, not the shown folder" in the `rootPath` summary.
+
+### 2026-11-18 · EPIC-188 / US-2072 · Claude (run)
+- **Area:** screen / menus
+- **What the agent expected:** `window.screen.click(...)` on the view-mode button, then `menus[0].click(mode)`.
+- **What actually happened:** A click that opens a popup menu returns attention, which the `app` stand-in rejects; every menu read and click must go through `ctx.call(..., { dialog: true })`. A `menus[0].click` that opens a dialog did not return `{ pending: true }`. The menu left open then failed every later test in the module.
+- **How it was resolved:** Tests use dialog-aware `ctx.call`; the runner cleanup now closes a stray popup menu.
+- **Suggested improvement:** Add a popup-menu example next to the dialog example in `web-app-tests.md`.
+
+### 2026-11-18 · EPIC-188 / US-2072 · Claude (run)
+- **Area:** app object (Folder View facade) / guide editors/folder
+- **What the agent expected:** `editor.items` of a subfolder to list only its entries.
+- **What actually happened:** Below the provider root the list starts with a `..` parent row (FileTreeProvider); neither the guide nor the facade mentions it.
+- **How it was resolved:** Test expects the `..` row.
+- **Suggested improvement:** Mention the `..` row in `folder.md` and the `items` summary.
+
+### 2026-11-18 · EPIC-188 / US-2072 · Claude (run)
+- **Area:** guide editors/folder
+- **What the agent expected:** "Each folder remembers its list or tile layout" to mean a subfolder starts in list mode.
+- **What actually happened:** A subfolder without its own choice inherits the nearest parent's mode (`FolderViewModeService`).
+- **How it was resolved:** Test expects the inherited mode; `folder.md` now says so.
+- **Suggested improvement:** None beyond the guide fix.
+
+### 2026-11-18 · EPIC-188 / US-2072 · Claude (run) / Codex Luna (implementation)
+- **Area:** screen (snapshot)
+- **What the agent expected:** `snapshot({ interactive: true, root: '[data-name="category-breadcrumb"]' })` to list the breadcrumb segments.
+- **What actually happened:** It returned an empty string: breadcrumb segments are not interactive controls. Codex also could not tell whether snapshots expose `data-part`.
+- **How it was resolved:** Test uses a plain snapshot and reads `data-part` with `window.screen.evaluate`.
+- **Suggested improvement:** Say in `window.screen` `$help` that `interactive: true` keeps only controls and can return an empty string.
+
+### 2026-11-18 · EPIC-188 / US-2073 · Codex Luna (plan)
+- **Area:** guide agents/tools / editor matching
+- **What the agent expected:** That the toolset's execution log opens in Log View; and that the guide's "not a direct `app.tools` property in scripts" applies to tests.
+- **What actually happened:** `tools-execution.log` opens in Monaco; `tools` is on the call-tree root that `ctx.app` mirrors.
+- **How it was resolved:** Plan read the raw log text with `ctx.callText`; tests use `ctx.app.tools`.
+- **Suggested improvement:** Name the log's editor in `agent-tools.md`, and add the call-tree note to `agents/tools.md`.
+
+### 2026-11-18 · EPIC-188 / US-2073 · Codex Luna (implementation)
+- **Area:** guide agent-tools
+- **What the agent expected:** The exact error text the toolset editor shows for an invalid manifest.
+- **What actually happened:** Not documented; found in the English i18n catalog.
+- **How it was resolved:** Test asserts the catalog text.
+- **Suggested improvement:** List the invalid-manifest state's text in `agent-tools.md`.
+
+### 2026-11-18 · EPIC-188 / US-2075 · Codex Luna (plan)
+- **Area:** app object / native dialogs (Mneme)
+- **What the agent expected:** A `mneme` call-tree node, or a way to add a root without the native folder picker.
+- **What actually happened:** There is no top-level `mneme` node, and Add root opens a native picker the call tree cannot confirm.
+- **How it was resolved:** Test registers the root through the Mneme Config page's MCP Inspector button and Mneme's own `add_root` tool.
+- **Suggested improvement:** Add `addRoot(folder, name)` to the Mneme Config facade.
+
+### 2026-11-18 · EPIC-188 / US-2075 · Claude (run)
+- **Area:** screen / Mneme Root
+- **What the agent expected:** A click on a Mneme tree folder row to expand it, and the Mneme Root facade to stay readable after opening a document.
+- **What actually happened:** A row click selects the folder; ArrowRight (or the chevron) expands it. Opening a document navigates the same page to Markdown, so Mneme Root members are gone (`selectedDocumentHref` does not exist).
+- **How it was resolved:** Test presses ArrowRight, searches before opening the document, and checks the page title.
+- **Suggested improvement:** Say in `mneme.md` that documents open in the same page.
+
+### 2026-11-18 · EPIC-188 / US-2075 · Claude (run)
+- **Area:** screen / app object
+- **What the agent expected:** `window.screen.click('text="<root name>"')` to hit the root row on the Mneme Config page.
+- **What actually happened:** The Inspector page was active and its tool result showed the same name, so the click went there; the Config page was hidden.
+- **How it was resolved:** Test calls `pages.showPage("mneme-config-page")` first.
+- **Suggested improvement:** None: an agent must activate the page it wants to click.
+
+### 2026-11-18 · EPIC-188 / US-2075 · Claude (run)
+- **Area:** app object / call options
+- **What the agent expected:** Reading the Mneme Inspector's `tools` and `selectedTool` through the stand-in.
+- **What actually happened:** Truncated without `maxLength` (long tool schemas). Recurrence of the US-2071 history entry above.
+- **How it was resolved:** `ctx.call` with `maxLength`.
+- **Suggested improvement:** As in the US-2071 entry.
+
+### 2026-11-18 · EPIC-188 / US-2074 · Claude (run)
+- **Area:** runner
+- **What the agent expected:** That per-test cleanup closes every page a test opened.
+- **What actually happened:** Cleanup's page list dropped pages whose `editor` is `null`, so workspace pages a test opened stayed open.
+- **How it was resolved:** Fixed in `src/test-host/browser-helpers.ts`.
+- **Suggested improvement:** None beyond the fix.

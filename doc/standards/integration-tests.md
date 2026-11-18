@@ -76,6 +76,17 @@ suite-only fixture helpers. The setup hook receives the current context, `{ file
 profileDirectory, attach }`, and a getter for the current MCP client adapter, so an app restart
 uses the replacement connection.
 
+Before each test, the runner snapshots page ownership. Cleanup closes newly opened pages and
+pop-ups, including pages opened through `ctx.call`. Owned-page closes allow the renderer's
+unsaved-changes prompt and answer it with `Don't Save`. Cleanup sweeps renderer dialogs (`dialogs[i]`)
+before its page snapshot and again after closing owned pages: `Unsaved Changes` is answered with
+`Don't Save`, and other renderer dialogs use `cancel()`. Cleanup answers renderer dialogs only;
+native OS dialogs are outside this cleanup. A popup menu left open (`menus[0]`) is closed in the same
+sweep. Editorless workspace pages count as owned pages. A renderer dialog found before the snapshot is dismissed
+and makes that test fail. A prompt raised by cleanup while closing an owned page is expected and
+does not itself fail the test. Dialog cleanup actions are logged, and any dialog remaining after
+owned-page cleanup also fails the test.
+
 The `app` tree is a stand-in for call paths, not a live object model: each property read or method
 call makes a round trip and must be awaited. A stand-in used as an awaitable resolves its call
 result; its `then` returns the callback's chained Promise so standard Promise chaining works.

@@ -213,7 +213,9 @@ export class MnemeConfigEditorModel extends EditorModel<MnemeConfigEditorState> 
             this.state.update((s) => { s.status = status; });
             this.syncPolling();
         } catch (err) {
-            if (!silent) ui.notify(t("mneme.statusFailed", { product: untranslated("Mneme"), error: errMessage(err) }), "error");
+            // A request cut off because Mneme was stopped or disconnected meanwhile is not a failure.
+            const stillConnected = mnemeConnection.getClient() === client && mnemeConnection.status === "connected";
+            if (!silent && stillConnected) ui.notify(t("mneme.statusFailed", { product: untranslated("Mneme"), error: errMessage(err) }), "error");
         } finally {
             if (!silent) this.state.update((s) => { s.refreshing = false; });
         }

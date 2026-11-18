@@ -21,6 +21,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Bug Fixes
 
+- **Web-app test cleanup:** a test that left a page with unsaved changes, a dialog, or a popup menu
+  open made every later test in the file fail at its start. Cleanup now discards the test's own
+  unsaved pages, dismisses a leftover dialog or menu (the test that left it is reported failed), and
+  also closes workspace pages a test opened.
+- **Mneme status error on stop:** stopping Mneme while the Mneme page was still loading its status
+  showed a "Mneme status failed: Connection closed" error. A request cut off by the stop is no longer
+  reported.
 - **Agent file access over MCP:** `call` on `fs.read`, `fs.write`, `fs.exists` and the other `fs`
   methods ran nothing and returned a "function" placeholder instead. Agents can call them again.
 - **Named profiles kept some data in the default profile:** a `--profile` instance read and wrote the

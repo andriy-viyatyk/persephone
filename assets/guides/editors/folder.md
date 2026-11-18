@@ -61,8 +61,9 @@ boards](../boards/custom-editors.md#direct-folder-boards).
 
 ## Browsing and file operations
 
-Each folder remembers its list or tile layout. Breadcrumb navigation and image thumbnails also work
-for images inside archives, such as `document.docx!word/media`. In writable local folders, a row's
+Each folder remembers its list or tile layout; a subfolder with no layout of its own uses its
+nearest parent's. Breadcrumb navigation and image thumbnails also work for images inside archives,
+such as `document.docx!word/media`. In writable local folders, a row's
 context menu keeps **Cut**, **Copy**, and **Paste** together, followed by the shared edit group
 **Rename**, **Delete**, **New File**, **New Folder**. Paste and new-item actions target the row's
 folder; for a file row, that is its parent folder.
