@@ -105,10 +105,11 @@ export default [
                 await ctx.call('capabilities["speech.synthesize"].speak', ["Synthetic offline test"]);
                 outcome = { rejected: false, message: "" };
             } catch (error) {
-                outcome = { rejected: true, message: error.message };
+                outcome = { rejected: true, message: error.message, code: error.code };
             }
             ctx.expect(outcome.rejected).toBe(true);
             ctx.expect(outcome.message).toContain(NOT_READY_MESSAGE);
+            ctx.expect(outcome.code).toBe("rejected");
         } finally {
             await closePublishedSample(ctx, handle);
         }

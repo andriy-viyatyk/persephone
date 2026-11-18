@@ -134,13 +134,21 @@ Board platform tests live under
 `tests/boards/{lifecycle,permissions,info,bridge,extensions,catalog,published,excalidraw,rest-client}/`.
 Shared board setup and trust helpers belong in `tests/helpers/boards.mjs`; the cross-area
 published-board checkout helper is `tests/helpers/published-boards.mjs`. Cross-cutting capability
-tests live under `tests/capabilities/<module>/`, with their fixture boards under
-`fixtures/boards/<module>/`. Put board fixtures under `fixtures/boards/<module>/`, with each board
-in its own folder. Catalog ZIP sources are under
+tests live under `tests/capabilities/<module>/`; current modules cover `proc/`, `terminal/`,
+`proxy/`, `module-service/`, `translate/`, and `speech/`. Their fixtures are under
+`fixtures/boards/module-service/`, `fixtures/boards/translate/`, `fixtures/boards/speech/`,
+`fixtures/capabilities/terminal/`, and `fixtures/http/translate/`. Put board fixtures under
+`fixtures/boards/<module>/`, with each board in its own folder. Catalog ZIP sources are under
 `fixtures/boards-catalog/`; REST Client HTTP fixtures are under `fixtures/http/rest-client/`.
 `ctx.fixture()` returns the isolated `work/` copy; reset mutable files there at the start of each
 test. Prefer `ctx.app.boards.*` and `ctx.app.pages[id].editor.*`; use `ctx.call` or `ctx.callText`
 for dialog options and exact strings, and `ctx.set` for writable property assignments.
+
+Capability errors returned through the agent call tree carry their code in a `[code: <code>]`
+message suffix; the test host parses it into `error.code` for `ctx.call` errors. Assert the code
+when the capability contract defines one. Tests may start loopback HTTP servers and proxies in
+the test host using `node:http` or `node:net`; use ephemeral loopback ports, verify proxy routing,
+and close each server/socket in `finally`.
 
 Published-board tests live under `tests/published-boards/<board-id>/`, one module per board.
 `tests/published-boards/helpers.mjs` provides `openPublishedSample(ctx, boardId, sampleRel)` for

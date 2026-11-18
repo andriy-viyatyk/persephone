@@ -10,6 +10,9 @@ import { setupMainProcess } from "./main/main-setup";
 import { parseTestControllerArguments } from "./main/test-mode/arguments";
 import { startTestController } from "./main/test-mode/controller";
 import { errMessage } from "./shared/utils";
+import { guardStandardStreams } from "./main/stdio-guard";
+
+guardStandardStreams();
 
 function startWithProfile(profile: ReturnType<typeof parseApplicationProfile>): void {
     const { name, directory: profileDirectory } = profile;

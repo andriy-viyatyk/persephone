@@ -178,14 +178,25 @@ Board platform tests live under `tests/boards/`: `lifecycle/`, `permissions/`, `
 `extensions/`, `catalog/`, `published/`, `excalidraw/`, and `rest-client/`. Shared board setup and
 trust helpers belong in `tests/helpers/boards.mjs`; the cross-area checkout registration helper is
 `tests/helpers/published-boards.mjs`. Cross-cutting capability tests live under
-`tests/capabilities/<module>/`, with offline provider boards under `fixtures/boards/<module>/`.
-Keep board fixtures under `fixtures/boards/<module>/`, with each board in its own folder. Catalog
-archives are sourced from `fixtures/boards-catalog/`, and REST Client HTTP request fixtures live
-under `fixtures/http/rest-client/`. Tests use `fixture()` to access an isolated copy in the profile's
+`tests/capabilities/<module>/`; current modules cover `proc/`, `terminal/`, `proxy/`,
+`module-service/`, `translate/`, and `speech/`. Their fixtures live under
+`fixtures/boards/module-service/`, `fixtures/boards/translate/`, `fixtures/boards/speech/`,
+`fixtures/capabilities/terminal/`, and `fixtures/http/translate/`. Offline provider boards belong
+under `fixtures/boards/<module>/`. Keep board fixtures under `fixtures/boards/<module>/`, with each
+board in its own folder. Catalog archives are sourced from `fixtures/boards-catalog/`, and REST
+Client HTTP request fixtures live under `fixtures/http/rest-client/`. Tests use `fixture()` to
+access an isolated copy in the profile's
 `work/` directory, so mutable files can be reset without changing the committed fixture. Prefer the
 app stand-in (`ctx.app.boards.*`,
 `ctx.app.pages[id].editor.*`) for structured calls; use `ctx.call` or `ctx.callText` when a call
 option or exact string result is needed, and `ctx.set` for writable property assignments.
+
+Capability errors exposed through the agent call tree append `[code: <code>]` to the message so
+the test host can restore the code as `error.code` on `ctx.call` errors. Tests should assert both
+the useful message and code when the capability contract defines one. A capability test may start
+its own loopback HTTP server or proxy in the test host with `node:http` or `node:net` (for example,
+HTTP CONNECT and SOCKS5 proxies); bind to loopback and an ephemeral port, assert that requests
+traversed the proxy, and close every server/socket in `finally` so no listener survives the test.
 
 Tests that need a local `persephone-boards` checkout declare
 `requires: ["published-board-checkout"]`. The wrapper enables that tag automatically when

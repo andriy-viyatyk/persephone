@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "name": "Fixture Translator",
+  "description": "Offline deterministic translation fixture for UI integration tests.",
+  "author": "Persephone test fixture",
+  "minBridgeVersion": "1.50.0",
+  "permissions": {
+    "execute": false,
+    "service": true,
+    "fileSystem": false,
+    "openExternal": false,
+    "appScripting": false,
+    "network": false,
+    "clipboardRead": false,
+    "camera": false,
+    "microphone": false,
+    "computerAudio": false,
+    "geolocation": false,
+    "notifications": false,
+    "themes": false
+  },
+  "service": "scripts/service.mjs",
+  "serviceInterfaces": [
+    { "id": "text.translate", "version": 1, "title": "Fixture Translator" }
+  ]
+}

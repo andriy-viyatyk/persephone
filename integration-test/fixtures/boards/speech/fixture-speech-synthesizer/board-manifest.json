@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "name": "Fixture Speech Synthesizer",
+  "description": "Harmless callable speech capability fixture; produces no audio.",
+  "author": "Persephone test fixture",
+  "minBridgeVersion": "1.50.0",
+  "permissions": {
+    "execute": false,
+    "service": true,
+    "fileSystem": false,
+    "openExternal": false,
+    "appScripting": false,
+    "network": false,
+    "clipboardRead": false,
+    "camera": false,
+    "microphone": false,
+    "computerAudio": false,
+    "geolocation": false,
+    "notifications": false,
+    "themes": false
+  },
+  "service": "scripts/service.mjs",
+  "capabilities": [
+    {
+      "id": "speech.synthesize",
+      "version": 1,
+      "title": "Fixture Speech Synthesis",
+      "methods": {
+        "speak": {
+          "kind": "call",
+          "summary": "Harmless fixture rejection; no audio is produced.",
+          "args": [
+            { "name": "text", "type": "string" },
+            { "name": "options", "type": "{ lang?: string; voice?: number; speed?: number }", "optional": true }
+          ],
+          "returns": "Completion status"
+        },
+        "stop": {
+          "kind": "call",
+          "summary": "Stop fixture speech.",
+          "returns": "null"
+        }
+      }
+    }
+  ]
+}

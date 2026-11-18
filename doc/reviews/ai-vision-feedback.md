@@ -1461,3 +1461,155 @@ Append only. Add new entries at the end and never rewrite old ones. Do not inclu
 - **What actually happened:** Speech to Text, Text to Speech and Wake Word expose none; tests drive their DOM and service channels.
 - **How it was resolved:** DOM selectors from board source.
 - **Suggested improvement:** Recurrence of the EPIC-195 "no board model" entry.
+
+### 2026-11-18 · EPIC-198 / US-2117 · Codex Luna (plan)
+- **Area:** app object / `proc`
+- **What the agent expected:** To drive an `app.proc.execute()` handle through `ctx.app.proc...` paths, with its members listed in `$help`.
+- **What actually happened:** The handle has methods and takes callbacks, which cannot cross `call`; `proc.$help` describes only `execute` (`scripting/ai-vision/namespaces/proc.ts:3`). The handle contract is only in `api/types/proc.d.ts` and the scripting guide.
+- **How it was resolved:** Tests run the handle inside `ctx.script()` and return plain data.
+- **Suggested improvement:** `proc.$help` could name the handle members (`getText`, `getJson`, `getBytes`, `on`, `write`, `endStdin`, `kill`) and say the handle is script-only.
+
+### 2026-11-18 · EPIC-198 / US-2117 · Codex Luna (plan)
+- **Area:** `proc` options
+- **What the agent expected:** `shell: false` to take an argument list, and a documented way to run Node from a test.
+- **What actually happened:** `execute(command, options)` takes one command string and never sends argv (`api/proc.ts:69`); the test host's `process.execPath` is Persephone, whose packaged build cannot run as Node.
+- **How it was resolved:** `shell: false` is tested with `cmd.exe` fed through stdin; Node one-liners rely on `node` on `PATH` (inherited from the suite runner), with a preflight that fails clearly.
+- **Suggested improvement:** Say in `proc.d.ts` how `shell: false` treats the command string, and in the web-app test guide which executables a test may assume.
+
+### 2026-11-18 · EPIC-198 / US-2117 · Codex Luna (plan, implementation)
+- **Area:** terminal / menus
+- **What the agent expected:** An API for "Open terminal here", and a menu item id `open-terminal-here`.
+- **What actually happened:** The action exists only in the Explorer and menu-bar folder context menus (`item-menus.ts:191`, `menu-bar-folder-ui.ts:81`), and the menu-bar item has a label and no id.
+- **How it was resolved:** Tests right-click the folder row and use `menus[0].click("Open Terminal here")` (labels are accepted when no id matches).
+- **Suggested improvement:** Give the menu item a stable id, like the other context-menu items.
+
+### 2026-11-18 · EPIC-198 / US-2117 · Codex Luna (plan) / Claude (review)
+- **Area:** UI text (terminal warning)
+- **What the agent expected:** The invalid-folder warning to read "Failed to open terminal." (the message key passed to the toast).
+- **What actually happened:** `errMessage(err, fallback)` uses the thrown message when there is one, so the toast says `Not a folder: <path>` (`terminal-launcher.ts:34`); the key is only the fallback.
+- **How it was resolved:** Caught in review; the test asserts the thrown text through `ui.alerts.list()`.
+- **Suggested improvement:** Recurrence of guessed display text; read what reaches the toast, not the fallback key.
+
+### 2026-11-18 · EPIC-198 / US-2117 · Codex Luna (implementation) / Claude (review)
+- **Area:** terminal (`terminal.command`)
+- **What the agent expected:** A fixture `.cmd` ending in `exit /b 0` to close the console window that "Open terminal here" opens.
+- **What actually happened:** The launcher runs `cmd /c start "" /D <dir> <command>`; `start` runs a batch file under `cmd /K`, so `exit /b` ends only the batch and the window stays open. Nothing in the setting comment or guides says how the command is launched.
+- **How it was resolved:** Claude changed it to a plain `exit` before the run; no window was left behind.
+- **Suggested improvement:** The `terminal.command` setting comment could say the command is started with `start`, so a batch file keeps its window unless it calls `exit`.
+
+### 2026-11-18 · EPIC-198 / US-2117 · Codex Luna (implementation) / Claude (run)
+- **Area:** test context (`ctx.waitFor`)
+- **What the agent expected:** `ctx.waitFor(fn, list => list.find(...))` to return the element the predicate found.
+- **What actually happened:** It returns the polled value (the whole alert list), so `warning.type` was `undefined`.
+- **How it was resolved:** Claude fixed the test to find the element in the returned list.
+- **Suggested improvement:** Recurrence of the `waitFor` return-value entry; a one-line example in `web-app-tests.md` (`const list = await waitFor(...); list.find(...)`).
+
+### 2026-11-18 · EPIC-198 / US-2117 · Codex Luna (implementation) / Claude (run)
+- **Area:** call path (open popup menu)
+- **What the agent expected:** To call `fs.removeDir` while a context menu was open.
+- **What actually happened:** Every `call` made while a popup menu is open returns "Attention: a popup menu is open", which `ctx.call`/`ctx.app` treat as a failure unless `{ dialog: true }` is passed.
+- **How it was resolved:** Claude made the test remove the folder from the test host with `node:fs`.
+- **Suggested improvement:** Say in `web-app-tests.md` that the attention rule covers open menus as well as dialogs.
+
+### 2026-11-18 · EPIC-198 / US-2118 · Codex Luna (implementation) / Claude (run)
+- **Area:** screen selectors (popups)
+- **What the agent expected:** The board toolbar's "more" menu to render inside its page slot, so it scoped `[data-name="board-menu"]` under `[data-name="page-slot"][data-page-id=…]`.
+- **What actually happened:** Popup menus and popovers render outside the page slot; the scoped selector found nothing. The browser translation popover (US-2116) had the same problem.
+- **How it was resolved:** Claude dropped the page-slot scope for the menu; Codex did the same for the popover.
+- **Suggested improvement:** The inactive-pages advice ("scope to the page slot") should add "except popups, menus and dialogs, which render at the window root".
+
+### 2026-11-18 · EPIC-198 · Claude (plan)
+- **Area:** guide (board services)
+- **What the agent expected:** Claude's epic checklist said a board service stops after its last page closes.
+- **What actually happened:** `agents/boards/services.md:13,18` says a service can run with no board page open; nothing stops it on the last page. Codex flagged the conflict in its plan.
+- **How it was resolved:** The checklist was corrected; the test asserts the service keeps running and stops only through `boards.stopService`.
+- **Suggested improvement:** None for Persephone; read the guide before writing a checklist.
+
+### 2026-11-18 · EPIC-198 / US-2118 · Codex Luna (plan)
+- **Area:** `$help` (pages)
+- **What the agent expected:** `pages.openFile()` to be fully described in `$help`.
+- **What actually happened:** The root help gives a one-line summary (`root.ts:60,171`); its return value and behavior are only in `api/types/pages.d.ts:59-64`.
+- **How it was resolved:** Read the type file.
+- **Suggested improvement:** Recurrence of thin method summaries in `$help`; signatures with return types would answer it.
+
+### 2026-11-18 · EPIC-198 / US-2119 · Codex Luna (plan, implementation)
+- **Area:** guide (scripting), app object (`fetch`)
+- **What the agent expected:** `app.fetch` in the app-object guide, and a usable result through `ctx.app.fetch`.
+- **What actually happened:** `agents/scripting/the-app-object.md` does not mention `fetch` (it is in `api/types/app.d.ts:111,222-251`), and a `Response` cannot cross `call`.
+- **How it was resolved:** Tests call `app.fetch` in `ctx.script()` and return a JSON projection.
+- **Suggested improvement:** Add `app.fetch` (with `proxy` and `tor`) to the app-object guide.
+
+### 2026-11-18 · EPIC-198 / US-2119 · Codex Luna (implementation) / Claude (run)
+- **Area:** call values (browser `evaluate`)
+- **What the agent expected:** `editor.evaluate("document.body.textContent")` on a page whose body is JSON text to return that text.
+- **What actually happened:** The string came back decoded into an object, so `toContain` failed.
+- **How it was resolved:** Claude changed the expression to read the echoed field (`JSON.parse(...).url`).
+- **Suggested improvement:** Recurrence of "values change shape across `call`": a JSON-looking string result is parsed. `ctx.callText` keeps the text; the guide could say so next to `evaluate`.
+
+### 2026-11-18 · EPIC-198 / US-2116 · Codex Luna (implementation) / Claude (run)
+- **Area:** board manifest (compatibility)
+- **What the agent expected:** A fixture board with object-form `permissions` and legacy `serviceInterfaces` (copied from the 9a transcriber fixture) to appear in `capabilities.$help`.
+- **What actually happened:** Without `minBridgeVersion` the board is incompatible (`version-utils.ts:71-78`), so the capability registry drops its declarations (`board-trust-snapshot-builder.ts:140`), while the legacy host channel still uses it (the Monaco Translate toolbar appeared). `$help` gives no hint why the provider is missing.
+- **How it was resolved:** Claude probed it live; Codex added `minBridgeVersion`. Recorded as an open item (the two paths disagree).
+- **Suggested improvement:** `capabilities.$help` could list trusted boards whose declarations were dropped and why, and the legacy service list should apply the same compatibility rule.
+
+### 2026-11-18 · EPIC-198 / US-2116 · Codex Luna (implementation) / Claude (run)
+- **Area:** dialogs (renderer dialog attention)
+- **What the agent expected:** To poll the Translate text dialog's visibility and the page list with plain calls while the dialog was open.
+- **What actually happened:** Every call returned "Attention: dialog is open" and threw; the open dialog then made the next two tests fail at their first call.
+- **How it was resolved:** Codex routed every call made while the dialog may be open through `{ dialog: true }` and closed the dialog in cleanup.
+- **Suggested improvement:** Recurrence of the dialog-attention entries. The runner's cleanup could close a dialog left by a failed test before the next test starts.
+
+### 2026-11-18 · EPIC-198 / US-2116 · Codex Luna (implementation) / Claude (run)
+- **Area:** call path (method without args)
+- **What the agent expected:** `ctx.call("ui.alerts.list", undefined, { dialog: true })` to invoke `list()`.
+- **What actually happened:** Without an args array the path is read as a property, which returns the method's descriptor ("Call it as ui.alerts.list()"). The wait timed out on that object.
+- **How it was resolved:** Claude passed `[]`.
+- **Suggested improvement:** `ctx.call` could throw when a method path is read without args, instead of returning the descriptor.
+
+### 2026-11-18 · EPIC-198 / US-2116 · Codex Luna (implementation) / Claude (run)
+- **Area:** app object (`pages.openUrlInBrowserTab`)
+- **What the agent expected:** `openUrlInBrowserTab()` to return a page object with `id`.
+- **What actually happened:** It resolves to the page id string (`api/types/pages.d.ts:144-148`), so `page.id` was `undefined` and the next path was `pages[undefined]`.
+- **How it was resolved:** Claude used the returned id.
+- **Suggested improvement:** Recurrence of "guessed members"; reading the signature avoids it.
+
+### 2026-11-18 · EPIC-198 / US-2116 · Codex Luna (plan)
+- **Area:** capabilities (legacy projection)
+- **What the agent expected:** A `speech.synthesize` provider declared through `serviceInterfaces` to offer the callable `speak()`/`stop()` the synthesis guide describes.
+- **What actually happened:** The legacy projection makes every operation a channel (`capability-contract.ts:19-24,51-60`); only a `capabilities` declaration with `methods` gives callable ones.
+- **How it was resolved:** The speech fixture uses the `capabilities` form.
+- **Suggested improvement:** The speech guides could say that the callable methods need the `capabilities` form.
+
+### 2026-11-18 · EPIC-198 / US-2116 · Codex Luna (implementation)
+- **Area:** screen selectors (browser translation)
+- **What the agent expected:** The browser translation popover and its state to be reachable by `data-name` or through the call tree.
+- **What actually happened:** The popover uses `data-translation-popover-content` and `data-translation-label` (`BrowserTranslationPopoverContentView.ts:23`), and its state is not in the call tree.
+- **How it was resolved:** Tests read the label attributes and the page text.
+- **Suggested improvement:** Add `data-name` to the popover per the UI element contract.
+
+### 2026-11-18 · EPIC-198 / US-2120 · Claude (fix)
+- **Area:** call path (error codes)
+- **What the agent expected:** Capability errors to keep their code over `call` (open since EPIC-197).
+- **What actually happened:** The code is dropped inside the `ai-vision` package's resolver (`errMessage`), before `toCallResult` sees it.
+- **How it was resolved:** The capabilities agent tree now appends `[code: <code>]` to the message, and the test host sets `error.code` from it; the two EPIC-197 speech tests now assert `rejected`. Other namespaces still lose codes.
+- **Suggested improvement:** Carry `code` in the `ai-vision` resolver's error envelope so every namespace keeps it.
+
+## Summary of themes
+
+Written 2026-11-18, when the UI test roadmap closed (EPIC-187 to EPIC-198, about 225 entries). Counts are rough: an
+entry can touch more than one theme.
+
+| Theme | Seen (about) | Suggested improvement |
+|---|---|---|
+| Docs and `$help` missing or too thin (a member, return shape or behavior only in a `.d.ts` or the source) | 45 | Generate `$help` signatures with return types from the `.d.ts` files, and add a "see also" line to the type file or guide for each namespace. |
+| Published-board models and board docs that differ from the board's behavior | 35 | A per-board `ai-vision` review when a board ships: every model member listed in its `$help`, and README claims checked against the code. |
+| Reach gaps: no `data-name`, no call-tree route, no stable menu id | 20 | Enforce the UI element contract in review: every interactive control and popup gets a `data-name`, every menu item an id. |
+| Guessed member names and return shapes | 13 | Make `ctx.app` reject unknown members with the list of real ones (as `$help` hints do), so a guess fails at its first call. |
+| Dialog and popup-menu attention on ordinary calls | 11 | Document that attention covers menus as well as dialogs, and let the runner close a dialog left by a failed test before the next test. |
+| Values changing shape over `call` (JSON-looking strings parsed, truncation, binary arguments) | 10 | Keep strings as strings in the `call` envelope, and make truncation explicit in the value, not only in a side note. |
+| `ctx.waitFor` returning the polled value, and other async-state waits | 10 | One example in `web-app-tests.md`: `const list = await waitFor(...); list.find(...)`. |
+| Selector scoping (inactive pages stay mounted; popups render outside the page slot) | 6 | A shared helper that scopes to the active page and, for popups, to the window root, named in the test guide. |
+| Main-process shortcuts unreachable from `pressKey` | 5 | Deliver key presses through `webContents.sendInputEvent` so `before-input-event` sees them. |
+| Display text guessed from message keys or fallbacks | 4 | Assert strings from `src/shared/i18n/en/` or the board's `lang/en.json`, and read what actually reaches the toast. |
+| Error codes lost over `call` | 3 | Carry `code` in the `ai-vision` resolver envelope for every namespace (done for `capabilities[...]` in US-2120). |

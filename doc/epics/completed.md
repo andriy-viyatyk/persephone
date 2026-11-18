@@ -1,3 +1,29 @@
+## EPIC-198 — UI test coverage, phase 9b: services, processes, terminal and proxy
+
+Completed 2026-11-18. Phase 9b of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md), its last phase: 28 new
+tests in `integration-test/tests/capabilities/`: translate (4) and speech (2) with offline fixture providers (Monaco
+Translate text, browser page translation and restore, a failing provider, `speech.synthesize` discovery and agent
+calls), proc (6: one-shot, streaming, stdin/cwd/env, `shell: false`, spawn failure, kill), terminal (2: "Open Terminal
+here" with a fixture `.cmd` that exits, the "Not a folder" warning), module-service (6: lazy start, channel round
+trip, surviving the last page, two-page sharing, settings, crash budget and Board Info) and proxy (8: `app.fetch`
+through test-host SOCKS5 and HTTP CONNECT proxies, credentials, remote name resolution, fail-closed, a proxied default
+browser profile). Codex (Luna) planned and wrote the tests; Claude reviewed, ran and triaged, and recorded 19 cases in
+[ai-vision-feedback.md](../reviews/ai-vision-feedback.md). **Fixed:** capability errors keep their code over `call`
+(`[code: <code>]` suffix, `error.code` in tests; US-2120); the main process no longer shows an EPIPE dialog when its
+console has closed (orchestrator fix, same commit). **Open:** legacy `serviceInterfaces` ignore board compatibility
+while the capability registry applies it; codes still lost in other namespaces (`ai-vision` resolver); small reach gaps
+(menu-bar terminal item id, translation popover `data-name`, `proc.$help` handle members, `app.fetch` in the
+app-object guide); carried over: the EPIC-187 grid decision, the EPIC-194 Theme Editor and EPIC-197 Audio Player board
+bugs. **Uncovered:** terminal auto-detection, downloads and real engines, the egress-IP dialog, HTTPS through a proxy,
+named proxied profiles, Tor. Final launched run (`--with git,mneme`), 525 tests: 520 passed, 3 failed (the three
+carried-over items), 2 skipped (Tor). Completion skills by Codex (Luna). Epic document: [EPIC-198](EPIC-198.md).
+
+- [x] **Tests: translation and speech services (US-2116).**
+- [x] **Tests: `app.proc` and terminal (US-2117).**
+- [x] **Tests: module service (US-2118).**
+- [x] **Tests: proxy and tunnel (US-2119).**
+- [x] **Error codes over `call` (US-2120).**
+
 ## EPIC-197 — UI test coverage, phase 8d: published audio and speech boards
 
 Completed 2026-11-18. Phase 8d of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 19 new tests.

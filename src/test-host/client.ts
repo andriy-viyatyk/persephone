@@ -106,7 +106,10 @@ export class McpClient {
         const text = blocks.filter(isTextBlock).map((block) => block.text).join("\n");
         const metadata = blocks.filter((block) => !isTextBlock(block));
         const readableMetadata = metadata.length ? `\nNon-text content: ${this.readableBlocks(metadata)}` : "";
-        return new Error(`${formatStep("call", path, args)}\n${text || "MCP returned an error without text content."}${readableMetadata}`);
+        const error = new Error(`${formatStep("call", path, args)}\n${text || "MCP returned an error without text content."}${readableMetadata}`);
+        // Coded errors from the agent tree end their message with `[code: <code>]` (US-2120).
+        const code = /\[code: ([a-z][a-z0-9-]*)\]/.exec(text)?.[1];
+        return code ? Object.assign(error, { code }) : error;
     }
     private readableBlocks(blocks: ContentBlock[]): string {
         try { return JSON.stringify(blocks); } catch (error) { return errMessage(error, "MCP reply could not be serialized."); }

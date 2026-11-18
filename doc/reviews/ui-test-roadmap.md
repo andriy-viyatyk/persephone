@@ -1,6 +1,6 @@
 # UI test coverage roadmap
 
-**Date:** 2026-11-16 · **Status:** accepted 2026-11-16; Phase 1 is [EPIC-181](../epics/EPIC-181.md) (completed 2026-11-16); Phase 2 is [EPIC-182](../epics/EPIC-182.md) (completed 2026-11-16); Phase 3 is [EPIC-183](../epics/EPIC-183.md) (completed 2026-11-17); Phase 4a is [EPIC-184](../epics/EPIC-184.md) (completed 2026-11-17); Phase 4b is [EPIC-185](../epics/EPIC-185.md) (completed 2026-11-17); Phase 5a is [EPIC-187](../epics/EPIC-187.md) (completed 2026-11-18); Phase 5b is [EPIC-188](../epics/EPIC-188.md) (completed 2026-11-18); Phase 6a is [EPIC-189](../epics/EPIC-189.md) (completed 2026-11-18); Phase 6b is [EPIC-190](../epics/EPIC-190.md) (completed 2026-11-18); Phase 7a is [EPIC-191](../epics/EPIC-191.md) (completed 2026-11-18); Phase 7b is [EPIC-192](../epics/EPIC-192.md) (completed 2026-11-18); Phase 8a is [EPIC-193](../epics/EPIC-193.md) (completed 2026-11-18); Phase 8b is [EPIC-194](../epics/EPIC-194.md) (completed 2026-11-18); Phase 8c is [EPIC-195](../epics/EPIC-195.md) (completed 2026-11-18); Phase 9a is [EPIC-196](../epics/EPIC-196.md) (completed 2026-11-18); Phase 8d is [EPIC-197](../epics/EPIC-197.md) (completed 2026-11-18) · **Builds on:** [EPIC-180](../epics/EPIC-180.md) (runner,
+**Date:** 2026-11-16 · **Status:** accepted 2026-11-16; Phase 1 is [EPIC-181](../epics/EPIC-181.md) (completed 2026-11-16); Phase 2 is [EPIC-182](../epics/EPIC-182.md) (completed 2026-11-16); Phase 3 is [EPIC-183](../epics/EPIC-183.md) (completed 2026-11-17); Phase 4a is [EPIC-184](../epics/EPIC-184.md) (completed 2026-11-17); Phase 4b is [EPIC-185](../epics/EPIC-185.md) (completed 2026-11-17); Phase 5a is [EPIC-187](../epics/EPIC-187.md) (completed 2026-11-18); Phase 5b is [EPIC-188](../epics/EPIC-188.md) (completed 2026-11-18); Phase 6a is [EPIC-189](../epics/EPIC-189.md) (completed 2026-11-18); Phase 6b is [EPIC-190](../epics/EPIC-190.md) (completed 2026-11-18); Phase 7a is [EPIC-191](../epics/EPIC-191.md) (completed 2026-11-18); Phase 7b is [EPIC-192](../epics/EPIC-192.md) (completed 2026-11-18); Phase 8a is [EPIC-193](../epics/EPIC-193.md) (completed 2026-11-18); Phase 8b is [EPIC-194](../epics/EPIC-194.md) (completed 2026-11-18); Phase 8c is [EPIC-195](../epics/EPIC-195.md) (completed 2026-11-18); Phase 9a is [EPIC-196](../epics/EPIC-196.md) (completed 2026-11-18); Phase 8d is [EPIC-197](../epics/EPIC-197.md) (completed 2026-11-18); Phase 9b, the last, is [EPIC-198](../epics/EPIC-198.md) (completed 2026-11-18). **The roadmap is complete (2026-11-18):** 525 tests, see [Remaining gaps](#remaining-gaps) · **Builds on:** [EPIC-180](../epics/EPIC-180.md) (runner,
 `uitest` profile, pilot tests).
 
 The refactoring roadmap touched almost the whole codebase. This roadmap retests every screen and feature once, and
@@ -228,7 +228,7 @@ this repo, because they test the integration between the board and the app.
 Split in two (2026-11-18). Phase 9a ([EPIC-196](../epics/EPIC-196.md), completed 2026-11-18) adds the file-backed capture source (Chromium's
 fake media device fed from a WAV fixture, switched on by test mode) and covers `audio@1`, global mute, window recording
 and voice typing. Phase 9b takes the speech and translation services, the terminal, `app.proc`, the module service and
-the proxy/tunnel. Phase 8d can follow either part. Voice typing through its shortcut stayed uncovered in 9a (CDP keys
+the proxy/tunnel. Phase 9b is [EPIC-198](../epics/EPIC-198.md) (completed 2026-11-18): 28 tests in `capabilities/{translate,speech,proc,terminal,module-service,proxy}`, all offline, with fixture providers and test-host proxies. Phase 8d can follow either part. Voice typing through its shortcut stayed uncovered in 9a (CDP keys
 never reach the main-process `before-input-event`); the Transcript toolbar covers the same path. The voice assistant UI no longer exists (wake-word moved to its
 board).
 
@@ -236,6 +236,42 @@ Microphone and speaker tests need a file-backed capture source. If the audio mod
 with a task to add it (see Concerns). Everything else here is tagged `requires: [mic]` and runs only on demand.
 
 ---
+
+## Remaining gaps
+
+Collected from every phase's uncovered and open items when the roadmap closed (2026-11-18). Final launched run
+(`--with git,mneme`): 525 tests, 520 passed, 3 failed, 2 skipped.
+
+**Failing on purpose (decision or bug outside this repo):**
+- Grid row insertion while sorted or filtered: the guide says it is blocked, the editor allows it (EPIC-187, user's call).
+- Theme Editor board: `previewStatus.pending` never settles (EPIC-194, `persephone-boards`).
+- Audio Player board: `editor.app.next()` replaces an imported playlist (EPIC-197, `persephone-boards`).
+
+**Open product and doc items:**
+- Coded errors keep their code over `call` only in `capabilities[...]`; other namespaces lose it in the `ai-vision`
+  resolver (EPIC-197/198).
+- Legacy `serviceInterfaces` ignore board compatibility while the capability registry applies it (EPIC-198).
+- Board automation during a board reload rejects or blocks instead of waiting for the frame (EPIC-191).
+- Runner cleanup does not answer a stray dialog before the next test, so one failure can cascade (EPIC-187, seen again
+  in EPIC-198); an occasional launch never reaches MCP (EPIC-193).
+- Small reach gaps: menu-bar "Open Terminal here" has no id, the browser translation popover has no `data-name`,
+  `proc.$help` omits the handle members, `app.fetch` is missing from the app-object guide (EPIC-198).
+- Board-owner doc notes in `persephone-boards` (EPIC-193..197).
+
+**Not covered, and why:**
+- *Needs the internet or downloads:* search engines and engine URLs, Tor (`--with network,tor`), Git Pull/Push, Mneme
+  vector search and model download, published-board translate and claude-agent, Torrent Viewer (DHT), speech and
+  translation models and engines, the proxy egress-IP dialog.
+- *Needs real hardware or real speech:* camera, microphone and device permissions in pages, transcription, synthesis and
+  wake detection, voice typing by shortcut (CDP keys never reach `before-input-event`).
+- *Native OS surfaces:* native file and save dialogs (Image Save, Mneme Add root, board Save), Open in Windows default
+  app, Show in Folder, OS window focus, drag-and-drop between Explorer folders, grid column drag, canvas interaction.
+- *Not observable through `call`:* clipboard contents (images, Mermaid copy), browser screenshot results,
+  `window.prompt()`, keyboard page zoom, HLS playback (no encoder), cinema mode in nested frames.
+- *Would leave something running or touch the user's data:* terminal auto-detection (a real `pwsh -NoExit` window).
+- *Smaller paths left out by budget:* catalog auto-refresh, download cancel and transport failures, malformed REST Client
+  collections and TLS, HTTPS through a proxy, named proxied profiles, Transcript computer/Both modes, recording
+  pause/resume, Audio Player folder import and PLS, each viewer's secondary formats.
 
 ## Concerns
 

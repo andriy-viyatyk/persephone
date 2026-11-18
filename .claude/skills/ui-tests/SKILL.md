@@ -49,13 +49,21 @@ The `boards` area is organized under
 `tests/boards/{lifecycle,permissions,info,bridge,extensions,catalog,published,excalidraw,rest-client}/`.
 Shared board setup and trust helpers live in `tests/helpers/boards.mjs`; the cross-area
 published-board registration helper is `tests/helpers/published-boards.mjs`. Cross-cutting tests
-for app capabilities live under `tests/capabilities/<module>/`, with fixture boards under
-`fixtures/boards/<module>/`. Catalog ZIP sources live in `fixtures/boards-catalog/`, and REST Client HTTP
-fixtures in `fixtures/http/rest-client/`. Tests receive isolated copies under the profile's `work/`
+for app capabilities live under `tests/capabilities/<module>/`; current modules cover `proc/`,
+`terminal/`, `proxy/`, `module-service/`, `translate/`, and `speech/`. Their fixtures are under
+`fixtures/boards/module-service/`, `fixtures/boards/translate/`, `fixtures/boards/speech/`,
+`fixtures/capabilities/terminal/`, and `fixtures/http/translate/`. Catalog ZIP sources live in
+`fixtures/boards-catalog/`, and REST Client HTTP fixtures in `fixtures/http/rest-client/`. Tests
+receive isolated copies under the profile's `work/`
 directory through `ctx.fixture()`; reset any mutable fixture file at test start. Prefer
 `ctx.app.boards.*` and `ctx.app.pages[id].editor.*` calls, using `ctx.call` or `ctx.callText` where
 call options or exact string results are required, and `ctx.set(path, value, { timeout? })` for
 writable property assignments. Assignments through `ctx.app` throw because they cannot be awaited.
+Capability errors from the agent call tree append `[code: <code>]` to their message, which the test
+host parses into `error.code` on `ctx.call` errors; assert it when defined by the capability
+contract. Tests may start loopback servers and proxies in the test host using `node:http` or
+`node:net`; bind to ephemeral loopback ports, verify proxy routing, and close every server/socket
+in `finally`.
 
 Published-board tests live separately under
 `tests/published-boards/<board-id>/<board-id>.test.mjs`, one module per board, with shared opening

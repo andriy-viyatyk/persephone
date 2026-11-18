@@ -9,8 +9,17 @@ const CAPABILITIES_MEMBERS: readonly IAiMember[] = [
     { name: "handlers", kind: "method", signature: "handlers(id: string, filter?: { mime?: string })", summary: "List legacy candidates for one capability id." },
 ];
 
+/**
+ * A coded error for the agent tree. The MCP `call` envelope carries only an error's message (the
+ * ai-vision resolver keeps no other field), so the code is appended to the message as
+ * `[code: <code>]`, and the error keeps its `code` for in-process callers.
+ */
+function agentError(code: string, message: string): Error {
+    return codedError(code, `${message} [code: ${code}]`);
+}
+
 function unwrap<T>(result: import("../../../../ipc/capability-bus-channels").CapabilityClientResult<T>): T {
-    if ("error" in result) throw Object.assign(new Error(result.error.message), { code: result.error.code });
+    if ("error" in result) throw agentError(result.error.code, result.error.message);
     return result.value;
 }
 
@@ -49,7 +58,7 @@ class CapabilityProvidersNode {
         const match = this.providers.find((provider) => provider.provider === key || provider.name === key);
         if (!match) {
             const known = this.providers.map((provider) => provider.name || provider.provider).join(", ");
-            throw codedError("no-handler", `No agent-visible provider "${key}" for ${this.id}. Providers: ${known || "none"}.`);
+            throw agentError("no-handler", `No agent-visible provider "${key}" for ${this.id}. Providers: ${known || "none"}.`);
         }
         const selected = unwrap(await api.capabilityGet(this.id, { provider: key, asAgent: true }));
         return selected ? new CapabilityNode(this.id, [match], agentProvider(selected), key) : undefined;
@@ -90,18 +99,18 @@ class CapabilityNode {
 
     private async invoke(method: string, args: unknown[]): Promise<unknown> {
         const resolvedProvider = unwrap(await api.capabilityGet(this.id, this.options()));
-        if (!resolvedProvider || !resolvedProvider.methods[method]) throw codedError("no-handler", `Capability method "${this.id}.${method}" has no agent-visible handler.`);
-        if (!resolvedProvider.methods[method].agent) throw codedError("permission-denied", `Capability permission denied for hidden agent method "${this.id}.${method}".`);
+        if (!resolvedProvider || !resolvedProvider.methods[method]) throw agentError("no-handler", `Capability method "${this.id}.${method}" has no agent-visible handler.`);
+        if (!resolvedProvider.methods[method].agent) throw agentError("permission-denied", `Capability permission denied for hidden agent method "${this.id}.${method}".`);
         const provider = agentProvider(resolvedProvider);
         if (provider.methods[method].kind === "channel") {
-            throw codedError("permission-denied", `Capability method "${this.id}.${method}" is a channel and cannot be called by agents; open a channel through its supported client API.`);
+            throw agentError("permission-denied", `Capability method "${this.id}.${method}" is a channel and cannot be called by agents; open a channel through its supported client API.`);
         }
         const key = { id: provider.id, version: provider.version, provider: provider.provider, handlerKey: provider.handlerKey };
         const proxy = createCapabilityProxy(provider, async (name, positionalArgs) => unwrap(await api.capabilityInvoke({
             requestId: crypto.randomUUID(), key, method: name, args: positionalArgs, asAgent: true,
         })));
         const callable = proxy[method];
-        if (typeof callable !== "function") throw codedError("no-handler", `Capability method "${this.id}.${method}" is unavailable.`);
+        if (typeof callable !== "function") throw agentError("no-handler", `Capability method "${this.id}.${method}" is unavailable.`);
         return callable(...args);
     }
 
@@ -172,7 +181,7 @@ class AgentCapabilitiesNode {
         if (typeof key !== "string") return undefined;
         const providers = unwrap(await api.capabilityProviders(key, true));
         if (!providers.length) {
-            throw codedError("no-handler", `No agent-visible capability "${key}". Call capabilities.$help for the list.`);
+            throw agentError("no-handler", `No agent-visible capability "${key}". Call capabilities.$help for the list.`);
         }
         const selected = unwrap(await api.capabilityGet(key, { asAgent: true }));
         return selected ? new CapabilityNode(key, providers, agentProvider(selected)) : undefined;

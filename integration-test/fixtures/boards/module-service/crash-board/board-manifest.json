@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "name": "Module Service Crash Fixture",
+  "description": "Offline fixture for supervised module service restart limits.",
+  "author": "Persephone test fixture",
+  "permissions": {
+    "execute": false,
+    "service": true,
+    "fileSystem": false,
+    "openExternal": false,
+    "appScripting": false,
+    "network": false,
+    "clipboardRead": false,
+    "camera": false,
+    "microphone": false,
+    "computerAudio": false,
+    "geolocation": false,
+    "notifications": false,
+    "themes": false
+  },
+  "service": "scripts/service.mjs"
+}
