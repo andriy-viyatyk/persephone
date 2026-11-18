@@ -1013,3 +1013,101 @@ Append only. Add new entries at the end and never rewrite old ones. Do not inclu
 - **What actually happened:** The board showed "This deck has no slides." and `editor.app.isLoaded` stayed false, with no console message, page error or model member saying why. The vendored pptx-preview swallows its parse errors: it needs repeated line styles in the theme and `p:defaultTextStyle` in `presentation.xml`, and finds slides from content-type overrides sorted by file name, not from `p:sldIdLst`.
 - **How it was resolved:** Claude opened the sample in a kept-open instance and read the board text; Codex added the missing parts and confirmed two slides by running the vendored parser in Node.
 - **Suggested improvement:** The board could expose a load error (`getStats().error` or a console warning) instead of an empty deck, so an agent can tell a bad file from an empty one.
+
+### 2026-11-18 · EPIC-194 / US-2104 · Claude (review)
+- **Area:** app object (property assignment)
+- **What the agent expected:** That `ctx.app.pages[id].editor.app.searchText = "…"` sets a writable board-model property, as the model's `$help` marks `searchText` `writable`.
+- **What actually happened:** The stand-in had no `set` trap, so the assignment only stored a property on the local proxy function and nothing reached the app; the test context had no way to send the `call` tool's `value` field at all.
+- **How it was resolved:** Call gap closed: `ctx.set(path, value)` sends an assignment, and assigning through `ctx.app` now throws and names `ctx.set` (`src/test-host/app-proxy.ts`, `context.ts`, `client.ts`; `web-app-tests.md`).
+- **Suggested improvement:** None beyond the fix.
+
+### 2026-11-18 · EPIC-194 / US-2104 · Codex Luna (plan)
+- **Area:** call path (board content-host save)
+- **What the agent expected:** The Todo and Notebook guides ("save the page", "Ctrl+S saves") to name the call path that saves a content-host board page.
+- **What actually happened:** Neither names one; the route (`editorSwitches.switchTo("monaco")`, then `editor.saveFile()`) was found only in the REST Client test.
+- **How it was resolved:** Plan used the known route; tests passed.
+- **Suggested improvement:** Recurrence of the EPIC-192 "board content-host save" entry: a page-level `save()` member would remove the editor switch.
+
+### 2026-11-18 · EPIC-194 / US-2104 · Codex Luna (plan)
+- **Area:** published board docs (notebook)
+- **What the agent expected:** `notebook/CLAUDE.md` to describe the Categories & Tags secondary view.
+- **What actually happened:** It calls `nav.js` a placeholder, while `nav.js` implements the view (rendering, selection, editing).
+- **How it was resolved:** Planned from source; the secondary-view test passed.
+- **Suggested improvement:** Board owner: update `notebook/CLAUDE.md`.
+
+### 2026-11-18 · EPIC-194 / US-2104, US-2105 · Claude (review)
+- **Area:** published board model result shapes
+- **What the agent expected:** Model entries such as Todo `lists[0]` to equal `{ name, total, undone }`, and Force Graph `links` entries to equal `{ source, target }`.
+- **What actually happened:** Entries read through `call` can carry a `kind` field (`TodoList`, `TodoTag`), so `toEqual` on the whole object would fail.
+- **How it was resolved:** Plans corrected before implementation to compare fields one by one.
+- **Suggested improvement:** Recurrence of the EPIC-193 "result shapes only in source" entries; `web-app-tests.md` could say that model objects may include `kind`.
+
+### 2026-11-18 · EPIC-194 / US-2105 · Codex Luna (plan)
+- **Area:** guide boards/testing
+- **What the agent expected:** `boards/testing.md` to show how a test opens a board that has no file type (Theme Editor, Chess, Gem Keep).
+- **What actually happened:** It covers the published-sample helper only; the `boards.openBoard` flow came from `tests/boards/helpers.mjs`.
+- **How it was resolved:** The area helper `openPublishedBoard` was added.
+- **Suggested improvement:** Mention `openPublishedBoard` next to `openPublishedSample` in the testing docs.
+
+### 2026-11-18 · EPIC-194 / US-2105 · Codex Luna (plan)
+- **Area:** capability `open` result, published board model result shapes (force-graph, theme-editor)
+- **What the agent expected:** The guides to give the shapes of `nodes`, `saveAs`, `rename`, `deleteThemeCore` and a capability `open` result.
+- **What actually happened:** Force Graph `nodes` is an indexed collection (`.ids`, lookups), not the file's array; the Theme Editor return values and the `{ pageId?, result }` wrapper were found only in source.
+- **How it was resolved:** Source reading; the tests passed.
+- **Suggested improvement:** Recurrence of the EPIC-193 "result shapes only in source" entries; one example result per method in each board's `guides/agent.md`.
+
+### 2026-11-18 · EPIC-194 / US-2106 · Claude (review)
+- **Area:** published board model values (chess, gem-keep)
+- **What the agent expected:** Chess `lastMove.color` to be `"w"` (the engine's code) and Gem Keep's starting gold to be the level file's `gold` (300).
+- **What actually happened:** `lastMove()` maps the color to `"white"` (`chess/app.js:98-103`); the gold is multiplied by the default difficulty's factor 0.85, so Green Meadow starts with 255 (`gem-keep/js/game.js:23-27`, `js/data.js:63-66`).
+- **How it was resolved:** Plan corrected before implementation; the tests passed.
+- **Suggested improvement:** None for the boards; a plan should follow a value through every transform before asserting it.
+
+### 2026-11-18 · EPIC-194 / US-2105 · Claude (run)
+- **Area:** call result envelope (`pending` field)
+- **What the agent expected:** `pages[id].editor.app.previewStatus` (Theme Editor) to return `{ status, hasPreview, superseded, pending }`.
+- **What actually happened:** While `pending` was `true`, every read came back as "Pending: script execution is still in progress." with `{ pending: true }`: `toCallResult` treated any result object with `pending: true` as `script.execute`'s still-running marker. The test client then threw "still pending", and four waits timed out.
+- **How it was resolved:** Product bug, fixed in `src/main/mcp/tools/call-tools.ts`: only a result with a string `runId` and `pendingReason` `"running"` or `"dialog"` is the script marker.
+- **Suggested improvement:** None beyond the fix.
+
+### 2026-11-18 · EPIC-194 / US-2105 · Claude (run)
+- **Area:** published board model (theme-editor) `previewStatus`
+- **What the agent expected:** `previewStatus.pending` to become `false` once a draft refresh finishes, so tests can wait on it.
+- **What actually happened:** It stays `true` forever after the first edit: `queueDraftRefresh` stores the timeout id in `state.previewTimer` and never clears it after the timer fires (`theme-editor/app.js:1283-1312`), and `pending` includes `!!state.previewTimer` (`app.js:1667`).
+- **How it was resolved:** Board bug, recorded as an EPIC-194 open item; one test asserts that `pending` settles and stays failing, the others wait on the derived colors or the contrast result instead.
+- **Suggested improvement:** Board owner: reset `state.previewTimer = 0` when the timer fires.
+
+### 2026-11-18 · EPIC-194 / US-2105 · Claude (run)
+- **Area:** call path (large results)
+- **What the agent expected:** `ctx.app.themes.list()` to return the full theme list.
+- **What actually happened:** The result is truncated (five of eight themes) and the client throws "truncated without maxLength"; the stand-in cannot pass `maxLength`.
+- **How it was resolved:** `ctx.call("themes.list", [], { maxLength: 1000000 })`.
+- **Suggested improvement:** Recurrence of the EPIC-188 "truncated without maxLength" entries; `themes.list` could take an option to return ids and names only.
+
+### 2026-11-18 · EPIC-194 / US-2105 · Codex Luna (implementation) / Claude (run)
+- **Area:** published board model (theme-editor) after delete
+- **What the agent expected:** Cleanup to `revert()` the draft and delete each created theme id, after the test had already called `deleteThemeCore()`.
+- **What actually happened:** `revert()` throws "This saved theme was removed. Choose another starting theme." once the draft's source theme is gone, and `themes.delete` throws for an id the test already deleted; both failed otherwise passing tests in cleanup.
+- **How it was resolved:** Cleanup reverts first as best effort and deletes only ids still listed.
+- **Suggested improvement:** The Theme Editor `$help` could say what `revert` does after its theme was deleted.
+
+### 2026-11-18 · EPIC-194 / US-2106 · Codex Luna (implementation) / Claude (run)
+- **Area:** published board DOM (gem-keep)
+- **What the agent expected:** `[data-name^="level-"]` to select only the level cards.
+- **What actually happened:** It also matched the menu section `data-name="level-menu"`, so the list had four entries.
+- **How it was resolved:** Selector scoped to `#level-list`.
+- **Suggested improvement:** None; a prefix selector needs a scope.
+
+### 2026-11-18 · EPIC-194 · Claude (plan)
+- **Area:** published board docs (translate)
+- **What the agent expected:** From the README ("model discovery and downloading may require a network connection"), that opening the board without downloading anything stays offline.
+- **What actually happened:** Opening the board opens its management channel, whose snapshot fetches the model registry from `firefox.settings.services.mozilla.com` (`scripts/service.mjs:206-207`, `scripts/translation-assets.mjs:147-172`), and its data root is the user's real `%LOCALAPPDATA%\Persephone\board-data\translate`, not the Persephone profile (`translation-assets.mjs:29-32`).
+- **How it was resolved:** Translate left uncovered in EPIC-194.
+- **Suggested improvement:** Board owner: say that opening the board contacts the registry; take the data root from the board's storage location so a test profile isolates it.
+
+### 2026-11-18 · EPIC-194 / US-2106 · Codex Luna (plan)
+- **Area:** guide boards/index
+- **What the agent expected:** An AI Vision models page under `guides/agents/boards/`.
+- **What actually happened:** The hub points to `guides/agents/ai-vision.md` instead.
+- **How it was resolved:** Used that guide plus board source.
+- **Suggested improvement:** None; the link works, but the hub could say the page lives one level up.

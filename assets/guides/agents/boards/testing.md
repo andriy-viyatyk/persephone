@@ -45,12 +45,14 @@ progress. Its result's `frameReady` is true once the main frame has loaded. A bo
 
 ### Testing a published board with a sample file
 
-The repository's published-viewer tests live in
-`integration-test/tests/published-boards/<board-id>/`. Their shared `openPublishedSample(ctx,
-boardId, sampleRel)` helper registers a local board checkout, opens a synthetic fixture with the
-app's normal file-open path, activates the page, and waits for `frameReady`. The returned
+The repository's published-board tests live in
+`integration-test/tests/published-boards/<board-id>/`. Their shared helpers register a local board
+checkout. Use `openPublishedSample(ctx, boardId, sampleRel)` for a board opened from a synthetic
+fixture through the app's normal file-open path, or `openPublishedBoard(ctx, boardId)` for a board
+opened directly without a sample file. Both activate the page and wait for `frameReady`. The returned
 `{ id, editor, root, file }` contains the page id and an editor stand-in; use the stand-in to drive
-the board just as above. Wait for `editor.app` separately when a test uses the board's app model:
+the board just as above (`openPublishedBoard` has no `file` property). Wait for `editor.app`
+separately when a test uses the board's app model:
 the frame can be ready before that model has registered.
 
 Close the page and unregister the board in a `finally` block with

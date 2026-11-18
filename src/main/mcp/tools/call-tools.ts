@@ -406,7 +406,11 @@ function toCallResult(response: McpResponse): IMcpToolResult {
     if (!envelope) return toToolResult(response);
     const { hint, attention, events, warning, tip, _tipObservations, ...rest } = envelope;
     const content: IMcpToolResult["content"] = [];
-    const scriptResult = rest.result && typeof rest.result === "object" ? rest.result as { pending?: unknown; pendingReason?: unknown; runId?: unknown; attention?: { text?: unknown }; message?: unknown } : undefined;
+    // Only script.execute's own marker ({ pending: true, runId, pendingReason }, root.ts) means "still running";
+    // any other value may carry a `pending` field of its own (e.g. a board model's previewStatus).
+    const candidate = rest.result && typeof rest.result === "object" ? rest.result as { pending?: unknown; pendingReason?: unknown; runId?: unknown; attention?: { text?: unknown }; message?: unknown } : undefined;
+    const scriptResult = candidate && typeof candidate.runId === "string"
+        && (candidate.pendingReason === "running" || candidate.pendingReason === "dialog") ? candidate : undefined;
     if (rest.pending) {
         content.push({ type: "text", text: "Pending: the action is waiting on a dialog. Answer it, then re-read state." });
     }

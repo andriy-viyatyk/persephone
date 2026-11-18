@@ -101,8 +101,10 @@ test to the module that owns the feature and split by feature when a module grow
 import `test()` from `lib/context.mjs` and export one descriptor or an array. Declare
 `requires: ["launch"]` for tests that restart the app or launch another instance.
 
-Product context members include `app`, `openBrowser`, `handle`, `call`, `callText`, `waitFor`,
-`expect`, `script`, `restartApp`, `launchSecondInstance`, `file`, and `log`. The suite setup adds
+Product context members include `app`, `openBrowser`, `handle`, `call`, `callText`, `set`, `waitFor`,
+`expect`, `script`, `restartApp`, `launchSecondInstance`, `file`, and `log`. `set(path, value,
+{ timeout? })` assigns a writable call-tree property. Assignments through `app` throw because they
+cannot be awaited; use `set` instead. The suite setup adds
 `fixture(relativePath)` constrained to `.profile/work`, `httpUrl(path)` and `httpsUrl(path)`
 constrained to the local HTTP and HTTPS fixture servers, and `_getClient()` with raw MCP `call` and
 `listTools()` access. Path calls
@@ -122,17 +124,20 @@ published-board checkout helper is `tests/helpers/published-boards.mjs`. Put boa
 `fixtures/boards-catalog/`; REST Client HTTP fixtures are under `fixtures/http/rest-client/`.
 `ctx.fixture()` returns the isolated `work/` copy; reset mutable files there at the start of each
 test. Prefer `ctx.app.boards.*` and `ctx.app.pages[id].editor.*`; use `ctx.call` or `ctx.callText`
-for dialog options and exact strings.
+for dialog options and exact strings, and `ctx.set` for writable property assignments.
 
-Published document-viewer tests live under `tests/published-boards/<board-id>/`, one module per
-viewer. `tests/published-boards/helpers.mjs` registers a local checkout board, opens a sample from
+Published-board tests live under `tests/published-boards/<board-id>/`, one module per board.
+`tests/published-boards/helpers.mjs` provides `openPublishedSample(ctx, boardId, sampleRel)` for
+file-backed viewers and `openPublishedBoard(ctx, boardId)` for boards opened directly without a
+sample file. Both register the local checkout board and return a handle with `id`, `editor`, and
+`root`; the sample helper also returns `file`. The sample helper opens a sample from
 `fixtures/boards-samples/` through `app.pages.openFile()`, verifies that the matching board editor
 and root opened, activates the page, and waits for `editor.frameReady`. Use the returned `editor`
 stand-in for structured calls such as `editor.app.getStats()`; use `ctx.call` or `ctx.callText`
-only when the stand-in cannot express the needed call. Close each handle in `finally` with
-`closePublishedSample()` so the page closes before the board is unregistered. Tests declare both
+only when the stand-in cannot express the needed call. Close the page before the board is
+unregistered. Tests declare both
 `launch` and `published-board-checkout`, since each needs a separately owned app and a local board
-checkout.
+checkout. Close either handle with `closePublishedSample()` in `finally`.
 
 Keep samples minimal, synthetic, and local. Reusable binary fixtures belong in
 `fixtures/boards-samples/<board-id>/` and tests access their isolated work copies with

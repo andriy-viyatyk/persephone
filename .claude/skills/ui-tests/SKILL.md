@@ -40,15 +40,17 @@ published-board registration helper is `tests/helpers/published-boards.mjs`. Boa
 fixtures in `fixtures/http/rest-client/`. Tests receive isolated copies under the profile's `work/`
 directory through `ctx.fixture()`; reset any mutable fixture file at test start. Prefer
 `ctx.app.boards.*` and `ctx.app.pages[id].editor.*` calls, using `ctx.call` or `ctx.callText` where
-call options or exact string results are required.
+call options or exact string results are required, and `ctx.set(path, value, { timeout? })` for
+writable property assignments. Assignments through `ctx.app` throw because they cannot be awaited.
 
-Published document-viewer tests live separately under
-`tests/published-boards/<board-id>/<board-id>.test.mjs`, one module per viewer, with shared sample
-opening and cleanup in `tests/published-boards/helpers.mjs`. Use `openPublishedSample(ctx, boardId,
-sampleRel)` to register the local board copy, open a `fixtures/boards-samples/<board-id>/` sample
-through the normal file-open path, verify the editor/root, activate its page, and wait for
-`editor.frameReady`. The returned `editor` is a stand-in; wait for `editor.app` methods or state to
-be ready before asserting viewer data. Close every handle in `finally` with `closePublishedSample()`;
+Published-board tests live separately under
+`tests/published-boards/<board-id>/<board-id>.test.mjs`, one module per board, with shared opening
+and cleanup in `tests/published-boards/helpers.mjs`. Use `openPublishedSample(ctx, boardId,
+sampleRel)` for a file-backed viewer, or `openPublishedBoard(ctx, boardId)` for a board opened
+directly without a sample file. Both register the local board copy, verify the editor/root, activate
+the page, and wait for `editor.frameReady`. The returned `editor` is a stand-in; wait for
+`editor.app` methods or state to be ready before asserting board data. Close every handle in
+`finally` with `closePublishedSample()`;
 closing a page may start asynchronous board-process shutdown. Declare both `launch` and
 `published-board-checkout` requirements.
 

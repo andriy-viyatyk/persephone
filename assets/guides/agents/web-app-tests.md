@@ -57,6 +57,7 @@ Every test receives these `ctx` members:
 - `handle(node)` — keep a stand-in awaitable when returning it from an async helper.
 - `call(path, args?, options?)` — path-based call; useful for stand-in escape hatches.
 - `callText(path, args?, options?)` — path-based call returning text without JSON parsing.
+- `set(path, value, { timeout? })` — assign a writable property (one whose `$help` says it is writable). Assigning through `ctx.app` throws, because an assignment cannot be awaited.
 - `waitFor(pathOrCallback, predicate, { timeout? })` — host-side polling of a call or callback.
 - `expect(value)` — assertions with `toBe`, `toEqual`, `toContain`, and `toBeTruthy`.
 - `script(code)` — run `script.execute` and return its completed text.

@@ -1,0 +1,24 @@
+{
+    "type": "note-editor",
+    "notes": [
+        {
+            "id": "note-alpha",
+            "title": "Map the sample workflow",
+            "category": "Projects/Local",
+            "tags": ["status:active", "idea"],
+            "content": { "language": "markdown", "content": "Synthetic notebook body with lantern-keyword", "editor": "md-view" },
+            "createdDate": "2026-01-05T03:04:05.000Z",
+            "updatedDate": "2026-01-05T03:04:05.000Z"
+        },
+        {
+            "id": "note-beta",
+            "title": "Review local examples",
+            "category": "Reading",
+            "tags": ["idea"],
+            "content": { "language": "plaintext", "content": "A second synthetic note", "editor": "monaco" },
+            "createdDate": "2026-01-06T03:04:05.000Z",
+            "updatedDate": "2026-01-06T03:04:05.000Z"
+        }
+    ],
+    "state": {}
+}

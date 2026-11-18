@@ -1,0 +1,31 @@
+{
+    "type": "todo-editor",
+    "lists": ["Inbox", "Personal"],
+    "tags": [
+        { "name": "review", "color": "tomato" },
+        { "name": "later", "color": "" }
+    ],
+    "items": [
+        {
+            "id": "todo-check",
+            "list": "Inbox",
+            "title": "Check the sample parser",
+            "done": false,
+            "createdDate": "2026-01-02T03:04:05.000Z",
+            "doneDate": null,
+            "comment": "Synthetic fixture item",
+            "tag": "review"
+        },
+        {
+            "id": "todo-archive",
+            "list": "Personal",
+            "title": "Archive the sample notes",
+            "done": true,
+            "createdDate": "2026-01-03T03:04:05.000Z",
+            "doneDate": "2026-01-04T03:04:05.000Z",
+            "comment": null,
+            "tag": "later"
+        }
+    ],
+    "state": {}
+}

@@ -1,4 +1,5 @@
 import { registerPublishedBoard } from "../helpers/published-boards.mjs";
+import { openBoardPage } from "../boards/helpers.mjs";
 
 function comparableRoot(value) {
     return value.replace(/[\\/]+/g, "\\").replace(/\\+$/, "").toLowerCase();
@@ -38,6 +39,17 @@ export async function openPublishedSample(ctx, boardId, sampleRel) {
         return { id, editor, root, file };
     } catch (error) {
         await closePublishedSample(ctx, { id, root });
+        throw error;
+    }
+}
+
+export async function openPublishedBoard(ctx, boardId) {
+    const root = await registerPublishedBoard(ctx, boardId);
+    try {
+        const { id, editor } = await openBoardPage(ctx, root);
+        return { id, editor, root };
+    } catch (error) {
+        await closePublishedSample(ctx, { id: undefined, root });
         throw error;
     }
 }

@@ -23,7 +23,7 @@ export class TestLog {
     }
 }
 
-export function stepEventArguments(operation: "call" | "callText", apiPath: string | undefined, args: unknown): string | undefined {
+export function stepEventArguments(operation: "call" | "callText" | "set", apiPath: string | undefined, args: unknown): string | undefined {
     if (args === undefined) return undefined;
     const formatted = formatStep(operation, apiPath, args);
     const prefix = `${operation} ${apiPath ?? "<overview>"} `;

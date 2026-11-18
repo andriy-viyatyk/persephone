@@ -30,9 +30,15 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Fake board catalog in web-app tests:** an app launched by the test runner reads the published-boards
   catalog from the loopback URL in `PERSEPHONE_TEST_BOARDS_CATALOG_URL` and never from GitHub, so catalog
   install, update and roll back can be tested offline. Outside a test run the variable is ignored.
+- **Assigning properties in web-app tests:** `ctx.set(path, value)` assigns a writable call-tree
+  property, such as a board model's `searchText`. Assigning through `ctx.app` used to do nothing
+  silently; it now throws and names `ctx.set`.
 
 ### Bug Fixes
 
+- **`call` results with a `pending` field:** a value that happened to contain `pending: true`, such
+  as a board model's status object, was reported as "script execution is still in progress" and
+  could not be read. Only a running `script.execute` is reported as pending now.
 - **Environment Variables editor kept the last edit:** closing the Environment Variables page right
   after changing a value and choosing Save in the unsaved-changes prompt saved the file without that
   change, and a close with only that change did not prompt at all. The pending change is now written

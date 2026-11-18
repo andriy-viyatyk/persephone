@@ -15,6 +15,8 @@ export interface TestContext {
     handle(node: unknown): object;
     call(path?: string, args?: unknown, options?: { timeout?: number; maxLength?: number; dialog?: boolean }): Promise<unknown>;
     callText(path?: string, args?: unknown, options?: { timeout?: number; maxLength?: number; dialog?: boolean }): Promise<string>;
+    /** Assign `value` to a writable call-tree property; the stand-in cannot express an assignment. */
+    set(path: string, value: unknown, options?: { timeout?: number }): Promise<unknown>;
     waitFor(pathOrCallback: string | ((ctx: TestContext) => Promise<unknown>), predicate: (value: unknown) => boolean, options?: { timeout?: number }): Promise<unknown>;
     expect(value: unknown): { toBe(expected: unknown): void; toEqual(expected: unknown): void; toContain(expected: unknown): void; toBeTruthy(): void }; script(code: string): Promise<string>; restartApp(): Promise<void>; launchSecondInstance(args?: string[]): Promise<number>;
     /** Resolve a path next to the test file, for fixtures the test ships with. */
@@ -44,7 +46,7 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
     let proxyArgs: unknown;
     /** Above zero while `waitFor` polls: the wait is logged as one step, not one per poll. */
     let quietDepth = 0;
-    const logStep = (event: string, operation: "call" | "callText", apiPath?: string, args?: unknown, details: Record<string, unknown> = {}) => {
+    const logStep = (event: string, operation: "call" | "callText" | "set", apiPath?: string, args?: unknown, details: Record<string, unknown> = {}) => {
         if (!log || quietDepth > 0) return;
         log.write({ event, ...identity, operation, path: apiPath ?? "<overview>", ...(stepEventArguments(operation, apiPath, args) === undefined ? {} : { args: stepEventArguments(operation, apiPath, args) }), ...details });
     };
@@ -76,6 +78,20 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
             throw error;
         }
     };
+    const set = async (apiPath: string, value: unknown, options: { timeout?: number } = {}) => {
+        state.step = formatStep("set", apiPath, value);
+        logStep("step-start", "set", apiPath, value);
+        try {
+            const result = await active.set(apiPath, value, options.timeout ?? timeouts.request);
+            logStep("step-result", "set", apiPath, value, { ok: true, result: resultPreview(result) });
+            return result;
+        } catch (error) {
+            state.error = errMessage(error);
+            markFailure(error);
+            logStep("step-error", "set", apiPath, value, { ok: false, error: state.error });
+            throw error;
+        }
+    };
     const proxyCall = (apiPath?: string, args?: unknown) => call(apiPath, args, {}, true);
     const beforeProxyCall = (apiPath: string, args?: unknown) => {
         proxyPath = apiPath;
@@ -90,7 +106,7 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
     };
     const app = createAppProxy(proxyCall, beforeProxyCall, onProxyError);
     const context: TestContext = {
-        app, call, callText,
+        app, call, callText, set,
         async openBrowser(url, options = {}) { return openBrowserHelper(context, url, options, timeouts.wait, timeouts.request); },
         handle(node) { return asHandle(node, proxyCall, beforeProxyCall, onProxyError); },
         async waitFor(pathOrCallback, predicate, options = {}) {

@@ -1,6 +1,6 @@
 const MAX_STEP_ARGUMENT_LENGTH = 240;
 
-export function formatStep(operation: "call" | "callText", apiPath?: string, args?: unknown): string {
+export function formatStep(operation: "call" | "callText" | "set", apiPath?: string, args?: unknown): string {
     const target = apiPath ?? "<overview>";
     if (args === undefined) return `${operation} ${target}`;
     let summary: string;

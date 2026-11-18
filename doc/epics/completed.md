@@ -1,3 +1,25 @@
+## EPIC-194 — UI test coverage, phase 8b: published apps
+
+Completed 2026-11-18. Phase 8b of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 21 new tests in
+`integration-test/tests/published-boards/` for six app boards of the `persephone-boards` checkout (todo, notebook,
+force-graph, theme-editor, chess, gem-keep). File boards open through `openPublishedSample`; boards without a file type
+through the new area helper `openPublishedBoard`. Samples are synthetic (committed Todo and Notebook files, graphs
+written at test start). Codex (Luna) planned and wrote the tests blind; Claude reviewed, ran and triaged, and recorded
+13 cases in [ai-vision-feedback.md](../reviews/ai-vision-feedback.md). **Call gap closed:** the test `ctx` could not
+assign a writable property; `ctx.set(path, value)` sends the assignment, and assigning through `ctx.app` now throws.
+**Fixed:** `call` reported any result object with `pending: true` (a board model's status) as a still-running script,
+so it could not be read. **Open:** the EPIC-187 grid row-insertion decision; `persephone-boards` defects for the board
+owner (theme-editor `previewStatus.pending` never settles, `theme-editor/app.js:1283-1312`, its test stays failing;
+notebook `CLAUDE.md` calls the implemented `nav.js` a placeholder; translate goes online on open and stores data in
+the real `%LOCALAPPDATA%`). **Uncovered:** Translate (network and user data folder), plus drag-and-drop, native file
+dialogs, canvas interaction and timing-dependent gameplay. Final launched run (`--with git,mneme`), 454 tests: 450
+passed, 2 failed (grid decision, theme-editor board bug), 2 skipped (Tor); the area reran with the same result. Phase
+8c (agent tools) is next. Completion skills by Codex (Luna). Epic document: [EPIC-194](EPIC-194.md).
+
+- [x] **Tests: Todo, Notebook (US-2104).**
+- [x] **Helper; tests: Force Graph, Theme Editor (US-2105).**
+- [x] **Tests: Chess, Gem Keep (US-2106).**
+
 ## EPIC-193 — UI test coverage, phase 8a: published document viewers
 
 Completed 2026-11-18. Phase 8a of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 30 new tests in

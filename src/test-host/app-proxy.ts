@@ -48,6 +48,14 @@ function createNode(call: Call, beforeCall: (path: string, args?: unknown) => vo
             }
             return createNode(call, beforeCall, onError, [...segments, { key: property, mode: segmentMode(property) }], true);
         },
+        set(_target, property) {
+            // An assignment cannot be awaited, so it is never sent; fail loudly instead of storing it on the stand-in.
+            const name = typeof property === "string" ? property : String(property);
+            let target: string;
+            try { target = encodePath([...segments, { key: name, mode: segmentMode(name) }]); }
+            catch { target = `${encodePath(segments)}.${name}`; }
+            throw new TypeError(`Assignment through the app stand-in is not sent to the app; use await ctx.set(${JSON.stringify(target)}, value).`);
+        },
         apply(_target, _thisArg, args) {
             if (!segments.length) throw new Error("The app root is not callable; await ctx.app to read its summary.");
             let apiPath: string;

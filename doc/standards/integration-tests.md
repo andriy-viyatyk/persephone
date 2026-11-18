@@ -91,7 +91,7 @@ separate process arguments. It sends `--keep-open` only to the last runnable mod
 The second-instance and dev-server probe deadlines remain wrapper-owned and are scaled there too.
 
 The product context handles per-test page and pop-up cleanup. It supports `app`, `openBrowser`,
-`handle`, path `call`/`callText` (including `{ dialog: true }`), `waitFor`, `expect`, `script`,
+`handle`, path `call`/`callText` (including `{ dialog: true }`), `set`, `waitFor`, `expect`, `script`,
 `restartApp`, `launchSecondInstance`, `file`, and `log`. The suite setup module supplies the
 suite-only fixture helpers. The setup hook receives the current context, `{ file, name,
 profileDirectory, attach }`, and a getter for the current MCP client adapter, so an app restart
@@ -114,7 +114,9 @@ does not itself fail the test. Dialog cleanup actions are logged, and any dialog
 owned-page cleanup also fails the test.
 
 The `app` tree is a stand-in for call paths, not a live object model: each property read or method
-call makes a round trip and must be awaited. A stand-in used as an awaitable resolves its call
+call makes a round trip and must be awaited. Use `ctx.set(path, value, { timeout? })` to assign a
+writable property; assigning through `app` throws because the assignment cannot be awaited. A
+stand-in used as an awaitable resolves its call
 result; its `then` returns the callback's chained Promise so standard Promise chaining works.
 Returning a stand-in from an async helper therefore reads it; use `ctx.handle(node)` to return the
 same path as a stand-in instead. `.catch` and `.finally` are rejected with guidance to use
@@ -166,7 +168,7 @@ REST Client HTTP request fixtures live under `fixtures/http/rest-client/`. Tests
 access an isolated copy in the profile's `work/` directory, so mutable files can be reset without
 changing the committed fixture. Prefer the app stand-in (`ctx.app.boards.*`,
 `ctx.app.pages[id].editor.*`) for structured calls; use `ctx.call` or `ctx.callText` when a call
-option or exact string result is needed.
+option or exact string result is needed, and `ctx.set` for writable property assignments.
 
 Tests that need a local `persephone-boards` checkout declare
 `requires: ["published-board-checkout"]`. The wrapper enables that tag automatically when
@@ -176,13 +178,16 @@ The wrapper owns this tag, so `--with published-board-checkout` is rejected. Cat
 use the fake loopback catalog and owned launches; they must not reach the published catalog or
 external network.
 
-Published document viewers have a separate area at `tests/published-boards/<board-id>/`, with one
-test module per board. The shared `tests/published-boards/helpers.mjs` opens samples through the
-normal file-open path after registering the local board copy, verifies the opened editor belongs to
-that board root, activates its page, and waits for `editor.frameReady`. Tests use the returned
+Published-board tests have a separate area at `tests/published-boards/<board-id>/`, with one
+test module per board. The shared `tests/published-boards/helpers.mjs` provides
+`openPublishedSample(ctx, boardId, sampleRel)` for file-backed viewers and
+`openPublishedBoard(ctx, boardId)` for boards opened directly without a sample file. Both register
+the local board copy, verify the opened editor belongs to that board root, activate its page, and
+wait for `editor.frameReady`. Tests use the returned
 `editor` stand-in for structured board calls such as `editor.app.*`; close the page and unregister
 the board in a `finally` block with `closePublishedSample()`. Declare both `launch` and
-`published-board-checkout` because these tests need an owned app and a local checkout. Closing a
+`published-board-checkout` because these tests need an owned app and a local checkout. Close either
+handle with `closePublishedSample()` in `finally`. Closing a
 page can begin asynchronous board-process shutdown, so registration cleanup retries removal of an
 old copied board directory before copying the next one.
 

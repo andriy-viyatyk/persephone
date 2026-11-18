@@ -39,11 +39,17 @@ export class McpClient {
         const result = await this.rawCall(path, args, { timeout, maxLength, hints: "always" });
         return this.decode(result, path, args, maxLength !== undefined, dialog, true) as string;
     }
-    async rawCall(path?: string, args?: unknown, options: { timeout?: number; maxLength?: number; hints?: "always" | "never" } = {}): Promise<{ isError?: boolean; content?: ContentBlock[] }> {
+    /** Assigns `value` to the writable property named by `path` (the `call` tool's `value` field). */
+    async set(path: string, value: unknown, timeout = this.timeouts.request): Promise<unknown> {
+        const result = await this.rawCall(path, undefined, { timeout, hints: "always", value });
+        return this.decode(result, path, { value });
+    }
+    async rawCall(path?: string, args?: unknown, options: { timeout?: number; maxLength?: number; hints?: "always" | "never"; value?: unknown } = {}): Promise<{ isError?: boolean; content?: ContentBlock[] }> {
         if (!this.client) throw new Error("MCP connection is not healthy.");
         const request: Record<string, unknown> = { hints: options.hints ?? "never" };
         if (path !== undefined) request.path = path;
         if (args !== undefined) request.args = args;
+        if ("value" in options) request.value = options.value;
         if (options.maxLength !== undefined) request.maxLength = options.maxLength;
         return await this.client.callTool({ name: "call", arguments: request }, undefined, { timeout: options.timeout ?? this.timeouts.request }) as { isError?: boolean; content?: ContentBlock[] };
     }
