@@ -1,3 +1,27 @@
+## EPIC-193 — UI test coverage, phase 8a: published document viewers
+
+Completed 2026-11-18. Phase 8a of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 30 new tests in
+`integration-test/tests/published-boards/` for nine boards of the `persephone-boards` checkout (pdf, drawio, word,
+excel, powerpoint, font, pe, cert, sqlite viewers), registered with EPIC-192's helper and opened through
+`pages.openFile` by the area helper `openPublishedSample`. Every sample is synthetic: PDF, Office ZIP packages and a
+PE32+ image are built at test start; a generated SQLite database, a two-page `.drawio`, a self-signed certificate with a
+fake subject and the MIT-licensed KaTeX Main font are committed. Codex (Luna) planned and wrote the tests blind;
+Claude reviewed, ran and triaged, and recorded 10 cases in [ai-vision-feedback.md](../reviews/ai-vision-feedback.md).
+**Fixed:** the intermittent EPIC-185 env-vars test had two product causes: the Environment Variables editor lost the
+last edit on close + Save (pending serialize now flushed in `confirmRelease`, as in LinkEditor), and trusted clicks did
+not scroll an element clipped by a scrolling panel (`automation/locator.ts`). The published-board copy's `rm` retries
+while a closed board's process releases its files. **Open:** the EPIC-187 grid row-insertion decision; four
+`persephone-boards` doc/UI defects for the board owner (pdf-viewer priority note, torrent-viewer DHT wording,
+powerpoint-viewer silent parse failure, pe-viewer plural); an occasional app launch that never reaches MCP.
+**Uncovered:** Torrent Viewer (opening starts DHT discovery), plus each viewer's secondary formats and exports. Final
+launched run (`--with git,mneme`), 433 tests: 430 passed, 1 failed (grid decision), 2 skipped (Tor). Phase 8b (apps) is
+next. Completion skills by Codex (Luna). Epic document: [EPIC-193](EPIC-193.md).
+
+- [x] **Area helper; tests: PDF Viewer, draw.io Viewer (US-2100).**
+- [x] **Tests: Word, Excel, PowerPoint viewers (US-2101).**
+- [x] **Tests: Font, PE, Certificate viewers (US-2102).**
+- [x] **Tests: SQLite Viewer, Torrent Viewer (US-2103).**
+
 ## EPIC-192 — UI test coverage, phase 7b: published-board helper, fake catalog, Excalidraw, REST Client
 
 Completed 2026-11-18. Second half of Phase 7 of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 26 new

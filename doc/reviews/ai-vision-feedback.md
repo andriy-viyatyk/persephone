@@ -943,3 +943,73 @@ Append only. Add new entries at the end and never rewrite old ones. Do not inclu
 - **What actually happened:** Method calls are sent at once and return a real Promise (`app-proxy.ts` `apply`); property reads are lazy and start on `await`.
 - **How it was resolved:** Found in source; the test starts the call, drives the page, then awaits the Promise.
 - **Suggested improvement:** Say in `web-app-tests.md` that method calls start immediately and can be awaited later, while property reads start on `await`.
+
+### 2026-11-18 · EPIC-193 / US-2100 · Codex Luna (plan)
+- **Area:** published board docs (pdf-viewer)
+- **What the agent expected:** The PDF Viewer board's `CLAUDE.md` to describe how it wins `.pdf` files: priority 200 over a built-in PDF editor at 100.
+- **What actually happened:** Its manifest says `editorPriority: 100`, and Persephone has no built-in `.pdf` matcher (`editor-matchers.ts`); the board wins only because Monaco's fallback is tier 0. The plan had to trace the editor catalog to be sure which editor opens the file.
+- **How it was resolved:** The area helper checks that the opened page is the registered board (`board-editor:` id and normalized `boardRoot`). Recorded as a `persephone-boards` open item in EPIC-193.
+- **Suggested improvement:** Fix the board's `CLAUDE.md`; say in `boards/published-boards.md` how a board's `editorPriority` compares with built-in matchers (built-in wins a tie).
+
+### 2026-11-18 · EPIC-193 / US-2100, US-2101, US-2102, US-2103 · Codex Luna (plan)
+- **Area:** board model discovery (`pages[id].editor.app`)
+- **What the agent expected:** To learn a published board's model members from `$help` or a guide.
+- **What actually happened:** With no running app, the members were only in each board's `*-aivision.js` `MEMBERS` list; four plans each re-derived that `ctx.app` is the call-tree root, the script `IApp` is something else, and the board model sits at `pages[id].editor.app` (`BoardEditorFacade.ts`). Font, PE and Certificate viewers have no model and no `guides/` at all, so the plans read `app.js` for DOM selectors.
+- **How it was resolved:** Source reading; tests drive the model where it exists and `editor.evaluate` otherwise.
+- **Suggested improvement:** One table in `boards/published-boards.md`: which published boards publish `editor.app`, and where their member list lives. Recurrence of the EPIC-187 `ctx.app` entry and the EPIC-192 draw.md model-path entry.
+
+### 2026-11-18 · EPIC-193 / US-2101, US-2103 · Codex Luna (plan)
+- **Area:** board model readiness
+- **What the agent expected:** `frameReady === true` to mean the board's model and document are ready.
+- **What actually happened:** The model registers later and loads its document asynchronously (`isLoaded`, `getStats().tableCount`).
+- **How it was resolved:** Every test polls a model member with the call wrapped in try/catch.
+- **Suggested improvement:** Recurrence of the EPIC-192 US-2097/US-2098 entry (model registers after `frameReady`). A shared "wait for the board model" helper or a `editor.app` readiness note in `boards/testing.md` would end it.
+
+### 2026-11-18 · EPIC-193 / US-2101 · Codex Luna (plan)
+- **Area:** published board model (word-viewer, powerpoint-viewer)
+- **What the agent expected:** Word headings as `<h1>`..`<h6>` in the rendered document; one slide index convention in the PowerPoint viewer.
+- **What actually happened:** docx-preview renders headings as paragraphs with `docx_headingN` classes (the model reads those); the PowerPoint model is 1-based while its renderer stores a 0-based index.
+- **How it was resolved:** Tests read headings through `getMarkdown()` / `getOutline()` and navigate with the 1-based `goToSlide(2)`.
+- **Suggested improvement:** Prefer the model over DOM reads in the board guides' examples; state "1-based" next to every slide or page member.
+
+### 2026-11-18 · EPIC-193 / US-2103 · Codex Luna (plan) / Claude (run)
+- **Area:** published board model (sqlite-viewer) result shapes
+- **What the agent expected:** The guide's "rows" wording to give the result shape; a table entry from `getTables()` to carry `rows`.
+- **What actually happened:** `query()` returns `{ columns, rows: [{ row, cells }], rowCount, totalRows, sql }`, found only in source; `getTables()` entries carry `rowCount` (and `unreadable` when a count failed). The test guessed `rows` and failed on the first run.
+- **How it was resolved:** Source reading for `query()`; the `getTables()` assertion corrected to `rowCount` after the run.
+- **Suggested improvement:** Put one example result for `query()` and `getTables()` in the board's `guides/agent.md`.
+
+### 2026-11-18 · EPIC-193 / US-2103 · Codex Luna (plan)
+- **Area:** published board docs (torrent-viewer)
+- **What the agent expected:** "Metadata only until you open something" (manifest description, README) to mean opening a `.torrent` makes no network requests, so a trackerless sample could be tested offline.
+- **What actually happened:** Opening resolves the torrent through WebTorrent with default options, which start DHT discovery (`scripts/service.mjs:103-112`, `node_modules/webtorrent/index.js:130-158`); "metadata only" means no payload download. The manifest also declares `network: false`, which covers only `persephone.fetch()`, not the board's Node service.
+- **How it was resolved:** The board is left uncovered in EPIC-193.
+- **Suggested improvement:** The board's README should say that opening joins DHT; an offline "inspect metadata" mode (`dht: false`) would make it testable. `boards/permissions.md` could say plainly that `network: false` does not restrict a `service`.
+
+### 2026-11-18 · EPIC-193 / US-2100 · Claude (review)
+- **Area:** board editor id
+- **What the agent expected:** The board editor id to equal `board-editor:` plus the root string the test holds.
+- **What actually happened:** The registry keeps the root as registered (`custom-editor-registry.ts:66`), which can differ in separators or case from the test's `ctx.fixture` path.
+- **How it was resolved:** Plan corrected before implementation: check the `board-editor:` prefix and compare the suffix with a normalized root (`samePublishedRoot`).
+- **Suggested improvement:** Recurrence of the EPIC-191 / EPIC-192 path-comparison entries (`sameRoot`).
+
+### 2026-11-18 · EPIC-193 / US-2103 · Claude (run)
+- **Area:** board processes after `pages.closePage`
+- **What the agent expected:** Closing a board page to end the board's `executeNode` process before the call returns, so the next test can delete and re-copy the board folder.
+- **What actually happened:** The process is tree-killed with a fire-and-forget `taskkill` (`command-runner.ts`); for a moment it still holds `lib/vec0.dll` in the sqlite-viewer copy, and the next test's copy failed with EBUSY/EPERM.
+- **How it was resolved:** The published-board helper's `rm` retries (`maxRetries`, `retryDelay`).
+- **Suggested improvement:** Say in `boards/testing.md` that board processes end shortly after the page closes, not when `closePage` returns.
+
+### 2026-11-18 · EPIC-193 · Claude (run)
+- **Area:** screen (`window.screen.click` actionability)
+- **What the agent expected:** A trusted click to scroll its target into view, as the `$help` implies by checking actionability.
+- **What actually happened:** It scrolled only when the element was outside the window. A button inside the window but clipped by the Settings page's scroll panel failed for 5 s with "covered by <div.panel-root>" — its own ancestor. This was one of the two causes of the intermittent EPIC-185 env-vars test.
+- **How it was resolved:** Product fix in `automation/locator.ts`: when the hit element is an ancestor of the target, scroll the target into view and retry.
+- **Suggested improvement:** None beyond the fix.
+
+### 2026-11-18 · EPIC-193 / US-2101 · Codex Luna (implementation) / Claude (run)
+- **Area:** published board model (powerpoint-viewer) load failure
+- **What the agent expected:** A minimal OOXML deck (presentation, two slides, layout, master, theme) to render, or the board to report why not.
+- **What actually happened:** The board showed "This deck has no slides." and `editor.app.isLoaded` stayed false, with no console message, page error or model member saying why. The vendored pptx-preview swallows its parse errors: it needs repeated line styles in the theme and `p:defaultTextStyle` in `presentation.xml`, and finds slides from content-type overrides sorted by file name, not from `p:sldIdLst`.
+- **How it was resolved:** Claude opened the sample in a kept-open instance and read the board text; Codex added the missing parts and confirmed two slides by running the vendored parser in Node.
+- **Suggested improvement:** The board could expose a load error (`getStats().error` or a console warning) instead of an empty deck, so an agent can tell a bad file from an empty one.

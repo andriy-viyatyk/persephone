@@ -176,6 +176,24 @@ The wrapper owns this tag, so `--with published-board-checkout` is rejected. Cat
 use the fake loopback catalog and owned launches; they must not reach the published catalog or
 external network.
 
+Published document viewers have a separate area at `tests/published-boards/<board-id>/`, with one
+test module per board. The shared `tests/published-boards/helpers.mjs` opens samples through the
+normal file-open path after registering the local board copy, verifies the opened editor belongs to
+that board root, activates its page, and waits for `editor.frameReady`. Tests use the returned
+`editor` stand-in for structured board calls such as `editor.app.*`; close the page and unregister
+the board in a `finally` block with `closePublishedSample()`. Declare both `launch` and
+`published-board-checkout` because these tests need an owned app and a local checkout. Closing a
+page can begin asynchronous board-process shutdown, so registration cleanup retries removal of an
+old copied board directory before copying the next one.
+
+Keep viewer samples synthetic and minimal. Place reusable committed fixtures under
+`fixtures/boards-samples/<board-id>/` and obtain mutable work copies with `ctx.fixture()`. Generate
+structured formats in test helpers when that is clearer or smaller than committing generated
+bytes; the office package builder is `tests/published-boards/office-samples.mjs`. Check any sample
+copied from another checkout for personal data and record its source. Tests must not access the
+network. In particular, do not open a torrent sample when the viewer initiates discovery during
+open; leave that behavior uncovered until the board supports an offline metadata path.
+
 Tests must run independently and should leave committed fixtures unchanged. Use `ctx.fixture()`
 for mutable work copies and reset their content at the start of each test. Tests that restart the
 app or launch another process declare `requires: ["launch"]`. Use `ctx.httpUrl()` for local

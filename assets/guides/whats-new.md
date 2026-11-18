@@ -33,6 +33,14 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Bug Fixes
 
+- **Environment Variables editor kept the last edit:** closing the Environment Variables page right
+  after changing a value and choosing Save in the unsaved-changes prompt saved the file without that
+  change, and a close with only that change did not prompt at all. The pending change is now written
+  before the prompt, as the Links editor already did.
+- **Clicks on elements inside a scrolled panel:** `window.screen.click` and the other trusted actions
+  scrolled an element into view only when it was outside the window. An element clipped by a
+  scrolling panel (for example a button low in the Settings page) failed with "covered by" its own
+  panel until the timeout; it is now scrolled into view and clicked.
 - **Board automation during a reload:** while a board was reloading (for example after accepting the
   permissions-changed dialog), `pages[i].editor.reload()` failed at once with "Board frame not ready"
   and a frame call such as `evaluate` could hang. Reload now starts without needing the old frame,

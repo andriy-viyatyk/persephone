@@ -43,6 +43,25 @@ progress. Its result's `frameReady` is true once the main frame has loaded. A bo
 `.app` model can register slightly later, so after `frameReady` becomes true, poll
 `pages[pageId].editor.app` until it is available before reading its members.
 
+### Testing a published board with a sample file
+
+The repository's published-viewer tests live in
+`integration-test/tests/published-boards/<board-id>/`. Their shared `openPublishedSample(ctx,
+boardId, sampleRel)` helper registers a local board checkout, opens a synthetic fixture with the
+app's normal file-open path, activates the page, and waits for `frameReady`. The returned
+`{ id, editor, root, file }` contains the page id and an editor stand-in; use the stand-in to drive
+the board just as above. Wait for `editor.app` separately when a test uses the board's app model:
+the frame can be ready before that model has registered.
+
+Close the page and unregister the board in a `finally` block with
+`closePublishedSample(ctx, handle)`. Mark each test with
+`requires: ["launch", "published-board-checkout"]`: it needs an owned app and the separate
+`persephone-boards` checkout. Board processes stop asynchronously after `closePage`, so allow a
+short delay before assuming files held by a board process have been released. Keep samples under
+`integration-test/fixtures/boards-samples/<board-id>/`; make them synthetic, minimal, deterministic,
+and offline-safe. Do not open the torrent viewer in this suite: its current open path starts DHT
+discovery.
+
 A board never navigates, so it has no navigation members and cannot add or close frames. Its
 `tabs` and `switchTab("board-secondary:<viewId>")` members select which board frame to drive
 (see next).

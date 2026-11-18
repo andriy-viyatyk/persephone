@@ -124,5 +124,24 @@ published-board checkout helper is `tests/helpers/published-boards.mjs`. Put boa
 test. Prefer `ctx.app.boards.*` and `ctx.app.pages[id].editor.*`; use `ctx.call` or `ctx.callText`
 for dialog options and exact strings.
 
+Published document-viewer tests live under `tests/published-boards/<board-id>/`, one module per
+viewer. `tests/published-boards/helpers.mjs` registers a local checkout board, opens a sample from
+`fixtures/boards-samples/` through `app.pages.openFile()`, verifies that the matching board editor
+and root opened, activates the page, and waits for `editor.frameReady`. Use the returned `editor`
+stand-in for structured calls such as `editor.app.getStats()`; use `ctx.call` or `ctx.callText`
+only when the stand-in cannot express the needed call. Close each handle in `finally` with
+`closePublishedSample()` so the page closes before the board is unregistered. Tests declare both
+`launch` and `published-board-checkout`, since each needs a separately owned app and a local board
+checkout.
+
+Keep samples minimal, synthetic, and local. Reusable binary fixtures belong in
+`fixtures/boards-samples/<board-id>/` and tests access their isolated work copies with
+`ctx.fixture()`. Generate structured files in the test when that keeps the committed fixture
+smaller or makes its expected values easier to audit; `tests/published-boards/office-samples.mjs`
+builds the Word, Excel, and PowerPoint packages, while the PDF test builds its PDF directly.
+Never copy a sample from another checkout without checking for personal data and documenting its
+source. Published-board tests must not contact the network; do not open a torrent fixture when the
+board starts network discovery as part of opening it.
+
 For full API, target, timeout, lifecycle, and report details, see
 [`doc/standards/integration-tests.md`](../doc/standards/integration-tests.md).

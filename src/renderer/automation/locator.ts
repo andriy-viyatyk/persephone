@@ -132,7 +132,13 @@ function actionabilityFunction(): string {
                 reaches = root.host === hit || root.host.contains(hit);
                 root = root.host.getRootNode();
             }
-            if (!reaches) throw new Error('ACTIONABILITY_TRANSIENT: Element does not receive pointer events; covered by ' + describe(hit) + '.');
+            if (!reaches) {
+                /* Hit an ancestor: a scrolling ancestor clips the element although it is inside the
+                   window (the window-only check above did not scroll). Scroll it into view; the retry
+                   re-checks. */
+                if (hit && hit.contains(el)) el.scrollIntoView({ block: 'center', inline: 'center' });
+                throw new Error('ACTIONABILITY_TRANSIENT: Element does not receive pointer events; covered by ' + describe(hit) + '.');
+            }
         }
         const x = bounds.left + localX, y = bounds.top + localY;
         ${FRAME_OFFSETS_FN}

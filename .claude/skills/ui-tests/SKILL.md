@@ -42,4 +42,20 @@ directory through `ctx.fixture()`; reset any mutable fixture file at test start.
 `ctx.app.boards.*` and `ctx.app.pages[id].editor.*` calls, using `ctx.call` or `ctx.callText` where
 call options or exact string results are required.
 
+Published document-viewer tests live separately under
+`tests/published-boards/<board-id>/<board-id>.test.mjs`, one module per viewer, with shared sample
+opening and cleanup in `tests/published-boards/helpers.mjs`. Use `openPublishedSample(ctx, boardId,
+sampleRel)` to register the local board copy, open a `fixtures/boards-samples/<board-id>/` sample
+through the normal file-open path, verify the editor/root, activate its page, and wait for
+`editor.frameReady`. The returned `editor` is a stand-in; wait for `editor.app` methods or state to
+be ready before asserting viewer data. Close every handle in `finally` with `closePublishedSample()`;
+closing a page may start asynchronous board-process shutdown. Declare both `launch` and
+`published-board-checkout` requirements.
+
+Keep published-viewer samples small, synthetic, and offline. Commit reusable samples under
+`fixtures/boards-samples/<board-id>/`; generate package formats in test helpers when that is simpler
+than committing binary outputs (the Office formats use `tests/published-boards/office-samples.mjs`).
+Check samples copied from another checkout for personal data and record their source. Do not test a
+board open path that starts external network activity, such as torrent discovery.
+
 Put `<feature>.test.mjs` in `integration-test/tests/<area>/<module>/`; deeper module paths are allowed. The area/module id is the test path under `tests/` without its filename, for example `core/smoke` or `editors/grid/sort`. Default-export `test(name, async ctx => { ... })` or an array, importing `test` from `lib/context.mjs` with the correct relative path. `--area` accepts comma-separated whole-segment path prefixes; an unknown prefix fails before profile reset and prints known module ids. Use `node integration-test/run.mjs --list` to inspect the module tree and test/skipped counts; it starts no app and takes no lock. `--list --area <prefix>` narrows it; `--with` and `--attach` affect skipped counts. A module should stay under about 50 tests and 3 minutes; split larger modules into feature submodules, never numbered chunks. Append a test to the module that owns its feature; create a new module folder when no owner exists, and add an area only with a new roadmap phase. Put UTF-8, no-BOM, LF fixtures with final newline in `integration-test/fixtures/`; `ctx.fixture(rel)` names the isolated work copy. Reset each mutable fixture at test start via `ctx.call('fs.write', [ctx.fixture(rel), content])`; save changed pages and close them with `pages.closePage` so each test is independently selectable. Tests share no state, each test closes the pages it opens, and files it creates go under a per-test folder in `ctx.fixture`, particularly for attach runs. Cross-area helpers live in `tests/helpers/`; area-only shared steps live in `tests/<area>/helpers.mjs` and move to the shared folder only after another area uses them. Declare external tags with `test(name, run, { requires: [...] })`; declare `requires: ["launch"]` when using `ctx.restartApp()` or `ctx.launchSecondInstance(args = [])`. Use `ctx.httpUrl("/route?query=value")` for the loopback HTTP fixture service. Use `ctx.callText` for exact text and `ctx.call` for structured values, `ctx.expect` for assertions, and `ctx.waitFor(pathOrFn, predicate, { timeout })` for asynchronous state. Tests never insert fixed sleeps; `waitFor` polls and retries false predicates, not call errors. Follow the landed pilot for dialog handling. Run the affected area and full suite; inspect only failures.

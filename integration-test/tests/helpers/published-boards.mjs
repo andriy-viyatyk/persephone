@@ -16,7 +16,9 @@ export async function registerPublishedBoard(ctx, id) {
 
     const copiedRoot = ctx.fixture(`boards/published-checkout/${id}`);
     const source = path.join(boardsDirectory(), id);
-    await rm(copiedRoot, { recursive: true, force: true });
+    // A board process from the previous test (e.g. sqlite-viewer's db-server) is killed asynchronously
+    // when its page closes and can hold a file in the old copy for a moment; let rm retry.
+    await rm(copiedRoot, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
     await cp(source, copiedRoot, { recursive: true, force: true, errorOnExist: false });
     await trustFixtureBoard(ctx, copiedRoot);
     return copiedRoot;

@@ -304,7 +304,20 @@ export class EnvVarsEditor extends TextHostEditorModel<EnvVarsEditorState> {
      *  would report a dirty env-vars editor as unmodified, and the close-loop save prompt would
      *  be skipped. */
     get modified(): boolean {
-        return this._host ? this._host.modified : super.modified;
+        return this._host ? this._host.modified || this.hasUnserializedChanges : super.modified;
+    }
+
+    /** A change still waiting for the serialize debounce counts as modified, so a close right
+     *  after an edit prompts instead of dropping it (same as LinkEditor). */
+    private get hasUnserializedChanges(): boolean {
+        const { data, status } = this.state.get();
+        return status === "ok" && this.lastSerializedData !== null && data !== this.lastSerializedData;
+    }
+
+    /** Flush the pending serialize so a Save from the release prompt writes the latest data. */
+    async confirmRelease(closing?: boolean): Promise<boolean> {
+        this.onDataChanged();
+        return super.confirmRelease(closing);
     }
 
     async saveState(): Promise<void> {
