@@ -8,8 +8,9 @@ summary: "Test a board through pages[i].editor, inspect secondary views, integra
 
 ## Test it
 
-Once the board is open, drive it through `pages[pageId].editor`. Always get the board's `pageId`
-first:
+Once the board is open, drive it through `pages[pageId].editor`. `boards.openBoard(root)` resolves
+with no value. After it resolves, read `pages.activePage.id` or find the page whose editor has the
+matching `boardRoot`:
 
 ```
 call at `pages`                  → pick the entry with editor: "board-view" → its pageId
@@ -40,8 +41,9 @@ A board never navigates, so it has no navigation members and cannot add or close
 
 For a declared service, run the normal Service-tab request first, then inspect
 `boards.list()` for the matching `service` payload. Use the public host calls
-`app.boards.requestService(root, { op: "echo", value: "no-page" })`, `startService(root)`, and
-`stopService(root)` for no-page requests and lifecycle control. The Demo fixture's service request
+`app.boards.requestService(root, { op: "echo", value: "no-page" })`,
+`app.boards.startService(root)`, and `app.boards.stopService(root)` for no-page requests and
+lifecycle control. The Demo fixture's service request
 operations are `echo`, `storage-get`, `storage-set`, `storage-delete`, `storage-keys`, `delay`,
 `crash`, and `arm-handshake-hang`; the last mode is consumed and deleted by the service before it
 withholds `ready`, so verification must wait for the following normal retry and confirm echo works.
@@ -110,8 +112,8 @@ The debugging surfaces, in the order to check them:
 - **Snapshot vs screenshot**: `snapshot()` includes invisible elements, so verify visual changes
   with `screenshot()` before declaring the UI correct.
 - **`boards.openBoard` / `boards.createBoard` failures** return real errors (`Not a board: …` — missing
-  `board-manifest.json`; name collision on create). `boards.openBoard` success returns
-  `{ opened, pageId, title }` — use that `pageId` for `pages[pageId].editor`; boards are never
+  `board-manifest.json`; name collision on create). `boards.openBoard` resolves with no value
+  once its tab is open and active — read `pages.activePage.id` and use it for `pages[pageId].editor`; boards are never
   reached by the untargeted browser-page fallback unless they are the active page.
 - **Manifest edits don't apply on refresh** — `fileMasks`/`folderMasks`/`folderEditorMasks`/
   `editorPriority`/`folderEditorPriority`/`editorSources` are

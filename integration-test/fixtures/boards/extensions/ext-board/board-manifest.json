@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "name": "US-2094 Extensions",
+  "description": "Integration fixture for board extension APIs.",
+  "author": "Persephone test fixture",
+  "minBridgeVersion": "1.57.0",
+  "permissions": {
+    "execute": false,
+    "service": true,
+    "fileSystem": false,
+    "openExternal": false,
+    "appScripting": false,
+    "network": false,
+    "clipboardRead": false,
+    "camera": false,
+    "microphone": false,
+    "computerAudio": false,
+    "geolocation": false,
+    "notifications": false,
+    "themes": false
+  },
+  "service": "scripts/service.mjs",
+  "contentProviders": [
+    { "type": "test/extensions", "schemes": ["us2094"] }
+  ],
+  "capabilities": [
+    {
+      "id": "test.extensions.echo",
+      "version": 1,
+      "title": "US-2094 Echo",
+      "methods": {
+        "echo": {
+          "kind": "call",
+          "summary": "Return the supplied fixture value.",
+          "args": [{ "name": "value", "type": "string" }],
+          "returns": "{ value: string; handledBy: string }"
+        }
+      }
+    }
+  ],
+  "fileMasks": ["*.us2094"],
+  "editorName": "US-2094 Editor",
+  "editorKind": "content-host",
+  "editorPriority": 200,
+  "folderEditorMasks": ["*/folder-target"],
+  "folderEditorPriority": 200
+}

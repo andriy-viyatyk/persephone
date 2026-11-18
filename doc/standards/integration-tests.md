@@ -148,6 +148,14 @@ Browser tests are grouped under `tests/browser/`: `automation/input/` and `autom
 and `tor/`; the older `tests/editors/browser/` location is retired. Their HTTP/HTTPS pages and
 assets live under `fixtures/http/browser/<module>/`.
 
+Board platform tests live under `tests/boards/`: `lifecycle/`, `permissions/`, `info/`, `bridge/`,
+and `extensions/`. Area-only setup and trust helpers belong in `tests/boards/helpers.mjs`. Keep
+board fixtures under `fixtures/boards/<module>/`, with each board in its own folder. Tests use
+`fixture()` to access an isolated copy in the profile's `work/` directory, so mutable files can be
+reset without changing the committed fixture. Prefer the app stand-in (`ctx.app.boards.*`,
+`ctx.app.pages[id].editor.*`) for structured calls; use `ctx.call` or `ctx.callText` when a call
+option or exact string result is needed.
+
 Tests must run independently and should leave committed fixtures unchanged. Use `ctx.fixture()`
 for mutable work copies and reset their content at the start of each test. Tests that restart the
 app or launch another process declare `requires: ["launch"]`. Use `ctx.httpUrl()` for local

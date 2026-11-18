@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "name": "US-2092 Granted Board",
+  "author": "Fixture Author",
+  "minBridgeVersion": "1.30.0",
+  "permissions": {
+    "execute": true,
+    "service": false,
+    "fileSystem": "board",
+    "openExternal": false,
+    "appScripting": false,
+    "network": "full",
+    "clipboardRead": false,
+    "camera": false,
+    "microphone": false,
+    "computerAudio": false,
+    "geolocation": false,
+    "notifications": false,
+    "themes": true
+  }
+}

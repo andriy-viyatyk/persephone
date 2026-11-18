@@ -72,6 +72,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Named capability proxy builder | `/src/shared/capability-client.ts` |
 | Platform capability provider metadata | `/src/shared/platform-capabilities.ts` |
 | Agent capability discovery and method nodes | `/src/renderer/scripting/ai-vision/namespaces/capabilities.ts` |
+| Agent board API method nodes (including board service request, start and stop operations) | `/src/renderer/scripting/ai-vision/namespaces/boards.ts` |
 | Main-owned scalar UI preferences and renderer cache (snapshot load, synchronous reads, best-effort writes) | `/src/main/ui-preferences.ts`, `/src/renderer/api/ui-preferences.ts` |
 | Page/tab management (shared page arrays and state; mutation primitives; lazy-loading entrypoints; router and standalone-page composition) | `/src/renderer/api/pages/PagesModel.ts` |
 | Page container (tab; typed editor membership, sidebar composition, page-wide history owner, inert recovery guard, media-pipe owner readiness, and page-level restore/recovery collaborators) | `/src/renderer/api/pages/PageModel.ts` |
@@ -655,13 +656,13 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Command runner (main-process spawn service; whole-tree kill; jobId registry; shared `JobProcess` contract for child and utility processes; jobs carry an optional caller `name` + `getJobsBySinkIds` query for board job re-association; `startJobTo` handles spawned commands and `startNodeJobTo` runs board Node scripts in a utility process) | `/src/main/command-runner.ts` |
 | Windows env backfill (`reconstructWindowsEnv` — restores missing standard folder/system vars at startup so spawned children get a full env even when launched from a degraded shell; win32-only, backfill-only; called first in `setupMainProcess()`) | `/src/main/windows-env.ts` |
 | Renderer board registry (MainSnapshotMirror of main-published trusted and enabled bundled entries, keyed by exact BoardRoot.key; synchronous permission, grant, compatibility, and file-access lookups) | `/src/renderer/api/boards/board-registry.ts` |
-| Board lifecycle + catalog API (`app.boards` - create/open/register/rename, trusted-board shortcut creation and standalone-window opening, plus published-catalog operations; registration is the user-consent path) | `/src/renderer/api/boards.ts` |
+| Board lifecycle + catalog API (`app.boards` - create/open/register/rename, `openBoard` reuses this window's existing board tab, trusted-board shortcut creation and standalone-window opening, plus published-catalog operations; registration is the user-consent path) | `/src/renderer/api/boards.ts` |
 | Board removal and rename orchestration (release pages before stopping the service; then disk/trust/install updates and display-text invalidation) | `/src/renderer/api/boards/board-lifecycle.ts` |
 | Board trust request flow (short-circuits bundled and already-trusted roots; preflights normalized permission and service-use grant changes, supplies manifest disclosure, checks namespace collisions, and writes trust only after user acceptance) | `/src/renderer/api/boards/request-board-trust.ts` |
 | Shared board shortcut creation core and UI notification wrapper | `/src/renderer/editors/board/board-shortcut.ts` |
 | Board lifecycle script types (`IBoards`) | `/src/renderer/api/types/boards.d.ts` |
 | Single-instance board declaration and typed source-context delivery contract | `/src/shared/board/board-manifest-schema.ts`, `/src/renderer/api/boards/board-page-router.ts`, `/src/renderer/editors/base/EditorModel.ts` |
-| Board manifest file I/O (board identity detection, parse through shared schema, creation and update) | `/src/renderer/api/boards/board-manifest-io.ts` |
+| Board manifest file I/O (board identity detection, parse through shared schema, creation and update; keep a template's author when no default author is configured) | `/src/renderer/api/boards/board-manifest-io.ts` |
 | Board language-pack loading and validation (active/base/default fallback, placeholder checks against the default pack, `en-XA` pseudo-text, and registration-time locale/table context) | `/src/renderer/api/boards/board-i18n.ts` |
 | Local board manifest display-text cache (`manifest.*` translations loaded from board packs, with refresh/invalidation events and English fallback) | `/src/renderer/api/boards/board-display-text.ts` |
 | Shell board identity service (shared display-name warming, English manifest-name snapshots, glyph creation, and text/icon change notifications) | `/src/renderer/editors/board/board-identity.ts` |

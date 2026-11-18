@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "name": "US-2093 No App Fixture",
+  "author": "Fixture Author",
+  "minBridgeVersion": "1.58.0",
+  "permissions": {
+    "execute": false,
+    "fileSystem": false,
+    "openExternal": false,
+    "appScripting": false,
+    "network": false,
+    "clipboardRead": false,
+    "camera": false,
+    "microphone": false,
+    "computerAudio": false,
+    "geolocation": false,
+    "notifications": false,
+    "themes": false
+  },
+  "languages": {
+    "folder": "lang",
+    "default": "en"
+  }
+}

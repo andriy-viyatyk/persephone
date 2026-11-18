@@ -26,6 +26,7 @@ import { moduleServiceStatus } from "./module-service-status";
 import { createLinkData } from "../../shared/link-data";
 import { BoardRoot } from "../../shared/board/board-root";
 import { asBoardHostEditor } from "./boards/board-host-editor";
+import { EditorId } from "../../shared/editor-ids";
 import { appCallTimeout } from "./ai-vision-call-timeout";
 import { createBoardShortcutCore } from "../editors/board/board-shortcut";
 
@@ -242,6 +243,14 @@ export const boards: IBoards = {
     },
     openBoard: async (boardRoot: string) => {
         await assertBoardFolder(boardRoot);
+        // Reuse this window's existing board tab (a page running the board itself, not a board
+        // editing a file) instead of stacking a duplicate, as the API promises.
+        const existing = app.pages.boardPageRouter.findPagesByBoardRoot(boardRoot)
+            .find((page) => page.mainEditor?.editorId === EditorId.boardView);
+        if (existing) {
+            app.pages.navigation.showPage(existing.id);
+            return;
+        }
         // Encode the persephone-board:// link in one tested place and open it via
         // the generic pipeline. The agent never builds the link by hand.
         await app.events.openRawLink.sendAsync(createLinkData(encodePersephoneBoardLink(boardRoot), {

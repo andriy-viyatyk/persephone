@@ -1,6 +1,6 @@
 # UI test coverage roadmap
 
-**Date:** 2026-11-16 · **Status:** accepted 2026-11-16; Phase 1 is [EPIC-181](../epics/EPIC-181.md) (completed 2026-11-16); Phase 2 is [EPIC-182](../epics/EPIC-182.md) (completed 2026-11-16); Phase 3 is [EPIC-183](../epics/EPIC-183.md) (completed 2026-11-17); Phase 4a is [EPIC-184](../epics/EPIC-184.md) (completed 2026-11-17); Phase 4b is [EPIC-185](../epics/EPIC-185.md) (completed 2026-11-17); Phase 5a is [EPIC-187](../epics/EPIC-187.md) (completed 2026-11-18); Phase 5b is [EPIC-188](../epics/EPIC-188.md) (completed 2026-11-18); Phase 6a is [EPIC-189](../epics/EPIC-189.md) (completed 2026-11-18); Phase 6b is [EPIC-190](../epics/EPIC-190.md) (completed 2026-11-18) · **Builds on:** [EPIC-180](../epics/EPIC-180.md) (runner,
+**Date:** 2026-11-16 · **Status:** accepted 2026-11-16; Phase 1 is [EPIC-181](../epics/EPIC-181.md) (completed 2026-11-16); Phase 2 is [EPIC-182](../epics/EPIC-182.md) (completed 2026-11-16); Phase 3 is [EPIC-183](../epics/EPIC-183.md) (completed 2026-11-17); Phase 4a is [EPIC-184](../epics/EPIC-184.md) (completed 2026-11-17); Phase 4b is [EPIC-185](../epics/EPIC-185.md) (completed 2026-11-17); Phase 5a is [EPIC-187](../epics/EPIC-187.md) (completed 2026-11-18); Phase 5b is [EPIC-188](../epics/EPIC-188.md) (completed 2026-11-18); Phase 6a is [EPIC-189](../epics/EPIC-189.md) (completed 2026-11-18); Phase 6b is [EPIC-190](../epics/EPIC-190.md) (completed 2026-11-18); Phase 7a is [EPIC-191](../epics/EPIC-191.md) (completed 2026-11-18) · **Builds on:** [EPIC-180](../epics/EPIC-180.md) (runner,
 `uitest` profile, pilot tests).
 
 The refactoring roadmap touched almost the whole codebase. This roadmap retests every screen and feature once, and
@@ -180,6 +180,10 @@ fixture server.
 - Tor mode: tagged `requires: [network, tor]`.
 
 ### Phase 7: Board platform and bundled boards
+
+Split in two. Phase 7a (board lifecycle, permissions, Board Info, the bridge and board extensions, from fixture boards)
+is [EPIC-191](../epics/EPIC-191.md) (completed 2026-11-18); phase 7b takes the published-board registration helper, catalog install against a
+fake catalog (needs a test-only catalog base URL) and the bundled Excalidraw and REST Client boards.
 
 - **Runner:** the published-board registration helper (from `../persephone-boards`).
 - **Board lifecycle:** create a board (scaffold), create the demo board, open, edit, reload, trust dialog,

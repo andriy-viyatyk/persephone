@@ -1,0 +1,5 @@
+{
+  "messages": {
+    "bridge.greeting": "Hello {name}"
+  }
+}

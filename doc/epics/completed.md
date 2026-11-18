@@ -1,3 +1,27 @@
+## EPIC-191 — UI test coverage, phase 7a: board platform (lifecycle, permissions, Board Info, bridge, extensions)
+
+Completed 2026-11-18. First half of Phase 7 of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 52 new
+tests in the new `integration-test/tests/boards/` area (`lifecycle`, `permissions`, `info`, `bridge`,
+`extensions`) with the area helper `tests/boards/helpers.mjs` and fixture boards under
+`integration-test/fixtures/boards/<module>/` (one board per folder, trusted through the real dialog); the suite is 377
+tests. Codex (Luna) planned and wrote the tests blind; Claude reviewed, ran and triaged, and recorded 21 cases in
+[ai-vision-feedback.md](../reviews/ai-vision-feedback.md). **Fixed:** `boards.openBoard` opened a second tab for an
+open board; a Demo-template board lost its author on a fresh profile, so its settings were rejected; the product test
+host failed any step whose string result began with `Error: `. **Call gap closed:** `boards.requestService` /
+`startService` / `stopService`. **Guide fixes:** `createBoard`/`openBoard` return shapes, the starter `app.js`, the
+`createShortcut` summary. **Open:** the EPIC-187 grid decision; the intermittent EPIC-185 env-vars test (investigated,
+not fixed); board automation during a reload rejects or blocks instead of waiting for the frame. **Uncovered:** device
+permissions, clipboard read and notifications (feature policies), `openExternal` refusal, native Save dialog, board
+window OS focus. Phase 7b (published-board registration helper, fake catalog install, Excalidraw, REST Client) is
+next. Final launched run (`--with git,mneme`): 372 passed, 3 failed, 2 skipped; the one new failure was fixed
+afterwards and the `boards` area reran green (52 passed). Completion skills by Codex (Luna). Epic document:
+[EPIC-191](EPIC-191.md).
+
+- [x] **Board lifecycle (US-2091).**
+- [x] **Permissions and Board Info (US-2092).**
+- [x] **Bridge (US-2093).**
+- [x] **Board extensions (US-2094).**
+
 ## EPIC-190 — UI test coverage, phase 6b: browser automation, page models, site extensions, page tools, Tor
 
 Completed 2026-11-18. Second half of Phase 6 of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 63 new

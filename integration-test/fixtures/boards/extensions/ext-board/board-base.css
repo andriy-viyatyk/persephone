@@ -1,0 +1,32 @@
+:root {
+    color-scheme: light dark;
+    font-family: var(--p-font-family, sans-serif);
+    color: var(--p-text, currentColor);
+    background: var(--p-bg, transparent);
+}
+
+body {
+    margin: 0;
+    padding: var(--p-space-lg, 12px);
+}
+
+main {
+    display: grid;
+    gap: var(--p-space-md, 8px);
+}
+
+h1 {
+    margin: 0;
+    font-size: var(--p-font-lg, 18px);
+}
+
+pre {
+    margin: 0;
+    padding: var(--p-space-md, 8px);
+    border: 1px solid var(--p-border, currentColor);
+    white-space: pre-wrap;
+}
+
+button {
+    justify-self: start;
+}

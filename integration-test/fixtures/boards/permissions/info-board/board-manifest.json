@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "name": "US-2092 Info Board",
+  "description": "Fixture board for Board Info properties.",
+  "author": "Fixture Author",
+  "version": "1.2.3",
+  "minBridgeVersion": "1.30.0",
+  "standalone": false,
+  "permissions": {
+    "execute": false,
+    "service": false,
+    "fileSystem": "board",
+    "openExternal": false,
+    "appScripting": false,
+    "network": "full",
+    "clipboardRead": false,
+    "camera": false,
+    "microphone": false,
+    "computerAudio": false,
+    "geolocation": false,
+    "notifications": false,
+    "themes": true
+  },
+  "fileMasks": ["*.fake"]
+}

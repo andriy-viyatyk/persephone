@@ -85,6 +85,10 @@ export async function stampNewBoardManifest(boardRoot: string, name: string): Pr
     await ensureBoardManifest(boardRoot, author);
     const manifest = await readRawBoardManifest(boardRoot) ?? defaultBoardManifest(name, author);
     manifest.name = name;
-    manifest.author = author;
+    // Keep a template's own author when no default author is configured: blanking it would strip
+    // the stable identity that a template's declared settings require (the Demo board's settings
+    // were rejected with an error toast on a fresh profile).
+    const templateAuthor = typeof manifest.author === "string" ? manifest.author : "";
+    manifest.author = author || templateAuthor;
     await writeBoardManifest(boardRoot, manifest);
 }

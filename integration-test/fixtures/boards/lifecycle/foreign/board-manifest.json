@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "name": "US-2091 Foreign Fixture",
+  "minBridgeVersion": "1.30.0",
+  "permissions": {
+    "execute": false,
+    "service": false,
+    "fileSystem": false,
+    "openExternal": false,
+    "appScripting": false,
+    "network": false,
+    "clipboardRead": false,
+    "camera": false,
+    "microphone": false,
+    "computerAudio": false,
+    "geolocation": false,
+    "notifications": false,
+    "themes": false
+  }
+}

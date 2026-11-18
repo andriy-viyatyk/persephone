@@ -84,7 +84,8 @@ export class McpClient {
         if (startsWithText(blocks[index], "--- events ---")) index++;
         const first = blocks[index++];
         const body = isTextBlock(first) ? first.text : undefined;
-        if (body?.startsWith("Error: ")) throw this.serverError(path, args, blocks);
+        // A failed call always sets isError (handled above). A successful string result that merely
+        // starts with "Error: " (e.g. a page returning String(error)) is a value, not a failure.
         if (body === undefined) throw new Error(`${formatStep("call", path, args)} returned no valid text body. Raw reply: ${raw}`);
         if (startsWithText(blocks[index], "[truncated:")) {
             index++;

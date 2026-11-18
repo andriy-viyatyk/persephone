@@ -691,3 +691,150 @@ Append only. Add new entries at the end and never rewrite old ones. Do not inclu
 - **What actually happened:** That test passed only because of the late URL-bar focus fixed in this epic: the URL bar already had focus. Ctrl+L is a browser-root shortcut, and keys sent while the webview holds focus reach the page instead.
 - **How it was resolved:** The test focuses a browser toolbar control first, as a user who clicked the toolbar would.
 - **Suggested improvement:** Say in the browser guide which shortcuts need focus in Persephone's chrome rather than in the page.
+
+### 2026-11-18 · EPIC-191 / US-2091 · Codex Luna (plan)
+- **Area:** guide agents/boards (index, testing)
+- **What the agent expected:** `boards.createBoard`/`createDemoBoard` to return `{ boardRoot }` and `boards.openBoard` to return `{ opened, pageId, title }`, as the boards hub and testing page said.
+- **What actually happened:** Both return the root path as a string; `openBoard` resolves with no value. The page id has to be read from `pages.activePage.id` or found by `editor.boardRoot`.
+- **How it was resolved:** Found in `boards.d.ts` and `boards.ts`; Claude corrected both guide pages.
+- **Suggested improvement:** None further; consider returning the page id from `openBoard` if agents keep needing it.
+
+### 2026-11-18 · EPIC-191 / US-2091 · Codex Luna (plan)
+- **Area:** guide agents/boards/index (starter files)
+- **What the agent expected:** The blank starter's `app.js` to have a `boardScript()` helper that calls `persephone.execute()`, as the hub said.
+- **What actually happened:** The starter button only shows a local translated result, the manifest has `execute: false`, and `scripts/hello.js` is unused.
+- **How it was resolved:** Claude corrected the hub; the test wires the button and grants `execute` itself.
+- **Suggested improvement:** None further.
+
+### 2026-11-18 · EPIC-191 / US-2091, US-2093 · Codex Luna (plan)
+- **Area:** other (bridge source map)
+- **What the agent expected:** The bridge channel types in `src/ipc/board-bridge-channels.ts`, as Claude's brief named it.
+- **What actually happened:** That file does not exist; the protocol lives in `src/ipc/board-bridge/` (`port-protocol.ts`, `frame-protocol.ts`).
+- **How it was resolved:** Found by search; the brief's path came from a stale note.
+- **Suggested improvement:** Name the current bridge protocol files in `key-files.md` next to the shim.
+
+### 2026-11-18 · EPIC-191 / US-2094 · Codex Luna (plan)
+- **Area:** call path (`boards.*` services)
+- **What the agent expected:** `boards.requestService`, `startService` and `stopService` on the call tree, as on the script `app.boards`.
+- **What actually happened:** The `boards` descriptor did not list them, so an agent could not drive a board service over `call`.
+- **How it was resolved:** Call gap closed: Claude added the three members to the `boards` namespace.
+- **Suggested improvement:** Done.
+
+### 2026-11-18 · EPIC-191 / US-2094 · Codex Luna (plan) / Claude (run)
+- **Area:** call path (`pages.openFile` on a folder) / guide agents/boards/folder-editor
+- **What the agent expected:** `pages.openFile(folderPath)` to open the folder in the board that claims it.
+- **What actually happened:** It opens an editorless workspace page rooted at the folder (`editor: null`, `workspaceFolder`). The claim applies when the folder is opened as page content, e.g. by clicking it in the Explorer.
+- **How it was resolved:** The test opens the parent as a workspace and clicks the folder row.
+- **Suggested improvement:** One line in `folder-editor.md`: how an agent opens a claimed folder, and that `pages.openFile(folder)` makes a workspace page.
+
+### 2026-11-18 · EPIC-191 / US-2094 · Claude (run)
+- **Area:** call path (board editor `id`)
+- **What the agent expected:** A board that claims a folder to show `editor.id === "board-view"`.
+- **What actually happened:** A board opened as the editor of a file or folder reports `board-editor:<root>`; `board-view` is only the board's own page.
+- **How it was resolved:** Test expectation corrected.
+- **Suggested improvement:** Say so in `folder-editor.md` beside the claim description.
+
+### 2026-11-18 · EPIC-191 / US-2091 · Claude (run)
+- **Area:** app object (`ctx.waitFor` on a dialog path)
+- **What the agent expected:** `ctx.waitFor("dialogs[0].title", ...)` to poll a dialog's title.
+- **What actually happened:** A path wait cannot pass `{ dialog: true }`, so every poll failed with "unexpected attention". Recurrence of the EPIC-187/188 dialog call-option entries.
+- **How it was resolved:** `waitForBoardDialog` in `tests/boards/helpers.mjs` polls with `ctx.call(..., { dialog: true })`.
+- **Suggested improvement:** Let `ctx.waitFor` take call options, or show the callback pattern in `web-app-tests.md`.
+
+### 2026-11-18 · EPIC-191 / US-2094 · Claude (run)
+- **Area:** call path (`editorSwitches.options`)
+- **What the agent expected:** `editorSwitches.options` to be a list of editor id strings (`toContain("monaco")`).
+- **What actually happened:** It is a list of `{ id, label, title }` objects.
+- **How it was resolved:** Tests map to ids.
+- **Suggested improvement:** State the element shape in the `options` member summary.
+
+### 2026-11-18 · EPIC-191 / US-2091, US-2094 · Claude (run)
+- **Area:** board automation (`pages[i].editor` of a board)
+- **What the agent expected:** Board automation (`waitFor`, `evaluate`) to work right after `pages.openFile` of a board-claimed file, and `frameReady` to stay true after `boards.renameBoard`.
+- **What actually happened:** Until the frame mounts, every automation call fails with "Board frame not ready for CDP (still loading?)", even `waitFor({ selector })`. A rename reloads the frame, so `frameReady` is briefly false.
+- **How it was resolved:** Tests wait for `editor.frameReady === true` first.
+- **Suggested improvement:** Let board `waitFor` wait for the frame within its timeout, or say in `boards/testing.md` to wait for `frameReady` after opening, renaming or reloading.
+
+### 2026-11-18 · EPIC-191 / US-2091 · Claude (run)
+- **Area:** app object (`ctx.waitFor` callbacks)
+- **What the agent expected:** A `waitFor` callback that calls `editor.evaluate` during a board reload to be retried.
+- **What actually happened:** The call threw while the frame was replaced, and `waitFor` does not retry call errors. Recurrence of the "waitFor retries false predicates, not call errors" entry.
+- **How it was resolved:** The callback catches and returns `null`.
+- **Suggested improvement:** None beyond the earlier entry.
+
+### 2026-11-18 · EPIC-191 / US-2091 · Codex Luna (plan, implementation) / Claude (run)
+- **Area:** $help (`boards.createShortcut`)
+- **What the agent expected:** `createShortcut` to return the absolute path string, as the member summary said ("returns its absolute path").
+- **What actually happened:** It returns `{ linkPath }` (the hub guide was right; the summary was not).
+- **How it was resolved:** Test reads `.linkPath`; Claude corrected the member summary.
+- **Suggested improvement:** Done.
+
+### 2026-11-18 · EPIC-191 / US-2091 · Claude (run)
+- **Area:** call path (`windows[i]`)
+- **What the agent expected:** `windows[i].pages` to be the window's page list.
+- **What actually happened:** It is a summary node (`{ kind: "Pages", count, activePageId }`); the list is `windows[i].pages.all`. The `windows[i]` summary also reported `pageCount: 0` for a board window whose `pages.count` was 1. Recurrence of "awaiting a node returns its summary".
+- **How it was resolved:** Test reads `windows[i].pages.all`.
+- **Suggested improvement:** Make the `windows[i]` summary's `pageCount` agree with `pages.count`.
+
+### 2026-11-18 · EPIC-191 / US-2093 · Codex Luna (implementation) / Claude (run)
+- **Area:** board bridge (error shape)
+- **What the agent expected:** A denied `persephone.call` to reject with `error.code === "permission-denied"`, as the file APIs do.
+- **What actually happened:** The file APIs' errors carry `code`; the `call` denial has only the message `permission-denied: "appScripting" is not enabled in board-manifest.json`.
+- **How it was resolved:** Test checks the message prefix.
+- **Suggested improvement:** Give every bridge permission error the same `code`, or document the message prefix as the contract in `permissions.md`.
+
+### 2026-11-18 · EPIC-191 / US-2092 · Claude (run)
+- **Area:** other (web-app test runner)
+- **What the agent expected:** `editor.evaluate("async () => { try { ... } catch (e) { return String(e); } }")` to return the caught error text.
+- **What actually happened:** The product test host treated any string result starting with `Error: ` as a failed call, so the step failed with the page's own error text.
+- **How it was resolved:** Product bug fixed in `src/test-host/client.ts`: only `isError` replies fail a step.
+- **Suggested improvement:** Done.
+
+### 2026-11-18 · EPIC-191 / US-2092 · Codex Luna (plan)
+- **Area:** guide agents/boards/permissions (permission change dialog)
+- **What the agent expected:** A Decline button on the permissions-changed dialog that keeps the old grants.
+- **What actually happened:** It offers `Unregister board` and `Accept`; `cancel()` dismisses it, keeps the old grants, removes the board from the page, and the next open asks again.
+- **How it was resolved:** Found in `trust-board.ts` and `TrustBoardDialog.ts`; tests use `cancel()`.
+- **Suggested improvement:** Describe the dismiss path in `permissions.md`.
+
+### 2026-11-18 · EPIC-191 / US-2092 · Codex Luna (plan)
+- **Area:** guide agents/boards/permissions (what a flag gates)
+- **What the agent expected:** Every permission flag to make the matching bridge call reject.
+- **What actually happened:** `notifications`, `clipboardRead` and the device flags are iframe feature policies, `notify()` and clipboard writes are ungated, and a denied `openExternal` is blocked and logged to `ui.log` while `openRawLink` still resolves.
+- **How it was resolved:** Only the rejecting gates are tested; the rest is listed as uncovered.
+- **Suggested improvement:** A table in `permissions.md`: flag, what it gates, and how a denial shows (rejection, feature policy, log line).
+
+### 2026-11-18 · EPIC-191 / US-2092 · Codex Luna (plan) / Claude (run)
+- **Area:** call path (Board Info)
+- **What the agent expected:** A `boards.*` or board editor member that opens Board Info, and `properties.manifestVersion` to be the schema version.
+- **What actually happened:** Board Info opens only from the board toolbar's UIKit menu (`board-toolbar-more` → Board properties); `manifestVersion` is the manifest's own `version` string.
+- **How it was resolved:** The test clicks the menu with `window.screen`; the expectation was corrected to `"1.2.3"`.
+- **Suggested improvement:** A `showInfo()` member on the board editor; say in the Board Info `$help` that `manifestVersion` is the board's `version`.
+
+### 2026-11-18 · EPIC-191 / US-2093 · Codex Luna (plan)
+- **Area:** guide agents/boards/settings
+- **What the agent expected:** A call-tree member to set or reset a board's declared setting.
+- **What actually happened:** Board settings are written only through the Settings page section; the bridge has `settings.get` and `onChange` only.
+- **How it was resolved:** Tests drive the Settings page UI.
+- **Suggested improvement:** Say so in `settings.md`, with the section's `data-name` (`settings-section-board-<namespace>`).
+
+### 2026-11-18 · EPIC-191 / US-2093 · Codex Luna (plan)
+- **Area:** app object (`version`)
+- **What the agent expected:** `persephone.version` in a board to equal the app version.
+- **What actually happened:** It is `BOARD_BRIDGE_VERSION` (1.58.0); `ctx.app.version` is the product version.
+- **How it was resolved:** The test compares to the bridge constant.
+- **Suggested improvement:** None; the bridge guide says it, but a one-line contrast would help.
+
+### 2026-11-18 · EPIC-191 / US-2091 · Codex Luna (implementation)
+- **Area:** call path (`boards.list()` optional fields)
+- **What the agent expected:** Absent optional listing fields (`installed`, `service`, `deprecationNote`) to arrive as `null`.
+- **What actually happened:** They are omitted from the object, not `null`.
+- **How it was resolved:** Checked with `Object.hasOwn`.
+- **Suggested improvement:** Note in `web-app-tests.md` that an `undefined` property is dropped from objects, while a bare `undefined` result arrives as `null`.
+
+### 2026-11-18 · EPIC-191 / US-2091 · Claude (run)
+- **Area:** board automation (during a board reload)
+- **What the agent expected:** After accepting the permissions-changed dialog (which reloads the board), `editor.evaluate` and `editor.reload()` to wait for the new frame or fail fast.
+- **What actually happened:** `reload()` rejects at once with "Board frame not ready for CDP (still loading?)" while the accept-triggered load runs, and an `evaluate` issued while the old frame is torn down can block for the caller's whole 15 s wait, so a polling `waitFor` gets one poll. Intermittent; seen only in full runs.
+- **How it was resolved:** The test polls `reload()` until it reports `frameReady: true`, then reads the frame.
+- **Suggested improvement:** Make board automation wait (bounded) for the frame being loaded instead of blocking or rejecting; document the pattern in `boards/testing.md` meanwhile.

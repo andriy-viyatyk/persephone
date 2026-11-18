@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "name": "US-2093 Bridge Fixture",
+  "author": "Fixture Author",
+  "minBridgeVersion": "1.58.0",
+  "permissions": {
+    "execute": true,
+    "fileSystem": "board",
+    "appScripting": true
+  },
+  "languages": {
+    "folder": "lang",
+    "default": "en"
+  },
+  "settings": [
+    {
+      "id": "mode",
+      "type": "string",
+      "default": "fixture-default",
+      "label": "Mode"
+    }
+  ]
+}

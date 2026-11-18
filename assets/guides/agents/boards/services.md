@@ -96,10 +96,11 @@ await persephone.storage.set("last-reply", reply);
 ```
 
 Requests start the service lazily and can reject with `untrusted`, `permission-denied`,
-`service-busy`, `service-timeout`, `service-exited`, or `service-failed`. From the host renderer,
-Through `script.execute` (these three have no call path), `app.boards.requestService(root, message)` reaches the same service with no page open;
+`service-busy`, `service-timeout`, `service-exited`, or `service-failed`. From the host call tree,
+`app.boards.requestService(root, message)` reaches the same service with no page open;
 `app.boards.startService(root)` explicitly starts and resets its restart budget, and
-`app.boards.stopService(root)` tears it down. Read `boards.list()` and inspect the matching
+`app.boards.stopService(root)` tears it down. These are host `boards.*` calls, not methods on the
+board's `persephone` bridge. Read `boards.list()` and inspect the matching
 `service` object (`state`, `reason`, `pid`, `startedAt`, `restartCount`) after every lifecycle
 observation. For the Demo board, create it with `boards.createDemoBoard(name, dir)`, find its
 `pageId` under `pages`, use `pages[pageId].editor.snapshot()` and the Service tab's controls, then

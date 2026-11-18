@@ -30,6 +30,17 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Bug Fixes
 
+- **Opening a board twice:** `boards.openBoard(root)` opened a second tab for a board that was
+  already open. It now switches to the board's existing tab, as documented.
+- **Demo board settings on a fresh profile:** a board created with `boards.createDemoBoard` (or the
+  New board dialog's Demo template) lost the template's author when no default board author was
+  set, so the Demo board's own settings were rejected with an error notification. The template's
+  author is now kept unless a default author is configured.
+- **Error-like strings in web-app tests:** a test step whose result was a string starting with
+  `Error: ` (for example a page returning `String(error)` from `evaluate`) was reported as a failed
+  call. Only real call failures fail a step now.
+- **Board services over `call`:** `boards.requestService`, `boards.startService` and
+  `boards.stopService` were available to scripts but missing from the `call` tree.
 - **Held keys in browser automation:** `keyDown("Shift")` (or Control, Alt, Meta) was forgotten by
   the next `pressKey()`, so `keyDown("Shift")` + `pressKey("b")` typed "b" instead of "B". Held keys
   now stay down until `keyUp()`.

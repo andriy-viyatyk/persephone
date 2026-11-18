@@ -102,5 +102,11 @@ Browser tests live under `tests/browser/automation/{input,observe}/`, `page-mode
 `tests/editors/browser/` location), `page-tools/`, and `tor/`. Their local pages and assets are under
 `fixtures/http/browser/<module>/`.
 
+Board platform tests live under `tests/boards/{lifecycle,permissions,info,bridge,extensions}/`.
+Shared board setup and trust helpers belong in `tests/boards/helpers.mjs`. Put board fixtures under
+`fixtures/boards/<module>/`, with each board in its own folder. `ctx.fixture()` returns the isolated
+`work/` copy; reset mutable files there at the start of each test. Prefer `ctx.app.boards.*` and
+`ctx.app.pages[id].editor.*`; use `ctx.call` or `ctx.callText` for dialog options and exact strings.
+
 For full API, target, timeout, lifecycle, and report details, see
 [`doc/standards/integration-tests.md`](../doc/standards/integration-tests.md).

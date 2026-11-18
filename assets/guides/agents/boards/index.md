@@ -61,13 +61,12 @@ creation**, so it opens with no prompt; the details below are the authoring and 
 
 1. **`boards.createBoard(name, dir)` / `boards.createDemoBoard(name, dir)`** — scaffold a board
    (blank or the bundled Demo template). `name` is the board folder name; `dir` is the **container folder** it's
-   created inside (created if missing). Returns **`{ boardRoot }`** — the new board's absolute
-   root path. A name collision errors.
+   created inside (created if missing). Returns the new board's root path
+   (a string). A name collision errors.
 2. **`boards.openBoard(boardRoot)`** — open the board (`boardRoot` from step 1). Opens a
    **new tab** (or reuses the board's existing tab) and makes it the active page.
 
-Then confirm with `call` at `pages` and read the board page's `pageId` for
-`pages[pageId].editor` testing (see below). Opening a board you did **not** create (a foreign folder) shows
+Then read `pages.activePage.id` for `pages[pageId].editor` testing (see below). Opening a board you did **not** create (a foreign folder) shows
 a trust prompt; a board you created never does. A later permission increase on your own board
 shows the permissions-changed dialog, which you answer yourself (see "Who answers the trust
 dialogs").
@@ -101,7 +100,7 @@ These are host Object Model calls and do not add methods to the board's `perseph
 blank board contains:
 
 - `index.html` — the page shell (a starter button + output area), linked to `board-base.css`.
-- `app.js` — frontend logic with a `boardScript()` helper that calls `persephone.execute()`.
+- `app.js` — frontend logic; the starter button shows a local result (wire it to `persephone.execute()`).
 - `scripts/hello.js` — an example backend script demonstrating the `@@RESULT@@` convention.
 - `board-base.css` — shared theme defaults (page bg/text, monospace font, themed scrollbars,
   themed focus ring, Persephone-style native checkboxes) plus the opt-in `.p-*` chrome
