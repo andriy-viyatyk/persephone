@@ -72,6 +72,15 @@ the operating system's default browser.
 The tagged Tor network test also requires `PERSEPHONE_TEST_TOR_EXE` to point to a compatible
 `tor.exe`; it remains skipped unless both `network` and `tor` are enabled.
 
+Owned product test instances enable Chromium's `use-fake-device-for-media-stream` and `mute-audio`
+switches before app readiness. This prevents tests from accessing a real microphone or playing
+through a real speaker. After each profile reset the wrapper generates
+`.profile/test-audio-capture.wav`, a deterministic four-second 48 kHz mono WAV, and passes its
+absolute path in `PERSEPHONE_TEST_AUDIO_CAPTURE_FILE` to owned module launches. The main process
+uses it only in test instances and only when it names an existing WAV. `--open` and `--attach` do
+not receive or install this fake media setup; tests that need capture, playback, or voice paths must
+declare `requires: ["launch"]` so they run only against an owned test instance.
+
 ## Product host options
 
 The general product runner supports these suite-independent options:
@@ -160,13 +169,15 @@ and `tor/`; the older `tests/editors/browser/` location is retired. Their HTTP/H
 assets live under `fixtures/http/browser/<module>/`.
 
 Board platform tests live under `tests/boards/`: `lifecycle/`, `permissions/`, `info/`, `bridge/`,
-`extensions/`, `catalog/`, `published/`, `excalidraw/`, and `rest-client/`. Area-only setup and trust
-helpers belong in `tests/boards/helpers.mjs`; the cross-area checkout registration helper is
-`tests/helpers/published-boards.mjs`. Keep board fixtures under `fixtures/boards/<module>/`, with
-each board in its own folder. Catalog archives are sourced from `fixtures/boards-catalog/`, and
-REST Client HTTP request fixtures live under `fixtures/http/rest-client/`. Tests use `fixture()` to
-access an isolated copy in the profile's `work/` directory, so mutable files can be reset without
-changing the committed fixture. Prefer the app stand-in (`ctx.app.boards.*`,
+`extensions/`, `catalog/`, `published/`, `excalidraw/`, and `rest-client/`. Shared board setup and
+trust helpers belong in `tests/helpers/boards.mjs`; the cross-area checkout registration helper is
+`tests/helpers/published-boards.mjs`. Cross-cutting capability tests live under
+`tests/capabilities/<module>/`, with offline provider boards under `fixtures/boards/<module>/`.
+Keep board fixtures under `fixtures/boards/<module>/`, with each board in its own folder. Catalog
+archives are sourced from `fixtures/boards-catalog/`, and REST Client HTTP request fixtures live
+under `fixtures/http/rest-client/`. Tests use `fixture()` to access an isolated copy in the profile's
+`work/` directory, so mutable files can be reset without changing the committed fixture. Prefer the
+app stand-in (`ctx.app.boards.*`,
 `ctx.app.pages[id].editor.*`) for structured calls; use `ctx.call` or `ctx.callText` when a call
 option or exact string result is needed, and `ctx.set` for writable property assignments.
 

@@ -1112,8 +1112,9 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ```
 /src/main/
 ├── main-setup.ts           # Application setup and window creation
-├── test-mode/              # Windowless test controller, child-instance options, test-mode logging, browser-download destination, and test-instance HTTPS certificate trust
-│   └── certificates.ts     # Exact SHA-256 fingerprint allowlist for owned test-instance certificate errors
+├── test-mode/              # Windowless test controller, child-instance options, test-mode logging, browser-download destination, HTTPS trust, and fake media switches with optional WAV capture
+│   ├── certificates.ts     # Exact SHA-256 fingerprint allowlist for owned test-instance certificate errors
+│   └── media-capture.ts    # Fake media switches and optional file-backed audio input for test instances
 ├── main-services.ts        # Ordered app-level service startup, phase boundaries, and reverse disposal
 ├── capability-client.ts    # Per-caller-owner capability list/get/invoke client
 ├── capability-router.ts    # Main capability resolution, authorization, limits and dispatch

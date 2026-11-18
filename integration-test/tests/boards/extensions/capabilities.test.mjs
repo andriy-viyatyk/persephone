@@ -1,5 +1,5 @@
 import { test } from "../../../lib/context.mjs";
-import { fixtureBoard, trustFixtureBoard, untrustBoard } from "../helpers.mjs";
+import { fixtureBoard, trustFixtureBoard, untrustBoard } from "../../helpers/boards.mjs";
 
 async function removeFixtureTrust(ctx, root) {
     try {

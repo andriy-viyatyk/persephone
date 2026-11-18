@@ -1,5 +1,5 @@
 import { registerPublishedBoard } from "../helpers/published-boards.mjs";
-import { openBoardPage } from "../boards/helpers.mjs";
+import { openBoardPage } from "../helpers/boards.mjs";
 
 function comparableRoot(value) {
     return value.replace(/[\\/]+/g, "\\").replace(/\\+$/, "").toLowerCase();

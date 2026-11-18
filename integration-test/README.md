@@ -69,6 +69,14 @@ built-in `launch` requirement works on owned runs and is skipped by the product 
 `--attach`. The Tor network test also requires `PERSEPHONE_TEST_TOR_EXE` to name a compatible
 `tor.exe` and both `network` and `tor` tags.
 
+Owned product test instances enable Chromium's fake media device and `mute-audio` before app
+readiness, preventing access to a real microphone or playback through a real speaker. After each
+profile reset, the wrapper generates `.profile/test-audio-capture.wav` (four seconds, 48 kHz, mono)
+and passes its path in `PERSEPHONE_TEST_AUDIO_CAPTURE_FILE` to owned module launches. The main
+process accepts this path only in test instances and only for an existing WAV file. `--open` and
+`--attach` do not install the fake device or pass the WAV path. Tests needing media capture,
+playback, or voice paths must declare `requires: ["launch"]`.
+
 Attach uses the selected `reports/keep-open.json` record and PID, refreshes fixtures over the
 existing work directory, and never resets or stops the app. The product controller connects using
 the profile directory's MCP settings and verifies `main.runtime.paths.userData` before accepting
@@ -118,9 +126,11 @@ Browser tests live under `tests/browser/automation/{input,observe}/`, `page-mode
 
 Board platform tests live under
 `tests/boards/{lifecycle,permissions,info,bridge,extensions,catalog,published,excalidraw,rest-client}/`.
-Shared board setup and trust helpers belong in `tests/boards/helpers.mjs`; the cross-area
-published-board checkout helper is `tests/helpers/published-boards.mjs`. Put board fixtures under
-`fixtures/boards/<module>/`, with each board in its own folder. Catalog ZIP sources are under
+Shared board setup and trust helpers belong in `tests/helpers/boards.mjs`; the cross-area
+published-board checkout helper is `tests/helpers/published-boards.mjs`. Cross-cutting capability
+tests live under `tests/capabilities/<module>/`, with their fixture boards under
+`fixtures/boards/<module>/`. Put board fixtures under `fixtures/boards/<module>/`, with each board
+in its own folder. Catalog ZIP sources are under
 `fixtures/boards-catalog/`; REST Client HTTP fixtures are under `fixtures/http/rest-client/`.
 `ctx.fixture()` returns the isolated `work/` copy; reset mutable files there at the start of each
 test. Prefer `ctx.app.boards.*` and `ctx.app.pages[id].editor.*`; use `ctx.call` or `ctx.callText`

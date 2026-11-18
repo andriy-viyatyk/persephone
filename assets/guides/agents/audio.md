@@ -123,7 +123,9 @@ Each capture chunk is:
 }
 ```
 
-Each emitted chunk contains 3,200 samples (200 ms, 6,400 bytes). Derive duration from the buffer
+Each emitted chunk normally contains 3,200 samples (200 ms, 6,400 bytes). A capture discontinuity (a dropped
+input queue, the loopback reference starting or resetting, or a restart) first flushes the samples collected so far
+as a shorter chunk, so the next chunk's `timeMs` stays exact. Derive duration from the buffer
 length and sample rate. `timeMs` is the estimated monotonic window-relative time of the first sample,
 not message arrival time or wall-clock time. All sources in one audio-window lifetime share this
 clock. Compare timestamps only when `epoch` matches. `epoch` is an integer assigned by main for each

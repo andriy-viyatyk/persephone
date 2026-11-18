@@ -10,11 +10,13 @@ import { hasTestInstanceOptions, parseTestInstanceOptions, stripTestInstanceOpti
 import { configureTestModeMcp, startTestModeMcp } from "./test-mode/mcp";
 import { configureTestModeLog } from "./test-mode/TestModeLog";
 import { installTestCertificateTrust } from "./test-mode/certificates";
+import { installTestModeMediaCapture } from "./test-mode/media-capture";
 
 export function setupMainProcess(): void {
     let testInstance: ReturnType<typeof parseTestInstanceOptions>["options"];
     try { testInstance = parseTestInstanceOptions(process.argv.slice(process.defaultApp ? 2 : 1)).options; }
     catch (error) { console.error(error); app.exit(1); return; }
+    installTestModeMediaCapture();
     configureTestModeMcp(testInstance);
     configureTestModeLog(testInstance?.logDirectory);
     installTestCertificateTrust();

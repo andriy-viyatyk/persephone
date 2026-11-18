@@ -1,7 +1,7 @@
 import { cp, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { REPOSITORY_ROOT } from "../../lib/config.mjs";
-import { trustFixtureBoard } from "../boards/helpers.mjs";
+import { trustFixtureBoard } from "./boards.mjs";
 
 function boardsDirectory() {
     return process.env.PERSEPHONE_BOARDS_DIR !== undefined

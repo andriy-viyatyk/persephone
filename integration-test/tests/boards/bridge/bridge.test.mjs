@@ -1,5 +1,5 @@
 import { test } from "../../../lib/context.mjs";
-import { closeBoardPage, fixtureBoard, openBoardPage, resetBoardFile, trustFixtureBoard, untrustBoard } from "../helpers.mjs";
+import { closeBoardPage, fixtureBoard, openBoardPage, resetBoardFile, trustFixtureBoard, untrustBoard } from "../../helpers/boards.mjs";
 
 const POSITIVE_BOARD = "bridge/bridge-board";
 const DENIAL_BOARD = "bridge/no-app-board";

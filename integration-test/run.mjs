@@ -287,6 +287,7 @@ async function main() {
             if (options.target === "exe") options.app = await validateExecutable(options.app);
             if (options.target === "prod") await assertProductionBuildAllowed();
             profilePath = await prepareProfile(timeouts);
+            await writeTestAudioCaptureWav(profilePath);
             if (options.target === "prod") await buildProduction({ signal: buildAbort.signal });
             if (options.open) {
                 launcher = createLauncher({ profilePath, timeouts, target: options.target, appPath: options.app });
@@ -325,7 +326,13 @@ async function main() {
             await writeFile(manifestPath, `${JSON.stringify({ version: 1, tests: moduleTests.map(({ absoluteFile, name }) => ({ file: absoluteFile, name })) }, null, 2)}\n`, "utf8");
 
             try {
-                if (!options.attach) profilePath = await prepareProfile(timeouts, { ports: APP_PORTS });
+                if (!options.attach) {
+                    profilePath = await prepareProfile(timeouts, { ports: APP_PORTS });
+                    await writeTestAudioCaptureWav(profilePath);
+                }
+                const testAudioCaptureFile = options.attach
+                    ? undefined
+                    : path.join(profilePath, "test-audio-capture.wav");
                 const testFolder = path.join(TEST_ROOT, moduleId);
                 const productArgs = ["--profile", "uitest", "--profile-dir", profilePath];
                 if (options.attach) productArgs.push("--attach");
@@ -344,7 +351,7 @@ async function main() {
                     executable = electronPath;
                     args = [DEV_MAIN_PATH, "--test", testFolder, ...productArgs];
                 }
-                const exitCode = await runProduct(executable, args, (child) => { currentChild = child; }, !options.attach);
+                const exitCode = await runProduct(executable, args, (child) => { currentChild = child; }, !options.attach, testAudioCaptureFile);
                 currentChild = undefined;
                 const collected = await collectModuleReport(stageDirectory, moduleTests, {
                     name: options.target === "attach" ? "attach" : options.target, attach: options.attach, with: options.with,
@@ -408,13 +415,49 @@ async function main() {
     }
 }
 
-async function runProduct(executable, args, onChild, owned) {
+async function writeTestAudioCaptureWav(profilePath) {
+    const sampleRate = 48000;
+    const durationSeconds = 4;
+    const sampleCount = sampleRate * durationSeconds;
+    const dataSize = sampleCount * 2;
+    const wav = Buffer.alloc(44 + dataSize);
+
+    wav.write("RIFF", 0);
+    wav.writeUInt32LE(36 + dataSize, 4);
+    wav.write("WAVE", 8);
+    wav.write("fmt ", 12);
+    wav.writeUInt32LE(16, 16);
+    wav.writeUInt16LE(1, 20);
+    wav.writeUInt16LE(1, 22);
+    wav.writeUInt32LE(sampleRate, 24);
+    wav.writeUInt32LE(sampleRate * 2, 28);
+    wav.writeUInt16LE(2, 32);
+    wav.writeUInt16LE(16, 34);
+    wav.write("data", 36);
+    wav.writeUInt32LE(dataSize, 40);
+
+    const startFrequency = 180;
+    const frequencyRange = 1200 - startFrequency;
+    const frequencyRate = frequencyRange / durationSeconds;
+    for (let index = 0; index < sampleCount; index += 1) {
+        const time = index / sampleRate;
+        const phase = 2 * Math.PI * (startFrequency * time + 0.5 * frequencyRate * time * time);
+        const envelope = 0.6 * (0.75 + 0.25 * Math.sin(2 * Math.PI * 3 * time));
+        wav.writeInt16LE(Math.round(Math.sin(phase) * envelope * 32767), 44 + index * 2);
+    }
+
+    await writeFile(path.join(profilePath, "test-audio-capture.wav"), wav);
+}
+
+async function runProduct(executable, args, onChild, owned, testAudioCaptureFile) {
     // Owned test instances accept the HTTPS fixture's test certificate, and only that one.
     const env = {
         ...process.env,
         PERSEPHONE_TEST_TRUSTED_CERTIFICATES: fixtureCertificateFingerprint(),
         ...(owned ? { PERSEPHONE_TEST_BOARDS_CATALOG_URL: `${HTTP_FIXTURE_URL}/boards-catalog` } : {}),
+        ...(owned && testAudioCaptureFile ? { PERSEPHONE_TEST_AUDIO_CAPTURE_FILE: testAudioCaptureFile } : {}),
     };
+    if (!owned) delete env.PERSEPHONE_TEST_AUDIO_CAPTURE_FILE;
     const child = spawn(executable, args, { cwd: REPOSITORY_ROOT, stdio: "inherit", windowsHide: true, env });
     onChild(child);
     return new Promise((resolve, reject) => {

@@ -1,3 +1,28 @@
+## EPIC-196 — UI test coverage, phase 9a: audio capture source, audio and voice typing
+
+Completed 2026-11-18. Phase 9a of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md); Phase 9 was split,
+and 9b keeps the speech and translation services, the terminal, `app.proc`, the module service and the proxy/tunnel.
+**Added:** a file-backed capture source for test instances. `src/main/test-mode/media-capture.ts` turns on Chromium's
+fake media device and `mute-audio` in every test instance, and the suite feeds the fake microphone a generated WAV
+(`PERSEPHONE_TEST_AUDIO_CAPTURE_FILE`, owned launches only). Probes showed the fake device also replaces Windows
+loopback, so no test reads a real microphone, speaker or system mix; capture tests require `launch`, so attach never
+runs them. 14 new tests in the new `capabilities` area: `audio@1` capture (default, raw, shared consumers, computer
+capture, `cancelComputerAudio`), playback, rejected input, the mute lease and header indicators (11), window recording
+(1), and the Transcript toolbar with an offline `speech.transcribe` fixture provider (2). Board test helpers moved to
+`tests/helpers/boards.mjs`. Codex (Luna) planned and wrote the tests; Claude reviewed, ran and triaged, and recorded
+11 cases in [ai-vision-feedback.md](../reviews/ai-vision-feedback.md). **Fixed:** `agents/audio.md` said every capture
+chunk is 6,400 bytes; a discontinuity flushes a shorter one. No product bug found. **Open:** the EPIC-187 grid decision
+and the EPIC-194 Theme Editor board bug (carried over). **Uncovered:** voice typing through its shortcut (CDP keys from
+`window.screen.pressKey` never reach the main-process `before-input-event`; delivering them through
+`webContents.sendInputEvent` is proposed), its overlay and missing-provider alert; Transcript's computer and Both
+modes; recording pause/resume and page regions. Final launched run (`--with git,mneme`), 478 tests: 474 passed,
+2 failed (both carried over), 2 skipped (Tor). Next: Phase 9b or Phase 8d. Completion skills by Codex (Luna). Epic
+document: [EPIC-196](EPIC-196.md).
+
+- [x] **File-backed capture source, test mode (US-2109).**
+- [x] **Tests: `audio@1`, global mute, window recording (US-2110).**
+- [x] **Tests: voice typing / Transcript (US-2111).**
+
 ## EPIC-195 — UI test coverage, phase 8c: published agent tools
 
 Completed 2026-11-18. Phase 8c of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 10 new tests in

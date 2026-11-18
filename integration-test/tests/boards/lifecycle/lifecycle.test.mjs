@@ -1,5 +1,5 @@
 import { test } from "../../../lib/context.mjs";
-import { closeBoardPage, fixtureBoard, openBoardPage, resetBoardFile, trustFixtureBoard, untrustBoard, waitForBoardDialog } from "../helpers.mjs";
+import { closeBoardPage, fixtureBoard, openBoardPage, resetBoardFile, trustFixtureBoard, untrustBoard, waitForBoardDialog } from "../../helpers/boards.mjs";
 
 const FOREIGN_BOARD = "lifecycle/foreign";
 const FIXTURE_INDEX = `<!doctype html>

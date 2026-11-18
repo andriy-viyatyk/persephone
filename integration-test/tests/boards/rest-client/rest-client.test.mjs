@@ -1,5 +1,5 @@
 import { test } from "../../../lib/context.mjs";
-import { closeBoardPage } from "../helpers.mjs";
+import { closeBoardPage } from "../../helpers/boards.mjs";
 
 const collectionPath = "boards/rest-client/collection.rest.json";
 const contentMaskPath = "boards/rest-client/content-mask.json";

@@ -1,6 +1,6 @@
 import path from "node:path";
 import { test } from "../../../lib/context.mjs";
-import { closeBoardPage, openBoardPage, trustFixtureBoard, untrustBoard, waitForBoardDialog } from "../helpers.mjs";
+import { closeBoardPage, openBoardPage, trustFixtureBoard, untrustBoard, waitForBoardDialog } from "../../helpers/boards.mjs";
 
 const CATALOG_BASE = "http://127.0.0.1:17867/boards-catalog";
 const VERSIONED_ID = "us2095-versioned";

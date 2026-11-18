@@ -1,5 +1,5 @@
 import { test } from "../../../lib/context.mjs";
-import { fixtureBoard, trustFixtureBoard, untrustBoard } from "../helpers.mjs";
+import { fixtureBoard, trustFixtureBoard, untrustBoard } from "../../helpers/boards.mjs";
 
 async function serviceState(ctx, root) {
     const boards = await ctx.app.boards.list();

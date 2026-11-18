@@ -1314,3 +1314,80 @@ Append only. Add new entries at the end and never rewrite old ones. Do not inclu
 - **What actually happened:** `boards.openBoard` activates the page, and `pages.addEditorPage` refuses standalone board editors.
 - **How it was resolved:** Left uncovered.
 - **Suggested improvement:** None needed; a rare state.
+
+### 2026-11-18 · EPIC-196 / US-2110 · Codex Luna (plan)
+- **Area:** $help (`window.screen.recording.start`)
+- **What the agent expected:** The member signature to list every option `start` accepts.
+- **What actually happened:** The descriptor shows `start({ region, openPlayer? })`; the help text and the implementation also accept `hideStatusChrome`.
+- **How it was resolved:** The plan uses only `region` and `openPlayer`.
+- **Suggested improvement:** Add `hideStatusChrome?` to the signature in `namespaces/window-screen.ts`.
+
+### 2026-11-18 · EPIC-196 / US-2110 · Codex Luna (plan)
+- **Area:** call path `ui.elements` / guide screens/header
+- **What the agent expected:** The header's microphone capture indicator in the curated `ui.elements` list, next to the global mute indicator.
+- **What actually happened:** The source renders `[data-name="audio-capture-indicator"]`, but neither `ui.elements` nor `screens/header.md` lists it.
+- **How it was resolved:** The test reads the element's `hidden` state through `window.screen.evaluate`.
+- **Suggested improvement:** Add the indicator to the header element declarations and to `screens/header.md`.
+
+### 2026-11-18 · EPIC-196 · Claude (plan)
+- **Area:** guide agents/audio (test environment)
+- **What the agent expected:** Agents and test authors to be able to tell, from the guides, whether microphone and loopback audio in a test instance are real.
+- **What actually happened:** Nothing documented a test-mode audio source, so the US-2110 and US-2111 plans assumed capture tests needed no tag and would run under `--attach` too, where the borrowed app has a real microphone.
+- **How it was resolved:** The review required `requires: ["launch"]` on every capture, playback and voice test; US-2109 added the fake device to owned test instances only.
+- **Suggested improvement:** The epic-close documentation states which runs have the fake device and that attach never does.
+
+### 2026-11-18 · EPIC-196 / US-2110 · Codex Luna (implementation)
+- **Area:** guide agents/audio (`cancelComputerAudio` versions)
+- **What the agent expected:** The plan's bridge `1.53.0` / app `5.0.18` minimums to cover every option the fixture uses.
+- **What actually happened:** The guide requires bridge `1.54.0` and app `5.0.19` for `cancelComputerAudio`; the version rules are spread over two paragraphs and the methods table does not repeat them.
+- **How it was resolved:** The fixture declares the higher minimums.
+- **Suggested improvement:** A per-option minimum-version table in `agents/audio.md`.
+
+### 2026-11-18 · EPIC-196 / US-2110 · Codex Luna (implementation)
+- **Area:** guide agents/web-app-tests (`ctx.expect`)
+- **What the agent expected:** Common matchers such as `toBeGreaterThan` or `toMatch`.
+- **What actually happened:** The product host offers only `toBe`, `toEqual`, `toContain` and `toBeTruthy`; the guide does not list them.
+- **How it was resolved:** Assertions rewritten as `ctx.expect(<boolean expression>).toBe(true)`.
+- **Suggested improvement:** List the supported matchers in `web-app-tests.md`.
+
+### 2026-11-18 · EPIC-196 / US-2111 · Codex Luna (implementation)
+- **Area:** call path `pages.addEditorPage`
+- **What the agent expected:** The `$help` signature to state the return value.
+- **What actually happened:** Only source and older tests show that it returns the page model (with `.id`).
+- **How it was resolved:** The test reads `.id` from the result.
+- **Suggested improvement:** Name the return shape in the member summary.
+
+### 2026-11-18 · EPIC-196 / US-2110 · Codex Luna (implementation) / Claude (run)
+- **Area:** guide agents/audio (chunk size)
+- **What the agent expected:** Every capture chunk to be exactly 6,400 bytes, as the guide said ("Each emitted chunk contains 3,200 samples").
+- **What actually happened:** With `cancelComputerAudio`, the first chunk was 1,790 bytes: a discontinuity (the loopback reference starting) deliberately flushes the samples collected so far so the next `timeMs` stays exact (`PcmAudioCapture.resetAfterDiscontinuity`). The same guide paragraph also said to derive duration from the buffer length, so it contradicted itself.
+- **How it was resolved:** Guide corrected (chunks are normally 6,400 bytes; a discontinuity flushes a shorter one). The test asserts full chunks are 6,400 bytes and none is longer.
+- **Suggested improvement:** Done in the guide.
+
+### 2026-11-18 · EPIC-196 / US-2110 · Codex Luna (implementation) / Claude (run)
+- **Area:** call path (argument shapes)
+- **What the agent expected:** An `ArrayBuffer` argument to reach a board model method.
+- **What actually happened:** `call` rejects it: "args[1].data is not a plain object".
+- **How it was resolved:** The test passes the bytes as a number array and the board builds the buffer.
+- **Suggested improvement:** Recurrence of the "values change shape across `call`" entries; `web-app-tests.md` could say arguments must be JSON.
+
+### 2026-11-18 · EPIC-196 / US-2111 · Codex Luna (implementation) / Claude (run)
+- **Area:** screen (`window.screen.pressKey`)
+- **What the agent expected:** `pressKey("Alt+V")` on a focused editor to start voice typing, as a user's key press does.
+- **What actually happened:** Nothing happened. Voice typing (and Ctrl+= zoom) are read in the main process's `before-input-event`, and keys sent through CDP `Input.dispatchKeyEvent` never reach it. A probe showed `webContents.sendInputEvent` does. No other route starts voice typing.
+- **How it was resolved:** Voice typing via the shortcut, its overlay and its missing-provider alert are uncovered; the Transcript toolbar covers the shared capture and provider path.
+- **Suggested improvement:** Either route app-window `pressKey` through `webContents.sendInputEvent`, or say in `guides/screens` and the `pressKey` summary that main-process shortcuts (zoom, voice typing) cannot be pressed this way.
+
+### 2026-11-18 · EPIC-196 / US-2111 · Codex Luna (implementation) / Claude (run)
+- **Area:** screen (`window.screen.evaluate` / `click` selectors)
+- **What the agent expected:** `document.querySelector('[data-name="transcript-button"]')` to find the active page's toolbar.
+- **What actually happened:** Inactive pages stay mounted; the first match was a hidden page's toolbar with no client rects, so the wait never ended.
+- **How it was resolved:** Selectors are scoped to `[data-name="page-slot"][data-page-id="<id>"]`.
+- **Suggested improvement:** Recurrence of the inactive-pages-stay-mounted theme; `guides/screens` could recommend the page-slot scope.
+
+### 2026-11-18 · EPIC-196 / US-2111 · Codex Luna (implementation) / Claude (run)
+- **Area:** pages (`pages.closePage` on a modified page)
+- **What the agent expected:** `pages.closePage(id)` in `finally` to close the page.
+- **What actually happened:** Transcript had modified the page, so close raised Unsaved Changes, the next call (`boards.unregisterBoard`) failed and cleanup reported a leftover dialog.
+- **How it was resolved:** The test leaves the unsaved page for runner cleanup, which answers Don't Save.
+- **Suggested improvement:** The `closePage` summary could mention the prompt for modified pages and the `{ dialog: true }` pattern.

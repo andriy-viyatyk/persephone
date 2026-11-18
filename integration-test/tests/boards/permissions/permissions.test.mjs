@@ -1,5 +1,5 @@
 import { test } from "../../../lib/context.mjs";
-import { closeBoardPage, fixtureBoard, openBoardPage, resetBoardFile, trustFixtureBoard, untrustBoard } from "../helpers.mjs";
+import { closeBoardPage, fixtureBoard, openBoardPage, resetBoardFile, trustFixtureBoard, untrustBoard } from "../../helpers/boards.mjs";
 
 const ALL_FALSE = {
     execute: false,

@@ -1,6 +1,6 @@
 import { rm } from "node:fs/promises";
 import { test } from "../../../lib/context.mjs";
-import { closeBoardPage, openBoardPage, untrustBoard } from "../helpers.mjs";
+import { closeBoardPage, openBoardPage, untrustBoard } from "../../helpers/boards.mjs";
 import { registerPublishedBoard } from "../../helpers/published-boards.mjs";
 
 export default [

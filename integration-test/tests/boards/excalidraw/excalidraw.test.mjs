@@ -1,5 +1,5 @@
 import { test } from "../../../lib/context.mjs";
-import { closeBoardPage } from "../helpers.mjs";
+import { closeBoardPage } from "../../helpers/boards.mjs";
 
 const drawingFixture = "boards/excalidraw/draw.excalidraw";
 const seedScene = `{

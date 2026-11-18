@@ -1,6 +1,6 @@
 # UI test coverage roadmap
 
-**Date:** 2026-11-16 · **Status:** accepted 2026-11-16; Phase 1 is [EPIC-181](../epics/EPIC-181.md) (completed 2026-11-16); Phase 2 is [EPIC-182](../epics/EPIC-182.md) (completed 2026-11-16); Phase 3 is [EPIC-183](../epics/EPIC-183.md) (completed 2026-11-17); Phase 4a is [EPIC-184](../epics/EPIC-184.md) (completed 2026-11-17); Phase 4b is [EPIC-185](../epics/EPIC-185.md) (completed 2026-11-17); Phase 5a is [EPIC-187](../epics/EPIC-187.md) (completed 2026-11-18); Phase 5b is [EPIC-188](../epics/EPIC-188.md) (completed 2026-11-18); Phase 6a is [EPIC-189](../epics/EPIC-189.md) (completed 2026-11-18); Phase 6b is [EPIC-190](../epics/EPIC-190.md) (completed 2026-11-18); Phase 7a is [EPIC-191](../epics/EPIC-191.md) (completed 2026-11-18); Phase 7b is [EPIC-192](../epics/EPIC-192.md) (completed 2026-11-18); Phase 8a is [EPIC-193](../epics/EPIC-193.md) (completed 2026-11-18); Phase 8b is [EPIC-194](../epics/EPIC-194.md) (completed 2026-11-18); Phase 8c is [EPIC-195](../epics/EPIC-195.md) (completed 2026-11-18) · **Builds on:** [EPIC-180](../epics/EPIC-180.md) (runner,
+**Date:** 2026-11-16 · **Status:** accepted 2026-11-16; Phase 1 is [EPIC-181](../epics/EPIC-181.md) (completed 2026-11-16); Phase 2 is [EPIC-182](../epics/EPIC-182.md) (completed 2026-11-16); Phase 3 is [EPIC-183](../epics/EPIC-183.md) (completed 2026-11-17); Phase 4a is [EPIC-184](../epics/EPIC-184.md) (completed 2026-11-17); Phase 4b is [EPIC-185](../epics/EPIC-185.md) (completed 2026-11-17); Phase 5a is [EPIC-187](../epics/EPIC-187.md) (completed 2026-11-18); Phase 5b is [EPIC-188](../epics/EPIC-188.md) (completed 2026-11-18); Phase 6a is [EPIC-189](../epics/EPIC-189.md) (completed 2026-11-18); Phase 6b is [EPIC-190](../epics/EPIC-190.md) (completed 2026-11-18); Phase 7a is [EPIC-191](../epics/EPIC-191.md) (completed 2026-11-18); Phase 7b is [EPIC-192](../epics/EPIC-192.md) (completed 2026-11-18); Phase 8a is [EPIC-193](../epics/EPIC-193.md) (completed 2026-11-18); Phase 8b is [EPIC-194](../epics/EPIC-194.md) (completed 2026-11-18); Phase 8c is [EPIC-195](../epics/EPIC-195.md) (completed 2026-11-18); Phase 9a is [EPIC-196](../epics/EPIC-196.md) (completed 2026-11-18) · **Builds on:** [EPIC-180](../epics/EPIC-180.md) (runner,
 `uitest` profile, pilot tests).
 
 The refactoring roadmap touched almost the whole codebase. This roadmap retests every screen and feature once, and
@@ -221,6 +221,13 @@ this repo, because they test the integration between the board and the app.
 - **Voice typing and voice assistant UI.**
 - **Speech and translation services.**
 - **Terminal, `app.proc`, the module service, proxy/tunnel.**
+
+Split in two (2026-11-18). Phase 9a ([EPIC-196](../epics/EPIC-196.md), completed 2026-11-18) adds the file-backed capture source (Chromium's
+fake media device fed from a WAV fixture, switched on by test mode) and covers `audio@1`, global mute, window recording
+and voice typing. Phase 9b takes the speech and translation services, the terminal, `app.proc`, the module service and
+the proxy/tunnel. Phase 8d can follow either part. Voice typing through its shortcut stayed uncovered in 9a (CDP keys
+never reach the main-process `before-input-event`); the Transcript toolbar covers the same path. The voice assistant UI no longer exists (wake-word moved to its
+board).
 
 Microphone and speaker tests need a file-backed capture source. If the audio module cannot take one, the phase starts
 with a task to add it (see Concerns). Everything else here is tagged `requires: [mic]` and runs only on demand.

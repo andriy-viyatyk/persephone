@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "name": "Fixture Speech to Text",
+  "description": "Offline speech transcription fixture for UI integration tests.",
+  "author": "Persephone test fixture",
+  "minAppVersion": "5.0.15",
+  "permissions": {
+    "execute": false,
+    "service": true,
+    "fileSystem": false,
+    "openExternal": false,
+    "appScripting": false,
+    "network": false,
+    "clipboardRead": false,
+    "camera": false,
+    "microphone": false,
+    "computerAudio": false,
+    "geolocation": false,
+    "notifications": false,
+    "themes": false
+  },
+  "service": "scripts/service.mjs",
+  "serviceInterfaces": [
+    {
+      "id": "speech.transcribe",
+      "version": 1,
+      "title": "Fixture Speech to Text"
+    }
+  ]
+}

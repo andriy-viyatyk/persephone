@@ -1,5 +1,5 @@
 import { test } from "../../../lib/context.mjs";
-import { closeBoardPage, fixtureBoard, trustFixtureBoard, untrustBoard } from "../helpers.mjs";
+import { closeBoardPage, fixtureBoard, trustFixtureBoard, untrustBoard } from "../../helpers/boards.mjs";
 
 const originalContent = "fixture-original";
 

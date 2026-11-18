@@ -12,6 +12,13 @@ Run the suite when the user asks; the US-2026 prod target is an optional draft-r
 
 The runner also supports `--open` to reset/start the selected target and leave it reachable through `reports/keep-open.json`, and `--attach` to run selections against that retained app without resetting or restarting it. Attach refreshes fixture copies, preserves other work files and reports target `attach`; the HTTP and HTTPS fixtures on `127.0.0.1:17867` and `:17868` run only during suite runs. The HTTPS server uses the committed test-only certificate from `integration-test/lib/tls/`; normal owned module runs trust only its exact SHA-256 fingerprint. `--open` does not start the fixture servers or install that trust, while `--attach` uses an app whose trust settings cannot be changed by the suite. Tests needing HTTPS fixtures therefore need a normal owned run. The HTTP fixtures include `/refused` (redirects to an unused loopback port) and `/boards-catalog/` (fake catalog, versions, screenshots, and generated ZIP archives). Owned module runs pass `PERSEPHONE_TEST_BOARDS_CATALOG_URL` to the test instance; it is honored only by test instances for `http://127.0.0.1` URLs. The suite seed sets `link-open-behavior` to `internal-browser` so URL actions stay inside the app. `--with network,mic` opts into external requirements (`network`, `mic`, `tor`, `git`, `mneme`); the tagged Tor network test also needs `PERSEPHONE_TEST_TOR_EXE` pointing to a compatible `tor.exe`. `launch` is built in for normal runs and is skipped under attach. The wrapper enables `published-board-checkout` when `../persephone-boards/boards` exists or `PERSEPHONE_BOARDS_DIR` points to a boards folder; otherwise matching tests skip with the missing path and override hint. The wrapper rejects `--with published-board-checkout`. Reports show passed, failed and skipped separately with skip reasons. Read `doc/standards/integration-tests.md` for route contracts and option compatibility.
 
+Owned product test instances enable Chromium's `use-fake-device-for-media-stream` and `mute-audio`
+switches before app readiness. After each profile reset the wrapper generates
+`.profile/test-audio-capture.wav` and passes its path as `PERSEPHONE_TEST_AUDIO_CAPTURE_FILE` to
+owned module launches. The main process uses the WAV only for test instances. `--open` and
+`--attach` do not receive the fake media device or WAV path, so tests that use capture, playback, or
+voice paths declare `requires: ["launch"]`.
+
 ## Run and fix
 
 1. For the default dev target, ensure `npm start` is running. Check `.vite/dev-server.json`; if absent, start `npm start` in the background. A marker can be stale: if the runner cannot validate its PID, server, or exact dev bundle URL, restart `npm start`. For the optional production target, stop `npm start` first; it rebuilds `.vite/build` and prints `The dev bundle was replaced; run npm start again before dev tests.` after the build exits. Restart `npm start` before dev tests. `--prod` and `--app <exe>` are mutually exclusive. The executable target needs a compatible installed or unpacked `persephone.exe` with US-2022 profile support.
@@ -34,9 +41,10 @@ and needs `PERSEPHONE_TEST_TOR_EXE` to point to a compatible `tor.exe`.
 
 The `boards` area is organized under
 `tests/boards/{lifecycle,permissions,info,bridge,extensions,catalog,published,excalidraw,rest-client}/`.
-Put area-only shared setup and trust helpers in `tests/boards/helpers.mjs`; the cross-area
-published-board registration helper is `tests/helpers/published-boards.mjs`. Board fixtures live in
-`fixtures/boards/<module>/`, catalog ZIP sources in `fixtures/boards-catalog/`, and REST Client HTTP
+Shared board setup and trust helpers live in `tests/helpers/boards.mjs`; the cross-area
+published-board registration helper is `tests/helpers/published-boards.mjs`. Cross-cutting tests
+for app capabilities live under `tests/capabilities/<module>/`, with fixture boards under
+`fixtures/boards/<module>/`. Catalog ZIP sources live in `fixtures/boards-catalog/`, and REST Client HTTP
 fixtures in `fixtures/http/rest-client/`. Tests receive isolated copies under the profile's `work/`
 directory through `ctx.fixture()`; reset any mutable fixture file at test start. Prefer
 `ctx.app.boards.*` and `ctx.app.pages[id].editor.*` calls, using `ctx.call` or `ctx.callText` where
