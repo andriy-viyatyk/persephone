@@ -18,9 +18,23 @@ Release notes and changelog for Persephone (formerly js-notepad).
   `persephone-test.exe` in a Persephone profile, reusing a logged-in browser profile. Reports,
   screenshots, console output, and network logs help diagnose failures. See [Web-app regression
   tests](./agents/web-app-tests.md).
+- **Downloads in web-app tests:** in an app launched by the test runner, a browser download no
+  longer opens the Save dialog that a test cannot answer. It is saved to the profile's
+  `test-downloads` folder and its path is listed in `app.downloads`.
 
 ### Bug Fixes
 
+- **Browser `reload()` for agents and scripts:** `pages[i].editor.reload()` returned before the page
+  had reloaded, and on a page that was still loading it stopped the load instead of reloading. It now
+  always reloads and waits for the reloaded page, like `back()` and `forward()`, returning its URL
+  and HTTP status.
+- **Downloads popup:** a finished download could keep showing the size it had at its last progress
+  update instead of its full size, and scripts read the same stale byte count from `app.downloads`.
+  While a download was running, the popup rebuilt its rows on every progress update, so a click on
+  **Cancel** could be lost; the rows now update in place.
+- **Link editor Tags and Hostnames panels:** after a link was deleted or edited, the tag and hostname
+  lists kept their old entries and counts until the panel was opened again. They now follow every
+  change, including in the browser's bookmarks drawer.
 - **Web-app test cleanup:** a test that left a page with unsaved changes, a dialog, or a popup menu
   open made every later test in the file fail at its start. Cleanup now discards the test's own
   unsaved pages, dismisses a leftover dialog or menu (the test that left it is reported failed), and

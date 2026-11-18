@@ -18,7 +18,7 @@ export interface DownloadsEvents {
     eDownloadStarted: EventObject<DownloadEntry>;
     eDownloadProgress: EventObject<{ id: string; receivedBytes: number; totalBytes: number }>;
     eDownloadAwaitingPath: EventObject<{ id: string; receivedBytes: number; totalBytes: number }>;
-    eDownloadCompleted: EventObject<{ id: string; savePath: string }>;
+    eDownloadCompleted: EventObject<{ id: string; savePath: string; receivedBytes: number; totalBytes: number }>;
     eDownloadFailed: EventObject<{ id: string; error: string }>;
     eDownloadRemoved: EventObject<{ id: string }>;
     eDownloadCleared: EventObject<DownloadEntry[]>;

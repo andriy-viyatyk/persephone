@@ -334,3 +334,185 @@ Append only. Add new entries at the end and never rewrite old ones. Do not inclu
 - **What actually happened:** Cleanup's page list dropped pages whose `editor` is `null`, so workspace pages a test opened stayed open.
 - **How it was resolved:** Fixed in `src/test-host/browser-helpers.ts`.
 - **Suggested improvement:** None beyond the fix.
+
+### 2026-11-18 · EPIC-189 / US-2076 · Claude (run)
+- **Area:** browser (`pages[i].editor.reload`)
+- **What the agent expected:** That `reload()` resolves after the reloaded document is in place, like `back()` and `forward()` (EPIC-186 open item).
+- **What actually happened:** It called the toolbar's `reloadOrStop()` and resolved at once; on a page that was still loading it stopped the load instead of reloading.
+- **How it was resolved:** Product bug, fixed: `reload(options?)` always reloads and waits through the navigation waiter, resolving `{ url, status }`. Covered by two `browser/navigation` tests.
+- **Suggested improvement:** None beyond the fix; `agents/browser.md` lists `reload` with the other navigation waits.
+
+### 2026-11-18 · EPIC-189 / US-2081 · Codex Luna (plan)
+- **Area:** call path (`downloads`) / native dialogs
+- **What the agent expected:** A setting or call path to choose where a browser download is saved, so a test can download without user input.
+- **What actually happened:** Every download opened the native Save dialog, which no call path can answer; the `downloads` `$help` does not mention it. The plan reported the whole download checklist as blocked.
+- **How it was resolved:** Call gap closed: an app launched by the test runner saves downloads to `<profile>/test-downloads` without the dialog (`src/main/test-mode/downloads.ts`), documented in `agents/web-app-tests.md`.
+- **Suggested improvement:** Say in the `downloads` `$help` that a normal app asks where to save and a test instance does not.
+
+### 2026-11-18 · EPIC-189 / US-2081 · Codex Luna (plan)
+- **Area:** screen (downloads popup)
+- **What the agent expected:** Named controls for every action in the downloads popup.
+- **What actually happened:** Clear and Open in Persephone have `data-name`s, but the row's Cancel button has only its localized text, and the guide has no example of driving the popup.
+- **How it was resolved:** The test finds Cancel by text inside `[data-name="downloads-list"]` through a snapshot ref.
+- **Suggested improvement:** Name the row buttons (`downloads-cancel`, `downloads-dismiss`, `downloads-show-in-folder`) and list them in `editors/browser/layout.md`.
+
+### 2026-11-18 · EPIC-189 / US-2081 · Claude (run)
+- **Area:** call path (`downloads.downloads`)
+- **What the agent expected:** A completed download's `receivedBytes` to equal its size.
+- **What actually happened:** It kept the value from the last throttled progress event (0 for a 29-byte file), in `app.downloads` and in the popup.
+- **How it was resolved:** Product bug, fixed: the completion event now carries the final byte counts.
+- **Suggested improvement:** None beyond the fix.
+
+### 2026-11-18 · EPIC-189 / US-2081 · Claude (run)
+- **Area:** screen (downloads popup)
+- **What the agent expected:** A click on the popup's Cancel button to cancel a running download.
+- **What actually happened:** Nothing happened: the popup rebuilt every row on each progress event (every 500 ms), so the button under the pointer was replaced between press and release. A user's click could be lost the same way.
+- **How it was resolved:** Product bug, fixed: rows update their progress in place and are rebuilt only when an entry's status changes.
+- **Suggested improvement:** None beyond the fix.
+
+### 2026-11-18 · EPIC-189 / US-2081 · Claude (run)
+- **Area:** call path (`downloads`) / test isolation
+- **What the agent expected:** That the downloads popup shows only the test's own download.
+- **What actually happened:** The download list is app-wide; finished entries from earlier tests added more `downloads-open` buttons and the click failed as ambiguous (3 visible matches).
+- **How it was resolved:** Each test calls `downloads.clearCompleted()` at its start.
+- **Suggested improvement:** Mention in `web-app-tests.md` that download history is shared across tests in one app run.
+
+### 2026-11-18 · EPIC-189 / US-2080 · Codex Luna (plan) / Claude (epic)
+- **Area:** guide editors/browser (bookmarks)
+- **What the agent expected:** From the epic checklist, that the star button adds and removes a bookmark.
+- **What actually happened:** The star opens Add Bookmark, or Edit Bookmark when the URL is already saved; removal is the Delete item in the bookmark row's context menu. The guide names the star only as "Add Bookmark" and describes neither the edit nor the delete path. Claude's epic text was the wrong guess.
+- **How it was resolved:** Plan corrected in review; the test covers add, edit and delete through the row menu.
+- **Suggested improvement:** Describe the star's add/edit behavior and the drawer row menu in `editors/browser/index.md`.
+
+### 2026-11-18 · EPIC-189 / US-2080 · Codex Luna (plan)
+- **Area:** call path (`ctx.openBrowser`)
+- **What the agent expected:** That `ctx.openBrowser()` gives the new page's id, needed for `pages.showPage` and `pages[id]`.
+- **What actually happened:** It returns only the editor handle; the plans diffed `pages.all` before and after to find the id.
+- **How it was resolved:** A shared helper (`tests/browser/helpers.mjs` `openBrowserPage`) returns `{ id, editor }`.
+- **Suggested improvement:** Expose the page id on the returned handle (`editor.pageId`) or return `{ id, editor }`.
+
+### 2026-11-18 · EPIC-189 / US-2080 · Codex Luna (plan)
+- **Area:** guide editors/browser / dialogs
+- **What the agent expected:** A documented locator and sequence for bookmark rows in the drawer and for the Add/Edit Bookmark dialog.
+- **What actually happened:** Neither guide shows them; the rows and the `dialogs/edit-link` adapter were traced through the Link editor source.
+- **How it was resolved:** Found in source.
+- **Suggested improvement:** Add a bookmarks recipe to `editors/browser/layout.md` (star, dialog fields, drawer rows, row menu).
+
+### 2026-11-18 · EPIC-189 / US-2080 · Claude (run)
+- **Area:** app object / dialogs
+- **What the agent expected:** `pages.showPage(id)` (through the stand-in) to work while the Edit Bookmark dialog was open, before typing into it.
+- **What actually happened:** The call returned the dialog's attention and the stand-in rejected it.
+- **How it was resolved:** The test drops the activation while the modal is open; `window.screen` reaches the dialog anyway.
+- **Suggested improvement:** Note next to the dialog example in `web-app-tests.md` that every stand-in call fails while a dialog is open; use `ctx.call(..., { dialog: true })` until it closes.
+
+### 2026-11-18 · EPIC-189 / US-2080 · Claude (run)
+- **Area:** screen (inactive pages)
+- **What the agent expected:** `document.querySelector('[data-name="bookmarks-drawer-root"]')` from `window.screen.evaluate` to return the active page's drawer.
+- **What actually happened:** Inactive pages stay mounted, so it returned the other browser page's drawer. Recurrence of the inactive-page DOM trap (`persephone-mcp-verification-gotchas`).
+- **How it was resolved:** Tests pick the element with an `offsetParent`.
+- **Suggested improvement:** Say in the `window.screen.evaluate` `$help` that the DOM holds every open page and only the active one is visible.
+
+### 2026-11-18 · EPIC-189 / US-2080 · Claude (run)
+- **Area:** screen (bookmarks drawer)
+- **What the agent expected:** `text="<bookmark title>"` to address the bookmark row.
+- **What actually happened:** The title shows twice (the Collections tree lists links, and the list row), so the click was ambiguous; with `nth: 0` the right-click hit the tree row, whose menu (`edit-link`, `copy-href`) has no Delete.
+- **How it was resolved:** The test right-clicks `[data-name="link-row-wrapper"]`.
+- **Suggested improvement:** Document that the drawer's Collections tree also shows links, and name its rows.
+
+### 2026-11-18 · EPIC-189 / US-2080 · Codex Luna (implementation)
+- **Area:** other (dead code)
+- **What the agent expected:** That the bookmarks drawer closes after a bookmark opens, as `BrowserBookmarksModel.handleBookmarkLinkClick` does.
+- **What actually happened:** That method has no callers since EPIC-023; the drawer opens links through the Link editor's embedded path and stays open.
+- **How it was resolved:** Assertion dropped (no documented contract).
+- **Suggested improvement:** Remove `handleBookmarkLinkClick`, or wire it if the drawer should close.
+
+### 2026-11-18 · EPIC-189 / US-2080 · Claude (run)
+- **Area:** other (Link editor panels)
+- **What the agent expected:** After a bookmark is deleted, the drawer no longer shows it.
+- **What actually happened:** The list showed "No links yet", but the Hostnames list kept "127.0.0.1 1" and the Collections tree kept the deleted link.
+- **How it was resolved:** Product bug, partly fixed: the Tags and Hostnames lists now refresh on every change (`LinkFilterNavigationPanelView`). The Collections tree is still stale; the test stays failing (open item).
+- **Suggested improvement:** Fix the category tree refresh after a link is deleted.
+
+### 2026-11-18 · EPIC-189 / US-2082 · Codex Luna (plan)
+- **Area:** $help (browser facade `elements`)
+- **What the agent expected:** `url-site-permissions` and `browser-permission-prompt` in the browser facade's `elements`, since the layout guide lists them.
+- **What actually happened:** `BROWSER_ELEMENTS` omits both (and the prompt's `permission-allow`, `permission-block`, `permission-origin`); they were traced in the view source.
+- **How it was resolved:** Tests use those `data-name`s through `window.screen`.
+- **Suggested improvement:** Add them to `BROWSER_ELEMENTS` so `elements` matches the guide.
+
+### 2026-11-18 · EPIC-189 / US-2082 · Codex Luna (implementation) / Claude (run)
+- **Area:** browser (`editor.waitFor`)
+- **What the agent expected:** `waitFor({ selector: "#result", text: "granted" })` to wait for that text in that element.
+- **What actually happened:** "Expected exactly one of 'selector', 'text', 'textGone', or 'time'." The options are exclusive, which `agents/browser.md` does not say.
+- **How it was resolved:** `waitFor({ text: "granted" })`.
+- **Suggested improvement:** State in the `waitFor` `$help` and the Waits table that exactly one condition is allowed, and how to wait for text inside one element.
+
+### 2026-11-18 · EPIC-189 / US-2082 · Codex Luna (implementation) / Claude (run)
+- **Area:** screen (site permissions popover)
+- **What the agent expected:** The "Ask" hint inside the permission's switch button, and still visible after Allow.
+- **What actually happened:** The hint is a sibling of the switch inside `[data-part="permission-row"]`, and a saved Allow or Block hides it; the plan's selector found nothing, and the Allow expectation was wrong.
+- **How it was resolved:** Tests read the hint from the row and expect it hidden after a choice.
+- **Suggested improvement:** Describe the row structure and the Ask hint in `editors/browser/layout.md`.
+
+### 2026-11-18 · EPIC-189 / US-2082 · Claude (run)
+- **Area:** browser (pop-ups and inner tabs)
+- **What the agent expected:** To click the fixture page again after a burst of `window.open` calls.
+- **What actually happened:** Each allowed pop-up opens as a new inner tab and becomes the active tab, so `editor.click("#single")` looked in the pop-up tab ("Element not found").
+- **How it was resolved:** The test switches back to the fixture tab with `switchTab` before each click.
+- **Suggested improvement:** Say in `agents/browser.md` that a tab-disposition pop-up becomes the active tab and page actions follow it.
+
+### 2026-11-18 · EPIC-189 / US-2079 · Codex Luna (plan)
+- **Area:** guide editors/browser (layout)
+- **What the agent expected:** Selectors for the tab panel's `+` button and the page zoom presets in the layout guide.
+- **What actually happened:** Only `tabs-panel-host` and `toolbar-page-zoom` are listed; `[data-add-tab]` and `zoom-preset-<percent>` were found in source.
+- **How it was resolved:** Found in source; the tests passed.
+- **Suggested improvement:** List both in `editors/browser/layout.md`.
+
+### 2026-11-18 · EPIC-189 / US-2079 · Claude (run)
+- **Area:** browser (`pressKey`)
+- **What the agent expected:** `editor.pressKey("Control+=")` with focus in the page to zoom the page, as the guide says the shortcut does.
+- **What actually happened:** Automation key input reaches the page (it saw `keydown` with `ctrlKey`) but not the guest's `before-input-event` handler, so Persephone's browser shortcuts (`Ctrl+=`, `Ctrl+-`, `Ctrl+0`, `Ctrl+R`, `F5`, `F12`) never run.
+- **How it was resolved:** Call gap recorded: the keyboard zoom test was dropped (uncovered), and `agents/browser.md` now says these shortcuts do not run from `pressKey`.
+- **Suggested improvement:** Route automation key input through the same shortcut handler, or offer `editor.zoom` / `setZoom` on the facade.
+
+### 2026-11-18 · EPIC-189 / US-2079 · Claude (run)
+- **Area:** app object
+- **What the agent expected:** `window.screen.evaluate("... getAttribute('aria-expanded')")` to return the string `"false"`.
+- **What actually happened:** It came back as boolean `false` and the wait timed out. Recurrence of the EPIC-187 / US-2066 JSON-parsed string entry; it hit two more tests here (reload counter `1` versus `"1"`).
+- **How it was resolved:** Tests compare `String(value)` or numbers.
+- **Suggested improvement:** As in the earlier entry; three epics in a row now.
+
+### 2026-11-18 · EPIC-189 / US-2079 · Claude (run)
+- **Area:** other (session file)
+- **What the agent expected:** Browser tab state at `openFiles0.json` `pages[].state.tabs`.
+- **What actually happened:** Schema 4 keeps it at `pages[].editors[].state.tabs`; the wait never matched.
+- **How it was resolved:** Test reads the editors array.
+- **Suggested improvement:** None; tests should prefer restoring and reading the live page over parsing the session file.
+
+### 2026-11-18 · EPIC-189 / US-2078 · Codex Luna (plan)
+- **Area:** guide editors/browser (URL bar)
+- **What the agent expected:** From the guide, that typing in the URL bar filters the visited-page history.
+- **What actually happened:** Focusing lists the tab's visited pages; once you type, it lists earlier search queries that match. The plan flagged an app bug.
+- **How it was resolved:** Guide sentence corrected; filtering search queries is uncovered (recording a search needs the internet).
+- **Suggested improvement:** None beyond the guide fix.
+
+### 2026-11-18 · EPIC-189 / US-2078 · Codex Luna (plan)
+- **Area:** call path (`pages.openUrlInBrowserTab`)
+- **What the agent expected:** A new Persephone page for each `openUrlInBrowserTab` call.
+- **What actually happened:** With a regular browser page active it adds an inner tab to that page and returns its id; the `$help` does not say so.
+- **How it was resolved:** Found in `browser-pages.ts`; the test asserts the reuse.
+- **Suggested improvement:** Say "reuses the active browser page as a new inner tab" in the `$help`.
+
+### 2026-11-18 · EPIC-189 / US-2078 · Codex Luna (implementation) / Claude (run)
+- **Area:** browser / screen (toolbar state)
+- **What the agent expected:** To read Back/Forward as disabled on a page just opened by `openBrowser`, and the Reload/Stop label from the button's `title`.
+- **What actually happened:** A page opened by `openBrowser` starts on a blank tab and then navigates, so Back is enabled. Toolbar icon buttons have no `title` attribute or accessible name; their label is a hover tooltip, so snapshots list them as unnamed `button`s.
+- **How it was resolved:** The no-history case uses a fresh `addTab(url)` tab; the Stop label is read from the tooltip after `hover`.
+- **Suggested improvement:** Give `IconButtonView` an `aria-label` from its `title`, so snapshots name toolbar buttons.
+
+### 2026-11-18 · EPIC-189 / US-2078 · Claude (run)
+- **Area:** screen / menus
+- **What the agent expected:** The search-engine chip's menu under `menus[0]`.
+- **What actually happened:** It is a UIKit `openMenu` popover (`search-engine-menu`), not an application popup menu, so `menus` was empty. Which menus appear in `menus` is not documented.
+- **How it was resolved:** The test clicks the engine inside `[data-name="search-engine-menu"]` with `window.screen`.
+- **Suggested improvement:** Document in the `menus` `$help` which menus it lists, or list UIKit menus there too.

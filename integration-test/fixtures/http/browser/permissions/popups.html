@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Browser pop-ups fixture</title>
+</head>
+<body>
+  <h1>Browser pop-ups fixture</h1>
+  <button id="burst" type="button">Open a burst of pop-ups</button>
+  <button id="single" type="button">Open one pop-up</button>
+  <script>
+    document.querySelector("#burst").addEventListener("click", () => {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        window.open("/browser/permissions/popup-target.html", "_blank");
+      }
+    });
+    document.querySelector("#single").addEventListener("click", () => {
+      window.open("/browser/permissions/popup-target.html", "_blank");
+    });
+  </script>
+</body>
+</html>

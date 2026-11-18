@@ -1,3 +1,29 @@
+## EPIC-189 — UI test coverage, phase 6a: Browser page
+
+Completed 2026-11-18. First half of Phase 6 of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 21 new
+tests in the new `integration-test/tests/browser/` area (`navigation`, `tabs`, `profiles`, `downloads`,
+`permissions`), all against the runner's fixture server, with a shared `tests/browser/helpers.mjs`; the suite is 262
+tests. Codex (Luna) planned and wrote the tests blind; Claude reviewed, ran and triaged, and recorded 26 cases in
+[ai-vision-feedback.md](../reviews/ai-vision-feedback.md). **Fixed:** `pages[i].editor.reload()` resolved before the
+page reloaded and stopped a loading page (EPIC-186 open item); a finished download kept a stale byte count; the
+downloads popup rebuilt its rows on every progress event, so a Cancel click could be lost; the Link editor's Tags and
+Hostnames lists kept a deleted link. **Runner/app test support:** the fixture server serves real content types and a
+`/download` route; a test instance saves downloads to `<profile>/test-downloads` without the Save dialog. **Guide
+fixes:** URL-bar suggestions, browser shortcuts not reachable from `pressKey`. **Open:** the bookmarks drawer's
+Collections tree keeps a deleted link (test stays failing); the EPIC-187 grid row-insertion decision. **Uncovered:**
+keyboard page zoom, search-query filtering and engine URLs (internet), Open in Windows Default App and Show in Folder,
+camera and microphone. Phase 6b (automation, site extensions, certificate, Show Resources, cinema mode, Tor) is next.
+Final launched run (`--with git,mneme`): 259 passed, 2 failed, 1 skipped. Completion skills by Codex (Luna). Epic
+document: [EPIC-189](EPIC-189.md).
+
+- [x] **Browser `reload()` waits for the reloaded page (US-2076).**
+- [x] **HTTP fixture server: content types and downloads (US-2077).**
+- [x] **Navigation and the URL bar (US-2078).**
+- [x] **Inner browser tabs and page zoom (US-2079).**
+- [x] **Profiles, Incognito and bookmarks (US-2080).**
+- [x] **Downloads (US-2081).**
+- [x] **Site permissions and blocked pop-ups (US-2082).**
+
 ## EPIC-188 — UI test coverage, phase 5b: clipboard, MCP inspector, Folder View, agent tools, Git, Mneme
 
 Completed 2026-11-18. Second half of Phase 5 of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 20 new

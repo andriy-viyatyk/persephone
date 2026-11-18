@@ -76,6 +76,11 @@ suite-only fixture helpers. The setup hook receives the current context, `{ file
 profileDirectory, attach }`, and a getter for the current MCP client adapter, so an app restart
 uses the replacement connection.
 
+Browser downloads in an owned test instance bypass the native Save dialog and use
+`<userData>/test-downloads/`, adding a ` (n)` suffix when a filename already exists. The path is
+available from `app.downloads.downloads[i].savePath` after completion. Attached instances retain
+their normal Save dialog behavior.
+
 Before each test, the runner snapshots page ownership. Cleanup closes newly opened pages and
 pop-ups, including pages opened through `ctx.call`. Owned-page closes allow the renderer's
 unsaved-changes prompt and answer it with `Don't Save`. Cleanup sweeps renderer dialogs (`dialogs[i]`)

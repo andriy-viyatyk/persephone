@@ -197,8 +197,8 @@ export interface IBrowserEditor {
     /** Go forward and await the main-frame result; rejects immediately when history is absent. */
     forward(options?: IBrowserNavigationOptions): Promise<IBrowserNavigationResult>;
 
-    /** Reload the current page (or stop loading if in progress). */
-    reload(): Promise<void>;
+    /** Reload the active tab, even while it is loading, and await the reloaded document's result. */
+    reload(options?: IBrowserNavigationOptions): Promise<IBrowserNavigationResult>;
 
     // --- Tab management ---
 

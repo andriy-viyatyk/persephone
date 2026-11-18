@@ -149,6 +149,9 @@ Use trusted click plus keys for custom dropdowns.
 For keys, `pressKey("Control+C")` targets the focused element. Pass `target` to focus a locator by
 trusted click first. `keyDown()` holds a key across calls until `keyUp()` releases it. Ctrl+C/V use
 the real OS clipboard; Persephone does not save or restore its contents.
+On a browser page, keys sent this way reach the web page only. Persephone's own browser shortcuts
+(`Ctrl+=`, `Ctrl+-`, `Ctrl+0`, `Ctrl+R`, `F5`, `F12`) do not run; use `reload()`, the toolbar
+controls through `window.screen`, or the page zoom popover instead.
 
 ### Autocomplete fields and chips (mail recipients, tags, search suggestions)
 
@@ -174,7 +177,7 @@ await editor.snapshot({ root: { ref: "e13552" }, interactive: true }); // the fi
 |---|---|
 | Actionability | 5 seconds; override with `timeout`. |
 | `waitFor` / `waitForSelector` | 10 seconds; selector states: attached, detached, visible, hidden. |
-| `navigateAndWait`, `waitForNavigation`, `waitForURL` | `load`; `waitUntil` also accepts `domcontentloaded` or `networkidle`. |
+| `navigateAndWait`, `reload`, `back`, `forward`, `waitForNavigation`, `waitForURL` | `load`; `waitUntil` also accepts `domcontentloaded` or `networkidle`. |
 
 `waitFor` also accepts `text`, `textGone`, or `time`. Waits poll on 100 ms timers. Explicit MCP
 wait deadlines add five seconds to the request deadline and cap it at 600,000 ms. Navigation results

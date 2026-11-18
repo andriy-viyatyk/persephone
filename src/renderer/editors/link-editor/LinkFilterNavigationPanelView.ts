@@ -109,6 +109,9 @@ export class LinkFilterNavigationPanelView extends VanillaView<LinkFilterNavigat
             }),
             (state) => {
                 if (this.boundEditor !== editor) return;
+                // The top list (tags / hostnames and their counts) reads the editor state too; without
+                // this it kept a deleted link's hostname and count until the panel was re-created.
+                this.topViewAdapter?.update();
                 this.applyState(state);
             },
         );

@@ -74,7 +74,7 @@ export class BrowserTargetModel implements IAutomationTarget, ISyntheticInputHos
     }
 
     reload(): void {
-        this.model.webview.reloadOrStop();
+        this.model.webview.reload();
     }
 
     get tabs(): ReadonlyArray<ITargetTab> {

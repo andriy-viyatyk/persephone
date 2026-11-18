@@ -64,7 +64,8 @@ Links switch. Agents can use `pages.addEditorPage("link-view", "json", title, co
 Filter by collection, tag, or hostname from the corresponding sidebar panels. Switch between list
 and tile views; view choices are remembered per collection, tag, or hostname. Preview images and
 favicons enrich links when available. Reassign links between categories, import files or folders
-from Explorer, drag between windows, and set the editor a link should open.
+from Explorer, drag between windows, and set the editor a link should open. Tag and hostname filters
+update their entries and counts when the collection changes.
 
 ## Agent API
 

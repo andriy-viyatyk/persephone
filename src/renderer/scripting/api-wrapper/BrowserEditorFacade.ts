@@ -59,7 +59,7 @@ const BROWSER_EDITOR_MEMBERS: readonly IAiMember[] = [
     { name: "navigateAndWait", kind: "method", signature: "navigateAndWait(url: string, options?: { waitUntil?: 'load' | 'domcontentloaded' | 'networkidle'; timeout?: number; tabId?: string }): Promise<{ url: string; status: number | null }>", summary: "Navigate and wait for a main-frame lifecycle event. HTTP errors resolve with their status; network failures and timeouts reject." },
     { name: "back", kind: "method", signature: "back(options?: { waitUntil?: 'load' | 'domcontentloaded' | 'networkidle'; timeout?: number; tabId?: string }): Promise<{ url: string; status: number | null }>", summary: "Navigate back and wait for the main-frame result. Rejects immediately with No back history when unavailable." },
     { name: "forward", kind: "method", signature: "forward(options?: { waitUntil?: 'load' | 'domcontentloaded' | 'networkidle'; timeout?: number; tabId?: string }): Promise<{ url: string; status: number | null }>", summary: "Navigate forward and wait for the main-frame result. Rejects immediately with No forward history when unavailable." },
-    { name: "reload", kind: "method", signature: "reload(): Promise<void>", summary: "Reload the current page (or stop loading if in progress)." },
+    { name: "reload", kind: "method", signature: "reload(options?: { waitUntil?: 'load' | 'domcontentloaded' | 'networkidle'; timeout?: number; tabId?: string }): Promise<{ url: string; status: number | null }>", summary: "Reload the active tab, even while it is loading, and wait for the reloaded document (default load). Resolves with the committed URL and HTTP status." },
     { name: "tabs", kind: "property", summary: "List of all open tabs in this browser page." },
     { name: "activeTab", kind: "property", summary: "The active (visible) tab." },
     { name: "addTab", kind: "method", signature: "addTab(url?: string): string", summary: "Open a new tab. Returns the new tab's ID." },
@@ -370,8 +370,12 @@ export class BrowserEditorFacade extends EditorFacadeBase<BrowserEditor> impleme
             () => navigateAndWaitOperation(this.model.target, url, options), { passive: false, tip: false });
     }
 
-    reload(): Promise<void> {
-        return this.automation.runHostOperation("reload", undefined, () => this.model.webview.reloadOrStop(), { passive: false, tip: false });
+    reload(options?: BrowserNavigationOptions): Promise<NavigationWaitResult> {
+        this.assertActiveTabOnly(options?.tabId, "reload");
+        return this.automation.runHostOperation("reload", options?.tabId, () => {
+            if (!this.model.webview.getActiveWebview()) throw new Error("No active tab to reload");
+            return navigateBackAndWait(this.model.target, () => this.model.webview.reload(), options);
+        }, { passive: false, tip: false });
     }
 
     /** Run JavaScript in the page and return the result. */

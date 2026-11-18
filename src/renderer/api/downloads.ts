@@ -57,6 +57,9 @@ class Downloads extends TModel<DownloadsState> implements IDownloads {
                     const dl = s.downloads.find((d) => d.id === data.id);
                     if (dl) {
                         dl.status = "completed";
+                        // Progress events are throttled, so the last one can lag behind the finished size.
+                        dl.receivedBytes = data.receivedBytes;
+                        dl.totalBytes = data.totalBytes;
                         if (data.savePath) {
                             dl.savePath = data.savePath;
                         }

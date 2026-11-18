@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Browser permissions fixture</title>
+</head>
+<body>
+  <h1>Browser permissions fixture</h1>
+  <button id="request-notification" type="button">Request notification permission</button>
+  <output id="permission-result"></output>
+  <script>
+    document.querySelector("#request-notification").addEventListener("click", async () => {
+      document.querySelector("#permission-result").textContent = await Notification.requestPermission();
+    });
+  </script>
+</body>
+</html>

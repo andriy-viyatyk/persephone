@@ -1,0 +1,14 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>US-2078 Slow load</title></head>
+<body>
+<h1>Slow load</h1>
+<p id="load-count"></p>
+<img src="/delay?ms=4000" alt="delayed fixture image">
+<script>
+    const count = Number(sessionStorage.getItem("us2078Loads") || "0") + 1;
+    sessionStorage.setItem("us2078Loads", String(count));
+    document.querySelector("#load-count").textContent = String(count);
+</script>
+</body>
+</html>

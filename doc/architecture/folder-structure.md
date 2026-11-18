@@ -1112,7 +1112,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ```
 /src/main/
 ├── main-setup.ts           # Application setup and window creation
-├── test-mode/              # Windowless test controller, child-instance options, and test-mode logging
+├── test-mode/              # Windowless test controller, child-instance options, test-mode logging, and browser-download destination
 ├── main-services.ts        # Ordered app-level service startup, phase boundaries, and reverse disposal
 ├── capability-client.ts    # Per-caller-owner capability list/get/invoke client
 ├── capability-router.ts    # Main capability resolution, authorization, limits and dispatch
@@ -1177,7 +1177,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── browser-network-service.ts # Profile/Incognito proxy state, profile-src:// policy setup, guest WebRTC policy, egress check, session-src hand-off
 ├── tor-src-protocol.ts     # tor-src:// scheme policy setup — fetches through a Tor partition session; guarded by partition shape and live-partition check
 ├── git-service.ts          # Git access via simple-git — status, stage/unstage/commit, branch/switch, fetch/push/pull, ahead-behind, log/show, --version probe — main-process only
-├── download-service.ts     # Browser downloads stage in temp while an async Save As dialog is open; completed files receive Mark-of-the-Web from the final redirect URL
+├── download-service.ts     # Browser downloads stage in temp while an async Save As dialog is open; test instances save under test-mode/test-downloads; completed files receive Mark-of-the-Web from the final redirect URL
 ├── session-src-protocol.ts # Short-lived URL-bound capability; reuses routed URL parsing and enforces board network policy/DNS pinning per redirect hop
 ├── native-dialog-tracker.ts # Per-window native dialog state, attention snapshots, and helper-backed cancellation
 ├── search-service.ts       # File search host — owns one search-worker thread per sender window, relays its batches to the renderer; cancel/window-close is worker.terminate()

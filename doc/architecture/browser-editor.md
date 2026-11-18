@@ -1428,11 +1428,12 @@ the agent is idle stays user-controlled. `dialogs()` reports pending and handled
 
 Navigation waiters arm against main-process Page lifecycle events before triggering navigation,
 then await the selected `load`, `domcontentloaded`, or `networkidle` condition. `navigateAndWait`,
-`back`, and `forward` return `{ url, status }`; HTTP errors resolve with status, main-frame network
-failures reject. `waitForNavigation` can adopt an in-progress navigation, and `waitForURL` accepts an
-exact string or regular expression. Selector and text waits use 100 ms timers, not animation-frame
-polling. Their default is 10 seconds; explicit MCP wait deadlines add five seconds and cap at
-600,000 ms so the wait's own error can arrive first.
+`back`, `forward`, and `reload` return `{ url, status }`; HTTP errors resolve with status, main-frame
+network failures reject. `reload` always starts a reload, including while the page is loading, and
+waits for the selected lifecycle event. `waitForNavigation` can adopt an in-progress navigation,
+and `waitForURL` accepts an exact string or regular expression. Selector and text waits use 100 ms
+timers, not animation-frame polling. Their default is 10 seconds; explicit MCP wait deadlines add
+five seconds and cap at 600,000 ms so the wait's own error can arrive first.
 
 `window.screen` console/error reads cover Persephone's renderer. JS dialog policy is exposed on
 browser and board targets only. Browser-only viewport emulation changes page metrics inside the

@@ -19,6 +19,7 @@ import { registerSessionSource } from "./session-src-protocol";
 import { browserNetworkService } from "./browser-network-service";
 import { torService } from "./tor-service";
 import { errMessage } from "../shared/utils";
+import { testInstanceDownloadPath } from "./test-mode/downloads";
 
 const MAX_PERSISTED = 5;
 const PROGRESS_THROTTLE_MS = 500;
@@ -244,6 +245,13 @@ class DownloadService {
             this.downloads.delete(record.entry.id);
             openWindows.send("eDownloadRemoved", { id: record.entry.id });
         };
+        // A test instance cannot answer the native Save dialog; it saves into the profile's test folder.
+        const testPath = testInstanceDownloadPath(record.entry.filename);
+        if (testPath) {
+            record.targetPath = testPath;
+            if (record.transferDone) await this.finishDownloadMove(record, record.hostUrl ?? record.entry.url, record.referrerUrl ?? "");
+            return;
+        }
         try {
             const result = await withNativeDialog(parentWindow, "file", () => dialog.showSaveDialog(parentWindow, { defaultPath }));
             if (result.canceled || !result.filePath) { await removeUnselectedDownload(); return; }
@@ -316,7 +324,9 @@ class DownloadService {
             record.entry.filename = path.basename(savePath);
             record.entry.savePath = savePath;
             record.entry.status = "completed";
-            openWindows.send("eDownloadCompleted", { id: record.entry.id, savePath });
+            openWindows.send("eDownloadCompleted", {
+                id: record.entry.id, savePath, receivedBytes: record.entry.receivedBytes, totalBytes: record.entry.totalBytes,
+            });
             this.persist();
         } catch (error) {
             record.entry.status = "failed";

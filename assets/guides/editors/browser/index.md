@@ -41,9 +41,10 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 
 Type a URL and press `Enter`, or type a search term and use the selected search engine. The navigate
 button submits the field, and its context menu offers **Paste and Go**. `Ctrl+L` focuses the URL bar.
-Focusing it shows current-tab history; typing filters history, and **Clear** removes the visible
-filtered entries. The search-engine label is available on blank and search-result pages and offers
-Google, Bing, DuckDuckGo, Yahoo, Ecosia, Brave, Startpage, Qwant, Baidu, Perplexity, and Gibiru.
+Focusing it lists the pages visited in the current tab; once you type, it lists your earlier search
+queries that match the text, and **Clear** removes the visible entries. The search-engine label is
+available on blank and search-result pages and offers Google, Bing, DuckDuckGo, Yahoo, Ecosia, Brave,
+Startpage, Qwant, Baidu, Perplexity, and Gibiru.
 The engine you pick is preselected in new browser pages. Incognito and Tor pages remember their
 own choice, separate from profile pages.
 

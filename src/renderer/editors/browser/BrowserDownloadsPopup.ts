@@ -45,6 +45,31 @@ const popupOffset: [number, number] = [0, 4];
 interface DownloadItemResources {
     readonly buttons: Array<ButtonView | IconButtonView>;
     readonly tooltip: TooltipAttachment;
+    /** Everything except progress; a row is rebuilt only when this changes. */
+    readonly shapeKey: string;
+    readonly statusText: HTMLElement;
+    readonly progressFill: HTMLDivElement | undefined;
+}
+
+function rowShapeKey(entry: DownloadEntry): string {
+    return JSON.stringify([entry.id, entry.filename, entry.status, entry.savePath ?? "", entry.error ?? ""]);
+}
+
+function downloadProgress(entry: DownloadEntry): number {
+    return entry.totalBytes > 0 ? Math.min(1, entry.receivedBytes / entry.totalBytes) : 0;
+}
+
+function downloadStatusText(entry: DownloadEntry): string {
+    const { status, receivedBytes, totalBytes } = entry;
+    return status === "downloading"
+        ? `${formatBytes(receivedBytes)} / ${totalBytes > 0 ? formatBytes(totalBytes) : "?"}`
+        : status === "awaitingPath"
+            ? t("browser.downloadsWaitingForPath")
+            : status === "completed"
+            ? formatBytes(totalBytes)
+            : status === "cancelled"
+                ? t("browser.downloadsCancelled")
+                : t("browser.downloadsFailed");
 }
 
 class DownloadsPopupContentView extends VanillaView<undefined> {
@@ -102,6 +127,9 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
         const hasCompleted = downloadEntries.some((entry) =>
             entry.status === "completed" || entry.status === "failed" || entry.status === "cancelled");
         this.syncClearButton(hasCompleted);
+        // Progress events arrive every half second; rebuilding the rows each time replaced the
+        // Cancel button under the pointer, so a click could be lost. Update progress in place.
+        if (this.updateRowsInPlace(downloadEntries)) return;
         this.disposeItemResources();
 
         const listPanel = this.listPanel;
@@ -123,6 +151,18 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
             listPanel.append(item.element);
             this.itemResources.push(item.resources);
         });
+    }
+
+    private updateRowsInPlace(downloadEntries: DownloadEntry[]): boolean {
+        const rows = this.itemResources;
+        if (rows.length === 0 || rows.length !== downloadEntries.length) return false;
+        if (downloadEntries.some((entry, index) => rows[index].shapeKey !== rowShapeKey(entry))) return false;
+        downloadEntries.forEach((entry, index) => {
+            const row = rows[index];
+            row.statusText.textContent = downloadStatusText(entry);
+            if (row.progressFill) row.progressFill.style.width = `${downloadProgress(entry) * 100}%`;
+        });
+        return true;
     }
 
     private syncClearButton(hasCompleted: boolean): void {
@@ -154,18 +194,8 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
         entry: DownloadEntry,
         showBorder: boolean,
     ): { element: HTMLDivElement; resources: DownloadItemResources } {
-        const { id, filename, status, receivedBytes, totalBytes, error } = entry;
+        const { id, filename, status, error } = entry;
         const isDownloading = status === "downloading";
-        const progress = totalBytes > 0 ? Math.min(1, receivedBytes / totalBytes) : 0;
-        const statusText = isDownloading
-            ? `${formatBytes(receivedBytes)} / ${totalBytes > 0 ? formatBytes(totalBytes) : "?"}`
-            : status === "awaitingPath"
-                ? t("browser.downloadsWaitingForPath")
-                : status === "completed"
-                ? formatBytes(totalBytes)
-                : status === "cancelled"
-                    ? t("browser.downloadsCancelled")
-                    : t("browser.downloadsFailed");
 
         const filenamePanel = createPanelElement({ flex: true, overflow: "hidden" });
         filenamePanel.append(createTextElement(filename, { truncate: true, size: "md" }));
@@ -173,9 +203,10 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
             content: entry.savePath || filename,
         });
 
+        const statusText = createTextElement(downloadStatusText(entry), { size: "sm", color: "light", nowrap: true });
         const statusPanel = createPanelElement({ direction: "row", align: "center", gap: "md" }, [
             filenamePanel,
-            createTextElement(statusText, { size: "sm", color: "light", nowrap: true }),
+            statusText,
         ]);
         const itemPanel = createPanelElement({
             direction: "column",
@@ -185,7 +216,12 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
             borderBottom: showBorder || undefined,
         }, [statusPanel]);
 
-        if (isDownloading) itemPanel.append(this.createProgressBar(progress));
+        let progressFill: HTMLDivElement | undefined;
+        if (isDownloading) {
+            const progressBar = this.createProgressBar(downloadProgress(entry));
+            progressFill = progressBar.fill;
+            itemPanel.append(progressBar.track);
+        }
         if (error && status === "failed") {
             itemPanel.append(createTextElement(error, { size: "sm", color: "error" }));
         }
@@ -251,11 +287,11 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
 
         return {
             element: itemPanel,
-            resources: { buttons, tooltip },
+            resources: { buttons, tooltip, shapeKey: rowShapeKey(entry), statusText, progressFill },
         };
     }
 
-    private createProgressBar(progress: number): HTMLDivElement {
+    private createProgressBar(progress: number): { track: HTMLDivElement; fill: HTMLDivElement } {
         const track = document.createElement("div");
         track.style.height = "3px";
         track.style.borderRadius = "2px";
@@ -269,7 +305,7 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
         fill.style.borderRadius = "2px";
         fill.style.transition = "width 0.3s ease";
         track.append(fill);
-        return track;
+        return { track, fill };
     }
 
     private disposeItemResources(): void {

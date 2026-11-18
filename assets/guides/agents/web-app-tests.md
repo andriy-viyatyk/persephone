@@ -77,6 +77,11 @@ returns a handle to `pages[id].editor`. Its `profile` option is a browser profil
 profiles; a typo reports valid names. If omitted, the configured default browser profile is used.
 If that setting is empty, the built-in browser profile is used.
 
+Downloads in an app launched by the runner do not open the Save dialog. They are saved to the
+profile's `test-downloads` folder (a ` (1)` suffix keeps names unique). Find the file's path in
+`app.downloads.downloads[i].savePath` once its `status` is `completed`. An app joined with
+`--attach` still asks where to save.
+
 `DOMContentLoaded` only means the document is ready. Wait for the site's own hydrated or
 authenticated state before interacting:
 

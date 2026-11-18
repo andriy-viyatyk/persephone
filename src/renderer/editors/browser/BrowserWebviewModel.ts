@@ -127,9 +127,7 @@ export class BrowserWebviewModel {
             this.resetTranslationForReload();
             wv.stop();
         } else {
-            this.resetTranslationForReload();
-            this.model.siteExtensions.onNavigationStarted(this.model.state.get().activeTabId, true, false);
-            wv.reload();
+            this.reload();
         }
     };
 
@@ -161,9 +159,13 @@ export class BrowserWebviewModel {
 
     private eventUnsubscribe?: () => void;
 
+    /** Reload the active tab, even while it is still loading (unlike `reloadOrStop`). */
     reload = () => {
+        const wv = this.getActiveWebview();
+        if (!wv) return;
         this.resetTranslationForReload();
-        this.getActiveWebview()?.reload();
+        this.model.siteExtensions.onNavigationStarted(this.model.state.get().activeTabId, true, false);
+        wv.reload();
     };
 
     private resetTranslationForReload(internalTabId = this.model.state.get().activeTabId): void {

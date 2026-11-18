@@ -6,6 +6,39 @@ import { HTTP_FIXTURE_PORT, HTTP_FIXTURE_ROOT } from "./config.mjs";
 
 const MAX_ECHO_BYTES = 1024 * 1024;
 const BODYLESS_STATUSES = new Set([204, 205, 304]);
+const CONTENT_TYPES = {
+    ".html": "text/html; charset=utf-8",
+    ".htm": "text/html; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".mjs": "text/javascript; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".ico": "image/x-icon",
+    ".wav": "audio/wav",
+    ".mp4": "video/mp4",
+};
+// /download limits: body size, chunk count and per-chunk delay.
+const MAX_DOWNLOAD_BYTES = 4 * 1024 * 1024;
+const MAX_DOWNLOAD_CHUNKS = 200;
+const MAX_DOWNLOAD_CHUNK_DELAY_MS = 2000;
+const DOWNLOAD_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+const DOWNLOAD_TEXT = "Persephone download fixture.\n";
+
+function contentTypeFor(filePath) {
+    return CONTENT_TYPES[path.extname(filePath).toLowerCase()] ?? "text/plain; charset=utf-8";
+}
+
+function intParam(url, name, fallback, max) {
+    const value = url.searchParams.get(name);
+    if (value === null) return fallback;
+    if (!/^\d+$/.test(value) || Number(value) > max) return undefined;
+    return Number(value);
+}
 
 function send(response, status, contentType, body, head = false) {
     response.statusCode = status;
@@ -68,6 +101,37 @@ export async function startHttpFixtures({ root = HTTP_FIXTURE_ROOT, port = HTTP_
             timers.add(timer);
             return;
         }
+        if (pathname === "/download") {
+            // Attachment download: ?name=<file>[&bytes=N][&chunks=N&ms=N] streams a text body in
+            // chunks with a delay between them, so a test can watch or cancel a running download.
+            if (request.method !== "GET" && request.method !== "HEAD") return send(response, 405, "text/plain; charset=utf-8", "Method Not Allowed\n");
+            const name = url.searchParams.get("name");
+            const bytes = intParam(url, "bytes", DOWNLOAD_TEXT.length, MAX_DOWNLOAD_BYTES);
+            const chunks = intParam(url, "chunks", 1, MAX_DOWNLOAD_CHUNKS);
+            const delay = intParam(url, "ms", 0, MAX_DOWNLOAD_CHUNK_DELAY_MS);
+            if (!name || !DOWNLOAD_NAME.test(name) || bytes === undefined || chunks === undefined || chunks < 1 || delay === undefined) {
+                return send(response, 400, "text/plain; charset=utf-8", "Invalid download; expected name=<file>, bytes<=4194304, chunks 1-200, ms<=2000\n", request.method === "HEAD");
+            }
+            const body = Buffer.from(DOWNLOAD_TEXT.repeat(Math.ceil(bytes / DOWNLOAD_TEXT.length) || 1).slice(0, bytes), "utf8");
+            response.statusCode = 200;
+            response.setHeader("Content-Type", "application/octet-stream");
+            response.setHeader("Content-Disposition", `attachment; filename="${name}"`);
+            response.setHeader("Content-Length", body.length);
+            if (request.method === "HEAD") return response.end();
+            const chunkSize = Math.ceil(body.length / chunks) || 1;
+            let offset = 0;
+            const writeNext = () => {
+                if (response.destroyed) return;
+                const next = body.subarray(offset, offset + chunkSize);
+                offset += next.length;
+                if (offset >= body.length) return response.end(next);
+                response.write(next);
+                const timer = setTimeout(() => { timers.delete(timer); writeNext(); }, delay);
+                timers.add(timer);
+            };
+            writeNext();
+            return;
+        }
         if (pathname === "/status") {
             if (request.method !== "GET" && request.method !== "HEAD") return send(response, 405, "text/plain; charset=utf-8", "Method Not Allowed\n");
             const value = url.searchParams.get("code");
@@ -102,7 +166,7 @@ export async function startHttpFixtures({ root = HTTP_FIXTURE_ROOT, port = HTTP_
             if (!(await stat(resolved)).isFile()) return send(response, 404, "text/plain; charset=utf-8", "Not Found\n", request.method === "HEAD");
         } catch { return send(response, 404, "text/plain; charset=utf-8", "Not Found\n", request.method === "HEAD"); }
         response.statusCode = 200;
-        response.setHeader("Content-Type", "text/plain; charset=utf-8");
+        response.setHeader("Content-Type", contentTypeFor(resolved));
         response.setHeader("Content-Length", (await stat(resolved)).size);
         if (request.method === "HEAD") return response.end();
         createReadStream(resolved).on("error", () => { if (!response.headersSent) send(response, 404, "text/plain; charset=utf-8", "Not Found\n"); else response.destroy(); }).pipe(response);
