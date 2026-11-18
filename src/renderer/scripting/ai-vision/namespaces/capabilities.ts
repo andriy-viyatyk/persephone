@@ -34,7 +34,11 @@ function methodSignature(name: string, method: CapabilityProvider["methods"][str
 function methodHelp(name: string, method: CapabilityProvider["methods"][string]): string {
     const description = `${methodSignature(name, method)} — ${method.summary}`;
     if (method.kind === "channel") return `${description}\n  channel (not callable by agents)`;
-    return `${description}${method.returns ? `\n  Returns: ${method.returns}` : ""}\n  Timeout: ${method.timeoutMs} ms`;
+    // An agent `open` settles as `{ pageId?, result }`; the manifest's `returns` describes `result` only.
+    const returns = method.kind === "open"
+        ? `\n  Returns: { pageId?: string; result: ${method.returns ?? "unspecified"} }`
+        : method.returns ? `\n  Returns: ${method.returns}` : "";
+    return `${description}${returns}\n  Timeout: ${method.timeoutMs} ms`;
 }
 
 class CapabilityProvidersNode {

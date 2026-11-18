@@ -20,6 +20,16 @@ If Excalidraw is disabled, right-click it in **Tools & Editors → Editors → B
 If no replacement handles the requested image or diagram action, Persephone shows **No image editor
 is registered** or **No diagram editor is registered** and tells you how to restore the capability.
 
+### Board model
+
+An open drawing page exposes the Excalidraw board model at `pages[pageId].editor.app`:
+
+- `elementCount` reports the number of elements on the canvas.
+- `editorIsMounted` tells you whether the drawing editor is ready for live canvas operations.
+- `addImage(dataUrl, options?)` inserts an image into the current drawing. Call it only when
+  `editorIsMounted` is `true`; to create a new page with an image, use
+  `app.pages.addDrawPage(dataUrl, title?)` instead.
+
 ## Layout
 
 The Persephone toolbar above the board contains these board controls:

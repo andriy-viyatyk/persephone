@@ -1,0 +1,33 @@
+{
+  "type": "rest-client",
+  "requests": [
+    {
+      "id": "us2098-get-template",
+      "name": "Fake GET template",
+      "collection": "Fake collection",
+      "method": "GET",
+      "url": "http://127.0.0.1/fake-get",
+      "headers": [],
+      "body": "",
+      "bodyType": "none",
+      "bodyLanguage": "plaintext",
+      "formData": [],
+      "binaryFilePath": "",
+      "formDataEntries": []
+    },
+    {
+      "id": "us2098-post-template",
+      "name": "Fake POST template",
+      "collection": "Fake collection",
+      "method": "POST",
+      "url": "http://127.0.0.1/fake-post",
+      "headers": [],
+      "body": "{\"fake\":true}",
+      "bodyType": "raw",
+      "bodyLanguage": "json",
+      "formData": [],
+      "binaryFilePath": "",
+      "formDataEntries": []
+    }
+  ]
+}

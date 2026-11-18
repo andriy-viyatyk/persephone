@@ -838,3 +838,108 @@ Append only. Add new entries at the end and never rewrite old ones. Do not inclu
 - **What actually happened:** `reload()` rejects at once with "Board frame not ready for CDP (still loading?)" while the accept-triggered load runs, and an `evaluate` issued while the old frame is torn down can block for the caller's whole 15 s wait, so a polling `waitFor` gets one poll. Intermittent; seen only in full runs.
 - **How it was resolved:** The test polls `reload()` until it reports `frameReady: true`, then reads the frame.
 - **Suggested improvement:** Make board automation wait (bounded) for the frame being loaded instead of blocking or rejecting; document the pattern in `boards/testing.md` meanwhile.
+
+### 2026-11-18 · EPIC-192 / US-2097, US-2098 · Codex Luna (implementation) / Claude (run)
+- **Area:** $help (capability `open` methods)
+- **What the agent expected:** `capabilities["diagram.edit"].open(...)` to return what its `$help` "Returns:" line said: `{ status, imageOnly }`.
+- **What actually happened:** The call returns the envelope `{ pageId, result: { status, imageOnly } }`. The guide (`capabilities/client-and-wire.md`) documents the envelope, but `$help` printed only the manifest's `returns`, which describes `result`.
+- **How it was resolved:** Product fix: the `Returns:` line of an `open` method now shows `{ pageId?: string; result: … }`. The tests read `result.result.*` and `result.pageId`.
+- **Suggested improvement:** None beyond the fix.
+
+### 2026-11-18 · EPIC-192 / US-2098 · Codex Luna (implementation)
+- **Area:** call path (`capabilities`)
+- **What the agent expected:** `capabilities.invoke(id, payload, { version })`, the script API from `capabilities.d.ts`, to exist on the call tree.
+- **What actually happened:** The call tree has no `invoke`; a capability is a child node with its methods: `capabilities["http.request.open"].open(payload)`.
+- **How it was resolved:** Test corrected after the run.
+- **Suggested improvement:** Recurrence of the EPIC-187 / US-2066 entry (`ctx.app` is the call-tree root, not the script `IApp`). The capabilities guide could show the call-tree form next to the script form.
+
+### 2026-11-18 · EPIC-192 / US-2098 · Codex Luna (plan and implementation)
+- **Area:** guide boards/custom-editors, REST Client board guide
+- **What the agent expected:** Opening a plain `.json` file whose content matches the REST Client `contentMasks` to open the REST Client editor.
+- **What actually happened:** A content match only adds the board to the page's editor switch (`custom-editors.md`, `contentMasks` row); the file opens in the text editor. The REST Client board guide reads as if the content decides the editor.
+- **How it was resolved:** Test rewritten: open, find the `REST Client` option in `editorSwitches.options`, switch to it.
+- **Suggested improvement:** Say in the REST Client board guide that matching content is offered in the editor switch, not opened directly.
+
+### 2026-11-18 · EPIC-192 / US-2097 · Claude (run)
+- **Area:** app object (`pages[id].editor` after a switch)
+- **What the agent expected:** `ctx.app.pages[id].editor.boardRoot`, read through a stand-in captured while the board was the editor, to keep working after `editorSwitches.switchTo("monaco")`.
+- **What actually happened:** The stand-in is a path, re-resolved on each read; after the switch `pages[id].editor` is the TextEditor and `boardRoot` is not a member.
+- **How it was resolved:** Test corrected: read `boardRoot` before switching.
+- **Suggested improvement:** One line in `web-app-tests.md`: a stand-in names a path, not an object; after an editor switch the same path reaches the new editor.
+
+### 2026-11-18 · EPIC-192 / US-2097 · Codex Luna (implementation)
+- **Area:** app object (value shapes)
+- **What the agent expected:** `await ctx.app.pages[id].content` of an `.excalidraw` page to be the JSON text.
+- **What actually happened:** The stand-in JSON-parsed the text into an object, so `JSON.parse` failed with "[object Object] is not valid JSON".
+- **How it was resolved:** Test corrected to `ctx.callText(`pages[…].content`)`.
+- **Suggested improvement:** Recurrence of the value-shape entries (JSON-looking strings are parsed across `call`); the brief warned about it and the plan still read `content` through the stand-in.
+
+### 2026-11-18 · EPIC-192 / US-2097, US-2098 · Codex Luna (implementation) / Claude (run)
+- **Area:** call path (`pages.closePage`) / runner cleanup
+- **What the agent expected:** `pages.closePage(id)` to close a page opened by a capability (`image.edit`, `diagram.edit`, `http.request.open`) or an edited drawing.
+- **What actually happened:** Those pages are untitled or modified, so closing raises "Unsaved Changes"; the test's own close left the dialog open and the runner failed the test for it.
+- **How it was resolved:** Tests leave unsaved pages to the runner's per-test cleanup, which answers Don't Save without failing the test.
+- **Suggested improvement:** Say in `web-app-tests.md` that unsaved pages should be left to cleanup, or add a discard option to `pages.closePage`.
+
+### 2026-11-18 · EPIC-192 / US-2097, US-2098 · Codex Luna (plan)
+- **Area:** call path (board content-host save)
+- **What the agent expected:** A save member on a board content-host page (`pages[id].editor` of an `.excalidraw` or `.rest.json` page), like the text editor's `saveFile()`.
+- **What actually happened:** The board editor facade has no save member; the only call path is `editorSwitches.switchTo("monaco")` then `pages[id].editor.saveFile()`.
+- **How it was resolved:** Tests switch to Monaco to save.
+- **Suggested improvement:** A page-level `save()` member, or `saveFile()` on the board content-host facade.
+
+### 2026-11-18 · EPIC-192 / US-2097, US-2098 · Codex Luna (plan and implementation)
+- **Area:** guide editors/draw, REST Client board guide
+- **What the agent expected:** The guides to name the board's remote model path and when it is ready.
+- **What actually happened:** The model is `pages[id].editor.app` (found in `BoardEditorFacade` and the board's `index.html`); it registers some time after `frameReady`, so a read right after the frame is ready can fail.
+- **How it was resolved:** Tests poll the model with a try/catch callback until it answers.
+- **Suggested improvement:** Name `pages[id].editor.app` and its main members in `draw.md`, and say in `boards/testing.md` to poll `editor.app` after `frameReady`.
+
+### 2026-11-18 · EPIC-192 / US-2097, US-2098 · Codex Luna (plan)
+- **Area:** call path (`boards.list()` and bundled boards)
+- **What the agent expected:** Bundled boards (Excalidraw, REST Client) to appear in `boards.list()` with `trusted: true`, so a test can find their root.
+- **What actually happened:** `boards.list()` lists trusted, installed and open boards; a bundled board is allowed without user trust and is neither listed nor `trusted`.
+- **How it was resolved:** Tests get the root from an opened page (`pages[id].editor.boardRoot`).
+- **Suggested improvement:** A `bundled` flag in `boards.list()`, or a sentence in the boards hub on how to find a bundled board's root.
+
+### 2026-11-18 · EPIC-192 / US-2096 · Codex Luna (plan)
+- **Area:** call path (Board Info install flow)
+- **What the agent expected:** Board Info Download and Register to be facade members.
+- **What actually happened:** They are UI buttons only (`board-info-download`, `board-info-register`); the facade exposes snapshots and `setInstallDir`.
+- **How it was resolved:** Tests click them with `window.screen.click` after activating the page.
+- **Suggested improvement:** Recurrence of the EPIC-191 / US-2092 Board Info entry (no call member for Board Info actions).
+
+### 2026-11-18 · EPIC-192 / US-2096 · Claude (run)
+- **Area:** call path (returned board roots)
+- **What the agent expected:** `boards.downloadPublished(id, { dir })` to return `${dir}/${id}` as the test built it.
+- **What actually happened:** Roots come back in Windows form with backslashes; the test compared against a forward-slash string.
+- **How it was resolved:** Test corrected to `path.join(dir, id)`.
+- **Suggested improvement:** Recurrence of the EPIC-191 path comparisons (`sameRoot`); say in `boards/testing.md` that roots are OS paths and should be compared normalized.
+
+### 2026-11-18 · EPIC-192 / US-2096 · Claude (run)
+- **Area:** call path (`searchPublished` fields)
+- **What the agent expected:** `searchPublished()` entries to carry `latestVersion` next to `installedVersion` and `updateAvailable`.
+- **What actually happened:** The latest catalog version is `version`; `latestVersion` exists only on `boards.list()[i].installed`.
+- **How it was resolved:** Test corrected to `version`.
+- **Suggested improvement:** Use one name for the latest catalog version in both results, or say in the `searchPublished` summary that `version` is the latest.
+
+### 2026-11-18 · EPIC-192 / US-2099 · Codex Luna (plan)
+- **Area:** board automation (`reload()` during a reload)
+- **What the agent expected:** The "Board frame not ready for CDP" rejection of `pages[i].editor.reload()` to come from the reload itself.
+- **What actually happened:** It came from the automation pre-flight (`automationBegin`, the pending-dialog check), which needs a ready frame before any host operation runs; reload never needed one.
+- **How it was resolved:** Product fix: reload skips the frame pre-flights; frame automation waits up to 5 s for a loading frame; a CDP call whose frame is replaced retries once on the new frame. The EPIC-191 test workaround is gone.
+- **Suggested improvement:** None beyond the fix.
+
+### 2026-11-18 · EPIC-192 / US-2095 · Codex Luna (plan)
+- **Area:** call path (catalog refresh)
+- **What the agent expected:** `boards.searchPublished()` to fetch the catalog when the cache is empty.
+- **What actually happened:** It honours the 24-hour gate; only `boards.checkPublishedUpdates(true)` forces a fetch. In the test seed the gate is set far in the future, so every catalog test forces it first.
+- **How it was resolved:** Each catalog test starts with `checkPublishedUpdates(true)`.
+- **Suggested improvement:** Say in `published-boards.md` that `checkPublishedUpdates(true)` is the way to refresh the catalog before a search.
+
+### 2026-11-18 · EPIC-192 / US-2096 · Codex Luna (implementation)
+- **Area:** app object (method calls)
+- **What the agent expected:** A stand-in method call to start only when awaited, so a pending `installPublished` could not run while the test drives Board Info.
+- **What actually happened:** Method calls are sent at once and return a real Promise (`app-proxy.ts` `apply`); property reads are lazy and start on `await`.
+- **How it was resolved:** Found in source; the test starts the call, drives the page, then awaits the Promise.
+- **Suggested improvement:** Say in `web-app-tests.md` that method calls start immediately and can be awaited later, while property reads start on `await`.

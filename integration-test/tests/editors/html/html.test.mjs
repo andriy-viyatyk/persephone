@@ -127,7 +127,12 @@ export default [
             ctx.expect(collection).toBeTruthy();
             ctx.expect(collection.title).toContain("Resources");
             ctx.expect(collection.editor).toBe("link-view");
-            const snapshot = await ctx.callText("window.screen.snapshot", [{ maxChars: 12000 }]);
+            // The Resources collection renders after its page opens; wait for it instead of reading once.
+            const snapshot = await ctx.waitFor(
+                (activeContext) => activeContext.callText("window.screen.snapshot", [{ maxChars: 12000 }]),
+                (text) => text.includes("Stylesheets 1"),
+                { timeout: 10000 },
+            );
             ctx.expect(snapshot).toContain("Stylesheets 1");
             ctx.expect(snapshot).toContain("Scripts 1");
             ctx.expect(snapshot).toContain("Images 1");

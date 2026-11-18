@@ -293,7 +293,7 @@ export class BoardEditorFacade extends EditorFacadeBase<BoardEditorModel> implem
             return result.cancelled
                 ? { refreshed: false, cancelled: true, pageId, frameReady: result.frameReady, renderState }
                 : { refreshed: true, pageId, frameReady: result.frameReady, renderState };
-        }, { passive: false, tip: false });
+        }, { passive: true, tip: false, skipReadiness: true });
     }
 
     private isResolvedBoard(): boolean {

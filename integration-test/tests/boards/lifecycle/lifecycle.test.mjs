@@ -188,18 +188,14 @@ document.getElementById("run").addEventListener("click", async () => {
             await ctx.call(`pages[${JSON.stringify(page.id)}].editor.reload`, [], { dialog: true });
             await waitForBoardDialog(ctx, "Board permissions changed");
             await ctx.call("dialogs[0].click", ["Accept"], { dialog: true });
-            // Accepting reloads the board, but a frame read issued while that reload tears the old frame
-            // down can block for the whole wait (seen in full runs). Reload once more through the facade,
-            // which resolves only when the new frame is ready, then read it.
-            await ctx.waitFor(`pages[${JSON.stringify(page.id)}].editor.frameReady`, (value) => value === true, { timeout: 15000 });
-            // reload() rejects fast with "frame not ready" while the accept-triggered load is running.
-            const reloaded = await ctx.waitFor(
-                async () => { try { return await page.editor.reload(); } catch { return null; } },
-                (value) => value?.frameReady === true,
+            const reloaded = await page.editor.reload();
+            ctx.expect(reloaded.frameReady).toBe(true);
+            const wired = await ctx.waitFor(
+                () => page.editor.evaluate("() => document.body.dataset.lifecycleBackendWired"),
+                (value) => value === "yes",
                 { timeout: 15000 },
             );
-            ctx.expect(reloaded.frameReady).toBe(true);
-            ctx.expect(await page.editor.evaluate("() => document.body.dataset.lifecycleBackendWired")).toBe("yes");
+            ctx.expect(wired).toBe("yes");
             await page.editor.click("#run");
             // The backend runs asynchronously; wait until the output holds its JSON result.
             const result = await ctx.waitFor(

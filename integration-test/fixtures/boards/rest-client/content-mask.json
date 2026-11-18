@@ -1,0 +1,19 @@
+{
+  "type": "rest-client",
+  "requests": [
+    {
+      "id": "us2098-content-template",
+      "name": "Fake content-mask template",
+      "collection": "",
+      "method": "GET",
+      "url": "http://127.0.0.1/fake-content",
+      "headers": [],
+      "body": "",
+      "bodyType": "none",
+      "bodyLanguage": "plaintext",
+      "formData": [],
+      "binaryFilePath": "",
+      "formDataEntries": []
+    }
+  ]
+}

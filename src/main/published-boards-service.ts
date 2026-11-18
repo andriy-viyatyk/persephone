@@ -1,6 +1,7 @@
 import { net } from "electron";
 import { electronStore } from "./e-store";
 import { openWindows } from "./open-windows";
+import { getPublishedBoardsCatalogBase } from "./test-mode/published-boards-catalog";
 import { isBoardEditorKind } from "../shared/board/board-manifest-schema";
 import {
     PublishedBoardInfo,
@@ -33,13 +34,21 @@ function boardsRepoRawBase(): string {
     return `https://raw.githubusercontent.com/andriy-viyatyk/persephone-boards/${branch}`;
 }
 
-function manifestUrl(): string {
-    return `${boardsRepoRawBase()}/boards-manifest.json`;
+function catalogBaseUrl(): string | undefined {
+    const selection = getPublishedBoardsCatalogBase();
+    if (selection.mode === "test") return selection.url;
+    return boardsRepoRawBase();
+}
+
+function manifestUrl(): string | undefined {
+    const base = catalogBaseUrl();
+    return base ? `${base}/boards-manifest.json` : undefined;
 }
 
 /** Per-board version history lives in `boards/<id>/versions-manifest.json`, fetched on demand. */
-function versionsUrl(id: string): string {
-    return `${boardsRepoRawBase()}/boards/${encodeURIComponent(id)}/versions-manifest.json`;
+function versionsUrl(id: string): string | undefined {
+    const base = catalogBaseUrl();
+    return base ? `${base}/boards/${encodeURIComponent(id)}/versions-manifest.json` : undefined;
 }
 
 /**
@@ -66,7 +75,8 @@ function isSafeAssetName(name: string): boolean {
 /** Raw URL of a board's screenshot, or undefined when it declares none. */
 function screenshotUrl(id: string, screenshot: string | undefined): string | undefined {
     if (!screenshot) return undefined;
-    return `${boardsRepoRawBase()}/boards/${encodeURIComponent(id)}/${encodeURIComponent(screenshot)}`;
+    const base = catalogBaseUrl();
+    return base ? `${base}/boards/${encodeURIComponent(id)}/${encodeURIComponent(screenshot)}` : undefined;
 }
 
 function validateLocalizedText(value: unknown): string | undefined {
@@ -219,8 +229,10 @@ function catalogsEqual(
 }
 
 async function fetchCatalog(): Promise<PublishedBoardsCatalog | null> {
+    const url = manifestUrl();
+    if (!url) return null;
     try {
-        const response = await net.fetch(manifestUrl(), {
+        const response = await net.fetch(url, {
             headers: { "User-Agent": "persephone" },
         });
         if (!response.ok) return null;
@@ -274,8 +286,10 @@ export async function getPublishedBoards(force = false): Promise<PublishedBoards
  *  requested when the Board Info properties screen opens. Silent null on network/parse failure
  *  (the view offers a Retry). */
 export async function getBoardVersions(id: string): Promise<PublishedBoardVersions | null> {
+    const url = versionsUrl(id);
+    if (!url) return null;
     try {
-        const response = await net.fetch(versionsUrl(id), {
+        const response = await net.fetch(url, {
             headers: { "User-Agent": "persephone" },
         });
         if (!response.ok) return null;

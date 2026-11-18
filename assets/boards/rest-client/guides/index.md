@@ -11,7 +11,7 @@ The bundled REST Client board edits .rest.json collections and JSON content with
 
 ## Opening a collection
 
-Open a .rest.json file or JSON content detected with type "rest-client" and a requests array. Use the REST Client standalone new-page entry for a scratch collection. The http.request.open capability routes an HTTP request from supported Persephone surfaces into a board page.
+Open a .rest.json file to open it in the REST Client board. JSON content with type "rest-client" and a requests array is offered as a matching editor in the editor switch; opening that content does not open the board directly. Use the REST Client standalone new-page entry for a scratch collection. The http.request.open capability routes an HTTP request from supported Persephone surfaces into a board page.
 
 The guide is listed in the About page and in MCP `guides` as `installed-boards/rest-client/index`. Press F1 on a REST Client page to open it.
 

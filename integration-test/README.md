@@ -48,6 +48,18 @@ already-running app's trust settings; run HTTPS fixture tests as normal owned te
 refuses occupied ports, an existing `uitest` pipe, an unsafe
 profile path, or a concurrent `.runner.lock`. It does not stop the user's ordinary app.
 
+The fixture server also exposes `/refused`, which redirects to an unused loopback port to exercise
+transport failures, and `/boards-catalog/`, a fake published-board catalog with version manifests,
+screenshots, and ZIP archives generated from `fixtures/boards-catalog/` at server startup. Owned
+module launches receive `PERSEPHONE_TEST_BOARDS_CATALOG_URL` for that loopback route. The main
+process honors the override only in test instances and only for an `http://127.0.0.1` URL; attach
+cannot change the environment of its existing app.
+
+The wrapper detects the boards checkout at `../persephone-boards/boards`, or uses
+`PERSEPHONE_BOARDS_DIR` as an override. When present it enables the `published-board-checkout`
+requirement automatically; when absent, tests with that requirement skip and report the missing
+path and how to set the override. Do not pass this wrapper-owned tag to `--with`.
+
 `--area` accepts comma-separated whole-segment prefixes: `core` includes `core/smoke` but not
 `core-x`. `--test` selects a substring of the descriptor name. `--list` prints the area/module
 tree without launching an app. `--rerun-failed` uses exact file/name identities from
@@ -102,11 +114,15 @@ Browser tests live under `tests/browser/automation/{input,observe}/`, `page-mode
 `tests/editors/browser/` location), `page-tools/`, and `tor/`. Their local pages and assets are under
 `fixtures/http/browser/<module>/`.
 
-Board platform tests live under `tests/boards/{lifecycle,permissions,info,bridge,extensions}/`.
-Shared board setup and trust helpers belong in `tests/boards/helpers.mjs`. Put board fixtures under
-`fixtures/boards/<module>/`, with each board in its own folder. `ctx.fixture()` returns the isolated
-`work/` copy; reset mutable files there at the start of each test. Prefer `ctx.app.boards.*` and
-`ctx.app.pages[id].editor.*`; use `ctx.call` or `ctx.callText` for dialog options and exact strings.
+Board platform tests live under
+`tests/boards/{lifecycle,permissions,info,bridge,extensions,catalog,published,excalidraw,rest-client}/`.
+Shared board setup and trust helpers belong in `tests/boards/helpers.mjs`; the cross-area
+published-board checkout helper is `tests/helpers/published-boards.mjs`. Put board fixtures under
+`fixtures/boards/<module>/`, with each board in its own folder. Catalog ZIP sources are under
+`fixtures/boards-catalog/`; REST Client HTTP fixtures are under `fixtures/http/rest-client/`.
+`ctx.fixture()` returns the isolated `work/` copy; reset mutable files there at the start of each
+test. Prefer `ctx.app.boards.*` and `ctx.app.pages[id].editor.*`; use `ctx.call` or `ctx.callText`
+for dialog options and exact strings.
 
 For full API, target, timeout, lifecycle, and report details, see
 [`doc/standards/integration-tests.md`](../doc/standards/integration-tests.md).

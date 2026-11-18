@@ -35,6 +35,14 @@ pages[pageId].editor.click({ ref: "e12" }) / .type(...) / .evaluate(...)  → in
   screen (zero-height, overridden `display`), so it can look right while the render is broken.
   After UI changes, check `pages[pageId].editor.screenshot()` before declaring the UI correct.
 
+Board automation waits, with a timeout, for a frame that is still loading. You can call
+`snapshot()`, `evaluate()`, and the other frame methods after opening a board or while it reloads;
+if a reload replaces the frame during a call, Persephone retries that call on the new frame.
+`pages[pageId].editor.reload()` also works while the frame is loading or another reload is in
+progress. Its result's `frameReady` is true once the main frame has loaded. A board's optional
+`.app` model can register slightly later, so after `frameReady` becomes true, poll
+`pages[pageId].editor.app` until it is available before reading its members.
+
 A board never navigates, so it has no navigation members and cannot add or close frames. Its
 `tabs` and `switchTab("board-secondary:<viewId>")` members select which board frame to drive
 (see next).

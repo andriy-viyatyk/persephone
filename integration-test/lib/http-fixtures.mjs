@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto";
 import { createReadStream, readFileSync } from "node:fs";
-import { realpath, stat } from "node:fs/promises";
+import { readdir, readFile, realpath, stat } from "node:fs/promises";
 import http from "node:http";
 import https from "node:https";
+import net from "node:net";
 import path from "node:path";
-import { HTTP_FIXTURE_PORT, HTTP_FIXTURE_ROOT, HTTPS_FIXTURE_PORT, TLS_FIXTURE_CERT_PATH, TLS_FIXTURE_KEY_PATH } from "./config.mjs";
+import JSZip from "jszip";
+import { FIXTURE_ROOT, HTTP_FIXTURE_PORT, HTTP_FIXTURE_ROOT, HTTPS_FIXTURE_PORT, TLS_FIXTURE_CERT_PATH, TLS_FIXTURE_KEY_PATH } from "./config.mjs";
 
 const MAX_ECHO_BYTES = 1024 * 1024;
 const BODYLESS_STATUSES = new Set([204, 205, 304]);
@@ -30,6 +32,7 @@ const MAX_DOWNLOAD_CHUNKS = 200;
 const MAX_DOWNLOAD_CHUNK_DELAY_MS = 2000;
 const DOWNLOAD_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const DOWNLOAD_TEXT = "Persephone download fixture.\n";
+const BOARDS_CATALOG_ROOT = path.join(FIXTURE_ROOT, "boards-catalog");
 
 function contentTypeFor(filePath) {
     return CONTENT_TYPES[path.extname(filePath).toLowerCase()] ?? "text/plain; charset=utf-8";
@@ -57,6 +60,74 @@ function localPath(value) {
     } catch { return false; }
 }
 
+async function buildBoardsCatalog() {
+    const archives = new Map();
+    const sources = new Map();
+    async function collectFiles(directory, relative = "") {
+        const entries = await readdir(directory, { withFileTypes: true });
+        for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+            const childRelative = path.join(relative, entry.name);
+            const child = path.join(directory, entry.name);
+            if (entry.isDirectory()) await collectFiles(child, childRelative);
+            else if (entry.isFile()) sources.set(childRelative.replaceAll(path.sep, "/"), await readFile(child));
+        }
+    }
+
+    const boardEntries = [];
+    const versionsById = new Map();
+    for (const idEntry of await readdir(BOARDS_CATALOG_ROOT, { withFileTypes: true })) {
+        if (!idEntry.isDirectory()) continue;
+        const id = idEntry.name;
+        const boardRoot = path.join(BOARDS_CATALOG_ROOT, id);
+        const versionEntries = (await readdir(boardRoot, { withFileTypes: true }))
+            .filter((entry) => entry.isDirectory())
+            .sort((left, right) => right.name.localeCompare(left.name, undefined, { numeric: true }));
+        const versionRecords = [];
+        for (const versionEntry of versionEntries) {
+            const version = versionEntry.name;
+            const versionRoot = path.join(boardRoot, version);
+            sources.clear();
+            await collectFiles(versionRoot);
+            const zip = new JSZip();
+            for (const [filename, contents] of sources) zip.file(filename, contents);
+            const archive = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+            const manifest = JSON.parse(sources.get("board-manifest.json").toString("utf8"));
+            const sha256 = createHash("sha256").update(archive).digest("hex");
+            const archivePath = `/boards-catalog/archives/${id}/${version}.zip`;
+            const archiveInfo = {
+                url: `http://127.0.0.1:${HTTP_FIXTURE_PORT}${archivePath}`,
+                size: archive.length,
+                sha256: id === "us2095-bad-sha" ? "0".repeat(64) : sha256,
+            };
+            archives.set(archivePath, archive);
+            versionRecords.push({
+                version,
+                date: version === "99.0.0" ? "2026-01-03T00:00:00.000Z" : version === "1.1.0" ? "2026-01-02T00:00:00.000Z" : "2026-01-01T00:00:00.000Z",
+                notes: `US-2095 fixture version ${version}`,
+                ...(manifest.minAppVersion ? { minAppVersion: manifest.minAppVersion } : {}),
+                archive: archiveInfo,
+            });
+        }
+        versionsById.set(id, { schemaVersion: 1, id, versions: versionRecords });
+        const latest = versionRecords.find((entry) => entry.version === "1.1.0") ?? versionRecords[0];
+        boardEntries.push({
+            id,
+            name: id === "us2095-versioned" ? "US-2095 Versioned Board" : "US-2095 Bad SHA Board",
+            version: latest.version,
+            ...(id === "us2095-versioned" ? { screenshot: "catalog.svg" } : {}),
+            archive: latest.archive,
+        });
+    }
+    const catalog = Buffer.from(JSON.stringify({ schemaVersion: 1, boards: boardEntries }));
+    const versions = new Map([...versionsById].map(([id, value]) => [
+        `/boards-catalog/boards/${id}/versions-manifest.json`,
+        Buffer.from(JSON.stringify(value)),
+    ]));
+    const screenshotPath = "/boards-catalog/boards/us2095-versioned/catalog.svg";
+    const screenshot = await readFile(path.join(BOARDS_CATALOG_ROOT, "us2095-versioned", "catalog.svg"));
+    return { archives, catalog, versions, screenshotPath, screenshot };
+}
+
 /**
  * Electron's `sha256/<base64>` fingerprint of the committed, test-only HTTPS fixture certificate
  * (`lib/tls/`, issued for 127.0.0.1 and localhost). The wrapper passes it to test instances through
@@ -71,8 +142,16 @@ export function fixtureCertificateFingerprint() {
 /** Serve the fixture tree on HTTP (`port`) and HTTPS (`httpsPort`, test certificate) on 127.0.0.1. */
 export async function startHttpFixtures({ root = HTTP_FIXTURE_ROOT, port = HTTP_FIXTURE_PORT, httpsPort = HTTPS_FIXTURE_PORT, closeTimeout = 5000 } = {}) {
     const fixtureRoot = await realpath(root);
+    const boardsCatalog = await buildBoardsCatalog();
     const timers = new Set();
     const sockets = new Set();
+    const refusedPortReservation = net.createServer();
+    await new Promise((resolve, reject) => {
+        refusedPortReservation.once("error", reject);
+        refusedPortReservation.listen(0, "127.0.0.1", resolve);
+    });
+    const refusedPort = refusedPortReservation.address().port;
+    await new Promise((resolve, reject) => refusedPortReservation.close((error) => error ? reject(error) : resolve()));
     const handle = async (request, response) => {
         const rawPath = String(request.url ?? "").split(/[?#]/, 1)[0];
         if (/%2f|%5c/i.test(rawPath)) return send(response, 400, "text/plain; charset=utf-8", "Encoded path separators are not allowed\n", request.method === "HEAD");
@@ -103,6 +182,25 @@ export async function startHttpFixtures({ root = HTTP_FIXTURE_ROOT, port = HTTP_
             if (tooLarge) return send(response, 413, "text/plain; charset=utf-8", "Payload Too Large\n");
             const body = Buffer.concat(chunks).toString("utf8");
             return send(response, 200, "application/json; charset=utf-8", JSON.stringify({ method: request.method, url: request.url, headers: request.headers, body }), request.method === "HEAD");
+        }
+        if (pathname === "/refused") {
+            response.statusCode = 302;
+            response.setHeader("Location", `http://127.0.0.1:${refusedPort}/`);
+            return response.end();
+        }
+        if (pathname.startsWith("/boards-catalog/")) {
+            if (request.method !== "GET" && request.method !== "HEAD") return send(response, 405, "text/plain; charset=utf-8", "Method Not Allowed\n");
+            const archive = boardsCatalog.archives.get(pathname);
+            const version = boardsCatalog.versions.get(pathname);
+            const body = pathname === "/boards-catalog/boards-manifest.json"
+                ? boardsCatalog.catalog
+                : version ?? (pathname === boardsCatalog.screenshotPath ? boardsCatalog.screenshot : archive);
+            if (!body) return send(response, 404, "text/plain; charset=utf-8", "Not Found\n", request.method === "HEAD");
+            const contentType = archive ? "application/zip" : pathname.endsWith(".svg") ? "image/svg+xml" : "application/json; charset=utf-8";
+            response.statusCode = 200;
+            response.setHeader("Content-Type", contentType);
+            response.setHeader("Content-Length", body.length);
+            return response.end(request.method === "HEAD" ? undefined : body);
         }
         if (pathname === "/delay") {
             if (request.method !== "GET" && request.method !== "HEAD") return send(response, 405, "text/plain; charset=utf-8", "Method Not Allowed\n");

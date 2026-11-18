@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "us2095-versioned",
+  "name": "US-2095 Versioned Board",
+  "version": "99.0.0",
+  "minBridgeVersion": "1.30.0",
+  "minAppVersion": "99.0.0",
+  "permissions": {
+    "execute": false,
+    "service": false,
+    "fileSystem": false,
+    "openExternal": false,
+    "appScripting": false,
+    "network": false,
+    "clipboardRead": false,
+    "camera": false,
+    "microphone": false,
+    "computerAudio": false,
+    "geolocation": false,
+    "notifications": false,
+    "themes": false
+  }
+}

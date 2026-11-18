@@ -5,7 +5,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { REQUIREMENT_TAGS, validateRequirements } from "./lib/context.mjs";
-import { createTimeouts, DEV_MAIN_PATH, HTTP_FIXTURE_PORT, HTTPS_FIXTURE_PORT, KEEP_OPEN_PATH, LOCK_PATH, MCP_URL, PROFILE_ROOT, REPORT_ROOT, REPOSITORY_ROOT, RUNNER_ROOT, RUNS_ROOT, TEST_ROOT, TEST_SETUP_PATH } from "./lib/config.mjs";
+import { createTimeouts, DEV_MAIN_PATH, HTTP_FIXTURE_PORT, HTTP_FIXTURE_URL, HTTPS_FIXTURE_PORT, KEEP_OPEN_PATH, LOCK_PATH, MCP_URL, PROFILE_ROOT, REPORT_ROOT, REPOSITORY_ROOT, RUNNER_ROOT, RUNS_ROOT, TEST_ROOT, TEST_SETUP_PATH } from "./lib/config.mjs";
 import { APP_PORTS, assertPortsFree, assertProductionBuildAllowed, buildProduction, createLauncher, prepareProfile, refreshFixtures, validateExecutable, verifyDevTarget } from "./lib/launcher.mjs";
 import { McpClient } from "./lib/client.mjs";
 import { fixtureCertificateFingerprint, startHttpFixtures } from "./lib/http-fixtures.mjs";
@@ -49,6 +49,7 @@ function parseArguments(args) {
             const tags = value.split(",").map((tag) => tag.trim());
             if (tags.some((tag) => !tag)) throw new Error("--with contains an empty tag.");
             if (new Set(tags).size !== tags.length) throw new Error("--with contains duplicate tags.");
+            if (tags.includes("published-board-checkout")) throw new Error("--with published-board-checkout is not allowed; the wrapper enables it when the boards checkout exists.");
             const invalid = tags.filter((tag) => !REQUIREMENT_TAGS.includes(tag) || tag === "launch");
             if (invalid.length) throw new Error(`Unknown --with tag: ${invalid.join(", ")}. Allowed tags: ${REQUIREMENT_TAGS.filter((tag) => tag !== "launch").join(", ")}.`);
             options.with = tags;
@@ -173,6 +174,9 @@ function renderTestList(tests, options) {
 }
 
 function classify(descriptor, options) {
+    if (descriptor.requires.includes("published-board-checkout") && !options.boardsCheckoutAvailable) {
+        return `boards checkout not found at ${options.boardsDirectory}; set PERSEPHONE_BOARDS_DIR to its boards folder`;
+    }
     if (options.attach && descriptor.requires.includes("launch")) return "needs a launched app (not available with --attach)";
     const missing = descriptor.requires.filter((tag) => tag !== "launch" && !options.with.includes(tag));
     return missing.length ? `missing opt-in: ${missing.join(", ")}` : null;
@@ -229,6 +233,13 @@ async function main() {
     const startedAt = new Date().toISOString();
     let selection = [];
     try {
+        options.boardsDirectory = process.env.PERSEPHONE_BOARDS_DIR !== undefined
+            ? path.resolve(process.env.PERSEPHONE_BOARDS_DIR)
+            : path.resolve(REPOSITORY_ROOT, "..", "persephone-boards", "boards");
+        options.boardsCheckoutAvailable = existsSync(options.boardsDirectory);
+        if (options.boardsCheckoutAvailable && !options.with.includes("published-board-checkout")) {
+            options.with.push("published-board-checkout");
+        }
         if (!options.open) {
             const discovered = await discoverTests();
             if (options.list) {
@@ -333,7 +344,7 @@ async function main() {
                     executable = electronPath;
                     args = [DEV_MAIN_PATH, "--test", testFolder, ...productArgs];
                 }
-                const exitCode = await runProduct(executable, args, (child) => { currentChild = child; });
+                const exitCode = await runProduct(executable, args, (child) => { currentChild = child; }, !options.attach);
                 currentChild = undefined;
                 const collected = await collectModuleReport(stageDirectory, moduleTests, {
                     name: options.target === "attach" ? "attach" : options.target, attach: options.attach, with: options.with,
@@ -397,9 +408,13 @@ async function main() {
     }
 }
 
-async function runProduct(executable, args, onChild) {
+async function runProduct(executable, args, onChild, owned) {
     // Owned test instances accept the HTTPS fixture's test certificate, and only that one.
-    const env = { ...process.env, PERSEPHONE_TEST_TRUSTED_CERTIFICATES: fixtureCertificateFingerprint() };
+    const env = {
+        ...process.env,
+        PERSEPHONE_TEST_TRUSTED_CERTIFICATES: fixtureCertificateFingerprint(),
+        ...(owned ? { PERSEPHONE_TEST_BOARDS_CATALOG_URL: `${HTTP_FIXTURE_URL}/boards-catalog` } : {}),
+    };
     const child = spawn(executable, args, { cwd: REPOSITORY_ROOT, stdio: "inherit", windowsHide: true, env });
     onChild(child);
     return new Promise((resolve, reject) => {

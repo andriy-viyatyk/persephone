@@ -36,7 +36,8 @@ inert on disk; only `registerBoard` (a user trust-dialog click) activates it.
 - **`boards.searchPublished(query?)`** → `Promise<PublishedBoardResult[]>` — the catalog,
   filtered by a case-insensitive `query` over name/description/file-masks (omit for all), each
   result annotated with `installed`, `installedVersion`, `updateAvailable`, `compatible`, `size`.
-  **Read-only, no dialog.**
+  **Read-only, no dialog.** Refresh the catalog first with `boards.checkPublishedUpdates(true)`
+  when you need current results; the `true` forces a refresh before the search.
 - **`boards.getPublishedVersions(id)`** → `Promise<PublishedVersionResult[]>` — a board's
   version history, newest first, each flagged `compatible` (vs this app) and `installed`.
   **Read-only, no dialog.**

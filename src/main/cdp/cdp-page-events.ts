@@ -190,9 +190,9 @@ async function pageEventsForSender(
         const enableSession = async () => pageEventsForTarget(key, { ...target, sessionId });
         try { return await enableSession(); }
         catch (error: unknown) {
-            if (boardRoute.registration.sessionId !== sessionId) throw error;
-            boardRoute.registration.sessionId = undefined;
-            sessionId = await resolveBoardSession(boardRoute.registration);
+            if (boardRoute.registration.sessionId === sessionId) boardRoute.registration.sessionId = undefined;
+            try { sessionId = await resolveBoardSession(boardRoute.registration); }
+            catch { throw error; }
             if (!sessionId) throw error;
             return enableSession();
         }

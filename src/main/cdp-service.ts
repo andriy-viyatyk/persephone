@@ -22,6 +22,8 @@ import * as cdpNetworkCollector from "./cdp/cdp-network-collector";
 import * as cdpPageEvents from "./cdp/cdp-page-events";
 import * as cdpWaits from "./cdp/cdp-waits";
 
+const BOARD_FRAME_REPLACEMENT_TIMEOUT_MS = 5000;
+
 let getWebContents: ((key: string) => WebContents | undefined) | undefined;
 let onAiVisionSignalCallback: ((webContents: WebContents, payload: string, executionContextId: number, mainContext: boolean) => void) | undefined;
 
@@ -50,11 +52,12 @@ function attachTarget(wc: WebContents): CdpTarget {
  * board frame among the host's CDP targets, then `attachToTarget({ flatten: true })`.
  */
 async function resolveBoardSession(reg: BoardFrameRegistration): Promise<string | undefined> {
-    if (reg.host.isDestroyed()) return undefined;
-    attachTarget(reg.host);
-    if (reg.sessionId) return reg.sessionId;
-    const origin = `board://${reg.boardHost}`;
-    const { targetInfos } = await reg.host.debugger.sendCommand("Target.getTargets");
+    const active = boardFrameRegistry.get(reg.key) ?? reg;
+    if (active.host.isDestroyed()) return undefined;
+    attachTarget(active.host);
+    if (active.sessionId) return active.sessionId;
+    const origin = `board://${active.boardHost}`;
+    const { targetInfos } = await active.host.debugger.sendCommand("Target.getTargets");
     const iframes = (targetInfos || []).filter(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (t: any) => t.type === "iframe" && typeof t.url === "string" && t.url.startsWith(origin),
@@ -64,17 +67,60 @@ async function resolveBoardSession(reg: BoardFrameRegistration): Promise<string 
     // frame briefly lingers. Fall back to the first same-origin frame only when
     // no nonce is known or none matches (e.g. an older shim without the tag).
     const target =
-        (reg.frameNonce &&
+        (active.frameNonce &&
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            iframes.find((t: any) => t.url.includes(`v=${reg.frameNonce}`))) ||
+            iframes.find((t: any) => t.url.includes(`v=${active.frameNonce}`))) ||
         iframes[0];
     if (!target) return undefined;
-    const { sessionId } = await reg.host.debugger.sendCommand("Target.attachToTarget", {
+    const { sessionId } = await active.host.debugger.sendCommand("Target.attachToTarget", {
         targetId: target.targetId,
         flatten: true,
     });
-    reg.sessionId = sessionId;
+    active.sessionId = sessionId;
     return sessionId;
+}
+
+async function resolveReplacementSession(registration: BoardFrameRegistration, detachedSessionId: string): Promise<string | undefined> {
+    const key = registration.key;
+    if (registration.sessionId === detachedSessionId) registration.sessionId = undefined;
+    const target = attachTarget(registration.host);
+    return new Promise<string | undefined>((resolve) => {
+        let settled = false;
+        let resolving = false;
+        let cleanupRegistration = () => {};
+        let cleanupTarget = () => {};
+        const finish = (sessionId?: string) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            cleanupRegistration();
+            cleanupTarget();
+            resolve(sessionId);
+        };
+        const tryResolve = async () => {
+            if (settled || resolving) return;
+            resolving = true;
+            try {
+                const current = boardFrameRegistry.get(key);
+                if (current && !current.host.isDestroyed()) {
+                    const sessionId = await resolveBoardSession(current);
+                    if (sessionId) { finish(sessionId); return; }
+                }
+            } catch {
+                // Chromium can expose the replacement after its renderer registration.
+            } finally {
+                resolving = false;
+            }
+        };
+        const timer = setTimeout(() => finish(), BOARD_FRAME_REPLACEMENT_TIMEOUT_MS);
+        cleanupRegistration = boardFrameRegistry.onRegistrationChanged((changedKey) => {
+            if (changedKey === key) void tryResolve();
+        });
+        cleanupTarget = target.subscribeCdpEvents((method) => {
+            if (method === "Target.attachedToTarget") void tryResolve();
+        });
+        void tryResolve();
+    });
 }
 
 /**
@@ -142,17 +188,58 @@ async function boardSend(reg: BoardFrameRegistration, method: string, params: ob
         return reg.host.debugger.sendCommand(method, params, sessionId);
     }
 
-    let sid = await resolveBoardSession(reg);
+    const key = reg.key;
+    let activeRegistration = boardFrameRegistry.get(key) ?? reg;
+    let sid = await resolveBoardSession(activeRegistration);
     if (!sid) throw new Error("Board frame not ready for CDP (still loading?)");
-    try {
-        return await reg.host.debugger.sendCommand(method, params, sid);
-    } catch (e) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+        const target = attachTarget(activeRegistration.host);
+        let resolveGone = () => {};
+        let gone = false;
+        const goneSignal = new Promise<void>((resolve) => { resolveGone = resolve; });
+        const cleanupRegistration = boardFrameRegistry.onRegistrationChanged((changedKey, current, previous) => {
+            if (changedKey === key && previous === activeRegistration && current !== activeRegistration) {
+                gone = true;
+                resolveGone();
+            }
+        });
+        const cleanupTarget = target.subscribeCdpEvents((eventMethod, raw) => {
+            if (eventMethod !== "Target.detachedFromTarget" || !raw || typeof raw !== "object") return;
+            if ((raw as { sessionId?: unknown }).sessionId !== sid) return;
+            gone = true;
+            resolveGone();
+        });
+        if (boardFrameRegistry.get(key) !== activeRegistration) {
+            gone = true;
+            resolveGone();
+        }
+        const command = activeRegistration.host.debugger.sendCommand(method, params, sid);
+        const outcome = await Promise.race([
+            command.then(value => ({ value }), error => ({ error })),
+            goneSignal.then(() => ({ replaced: true as const })),
+        ]);
+        cleanupRegistration();
+        cleanupTarget();
+        if (!gone && "value" in outcome) return outcome.value;
+        if (!gone && "error" in outcome) {
+            // The cached session may be stale while the registration is unchanged (the frame
+            // navigated in place) — re-resolve once and retry on a different session.
+            if (attempt > 0) throw outcome.error;
+            activeRegistration.sessionId = undefined;
+            const freshSessionId = await resolveBoardSession(activeRegistration);
+            if (!freshSessionId || freshSessionId === sid) throw outcome.error;
+            sid = freshSessionId;
+            continue;
+        }
         // The cached session may be stale (frame reloaded/navigated) — re-resolve once.
-        reg.sessionId = undefined;
-        sid = await resolveBoardSession(reg);
-        if (sid) return reg.host.debugger.sendCommand(method, params, sid);
-        throw e;
+        activeRegistration.sessionId = undefined;
+        const replacementSessionId = await resolveReplacementSession(activeRegistration, sid);
+        const replacement = boardFrameRegistry.get(key);
+        if (!replacement || !replacementSessionId) throw new Error("Board frame was replaced but the replacement did not become ready within 5000 ms.");
+        activeRegistration = replacement;
+        sid = replacementSessionId;
     }
+    throw new Error("Board frame was replaced before the command completed.");
 }
 
 export interface CdpServiceStartDependencies {

@@ -1,6 +1,7 @@
 import type { WebContents } from "electron";
 import type { BrowserResponsePattern, BrowserResponseResult, BrowserResponseWaitOptions } from "../../ipc/browser-ipc";
 import { APP_WINDOW_CDP_KEY } from "../../ipc/api-types";
+import { boardFrameRegistry } from "../board-host/BoardFrameRegistry";
 import { errMessage, isRecord } from "../../shared/utils";
 import { boundedResponseBody, ensureNetworkCollector, forgetOwnedFrameSession, getNetworkCollector, getOwnedTargetSessions } from "./cdp-network-collector";
 import type { CdpEventHandler, CdpFeatureTarget } from "./CdpTarget";
@@ -59,12 +60,14 @@ export async function armResponseWait(
     const promise = new Promise<BrowserResponseResult>((done, fail) => { resolve = done; reject = fail; });
     const requests = new Map<string, { url: string; response?: BrowserResponseResult }>();
     let cleanupEvent = () => {};
+    let cleanupRegistration = () => {};
     let settled = false;
     const finish = (error?: Error, result?: BrowserResponseResult) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
         cleanupEvent();
+        cleanupRegistration();
         if (error) reject(error); else if (result) resolve(result);
     };
     const timer = setTimeout(() => finish(new Error(`Timed out waiting for response after ${timeout} ms (timeout ${timeout} ms).`)), Math.min(timeout, 595_000));
@@ -107,6 +110,13 @@ export async function armResponseWait(
             }).catch(() => finish(undefined, result));
         }
     });
+    if (board) {
+        cleanupRegistration = boardFrameRegistry.onRegistrationChanged((changedKey, current, previous) => {
+            if (changedKey === board.key && previous === board && current !== board) {
+                finish(new Error("Board frame was replaced while waiting for a response."));
+            }
+        });
+    }
     const isBrowserTab = target.kind === "browser" && key !== APP_WINDOW_CDP_KEY;
     try {
         await Promise.all([

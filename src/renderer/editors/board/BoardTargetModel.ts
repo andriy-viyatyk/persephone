@@ -6,6 +6,7 @@ import { panelKey } from "../../api/pages/panel-key";
 import { boardSecondaryPanelId, parseBoardSecondaryPanelId } from "./board-secondary";
 import type { BoardFrameRegistry } from "./model/BoardFrameRegistry";
 import type { BoardEditorModel } from "./BoardEditorModel";
+import { BOARD_FRAME_READY_TIMEOUT_MS } from "./model/BoardFrameRegistry";
 
 /**
  * Automation adapter for board pages. The board has no `WebContents` of its
@@ -112,7 +113,12 @@ export class BoardTargetModel implements IAutomationTarget, ISyntheticInputHost,
      * the main tab and for an already-ready secondary (resolves immediately).
      */
     async ensureReady(tabId = this.registry.activeTabId): Promise<void> {
-        if (tabId === BOARD_CDP_TAB) return;
+        if (tabId === BOARD_CDP_TAB) {
+            if (this.registry.isFrameReady(tabId)) return;
+            const ready = await this.registry.waitForFrameReady(tabId, BOARD_FRAME_READY_TIMEOUT_MS);
+            if (!ready) throw new Error(`Board tab '${tabId}' did not become ready within ${BOARD_FRAME_READY_TIMEOUT_MS} ms.`);
+            return;
+        }
         // The registry records when a frame REGISTERED for CDP — not whether it is on screen.
         // A secondary panel that has loaded and then been collapsed keeps its frame mounted and
         // registered, and Chromium omits hidden subtrees from the accessibility tree, so a

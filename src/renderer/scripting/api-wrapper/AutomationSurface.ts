@@ -51,6 +51,7 @@ export class AutomationSurface {
         options: {
             passive: boolean;
             policyChange?: boolean;
+            skipReadiness?: boolean;
             tip?: boolean;
             tipTabId?: string;
             useTipTabId?: boolean;
@@ -58,7 +59,9 @@ export class AutomationSurface {
         },
     ): Promise<T> {
         const tabs = options.readinessTabs ?? [tabId];
-        for (const id of new Set(tabs)) await ensureTargetReady(this.target, id);
+        if (!options.skipReadiness) {
+            for (const id of new Set(tabs)) await ensureTargetReady(this.target, id);
+        }
         const invoke = async (): Promise<T> => {
             const tipUrl = options.tip ? this.options.tipUrl?.(options.useTipTabId ? options.tipTabId : tabId) : undefined;
             const result = await fn();
@@ -74,7 +77,7 @@ export class AutomationSurface {
         operation: string,
         tabId: string | undefined,
         fn: () => T | Promise<T>,
-        options: { passive: boolean; tip: boolean },
+        options: { passive: boolean; tip: boolean; skipReadiness?: boolean },
     ): Promise<T> {
         return this.run(operation, tabId, fn, options);
     }

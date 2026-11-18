@@ -85,6 +85,11 @@ certificate is accepted only by an app instance owned by that run. Set
 in `sha256/<base64>` form. The runner supplies its fixture fingerprint; ordinary app instances do
 not use this trust setting, and `--open`/`--attach` runs do not accept the runner certificate.
 
+For repository board-catalog tests, an owned suite launch also sets
+`PERSEPHONE_TEST_BOARDS_CATALOG_URL` to the loopback fake catalog. The product honors this value
+only in a test instance and only for an `http://127.0.0.1` URL; attached and ordinary app instances
+do not use it.
+
 Downloads in an app launched by the runner do not open the Save dialog. They are saved to the
 profile's `test-downloads` folder (a ` (1)` suffix keeps names unique). Find the file's path in
 `app.downloads.downloads[i].savePath` once its `status` is `completed`. An app joined with

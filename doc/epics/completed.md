@@ -1,3 +1,28 @@
+## EPIC-192 — UI test coverage, phase 7b: published-board helper, fake catalog, Excalidraw, REST Client
+
+Completed 2026-11-18. Second half of Phase 7 of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 26 new
+tests in `integration-test/tests/boards/` (`catalog`, `excalidraw`, `rest-client`, `published`); the suite is 403
+tests. Codex (Luna) planned and wrote the tests blind; Claude reviewed, ran and triaged, and recorded 15 cases in
+[ai-vision-feedback.md](../reviews/ai-vision-feedback.md). **Runner and test support:** a fake published-boards
+catalog on the fixture server (`/boards-catalog/`, ZIP archives built at start from `fixtures/boards-catalog/`), read
+only by a test instance through `PERSEPHONE_TEST_BOARDS_CATALOG_URL` (loopback only, fail closed); a `/refused` route;
+the published-board helper `tests/helpers/published-boards.mjs` with an automatic `published-board-checkout`
+requirement that skips with the expected path when `../persephone-boards` is missing. **Fixed:** board automation
+during a reload (EPIC-191 open item): `reload()` no longer needs the old frame, frame calls wait for a loading frame,
+and a call whose frame is replaced retries once on the new one; the `$help` of a capability `open` method now shows
+the `{ pageId?, result }` envelope. The intermittent HTML "Show Resources" test waits for the rendered collection.
+**Open:** the EPIC-187 grid row-insertion decision; the intermittent EPIC-185 env-vars test. **Uncovered:** the
+catalog's automatic refresh, download cancel, catalog transport failures, the update busy refusal, the Excalidraw
+library setting, malformed REST Client collections, cancellation and TLS. Final launched run (`--with git,mneme`): 399
+passed, 2 failed, 2 skipped. Phase 8a (published document viewers) is next. Completion skills by Codex (Luna). Epic
+document: [EPIC-192](EPIC-192.md).
+
+- [x] **Catalog test support and the published-board helper (US-2095).**
+- [x] **Catalog install, update and roll back (US-2096).**
+- [x] **Excalidraw (US-2097).**
+- [x] **REST Client (US-2098).**
+- [x] **Board automation waits for a loading frame (US-2099).**
+
 ## EPIC-191 — UI test coverage, phase 7a: board platform (lifecycle, permissions, Board Info, bridge, extensions)
 
 Completed 2026-11-18. First half of Phase 7 of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 52 new

@@ -27,9 +27,19 @@ Release notes and changelog for Persephone (formerly js-notepad).
   still rejected.
 - **URL patterns over `call`:** `waitForURL` and `waitForResponse` accept `{ regex, flags? }` where a
   script would pass a RegExp, because a `call` carries only JSON.
+- **Fake board catalog in web-app tests:** an app launched by the test runner reads the published-boards
+  catalog from the loopback URL in `PERSEPHONE_TEST_BOARDS_CATALOG_URL` and never from GitHub, so catalog
+  install, update and roll back can be tested offline. Outside a test run the variable is ignored.
 
 ### Bug Fixes
 
+- **Board automation during a reload:** while a board was reloading (for example after accepting the
+  permissions-changed dialog), `pages[i].editor.reload()` failed at once with "Board frame not ready"
+  and a frame call such as `evaluate` could hang. Reload now starts without needing the old frame,
+  automation waits for a loading frame, and a call cut off by the frame being replaced is retried on
+  the new frame or fails promptly.
+- **Capability `open` results in `$help`:** the `Returns:` line of a capability's `open` method now
+  shows the `{ pageId?, result }` envelope the call returns, not only the inner result.
 - **Opening a board twice:** `boards.openBoard(root)` opened a second tab for a board that was
   already open. It now switches to the board's existing tab, as documented.
 - **Demo board settings on a fresh profile:** a board created with `boards.createDemoBoard` (or the

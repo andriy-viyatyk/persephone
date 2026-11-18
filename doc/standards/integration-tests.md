@@ -46,6 +46,15 @@ ids receive separate app instances too. The manifest limits that invocation to i
 it does not bypass `requires`. The product host checks requirements for every run: `launch` is
 skipped with `--attach`, and other tags run only when supplied by `--with`.
 
+The HTTP fixture server also serves `/refused`, which redirects to an unused loopback port for
+transport-failure tests. Its `/boards-catalog/` route serves the fake published-board catalog,
+version manifests, screenshots, and ZIP archives. The archives are built from
+`fixtures/boards-catalog/` when the server starts, including their sizes and SHA-256 values, so
+fixtures do not need committed binaries. Owned module launches receive
+`PERSEPHONE_TEST_BOARDS_CATALOG_URL` pointing at this route; the product reads it only in a test
+instance and accepts only an `http://127.0.0.1` base. Attach does not pass the variable to its
+already-running app.
+
 Attach requires the wrapper's live retained-app record and a running named-profile pipe. It does
 not reset or restart the app. Fixture files are refreshed over the existing work directory. The
 product controller reads MCP settings from `--profile-dir`, connects, then verifies that
@@ -149,12 +158,23 @@ and `tor/`; the older `tests/editors/browser/` location is retired. Their HTTP/H
 assets live under `fixtures/http/browser/<module>/`.
 
 Board platform tests live under `tests/boards/`: `lifecycle/`, `permissions/`, `info/`, `bridge/`,
-and `extensions/`. Area-only setup and trust helpers belong in `tests/boards/helpers.mjs`. Keep
-board fixtures under `fixtures/boards/<module>/`, with each board in its own folder. Tests use
-`fixture()` to access an isolated copy in the profile's `work/` directory, so mutable files can be
-reset without changing the committed fixture. Prefer the app stand-in (`ctx.app.boards.*`,
+`extensions/`, `catalog/`, `published/`, `excalidraw/`, and `rest-client/`. Area-only setup and trust
+helpers belong in `tests/boards/helpers.mjs`; the cross-area checkout registration helper is
+`tests/helpers/published-boards.mjs`. Keep board fixtures under `fixtures/boards/<module>/`, with
+each board in its own folder. Catalog archives are sourced from `fixtures/boards-catalog/`, and
+REST Client HTTP request fixtures live under `fixtures/http/rest-client/`. Tests use `fixture()` to
+access an isolated copy in the profile's `work/` directory, so mutable files can be reset without
+changing the committed fixture. Prefer the app stand-in (`ctx.app.boards.*`,
 `ctx.app.pages[id].editor.*`) for structured calls; use `ctx.call` or `ctx.callText` when a call
 option or exact string result is needed.
+
+Tests that need a local `persephone-boards` checkout declare
+`requires: ["published-board-checkout"]`. The wrapper enables that tag automatically when
+`../persephone-boards/boards` exists or `PERSEPHONE_BOARDS_DIR` names an existing boards folder;
+otherwise the test is skipped with the missing checkout path and the override variable to set.
+The wrapper owns this tag, so `--with published-board-checkout` is rejected. Catalog tests must
+use the fake loopback catalog and owned launches; they must not reach the published catalog or
+external network.
 
 Tests must run independently and should leave committed fixtures unchanged. Use `ctx.fixture()`
 for mutable work copies and reset their content at the start of each test. Tests that restart the

@@ -693,6 +693,12 @@ lifecycle state; `window.screen` is the complete current application-window host
 navigation or page-tab operations. Accessibility refs are scoped by the host that minted them in
 `/src/renderer/automation/ref.ts`.
 
+Board automation waits for its selected frame before running frame operations. The board target
+uses the renderer `BoardFrameRegistry` to wait for a loading main or secondary frame, while main's
+CDP service retries a command when reload replaces the registered frame. Board `reload()` skips
+that precondition because reload itself creates the next frame; it waits for the new main frame and
+reports `frameReady` so callers can poll readiness after a timeout.
+
 `EditorFacadeBase` in `api-wrapper/` owns shared facade identity, attachment checks, and AiVision
 descriptor assembly. `editor-facade-registry.ts` maps editor IDs to factories without statically
 importing editor modules; `register-editor-facades.ts` registers those factories before the first

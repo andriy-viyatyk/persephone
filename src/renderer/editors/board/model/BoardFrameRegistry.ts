@@ -1,5 +1,8 @@
 import { BOARD_CDP_TAB } from "../../../../ipc/api-types";
 
+/** Bounds automation's wait for a newly mounted board frame. */
+export const BOARD_FRAME_READY_TIMEOUT_MS = 5000;
+
 /** Frames of one board: the live iframe per automation tab, which tabs are CDP-attachable,
  *  the tab automation drives, and waiters for the next load. Owned by BoardEditorModel;
  *  BoardTargetModel is the only external writer of the active tab. */
@@ -78,6 +81,11 @@ export class BoardFrameRegistry {
                 }
             }, timeoutMs);
         });
+    }
+
+    waitForFrameReady(tab: string, timeoutMs = BOARD_FRAME_READY_TIMEOUT_MS): Promise<boolean> {
+        if (this.isFrameReady(tab)) return Promise.resolve(true);
+        return this.waitForFrameLoad(tab, timeoutMs);
     }
 
     hasSecondaryView(viewId: string): boolean {

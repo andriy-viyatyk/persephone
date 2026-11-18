@@ -1,6 +1,7 @@
 import type { WebContents } from "electron";
 
 export interface BoardFrameRegistration {
+    key: string;
     host: WebContents;
     boardHost: string;
     frameNonce?: string;
@@ -11,6 +12,14 @@ export interface BoardFrameRegistration {
 
 export class BoardFrameRegistry {
     private readonly registrations = new Map<string, BoardFrameRegistration>();
+    private readonly changeListeners = new Set<(key: string, registration: BoardFrameRegistration | undefined, previous: BoardFrameRegistration | undefined) => void>();
+
+    public onRegistrationChanged(
+        listener: (key: string, registration: BoardFrameRegistration | undefined, previous: BoardFrameRegistration | undefined) => void,
+    ): () => void {
+        this.changeListeners.add(listener);
+        return () => this.changeListeners.delete(listener);
+    }
 
     public register(
         key: string,
@@ -21,7 +30,9 @@ export class BoardFrameRegistry {
         pageId?: string,
     ): BoardFrameRegistration | undefined {
         const previous = this.registrations.get(key);
-        this.registrations.set(key, { host, boardHost, frameNonce, title, pageId });
+        const registration = { key, host, boardHost, frameNonce, title, pageId };
+        this.registrations.set(key, registration);
+        for (const listener of this.changeListeners) listener(key, registration, previous);
         return previous;
     }
 
@@ -29,6 +40,7 @@ export class BoardFrameRegistry {
         const registration = this.registrations.get(key);
         if (frameNonce !== undefined && registration?.frameNonce !== frameNonce) return false;
         this.registrations.delete(key);
+        for (const listener of this.changeListeners) listener(key, undefined, registration);
         return true;
     }
 
