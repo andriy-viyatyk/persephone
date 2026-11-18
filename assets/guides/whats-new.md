@@ -127,6 +127,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Link editor changes lost on a quick close or switch:** a change made in the Link editor less than
   a moment before closing the tab or switching to Text Editor was dropped without a save prompt. The
   tab now counts it as unsaved and keeps it when you switch.
+- **Board event feeds stuck on old events:** a board that waited for events with
+  `persephone.call("events.wait")` (such as the AiVision Explorer's Events tab) got the oldest
+  retained event back on every call and never saw a new one. Each board now waits from where its
+  last wait left off.
 
 ---
 

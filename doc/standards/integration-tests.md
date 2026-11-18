@@ -190,6 +190,9 @@ the board in a `finally` block with `closePublishedSample()`. Declare both `laun
 handle with `closePublishedSample()` in `finally`. Closing a
 page can begin asynchronous board-process shutdown, so registration cleanup retries removal of an
 old copied board directory before copying the next one.
+The copy filters `.git`, `node_modules`, `ui.log`, ZIP files, and simple ignored file or directory
+names from the board checkout's `.gitignore`; tests should create runtime data in the isolated copy
+and must not depend on a developer's ignored checkout files.
 
 Keep viewer samples synthetic and minimal. Place reusable committed fixtures under
 `fixtures/boards-samples/<board-id>/` and obtain mutable work copies with `ctx.fixture()`. Generate

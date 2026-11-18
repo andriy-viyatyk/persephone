@@ -1023,6 +1023,12 @@ a 50-second default and a 110-second maximum. Blocking renderer paths use a 125-
 timeout, preserving the invariant renderer bound < bridge timeout < client timeout; a restarted
 renderer clamps an old cursor back to the new log's sequence space.
 
+The Board `persephone.call("events.wait")` bridge returns the resolver's plain value, so it cannot
+use the MCP result envelope to advance a cursor. The host keeps a separate cursor for each board
+frame: its first wait starts at the event log's current tail (use `events.recent()` or
+`events.since(seq)` to read history), and a wait that returns an event advances that frame to the
+event's sequence. Other frames keep independent cursors.
+
 The renderer producers currently record `shape-changed`, `board-reloaded`, `navigated`,
 `page-activated`, `dialog-answered`, `remote-notify`, `alert-raised`, `guide-button`, and
 `popup-opened` / `popup-closed` (from `BrowserPopupModel`, only for browser pages the agent may

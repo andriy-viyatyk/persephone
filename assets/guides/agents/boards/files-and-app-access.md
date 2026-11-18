@@ -130,6 +130,9 @@ summary: "Native file dialogs, listFolder, watch, folder grants, trashFile, Type
   default. `persephone.call()` returns the bounded value itself;
   <!-- board-template:exclude -->`shown`/`total` metadata is available in the external MCP `call` envelope.<!-- /board-template:exclude --> `args` and `value`
   cannot be combined.
+  `events.wait()` keeps a cursor for each board frame: the first wait starts after the event log's
+  current tail, and later waits resume after the last event returned to that frame. Use
+  `events.recent()` or `events.since(seq)` when you need to read retained history.
   ```js
   const source = await persephone.call("page.grouped.content");
   const matches = [...source.matchAll(/TODO\w*/g)].map((m) => ({ match: m[0], index: m.index }));

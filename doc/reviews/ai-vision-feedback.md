@@ -1111,3 +1111,206 @@ Append only. Add new entries at the end and never rewrite old ones. Do not inclu
 - **What actually happened:** The hub points to `guides/agents/ai-vision.md` instead.
 - **How it was resolved:** Used that guide plus board source.
 - **Suggested improvement:** None; the link works, but the hub could say the page lives one level up.
+
+### 2026-11-18 · EPIC-194 / US-2104 · Claude (review)
+- **Area:** app object (property assignment)
+- **What the agent expected:** That `ctx.app.pages[id].editor.app.searchText = "…"` sets a writable board-model property, as the model's `$help` marks `searchText` `writable`.
+- **What actually happened:** The stand-in had no `set` trap, so the assignment only stored a property on the local proxy function and nothing reached the app; the test context had no way to send the `call` tool's `value` field at all.
+- **How it was resolved:** Call gap closed: `ctx.set(path, value)` sends an assignment, and assigning through `ctx.app` now throws and names `ctx.set` (`src/test-host/app-proxy.ts`, `context.ts`, `client.ts`; `web-app-tests.md`).
+- **Suggested improvement:** None beyond the fix.
+
+### 2026-11-18 · EPIC-194 / US-2104 · Codex Luna (plan)
+- **Area:** call path (board content-host save)
+- **What the agent expected:** The Todo and Notebook guides ("save the page", "Ctrl+S saves") to name the call path that saves a content-host board page.
+- **What actually happened:** Neither names one; the route (`editorSwitches.switchTo("monaco")`, then `editor.saveFile()`) was found only in the REST Client test.
+- **How it was resolved:** Plan used the known route; tests passed.
+- **Suggested improvement:** Recurrence of the EPIC-192 "board content-host save" entry: a page-level `save()` member would remove the editor switch.
+
+### 2026-11-18 · EPIC-194 / US-2104 · Codex Luna (plan)
+- **Area:** published board docs (notebook)
+- **What the agent expected:** `notebook/CLAUDE.md` to describe the Categories & Tags secondary view.
+- **What actually happened:** It calls `nav.js` a placeholder, while `nav.js` implements the view (rendering, selection, editing).
+- **How it was resolved:** Planned from source; the secondary-view test passed.
+- **Suggested improvement:** Board owner: update `notebook/CLAUDE.md`.
+
+### 2026-11-18 · EPIC-194 / US-2104, US-2105 · Claude (review)
+- **Area:** published board model result shapes
+- **What the agent expected:** Model entries such as Todo `lists[0]` to equal `{ name, total, undone }`, and Force Graph `links` entries to equal `{ source, target }`.
+- **What actually happened:** Entries read through `call` can carry a `kind` field (`TodoList`, `TodoTag`), so `toEqual` on the whole object would fail.
+- **How it was resolved:** Plans corrected before implementation to compare fields one by one.
+- **Suggested improvement:** Recurrence of the EPIC-193 "result shapes only in source" entries; `web-app-tests.md` could say that model objects may include `kind`.
+
+### 2026-11-18 · EPIC-194 / US-2105 · Codex Luna (plan)
+- **Area:** guide boards/testing
+- **What the agent expected:** `boards/testing.md` to show how a test opens a board that has no file type (Theme Editor, Chess, Gem Keep).
+- **What actually happened:** It covers the published-sample helper only; the `boards.openBoard` flow came from `tests/boards/helpers.mjs`.
+- **How it was resolved:** The area helper `openPublishedBoard` was added.
+- **Suggested improvement:** Mention `openPublishedBoard` next to `openPublishedSample` in the testing docs.
+
+### 2026-11-18 · EPIC-194 / US-2105 · Codex Luna (plan)
+- **Area:** capability `open` result, published board model result shapes (force-graph, theme-editor)
+- **What the agent expected:** The guides to give the shapes of `nodes`, `saveAs`, `rename`, `deleteThemeCore` and a capability `open` result.
+- **What actually happened:** Force Graph `nodes` is an indexed collection (`.ids`, lookups), not the file's array; the Theme Editor return values and the `{ pageId?, result }` wrapper were found only in source.
+- **How it was resolved:** Source reading; the tests passed.
+- **Suggested improvement:** Recurrence of the EPIC-193 "result shapes only in source" entries; one example result per method in each board's `guides/agent.md`.
+
+### 2026-11-18 · EPIC-194 / US-2106 · Claude (review)
+- **Area:** published board model values (chess, gem-keep)
+- **What the agent expected:** Chess `lastMove.color` to be `"w"` (the engine's code) and Gem Keep's starting gold to be the level file's `gold` (300).
+- **What actually happened:** `lastMove()` maps the color to `"white"` (`chess/app.js:98-103`); the gold is multiplied by the default difficulty's factor 0.85, so Green Meadow starts with 255 (`gem-keep/js/game.js:23-27`, `js/data.js:63-66`).
+- **How it was resolved:** Plan corrected before implementation; the tests passed.
+- **Suggested improvement:** None for the boards; a plan should follow a value through every transform before asserting it.
+
+### 2026-11-18 · EPIC-194 / US-2105 · Claude (run)
+- **Area:** call result envelope (`pending` field)
+- **What the agent expected:** `pages[id].editor.app.previewStatus` (Theme Editor) to return `{ status, hasPreview, superseded, pending }`.
+- **What actually happened:** While `pending` was `true`, every read came back as "Pending: script execution is still in progress." with `{ pending: true }`: `toCallResult` treated any result object with `pending: true` as `script.execute`'s still-running marker. The test client then threw "still pending", and four waits timed out.
+- **How it was resolved:** Product bug, fixed in `src/main/mcp/tools/call-tools.ts`: only a result with a string `runId` and `pendingReason` `"running"` or `"dialog"` is the script marker.
+- **Suggested improvement:** None beyond the fix.
+
+### 2026-11-18 · EPIC-194 / US-2105 · Claude (run)
+- **Area:** published board model (theme-editor) `previewStatus`
+- **What the agent expected:** `previewStatus.pending` to become `false` once a draft refresh finishes, so tests can wait on it.
+- **What actually happened:** It stays `true` forever after the first edit: `queueDraftRefresh` stores the timeout id in `state.previewTimer` and never clears it after the timer fires (`theme-editor/app.js:1283-1312`), and `pending` includes `!!state.previewTimer` (`app.js:1667`).
+- **How it was resolved:** Board bug, recorded as an EPIC-194 open item; one test asserts that `pending` settles and stays failing, the others wait on the derived colors or the contrast result instead.
+- **Suggested improvement:** Board owner: reset `state.previewTimer = 0` when the timer fires.
+
+### 2026-11-18 · EPIC-194 / US-2105 · Claude (run)
+- **Area:** call path (large results)
+- **What the agent expected:** `ctx.app.themes.list()` to return the full theme list.
+- **What actually happened:** The result is truncated (five of eight themes) and the client throws "truncated without maxLength"; the stand-in cannot pass `maxLength`.
+- **How it was resolved:** `ctx.call("themes.list", [], { maxLength: 1000000 })`.
+- **Suggested improvement:** Recurrence of the EPIC-188 "truncated without maxLength" entries; `themes.list` could take an option to return ids and names only.
+
+### 2026-11-18 · EPIC-194 / US-2105 · Codex Luna (implementation) / Claude (run)
+- **Area:** published board model (theme-editor) after delete
+- **What the agent expected:** Cleanup to `revert()` the draft and delete each created theme id, after the test had already called `deleteThemeCore()`.
+- **What actually happened:** `revert()` throws "This saved theme was removed. Choose another starting theme." once the draft's source theme is gone, and `themes.delete` throws for an id the test already deleted; both failed otherwise passing tests in cleanup.
+- **How it was resolved:** Cleanup reverts first as best effort and deletes only ids still listed.
+- **Suggested improvement:** The Theme Editor `$help` could say what `revert` does after its theme was deleted.
+
+### 2026-11-18 · EPIC-194 / US-2106 · Codex Luna (implementation) / Claude (run)
+- **Area:** published board DOM (gem-keep)
+- **What the agent expected:** `[data-name^="level-"]` to select only the level cards.
+- **What actually happened:** It also matched the menu section `data-name="level-menu"`, so the list had four entries.
+- **How it was resolved:** Selector scoped to `#level-list`.
+- **Suggested improvement:** None; a prefix selector needs a scope.
+
+### 2026-11-18 · EPIC-194 · Claude (plan)
+- **Area:** published board docs (translate)
+- **What the agent expected:** From the README ("model discovery and downloading may require a network connection"), that opening the board without downloading anything stays offline.
+- **What actually happened:** Opening the board opens its management channel, whose snapshot fetches the model registry from `firefox.settings.services.mozilla.com` (`scripts/service.mjs:206-207`, `scripts/translation-assets.mjs:147-172`), and its data root is the user's real `%LOCALAPPDATA%\Persephone\board-data\translate`, not the Persephone profile (`translation-assets.mjs:29-32`).
+- **How it was resolved:** Translate left uncovered in EPIC-194.
+- **Suggested improvement:** Board owner: say that opening the board contacts the registry; take the data root from the board's storage location so a test profile isolates it.
+
+### 2026-11-18 · EPIC-194 / US-2106 · Codex Luna (plan)
+- **Area:** guide boards/index
+- **What the agent expected:** An AI Vision models page under `guides/agents/boards/`.
+- **What actually happened:** The hub points to `guides/agents/ai-vision.md` instead.
+- **How it was resolved:** Used that guide plus board source.
+- **Suggested improvement:** None; the link works, but the hub could say the page lives one level up.
+
+### 2026-11-18 · EPIC-195 · Claude (plan)
+- **Area:** published board docs (claude-agent)
+- **What the agent expected:** That an offline subset of Agent Chat (its UI, settings, the "no CLI" error state) could be opened in the test profile.
+- **What actually happened:** Opening the board lists sessions on load (`app.js:1617`), which reads the user's real `~/.claude/projects` (`scripts/providers/claude.mjs:290`), resolves the real `claude` and `codex` CLIs from `PATH` (`scripts/claude-executable.mjs:15`, `scripts/providers/codex.mjs:55`) and keeps its data in the real `%LOCALAPPDATA%\Persephone\board-data\claude-agent` (`scripts/service.mjs:31-33,159-161`). The test instance inherits the user's environment.
+- **How it was resolved:** claude-agent left uncovered in EPIC-195. Recurrence of the EPIC-194 Translate entry (a board's data root outside the profile).
+- **Suggested improvement:** A test-mode environment sandbox for board processes (`USERPROFILE`, `LOCALAPPDATA`, `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `PATH`), or boards taking their data root from the board storage location.
+
+### 2026-11-18 · EPIC-195 · Claude (plan)
+- **Area:** test helper (published-board copy)
+- **What the agent expected:** That copying a board from the checkout copies only the board.
+- **What actually happened:** `registerPublishedBoard` copied git-ignored runtime files too: every board's `ui.log` and Agent Log Viewer's `cache/summaries.json`, both written from the user's own sessions, so they would have entered the test profile.
+- **How it was resolved:** The helper skips `ui.log`, `node_modules/`, `.git/`, `*.zip` and the board's plain `.gitignore` entries (US-2107).
+- **Suggested improvement:** None beyond the fix.
+
+### 2026-11-18 · EPIC-195 / US-2107 · Codex Luna (plan)
+- **Area:** published board docs (agent-log-viewer)
+- **What the agent expected:** The record shapes the viewer accepts in a guide or the board's `CLAUDE.md`.
+- **What actually happened:** Neither gives them; they were read from `scripts/parsers/claude-code.mjs`, `codex.mjs` and `session-model.mjs`.
+- **How it was resolved:** Doc found elsewhere (source).
+- **Suggested improvement:** Board owner: a short "accepted records" note in `CLAUDE.md`. Recurrence of the EPIC-194 "result shapes only in board source" entries.
+
+### 2026-11-18 · EPIC-195 / US-2107 · Codex Luna (plan)
+- **Area:** guide boards/folder-editor, boards/files-and-app-access (call gap)
+- **What the agent expected:** That a folder matching the board's `folderMasks` could be opened in Agent Log Viewer's session list through `call`.
+- **What actually happened:** `folderMasks` only narrows which `.jsonl` files the board claims (`src/shared/board/board-masks.ts:173-183`); `pages.openFile(folder)` opens a workspace. The board's list view opens only through `persephone.openFolderDialog()`, a native dialog an agent can dismiss but not answer.
+- **How it was resolved:** Session list, sorting, content search and the daily chart left uncovered.
+- **Suggested improvement:** The manifest guide could say plainly that `folderMasks` is not a folder claim. A test-mode answer for native open dialogs would make picker-only views testable.
+
+### 2026-11-18 · EPIC-195 / US-2107 · Codex Luna (plan)
+- **Area:** boards.* (call gap)
+- **What the agent expected:** A way to set a board setting (`showCost`) from `call` and restore it.
+- **What actually happened:** Board settings are read-only for the board, and neither `boards.*` nor the board editor facade has a setting reader or writer.
+- **How it was resolved:** The estimated-cost display left uncovered.
+- **Suggested improvement:** `boards.settings(root)` get/set, mirroring the Board Info settings form.
+
+### 2026-11-18 · EPIC-195 / US-2107 · Codex Luna (implementation) / Claude (run)
+- **Area:** published board DOM (agent-log-viewer)
+- **What the agent expected:** The first `.out` in an opened tool block to be the tool result.
+- **What actually happened:** It is the tool input; the result is the second `.out` (`app.js:815-826`).
+- **How it was resolved:** The test reads every `.out`.
+- **Suggested improvement:** None; a board without `data-name`s leaves selectors to source reading.
+
+### 2026-11-18 · EPIC-195 / US-2107 · Claude (run)
+- **Area:** board automation `evaluate`
+- **What the agent expected:** `join('\n')` inside an expression string to stay a two-character escape.
+- **What actually happened:** The expression was a JS double-quoted literal, so `\n` became a real newline inside a single-quoted string in the page, a syntax error. The failure line named only the `evaluate` call.
+- **How it was resolved:** `join(' ')`.
+- **Suggested improvement:** `evaluate` errors could include the page's SyntaxError message.
+
+### 2026-11-18 · EPIC-195 / US-2108 · Codex Luna (plan)
+- **Area:** published board docs (aivision-explorer)
+- **What the agent expected:** The board's `CLAUDE.md` to match the board.
+- **What actually happened:** It quotes version `1.0.5` / `minAppVersion` `5.0.3` (`CLAUDE.md:50`; the manifest says `1.1.0` / `5.0.10`), and its Run & test section suggests inspecting `editor.app`, which this board does not expose.
+- **How it was resolved:** Used the manifest and `app.js`.
+- **Suggested improvement:** Board owner: update the key-files line and say the board has no `.app` model.
+
+### 2026-11-18 · EPIC-195 / US-2108 · Codex Luna (plan)
+- **Area:** guide ai-vision, events
+- **What the agent expected:** A list of event kinds and what raises each, to pick a harmless trigger for a test.
+- **What actually happened:** Not documented; found in `event-log.ts`. The first choice, `ui.notify(..., "warning")` (an `alert-raised` event), returns a Promise that settles only on dismissal. The second, `page-activated`, is not recorded for switches the agent asked for (`pages.showPage`), which only the `events` `$help` mentions.
+- **How it was resolved:** Claude chose a `remote-notify` raised from the board frame.
+- **Suggested improvement:** A kinds table in `guides/agents/ai-vision.md` (kind, raised by, carries path).
+
+### 2026-11-18 · EPIC-195 / US-2108 · Claude (review)
+- **Area:** guide boards/bridge (`aiVision.expose`)
+- **What the agent expected:** From the guide's example `persephone.aiVision.expose(model)`, that any plain object can be exposed.
+- **What actually happened:** `expose` throws "The exposed root must carry an AiVision descriptor." The root needs an `aiVision` property (`{ kind, summary, members }`), as in `chess/app.js:754-811`.
+- **How it was resolved:** The test exposes `{ aiVision: { kind, summary, members: [] } }`.
+- **Suggested improvement:** `boards/bridge.md` could show the minimal descriptor next to `expose(model)` and link the authoring section of `ai-vision.md`.
+
+### 2026-11-18 · EPIC-195 / US-2108 · Codex Luna (implementation) / Claude (run)
+- **Area:** board automation (`click` timing)
+- **What the agent expected:** The board's DOM to show the result of a `click` or `type` when the call returns.
+- **What actually happened:** The call returns once the event is dispatched; the board then awaits `$describe`, `helpSearch` or an Invoke over the bridge. Four tests read stale DOM (tree not yet expanded, selection not yet changed, Events tab still hidden).
+- **How it was resolved:** Every action is followed by a `ctx.waitFor` on the expected DOM state.
+- **Suggested improvement:** `guides/agents/boards/testing.md` could say that `click` does not wait for the board's async handler. Recurrence of the "board model ready only after `frameReady`" entries.
+
+### 2026-11-18 · EPIC-195 / US-2108 · Codex Luna (implementation) / Claude (run)
+- **Area:** call path (value shapes)
+- **What the agent expected:** `editor.evaluate` returning a string to arrive as that string.
+- **What actually happened:** The test client JSON-parses string results: `"[28]"` arrived as `[28]`, and JSON text arrived already parsed, so `JSON.parse` threw on `[object Object]`.
+- **How it was resolved:** Evaluations return `{ text }` objects.
+- **Suggested improvement:** Recurrence of the EPIC-187/188 "values change shape across `call`" entries.
+
+### 2026-11-18 · EPIC-195 / US-2108 · Codex Luna (plan) / Claude (run)
+- **Area:** published board UI (aivision-explorer)
+- **What the agent expected:** Selecting a help-search hit to leave the Agent tab's returned value unchanged.
+- **What actually happened:** The tab shows "Not read yet." for a selected path that has not been read (`app.js:407-418`), which is the correct sign that nothing was invoked.
+- **How it was resolved:** The test asserts "Not read yet." plus an unchanged page count.
+- **Suggested improvement:** None.
+
+### 2026-11-18 · EPIC-195 / US-2108 · Claude (run)
+- **Area:** board bridge `persephone.call("events.wait")`
+- **What the agent expected:** A board's `events.wait()` loop to receive each new event, as an MCP session does.
+- **What actually happened:** A board call carries no event cursor, so every `events.wait()` from a board started at 0 and returned the oldest retained event at once. AiVision Explorer's Events tab never showed a new event (its loop even sleeps 250 ms on a replay, `app.js:861-865`).
+- **How it was resolved:** Product bug, fixed in `src/renderer/api/boards/board-host-rpc.ts`: each board frame keeps its own cursor, starting at the log's position and moving to every event a wait returns.
+- **Suggested improvement:** None beyond the fix.
+
+### 2026-11-18 · EPIC-195 / US-2108 · Codex Luna (plan)
+- **Area:** pages (call gap)
+- **What the agent expected:** A way to create a board page that was never activated, to see the Explorer's "activate and refresh" hint.
+- **What actually happened:** `boards.openBoard` activates the page, and `pages.addEditorPage` refuses standalone board editors.
+- **How it was resolved:** Left uncovered.
+- **Suggested improvement:** None needed; a rare state.

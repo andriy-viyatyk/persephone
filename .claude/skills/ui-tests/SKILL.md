@@ -51,7 +51,9 @@ directly without a sample file. Both register the local board copy, verify the e
 the page, and wait for `editor.frameReady`. The returned `editor` is a stand-in; wait for
 `editor.app` methods or state to be ready before asserting board data. Close every handle in
 `finally` with `closePublishedSample()`;
-closing a page may start asynchronous board-process shutdown. Declare both `launch` and
+closing a page may start asynchronous board-process shutdown. Registration filters git-ignored
+runtime files from the checkout copy, so tests should create runtime data in that isolated copy.
+Declare both `launch` and
 `published-board-checkout` requirements.
 
 Keep published-viewer samples small, synthetic, and offline. Commit reusable samples under

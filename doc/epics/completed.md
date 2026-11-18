@@ -1,3 +1,25 @@
+## EPIC-195 — UI test coverage, phase 8c: published agent tools
+
+Completed 2026-11-18. Phase 8c of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 10 new tests in
+`integration-test/tests/published-boards/` for agent-log-viewer (3, from synthetic Claude Code and Codex logs written at
+test start) and aivision-explorer (7, each display checked against the same `call`). Codex (Luna) planned and wrote the
+tests blind; Claude reviewed, ran and triaged, and recorded 15 cases in
+[ai-vision-feedback.md](../reviews/ai-vision-feedback.md). **Test support:** the published-board copy skips git-ignored
+runtime files (`ui.log`, Agent Log Viewer's `cache/`), which hold data from the user's own sessions. **Fixed:** a
+board's `persephone.call("events.wait")` started at cursor 0 on every call and returned the oldest retained event, so a
+board's live event feed never saw a new one; each board frame now keeps its own cursor. **Open:** the EPIC-187 grid
+row-insertion decision; the EPIC-194 Theme Editor board bug; `persephone-boards` doc defects for the board owner
+(aivision-explorer `CLAUDE.md` versions and `editor.app` note, agent-log-viewer record shapes). **Uncovered:**
+claude-agent (opening it reads the user's real `~/.claude/projects`, resolves the real CLIs from `PATH` and stores data
+in the real `%LOCALAPPDATA%`; a test-mode environment sandbox for board processes is proposed); Agent Log Viewer's
+folder session list (native picker only) and cost setting (no call route sets a board setting); the Explorer's
+never-activated-page hint. Final launched run (`--with git,mneme`), 464 tests: 460 passed, 2 failed (both carried
+over), 2 skipped (Tor). Phase 8d (audio and speech) is next. Completion skills by Codex (Luna). Epic document:
+[EPIC-195](EPIC-195.md).
+
+- [x] **Copy filter; tests: Agent Log Viewer (US-2107).**
+- [x] **Tests: AiVision Explorer (US-2108).**
+
 ## EPIC-194 — UI test coverage, phase 8b: published apps
 
 Completed 2026-11-18. Phase 8b of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 21 new tests in

@@ -6,6 +6,7 @@ import { isPositiveIntegerTimeout } from "../../../shared/ai-vision-timeout";
 import { errMessage } from "../../../shared/utils";
 import { UNBOUNDED_CALL_MAX_LENGTH } from "../../scripting/ai-vision/call-limits";
 import { resolveAiCall } from "../../scripting/ai-vision/call";
+import { eventLog } from "../../scripting/ai-vision/event-log";
 import { ScriptContext } from "../../scripting/ScriptContext";
 import { getPreviewGeneration } from "../../theme/themes";
 import { app } from "../app";
@@ -84,6 +85,31 @@ function invokeThemeMethod(method: string, callArgs: unknown[]): unknown {
 
 type BoardCallParams = RendererRpcMethods["boardCall"]["params"];
 
+/**
+ * `events.wait()` cursor per board frame. A board call returns the plain value, without the events
+ * envelope that advances an MCP session's cursor, so without this every wait started at 0 and
+ * replayed the oldest retained event: a board never saw a new one. A frame starts at the log's
+ * position on its first call (history comes from `events.recent()`) and moves to each event a wait
+ * hands it.
+ */
+const boardEventCursors = new WeakMap<object, number>();
+const EVENTS_WAIT_PATH = /^events\.wait(?:\(\))?$/;
+
+function boardEventCursor(boardEditor: object): number {
+    let cursor = boardEventCursors.get(boardEditor);
+    if (cursor === undefined || cursor > eventLog.lastSeq) {
+        cursor = eventLog.lastSeq;
+        boardEventCursors.set(boardEditor, cursor);
+    }
+    return cursor;
+}
+
+function advanceBoardEventCursor(boardEditor: object, path: string, result: unknown): void {
+    if (!EVENTS_WAIT_PATH.test(path)) return;
+    const seq = (result as { event?: { seq?: unknown } } | undefined)?.event?.seq;
+    if (typeof seq === "number" && Number.isFinite(seq)) boardEventCursors.set(boardEditor, seq);
+}
+
 async function handleBoardCall(params: BoardCallParams): Promise<unknown> {
     const ownerId = typeof params?.ownerId === "string" ? params.ownerId : "";
     const rawRequest: unknown = params?.request;
@@ -105,15 +131,17 @@ async function handleBoardCall(params: BoardCallParams): Promise<unknown> {
         maxLength: typeof requestData.maxLength === "number" ? requestData.maxLength : UNBOUNDED_CALL_MAX_LENGTH,
         ...(requestData.timeoutMs !== undefined ? { timeoutMs: requestData.timeoutMs } : {}),
     };
-    const { boardRoot, contextEditor } = resolveBoardHost(ownerId);
+    const { boardRoot, boardEditor, contextEditor } = resolveBoardHost(ownerId);
     const context = new ScriptContext({ page: contextEditor, origin: "board" });
     try {
         if (!boardRegistry.grant(boardRoot)?.allows("appScripting")) throw new Error(BoardGrant.deny("appScripting").message);
         const result = await resolveAiCall(context, request, undefined, {
             page: context.page,
             restricted: () => boardRegistry.isPermitted(boardRoot) ? undefined : "This Board is not permitted to use persephone.call().",
+            callContext: { eventCursor: boardEventCursor(boardEditor) },
         });
         if (result.error) throw new Error(result.error);
+        advanceBoardEventCursor(boardEditor, request.path, result.result);
         return result.result;
     } catch (error: unknown) {
         throw new Error(errMessage(error, "Board call failed."), { cause: error });

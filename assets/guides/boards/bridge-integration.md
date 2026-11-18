@@ -99,6 +99,10 @@ mutually exclusive. Calls reject as `Error` on resolver, transport, timeout, or 
 Trust is checked at resolution time, and existing descriptor restrictions still apply. Calls remain
 anchored to the Board's hosting page even when another tab becomes active.
 
+For event polling, `persephone.call("events.wait")` keeps a cursor for each board frame. Its first
+call starts at the current event-log tail, and each later call continues after the last event
+returned to that frame. Use `events.recent()` or `events.since(seq)` when you need retained history.
+
 Append `.$describe` to a node path when a board needs the descriptor as structured data rather than
 the prose returned by `$help`. The result includes the node's kind, summary, members, and live
 children, so a programmatic viewer can build a tree without parsing help text. `$describe` is

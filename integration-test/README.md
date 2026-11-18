@@ -137,6 +137,7 @@ stand-in for structured calls such as `editor.app.getStats()`; use `ctx.call` or
 only when the stand-in cannot express the needed call. Close the page before the board is
 unregistered. Tests declare both
 `launch` and `published-board-checkout`, since each needs a separately owned app and a local board
+checkout. Registration copies published files while filtering git-ignored runtime data from the
 checkout. Close either handle with `closePublishedSample()` in `finally`.
 
 Keep samples minimal, synthetic, and local. Reusable binary fixtures belong in

@@ -1,6 +1,6 @@
 # UI test coverage roadmap
 
-**Date:** 2026-11-16 · **Status:** accepted 2026-11-16; Phase 1 is [EPIC-181](../epics/EPIC-181.md) (completed 2026-11-16); Phase 2 is [EPIC-182](../epics/EPIC-182.md) (completed 2026-11-16); Phase 3 is [EPIC-183](../epics/EPIC-183.md) (completed 2026-11-17); Phase 4a is [EPIC-184](../epics/EPIC-184.md) (completed 2026-11-17); Phase 4b is [EPIC-185](../epics/EPIC-185.md) (completed 2026-11-17); Phase 5a is [EPIC-187](../epics/EPIC-187.md) (completed 2026-11-18); Phase 5b is [EPIC-188](../epics/EPIC-188.md) (completed 2026-11-18); Phase 6a is [EPIC-189](../epics/EPIC-189.md) (completed 2026-11-18); Phase 6b is [EPIC-190](../epics/EPIC-190.md) (completed 2026-11-18); Phase 7a is [EPIC-191](../epics/EPIC-191.md) (completed 2026-11-18); Phase 7b is [EPIC-192](../epics/EPIC-192.md) (completed 2026-11-18); Phase 8a is [EPIC-193](../epics/EPIC-193.md) (completed 2026-11-18); Phase 8b is [EPIC-194](../epics/EPIC-194.md) (completed 2026-11-18) · **Builds on:** [EPIC-180](../epics/EPIC-180.md) (runner,
+**Date:** 2026-11-16 · **Status:** accepted 2026-11-16; Phase 1 is [EPIC-181](../epics/EPIC-181.md) (completed 2026-11-16); Phase 2 is [EPIC-182](../epics/EPIC-182.md) (completed 2026-11-16); Phase 3 is [EPIC-183](../epics/EPIC-183.md) (completed 2026-11-17); Phase 4a is [EPIC-184](../epics/EPIC-184.md) (completed 2026-11-17); Phase 4b is [EPIC-185](../epics/EPIC-185.md) (completed 2026-11-17); Phase 5a is [EPIC-187](../epics/EPIC-187.md) (completed 2026-11-18); Phase 5b is [EPIC-188](../epics/EPIC-188.md) (completed 2026-11-18); Phase 6a is [EPIC-189](../epics/EPIC-189.md) (completed 2026-11-18); Phase 6b is [EPIC-190](../epics/EPIC-190.md) (completed 2026-11-18); Phase 7a is [EPIC-191](../epics/EPIC-191.md) (completed 2026-11-18); Phase 7b is [EPIC-192](../epics/EPIC-192.md) (completed 2026-11-18); Phase 8a is [EPIC-193](../epics/EPIC-193.md) (completed 2026-11-18); Phase 8b is [EPIC-194](../epics/EPIC-194.md) (completed 2026-11-18); Phase 8c is [EPIC-195](../epics/EPIC-195.md) (completed 2026-11-18) · **Builds on:** [EPIC-180](../epics/EPIC-180.md) (runner,
 `uitest` profile, pilot tests).
 
 The refactoring roadmap touched almost the whole codebase. This roadmap retests every screen and feature once, and
@@ -209,7 +209,8 @@ data round-trips where it edits.
 Phase 8a is tracked in [EPIC-193](../epics/EPIC-193.md) (completed 2026-11-18); torrent-viewer stayed uncovered
 because opening a `.torrent` starts DHT discovery. Phase 8b is [EPIC-194](../epics/EPIC-194.md) (completed
 2026-11-18); translate stayed uncovered because opening it contacts the model registry and stores data outside the
-profile.
+profile. Phase 8c is [EPIC-195](../epics/EPIC-195.md) (completed 2026-11-18); claude-agent stayed uncovered because
+opening it reads the user's real agent sessions, CLIs and `%LOCALAPPDATA%` data.
 
 Sample files live in each board's folder or in `integration-test/fixtures/boards-samples/`. The tests also live in
 this repo, because they test the integration between the board and the app.
