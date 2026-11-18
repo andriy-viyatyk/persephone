@@ -177,7 +177,7 @@ export interface IBoardEditor {
     screenshot(options?: IBrowserScreenshotOptions): Promise<IBrowserScreenshot | undefined>;
     networkRequests(options?: { tabId?: string }): Promise<IBrowserNetworkRequest[]>;
     /** Wait for a matching completed response on the board frame; owned existing OOPIFs are included. */
-    waitForResponse(urlOrRegex: string | RegExp, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse>;
+    waitForResponse(urlOrRegex: string | RegExp | { regex: string; flags?: string }, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse>;
     /** Read host-owned dialogs without accessing the blocked board frame. */
     dialogs(options?: { tabId?: string }): Promise<{ dialogs: IBoardDialogRecord[] }>;
     /** Resolve a pending JavaScript dialog in the selected board frame. */

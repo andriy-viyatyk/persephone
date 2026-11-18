@@ -5,10 +5,10 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { REQUIREMENT_TAGS, validateRequirements } from "./lib/context.mjs";
-import { createTimeouts, DEV_MAIN_PATH, HTTP_FIXTURE_PORT, KEEP_OPEN_PATH, LOCK_PATH, MCP_URL, PROFILE_ROOT, REPORT_ROOT, REPOSITORY_ROOT, RUNNER_ROOT, RUNS_ROOT, TEST_ROOT, TEST_SETUP_PATH } from "./lib/config.mjs";
+import { createTimeouts, DEV_MAIN_PATH, HTTP_FIXTURE_PORT, HTTPS_FIXTURE_PORT, KEEP_OPEN_PATH, LOCK_PATH, MCP_URL, PROFILE_ROOT, REPORT_ROOT, REPOSITORY_ROOT, RUNNER_ROOT, RUNS_ROOT, TEST_ROOT, TEST_SETUP_PATH } from "./lib/config.mjs";
 import { APP_PORTS, assertPortsFree, assertProductionBuildAllowed, buildProduction, createLauncher, prepareProfile, refreshFixtures, validateExecutable, verifyDevTarget } from "./lib/launcher.mjs";
 import { McpClient } from "./lib/client.mjs";
-import { startHttpFixtures } from "./lib/http-fixtures.mjs";
+import { fixtureCertificateFingerprint, startHttpFixtures } from "./lib/http-fixtures.mjs";
 import { collectModuleReport, writeAggregateReport } from "./lib/aggregate-report.mjs";
 import electronPath from "electron";
 
@@ -267,7 +267,7 @@ async function main() {
         releaseLock = await acquireLock();
         if (options.attach) {
             attachClient = await connectAttach(timeouts);
-            await assertPortsFree([HTTP_FIXTURE_PORT]);
+            await assertPortsFree([HTTP_FIXTURE_PORT, HTTPS_FIXTURE_PORT]);
             await refreshFixtures(PROFILE_ROOT);
             profilePath = PROFILE_ROOT;
             httpServer = await startHttpFixtures({ closeTimeout: timeouts.shutdown });
@@ -398,7 +398,9 @@ async function main() {
 }
 
 async function runProduct(executable, args, onChild) {
-    const child = spawn(executable, args, { cwd: REPOSITORY_ROOT, stdio: "inherit", windowsHide: true });
+    // Owned test instances accept the HTTPS fixture's test certificate, and only that one.
+    const env = { ...process.env, PERSEPHONE_TEST_TRUSTED_CERTIFICATES: fixtureCertificateFingerprint() };
+    const child = spawn(executable, args, { cwd: REPOSITORY_ROOT, stdio: "inherit", windowsHide: true, env });
     onChild(child);
     return new Promise((resolve, reject) => {
         child.once("error", reject);

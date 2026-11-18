@@ -349,10 +349,10 @@ export interface IBrowserEditor {
     waitForNavigation(options?: IBrowserNavigationOptions): Promise<IBrowserNavigationResult>
 
     /** Wait for exact string or RegExp match on the main-frame URL, including SPA/hash changes. */
-    waitForURL(pattern: string | RegExp, options?: IBrowserNavigationOptions): Promise<IBrowserNavigationResult>;
+    waitForURL(pattern: string | RegExp | { regex: string; flags?: string }, options?: IBrowserNavigationOptions): Promise<IBrowserNavigationResult>;
 
     /** Arm before the triggering action; strings match exactly, RegExp supports query matching. Resolves on the final response's headers; with `includeBody`, once its body finishes loading. */
-    waitForResponse(urlOrRegex: string | RegExp, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse>;
+    waitForResponse(urlOrRegex: string | RegExp | { regex: string; flags?: string }, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse>;
 
     /** Wait for a specified number of milliseconds. */
     wait(ms: number): Promise<void>;

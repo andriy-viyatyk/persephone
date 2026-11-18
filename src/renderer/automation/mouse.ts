@@ -24,6 +24,9 @@ export async function clickElement(
         }
         return;
     }
+    // A real click into the page also moves the embedder's focus to the webview. Without it the
+    // host keeps focus elsewhere (a new tab's URL bar), and text typed after this click went there.
+    target.focusWebview(options.tabId);
     const modifierFlags = getModifierFlags(options.modifiers);
     const button = options.button ?? "left";
     const clickCount = options.clickCount ?? 1;

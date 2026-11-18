@@ -155,6 +155,10 @@ export default [
         try {
             page = await openBrowserPage(ctx, START_URL(ctx));
             await activatePage(ctx, page.id);
+            // A page opened at a URL keeps focus in the page, and automation keys sent while the webview
+            // holds focus reach the page, not Persephone's shortcuts (Ctrl+L is a browser-root shortcut).
+            // Put focus on a browser toolbar control first, as a user who clicked the toolbar would have.
+            await ctx.app.window.screen.evaluate("() => { const pageRoot = [...document.querySelectorAll('[data-name=\"toolbar-home\"]')].find((element) => element.offsetParent); pageRoot?.focus(); return document.activeElement === pageRoot; }");
             await ctx.app.window.screen.pressKey("Control+l");
             const focused = await ctx.app.window.screen.evaluate(
                 "() => document.activeElement === document.querySelector('[data-name=\"url-input\"] input')",

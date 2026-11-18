@@ -1,8 +1,10 @@
-import { createReadStream } from "node:fs";
+import { createHash } from "node:crypto";
+import { createReadStream, readFileSync } from "node:fs";
 import { realpath, stat } from "node:fs/promises";
 import http from "node:http";
+import https from "node:https";
 import path from "node:path";
-import { HTTP_FIXTURE_PORT, HTTP_FIXTURE_ROOT } from "./config.mjs";
+import { HTTP_FIXTURE_PORT, HTTP_FIXTURE_ROOT, HTTPS_FIXTURE_PORT, TLS_FIXTURE_CERT_PATH, TLS_FIXTURE_KEY_PATH } from "./config.mjs";
 
 const MAX_ECHO_BYTES = 1024 * 1024;
 const BODYLESS_STATUSES = new Set([204, 205, 304]);
@@ -55,11 +57,23 @@ function localPath(value) {
     } catch { return false; }
 }
 
-export async function startHttpFixtures({ root = HTTP_FIXTURE_ROOT, port = HTTP_FIXTURE_PORT, closeTimeout = 5000 } = {}) {
+/**
+ * Electron's `sha256/<base64>` fingerprint of the committed, test-only HTTPS fixture certificate
+ * (`lib/tls/`, issued for 127.0.0.1 and localhost). The wrapper passes it to test instances through
+ * `PERSEPHONE_TEST_TRUSTED_CERTIFICATES`, so only that certificate is accepted.
+ */
+export function fixtureCertificateFingerprint() {
+    const pem = readFileSync(TLS_FIXTURE_CERT_PATH, "utf8");
+    const base64 = pem.replace(/-----(BEGIN|END) CERTIFICATE-----/g, "").replace(/\s+/g, "");
+    return `sha256/${createHash("sha256").update(Buffer.from(base64, "base64")).digest("base64")}`;
+}
+
+/** Serve the fixture tree on HTTP (`port`) and HTTPS (`httpsPort`, test certificate) on 127.0.0.1. */
+export async function startHttpFixtures({ root = HTTP_FIXTURE_ROOT, port = HTTP_FIXTURE_PORT, httpsPort = HTTPS_FIXTURE_PORT, closeTimeout = 5000 } = {}) {
     const fixtureRoot = await realpath(root);
     const timers = new Set();
     const sockets = new Set();
-    const server = http.createServer(async (request, response) => {
+    const handle = async (request, response) => {
         const rawPath = String(request.url ?? "").split(/[?#]/, 1)[0];
         if (/%2f|%5c/i.test(rawPath)) return send(response, 400, "text/plain; charset=utf-8", "Encoded path separators are not allowed\n", request.method === "HEAD");
         let decodedRawPath;
@@ -170,18 +184,26 @@ export async function startHttpFixtures({ root = HTTP_FIXTURE_ROOT, port = HTTP_
         response.setHeader("Content-Length", (await stat(resolved)).size);
         if (request.method === "HEAD") return response.end();
         createReadStream(resolved).on("error", () => { if (!response.headersSent) send(response, 404, "text/plain; charset=utf-8", "Not Found\n"); else response.destroy(); }).pipe(response);
-    });
-    server.on("connection", (socket) => {
-        sockets.add(socket);
-        socket.once("close", () => sockets.delete(socket));
-    });
-    await new Promise((resolve, reject) => {
-        server.once("error", reject);
-        server.listen(port, "127.0.0.1", resolve);
-    }).catch((error) => {
-        if (server.listening) server.close();
-        throw new Error(`Could not start HTTP fixtures on 127.0.0.1:${port}: ${error.message}`);
-    });
+    };
+    const servers = [
+        { server: http.createServer(handle), port, label: "HTTP" },
+        { server: https.createServer({ key: readFileSync(TLS_FIXTURE_KEY_PATH), cert: readFileSync(TLS_FIXTURE_CERT_PATH) }, handle), port: httpsPort, label: "HTTPS" },
+    ];
+    for (const { server } of servers) {
+        server.on("connection", (socket) => {
+            sockets.add(socket);
+            socket.once("close", () => sockets.delete(socket));
+        });
+    }
+    for (const { server, port: listenPort, label } of servers) {
+        await new Promise((resolve, reject) => {
+            server.once("error", reject);
+            server.listen(listenPort, "127.0.0.1", resolve);
+        }).catch((error) => {
+            for (const entry of servers) if (entry.server.listening) entry.server.close();
+            throw new Error(`Could not start ${label} fixtures on 127.0.0.1:${listenPort}: ${error.message}`);
+        });
+    }
     let closed = false;
     return {
         async close() {
@@ -189,7 +211,7 @@ export async function startHttpFixtures({ root = HTTP_FIXTURE_ROOT, port = HTTP_
             closed = true;
             for (const timer of timers) clearTimeout(timer);
             timers.clear();
-            const closePromise = new Promise((resolve) => server.close(resolve));
+            const closePromise = Promise.all(servers.map(({ server }) => new Promise((resolve) => server.close(resolve))));
             const timeout = setTimeout(() => {
                 for (const socket of sockets) socket.destroy();
             }, closeTimeout);

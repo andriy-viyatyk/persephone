@@ -516,3 +516,178 @@ Append only. Add new entries at the end and never rewrite old ones. Do not inclu
 - **What actually happened:** It is a UIKit `openMenu` popover (`search-engine-menu`), not an application popup menu, so `menus` was empty. Which menus appear in `menus` is not documented.
 - **How it was resolved:** The test clicks the engine inside `[data-name="search-engine-menu"]` with `window.screen`.
 - **Suggested improvement:** Document in the `menus` `$help` which menus it lists, or list UIKit menus there too.
+
+### 2026-11-18 · EPIC-190 / US-2085 · Claude (run)
+- **Area:** screen / browser (reading list text)
+- **What the agent expected:** That the bookmarks drawer's `textContent` (read with `window.screen.evaluate`) shows what the Collections tree displays.
+- **What actually happened:** Virtualized trees and lists keep recycled rows attached but hidden, so `textContent` still contained a deleted bookmark after the tree had redrawn. EPIC-189 recorded this as an app bug ("the Collections tree keeps a deleted link") and left the test failing.
+- **How it was resolved:** Not an app bug. The test reads `innerText`, which skips hidden rows; the EPIC-189 open item is closed.
+- **Suggested improvement:** Say in `agents/browser.md` and the screens guide that virtualized lists keep hidden pooled rows, so read `innerText` or a snapshot, never `textContent`.
+
+### 2026-11-18 · EPIC-190 / US-2086 · Claude (run)
+- **Area:** call path (`pages[i].editor`)
+- **What the agent expected:** `getText`, `getValue`, `getAttribute`, `getHtml` and `exists` on a browser page, as the browser guide's host table and the editor's own `$help` ("read a value with getValue()") say.
+- **What actually happened:** All five failed with `"getValue" is not a member of BrowserEditor`. They existed on the script facade but were missing from the call-tree describe table.
+- **How it was resolved:** Product bug fixed: the five members are in `BROWSER_EDITOR_MEMBERS`.
+- **Suggested improvement:** A check that every facade method the guides name is a describe-table member.
+
+### 2026-11-18 · EPIC-190 / US-2086 · Codex Luna (plan) / Claude (run)
+- **Area:** browser (`keyDown` / `pressKey`)
+- **What the agent expected:** `keyDown("Shift")`, `pressKey("b")`, `keyUp("Shift")` to type "B", as `$help` says keyDown/keyUp keep modifier state across calls.
+- **What actually happened:** The page saw `b` without `shiftKey`. Held keys were stored per `CdpSession` object, and the browser target creates a new one for every operation.
+- **How it was resolved:** Product bug fixed: held keys are keyed by the target's CDP registration key.
+- **Suggested improvement:** None beyond the fix.
+
+### 2026-11-18 · EPIC-190 / US-2086 · Claude (run)
+- **Area:** browser (`type` on a new page)
+- **What the agent expected:** `type("#field", "kept")` right after `ctx.openBrowser` to fill the page field.
+- **What actually happened:** About one run in six the text went into Persephone's URL bar: the trusted click focused the field inside the page, but the app window's focus stayed on the new tab's URL bar.
+- **How it was resolved:** Product bug fixed: a trusted click (and a `pressKey` without `target`) focuses the page's webview first, as a real click does.
+- **Suggested improvement:** None beyond the fix.
+
+### 2026-11-18 · EPIC-190 / US-2086 · Codex Luna (plan)
+- **Area:** $help (`select`)
+- **What the agent expected:** One answer to whether `select()` hit-tests the pointer.
+- **What actually happened:** The guide and `automation/forms.ts` say it does not; the call-tree `select` summary and the editor `$help` said it does.
+- **How it was resolved:** `$help` and the summary corrected to the source behavior.
+- **Suggested improvement:** None beyond the fix.
+
+### 2026-11-18 · EPIC-190 / US-2086 · Codex Luna (implementation) / Claude (run)
+- **Area:** guide agents/browser (`force`)
+- **What the agent expected:** `click(covered, { force: true })` to activate the covered element.
+- **What actually happened:** `force` skips the actionability checks, but the trusted click is still dispatched at the element's coordinates, so the covering element receives it (Playwright behaves the same).
+- **How it was resolved:** The test asserts the forced click resolves and the cover receives it.
+- **Suggested improvement:** Add "the click still lands on whatever is on top at that point" to the `force` sentence.
+
+### 2026-11-18 · EPIC-190 / US-2087 · Codex Luna (plan)
+- **Area:** call path (`waitForURL` / `waitForResponse`)
+- **What the agent expected:** To pass a RegExp to `waitForURL` / `waitForResponse`, as the guide's example does.
+- **What actually happened:** A `call` (and the test stand-in) carries only JSON, so no RegExp can be passed; the RegExp overloads were unreachable for agents.
+- **How it was resolved:** Call gap closed: both accept `{ regex, flags? }`; the browser guide shows it. Covered by the observe tests.
+- **Suggested improvement:** None beyond the fix.
+
+### 2026-11-18 · EPIC-190 / US-2087 · Codex Luna (plan, implementation)
+- **Area:** $help (`networkRequests`)
+- **What the agent expected:** The member signature to list `includeBodies` and `maxBodyBytes`, as the guide and facade do.
+- **What actually happened:** The shared automation member listed only `tabId`; the plan routed the call through `ctx.call` for nothing (the stand-in accepts the options).
+- **How it was resolved:** Signature and summary updated.
+- **Suggested improvement:** None beyond the fix.
+
+### 2026-11-18 · EPIC-190 / US-2087 · Codex Luna (plan, implementation)
+- **Area:** other (test context)
+- **What the agent expected:** To assert a browser `screenshot()` result's shape from a test.
+- **What actually happened:** `ctx.call` decodes text only and rejects image blocks; the test context has no image result helper.
+- **How it was resolved:** Screenshots stay uncovered in the suite.
+- **Suggested improvement:** An image-returning context helper, or a `screenshot({ path })` option that saves to a file.
+
+### 2026-11-18 · EPIC-190 / US-2087 · Claude (run)
+- **Area:** browser (JavaScript dialogs)
+- **What the agent expected:** A `prompt()` dialog under the `manual` policy, answered with `handleDialog(true, "text")`, as the `promptText` parameter suggests.
+- **What actually happened:** `window.prompt()` throws in Electron guest pages, so no dialog is ever raised and the wait timed out.
+- **How it was resolved:** The guide now says `prompt()` is unavailable; the manual-policy test uses `confirm`; `promptText` is uncovered.
+- **Suggested improvement:** Mark `promptText` in `$help` as unused in browser pages, or implement a prompt dialog.
+
+### 2026-11-18 · EPIC-190 / US-2087 · Claude (run)
+- **Area:** app object
+- **What the agent expected:** `evaluate(...)` returning the strings `"false"` / `"true"`, and `getCertificate()` / `hostsChangedSinceTrust` returning `undefined`.
+- **What actually happened:** Strings came back as booleans, and `undefined` came back as `null`. Recurrence of the EPIC-187 / US-2066 JSON-parsed string entry (fourth epic in a row), now with `undefined` becoming `null` too.
+- **How it was resolved:** Tests compare booleans and accept `null`.
+- **Suggested improvement:** Say in `web-app-tests.md` that `undefined` crosses the boundary as `null`.
+
+### 2026-11-18 · EPIC-190 / US-2087 · Codex Luna (implementation)
+- **Area:** other (test context)
+- **What the agent expected:** `ctx.expect(x).toBeLessThanOrEqual(n)`.
+- **What actually happened:** `ctx.expect` has only `toBe`, `toEqual`, `toContain` and `toBeTruthy`; the guide lists them, but the agent guessed Jest's API.
+- **How it was resolved:** `ctx.expect(x <= n).toBeTruthy()`.
+- **Suggested improvement:** None; the guide is right. Numeric comparisons could be added.
+
+### 2026-11-18 · EPIC-190 / US-2088 · Codex Luna (plan, implementation) / Claude (run)
+- **Area:** $describe (page models)
+- **What the agent expected:** The editor's `$describe` to include the `app` model's members under `members[i].node.members`.
+- **What actually happened:** The `app` entry is `{ name: "app", kind: "property", node: true, ... }`: `node` only says a child node exists. All six WebMCP tests waited for nested members that never appear.
+- **How it was resolved:** Tests read `pages[id].editor.app.$describe` once `app` is present.
+- **Suggested improvement:** Document `$describe`'s `node: true` flag in the browser guide (the shape is only in the `ai-vision` README).
+
+### 2026-11-18 · EPIC-190 / US-2088 · Codex Luna (plan)
+- **Area:** guide agents/browser (page models)
+- **What the agent expected:** That a page model always groups WebMCP tools at `app.webmcp`, and a way to read `$describe`'s structure from the browser guide.
+- **What actually happened:** Source uses `webmcp_2` when the page's model already has `webmcp`; `$describe`'s shape is documented only in `node_modules/ai-vision/README.md`. A static fixture page also has to hand-write the remote contract because `ai-vision/remote` is not served.
+- **How it was resolved:** Fixture kept collision-free; the inline remote follows `BrowserPageRemote.ts`.
+- **Suggested improvement:** Mention the collision name and link the `$describe` contract from the guide.
+
+### 2026-11-18 · EPIC-190 / US-2088 · Codex Luna (implementation)
+- **Area:** other (test context docs)
+- **What the agent expected:** The test guides to list `ctx.httpsUrl()`.
+- **What actually happened:** It was added in this epic (US-2083) and was only in `test-setup.mjs`.
+- **How it was resolved:** Documented at epic close.
+- **Suggested improvement:** None.
+
+### 2026-11-18 · EPIC-190 / US-2089 · Claude (run)
+- **Area:** call path (`siteExtensionTrustPrompt`)
+- **What the agent expected:** A `hosts` array on the prompt, as the guide says the prompt "shows its id and hosts".
+- **What actually happened:** The prompt is `{ status, name, id, host, otherHosts, fetchHosts, note }`: the current page's host plus the others.
+- **How it was resolved:** Tests read `host` and `otherHosts`.
+- **Suggested improvement:** Give the prompt's field names in `agents/site-extensions.md`.
+
+### 2026-11-18 · EPIC-190 / US-2089 · Claude (run)
+- **Area:** app object (`editor.app`)
+- **What the agent expected:** `await editor.app` to return the site model's values.
+- **What actually happened:** Reading a node returns its description (`{ kind: "SiteExtension" }`); values come from its members (`editor.app.status`). Three tests waited on the wrong read.
+- **How it was resolved:** Tests read members.
+- **Suggested improvement:** One sentence in `web-app-tests.md`: awaiting a node returns its summary, not an object of its values.
+
+### 2026-11-18 · EPIC-190 / US-2089 · Codex Luna (implementation) / Claude (run)
+- **Area:** site extensions (`url` action result)
+- **What the agent expected:** A `{ kind: "url" }` action to open a new Persephone page.
+- **What actually happened:** With a browser page active it opens as a new inner tab of that page. Recurrence of the EPIC-189 / US-2078 `openUrlInBrowserTab` reuse entry.
+- **How it was resolved:** The test checks the editor's tabs.
+- **Suggested improvement:** Say where each action result opens in the site-extensions guide.
+
+### 2026-11-18 · EPIC-190 / US-2089 · Codex Luna (plan, implementation)
+- **Area:** guide agents/site-extensions
+- **What the agent expected:** The guide to name `trustSiteExtension()`'s `changed` status, the Trust bar's selector, and how to observe the end of `siteExtensions.remove()`'s confirmation.
+- **What actually happened:** `changed` is mentioned only in prose; `site-extension-trust` and the remove `{ pending: true }` handshake were found in source; `create()` refuses a second extension for a claimed host, so a conflict can only be made by writing a manifest.
+- **How it was resolved:** Found in source.
+- **Suggested improvement:** A short table of `trustSiteExtension()` results and the remove handshake; list `site-extension-trust` in the browser elements.
+
+### 2026-11-18 · EPIC-190 / US-2089 · Claude (run)
+- **Area:** call path (`pages.showPage`)
+- **What the agent expected:** `pages.showPage({ id })`.
+- **What actually happened:** It takes the id string; the error lists the open ids. Recurrence of the known `showPage` id-string trap.
+- **How it was resolved:** The test passes the string.
+- **Suggested improvement:** None; the error message was clear.
+
+### 2026-11-18 · EPIC-190 / US-2090 · Codex Luna (plan, implementation) / Claude (run)
+- **Area:** browser (Show Resources)
+- **What the agent expected:** A `call` member or a `menus[0]` entry for Show Resources, a page titled `<title> — Resources`, and network links whose URL is `curl '<url>'`.
+- **What actually happened:** It is reachable only through `toolbar-more` and a UIKit menu (not `menus`); the page is titled `<title> — Resources.link.json`; network links are full cURL commands with `-H` headers.
+- **How it was resolved:** The test clicks the menu text, expects the `.link.json` title and matches the cURL prefix.
+- **Suggested improvement:** A `showResources()` member on the browser editor; document the result shape.
+
+### 2026-11-18 · EPIC-190 / US-2090 · Codex Luna (plan, implementation)
+- **Area:** guide agents/browser (cinema mode)
+- **What the agent expected:** Agent guidance for cinema mode.
+- **What actually happened:** Only the user guide describes it; that a video attaches after 1 s / 3 s retries (`data-cinema-attached`) and that the button is a `div[title="Cinema Mode"]` were found in preload source.
+- **How it was resolved:** Found in source; the tests passed.
+- **Suggested improvement:** Two lines in `agents/browser.md`.
+
+### 2026-11-18 · EPIC-190 / US-2090 · Codex Luna (plan)
+- **Area:** other (Tor tests)
+- **What the agent expected:** That the `tor` requirement tag provides a configured `tor.exe`.
+- **What actually happened:** Tags only enable tests; the seeded profile has no `tor.exe-path`. The new network test reads `PERSEPHONE_TEST_TOR_EXE`.
+- **How it was resolved:** Recorded in the test and the epic.
+- **Suggested improvement:** Document the variable next to `--with tor`.
+
+### 2026-11-18 · EPIC-190 / US-2089 · Claude (run)
+- **Area:** site extensions (`url` action result) / settings
+- **What the agent expected:** `runSiteAction("url")` (and `app.openRawLink(url)` from a script) to open the URL in a Persephone page.
+- **What actually happened:** With the default `link-open-behavior` (`default-browser`) an http(s) URL goes to the OS default browser, so nothing appeared in Persephone and the test waited in vain; the test instance launched the machine's browser on loopback fixture URLs. With `internal-browser`, a URL opened as a new tab of the same browser page made the action report `not-current` although it had opened.
+- **How it was resolved:** The suite seed now sets `link-open-behavior` to `internal-browser`. Product bug fixed: an opened result reports `opened`.
+- **Suggested improvement:** Say in `agents/site-extensions.md` that a `url` result follows `link-open-behavior`.
+
+### 2026-11-18 · EPIC-190 / US-2086 · Claude (run)
+- **Area:** screen (`pressKey` shortcuts)
+- **What the agent expected:** `window.screen.pressKey("Control+l")` on a browser page opened at a URL to focus the URL bar, as the EPIC-189 navigation test asserted.
+- **What actually happened:** That test passed only because of the late URL-bar focus fixed in this epic: the URL bar already had focus. Ctrl+L is a browser-root shortcut, and keys sent while the webview holds focus reach the page instead.
+- **How it was resolved:** The test focuses a browser toolbar control first, as a user who clicked the toolbar would.
+- **Suggested improvement:** Say in the browser guide which shortcuts need focus in Persephone's chrome rather than in the page.

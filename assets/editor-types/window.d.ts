@@ -119,7 +119,7 @@ export interface IWindowScreen {
     /** Get recorded network requests for the app-window target. */
     networkRequests(options?: { tabId?: string }): Promise<IBrowserNetworkRequest[]>;
     /** Wait for a matching completed response from the app window or an owned existing iframe. */
-    waitForResponse(urlOrRegex: string | RegExp, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse>;
+    waitForResponse(urlOrRegex: string | RegExp | { regex: string; flags?: string }, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse>;
     /** Read console messages from Persephone's top-level renderer. */
     consoleMessages(options?: { tabId?: string; since?: number; level?: IBrowserConsoleLevel }): Promise<IBrowserConsoleMessage[]>;
     /** Read uncaught exceptions from Persephone's top-level renderer. */

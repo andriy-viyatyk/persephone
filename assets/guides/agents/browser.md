@@ -8,6 +8,9 @@ summary: "Snapshot, refs, clicks, typing, waits, screenshots, dialogs, and priva
 
 For repeatable web-app regression checks, see [Web-app regression tests](./web-app-tests.md).
 
+For cinema mode on an attached video, click `div[title="Cinema Mode"]` when it appears over the
+player.
+
 ## Video and element fullscreen
 
 TV recipe: `moveToDisplay('largest')` first, then `pages[id].editor.fullscreen()`. A video already in
@@ -51,6 +54,9 @@ use the suggested dialog/landmark ref as `root`, or narrow with `interactive`, `
 `window.screen` can use a board-frame ref such as `{ ref: "f1-e12" }` to scope a snapshot or
 type into a field. A frame-rooted snapshot keeps those frame refs usable while the elements remain
 attached.
+
+Virtualized lists may keep pooled rows attached but hidden; read `innerText` or a snapshot instead
+of `textContent`, which can include hidden rows.
 
 ## Hosts and members
 
@@ -96,7 +102,8 @@ WebMCP tool names that are not valid member names are mapped to valid names (for
 Read `$describe` or `$help` before calling tools. The page may register tools after load or change
 its tool set while open, so reread the current descriptor after a stale-shape response or when its
 tools change. Removing the last tool removes the WebMCP-only `app`; when a page model also exists,
-its `app` remains and the `webmcp` child disappears.
+its `app` remains and the `webmcp` child disappears. When a `$describe` member has `node: true`,
+read that child's own `$describe` to inspect its members.
 
 If the page already publishes its own model, WebMCP tools are grouped under
 `pages[id].editor.app.webmcp`, leaving the page's existing members intact. Tool annotations can mark
@@ -122,7 +129,8 @@ Narrow the selector, use a snapshot ref, or choose a zero-based `{ nth }` index 
 matches. Actions retry until the default 5-second timeout (or `timeout`) while checking that the
 element is attached, visible, stable, enabled, and receives pointer events. Stability means the
 element keeps the same bounding box across two consecutive animation frames. `{ force: true }`
-skips all those checks and dispatches anyway. `position` is relative to the element border-box.
+skips all those checks and clicks whatever is on top at that point. `position` is relative to the
+element border-box.
 
 `hover()` sends trusted pointer events, but CSS `:hover` does not apply inside browser webviews.
 Script-driven pointer listeners can still respond. The app window and board do not share that
@@ -193,7 +201,9 @@ await editor.click("#load-result");
 const response = await responseWait;
 ```
 
-A string matches the URL exactly; use a RegExp when query parameters vary. Redirect hops do not
+A string matches the URL exactly; use a RegExp when query parameters vary. A `call` carries only JSON,
+so there pass `{ "regex": "api/result\\?page=\\d+", "flags": "i" }` (flags optional) instead of a RegExp;
+`waitForURL` accepts the same form. Redirect hops do not
 resolve the wait: matching uses the final response URL. The promise resolves when the response
 headers arrive; with `includeBody: true` it waits for the body to finish loading, so a body the page
 never reads can time out. A response cut off after its headers (for example `net::ERR_ABORTED`)
@@ -215,8 +225,9 @@ secrets; they are fetched only on request and are never logged or persisted.
 JavaScript dialogs default to dismiss during automation activity and its two-second grace period.
 Dialogs opened while the agent is idle remain user-controlled. `dialogs()` reads pending/handled
 state and can set `accept`, `dismiss`, or `manual`; under `manual`, the next operation waits for
-`handleDialog(accept, promptText?)`. `consoleMessages()` and `pageErrors()` return bounded recent
-records.
+`handleDialog(accept, promptText?)`. `window.prompt()` is not available in browser pages (the
+Electron runtime throws instead of showing it), so only `alert`, `confirm` and `beforeunload`
+dialogs occur. `consoleMessages()` and `pageErrors()` return bounded recent records.
 
 ## Other operations
 

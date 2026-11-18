@@ -69,6 +69,8 @@ Every test receives these `ctx` members:
 `requires: ["launch"]` so they are skipped there. `ctx.waitFor` polls a value with a predicate;
 the browser editor's `site.waitFor({ selector })` waits for a DOM condition.
 
+Call results cross a JSON boundary: an app value of `undefined` arrives in the test as `null`.
+
 ## Browser page and profile behavior
 
 `openBrowser()` creates a new browser page, navigates to the URL, waits for `DOMContentLoaded`, and
@@ -76,6 +78,12 @@ returns a handle to `pages[id].editor`. Its `profile` option is a browser profil
 `--profile` selects the Persephone app profile. The name is checked against configured browser
 profiles; a typo reports valid names. If omitted, the configured default browser profile is used.
 If that setting is empty, the built-in browser profile is used.
+
+For an HTTPS page served by the integration runner, use `ctx.httpsUrl(path)`. Its fixture
+certificate is accepted only by an app instance owned by that run. Set
+`PERSEPHONE_TEST_TRUSTED_CERTIFICATES` to a comma-separated list of exact Electron fingerprints
+in `sha256/<base64>` form. The runner supplies its fixture fingerprint; ordinary app instances do
+not use this trust setting, and `--open`/`--attach` runs do not accept the runner certificate.
 
 Downloads in an app launched by the runner do not open the Save dialog. They are saved to the
 profile's `test-downloads` folder (a ` (1)` suffix keeps names unique). Find the file's path in

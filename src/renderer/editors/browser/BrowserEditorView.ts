@@ -157,7 +157,12 @@ export class BrowserEditorView extends VanillaView<{ model: BrowserEditor }> {
             this.initialLoad = false;
             if (!activeUrl || activeUrl === "about:blank") {
                 // Wait 100 ms for the blank-page toolbar to become visible before focusing it.
-                this.focusTimer = setTimeout(() => this.model.urlBar.focusUrlInput(), 100);
+                // Skip it when the tab has started loading a page by then (an agent's openBrowser):
+                // the late focus took the caret from that page, and typed text went to the URL bar.
+                this.focusTimer = setTimeout(() => {
+                    const url = this.model.activeTab?.url || "";
+                    if (!url || url === "about:blank") this.model.urlBar.focusUrlInput();
+                }, 100);
             }
         }
         this.syncPrompts(); this.syncSiteExtensionTrustPrompt(); this.syncTor(state); this.syncNetworkError(state); this.syncClick(state); this.syncDrawer(state); this.syncSuggestions();

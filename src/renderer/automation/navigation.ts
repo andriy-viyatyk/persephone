@@ -1,6 +1,33 @@
 import { type NavigationWaitOptions, type NavigationWaitResult, type BrowserResponseResult, type BrowserResponseWaitOptions } from "../../ipc/browser-ipc";
 import type { IAutomationTarget, INavigableTarget, ITabInfoTarget } from "./types";
 
+/**
+ * A URL pattern for `waitForURL` / `waitForResponse`: an exact string, a RegExp, or — for callers
+ * that pass JSON (MCP `call`, test stand-ins), which cannot carry a RegExp — `{ regex, flags? }`.
+ */
+export type UrlPatternInput = string | RegExp | { regex: string; flags?: string };
+
+type WireUrlPattern = string | { source: string; flags: string };
+
+function isRegexDescriptor(value: unknown): value is { regex: string; flags?: string } {
+    return typeof value === "object" && value !== null && !(value instanceof RegExp)
+        && typeof (value as { regex?: unknown }).regex === "string";
+}
+
+/** Normalize a pattern for the main-process waiter; a `{ regex }` descriptor is compiled once here
+ *  so an invalid expression fails at the call instead of at the waiter. */
+function toWirePattern(value: UrlPatternInput, method: string): WireUrlPattern {
+    if (typeof value === "string") return value;
+    if (value instanceof RegExp) return { source: value.source, flags: value.flags };
+    if (isRegexDescriptor(value)) {
+        const flags = value.flags ?? "";
+        if (typeof flags !== "string") throw new Error(`${method}: regex flags must be a string.`);
+        const compiled = new RegExp(value.regex, flags);
+        return { source: compiled.source, flags: compiled.flags };
+    }
+    throw new Error(`${method} requires a URL string, a RegExp, or { regex, flags? }.`);
+}
+
 
 /** Wait for navigation to start and then for the new document to finish loading. */
 /** Arm the main-process CDP waiter before triggering a browser navigation. */
@@ -8,14 +35,12 @@ export async function waitForNavigationEvents(
     target: IAutomationTarget,
     trigger: () => void,
     options: NavigationWaitOptions & {
-        tabId?: string; kind?: "navigation" | "url"; urlPattern?: string | RegExp;
+        tabId?: string; kind?: "navigation" | "url"; urlPattern?: UrlPatternInput;
         /** Count a load already in progress when armed (waitForNavigation only). */
         adoptInProgress?: boolean;
     } = {},
 ): Promise<NavigationWaitResult> {
-    const pattern = options.urlPattern instanceof RegExp
-        ? { source: options.urlPattern.source, flags: options.urlPattern.flags }
-        : options.urlPattern;
+    const pattern = options.urlPattern === undefined ? undefined : toWirePattern(options.urlPattern, "waitForURL");
     const cdp = target.cdp(options.tabId);
     const token = await cdp.armNavigationWait({
         waitUntil: options.waitUntil ?? "load",
@@ -33,15 +58,10 @@ export async function waitForNavigationEvents(
 
 export async function waitForResponse(
     target: IAutomationTarget,
-    urlOrRegex: string | RegExp,
+    urlOrRegex: UrlPatternInput,
     options: BrowserResponseWaitOptions & { tabId?: string } = {},
 ): Promise<BrowserResponseResult> {
-    if (!(urlOrRegex instanceof RegExp) && typeof urlOrRegex !== "string") {
-        throw new Error("waitForResponse requires a URL string or RegExp.");
-    }
-    const pattern = urlOrRegex instanceof RegExp
-        ? { source: urlOrRegex.source, flags: urlOrRegex.flags }
-        : urlOrRegex;
+    const pattern = toWirePattern(urlOrRegex, "waitForResponse");
     const cdp = target.cdp(options.tabId);
     const token = await cdp.armResponseWait(pattern, options);
     return cdp.awaitResponseWait(token);

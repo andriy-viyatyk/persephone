@@ -1,0 +1,10 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Observe dialogs fixture</title></head>
+<body>
+    <button id="alert" onclick="alert('observe-fake-alert'); document.querySelector('#result').textContent = 'alert-returned'">Alert</button>
+    <button id="confirm" onclick="document.querySelector('#result').textContent = String(confirm('observe-fake-confirm'))">Confirm</button>
+    <button id="prompt" onclick="document.querySelector('#result').textContent = String(prompt('observe-fake-prompt', ''))">Prompt</button>
+    <output id="result"></output>
+</body>
+</html>

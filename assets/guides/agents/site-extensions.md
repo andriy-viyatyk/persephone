@@ -123,7 +123,8 @@ source with `app.fs.write(path, source)`.
 ## Trust and reload loop
 
 After writing the script, the page shows a Trust bar for it (`pages[pageId].editor.siteExtensionTrustPrompt`
-shows its id and hosts). For an extension you built on the user's request, call
+shows `host`, `otherHosts`, `fetchHosts`, `id`, `name`, `status`, and `note`). For an extension you
+built on the user's request, call
 `pages[pageId].editor.trustSiteExtension()` yourself; for any other extension, follow
 [Trust and the data boundary](site-extensions.md#trust-and-the-data-boundary). A
 `status: "changed"` result means the manifest changed after the bar appeared: re-read the prompt and
@@ -208,7 +209,8 @@ The result is one of these closed shapes, with no extra fields:
   contain no controls. Do not put secrets in them; HLS subrequests can send them to other hosts.
 - `{ kind: "text", title, format, content }`: format is `markdown`, `json`, `csv`, or `plain`;
   content is at most 1 MiB UTF-8.
-- `{ kind: "url", url }` opens the URL through the normal content pipeline.
+- `{ kind: "url", url }` opens the URL through the normal content pipeline and follows the
+  `link-open-behavior` setting.
 - `{ kind: "links", title, items: [{ title, url }] }`: 1–500 links.
 - `{ kind: "message", text }`: a 1–500 character notification.
 

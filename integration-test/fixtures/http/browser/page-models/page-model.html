@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Page model and WebMCP fixture</title>
+</head>
+<body>
+  <h1>Page model and WebMCP fixture</h1>
+  <output id="fixture-ready">Page model fixture ready.</output>
+  <script>
+    let version = 1;
+    const remote = {
+      get version() { return version; },
+      describe() {
+        return {
+          schemaVersion: 1,
+          root: {
+            kind: "FixturePage",
+            summary: "A small page-published fixture model.",
+            members: [
+              { name: "greeting", kind: "method", signature: "greeting()", summary: "Return a fixture greeting." },
+            ],
+          },
+        };
+      },
+      async handle(request) {
+        if (request.action === "ai:invoke" && request.path === "greeting") {
+          return { ok: true, result: "Hello, fixture." };
+        }
+        return { ok: false, error: "Unknown fixture model request." };
+      },
+      refresh() {
+        version += 1;
+        const signal = window.__aiVisionHostSignal;
+        if (typeof signal === "function") signal(JSON.stringify({ type: "shape", version, schemaVersion: 1 }));
+      },
+    };
+    window.__aiVision = remote;
+
+    void document.modelContext.registerTool({
+      name: "search-products",
+      description: "Search the sample product list.",
+      inputSchema: {
+        type: "object",
+        properties: { query: { type: "string" } },
+        required: ["query"],
+      },
+      annotations: { readOnlyHint: true, untrustedContentHint: true },
+      execute: async ({ query }) => ({ query, products: ["sample product"] }),
+    });
+  </script>
+</body>
+</html>

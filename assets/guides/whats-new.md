@@ -21,9 +21,28 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Downloads in web-app tests:** in an app launched by the test runner, a browser download no
   longer opens the Save dialog that a test cannot answer. It is saved to the profile's
   `test-downloads` folder and its path is listed in `app.downloads`.
+- **HTTPS in web-app tests:** an app launched by the test runner accepts a self-signed certificate
+  whose SHA-256 fingerprint is listed in `PERSEPHONE_TEST_TRUSTED_CERTIFICATES`, so tests can use a
+  local HTTPS server. Other certificate errors, and every certificate error outside a test run, are
+  still rejected.
+- **URL patterns over `call`:** `waitForURL` and `waitForResponse` accept `{ regex, flags? }` where a
+  script would pass a RegExp, because a `call` carries only JSON.
 
 ### Bug Fixes
 
+- **Held keys in browser automation:** `keyDown("Shift")` (or Control, Alt, Meta) was forgotten by
+  the next `pressKey()`, so `keyDown("Shift")` + `pressKey("b")` typed "b" instead of "B". Held keys
+  now stay down until `keyUp()`.
+- **Typing into a page just opened by an agent:** a new browser page focused its URL bar 100 ms after
+  opening, even when it had already started loading a page, so text that `type()` sent right after
+  opening could land in the URL bar. The late focus is skipped once a page is loading, and a trusted
+  click (and `pressKey()` without a target) focuses the page first, as a real click does.
+- **Site action URL results:** a site-extension action returning `{ kind: "url" }` that opened as a
+  new tab of the same browser page reported `not-current` although the URL had opened; it now reports
+  `opened`.
+- **Browser page queries over `call`:** `getText`, `getValue`, `getAttribute`, `getHtml` and `exists`
+  worked in scripts but were missing from `pages[i].editor` in the `call` tree, although the guide and
+  `$help` pointed agents at them. The `select()` help also wrongly said it hit-tests the pointer.
 - **Browser `reload()` for agents and scripts:** `pages[i].editor.reload()` returned before the page
   had reloaded, and on a page that was still loading it stopped the load instead of reloading. It now
   always reloads and waits for the reloaded page, like `back()` and `forward()`, returning its URL

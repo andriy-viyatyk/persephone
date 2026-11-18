@@ -6,7 +6,7 @@ import os from "node:os";
 import electronPath from "electron";
 import {
     DEV_MAIN_PATH, DEV_MARKER_PATH, FIXTURE_ROOT, MCP_URL, PROFILE_ROOT, REPOSITORY_ROOT,
-    RUNNER_ROOT, SEED_ROOT, TEST_PORTS, HTTP_FIXTURE_PORT, PROD_BUILD_BLOCKED_MESSAGE, RESTART_DEV_NOTICE,
+    RUNNER_ROOT, SEED_ROOT, TEST_PORTS, HTTP_FIXTURE_PORT, HTTPS_FIXTURE_PORT, PROD_BUILD_BLOCKED_MESSAGE, RESTART_DEV_NOTICE,
 } from "./config.mjs";
 import { McpClient, raceTimeout } from "./client.mjs";
 
@@ -32,7 +32,7 @@ export async function assertPortsFree(ports = TEST_PORTS) {
     }
 }
 
-export const APP_PORTS = Object.freeze(TEST_PORTS.filter((port) => port !== HTTP_FIXTURE_PORT));
+export const APP_PORTS = Object.freeze(TEST_PORTS.filter((port) => port !== HTTP_FIXTURE_PORT && port !== HTTPS_FIXTURE_PORT));
 
 function probePipe(pipePath, timeout) {
     return new Promise((resolve, reject) => {

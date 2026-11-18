@@ -107,15 +107,24 @@ interface CdpKeyEvent {
 }
 
 export const MODIFIER_BITS: Record<string, number> = { Alt: 1, Control: 2, Meta: 4, Shift: 8 };
-const heldKeysBySession = new WeakMap<CdpSession, Map<string, Set<string>>>();
+// Keys held by keyDown() until keyUp(), per CDP target. Keyed by the registration key, not the
+// CdpSession object: targets create a fresh CdpSession for every operation, so an object key lost
+// the held Shift/Control between keyDown("Shift") and the next pressKey().
+const heldKeysByTarget = new Map<string, Set<string>>();
 
-function sessionKey(sessionId?: string): string { return sessionId ?? ""; }
+function targetKey(cdp: CdpSession, sessionId?: string): string { return `${cdp.registrationKey}|${sessionId ?? ""}`; }
 function heldKeys(cdp: CdpSession, sessionId?: string): Set<string> {
-    let sessions = heldKeysBySession.get(cdp);
-    if (!sessions) { sessions = new Map(); heldKeysBySession.set(cdp, sessions); }
-    let keys = sessions.get(sessionKey(sessionId));
-    if (!keys) { keys = new Set(); sessions.set(sessionKey(sessionId), keys); }
+    const key = targetKey(cdp, sessionId);
+    let keys = heldKeysByTarget.get(key);
+    if (!keys) { keys = new Set(); heldKeysByTarget.set(key, keys); }
     return keys;
+}
+function releaseHeldKey(cdp: CdpSession, key: string, sessionId?: string): void {
+    const mapKey = targetKey(cdp, sessionId);
+    const keys = heldKeysByTarget.get(mapKey);
+    if (!keys) return;
+    keys.delete(key);
+    if (keys.size === 0) heldKeysByTarget.delete(mapKey);
 }
 function modifierMask(keys: ReadonlySet<string>): number {
     return [...keys].reduce((mask, key) => mask | (MODIFIER_BITS[key] ?? 0), 0);
@@ -160,7 +169,7 @@ export async function dispatchKeyUp(cdp: CdpSession, key: string, sessionId?: st
     const keys = heldKeys(cdp, sessionId);
     const modifiers = modifierMask(keys);
     await cdp.send("Input.dispatchKeyEvent", eventParams(key, "keyUp", modifiers), sessionId);
-    keys.delete(key);
+    releaseHeldKey(cdp, key, sessionId);
 }
 
 async function pressMappedKey(cdp: CdpSession, key: string, sessionId?: string): Promise<void> {

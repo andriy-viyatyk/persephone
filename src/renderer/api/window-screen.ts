@@ -10,6 +10,7 @@ import type {
 } from "./types/browser-editor";
 import { appTarget } from "../automation/AppTargetModel";
 import { clickAtCoordinates, dragCoordinates } from "../automation/mouse";
+import type { UrlPatternInput } from "../automation/navigation";
 import { AutomationSurface } from "../scripting/api-wrapper/AutomationSurface";
 
 interface TabOption { tabId?: string }
@@ -60,7 +61,7 @@ export class WindowScreen implements IWindowScreen {
     fillForm(fields: IBrowserFormField[]): Promise<void> { return this.automation.fillForm(fields); }
     setInputFiles(locator: IBrowserElementLocator, paths: string[], options?: TabOption): Promise<void> { return this.automation.setInputFiles(locator, paths, options); }
     networkRequests(options?: TabOption): Promise<IBrowserNetworkRequest[]> { return this.automation.networkRequests(options); }
-    waitForResponse(urlOrRegex: string | RegExp, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse> { return this.automation.waitForResponse(urlOrRegex, options); }
+    waitForResponse(urlOrRegex: UrlPatternInput, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse> { return this.automation.waitForResponse(urlOrRegex, options); }
     consoleMessages(options?: TabOption & { since?: number; level?: IBrowserConsoleLevel }) { return this.automation.consoleMessages(options); }
     pageErrors(options?: TabOption) { return this.automation.pageErrors(options); }
 }

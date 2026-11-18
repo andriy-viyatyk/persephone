@@ -9,6 +9,7 @@ import { disposeMainServices, startMainServices } from "./main-services";
 import { hasTestInstanceOptions, parseTestInstanceOptions, stripTestInstanceOptions } from "./test-mode/instance-options";
 import { configureTestModeMcp, startTestModeMcp } from "./test-mode/mcp";
 import { configureTestModeLog } from "./test-mode/TestModeLog";
+import { installTestCertificateTrust } from "./test-mode/certificates";
 
 export function setupMainProcess(): void {
     let testInstance: ReturnType<typeof parseTestInstanceOptions>["options"];
@@ -16,6 +17,7 @@ export function setupMainProcess(): void {
     catch (error) { console.error(error); app.exit(1); return; }
     configureTestModeMcp(testInstance);
     configureTestModeLog(testInstance?.logDirectory);
+    installTestCertificateTrust();
     void startMainServices("setup-before-certificate");
 
     app.on("select-client-certificate", (event, webContents, _url, _list, callback) => {

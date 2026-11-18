@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>US-2086 bounded snapshots</title>
+</head>
+<body>
+    <h1>Snapshot overflow fixture</h1>
+    <button type="button" aria-label="First snapshot action">First</button>
+    <button type="button" aria-label="Second snapshot action">Second</button>
+    <button type="button" aria-label="Third snapshot action">Third</button>
+    <button type="button" aria-label="Fourth snapshot action">Fourth</button>
+    <section id="snapshot-root" aria-label="Snapshot scoped section">
+        <h2>Inside scoped snapshot</h2>
+        <button type="button" aria-label="Scoped snapshot action">Scoped</button>
+        <p>Nested snapshot content ensures this fixture has a useful rooted area.</p>
+    </section>
+    <section aria-label="Additional snapshot content">
+        <h2>Outside scoped snapshot</h2>
+        <p>Long content block one for maxNodes and maxChars shortening coverage.</p>
+        <p>Long content block two for maxNodes and maxChars shortening coverage.</p>
+        <p>Long content block three for maxNodes and maxChars shortening coverage.</p>
+        <p>Long content block four for maxNodes and maxChars shortening coverage.</p>
+        <p>Long content block five for maxNodes and maxChars shortening coverage.</p>
+        <button type="button" aria-label="Fifth snapshot action">Fifth</button>
+    </section>
+</body>
+</html>

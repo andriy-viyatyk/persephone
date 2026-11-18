@@ -24,7 +24,8 @@ async function readBookmarks(ctx, path, predicate = () => true) {
     return await ctx.waitFor(async (activeContext) => {
         // callText preserves the file string so JSON.parse reads the exact persisted document.
         const contents = await activeContext.callText("fs.read", [path]);
-        return JSON.parse(contents);
+        // The app may be mid-write; an unparsable read is "not yet", not a failure.
+        try { return JSON.parse(contents); } catch { return {}; }
     }, predicate, { timeout: 10000 });
 }
 
@@ -88,8 +89,9 @@ async function openBookmarksDrawer(ctx, page, expectedTitle) {
     );
     await activatePage(ctx, page.id);
     return await ctx.app.window.screen.evaluate(
-        // Inactive pages stay mounted; read the drawer of the visible (active) page only.
-        "() => [...document.querySelectorAll('[data-name=bookmarks-drawer-root]')].find((element) => element.offsetParent)?.textContent ?? ''",
+        // Inactive pages stay mounted; read the drawer of the visible (active) page only. innerText, not
+        // textContent: the virtualized lists keep recycled rows attached but hidden.
+        "() => [...document.querySelectorAll('[data-name=bookmarks-drawer-root]')].find((element) => element.offsetParent)?.innerText ?? ''",
     );
 }
 
@@ -239,8 +241,9 @@ export default [
             await activatePage(ctx, page.id);
             const drawerAfterRemoval = await ctx.waitFor(
                 (activeContext) => activeContext.app.window.screen.evaluate(
-                    // Inactive pages stay mounted; read the drawer of the visible (active) page only.
-                    "() => [...document.querySelectorAll('[data-name=bookmarks-drawer-root]')].find((element) => element.offsetParent)?.textContent ?? ''",
+                    // Inactive pages stay mounted; read the drawer of the visible (active) page only. innerText
+                    // skips the recycled rows a virtualized list keeps attached but hidden.
+                    "() => [...document.querySelectorAll('[data-name=bookmarks-drawer-root]')].find((element) => element.offsetParent)?.innerText ?? ''",
                 ),
                 (text) => !String(text).includes(editedTitle),
             );

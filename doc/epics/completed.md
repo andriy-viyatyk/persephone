@@ -1,3 +1,33 @@
+## EPIC-190 — UI test coverage, phase 6b: browser automation, page models, site extensions, page tools, Tor
+
+Completed 2026-11-18. Second half of Phase 6 of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 63 new
+tests in `integration-test/tests/browser/` (`automation/input`, `automation/observe`, `page-models`, `site-extensions`,
+`page-tools`, `tor`); the `editors/browser` pop-up and temporary-extension tests moved into the `browser` area; the
+suite is 325 tests. Codex (Luna) planned and wrote the tests blind; Claude reviewed, ran and triaged, and recorded 25
+cases in [ai-vision-feedback.md](../reviews/ai-vision-feedback.md). **Runner:** an HTTPS fixture server
+(127.0.0.1:17868, committed test-only certificate, `ctx.httpsUrl`), trusted only by test instances through
+`PERSEPHONE_TEST_TRUSTED_CERTIFICATES`; the seed sets `link-open-behavior` to `internal-browser`, so tests never open
+the OS browser. **Fixed:** `getText`/`getValue`/`getAttribute`/`getHtml`/`exists` were missing from the browser
+editor's call tree; `keyDown()` modifiers were forgotten by the next `pressKey()`; text typed right after opening a page
+could land in the URL bar (late URL-bar focus); a site action `url` result opening a new tab reported `not-current`.
+**Call gap closed:** `waitForURL`/`waitForResponse` accept `{ regex, flags? }`. **EPIC-189 open item closed:** the
+bookmarks "bug" was a test reading hidden pooled tree rows. **Open:** the EPIC-187 grid row-insertion decision; the
+EPIC-185 env-vars test failed again (intermittent: Settings panel covers the button). **Uncovered:** browser screenshot
+results, `window.prompt()` (unavailable in Electron pages), the certificate viewer itself (Phase 8a), cinema mode in
+nested frames, Tor through the network (`--with network,tor` plus `PERSEPHONE_TEST_TOR_EXE`). Final launched run
+(`--with git,mneme`): 320 passed, 3 failed, 2 skipped; the one new failure (the Ctrl+L test had relied on the URL-bar
+focus bug) was fixed afterwards and the browser area rerun green (112 passed, 2 skipped). Completion skills by Codex (Luna). Epic
+document: [EPIC-190](EPIC-190.md).
+
+- [x] **HTTPS fixture server and test-instance certificate trust (US-2083).**
+- [x] **Move the `editors/browser` tests into the `browser` area (US-2084).**
+- [x] **Bookmarks drawer keeps a deleted bookmark: a test bug (US-2085).**
+- [x] **Automation input and queries (US-2086).**
+- [x] **Automation waits, diagnostics, dialogs and viewport (US-2087).**
+- [x] **Page models and WebMCP (US-2088).**
+- [x] **Saved site extensions (US-2089).**
+- [x] **Certificate view, Show Resources, cinema mode, fullscreen, Tor (US-2090).**
+
 ## EPIC-189 — UI test coverage, phase 6a: Browser page
 
 Completed 2026-11-18. First half of Phase 6 of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md): 21 new

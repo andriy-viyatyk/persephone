@@ -6,7 +6,7 @@ import { BrowserPageRemoteTimeoutError, type BrowserAiVisionRegistration } from 
 import { elementExists, getElementAttribute, getElementHtml, getElementText, getElementValue, waitFor } from "../../automation/queries";
 import { dialogs } from "../../automation/page-events";
 import { setViewport as setViewportOperation, clearViewport as clearViewportOperation } from "../../automation/page-state";
-import { navigateAndWait as navigateAndWaitOperation, navigateBackAndWait, waitForNavigationEvents } from "../../automation/navigation";
+import { navigateAndWait as navigateAndWaitOperation, navigateBackAndWait, waitForNavigationEvents, type UrlPatternInput } from "../../automation/navigation";
 import { resolveElementLocator } from "../../automation/locator";
 import { createRemoteProxy, type IAiElementDeclaration, type IAiMember, type IAiNodeShape, type IAiVisible, type IAiVisionDescriptor, type IAiVisionShape } from "ai-vision";
 import type { IBrowserActionOptions, IBrowserClickOptions, IBrowserEditor, IBrowserElementLocator, IBrowserHoverOptions, IBrowserKeyboardOptions, IBrowserNetworkRequest, IBrowserNetworkRequestsOptions, IBrowserResponse, IBrowserResponseWaitOptions, IBrowserScreenshot, IBrowserScreenshotOptions, IBrowserSelectOptions, IBrowserTab, IBrowserTypeOptions, IBrowserDialogPolicy, IBrowserConsoleLevel, IBrowserDragOptions, IBrowserFormField, IBrowserViewportOptions, IBrowserEvaluateOptions, IBrowserEvaluateFunction, ITemporarySiteExtensionOptions, ITemporarySiteExtensionAttachResult, ITemporarySiteExtensionDetachResult, ITemporarySiteExtensionListItem } from "../../api/types/browser-editor";
@@ -65,10 +65,15 @@ const BROWSER_EDITOR_MEMBERS: readonly IAiMember[] = [
     { name: "addTab", kind: "method", signature: "addTab(url?: string): string", summary: "Open a new tab. Returns the new tab's ID." },
     { name: "closeTab", kind: "method", signature: "closeTab(tabId?: string): \"Tab closed\"", summary: "Close a tab. Defaults to active tab; this closes a browser tab, not the Persephone page.", caution: "closes a browser tab" },
     { name: "switchTab", kind: "method", signature: "switchTab(tabId: string): void", summary: "Switch to a tab (make it active/visible)." },
+    { name: "getText", kind: "method", signature: "getText(locator: string | { ref: string }, options?: { tabId?: string }): Promise<string | null>", summary: "Text content of the first matching element, or null when nothing matches." },
+    { name: "getValue", kind: "method", signature: "getValue(locator: string | { ref: string }, options?: { tabId?: string }): Promise<string | null>", summary: "Current value of an input, textarea or select, or null when nothing matches. snapshot() never shows field values." },
+    { name: "getAttribute", kind: "method", signature: "getAttribute(locator: string | { ref: string }, attribute: string, options?: { tabId?: string }): Promise<string | null>", summary: "One attribute value, or null when the element or attribute is missing." },
+    { name: "getHtml", kind: "method", signature: "getHtml(locator: string | { ref: string }, options?: { tabId?: string }): Promise<string | null>", summary: "innerHTML of the first matching element, or null when nothing matches." },
+    { name: "exists", kind: "method", signature: "exists(locator: string | { ref: string }, options?: { tabId?: string }): Promise<boolean>", summary: "Whether any element matches the locator." },
     { name: "waitForSelector", kind: "method", signature: "waitForSelector(selector: string, options?: { state?: 'attached' | 'detached' | 'visible' | 'hidden'; timeout?: number; tabId?: string }): Promise<void>", summary: "Wait for selector state (default attached) on 100 ms timer polling. Visible means positive size, visibility not hidden, and display not none. Default timeout 10000 ms." },
     { name: "waitForNavigation", kind: "method", signature: "waitForNavigation(options?: { waitUntil?: 'load' | 'domcontentloaded' | 'networkidle'; timeout?: number; tabId?: string }): Promise<{ url: string; status: number | null }>", summary: "Wait for the next or in-progress main-frame navigation. networkidle means no finite requests for 500 ms; HTTP errors resolve with status, network failures reject." },
-    { name: "waitForURL", kind: "method", signature: "waitForURL(pattern: string | RegExp, options?: { waitUntil?: 'load' | 'domcontentloaded' | 'networkidle'; timeout?: number; tabId?: string }): Promise<{ url: string; status: number | null }>", summary: "Wait for a main-frame URL change matching exact string equality or RegExp. Same-document SPA/hash results have status null." },
-    { name: "waitForResponse", kind: "method", signature: "waitForResponse(urlOrRegex: string | RegExp, options?: { timeout?: number; tabId?: string; includeBody?: boolean; maxBodyBytes?: number }): Promise<IBrowserResponse>", summary: "Wait for a matching final response (headers; with includeBody, until its body finishes). Arm before triggering the request; strings match exactly and RegExp supports query matching." },
+    { name: "waitForURL", kind: "method", signature: "waitForURL(pattern: string | RegExp | { regex: string; flags?: string }, options?: { waitUntil?: 'load' | 'domcontentloaded' | 'networkidle'; timeout?: number; tabId?: string }): Promise<{ url: string; status: number | null }>", summary: "Wait for a main-frame URL change matching exact string equality or RegExp (over `call`, pass `{ regex, flags? }`). Same-document SPA/hash results have status null." },
+    { name: "waitForResponse", kind: "method", signature: "waitForResponse(urlOrRegex: string | RegExp | { regex: string; flags?: string }, options?: { timeout?: number; tabId?: string; includeBody?: boolean; maxBodyBytes?: number }): Promise<IBrowserResponse>", summary: "Wait for a matching final response (headers; with includeBody, until its body finishes). Arm before triggering the request; strings match exactly and RegExp supports query matching; over `call`, pass `{ regex, flags? }` for a RegExp." },
     { name: "wait", kind: "method", signature: "wait(ms: number): Promise<void>", summary: "Wait for a specified number of milliseconds." },
     { name: "dialogs", kind: "method", signature: "dialogs(options?: { tabId?: string; policy?: 'accept' | 'dismiss' | 'manual' }): Promise<{ policy: string; dialogs: object[] }>", summary: "Read recent page dialogs and current policy, or set the policy. Default dismiss. Idle user dialogs remain user-controlled; manual leaves an agent dialog open for handleDialog()." },
     { name: "handleDialog", kind: "method", signature: "handleDialog(accept: boolean, promptText?: string, options?: { tabId?: string }): Promise<void>", summary: "Accept or dismiss the pending page-authored JavaScript dialog." },
@@ -129,8 +134,8 @@ not apply inside browser webviews. Pass
 { synthetic: true } only when legacy DOM-event behavior is needed.
 Keyboard, fill, check, uncheck and clear use trusted CDP input by default. type() clears editable
 content before inserting; slowly sends mapped key events and submit presses Enter. select() is a
-programmatic native-select operation with untrusted input/change events and currently also performs
-pointer actionability/hit-testing; custom dropdowns use trusted click() + pressKey().
+programmatic native-select operation with untrusted input/change events; it checks visible, enabled
+and stable but not the pointer hit-test; custom dropdowns use trusted click() + pressKey().
 keyDown()/keyUp() keep modifier state across calls. Ctrl+C/V use the
 real OS clipboard; Persephone does not save or restore clipboard contents.
 waitForSelector() defaults to attached; selector state can be attached, detached, visible, or hidden.
@@ -140,7 +145,7 @@ navigateAndWait(), back(), forward(), waitForNavigation(), and waitForURL() retu
 HTTP 4xx/5xx responses resolve with that status, main-frame network failures reject with CDP errorText,
 and about:/data:/same-document results use status null. waitUntil is load (default), domcontentloaded,
 or networkidle; networkidle requires zero finite in-flight requests for 500 ms and excludes
-WebSocket/EventSource traffic. waitForURL strings match exactly; RegExp matches the main-frame URL.
+WebSocket/EventSource traffic. waitForURL strings match exactly; RegExp matches the main-frame URL ({ regex, flags? } over call).
 waitForResponse() is available on browser pages, boards and window.screen. Arm its promise before
 the triggering action. URL strings match exactly; RegExp can match changing query strings. Redirect
 hops do not resolve it: it matches the final response URL and resolves on its headers, or once the
@@ -630,12 +635,12 @@ export class BrowserEditorFacade extends EditorFacadeBase<BrowserEditor> impleme
             () => waitForNavigationEvents(this.model.target, () => {}, { ...options, adoptInProgress: true }), { passive: false, tip: false });
     }
 
-    async waitForURL(pattern: string | RegExp, options?: BrowserNavigationOptions): Promise<NavigationWaitResult> {
+    async waitForURL(pattern: UrlPatternInput, options?: BrowserNavigationOptions): Promise<NavigationWaitResult> {
         return this.automation.runHostOperation("waitForURL", options?.tabId,
             () => waitForNavigationEvents(this.model.target, () => {}, { ...options, kind: "url", urlPattern: pattern }), { passive: false, tip: false });
     }
 
-    waitForResponse(urlOrRegex: string | RegExp, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse> { return this.automation.waitForResponse(urlOrRegex, options); }
+    waitForResponse(urlOrRegex: UrlPatternInput, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse> { return this.automation.waitForResponse(urlOrRegex, options); }
 
     /** Wait for a specified number of milliseconds. */
     wait(ms: number): Promise<void> {

@@ -1,0 +1,18 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Observe waits fixture</title></head>
+<body>
+    <p id="initial">observe-text-marker</p>
+    <button id="add" onclick="const node = document.createElement('span'); node.id = 'added'; node.textContent = 'Added'; document.querySelector('#target').append(node)">Add node</button>
+    <button id="remove" onclick="document.querySelector('#added')?.remove()">Remove node</button>
+    <button id="hide" onclick="document.querySelector('#visibility').hidden = true">Hide node</button>
+    <button id="show" onclick="document.querySelector('#visibility').hidden = false">Show node</button>
+    <button id="remove-visibility" onclick="document.querySelector('#visibility').remove()">Remove visibility node</button>
+    <button id="restore-visibility" onclick="const node = document.createElement('span'); node.id = 'visibility'; node.textContent = 'Visible node'; document.querySelector('#target').append(node)">Restore visibility node</button>
+    <button id="change-text" onclick="document.querySelector('#initial').remove(); document.querySelector('#status').textContent = 'observe-finished'">Change text</button>
+    <div id="target"></div>
+    <span id="visibility">Visible node</span>
+    <output id="status">observe-status-ready</output>
+    <a id="navigate" href="observe-destination.html">Navigate</a>
+</body>
+</html>

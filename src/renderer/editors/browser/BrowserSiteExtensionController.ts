@@ -722,6 +722,9 @@ export class BrowserSiteExtensionController {
             if (doc.runVersion !== runVersion || !doc.isCurrent(true)) return { status: "not-current" };
             if (result === undefined) { timedOut = !settled; throw new Error(t("browser.siteActionTimeout")); }
             const outcome = await this.openActionResult(tabId, doc, runVersion, validateSiteActionResult(result));
+            // An opened result already happened, and opening a URL as a new inner tab of this page is
+            // itself what makes the document stop being current; report what was done.
+            if (outcome.status === "opened") return outcome;
             return doc.runVersion === runVersion && doc.isCurrent(true) ? outcome : { status: "not-current" };
         } catch (error) {
             if (doc.runVersion !== runVersion || !doc.isCurrent(true)) return { status: "not-current" };

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Page models WebMCP tools fixture</title>
+</head>
+<body>
+  <h1>Page models WebMCP tools fixture</h1>
+  <button id="register">Register base tools</button>
+  <button id="register-late">Register late tool</button>
+  <button id="remove-late">Remove late tool</button>
+  <button id="remove-base">Remove base tools</button>
+  <output id="status">No tools registered.</output>
+  <script>
+    let baseController;
+    let lateController;
+
+    async function registerBaseTools() {
+      if (!document.modelContext || baseController) return;
+      baseController = new AbortController();
+      const signal = baseController.signal;
+      await document.modelContext.registerTool({
+        name: "confirm-order",
+        description: "Create a sample order and return its confirmation.",
+        inputSchema: {
+          type: "object",
+          properties: { item: { type: "string", description: "Item to order" } },
+          required: ["item"],
+        },
+        annotations: { consequentialHint: true, readOnlyHint: false },
+        execute: async ({ item }) => `Confirmed: ${item}.`,
+      }, { signal });
+      await document.modelContext.registerTool({
+        name: "read-status",
+        description: "Read the fixture status without changing it.",
+        inputSchema: { type: "object", properties: {} },
+        annotations: { readOnlyHint: true },
+        execute: async () => "Fixture is ready.",
+      }, { signal });
+      await document.modelContext.registerTool({
+        name: "search-products",
+        description: "Search the sample product list.",
+        inputSchema: {
+          type: "object",
+          properties: { query: { type: "string" } },
+          required: ["query"],
+        },
+        annotations: { readOnlyHint: true, untrustedContentHint: true },
+        execute: async ({ query }) => ({ query, products: ["sample product"] }),
+      }, { signal });
+      document.querySelector("#status").textContent = "Registered base tools.";
+    }
+
+    async function registerLateTool() {
+      if (!document.modelContext || lateController) return;
+      lateController = new AbortController();
+      await document.modelContext.registerTool({
+        name: "late-tool",
+        description: "A tool registered after page load.",
+        inputSchema: { type: "object", properties: {} },
+        annotations: { readOnlyHint: true },
+        execute: async () => "Registered late.",
+      }, { signal: lateController.signal });
+      document.querySelector("#status").textContent = "Registered late tool.";
+    }
+
+    document.querySelector("#register").addEventListener("click", () => void registerBaseTools());
+    document.querySelector("#register-late").addEventListener("click", () => void registerLateTool());
+    document.querySelector("#remove-late").addEventListener("click", () => {
+      lateController?.abort();
+      lateController = undefined;
+      document.querySelector("#status").textContent = "Removed late tool.";
+    });
+    document.querySelector("#remove-base").addEventListener("click", () => {
+      baseController?.abort();
+      baseController = undefined;
+      document.querySelector("#status").textContent = "Removed base tools.";
+    });
+  </script>
+</body>
+</html>

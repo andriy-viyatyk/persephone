@@ -20,6 +20,11 @@ export const FIXTURE_ROOT = path.join(RUNNER_ROOT, "fixtures");
 export const HTTP_FIXTURE_ROOT = path.join(FIXTURE_ROOT, "http");
 export const HTTP_FIXTURE_PORT = 17867;
 export const HTTP_FIXTURE_URL = `http://127.0.0.1:${HTTP_FIXTURE_PORT}`;
+export const HTTPS_FIXTURE_PORT = 17868;
+export const HTTPS_FIXTURE_URL = `https://127.0.0.1:${HTTPS_FIXTURE_PORT}`;
+// Test-only self-signed certificate for 127.0.0.1 and localhost; trusted only by test instances.
+export const TLS_FIXTURE_CERT_PATH = path.join(RUNNER_ROOT, "lib", "tls", "fixture-cert.pem");
+export const TLS_FIXTURE_KEY_PATH = path.join(RUNNER_ROOT, "lib", "tls", "fixture-key.pem");
 export const SEED_ROOT = path.join(RUNNER_ROOT, "seed");
 export const PROFILE_ROOT = path.join(RUNNER_ROOT, ".profile");
 export const REPORT_ROOT = path.join(RUNNER_ROOT, "reports");
@@ -32,7 +37,7 @@ export const DEV_MAIN_PATH = path.join(REPOSITORY_ROOT, ".vite", "build", "main.
 export const RESTART_DEV_NOTICE = "The dev bundle was replaced; run npm start again before dev tests.";
 export const PROD_BUILD_BLOCKED_MESSAGE = "stop npm start first; --prod rebuilds .vite/build, then run npm start again";
 export const MCP_URL = "http://127.0.0.1:17865/mcp";
-export const TEST_PORTS = Object.freeze([17865, 17866, 17700, 19052, HTTP_FIXTURE_PORT]);
+export const TEST_PORTS = Object.freeze([17865, 17866, 17700, 19052, HTTP_FIXTURE_PORT, HTTPS_FIXTURE_PORT]);
 
 export function createTimeouts(scale = 1) {
     return { ...Object.fromEntries(Object.entries(BASE_TIMEOUTS).map(([name, value]) => [name, Math.min(2_147_483_647, Math.max(1, Math.round(value * scale)))])), scale };

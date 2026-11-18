@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>US-2086 automation input controls</title>
+    <style>
+        body { font: 16px sans-serif; margin: 24px; }
+        section { margin: 12px 0; }
+        #covered-wrap { position: relative; width: 240px; height: 44px; }
+        #covered { position: absolute; inset: 0 auto auto 0; width: 220px; height: 36px; }
+        #cover { position: absolute; inset: 0 auto auto 0; width: 220px; height: 36px; z-index: 2; background: #ddd; }
+        #single-wrap { position: relative; display: inline-block; }
+        #select-cover { position: absolute; inset: 0; z-index: 2; }
+        #hidden-check { display: none; }
+        #drag-source, #drop-target { display: inline-block; padding: 16px; border: 1px solid black; }
+    </style>
+</head>
+<body>
+    <h1>Input and query controls</h1>
+    <section aria-label="Actions">
+        <button id="ref-action" aria-label="Snapshot ref action" type="button">Ref action</button>
+        <button id="css-action" type="button">CSS action</button>
+        <button id="text-action" type="button">Exact action</button>
+        <button class="duplicate" type="button">Duplicate one</button>
+        <button class="duplicate" type="button">Duplicate two</button>
+        <button id="click-action" type="button">Click action</button>
+        <button id="hover-action" type="button">Hover action</button>
+        <button id="synthetic-action" type="button">Synthetic action</button>
+        <button id="disabled" type="button" disabled>Disabled action</button>
+        <button id="hidden" type="button" hidden>Hidden action</button>
+    </section>
+    <section aria-label="Covered action">
+        <div id="covered-wrap">
+            <button id="covered" type="button">Covered action</button>
+            <div id="cover" aria-hidden="true"></div>
+        </div>
+    </section>
+    <section aria-label="Text input">
+        <label for="replace-input">Replace input</label>
+        <input id="replace-input" value="seeded value">
+        <label for="slow-input">Slow input</label>
+        <input id="slow-input" value="old slow value">
+        <form id="submit-form">
+            <label for="submit-input">Submit input</label>
+            <input id="submit-input" value="old submit value">
+            <button type="submit">Submit typed value</button>
+        </form>
+        <output id="submit-result"></output>
+        <div id="editable" contenteditable="true">seeded editable text</div>
+        <input id="synthetic-input" value="old synthetic value">
+    </section>
+    <section aria-label="Select controls">
+        <div id="single-wrap">
+            <select id="single-select" aria-label="Single select">
+                <option value="red">Red</option><option value="green">Green</option><option value="blue">Blue</option>
+            </select>
+            <div id="select-cover" aria-hidden="true"></div>
+        </div>
+        <select id="multi-select" aria-label="Multiple select" multiple>
+            <option value="red">Red</option><option value="green">Green</option><option value="blue">Blue</option>
+        </select>
+    </section>
+    <section aria-label="Checkbox controls">
+        <label><input id="visible-check" type="checkbox">Visible check</label>
+        <input id="hidden-check" type="checkbox"><label for="hidden-check">Hidden input label</label>
+        <label><input id="form-check" type="checkbox">Form check</label>
+    </section>
+    <form id="key-form">
+        <label for="key-input">Held key input</label>
+        <input id="key-input" autocomplete="off">
+        <button type="submit">Submit held keys</button>
+    </form>
+    <section aria-label="Named form">
+        <label for="form-first">First</label><input id="form-first" name="First">
+        <label for="form-later">Later</label><input id="form-later" name="Later" value="later seed">
+    </section>
+    <section aria-label="Drag controls">
+        <div id="drag-source" draggable="true" data-marker="fixture-drag-marker">Drag source</div>
+        <div id="drop-target">Drop target</div>
+        <output id="drop-result"></output>
+    </section>
+    <section aria-label="File upload"><input id="file-input" type="file"></section>
+    <section aria-label="Queries">
+        <p id="query-text" data-state="ready">query text</p>
+        <input id="query-input" value="query value">
+        <div id="query-html"><strong>inside</strong></div>
+    </section>
+    <script>
+        window.results = {
+            actionCounts: { ref: 0, css: 0, text: 0 }, duplicateCounts: [0, 0], clicks: 0,
+            pointerEvents: [], forcedCoveredClicks: 0, coverClicks: 0, selectChanges: [], formEvents: [],
+            keydowns: [], keyInputValues: [], keySubmit: false, syntheticClicks: 0, syntheticInputs: 0,
+        };
+        document.querySelector("#ref-action").addEventListener("click", () => window.results.actionCounts.ref++);
+        document.querySelector("#css-action").addEventListener("click", () => window.results.actionCounts.css++);
+        document.querySelector("#text-action").addEventListener("click", () => window.results.actionCounts.text++);
+        document.querySelectorAll(".duplicate").forEach((button, index) => button.addEventListener("click", () => window.results.duplicateCounts[index]++));
+        document.querySelector("#click-action").addEventListener("click", () => window.results.clicks++);
+        document.querySelector("#hover-action").addEventListener("pointerover", () => window.results.pointerEvents.push("pointerover:hover-action"));
+        document.querySelector("#hover-action").addEventListener("pointerenter", () => window.results.pointerEvents.push("pointerenter:hover-action"));
+        document.querySelector("#covered").addEventListener("click", () => window.results.forcedCoveredClicks++);
+        document.querySelector("#cover").addEventListener("click", () => window.results.coverClicks++);
+        document.querySelector("#submit-form").addEventListener("submit", (event) => {
+            event.preventDefault();
+            document.querySelector("#submit-result").textContent = `submitted:${document.querySelector("#submit-input").value}`;
+        });
+        document.querySelector("#single-select").addEventListener("change", (event) => window.results.selectChanges.push(`single:${event.target.value}`));
+        document.querySelector("#multi-select").addEventListener("change", (event) => window.results.selectChanges.push(`multi:${[...event.target.selectedOptions].map((option) => option.value).join(",")}`));
+        document.querySelector("#form-first").addEventListener("input", () => window.results.formEvents.push("first"));
+        document.querySelector("#single-select").addEventListener("input", () => window.results.formEvents.push("choice"));
+        document.querySelector("#form-check").addEventListener("change", () => window.results.formEvents.push("opt-in"));
+        document.querySelector("#key-form").addEventListener("keydown", (event) => window.results.keydowns.push({ key: event.key, shiftKey: event.shiftKey }));
+        document.querySelector("#key-input").addEventListener("input", (event) => window.results.keyInputValues.push(event.target.value));
+        document.querySelector("#key-form").addEventListener("submit", (event) => { event.preventDefault(); window.results.keySubmit = true; });
+        document.querySelector("#drag-source").addEventListener("dragstart", (event) => event.dataTransfer.setData("text/plain", event.currentTarget.dataset.marker));
+        document.querySelector("#drop-target").addEventListener("dragover", (event) => event.preventDefault());
+        document.querySelector("#drop-target").addEventListener("drop", (event) => {
+            event.preventDefault();
+            document.querySelector("#drop-result").textContent = event.dataTransfer.getData("text/plain");
+        });
+        document.querySelector("#synthetic-action").addEventListener("click", () => window.results.syntheticClicks++);
+        document.querySelector("#synthetic-input").addEventListener("input", () => window.results.syntheticInputs++);
+    </script>
+</body>
+</html>

@@ -14,7 +14,7 @@ import {
     ensureTargetReady, withAutomationActivity,
 } from "../../automation/page-events";
 import { networkRequests, takeScreenshot } from "../../automation/page-state";
-import { waitForResponse } from "../../automation/navigation";
+import { waitForResponse, type UrlPatternInput } from "../../automation/navigation";
 import { resolveElementLocator } from "../../automation/locator";
 import type { IAutomationTarget, ISyntheticInputHost, ITabInfoTarget } from "../../automation/types";
 import type { PageDialogPolicy } from "../../../ipc/browser-ipc";
@@ -158,7 +158,7 @@ export class AutomationSurface {
         return this.run("networkRequests", options?.tabId, () => networkRequests(this.target as IAutomationTarget & ITabInfoTarget,
             options?.tabId, this.options.host === "browser" ? options : undefined), { passive: true });
     }
-    waitForResponse(urlOrRegex: string | RegExp, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse> {
+    waitForResponse(urlOrRegex: UrlPatternInput, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse> {
         return this.run("waitForResponse", options?.tabId, () => waitForResponse(this.target, urlOrRegex, options), { passive: false });
     }
     consoleMessages(options?: { tabId?: string; since?: number; level?: IBrowserConsoleLevel }) {

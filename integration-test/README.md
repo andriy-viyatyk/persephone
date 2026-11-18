@@ -34,11 +34,18 @@ are mutually exclusive. Paths are passed as separate OS arguments, including pat
 `npm run test:ui:call -- --close` to close a retained app before a profile reset.
 
 The isolated profile is `integration-test/.profile`, identity `uitest`, with MCP 17865, video
-17866, Mneme 17700, and Tor 19052. The seed's `config.json` marks the published-boards catalog as
+17866, Mneme 17700, Tor 19052, HTTP fixtures 17867, and HTTPS fixtures 17868. The seed's
+`appSettings.json` sets `link-open-behavior` to `internal-browser`, so URL actions in tests stay in
+the app. Its `config.json` marks the published-boards catalog as
 checked far in the future, so the app never fetches the catalog from GitHub and starts with an
 empty catalog. A normal run seeds the profile and copies fixtures before
-every module id, including nested modules. The local HTTP fixture server runs once on port 17867
-for the wrapper run. The wrapper refuses occupied ports, an existing `uitest` pipe, an unsafe
+every module id, including nested modules. The read-only HTTP and HTTPS fixture servers run for
+the wrapper run on ports 17867 and 17868, serving the same `fixtures/http/` tree. The HTTPS server
+uses the committed test-only certificate in `lib/tls/`; `ctx.httpsUrl(path)` constructs its local
+URLs. Normal owned module runs trust only that certificate's SHA-256 fingerprint. `--open` does
+not start the fixture servers or install test certificate trust, and `--attach` cannot change the
+already-running app's trust settings; run HTTPS fixture tests as normal owned tests. The wrapper
+refuses occupied ports, an existing `uitest` pipe, an unsafe
 profile path, or a concurrent `.runner.lock`. It does not stop the user's ordinary app.
 
 `--area` accepts comma-separated whole-segment prefixes: `core` includes `core/smoke` but not
@@ -47,7 +54,8 @@ tree without launching an app. `--rerun-failed` uses exact file/name identities 
 `reports/last-failed.json` and reports removed identities as gone. Suite requirement tags are
 `network`, `mic`, `tor`, `git`, and `mneme`; each missing tag skips its test with a reason. The
 built-in `launch` requirement works on owned runs and is skipped by the product host under
-`--attach`.
+`--attach`. The Tor network test also requires `PERSEPHONE_TEST_TOR_EXE` to name a compatible
+`tor.exe` and both `network` and `tor` tags.
 
 Attach uses the selected `reports/keep-open.json` record and PID, refreshes fixtures over the
 existing work directory, and never resets or stops the app. The product controller connects using
@@ -83,10 +91,16 @@ import `test()` from `lib/context.mjs` and export one descriptor or an array. De
 
 Product context members include `app`, `openBrowser`, `handle`, `call`, `callText`, `waitFor`,
 `expect`, `script`, `restartApp`, `launchSecondInstance`, `file`, and `log`. The suite setup adds
-`fixture(relativePath)` constrained to `.profile/work`, `httpUrl(path)` constrained to the local
-HTTP fixture server, and `_getClient()` with raw MCP `call` and `listTools()` access. Path calls
+`fixture(relativePath)` constrained to `.profile/work`, `httpUrl(path)` and `httpsUrl(path)`
+constrained to the local HTTP and HTTPS fixture servers, and `_getClient()` with raw MCP `call` and
+`listTools()` access. Path calls
 support `{ dialog: true }`; the app stand-in is available for future object-style suite rewrites.
 The product host closes pages and pop-ups opened during a test after that test finishes.
+
+Browser tests live under `tests/browser/automation/{input,observe}/`, `page-models/`,
+`site-extensions/` (saved and moved temporary-extension tests), `popups/` (moved from the old
+`tests/editors/browser/` location), `page-tools/`, and `tor/`. Their local pages and assets are under
+`fixtures/http/browser/<module>/`.
 
 For full API, target, timeout, lifecycle, and report details, see
 [`doc/standards/integration-tests.md`](../doc/standards/integration-tests.md).

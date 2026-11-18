@@ -40,6 +40,7 @@ import type { BoardEditorModel } from "../../editors/board/BoardEditorModel";
 import type { BoardAiVisionRegistration } from "../../editors/board/model/BoardAiVisionChannel";
 import type { ITargetTab } from "../../automation/types";
 import { ensureTargetReady } from "../../automation/page-events";
+import type { UrlPatternInput } from "../../automation/navigation";
 import { boardDialogs, answerBoardDialog } from "../../editors/board/board-dialogs";
 import { boardRegistry } from "../../api/boards/board-registry";
 import { boardSecondaryPanelId } from "../../editors/board/board-secondary";
@@ -180,7 +181,7 @@ export class BoardEditorFacade extends EditorFacadeBase<BoardEditorModel> implem
     /** Read recorded network requests for the selected board frame. */
     networkRequests(options?: TabOption): Promise<IBrowserNetworkRequest[]> { return this.automation.networkRequests(options); }
 
-    waitForResponse(urlOrRegex: string | RegExp, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse> {
+    waitForResponse(urlOrRegex: UrlPatternInput, options?: IBrowserResponseWaitOptions): Promise<IBrowserResponse> {
         return this.automation.waitForResponse(urlOrRegex, options);
     }
 

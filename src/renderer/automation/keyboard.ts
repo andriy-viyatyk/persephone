@@ -22,6 +22,8 @@ async function keyboardAction(
     target: IAutomationTarget & ISyntheticInputHost, options: KeyboardActionOptions,
 ): Promise<{ cdp: ActionablePoint["cdp"]; sessionId?: string }> {
     if (!options.target) {
+        // Keys go to the page's focused element, so the page must hold the embedder's focus.
+        target.focusWebview(options.tabId);
         const input = target.inputCdp(options.tabId);
         return { cdp: input.cdp, sessionId: input.sessionId };
     }

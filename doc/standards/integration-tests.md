@@ -10,7 +10,8 @@ the optional `--baseline` comparison, and the aggregate suite report.
 
 Suite tests stay at `integration-test/tests/<area>/<module>/<feature>.test.mjs`. Their imported
 `test()` factory remains in `integration-test/lib/context.mjs`. The suite setup module
-`integration-test/test-setup.mjs` adds `fixture(relativePath)`, `httpUrl(path)`, and `_getClient()`;
+`integration-test/test-setup.mjs` adds `fixture(relativePath)`, `httpUrl(path)`, `httpsUrl(path)`,
+and `_getClient()`;
 these members are not product context APIs. `fixture()` resolves only inside the seeded profile's
 `work/` directory. `_getClient()` provides the existing MCP SDK client's `listTools()` and the
 raw `call` tool response for the unchanged MCP tests.
@@ -32,7 +33,13 @@ running profile whose MCP server is enabled. Attach uses that instance without t
 of its shutdown. The user workflow and examples are in
 [`assets/guides/agents/web-app-tests.md`](../../assets/guides/agents/web-app-tests.md).
 
-The wrapper starts the read-only HTTP fixture server once on loopback port 17867. For every
+The wrapper starts the read-only HTTP fixture servers once on loopback ports 17867 (HTTP) and
+17868 (HTTPS), both serving `integration-test/fixtures/http/`. The HTTPS server uses the committed
+test-only certificate in `integration-test/lib/tls/`; `ctx.httpsUrl(path)` builds a local HTTPS
+fixture URL. Normal owned module runs pass that certificate's exact SHA-256 fingerprint to the
+test instance, which accepts only that certificate error. `--open` does not start the fixture
+servers or install the test trust, and `--attach` uses the already-running app without installing
+it, so HTTPS fixture tests need a normal owned run. For every
 selected module id, a normal run replaces `.profile` from `seed/`, recopies fixtures into
 `.profile/work`, writes an exact file/name manifest, and invokes the product runner. Nested module
 ids receive separate app instances too. The manifest limits that invocation to its exact tests;
@@ -49,7 +56,12 @@ The selected app is never stopped by attach.
 name. `--list` prints the filtered suite without starting the app. `--rerun-failed` selects current
 file/name identities from the wrapper's `reports/last-failed.json` and reports removed identities
 as gone. `--with` accepts the suite's external tags (`network`, `mic`, `tor`, `git`, `mneme`); it
-does not accept the built-in `launch` tag.
+does not accept the built-in `launch` tag. The seed sets `link-open-behavior` to
+`internal-browser`, keeping URL actions on local fixtures inside the test app instead of opening
+the operating system's default browser.
+
+The tagged Tor network test also requires `PERSEPHONE_TEST_TOR_EXE` to point to a compatible
+`tor.exe`; it remains skipped unless both `network` and `tor` are enabled.
 
 ## Product host options
 
@@ -131,8 +143,14 @@ before a normal run that resets the profile. Attach never retains or closes the 
 
 ## Authoring rules
 
+Browser tests are grouped under `tests/browser/`: `automation/input/` and `automation/observe/`,
+`page-models/`, `site-extensions/` (saved and temporary extensions), `popups/`, `page-tools/`,
+and `tor/`; the older `tests/editors/browser/` location is retired. Their HTTP/HTTPS pages and
+assets live under `fixtures/http/browser/<module>/`.
+
 Tests must run independently and should leave committed fixtures unchanged. Use `ctx.fixture()`
 for mutable work copies and reset their content at the start of each test. Tests that restart the
 app or launch another process declare `requires: ["launch"]`. Use `ctx.httpUrl()` for local
-HTTP-fixture paths. Do not weaken assertions to make a test pass; repair the owning application
-behavior instead. Keep modules focused and split by feature when needed.
+HTTP-fixture paths and `ctx.httpsUrl()` for HTTPS-fixture paths. Do not weaken assertions to make a
+test pass; repair the owning application behavior instead. Keep modules focused and split by
+feature when needed.
