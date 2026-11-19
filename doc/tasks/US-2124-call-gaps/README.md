@@ -35,7 +35,24 @@ After:  pages[pageId].save() → boolean over call (Promise<boolean> in the scri
 
 ## Concerns / Open questions
 
-- Every-namespace coded errors require a change to `ai-vision`'s resolver error envelope to carry `code` from the thrown error into the envelope, followed by a release. The package belongs to the user; this remains an open item awaiting approval, with no Persephone error-code change in this task.
+- Every-namespace coded errors require a change to `ai-vision`'s resolver error envelope to carry `code` from the thrown error into the envelope, followed by a release. **Resolved 2026-11-19** (see Error-code follow-up below).
+
+## Error-code follow-up (2026-11-19, Claude)
+
+The user approved the package change. `ai-vision` 1.4.0 (its task AV-002) keeps a thrown error's string `code` as `ICallResult.code`, including across `expose()`/`createRemoteProxy`. Persephone consumes it:
+
+| File | Change |
+|------|--------|
+| `package.json`, `package-lock.json` | `ai-vision` ^1.4.0 |
+| `src/main/mcp/tools/call-tools.ts` | `ICallEnvelope.code`; `toCallResult` prints `Error [<code>]: <message>` for a coded error, unchanged otherwise |
+| `src/renderer/scripting/ai-vision/namespaces/capabilities.ts` | Drop the `agentError` `[code: ...]` suffix; throw `codedError` (one shared path) |
+| `src/test-host/client.ts` | Parse the code from the `Error [<code>]:` line |
+| `src/renderer/scripting/api-wrapper/AppWrapper.ts` | `app.call()` throws `codedError` when the envelope has a code |
+| Guides and docs | `assets/guides/agents/capabilities/errors-agent-calls-examples.md`, `assets/guides/scripting/api/app.md`, `assets/guides/whats-new.md`, `doc/architecture/capabilities.md`, `doc/standards/integration-tests.md`, `integration-test/README.md`, `.claude/skills/ui-tests/SKILL.md` |
+
+Before → after (MCP text): `Error: Capability permission denied ... [code: permission-denied] (resolved up to ...)` → `Error [permission-denied]: Capability permission denied ... (resolved up to ...)`. Uncoded: `Error: <message>` unchanged.
+
+Left open: a board's `persephone.call()` (`src/renderer/api/boards/board-host-rpc.ts`) still drops the code; changing it is board-visible and needs a `BOARD_BRIDGE_VERSION` bump.
 
 ## Acceptance Criteria
 

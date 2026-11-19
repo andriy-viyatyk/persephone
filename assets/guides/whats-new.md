@@ -42,9 +42,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 - **EPIPE error dialog on exit:** Persephone no longer shows a main-process EPIPE error dialog when
   the console that started it has closed.
-- **Capability error codes over `call`:** a capability call that failed through the MCP `call` tool
-  reported only its message, so an agent could not tell `no-handler` from `rejected`. The message now
-  ends with `[code: <code>]`, and web-app tests see the code as `error.code`.
+- **Error codes over `call`:** a call that failed through the MCP `call` tool reported only its
+  message, so an agent could not tell `no-handler` from `rejected`. A coded error from any part of
+  the app now reads `Error [<code>]: <message>`; an error without a code is shown as before. Web-app
+  tests see the code as `error.code`, and `app.call()` in a script throws an error that keeps it.
 - **Board on/off settings could not be found by name:** a board's checkbox and folder settings on
   the Settings page had no `data-name`, unlike its text, number and choice settings. They now carry
   `board-setting-<id>` like the others, so automation and tests can address them.

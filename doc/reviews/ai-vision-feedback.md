@@ -1736,7 +1736,7 @@ entry can touch more than one theme.
 | Selector scoping (inactive pages stay mounted; popups render outside the page slot) | 6 | A shared helper that scopes to the active page and, for popups, to the window root, named in the test guide. |
 | Main-process shortcuts unreachable from `pressKey` | 5 | Deliver key presses through `webContents.sendInputEvent` so `before-input-event` sees them. |
 | Display text guessed from message keys or fallbacks | 4 | Assert strings from `src/shared/i18n/en/` or the board's `lang/en.json`, and read what actually reaches the toast. |
-| Error codes lost over `call` | 3 | Carry `code` in the `ai-vision` resolver envelope for every namespace (done for `capabilities[...]` in US-2120). |
+| Error codes lost over `call` | 3 | Done: `ai-vision` 1.4.0 keeps `code` in the resolver envelope; `call` shows `Error [<code>]: …` in every namespace (EPIC-199 / US-2124). |
 
 ### 2026-11-19 · EPIC-201 / US-2136 · Codex Luna (implementation)
 - **Area:** other (integration-test `ctx.expect`)

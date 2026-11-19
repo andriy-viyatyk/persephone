@@ -155,9 +155,9 @@ test. Prefer `ctx.app.boards.*` and `ctx.app.pages[id].editor.*`; use `withOptio
 call options, `ctx.call` for paths the stand-in cannot express, `ctx.callText` for exact text, and
 `ctx.set` for writable property assignments.
 
-Capability errors returned through the agent call tree carry their code in a `[code: <code>]`
-message suffix; the test host parses it into `error.code` for `ctx.call` errors. Assert the code
-when the capability contract defines one. Tests may start loopback HTTP servers and proxies in
+A coded error from any namespace of the agent call tree arrives as `Error [<code>]: <message>`;
+the test host parses it into `error.code` for `ctx.call` errors. Assert the code when the
+contract defines one. Tests may start loopback HTTP servers and proxies in
 the test host using `node:http` or `node:net`; use ephemeral loopback ports, verify proxy routing,
 and close each server/socket in `finally`.
 

@@ -205,8 +205,8 @@ cannot express, `ctx.callText` for exact text, and `ctx.set` for writable proper
 Path-based
 `waitFor` accepts the same options and resolves to the matching poll value.
 
-Capability errors exposed through the agent call tree append `[code: <code>]` to the message so
-the test host can restore the code as `error.code` on `ctx.call` errors. Tests should assert both
+A coded error from any namespace of the agent call tree arrives as `Error [<code>]: <message>`, and
+the test host restores the code as `error.code` on `ctx.call` errors. Tests should assert both
 the useful message and code when the capability contract defines one. A capability test may start
 its own loopback HTTP server or proxy in the test host with `node:http` or `node:net` (for example,
 HTTP CONNECT and SOCKS5 proxies); bind to loopback and an ephemeral port, assert that requests

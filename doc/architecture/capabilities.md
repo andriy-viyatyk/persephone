@@ -250,9 +250,10 @@ Capability failures use the closed `CapabilityErrorCode` union in
 `channel-backpressure` and `channel-closed`. Platform payload validation may also reject with a
 specific validation message before provider dispatch.
 
-The MCP `call` envelope exposes an agent-tree failure's message but not its other error fields.
-The agent capability tree therefore preserves each capability error's `code` in-process and adds
-`[code: <code>]` to its message for callers that cross the `call` boundary.
+The agent capability tree throws coded errors (`codedError` from `src/shared/coded-error.ts`).
+The `ai-vision` resolver (1.4.0+) keeps a thrown error's string `code` in its envelope, and
+`toCallResult` in `src/main/mcp/tools/call-tools.ts` renders it as `Error [<code>]: <message>` for
+every namespace; the capability tree adds nothing of its own to the message.
 
 ## Legacy wrappers and transport
 

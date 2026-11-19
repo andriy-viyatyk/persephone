@@ -66,7 +66,7 @@ How the review sorted the entries:
 | [US-2121](../tasks/US-2121-snapshot-names/README.md) | Snapshot names: icon buttons, tree rows, menu ids, missing `data-name`s | Implemented |
 | [US-2122](../tasks/US-2122-help-return-types/README.md) | `$help` return types and member drift | Implemented |
 | [US-2123](../tasks/US-2123-presskey-main-shortcuts/README.md) | `pressKey` reaches main-process shortcuts | Implemented |
-| [US-2124](../tasks/US-2124-call-gaps/README.md) | Call gaps: open a folder in its editor, save any page, error codes everywhere | Implemented; error codes open (needs `ai-vision`) |
+| [US-2124](../tasks/US-2124-call-gaps/README.md) | Call gaps: open a folder in its editor, save any page, error codes everywhere | Implemented; error codes done (`ai-vision` 1.4.0) |
 | [US-2125](../tasks/US-2125-test-host-fidelity/README.md) | Test host value fidelity and call options | Implemented |
 | [US-2126](../tasks/US-2126-guide-help-sweep/README.md) | Guide and `$help` sweep for the open doc entries | Implemented |
 
@@ -261,3 +261,19 @@ committed. Decisions and open items:
   `pages.openFolder` for Folder View, `.git` and a board claim, and `page.save()` on text and board pages (US-2124);
   value types, method-args guard and assertion helpers in `core/mcp` (US-2125); element declarations and snapshot
   names (US-2121).
+
+### 2026-11-19 (error codes, Claude)
+
+The US-2124 open item is closed. The user approved the `ai-vision` change and release on 2026-11-19.
+
+- **ai-vision 1.4.0 (AV-002):** a thrown error's own string `code` is kept as `ICallResult.code`. The remote error
+  response carries `code` too, so a model behind `expose()` keeps it. Errors without a code are unchanged.
+- **Persephone side:** `toCallResult` (`src/main/mcp/tools/call-tools.ts`) renders a coded error as
+  `Error [<code>]: <message> (resolved up to ...)` in every namespace; an uncoded error is unchanged. The capability
+  tree's `[code: ...]` suffix (US-2120) is removed: it now throws plain `codedError`s, so there is one path. The test
+  host reads the code from the `Error [<code>]:` line. `app.call()` in scripts throws a coded error when the envelope
+  has one.
+- **Open item:** a board's `persephone.call()` (`src/renderer/api/boards/board-host-rpc.ts`) still rewraps the error
+  and loses the code. Fixing it changes board-visible behavior and needs a `BOARD_BRIDGE_VERSION` bump, so it was left
+  for a separate task.
+- No English UI text was added.

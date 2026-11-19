@@ -46,7 +46,9 @@ scripting API and can read values, invoke the final method, or assign a writable
 are plain JSON-safe values. Script calls are unbounded by default, so long strings and structured
 results arrive intact. Pass `maxLength` when you want to impose a bound; structured truncation keeps
 whole values. The MCP `call` envelope reports how many collection items or properties were shown and
-how many were available; `app.call()` returns the value itself.
+how many were available; `app.call()` returns the value itself. A failed call throws an `Error`
+with the failure's message; when the failing member threw a coded error, the thrown error keeps
+that `code` (for example `rejected` or `no-handler`).
 
 ```javascript
 // Read the grouped output page for the current script

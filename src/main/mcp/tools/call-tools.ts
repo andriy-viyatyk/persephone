@@ -359,6 +359,8 @@ interface ICallEnvelope {
     total?: number;
     warning?: string;
     error?: string;
+    /** On error: the thrown error's own code, kept by the ai-vision resolver (1.4.0+). */
+    code?: string;
     resolvedUpTo?: string;
     hint?: { kind: string; text: string };
     tip?: { id: string; text: string };
@@ -430,7 +432,9 @@ function toCallResult(response: McpResponse): IMcpToolResult {
     if (!rest.pending && rest.error !== undefined) {
         const where = rest.resolvedUpTo ? ` (resolved up to "${rest.resolvedUpTo}")` : "";
         const message = typeof rest.error === "string" && rest.error.trim() ? rest.error : "MCP call failed without an error message.";
-        content.push({ type: "text", text: `Error: ${message}${where}` });
+        // A coded error reads `Error [<code>]: <message>` in every namespace; an uncoded one is unchanged.
+        const code = typeof rest.code === "string" && rest.code.trim() ? ` [${rest.code}]` : "";
+        content.push({ type: "text", text: `Error${code}: ${message}${where}` });
         if (rest.result !== undefined) content.push({ type: "text", text: JSON.stringify(rest.result, null, 2) });
     } else if (!rest.pending && scriptResult?.pending !== true) {
         const imageResult = callImageResult(rest.result);

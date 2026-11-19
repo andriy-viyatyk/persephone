@@ -9,6 +9,7 @@ import { getAiVision, resolveCall } from "ai-vision";
 import { UNBOUNDED_CALL_MAX_LENGTH } from "../ai-vision/call-limits";
 import { AiRoot } from "../ai-vision/root";
 import { isPositiveIntegerTimeout } from "../../../shared/ai-vision-timeout";
+import { codedError } from "../../../shared/coded-error";
 
 /**
  * Wrap an EventChannel to auto-track subscriptions in the releaseList.
@@ -153,7 +154,7 @@ class AppWrapperImplementation {
             page: this.contextPage,
             callContext,
         }), request);
-        if (result.error) throw new Error(result.error);
+        if (result.error) throw result.code ? codedError(result.code, result.error) : new Error(result.error);
         return result.result;
     }
 

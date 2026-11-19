@@ -70,8 +70,8 @@ directory through `ctx.fixture()`; reset any mutable fixture file at test start.
 and `ctx.set(path, value, { timeout? })` for writable property assignments. Path-based
 `ctx.waitFor` accepts the same call options. Assignments through `ctx.app` throw because they cannot
 be awaited.
-Capability errors from the agent call tree append `[code: <code>]` to their message, which the test
-host parses into `error.code` on `ctx.call` errors; assert it when defined by the capability
+A coded error from any namespace of the agent call tree arrives as `Error [<code>]: <message>`, which
+the test host parses into `error.code` on `ctx.call` errors; assert it when defined by the capability
 contract. Tests may start loopback servers and proxies in the test host using `node:http` or
 `node:net`; bind to ephemeral loopback ports, verify proxy routing, and close every server/socket
 in `finally`.
