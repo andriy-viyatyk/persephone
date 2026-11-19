@@ -205,8 +205,9 @@ export default [
             const drawer = await openBookmarksDrawer(ctx, page, editedTitle);
             ctx.expect(drawer).toContain(editedTitle);
             await activatePage(ctx, page.id);
-            // The title shows twice in the drawer (row label and its list text); either opens the link.
-            await ctx.app.window.screen.click(`text=${JSON.stringify(editedTitle)}`, { clickCount: 2, nth: 0 });
+            // Double-click the link list's row. The title also shows in the drawer's category tree, where a
+            // single click already opens the link, so a double-click there opens it twice.
+            await ctx.app.window.screen.click('[data-name="bookmarks-drawer-root"] [data-name="link-row"]', { clickCount: 2 });
 
             const tabs = await ctx.waitFor(
                 (activeContext) => activeContext.app.pages[page.id].editor.tabs,

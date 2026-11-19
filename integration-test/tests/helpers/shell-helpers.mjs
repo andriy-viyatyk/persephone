@@ -40,7 +40,15 @@ export async function pressNativeShortcut(ctx, keyCode, modifiers) {
         browserWindow.webContents.sendInputEvent({ type: "keyUp", ...input });
         return { windowIndex: entry.index, visible: browserWindow.isVisible(), devToolsOpen: browserWindow.webContents.isDevToolsOpened() };
     })()`;
-    const result = await ctx.app.main.script.execute(script);
+    // Main-process scripts are on by default only in dev builds; an installed build (--app / --prod) needs the setting.
+    const scriptsEnabled = await ctx.app.settings.get("main.scripting.enabled");
+    if (!scriptsEnabled) await ctx.app.settings.set("main.scripting.enabled", true);
+    let result;
+    try {
+        result = await ctx.app.main.script.execute(script);
+    } finally {
+        if (!scriptsEnabled) await ctx.app.settings.set("main.scripting.enabled", scriptsEnabled);
+    }
     ctx.expect(result.isError).toBe(false);
     ctx.expect(result.result.windowIndex).toBe(windowIndex);
     ctx.expect(result.result.visible).toBe(true);
@@ -180,7 +188,8 @@ export async function closePendingDialog(ctx) {
 }
 
 export async function waitForDialog(ctx, path, predicate, options) {
-    return ctx.waitFor((activeContext) => /* ctx.call remains because the app stand-in cannot pass call options such as { dialog: true }. */ activeContext.call(path, undefined, { dialog: true }), predicate, options);
+    // A dialog that has not opened yet answers "No item 0 in dialogs"; keep polling instead of failing on it.
+    return ctx.waitFor((activeContext) => /* ctx.call remains because the app stand-in cannot pass call options such as { dialog: true }. */ activeContext.call(path, undefined, { dialog: true }).catch(() => undefined), predicate, options);
 }
 
 export async function closeOrphanedUs2036Pages(ctx) {
