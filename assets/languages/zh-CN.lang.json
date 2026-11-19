@@ -1784,7 +1784,8 @@
     "shell.pageHistoryBack": "后退到{title} (Alt+Left)",
     "shell.pageHistoryBackEmpty": "后退 (Alt+Left)",
     "shell.pageHistoryForward": "前进到{title} (Alt+Right)",
-    "shell.pageHistoryForwardEmpty": "前进 (Alt+Right)"
+    "shell.pageHistoryForwardEmpty": "前进 (Alt+Right)",
+    "board.permissionProcessAccessDetail": "此进程可以访问您的文件和网络，不受看板其他权限的限制。"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3469,6 +3470,7 @@
     "shell.pageHistoryBack": "11144331",
     "shell.pageHistoryBackEmpty": "912b177e",
     "shell.pageHistoryForward": "5c000bca",
-    "shell.pageHistoryForwardEmpty": "ca1b9197"
+    "shell.pageHistoryForwardEmpty": "ca1b9197",
+    "board.permissionProcessAccessDetail": "d35d972a"
   }
 }

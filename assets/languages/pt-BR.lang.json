@@ -1882,7 +1882,8 @@
     "shell.pageHistoryBack": "Voltar para {title} (Alt+Left)",
     "shell.pageHistoryBackEmpty": "Voltar (Alt+Left)",
     "shell.pageHistoryForward": "Avançar para {title} (Alt+Right)",
-    "shell.pageHistoryForwardEmpty": "Avançar (Alt+Right)"
+    "shell.pageHistoryForwardEmpty": "Avançar (Alt+Right)",
+    "board.permissionProcessAccessDetail": "Este processo pode acessar seus arquivos e a rede, independentemente das outras permissões do quadro."
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3567,6 +3568,7 @@
     "shell.pageHistoryBack": "11144331",
     "shell.pageHistoryBackEmpty": "912b177e",
     "shell.pageHistoryForward": "5c000bca",
-    "shell.pageHistoryForwardEmpty": "ca1b9197"
+    "shell.pageHistoryForwardEmpty": "ca1b9197",
+    "board.permissionProcessAccessDetail": "d35d972a"
   }
 }

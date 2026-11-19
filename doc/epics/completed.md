@@ -1,3 +1,62 @@
+## EPIC-201 — Board data and network isolation
+
+Completed 2026-11-19. Board services get a profile-scoped data folder in `PERSEPHONE_BOARD_DATA`
+(`src/main/board-process-environment.ts`, `src/shared/board/board-data-id.ts`). The default profile keeps
+`%LOCALAPPDATA%\Persephone\board-data`; named and test profiles use `<userData>\board-data`. Nothing is migrated or deleted.
+Translate, Agent Chat and the speech boards use it and fall back on an older Persephone. `network: false` is documented,
+not enforced, for services: the permissions guide and the trust dialog now say a service or a started program can use
+files and the network. Translate no longer goes online when it opens. Torrent Viewer inspects a `.torrent` offline and
+joins the swarm only on open or download. Test instances run board processes in an environment sandbox: profile-local
+home, app-data, Claude and Codex config, a system-only `PATH` plus `test-bin\node.cmd`, and no `CLAUDECODE` /
+`CLAUDE_CODE_*`. New tests cover Translate, Torrent Viewer and Agent Chat. **Board fix:** Agent Chat's "no CLI" message
+could never appear (1.5.1). Boards are on `persephone-boards` `develop` (3f1f573), unpublished: translate 1.0.2,
+claude-agent 1.5.1, torrent-viewer 1.11.0, speech-to-text 1.5.1, text-to-speech 1.1.1. **Open:** the Agent Chat
+`send` / `messages` / `waitIdle` guide examples were not run live (they need a signed-in CLI); `persephone.execute("cmd.exe
+/d /c …")` returns empty output inside a board. Completion skills by Codex (Luna). Epic document: [EPIC-201](EPIC-201.md).
+
+- [x] **Host: profile-scoped data root for board services (US-2132).**
+- [x] **Boards use the host data root (US-2133).**
+- [x] **Network honesty: `network: false` and services (US-2134).**
+- [x] **Torrent Viewer: offline metadata mode (US-2135).**
+- [x] **Test mode: environment sandbox for board processes (US-2136).**
+
+## EPIC-200 — Published boards: bugs and documentation found by the UI test roadmap
+
+Completed 2026-11-19. Board fixes in `persephone-boards` (`develop`, 51505fa, unpublished), tracked here.
+**Fixed:** Theme Editor `previewStatus.pending` now settles; Audio Player playlist `next()`, plus `previous()` and a
+documented light mode without a model; PowerPoint Viewer reports parse errors as `editor.app.error` (partial decks keep
+the slides read) instead of an empty deck. **Docs:** five board `CLAUDE.md` / README files corrected; agent guides gained
+result examples, 1-based notes and a model-coverage table (also in `published-boards.md`). Sixteen boards got one patch
+bump each (listed in the epic). Agent Chat result examples moved to EPIC-201. Completion skills by Codex (Luna). Epic
+document: [EPIC-200](EPIC-200.md).
+
+- [x] **Theme Editor: `previewStatus.pending` never settles (US-2127).**
+- [x] **Audio Player: playlist `next()`, light-mode model, `previous()` (US-2128).**
+- [x] **PowerPoint Viewer: report parse errors instead of an empty deck (US-2129).**
+- [x] **Board docs that disagree with the board (US-2130).**
+- [x] **Agent guides: result shapes and model coverage (US-2131).**
+
+## EPIC-199 — Agent surface fixes from the ai-vision feedback log
+
+Completed 2026-11-19. Fixes for the agent problems that recurred across the UI test roadmap
+([ai-vision-feedback.md](../reviews/ai-vision-feedback.md)). Interactive snapshots name icon buttons and tree rows the way
+a user sees them, and menus carry ids. `$help` gives return types and lists every member and option (a
+`describe-tables-check` runs in lint). `pressKey` reaches main-process shortcuts (`src/main/cdp-key-input.ts`).
+`pages.openFolder` and `pages[id].save()` close two call gaps. Error codes survive `call` in every namespace through
+`ai-vision` 1.4.0 (`Error [<code>]: …`; the capability-only `[code: …]` wrapper is gone). The test host keeps strings as
+strings (`persephone/resultType`), and `web-app-tests.md` has one section of boundary rules. Guides and `$help` were
+swept for the open doc entries. Grid: inserting while sorted or filtered is documented as it works (before the focused
+row in file order), closing the EPIC-187 decision. **Open:** a board's `persephone.call()` still drops error codes (needs a
+`BOARD_BRIDGE_VERSION` bump); a Ctrl/Alt shortcut followed at once by typing may reach the app out of order.
+Final run (dev, 2026-11-19, about 23 minutes), 544 tests: 534 passed, 1 failed, 9 skipped; the failure (a popup navigation wait in `browser/popups`) passed on re-run, 19/19, and no known failures remain. Completion skills by Codex (Luna). Epic document: [EPIC-199](EPIC-199.md).
+
+- [x] **Snapshot names: icon buttons, tree rows, menu ids, missing `data-name`s (US-2121).**
+- [x] **`$help` return types and member drift (US-2122).**
+- [x] **`pressKey` reaches main-process shortcuts (US-2123).**
+- [x] **Call gaps: open a folder, save any page, error codes everywhere (US-2124).**
+- [x] **Test host value fidelity and call options (US-2125).**
+- [x] **Guide and `$help` sweep for the open doc entries (US-2126).**
+
 ## EPIC-198 — UI test coverage, phase 9b: services, processes, terminal and proxy
 
 Completed 2026-11-18. Phase 9b of the [UI test coverage roadmap](../reviews/ui-test-roadmap.md), its last phase: 28 new

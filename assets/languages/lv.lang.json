@@ -1882,7 +1882,8 @@
     "shell.pageHistoryBack": "Atpakaļ uz “{title}” (Alt+Left)",
     "shell.pageHistoryBackEmpty": "Atpakaļ (Alt+Left)",
     "shell.pageHistoryForward": "Uz priekšu uz “{title}” (Alt+Right)",
-    "shell.pageHistoryForwardEmpty": "Uz priekšu (Alt+Right)"
+    "shell.pageHistoryForwardEmpty": "Uz priekšu (Alt+Right)",
+    "board.permissionProcessAccessDetail": "Šis process var piekļūt jūsu failiem un tīklam neatkarīgi no citu tāfeles atļauju iestatījumiem."
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3567,6 +3568,7 @@
     "shell.pageHistoryBack": "11144331",
     "shell.pageHistoryBackEmpty": "912b177e",
     "shell.pageHistoryForward": "5c000bca",
-    "shell.pageHistoryForwardEmpty": "ca1b9197"
+    "shell.pageHistoryForwardEmpty": "ca1b9197",
+    "board.permissionProcessAccessDetail": "d35d972a"
   }
 }

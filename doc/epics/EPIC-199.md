@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed 2026-11-19
 **Created:** 2026-11-18
 
 ## Overview
@@ -63,12 +63,12 @@ How the review sorted the entries:
 
 | Task | Title | Status |
 |------|-------|--------|
-| [US-2121](../tasks/US-2121-snapshot-names/README.md) | Snapshot names: icon buttons, tree rows, menu ids, missing `data-name`s | Implemented |
-| [US-2122](../tasks/US-2122-help-return-types/README.md) | `$help` return types and member drift | Implemented |
-| [US-2123](../tasks/US-2123-presskey-main-shortcuts/README.md) | `pressKey` reaches main-process shortcuts | Implemented |
-| [US-2124](../tasks/US-2124-call-gaps/README.md) | Call gaps: open a folder in its editor, save any page, error codes everywhere | Implemented; error codes done (`ai-vision` 1.4.0) |
-| [US-2125](../tasks/US-2125-test-host-fidelity/README.md) | Test host value fidelity and call options | Implemented |
-| [US-2126](../tasks/US-2126-guide-help-sweep/README.md) | Guide and `$help` sweep for the open doc entries | Implemented |
+| [US-2121](../tasks/US-2121-snapshot-names/README.md) | Snapshot names: icon buttons, tree rows, menu ids, missing `data-name`s | Done |
+| [US-2122](../tasks/US-2122-help-return-types/README.md) | `$help` return types and member drift | Done |
+| [US-2123](../tasks/US-2123-presskey-main-shortcuts/README.md) | `pressKey` reaches main-process shortcuts | Done |
+| [US-2124](../tasks/US-2124-call-gaps/README.md) | Call gaps: open a folder in its editor, save any page, error codes everywhere | Done |
+| [US-2125](../tasks/US-2125-test-host-fidelity/README.md) | Test host value fidelity and call options | Done |
+| [US-2126](../tasks/US-2126-guide-help-sweep/README.md) | Guide and `$help` sweep for the open doc entries | Done |
 
 Task documents were written by Codex (Luna) and reviewed by Claude on 2026-11-18. "Implemented" means implemented and verified but not yet reviewed (`/review`, `/document`, `/userdoc` run at epic close). The scope of each task is below.
 

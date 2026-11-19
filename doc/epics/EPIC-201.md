@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Active (started 2026-11-19)
+**Status:** Completed 2026-11-19
 **Created:** 2026-11-18
 
 ## Overview
@@ -78,11 +78,11 @@ Taken by Claude at epic start; the user delegates these choices.
 
 | Task | Title | Status |
 |------|-------|--------|
-| [US-2132](../tasks/US-2132-board-data-root/README.md) | Host: hand a profile-scoped data root to board services | Implemented |
-| [US-2133](../tasks/US-2133-boards-use-data-root/README.md) | Boards: Translate, Agent Chat and the speech boards use the host data root | Implemented |
-| [US-2134](../tasks/US-2134-network-honesty/README.md) | Network honesty: `network: false` and services (guide, trust dialog, READMEs) | Implemented |
-| [US-2135](../tasks/US-2135-torrent-offline-inspect/README.md) | Torrent Viewer: offline metadata mode | Implemented |
-| [US-2136](../tasks/US-2136-test-board-sandbox/README.md) | Test mode: environment sandbox for board processes, then cover Translate / Agent Chat / Torrent offline states | Implemented |
+| [US-2132](../tasks/US-2132-board-data-root/README.md) | Host: hand a profile-scoped data root to board services | Done |
+| [US-2133](../tasks/US-2133-boards-use-data-root/README.md) | Boards: Translate, Agent Chat and the speech boards use the host data root | Done |
+| [US-2134](../tasks/US-2134-network-honesty/README.md) | Network honesty: `network: false` and services (guide, trust dialog, READMEs) | Done |
+| [US-2135](../tasks/US-2135-torrent-offline-inspect/README.md) | Torrent Viewer: offline metadata mode | Done |
+| [US-2136](../tasks/US-2136-test-board-sandbox/README.md) | Test mode: environment sandbox for board processes, then cover Translate / Agent Chat / Torrent offline states | Done |
 
 ## Notes
 

@@ -1882,7 +1882,8 @@
     "shell.pageHistoryBack": "Volver a {title} (Alt+Left)",
     "shell.pageHistoryBackEmpty": "Volver (Alt+Left)",
     "shell.pageHistoryForward": "Avanzar a {title} (Alt+Right)",
-    "shell.pageHistoryForwardEmpty": "Avanzar (Alt+Right)"
+    "shell.pageHistoryForwardEmpty": "Avanzar (Alt+Right)",
+    "board.permissionProcessAccessDetail": "Este proceso puede acceder a tus archivos y a la red, independientemente de los demás permisos del tablero."
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3567,6 +3568,7 @@
     "shell.pageHistoryBack": "11144331",
     "shell.pageHistoryBackEmpty": "912b177e",
     "shell.pageHistoryForward": "5c000bca",
-    "shell.pageHistoryForwardEmpty": "ca1b9197"
+    "shell.pageHistoryForwardEmpty": "ca1b9197",
+    "board.permissionProcessAccessDetail": "d35d972a"
   }
 }

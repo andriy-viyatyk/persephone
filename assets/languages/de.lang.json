@@ -1833,7 +1833,8 @@
     "shell.pageHistoryBack": "Zurück zu {title} (Alt+Left)",
     "shell.pageHistoryBackEmpty": "Zurück (Alt+Left)",
     "shell.pageHistoryForward": "Weiter zu {title} (Alt+Right)",
-    "shell.pageHistoryForwardEmpty": "Weiter (Alt+Right)"
+    "shell.pageHistoryForwardEmpty": "Weiter (Alt+Right)",
+    "board.permissionProcessAccessDetail": "Dieser Prozess kann unabhängig von den übrigen Berechtigungen des Boards auf Ihre Dateien und das Netzwerk zugreifen."
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3518,6 +3519,7 @@
     "shell.pageHistoryBack": "11144331",
     "shell.pageHistoryBackEmpty": "912b177e",
     "shell.pageHistoryForward": "5c000bca",
-    "shell.pageHistoryForwardEmpty": "ca1b9197"
+    "shell.pageHistoryForwardEmpty": "ca1b9197",
+    "board.permissionProcessAccessDetail": "d35d972a"
   }
 }

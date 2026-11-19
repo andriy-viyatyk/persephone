@@ -1882,7 +1882,8 @@
     "shell.pageHistoryBack": "Retour à {title} (Alt+Left)",
     "shell.pageHistoryBackEmpty": "Retour (Alt+Left)",
     "shell.pageHistoryForward": "Avancer vers {title} (Alt+Right)",
-    "shell.pageHistoryForwardEmpty": "Avancer (Alt+Right)"
+    "shell.pageHistoryForwardEmpty": "Avancer (Alt+Right)",
+    "board.permissionProcessAccessDetail": "Ce processus peut accéder à vos fichiers et au réseau, quels que soient les autres droits du tableau."
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3567,6 +3568,7 @@
     "shell.pageHistoryBack": "11144331",
     "shell.pageHistoryBackEmpty": "912b177e",
     "shell.pageHistoryForward": "5c000bca",
-    "shell.pageHistoryForwardEmpty": "ca1b9197"
+    "shell.pageHistoryForwardEmpty": "ca1b9197",
+    "board.permissionProcessAccessDetail": "d35d972a"
   }
 }

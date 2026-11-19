@@ -1784,7 +1784,8 @@
     "shell.pageHistoryBack": "{title} に戻る (Alt+Left)",
     "shell.pageHistoryBackEmpty": "戻る (Alt+Left)",
     "shell.pageHistoryForward": "{title} に進む (Alt+Right)",
-    "shell.pageHistoryForwardEmpty": "進む (Alt+Right)"
+    "shell.pageHistoryForwardEmpty": "進む (Alt+Right)",
+    "board.permissionProcessAccessDetail": "このプロセスは、ボードの他の権限に関係なく、ファイルとネットワークにアクセスできます。"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3469,6 +3470,7 @@
     "shell.pageHistoryBack": "11144331",
     "shell.pageHistoryBackEmpty": "912b177e",
     "shell.pageHistoryForward": "5c000bca",
-    "shell.pageHistoryForwardEmpty": "ca1b9197"
+    "shell.pageHistoryForwardEmpty": "ca1b9197",
+    "board.permissionProcessAccessDetail": "d35d972a"
   }
 }

@@ -1931,7 +1931,8 @@
     "shell.pageHistoryBack": "Назад да {title} (Alt+Left)",
     "shell.pageHistoryBackEmpty": "Назад (Alt+Left)",
     "shell.pageHistoryForward": "Наперад да {title} (Alt+Right)",
-    "shell.pageHistoryForwardEmpty": "Наперад (Alt+Right)"
+    "shell.pageHistoryForwardEmpty": "Наперад (Alt+Right)",
+    "board.permissionProcessAccessDetail": "Гэты працэс мае доступ да вашых файлаў і сеткі незалежна ад іншых дазволаў дошкі."
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3616,6 +3617,7 @@
     "shell.pageHistoryBack": "11144331",
     "shell.pageHistoryBackEmpty": "912b177e",
     "shell.pageHistoryForward": "5c000bca",
-    "shell.pageHistoryForwardEmpty": "ca1b9197"
+    "shell.pageHistoryForwardEmpty": "ca1b9197",
+    "board.permissionProcessAccessDetail": "d35d972a"
   }
 }

@@ -1882,7 +1882,8 @@
     "shell.pageHistoryBack": "Indietro a {title} (Alt+Left)",
     "shell.pageHistoryBackEmpty": "Indietro (Alt+Left)",
     "shell.pageHistoryForward": "Avanti a {title} (Alt+Right)",
-    "shell.pageHistoryForwardEmpty": "Avanti (Alt+Right)"
+    "shell.pageHistoryForwardEmpty": "Avanti (Alt+Right)",
+    "board.permissionProcessAccessDetail": "Questo processo può accedere ai tuoi file e alla rete, indipendentemente dalle altre autorizzazioni della bacheca."
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3567,6 +3568,7 @@
     "shell.pageHistoryBack": "11144331",
     "shell.pageHistoryBackEmpty": "912b177e",
     "shell.pageHistoryForward": "5c000bca",
-    "shell.pageHistoryForwardEmpty": "ca1b9197"
+    "shell.pageHistoryForwardEmpty": "ca1b9197",
+    "board.permissionProcessAccessDetail": "d35d972a"
   }
 }

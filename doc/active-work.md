@@ -8,28 +8,6 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-199** — [Agent surface fixes from the ai-vision feedback log](epics/EPIC-199.md)
-  - [ ] [US-2121: Snapshot names: icon buttons, tree rows, menu ids, missing `data-name`s](tasks/US-2121-snapshot-names/README.md)
-  - [ ] [US-2122: `$help` return types and member drift](tasks/US-2122-help-return-types/README.md)
-  - [ ] [US-2123: `pressKey` reaches main-process shortcuts](tasks/US-2123-presskey-main-shortcuts/README.md)
-  - [ ] [US-2124: Call gaps: open a folder in its editor, save any page, error codes everywhere](tasks/US-2124-call-gaps/README.md)
-  - [ ] [US-2125: Test host value fidelity and call options](tasks/US-2125-test-host-fidelity/README.md)
-  - [ ] [US-2126: Guide and `$help` sweep for the open doc entries](tasks/US-2126-guide-help-sweep/README.md)
-
-- **EPIC-200** — [Published boards: bugs and documentation found by the UI test roadmap](epics/EPIC-200.md) — work in `persephone-boards`
-  - [ ] [US-2127: Theme Editor: `previewStatus.pending` never settles](tasks/US-2127-theme-editor-preview-status/README.md)
-  - [ ] [US-2128: Audio Player: playlist `next()`, light-mode model, `previous()`](tasks/US-2128-audio-player-model/README.md)
-  - [ ] [US-2129: PowerPoint Viewer: report parse errors instead of an empty deck](tasks/US-2129-pptx-parse-errors/README.md)
-  - [ ] [US-2130: Board docs that disagree with the board](tasks/US-2130-board-doc-fixes/README.md)
-  - [ ] [US-2131: Agent guides: result shapes and model coverage](tasks/US-2131-board-agent-guides/README.md)
-
-- **EPIC-201** — [Board data and network isolation](epics/EPIC-201.md) — Persephone + `persephone-boards`
-  - [ ] [US-2132: Host: hand a profile-scoped data root to board services](tasks/US-2132-board-data-root/README.md)
-  - [ ] [US-2133: Boards use the host data root](tasks/US-2133-boards-use-data-root/README.md)
-  - [ ] [US-2134: Network honesty: `network: false` and services](tasks/US-2134-network-honesty/README.md)
-  - [ ] [US-2135: Torrent Viewer: offline metadata mode](tasks/US-2135-torrent-offline-inspect/README.md)
-  - [ ] [US-2136: Test mode: environment sandbox for board processes](tasks/US-2136-test-board-sandbox/README.md)
-
 ## Planned
 
 ## Scheduled

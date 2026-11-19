@@ -1931,7 +1931,8 @@
     "shell.pageHistoryBack": "Wstecz do „{title}” (Alt+Left)",
     "shell.pageHistoryBackEmpty": "Wstecz (Alt+Left)",
     "shell.pageHistoryForward": "Dalej do „{title}” (Alt+Right)",
-    "shell.pageHistoryForwardEmpty": "Dalej (Alt+Right)"
+    "shell.pageHistoryForwardEmpty": "Dalej (Alt+Right)",
+    "board.permissionProcessAccessDetail": "Ten proces może uzyskiwać dostęp do Twoich plików i sieci niezależnie od pozostałych uprawnień tablicy."
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3616,6 +3617,7 @@
     "shell.pageHistoryBack": "11144331",
     "shell.pageHistoryBackEmpty": "912b177e",
     "shell.pageHistoryForward": "5c000bca",
-    "shell.pageHistoryForwardEmpty": "ca1b9197"
+    "shell.pageHistoryForwardEmpty": "ca1b9197",
+    "board.permissionProcessAccessDetail": "d35d972a"
   }
 }

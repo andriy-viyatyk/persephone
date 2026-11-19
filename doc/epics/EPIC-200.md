@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed 2026-11-19
 **Created:** 2026-11-18
 
 ## Overview
@@ -24,11 +24,11 @@ Each fix is a board change: bump the board's `version`, then republish through t
 
 | Task | Title | Status |
 |------|-------|--------|
-| [US-2127](../tasks/US-2127-theme-editor-preview-status/README.md) | Theme Editor: `previewStatus.pending` never settles | Planned |
-| [US-2128](../tasks/US-2128-audio-player-model/README.md) | Audio Player: playlist `next()`, light-mode model, `previous()` | Planned |
-| [US-2129](../tasks/US-2129-pptx-parse-errors/README.md) | PowerPoint Viewer: report parse errors instead of an empty deck | Planned |
-| [US-2130](../tasks/US-2130-board-doc-fixes/README.md) | Board docs that disagree with the board | Planned |
-| [US-2131](../tasks/US-2131-board-agent-guides/README.md) | Agent guides: result shapes and model coverage | Planned |
+| [US-2127](../tasks/US-2127-theme-editor-preview-status/README.md) | Theme Editor: `previewStatus.pending` never settles | Done |
+| [US-2128](../tasks/US-2128-audio-player-model/README.md) | Audio Player: playlist `next()`, light-mode model, `previous()` | Done |
+| [US-2129](../tasks/US-2129-pptx-parse-errors/README.md) | PowerPoint Viewer: report parse errors instead of an empty deck | Done |
+| [US-2130](../tasks/US-2130-board-doc-fixes/README.md) | Board docs that disagree with the board | Done |
+| [US-2131](../tasks/US-2131-board-agent-guides/README.md) | Agent guides: result shapes and model coverage | Done |
 
 ### Theme Editor: `previewStatus.pending` never settles
 `queueDraftRefresh` stores the timeout id in `state.previewTimer` and never clears it after the timer fires
