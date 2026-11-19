@@ -109,7 +109,14 @@ shows visible and total row counts.
 Double-click a cell or press **Enter** or **F2** to edit; **Escape** cancels. Boolean cells toggle
 with their checkbox, **Space**, or **Enter**. Row and column insertion/deletion use `Ctrl+Insert`,
 `Ctrl+Delete`, `Ctrl+Shift+Insert`, and `Ctrl+Shift+Delete`; moving past the last row or column can
-add one when editing is enabled. Sorting or filtering disables row insertion and deletion.
+add one when editing is enabled.
+
+Rows can be inserted and deleted while the grid is sorted or filtered. `Ctrl+Insert` puts the new
+rows directly before the focused row in the file's own order, wherever the sort shows that row;
+a row added by moving past the last row goes at the end of the file. The new row stays where you
+inserted it while you fill it in, and takes its sorted place (or is hidden by the filter) when you
+next change the sort or filter. `Ctrl+Delete` deletes only the selected rows you can see; rows
+hidden by a filter are never deleted.
 
 ## Copy and paste
 

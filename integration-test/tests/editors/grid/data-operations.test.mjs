@@ -164,39 +164,51 @@ export default [
             if (page) await close(ctx, page.id);
         }
     }),
-    test('Ctrl+Insert adds an unsorted row and is blocked while sorted or filtered', async ctx => {
+    test('Ctrl+Insert inserts before the focused row in file order, also while sorted or filtered', async ctx => {
         const pages = [];
         const fixture = '[{"label":"alpha"},{"label":"beta"},{"label":"gamma"}]\n';
+        // File order of the labels; the inserted blank row has no label.
+        const labels = rows => rows.map(row => row.label ?? null);
         try {
-            const unsorted = await open(ctx, 'us-2065-grid/insert-guard/unsorted.json', fixture, 'grid-json');
+            const unsorted = await open(ctx, 'us-2065-grid/insert-placement/unsorted.json', fixture, 'grid-json');
             pages.push(unsorted);
-            const editor = ctx.app.pages[unsorted.id].editor;
             await ctx.app.window.screen.click(cell(0, 'label'));
             await ctx.app.window.screen.pressKey('Control+Insert');
             await ctx.waitFor(activeContext => activeContext.app.pages[unsorted.id].editor.rowCount, count => count === 4);
+            ctx.expect(labels(await ctx.app.pages[unsorted.id].editor.rows)).toEqual([null, 'alpha', 'beta', 'gamma']);
 
-            const sorted = await open(ctx, 'us-2065-grid/insert-guard/sorted.json', fixture, 'grid-json');
+            // Sorted descending, display row 0 is gamma (file index 2): the new row goes before gamma in the file,
+            // not at file index 0.
+            const sorted = await open(ctx, 'us-2065-grid/insert-placement/sorted.json', fixture, 'grid-json');
             pages.push(sorted);
-            const sortedEditor = ctx.app.pages[sorted.id].editor;
-            await ctx.app.window.screen.click('.avg-header-cell[data-column-key="label"] .avg-header-title');
+            const header = '.avg-header-cell[data-column-key="label"] .avg-header-title';
+            await ctx.app.window.screen.click(header);
             await ctx.waitFor(activeContext => activeContext.app.pages[sorted.id].editor.sort, sort => sort?.direction === 'asc');
+            // Once sorted, the hover-gated filter button can cover a short title's centre; click its left edge.
+            await ctx.app.window.screen.click(header, { position: { x: 4, y: 4 } });
+            await ctx.waitFor(activeContext => activeContext.app.pages[sorted.id].editor.sort, sort => sort?.direction === 'desc');
             await ctx.app.window.screen.click(cell(0, 'label'));
             await ctx.app.window.screen.pressKey('Control+Insert');
-            ctx.expect(await sortedEditor.rowCount).toBe(3);
+            await ctx.waitFor(activeContext => activeContext.app.pages[sorted.id].editor.rowCount, count => count === 4);
+            ctx.expect(labels(await ctx.app.pages[sorted.id].editor.rows)).toEqual(['alpha', 'beta', null, 'gamma']);
 
-            const filtered = await open(ctx, 'us-2065-grid/insert-guard/filtered.json', fixture, 'grid-json');
+            // Filtered to gamma (file index 2): the new row goes before gamma and stays visible while being filled in.
+            const filtered = await open(ctx, 'us-2065-grid/insert-placement/filtered.json', fixture, 'grid-json');
             pages.push(filtered);
-            const filteredEditor = ctx.app.pages[filtered.id].editor;
             await ctx.app.window.screen.click('[data-name="grid-columns"]');
             await ctx.app.window.screen.click('[data-type="data-cell"][data-row="0"][data-column-key="newFilterType"]');
             await ctx.app.window.screen.pressKey('Enter');
             await ctx.app.window.screen.click('text="text"');
             await ctx.app.window.screen.click('[data-name="columns-options-apply"]');
-            await setTextFilter(ctx, filtered.id, 'label', 'contains', 'alpha');
+            await setTextFilter(ctx, filtered.id, 'label', 'contains', 'gamma');
             await ctx.waitFor(activeContext => activeContext.app.pages[filtered.id].editor.visibleRowCount, count => count === 1);
             await ctx.app.window.screen.click(cell(0, 'label'));
             await ctx.app.window.screen.pressKey('Control+Insert');
-            ctx.expect(await filteredEditor.rowCount).toBe(3);
+            await ctx.waitFor(activeContext => activeContext.app.pages[filtered.id].editor.rowCount, count => count === 4);
+            ctx.expect(labels(await ctx.app.pages[filtered.id].editor.rows)).toEqual(['alpha', 'beta', null, 'gamma']);
+            // The display is frozen while the new row is filled in, so it shows above gamma. visibleRowCount is not
+            // the check: av-grid reports visible rows only when it re-filters, which the freeze defers.
+            await ctx.app.window.screen.waitFor({ selector: cell(1, 'label'), state: 'visible' });
         } finally {
             for (const page of pages) await close(ctx, page.id);
         }
