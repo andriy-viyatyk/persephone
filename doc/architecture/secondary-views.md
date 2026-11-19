@@ -704,7 +704,8 @@ What the gate turns on:
 - **Drops** — onto a folder row (into that folder) or onto whitespace, an empty-folder
   placeholder, or a file row (all meaning *the open folder*, because a file's parent **is** the
   open folder). `drop` stops propagation, which is what suppresses the global
-  open-dropped-files-as-tabs fallback.
+  OS-drop fallback: one file opens as a tab, one folder as an Explorer-rooted page, and multiple
+  items as a links page.
 - **Drag-out** — a native OS drag (`api.startOsFileDrag`) carrying N paths, so Windows Explorer
   and Teams accept it. A native drag dropped back inside any Persephone window re-enters as an
   ordinary OS file drop, so one gesture serves external and internal targets alike.

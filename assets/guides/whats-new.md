@@ -12,7 +12,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.21 (Upcoming)
 
-*No changes yet.*
+### Improvements
+
+- **Drop a folder to browse it:** dropping one folder from Windows Explorer onto Persephone now
+  opens a new page with the Explorer panel rooted at that folder. Dropping several files or folders
+  still opens a link collection page.
 
 ---
 

@@ -143,7 +143,8 @@ export class GlobalEventService {
     };
 
     /**
-     * Bubble phase (runs last): open OS-dropped files/folders as tabs — the original
+     * Bubble phase (runs last): open OS-dropped files/folders — one file opens as a tab,
+     * one folder as an Explorer-rooted page, anything more as a links page. The original
      * drop-to-open behavior, relocated from capture so trait-aware targets (which
      * call stopPropagation when they handle the drop) get first chance.
      */
@@ -187,6 +188,9 @@ export class GlobalEventService {
                     window.electron.ipcRenderer.sendMessage(RendererEvent.fileDropped, filePaths[0]);
                     return;
                 }
+                // A single folder opens as a workspace page: an empty page whose Explorer is rooted there.
+                await pages.openPath(filePaths[0]);
+                return;
             }
             const links = await expandDroppedPaths(filePaths);
             if (links.length > 0) {
