@@ -10,10 +10,26 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 5.0.20 (Upcoming)
+## Version 5.0.21 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 5.0.20
 
 ### New Features
 
+- **Board data per profile:** a board's background service now gets its own data folder from
+  Persephone (`PERSEPHONE_BOARD_DATA`). The default profile keeps `%LOCALAPPDATA%\Persephone\board-data`;
+  a named profile (`--profile`) and test runs keep board models and data inside the profile's own
+  folder. Nothing is moved or deleted. Translate, Agent Chat and the speech boards use it.
+- **Clearer board permissions:** the trust dialog now says that a board's background service, and any
+  program a board starts, can use your files and the network whatever the board's other permissions.
+- **More for agents over `call`:** `pages.openFolder(path)` opens a folder in its editor,
+  `pages[i].save()` saves any page with content, `window.screen.pressKey` reaches the app's own
+  window shortcuts as a real key press does, interactive snapshots name icon buttons and tree rows
+  the way you see them, and `$help` shows what each method returns.
 - **Web-app regression tests:** Write `.test.mjs` checks for a web app and run them with
   `persephone-test.exe` in a Persephone profile, reusing a logged-in browser profile. Reports,
   screenshots, console output, and network logs help diagnose failures. See [Web-app regression
@@ -31,15 +47,18 @@ Release notes and changelog for Persephone (formerly js-notepad).
   catalog from the loopback URL in `PERSEPHONE_TEST_BOARDS_CATALOG_URL` and never from GitHub, so catalog
   install, update and roll back can be tested offline. Outside a test run the variable is ignored.
 - **Board data stays in the test profile:** in an app launched by the test runner, `%LOCALAPPDATA%`
-  points at the profile's `test-local-app-data` folder for the app and every process it starts, so
-  boards that keep models or enrollments there (Speech to Text, Text to Speech, Wake Word) never
-  read or change your own data during a test. Outside a test run nothing changes.
+  points at the profile's `test-local-app-data` folder for the app and every process it starts, and
+  board processes also get a profile-local home, Claude and Codex settings and a `PATH` without your
+  own command-line tools. Boards never read or change your own data during a test. Outside a test
+  run nothing changes.
 - **Assigning properties in web-app tests:** `ctx.set(path, value)` assigns a writable call-tree
   property, such as a board model's `searchText`. Assigning through `ctx.app` used to do nothing
   silently; it now throws and names `ctx.set`.
 
 ### Bug Fixes
 
+- **Text editor find box colors:** the find box, suggestion list and hover popups in the text editor
+  used Monaco's own gray instead of the current theme's colors. They now match the theme.
 - **EPIPE error dialog on exit:** Persephone no longer shows a main-process EPIPE error dialog when
   the console that started it has closed.
 - **Error codes over `call`:** a call that failed through the MCP `call` tool reported only its
@@ -392,21 +411,9 @@ The move removes note script execution; HTML, Mermaid, and SVG previews; Monaco 
 
 ### New Features
 
-- **Choose the interface language:** In Settings > General > Language, select Automatic or an
-  available language pack. A selection reloads all open windows and restores their pages. Compatible
-  packs can be placed in `%APPDATA%\persephone\data\languages\`; the picker shows each pack's
-  completeness. Persephone now ships 17 built-in translations alongside English. Ask your AI agent
-  to add a language, update a pack, or fix a translation; it can validate changes before saving.
-- **The whole interface is translatable:** every menu, dialog, panel and editor now reads its text
-  from the language pack. The text editor's own find box, context menu and command palette follow
-  the language for the languages Monaco ships (German, French, Spanish, Polish, Japanese and more).
-- **Boards follow the app language:** the bundled REST Client and Excalidraw boards and the
-  catalog boards show their text, names and descriptions in the chosen language. Board authors can
-  ship language packs in a board's `lang` folder.
-- **Installer in your language:** the installer starts with a language choice and shows all its
-  screens in that language.
-- **Locale-aware formatting:** Numbers, byte sizes, and relative day labels follow the active
-  language where available.
+- **Interface languages:** choose the app language in Settings; 17 built-in translations, and agents can add or fix packs.
+- **Translated boards and installer:** boards and the installer follow the chosen language.
+- **Locale-aware formatting:** numbers, byte sizes and day labels follow the active language.
 
 ---
 
