@@ -92,12 +92,41 @@ const customTokenRules: monaco.editor.ITokenThemeRule[] = [
 
 export const MONACO_THEME_NAME = "custom-dark";
 
+/**
+ * Monaco widget colors taken from the Persephone theme, so the find panel, suggest list and hover
+ * match the app instead of Monaco's built-in `vs` / `vs-dark` grays. Monaco accepts hex colors
+ * only, so a token holding `rgba()` is skipped. A theme's own `monaco.colors` still wins.
+ */
+const WIDGET_COLOR_TOKENS: Record<string, string> = {
+    "editorWidget.background": "--color-bg-light",
+    "editorWidget.foreground": "--color-text-default",
+    "editorWidget.border": "--color-border-default",
+    "editorSuggestWidget.background": "--color-bg-light",
+    "editorSuggestWidget.border": "--color-border-default",
+    "editorHoverWidget.background": "--color-bg-light",
+    "editorHoverWidget.border": "--color-border-default",
+    "input.background": "--color-bg-default",
+    "input.foreground": "--color-text-default",
+    "input.border": "--color-border-default",
+};
+
+const HEX_COLOR = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+
+function widgetColors(theme: ThemeDefinition): Record<string, string> {
+    const colors: Record<string, string> = {};
+    for (const [monacoKey, token] of Object.entries(WIDGET_COLOR_TOKENS)) {
+        const value = (theme.colors as Record<string, string | undefined>)[token];
+        if (value && HEX_COLOR.test(value)) colors[monacoKey] = value;
+    }
+    return colors;
+}
+
 function defineMonacoTheme(monaco: Monaco, theme: ThemeDefinition) {
     monaco.editor.defineTheme(MONACO_THEME_NAME, {
         base: theme.monaco.base,
         inherit: true,
         rules: customTokenRules,
-        colors: theme.monaco.colors,
+        colors: { ...widgetColors(theme), ...theme.monaco.colors },
     });
 }
 
