@@ -28,10 +28,8 @@ async function isVisible(ctx, selector) {
     }`);
 }
 
-// Voice typing itself starts only from its keyboard shortcut, which the main process reads in
-// `before-input-event`. Keys sent by `window.screen.pressKey` (CDP) never reach that handler, so the
-// shortcut, the overlay and the missing-provider alert are uncovered (EPIC-196 open items). The
-// Transcript toolbar runs the same microphone capture and `speech.transcribe` session path.
+// The shortcut test covers the app before-input-event route, recording overlay and transcription.
+// The Transcript toolbar also exercises the shared microphone capture and speech.transcribe path.
 export default [
     test("Transcript toolbar is hidden when no transcription provider is trusted", async (ctx) => {
         const root = fixtureBoard(ctx, "voice/fixture-transcriber");
@@ -83,6 +81,38 @@ export default [
             ctx.expect(button).toBe(true);
         } finally {
             // The transcribed page is unsaved: the runner's per-test cleanup closes it and answers Don't Save.
+            await untrustBoard(ctx, root);
+        }
+    }, { requires: ["launch"] }),
+
+    test("configured voice-typing shortcut transcribes from the microphone", async (ctx) => {
+        let root;
+        let pageId;
+        try {
+            root = fixtureBoard(ctx, "voice/fixture-transcriber");
+            await trustFixtureBoard(ctx, root);
+            pageId = await createTextPage(ctx, "us-2123-voice-shortcut.txt", "Voice shortcut fixture: \n");
+            await ctx.app.window.screen.click(`[data-name="page-slot"][data-page-id="${pageId}"] ${EDITOR_SELECTOR}`);
+
+            const shortcut = await ctx.app.settings.get("voice-typing.shortcut");
+            const overlayVisible = () => ctx.app.window.screen.evaluate(`() => {
+                const overlay = document.querySelector('[data-name="voice-typing-overlay"]');
+                return Boolean(overlay && !overlay.hidden && overlay.textContent.toLowerCase().includes("recording"));
+            }`);
+
+            await ctx.app.window.screen.pressKey(shortcut);
+            ctx.expect(await ctx.waitFor(() => overlayVisible(), (recording) => recording === true)).toBe(true);
+
+            const inserted = await ctx.waitFor(
+                () => ctx.callText(`pages[${JSON.stringify(pageId)}].content`),
+                (content) => content.includes(FIXTURE_TEXT),
+            );
+            ctx.expect(inserted).toContain(FIXTURE_TEXT);
+
+            await ctx.app.window.screen.pressKey(shortcut);
+            const hidden = await ctx.waitFor(() => isVisible(ctx, '[data-name="voice-typing-overlay"]'), (visible) => visible === false);
+            ctx.expect(hidden).toBe(false);
+        } finally {
             await untrustBoard(ctx, root);
         }
     }, { requires: ["launch"] }),

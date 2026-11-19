@@ -819,6 +819,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Typed main-process consumer port delivery and delivery owner selection | `/src/main/channel-delivery.ts` |
 | Private MCP session endpoint manager (lazy loopback listener, per-service bearer grants, bounded transport lifecycle, revocation, and private client count) | `/src/main/mcp/private-session-endpoints.ts` |
 | Module-service process (one utility-process generation, including spawn, handshake, dispatch, logging, and exit) | `/src/main/module-service/process.ts` |
+| Board process environment funnel (profile-scoped `PERSEPHONE_BOARD_DATA` path for services and board-launched processes; US-2136 extends this helper rather than adding another environment call site) | `/src/main/board-process-environment.ts` |
+| Shared board data identity (exact board-root folder name and safe path-segment validation, with bundled-id support) | `/src/shared/board/board-data-id.ts` |
 | Module-service trust directory (trusted snapshot and indexed provider eligibility/discovery) | `/src/main/module-service/trust-directory.ts` |
 | Module-service channel broker (direct and capability channel delivery and cleanup) | `/src/main/module-service/channel-broker.ts` |
 | Module-service adapters (board settings, MCP endpoints, and capability clients) | `/src/main/module-service/board-settings-adapter.ts`, `/src/main/module-service/mcp-endpoint-adapter.ts`, `/src/main/module-service/capability-client-adapter.ts` |

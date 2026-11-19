@@ -146,6 +146,7 @@ class ArgFieldView extends VanillaView<ArgFieldProps> {
     }
 
     protected onMount(): void {
+        this.root.dataset.name = `mcp-arg-${this.props.name}`;
         const header = createPanelElement({ direction: "row", gap: "md", align: "center" });
         header.append(createTextElement(this.props.name, { size: "base", color: "default" }));
         this.typeText = createTextElement("", { size: "sm", color: "default" });
@@ -161,6 +162,7 @@ class ArgFieldView extends VanillaView<ArgFieldProps> {
     }
 
     protected onUpdate(props: ArgFieldProps): void {
+        this.root.dataset.name = `mcp-arg-${props.name}`;
         this.renderField(props);
     }
 

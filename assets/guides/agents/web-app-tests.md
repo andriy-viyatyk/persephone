@@ -25,11 +25,7 @@ file. The test `app` stand-in maps object chains to the same call paths:
 `$help` works on stand-in nodes in tests. Each read or call is a request, so await it. Keep a
 stand-in such as `site`; a returned value is JSON data, not a live editor object. When an async
 helper must return a stand-in, wrap it with `ctx.handle(node)`. Use `ctx.call(path, args)` for a
-call-tree path the stand-in cannot represent. A string result comes back as plain text and is parsed
-when it is valid JSON, so a string such as `"true"` or `"42"` arrives as a boolean or number; use
-`ctx.callText(path, args)` when the exact string matters. Function arguments are rejected because calls carry
-JSON; use a browser editor's `waitFor({ selector })` for page readiness or `ctx.script(code)` for
-app scripting.
+call-tree path the stand-in cannot represent.
 
 An awaitable stand-in is not a full Promise: its `.then(read)` returns the chained Promise, but
 `.catch()` and `.finally()` throw with guidance. Handle errors with `try { await node } catch {}`.
@@ -58,8 +54,8 @@ Every test receives these `ctx` members:
 - `call(path, args?, options?)` — path-based call; useful for stand-in escape hatches.
 - `callText(path, args?, options?)` — path-based call returning text without JSON parsing.
 - `set(path, value, { timeout? })` — assign a writable property (one whose `$help` says it is writable). Assigning through `ctx.app` throws, because an assignment cannot be awaited.
-- `waitFor(pathOrCallback, predicate, { timeout? })` — host-side polling of a call or callback.
-- `expect(value)` — assertions with `toBe`, `toEqual`, `toContain`, and `toBeTruthy`.
+- `waitFor(pathOrCallback, predicate, { timeout?, maxLength?, dialog? })` — host-side polling of a call or callback.
+- `expect(value)` — assertions with `toBe`, `toEqual`, `toContain`, `toBeTruthy`, `toBeGreaterThan`, `toBeLessThanOrEqual`, and `toMatch`.
 - `script(code)` — run `script.execute` and return its completed text.
 - `file(relative)` — resolve a fixture path relative to this test file.
 - `log(message)` — add a note to `tests.log` and runner console output.
@@ -70,7 +66,35 @@ Every test receives these `ctx` members:
 `requires: ["launch"]` so they are skipped there. `ctx.waitFor` polls a value with a predicate;
 the browser editor's `site.waitFor({ selector })` waits for a DOM condition.
 
-Call results cross a JSON boundary: an app value of `undefined` arrives in the test as `null`.
+## Crossing the call boundary
+
+`ctx.app` is the root of Persephone's test call tree. It is separate from the script-facing `app`
+object available inside `ctx.script(code)`. A stand-in names a path; every property read or method
+call makes a fresh request and resolves that path again, including after an editor switch. A method
+starts its request as soon as you call it, while a property read starts its request when you await
+it. Awaiting a stand-in returns that path's summary or value. `ctx.app.withOptions({ maxLength,
+dialog }).some.path` binds call options to descendant reads and calls without changing their paths.
+
+Successful call results preserve their original types: JSON-looking strings such as `"true"` and
+`"42"` stay strings, while booleans and numbers stay typed values. `callText(path, args)` always
+returns the primary text body unchanged. Call arguments must be JSON values; methods with no
+arguments still need an explicit `[]` when called through `ctx.call`. At the result boundary,
+top-level `undefined` arrives as `null`, and undefined-valued object properties are dropped.
+Functions and other non-JSON argument values are not supported.
+
+`waitFor(pathOrCallback, predicate, { timeout, maxLength, dialog })` resolves to the value from the
+poll that satisfies the predicate. `timeout` sets the polling deadline; `maxLength` and `dialog` are
+forwarded for each path poll. Set `dialog: true` when polling while a renderer dialog or popup menu
+has attention, including reads from `dialogs` or `menus`.
+
+`openBrowser()` returns the existing editor stand-in, with a local `pageId` property containing the
+created page's id. Use that id for paths such as `pages[pageId]`; it is metadata on the returned
+handle and is never sent as a call-tree member. Tests may leave pages unsaved because the host
+closes pages they opened. Cleanup belongs in `finally`, and cleanup code must catch its own errors
+so it never throws over the test's original result.
+
+`ctx.expect(value)` also supports `toBeGreaterThan(number)`,
+`toBeLessThanOrEqual(number)`, and `toMatch(RegExp)`; failures are recorded as the current test step.
 
 ## Browser page and profile behavior
 

@@ -29,7 +29,7 @@ text.toggleWordWrap()      // Toggle wrapping for this Text Editor page
 
 ```javascript
 const grid = page.editor;
-grid.rows                            // All rows as objects
+grid.rows                            // All row data as objects; ignores search and column filters
 grid.rowKeys                         // Row keys in the same order as rows
 grid.columns                         // Column definitions [{ key, name }]
 grid.rowCount                        // Number of rows

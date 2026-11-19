@@ -3,10 +3,10 @@ import { test } from "../../../lib/context.mjs";
 const closePages = async (ctx, pageIds) => {
     for (const pageId of pageIds) {
         try {
-            await /* ctx.call remains because the app stand-in cannot pass call options such as dialog or maxLength. */ ctx.call("pages.closePage", [pageId], { dialog: true });
-            const buttons = await /* ctx.call remains because the app stand-in cannot pass call options such as dialog or maxLength. */ ctx.call("dialogs[0].buttons", undefined, { dialog: true }).catch(() => undefined);
+            await ctx.call("pages.closePage", [pageId], { dialog: true });
+            const buttons = await ctx.call("dialogs[0].buttons", undefined, { dialog: true }).catch(() => undefined);
             const discard = buttons?.find((button) => /don't save|discard/i.test(button));
-            if (discard) await /* ctx.call remains because the app stand-in cannot pass call options such as dialog or maxLength. */ ctx.call("dialogs[0].click", [discard], { dialog: true });
+            if (discard) await ctx.call("dialogs[0].click", [discard], { dialog: true });
         } catch {
             // Cleanup must not hide the original test failure.
         }
@@ -64,9 +64,45 @@ export default [
             ctx.expect(marker.toLowerCase()).toContain("chars");
             ctx.expect(blocks[0].length <= 120).toBe(true);
             ctx.expect(blocks[0].length > 0).toBe(true);
+
+            const standInValue = await ctx.app.withOptions({ maxLength: 120 }).pages[page.id].data.us2032Long;
+            ctx.expect(typeof standInValue).toBe("string");
+            ctx.expect(standInValue.length).toBeLessThanOrEqual(120);
+            const polledValue = await ctx.waitFor(`pages[${JSON.stringify(page.id)}].data.us2032Long`, (value) => typeof value === "string", { maxLength: 120 });
+            ctx.expect(polledValue.length).toBeLessThanOrEqual(120);
         } finally {
             await closePages(ctx, pageIds);
         }
+    }),
+
+    test("call preserves string and JSON value types and raw text", async (ctx) => {
+        const page = await ctx.app.pages.addEditorPage("monaco", "plaintext", "us2125-value-fidelity", "true");
+        try {
+            const stringPath = `pages[${JSON.stringify(page.id)}].content`;
+            const raw = await ctx._getClient().rawCall(stringPath);
+            ctx.expect(raw.content.find((block) => block.type === "text").text).toBe("true");
+            ctx.expect(await ctx.call(stringPath)).toBe("true");
+
+            await ctx.set(stringPath, '{"name":"Ada"}');
+            const jsonText = await ctx.call(stringPath);
+            const boolean = await ctx.call(`pages[${JSON.stringify(page.id)}].pinned`);
+            ctx.expect(jsonText).toBe('{"name":"Ada"}');
+            ctx.expect(typeof jsonText).toBe("string");
+            ctx.expect(boolean).toBe(false);
+            ctx.expect(typeof boolean).toBe("boolean");
+        } finally {
+            await closePages(ctx, [page.id]);
+        }
+    }),
+
+    test("method calls require an argument array and assertion helpers cover comparisons", async (ctx) => {
+        let failure;
+        try { await ctx.call("ui.alerts.list"); } catch (error) { failure = error; }
+        ctx.expect(failure).toBeTruthy();
+        ctx.expect(failure.message).toContain('ctx.call("ui.alerts.list", [])');
+        ctx.expect(5).toBeGreaterThan(4);
+        ctx.expect(5).toBeLessThanOrEqual(5);
+        ctx.expect("US-2125").toMatch(/^US-\d+$/);
     }),
 
     test("a bounded automation wait returns a timeout error", async (ctx) => {

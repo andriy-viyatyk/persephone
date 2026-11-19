@@ -77,6 +77,21 @@ async function waitForPermissionRow(ctx, page, expected) {
 }
 
 export default [
+    test("browser controls are declared and titled icon buttons have snapshot names", async (ctx) => {
+        const url = fixturePage(ctx, "permissions", "notifications.html");
+        const page = await openBrowserPage(ctx, url);
+        try {
+            const names = (await page.editor.elements).map((element) => element.name);
+            for (const name of ["toolbar-translate", "url-site-permissions", "browser-permission-prompt", "permission-allow", "permission-block", "permission-origin", "site-extension-trust"]) {
+                ctx.expect(names).toContain(name);
+            }
+            const snapshot = await ctx.app.window.screen.snapshot({ interactive: true, root: '[data-name="toolbar-home"]' });
+            // The first page opened in the tab is its home URL, so the title is "Go to {url}" (browser.toolbarGoToHome).
+            ctx.expect(snapshot).toContain(`button ${JSON.stringify(`Go to ${url}`)}`);
+        } finally {
+            await closeBrowserPage(ctx, page);
+        }
+    }),
     test("notification prompt remembers Allow, reports granted, and Reset returns Ask", async (ctx) => {
         const page = await openBrowserPage(ctx, fixturePage(ctx, "permissions", "notifications.html"));
         const permissionsState = { open: false };

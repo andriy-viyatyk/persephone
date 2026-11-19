@@ -204,8 +204,7 @@ export default [
             await waitForRestClient(ctx, pageId);
             await ctx.app.pages[pageId].editor.app.setRequestUrl(requestId, newUrl);
             await ctx.waitFor(`pages[${JSON.stringify(pageId)}].modified`, (modified) => modified === true, { timeout: 10000 });
-            await ctx.app.pages[pageId].editorSwitches.switchTo("monaco");
-            await ctx.app.pages[pageId].editor.saveFile();
+            ctx.expect(await ctx.app.pages[pageId].save()).toBe(true);
             const savedText = await ctx.waitFor(
                 async (active) => {
                     try {

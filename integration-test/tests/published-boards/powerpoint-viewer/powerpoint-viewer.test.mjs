@@ -1,6 +1,6 @@
 import { test } from "../../../lib/context.mjs";
 import { closePublishedSample, openPublishedSample } from "../helpers.mjs";
-import { writePowerPointSample } from "../office-samples.mjs";
+import { writeBrokenPowerPointSample, writePowerPointSample } from "../office-samples.mjs";
 
 async function waitForPowerPointModel(ctx, pageId) {
     return ctx.waitFor(
@@ -67,6 +67,25 @@ export default [
                 (slide) => slide === 2,
                 { timeout: 15000 },
             )).toBe(2);
+        } finally {
+            await closePublishedSample(ctx, handle);
+        }
+    }, { requires: ["launch", "published-board-checkout"] }),
+
+    test("reports a parse error for a broken PowerPoint deck", async (ctx) => {
+        await writeBrokenPowerPointSample(ctx);
+        let handle;
+        try {
+            handle = await openPublishedSample(ctx, "powerpoint-viewer", "powerpoint-viewer/broken.pptx");
+            const errorPath = modelPath(handle.id, "error");
+            const error = await ctx.waitFor(errorPath, (value) => typeof value === "string" && value.length > 0, { timeout: 15000 });
+            ctx.expect(typeof error).toBe("string");
+            ctx.expect(error.length).toBeGreaterThan(0);
+            const editor = ctx.app.pages[handle.id].editor;
+            ctx.expect(await editor.app.isLoaded).toBe(false);
+            const state = await editor.evaluate("() => { const element = document.querySelector('#state'); return { visible: element.classList.contains('show'), text: element.innerText.trim() }; }");
+            ctx.expect(state.visible).toBe(true);
+            ctx.expect(state.text === "This deck has no slides.").toBe(false);
         } finally {
             await closePublishedSample(ctx, handle);
         }

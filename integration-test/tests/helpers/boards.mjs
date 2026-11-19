@@ -7,7 +7,7 @@ function sameRoot(left, right) {
         && comparableRoot(left) === comparableRoot(right);
 }
 
-/** Wait for a renderer dialog by title. Dialog reads need { dialog: true }, which a plain path wait cannot pass. */
+/** Retry the title read until the renderer has registered the dialog. */
 export async function waitForBoardDialog(ctx, title, timeout = 10000) {
     return ctx.waitFor(
         (active) => active.call("dialogs[0].title", undefined, { dialog: true }).catch(() => null),

@@ -124,12 +124,8 @@ export default [
             ctx.expect(snapshot).toContain(filename);
             ctx.expect(snapshot).toContain("Cancel");
             await activatePage(ctx, page.id);
-            const listSnapshot = await ctx.app.window.screen.snapshot({ root: '[data-name="downloads-list"]', interactive: true });
-            const cancelLine = listSnapshot.split("\n").find((line) => line.includes('button "Cancel"'));
-            const cancelRef = cancelLine?.match(/\[ref=(e\d+)\]/u)?.[1];
-            ctx.expect(cancelRef).toBeTruthy();
             await activatePage(ctx, page.id);
-            await ctx.app.window.screen.click({ ref: cancelRef });
+            await ctx.app.window.screen.click('[data-name="downloads-cancel"]');
 
             const cancelled = await waitForDownload(ctx, filename, "cancelled");
             ctx.expect(cancelled.status).toBe("cancelled");

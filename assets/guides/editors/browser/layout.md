@@ -44,6 +44,9 @@ summary: "How are the browser toolbar, URL bar, and page controls arranged and u
 - Browser tabs → `tabs-panel-host`
 - Blocked popups → `popup-blocked-bar`
 - Permission request (active inner tab only) → `browser-permission-prompt`
+- Permission request origin → `permission-origin`
+- Allow / Block permission request → `permission-allow`, `permission-block`
+- Site extension Trust (when available) → `site-extension-trust`
 - Page navigation and Editor switch → no entry: this custom browser toolbar draws neither control
 - Webview page controls → no entry: third-party browser content
 
@@ -90,6 +93,15 @@ summary: "How are the browser toolbar, URL bar, and page controls arranged and u
 | [Downloads] [Downloads popup]                                       |  popup with download entries and their available actions
 +---------------------------------------------------------------------+
 ```
+
+While this transient popup is open, Cancel uses `downloads-cancel`, failed or cancelled rows use
+`downloads-dismiss`, and completed rows use `downloads-show-in-folder`. The popup itself is also
+transient and is not a permanent shell element.
+
+When the translation popover is open, its transient popover root is
+`[data-name="translation-source-popover"]` and its source-language selector is
+`[data-name="translation-source-language"]`. These selectors are available through
+`window.screen` while the popover is open; they are outside the page-scoped browser element list.
 
 ### When site permissions are open
 

@@ -7,6 +7,7 @@ import { attachTooltip, type TooltipAttachment, type TooltipOptions } from "../T
 import { VanillaView } from "../shared/vanilla-view";
 import { uikitText } from "../shared/uikit-text";
 import { TreeIndents } from "./tree-indents";
+import { nextElementId } from "../shared/element-id";
 import type { TreeItemProps, TreeItemOwnProps } from "./TreeItem";
 import "./TreeItem.css";
 
@@ -46,6 +47,7 @@ const TREE_LEGACY_KEYS = [] as const satisfies readonly (keyof TreeItemProps)[];
 
 export class TreeItemView extends VanillaView<TreeItemViewProps> {
     private readonly restPropsState: RestPropsState = createRestPropsState();
+    private readonly labelHostId = nextElementId("tree-item-label");
 
     private chevronHost: HTMLSpanElement | undefined;
     private iconHost: HTMLSpanElement | undefined;
@@ -90,6 +92,7 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
 
         this.labelHost = document.createElement("span");
         this.labelHost.className = "label";
+        this.labelHost.id = this.labelHostId;
 
         this.secondaryHost = document.createElement("span");
         this.secondaryHost.dataset.part = "secondary-label";
@@ -164,6 +167,7 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
         toggleAttr(root, "data-disabled", !!disabled);
         root.dataset.trailingVisibility = trailingVisibility;
         root.setAttribute("role", "treeitem");
+        setAttr(root, "aria-labelledby", props["aria-labelledby"] == null ? this.labelHostId : String(props["aria-labelledby"]));
         root.setAttribute("aria-selected", selected ? "true" : "false");
         setAttr(root, "aria-expanded", hasChildren ? String(!!expanded) : undefined);
         root.setAttribute("aria-level", String(level + 1));

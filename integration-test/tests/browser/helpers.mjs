@@ -14,11 +14,9 @@ export function fixturePage(ctx, module, file) {
  * Options: `{ profile?, incognito?, timeout? }`.
  */
 export async function openBrowserPage(ctx, url, options = {}) {
-    const before = new Set((await ctx.app.pages.all).map((page) => page.id));
-    await ctx.openBrowser(url, options);
-    const created = (await ctx.app.pages.all).find((page) => page.editor === "browser-view" && !before.has(page.id));
-    if (!created) throw new Error(`openBrowserPage: no new browser page for ${url}`);
-    return { id: created.id, editor: ctx.handle(ctx.app.pages[created.id].editor) };
+    const editor = await ctx.openBrowser(url, options);
+    if (typeof editor.pageId !== "string") throw new Error(`openBrowserPage: no page id for ${url}`);
+    return { id: editor.pageId, editor };
 }
 
 /** Make the page active, so `window.screen` acts on its toolbar and bars. */

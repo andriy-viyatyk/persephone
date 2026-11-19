@@ -237,6 +237,7 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
 
         if (isDownloading) {
             addButton(new ButtonView({
+                name: "downloads-cancel",
                 size: "sm",
                 variant: "ghost",
                 onClick: () => { void downloads.cancelDownload(id); },
@@ -269,6 +270,7 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
                 onClick: () => { void downloads.openDownload(id); },
             }));
             addButton(new IconButtonView({
+                name: "downloads-show-in-folder",
                 size: "sm",
                 title: t("browser.downloadsShowInFolder"),
                 icon: "folder-open",
@@ -277,6 +279,7 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
         }
         if (status === "failed" || status === "cancelled") {
             addButton(new IconButtonView({
+                name: "downloads-dismiss",
                 size: "sm",
                 title: t("browser.downloadsDismiss"),
                 icon: "close",

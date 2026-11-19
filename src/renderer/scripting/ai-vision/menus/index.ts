@@ -33,9 +33,9 @@ const MENUS_MEMBERS: IAiVisionDescriptor["members"] = [];
 
 const MENUS_DESCRIPTOR: IAiVisionDescriptor = {
     kind: "Menus",
-    summary: "The open application popup menu, indexed as menus[0].",
+    summary: "The currently open renderer application popup menu and its visible items; UIKit dropdown/menu widgets are not entries here.",
     members: MENUS_MEMBERS,
-    help: "menus[0] is the live popup menu. click(value) prefers a unique exact id and accepts a unique exact displayed or qualified label when no id matches. Read items, activate an enabled leaf, or dismiss it with close().",
+    help: "menus[0] is the currently open renderer application popup menu and its visible items; UIKit dropdown/menu widgets are not entries here. click(value) prefers a unique exact id and accepts a unique exact displayed or qualified label when no id matches. Read items, activate an enabled leaf, or dismiss it with close().",
 };
 
 function popupItems(): MenuItem[] | undefined {

@@ -47,6 +47,22 @@ console.log(p?.title);
 
 const workspacePage = await app.pages.openFile("C:/projects/my-app");
 console.log(workspacePage?.workspaceFolder); // "C:/projects/my-app"
+
+// Open a folder through Explorer's folder-editor routing
+const folderPage = await app.pages.openFolder("C:/projects/my-app/src");
+console.log(folderPage?.editor.id); // e.g. "category-view", "git-tree", or a claimed board editor
+```
+
+### openFolder(folderPath) â†’ `Promise<IPage | undefined>`
+
+Open a directory using the same routing as opening its row in Explorer. The folder may open in
+Folder View, Git Tree, Mneme, or a trusted board that claims it. The returned page is the resolved
+page, including its editor. Passing a non-directory throws an error that points to `openFile` for
+opening files.
+
+```javascript
+const folderPage = await app.pages.openFolder("C:/projects/my-app/.git");
+console.log(folderPage?.editor.id, folderPage?.id);
 ```
 
 ### openFileWithDialog() → `Promise<void>`

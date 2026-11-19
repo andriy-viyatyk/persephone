@@ -82,6 +82,13 @@ const BROWSER_EDITOR_MEMBERS: readonly IAiMember[] = [
 ];
 
 const BROWSER_ELEMENTS: readonly IAiElementDeclaration[] = [
+    { name: "toolbar-translate", purpose: "Open the translation controls for the active page.", where: "right side of the browser address field, after Site actions" },
+    { name: "url-site-permissions", purpose: "Open permissions for the current site.", where: "right side of the browser address field, when no address text is being edited" },
+    { name: "browser-permission-prompt", purpose: "The active inner tab's permission request bar.", where: "above browser content while the active inner tab requests permissions" },
+    { name: "permission-allow", purpose: "Allow the active inner tab's permission request.", where: "right side of the permission request bar" },
+    { name: "permission-block", purpose: "Block the active inner tab's permission request.", where: "right side of the permission request bar, after Allow" },
+    { name: "permission-origin", purpose: "Origin requesting permissions in the active inner tab.", where: "left side of the permission request bar" },
+    { name: "site-extension-trust", purpose: "Trust the site extension shown in the active page's prompt.", where: "right side of the site extension trust bar when available" },
     { name: "url-input", purpose: "Browser address bar input", where: "middle of the browser toolbar" },
     { name: "url-navigate", purpose: "Navigate to the address-bar URL", where: "right edge of the browser address field" },
     { name: "toolbar-site-actions", purpose: "Open the current site's extension actions", where: "inside the browser address bar, after Navigate and before Translate, when the current site has actions" },

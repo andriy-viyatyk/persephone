@@ -64,6 +64,12 @@ short delay before assuming files held by a board process have been released. Ke
 and offline-safe. Do not open the torrent viewer in this suite: its current open path starts DHT
 discovery.
 
+`click()` resolves when the input action is dispatched; it does not await an async board event
+handler. Wait for the resulting state or event separately.
+
+Board roots are OS paths; normalize them before comparing, including slash direction and case where
+the platform is case-insensitive.
+
 A board never navigates, so it has no navigation members and cannot add or close frames. Its
 `tabs` and `switchTab("board-secondary:<viewId>")` members select which board frame to drive
 (see next).
@@ -76,6 +82,8 @@ lifecycle control. The Demo fixture's service request
 operations are `echo`, `storage-get`, `storage-set`, `storage-delete`, `storage-keys`, `delay`,
 `crash`, and `arm-handshake-hang`; the last mode is consumed and deleted by the service before it
 withholds `ready`, so verification must wait for the following normal retry and confirm echo works.
+Bundled boards are not listed just because they are bundled; a bundled board can appear when it has
+an open page.
 
 ### Inspecting secondary views
 

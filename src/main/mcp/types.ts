@@ -1,4 +1,5 @@
 /** Shared types for the MCP server definition (main process). */
+import { PERSEPHONE_CALL_RESULT_TYPE_META_KEY } from "../../shared/mcp-result-type";
 
 /** The zod namespace, obtained from the lazily-loaded SDK bundle. */
 export type Zod = typeof import("zod").z;
@@ -16,9 +17,14 @@ export type McpContentBlock =
     | { type: "text"; text: string }
     | { type: "image"; data: string; mimeType: string };
 
+export interface IMcpToolResultMeta {
+    [PERSEPHONE_CALL_RESULT_TYPE_META_KEY]: "string" | "json";
+}
+
 export interface IMcpToolResult {
     content: McpContentBlock[];
     isError?: boolean;
+    _meta?: IMcpToolResultMeta;
 }
 
 /** A tool definition always provides its implementation explicitly. */

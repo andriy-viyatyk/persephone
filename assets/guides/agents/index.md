@@ -98,10 +98,13 @@ Don't read everything up front. Start with `call` at `""`, then inspect the rele
 When you need to know what changed or what the user did between calls, read
 [`Agent events`](./events.md) or call `guides.agents.events`.
 
+Read next: [WebMCP tools on browser pages](./ai-vision-webmcp.md).
+
 ## Three habits that prevent most failures
 
-1. **Target explicitly.** Capture `pageId` from path results (`pages.openUrlInBrowserTab`, `boards.openBoard`,
-   `pages.addEditorPage`, `pages`) and pass it to later calls. "Active page" defaults are
+1. **Target explicitly.** Capture `pageId` from `pages.openUrlInBrowserTab` or a page summary returned by
+   `pages.addEditorPage` / `pages.openFile` (read its `id`); `boards.openBoard` resolves to no value, so
+   inspect `pages` to find the opened board page. Pass the id to later calls. "Active page" defaults are
    convenient but shift when the user — or another agent in the same session — switches tabs.
 2. **Verify, don't assume.** After creating content, check `pages[i].content` for raw text,
    `window.screen.snapshot()` to see whether an editor rendered or shows an error.

@@ -15,7 +15,7 @@ async function waitForFixtureText(ctx, page, text) {
 async function readZoomPercent(ctx, page) {
     await activatePage(ctx, page.id);
     const value = await ctx.app.window.screen.evaluate(
-        "() => Number(document.querySelector('[data-name=\"toolbar-page-zoom\"]')?.textContent?.replace('%', '').trim())",
+        "() => document.querySelector('[data-name=\"toolbar-page-zoom\"]')?.textContent?.trim() ?? \"\"",
     );
     return value;
 }
@@ -42,7 +42,7 @@ async function chooseZoomPreset(ctx, page, percentage) {
         async (activeContext) => await activeContext.app.window.screen.evaluate(
             "() => document.querySelector('[data-name=\"toolbar-page-zoom\"]')?.getAttribute('aria-expanded')",
         ),
-        (value) => String(value) === "false",
+        (value) => value === "false",
     );
 }
 
@@ -166,27 +166,27 @@ export default [
 
             for (const percentage of [200, 150, 100, 75, 50]) {
                 await chooseZoomPreset(ctx, page, percentage);
-                ctx.expect(await readZoomPercent(ctx, page)).toBe(percentage);
+                ctx.expect(await readZoomPercent(ctx, page)).toBe(`${percentage}%`);
                 await assertPageZoom(ctx, page, baseline, percentage);
             }
 
             await chooseZoomPreset(ctx, page, 150);
-            ctx.expect(await readZoomPercent(ctx, page)).toBe(150);
+            ctx.expect(await readZoomPercent(ctx, page)).toBe("150%");
             await assertPageZoom(ctx, page, baseline, 150);
             await page.editor.navigateAndWait(tabsUrl(ctx, "next.html"));
             await waitForFixtureText(ctx, page, "US-2079 next fixture");
-            ctx.expect(await readZoomPercent(ctx, page)).toBe(150);
+            ctx.expect(await readZoomPercent(ctx, page)).toBe("150%");
             await assertPageZoom(ctx, page, baseline, 150);
 
             const firstId = (await page.editor.activeTab).id;
             const secondId = await page.editor.addTab(tabsUrl(ctx, "second.html"));
             await waitForFixtureText(ctx, page, "US-2079 second fixture");
             const secondBaseline = await page.editor.evaluate("window.devicePixelRatio");
-            ctx.expect(await readZoomPercent(ctx, page)).toBe(100);
+            ctx.expect(await readZoomPercent(ctx, page)).toBe("100%");
             await assertPageZoom(ctx, page, secondBaseline, 100);
 
             await page.editor.switchTab(firstId);
-            ctx.expect(await readZoomPercent(ctx, page)).toBe(150);
+            ctx.expect(await readZoomPercent(ctx, page)).toBe("150%");
             await assertPageZoom(ctx, page, baseline, 150);
             ctx.expect((await page.editor.activeTab).id !== secondId).toBe(true);
         } finally {
@@ -228,7 +228,7 @@ export default [
             page = { id: restoredRecord.id, editor: ctx.handle(ctx.app.pages[restoredRecord.id].editor) };
             await waitForFixtureText(ctx, page, "US-2079 next fixture");
             await activatePage(ctx, page.id);
-            ctx.expect(await readZoomPercent(ctx, page)).toBe(150);
+            ctx.expect(await readZoomPercent(ctx, page)).toBe("150%");
             await assertPageZoom(ctx, page, baseline, 150);
         } finally {
             await closeBrowserPage(ctx, page);

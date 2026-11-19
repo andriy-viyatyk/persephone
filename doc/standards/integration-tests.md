@@ -52,6 +52,17 @@ board runtimes, models, and enrollment data stay inside the selected test profil
 `--attach` instances are not test instances and keep the user's real `%LOCALAPPDATA%`; any board
 test that opens a board service must declare `requires: ["launch"]` and run in an owned instance.
 
+Within an owned test instance, board services and board-started `execute`/`executeNode` processes
+also receive board-only `USERPROFILE`, `HOMEDRIVE`/`HOMEPATH`, `APPDATA`, `CLAUDE_CONFIG_DIR`, and
+`CODEX_HOME` paths under `<userData>/test-home`; their `LOCALAPPDATA` is the same global test path
+described above. Their `PATH` contains `<userData>/test-bin` plus only `%SystemRoot%`,
+`%SystemRoot%\System32`, `%SystemRoot%\System32\Wbem`, and
+`%SystemRoot%\System32\WindowsPowerShell\v1.0`, keeping user-installed CLIs unavailable. `test-bin` holds only a
+`node.cmd` that forwards to the host's `node.exe` by absolute path, so fixtures can still run `node <script>`. `CLAUDECODE` and `CLAUDE_CODE_*` (left by an agent CLI that
+launched the suite) are removed. These
+board-only redirects apply only to test instances; `--open` and `--attach` run as non-test
+instances. App-level process startup keeps its existing environment behavior.
+
 The HTTP fixture server also serves `/refused`, which redirects to an unused loopback port for
 transport-failure tests. Its `/boards-catalog/` route serves the fake published-board catalog,
 version manifests, screenshots, and ZIP archives. The archives are built from
@@ -188,8 +199,11 @@ Client HTTP request fixtures live under `fixtures/http/rest-client/`. Tests use 
 access an isolated copy in the profile's
 `work/` directory, so mutable files can be reset without changing the committed fixture. Prefer the
 app stand-in (`ctx.app.boards.*`,
-`ctx.app.pages[id].editor.*`) for structured calls; use `ctx.call` or `ctx.callText` when a call
-option or exact string result is needed, and `ctx.set` for writable property assignments.
+`ctx.app.pages[id].editor.*`) for structured calls; bind stand-in call options with
+`ctx.app.withOptions({ timeout?, maxLength?, dialog? })`; use `ctx.call` for paths the stand-in
+cannot express, `ctx.callText` for exact text, and `ctx.set` for writable property assignments.
+Path-based
+`waitFor` accepts the same options and resolves to the matching poll value.
 
 Capability errors exposed through the agent call tree append `[code: <code>]` to the message so
 the test host can restore the code as `error.code` on `ctx.call` errors. Tests should assert both
@@ -229,8 +243,8 @@ Keep viewer samples synthetic and minimal. Place reusable committed fixtures und
 structured formats in test helpers when that is clearer or smaller than committing generated
 bytes; the office package builder is `tests/published-boards/office-samples.mjs`. Check any sample
 copied from another checkout for personal data and record its source. Tests must not access the
-network. In particular, do not open a torrent sample when the viewer initiates discovery during
-open; leave that behavior uncovered until the board supports an offline metadata path.
+network. Do not open a torrent sample unless the test verifies that opening it stays offline and
+does not start discovery.
 
 Tests must run independently and should leave committed fixtures unchanged. Use `ctx.fixture()`
 for mutable work copies and reset their content at the start of each test. Tests that restart the

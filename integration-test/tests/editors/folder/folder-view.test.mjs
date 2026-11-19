@@ -12,13 +12,10 @@ async function removeFixtureDirectory(ctx, folder) {
     }
 }
 
-// A row's accessible name is the item name, optionally prefixed by up to two tokens such as
-// "Expand" and a folder icon (Explorer tree rows are treeitems, Folder View rows are generic). Match the whole name:
-// a substring match also hits the Explorer root row, whose name carries the full path.
 function rowLine(snapshot, name) {
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
     // Tile mode names a row by its full path, so a name right after a path separator also matches.
-    const pattern = new RegExp(`"(?:(?:[^"\\s]+ ){0,2}|[^"]*\\\\)${escaped}"`, "u");
+    const pattern = new RegExp(`(?:treeitem "${escaped}"|generic "(?:[^"\\s]+ )?${escaped}"|"[^"]*\\\\${escaped}")`, "u");
     return snapshot.split("\n").find((entry) => pattern.test(entry) && /\bref=e\d+\b/u.test(entry));
 }
 
@@ -70,7 +67,7 @@ async function chooseMenuAction(ctx, actionId) {
 
 async function chooseViewMode(ctx, pageId, mode) {
     // ctx.call remains because opening the popup menu requires call options such as { dialog: true }.
-    await ctx.call("window.screen.click", ['[data-name="category-search-host"] button[data-type="icon-button"]'], { dialog: true });
+    await ctx.call("window.screen.click", ['[data-name="folder-view-mode"]'], { dialog: true });
     await ctx.waitFor(
         // ctx.call remains because the app stand-in cannot pass call options such as { dialog: true }.
         (activeContext) => activeContext.call("menus[0].items", undefined, { dialog: true }),
@@ -94,6 +91,45 @@ async function closeOpenMenu(ctx) {
 }
 
 export default [
+    test("pages.openFolder uses Folder View routing and editorless pages cannot be saved", async (ctx) => {
+        const fixture = ctx.fixture("us-2124/open-folder");
+        const projectPath = `${fixture}\\project`;
+        const filePath = `${projectPath}\\notes.txt`;
+        let folderPageId;
+        let workspacePageId;
+        try {
+            await removeFixtureDirectory(ctx, fixture);
+            await ctx.app.fs.mkdir(projectPath);
+            await ctx.app.fs.write(filePath, "Folder open fixture.\n");
+
+            const page = await ctx.app.pages.openFolder(projectPath);
+            folderPageId = page?.id;
+            ctx.expect(Boolean(folderPageId)).toBe(true);
+            ctx.expect(await ctx.app.pages[folderPageId].editor.id).toBe("category-view");
+
+            let fileError = "";
+            try {
+                await ctx.app.pages.openFolder(filePath);
+            } catch (error) {
+                fileError = String(error);
+            }
+            ctx.expect(fileError).toContain("pages.openFile");
+
+            workspacePageId = (await ctx.app.pages.openFile(projectPath)).id;
+            let saveError = "";
+            try {
+                await ctx.app.pages[workspacePageId].save();
+            } catch (error) {
+                saveError = String(error);
+            }
+            ctx.expect(saveError).toContain("no file content to save");
+        } finally {
+            await closePage(ctx, workspacePageId);
+            await closePage(ctx, folderPageId);
+            await removeFixtureDirectory(ctx, fixture);
+        }
+    }),
+
     test("Folder View lists a fixture folder and supports breadcrumb, Back, and Forward", async (ctx) => {
         const folder = ctx.fixture("us-2072/folder-navigation");
         const workspaceParent = ctx.fixture("us-2072/folder-navigation/workspace");

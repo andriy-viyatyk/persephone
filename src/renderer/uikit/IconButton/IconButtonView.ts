@@ -75,8 +75,9 @@ export class IconButtonView extends VanillaView<IconButtonViewProps> {
 
     private applyProps(props: IconButtonViewProps): void {
         const { name, size = "md", variant = "default", active, warning, disabled, hidden, hideUntilParentHover, strikethrough } = props;
-const _rest = splitProps(props, [...checkedOwnKeys, ...ICONBUTTON_LEGACY_KEYS] as const);
-        applyRestProps(this.root, _rest as Record<string, unknown>, this.restPropsState);
+        const rest = splitProps(props, [...checkedOwnKeys, ...ICONBUTTON_LEGACY_KEYS] as const);
+        if (rest["aria-label"] == null && props.title != null) rest["aria-label"] = props.title;
+        applyRestProps(this.root, rest as Record<string, unknown>, this.restPropsState);
 
         const button = this.root as HTMLButtonElement;
         button.type = props.type ?? "button";

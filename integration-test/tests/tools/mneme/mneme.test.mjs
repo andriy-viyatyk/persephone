@@ -182,16 +182,8 @@ export default [
                 (tool) => tool?.name === "add_root",
             );
 
-            // ctx.call remains because the app stand-in cannot pass call options such as maxLength.
-            const selectedTool = await ctx.call(`pages[${JSON.stringify(inspectorPageId)}].editor.selectedTool`, undefined, { maxLength: 2000000 });
-            const argumentNames = Object.keys(selectedTool.inputSchema.properties);
-            const folderIndex = argumentNames.indexOf("folder");
-            const nameIndex = argumentNames.indexOf("name");
-            ctx.expect(folderIndex >= 0).toBe(true);
-            ctx.expect(nameIndex >= 0).toBe(true);
-            const argumentSelector = '[data-type="mcp-tool-arg-form"] [data-type="textarea"]';
-            await ctx.app.window.screen.type(argumentSelector, fixtureFolder, { nth: folderIndex });
-            await ctx.app.window.screen.type(argumentSelector, ROOT_NAME, { nth: nameIndex });
+            await ctx.app.window.screen.type('[data-name="mcp-arg-folder"] [data-type="textarea"]', fixtureFolder);
+            await ctx.app.window.screen.type('[data-name="mcp-arg-name"] [data-type="textarea"]', ROOT_NAME);
             await ctx.app.window.screen.click('[data-name="mcp-call-tool"]');
 
             const addRootResult = await ctx.waitFor(

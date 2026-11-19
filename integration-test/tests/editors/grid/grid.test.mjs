@@ -26,6 +26,15 @@ export default [
         ctx.expect((await ctx.app.pages[p.id].editor.rows).map(r => r.name)).toEqual(['Ada', 'Bo', 'Cy']);
         await close(ctx, p.id);
     }),
+    test('grid: help lists every curated element', async ctx => {
+        const p = await grid(ctx, 'pilot.json', json, 'grid-json');
+        const editor = ctx.app.pages[p.id].editor;
+        const elements = await editor.elements;
+        const help = await editor.$help;
+        ctx.expect(elements.some(element => element.name === 'grid-column-filter')).toBe(true);
+        ctx.expect(help).toContain('grid-column-filter');
+        await close(ctx, p.id);
+    }),
     test('grid: edit JSON cell and save', async ctx => {
         const p = await grid(ctx, 'pilot.json', json, 'grid-json');
         const keys = await ctx.app.pages[p.id].editor.rowKeys;

@@ -65,10 +65,10 @@ export function createBoardEventDispatcher(): { dispatchEvent(connection: BoardB
                     portSink(entry, boardId).send(RunnerChannel.error, { jobId: msg.jobId, message: `Node script not found: ${script}` });
                     return;
                 }
-                startNodeJobTo(portSink(entry, boardId), { ...msg, command: script, opts });
+                startNodeJobTo(portSink(entry, boardId), { ...msg, command: script, opts }, entry.root);
                 return;
             }
-            startJobTo(portSink(entry, boardId), { ...msg, opts });
+            startJobTo(portSink(entry, boardId), { ...msg, opts }, entry.root);
         },
         async [RunnerChannel.stdin](entry, _boardId, raw) {
             const canExecute = await boardTrustService.allows(entry.root, "execute");

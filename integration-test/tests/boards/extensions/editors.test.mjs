@@ -163,4 +163,23 @@ export default [
             await removeFixtureTrust(ctx, root);
         }
     }),
+
+    test("pages.openFolder applies a trusted board folder claim", async (ctx) => {
+        const root = fixtureBoard(ctx, "extensions/ext-board");
+        const folderPath = ctx.fixture("boards/extensions/files/folder-target");
+        let pageId;
+        try {
+            await trustFixtureBoard(ctx, root);
+            pageId = (await ctx.app.pages.openFolder(folderPath)).id;
+            await ctx.waitFor(
+                (activeContext) => activeContext.app.pages[pageId].editor.id,
+                (editorId) => editorId === `board-editor:${root}`,
+            );
+            await waitForBoardFrame(ctx, pageId);
+            ctx.expect(await ctx.app.pages[pageId].editor.folderPath).toBe(folderPath);
+        } finally {
+            await closeOwnedPage(ctx, pageId);
+            await removeFixtureTrust(ctx, root);
+        }
+    }),
 ];

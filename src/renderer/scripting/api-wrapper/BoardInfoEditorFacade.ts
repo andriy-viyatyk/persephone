@@ -8,7 +8,7 @@ import type {
 import type { BoardInfoEditorModel } from "../../editors/board-info/BoardInfoEditorModel";
 import { boardRegistry } from "../../api/boards/board-registry";
 import { requestBoardTrust } from "../../api/boards/request-board-trust";
-import { boardPermissionLines, FULL_ACCESS_DETAIL } from "../../api/boards/board-permission-copy";
+import { boardPermissionLines, FULL_ACCESS_LABEL } from "../../api/boards/board-permission-copy";
 import { BoardGrant } from "../../../shared/board/board-grant";
 import type { BoardEditorKind } from "../../../shared/board/board-manifest-schema";
 // After Phase 2 extraction, UI consumers use t(key) and agent-facing output uses englishMessage(key) with the same catalog key.
@@ -94,8 +94,8 @@ names, and this facade adds no value, setter, .env, or password path. Existing b
 remain the lifecycle action paths; this facade only owns the folder picker and download cancellation.`;
 
 function projectPermissionLines(permissions: NonNullable<IBoardInfoProperties["permissions"]>): string[] {
-    return boardPermissionLines(BoardGrant.from(permissions)).flatMap(({ text, fullAccess }) =>
-        fullAccess ? [text, "Full access", FULL_ACCESS_DETAIL] : [text]);
+    return boardPermissionLines(BoardGrant.from(permissions)).flatMap(({ text, detail, fullAccess }) =>
+        fullAccess ? [text, FULL_ACCESS_LABEL, ...(detail ? [detail] : [])] : [text]);
 }
 
 function copyDefined<T extends object, K extends keyof T>(source: T, keys: readonly K[]): Partial<Pick<T, K>> {

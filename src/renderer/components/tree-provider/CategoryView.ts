@@ -124,6 +124,7 @@ export class CategoryView extends VanillaView<CategoryViewProps> {
             onClick: this.onSearchClose,
         }));
         this.viewModeButton = this.child(new IconButtonView({
+            name: "folder-view-mode",
             size: "sm",
             title: t("menus.viewMode"),
             icon: VIEW_MODE_ICONS.list,
@@ -395,6 +396,7 @@ export class CategoryView extends VanillaView<CategoryViewProps> {
             endSlot: state.searchText ? this.clearButton.root : undefined,
         });
         this.viewModeButton.update({
+            name: "folder-view-mode",
             size: "sm",
             title: t("menus.viewMode"),
             icon: VIEW_MODE_ICONS[this.props.viewMode ?? "list"],

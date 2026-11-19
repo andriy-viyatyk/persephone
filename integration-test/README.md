@@ -83,6 +83,15 @@ path, keeping board runtimes, models, and enrollment data out of the user's real
 and `--attach` instances are not test instances and retain the real `%LOCALAPPDATA%`; tests that open
 a board service must declare `requires: ["launch"]`.
 
+Owned test-instance board services and board-started `execute`/`executeNode` processes also receive
+board-only `USERPROFILE`, `HOMEDRIVE`/`HOMEPATH`, `APPDATA`, `CLAUDE_CONFIG_DIR`, and `CODEX_HOME`
+folders under `<userData>/test-home`; their `LOCALAPPDATA` uses the same profile-local path above.
+Their `PATH` is limited to `<userData>/test-bin`, `%SystemRoot%`, `%SystemRoot%\System32`,
+`%SystemRoot%\System32\Wbem`, and `%SystemRoot%\System32\WindowsPowerShell\v1.0`, so
+user-installed CLIs are unavailable; `test-bin` holds only a `node.cmd` that forwards to the host's
+`node.exe`. The board-only redirects apply to owned test instances;
+`--open` and `--attach` are non-test instances.
+
 Attach uses the selected `reports/keep-open.json` record and PID, refreshes fixtures over the
 existing work directory, and never resets or stops the app. The product controller connects using
 the profile directory's MCP settings and verifies `main.runtime.paths.userData` before accepting
@@ -122,7 +131,8 @@ cannot be awaited; use `set` instead. The suite setup adds
 `fixture(relativePath)` constrained to `.profile/work`, `httpUrl(path)` and `httpsUrl(path)`
 constrained to the local HTTP and HTTPS fixture servers, and `_getClient()` with raw MCP `call` and
 `listTools()` access. Path calls
-support `{ dialog: true }`; the app stand-in is available for future object-style suite rewrites.
+support `{ timeout?, maxLength?, dialog? }`; the app stand-in supports bound options through
+`ctx.app.withOptions(options)` and is used directly by the suite.
 The product host closes pages and pop-ups opened during a test after that test finishes.
 
 Browser tests live under `tests/browser/automation/{input,observe}/`, `page-models/`,
@@ -141,8 +151,9 @@ tests live under `tests/capabilities/<module>/`; current modules cover `proc/`, 
 `fixtures/boards/<module>/`, with each board in its own folder. Catalog ZIP sources are under
 `fixtures/boards-catalog/`; REST Client HTTP fixtures are under `fixtures/http/rest-client/`.
 `ctx.fixture()` returns the isolated `work/` copy; reset mutable files there at the start of each
-test. Prefer `ctx.app.boards.*` and `ctx.app.pages[id].editor.*`; use `ctx.call` or `ctx.callText`
-for dialog options and exact strings, and `ctx.set` for writable property assignments.
+test. Prefer `ctx.app.boards.*` and `ctx.app.pages[id].editor.*`; use `withOptions()` for stand-in
+call options, `ctx.call` for paths the stand-in cannot express, `ctx.callText` for exact text, and
+`ctx.set` for writable property assignments.
 
 Capability errors returned through the agent call tree carry their code in a `[code: <code>]`
 message suffix; the test host parses it into `error.code` for `ctx.call` errors. Assert the code

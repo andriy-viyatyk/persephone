@@ -33,10 +33,7 @@ async function bestEffort(action) {
 
 async function waitForDialog(ctx, predicate) {
     await ctx.waitFor(
-        async (activeContext) => {
-            try { return await activeContext.call("dialogs[0].title", undefined, { dialog: true }); }
-            catch { return null; }
-        },
+        (activeContext) => activeContext.call("dialogs[0].title", undefined, { dialog: true }).catch(() => null),
         (title) => typeof title === "string" && predicate(title),
     );
 }
@@ -71,7 +68,7 @@ export default [
             ctx.expect(await ctx.call("dialogs[0].permissionLines", undefined, { dialog: true })).toEqual([
                 "Run programs and scripts on this computer.",
                 "Full access",
-                "Can reach everything your user account can.",
+                "This process can access your files and the network regardless of the board's other permissions.",
                 "Read and write files in this board's folder (including its own code) and files you pick in its dialogs.",
                 "Connect to the internet, this computer, and your local network.",
                 "Full access",
@@ -79,6 +76,30 @@ export default [
                 "Create, change, delete, and apply app themes.",
             ]);
             ctx.expect(await ctx.call("dialogs[0].buttons", undefined, { dialog: true })).toEqual(["Cancel", "Trust Board"]);
+            await ctx.call("dialogs[0].click", ["Trust Board"], { dialog: true });
+            await registerPromise;
+        } finally {
+            await bestEffort(() => ctx.call("dialogs[0].cancel", [], { dialog: true }));
+            await bestEffort(() => registerPromise);
+            await bestEffort(() => untrustBoard(ctx, root));
+        }
+    }),
+
+    test("service permission explains process access when frame network is denied", async (ctx) => {
+        const root = fixtureBoard(ctx, "permissions/service-network-disabled");
+        let registerPromise;
+        try {
+            await resetBoardFile(ctx, root, "board-manifest.json", manifest("Service Network Disabled Board", {
+                ...ALL_FALSE,
+                service: true,
+            }));
+            registerPromise = ctx.call("boards.registerBoard", [root], { dialog: true });
+            await waitForDialog(ctx, (title) => title === "Trust this board?");
+            ctx.expect(await ctx.call("dialogs[0].permissionLines", undefined, { dialog: true })).toEqual([
+                "Run a background program while Persephone is open.",
+                "Full access",
+                "This process can access your files and the network regardless of the board's other permissions.",
+            ]);
             await ctx.call("dialogs[0].click", ["Trust Board"], { dialog: true });
             await registerPromise;
         } finally {

@@ -18,4 +18,5 @@ export const HEADER_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "header-snip-button", purpose: "Opens quick settings with Snip Screen / Snip Persephone actions and service switches.", where: "bottom-right status cluster, first from the left" },
     { name: "mneme-indicator", purpose: "Shows Mneme status and opens its configuration page; only present when Mneme is enabled.", where: "bottom-right status cluster, after Snip, when Mneme is enabled" },
     { name: "mcp-indicator", purpose: "Shows MCP connection status and opens the request log; only present while the MCP server is running.", where: "bottom-right status cluster, after Mneme, when MCP is running" },
+    { name: "audio-capture-indicator", purpose: "Shows active audio capture; only present while an audio capture is active.", where: "bottom-right status cluster" },
 ];

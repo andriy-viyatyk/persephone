@@ -360,7 +360,7 @@ export default [
                 source: "window.__us2054ExactAuthority = location.port;",
             });
             ctx.expect(exact.targets[0].status).toBe("injected");
-            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("window.__us2054ExactAuthority")).toBe(Number(port));
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("window.__us2054ExactAuthority")).toBe(port);
         } finally {
             await detachIfAttached(ctx, page, server.host);
             await detachIfAttached(ctx, page, `localhost:${server.host.split(":").at(-1)}`);

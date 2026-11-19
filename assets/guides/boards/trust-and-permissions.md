@@ -63,6 +63,12 @@ with `fileSystem: false`; this does not allow it to read another path or write f
 least `1.30.0`. A declared service is shown in Board Info and in the live
 `app.boards.list()` status payload.
 
+These grants control host APIs exposed to the board frame; they are not an OS sandbox for processes.
+A declared service runs in a Node utility process, and `execute`/`executeNode` start ordinary Node/OS
+processes. Those processes can access your files and network under your user account even when the
+manifest sets `fileSystem: false` and `network: false`. In particular, `network: false` does not mean
+the board's service is offline, and `fileSystem: false` does not block direct Node file access.
+
 With `network: "internet"`, Persephone checks every address returned by DNS and connects only to
 those checked addresses. A request is blocked if any answer is a local or private address, which
 prevents a public hostname from being redirected to your local network through DNS rebinding.
@@ -76,16 +82,19 @@ The permission list in the trust dialog uses these meanings:
 | `fileSystem: "board"` / `"full"` | Read and write the board folder and files selected in its dialogs, or any file you can access. These grants also allow `openBoard()` for folders the board can list. Target-board trust remains a separate user decision. `"full"` is **Full access**. |
 | `openExternal` | Open links or files in your browser or another app. |
 | `appScripting` | Control Persephone, run app scripts, open and change pages, and use agent tools. **Full access.** |
-| `network: "internet"` / `"full"` | Connect to public internet services, or also this computer and your local network. `"full"` is **Full access**. |
+| `network: "internet"` / `"full"` | Allows the frame's host-mediated remote requests through `persephone.fetch()` and HTTP(S) `content.open()`, to public internet services or also this computer and your local network. `"full"` is **Full access**. `false` denies those frame requests; it does not block a service or child process from networking. |
 | `clipboardRead` | Read the contents of your clipboard. |
 | `camera`, `microphone`, `computerAudio`, `geolocation` | Use your camera or microphone, capture audio playing on your computer, or read this device's location. Computer audio capture is available on Windows. |
 | `notifications` | Show desktop notifications. |
 | `themes` | Create, change, delete, and apply app themes. This does not grant `appScripting`. |
 
-When **Settings → Link Open Behavior** is set to the OS default browser, an HTTP(S) link opened by a
+The board frame's CSP also blocks direct remote `fetch()`/XHR connections. `openExternal` is a
+separate permission for launching links in the OS browser or another app; it does not control service
+network access. When **Settings → Link Open Behavior** is set to the OS default browser, an HTTP(S) link opened by a
 board without `openExternal` opens in Persephone's internal Browser tab instead, with an info line
-in the board log. Other external schemes remain blocked and show the existing warning. Grant
-`openExternal` when a board needs to open links in the OS browser or another app.
+in the board log. That Browser page follows its own session and network settings, not the board
+frame's `persephone.fetch()` grant. Other external schemes remain blocked and show the existing
+warning. Grant `openExternal` when a board needs to open links in the OS browser or another app.
 
 `fileSystem: false` still allows a simple board to read the exact document currently open in that
 board. It cannot use this exception to read another path or write files. Boards can copy to the

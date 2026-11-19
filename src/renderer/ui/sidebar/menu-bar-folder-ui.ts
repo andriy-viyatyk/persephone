@@ -78,6 +78,7 @@ const genericMenu = (context: MenuBarFolderUiContext, folder: MenuFolder): MenuI
         onClick: () => { if (folder.path) api.showFolder(folder.path); },
     },
     {
+        id: "open-terminal-here",
         label: t("shell.openTerminalHere"),
         icon: createIconElement("terminal"),
         onClick: async () => {

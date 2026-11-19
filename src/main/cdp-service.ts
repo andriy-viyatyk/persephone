@@ -247,7 +247,7 @@ export interface CdpServiceStartDependencies {
     onAiVisionSignal: (webContents: WebContents, payload: string, executionContextId: number, mainContext: boolean) => void;
 }
 
-function resolveTarget(
+export function resolveTarget(
     key: string,
     sender: WebContents | undefined,
     scope: "all" | "browser-only" = "all",

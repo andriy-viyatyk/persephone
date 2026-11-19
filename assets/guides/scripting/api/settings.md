@@ -65,24 +65,8 @@ const sections = await app.call("settings.sections");
 await app.call("settings.highlight", { args: ["mcp.enabled"] });
 ```
 
-The catalog has 14 built-in sections and 27 Settings-page rows:
-
-| Section | Rows |
-|---------|------|
-| Theme | `theme` |
-| Window Behavior | `window.close-to-tray` |
-| Editor Behavior | `editor.word-wrap` |
-| Browser Profiles | `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-incognito-bookmarks-file`, `browser-windows-sso`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file` |
-| Links | `link-open-behavior` |
-| Default Browser | *(no setting row)* |
-| File Search | `search-extensions`, `search-exclude` |
-| Clipboard | `clipboard.enabled`, `clipboard.max-items` |
-| MCP Server / Mneme | `mcp.enabled`, `mcp.port`, `main.scripting.enabled`, `mneme.enabled`, `mneme.port` |
-| Git Integration | `git.enabled` |
-| Board Environment Variables | `board-vars.file` |
-| Script Library | `script-library.path` |
-| Video Player | `vlc-path`, `video-stream.port` |
-| Terminal | `terminal.command` |
+Use `settings.sections` to inspect the current built-in Settings catalog; its sections and rows can
+change.
 
 Three real settings have no Settings-page row because their controls live elsewhere:
 `tab-recent-languages`, `search-max-file-size`, and `editor-categories`. They remain available through

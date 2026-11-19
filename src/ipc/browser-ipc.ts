@@ -66,6 +66,8 @@ export const BrowserChannel = {
     cdpDetach: "browser:cdp-detach",
     /** Renderer → Main (invoke): send CDP command. Args: (key: string, method: string, params?: object) */
     cdpSend: "browser:cdp-send",
+    /** Renderer → Main (invoke): dispatch keyboard input to a registered app or browser target. */
+    cdpSendInputEvent: "browser:cdp-send-input-event",
     /** Renderer → Main: mute/unmute a webview's audio. Args: (key: string, muted: boolean) */
     setAudioMuted: "browser:set-audio-muted",
     /** Renderer → Main: allow popups for a given tabId (disable rate limiting). Args: (tabId: string) */
@@ -110,6 +112,12 @@ export interface BrowserPopupSnapshot {
 
 export interface CdpAttachOptions {
     aiVisionBinding?: boolean;
+}
+
+export interface BrowserKeyboardInputEvent {
+    type: "keyDown" | "keyUp";
+    keyCode: string;
+    modifiers?: Array<"control" | "alt" | "shift" | "meta">;
 }
 
 export type NavigationWaitUntil = "load" | "domcontentloaded" | "networkidle";

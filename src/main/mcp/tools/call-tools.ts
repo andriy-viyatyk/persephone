@@ -12,6 +12,7 @@ import { errMessage } from "../../../shared/utils";
 import { getNativeDialogAttention } from "../../native-dialog-tracker";
 import { capabilityRouter } from "../../capability-router";
 import { CAPABILITY_AGENT_BRIDGE_ALLOWANCE_MS } from "../../../shared/capability-limits";
+import { PERSEPHONE_CALL_RESULT_TYPE_META_KEY } from "../../../shared/mcp-result-type";
 
 /**
  * `call` — one path into Persephone's live object model.
@@ -451,5 +452,12 @@ function toCallResult(response: McpResponse): IMcpToolResult {
     if (warning) content.push({ type: "text", text: `Warning: ${warning}` });
     if (hint) content.push({ type: "text", text: `--- hint (${hint.kind}) ---\n${hint.text}` });
     if (content.length === 0) content.push({ type: "text", text: "null" });
-    return { content, isError: !rest.pending && rest.error !== undefined };
+    const resultType = !rest.pending && rest.error === undefined && scriptResult?.pending !== true
+        ? typeof rest.result === "string" ? "string" : "json"
+        : undefined;
+    return {
+        content,
+        isError: !rest.pending && rest.error !== undefined,
+        ...(resultType ? { _meta: { [PERSEPHONE_CALL_RESULT_TYPE_META_KEY]: resultType } } : {}),
+    };
 }

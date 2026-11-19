@@ -47,10 +47,16 @@ Folder View has priority `0`; Git and enabled `.mneme` folder editors use priori
 positive value above competing folder editors when the board should win.
 
 The board must be trusted for the folder claim to apply. The Explorer shows the board's icon for a
-claimed folder. Open the folder from the Explorer to apply the claim; `pages.openFile(folder)` opens
-a workspace page rooted at that folder and does not resolve the folder editor claim. Opening the
-claimed folder from Explorer switches to the board, and the page editor switch offers Folder View
-and the matching board so the user can switch to Folder View and back without opening another tab.
+claimed folder. Open the folder from Explorer or call `pages.openFolder(folder)` to apply the claim;
+both use the same folder routing. `pages.openFile(folder)` instead opens an editorless workspace
+page rooted at that folder. Opening the claimed folder switches to the board, and the page editor
+switch offers Folder View and the matching board so the user can switch between them without
+opening another tab.
+
+```javascript
+const page = await pages.openFolder("C:/work/projects/calendar");
+console.log(page.editor, page.id);
+```
 The board editor id for a folder- or file-claiming board is `board-editor:<root>`; a standalone
 board page uses `board-view`.
 In Folder View, `await persephone.getFolderPath()` returns the claimed folder; `boardRoot` remains

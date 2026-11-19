@@ -116,7 +116,7 @@ await app.boards.uninstallBoard("drawio-viewer");
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `searchPublished(query?)` | `Promise<PublishedBoardResult[]>` | Search the catalog by name/description/file mask; each result is annotated with install state (`installed`, `installedVersion`, `updateAvailable`, `compatible`). Read-only, no dialog. |
+| `searchPublished(query?)` | `Promise<PublishedBoardResult[]>` | Search the catalog by name/description/file mask; each result includes `version` (the latest catalog version) and is annotated with install state (`installed`, `installedVersion`, `updateAvailable`, `compatible`). Read-only, no dialog. |
 | `getPublishedVersions(id)` | `Promise<PublishedVersionResult[]>` | A published board's full version history (newest first), each entry annotated with `compatible` and `installed`. Read-only, no dialog. |
 | `downloadPublished(id, opts?)` | `Promise<string>` | Download + verify (sha256) + extract a board to disk and record it in the install registry — **no dialog, no trust**. The board sits inert on disk, ready to review. `opts: { dir?, version? }`. Returns the install root. |
 | `installPublished(id, opts?)` | `Promise<string \| undefined>` | Interactive install: opens the Board Info page for **Download → Register** (fresh install) or auto-runs a version swap (update/rollback) if `id` is already installed and `opts.version` is given. Resolves the root, or `undefined` if the user abandons it. |

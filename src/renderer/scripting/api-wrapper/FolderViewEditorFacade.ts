@@ -5,6 +5,7 @@ import type { CategoryEditorModel } from "../../editors/category/CategoryEditorM
 
 const FOLDER_VIEW_ELEMENTS = [
     { name: "category-breadcrumb", purpose: "Navigate to a category in the Folder View breadcrumb.", where: "left side of the folder toolbar" },
+    { name: "folder-view-mode", purpose: "Choose list or tile layout for the current folder.", where: "right side of the folder search toolbar" },
 ] as const;
 
 const FOLDER_VIEW_MEMBERS: readonly IAiMember[] = [
@@ -13,10 +14,10 @@ const FOLDER_VIEW_MEMBERS: readonly IAiMember[] = [
     { name: "providerType", kind: "property", summary: "The resolved tree provider type, or undefined when no provider is attached." },
     { name: "providerName", kind: "property", summary: "The resolved tree provider display name, or undefined when no provider is attached." },
     { name: "sourceUrl", kind: "property", summary: "The resolved provider source URL, or undefined when no provider is attached." },
-    { name: "rootPath", kind: "property", summary: "The resolved provider root path, or undefined when no provider is attached." },
+    { name: "rootPath", kind: "property", summary: "The resolved provider root path as a string, or null when no provider is attached." },
     { name: "categoryPath", kind: "property", summary: "The current category path, or undefined when detached or the link is invalid." },
     { name: "selectedHref", kind: "property", summary: "The selected item href, or undefined when no provider or selection exists." },
-    { name: "items", kind: "property", summary: "A promise of copied items for the current category; an attached empty directory is []." },
+    { name: "items", kind: "property", summary: "Copied item records as Array<{ id?, title, href, category, tags, isDirectory, size?, mtime?, imgSrc?, hasSubDirectories?, hasItems?, target?, icon? }>, or null when absent; an attached empty directory is []. Local FileTreeProvider listings include the copied .. parent row except at provider root." },
     { name: "itemCount", kind: "property", summary: "A promise of the copied current-category item count, or undefined without a provider." },
     { name: "viewMode", kind: "property", summary: "The effective persisted view mode, or undefined without a resolved provider." },
     { name: "listItems", kind: "method", signature: "listItems(): Promise<IFolderItem[] | undefined>", summary: "List copied item metadata for the current category." },
@@ -28,11 +29,13 @@ const FOLDER_VIEW_MEMBERS: readonly IAiMember[] = [
 const FOLDER_VIEW_HELP = `Access via pages[i].editor after narrowing editor.id to "category-view".
 Folder View is page-scoped and has no content host. Its provider, source/root paths, category,
 selection, listing, and effective view mode come from the CategoryEditorModel and its page-owned
-tree-provider host. Detached or invalid-link provider state is undefined; an attached valid empty
-directory returns [] and itemCount 0. items and listItems return copied metadata records and never
-expose the mounted category view or its component models.
+tree-provider host. Detached or invalid-link provider state is absent (null in serialized call
+results); an attached valid empty directory returns [] and itemCount 0. items and listItems return
+copied metadata records and never expose the mounted category view or its component models. Local
+FileTreeProvider listings include the copied .. parent row except at provider root; other providers
+do not imply a parent row.
 
-The only curated Folder View control is category-breadcrumb. elements are resolved below this
+The curated Folder View controls are category-breadcrumb and folder-view-mode. elements are resolved below this
 page's [data-page-id] scope; highlight activates the page and waits for its retained slot layout.
 openItem(), openCategory(), and refresh() use the same model paths as the Folder View UI. No action
 changes view mode or reaches into a mounted view. This surface is not a content or filesystem

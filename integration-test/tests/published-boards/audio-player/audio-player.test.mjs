@@ -153,8 +153,8 @@ export default [
     test("imports an M3U queue and moves between its WAV entries", async (ctx) => {
         const firstName = "first-track.wav";
         const secondName = "second-track.wav";
-        await writeFixture(ctx, "boards-samples/audio-player/playlist/" + firstName, createWavBuffer(3));
-        await writeFixture(ctx, "boards-samples/audio-player/playlist/" + secondName, createWavBuffer(3));
+        await writeFixture(ctx, "boards-samples/audio-player/playlist/" + firstName, createWavBuffer(30));
+        await writeFixture(ctx, "boards-samples/audio-player/playlist/" + secondName, createWavBuffer(30));
         await writeFixture(
             ctx,
             "boards-samples/audio-player/playlist/synthetic-queue.m3u",
@@ -189,6 +189,22 @@ export default [
                 (state) => state !== null && samePath(state.href, secondPath),
             );
             ctx.expect(samePath(second.href, secondPath)).toBe(true);
+
+            await app.previous();
+            const returnedByModel = await ctx.waitFor(
+                () => app.getNowPlaying(),
+                (state) => state !== null && samePath(state.href, firstPath),
+            );
+            ctx.expect(samePath(returnedByModel.href, firstPath)).toBe(true);
+
+            // The transport controls are revealed on hover, as for a user.
+            await handle.editor.hover(".transport");
+            await handle.editor.click('[data-name="next-track"]');
+            const secondAgain = await ctx.waitFor(
+                () => app.getNowPlaying(),
+                (state) => state !== null && samePath(state.href, secondPath),
+            );
+            ctx.expect(samePath(secondAgain.href, secondPath)).toBe(true);
 
             await handle.editor.click('[data-name="previous-track"]');
             const returned = await ctx.waitFor(

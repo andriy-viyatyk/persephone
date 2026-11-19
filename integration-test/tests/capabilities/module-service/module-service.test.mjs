@@ -1,4 +1,5 @@
 import { test } from "../../../lib/context.mjs";
+import path from "node:path";
 import { closeBoardPage, fixtureBoard, openBoardPage, trustFixtureBoard, untrustBoard } from "../../helpers/boards.mjs";
 
 const MODULE_SERVICE = "module-service";
@@ -39,6 +40,60 @@ async function cleanupFixture(ctx, root, pageIds = []) {
     } finally {
         await untrustBoard(ctx, root);
     }
+}
+
+const SANDBOX_ENVIRONMENT_KEYS = [
+    "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "APPDATA", "LOCALAPPDATA",
+    "CLAUDE_CONFIG_DIR", "CODEX_HOME", "PATH", "PATHEXT", "SystemRoot",
+];
+
+function normalizedPath(value) {
+    return value.replace(/[\\/]+/g, "\\").replace(/\\+$/, "").toLowerCase();
+}
+
+function selectedEnvironmentFromSet(output) {
+    const selected = new Map(SANDBOX_ENVIRONMENT_KEYS.map((key) => [key.toLowerCase(), key]));
+    const result = {};
+    for (const line of output.split(/\r?\n/)) {
+        const separator = line.indexOf("=");
+        if (separator < 0) continue;
+        const key = selected.get(line.slice(0, separator).toLowerCase());
+        if (key) result[key] = line.slice(separator + 1);
+    }
+    return result;
+}
+
+function assertSandboxEnvironment(ctx, environment, userData) {
+    const testHome = path.join(userData, "test-home");
+    const testBin = path.join(userData, "test-bin");
+    const localAppData = path.join(userData, "test-local-app-data");
+    const { root } = path.parse(testHome);
+    const expected = {
+        USERPROFILE: testHome,
+        HOMEDRIVE: root.replace(/[\\/]+$/, ""),
+        HOMEPATH: path.relative(root, testHome).replace(/^/, path.sep),
+        APPDATA: path.join(testHome, "AppData", "Roaming"),
+        LOCALAPPDATA: localAppData,
+        CLAUDE_CONFIG_DIR: path.join(testHome, ".claude"),
+        CODEX_HOME: path.join(testHome, ".codex"),
+    };
+    for (const [key, value] of Object.entries(expected)) {
+        ctx.expect(normalizedPath(environment[key])).toBe(normalizedPath(value));
+    }
+
+    const systemRoot = environment.SystemRoot;
+    const expectedPath = [
+        testBin,
+        path.join(systemRoot, "System32"),
+        systemRoot,
+        path.join(systemRoot, "System32", "Wbem"),
+        path.join(systemRoot, "System32", "WindowsPowerShell", "v1.0"),
+    ];
+    ctx.expect(environment.PATH.split(path.delimiter).map(normalizedPath)).toEqual(expectedPath.map(normalizedPath));
+    ctx.expect(environment.PATH.toLowerCase().includes("\\appdata\\local\\programs\\")).toBe(false);
+    ctx.expect(environment.PATH.toLowerCase().includes("\\npm\\")).toBe(false);
+    ctx.expect(environment.PATH.toLowerCase().includes("\\claude\\")).toBe(false);
+    ctx.expect(environment.PATH.toLowerCase().includes("\\codex\\")).toBe(false);
 }
 
 function serviceTest(name, run) {
@@ -185,6 +240,75 @@ export default [
             ctx.expect(await ctx.app.boards.requestService(root, { op: "setting" })).toBe("fixture-default");
         } finally {
             await cleanupFixture(ctx, root);
+        }
+    }),
+
+    serviceTest("service receives its test-profile board data path", async (ctx) => {
+        const root = fixtureBoard(ctx, ROUND_TRIP_BOARD);
+        try {
+            await trustFixtureBoard(ctx, root);
+            const result = await ctx.app.boards.requestService(root, { op: "environment" });
+            const paths = await ctx.app.main.runtime.paths;
+            ctx.expect(sameRoot(result.boardData, path.join(paths.userData, "board-data", "round-trip-board"))).toBe(true);
+        } finally {
+            await cleanupFixture(ctx, root);
+        }
+    }),
+
+    serviceTest("service and board child processes receive the test profile sandbox", async (ctx) => {
+        const root = fixtureBoard(ctx, ROUND_TRIP_BOARD);
+        let page;
+        try {
+            await trustFixtureBoard(ctx, root);
+            page = await openBoardPage(ctx, root);
+            const userData = (await ctx.app.main.runtime.paths).userData;
+            const serviceReply = await ctx.app.boards.requestService(root, { op: "environment" });
+            ctx.expect(sameRoot(serviceReply.boardData, path.join(userData, "board-data", "round-trip-board"))).toBe(true);
+            assertSandboxEnvironment(ctx, serviceReply.environment, userData);
+
+            const executeResult = await page.editor.evaluate(`async () => {
+                const output = await window.persephone.execute("set").getText();
+                return output;
+            }`);
+            const executeEnvironment = selectedEnvironmentFromSet(executeResult);
+            ctx.expect(Object.keys(executeEnvironment).sort()).toEqual([...SANDBOX_ENVIRONMENT_KEYS].sort());
+            assertSandboxEnvironment(ctx, executeEnvironment, userData);
+
+            const executeNodeEnvironment = await page.editor.evaluate(
+                "async () => await window.persephone.executeNode('scripts/environment.mjs').getJson(/@@RESULT@@(.*)/)",
+            );
+            assertSandboxEnvironment(ctx, executeNodeEnvironment, userData);
+            ctx.expect(executeEnvironment.PATHEXT).toBe(serviceReply.environment.PATHEXT);
+            ctx.expect(executeNodeEnvironment.PATHEXT).toBe(serviceReply.environment.PATHEXT);
+            for (const lookup of executeNodeEnvironment.pathLookups) {
+                ctx.expect(normalizedPath(lookup)).toBe(normalizedPath(executeNodeEnvironment.PATH));
+            }
+
+            const testHome = path.join(userData, "test-home");
+            for (const folder of ["AppData", ".claude", ".codex"]) {
+                ctx.expect(await ctx.app.fs.listDir(testHome)).toContain(folder);
+            }
+            ctx.expect(await ctx.app.fs.listDir(path.join(testHome, "AppData"))).toContain("Roaming");
+            for (const folder of ["test-bin", "test-local-app-data"]) {
+                ctx.expect(await ctx.app.fs.listDir(userData)).toContain(folder);
+            }
+
+            const nodeCheck = await ctx.script(`
+                const handle = app.proc.execute("node --version");
+                const decoder = new TextDecoder();
+                let version = "";
+                handle.on("stdout", (chunk) => { version += decoder.decode(chunk); });
+                const exit = await new Promise((resolve, reject) => {
+                    handle.on("exit", resolve);
+                    handle.on("error", reject);
+                });
+                return JSON.stringify({ version: version.trim(), exit });
+            `);
+            const parsedNodeCheck = JSON.parse(nodeCheck);
+            ctx.expect(parsedNodeCheck.exit.code).toBe(0);
+            ctx.expect(parsedNodeCheck.version.startsWith("v")).toBe(true);
+        } finally {
+            await cleanupFixture(ctx, root, [page?.id]);
         }
     }),
 

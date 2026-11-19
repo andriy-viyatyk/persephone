@@ -75,7 +75,7 @@ export default [
             await ctx.app.settings.set("terminal.command", commandPath);
 
             await openFolderContextMenu(ctx, folderId, FOLDER_NAME);
-            await ctx.call("menus[0].click", ["Open Terminal here"], { dialog: true });
+            await ctx.call("menus[0].click", ["open-terminal-here"], { dialog: true });
             const marker = `${workDir}/${MARKER_NAME}`;
             const recordedDirectory = await ctx.waitFor(
                 async () => {
@@ -105,7 +105,7 @@ export default [
             await openFolderContextMenu(ctx, folderId, FOLDER_NAME);
             // A call while the popup menu is open returns attention, so remove the folder from the test host.
             await rm(workDir, { recursive: true, force: true });
-            await ctx.call("menus[0].click", ["Open Terminal here"], { dialog: true });
+            await ctx.call("menus[0].click", ["open-terminal-here"], { dialog: true });
             const isFolderWarning = (alert) => alert.type === "warning" && alert.message.includes("Not a folder") && alert.message.includes(workDir);
             // waitFor returns the polled list, not the element the predicate found.
             const alerts = await ctx.waitFor(

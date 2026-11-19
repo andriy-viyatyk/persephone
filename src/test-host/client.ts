@@ -2,6 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { errMessage } from "../shared/utils.js";
 import { formatStep } from "./step-format.js";
+import { PERSEPHONE_CALL_RESULT_TYPE_META_KEY } from "../shared/mcp-result-type.js";
 
 export interface Timeouts { startup: number; request: number; wait: number; poll: number; shutdown: number; scale?: number; cleanup?: number; screenshot?: number; secondInstance?: number; }
 export interface McpImage { mimeType: string; data: string; }
@@ -44,14 +45,14 @@ export class McpClient {
         const result = await this.rawCall(path, undefined, { timeout, hints: "always", value });
         return this.decode(result, path, { value });
     }
-    async rawCall(path?: string, args?: unknown, options: { timeout?: number; maxLength?: number; hints?: "always" | "never"; value?: unknown } = {}): Promise<{ isError?: boolean; content?: ContentBlock[] }> {
+    async rawCall(path?: string, args?: unknown, options: { timeout?: number; maxLength?: number; hints?: "always" | "never"; value?: unknown } = {}): Promise<{ isError?: boolean; content?: ContentBlock[]; _meta?: Record<string, unknown> }> {
         if (!this.client) throw new Error("MCP connection is not healthy.");
         const request: Record<string, unknown> = { hints: options.hints ?? "never" };
         if (path !== undefined) request.path = path;
         if (args !== undefined) request.args = args;
         if ("value" in options) request.value = options.value;
         if (options.maxLength !== undefined) request.maxLength = options.maxLength;
-        return await this.client.callTool({ name: "call", arguments: request }, undefined, { timeout: options.timeout ?? this.timeouts.request }) as { isError?: boolean; content?: ContentBlock[] };
+        return await this.client.callTool({ name: "call", arguments: request }, undefined, { timeout: options.timeout ?? this.timeouts.request }) as { isError?: boolean; content?: ContentBlock[]; _meta?: Record<string, unknown> };
     }
     async listTools(): Promise<unknown> {
         if (!this.client) throw new Error("MCP connection is not healthy.");
@@ -67,7 +68,7 @@ export class McpClient {
             block.type === "image" && typeof block.mimeType === "string" && typeof block.data === "string");
         return image ? { mimeType: image.mimeType, data: image.data } : undefined;
     }
-    private decode(result: { isError?: boolean; content?: ContentBlock[] }, path?: string, args?: unknown, maxLengthSupplied = false, allowDialog = false, textOnly = false): unknown {
+    private decode(result: { isError?: boolean; content?: ContentBlock[]; _meta?: Record<string, unknown> }, path?: string, args?: unknown, maxLengthSupplied = false, allowDialog = false, textOnly = false): unknown {
         const blocks = result.content ?? [];
         if (result.isError) throw this.serverError(path, args, blocks);
         const raw = this.readableBlocks(blocks);
@@ -100,6 +101,9 @@ export class McpClient {
         for (const prefix of ["--- tip (", "Warning: ", "--- hint ("]) if (startsWithText(blocks[index], prefix)) index++;
         if (index !== blocks.length) throw new Error(`${formatStep("call", path, args)} returned unexpected supplementary content. Raw reply: ${raw}`);
         if (textOnly) return body;
+        const resultType = result._meta?.[PERSEPHONE_CALL_RESULT_TYPE_META_KEY];
+        if (resultType === "string") return body;
+        if (resultType === "json") return JSON.parse(body);
         try { return JSON.parse(body); } catch { return body; }
     }
     private serverError(path: string | undefined, args: unknown, blocks: ContentBlock[]): Error {

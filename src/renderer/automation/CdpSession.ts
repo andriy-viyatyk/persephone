@@ -3,7 +3,7 @@
  * Sends Chrome DevTools Protocol commands via IPC to the main process,
  * which forwards them through Electron's webContents.debugger API.
  */
-import { BrowserChannel, type CdpAttachOptions, type NavigationWaitResult, type BrowserResponsePattern, type BrowserResponseWaitOptions, type BrowserResponseResult } from "../../ipc/browser-ipc";
+import { BrowserChannel, type BrowserKeyboardInputEvent, type CdpAttachOptions, type NavigationWaitResult, type BrowserResponsePattern, type BrowserResponseWaitOptions, type BrowserResponseResult } from "../../ipc/browser-ipc";
 import { errMessage } from "../../shared/utils";
 
 const { ipcRenderer } = require("electron");
@@ -27,6 +27,11 @@ export class CdpSession {
     /** Send a raw CDP command. Auto-attaches if not yet attached. */
     async send(method: string, params?: object, sessionId?: string): Promise<any> { // eslint-disable-line @typescript-eslint/no-explicit-any
         return invokeUnwrapped(BrowserChannel.cdpSend, this.regKey, method, params, sessionId);
+    }
+
+    /** Send a keyboard event through Electron input when this key resolves to an app or browser target. */
+    async sendInputEvent(input: BrowserKeyboardInputEvent): Promise<boolean> {
+        return invokeUnwrapped(BrowserChannel.cdpSendInputEvent, this.regKey, input);
     }
 
     /**

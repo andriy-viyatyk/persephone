@@ -127,16 +127,29 @@ export default [
             ctx.expect(collection).toBeTruthy();
             ctx.expect(collection.title).toContain("Resources");
             ctx.expect(collection.editor).toBe("link-view");
+            const categories = ["Stylesheets", "Scripts", "Images", "Links"];
+            const collectionRoot = `[data-page-id="${collection.id}"][data-name="page-slot"]`;
             // The Resources collection renders after its page opens; wait for it instead of reading once.
             const snapshot = await ctx.waitFor(
-                (activeContext) => activeContext.callText("window.screen.snapshot", [{ maxChars: 12000 }]),
-                (text) => text.includes("Stylesheets 1"),
+                (activeContext) => activeContext.callText("window.screen.snapshot", [{ root: collectionRoot, maxChars: 12000 }]),
+                (text) => categories.every((category) => text.includes(`treeitem ${JSON.stringify(category)}`)),
                 { timeout: 10000 },
             );
-            ctx.expect(snapshot).toContain("Stylesheets 1");
-            ctx.expect(snapshot).toContain("Scripts 1");
-            ctx.expect(snapshot).toContain("Images 1");
-            ctx.expect(snapshot).toContain("Links 1");
+            for (const category of categories) {
+                ctx.expect(snapshot).toContain(`treeitem ${JSON.stringify(category)}`);
+            }
+            const categoryCounts = await ctx.app.window.screen.evaluate(`() => {
+                const pageSlot = document.querySelector('[data-page-id="${collection.id}"][data-name="page-slot"]');
+                if (!pageSlot) return null;
+                return Object.fromEntries(${JSON.stringify(categories)}.map((label) => {
+                    const row = Array.from(pageSlot.querySelectorAll('[role="treeitem"]'))
+                        .find((candidate) => candidate.querySelector(".label")?.textContent.trim() === label);
+                    return [label, row?.querySelector(".tree-trailing")?.textContent.trim() ?? null];
+                }));
+            }`);
+            for (const category of categories) {
+                ctx.expect(categoryCounts?.[category]).toBe("1");
+            }
             ctx.expect(snapshot).toContain("site.css");
             ctx.expect(snapshot).toContain("page.js");
             ctx.expect(snapshot).toContain("Logo");

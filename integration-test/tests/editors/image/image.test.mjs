@@ -47,18 +47,19 @@ export default [
         try {
             page = await openImagePage(ctx, "us-2049/image/zoom", "graphic.png", makePng(64, 32));
             const initial = await ctx.waitFor((activeContext) => zoomText(activeContext, page), (value) => value.endsWith("%"));
+            ctx.expect(initial).toBe("100%");
             await ctx.app.window.screen.pressKey("=", { target: '[data-type="image-view"]' });
-            const zoomedIn = await ctx.waitFor((activeContext) => zoomText(activeContext, page), (value) => value !== initial);
-            ctx.expect(Number.parseInt(zoomedIn, 10) > Number.parseInt(initial, 10)).toBe(true);
+            const zoomedIn = await ctx.waitFor((activeContext) => zoomText(activeContext, page), (value) => value === "120%");
+            ctx.expect(zoomedIn).toBe("120%");
 
             await ctx.app.window.screen.pressKey("-", { target: '[data-type="image-view"]' });
-            const zoomedOut = await ctx.waitFor((activeContext) => zoomText(activeContext, page), (value) => value !== zoomedIn);
-            ctx.expect(Number.parseInt(zoomedOut, 10) < Number.parseInt(zoomedIn, 10)).toBe(true);
+            const zoomedOut = await ctx.waitFor((activeContext) => zoomText(activeContext, page), (value) => value === "100%");
+            ctx.expect(zoomedOut).toBe("100%");
 
             await ctx.app.window.screen.pressKey("=", { target: '[data-type="image-view"]' });
             await ctx.app.window.screen.pressKey("=", { target: '[data-type="image-view"]' });
-            const zoomedFurther = await ctx.waitFor((activeContext) => zoomText(activeContext, page), (value) => Number.parseInt(value, 10) > Number.parseInt(initial, 10));
-            ctx.expect(zoomedFurther).toBeTruthy();
+            const zoomedFurther = await ctx.waitFor((activeContext) => zoomText(activeContext, page), (value) => value === "144%");
+            ctx.expect(zoomedFurther).toBe("144%");
             await ctx.app.window.screen.pressKey("0", { target: '[data-type="image-view"]' });
             ctx.expect(await ctx.waitFor((activeContext) => zoomText(activeContext, page), (value) => value === initial)).toBe(initial);
         } finally {

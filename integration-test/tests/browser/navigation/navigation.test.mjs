@@ -16,6 +16,7 @@ export default [
         let page;
         try {
             page = await openBrowserPage(ctx, START_URL(ctx));
+            ctx.expect(page.id).toBe(page.editor.pageId);
             const firstTab = await page.editor.activeTab;
             const targetPageId = await ctx.app.pages.openUrlInBrowserTab(TARGET_URL(ctx));
             ctx.expect(targetPageId).toBe(page.id);
@@ -111,12 +112,12 @@ export default [
             page = await openBrowserPage(ctx, fixturePage(ctx, "navigation", "reload-counter.html"));
             await page.editor.waitFor({ selector: "#load-count" });
             const initialCount = await page.editor.evaluate("() => document.querySelector('#load-count').textContent");
-            ctx.expect(Number(initialCount)).toBe(1);
+            ctx.expect(initialCount).toBe("1");
             const result = await page.editor.reload();
             ctx.expect(result.url).toBe(fixturePage(ctx, "navigation", "reload-counter.html"));
             ctx.expect(result.status).toBe(200);
             const reloadedCount = await page.editor.evaluate("() => document.querySelector('#load-count').textContent");
-            ctx.expect(Number(reloadedCount)).toBe(2);
+            ctx.expect(reloadedCount).toBe("2");
         } finally {
             await closeBrowserPage(ctx, page);
         }
@@ -130,7 +131,7 @@ export default [
             await page.editor.navigate(slowUrl);
             await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.activeTab.loading, (loading) => loading === true);
             await page.editor.waitFor({ selector: "#load-count" });
-            ctx.expect(Number(await page.editor.evaluate("() => document.querySelector('#load-count').textContent"))).toBe(1);
+            ctx.expect(await page.editor.evaluate("() => document.querySelector('#load-count').textContent")).toBe("1");
             ctx.expect(await page.editor.activeTab.loading).toBe(true);
 
             await activatePage(ctx, page.id);
@@ -142,7 +143,7 @@ export default [
             ctx.expect(result.status).toBe(200);
             await page.editor.waitFor({ selector: "#load-count" });
             const loadCount = await page.editor.evaluate("() => document.querySelector('#load-count').textContent");
-            ctx.expect(Number(loadCount)).toBe(2);
+            ctx.expect(loadCount).toBe("2");
             ctx.expect(await page.editor.url).toBe(slowUrl);
             ctx.expect(await page.editor.activeTab.loading).toBe(false);
         } finally {

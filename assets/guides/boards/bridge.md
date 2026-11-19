@@ -27,6 +27,10 @@ Runs a command on your machine and returns a process handle:
 const handle = persephone.execute("node scripts/load.js");
 ```
 
+This starts an ordinary OS process with your user privileges. `execute` and `executeNode` processes
+can use Node filesystem and network APIs directly; the board frame's `fileSystem` and `network`
+grants do not sandbox them. See [board trust and permissions](trust-and-permissions.md#service-declarations-in-board-manifestjson).
+
 **Buffered — collect all output at once:**
 
 ```js
@@ -111,10 +115,22 @@ The platform starts the service lazily in its bundled utility-process Node runti
 board root, imports resolve `node_modules` from that root, and standard Node built-ins are
 available, including filesystem, networking, streams, crypto, workers, and timers. It does not
 receive Electron objects such as `electron`, `app`, `BrowserWindow`, `webContents`, or `ipcMain`.
-The environment is sanitized to the supervisor allowlist plus `PERSEPHONE_SERVICE=1` and
-`PERSEPHONE_BOARD_ROOT`. Service stdout and stderr are captured in the board's `ui.log`. For
+The environment is sanitized to the supervisor allowlist plus `PERSEPHONE_SERVICE=1`,
+`PERSEPHONE_BOARD_ROOT`, and `PERSEPHONE_BOARD_DATA`. This process environment value points to
+`%LOCALAPPDATA%\Persephone\board-data\<id>` for the default profile and
+`<userData>\board-data\<id>` for named profiles and test instances. Persephone does not create
+the board folder; the board creates it on first write. When the variable is absent, including on an
+older host, use the legacy `%LOCALAPPDATA%\Persephone\board-data\<id>` path. Named profiles
+start empty with no automatic migration; users may copy an individual board folder by hand. This
+does not add a `window.persephone` member. Service stdout and stderr are captured in the board's
+`ui.log`. For
 boards you add, that file is `<boardRoot>/ui.log`; bundled boards keep it at
 `%APPDATA%\persephone\board-logs\<id>\ui.log` (or the corresponding named application profile folder).
+
+The `service` permission controls whether this process may start; the frame's `fileSystem` and
+`network` permissions control host bridge APIs and do not sandbox the service. Its ordinary Node
+filesystem and networking APIs run with your user privileges. `network: false` therefore does not
+mean a service is offline. See [board trust and permissions](trust-and-permissions.md#service-declarations-in-board-manifestjson).
 
 The service host injects `persephone.storage`, and the service shares the frame's per-board JSON
 store. A service can handle requests and provider operations from multiple windows concurrently;

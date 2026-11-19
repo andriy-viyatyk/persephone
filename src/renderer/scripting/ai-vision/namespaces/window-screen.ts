@@ -10,12 +10,16 @@ automation operations act on the complete current app-window accessibility tree,
 active page's visible content. snapshot() returns refs that must be passed explicitly as
 { ref: "..." }; strings may be CSS selectors or text= locators. App navigation, browser tabs, and JavaScript
 dialog policy are absent because this target has none; open and switch Persephone pages through pages and
-pages.showPage(pageId). Prefer ui.elements for a named, curated shell control and its purpose;
+pages.showPage(pageId). Page DOM reads can be scoped to
+\`[data-name="page-slot"][data-page-id="<id>"]\`; popups, menus, and dialogs render outside the page
+slot, so query them from the window root. Prefer ui.elements for a named, curated shell control and its purpose;
 window.screen.snapshot() is the complete, purpose-free fallback for everything currently on screen,
 including content or controls not in the curated list. Inactive page content is hidden and does not
 appear. HTML-preview and trusted board iframe accessibility trees are joined to their own iframe
 nodes; browser webviews and their frames are excluded. Use snapshot({ interactive: true }) or
-snapshot({ root: selectorOrRef }) to narrow a large tree. The app window has no elements inventory.
+snapshot({ root: selectorOrRef }) to narrow a large tree. \`interactive: true\` keeps interactive
+nodes and their ancestors, and a page with no such nodes can produce an empty string. The app window
+has no elements inventory.
 
 Quoted text= matches exactly and case-sensitively after whitespace normalization; unquoted text=
 matches a case-insensitive substring. Nested visible matches prefer the smallest element, and nth
@@ -59,7 +63,7 @@ password or input values, may omit hidden frame subtrees, and cover only the act
  * use that exception because its snapshot includes the active private page.
  */
 const recordingMembers: readonly IAiMember[] = [
-    { name: "start", kind: "method", signature: "start({ region, openPlayer? })", summary: "Immediately begin recording the window, active page, or main editor area." },
+    { name: "start", kind: "method", signature: "start({ region, openPlayer?, hideStatusChrome? }) -> null", summary: "Immediately begin recording the window, active page, or main editor area; resolves to no value." },
     { name: "pause", kind: "method", signature: "pause()", summary: "Pause the current recording." },
     { name: "resume", kind: "method", signature: "resume()", summary: "Resume the current recording." },
     { name: "stop", kind: "method", signature: "stop()", summary: "Finalize the recording and return its temporary file path and media details." },

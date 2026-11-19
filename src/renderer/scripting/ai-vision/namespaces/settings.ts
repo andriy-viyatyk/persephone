@@ -113,6 +113,12 @@ const settingsElements = createElements(SETTINGS_ELEMENTS, highlightSettingsElem
     unknownNameError: (name) => getOwnRecordValue(SETTINGS_NO_ROW_ERRORS, name),
 });
 
+const SETTINGS_ELEMENT_MEMBERS: readonly IAiMember[] = settingsElements.members.map((member) =>
+    member.name === "highlight"
+        ? { ...member, signature: "highlight(name: string, message?: string) -> { id, found, count, selector, highlighted?, error? }" }
+        : member,
+);
+
 const SETTINGS_MEMBERS: readonly IAiMember[] = [
     { name: "theme", kind: "property", summary: "Current theme name; readonly." },
     { name: "get", kind: "method", signature: "get<T = any>(key: string)", summary: "Read a setting; unknown keys return undefined." },
@@ -121,7 +127,7 @@ const SETTINGS_MEMBERS: readonly IAiMember[] = [
     { name: "browserProfiles", kind: "property", summary: "Configured browser profile names; readonly projection of the browser-profiles setting." },
     { name: "defaultBrowserProfile", kind: "property", summary: "Configured default browser profile name; an empty string selects the built-in default." },
     { name: "sections", kind: "property", summary: "The Settings page's grouped sections and hand-written setting-key rows." },
-    ...settingsElements.members,
+    ...SETTINGS_ELEMENT_MEMBERS,
 ];
 
 export function describeSettings(instance: unknown): IAiVisionDescriptor {

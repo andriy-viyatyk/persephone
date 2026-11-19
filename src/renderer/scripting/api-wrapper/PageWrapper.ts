@@ -38,6 +38,7 @@ const PAGE_MEMBERS: readonly IAiMember[] = [
     { name: "panels", kind: "property", node: true, summary: "Live sidebar panels, writable persistent width, bare-id expansion, and whole-sidebar toggle." },
     { name: "grouped", kind: "property", summary: "The page shown beside this one.", caution: "reading it CREATES a grouped page if none exists" },
     { name: "runScript", kind: "method", signature: "runScript()", summary: "Run this page's JavaScript/TypeScript content as a script; returns the output text." },
+    { name: "save", kind: "method", signature: "save() -> boolean", summary: "Save the current page through its content host; returns whether it saved. An untitled page opens Save As and returns dialog attention while waiting for the user's choice." },
 ];
 
 const PAGE_HELP = `
@@ -58,6 +59,10 @@ rendered editor. A page can have NO editor: a tab stays open when its editor is 
 example after its board is deleted), rendering as an "Empty" tab. Such a page is listed here like any
 other and can be activated, pinned, moved and closed; its editor id is empty, content and language
 read empty, and pages.navigatePageTo(pageId, filePath) opens a file into it.
+Call save() to save the current main editor's content host; it returns the host's boolean result.
+An untitled page opens Save As and returns dialog attention while it waits for the user's choice;
+the call returns false if the dialog is cancelled. A page with no content host throws because it has
+no file content to save.
 `;
 
 interface IBrowserPrivacyState {
@@ -295,6 +300,14 @@ export class PageWrapper implements IAiVisible {
         if (!isScriptLanguage(language)) throw new Error("runScript() is only available for javascript/typescript pages");
         const { scriptRunner } = await import("../ScriptRunner");
         return scriptRunner.runWithResult(this.content, this.model, language);
+    }
+
+    async save(): Promise<boolean> {
+        const contentHost = this.mainEditor?.contentHost;
+        if (!contentHost) {
+            throw new Error(`Page ${JSON.stringify(this.id)} has no file content to save.`);
+        }
+        return contentHost.saveFile(false);
     }
 }
 

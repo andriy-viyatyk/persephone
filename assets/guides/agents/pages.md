@@ -55,6 +55,8 @@ window.screen.pressKey("Escape")                            // e.g. dismiss a me
 window.screen.screenshot()                                  // pixels of the app window
 ```
 
+`window.screen.pressKey` also invokes app-window shortcuts, including zoom and voice typing.
+
 - **What you see:** the snapshot contains the app chrome plus the **active** page; a right-pinned page may appear in a popover over it. Other inactive pages are hidden, regardless of how many tabs are open. To reach another page, target it through `pages[pageId]` or click its tab.
 - **What's not supported:** browser navigation and browser inner-tab management — the app window is
   not a browser. To open or switch Persephone pages, use `pages.openUrl`, `pages.showPage`, or
@@ -166,11 +168,12 @@ The exact resolution algorithm (including how board pages participate and why an
 
 `pages.openUrlInBrowserTab` reuse is profile-matched: with `profileName` it adds the tab to (and
 focuses) an existing page of that profile, or creates a new page with that profile — it never
-attaches to a different-profile page.
+attaches to a different-profile page. It first reuses the active matching Browser page; otherwise
+it selects another matching page or creates one.
 
 ```
 pages.openUrlInBrowserTab("https://outlook.com", { profileName: "work" })
-→ { "opened": "https://outlook.com", "pageId": "abc-123", "title": "Outlook" }
+→ abc-123
 ```
 
 `pages.openUrlInBrowserTab` returns its `pageId` — capture it and use
@@ -201,6 +204,7 @@ popover over it without becoming active; inspect `app.pages.popoverPage` to find
 | `pinSide` | `"left"` \| `"right"` \| `undefined` | This page's tab pin side (read-only) |
 | `data` | `object` | In-memory storage, persists across script runs |
 | `grouped` | `IPage` | Grouped (side-by-side) partner page — auto-creates if none exists |
+| `save()` | `Promise<boolean>` | Save this page's content host; an untitled page opens Save As and returns dialog attention while waiting for the user's choice |
 
 ### Right-pinned page popover
 
@@ -221,7 +225,10 @@ app.pages.closePopover();
 Persephone has no separate workspace feature, workspace files, workspace settings, or multi-root
 workspaces. A workspace is a page whose Explorer panel is rooted at a project folder; that page is
 Persephone's equivalent of a VS Code workspace. Open such a workspace page with
-`pages.openFile(folderPath)`. Several such workspace pages may be open at once, one per page. Read
+`pages.openFile(folderPath)`. Use `pages.openFolder(folderPath)` to open a folder through the same
+Folder View, Git Tree, Mneme, or trusted board routing as an Explorer row; it returns the resolved
+page summary, and rejects a non-directory with guidance to use `pages.openFile` for files. Several
+such workspace pages may be open at once, one per page. Read
 `pages[i].workspaceFolder` to find each page's workspace root; it is absent when the page has no
 folder Explorer or is browsing an archive.
 

@@ -207,19 +207,28 @@ export default [
             const beforeSeq = Math.max(0, ...before.map((event) => event.seq ?? 0));
 
             await editor.evaluate("() => { const remote = window.persephone.aiVision.expose({ aiVision: { kind: 'Us2108Probe', summary: 'Test probe that raises one notify event.', members: [] } }); remote.notify('US-2108 synthetic event'); return true; }");
+            const recent = await ctx.waitFor(
+                () => ctx.call("events.recent", [50]),
+                (events) => events.some((event) => event.kind === "remote-notify"
+                    && event.seq > beforeSeq && event.text?.includes("US-2108 synthetic event")),
+            );
+            const expectedEvent = recent.find((event) => event.kind === "remote-notify"
+                && event.seq > beforeSeq && event.text?.includes("US-2108 synthetic event"));
+            ctx.expect(expectedEvent).toBeTruthy();
+            const expectedSequenceText = `#${expectedEvent.seq}`;
             const rows = await waitForDom(
                 ctx,
                 editor,
                 `() => [...document.querySelectorAll('#events .event-item')].map(item => ({
                     kind: item.querySelector('.event-type')?.textContent,
-                    seq: Number(item.querySelector('.event-seq')?.textContent?.replace(/^#/, '')),
+                    seq: item.querySelector('.event-seq')?.textContent,
                     text: item.querySelector('.event-data')?.textContent
                 }))`,
                 (items) => items.some((item) => item.kind === "remote-notify"
-                    && item.seq > beforeSeq && item.text?.includes("US-2108 synthetic event")),
+                    && item.seq === expectedSequenceText && item.text?.includes("US-2108 synthetic event")),
             );
             ctx.expect(rows.some((item) => item.kind === "remote-notify"
-                && item.seq > beforeSeq && item.text?.includes("US-2108 synthetic event"))).toBe(true);
+                && item.seq === expectedSequenceText && item.text?.includes("US-2108 synthetic event"))).toBe(true);
         } finally {
             await closePublishedSample(ctx, handle);
         }

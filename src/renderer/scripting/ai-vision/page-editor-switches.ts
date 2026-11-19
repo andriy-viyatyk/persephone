@@ -18,7 +18,7 @@ const SWITCH_ELEMENTS: readonly IAiElementDeclaration[] = [
 
 const SWITCH_MEMBERS: readonly IAiMember[] = [
     { name: "current", kind: "property", summary: "The current main editor id." },
-    { name: "options", kind: "property", summary: "The editor switch candidates shown by the page toolbar, including board and install entries." },
+    { name: "options", kind: "property", summary: "Readonly Array<{ id: string; label: string; title?: string }> of editor switch candidates shown by the page toolbar, including board and install entries." },
     { name: "switchTo", kind: "method", signature: "switchTo(id: string): Promise<void>", summary: "Switch to any registered editor id, not only an id listed in options.", caution: "changes the page editor; after awaiting, the switch is verified and a normal-return/no-switch result names the likely release-prompt or missing-file cause" },
 ];
 

@@ -1,29 +1,38 @@
-type Call = (path?: string, args?: unknown) => Promise<unknown>;
+export interface CallOptions { timeout?: number; maxLength?: number; dialog?: boolean; }
+export interface HandleMetadata { pageId?: string; }
+type Call = (path?: string, args?: unknown, options?: CallOptions) => Promise<unknown>;
 type PathSegment = { key: string; mode: "member" | "index" };
 
 const INSPECT = Symbol.for("nodejs.util.inspect.custom");
 /** Internal: lets `asHandle` rebuild a stand-in for the same path. */
 const SEGMENTS = Symbol("persephone.appStandIn.segments");
+const OPTIONS = Symbol("persephone.appStandIn.options");
+const METADATA = Symbol("persephone.appStandIn.metadata");
 
 export function createAppProxy(call: Call, beforeCall: (path: string, args?: unknown) => void, onError: (error: unknown) => void): object {
-    return createNode(call, beforeCall, onError, [], true);
+    return createNode(call, beforeCall, onError, [], true, {});
 }
 
 /**
  * The same stand-in without `then` on its own level, so returning it from an async function (or
  * awaiting it) keeps the stand-in instead of reading the node. Its children stay awaitable.
  */
-export function asHandle(node: unknown, call: Call, beforeCall: (path: string, args?: unknown) => void, onError: (error: unknown) => void): object {
-    const segments = typeof node === "function" ? (node as unknown as Record<symbol, PathSegment[] | undefined>)[SEGMENTS] : undefined;
+export function asHandle(node: unknown, call: Call, beforeCall: (path: string, args?: unknown) => void, onError: (error: unknown) => void, metadata?: HandleMetadata): object {
+    const standIn = typeof node === "function" ? node as unknown as Record<symbol, PathSegment[] | CallOptions | HandleMetadata | undefined> : undefined;
+    const segments = standIn?.[SEGMENTS] as PathSegment[] | undefined;
     if (!segments) throw new TypeError("ctx.handle(node) takes an app stand-in such as ctx.app.pages[id].editor.");
-    return createNode(call, beforeCall, onError, segments, false);
+    return createNode(call, beforeCall, onError, segments, false, standIn?.[OPTIONS] as CallOptions | undefined ?? {}, metadata ?? standIn?.[METADATA] as HandleMetadata | undefined);
 }
 
-function createNode(call: Call, beforeCall: (path: string, args?: unknown) => void, onError: (error: unknown) => void, segments: PathSegment[], awaitable: boolean): object {
+function createNode(call: Call, beforeCall: (path: string, args?: unknown) => void, onError: (error: unknown) => void, segments: PathSegment[], awaitable: boolean, options: CallOptions, metadata?: HandleMetadata): object {
     const target = function appStandIn() {};
     const proxy = new Proxy(target, {
         get(_target, property) {
             if (property === SEGMENTS) return segments;
+            if (property === OPTIONS) return options;
+            if (property === METADATA) return metadata;
+            if (property === "pageId" && metadata?.pageId !== undefined) return metadata.pageId;
+            if (property === "withOptions") return (nextOptions: CallOptions) => createNode(call, beforeCall, onError, segments, awaitable, { ...options, ...nextOptions }, metadata);
             if (property === "then" && !awaitable) return undefined;
             if (property === "then") {
                 // Awaiting reads the node; that is valid for a terminal `$help` / `$describe` too.
@@ -31,7 +40,7 @@ function createNode(call: Call, beforeCall: (path: string, args?: unknown) => vo
                 return (onFulfilled?: (value: unknown) => unknown, onRejected?: (reason: unknown) => unknown) => {
                     const apiPath = encodePath(segments);
                     beforeCall(apiPath);
-                    return call(apiPath).then(onFulfilled, onRejected);
+                    return call(apiPath, undefined, options).then(onFulfilled, onRejected);
                 };
             }
             if (property === Symbol.toStringTag) return "PersephoneAppProxy";
@@ -46,7 +55,7 @@ function createNode(call: Call, beforeCall: (path: string, args?: unknown) => vo
                 // A stand-in is awaitable, not a Promise; `.catch` would otherwise become a call-tree member.
                 throw new TypeError(`An app stand-in is awaitable but not a Promise; use try { await node } catch instead of .${property}().`);
             }
-            return createNode(call, beforeCall, onError, [...segments, { key: property, mode: segmentMode(property) }], true);
+            return createNode(call, beforeCall, onError, [...segments, { key: property, mode: segmentMode(property) }], true, options);
         },
         set(_target, property) {
             // An assignment cannot be awaited, so it is never sent; fail loudly instead of storing it on the stand-in.
@@ -79,7 +88,7 @@ function createNode(call: Call, beforeCall: (path: string, args?: unknown) => vo
             catch (error) { onError(error); throw error; }
             const cleaned = args.slice();
             while (cleaned.length && cleaned.at(-1) === undefined) cleaned.pop();
-            return call(encodePath(segments), cleaned);
+            return call(encodePath(segments), cleaned, options);
         },
     });
     return proxy;

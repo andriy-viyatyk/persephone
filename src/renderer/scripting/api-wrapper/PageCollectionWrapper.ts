@@ -15,6 +15,8 @@ import {
 } from "../../api/pages/open-url-validation";
 import { choiceRule, validateCallArguments } from "ai-vision";
 import type { IAiCallContext } from "../ai-vision/root";
+import { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
+import { fpDirname } from "../../core/utils/file-path";
 
 // AiVision: the kind-level description of this wrapper. Kept next to the members it
 // describes so a new method and its descriptor entry land in the same diff.
@@ -27,12 +29,13 @@ const PAGES_MEMBERS: readonly IAiMember[] = [
     { name: "getGroupedPage", kind: "method", signature: "getGroupedPage(withPageId: string)", summary: "The page grouped with the given page, if any." },
     { name: "isGrouped", kind: "method", signature: "isGrouped(pageId: string)", summary: "Whether the page is part of a side-by-side group." },
     { name: "isLastPage", kind: "method", signature: "isLastPage(pageId?: string)", summary: "Whether the page is the only one open." },
-    { name: "openFile", kind: "method", signature: "openFile(filePath: string)", summary: "Find and open a file path from disk in a new page (or focus it if already open); returns the page. A FOLDER is valid too and is not an error: it opens an empty page whose Explorer panel is rooted at that folder; that page is Persephone's equivalent of opening a VS Code workspace, for browsing the tree." },
-    { name: "closePage", kind: "method", signature: "closePage(pageId: string)", summary: "Close a page; returns true when closed and false when closing is refused, such as cancelling an unsaved-changes prompt or targeting the locked launch-board tab.", caution: "unsaved changes prompt the user; a discarded page is gone" },
+    { name: "openFile", kind: "method", signature: "openFile(filePath: string) -> { kind, id, title, editor, language, filePath, modified, pinSide, pinned, active, workspaceFolder?, note?, profileName?, isIncognito?, isTor?, openedByAgent?, url? }", summary: "Find and open a file path from disk in a new page (or focus it if already open); returns a page summary. Address it afterward as pages[<id>]. workspaceFolder is optional; note applies to workspace or no-editor pages, and profileName, isIncognito, isTor, openedByAgent, and permitted url are conditional browser fields. A FOLDER is valid too and is not an error: it opens an empty page whose Explorer panel is rooted at that folder; that page is Persephone's equivalent of opening a VS Code workspace, for browsing the tree." },
+    { name: "openFolder", kind: "method", signature: "openFolder(folderPath: string) -> { kind, id, title, editor, language, filePath, modified, pinSide, pinned, active, workspaceFolder?, note?, profileName?, isIncognito?, isTor?, openedByAgent?, url? }", summary: "Open a directory through the same Explorer folder routing used for Folder View, Git Tree, Mneme, and trusted board claims; returns the resolved page summary, or throws for a non-directory and points to pages.openFile for opening files." },
+    { name: "closePage", kind: "method", signature: "closePage(pageId: string) -> boolean", summary: "Close a page; returns true when closed and false when closing is refused. A modified editor raises an unsaved-changes dialog; the call returns dialog attention while it is open. Answer through dialogs[index].click(button) or dialogs[index].cancel(); a canceled close returns false.", caution: "unsaved changes prompt the user; a discarded page is gone" },
     { name: "openFileWithDialog", kind: "method", signature: "openFileWithDialog()", summary: "Show the OS open-file dialog to the user." },
     { name: "navigatePageTo", kind: "method", signature: "navigatePageTo(pageId, newFilePath, options?: { revealLine?, highlightText?, forceTextEditor? })", summary: "Point an existing page at another file." },
     { name: "addEmptyPage", kind: "method", signature: "addEmptyPage()", summary: "New empty text page; returns it." },
-    { name: "addEditorPage", kind: "method", signature: "addEditorPage(editor, language, title, content?)", summary: "Create a page for content, a table/grid using grid-json, or a Mermaid diagram using mermaid-view; optionally initializes its content; returns it." },
+    { name: "addEditorPage", kind: "method", signature: "addEditorPage(editor, language, title, content?) -> { kind, id, title, editor, language, filePath, modified, pinSide, pinned, active, workspaceFolder?, note?, profileName?, isIncognito?, isTor?, openedByAgent?, url? }", summary: "Create a page for content, a table/grid using grid-json, or a Mermaid diagram using mermaid-view; optionally initializes its content; returns a page summary. Address it afterward as pages[<id>]. workspaceFolder is optional; note applies to workspace or no-editor pages, and profileName, isIncognito, isTor, openedByAgent, and permitted url are conditional browser fields." },
     { name: "addDrawPage", kind: "method", signature: "addDrawPage(dataUrl: string, title?)", summary: "New drawing page from an image data URL." },
     { name: "openLinks", kind: "method", signature: "openLinks(links: (string | ILink)[], title?)", summary: "New links page listing the given URLs/paths." },
     { name: "openDiff", kind: "method", signature: "openDiff({ firstPath, secondPath })", summary: "Open a file compare page." },
@@ -44,7 +47,7 @@ const PAGES_MEMBERS: readonly IAiMember[] = [
     { name: "showMnemeConfigPage", kind: "method", signature: "showMnemeConfigPage()", summary: "Open the Mneme configuration page." },
     { name: "showToolsHubPage", kind: "method", signature: "showToolsHubPage(options?: { tab?: HubTab })", summary: "Show the Tools & Editors hub, optionally selecting a tab." },
     { name: "showBrowserPage", kind: "method", signature: "showBrowserPage(options?: { profileName?, incognito?, tor?, url? })", summary: "Show (or open) a browser page. Choose profileName from settings.browserProfiles; an empty profileName selects the built-in default. Incognito/Tor pages you open this way are yours to read and drive; the user's own private pages stay blocked." },
-    { name: "openUrlInBrowserTab", kind: "method", signature: "openUrlInBrowserTab(url, options?: { incognito?, profileName?, external? })", summary: "Open a plain web page or search query in/reusing a browser tab; pages.openUrl(...) is for file-like URLs. Requires a non-empty string and does not reject search text. Returns the page id BEFORE the document loads; act too early and the action lands on a document about to be replaced and still reports success. Await pages[pageId].editor.waitFor({ selector }) (or { text }) for content you expect — waitForNavigation() can return at once because the old document is already complete. Read pages[pageId].title after the wait.", caution: "opens or navigates a browser page" },
+    { name: "openUrlInBrowserTab", kind: "method", signature: "openUrlInBrowserTab(url, options?: { incognito?, profileName?, external? }) -> string | null", summary: "Open a plain web page or search query in/reusing a browser tab; pages.openUrl(...) is for file-like URLs. Requires a non-empty string and does not reject search text. Returns the page id BEFORE the document loads; act too early and the action lands on a document about to be replaced and still reports success. Await pages[pageId].editor.waitFor({ selector }) (or { text }) for content you expect — waitForNavigation() can return at once because the old document is already complete. Read pages[pageId].title after the wait.", caution: "opens or navigates a browser page" },
     { name: "openUrl", kind: "method", signature: "openUrl(url, options?: { editor? })", summary: "Route a supported URL naming a file through the content pipeline; pages.openUrlInBrowserTab(...) is for a plain web page or search query. Empty, malformed, unsupported, and non-string hrefs are rejected. Cannot name the opened page; inspect pages afterward.", caution: "opens or navigates a page using the content pipeline" },
     { name: "showPage", kind: "method", signature: "showPage(pageId: string)", summary: "Show a page; a right-pinned page opens its popover without changing the active work page." },
     { name: "openPopover", kind: "method", signature: "openPopover(pageId: string)", summary: "Show a right-pinned page in its popover without changing activePage." },
@@ -68,8 +71,10 @@ Read a page's text with pages[i].content, replace it by assigning "value" to the
 editors with pages[i].editor; narrow its id for editor-specific operations, then use
 pages[i].editorSwitches.switchTo(id) to switch. Create pages with addEmptyPage(), addEditorPage(...)
 or openFile(path). openFile accepts a folder as well as a file: a folder opens an empty page whose
-Explorer panel is rooted there, which is how you give the user a browsable tree (to read a folder's
-entries yourself instead, use fs.listDir / fs.listDirWithTypes).
+Explorer panel is rooted there. Use openFolder(path) to navigate a folder through the same routing
+as an Explorer row, including Folder View, Git Tree, Mneme, and trusted board folder claims. It
+returns the resolved page summary; a non-directory throws and points to pages.openFile for opening
+files. To read a folder's entries yourself, use fs.listDir / fs.listDirWithTypes.
 Workspaces: Persephone has no separate workspace feature, workspace files, workspace settings, or
 multi-root workspaces: a workspace is a page whose Explorer is rooted at a project folder
 (Persephone's equivalent of a VS Code workspace); open one with pages.openFile(folderPath). Several
@@ -245,6 +250,18 @@ export class PageCollectionWrapper implements IAiVisible {
 
     async openFile(filePath: string): Promise<PageWrapper | undefined> {
         const page = await this.pages.openPath(filePath);
+        return this.wrap(page);
+    }
+
+    async openFolder(folderPath: string): Promise<PageWrapper | undefined> {
+        const provider = new FileTreeProvider(fpDirname(folderPath));
+        const stat = await provider.stat(folderPath);
+        if (!stat.exists || !stat.isDirectory) {
+            throw new Error(
+                `pages.openFolder expects an existing directory; use pages.openFile to open a file. Path: ${JSON.stringify(folderPath)}`,
+            );
+        }
+        const page = await this.pages.openPath(provider.getFolderNavigationUrl(folderPath));
         return this.wrap(page);
     }
 

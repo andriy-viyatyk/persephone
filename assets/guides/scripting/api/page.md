@@ -42,6 +42,16 @@ board is deleted. Its identity facade has `id === ""`; its `page.editorSwitches.
 `page.editorSwitches.options` are empty. Use `app.pages.navigatePageTo(page.id, filePath)` to open
 a file in it, or `app.pages.closePage(page.id)` to close it.
 
+## Save the page
+
+`page.save()` saves the current main editor's content host and returns `true` when saved or `false`
+when Save As is cancelled. On an untitled page it opens the Save As dialog; the call returns dialog
+attention while it waits for the user's choice. A page without a content host throws a clear error.
+
+```javascript
+const saved = await page.save();
+```
+
 ```javascript
 const editor = page.editor;
 if (editor.id === "grid-json") {

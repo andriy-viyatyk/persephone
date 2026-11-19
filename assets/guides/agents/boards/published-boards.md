@@ -35,7 +35,8 @@ inert on disk; only `registerBoard` (a user trust-dialog click) activates it.
 
 - **`boards.searchPublished(query?)`** → `Promise<PublishedBoardResult[]>` — the catalog,
   filtered by a case-insensitive `query` over name/description/file-masks (omit for all), each
-  result annotated with `installed`, `installedVersion`, `updateAvailable`, `compatible`, `size`.
+  result includes `version` (the latest catalog version) and is annotated with `installed`,
+  `installedVersion`, `updateAvailable`, `compatible`, `size`.
   **Read-only, no dialog.** Refresh the catalog first with `boards.checkPublishedUpdates(true)`
   when you need current results; the `true` forces a refresh before the search.
 - **`boards.getPublishedVersions(id)`** → `Promise<PublishedVersionResult[]>` — a board's
@@ -89,3 +90,35 @@ trust) — is <!-- board-template:exclude -->[Reviewing a board before you trust
 `guides.agents["board-review"]`.
 
 These members are `call` paths on `boards.*`; read `boards.$help` for the live signatures and cautions.
+
+### Model coverage by open mode
+
+Which published boards publish a page model at `pages[id].editor.app`, and in which open modes. A board
+without one is driven through its UI (`window.screen.*`) and its own guide.
+
+| Board | `editor.app` | Open modes |
+|---|---|---|
+| `agent-log-viewer` | No | File-backed `.jsonl` |
+| `aivision-explorer` | No | Direct board |
+| `audio-player` | Yes (full only) | Direct board/catalog/playlist; plain audio is light mode with no model |
+| `cert-viewer` | No | File-backed certificate formats |
+| `chess` | Yes | Direct board |
+| `claude-agent` | Yes | Direct board |
+| `drawio-viewer` | Yes | File-backed `.drawio`; direct board |
+| `excel-viewer` | Yes | File-backed `.xls`/`.xlsx`; direct board |
+| `font-viewer` | No | File-backed font formats |
+| `force-graph` | Yes | File-backed `.fg.json`; direct board |
+| `gem-keep` | No | Direct board |
+| `notebook` | Yes | File-backed `.note.json`; main editor frame |
+| `pdf-viewer` | Yes | File-backed `.pdf`; direct board |
+| `pe-viewer` | No | File-backed PE formats |
+| `powerpoint-viewer` | Yes | File-backed `.pptx`; direct board |
+| `speech-to-text` | No | Direct board |
+| `sqlite-viewer` | Yes | File-backed database formats; direct board |
+| `text-to-speech` | No | Direct board |
+| `theme-editor` | Yes | Direct board |
+| `todo` | Yes | File-backed `.todo.json`; direct board; main editor frame only |
+| `torrent-viewer` | No | File-backed `.torrent` |
+| `translate` | No | Direct board |
+| `wake-word` | No | Direct board |
+| `word-viewer` | Yes | File-backed `.docx`; direct board |

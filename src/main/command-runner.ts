@@ -34,6 +34,7 @@ import { errMessage } from "../shared/utils";
 import { NODE_SCRIPT_END_STDIN_KIND, NODE_SCRIPT_MARKER, NODE_SCRIPT_STDIN_KIND, type NodeScriptHostMessage } from "../ipc/node-script-host-protocol";
 import { getNodeHostEntryPath } from "./utils";
 import { onWebContentsGone } from "./webcontents-lifetime";
+import { boardProcessEnvironment } from "./board-process-environment";
 
 /** Coalesce stdout/stderr bursts into one message per ~tick to cut message count. */
 const COALESCE_MS = 16;
@@ -215,15 +216,16 @@ function cleanup(jobId: string): void {
  * IPC and board-port callers. `RunnerStartMsg.opts.cwd` defaults are the caller's
  * responsibility (the board bridge fills the board folder).
  */
-export function startJobTo(sink: JobSink, msg: RunnerStartMsg): void {
+export function startJobTo(sink: JobSink, msg: RunnerStartMsg, boardRoot?: string): void {
     const { jobId, command, opts } = msg;
+    const baseEnvironment = { ...process.env, ...(opts?.env ?? {}) };
 
     let proc: ChildProcessWithoutNullStreams;
     try {
         proc = spawn(command, msg.args ?? [], {
             shell: opts?.shell ?? true,
             cwd: opts?.cwd,
-            env: { ...process.env, ...(opts?.env ?? {}) },
+            env: boardRoot ? boardProcessEnvironment(baseEnvironment, boardRoot) : baseEnvironment,
             windowsHide: true,
             // POSIX: become a process-group leader so the whole group can be
             // signalled via process.kill(-pid) in treeKill(). Windows uses
@@ -290,13 +292,14 @@ const NODE_SCRIPT_HOST = "node-script-host.mjs";
  * packaged app locks the RunAsNode fuse, so the app binary can no longer be spawned as Node
  *. Same sink protocol as startJobTo; signal is always null.
  */
-export function startNodeJobTo(sink: JobSink, msg: RunnerStartMsg): void {
+export function startNodeJobTo(sink: JobSink, msg: RunnerStartMsg, boardRoot: string): void {
     const { jobId, command: script, opts } = msg;
+    const baseEnvironment = { ...process.env, ...(opts?.env ?? {}), NODE_NO_WARNINGS: "1" };
     let child: UtilityProcess;
     try {
         child = utilityProcess.fork(getNodeHostEntryPath(NODE_SCRIPT_HOST, "node-script-host"), [NODE_SCRIPT_MARKER, script, ...(msg.args ?? [])], {
             cwd: opts?.cwd,
-            env: { ...process.env, ...(opts?.env ?? {}), NODE_NO_WARNINGS: "1" },
+            env: boardProcessEnvironment(baseEnvironment, boardRoot),
             stdio: "pipe",
             serviceName: `Persephone board script: ${path.basename(script)}`,
         });

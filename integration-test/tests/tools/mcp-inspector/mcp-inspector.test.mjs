@@ -86,9 +86,8 @@ export default [
 
             await ctx.app.window.screen.click('text="Tools"');
             await ctx.app.window.screen.type(
-                '[data-type="mcp-tool-arg-form"] [data-type="textarea"]',
+                '[data-name="mcp-arg-path"] [data-type="textarea"]',
                 "main.runtime.paths.userData",
-                { nth: 0 },
             );
             await ctx.app.window.screen.click('[data-name="mcp-call-tool"]');
             const toolResult = await ctx.waitFor(

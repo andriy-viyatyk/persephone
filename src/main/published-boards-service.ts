@@ -3,6 +3,7 @@ import { electronStore } from "./e-store";
 import { openWindows } from "./open-windows";
 import { getPublishedBoardsCatalogBase } from "./test-mode/published-boards-catalog";
 import { isBoardEditorKind } from "../shared/board/board-manifest-schema";
+import { isSafeBoardId } from "../shared/board/board-data-id";
 import {
     PublishedBoardInfo,
     PublishedBoardsCatalog,
@@ -58,10 +59,6 @@ function versionsUrl(id: string): string | undefined {
  * dots, and any `/`/`\`, closing the catalog-driven path-traversal vector at the point of trust
  * (a malformed/hostile catalog entry is simply dropped, so it never reaches the install engine).
  */
-function isSafeBoardId(id: string): boolean {
-    return /^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/.test(id);
-}
-
 /**
  * A catalog-declared asset name (currently only `screenshot`) is interpolated into a raw
  * URL under the board's own folder, so it must be a bare file name. The same charset rule
@@ -69,7 +66,7 @@ function isSafeBoardId(id: string): boolean {
  * — a hostile catalog entry cannot aim the app at an arbitrary host or escape the folder.
  */
 function isSafeAssetName(name: string): boolean {
-    return /^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/.test(name);
+    return isSafeBoardId(name);
 }
 
 /** Raw URL of a board's screenshot, or undefined when it declares none. */

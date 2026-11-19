@@ -143,6 +143,29 @@ export default [
         }
     }),
 
+    test("pressKey Ctrl+=, Ctrl+-, and Ctrl+0 controls window zoom", async (ctx) => {
+        const originalZoom = await ctx.app.window.zoomLevel;
+        try {
+            await ctx.app.window.resetZoom();
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.window.zoomLevel, (level) => level === 0)).toBe(0);
+
+            await ctx.app.window.screen.pressKey("Ctrl+=");
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.window.zoomLevel, (level) => level === 0.5)).toBe(0.5);
+
+            await ctx.app.window.screen.pressKey("Ctrl+-");
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.window.zoomLevel, (level) => level === 0)).toBe(0);
+
+            await ctx.app.window.zoom(0.5);
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.window.zoomLevel, (level) => level === 0.5)).toBe(0.5);
+            await ctx.app.window.screen.pressKey("Ctrl+0");
+            ctx.expect(await ctx.waitFor((activeContext) => activeContext.app.window.zoomLevel, (level) => level === 0)).toBe(0);
+        } finally {
+            await ctx.app.window.resetZoom();
+            if (originalZoom !== 0) await ctx.app.window.zoom(originalZoom);
+            await ctx.waitFor((activeContext) => activeContext.app.window.zoomLevel, (level) => level === originalZoom);
+        }
+    }),
+
     test("Ctrl+0 resets the window zoom", async (ctx) => {
         const originalZoom = await ctx.app.window.zoomLevel;
         try {

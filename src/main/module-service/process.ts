@@ -11,6 +11,7 @@ import { getActiveLocale } from "../../shared/i18n/active-locale";
 import { ServiceError, type ServiceRecord, killUtilityProcessSync } from "./record";
 import { getNodeHostEntryPath, isPathInside } from "../utils";
 import * as boardLog from "../board-log";
+import { boardProcessEnvironment } from "../board-process-environment";
 
 function delay(milliseconds: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -250,7 +251,7 @@ export class ModuleServiceProcess {
         environment.PERSEPHONE_SERVICE = "1";
         environment.PERSEPHONE_BOARD_ROOT = boardRoot;
         environment.PERSEPHONE_LOCALE = getActiveLocale();
-        return environment;
+        return boardProcessEnvironment(environment, boardRoot);
     }
 
     private hostConfig(): ServiceHostConfig {

@@ -33,7 +33,14 @@ The service runs in Persephone's bundled utility-process Node runtime with the b
 cwd. Standard Node built-ins (filesystem, networking, streams, crypto, workers, and timers) are
 available; `electron`, `app`, `BrowserWindow`, `webContents`, and `ipcMain` are not. Imports resolve
 from the board root, including its `node_modules`. The environment is sanitized to the supervisor
-allowlist plus `PERSEPHONE_SERVICE=1`, `PERSEPHONE_BOARD_ROOT`, and `PERSEPHONE_LOCALE`.
+allowlist plus `PERSEPHONE_SERVICE=1`, `PERSEPHONE_BOARD_ROOT`, `PERSEPHONE_LOCALE`, and
+`PERSEPHONE_BOARD_DATA`. The board data path is profile-scoped: the default profile uses
+`%LOCALAPPDATA%\Persephone\board-data\<id>`, while named profiles and test instances use
+`<userData>\board-data\<id>`. Persephone passes the path but does not create the board folder;
+the board creates it on first write. If the variable is absent (including on an older host), use
+the legacy `%LOCALAPPDATA%\Persephone\board-data\<id>` path. Named profiles start empty and
+there is no automatic migration; users can copy an individual board data folder into the named
+profile when needed.
 `PERSEPHONE_LOCALE` is the resolved Persephone UI locale at service spawn, including regional codes
 such as `pt-BR` and the verification locale `en-XA`; a service that starts before the first renderer
 reports its locale receives the initialized `en` default. The host updates
@@ -87,6 +94,14 @@ Info. New independent registration issues produce a toast once; unchanged issues
 on refresh. Reserved schemes are `http`, `https`, `file`, `data`, `blob`, `mneme`, and every
 `persephone-*` name. Provider registration is service-owned; there is no `contentProviders`
 permission flag. The service requires `service: true`.
+
+The `service` permission controls whether the declared background program can run. The Trust board
+dialog and Board Info show the permission set granted to that board. The service runs as a normal
+Node process with direct filesystem and network access under the user's OS account; frame
+`fileSystem` and `network` grants do not sandbox it. `network: false` is not an offline guarantee
+for a service, and `fileSystem: false` does not block its direct Node file access. See the
+[board permissions guide](permissions.md) for the frame bridge boundary and the
+<!-- board-template:exclude -->[user permission guide](../../boards/trust-and-permissions.md)<!-- /board-template:exclude -->.
 
 From the frame, send structured-clone messages and handle lifecycle rejection:
 

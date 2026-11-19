@@ -12,7 +12,7 @@ export default [
         await ctx.app.pages[p.id].editor.insertText('X');
         await ctx.waitFor(c => c.callText(`pages[${JSON.stringify(p.id)}].content`), v => v.includes('X'));
         const changed = await ctx.callText(`pages[${JSON.stringify(p.id)}].content`);
-        ctx.expect(await ctx.app.pages[p.id].editor.saveFile()).toBe(true);
+        ctx.expect(await ctx.app.pages[p.id].save()).toBe(true);
         ctx.expect(await ctx.callText('fs.read', [p.filePath])).toBe(changed);
         await close(ctx, p.id);
     }),
@@ -22,7 +22,7 @@ export default [
         await ctx.waitFor(c => c.callText(`pages[${JSON.stringify(p.id)}].content`), v => v.includes('X'));
         await ctx.app.window.screen.pressKey('Control+z', { target: '.monaco-editor-host-root .monaco-editor' });
         await ctx.waitFor(c => c.callText(`pages[${JSON.stringify(p.id)}].content`), v => v === text);
-        ctx.expect(await ctx.app.pages[p.id].editor.saveFile()).toBe(true);
+        ctx.expect(await ctx.app.pages[p.id].save()).toBe(true);
         await close(ctx, p.id);
     }),
     test('text: JSON round trip through grid', async ctx => {

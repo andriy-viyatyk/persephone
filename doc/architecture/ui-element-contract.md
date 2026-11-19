@@ -97,6 +97,7 @@ The always-visible chrome, top to bottom.
 | Quick settings trigger (legacy Snip name; the green "…") | `[data-name="header-snip-button"]` |
 | Mneme indicator (only when Mneme is enabled) | `[data-name="mneme-indicator"]` |
 | MCP indicator (only when the MCP server is running) | `[data-name="mcp-indicator"]` |
+| Audio capture indicator (only while audio is being captured) | `[data-name="audio-capture-indicator"]` |
 
 ### A page tab
 

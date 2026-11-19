@@ -5,7 +5,7 @@
   "author": "Persephone test fixture",
   "minBridgeVersion": "1.30.0",
   "permissions": {
-    "execute": false,
+    "execute": true,
     "service": true,
     "fileSystem": false,
     "openExternal": false,

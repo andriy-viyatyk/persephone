@@ -25,6 +25,15 @@ models, and enrollments inside the test profile. `--open` and `--attach` instanc
 instances and retain the user's real `%LOCALAPPDATA%`; board tests that open a service must declare
 `requires: ["launch"]`.
 
+In owned test instances, board services and board-started `execute`/`executeNode` processes also use
+test-only `USERPROFILE`, `HOMEDRIVE`/`HOMEPATH`, `APPDATA`, `CLAUDE_CONFIG_DIR`, and `CODEX_HOME`
+folders under `<userData>/test-home`. Their `LOCALAPPDATA` matches the global redirect above. Their
+`PATH` contains only `<userData>/test-bin`, `%SystemRoot%`, `%SystemRoot%\System32`,
+`%SystemRoot%\System32\Wbem`, and `%SystemRoot%\System32\WindowsPowerShell\v1.0`, so
+user-installed CLIs are unavailable (`test-bin` holds only a `node.cmd` forwarding to the host's
+`node.exe`). These board-only redirects do not apply to `--open` or
+`--attach`, which are non-test instances.
+
 ## Run and fix
 
 1. For the default dev target, ensure `npm start` is running. Check `.vite/dev-server.json`; if absent, start `npm start` in the background. A marker can be stale: if the runner cannot validate its PID, server, or exact dev bundle URL, restart `npm start`. For the optional production target, stop `npm start` first; it rebuilds `.vite/build` and prints `The dev bundle was replaced; run npm start again before dev tests.` after the build exits. Restart `npm start` before dev tests. `--prod` and `--app <exe>` are mutually exclusive. The executable target needs a compatible installed or unpacked `persephone.exe` with US-2022 profile support.
@@ -56,9 +65,11 @@ for app capabilities live under `tests/capabilities/<module>/`; current modules 
 `fixtures/boards-catalog/`, and REST Client HTTP fixtures in `fixtures/http/rest-client/`. Tests
 receive isolated copies under the profile's `work/`
 directory through `ctx.fixture()`; reset any mutable fixture file at test start. Prefer
-`ctx.app.boards.*` and `ctx.app.pages[id].editor.*` calls, using `ctx.call` or `ctx.callText` where
-call options or exact string results are required, and `ctx.set(path, value, { timeout? })` for
-writable property assignments. Assignments through `ctx.app` throw because they cannot be awaited.
+`ctx.app.boards.*` and `ctx.app.pages[id].editor.*` calls, using
+`ctx.app.withOptions({ timeout?, maxLength?, dialog? })` or `ctx.callText` for exact text results,
+and `ctx.set(path, value, { timeout? })` for writable property assignments. Path-based
+`ctx.waitFor` accepts the same call options. Assignments through `ctx.app` throw because they cannot
+be awaited.
 Capability errors from the agent call tree append `[code: <code>]` to their message, which the test
 host parses into `error.code` on `ctx.call` errors; assert it when defined by the capability
 contract. Tests may start loopback servers and proxies in the test host using `node:http` or
@@ -82,7 +93,8 @@ Declare both `launch` and
 Keep published-viewer samples small, synthetic, and offline. Commit reusable samples under
 `fixtures/boards-samples/<board-id>/`; generate package formats in test helpers when that is simpler
 than committing binary outputs (the Office formats use `tests/published-boards/office-samples.mjs`).
-Check samples copied from another checkout for personal data and record their source. Do not test a
-board open path that starts external network activity, such as torrent discovery.
+Check samples copied from another checkout for personal data and record their source. Tests must not
+access the network. Do not open a torrent sample unless the test verifies that opening it stays
+offline and does not start discovery.
 
 Put `<feature>.test.mjs` in `integration-test/tests/<area>/<module>/`; deeper module paths are allowed. The area/module id is the test path under `tests/` without its filename, for example `core/smoke` or `editors/grid/sort`. Default-export `test(name, async ctx => { ... })` or an array, importing `test` from `lib/context.mjs` with the correct relative path. `--area` accepts comma-separated whole-segment path prefixes; an unknown prefix fails before profile reset and prints known module ids. Use `node integration-test/run.mjs --list` to inspect the module tree and test/skipped counts; it starts no app and takes no lock. `--list --area <prefix>` narrows it; `--with` and `--attach` affect skipped counts. A module should stay under about 50 tests and 3 minutes; split larger modules into feature submodules, never numbered chunks. Append a test to the module that owns its feature; create a new module folder when no owner exists, and add an area only with a new roadmap phase. Put UTF-8, no-BOM, LF fixtures with final newline in `integration-test/fixtures/`; `ctx.fixture(rel)` names the isolated work copy. Reset each mutable fixture at test start via `ctx.call('fs.write', [ctx.fixture(rel), content])`; save changed pages and close them with `pages.closePage` so each test is independently selectable. Tests share no state, each test closes the pages it opens, and files it creates go under a per-test folder in `ctx.fixture`, particularly for attach runs. Cross-area helpers live in `tests/helpers/`; area-only shared steps live in `tests/<area>/helpers.mjs` and move to the shared folder only after another area uses them. Declare external tags with `test(name, run, { requires: [...] })`; declare `requires: ["launch"]` when using `ctx.restartApp()` or `ctx.launchSecondInstance(args = [])`. Use `ctx.httpUrl("/route?query=value")` for the loopback HTTP fixture service. Use `ctx.callText` for exact text and `ctx.call` for structured values, `ctx.expect` for assertions, and `ctx.waitFor(pathOrFn, predicate, { timeout })` for asynchronous state. Tests never insert fixed sleeps; `waitFor` polls and retries false predicates, not call errors. Follow the landed pilot for dialog handling. Run the affected area and full suite; inspect only failures.

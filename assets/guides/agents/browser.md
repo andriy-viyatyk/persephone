@@ -55,8 +55,17 @@ use the suggested dialog/landmark ref as `root`, or narrow with `interactive`, `
 type into a field. A frame-rooted snapshot keeps those frame refs usable while the elements remain
 attached.
 
+`interactive: true` keeps interactive nodes and their ancestors; a page with no such nodes can
+produce an empty string. Page DOM reads can be scoped to
+`[data-name="page-slot"][data-page-id="<id>"]`. Popups, menus, and dialogs render outside the
+page slot, so query them from the window root.
+
 Virtualized lists may keep pooled rows attached but hidden; read `innerText` or a snapshot instead
 of `textContent`, which can include hidden rows.
+
+UIKit Input puts `data-name` on its wrapper, so target the editable child (for example,
+`[data-name="search"] input`). UIKit Textarea is a contenteditable `div[data-type="textarea"]`,
+not a native `<textarea>`.
 
 ## Hosts and members
 
@@ -157,9 +166,10 @@ Use trusted click plus keys for custom dropdowns.
 For keys, `pressKey("Control+C")` targets the focused element. Pass `target` to focus a locator by
 trusted click first. `keyDown()` holds a key across calls until `keyUp()` releases it. Ctrl+C/V use
 the real OS clipboard; Persephone does not save or restore its contents.
-On a browser page, keys sent this way reach the web page only. Persephone's own browser shortcuts
-(`Ctrl+=`, `Ctrl+-`, `Ctrl+0`, `Ctrl+R`, `F5`, `F12`) do not run; use `reload()`, the toolbar
-controls through `window.screen`, or the page zoom popover instead.
+On a browser page, `pressKey` reaches the focused web page and Persephone's browser shortcuts,
+including zoom, reload, and developer tools.
+`Ctrl+L` is BrowserEditor-root only, so focus Persephone chrome (for example, a toolbar control)
+before sending it. `Ctrl+F` also has a global route while this Browser page is focused.
 
 ### Autocomplete fields and chips (mail recipients, tags, search suggestions)
 
@@ -187,8 +197,8 @@ await editor.snapshot({ root: { ref: "e13552" }, interactive: true }); // the fi
 | `waitFor` / `waitForSelector` | 10 seconds; selector states: attached, detached, visible, hidden. |
 | `navigateAndWait`, `reload`, `back`, `forward`, `waitForNavigation`, `waitForURL` | `load`; `waitUntil` also accepts `domcontentloaded` or `networkidle`. |
 
-`waitFor` also accepts `text`, `textGone`, or `time`. Waits poll on 100 ms timers. Explicit MCP
-wait deadlines add five seconds to the request deadline and cap it at 600,000 ms. Navigation results
+Pass exactly one of `selector`, `text`, `textGone`, or `time` to `waitFor`. Waits poll on 100 ms
+timers. Explicit MCP wait deadlines add five seconds to the request deadline and cap it at 600,000 ms. Navigation results
 are `{ url, status }`: HTTP errors resolve with their status; main-frame network failures reject.
 `waitForURL` accepts exact strings or regular expressions.
 
@@ -261,7 +271,8 @@ After restore, tab metadata is available without loading background tabs. Guest 
 
 `editor.popups` lists live real windows opened by this page, including nested windows. Each entry
 has a runtime-only `id`, immediate `openerId`, `url`, `title`, and `loading`; tab dispositions still
-appear as ordinary tabs. Use popup IDs with content methods' `{ tabId }` option, including
+appear as ordinary tabs. A pop-up request handled by this browser page opens as a new active inner
+tab in that page. Use popup IDs with content methods' `{ tabId }` option, including
 `evaluate()`, input, screenshots, and navigation waits. An OAuth page can return its result through
 `window.opener.postMessage`; wait on the popup with `waitForURL()` or `waitForNavigation()` while
 the opener receives the message. `closePopup(id)` runs the popup's `beforeunload` handler and

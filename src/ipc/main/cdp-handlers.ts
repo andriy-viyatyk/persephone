@@ -1,5 +1,6 @@
-import { BrowserChannel, type PageDialogPolicy, type BrowserResponsePattern, type BrowserResponseWaitOptions } from "../browser-ipc";
-import { cdpService } from "../../main/cdp-service";
+import { BrowserChannel, type BrowserKeyboardInputEvent, type PageDialogPolicy, type BrowserResponsePattern, type BrowserResponseWaitOptions } from "../browser-ipc";
+import { cdpService, resolveTarget } from "../../main/cdp-service";
+import { sendElectronKeyboardInput } from "../../main/cdp-key-input";
 import { guardedIpcHandle } from "../../main/ipc-sender-guard";
 
 export function initCdpHandlers(): void {
@@ -18,4 +19,12 @@ export function initCdpHandlers(): void {
     guardedIpcHandle(BrowserChannel.cdpAttach, (event, key: string, options: Parameters<typeof cdpService.cdpAttach>[2]) => cdpService.cdpAttach(event, key, options));
     guardedIpcHandle(BrowserChannel.cdpDetach, (_event, key: string) => cdpService.cdpDetach(key));
     guardedIpcHandle(BrowserChannel.cdpSend, (event, key: string, method: string, params?: object, sessionId?: string) => cdpService.cdpSend(event, key, method, params, sessionId));
+    guardedIpcHandle(BrowserChannel.cdpSendInputEvent, (event, key: string, input: BrowserKeyboardInputEvent) => {
+        const target = resolveTarget(key, event.sender);
+        if (target.kind === "board") return false;
+        const webContents = target.webContents;
+        if (!webContents) throw new Error("WebContents not found or destroyed");
+        sendElectronKeyboardInput(webContents, input);
+        return true;
+    });
 }

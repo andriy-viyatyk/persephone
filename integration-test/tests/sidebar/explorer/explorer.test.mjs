@@ -26,6 +26,7 @@ export default [
             ctx.expect(initialItems.some((item) => item.title === "nested" && item.isDirectory)).toBe(true);
 
             const initialSnapshot = await ctx.callText("window.screen.snapshot", [{ interactive: true }]);
+            ctx.expect(initialSnapshot).toContain('treeitem "explorer-navigation"');
             ctx.expect(initialSnapshot).toContain('treeitem "top.txt"');
             ctx.expect(initialSnapshot.includes('treeitem "inside.txt"')).toBe(false);
 

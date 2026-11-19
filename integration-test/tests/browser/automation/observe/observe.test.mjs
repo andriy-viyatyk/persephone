@@ -223,7 +223,7 @@ export default [
                 (value) => value.dialogs.some((dialog) => dialog.type === "confirm" && dialog.disposition === "dismissed"),
             );
             ctx.expect(state.policy).toBe("dismiss");
-            ctx.expect(await page.editor.evaluate("document.querySelector('#result').textContent")).toBe(false);
+            ctx.expect(await page.editor.evaluate("document.querySelector('#result').textContent")).toBe("false");
         } finally {
             await closeBrowserPage(ctx, page);
         }
@@ -234,11 +234,11 @@ export default [
         try {
             await page.editor.dialogs({ policy: "accept" });
             await page.editor.click("#confirm");
-            ctx.expect(await page.editor.evaluate("document.querySelector('#result').textContent")).toBe(true);
+            ctx.expect(await page.editor.evaluate("document.querySelector('#result').textContent")).toBe("true");
 
             await page.editor.dialogs({ policy: "dismiss" });
             await page.editor.click("#confirm");
-            ctx.expect(await page.editor.evaluate("document.querySelector('#result').textContent")).toBe(false);
+            ctx.expect(await page.editor.evaluate("document.querySelector('#result').textContent")).toBe("false");
 
             const policyState = await page.editor.dialogs({ policy: "manual" });
             ctx.expect(policyState.policy).toBe("manual");
@@ -251,7 +251,7 @@ export default [
             );
             await page.editor.handleDialog(true);
             await click;
-            ctx.expect(await page.editor.evaluate("document.querySelector('#result').textContent")).toBe(true);
+            ctx.expect(await page.editor.evaluate("document.querySelector('#result').textContent")).toBe("true");
             const finalState = await page.editor.dialogs();
             ctx.expect(finalState.dialogs.filter((dialog) => dialog.type === "confirm").at(-1).disposition).toBe("accepted");
         } finally {

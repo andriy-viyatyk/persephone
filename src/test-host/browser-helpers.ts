@@ -33,7 +33,7 @@ export async function openBrowser(
     const app = context.app as Record<string, unknown>;
     const pages = app["pages"] as Record<string, unknown>;
     const page = pages[created.id] as Record<string, unknown>;
-    return context.handle(page["editor"]);
+    return context.handle(page["editor"], { pageId: created.id });
 }
 
 export async function beginPageOwnership(client: McpClient, log: LogHostEvent): Promise<OwnershipSnapshot> {

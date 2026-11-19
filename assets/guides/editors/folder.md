@@ -35,6 +35,7 @@ boards](../boards/custom-editors.md#direct-folder-boards).
 ### User-facing label → `elements` name
 
 - Breadcrumb → `category-breadcrumb`
+- View mode → `folder-view-mode`
 - Page navigation and Editor switch → no entry: shell-owned controls
 - Category tree rows, file rows, and transient selection actions → no entry: repeated content
 
@@ -84,8 +85,8 @@ read-only.
 ## Agent API
 
 After narrowing `page.editor.id` to `category-view`, the `FolderViewEditor` facade exposes folder
-state. The verified element is `category-breadcrumb`; the file list and transient selection actions
-are not in the current static facade inventory.
+state. The verified elements are `category-breadcrumb` and `folder-view-mode`; the file list and
+transient selection actions are not in the current static facade inventory.
 
 ## Errors and limits
 

@@ -385,7 +385,7 @@ runtime.setActions([{ id: "valid", label: "Valid", run: () => ({ kind: "message"
             await ctx.waitFor((activeContext) => activeContext.app.pages[HUB_ID].editor.activeTab, (tab) => tab === "site-extensions");
             await activatePage(ctx, HUB_ID);
             await ctx.app.window.screen.click(`[data-name="site-extension-enabled-${extension.id}"]`);
-            await ctx.waitFor((activeContext) => activeContext.app.window.screen.evaluate(`() => document.querySelector('[data-name="site-extension-enabled-${extension.id}"]')?.getAttribute("aria-checked")`), (checked) => String(checked) === "false"); // window.screen has no getAttribute (browser pages only)
+            await ctx.waitFor((activeContext) => activeContext.app.window.screen.evaluate(`() => document.querySelector('[data-name="site-extension-enabled-${extension.id}"]')?.getAttribute("aria-checked")`), (checked) => checked === "false"); // window.screen has no getAttribute (browser pages only)
             await ctx.waitFor((activeContext) => activeContext.app.siteExtensions.list(), (items) => items.find((item) => item.id === extension.id)?.trustState === "disabled");
             await activatePage(ctx, page.id);
             await ctx.app.pages[page.id].editor.reload();

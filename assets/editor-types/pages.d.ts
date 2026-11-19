@@ -60,6 +60,9 @@ export interface IPageCollection {
      */
     openFile(filePath: string): Promise<IPage | undefined>;
 
+    /** Open a directory through the same editor routing used by an Explorer row. */
+    openFolder(folderPath: string): Promise<IPage | undefined>;
+
     /** Close a page by ID. Returns true if closed, false if cancelled (e.g. unsaved changes). */
     closePage(pageId: string): Promise<boolean>;
 

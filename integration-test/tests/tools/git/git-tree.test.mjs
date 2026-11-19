@@ -46,12 +46,12 @@ async function openGitTree(ctx, repository, openedPageIds) {
             interactive: true,
             root: '[data-type="tree-provider-view"]',
         }),
-        (snapshot) => snapshot.match(/treeitem "(?:Expand )?\.git"/u) && /\[ref=e\d+\]/u.test(snapshot),
+        (snapshot) => snapshot.match(/treeitem "\.git"/u) && /\[ref=e\d+\]/u.test(snapshot),
         { timeout: 15000 },
     );
     const gitRow = explorerSnapshot
         .split("\n")
-        .find((line) => line.match(/treeitem "(?:Expand )?\.git"/u) && /\[ref=e\d+\]/u.test(line));
+        .find((line) => line.match(/treeitem "\.git"/u) && /\[ref=e\d+\]/u.test(line));
     const gitRowRef = gitRow?.match(/\[ref=(e\d+)\]/u)?.[1];
     ctx.expect(Boolean(gitRowRef)).toBe(true);
     await ctx.app.window.screen.click({ ref: gitRowRef });
@@ -97,6 +97,25 @@ async function restoreGitAndClose(ctx, openedPageIds, previousGitEnabled) {
 }
 
 export default [
+    test("pages.openFolder routes a repository .git folder to Git Tree", async (ctx) => {
+        const previousGitEnabled = await ctx.app.settings.get("git.enabled");
+        const openedPageIds = new Set();
+        try {
+            const repository = await buildRepository(ctx, "direct-folder");
+            if (!previousGitEnabled) await ctx.app.settings.set("git.enabled", true);
+            const page = await ctx.app.pages.openFolder(path.join(repository, ".git"));
+            openedPageIds.add(page.id);
+            await ctx.waitFor(
+                (activeContext) => activeContext.app.pages[page.id].editor.id,
+                (editorId) => editorId === "git-tree",
+                { timeout: 15000 },
+            );
+            ctx.expect(await ctx.app.pages[page.id].editor.repoRoot).toBe(repository);
+        } finally {
+            await restoreGitAndClose(ctx, openedPageIds, previousGitEnabled);
+        }
+    }, { requires: ["git"] }),
+
     test("Git Tree lists fixture history and shows the selected commit and its diff", async (ctx) => {
         const repository = ctx.fixture("us-2074/history");
         const previousGitEnabled = await ctx.app.settings.get("git.enabled");

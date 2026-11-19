@@ -513,8 +513,14 @@ handshake deadline, and teardown on untrust and application quit. Its sanitized 
 the resolved main-process UI locale as `PERSEPHONE_LOCALE`, set at spawn and updated in each running
 host in place through the `locale-changed` parent control message when that effective locale changes.
 The host consumes this control message by updating `process.env.PERSEPHONE_LOCALE`; it is not sent
-to service callbacks and does not restart the service. The supervisor delegates
-service state and process lifecycle to `src/main/module-service/process.ts`, trust indexing to
+to service callbacks and does not restart the service. The shared
+`src/main/board-process-environment.ts` funnel also adds `PERSEPHONE_BOARD_DATA` to board service
+and board-launched process environments. The default profile uses
+`%LOCALAPPDATA%\Persephone\board-data\<id>`; named profiles and test instances use
+`<userData>\board-data\<id>`. The host does not create the folder, and named profiles do not
+migrate existing data automatically. Boards without the variable use the legacy LocalAppData path.
+This is a process environment contract and changes no bridge protocol or version. The supervisor
+delegates service state and process lifecycle to `src/main/module-service/process.ts`, trust indexing to
 `src/main/module-service/trust-directory.ts`, channel delivery to
 `src/main/module-service/channel-broker.ts`, and settings, MCP endpoint, and capability
 requests to their adapters under `src/main/module-service/`. The facade keeps the public supervisor API.

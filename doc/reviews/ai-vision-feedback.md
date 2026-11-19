@@ -1595,6 +1595,130 @@ Append only. Add new entries at the end and never rewrite old ones. Do not inclu
 - **How it was resolved:** The capabilities agent tree now appends `[code: <code>]` to the message, and the test host sets `error.code` from it; the two EPIC-197 speech tests now assert `rejected`. Other namespaces still lose codes.
 - **Suggested improvement:** Carry `code` in the `ai-vision` resolver's error envelope so every namespace keeps it.
 
+### 2026-11-18 · EPIC-199 / US-2121 · Codex Luna (plan)
+- **Area:** other (feedback log accuracy)
+- **What the agent expected:** That the browser translation popover has no `data-name`, as the EPIC-198 / US-2116 entry says.
+- **What actually happened:** The popover root already carries `data-name="translation-source-popover"` and its language select `translation-source-language`. It is portaled to the window root, so it is outside the page scope that `BROWSER_ELEMENTS` uses.
+- **How it was resolved:** Guide corrected: `editors/browser/layout.md` names both selectors for `window.screen` use.
+- **Suggested improvement:** When a feedback entry names a missing `data-name`, check the portaled overlay layer as well as the page slot.
+
+### 2026-11-18 · EPIC-199 / US-2121 · Codex Luna (implementation)
+- **Area:** screen
+- **What the agent expected:** A `window.screen.getAttribute(selector, name)` member, as on the browser editor.
+- **What actually happened:** `"getAttribute" is not a member of WindowScreen`. The app window reads attributes through `window.screen.evaluate`.
+- **How it was resolved:** Guess corrected in the test.
+- **Suggested improvement:** None beyond the `$help` hint, which already lists the real members.
+
+### 2026-11-18 · EPIC-199 / US-2121 · Codex Luna (implementation)
+- **Area:** screen
+- **What the agent expected:** That a UIKit `IconButton`'s `title` is a DOM `title` attribute, and that the browser Home button is titled "Home".
+- **What actually happened:** `IconButtonView` renders `title` as a tooltip, so the attribute is absent. Home is titled "Go to {url}" when the tab has a home URL, which the first opened page sets.
+- **How it was resolved:** Test reads the snapshot name, which US-2121 now derives from `title` (`aria-label`).
+- **Suggested improvement:** Assert accessible names from the snapshot, not DOM `title` attributes.
+
+### 2026-11-18 · EPIC-199 / US-2121 · Codex Luna (implementation)
+- **Area:** screen
+- **What the agent expected:** That Folder View list rows are tree rows, so the US-2121 tree-row naming would name them `treeitem "<name>"`.
+- **What actually happened:** Folder View rows are CategoryView `generic` rows named `"<icon> <name>"` (for example `generic "📁 project"`); only UIKit Tree rows are `treeitem`s. Three Folder View tests timed out.
+- **How it was resolved:** Test matcher restored for generic rows.
+- **Suggested improvement:** `editors/folder.md` could say which rows are treeitems and which are generic rows.
+
+### 2026-11-18 · EPIC-199 / US-2121 · Claude (run)
+- **Area:** screen
+- **What the agent expected:** Tree rows named with their count, as before (`treeitem "Stylesheets 1"` in a Link Collection).
+- **What actually happened:** After US-2121 a tree row is named by its label only; the count is trailing content and no longer part of the name.
+- **How it was resolved:** Decision recorded in EPIC-199; the HTML test reads the row's trailing text for the count.
+- **Suggested improvement:** Mention in the screens guide that tree row counts and actions are trailing content, read from the DOM.
+
+### 2026-11-18 · EPIC-199 / US-2122 · Codex Luna (plan)
+- **Area:** guide agents/index, agents/pages
+- **What the agent expected:** The guides to match the call results.
+- **What actually happened:** `agents/index.md` implied `boards.openBoard` returns a page id (it resolves with no value), and `agents/pages.md` showed an object result for `openUrlInBrowserTab` (it returns the page-id string).
+- **How it was resolved:** Guides corrected in US-2122.
+
+### 2026-11-18 · EPIC-199 / US-2123 · Codex Luna (implementation)
+- **Area:** call path (voice typing)
+- **What the agent expected:** That pressing the voice-typing shortcut twice in a row (start, stop) inserts the transcript.
+- **What actually happened:** Voice typing inserts committed segments live while recording; stopping straight after the start had captured no audio, so nothing was inserted.
+- **How it was resolved:** Test waits for the text while recording, then presses the shortcut to stop.
+- **Suggested improvement:** Say in the voice-typing guide that text arrives during recording, not on stop.
+
+### 2026-11-18 · EPIC-199 / US-2124 · Codex Luna (plan)
+- **Area:** guide agents/pages, agents/boards/folder-editor
+- **What the agent expected:** A call that opens a folder the way an Explorer row does.
+- **What actually happened:** None existed, and `FileTreeProvider.getNavigationUrlByHref` routes a directory as a generic category, unlike an Explorer row.
+- **How it was resolved:** US-2124 added `pages.openFolder(path)` on a shared `FileTreeProvider.getFolderNavigationUrl` helper.
+
+### 2026-11-18 · EPIC-199 / US-2124 · Claude (run)
+- **Area:** call path
+- **What the agent expected:** `pages.openFolder` to return the page for every route.
+- **What actually happened:** It returned `null` for a `.git` folder and a board folder claim. The Layer 3 open handler did not report the page it opened through `data.openedPageId`; only the folder-page action did.
+- **How it was resolved:** Product bug fixed in `src/renderer/content/open-handler.ts`.
+
+### 2026-11-18 · EPIC-199 / US-2126 · Codex Luna (plan)
+- **Area:** guide agents/boards
+- **What the agent expected:** The epic's shorthand: bundled boards are never in `boards.list()`, and a missing `minBridgeVersion` drops capability declarations.
+- **What actually happened:** A bundled board is listed while it has an open page, and the `minBridgeVersion` rule applies to object-form `permissions` (it must be 1.30.0 or newer).
+- **How it was resolved:** Guides state the source-supported rules.
+
+### 2026-11-19 · EPIC-199 / US-2125 · Codex Luna (implementation)
+- **Area:** call path (test host)
+- **What the agent expected:** That its audit had found every test relying on the old `JSON.parse` coercion of string results.
+- **What actually happened:** The full suite found six more: DOM `textContent` and attribute reads compared with `true` / `false` or a number (`observe`, `temporary-site-extensions`, `tabs`, `image`, `aivision-explorer`).
+- **How it was resolved:** Tests now assert the exact strings.
+- **Suggested improvement:** `web-app-tests.md` now says strings stay strings; grep for `toBe(true|false|<number>)` on DOM reads when changing value handling.
+
+### 2026-11-19 · EPIC-199 / US-2125 · Codex Luna (implementation)
+- **Area:** call path, app object
+- **What the agent expected:** That a script could set `page.data.x` and a call could read `pages[id].data.x`; and that `ctx.waitFor` on `dialogs[0].title` would retry until a dialog opened.
+- **What actually happened:** The value never appeared over `call`; and path polling stops on the first call error (`No item 0 in "dialogs"`), because `waitFor` retries false predicates, not errors.
+- **How it was resolved:** The test reads `pages[id].content` and `pinned`; dialog waits poll a path that exists before the dialog opens.
+- **Suggested improvement:** Say in `web-app-tests.md` that a polled path must resolve before the state arrives.
+
+### 2026-11-19 · EPIC-199 / US-2123 · Claude (run)
+- **Area:** browser
+- **What the agent expected:** `type()` on a contenteditable to replace its text after the US-2123 key routing change.
+- **What actually happened:** It failed once in the full suite: `type()` selects with Ctrl+A, which now takes the Electron input route, and that route is not ordered with the CDP text insertion that follows.
+- **How it was resolved:** Product fix: `forms.ts` selects the editing host's content in the page instead of pressing Ctrl+A.
+- **Suggested improvement:** Agents mixing a Ctrl/Alt shortcut with `type()` straight after should wait for the shortcut's effect first.
+
+### 2026-11-19 · EPIC-200 / US-2128 · Codex Luna (plan)
+- **Area:** board guide audio-player / $help
+- **What the agent expected:** The Audio Player's `CLAUDE.md` and model summary to say when `editor.app` exists.
+- **What actually happened:** Neither said that a plain audio file opened directly runs in light mode, which never creates the model; the plan had to find it in `app.js`.
+- **How it was resolved:** Doc gap fixed in US-2128 (board `CLAUDE.md` and the model summary/help in all 18 packs).
+
+### 2026-11-19 · EPIC-200 / US-2129 · Codex Luna (plan)
+- **Area:** board guide powerpoint-viewer
+- **What the agent expected:** The board notes to say where a parse failure is reported.
+- **What actually happened:** `CLAUDE.md` described an overlay and a notification, but the vendored parser swallowed required-part errors, so a broken deck showed "no slides" with nothing in the console or the model.
+- **How it was resolved:** Product bug fixed in US-2129 (parser rethrows, `editor.app.error`, console warning, docs updated).
+
+### 2026-11-19 · EPIC-200 / US-2130 · Codex Luna (plan)
+- **Area:** board guides pdf-viewer, notebook, aivision-explorer, wake-word, agent-log-viewer
+- **What the agent expected:** Board author notes that match the source.
+- **What actually happened:** It confirmed the five epic rows and found two more stale pdf-viewer claims (a built-in PDF editor that no longer exists, `minAppVersion` 4.0.18 instead of 5.0.10).
+- **How it was resolved:** Doc fixes in US-2130.
+
+### 2026-11-19 · EPIC-200 / US-2128 · Claude (run)
+- **Area:** screen / board automation
+- **What the agent expected:** `editor.click('[data-name="next-track"]')` to click the Audio Player's Next button, as the earlier Previous click did.
+- **What actually happened:** The transport buttons are hidden with `pointer-events: none` until the transport is hovered, so the click failed with "Element does not receive pointer events; covered by <div.transport>". With 3-second WAV fixtures the first track also ended and auto-advanced during the test, so the next run saw "Element is disabled" instead.
+- **How it was resolved:** Test hovers `.transport` before clicking, as a user would, and uses 30-second fixtures.
+- **Suggested improvement:** When the hit target is an ancestor whose `:hover` would reveal the element, say so in the click error ("hover the ancestor first"), or note hover-revealed controls in `guides/agents/web-app-tests.md`.
+
+### 2026-11-19 · EPIC-200 / US-2131 · Codex Luna (plan)
+- **Area:** board guide gem-keep
+- **What the agent expected:** A Gem Keep model to document, since the epic lists a Gem Keep convention among the model conventions.
+- **What actually happened:** Gem Keep publishes no `editor.app`; its state stays inside the game closure.
+- **How it was resolved:** The plan adds a mounted agent guide for the starting-gold rule and marks the board as having no model in the coverage table.
+
+### 2026-11-19 · EPIC-200 / US-2131 · Codex Luna (implementation)
+- **Area:** board guide sqlite-viewer
+- **What the agent expected:** The planned SQLite result examples to cover every method from the guide alone.
+- **What actually happened:** `getView()` also reports `sql` and `resultRowCount`, and the CSV and Markdown exports include a `Row` column; neither was in the guide, so the plan's examples had to be corrected from `sqlite-aivision.js`.
+- **How it was resolved:** Doc gap fixed in US-2131 (example results for every method).
+
 ## Summary of themes
 
 Written 2026-11-18, when the UI test roadmap closed (EPIC-187 to EPIC-198, about 225 entries). Counts are rough: an
@@ -1613,3 +1737,36 @@ entry can touch more than one theme.
 | Main-process shortcuts unreachable from `pressKey` | 5 | Deliver key presses through `webContents.sendInputEvent` so `before-input-event` sees them. |
 | Display text guessed from message keys or fallbacks | 4 | Assert strings from `src/shared/i18n/en/` or the board's `lang/en.json`, and read what actually reaches the toast. |
 | Error codes lost over `call` | 3 | Carry `code` in the `ai-vision` resolver envelope for every namespace (done for `capabilities[...]` in US-2120). |
+
+### 2026-11-19 · EPIC-201 / US-2136 · Codex Luna (implementation)
+- **Area:** other (integration-test `ctx.expect`)
+- **What the agent expected:** A Jest-style `.not` modifier, so `ctx.expect(path).not.toContain("\npm\\")` asserts absence.
+- **What actually happened:** `ctx.expect` has no `.not` (`src/test-host/context.ts:23`); the call threw "Cannot read properties of undefined (reading 'toContain')" when the suite ran.
+- **How it was resolved:** Guess corrected by Claude: `ctx.expect(path.includes("\npm\\")).toBe(false)`.
+- **Suggested improvement:** List the exact matcher set in `guides/agents/web-app-tests.md` and say there is no `.not`; or add `not` to the test host.
+
+### 2026-11-19 · EPIC-201 / US-2136 · Codex Luna (implementation)
+- **Area:** board bridge (`persephone.execute`)
+- **What the agent expected:** `persephone.execute("cmd.exe /d /c set")` to print the child environment, as it does from Node's `spawn(..., { shell: true })`.
+- **What actually happened:** Inside a board it returned empty stdout with exit code 0, while `execute("set")` and `execute("echo hi")` printed normally. A nested `cmd.exe /c` under the runner's shell loses its output.
+- **How it was resolved:** Test changed to `execute("set")`. The nested-cmd behavior is still open (not investigated).
+- **Suggested improvement:** Note in the bridge guide that `execute()` already runs through `cmd.exe`, so commands should not wrap themselves in another `cmd.exe /c`.
+
+### 2026-11-19 · EPIC-201 / US-2133 · Codex Luna (plan)
+- **Area:** guide web-app-tests / published-board tests
+- **What the agent expected:** That the runner's `network.log` could prove a published board made no network request on open.
+- **What actually happened:** `network.log` records the app's browser-session requests only; a board service's Node requests are invisible to it, so "opens offline" cannot be asserted from the log.
+- **How it was resolved:** The Translate test asserts an observable side effect instead (the registry cache file is never written).
+- **Suggested improvement:** Say in `doc/standards/integration-tests.md` what `network.log` covers and that service traffic needs a board-side signal.
+
+### 2026-11-19 · EPIC-201 / US-2135 · Codex Luna (plan)
+- **Area:** published board model (torrent-viewer)
+- **What the agent expected:** An `editor.app` model to read the torrent's state and whether it had joined the swarm.
+- **What actually happened:** Torrent Viewer published no AiVision model and had no agent guide.
+- **How it was resolved:** US-2135 added a model with `mode`, `online` and `peerCount`; the test reads it.
+
+### 2026-11-19 · EPIC-201 / US-2136 · Codex Luna (plan)
+- **Area:** published board docs (claude-agent)
+- **What the agent expected:** A mounted agent guide for Agent Chat, as other published boards have.
+- **What actually happened:** Agent Chat had none; its README and CLAUDE.md were the only description of the `editor.app` model.
+- **How it was resolved:** US-2133 added `guides/index.md` and `guides/agent.md` with one example result per model method.

@@ -92,6 +92,9 @@ export interface IPage {
 
     /** Run this page's content as a script; only javascript/typescript pages are valid. */
     runScript(): Promise<string>;
+
+    /** Save this page through its content host; resolves false if Save As is cancelled. */
+    save(): Promise<boolean>;
 }
 
 /**

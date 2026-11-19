@@ -41,6 +41,7 @@ export function legacyBoardsDeprecationToastForUi(boardNames: readonly string[])
 // Agent-only durable note. Keep this source literal English and out of the UI catalog.
 export const LEGACY_BOARD_AGENT_DEPRECATION_NOTE = "This board's permissions are deprecated because its manifest omits the permissions object or uses the historical array form. Add an object-form permissions block to board-manifest.json.";
 export const FULL_ACCESS_DETAIL = englishMessage("board.fullAccessDetail");
+export const FULL_ACCESS_LABEL = englishMessage("board.fullAccess");
 
 const FLAG_COPY: Record<keyof BoardPermissionFlags, MessageKey | ""> = {
     execute: "board.permissionExecute",
@@ -63,6 +64,7 @@ export interface BoardPermissionLine {
     kind: string;
     /** English identity/display text retained for agent-facing consumers. */
     text: string;
+    detail?: string;
     textKey: MessageKey;
     textParams?: Record<string, string | number>;
     detailKey?: MessageKey;
@@ -72,13 +74,23 @@ export interface BoardPermissionLine {
 type FlagKey = keyof BoardPermissionFlags;
 type FlagValue = BoardPermissionFlags[FlagKey];
 
-function line(kind: string, textKey: MessageKey, textParams?: Record<string, string | number>, fullAccess = false): BoardPermissionLine {
+function line(
+    kind: string,
+    textKey: MessageKey,
+    textParams?: Record<string, string | number>,
+    fullAccess = false,
+    detailKey?: MessageKey,
+): BoardPermissionLine {
+    const resolvedDetailKey = detailKey ?? (fullAccess ? "board.fullAccessDetail" : undefined);
     return {
         kind,
         textKey,
         ...(textParams ? { textParams } : {}),
         text: englishMessage(textKey, textParams as never),
-        ...(fullAccess ? { detailKey: "board.fullAccessDetail" as const } : {}),
+        ...(resolvedDetailKey ? {
+            detailKey: resolvedDetailKey,
+            detail: englishMessage(resolvedDetailKey),
+        } : {}),
         fullAccess,
     };
 }
@@ -92,13 +104,15 @@ function flagLine(key: FlagKey, value: Exclude<FlagValue, false>): BoardPermissi
         textKey = value === "internet" ? "board.permissionNetworkInternet" : "board.permissionNetworkFull";
     }
     if (!textKey) return line(`${key}:${value}`, "board.permissionNone");
+    const fullAccess = key === "execute" || key === "service" || key === "appScripting"
+        || (key === "fileSystem" && value === "full")
+        || (key === "network" && value === "full");
     return line(
         `${key}:${value}`,
         textKey,
         undefined,
-        key === "execute" || key === "service" || key === "appScripting"
-            || (key === "fileSystem" && value === "full")
-            || (key === "network" && value === "full"),
+        fullAccess,
+        key === "execute" || key === "service" ? "board.permissionProcessAccessDetail" : undefined,
     );
 }
 
@@ -124,6 +138,7 @@ export function boardServiceUsesLine(uses: readonly { id: string; version: numbe
         textParams,
         text: englishMessage("board.serviceUsesGrant", textParams),
         detailKey: "board.serviceUsesExplanation",
+        detail: englishMessage("board.serviceUsesExplanation"),
         fullAccess: true,
     };
 }

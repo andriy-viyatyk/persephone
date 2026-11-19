@@ -93,7 +93,8 @@ Evidence: `MenuBarView.ts:89-143,177-205,224-245,455-467` and `MenuBar.css:2-29`
 
 Right-clicking a pinned folder offers Open in New Tab, Show in File Explorer, Open Terminal here,
 and Remove. The folder's label is not the same thing as its internal folder ID when using the
-MCP `window.menuBar` API.
+MCP `window.menuBar` API. Call the Open Terminal here context-menu action by its stable id,
+`open-terminal-here`.
 
 ## Built-in categories
 

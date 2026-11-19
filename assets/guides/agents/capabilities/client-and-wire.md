@@ -52,6 +52,24 @@ declare const persephone: { getCapability(id: string, options?: CapabilityOption
 // Persephone renderer: app.capabilities.get(id, options?) has the same signature.
 ```
 
+In a script, resolve a proxy and call one of its declared methods:
+
+```javascript
+const capability = await app.capabilities.get("speech.synthesize");
+await capability.speak("Hello");
+```
+
+The MCP call tree exposes each capability provider as `capabilities["<id>"]`, with declared
+methods and a `providers` collection:
+
+```text
+call capabilities["speech.synthesize"].speak("Hello")
+call capabilities["speech.synthesize"].providers
+```
+
+`capabilities.invoke` is available in the script API, not the MCP call tree. Process handles
+(`proc`) are script-only and do not cross the `call` seam.
+
 `pageId` is present when a page was opened or reused; direct platform handlers may omit it. For a bound `open`, a payload incompatible with its bound filters rejects `no-handler`. A caller may discard the proxy and resolve again with different filters. Open method declarations have exactly one payload descriptor. Services register `call` handlers with `persephone.capabilities.handle(id, method, handler)`; registration must match a declared `call`, is unique per id/method, and returns an unsubscribe function. Register all `handle()` handlers synchronously during service startup, like `onChannel`, before awaiting `getCapability()` or other asynchronous initialization. After startup completes, a `capability-call` for an unregistered method rejects `no-handler`; the host does not wait for a late registration. A registered handler may call `getCapability()` when it runs. The handler receives `(args, ctx)`, where `args` is the positional JSON array and `ctx` has `signal: AbortSignal` and `caller: { id: string, name: string, kind: "board-page" | "board-service" | "platform" | "agent" }`. Main supplies this metadata rather than accepting it from the request payload. For board callers, `caller.id` is the manifest's `author/name` when present; it is author-chosen and may be shared by two trusted boards, so providers must not authorize by this id alone.
 
 ## Routing, lifecycle and wire

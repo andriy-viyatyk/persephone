@@ -83,8 +83,7 @@ export default [
             ctx.expect(editedItem.tag).toBe("later");
 
             await ctx.waitFor(`pages[${JSON.stringify(pageId)}].modified`, (modified) => modified === true);
-            await ctx.app.pages[pageId].editorSwitches.switchTo("monaco");
-            await ctx.app.pages[pageId].editor.saveFile();
+            ctx.expect(await ctx.app.pages[pageId].save()).toBe(true);
             await ctx.waitFor(`pages[${JSON.stringify(pageId)}].modified`, (modified) => modified === false);
 
             const saved = JSON.parse(await ctx.callText("fs.read", [handle.file]));

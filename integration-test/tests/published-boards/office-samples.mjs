@@ -167,3 +167,15 @@ export async function writePowerPointSample(ctx) {
     };
     return writeSample(ctx, "powerpoint-viewer", "sample.pptx", entries);
 }
+
+export async function writeBrokenPowerPointSample(ctx) {
+    const presentationType = "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml";
+    const entries = {
+        "[Content_Types].xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/ppt/presentation.xml" ContentType="${presentationType}"/></Types>`,
+        "_rels/.rels": ROOT_RELS.replace("{{relationships}}", `<Relationship Id="rId1" Type="${OFFICE_REL_NS}/officeDocument" Target="ppt/presentation.xml"/>`),
+        "ppt/presentation.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:p="${PRESENTATION_NS}"><p:sldIdLst>`,
+    };
+    return writeSample(ctx, "powerpoint-viewer", "broken.pptx", entries);
+}

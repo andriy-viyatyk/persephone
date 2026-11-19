@@ -28,7 +28,12 @@ async function selectEditableContent(
             return document.activeElement === this || (!!selection?.anchorNode && this.contains(selection.anchorNode));
         `);
         if (!ownsSelection) throw new Error("The contenteditable element does not own focus or the current selection.");
-        await pressKey(cdp, "Control+a", { sessionId });
+        // Select the editing host's content in the page, as Ctrl+A does there. A Ctrl+A key press
+        // now takes the Electron input route (US-2123), which is not ordered with the CDP text
+        // insertion that follows, so the replacement could land before the selection.
+        await runOnLocator<void>(cdp, locator, nth, `
+            window.getSelection()?.selectAllChildren(this);
+        `);
     } else {
         // Select on the located element itself, in its own frame. `document.activeElement` in the
         // top document is the <iframe> for a frame ref, so selecting it there selected nothing and

@@ -36,6 +36,8 @@ export default [
         let handle;
         try {
             handle = await openFixture(ctx);
+            const headerElements = await ctx.app.ui.elements;
+            ctx.expect(headerElements.some((element) => element.name === "audio-capture-indicator")).toBe(true);
             const id = await handle.app.openCapture({ source: "microphone", processing: "raw" });
             await ctx.waitFor(() => visible(ctx, CAPTURE_INDICATOR), Boolean);
             const devices = await handle.app.devices();

@@ -59,9 +59,7 @@ export async function explorerRowRefs(ctx, names) {
             for (const name of names) {
                 const expectedFolderRow = `treeitem ${JSON.stringify(`Expand 📁 ${name}`)}`;
                 const expectedRow = `treeitem ${JSON.stringify(name)}`;
-                const row = snapshot.split("\n").find((line) => line.includes(expectedRow)
-                    || line.includes(expectedFolderRow)
-                    || (line.includes("treeitem ") && line.includes(name)));
+                const row = snapshot.split("\n").find((line) => line.includes(expectedRow));
                 const ref = row?.match(/\bref=(e\d+)\b/)?.[1] ?? row?.match(/\b(e\d+)\s+treeitem\b/)?.[1];
                 if (ref) refs[name] = ref;
             }

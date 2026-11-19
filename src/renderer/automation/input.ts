@@ -5,6 +5,7 @@
  * (Apache 2.0, originally from Puppeteer/Google).
  */
 import type { CdpSession } from "./CdpSession";
+import type { BrowserKeyboardInputEvent } from "../../ipc/browser-ipc";
 
 // ── Key Definitions ─────────────────────────────────────────────────
 
@@ -110,13 +111,14 @@ export const MODIFIER_BITS: Record<string, number> = { Alt: 1, Control: 2, Meta:
 // Keys held by keyDown() until keyUp(), per CDP target. Keyed by the registration key, not the
 // CdpSession object: targets create a fresh CdpSession for every operation, so an object key lost
 // the held Shift/Control between keyDown("Shift") and the next pressKey().
-const heldKeysByTarget = new Map<string, Set<string>>();
+type KeyInputRoute = "cdp" | "electron";
+const heldKeysByTarget = new Map<string, Map<string, KeyInputRoute>>();
 
 function targetKey(cdp: CdpSession, sessionId?: string): string { return `${cdp.registrationKey}|${sessionId ?? ""}`; }
-function heldKeys(cdp: CdpSession, sessionId?: string): Set<string> {
+function heldKeys(cdp: CdpSession, sessionId?: string): Map<string, KeyInputRoute> {
     const key = targetKey(cdp, sessionId);
     let keys = heldKeysByTarget.get(key);
-    if (!keys) { keys = new Set(); heldKeysByTarget.set(key, keys); }
+    if (!keys) { keys = new Map(); heldKeysByTarget.set(key, keys); }
     return keys;
 }
 function releaseHeldKey(cdp: CdpSession, key: string, sessionId?: string): void {
@@ -126,8 +128,52 @@ function releaseHeldKey(cdp: CdpSession, key: string, sessionId?: string): void 
     keys.delete(key);
     if (keys.size === 0) heldKeysByTarget.delete(mapKey);
 }
-function modifierMask(keys: ReadonlySet<string>): number {
-    return [...keys].reduce((mask, key) => mask | (MODIFIER_BITS[key] ?? 0), 0);
+function modifierMask(keys: ReadonlyMap<string, KeyInputRoute>): number {
+    return [...keys.keys()].reduce((mask, key) => mask | (MODIFIER_BITS[key] ?? 0), 0);
+}
+
+function keyInputRoute(key: string, modifiers: number): KeyInputRoute {
+    return Boolean(modifiers & (MODIFIER_BITS.Control | MODIFIER_BITS.Alt | MODIFIER_BITS.Meta))
+        || key === "Control" || key === "Alt" || key === "Meta" || key === "F5" || key === "F12"
+        ? "electron"
+        : "cdp";
+}
+
+function electronKeyboardInputEvent(key: string, type: "keyDown" | "keyUp", modifiers: number): BrowserKeyboardInputEvent {
+    const acceleratorKeys: Record<string, string> = {
+        " ": "Space",
+        Space: "Space",
+        "+": "Plus",
+        ArrowLeft: "Left",
+        ArrowRight: "Right",
+        ArrowUp: "Up",
+        ArrowDown: "Down",
+    };
+    const keyCode = acceleratorKeys[key] ?? (/^[a-z]$/i.test(key) ? key.toUpperCase() : key);
+    const modifierNames = ([
+        [MODIFIER_BITS.Control, "control"],
+        [MODIFIER_BITS.Alt, "alt"],
+        [MODIFIER_BITS.Shift, "shift"],
+        [MODIFIER_BITS.Meta, "meta"],
+    ] as const).filter(([bit]) => (modifiers & bit) !== 0).map(([, name]) => name);
+    return { type, keyCode, modifiers: modifierNames };
+}
+
+async function dispatchKeyEvent(
+    cdp: CdpSession,
+    key: string,
+    type: "keyDown" | "rawKeyDown" | "keyUp",
+    modifiers: number,
+    sessionId: string | undefined,
+    route: KeyInputRoute,
+): Promise<KeyInputRoute> {
+    if (route === "electron") {
+        const electronType = type === "keyUp" ? "keyUp" : "keyDown";
+        const sent = await cdp.sendInputEvent(electronKeyboardInputEvent(key, electronType, modifiers));
+        if (sent) return "electron";
+    }
+    await cdp.send("Input.dispatchKeyEvent", eventParams(key, type, modifiers), sessionId);
+    return "cdp";
 }
 function eventParams(key: string, type: KeyEventType, modifiers: number, shifted = false): CdpKeyEvent {
     const definition = resolveKeyDefinition(key);
@@ -154,11 +200,13 @@ function eventParams(key: string, type: KeyEventType, modifiers: number, shifted
 export async function dispatchKeyDown(cdp: CdpSession, key: string, sessionId?: string): Promise<void> {
     const keys = heldKeys(cdp, sessionId);
     const wasHeld = keys.has(key);
-    keys.add(key);
+    const route = keyInputRoute(key, modifierMask(keys) | (MODIFIER_BITS[key] ?? 0));
+    keys.set(key, route);
     try {
         const modifiers = modifierMask(keys);
         const type = resolveKeyDefinition(key).text !== undefined ? "keyDown" : "rawKeyDown";
-        await cdp.send("Input.dispatchKeyEvent", eventParams(key, type, modifiers), sessionId);
+        const actualRoute = await dispatchKeyEvent(cdp, key, type, modifiers, sessionId, route);
+        keys.set(key, actualRoute);
     } catch (error: unknown) {
         if (!wasHeld) keys.delete(key);
         throw error;
@@ -168,16 +216,22 @@ export async function dispatchKeyDown(cdp: CdpSession, key: string, sessionId?: 
 export async function dispatchKeyUp(cdp: CdpSession, key: string, sessionId?: string): Promise<void> {
     const keys = heldKeys(cdp, sessionId);
     const modifiers = modifierMask(keys);
-    await cdp.send("Input.dispatchKeyEvent", eventParams(key, "keyUp", modifiers), sessionId);
-    releaseHeldKey(cdp, key, sessionId);
+    const route = keys.get(key) ?? keyInputRoute(key, modifiers);
+    try {
+        await dispatchKeyEvent(cdp, key, "keyUp", modifiers, sessionId, route);
+    } finally {
+        releaseHeldKey(cdp, key, sessionId);
+    }
 }
 
 async function pressMappedKey(cdp: CdpSession, key: string, sessionId?: string): Promise<void> {
     const keys = heldKeys(cdp, sessionId);
     const definition = resolveKeyDefinition(key);
     const type = definition.text !== undefined ? "keyDown" : "rawKeyDown";
-    await cdp.send("Input.dispatchKeyEvent", eventParams(key, type, modifierMask(keys)), sessionId);
-    await cdp.send("Input.dispatchKeyEvent", eventParams(key, "keyUp", modifierMask(keys)), sessionId);
+    const modifiers = modifierMask(keys);
+    const route = keyInputRoute(key, modifiers);
+    const actualRoute = await dispatchKeyEvent(cdp, key, type, modifiers, sessionId, route);
+    await dispatchKeyEvent(cdp, key, "keyUp", modifiers, sessionId, actualRoute);
 }
 
 /** Press a key or compound key using trusted CDP input unless synthetic is explicitly selected. */
@@ -229,7 +283,7 @@ export async function typeMappedCharacter(cdp: CdpSession, character: string, se
     if (!definition?.code || definition.text === undefined) return false;
     const keys = heldKeys(cdp, sessionId);
     const addedShift = shifted && !keys.has("Shift");
-    if (addedShift) keys.add("Shift");
+    if (addedShift) keys.set("Shift", "cdp");
     const modifiers = modifierMask(keys);
     try {
         const downParams = eventParams(key, "keyDown", modifiers, shifted);

@@ -1,6 +1,6 @@
 import type { IAiVisionDescriptor } from "ai-vision";
 import type { TrustBoardDialogProps } from "../../../api/dialogs/TrustBoardDialog";
-import { BOARD_PERMISSION_INTRODUCTION, PERMISSION_CHANGE_TITLE, boardPermissionDiffLines, boardPermissionLines, permissionChangeMessage } from "../../../api/boards/board-permission-copy";
+import { BOARD_PERMISSION_INTRODUCTION, FULL_ACCESS_LABEL, PERMISSION_CHANGE_TITLE, boardPermissionDiffLines, boardPermissionLines, permissionChangeMessage } from "../../../api/boards/board-permission-copy";
 // After Phase 2 extraction, UI consumers use t(key) and agent-facing output uses englishMessage(key) with the same catalog key.
 import { cancelDialog, closeWithResult, descriptor, dialogState, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
 import { DialogButton } from "../../../api/dialogs/dialog-buttons";
@@ -34,7 +34,9 @@ no cancel button) appears when a trusted board's manifest adds or widens a permi
 grants the new set, Unregister board untrusts the board (and uninstalls a catalog install), and
 closing the dialog removes the board from its pages without deciding.
 permissionLines provides the same plain-language list shown to the user. A permission-denied error has the form permission-denied: "<flag>" is not enabled
-in board-manifest.json. Inspect the source call, add only its required flag or level, then explain
+in board-manifest.json. A declared service and processes started with execute or executeNode retain
+user file and network access regardless of the other permission flags; network: false is not an
+offline guarantee for those processes. Inspect the source call, add only its required flag or level, then explain
 that added grants prompt for approval the next time the board opens or reloads; reductions apply
 silently. If you are building this board at the user's request (you created it or the user handed it
 to you to develop), the code is yours: click "Trust Board" or "Accept" yourself and keep testing.
@@ -63,11 +65,13 @@ export class TrustBoardDialogAdapter implements DialogAdapter {
         const change = this.state.change;
         if (change) {
             const marks = { kept: "✓ ", added: "+ ", removed: "- " } as const;
-            return boardPermissionDiffLines(BoardGrant.from(change.granted), change.proposed).map(({ text, fullAccess, mark }) =>
-                marks[mark] + text + (fullAccess && mark !== "removed" ? " (Full access)" : ""));
+            return boardPermissionDiffLines(BoardGrant.from(change.granted), change.proposed).map(({ text, detail, fullAccess, mark }) =>
+                marks[mark] + text + (fullAccess && mark !== "removed"
+                    ? ` (${FULL_ACCESS_LABEL})${detail ? ` ${detail}` : ""}`
+                    : ""));
         }
-        return boardPermissionLines(BoardGrant.from(this.permissions)).flatMap(({ text, fullAccess }) =>
-            fullAccess ? [text, "Full access", "Can reach everything your user account can."] : [text]);
+        return boardPermissionLines(BoardGrant.from(this.permissions)).flatMap(({ text, detail, fullAccess }) =>
+            fullAccess ? [text, FULL_ACCESS_LABEL, ...(detail ? [detail] : [])] : [text]);
     }
     get change(): TrustBoardDialogProps["change"] {
         const change = dialogState<TrustBoardDialogProps>(this.entry).change;

@@ -59,6 +59,10 @@ function decodePrimary(result, callPath, maxLengthSupplied, textOnly, allowDialo
         throw failure(callPath, "returned a non-text scalar body", raw);
     }
     if (textOnly) return primary.text;
+    // Keep this literal aligned with src/shared/mcp-result-type.ts, the TypeScript owner.
+    const resultType = result?._meta?.["persephone/resultType"];
+    if (resultType === "string") return primary.text;
+    if (resultType === "json") return JSON.parse(primary.text);
     try {
         return JSON.parse(primary.text);
     } catch {

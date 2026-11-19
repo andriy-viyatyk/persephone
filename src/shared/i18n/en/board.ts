@@ -42,6 +42,7 @@ export const boardCatalog = {
     legacyBoardsDeprecationToast: { message: { one: "This board doesn't declare its permissions: {boardNames}. Boards like this are deprecated and will stop working in a future Persephone release. Ask the agent that built it to add a permissions block to {manifest}.", other: "These boards don't declare their permissions: {boardNames}. Boards like these are deprecated and will stop working in a future Persephone release. Ask the agent that built them to add a permissions block to {manifest}." }, note: "{boardNames} is a comma-separated list; do not join names with translated words. Keep Persephone and the manifest filename unchanged." },
     fullAccess: { message: "Full access" },
     fullAccessDetail: { message: "Can reach everything your user account can." },
+    permissionProcessAccessDetail: { message: "This process can access your files and the network regardless of the board's other permissions." },
     permissionExecute: { message: "Run programs and scripts on this computer." },
     permissionService: { message: "Run a background program while Persephone is open.", note: "Keep Persephone unchanged as the product name." },
     permissionFileSystemBoard: { message: "Read and write files in this board's folder (including its own code) and files you pick in its dialogs." },

@@ -3,22 +3,25 @@ import path from "node:path";
 import type { McpClient, Timeouts } from "./client.js";
 import type { TestLauncher } from "./launcher.js";
 import { errMessage } from "../shared/utils.js";
-import { asHandle, createAppProxy } from "./app-proxy.js";
+import { asHandle, createAppProxy, type CallOptions, type HandleMetadata } from "./app-proxy.js";
 import { formatStep } from "./step-format.js";
 import { openBrowser as openBrowserHelper } from "./browser-helpers.js";
 import { resultPreview, stepEventArguments, type TestLog } from "./test-log.js";
+
+export type { CallOptions } from "./app-proxy.js";
 
 export interface TestContext {
     app: object;
     openBrowser(url: string, options?: { profile?: string; incognito?: boolean; timeout?: number }): Promise<object>;
     /** The same stand-in, but `await` and async returns keep it instead of reading the node. */
-    handle(node: unknown): object;
-    call(path?: string, args?: unknown, options?: { timeout?: number; maxLength?: number; dialog?: boolean }): Promise<unknown>;
-    callText(path?: string, args?: unknown, options?: { timeout?: number; maxLength?: number; dialog?: boolean }): Promise<string>;
+    handle(node: unknown, metadata?: HandleMetadata): object;
+    call(path?: string, args?: unknown, options?: CallOptions): Promise<unknown>;
+    callText(path?: string, args?: unknown, options?: CallOptions): Promise<string>;
     /** Assign `value` to a writable call-tree property; the stand-in cannot express an assignment. */
     set(path: string, value: unknown, options?: { timeout?: number }): Promise<unknown>;
-    waitFor(pathOrCallback: string | ((ctx: TestContext) => Promise<unknown>), predicate: (value: unknown) => boolean, options?: { timeout?: number }): Promise<unknown>;
-    expect(value: unknown): { toBe(expected: unknown): void; toEqual(expected: unknown): void; toContain(expected: unknown): void; toBeTruthy(): void }; script(code: string): Promise<string>; restartApp(): Promise<void>; launchSecondInstance(args?: string[]): Promise<number>;
+    waitFor(pathOrCallback: string | ((ctx: TestContext) => Promise<unknown>), predicate: (value: unknown) => boolean, options?: CallOptions): Promise<unknown>;
+    expect(value: unknown): { toBe(expected: unknown): void; toEqual(expected: unknown): void; toContain(expected: unknown): void; toBeTruthy(): void; toBeGreaterThan(expected: number): void; toBeLessThanOrEqual(expected: number): void; toMatch(expected: RegExp): void };
+    script(code: string): Promise<string>; restartApp(): Promise<void>; launchSecondInstance(args?: string[]): Promise<number>;
     /** Resolve a path next to the test file, for fixtures the test ships with. */
     file(relative: string): string;
     /** Note a line in `tests.log` and the console, for context a later reader needs. */
@@ -50,11 +53,14 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
         if (!log || quietDepth > 0) return;
         log.write({ event, ...identity, operation, path: apiPath ?? "<overview>", ...(stepEventArguments(operation, apiPath, args) === undefined ? {} : { args: stepEventArguments(operation, apiPath, args) }), ...details });
     };
-    const call = async (apiPath?: string, args?: unknown, options: { timeout?: number; maxLength?: number; dialog?: boolean } = {}, prestarted = false) => {
+    const call = async (apiPath?: string, args?: unknown, options: CallOptions = {}, prestarted = false) => {
         state.step = formatStep("call", apiPath, args);
         if (!prestarted) logStep("step-start", "call", apiPath, args);
         try {
             const result = await active.call(apiPath, args, options.timeout ?? timeouts.request, options.maxLength, options.dialog);
+            if (args === undefined && apiPath !== undefined && isMethodDescriptor(result, apiPath)) {
+                throw new TypeError(`${apiPath} is a method; call ctx.call(${JSON.stringify(apiPath)}, []) with an argument array.`);
+            }
             logStep("step-result", "call", apiPath, args, { ok: true, result: resultPreview(result) });
             return result;
         } catch (error) {
@@ -92,7 +98,7 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
             throw error;
         }
     };
-    const proxyCall = (apiPath?: string, args?: unknown) => call(apiPath, args, {}, true);
+    const proxyCall = (apiPath?: string, args?: unknown, options: CallOptions = {}) => call(apiPath, args, options, true);
     const beforeProxyCall = (apiPath: string, args?: unknown) => {
         proxyPath = apiPath;
         proxyArgs = args;
@@ -108,7 +114,7 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
     const context: TestContext = {
         app, call, callText, set,
         async openBrowser(url, options = {}) { return openBrowserHelper(context, url, options, timeouts.wait, timeouts.request); },
-        handle(node) { return asHandle(node, proxyCall, beforeProxyCall, onProxyError); },
+        handle(node, metadata) { return asHandle(node, proxyCall, beforeProxyCall, onProxyError, metadata); },
         async waitFor(pathOrCallback, predicate, options = {}) {
             const timeout = options.timeout === undefined ? timeouts.wait : Math.max(1, Math.round(options.timeout * (timeouts.scale ?? 1)));
             const deadline = Date.now() + timeout;
@@ -120,7 +126,9 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
             try {
                 do {
                     polls++;
-                    value = typeof pathOrCallback === "string" ? await call(pathOrCallback) : await pathOrCallback(context);
+                    value = typeof pathOrCallback === "string"
+                        ? await call(pathOrCallback, undefined, { maxLength: options.maxLength, dialog: options.dialog }, true)
+                        : await pathOrCallback(context);
                     state.step = `wait for ${target}`;
                     if (await predicate(value)) {
                         log?.write({ event: "wait-result", ...identity, target, ok: true, polls, result: resultPreview(value) });
@@ -145,6 +153,9 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
             toEqual(expected: unknown) { check(`assert ${preview(value)} toEqual ${preview(expected)}`, () => assert.deepStrictEqual(value, expected)); },
             toContain(expected: unknown) { check(`assert ${preview(value)} toContain ${preview(expected)}`, () => assert.ok(typeof value === "string" ? value.includes(String(expected)) : Array.isArray(value) && value.includes(expected), `Expected ${preview(value)} to contain ${preview(expected)}.`)); },
             toBeTruthy() { check(`assert ${preview(value)} toBeTruthy`, () => assert.ok(value, `Expected ${preview(value)} to be truthy.`)); },
+            toBeGreaterThan(expected: number) { check(`assert ${preview(value)} toBeGreaterThan ${expected}`, () => assert.ok(typeof value === "number" && value > expected, `Expected ${preview(value)} to be greater than ${expected}.`)); },
+            toBeLessThanOrEqual(expected: number) { check(`assert ${preview(value)} toBeLessThanOrEqual ${expected}`, () => assert.ok(typeof value === "number" && value <= expected, `Expected ${preview(value)} to be less than or equal to ${expected}.`)); },
+            toMatch(expected: RegExp) { check(`assert ${preview(value)} toMatch ${String(expected)}`, () => assert.match(value as string, expected)); },
         }; },
         async script(code) {
             const result = await call("script.execute", [code]);
@@ -169,6 +180,14 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
         _state: state,
     };
     return context;
+}
+
+function isMethodDescriptor(value: unknown, apiPath: string): value is { kind: "method"; signature: string; summary: string; note: string } {
+    return value !== null && typeof value === "object"
+        && "kind" in value && value.kind === "method"
+        && "signature" in value && typeof value.signature === "string"
+        && "summary" in value && typeof value.summary === "string"
+        && "note" in value && value.note === `Call it as "${apiPath}()" (or pass "args").`;
 }
 
 /** A bounded JSON rendering of an asserted value for step names and failure messages. */

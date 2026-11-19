@@ -233,6 +233,21 @@ export default [
         }
     }),
 
+    test("pressKey F5 reloads the browser guest", async (ctx) => {
+        const page = await openInputPage(ctx);
+        try {
+            const editor = ctx.app.pages[page.id].editor;
+            await editor.waitFor({ selector: "#key-input" });
+            await editor.evaluate("() => { window.reloadMarker = 'before reload'; }");
+            const navigation = editor.waitForNavigation();
+            await editor.pressKey("F5");
+            await navigation;
+            ctx.expect(await editor.evaluate("() => window.reloadMarker ?? null")).toBe(null);
+        } finally {
+            await closeBrowserPage(ctx, page);
+        }
+    }),
+
     test("drag transfers the fixture marker to its drop target", async (ctx) => {
         const page = await openInputPage(ctx);
         try {

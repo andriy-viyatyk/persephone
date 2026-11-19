@@ -174,10 +174,15 @@ export class FileTreeProvider implements ITreeProvider {
 
     getNavigationUrl(item: ITreeProviderItem): string {
         if (!item.isDirectory) return item.href;
-        const target = isParentRow(item, this.rootPath)
-            ? EditorId.categoryView
-            : editorCatalog.resolveFolder(item.href) ?? EditorId.categoryView;
-        return folderEditorLinkFor(target, item.href, this.sourceUrl);
+        return isParentRow(item, this.rootPath)
+            ? folderEditorLinkFor(EditorId.categoryView, item.href, this.sourceUrl)
+            : this.getFolderNavigationUrl(item.href);
+    }
+
+    /** Build the same link used when an Explorer folder row is opened directly. */
+    getFolderNavigationUrl(folderPath: string): string {
+        const target = editorCatalog.resolveFolder(folderPath) ?? EditorId.categoryView;
+        return folderEditorLinkFor(target, folderPath, this.sourceUrl);
     }
 
     async getNavigationUrlByHref(href: string): Promise<string> {

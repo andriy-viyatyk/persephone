@@ -10,7 +10,7 @@ async function finishManagedLog(ctx, previousPageIds) {
 }
 
 async function clickLogControl(ctx, name) {
-    await /* ctx.call remains because the app stand-in cannot pass call options such as { dialog: true } or maxLength. */ ctx.call("window.screen.click", [`[data-page-id="mcp-ui-log"] [data-name="${name}"]`], { dialog: true });
+    await ctx.call("window.screen.click", [`[data-page-id="mcp-ui-log"] [data-name="${name}"]`], { dialog: true });
 }
 
 async function logSnapshot(ctx) {
@@ -126,8 +126,8 @@ export default [
             openedPageId = opened.id;
             const node = ctx.handle(ctx.app.pages[opened.id]);
             const content = output.contentCheck ?? output.content;
-            const openedContent = await ctx.waitFor((activeContext) => activeContext.app.pages[opened.id].content, (value) => JSON.stringify(value).includes(content));
-            ctx.expect(JSON.stringify(openedContent)).toContain(content);
+            const openedContent = await ctx.waitFor((activeContext) => activeContext.app.pages[opened.id].content, (value) => typeof value === "string" && value.includes(content));
+            ctx.expect(openedContent).toContain(content);
         } finally {
             if (openedPageId) await closePage(ctx, openedPageId);
             await finishManagedLog(ctx, previousPageIds);

@@ -166,10 +166,9 @@ export default [
             await ctx.app.settings.set(key, original);
             const reflectedValue = await ctx.waitFor(
                 (active) => active.app.window.screen.evaluate("() => document.querySelector('[data-name=\\\"settings-section-window-behavior\\\"] [data-type=\\\"checkbox\\\"]')?.getAttribute('data-checked')"),
-                (value) => String(value) === String(original),
+                (value) => value === String(original),
             );
-            // A string result that is valid JSON text ("true") arrives parsed (true).
-            ctx.expect(String(reflectedValue)).toBe(String(original));
+            ctx.expect(reflectedValue).toBe(String(original));
         } finally {
             try {
                 if (settingTouched) {

@@ -68,8 +68,9 @@ the current sidebar panels; `page.panels.expand(id)` takes a bare panel ID and
 are no panels or a non-Explorer panel keeps it open. There is no uniform `page.panels.close(id)`
 because individual panel owners have different hide/dispose lifecycles.
 
-Use `settings.sections` to find the built-in grouped Settings catalog (14 sections, 26 rows), then
-`settings.highlight(key)` to open or activate Settings and point at the containing section.
+Use `settings.sections` to inspect the current built-in Settings catalog, whose sections and rows
+can change, then `settings.highlight(key)` to open or activate Settings and point at the containing
+section.
 `settings.set` remains the mutation operation. Through the AiVision `call` seam only,
 `mcp.enabled` and `mcp.port` are refused because changing them disconnects the caller;
 `app.settings.set` is unchanged.
@@ -100,6 +101,14 @@ await app.pages.showBrowserPage({ url })              // Open browser tab
 await app.pages.openUrlInBrowserTab(url)              // Open URL in browser — returns the page id
 await app.pages.navigatePageTo(pageId, filePath, { revealLine, highlightText })
 ```
+
+### app.fetch
+
+`app.fetch(url, options?)` is a script API that makes an HTTP request through Node.js and returns a
+standard `Response`; it is not an AiVision call-tree method. Options include `method`, `headers`,
+`body`, `timeout`, `maxRedirects`, `signal`, `rejectUnauthorized` (TLS validation), `proxy`, and
+`tor`. It adds no automatic Chromium headers. Proxy and Tor routing do not fall back to a direct
+connection.
 
 ### app.fs
 

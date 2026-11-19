@@ -27,6 +27,7 @@ export function registerOpenHandler(): void {
                     pipe: data.pipe,
                 });
                 if (!navigated || data.folderPath !== undefined) data.pipe!.dispose();
+                if (navigated) data.openedPageId = pageId;
             } catch (err) {
                 data.pipe!.dispose();
                 throw err;
@@ -36,6 +37,8 @@ export function registerOpenHandler(): void {
             // On success the page owns the pipe; on error we must dispose it
             try {
                 const page = await pages.lifecycle.openFile(filePath, data.pipe, request);
+                // Report the page back so `pages.openPath` callers find it even when the link is not a file path (git-tree://, folder-editor links).
+                if (page) data.openedPageId = page.id;
                 if (page && (data.waitForPageReady || data.sourceId === "app-api")) {
                     await page.restore.ready;
                 }

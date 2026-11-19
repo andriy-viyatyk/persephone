@@ -131,8 +131,7 @@ export default [
             ctx.expect(await waitForRemoteModelValue(ctx, pageId, "elementCount", (count) => count === 2)).toBe(2);
             await ctx.waitFor(`pages[${JSON.stringify(pageId)}].modified`, (modified) => modified === true);
 
-            await ctx.app.pages[pageId].editorSwitches.switchTo("monaco");
-            await ctx.app.pages[pageId].editor.saveFile();
+            ctx.expect(await ctx.app.pages[pageId].save()).toBe(true);
             await ctx.waitFor(`pages[${JSON.stringify(pageId)}].modified`, (modified) => modified === false);
             ctx.expect(await ctx.app.pages[pageId].modified).toBe(false);
 

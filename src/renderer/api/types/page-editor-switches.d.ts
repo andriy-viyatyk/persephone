@@ -1,6 +1,7 @@
 export interface IEditorSwitchOption {
     readonly id: string;
     readonly label: string;
+    readonly title?: string;
 }
 
 export interface IPageEditorSwitches {

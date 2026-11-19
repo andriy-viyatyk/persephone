@@ -65,7 +65,7 @@ const GRID_ELEMENTS = [
 const GRID_EDITOR_MEMBERS: readonly IAiMember[] = [
 
 
-    { name: "rows", kind: "property", summary: "All rows as plain objects." },
+    { name: "rows", kind: "property", summary: "All rows as plain objects; search and column filters do not change this full data set." },
     { name: "rowKeys", kind: "property", summary: "Row keys in the same order as rows; pass them to editCell and deleteRows." },
     { name: "columns", kind: "property", summary: "Column definitions (key and display name)." },
     { name: "rowCount", kind: "property", summary: "Number of rows." },
@@ -74,7 +74,7 @@ const GRID_EDITOR_MEMBERS: readonly IAiMember[] = [
     { name: "filters", kind: "property", summary: "Current normalized filters, or undefined without an attached page." },
     { name: "selection", kind: "property", summary: "The current cell-range selection, or undefined when absent or detached." },
     { name: "hiddenColumns", kind: "property", summary: "Keys of hidden columns, or undefined without an attached page." },
-    { name: "visibleRowCount", kind: "property", summary: "Rows currently shown after search and filters, or undefined when detached." },
+    { name: "visibleRowCount", kind: "property", summary: "The filtered row projection currently shown after search and filters, or undefined when detached." },
     { name: "csvDelimiter", kind: "property", summary: "The CSV delimiter, or undefined for non-CSV or detached grids." },
     { name: "csvWithColumns", kind: "property", summary: "Whether CSV uses its first row as headers, or undefined for non-CSV or detached grids." },
     { name: "editCell", kind: "method", signature: "editCell(columnKey: string, rowKey: string, value: unknown): void", summary: "Edit a single cell value; returns null after the edit.", caution: "changes grid data" },
@@ -89,7 +89,7 @@ const GRID_EDITOR_MEMBERS: readonly IAiMember[] = [
 ];
 
 const GRID_EDITOR_HELP = `Access via pages[i].editor after narrowing editor.id to "grid-json", "grid-csv", or "grid-jsonl"; all three IDs share this GridEditor surface.
-Use rows/columns and the read-only state properties for safe reads. The curated elements are grid-search (enter search text), grid-search-clear (clear search), grid-columns (open Edit Columns), grid-csv-options (open CSV Options), columns-options-apply (apply column edits), columns-options-cancel (discard column edits), csv-options-header (toggle the CSV header row), csv-options-delimiter (choose a delimiter), and csv-options-other (enter a custom delimiter).
+Use rows/columns and the read-only state properties for safe reads. The curated elements are grid-search (enter search text), grid-search-clear (clear search), grid-column-filter (open a column filter), grid-columns (open Edit Columns), grid-csv-options (open CSV Options), columns-options-apply (apply column edits), columns-options-cancel (discard column edits), csv-options-header (toggle the CSV header row), csv-options-delimiter (choose a delimiter), and csv-options-other (enter a custom delimiter).
 The CSV controls are declared for every grid but report visible: false for JSON and JSONL; the search-clear control appears only with active search text, and popup controls are visible only while their owning popup is open. Popup elements are page-scoped even though the popups are portaled outside the page.
 The grid-column-filter declaration can temporarily reveal its hover-gated button for highlighting; highlighting does not click, focus, open a popup, or change filter state.
 Selection reports a cell range, not row-checkbox selection. Detached grids report undefined for host-backed optional state; attached zero-row grids report their real search, filters, and visible row count, including "", [], and 0. Array and object getter results are copies. Sort exposes one column only; filters are read-only. A text filter has type "text" and value { op, text } for contains, equals, or startsWith, or { op } for blank or notBlank; custom filter values remain unknown. Sort/filter writes, focus actions, clipboard actions, and column-schema edits are not part of this facade.
