@@ -21,6 +21,8 @@ import { BrowserTranslationPopoverContentView } from "./BrowserTranslationPopove
 import { getPageMenuItems } from "./browser-page-menu";
 import { SitePermissionsContentView, type SitePermissionsContentProps, type AiVisionIndicator } from "./SitePermissionsPopover";
 import { BrowserZoomContentView, type BrowserZoomContentProps } from "./PageZoomPopover";
+import { BrowserUrlDisplayView, createNotSecureChip } from "./BrowserUrlDisplayView";
+import { urlSecurity } from "./url-display";
 
 interface BrowserToolbarProps { model: BrowserEditor; state: BrowserEditorState; }
 
@@ -52,6 +54,9 @@ export class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     private translationStateUnsubscribe: (() => void) | undefined;
     /** Proxied-profile marker; opens the network info dialog. */
     private readonly proxyChip = document.createElement("button");
+    /** Unfocused URL-bar rendering (host emphasised) and the plain-`http:` marker. */
+    private readonly urlDisplay: BrowserUrlDisplayView;
+    private readonly notSecureChip = createNotSecureChip();
     private pageMenu: MenuHandle | undefined;
     private searchMenu: MenuHandle | undefined;
     private permissionsContent: SitePermissionsContentView | undefined;
@@ -81,7 +86,9 @@ export class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         this.sitePermissionsButton = this.child(new IconButtonView({ name: "url-site-permissions", size: "sm", icon: "info", title: t("browser.sitePermissions"), onClick: this.toggleSitePermissions }));
         this.sitePermissionsPopover = this.child(new PopoverView(this.sitePermissionsPopoverProps()));
         this.star = this.child(new IconButtonView({ name: "url-bookmark-toggle", size: "sm", icon: "star", title: t("browser.bookmarkAdd"), onClick: this.model.bookmarks.handleStarClick }));
-        this.input = this.child(new InputView({ name: "url-input", size: "sm", value: this.model.urlBar.state.get().urlInput, onChange: this.model.urlBar.handleUrlChange, onKeyDown: this.model.urlBar.handleUrlKeyDown, onFocus: this.model.urlBar.handleUrlFocus, onBlur: this.model.urlBar.handleUrlBlur, onContextMenu: (event) => this.model.urlBar.handleUrlContextMenu(event as never), placeholder: t("browser.urlPlaceholder"), autoComplete: "off", startSlot: this.startSlot, endSlot: this.endSlot }));
+        const urlBarState = this.model.urlBar.state.get();
+        this.urlDisplay = this.child(new BrowserUrlDisplayView({ url: urlBarState.urlInput }));
+        this.input = this.child(new InputView(this.urlInputProps(urlBarState.urlInput, urlBarState.userHasTyped)));
         this.urlEntrySlot.style.display = "contents";
         this.bookmarksButton = this.child(new IconButtonView(this.bookmarksProps(props.state)));
         this.torInfoButton = this.child(new IconButtonView(this.torInfoProps(props.state)));
@@ -107,7 +114,7 @@ export class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
     get urlAnchor(): Element { return this.inputPanel; }
     get urlInputElement(): HTMLInputElement { return this.input.inputElement; }
 
-    protected onMount(): void { this.listen(this.searchEngineButton, "click", (event) => { event.stopPropagation(); this.openSearchMenu(); }); this.listen(this.torIndicator, "click", (event) => { event.stopPropagation(); this.model.tor.toggleOverlay(); }); this.listen(this.proxyChip, "click", (event) => { event.stopPropagation(); void this.model.showNetworkInfoDialog(); }); this.homeButton.mount(); this.backButton.mount(); this.forwardButton.mount(); this.reloadButton.mount(); this.bookmarksButton.mount(); this.torInfoButton.mount(); this.moreButton.mount(); this.devtoolsButton.mount(); this.closeButton.mount(); this.zoomButton.mount(); this.zoomPopover.mount(); this.translateButton.mount(); this.input.mount(); this.model.urlBar.setUrlInputRef(this.input.inputElement); this.navigate.mount(); this.star.mount(); this.siteActions.mount(); this.downloads.mount(); this.sitePermissionsButton.mount(); this.sitePermissionsPopover.mount(); this.translatePopover.mount(); this.own(this.model.pageRemote.changed.subscribe(() => this.sync(this.model.state.get()))); this.own(this.model.sitePermissions.state.subscribe(() => this.sync(this.model.state.get()))); this.bind(this.model.urlBar.state, (state) => ({ urlInput: state.urlInput, userHasTyped: state.userHasTyped }), ({ urlInput, userHasTyped }) => { this.input.update(this.urlInputProps(urlInput)); this.syncUrlEntrySlot(this.props.state, userHasTyped, false); }); this.sync(this.props.state); }
+    protected onMount(): void { this.listen(this.searchEngineButton, "click", (event) => { event.stopPropagation(); this.openSearchMenu(); }); this.listen(this.torIndicator, "click", (event) => { event.stopPropagation(); this.model.tor.toggleOverlay(); }); this.listen(this.proxyChip, "click", (event) => { event.stopPropagation(); void this.model.showNetworkInfoDialog(); }); this.homeButton.mount(); this.backButton.mount(); this.forwardButton.mount(); this.reloadButton.mount(); this.bookmarksButton.mount(); this.torInfoButton.mount(); this.moreButton.mount(); this.devtoolsButton.mount(); this.closeButton.mount(); this.zoomButton.mount(); this.zoomPopover.mount(); this.translateButton.mount(); this.input.mount(); this.model.urlBar.setUrlInputRef(this.input.inputElement); this.urlDisplay.mount(); this.navigate.mount(); this.star.mount(); this.siteActions.mount(); this.downloads.mount(); this.sitePermissionsButton.mount(); this.sitePermissionsPopover.mount(); this.translatePopover.mount(); this.own(this.model.pageRemote.changed.subscribe(() => this.sync(this.model.state.get()))); this.own(this.model.sitePermissions.state.subscribe(() => this.sync(this.model.state.get()))); this.bind(this.model.urlBar.state, (state) => ({ urlInput: state.urlInput, userHasTyped: state.userHasTyped }), ({ urlInput, userHasTyped }) => { this.urlDisplay.update({ url: urlInput }); this.input.update(this.urlInputProps(urlInput, userHasTyped)); this.syncUrlEntrySlot(this.props.state, userHasTyped, false); }); this.sync(this.props.state); }
     protected onUpdate(props: BrowserToolbarProps): void { this.sync(props.state); }
     protected onDispose(): void { this.pageMenu?.dispose(); this.searchMenu?.dispose(); this.pageMenu = undefined; this.searchMenu = undefined; this.translationStateUnsubscribe?.(); }
 
@@ -181,10 +188,13 @@ export class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         this.urlEntrySlot.replaceChildren(); const activeUrl = this.model.activeTab?.url || ""; const showSearchEngine = this.model.urlBar.showSearchEngineSelector;
         if (syncPage) this.model.sitePermissions.syncPage(state.activeTabId, activeUrl, !showSearchEngine && !userHasTyped);
         const permissionsState = this.model.sitePermissions.state.get(); if (showSearchEngine) { this.searchEngineButton.textContent = `${this.model.urlBar.currentEngineName} ▾`; this.urlEntrySlot.append(this.searchEngineButton); }
-        else if (permissionsState.origin && !userHasTyped) this.urlEntrySlot.append(this.sitePermissionsButton.root); this.startSlot.append(this.urlEntrySlot);
+        else if (permissionsState.origin && !userHasTyped) this.urlEntrySlot.append(this.sitePermissionsButton.root);
+        if (!showSearchEngine && !userHasTyped && urlSecurity(activeUrl) === "not-secure") this.urlEntrySlot.append(this.notSecureChip);
+        this.startSlot.append(this.urlEntrySlot);
     }
 
-    private urlInputProps(urlInput: string) { return { name: "url-input", size: "sm" as const, value: urlInput, onChange: this.model.urlBar.handleUrlChange, onKeyDown: this.model.urlBar.handleUrlKeyDown, onFocus: this.model.urlBar.handleUrlFocus, onBlur: this.model.urlBar.handleUrlBlur, onContextMenu: (event: Event) => this.model.urlBar.handleUrlContextMenu(event as MouseEvent), placeholder: t("browser.urlPlaceholder"), autoComplete: "off", startSlot: this.startSlot, endSlot: this.endSlot }; }
+    /** The field shows the formatted rendering while unfocused, unless the user has typed something else. */
+    private urlInputProps(urlInput: string, userHasTyped: boolean) { return { name: "url-input", size: "sm" as const, value: urlInput, display: !userHasTyped && BrowserUrlDisplayView.supports(urlInput) ? this.urlDisplay.root : undefined, onChange: this.model.urlBar.handleUrlChange, onKeyDown: this.model.urlBar.handleUrlKeyDown, onFocus: this.model.urlBar.handleUrlFocus, onBlur: this.model.urlBar.handleUrlBlur, onContextMenu: (event: Event) => this.model.urlBar.handleUrlContextMenu(event as MouseEvent), placeholder: t("browser.urlPlaceholder"), autoComplete: "off", startSlot: this.startSlot, endSlot: this.endSlot }; }
 
     private readonly toggleSitePermissions = (): void => {
         if (this.model.sitePermissions.state.get().open) this.model.sitePermissions.close();

@@ -178,6 +178,24 @@ interface TraitDragPayload {
 }
 ```
 
+### Only drags this document started (US-2145)
+
+Any drag can carry the `application/persephone-trait` MIME type: a web page in a browser tab can set
+it in its own `dragstart`, and Chromium hands that drag to the app window when it leaves the page.
+`setTraitDragData` therefore stamps the serialized payload with a fresh per-drag `nonce` kept in this
+document's memory, and `getTraitDragData` returns a payload only when its nonce matches the active
+one (`hasTraitDragData` is false while no host drag is active). Document capture listeners end the
+nonce on `dragend`, right after a `drop` (deferred, so drop handlers still see it), and on the next
+`pointerdown` (a source removed mid-drag never delivers `dragend` to the document). Consequences:
+
+- Call `setTraitDragData` only from a `dragstart` handler in the host document.
+- Trait drags work only inside the window where they started; dragging a trait item into another
+  Persephone window is ignored. Cross-window **tab** moves are unaffected: they use the separate
+  `application/persephone-tab` MIME, whose target-side data only asks main's `DragModel` to pair it
+  with the source window's own `dragend` event.
+- OS file drops do not use the MIME type: `GlobalEventService.captureDrop` attaches their descriptor
+  to the event (`getTraitDragDataFromEvent`), so they keep working.
+
 ---
 
 ## Pattern: Adding a New Draggable Type

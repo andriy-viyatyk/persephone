@@ -380,7 +380,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── registry.ts         # Provider/transformer registries, createPipeFromDescriptor()
 │   ├── board-provider-factory.ts # Trusted-board ProxyProvider factory
 │   ├── scheme-registry.ts  # Platform/script URL-scheme parse and resolve hooks
-│   ├── page-scheme-handoff.ts # Opens a page-requested non-Chromium URL only for a board-claimed scheme
+│   ├── page-scheme-handoff.ts # Board-claimed scheme check, per-origin Allow/Block answers, hand-off of page-requested URLs
 │   ├── builtin-schemes.ts  # Built-in URL-scheme registrations and handlers
 │   ├── parsers.ts          # Layer 1: scheme dispatch plus file/archive and cURL/fetch adapters on openRawLink
 │   ├── resolvers.ts        # Layer 2: registered-scheme dispatch plus fallback pipe resolvers on openLink
@@ -575,6 +575,9 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── BrowserPageTranslationController.ts # Frame-scoped page translation scheduling and results
 │   │   ├── webview-context-menu.ts    # Webview context-menu construction
 │   │   ├── BrowserUrlBarModel.ts     # URL bar state
+│   │   ├── url-display.ts            # URL-bar presentation rules (userinfo, security marker, parts, origin label)
+│   │   ├── BrowserUrlDisplayView.ts  # Unfocused URL rendering (host emphasised) and the Not secure chip
+│   │   ├── BrowserExclusiveAccessNotice.ts # Fullscreen / pointer-lock notice naming the origin and Esc
 │   │   ├── BrowserTargetModel.ts     # Browser automation host for narrow target interfaces
 │   │   ├── BrowserTabsPanel.ts        # Native browser tab bar and compact hover preview
 │   │   ├── BrowserTabsPanel.css      # Scoped browser-tab presentation
@@ -593,7 +596,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── BrowserPanelHost.ts       # IPageHost impl for browser's bookmarks sidebar
 │   │   ├── BrowserSecondaryViews.ts   # Native secondary views for blank page and BookmarksDrawer
 │   │   ├── browser-search-history.ts # Search history
-│   │   ├── network-log-links.ts      # Network log → ILink[] conversion
+│   │   ├── network-log-links.ts      # Network log → ILink[] conversion (shell-safe cURL)
 │   │   ├── browser-pages.ts          # showBrowserPage / openUrlInBrowserTab — page opening; keeps the browser chunk out of startup
 │   │   └── index.ts
 │   ├── link-editor/        # Link collection editor (text-bearing, content-host trait)
@@ -1040,7 +1043,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── traits/             # Trait system — drag-and-drop type negotiation
 │   │   ├── traits.ts       # TraitKey<T>, TraitSet, Traited<V>, traited(), isTraited()
 │   │   ├── TraitRegistry.ts # TraitRegistry singleton + TraitTypeId enum
-│   │   ├── dnd.ts          # setTraitDragData, getTraitDragData, hasTraitDragData, resolveTraits
+│   │   ├── dnd.ts          # setTraitDragData, getTraitDragData, hasTraitDragData, resolveTraits; host-drag nonce
 │   │   ├── fileLinkTraits.ts # FILE_LINK trait definition and OsFile payload shape
 │   │   ├── linkTraits.ts    # ILink trait definition (LINK + FILE_LINK)
 │   │   └── index.ts        # Public exports
@@ -1177,6 +1180,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── preload-webview/
 │   └── chrome-shim.ts           # Guest window.chrome compatibility shim
 │   └── page-reporters.ts        # Guest title, favicon, input, find, and image messages
+│   └── exclusive-access-reporter.ts # Every frame: reports pointer lock to the host
 │   └── webmcp-bridge.ts         # Guest WebMCP bridge
 │   └── page-translation-agent.ts # Guest-frame text discovery, mutation tracking, and reversible translated DOM updates
 ├── browser-registration.ts # Default browser registration

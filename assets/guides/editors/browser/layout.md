@@ -10,8 +10,8 @@ summary: "How are the browser toolbar, URL bar, and page controls arranged and u
 
 ```
 +---------------------------------------------------------------------+
-| [⌂][←][→][⟳]  [Proxy][Site permissions / Search engine][ address box ] [→][Site actions*][Translate][★] [100%][Bookmarks][Downloads][⋮][</>][×] | toolbar: navigation at left, address box across middle
-|                                                                     |  (proxy chip inside it when routed), Go, Site actions* (when published), Translate and Add Bookmark at its right edge,
+| [⌂][←][→][⟳]  [Proxy][Site permissions / Search engine][Not secure*][ address box ] [→][Site actions*][Translate][★] [100%][Bookmarks][Downloads][⋮][</>][×] | toolbar: navigation at left, address box across middle
+|                                                                     |  (proxy chip inside it when routed, Not secure* on plain-HTTP pages), Go, Site actions* (when published), Translate and Add Bookmark at its right edge,
 |                                                                     |  page zoom before Bookmarks, Downloads, More, DevTools and Close at the right
 +---------------------------------------------------------------------+
 | [Browser tabs] [Webview content]                                    |  browser content fills the page below the toolbar
@@ -30,6 +30,7 @@ summary: "How are the browser toolbar, URL bar, and page controls arranged and u
 - Translate (when a provider is available) → `toolbar-translate`
 - Address box → `url-input`
 - Site permissions (HTTP(S) page, while no address text has been typed) → `url-site-permissions`
+- Not secure (plain `http:` page other than localhost, while no address text has been typed) → `url-not-secure`
 - Proxy chip (shown when the page's network is a proxy) → `url-proxy-indicator`
 - Go → `url-navigate`
 - Site actions (when the active page has published actions) → `toolbar-site-actions`
@@ -49,6 +50,15 @@ summary: "How are the browser toolbar, URL bar, and page controls arranged and u
 - Site extension Trust (when available) → `site-extension-trust`
 - Page navigation and Editor switch → no entry: this custom browser toolbar draws neither control
 - Webview page controls → no entry: third-party browser content
+
+### How the URL bar shows a page
+
+While the URL bar is not focused, the site's host is drawn in the stronger text colour and the
+scheme and path are dimmed. A long path is shortened first; a host too long for the bar is shortened
+from the left, so the end of its domain stays visible. A `user:password@` part is never shown, and
+focusing the bar shows the full address for editing. A plain `http:` page (other than `localhost`
+and `127.0.0.1`) shows **Not secure** at the start of the bar: what you send or receive there can be
+read or changed on the network.
 
 ### When URL suggestions are open
 
@@ -125,6 +135,17 @@ ai-vision** or **site extension ai-vision**, with the extension name when applic
 does not show an indicator, and no indicator appears without a registered model. Incognito and Tor
 pages never show it.
 
+On HTTPS pages, the site-info popover also has **View certificate**. It opens the certificate chain
+Chromium received for that tab in the highest-priority `certificate.view` board. If no viewer board
+is installed, Persephone opens the leaf-first PEM bundle as text in Monaco; the button tooltip
+explains that a certificate viewer board can decode it. Install the **Certificate Viewer** board
+from the Boards catalog for a decoded certificate view. A restored browser tab may not yet have a
+certificate chain available from Chromium; if you see the “not available yet” message, reload the
+page and try **View certificate** again. Agents can inspect the same chain with
+`pages[i].editor.getCertificate()`, which returns `{ url, certificates }` (base64 DER, leaf first)
+or `undefined` for a non-HTTPS page or when Chromium has no chain yet. The curated browser element
+`site-certificate-view` targets this button while the HTTPS site-info popover is open.
+
 ### When a page asks for permission
 
 ```
@@ -146,6 +167,22 @@ When a site asks to edit files in a folder you picked, view the files in a folde
 to a file, the bar names the site and the path. **Allow** and **Block** answer that one request and
 are not saved. Sites can't pick a drive root, your user folder, AppData, Windows, Program Files, or
 Persephone's own folders — those picks fail without a prompt.
+
+When a site asks to open a link in a board (a link whose scheme a trusted board registered), the bar
+names the site, the scheme and the board; hover the text to see the link. The answer is kept for that
+site and scheme until Persephone restarts, in every profile.
+
+### When a page is full screen or hides the pointer
+
+```
++---------------------------------------------------------------------+
+|        [Origin is now full screen. Press Esc to exit full screen.]  |  notice at the top centre for a few seconds
++---------------------------------------------------------------------+
+```
+
+The same notice reads "... has hidden your mouse pointer. Press Esc to show it." when the page
+locks the pointer. It is drawn by Persephone, ignores the mouse, and disappears after a few seconds
+or when the page leaves full screen → `browser-exclusive-access-notice`.
 
 ### When the bookmarks drawer is open
 

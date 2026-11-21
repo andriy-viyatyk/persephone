@@ -9,6 +9,7 @@ import { t } from "../../../shared/i18n/t";
 import type { BrowserEditor } from "./BrowserEditor";
 import { TComponentState } from "../../core/state/state";
 import { getDefaultBrowserUrlBarState, type BrowserUrlBarState } from "./browser-state";
+import { stripUrlUserinfo } from "./url-display";
 
 /**
  * Manages URL bar input, suggestions dropdown, and search engine selection
@@ -46,8 +47,10 @@ export class BrowserUrlBarModel {
      * Closes suggestions dropdown.
      */
     syncFromUrl = (url: string) => {
+        // Userinfo is never shown (as in Chrome): `https://bank.example@evil.test/` would read as the bank.
+        const shown = stripUrlUserinfo(url);
         this.state.update((s) => {
-            s.urlInput = url;
+            s.urlInput = shown;
             s.suggestionsOpen = false;
             s.userHasTyped = false;
         });
@@ -190,7 +193,7 @@ export class BrowserUrlBarModel {
             this.model.navigate(s.urlInput);
             this.urlInputRef?.blur();
         } else if (e.key === "Escape") {
-            const currentUrl = this.model.currentUrl || "";
+            const currentUrl = stripUrlUserinfo(this.model.currentUrl || "");
             this.state.update((st) => {
                 st.suggestionsOpen = false;
                 st.urlInput = currentUrl;

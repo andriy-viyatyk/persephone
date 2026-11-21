@@ -5,7 +5,6 @@ import { createLinkData } from "../../../shared/link-data";
 import { appWindow, signalReadyToQuit } from "../window";
 import { ui } from "../ui";
 import { guard } from "../../core/utils/guard";
-import { openPageSchemeCandidate } from "../../content/page-scheme-handoff";
 import { boardEditorId } from "../../../shared/board/board-editor-id";
 import type { EventPayload } from "../../../ipc/event-types";
 import type { LaunchInput } from "../../../shared/launch-input";
@@ -35,7 +34,6 @@ export class RendererEventsService {
 
         // URL opening
         rendererEvents.eOpenUrl.subscribe(this.handleOpenUrl);
-        rendererEvents.eOpenPipelineCandidate.subscribe(this.handlePipelineCandidate);
         rendererEvents.eOpenClaimedBrowserDownload.subscribe(this.handleClaimedBrowserDownload);
         rendererEvents.eOpenExternalUrl.subscribe((url) =>
             this.openLaunchInput({ kind: "url", url }),
@@ -99,10 +97,6 @@ export class RendererEventsService {
                 ...(event.unattributedPopup ? { unattributedPopup: true } : {}),
             })),
         );
-    };
-
-    private handlePipelineCandidate = async (url: EventPayload<"eOpenPipelineCandidate">) => {
-        await openPageSchemeCandidate(url);
     };
 
     private handleClaimedBrowserDownload = async (data: EventPayload<"eOpenClaimedBrowserDownload">) => {

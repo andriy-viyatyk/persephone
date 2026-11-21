@@ -97,6 +97,22 @@ tab state to `BrowserTabsModel`, then focuses the URL bar when the new tab is bl
 browser page receives the same URL-bar focus as the initial blank tab. Tabs opened with a URL keep
 focus on the loading webview instead of stealing it for the URL bar.
 
+### URL bar presentation
+
+A page controls its URL, so the URL bar never shows it raw (US-2145). The rules live in
+`url-display.ts`: `BrowserUrlBarModel.syncFromUrl` (and Escape) store the committed URL with its
+`user:password@` removed (`stripUrlUserinfo`, as in Chrome), so the editable text never reads as
+another site. While the field is not focused, `BrowserToolbarView` passes the UIKit `InputView` a
+`display` rendering (`BrowserUrlDisplayView`) for `http(s):` URLs: scheme and path dimmed, the host in
+the strong text colour. It sits in the same grid cell over the field's (transparent) text and ignores
+the mouse, so clicks, focus, selection and automation (`url-input`) still reach the real `<input>`.
+Grid columns give the host its full width before the path gets any, and a host that still does not
+fit is cut on the left (an rtl box around an isolated `<bdi>`), so its registrable end stays visible.
+`urlSecurity()` decides the marker: plain `http:` on a non-loopback host gets the "Not secure" chip
+(`url-not-secure`) after the site-info button; `https:`, loopback hosts (`localhost`, `*.localhost`,
+`127/8`, `[::1]`) and other schemes get none, as in Chrome. Error pages need no rule: Persephone has
+no certificate-error bypass, so an `https:` URL never commits content without a valid certificate.
+
 Address input is normalized by `BrowserEditor.resolveAddressInput()` before navigation or tab
 creation: blank input stays blank, Windows drive/UNC paths become `file://` URLs, bare hosts gain
 `https://`, and other scheme-less text becomes a URL from the selected search engine. The resolver
@@ -298,7 +314,7 @@ Who applies them:
 | Where | What | Rule |
 |---|---|---|
 | `guardBrowserGuestAtCreation()` (`main/browser/navigation-scheme-guards.ts`, from `web-contents-created`) | Every webview guest from creation: `will-navigate`, `will-redirect`, `will-frame-navigate`; window opening denied until registration | Main frame: non-`chromium` prevented. Redirects and subframes: `blocked` prevented |
-| `BrowserGuest` `will-navigate` (after registration) | Page navigation of a registered tab | `external` → prevented, then handed to the host after a recent user activation (`handOffExternal`) |
+| `BrowserGuest` `will-navigate` (after registration) | Page navigation of a registered tab | `external` → prevented, then sent to the tab's editor as `scheme-handoff` after a fresh, consumed user activation (`handOffExternal`) |
 | `BrowserGuest` / `guardPopupWindow` `setWindowOpenHandler` | `target=_blank`, `window.open` | `getPageOpenAction`: only `open` proceeds; `handoff` goes through `handOffExternal` (tabs) |
 | `BrowserPageLinkOpener` (renderer) | Context-menu "Open Link/Image in New Tab", the `"new-window"` event | `getPageOpenAction` for links; images refuse only `blocked` (the image viewer draws them in the host) |
 
@@ -323,11 +339,18 @@ the extra `file:` privileges of the `grantFileProtocolExtraPrivileges` fuse (lef
 production window loads its own chunks over `file://`), so it can read other local files with `fetch`
 or XHR. Closing that needs the app window served from a custom scheme before the fuse can be turned off.
 
-Page-initiated URLs outside Chromium's navigation set are handed to the host renderer's
-`openPageSchemeCandidate()` (`content/page-scheme-handoff.ts`), which opens only a scheme claimed by a
-trusted board; everything else, `data:` and `javascript:` included, is dropped. A board-contributed
-provider URL is therefore opened by Persephone instead of being handed to Chromium as an unsupported
-navigation.
+Page-initiated URLs outside Chromium's navigation set reach the tab's `BrowserPageLinkOpener`
+(main sends the per-tab browser event `scheme-handoff`, routed like `"new-window"`; the context-menu
+items call it directly). Only a scheme claimed by a trusted board may leave the page
+(`pageSchemeClaim()` in `content/page-scheme-handoff.ts`); everything else, `data:` and `javascript:`
+included, is dropped. Because the page chooses the URL's data, the user confirms once per browser
+partition, page origin and scheme (Chrome's "Open <app>?"): `BrowserPromptsModel.askBoardScheme`
+shows the permission bar ("This site wants to open a `<scheme>:` link in the board …", URL in the
+tooltip) as a renderer-local prompt — its answer goes to a callback, not to main — and
+`page-scheme-handoff.ts` keeps Allow and Block in memory for the app session (never on disk, so
+private partitions leave nothing behind). An allowed URL then goes through
+`openPageSchemeCandidate()` into the open pipeline. A key press counts as the gesture, as in Chrome;
+the prompt is what a page cannot click for the user.
 
 What actually keeps `app-asset:` out of reach of web content is that **the protocol handler is
 never registered on a browser page's session.** `registerAssetProtocol` (`src/main/main-setup.ts`)
@@ -382,7 +405,7 @@ webContents                      BrowserChannel          BrowserEditorView
 
 The budget is per call site: a context-menu item that merely appears or disappears can afford 250 ms, while a dialog gathering image suggestions is given 1 s.
 - **View Actual DOM / Show Resources:** Uses `ipcRenderer.invoke(BrowserChannel.collectDom, key)` to collect the full DOM from the main process. The main process iterates `webContents.mainFrame.framesInSubtree` to collect DOM from all frames (including cross-origin iframes), then uses cheerio to inject each iframe's DOM inside the corresponding `<iframe>` element in the parent HTML.
-- **Show Resources:** Combines links extracted from that DOM with the network log and loaded font URLs. `BrowserChannel.collectLoadedResources` reads each frame's Resource Timing entries in the main process, including cache hits and requests made before tab registration; destroyed or navigating frames are skipped. The browser's finite timing buffers can limit the results. DOM favicons use image thumbnails and the image viewer; media links target the video viewer, which also plays audio.
+- **Show Resources:** Combines links extracted from that DOM with the network log and loaded font URLs. `BrowserChannel.collectLoadedResources` reads each frame's Resource Timing entries in the main process, including cache hits and requests made before tab registration; destroyed or navigating frames are skipped. The browser's finite timing buffers can limit the results. DOM favicons use image thumbnails and the image viewer; media links target the video viewer, which also plays audio. Network entries become `curl` commands (`network-log-links.ts`) whose URL, method, every header and the body are single-quoted shell words (`'` as `'''`); an entry with a control character in its URL, method or a header is left out, and a body with control characters other than tab/CR/LF (ESC can end a terminal's bracketed paste) is left out of the command. `curl-parser.ts` reads the quoting back for the REST Client.
 - **Copy for selections:** Uses the renderer's helper, which writes through main-process IPC, instead of `webview.copy()` because the webview loses focus when the popup menu opens. Renderer-owned writes should use the native path for focus independence and compatibility with other history tools; see [Clipboard writes](../standards/coding-style.md#clipboard-writes). Native webview editing commands, including a page's own Ctrl+C, are still captured by the clipboard watcher: Chromium owns those writes through Electron's main-process pid, which the watcher trusts only for its `CanIncludeInClipboardHistory` marker. Its explicit `ExcludeClipboardContentFromMonitorProcessing` marker remains authoritative.
 - **Popup dismissal:** Webview clicks don't bubble to the renderer DOM. A transparent overlay (`webview-click-overlay`) is rendered over the webview area while a popup menu is open, allowing clicks to reach the renderer's `document` and trigger the popup's dismiss handler.
 - **skipInspect:** The browser context menu provides its own "Inspect Element" item, so `showAppPopupMenu` is called with `{ skipInspect: true }` to suppress the app's default "Inspect" item.
@@ -434,7 +457,7 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/renderer/editors/browser/BrowserPageLinkOpener.ts` | Renderer | Opens page-supplied URLs (context-menu link/image, `"new-window"`) under the page-open policy |
 | `src/shared/browser-navigation-policy.ts` | Shared | Navigation scheme classification and the page-open rule, used by main and renderer |
 | `src/main/browser/navigation-scheme-guards.ts` | Main | Scheme guards attached to every webview guest at creation and to popups |
-| `src/renderer/content/page-scheme-handoff.ts` | Renderer | Hands a page-requested non-Chromium URL to the open pipeline only for a board-claimed scheme |
+| `src/renderer/content/page-scheme-handoff.ts` | Renderer | Board-claimed scheme check for page-requested URLs, the per-origin Allow/Block answers for the session, and the hand-off to the open pipeline |
 | `src/renderer/editors/browser/BrowserTargetModel.ts` | Renderer | Browser host adapter for the narrow automation target interfaces |
 | `src/renderer/editors/browser/BrowserTabsPanel.ts` | Renderer | Native left-side internal tabs panel with compact floating preview and drag-to-reorder |
 | `src/renderer/editors/browser/BrowserBookmarks.ts` | Renderer | Wraps TextFileModel + LinkEditor for bookmark file I/O |
@@ -444,7 +467,10 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/renderer/editors/browser/UrlSuggestionsDropdown.ts` | Renderer | Native URL bar dropdown with search history and navigation history |
 | `src/renderer/editors/browser/browser-search-history.ts` | Renderer | Per-profile persistent search history storage (file-based) |
 | `src/renderer/editors/browser/TorStatusOverlay.ts` | Renderer | Native Tor connection overlay with spinner, log, reconnect button |
-| `src/renderer/editors/browser/network-log-links.ts` | Renderer | Network log → ILink[] conversion for Show Resources |
+| `src/renderer/editors/browser/network-log-links.ts` | Renderer | Network log → ILink[] conversion for Show Resources; builds shell-safe cURL commands (every word single-quoted, entries with control characters dropped) |
+| `src/renderer/editors/browser/url-display.ts`, `BrowserUrlDisplayView.ts` | Renderer | URL-bar presentation rules (userinfo stripped, security marker, host/scheme/path parts, origin label) and the unfocused URL rendering plus "Not secure" chip |
+| `src/renderer/editors/browser/BrowserExclusiveAccessNotice.ts` | Renderer | Host notice naming the origin and Esc when a page goes full screen or locks the pointer |
+| `src/preload-webview/exclusive-access-reporter.ts` | Guest | Reports pointer lock from every frame (`pointer-lock` guest message) |
 | `src/renderer/automation/locator.ts`, `mouse.ts`, `keyboard.ts`, `forms.ts`, `queries.ts`, `page-events.ts`, `navigation.ts`, `page-state.ts`, `synthetic.ts` | Renderer | Shared target-neutral automation operations grouped by job |
 | `src/renderer/automation/ref.ts` | Renderer | Host-scoped accessibility refs and iframe CDP-session maps |
 | `src/renderer/automation/snapshot.ts` | Renderer | Accessibility tree → YAML formatter for automation snapshots |
@@ -1256,7 +1282,15 @@ the view state when the user uses its fullscreen controls.
 When a page enters HTML fullscreen (for example, through a video's fullscreen control), Electron
 makes the host `BrowserWindow` fullscreen but keeps the guest `<webview>` inside its editor-sized
 box. `BrowserWebviewItemView` marks its wrapper and CSS stretches it across the app window, covering
-the browser chrome. The wrapper also opts out of Electron's drag region while fullscreen. A
+the browser chrome. Because a full-screen page could then draw fake Persephone chrome or a fake
+system prompt, `BrowserWebviewItemView` shows a `BrowserExclusiveAccessNotice` ("`<origin>` is now full
+screen. Press Esc to exit full screen.") for `EXCLUSIVE_ACCESS_NOTICE_MS` (4 s), as Chrome's exit
+bubble does. In HTML fullscreen the `<webview>` element is the host document's fullscreen element
+and sits in the top layer, so the notice joins the top layer as a manual popover while it is shown.
+Pointer lock gets the same notice ("… has hidden your mouse pointer. Press Esc to show it."): the
+preload's `exclusive-access-reporter.ts` reports `pointerlockchange` from every frame as the
+`pointer-lock` guest message, which `BrowserWebviewItemView` consumes itself (it never reaches
+`BrowserWebviewModel.handleGuestMessage`). Chromium releases pointer lock on Escape. The wrapper also opts out of Electron's drag region while fullscreen. A
 capturing `document` keydown listener in `BrowserWebviewItemView` sends the fullscreen-exit request
 when Escape is pressed while focus is in Persephone chrome, so this path does not depend on the
 guest page receiving the key.

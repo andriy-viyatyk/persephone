@@ -36,6 +36,12 @@ export interface InputOwnProps {
     startSlot?: SlotContent;
     /** Content rendered inside the input chrome, after the text. See `startSlot`. */
     endSlot?: SlotContent;
+    /**
+     * A formatted, read-only rendering of the value, drawn over the text while the field does not
+     * have focus (the browser URL bar emphasises the host this way). It ignores the mouse: the field
+     * keeps its size and the real value, so clicks, focus, selection, copy and automation reach it.
+     */
+    display?: SlotContent;
     /** When true, paints a red border (`color.error.border`) — for required/validated
      *  fields whose current value is rejected. Persists through focus. Default: false. */
     invalid?: boolean;
@@ -72,11 +78,14 @@ export interface InputProps
     > , InputOwnProps{
 }
 
+type SlotKind = "start" | "end" | "display";
+const SLOT_PARTS: Record<SlotKind, string> = { start: "start-slot", end: "end-slot", display: "display" };
+
 function hasSlot(value: SlotContent): boolean {
     return value !== undefined && value !== null && value !== false;
 }
 
-const INPUT_OWN_KEYS = ["name", "onChange", "onKeyDown", "size", "variant", "tone", "startSlot", "endSlot", "invalid", "width", "minWidth", "maxWidth"] as const satisfies readonly (keyof InputOwnProps)[];
+const INPUT_OWN_KEYS = ["name", "onChange", "onKeyDown", "size", "variant", "tone", "startSlot", "endSlot", "display", "invalid", "width", "minWidth", "maxWidth"] as const satisfies readonly (keyof InputOwnProps)[];
 const checkedOwnKeys: CompleteKeys<InputOwnProps, typeof INPUT_OWN_KEYS> = INPUT_OWN_KEYS;
 const INPUT_LEGACY_KEYS = ["disabled", "readOnly", "value", "defaultValue", "checked", "autoFocus"] as const satisfies readonly (keyof InputProps)[];
 
@@ -85,8 +94,8 @@ const INPUT_LEGACY_KEYS = ["disabled", "readOnly", "value", "defaultValue", "che
 export class InputView extends VanillaView<InputProps> {
     private readonly field: HTMLInputElement;
     private readonly restPropsState: RestPropsState = createRestPropsState();
-    private readonly slotHosts = new Map<"start" | "end", HTMLDivElement>();
-    private readonly slotCleanups = new Map<"start" | "end", () => void>();
+    private readonly slotHosts = new Map<SlotKind, HTMLDivElement>();
+    private readonly slotCleanups = new Map<SlotKind, () => void>();
     /**
      * The last value handed to `fillSlot` per slot. `updateSlot` is called on every update, so this
      * gate avoids a new fill generation for an unchanged value. It is also useful for text and
@@ -95,7 +104,7 @@ export class InputView extends VanillaView<InputProps> {
      * Safe for both arms. The same `Node` means the same content, and an inline subtree value is
      * always new, so a genuinely changed subtree has a new identity.
      */
-    private readonly appliedSlots = new Map<"start" | "end", SlotContent>();
+    private readonly appliedSlots = new Map<SlotKind, SlotContent>();
     private previousAutoFocus = false;
 
     public constructor(props: InputProps) {
@@ -142,6 +151,7 @@ export class InputView extends VanillaView<InputProps> {
             readOnly,
             startSlot: _startSlot,
             endSlot: _endSlot,
+            display: _display,
             invalid,
             width,
             minWidth,
@@ -161,6 +171,7 @@ export class InputView extends VanillaView<InputProps> {
         this.setBooleanDataset("disabled", disabled);
         this.setBooleanDataset("readonly", readOnly);
         this.setBooleanDataset("invalid", invalid);
+        this.setBooleanDataset("has-display", hasSlot(props.display));
 
         this.field.dataset.size = size;
         this.field.dataset.tone = tone;
@@ -218,9 +229,10 @@ const rest = splitProps(props, [...checkedOwnKeys, ...INPUT_LEGACY_KEYS] as cons
     private updateSlots(props: InputProps): void {
         this.updateSlot("start", props.startSlot);
         this.updateSlot("end", props.endSlot);
+        this.updateSlot("display", props.display);
     }
 
-    private updateSlot(kind: "start" | "end", value: SlotContent): void {
+    private updateSlot(kind: SlotKind, value: SlotContent): void {
         const present = hasSlot(value);
         const host = this.slotHosts.get(kind);
 
@@ -240,10 +252,15 @@ const rest = splitProps(props, [...checkedOwnKeys, ...INPUT_LEGACY_KEYS] as cons
         this.slotCleanups.set(kind, fillSlot(nextHost, value));
     }
 
-    private createSlotHost(kind: "start" | "end"): HTMLDivElement {
+    private createSlotHost(kind: SlotKind): HTMLDivElement {
         const host = document.createElement("div");
-        host.dataset.part = kind === "start" ? "start-slot" : "end-slot";
+        host.dataset.part = SLOT_PARTS[kind];
         if (kind === "start") this.root.insertBefore(host, this.field);
+        else if (kind === "display") {
+            // A visual copy of the value: assistive tech and snapshots read the field itself.
+            host.setAttribute("aria-hidden", "true");
+            this.field.after(host);
+        }
         else this.root.append(host);
         this.slotHosts.set(kind, host);
         return host;

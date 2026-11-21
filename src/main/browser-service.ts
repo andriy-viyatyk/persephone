@@ -28,9 +28,6 @@ import {
     SetBrowserSitePermissionRequest,
     BrowserSitePermissions,
 } from "../ipc/browser-ipc";
-import type { EventApi } from "../ipc/api-types";
-import type { EventPayload } from "../ipc/event-types";
-import { sendRendererEvent } from "../ipc/main/renderer-event-sender";
 import { clearNetworkLog } from "./network-logger";
 import { clearCdpTargetState } from "./cdp-service";
 import { appPartition, fileAccessPersistPartition } from "./constants";
@@ -89,16 +86,6 @@ export function isRegisteredBrowserWebContents(contents: WebContents): boolean {
     return browserGuests.hasWebContents(contents);
 }
 
-function sendHostEvent<K extends keyof EventApi>(sender: WebContents, endpoint: K, data: EventPayload<K>): void {
-    try {
-        if (!sender.isDestroyed()) {
-            sendRendererEvent(sender, endpoint, data);
-        }
-    } catch {
-        // The host renderer may be destroyed before the webview is disposed.
-    }
-}
-
 /** Exit a guest fullscreen transition and restore the host window when Electron does not. */
 async function exitHtmlFullscreen(key: string): Promise<void> {
     await browserGuests.get(key)?.exitHtmlFullscreen();
@@ -136,7 +123,6 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest): 
         zoomPercent: validZoomPercent(request.zoomPercent) ? request.zoomPercent : PAGE_ZOOM_DEFAULT,
         hooks: {
             host: hostHooks,
-            sendHostEvent: (endpoint, data) => sendHostEvent(sender, endpoint, data),
             forwardVoiceTypingInput: (parentWindow, inputEvent, input, guestContents) =>
                 openWindows.findByWindow(parentWindow)?.handleGuestVoiceTypingInput(inputEvent, input, guestContents),
             settlePermissionRequests: settlePermissionRequestsForWebContents,

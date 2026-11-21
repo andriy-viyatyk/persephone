@@ -9,6 +9,8 @@ export const BrowserGuestMessageChannel = {
     clickedImages: "clicked-images",
     translationUnits: "translation-units",
     translationReady: "translation-ready",
+    /** A frame's pointer lock started or ended; the host shows the Esc notice. */
+    pointerLock: "pointer-lock",
 } as const;
 
 /** Longest page title the host keeps (tab label, restore data, agent tools); longer titles are cut. */
@@ -37,7 +39,8 @@ export type GuestMessage =
     | { channel: typeof BrowserGuestMessageChannel.hideFindBar }
     | { channel: typeof BrowserGuestMessageChannel.clickedImages; payload: string[] }
     | { channel: typeof BrowserGuestMessageChannel.translationUnits; payload: TranslationUnitsMessage }
-    | { channel: typeof BrowserGuestMessageChannel.translationReady; payload: { scope: TranslationFrameScope } };
+    | { channel: typeof BrowserGuestMessageChannel.translationReady; payload: { scope: TranslationFrameScope } }
+    | { channel: typeof BrowserGuestMessageChannel.pointerLock; payload: { locked: boolean } };
 
 export interface GuestMessageTransport {
     sendToHost(channel: string, ...args: unknown[]): void;
@@ -73,6 +76,10 @@ export function parseGuestMessage(channel: string, args: unknown[]): GuestMessag
             return Array.isArray(payload) && payload.length ? { channel, payload: payload as string[] } : undefined;
         case BrowserGuestMessageChannel.translationReady:
             return record?.scope?.document ? { channel, payload: payload as { scope: TranslationFrameScope } } : undefined;
+        case BrowserGuestMessageChannel.pointerLock:
+            return typeof (payload as { locked?: unknown } | undefined)?.locked === "boolean"
+                ? { channel, payload: { locked: (payload as { locked: boolean }).locked } }
+                : undefined;
         case BrowserGuestMessageChannel.translationUnits:
             return record?.scope?.document && Array.isArray(record.items)
                 ? { channel, payload: payload as TranslationUnitsMessage }

@@ -235,7 +235,7 @@ export class BrowserWebviewModel {
         void this.model.guest.setZoom(internalTabId, zoomPercent);
     };
 
-    handleGuestMessage(tabId: string, msg: GuestMessage, frameId: [number, number]): void {
+    handleGuestMessage(tabId: string, msg: Exclude<GuestMessage, { channel: "pointer-lock" }>, frameId: [number, number]): void {
         switch (msg.channel) {
             case BrowserGuestMessageChannel.pageTitle:
                 this.model.updateTab(tabId, { pageTitle: msg.payload }); return;
@@ -321,11 +321,11 @@ export class BrowserWebviewModel {
                 break;
             }
             case "new-window":
+            case "scheme-handoff": // a non-Chromium URL the page asked for; openLink sends it to the board-scheme hand-off
                 if (data.url) this.model.pageLinks.openLink(data.url, internalTabId, "page");
                 break;
             case "popups-blocked":
-                this.model.prompts.countBlockedPopup(internalTabId);
-                break;
+                this.model.prompts.countBlockedPopup(internalTabId); break;
             case "permission-request": {
                 const prompt = data.permissionRequest as BrowserPermissionPromptData | undefined;
                 if (prompt && this.model.state.get().tabs.some((tab) => tab.id === internalTabId)) {

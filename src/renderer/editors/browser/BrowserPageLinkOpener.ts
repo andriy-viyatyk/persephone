@@ -2,14 +2,15 @@ import { getNavigationScheme, getPageOpenAction } from "../../../shared/browser-
 import { t } from "../../../shared/i18n/t";
 import { pages } from "../../api/pages";
 import { ui } from "../../api/ui";
-import { openPageSchemeCandidate } from "../../content/page-scheme-handoff";
+import { openPageSchemeCandidate, pageSchemeClaim, pageSchemeDecision, rememberPageSchemeDecision } from "../../content/page-scheme-handoff";
 import { browserUrlChanged, type BrowserUrlEvent } from "../../core/state/events";
 import type { BrowserEditor } from "./BrowserEditor";
+import { originLabel } from "./url-display";
 
 /**
  * Who asked to open a page-supplied URL: the user, through a context-menu item ("menu"), or the page
- * itself through `target=_blank` / `window.open` ("page"; already filtered, gesture-checked and rate
- * limited by main's `BrowserPopupGate`).
+ * itself through `target=_blank` / `window.open` / its own navigation ("page"; already filtered and
+ * gesture-checked in main — `BrowserPopupGate` for tabs, the consumed `UserActivation` for hand-offs).
  */
 export type PageLinkOrigin = "menu" | "page";
 
@@ -26,7 +27,7 @@ export class BrowserPageLinkOpener {
     openLink(url: string, sourceTabId: string, origin: PageLinkOrigin): void {
         const action = getPageOpenAction(url);
         if (action === "handoff") {
-            if (origin === "menu") void this.handOff(url);
+            this.handOff(url, sourceTabId, origin);
             return;
         }
         if (action === "refuse") {
@@ -56,7 +57,22 @@ export class BrowserPageLinkOpener {
         pages.openImageInNewTab(srcURL, undefined, sessionHandle);
     }
 
-    private async handOff(url: string): Promise<void> {
-        if (!(await openPageSchemeCandidate(url))) ui.notify(t("browser.pageUrlRefused"), "warning");
+    /** A non-Chromium URL from the page: only a board-claimed scheme opens, and only once the user has
+     *  allowed this page origin to hand that scheme to the board (asked in the prompt bar). */
+    private handOff(url: string, sourceTabId: string, origin: PageLinkOrigin): void {
+        const claim = pageSchemeClaim(url);
+        if (!claim) {
+            if (origin === "menu") ui.notify(t("browser.pageUrlRefused"), "warning");
+            return;
+        }
+        const partition = this.model.partition;
+        const pageOrigin = originLabel(this.model.findTab(sourceTabId)?.url ?? "");
+        const decision = pageSchemeDecision(partition, pageOrigin, claim.scheme);
+        if (decision === "allow") void openPageSchemeCandidate(url);
+        if (decision) return;
+        this.model.prompts.askBoardScheme(sourceTabId, pageOrigin, { ...claim, url }, (answer) => {
+            rememberPageSchemeDecision(partition, pageOrigin, claim.scheme, answer);
+            if (answer === "allow") void openPageSchemeCandidate(url);
+        });
     }
 }

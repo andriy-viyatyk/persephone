@@ -127,6 +127,12 @@ export function isBoardClaimedScheme(scheme: string): boolean {
     return schemeOwnership.get(normalizeScheme(scheme))?.value.origin === "board";
 }
 
+/** The root of the trusted board that claimed this scheme, or undefined. */
+export function boardSchemeOwner(scheme: string): string | undefined {
+    const registration = schemeOwnership.get(normalizeScheme(scheme))?.value;
+    return registration?.origin === "board" ? registration.owner : undefined;
+}
+
 export function listRegisteredSchemes(): string[] {
     return schemeOwnership.keys();
 }

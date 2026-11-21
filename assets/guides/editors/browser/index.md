@@ -50,6 +50,9 @@ Startpage, Qwant, Baidu, Perplexity, and Gibiru.
 The engine you pick is preselected in new browser pages. Incognito and Tor pages remember their
 own choice, separate from profile pages.
 
+Unfocused, the bar emphasises the site's host and marks plain-HTTP sites **Not secure**
+([details](layout.md#how-the-url-bar-shows-a-page)).
+
 ## Site permissions and prompts
 
 On an HTTP(S) page, the **Site permissions** button appears at the start of the address field until
@@ -60,16 +63,8 @@ the site and the access; answer with **Allow** or **Block** (file access and emb
 [layout](layout.md#when-a-page-asks-for-permission)). Choices for regular profiles are saved between
 app runs. Incognito and Tor choices stay in memory for that private session and end with it.
 
-On HTTPS pages, the site-info popover also has **View certificate**. It opens the certificate chain
-Chromium received for that tab in the highest-priority `certificate.view` board. If no viewer board
-is installed, Persephone opens the leaf-first PEM bundle as text in Monaco; the button tooltip
-explains that a certificate viewer board can decode it. Install the **Certificate Viewer** board
-from the Boards catalog for a decoded certificate view. A restored browser tab may not yet have a
-certificate chain available from Chromium; if you see the “not available yet” message, reload the
-page and try **View certificate** again. Agents can inspect the same chain with
-`pages[i].editor.getCertificate()`, which returns `{ url, certificates }` (base64 DER, leaf first)
-or `undefined` for a non-HTTPS page or when Chromium has no chain yet. The curated browser element
-`site-certificate-view` targets this button while the HTTPS site-info popover is open.
+On HTTPS pages, the site-info popover also has **View certificate**
+([details](layout.md#when-site-permissions-are-open)).
 
 ## Site extensions
 
@@ -126,13 +121,12 @@ in nested frames. Select the button again or press `Esc` to leave cinema mode an
 If an embedded video cannot show its own button, the button appears over the video from its
 containing page. Videos that do not resize with their player are fitted to the expanded view.
 
-Videos can also use their own fullscreen control to fill the app window. Press `Esc` to leave
-fullscreen, even when keyboard focus is in Persephone rather than the page. Fullscreen also ends when
-you close the browser tab or leave it hidden.
+Videos can also use their own fullscreen control to fill the app window; a notice names the site
+and `Esc`. Press `Esc` to leave fullscreen, even when keyboard focus is in Persephone rather than the
+page. Fullscreen also ends when you close the browser tab or leave it hidden.
 
-When a page link uses a scheme registered by a trusted board, clicking it leaves the browser tab and
-opens the link through Persephone's normal content pipeline. Unregistered non-web schemes remain
-blocked rather than being sent to Chromium.
+A page link to a scheme registered by a trusted board opens in that board once you allow it for the
+site ([details](layout.md#when-a-page-asks-for-permission)). Other non-web schemes stay blocked.
 
 ## Show Resources
 

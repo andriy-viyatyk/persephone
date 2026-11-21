@@ -13,28 +13,61 @@ export interface TraitDragPayload {
     data: unknown;
 }
 
-/** Set trait drag data on a native drag event. */
+// ── Host-drag nonce ──────────────────────────────────────────────────────────
+// Any drag can carry the trait MIME type: a web page in a browser tab can set it in its own
+// `dragstart`, and Chromium hands that drag to the app window when it leaves the page. A trait
+// payload is only honoured when this document started the drag: `setTraitDragData` (only ever
+// called from a host `dragstart`) stamps a fresh nonce that lives in this document's memory until
+// the drag ends. Trait drags therefore work only inside the window where they started; OS file
+// drops reach trait targets through the event expando below, not through the MIME type.
+
+let activeDragNonce: string | undefined;
+let nonceListenersInstalled = false;
+
+function endHostDrag(): void {
+    activeDragNonce = undefined;
+}
+
+function installNonceListeners(): void {
+    if (nonceListenersInstalled) return;
+    nonceListenersInstalled = true;
+    // Capture phase on the document, so a handler that stops propagation cannot keep the nonce
+    // alive. A drop ends it after the drop handlers have run; `pointerdown` ends one whose
+    // `dragend` never reached the document (its source element was removed during the drag).
+    document.addEventListener("dragend", endHostDrag, true);
+    document.addEventListener("drop", () => setTimeout(endHostDrag, 0), true);
+    document.addEventListener("pointerdown", endHostDrag, true);
+}
+
+/** Set trait drag data on a native drag event. Call only from this document's `dragstart`. */
 export function setTraitDragData(
     dataTransfer: DataTransfer,
     typeId: TraitTypeId,
     data: unknown,
 ): void {
-    const payload: TraitDragPayload = { typeId, data };
+    installNonceListeners();
+    activeDragNonce = crypto.randomUUID();
+    const payload: TraitDragPayload & { nonce: string } = { typeId, data, nonce: activeDragNonce };
     dataTransfer.setData(MIME_TYPE, JSON.stringify(payload));
     dataTransfer.effectAllowed = "move";
 }
 
-/** Read trait drag data from a native drag event. Returns null if not a trait drag. */
+/** Read trait drag data from a native drag event. Returns null if not a trait drag, or if the drag
+ *  was not started by this document (see "Host-drag nonce"). */
 export function getTraitDragData(dataTransfer: DataTransfer): TraitDragPayload | null {
+    if (!activeDragNonce) return null;
     const raw = dataTransfer.getData(MIME_TYPE);
     if (!raw) return null;
-    return tryParseJson<TraitDragPayload | null>(raw, null);
+    const parsed = tryParseJson<(TraitDragPayload & { nonce?: unknown }) | null>(raw, null);
+    if (!parsed || parsed.nonce !== activeDragNonce) return null;
+    return { typeId: parsed.typeId, data: parsed.data };
 }
 
-/** Check if a drag event carries trait data (for dragover/dragenter). */
+/** Check if a drag event carries trait data (for dragover/dragenter): the trait MIME type on a drag
+ *  this document started. */
 export function hasTraitDragData(dataTransfer: DataTransfer): boolean {
     // Use Array.prototype.indexOf for compat with both string[] and DOMStringList
-    return Array.prototype.indexOf.call(dataTransfer.types, MIME_TYPE) >= 0;
+    return !!activeDragNonce && Array.prototype.indexOf.call(dataTransfer.types, MIME_TYPE) >= 0;
 }
 
 /** Resolve TraitSet from registry by typeId. */

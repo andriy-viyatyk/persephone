@@ -175,7 +175,10 @@ function tokenize(text: string): string[] {
 
         if (inQuote) {
             if (ch === quoteChar) {
+                // Reset so a backslash after a closed '…' escapes the next character, as in bash
+                // (the `'\''` idiom the network-log cURL builder writes for a quote).
                 inQuote = false;
+                quoteChar = "";
             } else {
                 current += ch;
             }

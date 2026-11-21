@@ -215,6 +215,7 @@ export type BrowserEventType =
     | "did-stop-loading"
     | "did-start-navigation"
     | "new-window"
+    | "scheme-handoff"
     | "context-menu"
     | "audio-state-changed"
     | "popups-blocked"

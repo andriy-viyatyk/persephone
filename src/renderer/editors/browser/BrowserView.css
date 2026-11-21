@@ -16,6 +16,18 @@
 .browser-root [data-proxy-chip] { cursor: pointer; font-size: 11px; color: var(--color-text-light); padding: 0 4px; border-radius: 3px; white-space: nowrap; user-select: none; line-height: 20px; background: transparent; border: 1px solid var(--color-border-default); }
 .browser-root [data-proxy-chip]:hover { color: var(--color-text-default); background-color: var(--color-bg-light); }
 .browser-root [data-search-engine-chip]:hover { color: var(--color-text-default); background-color: var(--color-bg-light); }
+/* Unfocused URL bar (BrowserUrlDisplayView): scheme and path dimmed, host in the strong text colour.
+   Grid columns give the host its full width before the path gets any (the path is the 1fr column),
+   so the path gives way first; a host that still does not fit is cut on the LEFT (rtl box around an
+   isolated ltr <bdi>), so its registrable end stays visible. */
+.browser-root [data-url-display] { display: grid; grid-template-columns: auto minmax(0, max-content) minmax(0, 1fr); align-items: center; flex: 1 1 auto; min-width: 0; overflow: hidden; }
+.browser-root [data-url-display] > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.browser-root [data-url-scheme] { color: var(--color-text-light); }
+.browser-root [data-url-host] { direction: rtl; color: var(--color-text-strong); }
+.browser-root [data-url-host] > bdi { direction: ltr; unicode-bidi: isolate; }
+.browser-root [data-url-rest] { color: var(--color-text-light); }
+.browser-root [data-not-secure-chip] { display: inline-flex; align-items: center; gap: 2px; font-size: 11px; line-height: 20px; padding: 0 4px; white-space: nowrap; user-select: none; color: var(--color-warning-text); }
+.browser-root [data-not-secure-chip] svg { width: 14px; height: 14px; }
 @layer editor {
     .browser-root [data-type="icon-button"][data-name="url-site-permissions"][data-ai-vision-source="page"],
     .browser-root [data-type="icon-button"][data-name="url-site-permissions"][data-ai-vision-source="page"]:hover { color: var(--color-success-text); }
@@ -52,6 +64,10 @@
 /* HTML fullscreen: the window is fullscreen, so the page covers the whole app (tabs, toolbar). */
 .browser-root [data-webview-wrapper][data-html-fullscreen] { position: fixed; inset: 0; z-index: 2147483647; -webkit-app-region: no-drag; }
 .browser-root [data-webview-click-overlay] { position: absolute; inset: 0; z-index: 1; }
+/* Fullscreen / pointer-lock notice (BrowserExclusiveAccessNotice): host-drawn over the page, top centre,
+   never takes the mouse. Inside the webview wrapper, so it also sits on top of an HTML-fullscreen page. */
+.browser-root [data-exclusive-access-notice] { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); right: auto; bottom: auto; margin: 0; z-index: 2; pointer-events: none; max-width: calc(100% - 48px); padding: var(--space-md, 8px) var(--space-xl, 16px); border-radius: var(--radius-md, 4px); border: 1px solid var(--color-border-default); background-color: var(--color-bg-dark); color: var(--color-text-strong); font-size: var(--font-base, 13px); text-align: center; overflow-wrap: anywhere; }
+.browser-root [data-exclusive-access-notice][hidden] { display: none; }
 
 @layer editor {
     [data-type="browser-zoom-controls"] { display: flex; align-items: stretch; gap: var(--gap-md, 8px); padding: var(--space-lg, 12px) var(--space-sm, 4px); }

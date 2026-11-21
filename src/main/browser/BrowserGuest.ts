@@ -1,8 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { BrowserWindow, WebContents, WebFrameMain } from "electron";
 import { BrowserChannel, BrowserEvent } from "../../ipc/browser-ipc";
-import type { EventApi } from "../../ipc/api-types";
-import type { EventPayload } from "../../ipc/event-types";
 import { errMessage } from "../../shared/utils";
 import { getNavigationScheme, getPageOpenAction } from "../../shared/browser-navigation-policy";
 import { destroyPopupWithNodeIntegration, guardPopupWindow, popupWindowOptions } from "./popup-policy";
@@ -25,7 +23,6 @@ export interface BrowserGuestHostHooks {
 
 export interface BrowserGuestHooks {
     host: BrowserGuestHostHooks;
-    sendHostEvent<K extends keyof EventApi>(endpoint: K, data: EventPayload<K>): void;
     forwardVoiceTypingInput(parentWindow: BrowserWindow, event: Electron.Event, input: Electron.Input, guest: WebContents): void;
     settlePermissionRequests(contents: WebContents): void;
     clearNetworkLog(key: string): void;
@@ -227,9 +224,10 @@ export class BrowserGuest {
         }
     }
 
-    /** Hand a page-requested non-Chromium URL to the host, only right after a user gesture. */
+    /** Hand a page-requested non-Chromium URL to this tab's browser editor, only right after a user
+     *  gesture; the editor opens a board-claimed scheme once the user allows it for the page's origin. */
     private handOffExternal(url: string): void {
-        if (this.activation.consume()) this.hooks.sendHostEvent("eOpenPipelineCandidate", url);
+        if (this.activation.consume()) this.sendEvent("scheme-handoff", { url });
     }
 
     handleInput(event: Electron.Event, input: Electron.Input): void {

@@ -20,6 +20,18 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Bug Fixes
 
+- **Browser: the URL bar can't be dressed up, and full-screen pages are labelled.** The URL bar no
+  longer shows a `user:password@` part, shows the site's host in the stronger colour with the path
+  dimmed (a long path or host can no longer push the real domain out of view), and marks plain-HTTP
+  sites **Not secure**. When a page goes full screen or hides the mouse pointer, a notice names the
+  site and the `Esc` key. A web page that opens a link in a board now asks first (once per site and
+  link type, until restart), and only right after you click or press a key.
+- **Copied cURL commands are safe to paste.** The cURL commands in **Show Resources** quote the
+  address, method, every header and the body, so a page-chosen header can no longer run a command in
+  your shell; entries with control characters are left out.
+- **Dragging from a web page can't pose as a Persephone item.** Persephone's own drag-and-drop
+  (links, tabs, Explorer items) now accepts only drags that started in the same window, so a page
+  cannot forge one to move or import local files.
 - **Browser: sites ask before editing your files, and embedded frames don't inherit
   permissions.** A site that wants to edit files in a folder you picked, view a folder's files, or
   save to a file now shows the permission bar with the path; picks of drive roots, your user folder,

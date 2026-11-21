@@ -90,6 +90,8 @@ const BROWSER_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "permission-origin", purpose: "Origin requesting permissions in the active inner tab.", where: "left side of the permission request bar" },
     { name: "site-extension-trust", purpose: "Trust the site extension shown in the active page's prompt.", where: "right side of the site extension trust bar when available" },
     { name: "url-input", purpose: "Browser address bar input", where: "middle of the browser toolbar" },
+    { name: "url-not-secure", purpose: "Not secure marker for a plain-HTTP (non-loopback) page", where: "left side of the browser address field, after the site-info button" },
+    { name: "browser-exclusive-access-notice", purpose: "Notice naming the origin and the Esc key when a page goes full screen or locks the mouse pointer", where: "top centre of the page for a few seconds after it goes full screen or locks the pointer" },
     { name: "url-navigate", purpose: "Navigate to the address-bar URL", where: "right edge of the browser address field" },
     { name: "toolbar-site-actions", purpose: "Open the current site's extension actions", where: "inside the browser address bar, after Navigate and before Translate, when the current site has actions" },
     { name: "site-certificate-view", purpose: "View the active HTTPS page's certificate chain", where: "right side of the header in the site-info popover on HTTPS pages" },

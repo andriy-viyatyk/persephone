@@ -223,6 +223,15 @@ export function providerDeclarationFor(type: string): ProviderDeclaration | unde
     return providerDeclarations.get(type);
 }
 
+/** The manifest name of the trusted board at `boardRoot`, from its provider declarations (a board that
+ *  claims a scheme always declares the provider behind it). */
+export function trustedProviderBoardName(boardRoot: string): string | undefined {
+    for (const declaration of providerDeclarations.values()) {
+        if (declaration.trusted && declaration.boardRoot === boardRoot) return declaration.boardName;
+    }
+    return undefined;
+}
+
 function tryCreateRegisteredProvider(
     descriptor: IProviderDescriptor,
 ): IProvider | undefined {

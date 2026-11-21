@@ -61,8 +61,10 @@ export class PermissionPromptBarView extends VanillaView<{ model: BrowserEditor;
         const prompt = this.props.prompt;
         this.origin.textContent = prompt.topLevelOrigin;
         this.origin.dataset.name = "permission-origin";
-        this.requestText.textContent = prompt.fileAccess ? fileAccessText(prompt.fileAccess) : permissionsText(prompt);
-        this.requestText.title = prompt.fileAccess?.path ?? "";
+        this.requestText.textContent = prompt.fileAccess ? fileAccessText(prompt.fileAccess)
+            : prompt.boardScheme ? t("browser.permissionOpenBoardScheme", { scheme: prompt.boardScheme.scheme, board: prompt.boardScheme.board })
+                : permissionsText(prompt);
+        this.requestText.title = prompt.fileAccess?.path ?? prompt.boardScheme?.url ?? "";
         this.requestText.dataset.name = "permission-description";
     }
 

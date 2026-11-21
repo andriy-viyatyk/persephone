@@ -11,8 +11,21 @@ function isReadOnly(method: string): boolean {
     return READ_ONLY_METHODS.has(method.toUpperCase());
 }
 
-function escapeSingleQuotes(s: string): string {
-    return s.replace(/'/g, "'\\''");
+/** One POSIX-shell word: single-quoted, with each `'` written as `'\''`. Page-controlled values
+ *  (URL, method, headers, body) all go through this, so a copied command cannot break out. */
+function shellQuote(s: string): string {
+    return `'${s.replace(/'/g, "'\\''")}'`;
+}
+
+/** C0 controls and DEL. Chromium never sends them in a URL, method or header; in a body, everything
+ *  but tab/CR/LF is left out of the command because ESC can end a terminal's bracketed paste. */
+function hasControlChar(value: string, allowLineBreaks = false): boolean {
+    for (let i = 0; i < value.length; i++) {
+        const code = value.charCodeAt(i);
+        if (allowLineBreaks && (code === 9 || code === 10 || code === 13)) continue;
+        if (code < 32 || code === 127) return true;
+    }
+    return false;
 }
 
 /** Map of content-type MIME types to file extensions. */
@@ -85,20 +98,25 @@ function urlTitle(url: string, responseHeaders?: Record<string, string[]>): stri
     return name;
 }
 
-function buildCurl(entry: NetworkLogEntry): string {
-    const parts: string[] = [`curl '${entry.url}'`];
+/** The entry as a bash `curl` command, or undefined when its URL, method or a header carries a
+ *  control character (such an entry is left out of the list). */
+function buildCurl(entry: NetworkLogEntry): string | undefined {
+    if (hasControlChar(entry.url) || hasControlChar(entry.method)) return undefined;
+    const parts: string[] = [`curl ${shellQuote(entry.url)}`];
 
     if (entry.method !== "GET") {
-        parts.push(`-X ${entry.method}`);
+        parts.push(`-X ${shellQuote(entry.method)}`);
     }
 
     for (const [key, value] of Object.entries(entry.requestHeaders)) {
         if (key.startsWith(":")) continue; // Skip HTTP/2 pseudo-headers
-        parts.push(`-H '${key}: ${value}'`);
+        const header = `${key}: ${value}`;
+        if (hasControlChar(header)) return undefined;
+        parts.push(`-H ${shellQuote(header)}`);
     }
 
-    if (entry.requestBody) {
-        parts.push(`--data-raw '${escapeSingleQuotes(entry.requestBody)}'`);
+    if (entry.requestBody && !hasControlChar(entry.requestBody, true)) {
+        parts.push(`--data-raw ${shellQuote(entry.requestBody)}`);
     }
 
     return parts.join(" ");
@@ -115,7 +133,7 @@ export function networkLogToLinks(entries: NetworkLogEntry[]): ILink[] {
 
     for (const entry of entries) {
         const curl = buildCurl(entry);
-        if (seen.has(curl)) continue;
+        if (curl === undefined || seen.has(curl)) continue;
         seen.add(curl);
 
         result.push({

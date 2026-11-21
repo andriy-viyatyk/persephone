@@ -30,6 +30,11 @@ capability, settings, and browser URL mask registrations. Boards may not claim `
 the declared background service. Provider registration is
 controlled by the `contentProviders` declaration itself; it is separate from the permission flags.
 
+A web page in a browser tab can also link to a claimed scheme. Treat such a URL as untrusted input:
+the page chooses its path and query. Persephone opens it only right after the user clicks or
+presses a key in the page, and only after the user allows that site to open the scheme in your
+board (asked once per site, remembered until restart).
+
 Register the implementation from the declared module service, not from the board page:
 
 ```js

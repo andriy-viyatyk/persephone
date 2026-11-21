@@ -1,6 +1,6 @@
 import type { BrowserEditor } from "./BrowserEditor";
 import type { BrowserTabData } from "./browser-state";
-import { parseGuestMessage } from "../../../ipc/browser-guest-messages";
+import { BrowserGuestMessageChannel, parseGuestMessage } from "../../../ipc/browser-guest-messages";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
@@ -10,6 +10,8 @@ import { BrowserSecondaryViewsView } from "./BrowserSecondaryViews";
 import { BrowserBookmarks } from "./BrowserBookmarks";
 import { LinkActionView, LinkBreadcrumbView } from "../link-editor/LinkToolbarViews";
 import { LinkBodyView } from "../link-editor/LinkBody";
+import { BrowserExclusiveAccessNotice } from "./BrowserExclusiveAccessNotice";
+import { originLabel } from "./url-display";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const WEBVIEW_PRELOAD_URL = (window as any).webviewPreloadUrl as string;
 const isBlankUrl = (url: string | undefined): boolean => !url || url === "about:blank";
@@ -26,6 +28,8 @@ class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps> {
     private readonly model: BrowserEditor;
     private readonly tabId: string;
     private readonly webview: Electron.WebviewTag;
+    /** Names the origin and Esc when this page goes full screen or locks the pointer. */
+    private readonly notice: BrowserExclusiveAccessNotice;
     private htmlFullscreen = false;
 
     public constructor(props: BrowserWebviewItemProps) {
@@ -42,9 +46,12 @@ class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps> {
         this.webview.preload = WEBVIEW_PRELOAD_URL;
         this.webview.setAttribute("allowpopups", "true");
         this.updateBackground(props.tab);
+        this.notice = this.child(new BrowserExclusiveAccessNotice());
+        wrapper.append(this.notice.root);
     }
 
     protected onMount(): void {
+        this.notice.mount();
         const existing = this.model.webview.get(this.tabId);
         if (existing && existing !== this.webview && existing.isConnected) {
             // Preserve the duplicate-connected-webview warning verbatim in meaning.
@@ -66,7 +73,13 @@ class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps> {
 
         const onIpcMessage = (event: Electron.IpcMessageEvent): void => {
             const msg = parseGuestMessage(event.channel, event.args);
-            if (msg) this.model.webview.handleGuestMessage(this.tabId, msg, event.frameId);
+            if (!msg) return;
+            if (msg.channel === BrowserGuestMessageChannel.pointerLock) {
+                if (msg.payload.locked) this.notice.show("pointer-lock", originLabel(this.props.tab.url));
+                else this.notice.hide("pointer-lock");
+                return;
+            }
+            this.model.webview.handleGuestMessage(this.tabId, msg, event.frameId);
         };
         this.listenNative("ipc-message", onIpcMessage);
 
@@ -103,6 +116,8 @@ class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps> {
     protected onUpdate(props: BrowserWebviewItemProps): void { this.updateBackground(props.tab); }
 
     private setHtmlFullscreen(fullscreen: boolean): void {
+        if (fullscreen && !this.htmlFullscreen) this.notice.show("fullscreen", originLabel(this.props.tab.url));
+        else if (!fullscreen) this.notice.hide("fullscreen");
         this.htmlFullscreen = fullscreen;
         this.root.toggleAttribute("data-html-fullscreen", fullscreen);
     }

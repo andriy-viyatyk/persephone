@@ -60,6 +60,35 @@
     [data-type="input"] > input[type="number"]:hover::-webkit-inner-spin-button,
     [data-type="input"] > input[type="number"]:focus::-webkit-inner-spin-button { opacity: 1; }
 
+    /* `display` prop: while the field is not focused, a formatted rendering is drawn over the
+       field's own text, which turns transparent. Both share one grid cell; the rendering ignores
+       the mouse, so the field keeps its size and takes every click, and focus, selection and
+       automation behave as without it. Focusing the field brings the editable text back. */
+    [data-type="input"][data-has-display] { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; }
+    [data-type="input"][data-has-display] > [data-part="start-slot"] { grid-area: 1 / 1; }
+    [data-type="input"][data-has-display] > input { grid-area: 1 / 2; width: 100%; }
+    [data-type="input"][data-has-display] > [data-part="end-slot"] { grid-area: 1 / 3; }
+    [data-type="input"][data-has-display] > input:not(:focus) { color: transparent; }
+    [data-type="input"][data-has-display] > input:not(:focus) + [data-part="display"] { display: flex; }
+    [data-type="input"] > [data-part="display"] {
+        display: none;
+        grid-area: 1 / 2;
+        align-items: center;
+        /* The rendering is as long as the URL; it must never widen the field. */
+        contain: inline-size;
+        min-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        pointer-events: none;
+        color: var(--color-text-dark, currentColor);
+        padding-left: var(--space-md, 8px);
+        padding-right: var(--space-md, 8px);
+    }
+    [data-type="input"][data-size="sm"] > [data-part="display"] { font-size: var(--font-sm, 12px); }
+    [data-type="input"][data-size="md"] > [data-part="display"] { font-size: var(--font-base, 14px); }
+    [data-type="input"] > [data-part="start-slot"] ~ [data-part="display"] { padding-left: 0; }
+    [data-type="input"] > [data-part="display"]:has(+ [data-part="end-slot"]) { padding-right: 0; }
+
     [data-type="input"] > [data-part="start-slot"],
     [data-type="input"] > [data-part="end-slot"] {
         display: flex;
