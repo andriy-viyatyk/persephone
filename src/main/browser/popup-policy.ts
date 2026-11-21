@@ -2,29 +2,14 @@ import { BrowserWindow, WebContents } from "electron";
 import { globalMuteService } from "../global-mute-service";
 import { globalPopupRateLimiter } from "../../ipc/popup-rate-limiter";
 import type { BrowserEvent } from "../../ipc/browser-ipc";
-import { getNavigationScheme } from "./navigation-scheme-policy";
+import { getPageOpenAction } from "../../shared/browser-navigation-policy";
+import { attachNavigationSchemeGuards } from "./navigation-scheme-guards";
 
 type SendEvent = (type: BrowserEvent["type"], data: BrowserEvent["data"]) => void;
-interface PopupEventTarget {
-    on(event: string, handler: (...args: unknown[]) => void): void;
-}
 
 export function parseFeature(features: string, name: string): number | undefined {
     const match = features.match(new RegExp(`${name}=(\\d+)`));
     return match ? parseInt(match[1], 10) : undefined;
-}
-
-export function attachPopupNavigationGuards(contents: WebContents): void {
-    const popupEvents = contents as unknown as PopupEventTarget;
-    popupEvents.on("will-navigate", ((event: Electron.Event, url: string) => {
-        if (getNavigationScheme(url) !== "chromium") event.preventDefault();
-    }));
-    popupEvents.on("will-redirect", ((event: Electron.Event, details: Electron.WebContentsWillRedirectEventParams) => {
-        if (getNavigationScheme(details.url) === "blocked") event.preventDefault();
-    }));
-    popupEvents.on("will-frame-navigate", ((details: Electron.Event & Electron.WebContentsWillFrameNavigateEventParams) => {
-        if (!details.isMainFrame && getNavigationScheme(details.url) === "blocked") details.preventDefault();
-    }));
 }
 
 export function destroyPopupWithNodeIntegration(childWindow: BrowserWindow, details: Electron.DidCreateWindowDetails): boolean {
@@ -67,8 +52,9 @@ export function guardPopupWindow(
 
     const childContents = childWindow.webContents;
     globalMuteService.register(childContents, "popup");
-    attachPopupNavigationGuards(childContents);
+    attachNavigationSchemeGuards(childContents);
     childContents.setWindowOpenHandler(({ url, disposition, features }) => {
+        if (getPageOpenAction(url) !== "open") return { action: "deny" };
         if (disposition === "foreground-tab" || disposition === "background-tab") {
             sendEvent("new-window", { url, disposition });
             return { action: "deny" };

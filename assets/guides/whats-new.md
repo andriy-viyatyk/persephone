@@ -18,6 +18,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
   opens a new page with the Explorer panel rooted at that folder. Dropping several files or folders
   still opens a link collection page.
 
+### Bug Fixes
+
+- **Browser: pages can no longer open local files or `data:` documents in a tab.** **Open Link in
+  New Tab**, `target="_blank"` links and `window.open()` now open only web addresses, as in Chrome,
+  and **Open Image in New Tab** refuses local images. Local files and `data:` URLs still open when
+  you paste them into the URL bar.
+
 ---
 
 ## Version 5.0.20

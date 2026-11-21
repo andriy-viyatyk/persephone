@@ -380,6 +380,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── registry.ts         # Provider/transformer registries, createPipeFromDescriptor()
 │   ├── board-provider-factory.ts # Trusted-board ProxyProvider factory
 │   ├── scheme-registry.ts  # Platform/script URL-scheme parse and resolve hooks
+│   ├── page-scheme-handoff.ts # Opens a page-requested non-Chromium URL only for a board-claimed scheme
 │   ├── builtin-schemes.ts  # Built-in URL-scheme registrations and handlers
 │   ├── parsers.ts          # Layer 1: scheme dispatch plus file/archive and cURL/fetch adapters on openRawLink
 │   ├── resolvers.ts        # Layer 2: registered-scheme dispatch plus fallback pipe resolvers on openLink
@@ -564,6 +565,7 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── SiteExtensionInjection.ts  # Shared guarded injection and in-document teardown expressions
 │   │   ├── TemporarySiteExtensions.ts # Page-memory test-extension registry, validation, and outcomes
 │   │   ├── BrowserPopupModel.ts       # Page-local live popup projection and browser event lifecycle
+│   │   ├── BrowserPageLinkOpener.ts   # Opens page-supplied URLs (context menu, target=_blank) under the page-open policy
 │   │   ├── BrowserSiteActionsView.ts  # Site action toolbar popover content
 │   │   ├── BrowserPageRemote.ts      # Page-authored AiVision/WebMCP registration and requests
 │   │   ├── BrowserFindModel.ts       # Find-in-page state and commands
@@ -1160,7 +1162,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 │   ├── BrowserPopupRegistry.ts # Real popup ownership, metadata, events, and teardown
 │   ├── browser-popup-service.ts # Sender-validated popup close, teardown, focus, and text operations
 │   ├── BrowserGuest.ts     # Per-registration listeners, state, and disposal
-│   ├── navigation-scheme-policy.ts # Browser guest navigation scheme decisions
+│   ├── navigation-scheme-guards.ts # Scheme guards for guests (attached at creation) and popups; rules in shared/browser-navigation-policy.ts
 │   └── popup-policy.ts     # Browser popup admission and rate-limit policy
 ├── browser-dom-snapshot.ts # DOM and loaded-resource collection for browser guests
 ├── host-fullscreen-controller.ts # Per-window host fullscreen intent and guest coordination

@@ -5,7 +5,7 @@ import { createLinkData } from "../../../shared/link-data";
 import { appWindow, signalReadyToQuit } from "../window";
 import { ui } from "../ui";
 import { guard } from "../../core/utils/guard";
-import { isBoardClaimedScheme, schemeOf } from "../../content/scheme-registry";
+import { openPageSchemeCandidate } from "../../content/page-scheme-handoff";
 import { boardEditorId } from "../../../shared/board/board-editor-id";
 import type { EventPayload } from "../../../ipc/event-types";
 import type { LaunchInput } from "../../../shared/launch-input";
@@ -102,12 +102,7 @@ export class RendererEventsService {
     };
 
     private handlePipelineCandidate = async (url: EventPayload<"eOpenPipelineCandidate">) => {
-        const scheme = schemeOf(url);
-        if (!scheme || !isBoardClaimedScheme(scheme)) return;
-
-        await guard(t("api.failedToOpenUrl"), () =>
-            app.events.openRawLink.sendAsync(createLinkData(url)),
-        );
+        await openPageSchemeCandidate(url);
     };
 
     private handleClaimedBrowserDownload = async (data: EventPayload<"eOpenClaimedBrowserDownload">) => {

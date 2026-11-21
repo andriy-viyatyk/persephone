@@ -1,7 +1,6 @@
 import { PAGE_ZOOM_DEFAULT, PAGE_ZOOM_STEP, clampPageZoom, isValidPageZoom } from "../../../shared/browser-zoom";
 import type { BrowserEvent, BrowserPermissionPromptData, BrowserRegisterRequest } from "../../../ipc/browser-ipc";
 import { BrowserGuestMessageChannel, type GuestMessage } from "../../../ipc/browser-guest-messages";
-import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
 import { browserUrlChanged, type BrowserUrlEvent } from "../../core/state/events";
 import { DEFAULT_URL } from "./browser-state";
 import type { BrowserEditor } from "./BrowserEditor";
@@ -320,20 +319,9 @@ export class BrowserWebviewModel {
                 }
                 break;
             }
-            case "new-window": {
-                if (data.url) {
-                    if (!this.popupsAllowed && !globalPopupRateLimiter.check("tabs")) {
-                        this.model.prompts.countBlockedPopup();
-                        break;
-                    }
-                    const parentTab = this.model.findTab(internalTabId);
-                    const newInternalTabId = this.model.addTab(data.url, parentTab?.groupId);
-                    const event: BrowserUrlEvent = { url: data.url };
-                    browserUrlChanged.send(event);
-                    if (event.handled) this.model.tabs.closeTab(newInternalTabId);
-                }
+            case "new-window":
+                if (data.url) this.model.pageLinks.openLink(data.url, internalTabId, "page");
                 break;
-            }
             case "popups-blocked": {
                 this.model.prompts.countBlockedPopup();
                 break;

@@ -90,6 +90,11 @@ when no browser page claims it, `F12` opens Persephone's DevTools.
 Click **+** at the bottom of the browser tab panel to create a blank inner tab; the URL bar is focused
 ready for a URL or search. Tabs opened at a specific URL leave focus with the page.
 
+A web page can open web addresses in new tabs and windows (**Open Link in New Tab**, links and
+scripts that open a new window), but not a local file, a `data:` URL, or another address a page has
+no business opening; **Open Image in New Tab** likewise refuses a local image. To open such an
+address yourself, paste it into the URL bar.
+
 ### Downloads
 
 Select **Downloads** in the toolbar to see current and completed downloads. Active downloads show

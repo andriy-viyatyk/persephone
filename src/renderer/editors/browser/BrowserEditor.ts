@@ -45,6 +45,7 @@ import { BrowserShortcutTable } from "./BrowserShortcutTable";
 import { BrowserGuestChannel } from "./BrowserGuestChannel";
 import { BrowserPopupModel } from "./BrowserPopupModel";
 import { BrowserSitePermissionsModel } from "./BrowserSitePermissionsModel";
+import { BrowserPageLinkOpener } from "./BrowserPageLinkOpener";
 import { fs as appFs } from "../../api/fs";
 import type { IAudibleEditor } from "../base/audible-editor";
 
@@ -124,6 +125,8 @@ export class BrowserEditor extends EditorModel<
     readonly tor: BrowserTorModel;
     readonly network: BrowserProfileNetworkModel;
     readonly sitePermissions: BrowserSitePermissionsModel;
+    /** Opens URLs taken from page data (context-menu links/images, `target=_blank`) under the page-open policy. */
+    readonly pageLinks: BrowserPageLinkOpener;
     private readonly shortcuts: BrowserShortcutTable;
     private keyDownSub: () => void;
     private readonly incognitoId = crypto.randomUUID();
@@ -166,6 +169,7 @@ export class BrowserEditor extends EditorModel<
         this.urlBar = new BrowserUrlBarModel(this);
         this.target = new BrowserTargetModel(this);
         this.sitePermissions = new BrowserSitePermissionsModel(this);
+        this.pageLinks = new BrowserPageLinkOpener(this);
         this.webview.init();
         this.keyDownSub = globalKeyDown.subscribe((event) => this.handleBrowserShortcut(event, "global"));
         this.own(this.keyDownSub);

@@ -1,7 +1,5 @@
 import type { BrowserEventData } from "../../../ipc/browser-ipc";
 import { app } from "../../api/app";
-import { pages } from "../../api/pages";
-import { ui } from "../../api/ui";
 import { showAppPopupMenu } from "../../api/dialogs/showPopupMenu";
 import type { MenuItem } from "../../uikit/Menu";
 import { toClipboard } from "../../api/clipboard";
@@ -86,10 +84,7 @@ export async function showBrowserContextMenu({
             items.push({
                 id: "open-link-in-new-tab",
                 label: t("browser.toolbarOpenLinkNewTab"),
-                onClick: () => {
-                    const parentTab = model.findTab(internalTabId);
-                    model.tabs.addTab(linkURL, parentTab?.groupId);
-                },
+                onClick: () => model.pageLinks.openLink(linkURL, internalTabId, "menu"),
             });
             items.push({
                 id: "copy-link-address",
@@ -140,15 +135,7 @@ export async function showBrowserContextMenu({
                 id: "open-image-in-new-tab",
                 label: t("browser.toolbarOpenImageNewTab"),
                 startGroup: items.length > 0,
-                onClick: async () => {
-                    // A Tor/proxied page's image is read through its session.
-                    const sessionHandle = await model.network.sessionSource(srcURL);
-                    if (sessionHandle === null) {
-                        ui.notify(t("browser.secureRouteImageFailed"), "warning");
-                        return;
-                    }
-                    pages.openImageInNewTab(srcURL, undefined, sessionHandle);
-                },
+                onClick: () => { void model.pageLinks.openImage(srcURL); },
             });
             items.push({
                 id: "copy-image-address",

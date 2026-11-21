@@ -18,6 +18,7 @@ import { collectDom, collectLoadedResources } from "./browser-dom-snapshot";
 import { BrowserGuest, BrowserGuestHostHooks } from "./browser/BrowserGuest";
 import { browserGuests } from "./browser/BrowserGuestRegistry";
 import { browserPopups } from "./browser/BrowserPopupRegistry";
+import { guardBrowserGuestAtCreation } from "./browser/navigation-scheme-guards";
 import {
     BrowserChannel,
     BrowserRegisterRequest,
@@ -108,7 +109,6 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest): 
     const key = `${tabId}/${internalTabId}`;
     const contents = webContents.fromId(webContentsId);
     if (!contents || contents.isDestroyed() || contents.hostWebContents !== event.sender) return;
-    globalMuteService.register(contents, "webview");
     const previous = browserGuests.get(key);
     if (previous && previous.senderWebContents !== event.sender) return;
     if (previous && previous.webContents.id !== webContentsId) browserPopups.closeOwned(key, event.sender);
@@ -170,7 +170,7 @@ function unregisterWebview(key: string, options: { keepCdpState?: boolean } = {}
  */
 export function initializeBrowserService(): void {
     app.on("web-contents-created", (_event, contents) => {
-        if (contents.getType() === "webview") globalMuteService.register(contents, "webview");
+        if (contents.getType() === "webview") guardBrowserGuestAtCreation(contents);
         contents.on("will-attach-webview", (_event, webPreferences, params) => {
             const argumentsList = webPreferences.additionalArguments || [];
             const browserPreload = typeof params.preload === "string" && params.preload.toLowerCase().includes("preload-webview");

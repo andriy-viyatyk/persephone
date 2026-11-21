@@ -8,7 +8,7 @@ import { t } from "../../shared/i18n/t";
 import { errMessage } from "../../shared/utils";
 import { withNativeDialogSync } from "../native-dialog-tracker";
 import { hasRecentRendererRequest } from "../renderer-rpc";
-import { getNavigationScheme, USER_ACTIVATION_WINDOW_MS } from "./navigation-scheme-policy";
+import { getNavigationScheme, getPageOpenAction, USER_ACTIVATION_WINDOW_MS } from "../../shared/browser-navigation-policy";
 import { destroyPopupWithNodeIntegration, guardPopupWindow, handleGuestPopup } from "./popup-policy";
 
 type AnyEventHandler = (...args: unknown[]) => void;
@@ -140,13 +140,9 @@ export class BrowserGuest {
         on("audio-state-changed", (event: Electron.Event & { audible: boolean }) => {
             this.sendEvent("audio-state-changed", { audible: event.audible });
         });
+        // Redirect and subframe scheme guards are attached when the guest is created
+        // (`guardBrowserGuestAtCreation`); this listener adds the host hand-off for external schemes.
         on("will-navigate", (event: Electron.Event, url: string) => this.handleNavigation(event, url));
-        on("will-redirect", (event: Electron.Event, details: Electron.WebContentsWillRedirectEventParams) => {
-            if (getNavigationScheme(details.url) === "blocked") event.preventDefault();
-        });
-        on("will-frame-navigate", (details: Electron.Event & Electron.WebContentsWillFrameNavigateEventParams) => {
-            if (!details.isMainFrame && getNavigationScheme(details.url) === "blocked") details.preventDefault();
-        });
         on("context-menu", (event: Electron.Event, params: Electron.ContextMenuParams) => {
             event.preventDefault();
             this.sendEvent("context-menu", {
@@ -158,6 +154,11 @@ export class BrowserGuest {
         });
         on("before-input-event", (event: Electron.Event, input: Electron.Input) => this.handleInput(event, input));
         this.webContents.setWindowOpenHandler(({ url, disposition, features }) => {
+            const action = getPageOpenAction(url);
+            if (action !== "open") {
+                if (action === "handoff") this.handOffExternal(url);
+                return { action: "deny" };
+            }
             if (disposition === "foreground-tab" || disposition === "background-tab") {
                 this.releaseLostPress("a new tab");
                 this.sendEvent("new-window", { url, disposition });
@@ -213,10 +214,15 @@ export class BrowserGuest {
             this.sendEvent("did-start-navigation", { url, blocked: true });
         } else if (scheme === "external") {
             event.preventDefault();
-            const activated = Date.now() - this.lastUserActivation <= USER_ACTIVATION_WINDOW_MS;
-            this.lastUserActivation = 0;
-            if (activated) this.hooks.sendHostEvent("eOpenPipelineCandidate", url);
+            this.handOffExternal(url);
         }
+    }
+
+    /** Hand a page-requested non-Chromium URL to the host, only right after a user gesture. */
+    private handOffExternal(url: string): void {
+        const activated = Date.now() - this.lastUserActivation <= USER_ACTIVATION_WINDOW_MS;
+        this.lastUserActivation = 0;
+        if (activated) this.hooks.sendHostEvent("eOpenPipelineCandidate", url);
     }
 
     handleInput(event: Electron.Event, input: Electron.Input): void {

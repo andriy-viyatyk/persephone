@@ -80,6 +80,7 @@ export const browserCatalog = {
     toolbarOpenSvgEditor: { message: "Open SVG in Editor" },
     toolbarInspectElement: { message: "Inspect Element" },
     secureRouteImageFailed: { message: "The page's secure route is not connected — the image was not opened." },
+    pageUrlRefused: { message: "A web page can't open this address. To open a local file or a data: URL, paste it into the address bar.", note: "Shown when the user picks Open Link/Image in New Tab on a page link to a local file, a data: URL or another scheme a page may not open. Keep \"data:\" unchanged." },
     browserTabCloseBelow: { message: "Close Tabs Below" },
     blockedPopup: { message: { one: "{count} popup was blocked on this page", other: "{count} popups were blocked on this page" } },
     allow: { message: "Allow" },

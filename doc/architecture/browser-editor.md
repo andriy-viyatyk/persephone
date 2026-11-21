@@ -111,7 +111,13 @@ bar.
 | `target="_blank"` link click | `foreground-tab` / `background-tab` | Opens as new internal tab in same browser page |
 | `window.open()` from JavaScript | `default` / `new-window` | Opens as real popup BrowserWindow |
 
-The main process intercepts these via `setWindowOpenHandler()` on the webContents. **Link clicks** (`target="_blank"`) are denied and relayed to the renderer as a `"new-window"` event, which calls `model.addTab(url, parentGroupId)` (inheriting the parent tab's group). **JavaScript `window.open()` calls** (OAuth popups, login dialogs, etc.) are allowed as real Electron BrowserWindows — this preserves the `window.opener` reference that auth flows need to communicate back to the parent page. The popup inherits the webview's session partition, so cookies and auth state are shared.
+The main process intercepts these via `setWindowOpenHandler()` on the webContents. Every request first
+passes the page-open policy (`getPageOpenAction()`, see [Protocol blocking](#5-protocol-blocking)): only
+Chromium schemes open; `file:`, `app-asset:`, `data:`, `javascript:` and other non-Chromium URLs are denied,
+and a non-Chromium URL is handed to the host the same way as a page navigation to it. **Link clicks**
+(`target="_blank"`) are then denied and relayed to the renderer as a `"new-window"` event, which
+`BrowserPageLinkOpener.openLink(url, tabId, "page")` opens with `model.addTab(url, parentGroupId)` (inheriting
+the parent tab's group). **JavaScript `window.open()` calls** (OAuth popups, login dialogs, etc.) are allowed as real Electron BrowserWindows — this preserves the `window.opener` reference that auth flows need to communicate back to the parent page. The popup inherits the webview's session partition, so cookies and auth state are shared.
 
 **Important:** The `<webview>` element requires `allowpopups="true"` for `setWindowOpenHandler` to fire on `target="_blank"` link clicks.
 
@@ -119,7 +125,7 @@ The main process intercepts these via `setWindowOpenHandler()` on the webContent
 
 Both code paths (internal tabs and real popup windows) are protected by a **global app-wide rate limiter** (`globalPopupRateLimiter` from `src/ipc/popup-rate-limiter.ts`) — max 3 requests within 2 seconds across the entire application. This prevents cascade attacks where each new tab opens more tabs. When exceeded:
 
-- **Internal tabs** (renderer): blocked in `BrowserWebviewModel.handleBrowserEvent("new-window")`; increments `blockedPopupCount` in state
+- **Internal tabs** (renderer): blocked in `BrowserPageLinkOpener.openLink(..., "page")` (the `"new-window"` event); increments `blockedPopupCount` in state
 - **Popup windows** (main process): blocked in `setWindowOpenHandler`; sends `"popups-blocked"` IPC event to renderer
 
 Each process (main, renderer) imports the same `globalPopupRateLimiter` singleton but gets its own instance — this is fine because they guard different things (renderer: internal tabs via `"tabs"` key, main: popup BrowserWindows via `"popups"` key).
@@ -249,22 +255,50 @@ for that tab.
 
 ### 5. Protocol blocking
 
-```
-Main process                    IPC                    Renderer
-─────────────               ──────────         ─────────────────────
-did-start-navigation    →   Check protocol →   If blocked: wc.stop()
-(file:, app-asset:)         BLOCKED_PROTOCOLS   → send blocked event
-                                                → webview.goBack()
-```
+The scheme rules live in one module shared by both processes,
+`src/shared/browser-navigation-policy.ts`:
 
-**`BLOCKED_PROTOCOLS` is a navigation guard only.** It is checked on `did-start-navigation`, so
-it stops a page from *navigating* to `file:` or `app-asset:` — it does not and cannot stop a
-`fetch`, an `XMLHttpRequest`, a `<script src>`, or an `<iframe src>`.
+- `getNavigationScheme(url)` classifies a URL as `blocked` (`file:`, `app-asset:`), `chromium`
+  (`http`, `https`, `about`, `blob`, `mailto`, `tel`), `external` (anything else — `data:`,
+  `javascript:`, Persephone's and boards' schemes) or `invalid`.
+- `getPageOpenAction(url)` is the rule for a URL **taken from page data** that would become a new
+  top-level document: `chromium` → `open`, `external` → `handoff`, `blocked`/`invalid` → `refuse`.
 
-Page-initiated URLs outside Chromium's navigation set are intercepted in the same
-`will-navigate` handler and sent to the host renderer's `openRawLink` pipeline. This includes
-registered board-contributed schemes, so a custom provider URL is opened by Persephone instead of
-being handed to Chromium as an unsupported navigation.
+Who applies them:
+
+| Where | What | Rule |
+|---|---|---|
+| `guardBrowserGuestAtCreation()` (`main/browser/navigation-scheme-guards.ts`, from `web-contents-created`) | Every webview guest from creation: `will-navigate`, `will-redirect`, `will-frame-navigate`; window opening denied until registration | Main frame: non-`chromium` prevented. Redirects and subframes: `blocked` prevented |
+| `BrowserGuest` `will-navigate` (after registration) | Page navigation of a registered tab | `external` → prevented, then handed to the host after a recent user activation (`handOffExternal`) |
+| `BrowserGuest` / `guardPopupWindow` `setWindowOpenHandler` | `target=_blank`, `window.open` | `getPageOpenAction`: only `open` proceeds; `handoff` goes through `handOffExternal` (tabs) |
+| `BrowserPageLinkOpener` (renderer) | Context-menu "Open Link/Image in New Tab", the `"new-window"` event | `getPageOpenAction` for links; images refuse only `blocked` (the image viewer draws them in the host) |
+
+The creation-time guards exist because the renderer registers a guest only after its first
+`dom-ready`. A new tab loads its `src` document — and starts that document's iframes — before then,
+so guards attached at registration would miss them.
+
+**Trusted sources skip the page-open rule.** The address bar, Home, session restore, scripts/MCP,
+the open pipeline and bookmarks call `BrowserEditor.navigate()` / `addTab()` directly. Those loads are
+embedder-initiated (`webview.src` / `loadURL`), which `will-navigate` never sees, so a user can still
+open a local `file:` page or a `data:` URL from the address bar, as in Chrome. **Page-supplied URLs must
+never reach `navigate()` / `addTab()` except through `BrowserPageLinkOpener`.**
+
+A refused context-menu item shows one notification; a refused `target=_blank`/`window.open` is
+silent, as in Chrome. Chromium itself rewrites a `javascript:` link target to `about:blank#blocked`
+before it reaches the context menu.
+
+**`BLOCKED_PROTOCOLS` is a navigation guard only.** It stops a page from *navigating* (main frame,
+subframe or redirect) to `file:` or `app-asset:` — it does not and cannot stop a `fetch`, an
+`XMLHttpRequest` or a `<script src>`. A `file:` document that the user opened on purpose still has
+the extra `file:` privileges of the `grantFileProtocolExtraPrivileges` fuse (left on because the
+production window loads its own chunks over `file://`), so it can read other local files with `fetch`
+or XHR. Closing that needs the app window served from a custom scheme before the fuse can be turned off.
+
+Page-initiated URLs outside Chromium's navigation set are handed to the host renderer's
+`openPageSchemeCandidate()` (`content/page-scheme-handoff.ts`), which opens only a scheme claimed by a
+trusted board; everything else, `data:` and `javascript:` included, is dropped. A board-contributed
+provider URL is therefore opened by Persephone instead of being handed to Chromium as an unsupported
+navigation.
 
 What actually keeps `app-asset:` out of reach of web content is that **the protocol handler is
 never registered on a browser page's session.** `registerAssetProtocol` (`src/main/main-setup.ts`)
@@ -300,8 +334,8 @@ webContents                      BrowserChannel          BrowserEditorView
 
 | Condition | Menu Items |
 |-----------|------------|
-| `linkURL` present | Open Link in New Tab, Copy Link Address |
-| `srcURL` + `mediaType === "image"` | Open Image in New Tab, Copy Image Address |
+| `linkURL` present | Open Link in New Tab (through `BrowserPageLinkOpener`, page-open policy), Copy Link Address |
+| `srcURL` + `mediaType === "image"` | Open Image in New Tab (through `BrowserPageLinkOpener`; local sources refused), Copy Image Address |
 | `selectionText` present | Copy (uses the renderer's main-process clipboard helper) |
 | `isEditable` | Cut, Copy, Paste (uses `webview.cut/copy/paste()` with `webview.focus()`) |
 | SVG probe finds `<svg>` ancestor | Open SVG in Editor |
@@ -368,6 +402,10 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/renderer/editors/browser/BrowserPromptsModel.ts` | Renderer | Transient blocked-popup and permission-prompt state and actions |
 | `src/renderer/editors/browser/BrowserTranslationController.ts` | Renderer | Translation toolbar workflow and per-tab page translation lifecycle |
 | `src/renderer/editors/browser/webview-context-menu.ts` | Renderer | Browser webview context-menu construction and bounded DOM/SVG/resource probes |
+| `src/renderer/editors/browser/BrowserPageLinkOpener.ts` | Renderer | Opens page-supplied URLs (context-menu link/image, `"new-window"`) under the page-open policy |
+| `src/shared/browser-navigation-policy.ts` | Shared | Navigation scheme classification and the page-open rule, used by main and renderer |
+| `src/main/browser/navigation-scheme-guards.ts` | Main | Scheme guards attached to every webview guest at creation and to popups |
+| `src/renderer/content/page-scheme-handoff.ts` | Renderer | Hands a page-requested non-Chromium URL to the open pipeline only for a board-claimed scheme |
 | `src/renderer/editors/browser/BrowserTargetModel.ts` | Renderer | Browser host adapter for the narrow automation target interfaces |
 | `src/renderer/editors/browser/BrowserTabsPanel.ts` | Renderer | Native left-side internal tabs panel with compact floating preview and drag-to-reorder |
 | `src/renderer/editors/browser/BrowserBookmarks.ts` | Renderer | Wraps TextFileModel + LinkEditor for bookmark file I/O |
@@ -423,10 +461,12 @@ The `<webview>` DOM element's event API is unreliable — events like `page-favi
 The main process owns navigation policy as well as event forwarding. Page-initiated navigation to
 `file:` and `app-asset:` is denied; other non-Chromium schemes, including Persephone's internal
 schemes, are prevented from navigating the page and are handed to the host only after a recent user
-activation, where only a registered board claim can consume them. App-initiated navigation such as
-restoring a local page is separate from page-initiated navigation. Popup windows receive their own
-guards: they cannot navigate to local files or non-Chromium schemes, and a popup that enables Node
-integration is destroyed.
+activation, where only a registered board claim can consume them. The scheme guards are attached when
+the guest is created, before registration. App-initiated navigation such as restoring a local page is
+separate from page-initiated navigation; URLs the renderer opens on a page's behalf go through
+`BrowserPageLinkOpener` and the same shared rule. Popup windows receive their own guards: they cannot
+navigate to local files or non-Chromium schemes, cannot open non-Chromium URLs, and a popup that enables
+Node integration is destroyed.
 
 ## Why the Preload Script?
 
