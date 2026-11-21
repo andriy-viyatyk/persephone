@@ -20,6 +20,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Bug Fixes
 
+- **Browser: sites ask before editing your files, and embedded frames don't inherit
+  permissions.** A site that wants to edit files in a folder you picked, view a folder's files, or
+  save to a file now shows the permission bar with the path; picks of drive roots, your user folder,
+  AppData, Windows or Program Files are refused, as in Chrome. An iframe from another site can no
+  longer ask for notifications or external links, or use the notification permission you gave the
+  page around it.
 - **Browser: pages can no longer open local files or `data:` documents in a tab.** **Open Link in
   New Tab**, `target="_blank"` links and `window.open()` now open only web addresses, as in Chrome,
   and **Open Image in New Tab** refuses local images. Local files and `data:` URLs still open when

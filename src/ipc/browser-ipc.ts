@@ -230,11 +230,21 @@ export interface SetBrowserSitePermissionRequest extends BrowserSitePermissionRe
     decision: "allow" | "block";
 }
 
+/** A File System Access request: the picked file or folder and the access the page asks for. */
+export interface BrowserFileAccessPrompt {
+    path: string;
+    access: "read" | "write";
+    isDirectory: boolean;
+}
+
 export interface BrowserPermissionPromptData {
     requestId: string;
+    /** The origin the decision applies to — always the tab's top-level origin. */
     topLevelOrigin: string;
     permissions: BrowserPermissionKey[];
     externalScheme?: string;
+    /** Set for a File System Access prompt (then `permissions` is empty); answered once, never remembered. */
+    fileAccess?: BrowserFileAccessPrompt;
 }
 
 export interface BrowserEventData {

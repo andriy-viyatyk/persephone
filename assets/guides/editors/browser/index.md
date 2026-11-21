@@ -53,12 +53,12 @@ own choice, separate from profile pages.
 ## Site permissions and prompts
 
 On an HTTP(S) page, the **Site permissions** button appears at the start of the address field until
-you type into the address field. It opens the current site's permission choices. Camera,
-microphone, location, notifications, MIDI, clipboard reading, and other prompted capabilities can
-be set to **Allow** or **Block**; **Ask** means there is no saved choice. Some permission requests
-show a bar above the page with the requesting site and requested access. Choose **Allow** or
-**Block** to answer. Choices for regular profiles are saved between app runs. Incognito and Tor
-choices stay in memory for that private session and are discarded when it ends.
+you type in it. It opens the current site's permission choices. Camera, microphone, location,
+notifications, MIDI, clipboard reading, and other prompted capabilities can be set to **Allow** or
+**Block**; **Ask** means there is no saved choice. Some requests show a bar above the page naming
+the site and the access; answer with **Allow** or **Block** (file access and embedded frames:
+[layout](layout.md#when-a-page-asks-for-permission)). Choices for regular profiles are saved between
+app runs. Incognito and Tor choices stay in memory for that private session and end with it.
 
 On HTTPS pages, the site-info popover also has **View certificate**. It opens the certificate chain
 Chromium received for that tab in the highest-priority `certificate.view` board. If no viewer board

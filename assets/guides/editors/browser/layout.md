@@ -137,6 +137,16 @@ Only requests from the active inner tab show here. Allow and Block remember the 
 site in a regular browser profile. Incognito and Tor keep choices only for the life of their
 session.
 
+As in Chrome, an embedded frame from another site can't ask for notifications or external links,
+and it can't use the permission you gave the page around it. Camera, microphone, location and
+similar access reaches an embedded frame only when the page delegates it; the bar then names the
+page's site, which is the site the choice is saved for.
+
+When a site asks to edit files in a folder you picked, view the files in a folder, or save changes
+to a file, the bar names the site and the path. **Allow** and **Block** answer that one request and
+are not saved. Sites can't pick a drive root, your user folder, AppData, Windows, Program Files, or
+Persephone's own folders — those picks fail without a prompt.
+
 ### When the bookmarks drawer is open
 
 ```

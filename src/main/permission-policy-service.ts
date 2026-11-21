@@ -2,6 +2,8 @@ import { app, session, type Session, type WebContents } from "electron";
 import { appPartition, fileAccessPersistPartition } from "./constants";
 import { errMessage } from "../shared/utils";
 import { boardTrustService } from "./board-trust-service";
+import { fileSystemAccessToPrompt } from "./file-system-access-policy";
+import type { BrowserFileAccessPrompt } from "../ipc/browser-ipc";
 import { getBoardRootForHost } from "./board-protocol-service";
 import {
     audioWindowLoopbackGrant,
@@ -25,6 +27,8 @@ export interface PermissionPromptData {
     topLevelOrigin: string;
     permissions: Array<Exclude<BrowserPermissionKey, `openExternal:${string}`> | "openExternal">;
     externalScheme?: string;
+    /** Set for a File System Access request; such a prompt is answered once and never remembered. */
+    fileAccess?: BrowserFileAccessPrompt;
 }
 export type PermissionPromptHandler = (webContents: WebContents, data: PermissionPromptData) => boolean;
 type PermissionRequest = Parameters<Session["setPermissionRequestHandler"]>[0] extends (wc: WebContents, permission: infer P, cb: (allowed: boolean) => void, details: infer D) => void ? { webContents: WebContents; permission: P; details: D; callback: (allowed: boolean) => void } : never;
@@ -45,6 +49,16 @@ export interface PermissionPolicyStartDependencies {
 
 function topOriginFromRequest(wc: WebContents): string | undefined {
     try { return normalizeOrigin(wc.getURL()); } catch { return undefined; }
+}
+
+/** Chrome attributes these to the requesting frame's own origin; unlike Permissions-Policy
+ *  features (camera, location, ...) they are never delegated from the top-level site. */
+function isFrameScoped(key: BrowserPermissionKey): boolean {
+    return key === "notifications" || key.startsWith("openExternal:");
+}
+
+function requesterIsTopOrigin(details: Electron.PermissionRequest, top: string): boolean {
+    return details.isMainFrame === true || normalizeOrigin(details.requestingUrl) === top;
 }
 
 function requestKeys(permission: string, details: Electron.PermissionRequest): BrowserPermissionKey[] | undefined {
@@ -155,7 +169,9 @@ function handleCheck(ses: Session, request: PermissionCheck): boolean {
     if (permission === "openExternal") return false;
     const key = permission as BrowserPermissionKey;
     if (!PROMPTABLE.has(key)) return false;
-    return sitePermissionStore.get(ses, top, key) === "allow";
+    // A frame uses its own origin's notification grant, never the top-level site's (as in Chrome).
+    const owner = isFrameScoped(key) ? normalizeOrigin(origin) : top;
+    return !!owner && sitePermissionStore.get(ses, owner, key) === "allow";
 }
 
 function handleRequest(ses: Session, request: PermissionRequest): void {
@@ -197,24 +213,46 @@ function handleRequest(ses: Session, request: PermissionRequest): void {
         return;
     }
     if (ses === fileAccessSession) { callback(false); return; }
-    if (permission === "fileSystem") { callback(true); return; }
+    if (permission === "fileSystem") { requestFileSystemAccess(ses, request); return; }
     if (permission === "mediaKeySystem" || permission === "fullscreen" || permission === "pointerLock" || permission === "clipboard-sanitized-write") { callback(true); return; }
     if (permission === "keyboardLock") { callback(details.isMainFrame); return; }
     if (permission === "storage-access" || permission === "top-level-storage-access" || permission === "display-capture") { callback(false); return; }
     const keys = requestKeys(permission as string, details as Electron.PermissionRequest);
     const origin = topOriginFromRequest(webContents);
     if (!keys || !origin) { callback(false); return; }
-    const profileName = sitePermissionStore.profileNameFor(ses);
+    // A cross-origin iframe can neither prompt for nor reuse the top site's frame-scoped grant.
+    if (keys.some(isFrameScoped) && !requesterIsTopOrigin(details, origin)) { callback(false); return; }
     const values = keys.map((key) => sitePermissionStore.get(ses, origin, key));
     if (values.every((value) => value === "allow")) { callback(true); return; }
     if (values.some((value) => value === "block")) { callback(false); return; }
     if (permission === "openExternal" && !details.isMainFrame) { callback(false); return; }
-    if (!promptHandler) { callback(false); return; }
-    const requestId = crypto.randomUUID();
-    pending.set(requestId, { callback, session: ses, webContents, profileName, origin, keys });
     const externalScheme = keys[0]?.startsWith("openExternal:") ? keys[0].slice("openExternal:".length) : undefined;
     const permissions = keys.map((key) => key.startsWith("openExternal:") ? "openExternal" : key) as PermissionPromptData["permissions"];
-    if (!promptHandler(webContents, { requestId, topLevelOrigin: origin, permissions, externalScheme })) {
+    promptForRequest(ses, request, origin, keys, { permissions, externalScheme });
+}
+
+/** File System Access never auto-grants: sensitive paths are denied, anything else is asked once
+ *  in the prompt bar and the answer is not remembered (Chrome keeps these grants for the visit). */
+function requestFileSystemAccess(ses: Session, request: PermissionRequest): void {
+    const origin = topOriginFromRequest(request.webContents);
+    const fileAccess = origin ? fileSystemAccessToPrompt(request.details as Electron.FilesystemPermissionRequest, origin) : undefined;
+    if (!origin || !fileAccess) { request.callback(false); return; }
+    promptForRequest(ses, request, origin, [], { permissions: [], fileAccess });
+}
+
+/** Show the prompt bar for `origin`; `keys` are the decisions remembered when the user answers. */
+function promptForRequest(
+    ses: Session,
+    request: PermissionRequest,
+    origin: string,
+    keys: BrowserPermissionKey[],
+    prompt: Omit<PermissionPromptData, "requestId" | "topLevelOrigin">,
+): void {
+    const { callback, webContents } = request;
+    if (!promptHandler) { callback(false); return; }
+    const requestId = crypto.randomUUID();
+    pending.set(requestId, { callback, session: ses, webContents, profileName: sitePermissionStore.profileNameFor(ses), origin, keys });
+    if (!promptHandler(webContents, { requestId, topLevelOrigin: origin, ...prompt })) {
         pending.delete(requestId);
         callback(false);
     }

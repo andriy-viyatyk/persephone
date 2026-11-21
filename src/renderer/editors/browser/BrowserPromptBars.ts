@@ -1,6 +1,7 @@
 import type { BrowserEditor } from "./BrowserEditor";
 import { t } from "../../../shared/i18n/t";
 import type { BrowserPermissionPrompt } from "./BrowserPromptsModel";
+import type { BrowserFileAccessPrompt } from "../../../ipc/browser-ipc";
 import type { SiteExtensionTrustPromptData } from "./site-extension-trust-prompt";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
@@ -21,6 +22,20 @@ export class PopupBlockedView extends VanillaView<{ model: BrowserEditor; count:
     protected onMount(): void { this.allow.mount(); this.dismiss.mount(); this.sync(); }
     protected onUpdate(props: { model: BrowserEditor; count: number }): void { this.props = props; this.sync(); }
     private sync(): void { this.text.textContent = t("browser.blockedPopup", { count: this.props.count }); }
+}
+
+function permissionsText(prompt: BrowserPermissionPrompt): string {
+    const names = prompt.permissions.map((permission) => permission === "openExternal"
+        ? t(BROWSER_PERMISSION_LABELS.openExternal.prompt, { scheme: prompt.externalScheme || "external" })
+        : BROWSER_PERMISSION_LABELS[permission as keyof typeof BROWSER_PERMISSION_LABELS]
+            ? t(BROWSER_PERMISSION_LABELS[permission as keyof typeof BROWSER_PERMISSION_LABELS].prompt)
+            : permission);
+    return t("browser.permissionRequest", { permissions: names.join(", ") });
+}
+
+function fileAccessText({ path, access, isDirectory }: BrowserFileAccessPrompt): string {
+    if (isDirectory) return t(access === "write" ? "browser.permissionFileEditFolder" : "browser.permissionFileViewFolder", { path });
+    return t(access === "write" ? "browser.permissionFileEditFile" : "browser.permissionFileViewFile", { path });
 }
 
 export class PermissionPromptBarView extends VanillaView<{ model: BrowserEditor; prompt: BrowserPermissionPrompt }> {
@@ -46,12 +61,8 @@ export class PermissionPromptBarView extends VanillaView<{ model: BrowserEditor;
         const prompt = this.props.prompt;
         this.origin.textContent = prompt.topLevelOrigin;
         this.origin.dataset.name = "permission-origin";
-        const names = prompt.permissions.map((permission) => permission === "openExternal"
-            ? t(BROWSER_PERMISSION_LABELS.openExternal.prompt, { scheme: prompt.externalScheme || "external" })
-            : BROWSER_PERMISSION_LABELS[permission as keyof typeof BROWSER_PERMISSION_LABELS]
-                ? t(BROWSER_PERMISSION_LABELS[permission as keyof typeof BROWSER_PERMISSION_LABELS].prompt)
-                : permission);
-        this.requestText.textContent = t("browser.permissionRequest", { permissions: names.join(", ") });
+        this.requestText.textContent = prompt.fileAccess ? fileAccessText(prompt.fileAccess) : permissionsText(prompt);
+        this.requestText.title = prompt.fileAccess?.path ?? "";
         this.requestText.dataset.name = "permission-description";
     }
 

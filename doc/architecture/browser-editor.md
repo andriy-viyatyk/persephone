@@ -672,11 +672,38 @@ can cover camera and microphone together. Unknown requests and requests without 
 origin fail closed. Electron request and check callbacks are guarded so policy errors also fail
 closed.
 
+Frame attribution follows Chrome. Permissions-Policy features (camera, microphone, location, MIDI,
+clipboard read, idle detection, window management, speaker selection) are delegated: Blink refuses
+them in a cross-origin iframe unless the embedder grants them with `allow=`, and a delegated request
+prompts for and is stored under the top-level origin, which is the origin the prompt bar names.
+Notifications and external-scheme links are **frame-scoped** (`isFrameScoped()`): a request whose
+`details.requestingUrl` origin differs from the top-level origin (or that is not from the main frame
+and has no HTTP(S) `requestingUrl`) is denied before the store lookup, so a cross-origin iframe can
+neither prompt for nor reuse the top site's grant, and the notification permission check uses the
+requesting frame's own origin (Electron's `requestingOrigin` argument). A same-origin iframe shares
+the top site's grant.
+
+File System Access requests (`fileSystem`) never auto-grant. Electron raises one for a grant upgrade
+(write access, read access to a picked directory, a handle restored from storage) and for a picked
+path on Chromium's sensitive-path blocklist; the details carry `filePath`, `isDirectory` and
+`fileAccessType` (`writable`/`readable`), and `isMainFrame` is unreliable for this permission.
+`file-system-access-policy.ts` denies without a prompt when the requester's origin differs from the
+top-level origin, the path is not a local drive path, the file is a `.lnk`/`.local`, or the path —
+as given and after resolving links — is sensitive: a drive root, the home folder itself or any
+ancestor of a listed folder, or anything inside AppData (roaming, local, and `<home>\AppData`), the
+app's `userData`, the executable's folder, Windows, Program Files, ProgramData, or `<home>\.ssh`.
+Everything else is shown in the prompt bar with the path and access kind
+(`BrowserPermissionPromptData.fileAccess`, no `permissions`). The prompt stores no keys, so the
+answer applies to that request only and nothing appears in Site permissions; the grant itself lives
+as long as Electron keeps it for the visit. Read access to a single picked file is granted by
+Chromium without a request. The permission check for `fileSystem` stays false.
+
 The main process accepts prompts only from registered browser webContents and relays them through
 the owning app renderer's `BrowserChannel.event`. `BrowserWebviewModel` associates each prompt with
 its internal tab, and `BrowserPromptBars` shows the permission bar for the active tab. Allow and Block
 send only the opaque request ID and decision back over `BrowserGuestChannel.resolvePermissionRequest` (which invokes `BrowserChannel.resolvePermissionRequest`);
-the main process owns the pending callback, and `SitePermissionStore` stores the decision. Closing a webContents or
+the main process owns the pending callback, and `SitePermissionStore` stores the decision (none for a
+file-access prompt). Closing a webContents or
 starting its main-frame navigation settles outstanding prompts as denied. The URL bar's site
 permissions popover reads, changes, and resets decisions through main-process IPC keyed by the
 registered webview. Main verifies that the caller owns that registration and derives the current

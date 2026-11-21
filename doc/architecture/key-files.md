@@ -67,6 +67,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Service channel port delivery and receiver ownership routing | `/src/main/channel-delivery.ts`, `/src/renderer/api/service-channel-ports.ts` |
 | One-shot app media grants and frame-bound hidden audio-window grants | `/src/main/one-shot-frame-grant.ts`, `/src/main/media-grants.ts` |
 | Browser site permission policy and persistent/private decision store | `/src/main/permission-policy-service.ts`, `/src/main/site-permission-store.ts` |
+| Browser File System Access requests (sensitive-path blocklist, same-origin requester, one-shot prompt data) | `/src/main/file-system-access-policy.ts` |
 | Capability declarations, normalization and shared contract | `/src/shared/capability-contract.ts` |
 | Capability deadlines, payload and concurrency limits | `/src/shared/capability-limits.ts` |
 | Named capability proxy builder | `/src/shared/capability-client.ts` |

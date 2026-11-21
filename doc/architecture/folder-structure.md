@@ -1156,6 +1156,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── media-grants.ts         # One-shot recording, voice-typing, transcript and audio-window grant instances
 ├── one-shot-frame-grant.ts # Reusable one-shot grant lifecycle and optional frame binding
 ├── site-permission-store.ts # Persistent profile decisions and in-memory private-session decisions
+├── file-system-access-policy.ts # Browser File System Access rule: sensitive-path blocklist, same-origin requester, prompt data
 ├── browser-service-composition.ts # Injects shared guest lookup into browser/CDP/network services
 ├── browser/                # Browser guest registration and per-guest policies
 │   ├── BrowserGuestRegistry.ts # Key/WebContents lookup and guest registration ownership
