@@ -9,4 +9,6 @@ export const mainCatalog = {
     unsavedChangesMessage: { message: "You have unsaved changes. Leave the page and discard them?" },
     unsavedChangesLeave: { message: "Leave" },
     unsavedChangesCancel: { message: "Cancel" },
+    preventMoreDialogs: { message: "Prevent this page from creating additional dialogs" },
+    downloadsBlocked: { message: "This page tried to download several files automatically. The extra downloads were blocked; click a download link to download a file." },
 } satisfies Record<string, EnglishCatalogEntry>;

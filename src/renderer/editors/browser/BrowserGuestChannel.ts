@@ -1,6 +1,7 @@
 import {
     BrowserChannel,
     type BrowserEvent,
+    type BrowserNavigationIntent,
     type BrowserPopupSnapshot,
     type BrowserRegisterRequest,
     type BrowserSitePermissionKey,
@@ -28,7 +29,11 @@ export class BrowserGuestChannel {
     hardReload(tabId: string): void { ipcRenderer.send(BrowserChannel.hardReload, this.key(tabId)); }
     exitHtmlFullscreen(tabId: string): void { ipcRenderer.send(BrowserChannel.exitHtmlFullscreen, this.key(tabId)); }
     clearCache(partition: string): Promise<void> { return ipcRenderer.invoke(BrowserChannel.clearCache, partition); }
-    allowPopups(): void { ipcRenderer.send(BrowserChannel.allowPopups); }
+    allowPopups(tabId: string): void { ipcRenderer.send(BrowserChannel.allowPopups, this.key(tabId)); }
+    /** Tell main what the host is about to do in a tab, so a `beforeunload` confirm can repeat it. */
+    noteNavigation(tabId: string, intent: BrowserNavigationIntent): void {
+        ipcRenderer.send(BrowserChannel.navigationIntent, { registrationKey: this.key(tabId), intent });
+    }
     collectDom(tabId: string): Promise<string> { return ipcRenderer.invoke(BrowserChannel.collectDom, this.key(tabId)); }
     collectLoadedResources(tabId: string): Promise<string[]> {
         return ipcRenderer.invoke(BrowserChannel.collectLoadedResources, this.key(tabId));

@@ -163,6 +163,10 @@ Persephone's own folders — those picks fail without a prompt.
 +---------------------------------------------------------------------+
 ```
 
+The bar counts tabs and windows the page tried to open without a click in it. **Allow** lets the tab
+that was blocked open them from its current site until that tab moves to another site; other tabs and
+sites are not affected.
+
 ### When the Tor overlay is open
 
 ```

@@ -70,8 +70,11 @@ export const BrowserChannel = {
     cdpSendInputEvent: "browser:cdp-send-input-event",
     /** Renderer → Main: mute/unmute a webview's audio. Args: (key: string, muted: boolean) */
     setAudioMuted: "browser:set-audio-muted",
-    /** Renderer → Main: allow popups for a given tabId (disable rate limiting). Args: (tabId: string) */
+    /** Renderer → Main: the user's "Allow popups" for one browser tab's current site. Args: (key: string) */
     allowPopups: "browser:allow-popups",
+    /** Renderer → Main: the host is about to load/reload/go back/forward in a tab, so a `beforeunload`
+     *  confirm can repeat it on "Leave". Args: ({ registrationKey, intent: BrowserNavigationIntent }) */
+    navigationIntent: "browser:navigation-intent",
     /** Renderer → Main: hard reload (ignore cache) bypassing the beforeunload guard prompt. Args: (key: string) */
     hardReload: "browser:hard-reload",
     /** Renderer → Main: take a webview out of HTML fullscreen (its page was hidden). Args: (key: string) */
@@ -95,6 +98,18 @@ export interface BrowserRegisterRequest {
     internalTabId: string;
     webContentsId: number;
     zoomPercent: number;
+}
+
+/** A navigation the host or the page asked a browser tab for (see `BrowserUnloadGuard`). */
+export type BrowserNavigationIntent =
+    | { kind: "load"; url: string }
+    | { kind: "reload" }
+    | { kind: "back" }
+    | { kind: "forward" };
+
+export interface BrowserNavigationIntentRequest {
+    registrationKey: string;
+    intent: BrowserNavigationIntent;
 }
 
 export interface BrowserSetZoomRequest {

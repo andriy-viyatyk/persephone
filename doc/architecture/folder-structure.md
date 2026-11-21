@@ -1164,7 +1164,13 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 │   ├── browser-popup-service.ts # Sender-validated popup close, teardown, focus, and text operations
 │   ├── BrowserGuest.ts     # Per-registration listeners, state, and disposal
 │   ├── navigation-scheme-guards.ts # Scheme guards for guests (attached at creation) and popups; rules in shared/browser-navigation-policy.ts
-│   └── popup-policy.ts     # Browser popup admission and rate-limit policy
+│   ├── popup-policy.ts     # Popup window options (size clamp, origin title) and nested-popup admission
+│   ├── popup-gate.ts       # Gesture + rate-limit gate for page-opened tabs/windows; per-tab "Allow popups" origin grant
+│   ├── user-activation.ts  # Recent user gesture of a guest (consumed by opens, downloads, hand-offs)
+│   ├── unload-guard.ts     # Async beforeunload confirm; replays the recorded navigation intent on Leave
+│   ├── page-dialog-guard.ts # One JS dialog box at a time per page (replaces Electron's -run-dialog handler)
+│   ├── download-request-limiter.ts # One automatic download per document; more need a gesture
+│   └── browser-page-guard-service.ts # IPC entry: "Allow popups" grant and host navigation intents
 ├── browser-dom-snapshot.ts # DOM and loaded-resource collection for browser guests
 ├── host-fullscreen-controller.ts # Per-window host fullscreen intent and guest coordination
 ├── preload-webview.ts      # Browser guest preload entry point
@@ -1182,7 +1188,8 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── browser-network-service.ts # Profile/Incognito proxy state, profile-src:// policy setup, guest WebRTC policy, egress check, session-src hand-off
 ├── tor-src-protocol.ts     # tor-src:// scheme policy setup — fetches through a Tor partition session; guarded by partition shape and live-partition check
 ├── git-service.ts          # Git access via simple-git — status, stage/unstage/commit, branch/switch, fetch/push/pull, ahead-behind, log/show, --version probe — main-process only
-├── download-service.ts     # Browser downloads stage in temp while an async Save As dialog is open; test instances save under test-mode/test-downloads; completed files receive Mark-of-the-Web from the final redirect URL
+├── download-path-queue.ts  # One Save dialog at a time per page, bounded queue
+├── download-service.ts     # Browser downloads stage in temp (paused at 32 MB) while an async Save As dialog is open; test instances save under test-mode/test-downloads; completed files receive Mark-of-the-Web from the final redirect URL
 ├── session-src-protocol.ts # Short-lived URL-bound capability; reuses routed URL parsing and enforces board network policy/DNS pinning per redirect hop
 ├── native-dialog-tracker.ts # Per-window native dialog state, attention snapshots, and helper-backed cancellation
 ├── search-service.ts       # File search host — owns one search-worker thread per sender window, relays its batches to the renderer; cancel/window-close is worker.terminate()

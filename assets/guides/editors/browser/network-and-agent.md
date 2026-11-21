@@ -89,4 +89,21 @@ they are not editor-format errors. The browser's page automation is available on
 ready. A proxied page whose proxy is down fails with the browser's connection error; one whose proxy
 setting is invalid shows an error panel instead of any webview — fix the setting, then use **Retry**.
 
+### What a page may open, download and show
+
+- **New tabs and windows.** As in Chrome, a page opens a tab or pop-up window only right after you
+  click or type in it, one per click; anything else is blocked and counted in the blocked-popup bar
+  ([layout](layout.md#when-popups-are-blocked)). A pop-up window fits on your screen, and its title
+  starts with the site that controls it, for example `https://accounts.example.com — Sign in`.
+- **Downloads.** A page may start one download on its own; each further download needs a click in the
+  page, and a page that tries to download several files automatically is stopped with a notification.
+  Save dialogs from one page open one after another, and a download waiting for its Save dialog pauses
+  after 32 MB until you choose where to save it.
+- **Alerts.** A page's alerts appear one at a time, titled with the site; from the second one you can
+  tick **Prevent this page from creating additional dialogs**.
+- **Leaving a page with unsaved changes.** When the page asks before you leave it, choose **Leave** to
+  continue to where you were going or **Cancel** to stay. The question does not block the rest of
+  Persephone while it is open.
+- **Page titles** longer than 1,024 characters are shortened.
+
 After a restart, only the active browser tab loads immediately. Other tabs retain their saved titles and icons and load when first activated; subsequent switches keep them loaded. A tab's muted setting is also restored.

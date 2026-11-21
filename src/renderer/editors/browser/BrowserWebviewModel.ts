@@ -73,6 +73,7 @@ export class BrowserWebviewModel {
     load(tabId: string, url: string): void {
         const webview = this.get(tabId);
         if (!webview) return;
+        this.model.guest.noteNavigation(tabId, { kind: "load", url });
         if (!this.isReady(tabId)) { this.pendingLoads.set(tabId, url); return; }
         this.loadReady(webview, url);
     }
@@ -98,9 +99,6 @@ export class BrowserWebviewModel {
         this.readiness.markLoaded(id);
     }
 
-    /** When true, rate limiting is disabled (user clicked "Allow"). */
-    popupsAllowed = false;
-
     constructor(model: BrowserEditor) {
         this.model = model;
     }
@@ -112,10 +110,12 @@ export class BrowserWebviewModel {
     };
 
     goBack = () => {
+        this.model.guest.noteNavigation(this.model.state.get().activeTabId, { kind: "back" });
         this.getActiveWebview()?.goBack();
     };
 
     goForward = () => {
+        this.model.guest.noteNavigation(this.model.state.get().activeTabId, { kind: "forward" });
         this.getActiveWebview()?.goForward();
     };
 
@@ -164,6 +164,7 @@ export class BrowserWebviewModel {
         if (!wv) return;
         this.resetTranslationForReload();
         this.model.siteExtensions.onNavigationStarted(this.model.state.get().activeTabId, true, false);
+        this.model.guest.noteNavigation(this.model.state.get().activeTabId, { kind: "reload" });
         wv.reload();
     };
 
@@ -309,7 +310,7 @@ export class BrowserWebviewModel {
                 break;
             case "did-start-navigation": {
                 this.model.siteExtensions.onNavigationStarted(internalTabId, data.isMainFrame, data.isSameDocument);
-                this.model.prompts.clearTab(internalTabId);
+                this.model.prompts.clearTab(internalTabId, data.isSameDocument);
                 if (data.blocked) {
                     const webview = this.get(internalTabId);
                     const tabData = this.model.findTab(internalTabId);
@@ -322,10 +323,9 @@ export class BrowserWebviewModel {
             case "new-window":
                 if (data.url) this.model.pageLinks.openLink(data.url, internalTabId, "page");
                 break;
-            case "popups-blocked": {
-                this.model.prompts.countBlockedPopup();
+            case "popups-blocked":
+                this.model.prompts.countBlockedPopup(internalTabId);
                 break;
-            }
             case "permission-request": {
                 const prompt = data.permissionRequest as BrowserPermissionPromptData | undefined;
                 if (prompt && this.model.state.get().tabs.some((tab) => tab.id === internalTabId)) {

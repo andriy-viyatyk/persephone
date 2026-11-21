@@ -1,15 +1,25 @@
-import { BrowserWindow, WebContents } from "electron";
+import { BrowserWindow, screen, WebContents } from "electron";
 import { globalMuteService } from "../global-mute-service";
 import { globalPopupRateLimiter } from "../../ipc/popup-rate-limiter";
 import type { BrowserEvent } from "../../ipc/browser-ipc";
 import { getPageOpenAction } from "../../shared/browser-navigation-policy";
 import { attachNavigationSchemeGuards } from "./navigation-scheme-guards";
+import { guardPageDialogs } from "./page-dialog-guard";
 
 type SendEvent = (type: BrowserEvent["type"], data: BrowserEvent["data"]) => void;
+
+const DEFAULT_POPUP_WIDTH = 500;
+const DEFAULT_POPUP_HEIGHT = 600;
+const MIN_POPUP_SIZE = 100;
+const MAX_POPUP_TITLE_CHARS = 200;
 
 export function parseFeature(features: string, name: string): number | undefined {
     const match = features.match(new RegExp(`${name}=(\\d+)`));
     return match ? parseInt(match[1], 10) : undefined;
+}
+
+function clamp(value: number, min: number, max: number): number {
+    return Math.min(Math.max(value, min), Math.max(min, max));
 }
 
 export function destroyPopupWithNodeIntegration(childWindow: BrowserWindow, details: Electron.DidCreateWindowDetails): boolean {
@@ -20,23 +30,44 @@ export function destroyPopupWithNodeIntegration(childWindow: BrowserWindow, deta
     return true;
 }
 
-export function handleGuestPopup(
-    parentWindow: BrowserWindow | undefined,
-    features: string,
-): Electron.BrowserWindowConstructorOptions {
-    const popupWidth = parseFeature(features, "width") || 500;
-    const popupHeight = parseFeature(features, "height") || 600;
-    const options: Electron.BrowserWindowConstructorOptions = {
+/**
+ * Window options for a page-opened popup: the page's requested size, kept within the work area of the
+ * display the opener is on, centred on the opener and never placed off that work area.
+ */
+export function popupWindowOptions(anchor: Electron.Rectangle | undefined, features: string): Electron.BrowserWindowConstructorOptions {
+    const area = (anchor ? screen.getDisplayMatching(anchor) : screen.getPrimaryDisplay()).workArea;
+    const width = clamp(parseFeature(features, "width") || DEFAULT_POPUP_WIDTH, MIN_POPUP_SIZE, area.width);
+    const height = clamp(parseFeature(features, "height") || DEFAULT_POPUP_HEIGHT, MIN_POPUP_SIZE, area.height);
+    const center = anchor ?? area;
+    return {
         autoHideMenuBar: true,
-        width: popupWidth,
-        height: popupHeight,
+        width,
+        height,
+        x: clamp(Math.round(center.x + (center.width - width) / 2), area.x, area.x + area.width - width),
+        y: clamp(Math.round(center.y + (center.height - height) / 2), area.y, area.y + area.height - height),
     };
-    const parentBounds = parentWindow?.getBounds();
-    if (parentBounds) {
-        options.x = Math.round(parentBounds.x + (parentBounds.width - popupWidth) / 2);
-        options.y = Math.round(parentBounds.y + (parentBounds.height - popupHeight) / 2);
-    }
-    return options;
+}
+
+/**
+ * Popup windows have no address bar, so the title names the origin that controls the content
+ * (`mainFrame.origin`: an `about:blank` popup written by its opener shows the opener's origin) ahead of
+ * the page's own title, which the page could otherwise use to pose as anything.
+ */
+function showPopupOrigin(window: BrowserWindow): void {
+    const contents = window.webContents;
+    const update = (): void => {
+        if (window.isDestroyed() || contents.isDestroyed()) return;
+        let origin = contents.mainFrame?.origin ?? "";
+        if (!origin || origin === "null") origin = contents.getURL().split(/[?#]/)[0] || "about:blank";
+        const title = contents.getTitle().slice(0, MAX_POPUP_TITLE_CHARS);
+        window.setTitle(title && title !== contents.getURL() ? `${origin} — ${title}` : origin);
+    };
+    window.on("page-title-updated", (event) => {
+        event.preventDefault();
+        update();
+    });
+    contents.on("did-navigate", update);
+    update();
 }
 
 export function guardPopupWindow(
@@ -53,33 +84,20 @@ export function guardPopupWindow(
     const childContents = childWindow.webContents;
     globalMuteService.register(childContents, "popup");
     attachNavigationSchemeGuards(childContents);
+    guardPageDialogs(childContents);
+    showPopupOrigin(childWindow);
     childContents.setWindowOpenHandler(({ url, disposition, features }) => {
         if (getPageOpenAction(url) !== "open") return { action: "deny" };
-        if (disposition === "foreground-tab" || disposition === "background-tab") {
+        const tab = disposition === "foreground-tab" || disposition === "background-tab";
+        if (!userActivated || !globalPopupRateLimiter.check(tab ? "tabs" : "popups")) {
+            sendEvent("popups-blocked", { url });
+            return { action: "deny" };
+        }
+        if (tab) {
             sendEvent("new-window", { url, disposition });
             return { action: "deny" };
         }
-        if (!userActivated) {
-            sendEvent("popups-blocked", { url });
-            return { action: "deny" };
-        }
-        if (!globalPopupRateLimiter.isAllowed("popups") && !globalPopupRateLimiter.check("popups")) {
-            sendEvent("popups-blocked", { url });
-            return { action: "deny" };
-        }
-        const parentBounds = childWindow.getBounds();
-        const popupWidth = parseFeature(features, "width") || 500;
-        const popupHeight = parseFeature(features, "height") || 600;
-        return {
-            action: "allow",
-            overrideBrowserWindowOptions: {
-                autoHideMenuBar: true,
-                width: popupWidth,
-                height: popupHeight,
-                x: Math.round(parentBounds.x + (parentBounds.width - popupWidth) / 2),
-                y: Math.round(parentBounds.y + (parentBounds.height - popupHeight) / 2),
-            },
-        };
+        return { action: "allow", overrideBrowserWindowOptions: popupWindowOptions(childWindow.getBounds(), features) };
     });
     const popupId = registerPopup(childWindow, openerId, opener);
     if (!popupId) return;

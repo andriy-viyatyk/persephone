@@ -1,15 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { BrowserWindow, dialog, WebContents, WebFrameMain } from "electron";
+import { BrowserWindow, WebContents, WebFrameMain } from "electron";
 import { BrowserChannel, BrowserEvent } from "../../ipc/browser-ipc";
 import type { EventApi } from "../../ipc/api-types";
 import type { EventPayload } from "../../ipc/event-types";
-import { globalPopupRateLimiter } from "../../ipc/popup-rate-limiter";
-import { t } from "../../shared/i18n/t";
 import { errMessage } from "../../shared/utils";
-import { withNativeDialogSync } from "../native-dialog-tracker";
-import { hasRecentRendererRequest } from "../renderer-rpc";
-import { getNavigationScheme, getPageOpenAction, USER_ACTIVATION_WINDOW_MS } from "../../shared/browser-navigation-policy";
-import { destroyPopupWithNodeIntegration, guardPopupWindow, handleGuestPopup } from "./popup-policy";
+import { getNavigationScheme, getPageOpenAction } from "../../shared/browser-navigation-policy";
+import { destroyPopupWithNodeIntegration, guardPopupWindow, popupWindowOptions } from "./popup-policy";
+import { BrowserPopupGate } from "./popup-gate";
+import { BrowserUnloadGuard } from "./unload-guard";
+import { UserActivation } from "./user-activation";
 
 type AnyEventHandler = (...args: unknown[]) => void;
 interface EventTarget {
@@ -46,11 +45,12 @@ export class BrowserGuest {
     readonly webContents: WebContents;
     readonly senderWebContents: WebContents;
     readonly listeners: Array<{ event: string; handler: AnyEventHandler }> = [];
-    bypassUnloadGuard = false;
+    readonly activation: UserActivation;
+    readonly popups: BrowserPopupGate;
+    readonly unload: BrowserUnloadGuard;
     htmlFullscreen = false;
     navigationGeneration = 0;
     pressed: Press | null = null;
-    lastUserActivation = 0;
     zoomPercent: number;
     private disposed = false;
 
@@ -63,6 +63,9 @@ export class BrowserGuest {
         senderWebContents: WebContents;
         zoomPercent: number;
         hooks: BrowserGuestHooks;
+        /** The registration this one replaces for the same webContents (the renderer re-registers on every
+         *  document): the page's gesture, popup grant and unload state carry over. */
+        previous?: BrowserGuest;
     }) {
         this.key = args.key;
         this.tabId = args.tabId;
@@ -72,6 +75,9 @@ export class BrowserGuest {
         this.senderWebContents = args.senderWebContents;
         this.zoomPercent = args.zoomPercent;
         this.hooks = args.hooks;
+        this.activation = args.previous?.activation ?? new UserActivation();
+        this.popups = args.previous?.popups ?? new BrowserPopupGate(args.webContents, this.activation);
+        this.unload = args.previous?.unload ?? new BrowserUnloadGuard(args.webContents, args.senderWebContents);
     }
 
     private readonly hooks: BrowserGuestHooks;
@@ -113,6 +119,7 @@ export class BrowserGuest {
         };
 
         on("did-navigate", (_event: Electron.Event, url: string) => {
+            this.popups.onNavigated(url);
             this.sendEvent("did-navigate", { url, canGoBack: this.webContents.canGoBack(), canGoForward: this.webContents.canGoForward() });
         });
         on("did-navigate-in-page", (_event: Electron.Event, url: string, isMainFrame: boolean) => {
@@ -129,10 +136,10 @@ export class BrowserGuest {
         });
         on("did-start-loading", () => this.sendEvent("did-start-loading", {}));
         on("did-stop-loading", () => {
-            this.bypassUnloadGuard = false;
+            this.unload.clearBypass();
             this.sendEvent("did-stop-loading", {});
         });
-        on("will-prevent-unload", (event: Electron.Event) => this.handleBeforeUnload(event));
+        on("will-prevent-unload", (event: Electron.Event) => this.unload.handleWillPreventUnload(event));
         on("enter-html-full-screen", () => this.setHtmlFullscreen(true));
         on("leave-html-full-screen", () => this.setHtmlFullscreen(false));
         on("before-mouse-event", (_event: Electron.Event, mouse: Electron.MouseInputEvent) => this.trackPress(mouse));
@@ -159,17 +166,18 @@ export class BrowserGuest {
                 if (action === "handoff") this.handOffExternal(url);
                 return { action: "deny" };
             }
-            if (disposition === "foreground-tab" || disposition === "background-tab") {
+            const tab = disposition === "foreground-tab" || disposition === "background-tab";
+            if (!this.popups.allowOpen(tab ? "tabs" : "popups")) {
+                this.sendEvent("popups-blocked", { url });
+                return { action: "deny" };
+            }
+            if (tab) {
                 this.releaseLostPress("a new tab");
                 this.sendEvent("new-window", { url, disposition });
                 return { action: "deny" };
             }
-            if (!globalPopupRateLimiter.isAllowed("popups") && !globalPopupRateLimiter.check("popups")) {
-                this.sendEvent("popups-blocked", { url });
-                return { action: "deny" };
-            }
             const parentWindow = BrowserWindow.fromWebContents(this.senderWebContents) ?? undefined;
-            return { action: "allow", overrideBrowserWindowOptions: handleGuestPopup(parentWindow, features) };
+            return { action: "allow", overrideBrowserWindowOptions: popupWindowOptions(parentWindow?.getBounds(), features) };
         });
         on("zoom-changed", (event: Electron.Event, direction: "in" | "out") => {
             event.preventDefault();
@@ -195,10 +203,10 @@ export class BrowserGuest {
 
     private trackPress(mouse: Electron.MouseInputEvent): void {
         if (mouse.type === "mouseDown") {
-            this.lastUserActivation = Date.now();
+            this.activation.note();
             this.pressed = { x: mouse.x, y: mouse.y, button: mouse.button ?? "left" };
         } else if (mouse.type === "mouseUp") {
-            this.lastUserActivation = Date.now();
+            this.activation.note();
             this.pressed = null;
         } else if (mouse.type === "mouseMove" && this.pressed) {
             this.pressed.x = mouse.x;
@@ -209,7 +217,8 @@ export class BrowserGuest {
     private handleNavigation(event: Electron.Event, url: string): void {
         const scheme = getNavigationScheme(url);
         if (scheme === "invalid") return;
-        if (scheme === "blocked") {
+        if (scheme === "chromium") this.unload.noteIntent({ kind: "load", url });
+        else if (scheme === "blocked") {
             event.preventDefault();
             this.sendEvent("did-start-navigation", { url, blocked: true });
         } else if (scheme === "external") {
@@ -220,16 +229,14 @@ export class BrowserGuest {
 
     /** Hand a page-requested non-Chromium URL to the host, only right after a user gesture. */
     private handOffExternal(url: string): void {
-        const activated = Date.now() - this.lastUserActivation <= USER_ACTIVATION_WINDOW_MS;
-        this.lastUserActivation = 0;
-        if (activated) this.hooks.sendHostEvent("eOpenPipelineCandidate", url);
+        if (this.activation.consume()) this.hooks.sendHostEvent("eOpenPipelineCandidate", url);
     }
 
     handleInput(event: Electron.Event, input: Electron.Input): void {
         const parentWindow = BrowserWindow.fromWebContents(this.senderWebContents);
         if (parentWindow) this.hooks.forwardVoiceTypingInput(parentWindow, event, input, this.webContents);
         if (input.type !== "keyDown" || event.defaultPrevented) return;
-        this.lastUserActivation = Date.now();
+        this.activation.note();
         if (input.key === "Escape" && this.htmlFullscreen) {
             event.preventDefault();
             void this.exitFullscreen().catch((): void => undefined);
@@ -244,37 +251,21 @@ export class BrowserGuest {
         if (input.key === "F5" || (keyLower === "r" && input.control)) {
             event.preventDefault();
             if (input.key === "F5" ? input.control : input.shift) {
-                this.bypassUnloadGuard = true;
+                this.unload.armBypass();
                 this.webContents.reloadIgnoringCache();
-            } else this.webContents.reload();
+            } else {
+                this.unload.noteIntent({ kind: "reload" });
+                this.webContents.reload();
+            }
         } else if (input.key === "F12") {
             event.preventDefault();
             this.webContents.openDevTools();
         } else if (input.alt && (input.key === "ArrowLeft" || input.key === "ArrowRight")) {
             event.preventDefault();
-            if (input.key === "ArrowLeft") this.webContents.goBack();
-            else this.webContents.goForward();
+            this.unload.noteIntent({ kind: input.key === "ArrowLeft" ? "back" : "forward" });
+            if (input.key === "ArrowLeft") this.webContents.navigationHistory.goBack();
+            else this.webContents.navigationHistory.goForward();
         }
-    }
-
-    private handleBeforeUnload(event: Electron.Event): void {
-        if (this.bypassUnloadGuard) {
-            this.bypassUnloadGuard = false;
-            event.preventDefault();
-            return;
-        }
-        if (hasRecentRendererRequest()) {
-            event.preventDefault();
-            return;
-        }
-        const parentWindow = BrowserWindow.fromWebContents(this.senderWebContents);
-        const options: Electron.MessageBoxSyncOptions = {
-            type: "question", buttons: [t("main.unsavedChangesLeave"), t("main.unsavedChangesCancel")],
-            defaultId: 1, cancelId: 1, title: t("main.unsavedChangesTitle"), message: t("main.unsavedChangesMessage"),
-        };
-        const choice = withNativeDialogSync(parentWindow, "messageBox", () => parentWindow
-            ? dialog.showMessageBoxSync(parentWindow, options) : dialog.showMessageBoxSync(options));
-        if (choice === 0) event.preventDefault();
     }
 
     async enterFullscreen(selector?: string): Promise<{ fullscreen: boolean }> {
@@ -386,7 +377,7 @@ export class BrowserGuest {
 
     hardReload(): void {
         if (this.webContents.isDestroyed()) return;
-        this.bypassUnloadGuard = true;
+        this.unload.armBypass();
         this.webContents.reloadIgnoringCache();
     }
 

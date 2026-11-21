@@ -108,29 +108,51 @@ bar.
 
 | Source | Disposition | Behavior |
 |--------|------------|----------|
-| `target="_blank"` link click | `foreground-tab` / `background-tab` | Opens as new internal tab in same browser page |
-| `window.open()` from JavaScript | `default` / `new-window` | Opens as real popup BrowserWindow |
+| `target="_blank"` link click, `window.open(url)` without features | `foreground-tab` / `background-tab` | Opens as new internal tab in same browser page |
+| `window.open()` with window features | `default` / `new-window` | Opens as real popup BrowserWindow |
 
 The main process intercepts these via `setWindowOpenHandler()` on the webContents. Every request first
 passes the page-open policy (`getPageOpenAction()`, see [Protocol blocking](#5-protocol-blocking)): only
 Chromium schemes open; `file:`, `app-asset:`, `data:`, `javascript:` and other non-Chromium URLs are denied,
-and a non-Chromium URL is handed to the host the same way as a page navigation to it. **Link clicks**
+and a non-Chromium URL is handed to the host the same way as a page navigation to it. Every remaining
+request then passes `BrowserPopupGate` (see [Popup/Tab Rate Limiting](#popuptab-rate-limiting)). **Link clicks**
 (`target="_blank"`) are then denied and relayed to the renderer as a `"new-window"` event, which
 `BrowserPageLinkOpener.openLink(url, tabId, "page")` opens with `model.addTab(url, parentGroupId)` (inheriting
 the parent tab's group). **JavaScript `window.open()` calls** (OAuth popups, login dialogs, etc.) are allowed as real Electron BrowserWindows — this preserves the `window.opener` reference that auth flows need to communicate back to the parent page. The popup inherits the webview's session partition, so cookies and auth state are shared.
+
+A popup window has no address bar, so `popup-policy.ts` owns how it looks: `popupWindowOptions()` clamps
+the page's requested size to `[100, workArea]` of the display the opener is on and keeps the window
+centred on the opener inside that work area (first-level and nested popups alike), and
+`showPopupOrigin()` titles the window `<origin> — <page title>` from `mainFrame.origin` (an
+`about:blank` popup written by its opener shows the opener's origin), re-applied on
+`page-title-updated` and `did-navigate`. The page title part is cut to 200 characters.
 
 **Important:** The `<webview>` element requires `allowpopups="true"` for `setWindowOpenHandler` to fire on `target="_blank"` link clicks.
 
 ### Popup/Tab Rate Limiting
 
-Both code paths (internal tabs and real popup windows) are protected by a **global app-wide rate limiter** (`globalPopupRateLimiter` from `src/ipc/popup-rate-limiter.ts`) — max 3 requests within 2 seconds across the entire application. This prevents cascade attacks where each new tab opens more tabs. When exceeded:
+`BrowserPopupGate` (`src/main/browser/popup-gate.ts`, one per tab guest) is the single owner of "may this
+page open a tab or window now", for both internal tabs and real popup windows. Without the user's
+grant, a page-initiated open needs a **fresh user gesture** — `UserActivation`
+(`src/main/browser/user-activation.ts`), noted on mouse press/release and key press in the guest and
+valid for `USER_ACTIVATION_WINDOW_MS` (5 s) — which the open **consumes** (one gesture, one window, as
+in Chrome), and then passes the **global app-wide rate limiter** (`globalPopupRateLimiter` from
+`src/ipc/popup-rate-limiter.ts`, keys `"tabs"` and `"popups"`, max 3 per 2 s), which stops cascades
+where each new tab opens more tabs. A denied open sends `"popups-blocked"` to the renderer, which counts
+it in `BrowserPromptsModel` (`blockedPopupCount`, `blockedPopupTabId`). Nested popups (opened from a
+popup window) keep their own rule in `guardPopupWindow`: the window must have been focused, and the
+same limiter applies to their tabs and windows. The renderer no longer rate-limits page-opened tabs
+itself; `BrowserPageLinkOpener.openLink(..., "page")` opens what main relayed.
 
-- **Internal tabs** (renderer): blocked in `BrowserPageLinkOpener.openLink(..., "page")` (the `"new-window"` event); increments `blockedPopupCount` in state
-- **Popup windows** (main process): blocked in `setWindowOpenHandler`; sends `"popups-blocked"` IPC event to renderer
-
-Each process (main, renderer) imports the same `globalPopupRateLimiter` singleton but gets its own instance — this is fine because they guard different things (renderer: internal tabs via `"tabs"` key, main: popup BrowserWindows via `"popups"` key).
-
-A notification bar appears below the loading indicator showing the blocked count. The user can click "Allow" to permanently whitelist popups for the session (allows both renderer and main process rate limiters via `BrowserChannel.allowPopups` IPC), or dismiss the bar.
+A notification bar appears below the loading indicator showing the blocked count. **Allow** sends
+`BrowserChannel.allowPopups` with the blocked tab's registration key; `browserPageGuardService`
+(`src/main/browser/browser-page-guard-service.ts`) calls `BrowserPopupGate.grant()`, which records that
+tab's current top-level **http(s) origin**. The grant skips the gesture and the rate limit for that tab
+while it shows a document from that origin; `onNavigated()` drops it when the tab commits another
+origin (same-origin navigations keep it), and it is never app-wide. The renderer hides the bar when that
+tab starts a cross-document navigation. Because the renderer re-registers a guest on every `dom-ready`,
+`registerWebview` hands the previous `BrowserGuest` for the same webContents to the new one, which keeps
+its `activation`, `popups` and `unload` collaborators.
 
 ## Process Architecture
 
@@ -227,6 +249,13 @@ Guest Page DOM                  Preload                  Renderer
 changes                 sendToHost(channel)       → model.updateFromWebview(...)
                                                    → model.tabs.cacheFavicon(...)
 ```
+
+A page can change its title every frame and make it megabytes long, and the title reaches the tab
+model, restore data and agent tools. `browser-guest-messages.ts` owns the caps: titles are cut to
+`GUEST_TITLE_MAX_CHARS` (1,024), a favicon URL longer than `GUEST_FAVICON_URL_MAX_CHARS` (2,048; inline
+`data:` icons `GUEST_FAVICON_DATA_URL_MAX_CHARS`, 32,768) is dropped. The preload applies them before
+comparing and reports at most once per 250 ms (trailing), and `parseGuestMessage` applies them again
+and accepts only strings.
 
 ### 4. Loading state
 
@@ -427,6 +456,8 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/renderer/automation/types.ts` | Renderer | Narrow automation, synthetic-input, navigation, and tab target interfaces |
 | `src/main/browser-service.ts` | Main | Browser service composition and IPC-facing methods |
 | `src/main/browser/BrowserGuest.ts`, `BrowserGuestRegistry.ts` | Main | Per-registration guest listeners, state, disposal, and lookup |
+| `src/main/browser/popup-gate.ts`, `user-activation.ts`, `unload-guard.ts`, `page-dialog-guard.ts`, `download-request-limiter.ts`, `browser-page-guard-service.ts` | Main | Page guards: gesture-gated tabs/popups and the per-tab Allow grant, async `beforeunload` confirm, one JS dialog at a time, automatic-download limit |
+| `src/main/browser/popup-policy.ts` | Main | Popup window size clamp, origin title, nested-popup admission |
 | `src/main/browser-dom-snapshot.ts` | Main | DOM and loaded-resource collection, including iframe content |
 | `src/main/host-fullscreen-controller.ts` | Main | Per-window host fullscreen intent and registered-guest coordination |
 | `src/main/cdp-service.ts` | Main | CDP service composition and app, board, and browser target routing |
@@ -1269,15 +1300,63 @@ runtime.
 
 ### Reload and the `beforeunload` guard
 
-A guest page with a `beforeunload` handler (e.g. an unsaved-changes guard) tries to cancel any reload/navigation. Electron's default for the resulting `will-prevent-unload` event is to **silently cancel the unload** — no prompt, no reload — which makes Reload/F5 appear dead. `BrowserGuest` handles `will-prevent-unload` to fix this:
+A guest page with a `beforeunload` handler (e.g. an unsaved-changes guard) tries to cancel any reload/navigation. Electron's default for the resulting `will-prevent-unload` event is to **silently cancel the unload** — no prompt, no reload — which makes Reload/F5 appear dead. `BrowserUnloadGuard` (`src/main/browser/unload-guard.ts`, one per tab guest) owns the confirm:
 
-- **Soft reload** (toolbar button, `F5`, `Ctrl+R`) → a native confirm ("You have unsaved changes. Leave the page and discard them?"); **Leave** allows the unload (reload proceeds), **Cancel** keeps the page.
+- **Soft reload, back/forward, a typed URL or a link** → a native confirm ("You have unsaved changes. Leave the page and discard them?"); **Leave** repeats the cancelled navigation, **Cancel** keeps the page.
 - **Hard reload** (`Ctrl+F5` / `Ctrl+Shift+R`) → bypasses the prompt and force-reloads.
 
-The bypass uses a one-shot `bypassUnloadGuard` flag on the per-registration `BrowserGuest`: armed by a hard reload, consumed (and cleared) by the `will-prevent-unload` handler, and cleared defensively on `did-stop-loading` so it can never leak to a later reload. Because the flag lives in the main process, both keyboard layers must arm it there:
+Electron needs the answer synchronously, and a synchronous message box would freeze the whole main
+process (every window, IPC and MCP) while it is up. So the guard keeps the page (no `preventDefault`),
+shows an **async** `dialog.showMessageBox` (inside `withNativeDialog`, so agents see it as an open
+native dialog) and, on **Leave**, arms the bypass and replays the navigation. Only one box per tab is
+open at a time; further attempts while it is up stay silently. The navigation to replay is the
+**intent** recorded just before it (used only if ≤ 3 s old): `will-navigate` (the URL, so a POST form
+replays as a GET of its URL), the guest's own F5/Ctrl+R/Alt+←/→, and the host's load/back/forward/reload,
+which the renderer reports through `BrowserChannel.navigationIntent`
+(`BrowserGuestChannel.noteNavigation`, called from `BrowserWebviewModel.load/goBack/goForward/reload`
+and the page context menu) → `browserPageGuardService.noteNavigationIntent`. With no intent (for
+example the page's own `location.reload()`), **Leave** arms the bypass for 10 s so the user's next
+attempt leaves without asking. Agent-driven navigations (a pending renderer request) are never asked
+about.
 
-- **Layer 1** (`before-input-event`, focus inside the page) arms the guest's bypass flag and calls `reloadIgnoringCache()` directly.
-- **Layer 2** (`globalKeyDown`, focus on browser chrome) calls `BrowserWebviewModel.hardReload()`, which sends the new `BrowserChannel.hardReload` IPC (key `${tabId}/${internalTabId}`); the main handler arms the flag and reloads — mirroring Layer 1 so both paths have identical semantics. (Soft reload stays renderer-side via `reloadOrStop()` → `<webview>.reload()`, which still triggers the confirm.)
+The bypass is a short-lived window in the guard (`armBypass()`), armed by a hard reload or a **Leave**,
+consumed by the next `will-prevent-unload`, and cleared on `did-stop-loading` so it can never leak to a
+later reload. Because it lives in the main process, both keyboard layers must arm it there:
+
+- **Layer 1** (`before-input-event`, focus inside the page) arms the guest's bypass and calls `reloadIgnoringCache()` directly.
+- **Layer 2** (`globalKeyDown`, focus on browser chrome) calls `BrowserWebviewModel.hardReload()`, which sends the `BrowserChannel.hardReload` IPC (key `${tabId}/${internalTabId}`); the main handler arms the bypass and reloads — mirroring Layer 1 so both paths have identical semantics. (Soft reload stays renderer-side via `reloadOrStop()` → `<webview>.reload()`, which reports a reload intent and still triggers the confirm.)
+
+### JavaScript dialogs
+
+Electron answers a page's `alert()`/`confirm()`/`prompt()` in its own JavaScript, through the
+WebContents' internal `-run-dialog` event (where `disableDialogs`/`safeDialogs` are read). In a
+`<webview>` guest the page does not wait for the answer, so a loop of `alert()` raised one native box
+per call. `guardPageDialogs()` (`src/main/browser/page-dialog-guard.ts`), installed by
+`guardBrowserGuestAtCreation` and `guardPopupWindow`, replaces Electron's listener for browser pages
+and popups: **one native box at a time per page** (a dialog while one is open is answered "cancel" at
+once, with no box), titled with the requesting frame's origin, message cut to 2,000 characters; from
+the second box a "Prevent this page from creating additional dialogs" checkbox silences that origin for
+the page's lifetime; `prompt()` stays unsupported; Electron's `-cancel-dialogs` (navigation, close)
+closes the open box. The guard installs itself only when Electron registered that internal listener;
+otherwise Electron's handler stays, with `safeDialogs` set on browser webviews by
+`applyPageDialogPreferences()` in `will-attach-webview` as the fallback. Re-check this on each Electron
+upgrade.
+
+### Download limits
+
+`download-service.ts` applies three rules to browser downloads:
+
+- **Automatic downloads** — `DownloadRequestLimiter` (`src/main/browser/download-request-limiter.ts`)
+  lets a tab's document start one download on its own; each further one needs a fresh user gesture in
+  the page (consumed). The allowance resets when the tab commits a new document. A blocked download is
+  cancelled before any claim or Save dialog, and the first one per document shows a warning
+  notification (`main.downloadsBlocked`, through the generic `eBoardNotify` route). Popup windows are
+  not gated (opening them already needed a gesture).
+- **One Save dialog at a time per page** — `SavePathQueue` (`src/main/download-path-queue.ts`) runs a
+  page's Save dialogs one after another, keyed by the initiating `webContents`; a page with 3 downloads
+  already queued (the open dialog included) loses further ones.
+- **Temp-file cap** — a download still waiting for its path pauses once its temp `.part` file reaches
+  32 MB and resumes when the path is chosen; Cancel removes it as before.
 
 ## Scripting Facade
 
@@ -1581,8 +1660,8 @@ this wait can return a body for browser pages, boards, and `window.screen`.
 real BrowserWindow pop-ups created by browser guests. It assigns opaque runtime IDs, keeps the root
 guest key and sender, and records each immediate opener WebContents and opener ID. Nested windows
 remain owned by the root browser page. `BrowserGuest` registers a kept window only after the
-Node-integration policy allows it; `popup-policy.ts` retains the navigation guards, mute setup,
-rate limit, nested-window activation gate, and recursive registration. Popup lifecycle events are
+Node-integration policy allows it; `popup-policy.ts` retains the navigation guards, dialog guard, mute
+setup, origin title, size clamp, rate limit, nested-window activation gate, and recursive registration. Popup lifecycle events are
 sent through the current `BrowserGuest` resolved by root key, so re-registering the same webContents
 does not strand the popup event route.
 

@@ -42,6 +42,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
   favicon or clicked thumbnail pointing at a local file or network share is ignored. Markdown opened
   from the web shows only web images, and the bookmark favicon download no longer follows a page to
   another host on your local network.
+- **Browser: pages can no longer flood you with windows, downloads or dialogs.** As in Chrome, a page
+  opens a tab or pop-up window only right after your click, pop-up windows fit the screen and show
+  their site in the title, and **Allow** on the blocked-popup bar now applies to that tab's site only
+  instead of every page. A page gets one automatic download; more need a click, Save dialogs come one
+  at a time, and a download waiting for its Save dialog pauses at 32 MB. Alerts appear one at a time
+  with an option to stop more, the "Unsaved changes" question no longer freezes Persephone while it is
+  open, and very long page titles are shortened.
 
 ---
 

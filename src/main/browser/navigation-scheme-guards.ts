@@ -1,6 +1,7 @@
 import type { WebContents } from "electron";
 import { getNavigationScheme } from "../../shared/browser-navigation-policy";
 import { globalMuteService } from "../global-mute-service";
+import { guardPageDialogs } from "./page-dialog-guard";
 
 interface NavigationEventTarget {
     on(event: string, handler: (...args: unknown[]) => void): void;
@@ -27,11 +28,12 @@ export function attachNavigationSchemeGuards(contents: WebContents): void {
 /**
  * Policy for a browser `<webview>` guest from the moment it exists. The renderer registers a guest only
  * after its first document is ready, and that document (a new tab's `src`) loads its frames before
- * then; guarding here leaves no window without the scheme guards. Window opening is denied until
- * registration installs the real handler.
+ * then; guarding here leaves no window without the scheme guards or the dialog guard. Window opening is
+ * denied until registration installs the real handler.
  */
 export function guardBrowserGuestAtCreation(contents: WebContents): void {
     globalMuteService.register(contents, "webview");
     attachNavigationSchemeGuards(contents);
+    guardPageDialogs(contents);
     contents.setWindowOpenHandler(() => ({ action: "deny" }));
 }

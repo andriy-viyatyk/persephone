@@ -207,18 +207,18 @@ export async function showBrowserContextMenu({
             label: t("browser.back"),
             startGroup: true,
             disabled: !tab?.canGoBack,
-            onClick: () => webview.goBack(),
+            onClick: () => { model.guest.noteNavigation(internalTabId, { kind: "back" }); webview.goBack(); },
         });
         items.push({
             id: "forward",
             label: t("browser.forward"),
             disabled: !tab?.canGoForward,
-            onClick: () => webview.goForward(),
+            onClick: () => { model.guest.noteNavigation(internalTabId, { kind: "forward" }); webview.goForward(); },
         });
         items.push({
             id: "reload",
             label: t("browser.reload"),
-            onClick: () => webview.reload(),
+            onClick: () => { model.guest.noteNavigation(internalTabId, { kind: "reload" }); webview.reload(); },
         });
 
         // View Source

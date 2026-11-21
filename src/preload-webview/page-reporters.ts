@@ -1,4 +1,7 @@
-import { BrowserGuestMessageChannel, sendToHost } from "../ipc/browser-guest-messages";
+import { BrowserGuestMessageChannel, capGuestFavicon, capGuestTitle, sendToHost } from "../ipc/browser-guest-messages";
+
+/** A page changing its title or icon every frame is reported at most this often (trailing report). */
+const REPORT_INTERVAL_MS = 250;
 import { exitCinemaFromEscape } from "./cinema-mode";
 
 export function installPageReporters(): void {
@@ -9,13 +12,13 @@ function getFavicon(): string {
     );
     // Prefer the last matching link (sites often append the best one last)
     for (let i = links.length - 1; i >= 0; i--) {
-        if (links[i].href) return links[i].href;
+        if (links[i].href) return capGuestFavicon(links[i].href);
     }
     return "";
 }
 
 function getTitle(): string {
-    return document.title || "";
+    return capGuestTitle(document.title || "");
 }
 
 // ── Reporters ────────────────────────────────────────────────────────
@@ -39,9 +42,27 @@ function reportFavicon() {
     }
 }
 
-function reportAll() {
+function reportNow() {
     reportTitle();
     reportFavicon();
+}
+
+let lastReportAt = 0;
+let pendingReport: ReturnType<typeof setTimeout> | undefined;
+
+function reportAll() {
+    if (pendingReport !== undefined) return;
+    const wait = lastReportAt + REPORT_INTERVAL_MS - Date.now();
+    if (wait <= 0) {
+        lastReportAt = Date.now();
+        reportNow();
+        return;
+    }
+    pendingReport = setTimeout(() => {
+        pendingReport = undefined;
+        lastReportAt = Date.now();
+        reportNow();
+    }, wait);
 }
 
 // ── MutationObserver ─────────────────────────────────────────────────

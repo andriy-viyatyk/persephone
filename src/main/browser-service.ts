@@ -19,6 +19,7 @@ import { BrowserGuest, BrowserGuestHostHooks } from "./browser/BrowserGuest";
 import { browserGuests } from "./browser/BrowserGuestRegistry";
 import { browserPopups } from "./browser/BrowserPopupRegistry";
 import { guardBrowserGuestAtCreation } from "./browser/navigation-scheme-guards";
+import { applyPageDialogPreferences } from "./browser/page-dialog-guard";
 import {
     BrowserChannel,
     BrowserRegisterRequest,
@@ -27,7 +28,6 @@ import {
     SetBrowserSitePermissionRequest,
     BrowserSitePermissions,
 } from "../ipc/browser-ipc";
-import { globalPopupRateLimiter } from "../ipc/popup-rate-limiter";
 import type { EventApi } from "../ipc/api-types";
 import type { EventPayload } from "../ipc/event-types";
 import { sendRendererEvent } from "../ipc/main/renderer-event-sender";
@@ -132,7 +132,7 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest): 
         },
     };
     const guest = new BrowserGuest({
-        key, tabId, pageId, internalTabId, webContents: contents, senderWebContents: sender,
+        key, tabId, pageId, internalTabId, webContents: contents, senderWebContents: sender, previous: previous?.webContents.id === webContentsId ? previous : undefined,
         zoomPercent: validZoomPercent(request.zoomPercent) ? request.zoomPercent : PAGE_ZOOM_DEFAULT,
         hooks: {
             host: hostHooks,
@@ -180,6 +180,7 @@ export function initializeBrowserService(): void {
                 webPreferences.nodeIntegration = false;
                 // Isolate browser-tab zoom from other guests sharing the origin.
                 webPreferences.zoomMode = "isolated";
+                applyPageDialogPreferences(webPreferences);
             }
             if (!isPersistentBrowserProfilePartition(params.partition)) {
                 if (argumentsList.includes("--persephone-webmcp-enabled")) {
@@ -293,7 +294,6 @@ export const browserService = {
         if (registration && !registration.webContents.isDestroyed()) globalMuteService.setLocalMuted(registration.webContents, muted);
     },
     exitHtmlFullscreen(key: string): void { void exitHtmlFullscreen(key).catch((): void => undefined); },
-    allowPopups(): void { globalPopupRateLimiter.allow("popups"); },
     hardReload(key: string): void {
         const registration = browserGuests.get(key);
         registration?.hardReload();

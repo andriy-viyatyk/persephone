@@ -1,6 +1,7 @@
-import { BrowserChannel, type BrowserRegisterRequest, type BrowserSetZoomRequest, type BrowserSitePermissionRegistrationRequest, type SetBrowserSitePermissionRequest } from "../browser-ipc";
+import { BrowserChannel, type BrowserNavigationIntentRequest, type BrowserRegisterRequest, type BrowserSetZoomRequest, type BrowserSitePermissionRegistrationRequest, type SetBrowserSitePermissionRequest } from "../browser-ipc";
 import { browserService } from "../../main/browser-service";
 import { browserPopupService } from "../../main/browser/browser-popup-service";
+import { browserPageGuardService } from "../../main/browser/browser-page-guard-service";
 import { guardedIpcHandle, guardedIpcOn } from "../../main/ipc-sender-guard";
 
 export function initBrowserHandlers(): void {
@@ -23,7 +24,8 @@ export function initBrowserHandlers(): void {
     guardedIpcOn(BrowserChannel.unregister, (_event, key: string) => browserService.unregisterWebview(key));
     guardedIpcOn(BrowserChannel.setAudioMuted, (_event, key: string, muted: boolean) => browserService.setAudioMuted(key, muted));
     guardedIpcOn(BrowserChannel.exitHtmlFullscreen, (_event, key: string) => browserService.exitHtmlFullscreen(key));
-    guardedIpcOn(BrowserChannel.allowPopups, () => browserService.allowPopups());
+    guardedIpcOn(BrowserChannel.allowPopups, (event, key: string) => browserPageGuardService.allowPopups(event, key));
+    guardedIpcOn(BrowserChannel.navigationIntent, (event, request: BrowserNavigationIntentRequest) => browserPageGuardService.noteNavigationIntent(event, request));
     guardedIpcOn(BrowserChannel.hardReload, (_event, key: string) => browserService.hardReload(key));
     guardedIpcHandle(BrowserChannel.clearProfileData, (_event, partition: string) => browserService.clearProfileData(partition));
     guardedIpcHandle(BrowserChannel.clearCache, (_event, partition: string) => browserService.clearCache(partition));

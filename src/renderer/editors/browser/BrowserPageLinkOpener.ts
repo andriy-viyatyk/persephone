@@ -1,6 +1,5 @@
 import { getNavigationScheme, getPageOpenAction } from "../../../shared/browser-navigation-policy";
 import { t } from "../../../shared/i18n/t";
-import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
 import { pages } from "../../api/pages";
 import { ui } from "../../api/ui";
 import { openPageSchemeCandidate } from "../../content/page-scheme-handoff";
@@ -9,7 +8,8 @@ import type { BrowserEditor } from "./BrowserEditor";
 
 /**
  * Who asked to open a page-supplied URL: the user, through a context-menu item ("menu"), or the page
- * itself through `target=_blank` / `window.open` ("page"; already filtered and handed off by main).
+ * itself through `target=_blank` / `window.open` ("page"; already filtered, gesture-checked and rate
+ * limited by main's `BrowserPopupGate`).
  */
 export type PageLinkOrigin = "menu" | "page";
 
@@ -31,10 +31,6 @@ export class BrowserPageLinkOpener {
         }
         if (action === "refuse") {
             if (origin === "menu") ui.notify(t("browser.pageUrlRefused"), "warning");
-            return;
-        }
-        if (origin === "page" && !this.model.webview.popupsAllowed && !globalPopupRateLimiter.check("tabs")) {
-            this.model.prompts.countBlockedPopup();
             return;
         }
         const parentTab = this.model.findTab(sourceTabId);

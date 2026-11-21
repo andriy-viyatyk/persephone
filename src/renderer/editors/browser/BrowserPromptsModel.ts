@@ -1,5 +1,4 @@
 import type { BrowserPermissionPromptData } from "../../../ipc/browser-ipc";
-import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
 import { TComponentState } from "../../core/state/state";
 import type { BrowserEditor } from "./BrowserEditor";
 
@@ -9,11 +8,14 @@ export interface BrowserPermissionPrompt extends BrowserPermissionPromptData {
 
 export interface BrowserPromptsState {
     blockedPopupCount: number;
+    /** The tab whose popups were last blocked; "Allow" grants that tab's current site. */
+    blockedPopupTabId: string;
     permissionPrompts: BrowserPermissionPrompt[];
 }
 
 const DEFAULT_PROMPTS_STATE: BrowserPromptsState = {
     blockedPopupCount: 0,
+    blockedPopupTabId: "",
     permissionPrompts: [],
 };
 
@@ -23,8 +25,12 @@ export class BrowserPromptsModel {
 
     constructor(private readonly model: BrowserEditor) {}
 
-    countBlockedPopup = (): void => {
-        this.state.update((state) => { state.blockedPopupCount++; });
+    countBlockedPopup = (internalTabId: string): void => {
+        this.state.update((state) => {
+            if (state.blockedPopupTabId !== internalTabId) state.blockedPopupCount = 0;
+            state.blockedPopupTabId = internalTabId;
+            state.blockedPopupCount++;
+        });
     };
 
     enqueuePermission = (prompt: BrowserPermissionPromptData, internalTabId: string): void => {
@@ -35,9 +41,11 @@ export class BrowserPromptsModel {
         });
     };
 
-    clearTab = (internalTabId: string): void => {
+    /** A tab started a navigation: its permission prompts go, and a new document also drops its popup bar. */
+    clearTab = (internalTabId: string, sameDocument = false): void => {
         this.state.update((state) => {
             state.permissionPrompts = state.permissionPrompts.filter((item) => item.internalTabId !== internalTabId);
+            if (!sameDocument && state.blockedPopupTabId === internalTabId) state.blockedPopupCount = 0;
         });
     };
 
@@ -46,9 +54,8 @@ export class BrowserPromptsModel {
     };
 
     allowPopups = (): void => {
-        this.model.webview.popupsAllowed = true;
-        globalPopupRateLimiter.allow("tabs");
-        this.model.guest.allowPopups();
+        const tabId = this.state.get().blockedPopupTabId;
+        if (tabId) this.model.guest.allowPopups(tabId);
         this.dismissBlockedPopups();
     };
 

@@ -20,10 +20,15 @@ import { browserNetworkService } from "./browser-network-service";
 import { torService } from "./tor-service";
 import { errMessage } from "../shared/utils";
 import { testInstanceDownloadPath } from "./test-mode/downloads";
+import { t } from "../shared/i18n/t";
+import { downloadRequestLimiter } from "./browser/download-request-limiter";
+import { SavePathQueue } from "./download-path-queue";
 
 const MAX_PERSISTED = 5;
 const PROGRESS_THROTTLE_MS = 500;
 const TEMP_DOWNLOAD_FOLDER = "persephone-downloads";
+/** A download still waiting for its Save dialog pauses once its temp file reaches this size. */
+const UNCHOSEN_TEMP_LIMIT_BYTES = 32 * 1024 * 1024;
 
 interface DownloadRecord {
     entry: DownloadEntry;
@@ -32,6 +37,8 @@ interface DownloadRecord {
     targetPath?: string;
     transferDone: boolean;
     finishing: boolean;
+    /** Paused at the temp limit until a save path is chosen. */
+    heldForPath?: boolean;
     referrerUrl?: string;
     hostUrl?: string;
     /** Renderer hosting the private (incognito or Tor) page that owns this download; its events go only there. */
@@ -112,6 +119,7 @@ class DownloadService {
     private hookedSessions = new WeakSet<Session>();
     private idCounter = 0;
     private browserUrlMaskClaims: BrowserUrlMaskClaim[] = [];
+    private readonly savePaths = new SavePathQueue();
 
     init(): void {
         this.loadPersisted();
@@ -207,8 +215,16 @@ class DownloadService {
     }
 
     private handleWillDownload(item: DownloadItem, webContents: WebContents): void {
-        if (!browserGuests.hasWebContents(webContents)) {
+        const guest = browserGuests.getByWebContents(webContents);
+        if (!guest) {
             return this.handleOrdinaryDownload(item, webContents);
+        }
+        if (!downloadRequestLimiter.allow(webContents, guest.activation)) {
+            item.cancel();
+            if (downloadRequestLimiter.shouldNotify(webContents)) {
+                sendToBrowserHost(webContents, "eBoardNotify", { message: t("main.downloadsBlocked"), type: "warning" } satisfies BoardNotifyMsg);
+            }
+            return;
         }
 
         const url = item.getURL();
@@ -246,6 +262,8 @@ class DownloadService {
     }
 
     private handleOrdinaryDownload(item: DownloadItem, webContents: WebContents): void {
+        // One Save dialog at a time per page; a page that already has a full queue loses the download.
+        if (!this.savePaths.hasRoom(webContents.id)) { item.cancel(); return; }
         const id = this.generateId();
         const recordSource = !torService.findActivePartitionForSession(webContents.session);
         const referrerUrl = recordSource && !webContents.isDestroyed() ? webContents.getURL() : "";
@@ -267,7 +285,7 @@ class DownloadService {
         this.downloads.set(id, record);
         this.notify(record, "eDownloadStarted", { ...entry });
         this.trackDownload(item, record, recordSource, referrerUrl);
-        void this.chooseDownloadPath(parentWindow, record, defaultPath);
+        this.savePaths.enqueue(webContents.id, () => this.chooseDownloadPath(parentWindow, record, defaultPath));
     }
 
     private async chooseDownloadPath(parentWindow: BrowserWindow | undefined, record: DownloadRecord, defaultPath: string | undefined): Promise<void> {
@@ -279,8 +297,10 @@ class DownloadService {
         };
         // A test instance cannot answer the native Save dialog; it saves into the profile's test folder.
         const testPath = testInstanceDownloadPath(record.entry.filename);
+        if (record.entry.status === "cancelled" || record.entry.status === "failed") return; // ended while queued
         if (testPath) {
             record.targetPath = testPath;
+            this.releaseHeldTransfer(record);
             if (record.transferDone) await this.finishDownloadMove(record, record.hostUrl ?? record.entry.url, record.referrerUrl ?? "");
             return;
         }
@@ -290,11 +310,19 @@ class DownloadService {
             // A private session leaves no trace on disk, not even the folder it saved to.
             if (record.entry.privateOwnerId === undefined) rememberDirFromPick("save", result.filePath);
             record.targetPath = result.filePath;
+            this.releaseHeldTransfer(record);
             if (record.transferDone) await this.finishDownloadMove(record, record.hostUrl ?? record.entry.url, record.referrerUrl ?? "");
         } catch (error) {
             console.warn("[downloads] Save dialog failed: " + errMessage(error));
             await removeUnselectedDownload();
         }
+    }
+
+    /** Resume a transfer paused at the temp limit, now that it has somewhere to go. */
+    private releaseHeldTransfer(record: DownloadRecord): void {
+        if (!record.heldForPath) return;
+        record.heldForPath = false;
+        if (record.item?.isPaused()) record.item.resume();
     }
 
     private trackDownload(item: DownloadItem, record: DownloadRecord, recordSource: boolean, referrerUrl: string): void {
@@ -303,6 +331,10 @@ class DownloadService {
             if (state !== "progressing") return;
             record.entry.receivedBytes = item.getReceivedBytes();
             record.entry.totalBytes = item.getTotalBytes();
+            if (!record.targetPath && !record.heldForPath && record.entry.receivedBytes >= UNCHOSEN_TEMP_LIMIT_BYTES) {
+                record.heldForPath = true;
+                item.pause();
+            }
             const now = Date.now();
             if (now - lastProgressSent >= PROGRESS_THROTTLE_MS) {
                 lastProgressSent = now;

@@ -11,6 +11,24 @@ export const BrowserGuestMessageChannel = {
     translationReady: "translation-ready",
 } as const;
 
+/** Longest page title the host keeps (tab label, restore data, agent tools); longer titles are cut. */
+export const GUEST_TITLE_MAX_CHARS = 1024;
+/** Longest favicon URL the host accepts; a longer one is ignored. */
+export const GUEST_FAVICON_URL_MAX_CHARS = 2048;
+/** Inline (`data:image`) favicons are whole images, so they get a larger cap. */
+export const GUEST_FAVICON_DATA_URL_MAX_CHARS = 32_768;
+
+/** The page title as the host may store it. */
+export function capGuestTitle(title: string): string {
+    return title.length > GUEST_TITLE_MAX_CHARS ? title.slice(0, GUEST_TITLE_MAX_CHARS) : title;
+}
+
+/** The favicon URL, or "" when it is longer than the host accepts. */
+export function capGuestFavicon(url: string): string {
+    const limit = /^data:/i.test(url) ? GUEST_FAVICON_DATA_URL_MAX_CHARS : GUEST_FAVICON_URL_MAX_CHARS;
+    return url.length > limit ? "" : url;
+}
+
 export type GuestMessage =
     | { channel: typeof BrowserGuestMessageChannel.pageTitle; payload: string }
     | { channel: typeof BrowserGuestMessageChannel.pageFavicon; payload: string }
@@ -40,9 +58,11 @@ export function parseGuestMessage(channel: string, args: unknown[]): GuestMessag
     const record = payload as { scope?: { document?: unknown }; items?: unknown } | undefined;
     switch (channel) {
         case BrowserGuestMessageChannel.pageTitle:
-            return payload ? { channel, payload: payload as string } : undefined;
-        case BrowserGuestMessageChannel.pageFavicon:
-            return payload ? { channel, payload: payload as string } : undefined;
+            return typeof payload === "string" && payload ? { channel, payload: capGuestTitle(payload) } : undefined;
+        case BrowserGuestMessageChannel.pageFavicon: {
+            const favicon = typeof payload === "string" ? capGuestFavicon(payload) : "";
+            return favicon ? { channel, payload: favicon } : undefined;
+        }
         case BrowserGuestMessageChannel.pointerDown:
             return { channel };
         case BrowserGuestMessageChannel.showFindBar:
