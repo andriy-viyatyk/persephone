@@ -7,6 +7,7 @@ import type { DownloadEntry } from "../../ipc/api-param-types";
  */
 export interface IDownloads {
     // Query state
+    /** Tracked downloads, excluding those from Incognito and Tor pages (shown only in their own page's popup). */
     readonly downloads: DownloadEntry[];
     readonly hasActiveDownloads: boolean;
     readonly aggregateProgress: number;

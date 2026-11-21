@@ -583,11 +583,33 @@ and the challenge passes without it.
 
 ## Session Restore
 
-`getRestoreData()` saves each internal tab with its committed URL. Navigation events update `tab.url` directly, so restore data and the active-tab summary do not depend on a separate current-URL map or top-level URL mirror. `applyRestoreData()` restores them with fresh internal tab IDs and ensures each tab has a `groupId` (assigning a new one if missing for backward compatibility). The active tab is identified by index position during restore and is the only restored tab initially materialized; other tabs retain saved URL, title, favicon, and settings until activation or explicit guest automation access. Transient loading, audible, and back/forward flags reset on restore because they describe live guest state. Mute intent and zoom are retained and applied when a guest is created. Profile name, incognito flag, and Tor flag are also saved/restored.
+`getRestoreData()` saves each internal tab with its committed URL. Navigation events update `tab.url` directly, so restore data and the active-tab summary do not depend on a separate current-URL map or top-level URL mirror. `applyRestoreData()` restores them with fresh internal tab IDs and ensures each tab has a `groupId` (assigning a new one if missing for backward compatibility). The active tab is identified by index position during restore and is the only restored tab initially materialized; other tabs retain saved URL, title, favicon, and settings until activation or explicit guest automation access. Transient loading, audible, and back/forward flags reset on restore because they describe live guest state. Mute intent and zoom are retained and applied when a guest is created. The profile name is also saved/restored.
 
-Navigation history (`navHistory` on each `BrowserTabData`) is persisted as part of the tab state via `getRestoreData()`. Search history is stored separately per profile in the app data folder using `SearchHistoryStorage` (file-based, max 2000 entries). Incognito and Tor profiles skip search history persistence.
+Navigation history (`navHistory` on each `BrowserTabData`) is persisted as part of the tab state via `getRestoreData()`. Search history is stored separately per profile in the app data folder using `SearchHistoryStorage` (file-based, max 2000 entries).
 
-Tor pages are restored with a fresh empty tab (no URLs from previous session) and `torStatus: "disconnected"`. The Tor overlay is shown with a "Reconnect" button — the user must explicitly reconnect.
+### Private sessions stay off disk (US-2141)
+
+Incognito and Tor pages (`isPrivateBrowserSession()` in `agent-access.ts` is the one rule) leave
+nothing in the app data folder, matching Chrome:
+
+- **Window state.** The browser row in `register-editors.ts` declares
+  `EditorDefinition.sessionOnly`; `PagesPersistenceModel` drops every page holding such an editor
+  when it writes `openFiles<N>.json` (with any grouping or active-page reference to it) and when it
+  reads one written by an older build. A private page therefore never reaches the file — not even
+  before a crash — and does not reopen after a restart. `getRestoreData()` itself still returns the
+  full state, because dragging a page to another window and Duplicate use it in memory; a Tor page
+  arriving that way starts with one blank tab, `torStatus: "disconnected"` and the Reconnect overlay.
+- **Search history.** `searchHistoryManager.forSession(state)` returns no storage for a private page,
+  so its queries and visited hostnames are not recorded and the profile's history is not suggested
+  in its URL bar.
+- **Downloads.** `download-service.ts` tags a download from a browser guest on a non-persistent
+  session with `DownloadEntry.privateOwnerId` (the BrowserEditor id). Such an entry is never written
+  to `recentDownloads.json`, does not update the Save dialog's folder memory, and its events go only
+  to the window hosting the page; `getDownloads()` without a viewer (agents, persistence) leaves it
+  out. In the renderer, `downloadsInScope()` (`api/downloads.ts`) gives each toolbar's Downloads
+  button and popup its scope: a normal page lists normal downloads, a private page only its own, and
+  Clear clears only that scope. The public `app.downloads` list holds normal downloads only.
+  Private entries live in memory until the app exits.
 
 ## Profiles & Incognito
 

@@ -97,6 +97,9 @@ export interface DownloadEntry {
     status: "downloading" | "awaitingPath" | "completed" | "failed" | "cancelled";
     startTime: number;
     error?: string;
+    /** Set for a download from an incognito or Tor page: the id of that browser page. Such an entry is never
+     *  written to disk, reaches only the window hosting the page, and is listed only in that page's popup. */
+    privateOwnerId?: string;
 }
 
 export interface BrowserUrlMaskClaim {

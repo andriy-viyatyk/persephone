@@ -1,5 +1,5 @@
 import type { DownloadEntry } from "../../../ipc/api-param-types";
-import { downloads } from "../../api/downloads";
+import { downloads, downloadsInScope } from "../../api/downloads";
 import { t } from "../../../shared/i18n/t";
 import { TComponentState } from "../../core/state/state";
 import { formatBytes } from "../../core/utils/format";
@@ -32,7 +32,10 @@ import { registerDialogView } from "../../api/dialogs/dialog-view-registry";
 const defaultDownloadsPopupState = {} as Record<string, never>;
 type DownloadsPopupState = typeof defaultDownloadsPopupState;
 
-class DownloadsPopupModel extends TPopperModel<DownloadsPopupState, void> {}
+class DownloadsPopupModel extends TPopperModel<DownloadsPopupState, void> {
+    /** The private browser page whose downloads this popup lists; undefined lists normal downloads. */
+    privateOwnerId: string | undefined;
+}
 
 // =============================================================================
 // Module-private view (registered with the vanilla Poppers registry)
@@ -78,12 +81,14 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
     private clearButton: ButtonView | undefined;
     private itemResources: DownloadItemResources[] = [];
 
-    public constructor(host: HTMLElement) {
+    public constructor(host: HTMLElement, private readonly privateOwnerId: string | undefined) {
         // The content view adopts the popover host so its body and list remain direct children of
         // the floating root. PopoverFloatingView owns the host's root attributes and must remain
         // the only writer of those attributes.
         super(undefined, host);
     }
+
+    private readonly clearCompleted = (): void => { void downloads.clearCompleted(this.privateOwnerId); };
 
     protected onMount(): void {
         const headerPanel = createPanelElement({
@@ -118,7 +123,7 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
         this.own(() => this.disposeItemResources());
         this.bind(
             downloads.state,
-            (state) => state.downloads,
+            (state) => downloadsInScope(state.downloads, this.privateOwnerId),
             (downloadEntries) => this.renderDownloads(downloadEntries),
         );
     }
@@ -174,7 +179,7 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
                 name: "downloads-clear",
                 size: "sm",
                 variant: "ghost",
-                onClick: () => { void downloads.clearCompleted(); },
+                onClick: this.clearCompleted,
                 children: t("dialogs.buttonClear"),
             }));
             clearButton.mount();
@@ -283,7 +288,7 @@ class DownloadsPopupContentView extends VanillaView<undefined> {
                 size: "sm",
                 title: t("browser.downloadsDismiss"),
                 icon: "close",
-                onClick: () => { void downloads.clearCompleted(); },
+                onClick: this.clearCompleted,
             }));
         }
         itemPanel.append(buttonsPanel);
@@ -338,7 +343,7 @@ class DownloadsPopupView extends VanillaView<DialogViewProps> {
             ...this.model.position,
             outsideClickIgnoreSelector: ignoreSelector,
             onClose: () => { void this.model.close(); },
-            contentView: (host) => new DownloadsPopupContentView(host),
+            contentView: (host) => new DownloadsPopupContentView(host, this.model.privateOwnerId),
         }));
         popoverView.mount();
     }
@@ -353,12 +358,14 @@ registerDialogView(downloadsPopupId, DownloadsPopupView);
 /**
  * Open the downloads popup anchored to the given element. Resolves when the popup
  * closes (click-outside, Escape, or explicit `closeDownloadsPopup()`). No-op if
- * the popup is already open.
+ * the popup is already open. `privateOwnerId` (an incognito or Tor page's id) lists
+ * only that page's downloads; without it the popup lists normal downloads.
  */
-export const showDownloadsPopup = async (anchor: Element): Promise<void> => {
+export const showDownloadsPopup = async (anchor: Element, privateOwnerId?: string): Promise<void> => {
     if (isDownloadsPopupOpen()) return;
     const state = new TComponentState(defaultDownloadsPopupState);
     const model = new DownloadsPopupModel(state);
+    model.privateOwnerId = privateOwnerId;
     model.position = {
         elementRef: anchor,
         placement: "bottom-end",

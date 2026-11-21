@@ -12,7 +12,7 @@ Global download tracking. Manages download state synchronized from the main proc
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `downloads` | `DownloadEntry[]` | All tracked downloads. |
+| `downloads` | `DownloadEntry[]` | All tracked downloads, except those from Incognito and Tor pages (listed only in their own page's Downloads popup). |
 | `hasActiveDownloads` | `boolean` | True if any download is in progress. |
 | `aggregateProgress` | `number` | Combined progress of all active downloads (0–1). |
 
@@ -23,7 +23,7 @@ Global download tracking. Manages download state synchronized from the main proc
 | `cancelDownload(id)` | Cancel an active download. |
 | `openDownload(id)` | Open a completed download file. |
 | `showInFolder(id)` | Show a download in the OS file explorer. |
-| `clearCompleted()` | Remove completed downloads from the list. |
+| `clearCompleted()` | Remove completed, failed and cancelled downloads from the list (Incognito and Tor downloads are cleared from their own page's popup). |
 
 ## Example
 

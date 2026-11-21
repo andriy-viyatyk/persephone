@@ -3,6 +3,7 @@ import { TGlobalState } from "../../core/state/state";
 import { createEchoGuard } from "../../core/utils/echo-guard";
 import { FileWatcher } from "../../api/file-watcher";
 import { fs } from "../../api/fs";
+import { isPrivateBrowserSession, type IBrowserAccessFlags } from "./agent-access";
 
 const MAX_ENTRIES = 2000;
 
@@ -121,10 +122,12 @@ class SearchHistoryStorage extends TModel<SearchHistoryState> {
 class SearchHistoryManager {
     private storages = new Map<string, SearchHistoryStorage>();
 
-    /** Get or create a SearchHistoryStorage for the given profile. */
-    get(profileName: string, isIncognito: boolean): SearchHistoryStorage | undefined {
-        if (isIncognito) return undefined;
+    /** Get or create the search history of the page's profile. A private (incognito or Tor) page has none:
+     *  its queries are not recorded and the profile's history is not suggested to it. */
+    forSession(session: IBrowserAccessFlags & { profileName?: string }): SearchHistoryStorage | undefined {
+        if (isPrivateBrowserSession(session)) return undefined;
 
+        const profileName = session.profileName ?? "";
         const key = profileName || "default";
         let storage = this.storages.get(key);
         if (!storage) {

@@ -15,6 +15,7 @@ import { openMenu, type MenuHandle } from "../../uikit/Menu/attach-menu";
 import { IncognitoIcon, TorIcon } from "../../theme/language-icons";
 import color from "../../theme/color";
 import { DownloadButtonView } from "./DownloadButton";
+import { isPrivateBrowserSession } from "./agent-access";
 import { BrowserSiteActionsView } from "./BrowserSiteActionsView";
 import { BrowserTranslationPopoverContentView } from "./BrowserTranslationPopoverContentView";
 import { getPageMenuItems } from "./browser-page-menu";
@@ -85,7 +86,7 @@ export class BrowserToolbarView extends VanillaView<BrowserToolbarProps> {
         this.bookmarksButton = this.child(new IconButtonView(this.bookmarksProps(props.state)));
         this.torInfoButton = this.child(new IconButtonView(this.torInfoProps(props.state)));
         this.siteActions = this.child(new BrowserSiteActionsView({ model: this.model, state: props.state }));
-        const downloads = this.child(new DownloadButtonView());
+        const downloads = this.child(new DownloadButtonView({ privateOwnerId: isPrivateBrowserSession(props.state) ? this.model.id : undefined }));
         this.moreButton = this.child(new IconButtonView(this.moreProps(props.state)));
         this.devtoolsButton = this.child(new IconButtonView(this.devtoolsProps(props.state)));
         this.closeButton = this.child(new IconButtonView(this.closeProps(props.state)));

@@ -68,8 +68,7 @@ export class BrowserUrlBarModel {
     // =====================================================================
 
     get searchStorage() {
-        const { profileName, isIncognito } = this.model.state.get();
-        return searchHistoryManager.get(profileName, isIncognito);
+        return searchHistoryManager.forSession(this.model.state.get());
     }
 
     get detectedSearch() {

@@ -123,6 +123,11 @@ export interface EditorDefinition {
     /** Granular matching rules; absent for standalone editors that do not match files or appear in the switch. */
     match?: EditorMatcher;
 
+    /** True when this descriptor holds private-session state (incognito or Tor browsing) that must never be
+     *  written to the window-state file nor restored from one. Synchronous and chunk-free: the window-state
+     *  writer calls it for every editor on every save. */
+    readonly sessionOnly?: (descriptor: EditorDescriptor) => boolean;
+
     loadModule(): Promise<EditorModule<EditorModel>>;
 }
 
@@ -210,6 +215,12 @@ class EditorRegistry {
         return this.getById(id)
             ?? (parseBoardEditorId(id) !== null ? this.getById(EditorId.boardView) : undefined);
     }
+
+    /** Whether the descriptor's editor declares it session-only (see `EditorDefinition.sessionOnly`). */
+    isSessionOnly = (descriptor: EditorDescriptor): boolean =>
+        typeof descriptor.editorId === "string"
+        && typeof descriptor.state === "object" && descriptor.state !== null
+        && (this.resolveDefinition(descriptor.editorId)?.sessionOnly?.(descriptor) ?? false);
 
     getAll(): EditorDefinition[] {
         return Array.from(this.definitions.values());

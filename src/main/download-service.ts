@@ -34,6 +34,8 @@ interface DownloadRecord {
     finishing: boolean;
     referrerUrl?: string;
     hostUrl?: string;
+    /** Renderer hosting the private (incognito or Tor) page that owns this download; its events go only there. */
+    privateHost?: WebContents;
 }
 
 function validateRecentDownloads(raw: unknown): DownloadEntry[] | null {
@@ -50,15 +52,23 @@ const recentStore = new JsonFileStore<DownloadEntry[]>("recentDownloads.json", {
     defaultValue: () => [],
     onSaveError: "warn",
 });
-function sendToBrowserHost<K extends keyof EventApi>(webContents: WebContents, endpoint: K, data: EventPayload<K>): void {
-    const hostContents = (webContents as WebContents & { hostWebContents?: WebContents }).hostWebContents;
+/** The app renderer hosting a webview guest. */
+function browserHostOf(webContents: WebContents): WebContents | undefined {
+    return (webContents as WebContents & { hostWebContents?: WebContents }).hostWebContents;
+}
+
+function sendToRenderer<K extends keyof EventApi>(contents: WebContents | undefined, endpoint: K, data: EventPayload<K>): void {
     try {
-        if (hostContents && !hostContents.isDestroyed()) {
-            sendRendererEvent(hostContents, endpoint, data);
+        if (contents && !contents.isDestroyed()) {
+            sendRendererEvent(contents, endpoint, data);
         }
     } catch {
         // The host renderer may be destroyed before the webview is disposed.
     }
+}
+
+function sendToBrowserHost<K extends keyof EventApi>(webContents: WebContents, endpoint: K, data: EventPayload<K>): void {
+    sendToRenderer(browserHostOf(webContents), endpoint, data);
 }
 
 /** The http(s) URL to record, without credentials; undefined for anything else
@@ -128,8 +138,11 @@ class DownloadService {
         }));
     }
 
-    getDownloads(): DownloadEntry[] {
+    /** Normal downloads, plus the private downloads of pages hosted by `viewer`. Without a viewer (agents,
+     *  recentDownloads.json) private downloads are never included. */
+    getDownloads(viewer?: WebContents): DownloadEntry[] {
         return Array.from(this.downloads.values())
+            .filter(d => d.entry.privateOwnerId === undefined || (viewer !== undefined && d.privateHost === viewer))
             .map(d => ({ ...d.entry }))
             .sort((a, b) => b.startTime - a.startTime);
     }
@@ -155,14 +168,29 @@ class DownloadService {
         }
     }
 
-    clearCompleted(): void {
+    /** Remove finished entries of one scope: normal downloads, or one private page's. */
+    clearCompleted(privateOwnerId?: string): void {
         for (const [id, dl] of this.downloads) {
+            if (dl.entry.privateOwnerId !== privateOwnerId) continue;
             if (dl.entry.status !== "downloading" && dl.entry.status !== "awaitingPath") {
                 this.downloads.delete(id);
+                this.notify(dl, "eDownloadRemoved", { id });
             }
         }
         this.persist();
-        openWindows.send("eDownloadCleared", this.getDownloads());
+    }
+
+    /** Send a download's event to every window, or only to the window hosting its private page. */
+    private notify<K extends keyof EventApi>(record: DownloadRecord, endpoint: K, data: EventPayload<K>): void {
+        if (record.entry.privateOwnerId === undefined) openWindows.send(endpoint, data);
+        else sendToRenderer(record.privateHost, endpoint, data);
+    }
+
+    /** A download from a browser page on an in-memory session (incognito or Tor) belongs to that page. */
+    private privateOwner(webContents: WebContents): { ownerId: string; host: WebContents | undefined } | undefined {
+        if (webContents.session.isPersistent()) return undefined;
+        const guest = browserGuests.getByWebContents(webContents);
+        return guest ? { ownerId: guest.tabId, host: browserHostOf(webContents) } : undefined;
     }
 
     private generateId(): string {
@@ -227,13 +255,17 @@ class DownloadService {
         const tempPath = path.join(tempDirectory, id + ".part");
         if (!preparePath(tempDirectory)) { item.cancel(); return; }
         item.setSavePath(tempPath);
+        const privateOwner = this.privateOwner(webContents);
         const entry: DownloadEntry = {
             id, filename: item.getFilename(), url: item.getURL(), totalBytes: item.getTotalBytes(),
             receivedBytes: 0, status: "downloading", startTime: Date.now(),
+            ...(privateOwner ? { privateOwnerId: privateOwner.ownerId } : {}),
         };
-        const record: DownloadRecord = { entry, item, tempPath, transferDone: false, finishing: false, referrerUrl };
+        const record: DownloadRecord = {
+            entry, item, tempPath, transferDone: false, finishing: false, referrerUrl, privateHost: privateOwner?.host,
+        };
         this.downloads.set(id, record);
-        openWindows.send("eDownloadStarted", { ...entry });
+        this.notify(record, "eDownloadStarted", { ...entry });
         this.trackDownload(item, record, recordSource, referrerUrl);
         void this.chooseDownloadPath(parentWindow, record, defaultPath);
     }
@@ -243,7 +275,7 @@ class DownloadService {
             if (!record.transferDone) record.item?.cancel();
             try { await fs.promises.unlink(record.tempPath); } catch { /* The transfer may not have created its temp file yet. */ }
             this.downloads.delete(record.entry.id);
-            openWindows.send("eDownloadRemoved", { id: record.entry.id });
+            this.notify(record, "eDownloadRemoved", { id: record.entry.id });
         };
         // A test instance cannot answer the native Save dialog; it saves into the profile's test folder.
         const testPath = testInstanceDownloadPath(record.entry.filename);
@@ -255,7 +287,8 @@ class DownloadService {
         try {
             const result = await withNativeDialog(parentWindow, "file", () => dialog.showSaveDialog(parentWindow, { defaultPath }));
             if (result.canceled || !result.filePath) { await removeUnselectedDownload(); return; }
-            rememberDirFromPick("save", result.filePath);
+            // A private session leaves no trace on disk, not even the folder it saved to.
+            if (record.entry.privateOwnerId === undefined) rememberDirFromPick("save", result.filePath);
             record.targetPath = result.filePath;
             if (record.transferDone) await this.finishDownloadMove(record, record.hostUrl ?? record.entry.url, record.referrerUrl ?? "");
         } catch (error) {
@@ -273,7 +306,7 @@ class DownloadService {
             const now = Date.now();
             if (now - lastProgressSent >= PROGRESS_THROTTLE_MS) {
                 lastProgressSent = now;
-                openWindows.send("eDownloadProgress", {
+                this.notify(record, "eDownloadProgress", {
                     id: record.entry.id, receivedBytes: record.entry.receivedBytes, totalBytes: record.entry.totalBytes,
                 });
             }
@@ -287,7 +320,7 @@ class DownloadService {
             if (state === "completed" && !record.targetPath) {
                 record.transferDone = true;
                 record.entry.status = "awaitingPath";
-                openWindows.send("eDownloadAwaitingPath", {
+                this.notify(record, "eDownloadAwaitingPath", {
                     id: record.entry.id, receivedBytes: record.entry.receivedBytes, totalBytes: record.entry.totalBytes,
                 });
             } else if (state === "completed") {
@@ -295,12 +328,12 @@ class DownloadService {
                 void this.finishDownloadMove(record, record.hostUrl ?? "", referrerUrl);
             } else if (state === "cancelled") {
                 record.entry.status = "cancelled";
-                openWindows.send("eDownloadFailed", { id: record.entry.id, error: "Cancelled" });
+                this.notify(record, "eDownloadFailed", { id: record.entry.id, error: "Cancelled" });
                 void fs.promises.unlink(record.tempPath).catch((): void => undefined);
             } else {
                 record.entry.status = "failed";
                 record.entry.error = "Download interrupted";
-                openWindows.send("eDownloadFailed", { id: record.entry.id, error: record.entry.error });
+                this.notify(record, "eDownloadFailed", { id: record.entry.id, error: record.entry.error });
                 void fs.promises.unlink(record.tempPath).catch((): void => undefined);
             }
             record.item = undefined;
@@ -324,14 +357,14 @@ class DownloadService {
             record.entry.filename = path.basename(savePath);
             record.entry.savePath = savePath;
             record.entry.status = "completed";
-            openWindows.send("eDownloadCompleted", {
+            this.notify(record, "eDownloadCompleted", {
                 id: record.entry.id, savePath, receivedBytes: record.entry.receivedBytes, totalBytes: record.entry.totalBytes,
             });
             this.persist();
         } catch (error) {
             record.entry.status = "failed";
             record.entry.error = "Failed to save download: " + errMessage(error);
-            openWindows.send("eDownloadFailed", { id: record.entry.id, error: record.entry.error });
+            this.notify(record, "eDownloadFailed", { id: record.entry.id, error: record.entry.error });
             try { await fs.promises.unlink(record.tempPath); } catch { /* Best-effort cleanup. */ }
         }
     }
@@ -356,6 +389,7 @@ class DownloadService {
         }
     }
 
+    /** Writes the last completed normal downloads; the viewer-less list never holds private ones. */
     private persist(): void {
         const completed = this.getDownloads().filter((download) => download.status === "completed").slice(0, MAX_PERSISTED);
         void recentStore.save(completed);

@@ -35,6 +35,8 @@ closed, the next call creates a fresh Browser page with one tab.
 Choose **Browser** from the arrow beside **+** in its category or under **Other**, use the **Tools & Editors** hub,
 or open a URL from a script with `pages.openUrlInBrowserTab(url, options)`. Browser, Browser Incognito,
 Browser (Tor), and browser profiles are separate choices in the hub.
+Incognito and Tor pages save nothing to disk (pages, searches, downloads) and do not reopen after a
+restart.
 
 
 ## URL Bar
@@ -102,7 +104,8 @@ their progress and can be cancelled. For every completed download, choose **Open
 App** to hand it to Windows. When Persephone has a matching built-in editor, installed board, or
 Monaco language for the file type, **Open in Persephone** also opens the file in a Persephone tab.
 **Show in Folder** opens its location in File Explorer. Use **Clear** in the popup header to remove
-completed, failed, and cancelled entries from the list.
+completed, failed, and cancelled entries from the list. Incognito and Tor pages list only their own
+downloads.
 
 ### Page zoom
 

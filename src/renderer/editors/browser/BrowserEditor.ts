@@ -318,7 +318,9 @@ export class BrowserEditor extends EditorModel<
             if (data.isTor !== undefined) {
                 s.isTor = data.isTor;
                 if (data.isTor) {
-                    // After restore: show overlay with "Reconnect", clear tabs
+                    // A Tor page is never restored from disk (US-2141); this runs when one is moved to
+                    // another window or duplicated, which starts a new Tor session: show the overlay
+                    // with "Reconnect" and start from one blank tab.
                     s.torStatus = "disconnected";
                     s.torOverlayVisible = true;
                     const fresh = createBrowserTab();
@@ -450,8 +452,7 @@ export class BrowserEditor extends EditorModel<
             } else {
                 const engine = this.getSearchEngine();
                 this.state.update((s) => { s.lastSearchQuery = normalizedUrl; });
-                const st = this.state.get();
-                searchHistoryManager.get(st.profileName, st.isIncognito)?.add(normalizedUrl);
+                searchHistoryManager.forSession(this.state.get())?.add(normalizedUrl);
                 normalizedUrl = engine.searchUrl.replace(
                     "%s",
                     encodeURIComponent(normalizedUrl),
@@ -503,14 +504,12 @@ export class BrowserEditor extends EditorModel<
                 ...tab.navHistory.filter((u) => u !== url),
             ].slice(0, 100);
         });
-        // Add hostname to search history (unless incognito/tor)
-        const s = this.state.get();
-        if (!isPrivateBrowserSession(s)) {
+        // Add hostname to the profile's search history; a private session has none.
+        const storage = searchHistoryManager.forSession(this.state.get());
+        if (storage) {
             try {
                 const hostname = new URL(url).hostname;
-                if (hostname) {
-                    searchHistoryManager.get(s.profileName, false)?.add(hostname);
-                }
+                if (hostname) void storage.add(hostname);
             } catch { /* invalid URL */ }
         }
     };

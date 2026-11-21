@@ -24,6 +24,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
   New Tab**, `target="_blank"` links and `window.open()` now open only web addresses, as in Chrome,
   and **Open Image in New Tab** refuses local images. Local files and `data:` URLs still open when
   you paste them into the URL bar.
+- **Browser: Incognito and Tor pages no longer leave traces on disk.** Their pages are not saved
+  with the window and do not reopen after a restart, their search queries are neither saved nor
+  suggested in normal pages (and normal search history is not suggested in them), and their
+  downloads appear only in their own page's Downloads list, not in normal pages or the saved
+  recent-downloads list.
 
 ---
 

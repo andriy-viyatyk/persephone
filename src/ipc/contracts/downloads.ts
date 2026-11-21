@@ -6,7 +6,8 @@ export interface DownloadsApi {
     cancelDownload: (id: string) => Promise<void>;
     openDownload: (id: string) => Promise<void>;
     showDownloadInFolder: (id: string) => Promise<void>;
-    clearCompletedDownloads: () => Promise<void>;
+    /** Clear finished entries of one scope: normal downloads, or one private page's (`privateOwnerId`). */
+    clearCompletedDownloads: (privateOwnerId?: string) => Promise<void>;
 }
 
 export interface DownloadsEvents {
@@ -21,6 +22,5 @@ export interface DownloadsEvents {
     eDownloadCompleted: EventObject<{ id: string; savePath: string; receivedBytes: number; totalBytes: number }>;
     eDownloadFailed: EventObject<{ id: string; error: string }>;
     eDownloadRemoved: EventObject<{ id: string }>;
-    eDownloadCleared: EventObject<DownloadEntry[]>;
 }
 

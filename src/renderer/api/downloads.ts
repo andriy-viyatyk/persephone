@@ -11,6 +11,12 @@ const defaultDownloadsState = {
 
 type DownloadsState = typeof defaultDownloadsState;
 
+/** The entries one downloads list shows: normal downloads (no `privateOwnerId`), or only the downloads of one
+ *  private (incognito or Tor) browser page. Main sends a private page's entries only to its own window. */
+export function downloadsInScope(entries: readonly DownloadEntry[], privateOwnerId?: string): DownloadEntry[] {
+    return entries.filter((entry) => entry.privateOwnerId === privateOwnerId);
+}
+
 /**
  * Downloads — Global download tracking service.
  * Manages download state synchronized from main process.
@@ -80,23 +86,19 @@ class Downloads extends TModel<DownloadsState> implements IDownloads {
                 s.downloads = s.downloads.filter((download) => download.id !== id);
             });
         }));
-        this.own(rendererEvents.eDownloadCleared.subscribe((downloads) => {
-                this.state.update((s) => {
-                    s.downloads = downloads;
-                });
-            }));
     }
 
+    /** Normal downloads only; private-session downloads are listed only in their own page's popup. */
     get downloads(): DownloadEntry[] {
-        return this.state.get().downloads;
+        return downloadsInScope(this.state.get().downloads);
     }
 
     get hasActiveDownloads(): boolean {
-        return this.state.get().downloads.some((d) => d.status === "downloading" || d.status === "awaitingPath");
+        return this.downloads.some((d) => d.status === "downloading" || d.status === "awaitingPath");
     }
 
     get aggregateProgress(): number {
-        const active = this.state.get().downloads.filter((d) => d.status === "downloading" || d.status === "awaitingPath");
+        const active = this.downloads.filter((d) => d.status === "downloading" || d.status === "awaitingPath");
         if (active.length === 0) return 0;
         const totalBytes = active.reduce((sum, d) => sum + d.totalBytes, 0);
         const receivedBytes = active.reduce((sum, d) => sum + d.receivedBytes, 0);
@@ -107,7 +109,8 @@ class Downloads extends TModel<DownloadsState> implements IDownloads {
     cancelDownload = (id: string) => api.cancelDownload(id);
     openDownload = (id: string) => api.openDownload(id);
     showInFolder = (id: string) => api.showDownloadInFolder(id);
-    clearCompleted = () => api.clearCompletedDownloads();
+    /** Clear finished normal downloads, or those of one private page. */
+    clearCompleted = (privateOwnerId?: string) => api.clearCompletedDownloads(privateOwnerId);
 }
 
 export const downloads = new Downloads();

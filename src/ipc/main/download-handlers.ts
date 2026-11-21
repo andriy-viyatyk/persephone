@@ -5,11 +5,12 @@ import { bindDomain } from "./endpoint-registry";
 
 export function initDownloadHandlers(): void {
     bindDomain<DownloadsApi>({
-        getDownloads: async () => downloadService.getDownloads(),
+        getDownloads: async (event: IpcMainEvent) => downloadService.getDownloads(event.sender),
         cancelDownload: async (_event: IpcMainEvent, id: string) => downloadService.cancelDownload(id),
         openDownload: async (_event: IpcMainEvent, id: string) => downloadService.openDownload(id),
         showDownloadInFolder: async (_event: IpcMainEvent, id: string) => downloadService.showInFolder(id),
-        clearCompletedDownloads: async () => downloadService.clearCompleted()
+        clearCompletedDownloads: async (_event: IpcMainEvent, privateOwnerId?: string) =>
+            downloadService.clearCompleted(typeof privateOwnerId === "string" ? privateOwnerId : undefined),
     });
 }
 

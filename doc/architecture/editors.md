@@ -510,6 +510,10 @@ one row per editor (`{ id, name, guidePath?, hasContentHost?, capabilities?, loa
 `match` derived from `EDITOR_MATCHERS[id]`. Matcher-free standalone editors make no matching
 claims. Each row's `load` keeps a literal `import("./…")` so Vite code splitting is preserved,
 and row order breaks equal-tier matches.
+`sessionOnly?(descriptor)` marks a descriptor that must never be written to the window-state
+file nor restored from one (the browser row answers true for incognito and Tor pages);
+`PagesPersistenceModel` asks `editorRegistry.isSessionOnly()` on every save and restore and drops
+the whole page.
 `capabilities?` declares built-in handoffs owned by the editor. The renderer capability service
 seeds `app.capabilities` from these declarations at startup, keeping page/editor construction in
 the editor registry while exposing a stable handoff surface to scripts and other callers.

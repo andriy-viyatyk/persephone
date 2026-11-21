@@ -20,6 +20,13 @@ import { normalizePageDescriptor, normalizePinSide } from "./descriptor-migratio
 
 type RestoreAttempt = { kind: "restored"; page: PageModel } | { kind: "invalid" } | { kind: "failed"; error: unknown };
 
+/** A page holding a session-only editor (an incognito or Tor browser) never reaches the window-state file and
+ *  is dropped from one written by an older build, so private pages do not survive a restart. Drag to another
+ *  window and Duplicate keep using the full in-memory descriptor. */
+const isPersistedPage = (descriptor: PageDescriptor): boolean =>
+    // Tolerant of a malformed file entry: the per-page restore reports those.
+    !(Array.isArray(descriptor?.editors) && descriptor.editors.some((editor) => !!editor && editorRegistry.isSessionOnly(editor)));
+
 export class PagesPersistenceModel {
     constructor(private model: PagesModel) {}
 
@@ -41,12 +48,14 @@ export class PagesPersistenceModel {
         if (!this.restored || appWindow.isBoardMode) return;
 
         const { pages, leftRight } = this.model.state.get();
-        const pageDescriptors: PageDescriptor[] = pages.map((p) => p.getDescriptor());
+        const pageDescriptors: PageDescriptor[] = pages.map((p) => p.getDescriptor()).filter(isPersistedPage);
+        const written = new Set(pageDescriptors.map((descriptor) => descriptor.id));
+        const activePageId = this.model.query.activePage?.id;
         const storedState: WindowState = {
             schemaVersion: 4,
             pages: pageDescriptors,
-            groupings: Array.from(leftRight.entries()),
-            activePageId: this.model.query.activePage?.id,
+            groupings: Array.from(leftRight.entries()).filter(([left, right]) => written.has(left) && written.has(right)),
+            activePageId: activePageId && written.has(activePageId) ? activePageId : undefined,
         };
 
         await appFs.saveDataFile(
@@ -66,7 +75,7 @@ export class PagesPersistenceModel {
         ) as Partial<WindowState> | undefined;
         if (!data || !Array.isArray(data.pages)) return;
         if (data.schemaVersion !== 4) return;
-        await this.applyState(data as WindowState);
+        await this.applyState({ ...data, pages: data.pages.filter(isPersistedPage) } as WindowState);
     };
 
     createRestoreFailedPage = (descriptor: PageDescriptor, error: unknown): PageModel => {
