@@ -7,7 +7,7 @@ import { bindDomain } from "./endpoint-registry";
 
 export function initSiteExtensionsHandlers(): void {
     bindDomain<SiteExtensionsApi>({
-        fetchSiteExtensionText: (event, tab, id, url) => fetchSiteExtensionText(event.sender.id, tab, id, url),
+        fetchSiteExtensionText: (event, tab, id, url) => fetchSiteExtensionText(event.sender, tab, id, url),
         cancelSiteExtensionFetches: async (event, tab) => cancelSiteExtensionFetches(event.sender.id, tab),
         getSiteExtensionTrust: () => siteExtensionTrustService.getSnapshot(),
         bindSiteExtensionFolder: (_event, folder: string) => siteExtensionTrustService.bindFolder(folder),

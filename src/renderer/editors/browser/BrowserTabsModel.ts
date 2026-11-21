@@ -1,6 +1,7 @@
 import { TOneState } from "../../core/state/state";
 import type { BrowserEditor } from "./BrowserEditor";
 import { isPrivateBrowserSession } from "./agent-access";
+import { isWebImageUrl } from "../../../shared/browser-navigation-policy";
 import type {
     BrowserTabData,
 } from "./browser-state";
@@ -48,7 +49,9 @@ export class BrowserTabsModel {
         }
     };
     onFavicon = (tabId: string, pageUrl: string, faviconUrl: string): void => {
-        if (!faviconUrl) return;
+        // The page chooses this URL and the host draws it: a `file:` or UNC favicon would make the
+        // host window open it itself, outside the page's session and route.
+        if (!faviconUrl || !isWebImageUrl(faviconUrl)) return;
         const webview = this.model.webview.get(tabId);
         if (!webview) return;
         this.cacheFavicon(pageUrl, faviconUrl); this.model.updateTab(tabId, { favicon: faviconUrl });

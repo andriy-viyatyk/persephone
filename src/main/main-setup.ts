@@ -12,6 +12,7 @@ import { configureTestModeLog } from "./test-mode/TestModeLog";
 import { installTestCertificateTrust } from "./test-mode/certificates";
 import { installTestModeMediaCapture } from "./test-mode/media-capture";
 import { redirectTestInstanceLocalAppData } from "./test-mode/local-app-data";
+import { installClientCertificatePolicy } from "./client-certificate-policy";
 
 export function setupMainProcess(): void {
     let testInstance: ReturnType<typeof parseTestInstanceOptions>["options"];
@@ -24,12 +25,7 @@ export function setupMainProcess(): void {
     installTestCertificateTrust();
     void startMainServices("setup-before-certificate");
 
-    app.on("select-client-certificate", (event, webContents, _url, _list, callback) => {
-        if (webContents === null) {
-            event.preventDefault();
-            callback();
-        }
-    });
+    installClientCertificatePolicy();
 
     void startMainServices("setup-after-certificate-before-ipc");
     controller.init();

@@ -1,4 +1,6 @@
+import type { WebContents } from "electron";
 import { errMessage } from "../shared/utils";
+import { browserGuests } from "./browser/BrowserGuestRegistry";
 import { siteExtensionTrustService } from "./site-extension-trust-service";
 
 /** Per-response cap: large enough for real API pages, still a bound on one fetch's memory. */
@@ -12,11 +14,21 @@ export function cancelSiteExtensionFetches(owner: number, tab: string): void {
     for (const controller of active.get(`${owner}:${tab}`) ?? []) controller.abort();
 }
 
-/** Main independently verifies the persisted grant at every network boundary. */
-export async function fetchSiteExtensionText(owner: number, tab: string, id: string, address: string): Promise<{ text?: string; error?: string }> {
+/**
+ * Main independently verifies the persisted grant at every network boundary.
+ *
+ * The request goes out on the browser page's own session (`sender` must host the
+ * page that `tab` belongs to), so a Tor page or a proxied profile keeps its route
+ * and no request leaves from the real address. The page itself can trigger this
+ * broker (the CDP binding is reachable from its main world); that reaches only the
+ * extension's `fetchHosts`, through the page's own route.
+ */
+export async function fetchSiteExtensionText(sender: WebContents, tab: string, id: string, address: string): Promise<{ text?: string; error?: string }> {
     if (typeof tab !== "string" || tab.length > 200 || typeof id !== "string" || !/^[a-z0-9-]+$/.test(id)
         || typeof address !== "string" || address.length > 4096) return { error: "Invalid fetch request" };
-    const key = `${owner}:${tab}`;
+    const pageSession = browserGuests.pageSession(tab, sender);
+    if (!pageSession) return { error: "Browser tab is unavailable" };
+    const key = `${sender.id}:${tab}`;
     const requests = active.get(key) ?? new Set<AbortController>();
     if (requests.size >= 4) return { error: "Too many fetch requests" };
     const controller = new AbortController();
@@ -29,7 +41,7 @@ export async function fetchSiteExtensionText(owner: number, tab: string, id: str
             if (controller.signal.aborted) throw new Error("Fetch cancelled");
             if (!grant?.enabled || url.protocol !== "https:" || url.port || url.username || url.password
                 || !grant.fetchHosts.includes(url.hostname)) throw new Error("Fetch host is not trusted");
-            const response = await fetch(url, { method: "GET", redirect: "manual", signal: controller.signal, credentials: "omit" });
+            const response = await pageSession.fetch(url.href, { method: "GET", redirect: "manual", signal: controller.signal, credentials: "omit", cache: "no-store" });
             if (response.status >= 300 && response.status < 400) {
                 const location = response.headers.get("location");
                 await response.body?.cancel();

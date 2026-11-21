@@ -1,7 +1,10 @@
 const https = require("https");
 const http = require("http");
+const dns = require("dns").promises as typeof import("dns/promises");
+const net = require("net") as typeof import("net");
 
 import { fs } from "../../api/fs";
+import { isPrivateAddress, pinnedLookup, type BoardNetworkAddress } from "../../../shared/board-network-guard";
 
 // =============================================================================
 // In-memory cache: hostname → file path (or "" for known misses)
@@ -100,7 +103,8 @@ export function getFaviconPathSync(hostname: string): string | null {
  * `routedUrl` is the same favicon wrapped in a route scheme such as
  * `profile-src://` — set for a proxied browser profile, whose favicon must be
  * fetched through the profile session. It is read with Chromium `fetch()`; with
- * no route the download uses Node https directly.
+ * no route the download uses Node http(s) directly, refusing a private-address
+ * target other than the page's own host (`hostname`) on every hop.
  */
 export async function saveFavicon(hostname: string, faviconUrl: string, routedUrl?: string): Promise<void> {
     if (!hostname || !faviconUrl) return;
@@ -125,7 +129,7 @@ export async function saveFavicon(hostname: string, faviconUrl: string, routedUr
     try {
         const buffer = routedUrl
             ? await fetchToBuffer(routedUrl)
-            : await downloadToBuffer(faviconUrl);
+            : await downloadToBuffer(faviconUrl, hostname);
         if (buffer && buffer.length > 0) {
             const ext = detectImageExtension(buffer);
             const filePath = basePath + ext;
@@ -211,14 +215,60 @@ async function fetchToBuffer(url: string): Promise<Buffer | null> {
     }
 }
 
-function downloadToBuffer(url: string): Promise<Buffer | null> {
+/**
+ * Addresses `url` may be fetched from, or null when the favicon cache must not request it.
+ *
+ * The favicon URL is chosen by the page, but this GET comes from the host process, so it must
+ * not let a public page aim the host at loopback, the LAN or link-local services: a target that
+ * resolves to a private address is refused unless it is the page's own host (a page served from
+ * `localhost` or an intranet name keeps its favicon). The caller connects through
+ * `pinnedLookup(addresses)`, so the checked address is the one used.
+ */
+async function allowedFaviconAddresses(url: URL, pageHost: string): Promise<BoardNetworkAddress[] | null> {
+    if ((url.protocol !== "http:" && url.protocol !== "https:") || url.username || url.password) return null;
+    const host = url.hostname.replace(/^\[|\]$/g, "");
+    const family = net.isIP(host);
+    let addresses: BoardNetworkAddress[];
+    try {
+        addresses = family ? [{ address: host, family }] : await dns.lookup(host, { all: true, verbatim: true });
+    } catch {
+        return null;
+    }
+    if (!addresses.length) return null;
+    const ownHost = url.hostname.toLowerCase() === pageHost.toLowerCase();
+    if (!ownHost && addresses.some(({ address }) => isPrivateAddress(address, net.isIP))) return null;
+    return addresses;
+}
+
+async function downloadToBuffer(address: string, pageHost: string, redirectsLeft = 1): Promise<Buffer | null> {
+    let url: URL;
+    try {
+        url = new URL(address);
+    } catch {
+        return null;
+    }
+    const addresses = await allowedFaviconAddresses(url, pageHost);
+    if (!addresses) return null;
     return new Promise((resolve) => {
-        const protocol = url.startsWith("https") ? https : http;
+        const protocol = url.protocol === "https:" ? https : http;
+        const lookup = pinnedLookup(addresses) as unknown as typeof import("dns").lookup;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const request = protocol.get(url, { timeout: 5000 }, (res: any) => {
-            // Follow one redirect
+        const request = protocol.get(url, { timeout: 5000, lookup }, (res: any) => {
+            // Follow one redirect; the target is checked like the first hop.
             if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
-                downloadToBuffer(res.headers.location).then(resolve);
+                res.resume();
+                if (redirectsLeft <= 0) {
+                    resolve(null);
+                    return;
+                }
+                let next: string;
+                try {
+                    next = new URL(res.headers.location, url).href;
+                } catch {
+                    resolve(null);
+                    return;
+                }
+                downloadToBuffer(next, pageHost, redirectsLeft - 1).then(resolve);
                 return;
             }
             if (res.statusCode !== 200) {

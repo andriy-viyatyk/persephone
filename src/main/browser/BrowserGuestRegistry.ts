@@ -1,4 +1,4 @@
-import type { WebContents } from "electron";
+import type { Session, WebContents } from "electron";
 import type { BrowserGuest } from "./BrowserGuest";
 
 export interface BrowserContentsAttachment {
@@ -51,6 +51,26 @@ export class BrowserGuestRegistry {
         const guest = this.guests.get(key);
         if (!guest || guest.senderWebContents !== sender || guest.webContents.isDestroyed()) return undefined;
         return guest;
+    }
+
+    /**
+     * The session of the browser page that `key` belongs to — a tab key or a popup key, both
+     * `${editorId}/${id}` — when `sender` hosts that page. Every tab and popup of one page shares
+     * its partition, so any live guest of the same editor answers for a popup key.
+     */
+    pageSession(key: unknown, sender: WebContents): Session | undefined {
+        const exact = this.owned(key, sender);
+        if (exact) return exact.webContents.session;
+        if (typeof key !== "string" || key.length > 240) return undefined;
+        const separator = key.indexOf("/");
+        if (separator <= 0) return undefined;
+        const editorId = key.slice(0, separator);
+        for (const guest of this.guests.values()) {
+            if (guest.tabId === editorId && guest.senderWebContents === sender && !guest.webContents.isDestroyed()) {
+                return guest.webContents.session;
+            }
+        }
+        return undefined;
     }
 
     getByWebContents(contents: WebContents): BrowserGuest | undefined {

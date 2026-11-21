@@ -36,8 +36,14 @@ thumbnails rather than loading them directly, and opening an entry from it uses 
 
 Local addresses (`localhost` and link-local addresses) are never sent through the proxy, matching
 ordinary browser behavior; routing them to a remote proxy would only break local development without
-adding privacy. WebRTC on a proxied or Tor page is restricted to the proxy connection, so it cannot
-reveal your local or public IP address outside it.
+adding privacy. WebRTC on a proxied or Tor page — and in any pop-up window it opens — is restricted
+to the proxy connection, so it cannot reveal your local or public IP address outside it.
+
+Proxied, Incognito and Tor pages never send a TLS client certificate (for example a smart-card or
+device certificate) to a site that asks for one; regular direct profiles keep the usual automatic
+choice, which some company sign-in pages rely on. A page's favicon or a clicked thumbnail that points
+at a local file or a network share is ignored rather than loaded by Persephone, and closing a Tor page
+leaves its session on Tor, so nothing it left running can later connect directly.
 
 ## Windows single sign-on
 

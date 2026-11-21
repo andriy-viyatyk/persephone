@@ -12,7 +12,7 @@ import { app, BrowserWindow, session, Session, type WebContents } from "electron
 import { TorChannel, TorIpInfo, TorStatus } from "../ipc/tor-ipc";
 import { SidecarProcess } from "./sidecar-process";
 import { errMessage } from "../shared/utils";
-import { applySessionProxy, lookupGeo, setSessionDirect } from "./session-proxy";
+import { applySessionProxy, lookupGeo } from "./session-proxy";
 import { onWebContentsGone } from "./webcontents-lifetime";
 
 const TOR_BOOTSTRAP_TIMEOUT_MS = 90_000;
@@ -36,9 +36,10 @@ class TorService {
     private fetchLeases = new Map<number, number>();
     private fetchIdleTimer: ReturnType<typeof setTimeout> | undefined;
     /**
-     * Every partition currently carrying the Tor SOCKS proxy, bootstrapped or not.
-     * Answers "is this a Tor session?" for the guest WebRTC policy, which
-     * must hold from the first navigation — before `activePartitions` includes it.
+     * Every partition carrying the Tor SOCKS proxy: armed, bootstrapped, or retired
+     * after its page closed (a retired partition keeps the proxy for the rest of the run).
+     * Answers "is this a Tor session?" for the WebRTC and client-certificate policies,
+     * which must hold from the first navigation — before `activePartitions` includes it.
      */
     private proxiedPartitions = new Set<string>();
     /**
@@ -118,8 +119,7 @@ class TorService {
      *
      * The proxy is (re-)applied on **both** outcomes. On success that is what
      * puts traffic on Tor; on failure it is what keeps the partition failing
-     * closed — the invariant must hold even for a caller that never armed, such
-     * as a reconnect after `stopForPartition` cleared the proxy.
+     * closed — the invariant must hold even for a caller that never armed.
      */
     private async settleStart(
         result: { success: boolean; error?: string },
@@ -144,10 +144,16 @@ class TorService {
         return result;
     }
 
+    /**
+     * The Tor page closed. Its partition is retired, never set direct: the
+     * in-memory session outlives the page, and a service worker, keepalive
+     * `fetch` or `sendBeacon` still running on it would otherwise leave from the
+     * real address. It stays in `proxiedPartitions` (still a Tor session for the
+     * WebRTC and client-certificate policies); a partition id is never reused.
+     */
     async stopForPartition(partition: string): Promise<void> {
-        await this.clearProxyForPartition(partition);
         this.activePartitions.delete(partition);
-        this.proxiedPartitions.delete(partition);
+        await this.retirePartition(partition);
 
         this.stopIfIdle();
     }
@@ -419,11 +425,21 @@ class TorService {
         );
     }
 
-    private async clearProxyForPartition(partition: string): Promise<void> {
+    /**
+     * Keep a closed page's partition on the Tor SOCKS port — with the daemon
+     * stopped every request fails (`ERR_SOCKS_CONNECTION_FAILED`); with another
+     * Tor page running a straggler still goes over Tor — and drop what could
+     * send later traffic: pooled connections (`applySessionProxy` closes them),
+     * service workers, cache storage and the HTTP cache.
+     */
+    private async retirePartition(partition: string): Promise<void> {
+        const ses = session.fromPartition(partition);
         try {
-            await setSessionDirect(session.fromPartition(partition));
-        } catch {
-            // Partition session may already be destroyed
+            await this.setProxyForPartition(partition);
+            await ses.clearStorageData();
+            await ses.clearCache();
+        } catch (err) {
+            this.broadcastLog(`Could not fully retire ${partition}: ${errMessage(err)}`);
         }
     }
 

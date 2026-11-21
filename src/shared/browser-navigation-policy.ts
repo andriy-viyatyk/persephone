@@ -1,6 +1,7 @@
 /**
- * Scheme policy for browser-page navigation, shared by the main process (guest navigation and
- * window-open guards) and the renderer (URLs it opens on a web page's behalf).
+ * Scheme policy for URLs that come from web pages: navigation, shared by the main process (guest
+ * navigation and window-open guards) and the renderer (URLs it opens on a web page's behalf), and
+ * the images a page hands the host to draw.
  */
 const BLOCKED_PROTOCOLS = ["file:", "app-asset:"];
 const CHROMIUM_NAVIGATION_PROTOCOLS = ["http:", "https:", "about:", "blob:", "mailto:", "tel:"];
@@ -34,4 +35,21 @@ export function getPageOpenAction(url: string): PageOpenAction {
     if (scheme === "chromium") return "open";
     if (scheme === "external") return "handoff";
     return "refuse";
+}
+
+/**
+ * Whether an image URL that came from a web page (its favicon, a clicked thumbnail, an image in
+ * Markdown fetched from the web) may be drawn or downloaded by the host: `http(s)` URLs, which the
+ * host routes through the page's session, and inline `data:image/` URLs. Everything else is refused —
+ * above all `file:` and UNC paths, which the host window would load itself (a `file://host/…` URL
+ * opens an SMB connection from the real address, outside any Tor or proxy route).
+ */
+export function isWebImageUrl(url: string): boolean {
+    if (/^data:image\//i.test(url)) return true;
+    try {
+        const protocol = new URL(url).protocol;
+        return protocol === "http:" || protocol === "https:";
+    } catch {
+        return false;
+    }
 }

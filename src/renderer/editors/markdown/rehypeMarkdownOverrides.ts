@@ -1,6 +1,7 @@
 import type { Element, Root, RootContent } from "hast";
 import { resolveRelatedLink } from "../../core/utils/path-utils";
 import { parseGuideUrl, resolveGuideHref } from "../../../shared/guides/guide-links";
+import { isWebImageUrl } from "../../../shared/browser-navigation-policy";
 
 interface RehypeMarkdownOverridesOptions {
     filePath?: string;
@@ -83,6 +84,29 @@ function rewriteLinkProperty(
         : resolveRelatedLink(filePath, decoded, wikiRoot);
 }
 
+const WEB_DOCUMENT_RE = /^https?:\/\//i;
+
+/**
+ * An image in a Markdown document fetched from the web is page-chosen content drawn by the host
+ * window: resolve it against the document URL and keep only web images. A `file:` or UNC source
+ * would make the host open a local or SMB path on the document's behalf. Local documents keep
+ * their local and UNC images.
+ */
+function rewriteWebDocumentImage(element: Element, documentUrl: string): void {
+    // Raw, not decoded: the URL parser keeps the document's own percent-escapes intact.
+    const src = element.properties?.src;
+    if (typeof src !== "string") return;
+    let resolved: string | undefined;
+    try {
+        resolved = new URL(src, documentUrl).href;
+    } catch {
+        resolved = undefined;
+    }
+    element.properties ??= {};
+    if (resolved && isWebImageUrl(resolved)) element.properties.src = resolved;
+    else delete element.properties.src;
+}
+
 function walk(node: Root | Element, options: RehypeMarkdownOverridesOptions): void {
     for (let index = 0; index < node.children.length; index += 1) {
         const child = node.children[index] as RootContent;
@@ -97,7 +121,11 @@ function walk(node: Root | Element, options: RehypeMarkdownOverridesOptions): vo
         if (child.tagName === "a") {
             rewriteLinkProperty(child, "href", options.filePath, options.wikiRoot);
         } else if (child.tagName === "img") {
-            rewriteLinkProperty(child, "src", options.filePath, options.wikiRoot);
+            if (options.filePath && WEB_DOCUMENT_RE.test(options.filePath)) {
+                rewriteWebDocumentImage(child, options.filePath);
+            } else {
+                rewriteLinkProperty(child, "src", options.filePath, options.wikiRoot);
+            }
         }
 
         walk(child, options);

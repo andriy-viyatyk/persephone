@@ -29,6 +29,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
   suggested in normal pages (and normal search history is not suggested in them), and their
   downloads appear only in their own page's Downloads list, not in normal pages or the saved
   recent-downloads list.
+- **Browser: Tor and proxied pages no longer leak around their route.** Pop-up windows of a Tor or
+  proxied page now get the same WebRTC restriction as the page; a closed Tor page's session stays on
+  Tor instead of switching to a direct connection; Tor, Incognito and proxied pages never send a TLS
+  client certificate; site-extension `fetchText` requests use the page's own route; and a page's
+  favicon or clicked thumbnail pointing at a local file or network share is ignored. Markdown opened
+  from the web shows only web images, and the bookmark favicon download no longer follows a page to
+  another host on your local network.
 
 ---
 

@@ -10,6 +10,7 @@ import { withTimeout } from "../../core/utils/utils";
 import { DisposableStore } from "../../core/utils/DisposableStore";
 import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
+import { isWebImageUrl } from "../../../shared/browser-navigation-policy";
 import { isPrivateBrowserSession } from "./agent-access";
 import { createIconElement } from "../../uikit/shared/slots";
 import { resolveBrowserProfile } from "./browser-profile";
@@ -461,7 +462,8 @@ export class BrowserBookmarksModel {
             this.trackedImagesRef.set(tabId, tracked);
         }
         for (const url of imgUrls) {
-            if (url && !level0.imgUrls.includes(url)) {
+            // Page-reported: only web images may become a bookmark thumbnail the host draws.
+            if (url && isWebImageUrl(url) && !level0.imgUrls.includes(url)) {
                 level0.imgUrls.push(url);
             }
         }

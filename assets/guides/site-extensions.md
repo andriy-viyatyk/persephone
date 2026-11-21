@@ -96,8 +96,9 @@ before approval; adding or removing either the page hosts or fetch hosts require
 Existing grants without fetch hosts continue to work. Fetch hosts are exact lower-case DNS names,
 at most 32, and cannot include wildcards, ports, IP literals or localhost.
 
-`fetchText` performs cookieless HTTPS GET requests without the browser profile, cookies, custom
-headers or authenticated sessions. Up to three redirects are followed only to approved fetch hosts.
+`fetchText` performs cookieless HTTPS GET requests without cookies, custom headers or
+authenticated sessions. They go out over the page's own network route, so a page in a proxied
+profile uses that proxy. Up to three redirects are followed only to approved fetch hosts.
 Responses are limited to 8 MiB of decoded UTF-8, ten seconds and four concurrent requests per tab.
 Navigation, reload and trust loss cancel requests. The page shares the granted capability, and a
 trusted name may resolve or rebind to a private address; DNS addresses are not filtered or pinned.

@@ -6,6 +6,7 @@ import { BrowserNetworkChannel, proxyLabel } from "../../../ipc/browser-network-
 import type { BrowserNetwork, BrowserNetworkApplyResult } from "../../../ipc/browser-network-ipc";
 import { errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
+import { isWebImageUrl } from "../../../shared/browser-navigation-policy";
 import { profileImageRoute, resolveRoutedSrc, torImageRoute } from "../link-editor/routed-src";
 import type { ImageRoute } from "../link-editor/routed-src";
 import { DisposableStore } from "../../core/utils/DisposableStore";
@@ -118,17 +119,23 @@ export class BrowserProfileNetworkModel {
         return s.networkToken ? profileImageRoute(s.networkToken, s.isIncognito) : null;
     }
 
-    /** Resolve a remote favicon/image URL for display in the host renderer. */
+    /**
+     * Resolve a page-reported favicon/image URL for display in the host renderer.
+     * Only web images are drawn: `null` for `file:`, UNC and other local URLs, which
+     * the host would otherwise load itself (also covers a favicon restored from state).
+     */
     routeSrc(src: string): string | null {
+        if (!isWebImageUrl(src)) return null;
         return resolveRoutedSrc(src, this.imageRoute);
     }
 
     /**
      * For a download the host renderer makes itself (the favicon cache): the
      * routed URL to fetch, `undefined` for a direct page (fetch the URL as-is),
-     * or `null` when it must not be fetched now (route not up).
+     * or `null` when it must not be fetched (route not up, or not a web image).
      */
     routedFetchUrl(src: string): string | null | undefined {
+        if (!isWebImageUrl(src)) return null;
         const route = this.imageRoute;
         return route ? resolveRoutedSrc(src, route) : undefined;
     }

@@ -435,7 +435,8 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/main/tor-service.ts` | Main | Tor process lifecycle: spawn/kill tor.exe, restart, per-partition SOCKS5 proxy (armed before the daemon starts so the partition fails closed), torrc generation, exit-IP lookup |
 | `src/main/tor-src-protocol.ts`, `src/main/routed-fetch-protocol.ts` | Main | Tor partition policy plus the shared simple routed-fetch implementation |
 | `src/main/session-proxy.ts` | Main | Shared session proxy primitives (apply one proxy with no fallback, set direct, geo lookup) used by Tor and profile networks |
-| `src/main/browser-network-service.ts`, `src/main/routed-fetch-protocol.ts` | Main | Profile/Incognito proxy state and route policy, shared simple routed-fetch implementation, guest WebRTC policy, egress check, `session-src` hand-off |
+| `src/main/client-certificate-policy.ts` | Main | TLS client-certificate selection: none for Tor, proxied and in-memory browser sessions |
+| `src/main/browser-network-service.ts`, `src/main/routed-fetch-protocol.ts` | Main | Profile/Incognito proxy state and route policy, shared simple routed-fetch implementation, WebRTC policy for routed sessions (guests and popups), egress check, `session-src` hand-off |
 | `src/ipc/browser-network-ipc.ts` | Shared | `BrowserNetwork` type, endpoint validation, `browser-network:*` channels |
 | `src/renderer/editors/browser/BrowserProfileNetworkModel.ts` | Renderer | Per-page profile network: apply before mount, follow settings edits, image route for app-drawn resources |
 | `src/renderer/editors/link-editor/routed-src.ts` | Renderer | `ImageRoute` + `resolveRoutedSrc` — rewrites remote `src` values to `tor-src://` or `profile-src://` for a routed page |
@@ -753,6 +754,14 @@ Tor mode routes all webview traffic through the Tor network via a SOCKS5 proxy. 
 
 **Window close cleanup:** `BrowserTorModel` subscribes to the `windowClosing` event (from `GlobalEventService.beforeunload`) to release Tor partitions when the window closes without explicit tab disposal.
 
+**A closed page's partition is retired, never set direct.** The in-memory `Session` outlives the
+page, so `TorService.stopForPartition` keeps it on the Tor SOCKS port (`retirePartition` re-applies
+the proxy, which also closes pooled connections) and clears its storage and cache — no service
+worker, keepalive `fetch` or `sendBeacon` of the closed page can later leave from the real address.
+With the daemon stopped such a request fails; with another Tor page running it still goes over Tor.
+The partition stays in `proxiedPartitions`, so `isTorSession` keeps covering it for the WebRTC and
+client-certificate policies. Partition ids are per editor instance and never reused.
+
 #### The partition fails closed
 
 An Electron session with no proxy is **DIRECT**, so the absence of a proxy is not a neutral
@@ -817,6 +826,16 @@ The consequences handled explicitly:
   `tor-src://<partition>/?u=<encoded url>` or `profile-src://<token>/?u=<encoded url>`. Local
   schemes (`data:`, `blob:`, `file:`, `app-asset:`) pass through untouched, and while a Tor circuit
   is not connected the image is not rendered at all rather than fetched direct.
+- **Page-reported images are web images only.** The favicon href and clicked-thumbnail URLs come
+  from the page, and the host window (a `file:` origin) would load a `file:` or UNC URL itself —
+  `file://host/…` opens an SMB connection from the real address, outside any route. `isWebImageUrl()`
+  (`src/shared/browser-navigation-policy.ts`, beside the page-navigation rules) admits only `http(s)`
+  and `data:image/`; `BrowserTabsModel.onFavicon`, `BrowserBookmarksModel.trackClickedImages` and
+  `BrowserProfileNetworkModel.routeSrc`/`routedFetchUrl` drop everything else (the last also covers a
+  favicon restored from older state). `resolveRoutedSrc`'s local-scheme pass-through stays for
+  user-owned Link-editor images. Markdown fetched from the web follows the same rule
+  (`rehypeMarkdownOverrides`: a web document's `img` src is resolved against its URL and dropped
+  unless it is a web image); local documents keep local and UNC images.
 - **Tab-strip favicons.** `BrowserTabsPanel` draws each tab's favicon with an `<img>` in the app
   renderer, so it resolves the URL through the same route (`routeSrc`).
 - **Favicon persistence.** Favicons are normally written to the app data folder.
@@ -826,6 +845,11 @@ The consequences handled explicitly:
   by every browser page, so a marker armed from a private page would otherwise be honoured later by
   another one. A proxied profile is persistent, so it does save favicons, but downloads them with
   renderer `fetch()` through its `profile-src://` route (`routedFetchUrl`) instead of Node `https`.
+  A direct page's download uses Node `http(s)` from the host renderer, so `favicon-cache.ts` checks
+  every hop (one redirect): `http(s)` only, and a target resolving to a private, loopback or
+  link-local address is refused unless it is the page's own host — a page cannot aim the host at the
+  LAN, while `localhost` and intranet pages keep their favicons. The connection is pinned to the
+  checked addresses (`pinnedLookup` from `src/shared/board-network-guard.ts`).
 - **Opening a resource out of the page.** "Open Image in New Tab" asks main for a one-URL
   `session-src` handle (`browser-network:session-source`) and opens the image through it; the image
   editor then shows the bytes, not the URL. A routed page whose route is down opens nothing.
@@ -835,8 +859,15 @@ The consequences handled explicitly:
 - **Resources list.** "Show Resources" opens a standalone Link page that outlives the browser page,
   so on a routed page it is opened without image thumbnails.
 - **WebRTC.** An `app.on("web-contents-created")` hook in `browser-network-service.ts` sets
-  `disable_non_proxied_udp` on every webview guest whose session is a Tor or proxied one, before its
-  first navigation — which works because the proxy is applied before the page mounts.
+  `disable_non_proxied_udp` on every webContents whose session is a Tor or proxied one — webview
+  guests and the page's popup windows (a `BrowserWindow` on the same session) alike — before its
+  first navigation, which works because the proxy is applied before the page mounts. The session,
+  not the contents type, decides.
+- **TLS client certificates.** Electron sends the first matching certificate when nobody answers
+  `select-client-certificate`. `src/main/client-certificate-policy.ts` answers with no certificate
+  for Tor, proxied and any in-memory session other than the app window's (Incognito, Tor, their
+  popups); persistent direct sessions keep Electron's choice, which certificate sign-in relies on
+  (an origin-named picker is a recorded follow-up, US-2142).
 
 The route resolver lives in `link-editor/`, not `browser/`, to keep the dependency arrow one-way —
 `browser` already imports `link-editor`.
@@ -1587,7 +1618,12 @@ The manifest's separate `fetchHosts` set is part of the folder-bound grant; lega
 to an empty set, and either host set changing requires consent again. The main-world runtime sends
 bounded `fetch-request` signals through the existing binding. `BrowserSiteExtensionController`
 associates them with the current trusted document and context; the guarded main broker checks the persisted grant
-for each HTTPS destination and redirect. It uses cookieless Node fetch, a ten-second deadline,
-three redirects, four requests per tab, and an 8 MiB decoded UTF-8 limit. Lifecycle invalidation
-cancels requests and discards late results. No DNS filtering or pinning is performed, and the shared
-page world can use the extension's granted capability. Trust changes abort outstanding fetches.
+for each HTTPS destination and redirect. The request goes out on the **page's own session**
+(`BrowserGuestRegistry.pageSession(key, sender)` resolves the tab or popup key the renderer sends to
+the partition of the page that sender hosts; an unknown key is refused), so a Tor page or a proxied
+profile keeps its route — it never uses Node's global `fetch`. It is cookieless
+(`credentials: "omit"`, `cache: "no-store"`), with a ten-second deadline, three redirects, four
+requests per tab, and an 8 MiB decoded UTF-8 limit. Lifecycle invalidation cancels requests and
+discards late results. No DNS filtering or pinning is performed, and the shared page world can use
+the extension's granted capability — through its own route, to the granted hosts only. Trust changes
+abort outstanding fetches.

@@ -157,22 +157,25 @@ class BrowserNetworkService {
     }
 
     /**
-     * Guests of proxied/Tor sessions must not reveal local or public addresses
-     * over non-proxied UDP. Called for each new webview guest before its first
+     * Contents of proxied/Tor sessions must not reveal local or public addresses
+     * over non-proxied UDP. Called for each new webContents before its first
      * navigation — the proxy is armed before the page mounts, so the session
      * is already known to be routed.
+     *
+     * Every type, not only `webview`: a page's popup is a `BrowserWindow` on the
+     * same session, and the session — not the contents type — is what is routed.
+     * App and board contents never share a Tor or proxied session.
      */
     handleWebContentsCreated = (contents: WebContents): void => {
-        if (contents.getType() !== "webview") return;
         if (this.isProxiedSession(contents.session) || torService.isTorSession(contents.session)) {
             contents.setWebRTCIPHandlingPolicy("disable_non_proxied_udp");
         }
     };
 
-    /** Re-apply the WebRTC policy to guests that already exist when a profile's route changes. */
+    /** Re-apply the WebRTC policy to contents (guests and their popups) of a profile whose route changed. */
     private setGuestWebRtcPolicy(ses: Session, proxied: boolean): void {
         for (const contents of webContents.getAllWebContents()) {
-            if (contents.getType() !== "webview" || contents.session !== ses) continue;
+            if (contents.isDestroyed() || contents.session !== ses) continue;
             contents.setWebRTCIPHandlingPolicy(proxied ? "disable_non_proxied_udp" : "default");
         }
     }
