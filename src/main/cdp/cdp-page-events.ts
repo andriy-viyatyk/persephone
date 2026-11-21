@@ -52,6 +52,27 @@ function normalizeConsoleLevel(value: unknown): PageConsoleLevel {
     return "log";
 }
 
+/** An automation call on the target is running, or ended less than the grace period ago. */
+function inAutomationWindow(key: string, timestamp: number): boolean {
+    const activity = automationActivity.get(key);
+    return Boolean(activity && (activity.count > 0 || activity.graceUntil > timestamp));
+}
+
+/**
+ * Whether browser automation answers a JavaScript dialog (`alert`/`confirm`/`prompt`) that this page
+ * opens now: the page's events are observed and an automation call is in its window, so the dialog
+ * policy answers it — or the agent does, through `handleDialog`, under `"manual"`. Otherwise the
+ * dialog is the user's to answer. The page's dialog guard asks this before showing a native box.
+ */
+export function automationAnswersDialog(wc: WebContents): boolean {
+    const timestamp = Date.now();
+    for (const state of pageEventStates.values()) {
+        if (state.wc !== wc || state.sessionId || state.key === APP_WINDOW_CDP_KEY) continue;
+        if (inAutomationWindow(state.key, timestamp)) return true;
+    }
+    return false;
+}
+
 function createPageEventState(
     key: string,
     wc: WebContents,
@@ -81,9 +102,7 @@ function createPageEventState(
             };
             appendBounded(state.dialogs, record);
             if (type === "beforeunload" || key === APP_WINDOW_CDP_KEY) return;
-            const activity = automationActivity.get(key);
-            const inAutomationWindow = Boolean(activity && (activity.count > 0 || activity.graceUntil > timestamp));
-            if (!inAutomationWindow || state.policy === "manual") return;
+            if (!inAutomationWindow(key, timestamp) || state.policy === "manual") return;
             const accept = state.policy === "accept";
             void sendDialogCommand(state, accept, undefined, record).catch(() => { /* Keep the dialog pending if Chromium rejects CDP handling. */ });
             return;

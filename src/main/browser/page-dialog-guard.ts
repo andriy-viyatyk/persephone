@@ -1,5 +1,6 @@
 import { BrowserWindow, dialog, WebContents, WebFrameMain } from "electron";
 import { t } from "../../shared/i18n/t";
+import { automationAnswersPageDialog } from "../cdp-service";
 import { withNativeDialog } from "../native-dialog-tracker";
 
 /**
@@ -52,6 +53,10 @@ function frameOrigin(frame: WebFrameMain | null | undefined): string {
  * page's lifetime (Electron's `safeDialogs`). `prompt()` stays unsupported, as in Electron. If Electron
  * no longer registers the internal event, its own handler (with `safeDialogs` set on browser webviews)
  * remains in charge.
+ *
+ * A dialog that browser automation answers (`automationAnswersPageDialog`: an agent call is driving the
+ * page) gets no box and no answer here: the automation's dialog policy, or the agent under `"manual"`,
+ * answers it through CDP, and it neither occupies the one-box slot nor counts toward the checkbox.
  */
 export function guardPageDialogs(contents: WebContents): void {
     const events = contents as unknown as InternalDialogEvents;
@@ -63,6 +68,7 @@ export function guardPageDialogs(contents: WebContents): void {
 
     events.on(CANCEL_DIALOGS_EVENT, (() => { open?.abort(); }) as (...args: never[]) => void);
     events.on(RUN_DIALOG_EVENT, ((info: RunDialogInfo, callback: RunDialogCallback) => {
+        if (automationAnswersPageDialog(contents)) return;
         const origin = frameOrigin(info?.frame);
         if (open || silencedOrigins.has(origin) || info?.dialogType === "prompt") {
             callback(false, "");

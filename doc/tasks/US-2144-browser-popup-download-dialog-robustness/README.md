@@ -212,6 +212,14 @@ reports in `parseGuestMessage`.
   `safeDialogs` stays on as the fallback. Worth re-checking on each Castlabs Electron upgrade
   (US-1757). A second dialog while one is open gets "cancel" (Chrome would block the page instead;
   here the page never waits anyway).
+- **Automation dialogs stay with the automation (follow-up fix).** The first version of the guard
+  showed its box for every dialog, also while an agent call drove the page, so the automation dialog
+  policy answered over CDP while a native box stayed up (`browser/automation` `observe.test.mjs`: 2
+  dialog-policy tests got the native-dialog attention). The guard now asks
+  `automationAnswersPageDialog(contents)` (`cdp-service.ts` → `automationAnswersDialog` in
+  `cdp/cdp-page-events.ts`, sharing the automation window check the CDP dialog handler uses) and, when
+  the automation answers, shows no box and leaves the answer to CDP (policy, or `handleDialog` under
+  `manual`). Plain pages and user-raised dialogs on observed pages keep the guarded box.
 - **`beforeunload` replay.** A POST form submission replays as a GET of its URL; an unknown intent
   (e.g. a page's own `location.reload()`) leaves on the user's next attempt within 10 s.
 - **Temp hold, not hold-at-zero.** Electron starts the transfer before `will-download` returns; pausing at
@@ -273,6 +281,9 @@ at a time and stops after 3 queued; a large download left in its Save dialog sto
 `beforeunload` guard: edit it, then use toolbar Back / Reload / a typed URL / a link → the box appears
 and **Leave** completes that same navigation; **Cancel** stays. (3) Two alerts in a row: the second box
 has the checkbox; ticking it silences further alerts from that site in the tab.
+**Follow-up fix (automation dialogs):** `browser/automation` was 33/35 with the first guard (2
+`observe.test.mjs` dialog-policy tests got a native box); 35/35 after the guard defers to the
+automation dialog policy.
 
 ## Files changed
 
@@ -281,7 +292,8 @@ has the checkbox; ticking it silences further alerts from that site in the tab.
 | `src/main/browser/user-activation.ts` (new) | Recent user activation of a guest |
 | `src/main/browser/popup-gate.ts` (new) | Gesture + rate-limit gate, per-tab origin grant |
 | `src/main/browser/unload-guard.ts` (new) | Async `beforeunload` confirm with intent replay |
-| `src/main/browser/page-dialog-guard.ts` (new) | One JS dialog box at a time per page; `safeDialogs` fallback |
+| `src/main/browser/page-dialog-guard.ts` (new) | One JS dialog box at a time per page; `safeDialogs` fallback; defers to the automation dialog policy |
+| `src/main/cdp/cdp-page-events.ts`, `src/main/cdp-service.ts` | `automationAnswersDialog` / `automationAnswersPageDialog` (follow-up fix) |
 | `src/main/browser/download-request-limiter.ts` (new) | One automatic download per document |
 | `src/main/browser/browser-page-guard-service.ts` (new) | IPC entry for Allow and navigation intents |
 | `src/main/download-path-queue.ts` (new) | Per-page Save-dialog queue |

@@ -267,7 +267,9 @@ export default [
             });
             ctx.expect(rule.targets[0].status).toBe("injected");
             await ctx.app.pages[page.id].editor.waitFor({ selector: "#new-tab", timeout: 10000 });
-            await ctx.app.pages[page.id].editor.evaluate("document.querySelector('#new-tab').click()");
+            // A trusted click: since US-2144 a page opens a tab only on a user gesture, which a scripted
+            // element.click() is not.
+            await ctx.app.pages[page.id].editor.click("#new-tab");
             const openedTab = await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.tabs, (tabs) => tabs.length === 2 && tabs.some((tab) => tab.url.includes("/opened")));
             const linkedTab = openedTab.find((tab) => tab.url.includes("/opened"));
             ctx.expect(await ctx.waitFor(
@@ -277,7 +279,7 @@ export default [
 
             await ctx.app.pages[page.id].editor.switchTab(sourceTab.id);
             await ctx.app.pages[page.id].editor.waitFor({ selector: "#window-open", timeout: 10000 });
-            await ctx.app.pages[page.id].editor.evaluate("document.querySelector('#window-open').click()");
+            await ctx.app.pages[page.id].editor.click("#window-open");
             const tabsAfterWindowOpen = await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.tabs, (tabs) => tabs.length === 3 && tabs.some((tab) => tab.url.includes("/window-opened")));
             const windowTab = tabsAfterWindowOpen.find((tab) => tab.url.includes("/window-opened"));
             ctx.expect(await ctx.waitFor(

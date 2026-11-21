@@ -1371,7 +1371,12 @@ and popups: **one native box at a time per page** (a dialog while one is open is
 once, with no box), titled with the requesting frame's origin, message cut to 2,000 characters; from
 the second box a "Prevent this page from creating additional dialogs" checkbox silences that origin for
 the page's lifetime; `prompt()` stays unsupported; Electron's `-cancel-dialogs` (navigation, close)
-closes the open box. The guard installs itself only when Electron registered that internal listener;
+closes the open box. A dialog that browser automation answers gets no box and no answer from the
+guard: when `automationAnswersPageDialog(contents)` (`cdp-service.ts` → `automationAnswersDialog` in
+`cdp/cdp-page-events.ts`) reports that the page's events are observed and an agent call is running or
+ended under 2 s ago, the automation dialog policy (`accept`/`dismiss`, or the agent's `handleDialog`
+under `manual`) answers it over CDP; it neither takes the one-box slot nor counts toward the checkbox.
+Outside that window the dialog is the user's and gets the box. The guard installs itself only when Electron registered that internal listener;
 otherwise Electron's handler stays, with `safeDialogs` set on browser webviews by
 `applyPageDialogPreferences()` in `will-attach-webview` as the fallback. Re-check this on each Electron
 upgrade.

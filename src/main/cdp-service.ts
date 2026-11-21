@@ -33,6 +33,11 @@ export function clearCdpTargetState(key: string): void {
     cdpPageEvents.clearKey(key);
 }
 
+/** Whether browser automation (its dialog policy or the agent) answers a JavaScript dialog the page opens now. */
+export function automationAnswersPageDialog(wc: WebContents): boolean {
+    return cdpPageEvents.automationAnswersDialog(wc);
+}
+
 function attachTarget(wc: WebContents): CdpTarget {
     const target = CdpTarget.for(wc);
     if (!target.ensureAttached()) return target;

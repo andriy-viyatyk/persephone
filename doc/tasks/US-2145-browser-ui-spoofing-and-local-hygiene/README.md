@@ -338,7 +338,7 @@ UI suites run against the change: `browser/popups` 19/19, `browser/page-tools` 7
 `browser/navigation` 7/7, `browser/tabs` 5/5, `sidebar/explorer` 3/3, `boards/extensions` 11/11,
 `browser/automation` 33/35 — the 2 failures are `observe.test.mjs` dialog-policy tests, which now get a
 native message box from US-2144's `page-dialog-guard` instead of the automation dialog policy; this
-task does not touch JS dialogs (reported, not fixed here).
+task does not touch JS dialogs (reported, not fixed here; fixed as a US-2144 follow-up, now 35/35).
 
 **Code-only:** the "Not secure" chip on a real non-loopback `http:` page (fixtures must stay on
 loopback; the rule was checked at runtime, the chip itself only by code); **Open Link in New Tab** on a
