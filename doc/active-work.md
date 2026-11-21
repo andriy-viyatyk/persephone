@@ -10,6 +10,10 @@ Overview of all active and planned epics and tasks.
 
 ## Planned
 
+- *(no epic)*
+  - [ ] [US-2138: Web-app test runner and temporary site extensions: feedback from a real app suite](tasks/US-2138-web-app-test-feedback/README.md) — running list, appended during the CDI Tracker test experiment
+  - [ ] [US-2139: Board hotkeys](tasks/US-2139-board-hotkeys/README.md) — recorded idea, not investigated: a board declares an action with a default hotkey, the user can rebind it, and it works with no board page open
+
 ## Scheduled
 
 Tasks that must not start before a date. When the date arrives, move the entry to **Active** (or
