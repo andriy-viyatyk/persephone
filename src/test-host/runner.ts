@@ -156,7 +156,7 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
                     if (baseline && outputDirectory) capture = await captureFailure(client, baseline, outputDirectory, { file: group.file, name: descriptor.name }, log);
                 } finally {
                     client = launcher.client ?? client;
-                    if (baseline) cleanupErrors = await closePagesOpenedSince(client, baseline, (event, details) => log?.write({ event, ...identity, ...details }), timeouts.cleanup ?? 3000);
+                    if (baseline) cleanupErrors = await closePagesOpenedSince(client, baseline, (event, details) => log?.write({ event, ...identity, ...details }), timeouts.cleanup ?? 3000, configuration.attach ? context._state.ownedPages : undefined);
                 }
 
                 const durationMs = Date.now() - testStarted;

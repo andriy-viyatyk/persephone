@@ -139,6 +139,13 @@ and makes that test fail. A prompt raised by cleanup while closing an owned page
 does not itself fail the test. Dialog cleanup actions are logged, and any dialog remaining after
 owned-page cleanup also fails the test.
 
+With `--attach` the app window is the user's too, so the diff-based ownership above does not apply:
+cleanup closes only pages opened through `ctx.openBrowser` (tracked in `TestContext._state.ownedPages`)
+and new pop-ups of those pages, logs other new pages as `leave-unowned-pages`, and skips the
+renderer dialog/menu sweep. Otherwise a page the user opened during a test, or the user's own
+`Unsaved Changes` prompt, would be closed or answered `Don't Save`
+(`src/test-host/browser-helpers.ts` `closePagesOpenedSince`).
+
 The `app` tree is a stand-in for call paths, not a live object model: each property read or method
 call makes a round trip and must be awaited. Use `ctx.set(path, value, { timeout? })` to assign a
 writable property; assigning through `app` throws because the assignment cannot be awaited. A

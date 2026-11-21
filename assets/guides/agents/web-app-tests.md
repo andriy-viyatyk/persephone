@@ -138,6 +138,12 @@ fails; the expected prompt raised by cleanup while closing an owned page does no
 A popup menu left open is closed and fails the test the same way. Workspace pages (a folder opened
 with `pages.openFile`) are owned pages too. Native OS dialogs are outside the runner's cleanup scope.
 
+With `--attach` the window is also the user's, so cleanup is narrower: it closes only pages the test
+opened with `ctx.openBrowser` (and new pop-ups of those pages), leaves every other new page open
+(logged as `leave-unowned-pages`), and does not sweep renderer dialogs or menus. A page the user opens
+while a test runs is never closed. An attached test that opens pages any other way (`ctx.call`,
+`pages.openFile`) closes them itself in `finally`.
+
 ## Run tests
 
 In an installed app on Windows, run `persephone-test.exe` from beside the installed

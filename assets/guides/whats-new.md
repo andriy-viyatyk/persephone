@@ -20,6 +20,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Bug Fixes
 
+- **Attached test runs no longer close your pages.** With `persephone-test.exe --attach`, the
+  cleanup after each test closed every page that had appeared in the window during the test,
+  including pages you had just opened yourself, and answered your own **Unsaved Changes** prompt with
+  **Don't Save**. Attached runs now close only pages the test opened with `ctx.openBrowser` and leave
+  your dialogs alone.
 - **Browser: the URL bar can't be dressed up, and full-screen pages are labelled.** The URL bar no
   longer shows a `user:password@` part, shows the site's host in the stronger colour with the path
   dimmed (a long path or host can no longer push the real domain out of view), and marks plain-HTTP

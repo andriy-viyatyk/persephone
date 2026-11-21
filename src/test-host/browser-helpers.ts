@@ -12,6 +12,7 @@ export async function openBrowser(
     options: { profile?: string; incognito?: boolean; timeout?: number },
     waitTimeout: number,
     requestTimeout: number,
+    onCreated: (pageId: string) => void,
 ): Promise<object> {
     if (typeof url !== "string" || !url) throw new TypeError("ctx.openBrowser(url) requires a non-empty URL.");
     const profileNames = await context.call("settings.browserProfiles");
@@ -28,6 +29,7 @@ export async function openBrowser(
     const after = pageList(await context.call("pages.all"));
     const created = after.find((page) => page.editor === "browser-view" && !beforeIds.has(page.id));
     if (!created) throw new Error("browser page was not created; Persephone refused it, see the app notification");
+    onCreated(created.id);
     const navigationTimeout = options.timeout ?? waitTimeout;
     await context.call(`pages[${JSON.stringify(created.id)}].editor.navigateAndWait`, [url, { waitUntil: "domcontentloaded", timeout: navigationTimeout }], { timeout: Math.max(requestTimeout, navigationTimeout + 1000) });
     const app = context.app as Record<string, unknown>;
@@ -41,16 +43,28 @@ export async function beginPageOwnership(client: McpClient, log: LogHostEvent): 
     return snapshot;
 }
 
-export async function closePagesOpenedSince(client: McpClient, baseline: OwnershipSnapshot, log: LogHostEvent, cleanupTimeout: number): Promise<string[]> {
+/**
+ * Close what the test left behind. In an owned app every page or popup that appeared since the
+ * baseline is the test's, and renderer dialogs/menus are swept. With `--attach` (`ownedPages` set) the
+ * window is also the user's: a page that appeared there may be one the user just opened, and an open
+ * dialog may be the user's own "Unsaved Changes" prompt. So only pages the test opened through
+ * `ctx.openBrowser` (and new popups of those pages) are closed, other new pages are left open and
+ * logged, and the dialog/menu sweep is skipped.
+ */
+export async function closePagesOpenedSince(client: McpClient, baseline: OwnershipSnapshot, log: LogHostEvent, cleanupTimeout: number, ownedPages?: ReadonlySet<string>): Promise<string[]> {
     const errors: string[] = [...baseline.errors];
-    const beforeSnapshot = await sweepRendererDialogs(client, log, cleanupTimeout, "before-snapshot");
+    const attached = ownedPages !== undefined;
+    const sweep = attached
+        ? async (_phase: "before-snapshot" | "after-close") => ({ found: false, errors: [] as string[] })
+        : (phase: "before-snapshot" | "after-close") => sweepRendererDialogs(client, log, cleanupTimeout, phase);
+    const beforeSnapshot = await sweep("before-snapshot");
     if (beforeSnapshot.found) errors.push("The test left a renderer dialog open; cleanup dismissed it.");
     errors.push(...beforeSnapshot.errors);
     let current: OwnershipSnapshot;
     try { current = await readSnapshot(client, "cleanup", log); }
     catch (error) {
         errors.push(`Could not inspect browser pages for cleanup: ${errMessage(error)}`);
-        const afterSnapshot = await sweepRendererDialogs(client, log, cleanupTimeout, "after-close");
+        const afterSnapshot = await sweep("after-close");
         if (afterSnapshot.found) errors.push("A renderer dialog remained during cleanup; cleanup dismissed it.");
         errors.push(...afterSnapshot.errors);
         return errors;
@@ -59,6 +73,7 @@ export async function closePagesOpenedSince(client: McpClient, baseline: Ownersh
     errors.push(...current.errors);
     const newPopups: Array<{ pageId: string; popupId: string }> = [];
     for (const [pageId, popupIds] of current.popups) {
+        if (attached && !ownedPages.has(pageId)) continue;
         if (baseline.untrackablePopups.has(pageId) || current.untrackablePopups.has(pageId)) continue;
         const known = baseline.popups.get(pageId) ?? new Set<string>();
         for (const popupId of popupIds) if (!known.has(popupId)) newPopups.push({ pageId, popupId });
@@ -76,7 +91,10 @@ export async function closePagesOpenedSince(client: McpClient, baseline: Ownersh
     }
 
     const baselinePages = new Set(baseline.pages.map((page) => page.id));
-    const newPages = current.pages.filter((page) => !baselinePages.has(page.id));
+    const appeared = current.pages.filter((page) => !baselinePages.has(page.id));
+    const newPages = attached ? appeared.filter((page) => ownedPages.has(page.id)) : appeared;
+    const leftOpen = attached ? appeared.filter((page) => !ownedPages.has(page.id)).map(({ id }) => id) : [];
+    if (leftOpen.length) log("cleanup", { action: "leave-unowned-pages", pageIds: leftOpen, reason: "attach: not opened by ctx.openBrowser" });
     for (const page of newPages) {
         log("cleanup", { action: "close-page", pageId: page.id });
         try {
@@ -98,7 +116,7 @@ export async function closePagesOpenedSince(client: McpClient, baseline: Ownersh
             log("cleanup", { action: "page-closed", pageId: page.id, ok: false, error: message });
         }
     }
-    const afterClose = await sweepRendererDialogs(client, log, cleanupTimeout, "after-close");
+    const afterClose = await sweep("after-close");
     if (afterClose.found) errors.push("A renderer dialog remained after owned-page cleanup; cleanup dismissed it.");
     errors.push(...afterClose.errors);
     return errors;

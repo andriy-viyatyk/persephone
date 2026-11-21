@@ -27,7 +27,7 @@ export interface TestContext {
     /** Note a line in `tests.log` and the console, for context a later reader needs. */
     log(message: string): void;
     /** `stepOf(error)` names the step that threw `error`; `step` moves on while a test's own `finally` runs. */
-    _state: { step: string; error?: string; stepOf(error: unknown): string };
+    _state: { step: string; error?: string; stepOf(error: unknown): string; ownedPages: Set<string> };
 }
 
 export function createContext(client: McpClient, launcher: TestLauncher, timeouts: Timeouts, attach: boolean, log?: TestLog, identity?: { file: string; test: string; profileDirectory?: string }): TestContext {
@@ -35,6 +35,8 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
     const state: TestContext["_state"] = {
         step: "starting",
         stepOf: (error) => (error !== null && typeof error === "object" ? failedSteps.get(error) : undefined) ?? state.step,
+        /** Pages this test opened through `ctx.openBrowser`; with `--attach` cleanup closes only these. */
+        ownedPages: new Set<string>(),
     };
     /** Remember the step an error was first thrown from; an outer rethrow keeps the inner step. */
     const markFailure = (error: unknown) => {
@@ -113,7 +115,7 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
     const app = createAppProxy(proxyCall, beforeProxyCall, onProxyError);
     const context: TestContext = {
         app, call, callText, set,
-        async openBrowser(url, options = {}) { return openBrowserHelper(context, url, options, timeouts.wait, timeouts.request); },
+        async openBrowser(url, options = {}) { return openBrowserHelper(context, url, options, timeouts.wait, timeouts.request, (pageId) => state.ownedPages.add(pageId)); },
         handle(node, metadata) { return asHandle(node, proxyCall, beforeProxyCall, onProxyError, metadata); },
         async waitFor(pathOrCallback, predicate, options = {}) {
             const timeout = options.timeout === undefined ? timeouts.wait : Math.max(1, Math.round(options.timeout * (timeouts.scale ?? 1)));
