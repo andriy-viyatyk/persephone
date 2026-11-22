@@ -412,7 +412,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Browser site-extension runtime (saved and temporary selection, trust, guarded injection/reload, page actions, fetch routing, and temporary registry) | `/src/renderer/editors/browser/BrowserSiteExtensionController.ts`, `/src/renderer/editors/browser/SiteExtensionInjection.ts`, `/src/renderer/editors/browser/SiteActionDocument.ts`, `/src/renderer/editors/browser/TemporarySiteExtensions.ts`, `/src/shared/temporary-site-extension.ts` |
 | Browser real-popup lifecycle and agent targets (main ownership, renderer projection, lifecycle operations, and CDP target routing) | `/src/main/browser/BrowserPopupRegistry.ts`, `/src/main/browser/browser-popup-service.ts`, `/src/renderer/editors/browser/BrowserPopupModel.ts`, `/src/renderer/editors/browser/BrowserTargetModel.ts` |
 | Browser site-action popover content | `/src/renderer/editors/browser/BrowserSiteActionsView.ts` |
-| Browser page remote (page/WebMCP probing, registration, privacy checks, revalidation, and remote requests) | `/src/renderer/editors/browser/BrowserPageRemote.ts` |
+| Browser page remote (page/WebMCP probing, registration, privacy checks, revalidation, and remote requests; preserves models across same-document navigation and bounds reads during re-probe) | `/src/renderer/editors/browser/BrowserPageRemote.ts` |
 | Page-model reply normalization (max-length enforcement, truncation errors, and navigation-context loss detection) | `/src/renderer/editors/browser/page-model-reply.ts` |
 | Automation browser-menu suppression (per-tab consume-once guard for trusted right-clicks) | `/src/renderer/editors/browser/BrowserAutomationMenuGuard.ts` |
 | Browser find-in-page state and commands | `/src/renderer/editors/browser/BrowserFindModel.ts` |
@@ -448,6 +448,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Fullscreen / pointer-lock notice (origin + Esc; top-layer popover over a full-screen webview) and the guest pointer-lock reporter | `/src/renderer/editors/browser/BrowserExclusiveAccessNotice.ts`, `/src/preload-webview/exclusive-access-reporter.ts` |
 | CDP service composition and target routing, including bounded retry against a replaced board frame | `/src/main/cdp-service.ts` |
 | CDP browser test-power composition and lifecycle wiring | `/src/main/cdp/cdp-browser-test-methods.ts` |
+| Per-WebContents lifecycle subscriptions sharing one native listener per WebContents and event | `/src/main/webcontents-lifetime.ts` |
 | Per-WebContents CDP debugger lifecycle, domain state, and event dispatch | `/src/main/cdp/CdpTarget.ts` |
 | CDP page events and dialogs | `/src/main/cdp/cdp-page-events.ts` |
 | CDP document-start init-script registration and per-target cleanup | `/src/main/cdp/cdp-init-scripts.ts` |
@@ -600,11 +601,13 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Board-host RPC handlers (board calls/themes, per-frame `events.wait` cursors, validated link opening including host-page navigation, board opening, TypeScript project registration) | `/src/renderer/api/boards/board-host-rpc.ts`, `/src/renderer/api/ts-project-registry.ts` |
 | Board service-settings RPC registration and renderer client | `/src/renderer/api/board-service-settings.ts` |
 | Agent Tools call-tree node and typed search/toolset operations | `/src/renderer/scripting/ai-vision/namespaces/tools.ts`, `/src/renderer/api/tools/tool-search.ts`, `/src/renderer/api/tools/toolset-operations.ts` |
-| Shared browser-like automation operations (locator resolution waits for two consecutive stable frames before clicks; mouse, focus, keyboard, forms, queries, page events, navigation, synthetic input, and screenshot/viewport/network state) | `/src/renderer/automation/locator.ts`, `/src/renderer/automation/mouse.ts`, `/src/renderer/automation/focus.ts`, `/src/renderer/automation/keyboard.ts`, `/src/renderer/automation/forms.ts`, `/src/renderer/automation/queries.ts`, `/src/renderer/automation/page-events.ts`, `/src/renderer/automation/navigation.ts`, `/src/renderer/automation/synthetic.ts`, `/src/renderer/automation/page-state.ts` |
+| Shared browser-like automation operations (locator resolution settles after pointer movement before clicks; mouse, focus, keyboard, forms, queries, page events, navigation, synthetic input, and screenshot/viewport/network state) | `/src/renderer/automation/locator.ts`, `/src/renderer/automation/mouse.ts`, `/src/renderer/automation/pointer-actions.ts`, `/src/renderer/automation/focus.ts`, `/src/renderer/automation/keyboard.ts`, `/src/renderer/automation/forms.ts`, `/src/renderer/automation/queries.ts`, `/src/renderer/automation/page-events.ts`, `/src/renderer/automation/navigation.ts`, `/src/renderer/automation/synthetic.ts`, `/src/renderer/automation/page-state.ts` |
 | Shared in-page snippets and CDP input session coordinate mapping | `/src/renderer/automation/page-scripts.ts`, `/src/renderer/automation/input-session.ts` |
 | Shared selector execution entry and one page-side selector grammar (`resolveCandidates`, including Chromium AX facts for role selectors) | `/src/renderer/automation/selector-execution.ts`, `/src/renderer/automation/page-scripts.ts` |
 | Locator read members and capped bulk capture | `/src/renderer/automation/locator-reads.ts` |
 | In-page predicate polling and navigation/context-loss mapping | `/src/renderer/automation/wait-for-function.ts`, `/src/renderer/automation/context-loss.ts` |
+| Click event and target-change verification | `/src/renderer/automation/lost-click.ts` |
+| Best-effort browser CSS hover pseudo-state forcing | `/src/renderer/automation/hover-pseudo-state.ts` |
 | JSON-safe automation values | `/src/renderer/automation/json-value.ts` |
 | Shared browser-like AiVision members (common automation descriptor for browser, board, and app-window hosts) | `/src/renderer/scripting/ai-vision/browser-automation-members.ts` |
 | Legacy browser synthetic input compatibility | `/src/renderer/automation/input.ts` |

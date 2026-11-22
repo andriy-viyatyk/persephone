@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Board hover pseudo-state</title>
+  <style>
+    .row { margin: 24px; padding: 16px; width: 240px; border: 1px solid; }
+    .menu { visibility: hidden; margin-top: 8px; }
+    .row.vis:hover .menu { visibility: visible; }
+  </style>
+</head>
+<body>
+  <div class="row vis" id="hover-row">
+    Hover row
+    <button class="menu" id="menu" onclick="window.results.push('clicked')">Board menu</button>
+  </div>
+  <script>window.results = [];</script>
+</body>
+</html>

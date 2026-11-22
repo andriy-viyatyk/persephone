@@ -9,7 +9,8 @@ import { setViewport as setViewportOperation, clearViewport as clearViewportOper
 import { navigateAndWait as navigateAndWaitOperation, navigateBackAndWait, waitForNavigationEvents, type UrlPatternInput } from "../../automation/navigation";
 import { resolveElementLocator } from "../../automation/locator";
 import { createRemoteProxy, DEFAULT_MAX_LENGTH, type IAiElementDeclaration, type IAiMember, type IAiNodeShape, type IAiVisible, type IAiVisionDescriptor, type IAiVisionShape } from "ai-vision";
-import type { IBrowserActionOptions, IBrowserClickOptions, IBrowserCoordinateOptions, IBrowserEditor, IBrowserElementLocator, IBrowserHoverOptions, IBrowserKeyboardOptions, IBrowserNetworkRequest, IBrowserNetworkRequestsOptions, IBrowserResponse, IBrowserResponseWaitOptions, IBrowserScreenshot, IBrowserScreenshotOptions, IBrowserSelectOptions, IBrowserTab, IBrowserTypeOptions, IBrowserDialogPolicy, IBrowserConsoleLevel, IBrowserDragDestination, IBrowserDragOptions, IBrowserFormField, IBrowserViewportOptions, IBrowserEvaluateOptions, IBrowserEvaluateFunction, IBrowserLocatorReadOptions, IBrowserQueryOptions, IBrowserQueryResult, IBrowserWaitForFunctionOptions, IBrowserJsonValue, ITemporarySiteExtensionOptions, ITemporarySiteExtensionAttachResult, ITemporarySiteExtensionDetachResult, ITemporarySiteExtensionListItem, IBrowserStorage, IBrowserStorageState, IBrowserClipboard, IBrowserClock, BrowserRouteAction as BrowserRouteApiAction, BrowserRouteOptions as BrowserRouteApiOptions, BrowserUrlPattern } from "../../api/types/browser-editor";
+import type { IBrowserActionOptions, IBrowserClickOptions, IBrowserCoordinateOptions, IBrowserEditor, IBrowserElementLocator, IBrowserHoverOptions, IBrowserKeyboardOptions, IBrowserNetworkRequest, IBrowserNetworkRequestsOptions, IBrowserResponse, IBrowserResponseWaitOptions, IBrowserScreenshot, IBrowserScreenshotOptions, IBrowserSelectOptions, IBrowserTab, IBrowserTypeOptions, IBrowserDialogPolicy, IBrowserConsoleLevel, IBrowserDragDestination, IBrowserDragOptions, IBrowserFormField, IBrowserViewportOptions, IBrowserEvaluateOptions, IBrowserEvaluateFunction, IBrowserLocatorReadOptions, IBrowserQueryOptions, IBrowserQueryResult, IBrowserWaitForFunctionOptions, IBrowserJsonValue, IBrowserPointerTarget, IBrowserPointerOptions, IBrowserMouseMoveOptions, IBrowserWheelOptions, IBrowserWheelDelta, ITemporarySiteExtensionOptions, ITemporarySiteExtensionAttachResult, ITemporarySiteExtensionDetachResult, ITemporarySiteExtensionListItem, IBrowserStorage, IBrowserStorageState, IBrowserClipboard, IBrowserClock, BrowserRouteAction as BrowserRouteApiAction, BrowserRouteOptions as BrowserRouteApiOptions, BrowserUrlPattern } from "../../api/types/browser-editor";
+import { releaseAutomationInputs } from "../../automation/input";
 import { BROWSER_AUTOMATION_MEMBERS } from "../ai-vision/browser-automation-members";
 import { BROWSER_PLAYWRIGHT_ALIAS_MEMBERS, provideBrowserPlaywrightAlias, suggestBrowserPlaywrightName } from "../ai-vision/browser-playwright-aliases";
 import { appCallTimeout } from "../../api/ai-vision-call-timeout";
@@ -102,6 +103,10 @@ const BROWSER_EDITOR_MEMBERS: readonly IAiMember[] = [
     { name: "setViewport", kind: "method", signature: "setViewport(options: { width: number; height: number; deviceScaleFactor?: number; tabId?: string }): Promise<void>", summary: "Set browser page emulation metrics. The page renders at the emulated size inside the existing webview box." },
     { name: "clearViewport", kind: "method", signature: "clearViewport(options?: { tabId?: string }): Promise<void>", summary: "Clear viewport metrics emulation for the selected browser tab." },
     { name: "clickAt", kind: "method", signature: "clickAt(position: { x: number; y: number }, options?: { tabId?: string; button?: 'left' | 'right' | 'middle'; clickCount?: number; nativeMenu?: boolean }): Promise<void>", summary: "Trusted click at selected tab or owned pop-up main-viewport CSS pixels from the top-left; points beyond the viewport are left to Chromium to clip. nativeMenu applies to browser guests." },
+    { name: "mouseDown", kind: "method", signature: "mouseDown(target: IBrowserPointerTarget, options?: IBrowserPointerOptions): Promise<void>", summary: "Press left by default at a locator or selected viewport CSS-pixel point and retain the trusted button until mouseUp." },
+    { name: "mouseMove", kind: "method", signature: "mouseMove(target: IBrowserPointerTarget, options?: IBrowserMouseMoveOptions): Promise<void>", summary: "Move to an actionable locator or viewport point; held buttons remain reflected in trusted move events." },
+    { name: "mouseUp", kind: "method", signature: "mouseUp(target?: IBrowserPointerTarget, options?: IBrowserPointerOptions): Promise<void>", summary: "Release left by default at the target or last tracked point. A held button is required." },
+    { name: "wheel", kind: "method", signature: "wheel(delta: { deltaX: number; deltaY: number }, target?: IBrowserPointerTarget, options?: IBrowserWheelOptions): Promise<void>", summary: "Send trusted wheel deltas in CSS pixels at the target or last tracked point." },
     { name: "dragTo", kind: "method", signature: "dragTo({ from: { x: number; y: number }, to: { x: number; y: number } }, options?: { tabId?: string; steps?: number; holdMs?: number }): Promise<void>", summary: "Trusted drag between selected tab or owned pop-up main-viewport CSS pixels, with optional move count and pre-move hold; coordinates are not iframe-local." },
 ];
 
@@ -165,14 +170,25 @@ that opens them first. snapshot() reports a field's role, accessible name and re
 value — verified for password and ordinary text inputs alike — so read a value with getValue() or
 evaluate() when you actually need it.
 click() and hover() use trusted CDP mouse input by default and retry actionability failures for up
-to 5 seconds. Actionable targets scroll within nested containers before hit testing; if the chosen
+to 5 seconds. In browser guests, hover() also forces CSS :hover on the target and its composed
+ancestors until the next pointer action. click() checks visibility before moving; when that check
+reports not visible, hoverFirst defaults to true and attempts one reveal before retrying the same
+actionability checks. Set hoverFirst: false to disable that automatic reveal attempt. Actionable
+targets scroll within nested containers before hit testing; if the chosen
 point remains outside an inspectable clipping container, the timeout names that container. More than
 one visible selector match fails immediately; use a snapshot ref, narrow
 the selector, or pass a zero-based { nth } index among visible matches. Click accepts button,
-clickCount, nativeMenu, modifiers, position, force, synthetic, nth, timeout and tabId. Automation right-clicks suppress Persephone's browser menu by default while page contextmenu handlers still run; set nativeMenu: true to opt in. This policy applies to browser guests. Hover accepts position,
-modifiers, force, synthetic, nth, timeout and tabId. Hover sends one pointer move; CSS :hover does
-not apply inside browser webviews. Pass
+clickCount, hoverFirst, checkClick, nativeMenu, modifiers, position, force, synthetic, nth, timeout and tabId.
+Browser and board left clicks check for a dispatched click by default; pass { checkClick: false } for pages that act on press.
+Automation right-clicks suppress Persephone's browser menu by default while page contextmenu handlers still run; set nativeMenu: true to opt in. This policy applies to browser guests. Hover accepts position,
+modifiers, force, synthetic, nth, timeout and tabId. Hover sends one pointer move. Pass
 { synthetic: true } only when legacy DOM-event behavior is needed.
+mouseDown(), mouseMove(), and mouseUp() expose a held sequence so page state can be inspected before
+release. Pointer locator targets use the same actionability checks as hover(); coordinate targets use
+the selected tab or popup's main viewport CSS pixels, not iframe-local pixels. mouseUp() and wheel()
+can omit target to use the last tracked pointer point. wheel() passes finite CSS-pixel deltas through.
+The test runner releases held keys and buttons for adopted pages during ctx.usePage cleanup; tab and
+popup teardown also discard their input state.
 Keyboard, fill, check, uncheck and clear use trusted CDP input by default. type() clears editable
 content before inserting; slowly sends mapped key events and submit presses Enter. select() is a
 programmatic native-select operation with untrusted input/change events; it checks visible, enabled
@@ -312,15 +328,14 @@ export class BrowserEditorFacade extends EditorFacadeBase<BrowserEditor> impleme
     private aiVisionProxy?: { token: string; value: IAiVisible };
 
     get aiVision(): IAiVisionDescriptor {
-        const registration = this.model.pageRemote.getRegistration();
-        const app = registration ? this.getAiVisionProxy(registration) : undefined;
         return this.describeEditor({
             kind: "BrowserEditor",
             summary: "Browser navigation, inspection, interaction, and optional page-authored data facade.",
             members: [
                 ...BROWSER_AUTOMATION_MEMBERS,
                 ...BROWSER_EDITOR_MEMBERS,
-                ...(app ? [APP_MEMBER] : []),
+                // Listed while a probe is running too, so a read during a re-probe waits for it (bounded).
+                ...(this.model.pageRemote.mayHaveRegistration() ? [APP_MEMBER] : []),
                 ...BROWSER_PLAYWRIGHT_ALIAS_MEMBERS,
             ],
             identitySummaries: {
@@ -332,7 +347,12 @@ export class BrowserEditorFacade extends EditorFacadeBase<BrowserEditor> impleme
             elements: BROWSER_ELEMENTS,
             highlightOptions: { all: true },
             provide: elementProvide => name => {
-                if (name === "app" && app) return { value: app };
+                if (name === "app") return {
+                    value: this.model.pageRemote.waitForRegistration().then(registration => {
+                        if (!registration) throw new Error('"app" is not a member of BrowserEditor');
+                        return this.getAiVisionProxy(registration);
+                    }),
+                };
                 if (name === "siteExtensionTrustPrompt") return { value: this.siteExtensionTrustPrompt };
                 if (name === "testExtensions") return { value: this.testExtensions };
                 if (name === "popups") return { value: this.popups };
@@ -598,6 +618,10 @@ export class BrowserEditorFacade extends EditorFacadeBase<BrowserEditor> impleme
     focus(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void> { return this.automation.focus(locator, options); }
     clickAt(position: { x: number; y: number }, options?: IBrowserCoordinateOptions): Promise<void> { return this.automation.clickAt(position, options); }
     dragTo(points: { from: { x: number; y: number }; to: { x: number; y: number } }, options?: { tabId?: string; steps?: number; holdMs?: number }): Promise<void> { return this.automation.dragTo(points, options); }
+    mouseDown(target: IBrowserPointerTarget, options?: IBrowserPointerOptions): Promise<void> { return this.automation.mouseDown(target, options); }
+    mouseMove(target: IBrowserPointerTarget, options?: IBrowserMouseMoveOptions): Promise<void> { return this.automation.mouseMove(target, options); }
+    mouseUp(target?: IBrowserPointerTarget, options?: IBrowserPointerOptions): Promise<void> { return this.automation.mouseUp(target, options); }
+    wheel(delta: IBrowserWheelDelta, target?: IBrowserPointerTarget, options?: IBrowserWheelOptions): Promise<void> { return this.automation.wheel(delta, target, options); }
     drag(source: IBrowserElementLocator, destination: IBrowserDragDestination, options?: IBrowserDragOptions): Promise<void> { return this.automation.drag(source, destination, options); }
 
     fillForm(fields: IBrowserFormField[]): Promise<void> { return this.automation.fillForm(fields); }
@@ -691,7 +715,15 @@ export class BrowserEditorFacade extends EditorFacadeBase<BrowserEditor> impleme
     get clock(): IBrowserClock { return this.clockFacade; }
 
     adoptForTestRun(): void { this.model.testPowerAdoption.adopt(); }
-    releaseFromTestRun(): void { this.model.testPowerAdoption.release(); }
+    async releaseFromTestRun(): Promise<void> {
+        const registrationKeys = [
+            ...this.model.state.get().tabs.map(tab => this.model.guest.key(tab.id)),
+            ...this.model.popups.list().map(popup => this.model.guest.key(popup.id)),
+        ];
+        await releaseAutomationInputs(registrationKeys);
+        for (const tab of this.model.state.get().tabs) this.model.automationMenuGuard.clearTab(tab.id);
+        this.model.testPowerAdoption.release();
+    }
 
     async applyStorageStateForTestRun(state: unknown): Promise<string> {
         if (!agentMayUseBrowserTestPower(this.model.state.get())) throw new Error(BROWSER_TEST_POWER_REFUSAL);

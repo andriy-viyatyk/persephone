@@ -21,9 +21,24 @@ element keeps the same bounding box across two consecutive animation frames. `{ 
 skips all those checks and clicks whatever is on top at that point. `position` is relative to the
 element border-box.
 
-`hover()` sends trusted pointer events, but CSS `:hover` does not apply inside browser webviews.
-Script-driven pointer listeners can still respond. The app window and board do not share that
-browser-webview limitation.
+Trusted `hover()` sends native CDP mouse movement and applies CSS `:hover` in browser and board guests.
+`click()` checks visibility before moving the pointer, so call `hover(container)` first for a
+hover-revealed target or rely on its default `hoverFirst` retry after a not-visible result. That
+single retry forces `:hover` on the target and its composed ancestors. Pass `{ hoverFirst: false }`
+to disable that automatic reveal attempt. `window.screen` does not force CSS pseudo state. Synthetic
+hover remains a separate DOM-event-only compatibility path.
+
+Before a trusted click presses, automation moves to the target, waits one animation frame (up to
+50 ms), and checks what is under the pointer. If hover handling replaces the target, it resolves
+and checks again, up to three rounds. For browser and board left clicks, `checkClick` defaults to
+true: after release, automation checks that the page dispatched a `click`. If press and release
+landed on different elements, or both arrived but no click followed, the error code is
+`click-not-dispatched`; the error names the two elements when they changed. Pass
+`{ checkClick: false }` for pages that intentionally act on press without dispatching a click. The
+check does not apply to `window.screen` or coordinate `clickAt()`.
+
+If a click closes its own popup while releasing, it counts as delivered; there is no remaining page
+to inspect.
 
 Actions scroll targets within their containers before hit testing; a still-clipped target reports its
 clipping container. `focus(locator)` focuses without clicking. Targeted keyboard calls click by
@@ -34,6 +49,27 @@ default; pass `{ target: locator, focus: "focus" }` to `pressKey`, `keyDown`, or
 its destination anchor is actionable. `steps` sets movement count; `holdMs` delays after press.
 `clickAt({ x, y })` and `dragTo({ from, to })` use viewport CSS pixels in the selected browser tab or
 board frame.
+
+Use `mouseDown`, `mouseMove`, and `mouseUp` when the page updates while a button is held and you need
+to inspect that intermediate state. Locator targets are resolved with hover's actionability checks;
+coordinate targets use the host viewport CSS pixels. The default button is left. `mouseMove` sends
+one event by default; `{ steps }` interpolates up to 1000 events from the tracked point. Moves retain
+the full held-button state, and `mouseUp()` releases at the last point when no target is supplied.
+`mouseUp` without a matching held button fails. For browser right-clicks, the existing context-menu
+policy stays active until release; `{ nativeMenu: true }` opts into Persephone's menu.
+
+`wheel({ deltaX, deltaY }, target?)` sends trusted wheel deltas unchanged in CSS pixels. It uses the
+last tracked point when target is omitted and fails until a pointer point has been established.
+Adopted `ctx.usePage` pages release held keys and buttons during test cleanup. Browser tab and popup
+teardown release their state; retiring board frames and lost app contexts discard stale state.
+
+```js
+await editor.mouseDown("#start");
+await editor.mouseMove("#end", { steps: 12 });
+const liveCount = await editor.count(".selected-day"); // inspected while left is held
+await editor.mouseUp();
+const committedCount = await editor.count(".selected-day");
+```
 
 Browser pages accept hidden aliases such as `dblclick`, `fill`, `press`, `textContent`, and
 `inputValue`; these stay out of `$help`. `fill` replaces the value; `press` takes the key first.

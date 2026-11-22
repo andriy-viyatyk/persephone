@@ -929,7 +929,8 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── json-value.ts       # JSON-safe automation values
 │   ├── input-session.ts    # CDP input session and shared frame-coordinate mapping
 │   ├── locator.ts          # Actionability and locator action resolution
-│   ├── mouse.ts            # Mouse actions and shared pointer dispatch
+│   ├── mouse.ts            # Locator click, hover, and drag orchestration
+│   ├── pointer-actions.ts  # Low-level pointer actions, state, and dispatch
 │   ├── keyboard.ts         # Key actions and modifier mapping
 │   ├── forms.ts            # Text, select, checkbox, and file input operations
 │   ├── queries.ts          # Evaluate, query, and wait operations

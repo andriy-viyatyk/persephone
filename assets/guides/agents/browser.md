@@ -71,6 +71,7 @@ All three hosts share these operations:
 | `click`, `hover` | Pointer actions; trusted CDP input by default. |
 | `type`, `select`, `check`, `uncheck`, `clear` | Edit fields and toggles. |
 | `pressKey`, `keyDown`, `keyUp` | Trusted keyboard input and held-key sequences. |
+| `mouseDown`, `mouseMove`, `mouseUp`, `wheel` | Trusted held-pointer sequences and wheel input; locator or host viewport CSS-pixel targets. |
 | `drag`, `fillForm`, `setInputFiles` | Drag, ordered form fill, direct file assignment. |
 | `evaluate`, `waitFor`, `screenshot` | Page JavaScript, waits, and images. |
 | `count`, `isVisible`, `isEnabled`, `isChecked`, `innerText`, `allInnerTexts`, `boundingBox`, `query` | Read locator matches, state, text, geometry, and requested fields. |
@@ -88,6 +89,11 @@ All three hosts share these operations:
 | Browser page: `pages[i].editor` | `navigate`, `navigateAndWait`, `back`, `forward`, `reload`, `tabs`, `activeTab`, `addTab`, `closeTab`, `switchTab`, `wait`, `waitForSelector`, `waitForNavigation`, `waitForURL`, `waitForDownload`, `getText`, `getValue`, `getAttribute`, `getHtml`, `exists`, `setViewport`, `clearViewport`, `dialogs`, `handleDialog`, `addInitScript`, `removeInitScript`, `clearInitScripts`, `route`, `unroute`, `unrouteAll`. Viewport, browser navigation/tab/query methods, network history, init scripts, request routes, and JS dialog policy are browser-only. |
 | Board: `pages[i].editor` | Board state (`boardRoot`, `folderPath`, `boardName`, `renderState`, `getManifest`, `secondaryViews`, `statusText`, `busy`, `frameReady`, `contentHostError`), `reload`, `tabs`, `activeTab`, `switchTab`, `dialogs`, `handleDialog`. Tabs are main/secondary frames; navigation and tab creation/closing are absent. `networkRequests()` returns an empty list. |
 | App: `window.screen` | No browser navigation/tabs or JS dialog policy. `consoleMessages()` and `pageErrors()` read Persephone's renderer logs. `setInputFiles()` targets Persephone's own UI. `networkRequests()` returns an empty list. |
+
+Pointer coordinates use the selected browser tab or owned popup's main viewport CSS pixels, the
+selected board frame's viewport CSS pixels, or the app window's renderer viewport CSS pixels on
+`window.screen`. They are not physical screen coordinates or iframe-local coordinates. Locator
+targets use the same actionability checks as `hover()`.
 
 ### Capturing a download in a web-app test
 

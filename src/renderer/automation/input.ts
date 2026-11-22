@@ -4,8 +4,88 @@
  * Key layout derived from Playwright's USKeyboardLayout
  * (Apache 2.0, originally from Puppeteer/Google).
  */
-import type { CdpSession } from "./CdpSession";
+import { CdpSession } from "./CdpSession";
 import type { BrowserKeyboardInputEvent } from "../../ipc/browser-ipc";
+import { isAutomationContextLoss } from "./context-loss";
+
+export type PointerButton = "left" | "middle" | "right";
+export interface PointerRouteState {
+    cdp: CdpSession;
+    sessionId?: string;
+    point?: { x: number; y: number };
+    buttons: Map<PointerButton, { menuTabId?: string }>;
+}
+const pointerStatesByTarget = new Map<string, PointerRouteState>();
+export function pointerRouteKey(cdp: CdpSession, sessionId?: string): string { return `${cdp.registrationKey}|${sessionId ?? ""}`; }
+export function getPointerState(cdp: CdpSession, sessionId?: string): PointerRouteState | undefined {
+    return pointerStatesByTarget.get(pointerRouteKey(cdp, sessionId));
+}
+export function findPointerState(cdp: CdpSession): PointerRouteState | undefined {
+    let last: PointerRouteState | undefined;
+    for (const state of pointerStatesByTarget.values()) {
+        if (state.cdp.registrationKey !== cdp.registrationKey) continue;
+        if (state.buttons.size) return state;
+        last = state;
+    }
+    return last;
+}
+export function ensurePointerState(cdp: CdpSession, sessionId?: string): PointerRouteState {
+    const key = pointerRouteKey(cdp, sessionId);
+    let state = pointerStatesByTarget.get(key);
+    if (!state) {
+        state = { cdp, sessionId, buttons: new Map() };
+        pointerStatesByTarget.set(key, state);
+    }
+    return state;
+}
+export function clearPointerRoute(cdp: CdpSession, sessionId?: string): void {
+    pointerStatesByTarget.delete(pointerRouteKey(cdp, sessionId));
+}
+export function pointerButtonsMask(state: PointerRouteState | undefined): number {
+    if (!state) return 0;
+    let mask = 0;
+    for (const button of state.buttons.keys()) mask |= button === "left" ? 1 : button === "right" ? 2 : 4;
+    return mask;
+}
+export function clearTargetInputState(cdp: CdpSession, sessionId?: string): void {
+    heldKeysByTarget.delete(targetKey(cdp, sessionId));
+    clearPointerRoute(cdp, sessionId);
+}
+
+/** Release held keys and pointer buttons for each browser registration owned by a page. */
+export async function releaseAutomationInputs(registrationKeys: readonly string[]): Promise<void> {
+    let failure: unknown;
+    for (const registrationKey of registrationKeys) {
+        const cdp = new CdpSession(registrationKey);
+        const routes = new Set<string>();
+        for (const key of heldKeysByTarget.keys()) if (key.startsWith(`${registrationKey}|`)) routes.add(key);
+        for (const key of pointerStatesByTarget.keys()) if (key.startsWith(`${registrationKey}|`)) routes.add(key);
+        for (const route of routes) {
+            const sessionId = route.slice(registrationKey.length + 1) || undefined;
+            const state = getPointerState(cdp, sessionId);
+            try {
+                const keys = heldKeysByTarget.get(route);
+                if (keys) for (const key of [...keys.keys()]) await dispatchKeyUp(cdp, key, sessionId);
+                if (state?.point) {
+                    for (const button of [...state.buttons.keys()]) {
+                        const remaining = pointerButtonsMask({ ...state, buttons: new Map([...state.buttons].filter(([held]) => held !== button)) });
+                        await cdp.send("Input.dispatchMouseEvent", {
+                            type: "mouseReleased", x: state.point.x, y: state.point.y, button,
+                            buttons: remaining, clickCount: 1,
+                        }, sessionId);
+                        state.buttons.delete(button);
+                    }
+                }
+                if (state && state.buttons.size === 0) clearPointerRoute(cdp, sessionId);
+            } catch (error: unknown) {
+                if (isAutomationContextLoss(error)) clearTargetInputState(cdp, sessionId);
+                else if (failure === undefined) failure = error;
+            }
+        }
+    }
+    if (failure !== undefined) throw failure;
+}
+
 
 // ── Key Definitions ─────────────────────────────────────────────────
 
@@ -209,6 +289,7 @@ export async function dispatchKeyDown(cdp: CdpSession, key: string, sessionId?: 
         keys.set(key, actualRoute);
     } catch (error: unknown) {
         if (!wasHeld) keys.delete(key);
+        if (isAutomationContextLoss(error)) clearTargetInputState(cdp, sessionId);
         throw error;
     }
 }
@@ -219,6 +300,9 @@ export async function dispatchKeyUp(cdp: CdpSession, key: string, sessionId?: st
     const route = keys.get(key) ?? keyInputRoute(key, modifiers);
     try {
         await dispatchKeyEvent(cdp, key, "keyUp", modifiers, sessionId, route);
+    } catch (error: unknown) {
+        if (isAutomationContextLoss(error)) clearTargetInputState(cdp, sessionId);
+        throw error;
     } finally {
         releaseHeldKey(cdp, key, sessionId);
     }

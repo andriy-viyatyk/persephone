@@ -24,6 +24,11 @@ import type {
     IBrowserQueryResult,
     IBrowserWaitForFunctionOptions,
     IBrowserJsonValue,
+    IBrowserPointerTarget,
+    IBrowserPointerOptions,
+    IBrowserMouseMoveOptions,
+    IBrowserWheelOptions,
+    IBrowserWheelDelta,
 } from "./browser-editor";
 import type { BoardEditorKind } from "./common";
 
@@ -162,6 +167,15 @@ export interface IBoardEditor {
     clickAt(position: { x: number; y: number }, options?: { tabId?: string }): Promise<void>;
     /** Trusted drag between selected board-frame viewport CSS pixel coordinates. */
     dragTo(points: { from: { x: number; y: number }; to: { x: number; y: number } }, options?: { tabId?: string; steps?: number; holdMs?: number }): Promise<void>;
+    /** Press a button (left by default) at a locator or board-frame viewport CSS point; it remains held until mouseUp. */
+    mouseDown(target: IBrowserPointerTarget, options?: IBrowserPointerOptions): Promise<void>;
+    /** Move with hover actionability and preserve the complete held-button state. */
+    mouseMove(target: IBrowserPointerTarget, options?: IBrowserMouseMoveOptions): Promise<void>;
+    /** Release the selected held button at target or its last tracked point. */
+    mouseUp(target?: IBrowserPointerTarget, options?: IBrowserPointerOptions): Promise<void>;
+    /** Send trusted wheel deltas in CSS pixels at target or the last tracked point. */
+    wheel(delta: IBrowserWheelDelta, target?: IBrowserPointerTarget, options?: IBrowserWheelOptions): Promise<void>;
+    /** Click a board element; hoverFirst defaults true and reveals only after actionability reports not visible. */
     click(locator: IBrowserElementLocator, options?: IBrowserClickOptions): Promise<void>;
     hover(locator: IBrowserElementLocator, options?: IBrowserHoverOptions): Promise<void>;
     type(locator: IBrowserElementLocator, text: string, options?: IBrowserTypeOptions): Promise<void>;

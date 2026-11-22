@@ -41,11 +41,20 @@ renderer viewport CSS pixels from the top-left. clickAt bypasses locator actiona
 drag() dispatch and accepts optional { steps, holdMs } timing.
 
 click() and hover() use trusted CDP mouse input by default and retry actionability failures for up
-to 5 seconds. More than one visible selector match fails immediately; use a snapshot ref, narrow
-the selector, or pass a zero-based { nth } index among visible matches. Click accepts button,
-clickCount, modifiers, position, force, synthetic, nth, timeout and tabId; hover accepts position,
+to 5 seconds. This app-window target does not force CSS pseudo state. click() checks visibility
+before moving; hoverFirst defaults to true and attempts one reveal only after a not-visible result
+where CSS forcing is supported. Set hoverFirst: false to disable that automatic reveal attempt.
+More than one visible selector match fails immediately; use a snapshot ref, narrow the selector,
+or pass a zero-based { nth } index among visible matches. Click accepts button, clickCount,
+hoverFirst, modifiers, position, force, synthetic, nth, timeout and tabId; hover accepts position,
 modifiers, force, synthetic, nth, timeout and tabId. Hover sends one pointer move. Pass
 { synthetic: true } only when legacy DOM-event behavior is needed.
+
+mouseDown(), mouseMove(), and mouseUp() keep trusted button state across calls for live inspection.
+Locator targets use hover actionability; coordinate targets use app-window renderer viewport CSS pixels
+from the top-left. mouseUp() and wheel() use the last tracked point when target is omitted. wheel()
+passes finite CSS-pixel deltas through unchanged. Held keys and buttons on adopted ctx.usePage pages
+are released by test cleanup.
 
 Keyboard, fill, check, uncheck and clear use trusted CDP input by default. type() clears editable
 content before inserting; slowly sends mapped key events and submit presses Enter. select() is a
@@ -90,6 +99,10 @@ const recordingMembers: readonly IAiMember[] = [
 ];
 const WINDOW_COORDINATE_MEMBERS: readonly IAiMember[] = [
     { name: "clickAt", kind: "method", signature: "clickAt({ x, y })", summary: "Trusted coordinate click in app-window viewport CSS pixels from the top-left; bypasses locator actionability." },
+    { name: "mouseDown", kind: "method", signature: "mouseDown(target: IBrowserPointerTarget, options?: IBrowserPointerOptions)", summary: "Press left by default at an app locator or renderer viewport CSS-pixel point and retain the trusted button until mouseUp." },
+    { name: "mouseMove", kind: "method", signature: "mouseMove(target: IBrowserPointerTarget, options?: IWindowScreenMouseMoveOptions)", summary: "Move with app-document locator actionability or renderer viewport coordinates while preserving held-button state." },
+    { name: "mouseUp", kind: "method", signature: "mouseUp(target?: IBrowserPointerTarget, options?: IBrowserPointerOptions)", summary: "Release left by default at a target or the last tracked app-window pointer point." },
+    { name: "wheel", kind: "method", signature: "wheel(delta: { deltaX: number; deltaY: number }, target?: IBrowserPointerTarget, options?: IBrowserWheelOptions)", summary: "Send trusted wheel deltas in CSS pixels at a target or last tracked app-window pointer point." },
     { name: "dragTo", kind: "method", signature: "dragTo({ from: { x, y }, to: { x, y } }, timing?: { steps?: number; holdMs?: number })", summary: "Drag between app-window viewport CSS pixel coordinates through the shared trusted drag path; steps is 1–1000 and holdMs is a 0–10000 ms pre-move hold." },
 ];
 const recordingHelp = `Recording is video-only and captures Persephone's current window. start({ region: "window" | "page" | "editor", openPlayer?, hideStatusChrome? }) begins immediately; hideStatusChrome: true omits recording controls and the MCP indicator, restoring their prior visibility on stop, cancel, and errors. pause() and resume() control the same recording shown in the app header. stop() returns { path, durationMs, mimeType, width, height, stoppedBy }. The file stays in a temporary recordings folder for seven days unless saved or discarded; copy the returned path elsewhere to retain it. Set openPlayer: true to open the built-in player; closing that player page without Save as… deletes the file. A user stop remains retrievable by a later stop() call until another recording starts.`;

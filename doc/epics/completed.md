@@ -1,3 +1,25 @@
+## EPIC-208 — Input fidelity for web-app tests
+
+Completed 2026-11-22. Step 6 of the [web-app testing review](../reviews/web-app-testing-review.md) roadmap (E2, E3,
+E5, G2; US-2138 items 5, 10, 17 and the bridge half of 2) plus two EPIC-207 follow-ups. `hover()` forces CSS `:hover`
+on the target and its composed ancestors (CDP `CSS.forcePseudoState` in `automation/hover-pseudo-state.ts`, cleared by
+`CSS.disable` at the next pointer action); `click` reveals a hover-hidden target once after a "not visible" result
+(`hoverFirst: false` opts out) and the error names `hover()`. Trusted locator clicks wait one frame after the move and
+re-resolve a target replaced by a hover handler; browser/board left clicks whose press and release produced no
+`click` fail with `click-not-dispatched` naming A → B (`checkClick: false` opts out; `automation/lost-click.ts`).
+`mouseDown`/`mouseMove`/`mouseUp`/`wheel` on browser, board and `window.screen` (`automation/pointer-actions.ts`), held
+buttons and keys released at test end on `ctx.usePage` pages. A page model stays reachable across a same-document
+navigation (no clear on `did-start-loading`; a read during a probe waits up to 250 ms). One native lifecycle listener
+per WebContents/event (`onWebContentsGone`); a click whose popup closes on press counts as delivered. Fixed an
+EPIC-207 regression that stopped every site/temporary extension from injecting. Bridge 1.62.0. Completion skills by
+Codex (Luna). Epic document: [EPIC-208](EPIC-208.md).
+
+- [x] **EPIC-207 follow-ups: destroyed-listener leak, click that closes its popup (US-2171).**
+- [x] **`hover()` applies CSS `:hover`; click hovers first (US-2172).**
+- [x] **Detect a click that produced no `click` (US-2173).**
+- [x] **Low-level pointer members (US-2174).**
+- [x] **Page model reachable across a same-document navigation (US-2175).**
+
 ## EPIC-207 — Page environment for web-app tests
 
 Completed 2026-11-22. Step 5 of the [web-app testing review](../reviews/web-app-testing-review.md) roadmap (F1–F7;

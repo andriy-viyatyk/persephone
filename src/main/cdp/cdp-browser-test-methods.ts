@@ -54,11 +54,14 @@ export async function restoreBrowserTestTargetState(
 export function createCdpLifecycleMethods(
     resolveTarget: TargetResolver,
     resolveBoardSession: BoardSessionResolver,
-    onAiVisionSignal: ((webContents: WebContents, payload: string, executionContextId: number, mainContext: boolean) => void) | undefined,
+    // A getter, not the callback itself: cdp-service builds these methods at module load, before
+    // startCdpService() supplies the callback.
+    getAiVisionSignal: () => ((webContents: WebContents, payload: string, executionContextId: number, mainContext: boolean) => void) | undefined,
     clearTransientTargetState: (key: string) => void,
 ) {
     return {
         async cdpAttach(event: Electron.IpcMainInvokeEvent, key: string, options?: CdpAttachOptions): Promise<boolean> {
+            const onAiVisionSignal = getAiVisionSignal();
             const target = resolveTarget(key, event.sender);
             if (target.kind === "app") {
                 const wc = target.webContents;

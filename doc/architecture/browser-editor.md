@@ -1478,9 +1478,10 @@ The facade has an optional page-authored `.app` child. After `did-stop-loading` 
 `BrowserPageRemote` probes `window.__aiVision` and the app-owned WebMCP remote unless the existing
 privacy gate refuses the page. A valid serialized shape is retained per internal tab and document
 generation; `BrowserEditorFacade` mounts it through `createRemoteProxy` only for the active tab. A
-navigation, reload, tab switch, close, or model disposal invalidates that binding, so a prior
-document cannot answer a request for a new one. The proxy revalidates the live remote version
-through CDP before each request, so lazy revalidation remains correct even if a signal is missed.
+cross-document navigation, reload, tab switch, close, or model disposal invalidates that binding, so a prior
+document cannot answer a request for a new one. Same-document navigation keeps the registration and
+model shape across SPA route changes. A model read during an active probe waits up to 250 ms for
+registration before reporting that the member is absent. The proxy revalidates the live remote version through CDP before each request, so lazy revalidation remains correct even if a signal is missed.
 For a registered model, the probe also installs the package's `Runtime.addBinding` host signal. The
 main CDP service listens only for that binding's `Runtime.bindingCalled` message and routes it over
 the browser IPC event channel; a shape signal triggers a background re-probe, while a page
@@ -1640,7 +1641,8 @@ entry for page code that needs candidates. `page-scripts.ts` owns `resolveCandid
 selector grammar; every shared selector consumer routes through that entry. `locator-reads.ts` owns
 strict locator reads and bulk capture, while `wait-for-function.ts` owns page predicate waits.
 `json-value.ts` validates JSON-safe page arguments and results, and `context-loss.ts` centralizes
-navigation/context-loss classification. `mouse.ts`, `keyboard.ts`, and `forms.ts` perform input;
+navigation/context-loss classification. `mouse.ts` composes locator clicks, hover, and drag; `pointer-actions.ts` owns the low-level `mouseDown`, `mouseMove`, `mouseUp`, and `wheel`
+operations plus shared pointer state and dispatch helpers. `keyboard.ts` and `forms.ts` perform keyboard and form input;
 `focus.ts` focuses an actionable element in its own document without pointer input;
 `queries.ts` handles evaluation, queries, and waits; `page-events.ts` reads readiness, dialogs,
 console, and page errors; `navigation.ts` owns navigation and response waits; `page-state.ts` owns
@@ -1704,6 +1706,23 @@ refs use the app-window or resolved frame session. Same-process ancestor frame o
 by the target. The app target's webview boundary remains separate: its snapshot includes the active
 page subtree allowed by the target but excludes browser webviews and their frames.
 
+Before a locator click presses, the resolver settles for one animation frame after moving the
+pointer, then re-hit-tests and resolves a replaced target (up to three rounds). This lets hover
+handlers finish replacing their target before press. Browser and board left clicks also check that
+the trusted release dispatched a `click`; if press and release hit different elements, or the
+expected click does not arrive, the error identifies the change. A release that closes its own popup
+counts as delivered when the guest context disappears at the release boundary. `checkClick: false`
+opts out for pages that intentionally act on press. This post-release check is not used for `clickAt()` or
+`window.screen`.
+
+`hover()` moves the trusted pointer and best-effort forces CSS `:hover` on the target and
+composed ancestors in browser pages. The forced state is cleared on the next pointer action because DOM node IDs can become invalid
+after a document query. `click()` uses `hoverFirst: true` by default:
+after an initial not-visible result it reveals the target once and retries; `hoverFirst: false`
+opts out. `mouseDown`, `mouseMove`, `mouseUp`, and `wheel` expose trusted low-level pointer actions
+to browser pages, board pages, and `window.screen`; held buttons are released when the automation
+session or test page is cleaned up.
+
 `type()` focuses by trusted click, replaces existing content, and inserts through CDP for text-like
 inputs and contenteditable. For text inputs, selection runs on the resolved element in its own
 frame; `clear()` uses the same selection path. Mapped `slowly` characters produce key events; native date/time/color/
@@ -1712,8 +1731,9 @@ range controls use validated value assignment and untrusted `input`/`change`; fi
 untrusted `input`/`change`; custom dropdowns use trusted click and keys. It currently also receives
 full pointer actionability and hit-testing. Ctrl+C/V use the OS clipboard without save/restore.
 
-CSS `:hover` does not apply inside browser `<webview>` elements, even though trusted pointer events
-are delivered. This limitation is specific to browser webviews; page script listeners can respond.
+Trusted pointer movement applies native `:hover` in the browser guest. Explicit hover forcing covers
+targets that need a persistent pseudo-state for subsequent actionability checks; it is best-effort
+and does not turn a successful native hover into a failed action.
 
 Selector strings support CSS plus the `text=`, `role=`, `label=`, `placeholder=`, `testid=`,
 `title=`, `alt=`, and `ref=` engines. Chaining and filters are parsed only by `resolveCandidates`;

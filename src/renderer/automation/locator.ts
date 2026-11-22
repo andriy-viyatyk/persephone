@@ -51,6 +51,16 @@ export interface ClickActionOptions extends MouseActionOptions {
     button?: "left" | "right" | "middle";
     clickCount?: number;
     nativeMenu?: boolean;
+    hoverFirst?: boolean;
+    checkClick?: boolean;
+}
+export interface PointerActionOptions extends MouseActionOptions {
+    button?: "left" | "right" | "middle";
+    nativeMenu?: boolean;
+    steps?: number;
+}
+export interface WheelActionOptions extends Omit<MouseActionOptions, "position"> {
+    position?: MousePosition;
 }
 export interface DragOptions {
     tabId?: string; position?: MousePosition; targetPosition?: MousePosition; modifiers?: MouseModifier[];
@@ -63,6 +73,7 @@ export interface ActionablePoint {
     width: number;
     height: number;
     description: string;
+    identity: number;
     locator: ElementLocator;
     cdp: IInputSession["cdp"];
     sessionId?: string;
@@ -72,18 +83,29 @@ const DEFAULT_ACTION_TIMEOUT = 5000;
 const MAX_ACTION_TIMEOUT = 28000;
 const RETRY_INTERVAL = 100;
 
+const DESCRIBE_ELEMENT_SOURCE = `el => {
+    if (!el) return 'unknown element';
+    const id = el.id ? '#' + el.id : '';
+    const classes = typeof el.className === 'string' && el.className.trim()
+        ? '.' + el.className.trim().split(/\\s+/).slice(0, 3).join('.') : '';
+    const label = el.getAttribute('aria-label') || el.getAttribute('title') || el.textContent?.trim().slice(0, 60);
+    return '<' + el.localName + id + classes + '>' + (label ? ' ' + JSON.stringify(label) : '');
+}`;
+
+const NODE_IDENTITY_SOURCE = `el => {
+    const key = Symbol.for('persephone.automation.node-identities');
+    let state = window[key];
+    if (!state) { state = { ids: new WeakMap(), next: 1 }; window[key] = state; }
+    if (!state.ids.has(el)) state.ids.set(el, state.next++);
+    return state.ids.get(el);
+}`;
+
 function actionabilityFunction(): string {
     // hitTest=false (programmatic operations such as select) keeps the other checks but skips
     // the receives-pointer-events test: nothing is dispatched at a point.
     return `async function(resolve, selector, nth, force, position, hitTest = true) {
-        const describe = el => {
-            if (!el) return 'unknown element';
-            const id = el.id ? '#' + el.id : '';
-            const classes = typeof el.className === 'string' && el.className.trim()
-                ? '.' + el.className.trim().split(/\\s+/).slice(0, 3).join('.') : '';
-            const label = el.getAttribute('aria-label') || el.getAttribute('title') || el.textContent?.trim().slice(0, 60);
-            return '<' + el.localName + id + classes + '>' + (label ? ' ' + JSON.stringify(label) : '');
-        };
+        const describe = ${DESCRIBE_ELEMENT_SOURCE};
+        const identity = ${NODE_IDENTITY_SOURCE};
         const displayed = el => { const style = getComputedStyle(el); return style.visibility !== 'hidden' && style.display !== 'none'; };
         let el = this;
         if (resolve !== null) {
@@ -184,15 +206,52 @@ function actionabilityFunction(): string {
         }
         const x = bounds.left + localX, y = bounds.top + localY;
         ${FRAME_OFFSETS_FN}
-        return { x, y, frameOffsets, width: bounds.width, height: bounds.height, description: describe(el) };
+        return { x, y, frameOffsets, width: bounds.width, height: bounds.height, description: describe(el), identity: identity(el) };
     }`;
+}
+
+export interface HitTargetRecheck {
+    matchesResolvedTarget: boolean;
+    covered: boolean;
+    description: string;
+}
+
+/** Recheck the current locator identity and hit target after its pointer-move hover work settles. */
+export async function recheckHitTarget(action: ActionablePoint, nth?: number): Promise<HitTargetRecheck> {
+    const body = `resolve => {
+        const describe = ${DESCRIBE_ELEMENT_SOURCE};
+        const identity = ${NODE_IDENTITY_SOURCE};
+        const matches = resolve('action', { force: false });
+        const el = matches[${nth ?? 0}];
+        if (!el) return { matchesResolvedTarget: false, covered: false, description: 'unknown element' };
+        let hit = document.elementFromPoint(${JSON.stringify(action.x)}, ${JSON.stringify(action.y)});
+        const tooltip = hit?.closest('[data-type="tooltip"]');
+        if (tooltip) { tooltip.style.pointerEvents = 'none'; hit = document.elementFromPoint(${JSON.stringify(action.x)}, ${JSON.stringify(action.y)}); }
+        let reaches = hit === el || el.contains(hit);
+        let root = el.getRootNode();
+        while (!reaches && root instanceof ShadowRoot) { reaches = root.host === hit || root.host.contains(hit); root = root.host.getRootNode(); }
+        return { matchesResolvedTarget: identity(el) === ${action.identity}, covered: !reaches, description: describe(hit) };
+    }`;
+    if ("ref" in action.locator) {
+        try {
+            return await callOnRef(action.cdp, action.locator.ref, `function() {
+                const identity = ${NODE_IDENTITY_SOURCE};
+                const el = this;
+                let hit = document.elementFromPoint(${JSON.stringify(action.x)}, ${JSON.stringify(action.y)});
+                return { matchesResolvedTarget: identity(el) === ${action.identity}, covered: !(hit === el || el.contains(hit)), description: (${DESCRIBE_ELEMENT_SOURCE})(hit) };
+            }`, true);
+        } catch {
+            return { matchesResolvedTarget: false, covered: false, description: action.description };
+        }
+    }
+    return evaluateWithCandidates(action.cdp, action.locator.selector, body);
 }
 
 /** Resolve a locator and wait for the selected element to be actionable. */
 export async function resolveActionablePoint(
     target: IAutomationTarget,
     locator: ElementLocator,
-    options: MouseActionOptions & { hitTest?: boolean } = {},
+    options: MouseActionOptions & { hitTest?: boolean; hoverFirst?: boolean; onNotVisible?: () => Promise<void> } = {},
 ): Promise<ActionablePoint> {
     const baseCdp = target.cdp(options.tabId);
     const sessionId = "ref" in locator ? getRefSessionId(baseCdp, locator.ref) : undefined;
@@ -200,6 +259,7 @@ export async function resolveActionablePoint(
     const timeout = Math.min(Math.max(0, options.timeout ?? DEFAULT_ACTION_TIMEOUT), MAX_ACTION_TIMEOUT);
     const deadline = Date.now() + timeout;
     let lastReason: string;
+    let triedNotVisibleAction = false;
     while (true) {
         try {
             const result = "ref" in locator
@@ -218,7 +278,19 @@ export async function resolveActionablePoint(
             } else {
                 throw error;
             }
-            if (Date.now() >= deadline) throw new Error(`Timed out after ${timeout} ms: ${lastReason}`, { cause: error });
+            if (lastReason === "Element is not visible." && options.hoverFirst !== false && options.onNotVisible && !triedNotVisibleAction) {
+                triedNotVisibleAction = true;
+                // Best effort: a reveal that cannot be applied (no unique hidden match, a detached
+                // debugger) leaves the normal retry and its "not visible" hint in charge.
+                await options.onNotVisible().catch((): undefined => undefined);
+            }
+            if (Date.now() >= deadline) {
+                const hoverHint = lastReason === "Element is not visible."
+                    && (options.hoverFirst === false || triedNotVisibleAction)
+                    ? " If it appears on hover, hover its container first with hover()."
+                    : "";
+                throw new Error(`Timed out after ${timeout} ms: ${lastReason}${hoverHint}`, { cause: error });
+            }
             await new Promise(resolve => setTimeout(resolve, Math.min(RETRY_INTERVAL, deadline - Date.now())));
         }
     }

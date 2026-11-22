@@ -15,6 +15,7 @@ interface RecordingEntry {
     finalPath: string | undefined;
     handle: fs.promises.FileHandle;
     writeChain: Promise<void>;
+    stopOwnerLifecycle?: () => void;
 }
 
 const directory = () => path.join(getDataFolder(), "recordings");
@@ -30,6 +31,7 @@ function ownedEntry(ownerId: number, recordingId: string): RecordingEntry {
 async function removePartial(entry: RecordingEntry): Promise<void> {
     byId.delete(entry.id);
     byOwner.delete(entry.ownerId);
+    entry.stopOwnerLifecycle?.();
     clearRecordingMediaGrant(entry.ownerId);
     try { await entry.writeChain; } catch { /* A failed chunk still requires cleanup. */ }
     try { await entry.handle.close(); } catch { /* The handle may already be closed. */ }
@@ -76,7 +78,7 @@ export async function startRecording(owner: WebContents, region: RecordingRegion
     }
     const entry: RecordingEntry = { id, ownerId: owner.id, partialPath, finalPath: undefined, handle, writeChain: Promise.resolve() };
     byId.set(id, entry);
-    onWebContentsGone(owner, () => { void cancelRecordingsForOwner(owner.id); }, { events: ["destroyed", "render-process-gone"] });
+    entry.stopOwnerLifecycle = onWebContentsGone(owner, () => { void cancelRecordingsForOwner(owner.id); }, { events: ["destroyed", "render-process-gone"] });
     armRecordingMediaGrant(owner.id);
     return { recordingId: id, chromeMediaSourceId: browserWindow.getMediaSourceId(), path: partialPath };
 }
@@ -98,6 +100,7 @@ export async function finalizeRecording(ownerId: number, recordingId: string, ex
     await fs.promises.rename(entry.partialPath, entry.finalPath);
     byId.delete(entry.id);
     byOwner.delete(ownerId);
+    entry.stopOwnerLifecycle?.();
     return entry.finalPath;
 }
 

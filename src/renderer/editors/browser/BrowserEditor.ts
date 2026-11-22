@@ -46,6 +46,7 @@ import { BrowserShortcutTable } from "./BrowserShortcutTable";
 import { releaseBrowserClipboardTab } from "./BrowserClipboardFacade";
 import { BrowserGuestChannel } from "./BrowserGuestChannel";
 import { BrowserPopupModel } from "./BrowserPopupModel";
+import { releaseAutomationInputs } from "../../automation/input";
 import { BrowserSitePermissionsModel } from "./BrowserSitePermissionsModel";
 import { BrowserPageLinkOpener } from "./BrowserPageLinkOpener";
 import { fs as appFs } from "../../api/fs";
@@ -192,9 +193,25 @@ export class BrowserEditor extends EditorModel<
     armProfileNetwork = async (): Promise<void> => this.network.armProxy();
     showNetworkInfoDialog = async (): Promise<void> => this.network.showInfoDialog();
     retryProfileNetwork = async (): Promise<void> => { try { await this.network.armProxy(); } catch { /* `networkError` carries the error-panel reason. */ } };
-    releaseTab = (internalTabId: string): void => { releaseBrowserClipboardTab(this, internalTabId); this.automationMenuGuard.clearTab(internalTabId); this.popups.releaseTab(internalTabId); this.webview.clearPendingLoad(internalTabId); this.siteExtensions.onTabReleased(internalTabId); this.translation.onTabReleased(internalTabId); this.pageRemote.onTabReleased(internalTabId); };
+    releaseTab = (internalTabId: string): void => {
+        const registrationKeys = [this.guest.key(internalTabId), ...this.popups.list()
+            .filter(popup => popup.openerId === internalTabId).map(popup => this.guest.key(popup.id))];
+        void releaseAutomationInputs(registrationKeys).catch((): undefined => undefined);
+        releaseBrowserClipboardTab(this, internalTabId);
+        this.automationMenuGuard.clearTab(internalTabId);
+        this.popups.releaseTab(internalTabId);
+        this.webview.clearPendingLoad(internalTabId);
+        this.siteExtensions.onTabReleased(internalTabId);
+        this.translation.onTabReleased(internalTabId);
+        this.pageRemote.onTabReleased(internalTabId);
+    };
 
     async dispose(): Promise<void> {
+        const registrationKeys = [
+            ...this.state.get().tabs.map(tab => this.guest.key(tab.id)),
+            ...this.popups.list().map(popup => this.guest.key(popup.id)),
+        ];
+        await releaseAutomationInputs(registrationKeys).catch((): undefined => undefined);
         this.automationMenuGuard.dispose();
         this.popups.dispose();
         this.webview.dispose();

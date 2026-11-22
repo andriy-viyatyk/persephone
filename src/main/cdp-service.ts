@@ -328,7 +328,7 @@ export const cdpService = {
         return cdpDragIntercept.armDragIntercept({ ...context, isBoard: route.kind === "board" }, key, sessionId);
     },
     takeDragIntercept(token: string, waitMs: number) { return cdpDragIntercept.takeDragIntercept(token, waitMs); },
-    ...cdpBrowserTestFeatures.createCdpLifecycleMethods(resolveTarget, resolveBoardSession, onAiVisionSignalCallback, clearTransientTargetState),
+    ...cdpBrowserTestFeatures.createCdpLifecycleMethods(resolveTarget, resolveBoardSession, () => onAiVisionSignalCallback, clearTransientTargetState),
     async cdpSend(event: Electron.IpcMainInvokeEvent, key: string, method: string, params?: object, sessionId?: string) {
         const target = resolveTarget(key, event.sender);
         if (target.kind === "app") {

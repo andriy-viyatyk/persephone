@@ -77,15 +77,31 @@ filtered to actionable items with `interactive: true`, or bounded with `maxNodes
 The returned tree can omit content beyond its size budget, so use the suggested scope or interactive
 view when the snapshot reports that it was truncated.
 
-The shared methods include `click`, `hover`, `type`, `select`, `check`, `uncheck`, `clear`,
-`pressKey`, `keyDown`, `keyUp`, `drag`, `fillForm`, `setInputFiles`, `evaluate`, `waitFor`,
-`screenshot`, `waitForResponse`, `dialogs`, `handleDialog`, `consoleMessages`, and `pageErrors`.
+The shared methods include `click`, `hover`, `mouseDown`, `mouseMove`, `mouseUp`, `wheel`, `type`,
+`select`, `check`, `uncheck`, `clear`, `pressKey`, `keyDown`, `keyUp`, `drag`, `fillForm`,
+`setInputFiles`, `evaluate`, `waitFor`, `screenshot`, `waitForResponse`, `dialogs`, `handleDialog`,
+`consoleMessages`, and `pageErrors`.
 Element actions accept a CSS selector or snapshot ref. Selectors matching multiple visible elements
 fail with the match count; pass `{ nth }` to choose one, or use a ref. Actions check that the target
 is attached, visible, stable, enabled, and receives the event. `{ force: true }` skips those checks.
 Mouse and keyboard input is trusted by default. Pass `{ synthetic: true }` to supported input
 methods when a page specifically requires synthetic events. `select()` operates on native select
 elements programmatically; use trusted clicks and keys for custom dropdowns.
+
+`mouseDown()`, `mouseMove()`, and `mouseUp()` let a script hold a pointer button while it reads the
+page between movements. `wheel({ deltaX, deltaY }, target?)` sends trusted wheel input; omitted
+targets use the last pointer position. Targets can be locators or viewport CSS-pixel coordinates.
+Buttons remain held until released, and web-app test cleanup releases held buttons on pages adopted
+with `ctx.usePage()`.
+
+In browser and board guests, `hover()` also applies CSS `:hover` to the target and its ancestors
+until the next pointer action. On those pages, `click()` tries one hover reveal when its initial
+actionability check reports that a target is not visible; pass `{ hoverFirst: false }` to disable
+this. `window.screen` does not force CSS pseudo state or make this reveal attempt. On browser and
+board pages, trusted left clicks report an error when a recorded press and release produce no
+`click` event; pass `{ checkClick: false }` for pages that intentionally handle the press without a
+click. This check does not apply to `window.screen`. A click is treated as delivered if the page
+closes during its release, such as when a click closes an owned popup.
 
 `waitFor()` accepts one selector, text, disappearing text, or time condition. Browser pages also
 provide `waitForSelector()`, `waitForNavigation()`, `waitForURL()`, and `navigateAndWait()` for
@@ -116,6 +132,7 @@ hints, writable properties, methods, `elements`, and `highlight(...)`. Board hig
 the selected owning frame, including a secondary view; browser-page kinds use the `page:` prefix
 and remain confined to `.app`. User-opened private pages are rejected before probing. See the
 [Boards](../../boards/index.md) and [Browser](../../editors/browser/index.md) guides for the workflows.
+The model stays available through same-document SPA navigation while the page runtime remains alive.
 
 ### Board, Tools & Editors, and Mneme facades
 

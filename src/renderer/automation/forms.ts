@@ -129,7 +129,7 @@ export async function typeTextInto(
     const action = await resolveActionablePoint(target, locator, options);
     const details = await getEditableElementDetails(action, locator, options.nth);
     validateEditableElement(details);
-    await clickElement(target, locator, options);
+    await clickElement(target, locator, { ...options, checkClick: false });
     await fillResolvedElement(action, locator, text, options, details);
 }
 

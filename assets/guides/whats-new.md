@@ -19,6 +19,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
   `--test-timeout` or its per-test `timeout` option, and share setup and cleanup through file hooks.
   Prepare pages with document-start scripts and a fake clock, save or apply browser storage state,
   capture downloads, route requests, and use the page-scoped clipboard without reading the OS clipboard.
+- **Browser automation follows pointer state more closely.** Hover-revealed controls can be exposed
+  before clicking, clicks that never reach the page are reported, and scripts can hold and move a
+  pointer button while inspecting the page. Test cleanup releases held buttons and keys, and page
+  models stay available during same-document SPA navigation.
 - **Drop a folder to browse it:** dropping one folder from Windows Explorer onto Persephone now
   opens a new page with the Explorer panel rooted at that folder. Dropping several files or folders
   still opens a link collection page.

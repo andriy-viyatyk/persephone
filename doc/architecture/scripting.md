@@ -701,7 +701,8 @@ operations through `AutomationSurface` in `/src/renderer/scripting/api-wrapper/`
 centralizes readiness, activity leases, and browser tip recording. The underlying work is split
 among `selector-execution.ts`, `page-scripts.ts`, `locator.ts`, `locator-reads.ts`,
 `wait-for-function.ts`, `mouse.ts`, `keyboard.ts`, `forms.ts`, `queries.ts`, `page-events.ts`,
-`navigation.ts`, `page-state.ts`, and `synthetic.ts`; CDP input coordinate mapping lives in
+`navigation.ts`, `page-state.ts`, and `synthetic.ts`; `pointer-actions.ts` owns low-level trusted
+pointer operations and held-button state, while CDP input coordinate mapping lives in
 `input-session.ts`. Targets implement narrow
 capability interfaces in `automation/types.ts` so an operation depends only on the host methods it
 uses. Browser pages add navigation and inner-tab management; boards add frame selection and board
@@ -1475,7 +1476,8 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 ├── json-value.ts                 # JSON-safe automation value validation
 ├── input-session.ts             # CDP input session and shared coordinate mapping
 ├── locator.ts                   # Actionability and locator action resolution
-├── mouse.ts                     # Mouse operations and pointer dispatch
+├── mouse.ts                     # Locator click, hover, and drag orchestration
+├── pointer-actions.ts           # Low-level pointer actions, state, and dispatch
 ├── keyboard.ts                  # Keyboard operations and modifier mapping
 ├── forms.ts                     # Form controls and file input operations
 ├── queries.ts                   # Queries, evaluation, and waits

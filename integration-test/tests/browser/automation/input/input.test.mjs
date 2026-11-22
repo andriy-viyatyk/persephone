@@ -5,6 +5,10 @@ async function openInputPage(ctx, file = "input-controls.html") {
     return openBrowserPage(ctx, fixturePage(ctx, "automation", file));
 }
 
+async function openHoverPage(ctx) {
+    return openBrowserPage(ctx, fixturePage(ctx, "automation", "input-hover.html"));
+}
+
 async function captureError(operation) {
     try {
         await operation();
@@ -100,6 +104,31 @@ export default [
             await editor.hover("#hover-action");
             ctx.expect(await editor.evaluate("() => window.results.clicks")).toBe(1);
             ctx.expect(await editor.evaluate("() => window.results.pointerEvents.includes('pointerover:hover-action') && window.results.pointerEvents.includes('pointerenter:hover-action')")).toBe(true);
+        } finally {
+            await closeBrowserPage(ctx, page);
+        }
+    }),
+
+    test("hover applies CSS pseudo state and click reveals hidden targets once", async (ctx) => {
+        const page = await openHoverPage(ctx);
+        try {
+            const editor = ctx.app.pages[page.id].editor;
+            await editor.waitFor({ selector: "#hover-row" });
+            await editor.hover("#hover-row");
+            ctx.expect(await editor.evaluate("() => document.querySelector('#hover-row').matches(':hover') && getComputedStyle(document.querySelector('#menu-after-hover')).visibility === 'visible'")).toBe(true);
+            await editor.click("#menu-after-hover");
+
+            await editor.click("#menu-auto");
+            ctx.expect(await editor.evaluate("() => window.results")).toEqual(["hover", "auto"]);
+
+            await editor.hover("#reset"); // move the native pointer off the row first
+            const hiddenError = await captureError(() => editor.click("#menu-auto", { hoverFirst: false, timeout: 100 }));
+            ctx.expect(hiddenError?.message).toContain("Timed out after 100 ms: Element is not visible. If it appears on hover, hover its container first with hover().");
+
+            await editor.hover("#click-row");
+            await editor.snapshot({ interactive: true }); // DOM reads may acquire fresh node IDs.
+            await editor.click("#reset");
+            ctx.expect(await editor.evaluate("() => getComputedStyle(document.querySelector('#menu-auto')).visibility")).toBe("hidden");
         } finally {
             await closeBrowserPage(ctx, page);
         }

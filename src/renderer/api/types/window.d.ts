@@ -17,6 +17,11 @@ import type {
     IBrowserTypeOptions,
     IBrowserSelectOptions,
     IBrowserActionOptions,
+    IBrowserPointerTarget,
+    IBrowserPointerOptions,
+    IBrowserMouseMoveOptions,
+    IBrowserWheelOptions,
+    IBrowserWheelDelta,
     IBrowserKeyboardOptions,
     IBrowserNetworkRequest,
     IBrowserResponse,
@@ -37,6 +42,12 @@ import type {
     IBrowserWaitForFunctionOptions,
     IBrowserJsonValue,
 } from "./browser-editor";
+export type IWindowScreenPointerOptions = Omit<IBrowserPointerOptions, "tabId">;
+export type IWindowScreenMouseMoveOptions = Omit<IBrowserMouseMoveOptions, "tabId">;
+export type IWindowScreenWheelOptions = Omit<IBrowserWheelOptions, "tabId">;
+
+/** App-window click options omit the browser/board page click-event check. */
+export type IWindowScreenClickOptions = Omit<IBrowserClickOptions, "checkClick">;
 
 export interface IMenuBarFolder {
     /** Current folder identifier; use this value with `window.menuBar.open()`. */
@@ -85,12 +96,20 @@ export interface IWindowScreen {
     /** Build the complete current app-window accessibility snapshot. */
     /** Get the app-window snapshot; `root`, `interactive`, `maxNodes`, and `maxChars` narrow or bound the tree. */
     snapshot(options?: { tabId?: string; root?: string | { ref: string }; interactive?: boolean; maxNodes?: number; maxChars?: number }): Promise<string>;
-    /** Click an app-window element by CSS selector or explicit snapshot ref. */
-    click(locator: IBrowserElementLocator, options?: IBrowserClickOptions): Promise<void>;
+    /** Click an app-window element; hoverFirst defaults true, but the app window does not force CSS pseudo state. */
+    click(locator: IBrowserElementLocator, options?: IWindowScreenClickOptions): Promise<void>;
     /** Focus a visible app-window element without dispatching pointer input. */
     focus(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void>;
     /** Trusted click at app-window renderer viewport CSS pixels from the top-left. */
     clickAt(position: { x: number; y: number }): Promise<void>;
+    /** Press a button (left by default) at an app locator or renderer viewport CSS point; it stays held until mouseUp. */
+    mouseDown(target: IBrowserPointerTarget, options?: IWindowScreenPointerOptions): Promise<void>;
+    /** Move with locator actionability while preserving held-button state. */
+    mouseMove(target: IBrowserPointerTarget, options?: IWindowScreenMouseMoveOptions): Promise<void>;
+    /** Release the selected held button at target or the last tracked pointer point. */
+    mouseUp(target?: IBrowserPointerTarget, options?: IWindowScreenPointerOptions): Promise<void>;
+    /** Send trusted wheel deltas in CSS pixels at target or the last tracked point. */
+    wheel(delta: IBrowserWheelDelta, target?: IBrowserPointerTarget, options?: IWindowScreenWheelOptions): Promise<void>;
     /** Hover an app-window element by CSS selector or explicit snapshot ref. */
     hover(locator: IBrowserElementLocator, options?: IBrowserHoverOptions): Promise<void>;
     /** Type into an app-window input, clearing its existing value first. */

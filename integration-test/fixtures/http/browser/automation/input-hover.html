@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Hover pseudo-state</title>
+  <style>
+    .row { margin: 24px; padding: 16px; width: 240px; border: 1px solid; }
+    .menu { visibility: hidden; margin-top: 8px; }
+    .row.vis:hover .menu { visibility: visible; }
+  </style>
+</head>
+<body>
+  <div class="row vis" id="hover-row">
+    Hover row
+    <button class="menu" id="menu-after-hover" onclick="window.results.push('hover')">After explicit hover</button>
+  </div>
+  <div class="row vis" id="click-row">
+    Click row
+    <button class="menu" id="menu-auto" onclick="window.results.push('auto')">Auto reveal</button>
+  </div>
+  <button id="reset">Reset pointer</button>
+  <script>window.results = [];</script>
+</body>
+</html>

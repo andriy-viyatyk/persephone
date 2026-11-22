@@ -112,7 +112,8 @@ await app.window.screen.waitFor({ text: "Settings" });
 ```
 
 The shared page automation methods are also available here, including `check()`, `uncheck()`,
-`clear()`, `drag()`, `fillForm()`, `setInputFiles()`, `keyDown()`, `keyUp()`, `waitForResponse()`,
+`clear()`, `drag()`, `mouseDown()`, `mouseMove()`, `mouseUp()`, `wheel()`, `fillForm()`,
+`setInputFiles()`, `keyDown()`, `keyUp()`, `waitForResponse()`,
 `dialogs()`, `handleDialog()`, `consoleMessages()`, and `pageErrors()`. `snapshot()` accepts
 `root`, `interactive`, `maxNodes`, and `maxChars`; element methods accept either a CSS selector or
 `{ ref: "eN" }` from a snapshot. `waitFor()` accepts exactly one of `selector`, `text`, `textGone`,
@@ -134,6 +135,12 @@ checks. `dragTo()` uses the same dispatch path as `drag()` and preserves HTML5 d
 browser-page targets. In Persephone's app window, a drag that starts an HTML5 drag is cancelled and
 reports an error instead of starting a Windows file drag; use the Explorer's context-menu actions
 or object-model methods for those operations. Pointer drags such as resizing a splitter still work.
+
+`mouseDown()`, `mouseMove()`, and `mouseUp()` support a held pointer sequence; `wheel()` sends
+trusted wheel deltas in CSS pixels. These methods accept a locator or app-window viewport point.
+Omit the `mouseUp()` target to release at the last pointer position, and omit the `wheel()` target
+to scroll there. Unlike browser and board pages, `window.screen` does not force CSS `:hover` or
+check whether a left click dispatched a `click` event.
 
 The app-window host follows the browser privacy guard: it cannot automate a user-opened incognito or
 Tor page while that page is active. Agent-opened private pages remain available to that agent.

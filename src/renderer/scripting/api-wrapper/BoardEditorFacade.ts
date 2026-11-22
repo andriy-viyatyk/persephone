@@ -32,6 +32,11 @@ import type {
     IBrowserQueryResult,
     IBrowserWaitForFunctionOptions,
     IBrowserJsonValue,
+    IBrowserPointerTarget,
+    IBrowserPointerOptions,
+    IBrowserMouseMoveOptions,
+    IBrowserWheelOptions,
+    IBrowserWheelDelta,
 } from "../../api/types/browser-editor";
 import {
     createRemoteProxy,
@@ -136,7 +141,7 @@ export class BoardEditorFacade extends EditorFacadeBase<BoardEditorModel> implem
         maxChars?: number;
     }): Promise<string> { return this.automation.snapshot(options); }
 
-    /** Click a board element by CSS selector or explicit snapshot ref. */
+    /** Click a board element; hoverFirst defaults true and reveals once after a not-visible result. */
     click(locator: IBrowserElementLocator, options?: IBrowserClickOptions): Promise<void> { return this.automation.click(locator, options); }
 
     focus(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void> { return this.automation.focus(locator, options); }
@@ -144,6 +149,10 @@ export class BoardEditorFacade extends EditorFacadeBase<BoardEditorModel> implem
     clickAt(position: { x: number; y: number }, options?: { tabId?: string }): Promise<void> { return this.automation.clickAt(position, options); }
 
     dragTo(points: { from: { x: number; y: number }; to: { x: number; y: number } }, options?: { tabId?: string; steps?: number; holdMs?: number }): Promise<void> { return this.automation.dragTo(points, options); }
+    mouseDown(target: IBrowserPointerTarget, options?: IBrowserPointerOptions): Promise<void> { return this.automation.mouseDown(target, options); }
+    mouseMove(target: IBrowserPointerTarget, options?: IBrowserMouseMoveOptions): Promise<void> { return this.automation.mouseMove(target, options); }
+    mouseUp(target?: IBrowserPointerTarget, options?: IBrowserPointerOptions): Promise<void> { return this.automation.mouseUp(target, options); }
+    wheel(delta: IBrowserWheelDelta, target?: IBrowserPointerTarget, options?: IBrowserWheelOptions): Promise<void> { return this.automation.wheel(delta, target, options); }
 
     /** Hover a board element by CSS selector or explicit snapshot ref. */
     hover(locator: IBrowserElementLocator, options?: IBrowserHoverOptions): Promise<void> { return this.automation.hover(locator, options); }

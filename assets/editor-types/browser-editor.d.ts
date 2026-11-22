@@ -83,10 +83,30 @@ export interface IBrowserClickOptions {
     modifiers?: IBrowserMouseModifier[];
     position?: IBrowserMousePosition;
     force?: boolean;
+    /** Default true: reveal once after a not-visible result; false keeps the no-auto-hover behavior. */
+    hoverFirst?: boolean;
+    /** Default true for browser and board pages: report trusted left clicks that dispatch no click event; pass false for press-driven pages. */
+    checkClick?: boolean;
     synthetic?: boolean;
     nth?: number;
     timeout?: number;
 }
+/** Locator actionability and trusted pointer options shared by mouseDown/mouseMove/mouseUp. */
+export interface IBrowserPointerOptions extends IBrowserActionOptions {
+    position?: IBrowserMousePosition;
+    modifiers?: IBrowserMouseModifier[];
+    button?: "left" | "right" | "middle";
+    /** Only meaningful for right-button mouseDown on browser guests. */
+    nativeMenu?: boolean;
+}
+/** Options for mouseMove; steps counts interpolated move events and is capped at 1000. */
+export interface IBrowserMouseMoveOptions extends IBrowserPointerOptions { steps?: number }
+export interface IBrowserWheelOptions extends IBrowserActionOptions {
+    modifiers?: IBrowserMouseModifier[];
+    position?: IBrowserMousePosition;
+}
+export type IBrowserPointerTarget = IBrowserElementLocator | IBrowserMousePosition;
+export interface IBrowserWheelDelta { deltaX: number; deltaY: number }
 export interface IBrowserHoverOptions {
     tabId?: string;
     position?: IBrowserMousePosition;
@@ -320,6 +340,14 @@ export interface IBrowserEditor {
     clickAt(position: IBrowserMousePosition, options?: IBrowserCoordinateOptions): Promise<void>;
     /** Trusted drag between selected page viewport CSS pixel coordinates. */
     dragTo(points: { from: IBrowserMousePosition; to: IBrowserMousePosition }, options?: IBrowserDragTimingOptions): Promise<void>;
+    /** Move to a locator (with hover actionability) or viewport CSS pixel point and press a button (left by default); the button stays held until mouseUp. */
+    mouseDown(target: IBrowserPointerTarget, options?: IBrowserPointerOptions): Promise<void>;
+    /** Move to a locator or viewport CSS pixel point; steps defaults to one and preserves held-button state. */
+    mouseMove(target: IBrowserPointerTarget, options?: IBrowserMouseMoveOptions): Promise<void>;
+    /** Release the selected held button (left by default); omit target to release at the last pointer point. */
+    mouseUp(target?: IBrowserPointerTarget, options?: IBrowserPointerOptions): Promise<void>;
+    /** Send trusted wheel deltas in CSS pixels at target or the last tracked pointer point. */
+    wheel(delta: IBrowserWheelDelta, target?: IBrowserPointerTarget, options?: IBrowserWheelOptions): Promise<void>;
 
     // --- Query methods ---
 

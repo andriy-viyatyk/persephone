@@ -7,10 +7,11 @@ import type {
     IBrowserHoverOptions, IBrowserKeyboardOptions, IBrowserNetworkRequest, IBrowserResponse,
     IBrowserResponseWaitOptions, IBrowserScreenshot, IBrowserScreenshotOptions, IBrowserSelectOptions,
     IBrowserTypeOptions,
+    IBrowserPointerTarget, IBrowserPointerOptions, IBrowserMouseMoveOptions, IBrowserWheelOptions, IBrowserWheelDelta,
     IBrowserLocatorReadOptions, IBrowserQueryOptions, IBrowserQueryResult, IBrowserWaitForFunctionOptions, IBrowserJsonValue,
 } from "./types/browser-editor";
 import { appTarget } from "../automation/AppTargetModel";
-import { clickAtCoordinates, dragCoordinates } from "../automation/mouse";
+import { clickAtCoordinates, dragCoordinates, mouseDown as mouseDownOperation, mouseMove as mouseMoveOperation, mouseUp as mouseUpOperation, wheel as wheelOperation } from "../automation/mouse";
 import type { UrlPatternInput } from "../automation/navigation";
 import { AutomationSurface } from "../scripting/api-wrapper/AutomationSurface";
 
@@ -42,6 +43,18 @@ export class WindowScreen implements IWindowScreen {
     click(locator: IBrowserElementLocator, options?: IBrowserClickOptions): Promise<void> { return this.automation.click(locator, options); }
     clickAt(position: { x: number; y: number }): Promise<void> {
         return this.automation.runHostOperation("clickAt", undefined, () => clickAtCoordinates(appTarget, position, {}, { focusHost: false }), { passive: false, tip: false });
+    }
+    mouseDown(target: IBrowserPointerTarget, options?: IBrowserPointerOptions): Promise<void> {
+        return this.automation.runHostOperation("mouseDown", undefined, () => mouseDownOperation(appTarget, target, options), { passive: false, tip: false });
+    }
+    mouseMove(target: IBrowserPointerTarget, options?: IBrowserMouseMoveOptions): Promise<void> {
+        return this.automation.runHostOperation("mouseMove", undefined, () => mouseMoveOperation(appTarget, target, options), { passive: false, tip: false });
+    }
+    mouseUp(target?: IBrowserPointerTarget, options?: IBrowserPointerOptions): Promise<void> {
+        return this.automation.runHostOperation("mouseUp", undefined, () => mouseUpOperation(appTarget, target, options), { passive: false, tip: false });
+    }
+    wheel(delta: IBrowserWheelDelta, target?: IBrowserPointerTarget, options?: IBrowserWheelOptions): Promise<void> {
+        return this.automation.runHostOperation("wheel", undefined, () => wheelOperation(appTarget, delta, target, options), { passive: false, tip: false });
     }
     focus(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void> { return this.automation.focus(locator, options); }
     hover(locator: IBrowserElementLocator, options?: IBrowserHoverOptions): Promise<void> { return this.automation.hover(locator, options); }

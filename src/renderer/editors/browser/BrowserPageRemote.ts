@@ -19,6 +19,7 @@ import { DEFAULT_URL } from "./browser-state";
 import { normalizePageModelReply } from "./page-model-reply";
 import { isAutomationContextLoss } from "../../automation/context-loss";
 import { convertSiteModelRefs } from "./page-model-refs";
+import { withTimeout } from "../../core/utils/utils";
 import type { BrowserEditor } from "./BrowserEditor";
 import type { BrowserEditorState } from "./browser-state";
 
@@ -35,6 +36,8 @@ const MAX_AI_VISION_NOTIFY_LENGTH = 512;
 const AI_VISION_NOTIFY_LIMIT = 5;
 const AI_VISION_NOTIFY_WINDOW_MS = 60_000;
 const AI_VISION_LATE_PROBE_INTERVAL_MS = 1_000;
+// Tuning limits for page-model discovery.
+const PAGE_MODEL_PROBE_WAIT_MS = 250;
 
 export interface BrowserAiVisionRegistration {
     readonly internalTabId: string;
@@ -72,6 +75,7 @@ export class BrowserPageRemote {
     private readonly generations = new Map<string, number>();
     private readonly warnedShapes = new Set<string>();
     private readonly probedGenerations = new Set<string>();
+    private readonly activeProbes = new Map<string, Promise<void>>();
     private readonly notifyTimes: number[] = [];
     private readonly lateProbeTimes = new Map<string, number>();
     private readonly lateProbeTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -85,6 +89,24 @@ export class BrowserPageRemote {
 
     getRegistration = (tabId = this.model.state.get().activeTabId): BrowserAiVisionRegistration | undefined =>
         this.registrations.get(tabId);
+
+    /** True while the tab has a model or a probe that may register one is running. */
+    mayHaveRegistration = (tabId = this.model.state.get().activeTabId): boolean => {
+        if (this.getRegistration(tabId)) return true;
+        const generation = this.documentGeneration(tabId);
+        return generation !== undefined && this.activeProbes.has(`${tabId}:${generation}`);
+    };
+
+    waitForRegistration = async (tabId = this.model.state.get().activeTabId): Promise<BrowserAiVisionRegistration | undefined> => {
+        const registration = this.getRegistration(tabId);
+        if (registration) return registration;
+        const generation = this.documentGeneration(tabId);
+        if (generation === undefined) return undefined;
+        const probe = this.activeProbes.get(`${tabId}:${generation}`);
+        if (!probe) return undefined;
+        await withTimeout(probe, PAGE_MODEL_PROBE_WAIT_MS, undefined);
+        return this.getRegistration(tabId);
+    };
 
     hasRegisteredTab = (tabId: string): boolean => this.registeredTabs.has(tabId);
 
@@ -178,8 +200,6 @@ export class BrowserPageRemote {
 
     onLoadStart(tabId: string): void {
         this.liveModelAtLoadStart.set(tabId, !!this.getRegistration(tabId));
-        this.clear(tabId);
-        this.pendingShapeComparisons.delete(tabId);
     }
 
     onLoadStop(tabId: string): void {
@@ -428,17 +448,32 @@ export class BrowserPageRemote {
         }
     }
 
-    private async probe(tabId: string): Promise<void> {
+    private probe(tabId: string): Promise<void> {
         if (!this.canAccessPage()) {
             this.clear(tabId);
-            return;
+            return Promise.resolve();
         }
         const generation = this.documentGeneration(tabId);
         const webview = this.model.webview.get(tabId);
-        if (generation === undefined || !webview || !this.model.webview.isReady(tabId)) return;
+        if (generation === undefined || !webview || !this.model.webview.isReady(tabId)) return Promise.resolve();
         const probeKey = `${tabId}:${generation}`;
-        if (this.probedGenerations.has(probeKey)) return;
+        const activeProbe = this.activeProbes.get(probeKey);
+        if (activeProbe) return activeProbe;
+        if (this.probedGenerations.has(probeKey)) return Promise.resolve();
         this.probedGenerations.add(probeKey);
+        const probe = this.probeGeneration(tabId, generation, webview);
+        const active = probe.finally(() => {
+            if (this.activeProbes.get(probeKey) === active) this.activeProbes.delete(probeKey);
+        });
+        this.activeProbes.set(probeKey, active);
+        return active;
+    }
+
+    private async probeGeneration(
+        tabId: string,
+        generation: number,
+        webview: NonNullable<ReturnType<BrowserEditor["webview"]["get"]>>,
+    ): Promise<void> {
         let serialized: unknown;
         try {
             const cdp = this.model.target.cdp(tabId);

@@ -79,6 +79,10 @@ export const BOARD_MEMBERS: readonly IAiMember[] = [
 
 export const BOARD_AUTOMATION_TAB_MEMBERS: readonly IAiMember[] = [
     method("clickAt", "clickAt(position: { x: number; y: number }, options?: { tabId?: string }): Promise<void>", "Trusted click at selected board-frame viewport CSS pixels from the top-left; points beyond the viewport are left to Chromium to clip."),
+    method("mouseDown", "mouseDown(target: IBrowserPointerTarget, options?: IBrowserPointerOptions): Promise<void>", "Press left by default at an actionable locator or selected board-frame viewport CSS-pixel point; the trusted button stays held until mouseUp."),
+    method("mouseMove", "mouseMove(target: IBrowserPointerTarget, options?: IBrowserMouseMoveOptions): Promise<void>", "Move to an actionable locator or viewport point while preserving the complete held-button bitmask; steps defaults to one and is capped at 1000."),
+    method("mouseUp", "mouseUp(target?: IBrowserPointerTarget, options?: IBrowserPointerOptions): Promise<void>", "Release left by default at target or the last tracked point; the selected button must be held."),
+    method("wheel", "wheel(delta: { deltaX: number; deltaY: number }, target?: IBrowserPointerTarget, options?: IBrowserWheelOptions): Promise<void>", "Send trusted wheel deltas unchanged in CSS pixels at target or the last tracked pointer point."),
     method("dragTo", "dragTo({ from: { x: number; y: number }, to: { x: number; y: number } }, options?: { tabId?: string; steps?: number; holdMs?: number }): Promise<void>", "Trusted drag between selected board-frame viewport CSS pixels, with optional move count and pre-move hold."),
     property("tabs", "List the board's main frame and declared secondary-view frames."),
     property("activeTab", "The selected board frame, or undefined when no frame is active."),
@@ -148,12 +152,20 @@ available. As verified live by US-1335, snapshots contain no password or plain-t
 evaluate() and existing value reads remain capable of exposing page data.
 
 clickAt() and dragTo() use trusted coordinates in the selected board frame's viewport CSS pixels;
+mouseDown(), mouseMove(), and mouseUp() keep trusted button state across calls so page state can be
+inspected before release. Locator targets share hover actionability; coordinate targets use the
+selected frame's viewport CSS pixels. wheel() passes finite deltas through in CSS pixels and uses
+the last tracked pointer point when target is omitted. Adopted ctx.usePage pages release held input
+at test cleanup; retiring frames also discard their input state.
 they do not use host-window or board offsets. click() and hover() use trusted CDP mouse input by default and retry actionability failures for up
-to 5 seconds. Actionable targets scroll within nested containers before hit testing; if the chosen
+to 5 seconds. Hover also forces CSS :hover on the target and composed ancestors until the next
+pointer action. click() checks visibility before moving; hoverFirst defaults to true and attempts
+one reveal only after a not-visible actionability result. Set hoverFirst: false to disable it.
+Actionable targets scroll within nested containers before hit testing; if the chosen
 point remains clipped, the timeout names the nearest inspectable clipping container. More than one
 visible selector match fails immediately; use a snapshot ref, narrow
 the selector, or pass a zero-based { nth } index among visible matches. Click accepts button,
-clickCount, modifiers, position, force, synthetic, nth, timeout and tabId; hover accepts position,
+clickCount, hoverFirst, checkClick, modifiers, position, force, synthetic, nth, timeout and tabId. Left clicks check for a dispatched click by default; pass { checkClick: false } for pages that act on press. Hover accepts position,
 modifiers, force, synthetic, nth, timeout and tabId. Hover sends one pointer move. Pass
 { synthetic: true } for board code that needs legacy DOM-event behavior.
 

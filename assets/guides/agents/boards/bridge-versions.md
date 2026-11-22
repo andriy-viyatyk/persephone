@@ -6,6 +6,20 @@ summary: "Which bridge version added each persephone.* member and manifest field
 
 # Boards — bridge version history and compatibility
 
+Bridge `1.62.0` treats a trusted click as delivered when the target closes during the release command,
+adds `hoverFirst` to click options (default true; automatic hover reveal runs only after a not-visible
+actionability result), and applies CSS `:hover` to browser and board guests until the next pointer action.
+Trusted browser and board left-clicks also check that the page dispatched a `click` event by default;
+pass `{ checkClick: false }` for press-driven pages. A missing event is reported as the coded
+`click-not-dispatched` error, with replaced press/release targets named when they differ.
+Board calls also expose `mouseDown(target, options?)`, `mouseMove(target, options?)`,
+`mouseUp(target?, options?)`, and `wheel(delta, target?, options?)`. Buttons stay held across calls;
+move events retain the full CDP button mask so page state can be inspected before release. Locator
+targets use actionability checks, coordinate targets use the selected board frame's viewport CSS
+pixels, and wheel deltas pass through unchanged. The runner releases held buttons for adopted pages.
+Browser page-model access through `pages[i].editor.app` also stays available across same-document
+SPA navigation while the page runtime survives; reads wait briefly for an already-running probe.
+
 Bridge `1.61.0` exposes browser-editor `addInitScript(source, options?)`, `waitForDownload(options?)`, and
 `route(urlOrRegex, response, options?)`, `unroute(urlOrRegex?)`, and `unrouteAll()`;
 `removeInitScript(id, options?)`, and `clearInitScripts(options?)` through

@@ -3,15 +3,32 @@ import { closeBoardPage, fixtureBoard, openBoardPage, resetBoardFile, trustFixtu
 
 const POSITIVE_BOARD = "bridge/bridge-board";
 const DENIAL_BOARD = "bridge/no-app-board";
+const HOVER_BOARD = "bridge/hover-state-board";
 
 export default [
+    test("board automation applies forced hover to hover-revealed controls", async (ctx) => {
+        const root = fixtureBoard(ctx, HOVER_BOARD);
+        let page;
+        try {
+            await trustFixtureBoard(ctx, root);
+            page = await openBoardPage(ctx, root);
+            await page.editor.waitFor({ selector: "#hover-row" });
+            await page.editor.hover("#hover-row");
+            await page.editor.click("#menu");
+            ctx.expect(await page.editor.evaluate("() => window.results")).toEqual(["clicked"]);
+        } finally {
+            await closeBoardPage(ctx, page?.id);
+            await untrustBoard(ctx, root);
+        }
+    }),
+
     test("board bridge reports the app bridge version", async (ctx) => {
         const root = fixtureBoard(ctx, POSITIVE_BOARD);
         let page;
         try {
             await trustFixtureBoard(ctx, root);
             page = await openBoardPage(ctx, root);
-            ctx.expect(await page.editor.evaluate("() => window.persephone.version")).toBe("1.58.0");
+            ctx.expect(await page.editor.evaluate("() => window.persephone.version")).toBe("1.62.0");
         } finally {
             await closeBoardPage(ctx, page?.id);
             await untrustBoard(ctx, root);

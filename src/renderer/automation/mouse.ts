@@ -1,13 +1,18 @@
 const { ipcRenderer } = require("electron"); // eslint-disable-line @typescript-eslint/no-var-requires
 import { BrowserChannel } from "../../ipc/browser-ipc";
 import { callOnRef, getRefSessionId } from "./ref";
-import { resolveActionablePoint, runOnLocator } from "./locator";
+import { recheckHitTarget, resolveActionablePoint, runOnLocator } from "./locator";
 import { FRAME_OFFSETS_FN } from "./page-scripts";
 import { evaluateWithCandidates } from "./selector-execution";
-import { MODIFIER_BITS } from "./input";
 import { errMessage } from "../../shared/utils";
+import { isAutomationContextLoss } from "./context-loss";
+import { clearForcedHover, forceHover } from "./hover-pseudo-state";
+import { armLostClickRecorder, assertClickWasDispatched, PRE_PRESS_RECHECK_ROUNDS, waitForTargetFrame } from "./lost-click";
 import type { IAutomationTarget, ISyntheticInputHost } from "./types";
-import type { ActionablePoint, ElementLocator, MousePosition, MouseModifier, MouseActionOptions, ClickActionOptions, DragOptions } from "./locator";
+import type { ActionablePoint, ElementLocator, MousePosition, MouseActionOptions, ClickActionOptions, DragOptions } from "./locator";
+import { clearForcedHoverForLocator, dispatchMouseEvent, getModifierFlags, validatePoint } from "./pointer-actions";
+
+export { mouseDown, mouseMove, mouseUp, wheel } from "./pointer-actions";
 
 
 export async function clickElement(
@@ -15,7 +20,14 @@ export async function clickElement(
     locator: ElementLocator,
     options: ClickActionOptions = {},
 ): Promise<void> {
-    const action = await resolveActionablePoint(target, locator, options);
+    await clearForcedHoverForLocator(target, locator, options.tabId);
+    const revealOptions = options.hoverFirst === false || options.synthetic || target.id === "app"
+        ? { hoverFirst: options.hoverFirst }
+        : {
+            hoverFirst: options.hoverFirst,
+            onNotVisible: () => forceHover(target.cdp(options.tabId), locator, options.nth, true),
+        };
+    let action = await resolveActionablePoint(target, locator, { ...options, ...revealOptions });
     if (options.synthetic) {
         target.focusWebview(options.tabId);
         if ("selector" in locator) {
@@ -34,9 +46,33 @@ export async function clickElement(
     const clickCount = options.clickCount ?? 1;
     if (!Number.isInteger(clickCount) || clickCount < 1) throw new Error("clickCount must be a positive integer.");
     const buttonFlag = button === "left" ? 1 : button === "right" ? 2 : 4;
-    await dispatchMouseEvent(action.cdp, action.sessionId, {
-        type: "mouseMoved", x: action.x, y: action.y, modifiers: modifierFlags,
-    });
+    if (!options.force) {
+        let settled = false;
+        const initialDescription = action.description;
+        let lastDescription = action.description;
+        for (let round = 0; round < PRE_PRESS_RECHECK_ROUNDS; round++) {
+            await dispatchMouseEvent(action.cdp, action.sessionId, {
+                type: "mouseMoved", x: action.x, y: action.y, modifiers: modifierFlags,
+            });
+            await waitForTargetFrame(action.cdp, action.sessionId);
+            const checked = await recheckHitTarget(action, options.nth);
+            // Only a replaced target is re-resolved. Something that now covers the same element (a
+            // hover tooltip) keeps today's behaviour: the press goes to the point as before.
+            if (checked.matchesResolvedTarget) { settled = true; break; }
+            lastDescription = checked.description;
+            if (round + 1 < PRE_PRESS_RECHECK_ROUNDS) {
+                action = await resolveActionablePoint(target, locator, { ...options, ...revealOptions });
+            }
+        }
+        if (!settled) throw new Error(`Element kept changing before the click: ${initialDescription} → ${lastDescription}.`);
+    } else {
+        await dispatchMouseEvent(action.cdp, action.sessionId, {
+            type: "mouseMoved", x: action.x, y: action.y, modifiers: modifierFlags,
+        });
+    }
+    const shouldCheckClick = options.checkClick !== false && button === "left" && target.id !== "app";
+    const recorder = shouldCheckClick ? await armLostClickRecorder(action.cdp, action.sessionId) : undefined;
+    try {
     for (let count = 1; count <= clickCount; count++) {
         const menuTabId = button === "right" && options.nativeMenu !== true
             ? target.automationContextMenu?.(options.tabId, "arm")
@@ -46,13 +82,27 @@ export async function clickElement(
                 type: "mousePressed", x: action.x, y: action.y, button, buttons: buttonFlag,
                 modifiers: modifierFlags, clickCount: count,
             });
-            await dispatchMouseEvent(action.cdp, action.sessionId, {
-                type: "mouseReleased", x: action.x, y: action.y, button,
-                modifiers: modifierFlags, clickCount: count,
-            });
+            try {
+                await dispatchMouseEvent(action.cdp, action.sessionId, {
+                    type: "mouseReleased", x: action.x, y: action.y, button,
+                    modifiers: modifierFlags, clickCount: count,
+                });
+            } catch (error: unknown) {
+                // The press reached the page and its handler closed the target (a popup that closes
+                // itself): the click was delivered, and there is nothing left to press again.
+                if (!isAutomationContextLoss(error)) throw error;
+                return;
+            }
         } finally {
             if (menuTabId) target.automationContextMenu?.(menuTabId, "release");
         }
+    }
+        if (recorder) {
+            const evidence = await recorder.readAfterSettle();
+            assertClickWasDispatched(evidence, clickCount);
+        }
+    } finally {
+        await recorder?.cleanup();
     }
 }
 
@@ -62,6 +112,7 @@ export async function hoverElement(
     locator: ElementLocator,
     options: MouseActionOptions = {},
 ): Promise<void> {
+    await clearForcedHoverForLocator(target, locator, options.tabId);
     const action = await resolveActionablePoint(target, locator, options);
     if (options.synthetic) {
         target.focusWebview(options.tabId);
@@ -77,14 +128,11 @@ export async function hoverElement(
     await dispatchMouseEvent(action.cdp, action.sessionId, {
         type: "mouseMoved", x: action.x, y: action.y, modifiers: getModifierFlags(options.modifiers),
     });
+    // The native move already applied :hover; forcing only keeps it against a later real-pointer
+    // move, so a failure here must not fail a hover that happened.
+    if (target.id !== "app") await forceHover(action.cdp, locator, options.nth).catch((): undefined => undefined);
 }
 
-function getModifierFlags(modifiers: MouseModifier[] = []): number {
-    return modifiers.reduce((flags, modifier) => flags | MODIFIER_BITS[modifier], 0);
-}
-async function dispatchMouseEvent(cdp: ActionablePoint["cdp"], sessionId: string | undefined, params: Record<string, unknown>): Promise<void> {
-    await cdp.send("Input.dispatchMouseEvent", params, sessionId);
-}
 async function checkState(target: IAutomationTarget & ISyntheticInputHost, locator: ElementLocator, options: MouseActionOptions, desired: boolean): Promise<void> {
     const current = await runOnLocator<{ checked: boolean; type: string }>(target.cdp(options.tabId), locator, options.nth, `
         return { checked: this.checked, type: (this.type || '').toLowerCase() };
@@ -93,7 +141,7 @@ async function checkState(target: IAutomationTarget & ISyntheticInputHost, locat
     if (!desired && current.type === "radio") throw new Error("A radio button cannot be unchecked.");
     if (current.checked === desired) return;
     try {
-        await clickElement(target, locator, options);
+        await clickElement(target, locator, { ...options, checkClick: false });
     } catch (error: unknown) {
         const message = errMessage(error, "Checkbox action failed.");
         if (!message.includes("not visible") && !message.includes("does not receive pointer events")) throw error;
@@ -131,6 +179,7 @@ export async function dragElements(
     target: IAutomationTarget, source: ElementLocator, destination: ElementLocator | { by: MousePosition }, options: DragOptions = {},
 ): Promise<void> {
     validateDragOptions(options);
+    await clearForcedHoverForLocator(target, source, options.tabId);
     const from = await resolveActionablePoint(target, source, options);
     let to: Pick<ActionablePoint, "x" | "y" | "cdp" | "sessionId">;
     if (isDragOffset(destination)) {
@@ -161,14 +210,6 @@ function isDragOffset(destination: ElementLocator | { by: MousePosition }): dest
     return true;
 }
 
-function validatePoint(point: MousePosition, name: string, nonNegative = true): MousePosition {
-    if (!point || typeof point !== "object" || !Number.isFinite(point.x) || !Number.isFinite(point.y)
-        || (nonNegative && (point.x < 0 || point.y < 0))) {
-        throw new Error(`${name} must contain finite ${nonNegative ? "non-negative " : ""}x and y coordinates.`);
-    }
-    return point;
-}
-
 function validateDragOptions(options: DragOptions): void {
     if (options.position !== undefined) validatePoint(options.position, "position");
     if (options.targetPosition !== undefined) validatePoint(options.targetPosition, "targetPosition", false);
@@ -190,6 +231,7 @@ export async function clickAtCoordinates(
     validatePoint(position, "clickAt coordinates");
     if (behavior.focusHost !== false) target.focusWebview(options.tabId);
     const input = target.inputCdp(options.tabId);
+    await clearForcedHover(input.cdp, input.sessionId);
     const point = input.mapPoint(position, []);
     const button = options.button ?? "left";
     const clickCount = options.clickCount ?? 1;
@@ -222,6 +264,7 @@ export async function dragCoordinates(
     validateDragOptions(options);
     if (behavior.focusHost !== false) target.focusWebview(options.tabId);
     const input = target.inputCdp(options.tabId);
+    await clearForcedHover(input.cdp, input.sessionId);
     const from = { ...input.mapPoint(fromPosition, []), cdp: input.cdp, sessionId: input.sessionId };
     const to = { ...input.mapPoint(toPosition, []), cdp: input.cdp, sessionId: input.sessionId };
     await dispatchDragPoints(target, from, to, options);

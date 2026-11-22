@@ -32,7 +32,7 @@ async function keyboardAction(
     const locator = resolveElementLocator(options.target);
     if (options.focus === "focus") return focusElement(target, locator, options);
     const action = await resolveActionablePoint(target, locator, options);
-    await clickElement(target, locator, options);
+    await clickElement(target, locator, { ...options, checkClick: false });
     return action;
 }
 

@@ -19,6 +19,7 @@ import { ContentOpenBridge } from "./content-open-bridge";
 import { SharedStateBridge } from "./shared-state-bridge";
 import { ContentHostBridge } from "./content-host-bridge";
 import { WorkingFolderBridge } from "./working-folder-bridge";
+import { releaseAutomationInputs } from "../../../automation/input";
 
 export interface BoardFrameCompositionOptions {
     model: BoardEditorModel;
@@ -49,13 +50,14 @@ export class BoardFrameComposition {
         const { model, boardRoot, isMain } = options;
         const hostEvents = new BoardHostEvents(model, session);
         const workingFolderBridge = new WorkingFolderBridge(model, boardRoot, session);
-        if (isMain) {
-            this.subscriptions.push(session.onRetire(({ generation }) => {
+        this.subscriptions.push(session.onRetire(({ generation }) => {
+            void releaseAutomationInputs([`${model.id}/${session.tabId}`]).catch((): undefined => undefined);
+            if (isMain) {
                 model.setWorking(false);
                 model.chrome.retireFrame({ token: session, generation });
                 workingFolderBridge.clearGeneration(generation);
-            }));
-        }
+            }
+        }));
         const fetchHandler = new FetchBridgeHandler(boardRoot, session, endpoint);
         const aiVisionBridge = this.aiVisionBridge = new AiVisionBridge(boardRoot, session, endpoint);
         const chromeBridge = this.chromeBridge = new ChromeBridge(

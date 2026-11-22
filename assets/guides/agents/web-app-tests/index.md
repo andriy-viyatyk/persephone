@@ -44,6 +44,19 @@ page needs focus without a click.
 An awaitable stand-in is not a full Promise: its `.then(read)` returns the chained Promise, but
 `.catch()` and `.finally()` throw with guidance. Handle errors with `try { await node } catch {}`.
 
+Held gesture example:
+
+```js
+const site = await ctx.usePage();
+await site.mouseDown("#range-start");
+await site.mouseMove("#range-end", { steps: 12 });
+const liveCount = await site.count(".selected-day");
+await site.mouseUp();
+const committedCount = await site.count(".selected-day");
+```
+
+`ctx.usePage` cleanup releases held keys and buttons after errors too.
+
 ## Test file and context
 
 Files end in `.test.mjs`. Export an array of descriptors made with the global `test` function:

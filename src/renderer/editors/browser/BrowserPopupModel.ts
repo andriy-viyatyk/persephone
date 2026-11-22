@@ -2,6 +2,7 @@ import type { BrowserPopupSnapshot } from "../../../ipc/browser-ipc";
 import type { BrowserEditor } from "./BrowserEditor";
 import { agentMayAccessBrowserPage } from "./agent-access";
 import { logBrowserPopupClosed, logBrowserPopupOpened } from "../../scripting/ai-vision/event-log";
+import { releaseAutomationInputs } from "../../automation/input";
 
 interface OwnedPopup extends BrowserPopupSnapshot {
     rootTabId: string;
@@ -31,6 +32,7 @@ export class BrowserPopupModel {
                 if (current && current.rootTabId === browserEvent.internalTabId) this.popups.set(popup.id, { ...popup, rootTabId: current.rootTabId });
             } else if (browserEvent.type === "popup-closed") {
                 this.closedPopups.add(popup.id);
+                void releaseAutomationInputs([this.model.guest.key(popup.id)]).catch((): undefined => undefined);
                 const current = this.popups.get(popup.id);
                 if (current?.rootTabId === browserEvent.internalTabId) {
                     this.popups.delete(popup.id);
@@ -72,6 +74,9 @@ export class BrowserPopupModel {
 
     releaseTab(tabId: string): void {
         this.releasedTabs.add(tabId);
+        void releaseAutomationInputs([...this.popups.values()]
+            .filter(popup => popup.rootTabId === tabId).map(popup => this.model.guest.key(popup.id)))
+            .catch((): undefined => undefined);
         this.dropForTab(tabId);
         void this.model.guest.closeOwnedPopups(this.model.guest.key(tabId)).catch((): void => undefined);
     }
@@ -79,6 +84,7 @@ export class BrowserPopupModel {
     dispose(): void {
         this.disposed = true;
         this.unsubscribe();
+        void releaseAutomationInputs(this.list().map(popup => this.model.guest.key(popup.id))).catch((): undefined => undefined);
         for (const tab of this.model.state.get().tabs) {
             this.dropForTab(tab.id);
             void this.model.guest.closeOwnedPopups(this.model.guest.key(tab.id)).catch((): void => undefined);

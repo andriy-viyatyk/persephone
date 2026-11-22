@@ -82,4 +82,11 @@ one epic per step.
   never an OS clipboard read) and 20 (declarative `route`/`unroute`). Also init scripts at document start
   (`addInitScript`), storage helpers (`storage.set/clear`) and a fake clock (`clock.install/fastForward`). Test powers
   are limited to pages the agent opened or `ctx.usePage` adopted.
-- Still open after step 5: 1 (rest), 2 (bridge half, G2), 5, 10, 17 — roadmap steps 6–7.
+- **Step 6 — [EPIC-208](../../epics/EPIC-208.md) (done 2026-11-22):** items 5 (clicks wait one frame after the move
+  and re-resolve a target a hover handler replaced; a browser/board click whose press and release produced no `click`
+  fails with `click-not-dispatched` naming A → B, `checkClick: false` opts out), 10 (`hover()` forces CSS `:hover` on
+  the target and its ancestors; `click` reveals a hover-hidden target by default, and the "not visible" error names
+  `hover()`), 17 (`mouseDown`/`mouseMove`/`mouseUp`/`wheel`, held buttons released at test end) and the bridge half of
+  2 (the model stays reachable across a `pushState` navigation, and a model method that itself navigates in-page
+  returns its value). The rest of 1 was closed by G1 in step 1b (`page-navigated`, `allowNavigation`).
+- Still open after step 6: none of the numbered items; roadmap step 7 (guides and scaffolding) remains.

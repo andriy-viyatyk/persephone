@@ -5,6 +5,7 @@ import { browserGuests } from "./BrowserGuestRegistry";
 import type { BrowserContentsAttachment } from "./BrowserGuestRegistry";
 import { clearCdpTargetState } from "../cdp-service";
 import { clearNetworkLog } from "../network-logger";
+import { onWebContentsGone } from "../webcontents-lifetime";
 
 // Keep agent close requests bounded while allowing ordinary beforeunload handlers to run.
 const POPUP_CLOSE_TIMEOUT_MS = 3000;
@@ -20,8 +21,9 @@ interface PopupEntry {
     readonly pageId?: string;
     readonly editorId: string;
     readonly listeners: Array<{ event: string; handler: (...args: never[]) => void }>;
-    openerDestroyed?: () => void;
-    senderDestroyed?: () => void;
+    stopWatchingPopup?: () => void;
+    stopWatchingOpener?: () => void;
+    stopWatchingSender?: () => void;
     closing?: { resolve(): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> };
     removed: boolean;
     windowClosed?: boolean;
@@ -86,17 +88,17 @@ export class BrowserPopupRegistry {
         on("page-title-updated", (() => this.publish(entry, "popup-changed")) as (...args: never[]) => void);
         on("did-start-loading", (() => this.publish(entry, "popup-changed")) as (...args: never[]) => void);
         on("did-stop-loading", (() => this.publish(entry, "popup-changed")) as (...args: never[]) => void);
-        on("destroyed", (() => this.remove(entry)) as (...args: never[]) => void);
         window.once("closed", () => {
             entry.windowClosed = true;
             this.remove(entry);
             entry.closing?.resolve();
         });
-        contents.once("destroyed", () => this.closeDescendants(id));
-        entry.openerDestroyed = () => this.closeDescendants(openerId);
-        immediateOpener.once("destroyed", entry.openerDestroyed);
-        entry.senderDestroyed = () => this.closeOwned(rootKey, sender);
-        sender.once("destroyed", entry.senderDestroyed);
+        entry.stopWatchingPopup = onWebContentsGone(contents, () => {
+            this.remove(entry);
+            this.closeDescendants(id);
+        }, { events: ["destroyed"] });
+        entry.stopWatchingOpener = onWebContentsGone(immediateOpener, () => this.closeDescendants(openerId), { events: ["destroyed"] });
+        entry.stopWatchingSender = onWebContentsGone(sender, () => this.closeOwned(rootKey, sender), { events: ["destroyed"] });
         this.publish(entry, "popup-opened");
         return id;
     }
@@ -219,8 +221,9 @@ export class BrowserPopupRegistry {
                 (entry.webContents as unknown as { removeListener(name: string, callback: (...args: never[]) => void): void }).removeListener(event, handler);
             }
         }
-        if (!entry.immediateOpener.isDestroyed() && entry.openerDestroyed) entry.immediateOpener.removeListener("destroyed", entry.openerDestroyed);
-        if (!entry.sender.isDestroyed() && entry.senderDestroyed) entry.sender.removeListener("destroyed", entry.senderDestroyed);
+        entry.stopWatchingPopup?.();
+        entry.stopWatchingOpener?.();
+        entry.stopWatchingSender?.();
         if (entry.windowClosed) entry.closing?.resolve();
         const key = popupKey(entry);
         this.cleanup.clearCdpTargetState(key);
