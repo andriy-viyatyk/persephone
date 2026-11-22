@@ -352,8 +352,7 @@ generically for a second caller and served one without modification, so the two 
 two badge paths.
 
 Live verification was **declined rather than skipped**. This panel needs an open Mneme root, and every
-registered root on this machine is a customer work folder (`EverGreen/web-wiki`, `EverGreen/wiki`,
-`EverGreen/worklog`). Opening one would pull that content into an agent transcript, which the
+registered root on this machine is a customer work folder (a customer's wiki, web-wiki and worklog folders). Opening one would pull that content into an agent transcript, which the
 organization's standing rule forbids; registering a throwaway root instead would mutate the user's
 knowledge-base config and trigger indexing for a shallow smoke check. So this panel's live exercise
 is owed and recorded in E5-7, not quietly counted as done.

@@ -109,7 +109,7 @@ export interface RawBoardManifest {
      * `*` and `?` stop at a separator; `**` crosses them. So `*\/tasks` (a trailing slash is
      * accepted and ignored) matches `…/dev/tasks`, `tasks` matches any folder of that name at
      * any depth, `**\/dev/tasks` spans intermediate segments, and an absolute mask
-     * (`c:/projects/evergreen/**`) scopes the board to one tree.
+     * (`c:/projects/my-project/**`) scopes the board to one tree.
      *
      * The gate is SKIPPED — not failed — when the caller knows only a file NAME and no path
      * (file-icon resolution). See `matchesBoardMasks`.

@@ -222,12 +222,12 @@ fn upsert_then_fts_finds_document() {
 #[test]
 fn fts_query_with_special_chars_is_sanitized_not_errored() {
     // Regression (US-679): a free-form query containing FTS5 metacharacters used to be
-    // injected raw into MATCH, so `CDI-Tracker EDW` failed with `no such column: Tracker`.
+    // injected raw into MATCH, so `My-App EDW` failed with `no such column: App`.
     let root = tmp_root("idx_fts_special");
     let db = open(&root);
     let parsed = parse_document(
         "edw",
-        "# EDW\nCDI-Tracker syncs with the EDW warehouse nightly.",
+        "# EDW\nMy-App syncs with the EDW warehouse nightly.",
         None,
         epoch(),
     );
@@ -235,12 +235,12 @@ fn fts_query_with_special_chars_is_sanitized_not_errored() {
 
     // The hyphenated query now matches instead of erroring — via both the raw FTS helper
     // and the ranked `wiki_search` text path (text_lane).
-    let hits = db.search_fts("CDI-Tracker EDW", 10).unwrap();
+    let hits = db.search_fts("My-App EDW", 10).unwrap();
     assert_eq!(hits.len(), 1, "hyphenated query should match, not error");
     assert_eq!(hits[0].address, "personal/edw.md");
 
     let filter = SearchFilter::default();
-    let text_hits = db.search_text("CDI-Tracker EDW", &filter, 10).unwrap();
+    let text_hits = db.search_text("My-App EDW", &filter, 10).unwrap();
     assert_eq!(text_hits.len(), 1, "wiki_search text mode should match the hyphenated query");
     assert_eq!(text_hits[0].address, "personal/edw.md");
 

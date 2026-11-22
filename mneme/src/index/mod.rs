@@ -755,7 +755,7 @@ fn push_filter_sql(sql: &mut String, p: &mut Vec<Value>, filter: &SearchFilter) 
 /// query *expression* — so metacharacters that appear in normal text (hyphens,
 /// colons, quotes, `*`, parentheses, and the bareword operators `AND`/`OR`/`NOT`/
 /// `NEAR`) are interpreted as syntax and make the query error out. For example
-/// `CDI-Tracker EDW` fails with `no such column: Tracker` because FTS5 reads the
+/// `My-App EDW` fails with `no such column: App` because FTS5 reads the
 /// hyphen as a column-filter operator.
 ///
 /// We tokenize on whitespace and wrap each token in double quotes (doubling any

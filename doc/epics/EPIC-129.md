@@ -41,7 +41,7 @@ the same rules as `readFile`/`listFolder`.
 - Existing consumers keep their current behavior after migration (this epic does not make the
   Explorer incremental. That is a possible follow-up which the precise events enable).
 - A board can watch its own folder, a folder or file the user granted it, or (with
-  `fileSystem: "full"`) any path, and react live. Example: the EverGreen *Dev Dashboard* board
+  `fileSystem: "full"`) any path, and react live. Example: a customer's *Dev Dashboard* board
   refreshes when an agent edits a task file.
 
 ## Background: what `fs.watch` reports (Windows)
@@ -211,7 +211,7 @@ last, once the service has a real consumer.
 | US-1696 | Dev Dashboard board: live refresh on task-file changes | Done |
 
 US-1696 changes a user board outside this repo
-(`C:\projects\EverGreen\.persephone\boards\Dev Dashboard`, `fileSystem: "full"`, custom editor
+(`<external-project>\.persephone\boards\Dev Dashboard`, `fileSystem: "full"`, custom editor
 for `dev/DASHBOARD.md`). It is the acceptance demo for US-1694: watch the sibling
 `features|stories|tasks|spikes` folders recursively and re-parse on each batch, or reload
 everything on `rescan`. Raise its `minBridgeVersion` to the new bridge version.
@@ -233,7 +233,7 @@ everything on `rescan`. Raise its `minBridgeVersion` to the new bridge version.
   paths are long-form), and an endless `rename` stream with `EPERM` stat after the watched root is
   deleted (a root rename now ends the watcher with `removed`).
 - US-1696 changed the Dev Dashboard board outside this repo
-  (`C:\projects\EverGreen\.persephone\boards\Dev Dashboard`: `app.js`, `CLAUDE.md`,
+  (`<external-project>\.persephone\boards\Dev Dashboard`: `app.js`, `CLAUDE.md`,
   `minBridgeVersion` 1.39.0). That folder is not under git.
 - Not checked live: revocation (`ended: "revoked"`) after a trust or grant change. The code path
   was read: the listener runs after the permission snapshot updates and before
