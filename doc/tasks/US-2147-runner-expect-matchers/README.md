@@ -38,7 +38,7 @@ Implement B1 and B6 of [EPIC-202](../../epics/EPIC-202.md): useful assertion mat
 ## Concerns
 
 - `src/test-host/` is not in `scripts/typecheck-strict.mjs`'s strict folder list; normal typecheck and lint still apply. Preserve old assertion steps and failures for the shared UI suite. `integration-test/run.mjs` passes a selection and setup; its aggregator reads product `report.json` fields. Existing tests see the same matchers and results without opting in.
-- At epic close `/userdoc` should update `assets/guides/agents/web-app-tests.md`, **Test file and context** and **Triage a failed run**. No new protocol or `window.persephone` change; no `await import()` workaround. God files only shrink.
+- At epic close `/userdoc` should update `assets/guides/agents/web-app-tests/index.md`, **Test file and context** and **Triage a failed run**. No new protocol or `window.persephone` change; no `await import()` workaround. God files only shrink.
 - Files that need NO changes: `doc/active-work.md`, `doc/epics/EPIC-202.md`, `src/main/test-mode/instance-options.ts`, `src/ipc/test-host-protocol.ts`, `integration-test/**`, `launcher/**`, `node_modules/ai-vision/**`, MCP server, and the user guide in this task.
 
 ## Acceptance Criteria

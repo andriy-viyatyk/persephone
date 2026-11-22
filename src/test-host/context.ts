@@ -4,15 +4,18 @@ import type { TestLauncher } from "./launcher.js";
 import { errMessage } from "../shared/utils.js";
 import { asHandle, createAppProxy, type CallOptions, type HandleMetadata } from "./app-proxy.js";
 import { formatStep } from "./step-format.js";
-import { openBrowser as openBrowserHelper } from "./browser-helpers.js";
+import { openBrowser as openBrowserHelper, usePage as usePageHelper, type UsePageOptions } from "./browser-helpers.js";
 import { resultPreview, stepEventArguments, type TestLog } from "./test-log.js";
 import { createExpect, safePreview, type ExpectMatchers } from "./expect.js";
+import type { TestWindowOwner } from "./test-window.js";
 
 export type { CallOptions } from "./app-proxy.js";
 
 export interface TestContext {
     app: object;
+    root: object;
     openBrowser(url: string, options?: { profile?: string; incognito?: boolean; timeout?: number }): Promise<object>;
+    usePage(options: UsePageOptions): Promise<object>;
     /** The same stand-in, but `await` and async returns keep it instead of reading the node. */
     handle(node: unknown, metadata?: HandleMetadata): object;
     call(path?: string, args?: unknown, options?: CallOptions): Promise<unknown>;
@@ -27,16 +30,19 @@ export interface TestContext {
     /** Note a line in `tests.log` and the console, for context a later reader needs. */
     log(message: string): void;
     /** `stepOf(error)` names the step that threw `error`; `step` moves on while a test's own `finally` runs. */
-    _state: { step: string; error?: string; stepOf(error: unknown): string; ownedPages: Set<string> };
+    _state: { step: string; error?: string; stepOf(error: unknown): string; ownedPages: Set<string>; sessionPages: Set<string>; pagesUnderTest(): ReadonlySet<string> };
 }
 
-export function createContext(client: McpClient, launcher: TestLauncher, timeouts: Timeouts, attach: boolean, log?: TestLog, identity?: { file: string; test: string; profileDirectory?: string }): TestContext {
+export function createContext(client: McpClient, launcher: TestLauncher, timeouts: Timeouts, attach: boolean, testWindow: TestWindowOwner, log?: TestLog, identity?: { file: string; test: string; profileDirectory?: string }): TestContext {
     const failedSteps = new WeakMap<object, string>();
     const state: TestContext["_state"] = {
         step: "starting",
         stepOf: (error) => (error !== null && typeof error === "object" ? failedSteps.get(error) : undefined) ?? state.step,
         /** Pages this test opened through `ctx.openBrowser`; with `--attach` cleanup closes only these. */
         ownedPages: new Set<string>(),
+        /** Existing browser pages a test adopted with `ctx.usePage`; cleanup never closes these. */
+        sessionPages: new Set<string>(),
+        pagesUnderTest: () => new Set([...state.ownedPages, ...state.sessionPages]),
     };
     /** Remember the step an error was first thrown from; an outer rethrow keeps the inner step. */
     const markFailure = (error: unknown) => {
@@ -59,8 +65,9 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
         state.step = formatStep("call", apiPath, args);
         if (!prestarted) logStep("step-start", "call", apiPath, args);
         try {
-            const result = await active.call(apiPath, args, options.timeout ?? timeouts.request, options.maxLength, options.dialog, options.allowNavigation);
-            if (args === undefined && apiPath !== undefined && isMethodDescriptor(result, apiPath)) {
+            const result = await testWindow.call(active, apiPath, args, options.timeout ?? timeouts.request, options.maxLength, options.dialog, options.allowNavigation);
+            const resolvedPath = testWindow.scope(apiPath);
+            if (args === undefined && apiPath !== undefined && isMethodDescriptor(result, resolvedPath ?? apiPath)) {
                 throw new TypeError(`${apiPath} is a method; call ctx.call(${JSON.stringify(apiPath)}, []) with an argument array.`);
             }
             logStep("step-result", "call", apiPath, args, { ok: true, result: resultPreview(result) });
@@ -76,7 +83,7 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
         state.step = formatStep("callText", apiPath, args);
         logStep("step-start", "callText", apiPath, args);
         try {
-            const result = await active.callText(apiPath, args, options.timeout ?? timeouts.request, options.maxLength, options.dialog, options.allowNavigation);
+            const result = await testWindow.callText(active, apiPath, args, options.timeout ?? timeouts.request, options.maxLength, options.dialog, options.allowNavigation);
             logStep("step-result", "callText", apiPath, args, { ok: true, result: resultPreview(result) });
             return result;
         } catch (error) {
@@ -90,7 +97,7 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
         state.step = formatStep("set", apiPath, value);
         logStep("step-start", "set", apiPath, value);
         try {
-            const result = await active.set(apiPath, value, options.timeout ?? timeouts.request);
+            const result = await testWindow.set(active, apiPath, value, options.timeout ?? timeouts.request);
             logStep("step-result", "set", apiPath, value, { ok: true, result: resultPreview(result) });
             return result;
         } catch (error) {
@@ -113,10 +120,17 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
         logStep("step-error", "call", proxyPath, proxyArgs, { ok: false, error: state.error });
     };
     const app = createAppProxy(proxyCall, beforeProxyCall, onProxyError);
+    const rootCall = async (apiPath?: string, args?: unknown, options: CallOptions = {}) => active.call(apiPath, args, options.timeout ?? timeouts.request, options.maxLength, options.dialog, options.allowNavigation);
+    const rootProxyCall = (apiPath?: string, args?: unknown, options: CallOptions = {}) => rootCall(apiPath, args, options);
+    const root = createAppProxy(rootProxyCall, beforeProxyCall, onProxyError, true);
     const context: TestContext = {
-        app, call, callText, set,
+        app, root, call, callText, set,
         async openBrowser(url, options = {}) { return openBrowserHelper(context, url, options, timeouts.wait, timeouts.request, (pageId) => state.ownedPages.add(pageId)); },
-        handle(node, metadata) { return asHandle(node, proxyCall, beforeProxyCall, onProxyError, metadata); },
+        async usePage(options) {
+            const current = launcher.client ?? active;
+            return usePageHelper(context, options, testWindow, () => launcher.client ?? current, timeouts.request, state.sessionPages);
+        },
+        handle(node, metadata) { return asHandle(node, proxyCall, beforeProxyCall, onProxyError, metadata, rootProxyCall); },
         async waitFor(pathOrCallback, predicate, options = {}) {
             const timeout = options.timeout === undefined ? timeouts.wait : Math.max(1, Math.round(options.timeout * (timeouts.scale ?? 1)));
             const deadline = Date.now() + timeout;

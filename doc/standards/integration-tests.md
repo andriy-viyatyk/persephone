@@ -31,7 +31,7 @@ host communicates with that instance over its per-run MCP endpoint and remains a
 of renderer restarts. A named profile must be free unless `--attach` is used with an already
 running profile whose MCP server is enabled. Attach uses that instance without taking ownership
 of its shutdown. The user workflow and examples are in
-[`assets/guides/agents/web-app-tests.md`](../../assets/guides/agents/web-app-tests.md).
+[`assets/guides/agents/web-app-tests/index.md`](../../assets/guides/agents/web-app-tests/index.md).
 
 The wrapper starts the read-only HTTP fixture servers once on loopback ports 17867 (HTTP) and
 17868 (HTTPS), both serving `integration-test/fixtures/http/`. The HTTPS server uses the committed
@@ -127,8 +127,9 @@ included in `last-failed.json`. A test that still fails after its retries remain
 `--grep` filters descriptor names after exact manifest and rerun selection; it does not change
 whether a requested rerun identity exists.
 
-The product context handles per-test page and pop-up cleanup. It supports `app`, `openBrowser`,
-`handle`, path `call`/`callText` (including `{ dialog: true }`), `set`, `waitFor`, `expect`, `script`,
+The product context handles per-test page and pop-up cleanup. It supports scoped `app`, unscoped
+`root`, `openBrowser`, `usePage`, `handle`, path `call`/`callText` (including `{ dialog: true }`), `set`,
+`waitFor`, `expect`, `script`,
 `restartApp`, `launchSecondInstance`, `file`, and `log`. The suite setup module supplies the
 suite-only fixture helpers. The setup hook receives the current context, `{ file, name,
 profileDirectory, attach }`, and a getter for the current MCP client adapter, so an app restart
@@ -139,23 +140,68 @@ Browser downloads in an owned test instance bypass the native Save dialog and us
 available from `app.downloads.downloads[i].savePath` after completion. Attached instances retain
 their normal Save dialog behavior.
 
-Before each test, the runner snapshots page ownership. Cleanup closes newly opened pages and
-pop-ups, including pages opened through `ctx.call`. Owned-page closes allow the renderer's
-unsaved-changes prompt and answer it with `Don't Save`. Cleanup sweeps renderer dialogs (`dialogs[i]`)
-before its page snapshot and again after closing owned pages: `Unsaved Changes` is answered with
-`Don't Save`, and other renderer dialogs use `cancel()`. Cleanup answers renderer dialogs only;
-native OS dialogs are outside this cleanup. A popup menu left open (`menus[0]`) is closed in the same
-sweep. Editorless workspace pages count as owned pages. A renderer dialog found before the snapshot is dismissed
-and makes that test fail. A prompt raised by cleanup while closing an owned page is expected and
-does not itself fail the test. Dialog cleanup actions are logged, and any dialog remaining after
-owned-page cleanup also fails the test.
+Before each test, the runner snapshots page ownership and browser pop-ups. In owned runs and
+runner-created attached windows, cleanup closes pages and pop-ups first opened during that test,
+including pages opened through `ctx.call`. In a selected `--window`, it closes only tracked
+`ctx.openBrowser` pages and their new pop-ups; other new pages are left open and logged. `ctx.usePage`
+adopts a browser page in the test window: cleanup never closes that page, even if it appeared after
+the baseline or was also opened through `ctx.openBrowser`. New pop-ups on a session page are closed
+when they were absent from the baseline; baseline or untrackable pop-ups are left alone. Owned-page
+closes allow the renderer's unsaved-changes prompt and answer it with `Don't Save`. Cleanup sweeps
+renderer dialogs (`dialogs[i]`) and popup menus (`menus[0]`) in the test window before its page
+snapshot and again after closing pages. `Unsaved Changes` is answered with `Don't Save`, and other
+renderer dialogs use `cancel()`. Native OS dialogs are outside this cleanup. Editorless workspace
+pages count as owned pages. A renderer dialog found before the snapshot is dismissed and makes that
+test fail. A prompt raised by cleanup while closing an owned page is expected and does not itself
+fail the test. Dialog cleanup actions are logged, and any dialog remaining after cleanup also fails
+the test.
 
-With `--attach` the app window is the user's too, so the diff-based ownership above does not apply:
-cleanup closes only pages opened through `ctx.openBrowser` (tracked in `TestContext._state.ownedPages`)
-and new pop-ups of those pages, logs other new pages as `leave-unowned-pages`, and skips the
-renderer dialog/menu sweep. Otherwise a page the user opened during a test, or the user's own
-`Unsaved Changes` prompt, would be closed or answered `Don't Save`
-(`src/test-host/browser-helpers.ts` `closePagesOpenedSince`).
+With `--attach`, a new test window is created by default, and runner operations plus unprefixed
+context and setup `rawCall` paths are scoped to it. Its page baseline diff owns pages that appeared
+during the run; the runner sweeps its popup menus and renderer dialogs and closes the created window
+after per-test cleanup. `--attach --window <index-or-title>` instead selects an existing open window:
+decimal values select a record index, while other values select a unique case-insensitive substring
+of the OS window title. No match and ambiguous matches report only the number of matches. Window
+titles can collide, so use an index when needed. Cleanup in a selected window closes only tracked
+`ctx.openBrowser` pages and their new pop-ups, logs other new pages as `leave-unowned-pages`, and
+sweeps renderer dialogs and popup menus only in that selected window. It never closes the selected
+window. Other windows are not inspected by runner bookkeeping.
+
+Use `ctx.usePage({ url, title? })` to adopt a signed-in browser page in the selected test window.
+String URLs are case-sensitive prefixes; string titles are case-sensitive substrings, and either
+criterion may be a regular expression. Both supplied criteria must match exactly one browser page.
+The summary URL is omitted for inaccessible private pages, so a session page must use a normal
+profile, not incognito or Tor. The returned handle has `pageId` and is not reloaded or closed between
+tests. The selected window stays open after the run; owned and runner-created windows are disposed at
+run end, so session pages in those modes do not persist beyond the run. Browser storage state (F2)
+is planned work, not an available feature.
+
+`ctx.root` keeps the original unscoped call behavior, including access to `windows`, `main`, and
+`guides`. Explicit `ctx.app.windows[i]` paths are also deliberate cross-window access. Awaiting
+`ctx.app` with no path describes the selected window, not the renderer overview. Prefer unprefixed
+paths; `ctx.root` and explicit `windows[i]` paths can reach outside the test window. The setup
+adapter's `rawCall` is scoped in attached runs; `listTools` remains global. Owned runs preserve the
+existing app behavior, including restart and raw setup calls. Attached failures capture only pages
+under test in the selected test window and never take a window screenshot. Owned runs retain their
+window screenshot and capture pages under test as well.
+
+When a test throws and report output is enabled, each captured failed attempt writes a JSON file
+under `failures/`. `report.md` links the last failed attempt's bundle and `report.json` stores its
+relative path, including when a later retry passes. Cleanup-only failures do not trigger capture;
+`--log` alone still produces no reports or artifacts. The bundle lists page ID, owned/session kind,
+URL, title, page errors, console errors, failed requests, and each page's relative screenshot path
+or `null`. Diagnostic lists are capped at the newest 100 entries. Page errors and failed requests
+use attempt-start timestamps; console records are requested since attempt start and filtered by
+`type === "error"`. Failed requests include transport errors and HTTP 400–599 responses, projected
+to method, URL, nullable status, and `durationMs: null` because no duration is exposed. Collection
+uses active-tab APIs and bounded buffers, so the bundle is best-effort; individual capture errors
+are reported under `Capture errors` and do not affect test status.
+
+The bundle never writes network headers, bodies, referrers, or other raw request data. URL
+credentials and fragments are removed, and query values are replaced while query keys remain,
+including URLs found in page-error text and console arguments. Other text, page titles, and
+screenshots can contain sensitive page content. Treat these artifacts as local sensitive output;
+`reports/` and `test-results/` belong in `.gitignore`.
 
 The `app` tree is a stand-in for call paths, not a live object model: each property read or method
 call makes a round trip and must be awaited. Use `ctx.set(path, value, { timeout? })` to assign a
@@ -275,3 +321,5 @@ app or launch another process declare `requires: ["launch"]`. Use `ctx.httpUrl()
 HTTP-fixture paths and `ctx.httpsUrl()` for HTTPS-fixture paths. Do not weaken assertions to make a
 test pass; repair the owning application behavior instead. Keep modules focused and split by
 feature when needed.
+
+The runner retries its own page bookkeeping reads up to three times when attention is present, 200 ms apart by default (scaled by `--timeout-scale`); it never replays test calls. Attention in the test window fails the test with its cause. Attention identified in another window, persistent unidentifiable attention on a runner read, or a closed/replaced test window stops the run (exit 3). The interrupted test and remaining selected tests are `not-run`; the interrupted test may already have changed state. After a stop, `--rerun-failed` selects the failures and tests that did not run. The report names the cause. Untracked OS-level dialogs may not produce an attention reply.

@@ -17,6 +17,7 @@ export interface HostConfiguration {
     profileDirectory: string;
     port: number;
     attach: boolean;
+    window?: string;
     testPath: string;
     logFile?: string;
     logDirectory?: string;

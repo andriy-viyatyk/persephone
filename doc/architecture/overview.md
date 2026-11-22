@@ -83,7 +83,7 @@ The product runner owns test execution, context APIs, page cleanup, screenshots,
 reports. The repository's `integration-test/run.mjs` stays a suite wrapper: it owns test discovery,
 fixtures, profile seeding, suite filters and aggregate reports. The suite contract and user guide
 are documented in [UI integration tests](../standards/integration-tests.md) and the
-[web-app test guide](../../assets/guides/agents/web-app-tests.md).
+[web-app test guide](../../assets/guides/agents/web-app-tests/index.md).
 
 ### Main-process persistence
 

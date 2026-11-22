@@ -6,7 +6,7 @@ summary: "Snapshot, refs, clicks, typing, waits, screenshots, dialogs, and priva
 
 # Browser automation
 
-For repeatable web-app regression checks, see [Web-app regression tests](./web-app-tests.md).
+For repeatable web-app regression checks, see [Web-app regression tests](./web-app-tests/index.md).
 
 For cinema mode on an attached video, click `div[title="Cinema Mode"]` when it appears over the
 player.

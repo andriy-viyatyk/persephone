@@ -35,6 +35,7 @@ export async function startTestController(profileArgs: ReturnType<typeof parseAp
             profileDirectory: targetProfile,
             port: mcp.port,
             attach: options.attach,
+            window: options.window,
             logFile: options.logFile,
             logDirectory: options.logDirectory,
             rerunFailed: options.rerunFailed,

@@ -10,6 +10,7 @@ import { resolveMainBoardGuideMounts } from "./board-guide-mounts";
 import { MainNode } from "./main-services";
 import { cancelNativeDialogs, getNativeDialogState } from "../../native-dialog-tracker";
 import type { NativeDialogKind } from "../../native-dialog-tracker";
+import { TestWindowOperations } from "./test-window-operations";
 
 /**
  * The main process's half of the AiVision tree.
@@ -22,7 +23,7 @@ import type { NativeDialogKind } from "../../native-dialog-tracker";
  */
 
 /** Members of one window that the main process answers itself; anything else is forwarded. */
-export const WINDOW_MEMBER_NAMES: readonly string[] = ["index", "status", "pageCount", "activePageId", "pages", "open", "focus", "nativeDialog"];
+export const WINDOW_MEMBER_NAMES: readonly string[] = ["index", "windowId", "status", "pageCount", "activePageId", "pages", "open", "focus", "nativeDialog"];
 
 const MAIN_ROOT_MEMBERS: readonly IAiMember[] = [
     { name: "windows", kind: "property", node: true, summary: "All windows; windows[i] addresses one." },
@@ -32,6 +33,7 @@ const MAIN_ROOT_MEMBERS: readonly IAiMember[] = [
 
 const WINDOW_MEMBERS: readonly IAiMember[] = [
     { name: "index", kind: "property", summary: "Window index — the value other tools take as windowIndex." },
+    { name: "windowId", kind: "property", summary: "Live Electron window identity; absent when this window is closed." },
     { name: "status", kind: "property", summary: "\"open\" or \"closed\" (a closed window keeps its pages and can be reopened)." },
     { name: "pageCount", kind: "property", summary: "Number of pages the window holds (persisted state)." },
     { name: "activePageId", kind: "property", summary: "Id of the window's active page." },
@@ -43,6 +45,9 @@ const WINDOW_MEMBERS: readonly IAiMember[] = [
 
 const WINDOWS_MEMBERS: readonly IAiMember[] = [
     { name: "count", kind: "property", summary: "Number of windows, open and closed." },
+    { name: "createTestWindow", kind: "method", signature: "createTestWindow()", summary: "Web-app test runner: create a ready test window for an attached run." },
+    { name: "selectTestWindow", kind: "method", signature: "selectTestWindow(selector)", summary: "Web-app test runner: select one open window by index or unique title substring; unmatched results contain a count only." },
+    { name: "disposeTestWindow", kind: "method", signature: "disposeTestWindow(index, windowId)", summary: "Web-app test runner: dispose a window created by createTestWindow when its live identity still matches." },
 ];
 
 const WINDOWS_HELP = `
@@ -78,6 +83,11 @@ export class WindowNode implements IAiVisible {
         const data = this.data;
         if (!data) return "missing";
         return data.window ? "open" : "closed";
+    }
+
+    get windowId(): number | undefined {
+        const window = this.data?.window?.window;
+        return window && !window.isDestroyed() ? window.id : undefined;
     }
 
     get pageCount(): number {
@@ -181,9 +191,15 @@ class NativeDialogNode implements IAiVisible {
 }
 
 export class WindowsNode implements IAiVisible {
+    constructor(private readonly testWindowOperations = new TestWindowOperations()) {}
+
     get count(): number {
         return openWindows.allWindowData().length;
     }
+
+    createTestWindow() { return this.testWindowOperations.createTestWindow(); }
+    selectTestWindow(selector: string) { return this.testWindowOperations.selectTestWindow(selector); }
+    disposeTestWindow(index: number, windowId: number): void { this.testWindowOperations.disposeTestWindow(index, windowId); }
 
     get aiVision(): IAiVisionDescriptor {
         return {

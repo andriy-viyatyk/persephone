@@ -20,6 +20,7 @@ const HUB_FOLDERS: readonly string[] = [
     "boards",
     "agents/agent-session",
     "agents/capabilities",
+    "agents/web-app-tests",
     "agents/scripting",
     "editors/browser",
     "mcp-setup",

@@ -12,7 +12,7 @@ import { isTestInstance } from "./test-mode/instance-options";
 import fs from "node:fs";
 import path from "node:path";
 
-interface OpenWindowData {
+export interface OpenWindowData {
     window?: OpenWindow;
     index: number;
     whenReady?: Promise<void>;
@@ -38,6 +38,7 @@ const windowsStore = new JsonFileStore<PersistedOpenWindow[]>("openWindows.json"
 class OpenWindows {
     windows: OpenWindowData[] = [];
     doQuit = false;
+    private nextWindowIndexValue = 0;
     private readonly windowListeners = new Set<(window: BrowserWindow) => void>();
     private lastFocusedNormalWindow: number | undefined;
     private boardHostRootLookup?: BoardHostRootLookup;
@@ -104,6 +105,7 @@ class OpenWindows {
 
     createWindow = (index?: number, dropPosition?: { x: number; y: number }): OpenWindowData => {
         const wIndex = index ?? this.nextWindowIndex();
+        this.nextWindowIndexValue = Math.max(this.nextWindowIndexValue, wIndex + 1);
         const newWindow = new OpenWindow(dropPosition, undefined, { boardHostRootLookup: this.boardHostRootLookup });
         newWindow.index = wIndex;
         newWindow.onClose = this.windowOnClose;
@@ -127,7 +129,27 @@ class OpenWindows {
         return windowData;
     };
 
-    private nextWindowIndex = (): number => Math.max(-1, ...this.windows.map((w) => w.index)) + 1;
+    private nextWindowIndex = (): number => {
+        this.nextWindowIndexValue = Math.max(this.nextWindowIndexValue, ...this.windows.map((window) => window.index + 1), 0);
+        return this.nextWindowIndexValue++;
+    };
+
+    /** Destroy and forget a runner-created window without changing normal close behavior. */
+    disposeTestWindow = (index: number, windowId: number): void => {
+        const record = this.findWindowDataByIndex(index);
+        const openWindow = record?.window;
+        if (!record || !openWindow || openWindow.window.isDestroyed() || openWindow.window.id !== windowId) {
+            throw new Error("The test window was closed or replaced; it could not be disposed.");
+        }
+        openWindow.close();
+        const current = this.findWindowDataByIndex(index);
+        if (current && current !== record) throw new Error("The test window was replaced during disposal.");
+        if (current) {
+            this.windows = this.windows.filter((window) => window !== record);
+            windowStates.deleteState(index);
+            this.saveState();
+        }
+    };
 
     ensureNormalWindow = (): OpenWindow => {
         const existing = this.mainWindow;
@@ -360,6 +382,7 @@ class OpenWindows {
             windows[0].index = 0;
         }
         this.windows = windows;
+        this.nextWindowIndexValue = Math.max(0, ...windows.map((window) => window.index + 1));
         if (constructNormalWindow) this.ensureNormalWindow();
     };
 

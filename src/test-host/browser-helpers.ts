@@ -1,9 +1,12 @@
 import type { McpClient } from "./client.js";
 import type { TestContext } from "./context.js";
 import { errMessage } from "../shared/utils.js";
+import type { TestWindowOwner } from "./test-window.js";
+import { EnvironmentStopError } from "./attention-policy.js";
 
 type LogHostEvent = (event: string, details: Record<string, unknown>) => void;
-interface BrowserPage { id: string; editor: string; }
+export interface BrowserPage { id: string; editor: string; title?: string; url?: string; }
+export interface UsePageOptions { url?: string | RegExp; title?: string | RegExp; }
 interface OwnershipSnapshot { pages: BrowserPage[]; popups: Map<string, Set<string>>; untrackablePopups: Set<string>; errors: string[]; }
 
 export async function openBrowser(
@@ -32,14 +35,34 @@ export async function openBrowser(
     onCreated(created.id);
     const navigationTimeout = options.timeout ?? waitTimeout;
     await context.call(`pages[${JSON.stringify(created.id)}].editor.navigateAndWait`, [url, { waitUntil: "domcontentloaded", timeout: navigationTimeout }], { timeout: Math.max(requestTimeout, navigationTimeout + 1000) });
-    const app = context.app as Record<string, unknown>;
-    const pages = app["pages"] as Record<string, unknown>;
-    const page = pages[created.id] as Record<string, unknown>;
-    return context.handle(page["editor"], { pageId: created.id });
+    return editorHandle(context, created.id);
 }
 
-export async function beginPageOwnership(client: McpClient, log: LogHostEvent): Promise<OwnershipSnapshot> {
-    const snapshot = await readSnapshot(client, "baseline", log);
+export async function usePage(
+    context: Pick<TestContext, "app" | "handle">,
+    options: UsePageOptions,
+    testWindow: TestWindowOwner,
+    getClient: () => McpClient,
+    requestTimeout: number,
+    sessionPages: Set<string>,
+): Promise<object> {
+    validateUsePageOptions(options);
+    const pages = pageList(await testWindow.call(getClient(), "pages.all", undefined, requestTimeout));
+    const matches = pages.filter((page) => page.editor === "browser-view"
+        && matchesCriterion(options.url, page.url, (url, criterion) => typeof criterion === "string"
+            ? url.startsWith(criterion)
+            : testRegularExpression(criterion, url))
+        && matchesCriterion(options.title, page.title, (title, criterion) => typeof criterion === "string"
+            ? title.includes(criterion)
+            : testRegularExpression(criterion, title)));
+    if (matches.length !== 1) throw new Error(`ctx.usePage matched ${matches.length} pages.`);
+    const match = matches[0];
+    sessionPages.add(match.id);
+    return editorHandle(context, match.id);
+}
+
+export async function beginPageOwnership(client: McpClient, log: LogHostEvent, testWindow: TestWindowOwner): Promise<OwnershipSnapshot> {
+    const snapshot = await readSnapshot(client, "baseline", log, testWindow);
     return snapshot;
 }
 
@@ -48,21 +71,20 @@ export async function beginPageOwnership(client: McpClient, log: LogHostEvent): 
  * baseline is the test's, and renderer dialogs/menus are swept. With `--attach` (`ownedPages` set) the
  * window is also the user's: a page that appeared there may be one the user just opened, and an open
  * dialog may be the user's own "Unsaved Changes" prompt. So only pages the test opened through
- * `ctx.openBrowser` (and new popups of those pages) are closed, other new pages are left open and
- * logged, and the dialog/menu sweep is skipped.
+ * `ctx.openBrowser` pages and their new popups are closed, other new pages are left open and logged,
+ * and the dialog/menu sweep runs only inside the selected test window.
  */
-export async function closePagesOpenedSince(client: McpClient, baseline: OwnershipSnapshot, log: LogHostEvent, cleanupTimeout: number, ownedPages?: ReadonlySet<string>): Promise<string[]> {
+export async function closePagesOpenedSince(client: McpClient, baseline: OwnershipSnapshot, log: LogHostEvent, cleanupTimeout: number, ownedPages: ReadonlySet<string> | undefined, sessionPages: ReadonlySet<string>, testWindow: TestWindowOwner): Promise<string[]> {
     const errors: string[] = [...baseline.errors];
-    const attached = ownedPages !== undefined;
-    const sweep = attached
-        ? async (_phase: "before-snapshot" | "after-close") => ({ found: false, errors: [] as string[] })
-        : (phase: "before-snapshot" | "after-close") => sweepRendererDialogs(client, log, cleanupTimeout, phase);
+    const selectedWindow = testWindow.mode === "attached-selected";
+    const sweep = (phase: "before-snapshot" | "after-close") => sweepRendererDialogs(client, log, cleanupTimeout, phase, testWindow);
     const beforeSnapshot = await sweep("before-snapshot");
     if (beforeSnapshot.found) errors.push("The test left a renderer dialog open; cleanup dismissed it.");
     errors.push(...beforeSnapshot.errors);
     let current: OwnershipSnapshot;
-    try { current = await readSnapshot(client, "cleanup", log); }
+    try { current = await readSnapshot(client, "cleanup", log, testWindow); }
     catch (error) {
+        if (error instanceof EnvironmentStopError) throw error;
         errors.push(`Could not inspect browser pages for cleanup: ${errMessage(error)}`);
         const afterSnapshot = await sweep("after-close");
         if (afterSnapshot.found) errors.push("A renderer dialog remained during cleanup; cleanup dismissed it.");
@@ -73,7 +95,7 @@ export async function closePagesOpenedSince(client: McpClient, baseline: Ownersh
     errors.push(...current.errors);
     const newPopups: Array<{ pageId: string; popupId: string }> = [];
     for (const [pageId, popupIds] of current.popups) {
-        if (attached && !ownedPages.has(pageId)) continue;
+        if (selectedWindow && !ownedPages?.has(pageId) && !sessionPages.has(pageId)) continue;
         if (baseline.untrackablePopups.has(pageId) || current.untrackablePopups.has(pageId)) continue;
         const known = baseline.popups.get(pageId) ?? new Set<string>();
         for (const popupId of popupIds) if (!known.has(popupId)) newPopups.push({ pageId, popupId });
@@ -81,9 +103,10 @@ export async function closePagesOpenedSince(client: McpClient, baseline: Ownersh
     for (const { pageId, popupId } of newPopups) {
         log("cleanup", { action: "close-popup", pageId, popupId });
         try {
-            await boundedCall(client, `pages[${JSON.stringify(pageId)}].editor.closePopup`, [popupId], cleanupTimeout);
+            await boundedCall(client, `pages[${JSON.stringify(pageId)}].editor.closePopup`, [popupId], cleanupTimeout, testWindow);
             log("cleanup", { action: "popup-closed", pageId, popupId, ok: true });
         } catch (error) {
+            if (error instanceof EnvironmentStopError) throw error;
             const message = `Could not close popup ${popupId} on page ${pageId}: ${errMessage(error)}`;
             errors.push(message);
             log("cleanup", { action: "popup-closed", pageId, popupId, ok: false, error: message });
@@ -92,25 +115,27 @@ export async function closePagesOpenedSince(client: McpClient, baseline: Ownersh
 
     const baselinePages = new Set(baseline.pages.map((page) => page.id));
     const appeared = current.pages.filter((page) => !baselinePages.has(page.id));
-    const newPages = attached ? appeared.filter((page) => ownedPages.has(page.id)) : appeared;
-    const leftOpen = attached ? appeared.filter((page) => !ownedPages.has(page.id)).map(({ id }) => id) : [];
+    const newPages = appeared.filter((page) => !sessionPages.has(page.id)
+        && (!selectedWindow || ownedPages?.has(page.id)));
+    const leftOpen = selectedWindow ? appeared.filter((page) => !ownedPages?.has(page.id) && !sessionPages.has(page.id)).map(({ id }) => id) : [];
     if (leftOpen.length) log("cleanup", { action: "leave-unowned-pages", pageIds: leftOpen, reason: "attach: not opened by ctx.openBrowser" });
     for (const page of newPages) {
         log("cleanup", { action: "close-page", pageId: page.id });
         try {
-            let closed = await closeOwnedPage(client, page.id, log, cleanupTimeout);
-            if (closed !== true && await boundedCall(client, `pages[${JSON.stringify(page.id)}].pinSide`, undefined, cleanupTimeout) === "right") {
+            let closed = await closeOwnedPage(client, page.id, log, cleanupTimeout, testWindow);
+            if (closed !== true && await boundedCall(client, `pages[${JSON.stringify(page.id)}].pinSide`, undefined, cleanupTimeout, testWindow) === "right") {
                 // A right-pinned page refuses to close until it is unpinned (canCloseNormal). The test
                 // pinned it, so it is still the test's page to remove.
                 log("cleanup", { action: "unpin-page", pageId: page.id });
-                await boundedCall(client, "pages.unpinTab", [page.id], cleanupTimeout);
-                closed = await closeOwnedPage(client, page.id, log, cleanupTimeout);
+                await boundedCall(client, "pages.unpinTab", [page.id], cleanupTimeout, testWindow);
+                closed = await closeOwnedPage(client, page.id, log, cleanupTimeout, testWindow);
             }
             if (closed !== true) throw new Error("pages.closePage refused the close.");
-            const remaining = pageList(await boundedCall(client, "pages.all", undefined, cleanupTimeout, true));
+            const remaining = pageList(await readWithAttentionRetry(client, "pages.all", undefined, cleanupTimeout, testWindow));
             if (remaining.some(({ id }) => id === page.id)) throw new Error("The page remained open after pages.closePage.");
             log("cleanup", { action: "page-closed", pageId: page.id, ok: true });
         } catch (error) {
+            if (error instanceof EnvironmentStopError) throw error;
             const message = `Could not close page ${page.id}: ${errMessage(error)}`;
             errors.push(message);
             log("cleanup", { action: "page-closed", pageId: page.id, ok: false, error: message });
@@ -122,25 +147,31 @@ export async function closePagesOpenedSince(client: McpClient, baseline: Ownersh
     return errors;
 }
 
-export async function snapshotOwnedPages(client: McpClient, baseline: OwnershipSnapshot, log: LogHostEvent): Promise<BrowserPage[]> {
-    const current = await readSnapshot(client, "failure-capture", log);
+export async function snapshotOwnedPages(client: McpClient, baseline: OwnershipSnapshot, _log: LogHostEvent, testWindow: TestWindowOwner): Promise<BrowserPage[]> {
+    const current = pageList(await readWithAttentionRetry(client, "pages.all", undefined, client.timeouts.cleanup ?? 3000, testWindow));
     const known = new Set(baseline.pages.map((page) => page.id));
-    return current.pages.filter((page) => page.editor === "browser-view" && !known.has(page.id));
+    return current.filter((page) => page.editor === "browser-view" && !known.has(page.id));
 }
 
-async function readSnapshot(client: McpClient, phase: string, log: LogHostEvent): Promise<OwnershipSnapshot> {
+export async function listBrowserPages(client: McpClient, testWindow: TestWindowOwner): Promise<BrowserPage[]> {
+    return pageList(await readWithAttentionRetry(client, "pages.all", undefined, client.timeouts.cleanup ?? 3000, testWindow))
+        .filter((page) => page.editor === "browser-view");
+}
+
+async function readSnapshot(client: McpClient, phase: string, log: LogHostEvent, testWindow: TestWindowOwner): Promise<OwnershipSnapshot> {
     log("cleanup", { action: "snapshot-start", phase });
-    const pages = pageList(await client.call("pages.all"));
+    const pages = pageList(await readWithAttentionRetry(client, "pages.all", undefined, client.timeouts.cleanup ?? 3000, testWindow));
     const browserPages = pages.filter((page) => page.editor === "browser-view");
     const popups = new Map<string, Set<string>>();
     const untrackablePopups = new Set<string>();
     const errors: string[] = [];
     for (const page of browserPages) {
         try {
-            const values = await client.call(`pages[${JSON.stringify(page.id)}].editor.popups`);
+            const values = await readWithAttentionRetry(client, `pages[${JSON.stringify(page.id)}].editor.popups`, undefined, client.timeouts.cleanup ?? 3000, testWindow);
             popups.set(page.id, new Set(Array.isArray(values) ? values.flatMap((popup) =>
                 popup && typeof popup === "object" && "id" in popup && typeof popup.id === "string" ? [popup.id] : []) : []));
         } catch (error) {
+            if (error instanceof EnvironmentStopError) throw error;
             const message = errMessage(error);
             if (message.includes("Agent access is disabled for privacy protection")) {
                 popups.set(page.id, new Set());
@@ -164,17 +195,58 @@ function pageList(value: unknown): BrowserPage[] {
         && "id" in page && typeof page.id === "string"
         // A workspace page (Explorer rooted at a folder) has editor null; it is still a page the test may own.
         && "editor" in page && (typeof page.editor === "string" || page.editor === null)
-        ? [{ id: page.id, editor: typeof page.editor === "string" ? page.editor : "" }] : []);
+        ? [{
+            id: page.id,
+            editor: typeof page.editor === "string" ? page.editor : "",
+            ...(typeof page.title === "string" ? { title: page.title } : {}),
+            ...(typeof page.url === "string" ? { url: page.url } : {}),
+        }] : []);
 }
 
-async function closeOwnedPage(client: McpClient, pageId: string, log: LogHostEvent, timeout: number): Promise<unknown> {
-    const closed = await boundedCall(client, "pages.closePage", [pageId], timeout, true);
+function editorHandle(context: Pick<TestContext, "app" | "handle">, pageId: string): object {
+    const app = context.app as Record<string, unknown>;
+    const pages = app["pages"] as Record<string, unknown>;
+    const page = pages[pageId] as Record<string, unknown>;
+    return context.handle(page["editor"], { pageId });
+}
+
+function validateUsePageOptions(options: UsePageOptions): void {
+    if (!options || typeof options !== "object" || Array.isArray(options)) throw new TypeError("ctx.usePage(options) requires a URL prefix or title substring.");
+    const hasUrl = options.url !== undefined;
+    const hasTitle = options.title !== undefined;
+    if ((!hasUrl && !hasTitle)
+        || (hasUrl && !isValidCriterion(options.url))
+        || (hasTitle && !isValidCriterion(options.title))) {
+        throw new TypeError("ctx.usePage(options) requires a URL prefix or title substring.");
+    }
+}
+
+function isValidCriterion(value: unknown): value is string | RegExp {
+    return (typeof value === "string" && value.length > 0) || value instanceof RegExp;
+}
+
+function matchesCriterion(criterion: string | RegExp | undefined, value: string | undefined, matches: (value: string, criterion: string | RegExp) => boolean): boolean {
+    return criterion === undefined || (value !== undefined && matches(value, criterion));
+}
+
+function testRegularExpression(expression: RegExp, value: string): boolean {
+    const lastIndex = expression.lastIndex;
+    try {
+        expression.lastIndex = 0;
+        return expression.test(value);
+    } finally {
+        expression.lastIndex = lastIndex;
+    }
+}
+
+async function closeOwnedPage(client: McpClient, pageId: string, log: LogHostEvent, timeout: number, testWindow: TestWindowOwner): Promise<unknown> {
+    const closed = await boundedCall(client, "pages.closePage", [pageId], timeout, testWindow, true);
     if (isPending(closed)) {
-        const title = await boundedCall(client, "dialogs[0].title", undefined, timeout, true);
+        const title = await boundedCall(client, "dialogs[0].title", undefined, timeout, testWindow, true);
         if (title !== "Unsaved Changes") throw new Error(`Closing owned page ${pageId} opened an unexpected renderer dialog: ${String(title)}.`);
-        await boundedCall(client, "dialogs[0].click", ["Don't Save"], timeout, true);
+        await boundedCall(client, "dialogs[0].click", ["Don't Save"], timeout, testWindow, true);
         log("cleanup", { action: "answer-owned-page-dialog", pageId, title, choice: "Don't Save", ok: true });
-        const remaining = pageList(await boundedCall(client, "pages.all", undefined, timeout, true));
+        const remaining = pageList(await readWithAttentionRetry(client, "pages.all", undefined, timeout, testWindow));
         return !remaining.some(({ id }) => id === pageId);
     }
     return closed;
@@ -185,16 +257,18 @@ async function sweepRendererDialogs(
     log: LogHostEvent,
     timeout: number,
     phase: "before-snapshot" | "after-close",
+    testWindow: TestWindowOwner,
 ): Promise<{ found: boolean; errors: string[] }> {
     const errors: string[] = [];
     let found = false;
     // A popup menu left open answers every later call with attention, like a dialog; close it first.
     try {
-        const items = await boundedCall(client, "menus[0].items", undefined, timeout, true);
+        const items = await boundedCall(client, "menus[0].items", undefined, timeout, testWindow, true);
         found = true;
-        await boundedCall(client, "menus[0].close", [], timeout, true);
+        await boundedCall(client, "menus[0].close", [], timeout, testWindow, true);
         log("cleanup", { action: "close-popup-menu", phase, items: Array.isArray(items) ? items.length : undefined, ok: true });
     } catch (error) {
+        if (error instanceof EnvironmentStopError) throw error;
         const message = errMessage(error);
         if (!message.includes('No item 0 in "menus"')) {
             const failure = `Could not close a popup menu during ${phase}: ${message}`;
@@ -205,8 +279,9 @@ async function sweepRendererDialogs(
     for (let index = 0; index < 5; index++) {
         let title: unknown;
         try {
-            title = await boundedCall(client, "dialogs[0].title", undefined, timeout, true);
+            title = await boundedCall(client, "dialogs[0].title", undefined, timeout, testWindow, true);
         } catch (error) {
+            if (error instanceof EnvironmentStopError) throw error;
             const message = errMessage(error);
             // An empty dialog list reports `No item 0 in "dialogs"` (older builds: a read of undefined).
             if (message.includes('No item 0 in "dialogs"') || message.includes("Cannot read properties of undefined (reading 'title')")) break;
@@ -218,13 +293,14 @@ async function sweepRendererDialogs(
         found = true;
         const choice = title === "Unsaved Changes" ? "Don't Save" : "cancel";
         try {
-            if (choice === "Don't Save") await boundedCall(client, "dialogs[0].click", [choice], timeout, true);
-            else await boundedCall(client, "dialogs[0].cancel", [], timeout, true);
+            if (choice === "Don't Save") await boundedCall(client, "dialogs[0].click", [choice], timeout, testWindow, true);
+            else await boundedCall(client, "dialogs[0].cancel", [], timeout, testWindow, true);
             log("cleanup", { action: "dismiss-renderer-dialog", phase, title, choice, ok: true });
             if (index === 4) {
                 log("cleanup", { action: "renderer-dialog-sweep-limit", phase, limit: 5 });
             }
         } catch (error) {
+            if (error instanceof EnvironmentStopError) throw error;
             const failure = `Could not dismiss renderer dialog ${String(title)}: ${errMessage(error)}`;
             errors.push(failure);
             log("cleanup", { action: "dismiss-renderer-dialog", phase, title, choice, ok: false, error: failure });
@@ -238,6 +314,22 @@ function isPending(value: unknown): value is { pending: true } {
     return value !== null && typeof value === "object" && "pending" in value && value.pending === true;
 }
 
-async function boundedCall(client: McpClient, apiPath: string, args: unknown[] | undefined, timeout: number, dialog = false): Promise<unknown> {
-    return client.call(apiPath, args, timeout, undefined, dialog);
+async function boundedCall(client: McpClient, apiPath: string, args: unknown[] | undefined, timeout: number, testWindow: TestWindowOwner, dialog = false): Promise<unknown> {
+    return testWindow.call(client, apiPath, args, timeout, undefined, dialog);
+}
+
+async function readWithAttentionRetry(client: McpClient, apiPath: string, args: unknown[] | undefined, timeout: number, testWindow: TestWindowOwner): Promise<unknown> {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try { return await boundedCall(client, apiPath, args, timeout, testWindow); }
+        catch (error) {
+            lastError = error;
+            const message = errMessage(error);
+            if (!message.includes("attention") && !(error instanceof EnvironmentStopError)) throw error;
+            if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, client.timeouts.poll));
+        }
+    }
+    if (lastError instanceof EnvironmentStopError) throw lastError;
+    if (errMessage(lastError).includes("in the test window")) throw lastError;
+    throw new EnvironmentStopError("A dialog or popup menu requires attention in another window.");
 }

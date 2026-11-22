@@ -266,6 +266,7 @@ async function main() {
     let httpServer;
     let profilePath;
     let interrupted = false;
+    let environmentStop;
     let openRetained = false;
     let currentChild;
     const buildAbort = new AbortController();
@@ -310,6 +311,10 @@ async function main() {
         }
         const runnableModules = [...byModule].filter(([, tests]) => tests.some((test) => !skipped.has(test)));
         for (const [moduleId, moduleTests] of byModule) {
+            if (environmentStop) {
+                for (const descriptor of moduleTests) results.push({ ...descriptor, status: "not-run", durationMs: 0 });
+                continue;
+            }
             if (interrupted) {
                 for (const descriptor of moduleTests) results.push(failureResult(descriptor, "Run interrupted by a termination signal.", "interrupted"));
                 continue;
@@ -357,9 +362,11 @@ async function main() {
                     name: options.target === "attach" ? "attach" : options.target, attach: options.attach, with: options.with,
                 });
                 results.push(...collected);
-                const productReport = JSON.parse(await readFile(path.join(stageDirectory, "report.json"), "utf8")).retainedApp;
-                if (productReport) await writeKeepOpen({ pid: productReport.pid, url: MCP_URL, profileDir: path.resolve(profilePath), startedAt: new Date().toISOString() });
-                if (exitCode !== 0 && !collected.some((result) => result.status === "failed")) throw new Error(`Product runner exited with code ${exitCode} without reporting a failure.`);
+                const productReport = JSON.parse(await readFile(path.join(stageDirectory, "report.json"), "utf8"));
+                if (productReport.retainedApp) await writeKeepOpen({ pid: productReport.retainedApp.pid, url: MCP_URL, profileDir: path.resolve(profilePath), startedAt: new Date().toISOString() });
+                if (exitCode === 3 && typeof productReport.environmentStop === "string") environmentStop = productReport.environmentStop;
+                else if (exitCode === 3) throw new Error("Product runner returned environment-stop code 3 without a report cause.");
+                if (exitCode !== 0 && exitCode !== 3 && !collected.some((result) => result.status === "failed")) throw new Error(`Product runner exited with code ${exitCode} without reporting a failure.`);
             } catch (error) {
                 currentChild = undefined;
                 unhandledFailure ??= error;
@@ -404,10 +411,12 @@ async function main() {
         }
         if (!options.open && results.length) {
             try {
-                const summary = await writeAggregateReport(results, { target: options.target, selection: selection.map(({ file, name }) => ({ file, name })), startedAt, gone: options.gone, baselinePath: options.baseline });
-                if (summary.failed || summary.changed || unhandledFailure) process.exitCode = 1;
+                const summary = await writeAggregateReport(results, { target: options.target, selection: selection.map(({ file, name }) => ({ file, name })), startedAt, gone: options.gone, baselinePath: options.baseline, environmentStop });
+                if (environmentStop) process.exitCode = 3;
+                else if (summary.failed || summary.changed || unhandledFailure) process.exitCode = 1;
             } catch (error) { console.error(`Could not write integration reports: ${error.message}`); process.exitCode = 1; }
         }
+        if (environmentStop) console.error(`Environment stop: ${environmentStop}`);
         if (unhandledFailure) { console.error(unhandledFailure.message); process.exitCode ??= 1; }
         await releaseLock?.();
         process.off("SIGINT", stopOnSignal);

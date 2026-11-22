@@ -102,7 +102,7 @@ the connection. Attach does not capture test-mode app logs from the already runn
 Every selected module gets a versioned exact `{ file, name }` selection manifest. The wrapper runs
 one product invocation for each runnable module and passes the suite setup module plus `--with`
 and `--timeout-scale`. It passes `--keep-open` only to the last runnable module. Product options
-are documented in the [web-app test guide](../assets/guides/agents/web-app-tests.md); the suite
+are documented in the [web-app test guide](../assets/guides/agents/web-app-tests/index.md); the suite
 setup adds only `ctx.fixture()`, `ctx.httpUrl()`, and the compatibility `ctx._getClient()` helper.
 Existing `test` imports remain in `lib/context.mjs`.
 

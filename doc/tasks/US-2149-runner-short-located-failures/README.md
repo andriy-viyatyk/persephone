@@ -55,7 +55,7 @@ The error producer is the installed `ai-vision` 1.4.0 dependency (`node_modules/
 - With `hints: "never"`, the server returns no full member list and may find no close suggestion. Roadmap C3's “The full list stays in `tests.log`” is not achievable with `never` without an extra call; the epic accepts the pointer line above instead. Do not add a lookup protocol or fabricate a list.
 - The integration suite's `integration-test/run.mjs` passes exact selections and setup; `integration-test/lib/aggregate-report.mjs` reads `report.json` and ignores unknown fields, preserving its own report and `last-failed.json`. Existing status meanings and console lines remain; optional location is additive. Integration tests may see shorter MCP error text, while error/code semantics stay intact.
 - `src/test-host/` is not in the strict folders of `scripts/typecheck-strict.mjs`. No new protocol, `window.persephone` change or `await import()` workaround; keep god files shrinking by using focused collaborators.
-- At epic close `/userdoc` should update `assets/guides/agents/web-app-tests.md`, **Run tests** and **Triage a failed run**.
+- At epic close `/userdoc` should update `assets/guides/agents/web-app-tests/index.md`, **Run tests** and **Triage a failed run**.
 - Files that need NO changes: `doc/active-work.md`, `doc/epics/EPIC-202.md`, `src/main/test-mode/instance-options.ts`, `src/ipc/test-host-protocol.ts`, `integration-test/**`, `launcher/**`, `node_modules/ai-vision/**`, the MCP server, and the user guide in this task.
 
 ## Acceptance Criteria

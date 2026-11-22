@@ -13,6 +13,8 @@ import { testIdentityKey } from "./test-identity.js";
 import { runAttempt } from "./test-attempt.js";
 import type { TestDescriptor } from "./test-api.js";
 import { displayPath } from "./source-location.js";
+import { TestWindowOwner } from "./test-window.js";
+import { EnvironmentStopError } from "./attention-policy.js";
 
 type Descriptor = TestDescriptor;
 type DiscoveredFile = { file: string; tests: Descriptor[] };
@@ -68,7 +70,9 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
     let setupFailure: unknown;
     let stale: Array<{ file: string; name: string }> = [];
     let client: McpClient | undefined;
+    let testWindow: TestWindowOwner | undefined;
     let retainedApp: { pid: number; url: string } | undefined;
+    let environmentStop: string | undefined;
 
     try {
         if (attachPort !== undefined) configuration.port = attachPort;
@@ -127,7 +131,9 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
         const hasOnly = focusSelected.some((descriptor) => descriptor.mode === "only");
         if (hasOnly) console.log("Focused run: executing test.only descriptors only.");
         client = await launcher.start();
-        for (const group of files) {
+        const activeTestWindow = await TestWindowOwner.start(client, configuration.attach, configuration.window);
+        testWindow = activeTestWindow;
+        runTests: for (const group of files) {
             for (const descriptor of group.tests) {
                 if (!matchesSelection(group.file, descriptor.name, selection.selected)) continue;
                 if (hasOnly && descriptor.mode !== "only") continue;
@@ -148,12 +154,32 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
                 if (!attemptClient) throw new Error("MCP client was not initialized.");
                 const attempts: NonNullable<TestResult["attempts"]> = [];
                 let finalAttempt: Awaited<ReturnType<typeof runAttempt>> | undefined;
+                let failureBundle: string | undefined;
+                let failureScreenshots: string[] = [];
+                const attemptCaptureErrors: string[] = [];
                 const retryLimit = configuration.retries ?? 0;
                 for (let attemptNumber = 1; attemptNumber <= retryLimit + 1; attemptNumber++) {
                     attemptClient = launcher.client ?? attemptClient;
                     log.write({ event: "test-attempt-start", ...identity, attempt: attemptNumber, ...(attempts.at(-1)?.error ? { priorFailure: attempts.at(-1)?.error } : {}) });
-                    finalAttempt = await runAttempt({ descriptor, file: group.file, client: attemptClient, launcher, timeouts, configuration, setup, log, outputDirectory, attempt: attemptNumber });
+                    try { finalAttempt = await runAttempt({ descriptor, file: group.file, client: attemptClient, launcher, timeouts, configuration, setup, log, outputDirectory, attempt: attemptNumber, testWindow: activeTestWindow }); }
+                    catch (error) {
+                        if (!(error instanceof EnvironmentStopError)) throw error;
+                        environmentStop = error.message;
+                        results.push({ file: group.file, name: descriptor.name, status: "not-run", durationMs: Date.now() - testStarted, error: error.message });
+                        log.write({ event: "test-outcome", ...identity, status: "not-run", durationMs: Date.now() - testStarted, error: error.message });
+                        for (const remainingGroup of files) for (const remaining of remainingGroup.tests) {
+                            const key = testIdentityKey({ file: remainingGroup.file, name: remaining.name });
+                            if (results.some((result) => testIdentityKey(result) === key) || !matchesSelection(remainingGroup.file, remaining.name, selection.selected)) continue;
+                            results.push({ file: remainingGroup.file, name: remaining.name, status: "not-run", durationMs: 0 });
+                        }
+                        break runTests;
+                    }
                     attemptClient = finalAttempt.client;
+                    if (finalAttempt.error) {
+                        failureBundle = finalAttempt.failureBundle;
+                        failureScreenshots = finalAttempt.screenshots;
+                    }
+                    attemptCaptureErrors.push(...finalAttempt.captureErrors);
                     const failed = Boolean(finalAttempt.error || finalAttempt.cleanupErrors.length);
                     const expectedFailure = descriptor.mode === "fails" && failed && finalAttempt.cleanupErrors.length === 0;
                     const failedAttempt = descriptor.mode === "fails" ? !expectedFailure : failed;
@@ -181,8 +207,9 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
                     ...(errorText ? { error: errorText } : done.cleanupErrors.length ? { error: "Per-test cleanup found leftover state or failed to complete." } : {}),
                     ...(requirements.length ? { requirements } : {}),
                     ...(done.cleanupErrors.length ? { cleanupErrors: done.cleanupErrors } : {}),
-                    ...(done.screenshots.length ? { screenshots: done.screenshots } : {}),
-                    ...(done.captureErrors.length ? { captureErrors: done.captureErrors } : {}),
+                    ...(failureBundle ? { failureBundle } : {}),
+                    ...(failureScreenshots.length ? { screenshots: failureScreenshots } : {}),
+                    ...(attemptCaptureErrors.length ? { captureErrors: attemptCaptureErrors } : {}),
                     ...(descriptor.reason ? { reason: descriptor.reason } : {}),
                     ...(attempts.length > 1 ? { attempts } : {}),
                     ...(done.location ?? attempts.findLast((attempt) => attempt.location)?.location ? { location: done.location ?? attempts.findLast((attempt) => attempt.location)?.location } : {}),
@@ -192,8 +219,17 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
             }
         }
     } catch (error) {
-        setupFailure = error;
+        if (error instanceof EnvironmentStopError) environmentStop = error.message;
+        else setupFailure = error;
     } finally {
+        if (testWindow && configuration.attach) {
+            try {
+                const attachedClient = launcher.client ?? client;
+                if (!attachedClient) setupFailure ??= new Error("MCP client was not initialized during test-window teardown.");
+                else if (testWindow.mode === "attached-created") await testWindow.disposeCreatedWindow(attachedClient);
+                else await testWindow.assertIdentity(attachedClient);
+            } catch (error) { if (error instanceof EnvironmentStopError) environmentStop ??= error.message; else setupFailure ??= error; }
+        }
         try {
             if (configuration.keepOpen && !configuration.attach && (results.some((result) => result.status === "failed" || result.status === "unexpected-pass") || setupFailure)) retainedApp = await launcher.retain();
             else await launcher.stop();
@@ -202,23 +238,24 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
         try { launcher.close(); }
         catch (error) { setupFailure ??= error; }
         if (outputDirectory) {
-            try { await writeReports(results, { directory: outputDirectory, target: configuration.testPath, startedAt: started, stale, setupFailure, retainedApp }); }
+            try { await writeReports(results, { directory: outputDirectory, target: configuration.testPath, startedAt: started, stale, setupFailure, retainedApp, environmentStop }); }
             catch (error) { setupFailure ??= error; }
         }
         const passed = results.filter((result) => result.status === "passed").length;
         const failed = results.filter((result) => result.status === "failed").length + (setupFailure ? 1 : 0);
+        const notRun = results.filter((result) => result.status === "not-run").length;
         const skipped = results.filter((result) => result.status === "skipped").length;
         const expectedFailure = results.filter((result) => result.status === "expected-failure").length;
         const unexpectedPass = results.filter((result) => result.status === "unexpected-pass").length;
         const flaky = results.filter((result) => result.status === "flaky").length;
-        try { log?.write({ event: "run-summary", startedAt: started, passed, failed, skipped, expectedFailure, unexpectedPass, flaky, ...(setupFailure ? { setupFailure: errMessage(setupFailure) } : {}) }); }
+        try { log?.write({ event: "run-summary", startedAt: started, passed, failed, skipped, expectedFailure, unexpectedPass, flaky, notRun, ...(environmentStop ? { environmentStop } : {}), ...(setupFailure ? { setupFailure: errMessage(setupFailure) } : {}) }); }
         finally { log?.close(); }
-        console.log(`Test run ${started}: ${passed} passed, ${failed} failed, ${skipped} skipped, ${expectedFailure} expected failure, ${unexpectedPass} unexpected passes, ${flaky} flaky.`);
+        console.log(`Test run ${started}: ${passed} passed, ${failed} failed, ${skipped} skipped, ${notRun} not run, ${expectedFailure} expected failure, ${unexpectedPass} unexpected passes, ${flaky} flaky.${environmentStop ? ` Environment stop: ${environmentStop}` : ""}`);
         for (const result of results.filter((item) => item.status !== "passed")) {
             console.log(`${result.status.toUpperCase()} ${displayPath(configuration.cwd, result.file)} — ${result.name}${result.step ? ` — ${result.step}` : ""}${result.error ? `\n${result.error}` : ""}`);
             for (const cleanupError of result.cleanupErrors ?? []) console.error(`CLEANUP ${cleanupError}`);
             for (const screenshot of result.screenshots ?? []) console.log(`Screenshot: ${outputDirectory ? path.join(outputDirectory, screenshot) : screenshot}`);
-            for (const captureError of result.captureErrors ?? []) console.error(`SCREENSHOT ${captureError}`);
+            for (const captureError of result.captureErrors ?? []) console.error(`CAPTURE ${captureError}`);
         }
         for (const identity of stale) console.log(`STALE ${displayPath(configuration.cwd, identity.file)} — ${identity.name} (saved as failed, no longer exists; skipped)`);
         if (outputDirectory) console.log(`Results: ${outputDirectory}`);
@@ -229,7 +266,7 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
         if (summaryResults.length) {
             console.log("Summary:");
             for (const result of summaryResults) {
-                const labels: Record<TestResult["status"], string> = { passed: "PASSED", failed: "FAILED", skipped: "SKIPPED", "expected-failure": "EXPECTED FAILURE", "unexpected-pass": "UNEXPECTED PASS", flaky: "FLAKY" };
+                const labels: Record<TestResult["status"], string> = { passed: "PASSED", failed: "FAILED", skipped: "SKIPPED", "expected-failure": "EXPECTED FAILURE", "unexpected-pass": "UNEXPECTED PASS", flaky: "FLAKY", "not-run": "NOT RUN" };
                 const location = result.location ?? displayPath(configuration.cwd, result.file);
                 const attemptError = result.attempts?.find((attempt) => attempt.error)?.error;
                 const detail = result.status === "skipped" ? result.skipReason
@@ -240,7 +277,7 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
         }
     }
 
-    return results.some((result) => result.status === "failed" || result.status === "unexpected-pass") || setupFailure ? 1 : 0;
+    return environmentStop ? 3 : results.some((result) => result.status === "failed" || result.status === "unexpected-pass") || setupFailure ? 1 : 0;
 }
 
 /** The first meaningful error line; a call error repeats its step on its first line, so that line is skipped. */

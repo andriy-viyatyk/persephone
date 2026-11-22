@@ -55,7 +55,7 @@ CLI path: `src/main/test-mode/arguments.ts` parses test-controller options; `con
 
 - The integration suite uses its own `test` from `integration-test/lib/context.mjs`, passes neither `--retries` nor `--grep`, and its descriptors have no modifier fields; it cannot produce `expected-failure`, `unexpected-pass` or `flaky`. The runner must still accept plain `{ name, run, requires }` descriptors as normal tests. Adding modifiers to the integration suite is a possible follow-up, outside this task; its existing report and rerun consumers stay unchanged.
 - `src/test-host/` is not in `scripts/typecheck-strict.mjs`; `src/ipc/` is strict but no change is expected there. No new protocol, `window.persephone` change, or `await import()` workaround. Keep god files shrinking by extracting attempt execution.
-- At epic close `/userdoc` should update `assets/guides/agents/web-app-tests.md`, **Test file and context**, the **Run tests** option list for `--grep` and `--retries`, and **Triage a failed run**.
+- At epic close `/userdoc` should update `assets/guides/agents/web-app-tests/index.md`, **Test file and context**, the **Run tests** option list for `--grep` and `--retries`, and **Triage a failed run**.
 - Files that need NO changes: `doc/active-work.md`, `doc/epics/EPIC-202.md`, `src/main/test-mode/instance-options.ts`, `src/ipc/test-host-protocol.ts`, `integration-test/**`, `launcher/**`, `node_modules/ai-vision/**`, and the user guide in this task.
 
 ## Acceptance Criteria

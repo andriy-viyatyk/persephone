@@ -86,7 +86,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Web-app regression tests:** Write `.test.mjs` checks for a web app and run them with
   `persephone-test.exe` in a Persephone profile, reusing a logged-in browser profile. Reports,
   screenshots, console output, and network logs help diagnose failures. See [Web-app regression
-  tests](./agents/web-app-tests.md).
+  tests](./agents/web-app-tests/index.md).
 - **Downloads in web-app tests:** in an app launched by the test runner, a browser download no
   longer opens the Save dialog that a test cannot answer. It is saved to the profile's
   `test-downloads` folder and its path is listed in `app.downloads`.

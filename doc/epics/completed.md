@@ -1,3 +1,22 @@
+## EPIC-204 — Test window and session pages for web-app tests
+
+Completed 2026-11-22. Step 2 of the [web-app testing review](../reviews/web-app-testing-review.md) roadmap (A1, A2,
+A3, A4, C1, C2). `--attach` opens its own test window (`windows.createTestWindow`, closed and forgotten at run
+end) or uses one picked with `--window <index or title>`; every runner and test call is scoped to it by
+`src/test-host/test-window.ts`, and `ctx.root` reaches the whole app. Window indexes are allocated
+monotonically. Cleanup closes menus and dialogs again, only in the test window. Attention from another window and a
+closed or replaced test window are an **environment stop** (exit 3, `not-run` tests, cause in the reports;
+runner bookkeeping reads are retried, test calls never replayed). `ctx.usePage({ url, title })` adopts an open,
+signed-in page in the test window and never closes it. A failed test captures the pages under test (never the window
+in attached runs) and writes a failure bundle (URL, title, page errors, console errors, failed requests; no headers
+or bodies, query values redacted). The web-app test guide became a hub with two pages. Completion skills by Codex
+(Luna). Epic document: [EPIC-204](EPIC-204.md).
+
+- [x] **Runner test window for attached runs (US-2153).**
+- [x] **Attention from other windows: retry, then environment stop (US-2154).**
+- [x] **Session pages: `ctx.usePage` (US-2155).**
+- [x] **Failure capture of pages under test and failure bundle (US-2156).**
+
 ## EPIC-203 — Browser automation fixes for web-app tests
 
 Completed 2026-11-22. Step 1b of the [web-app testing review](../reviews/web-app-testing-review.md) roadmap

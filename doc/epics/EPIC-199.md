@@ -145,7 +145,7 @@ that `webContents.sendInputEvent` does reach it, and `BrowserGuest.ts:100` alrea
 - `ctx.call` on a method path with no args array throws and names the fix, instead of returning the descriptor.
 - `ctx.openBrowser()` returns the page id too.
 - `ctx.expect` gets `toBeGreaterThan` / `toBeLessThanOrEqual` / `toMatch`. These were guessed twice.
-- [web-app-tests.md](../../assets/guides/agents/web-app-tests.md) gets one "Crossing the call boundary" section:
+- [web-app-tests/index.md](../../assets/guides/agents/web-app-tests/index.md) gets one "Crossing the call boundary" section:
   - `ctx.app` is the call-tree root, not the script `app`;
   - a stand-in names a path and is resolved again on each read, including after an editor switch;
   - method calls start at once, while property reads start on `await`;

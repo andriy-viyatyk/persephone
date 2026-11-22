@@ -56,4 +56,14 @@ Items are appended as they are found; none is a blocker unless marked so.
 
 ## Implementation Progress
 
-Not started — collecting items.
+Worked through the roadmap in [the web-app testing review](../../reviews/web-app-testing-review.md) (section 5),
+one epic per step.
+
+- **Step 1a — [EPIC-202](../../epics/EPIC-202.md) (done 2026-11-22):** items 6, 7, 12 (runner half), 14, 24 and the
+  matcher half of 21.
+- **Step 1b — [EPIC-203](../../epics/EPIC-203.md) (done 2026-11-22):** items 4, 8 (sorting from Chromium's CDP
+  transfer: fixed for page-model replies, documented for `evaluate`), 15, 16, 18, 21 (input half), 22 (menu half)
+  and half of 1.
+- **Step 2 — [EPIC-204](../../epics/EPIC-204.md) (in progress):** items 3 (session-page half), 11, 13, 22 (runner
+  half), 23.
+- Still open after step 2: 1 (rest), 2, 3 (storage-state half, F2), 5, 9, 10, 17, 19, 20 — roadmap steps 3–7.

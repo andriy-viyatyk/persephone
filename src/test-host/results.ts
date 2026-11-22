@@ -1,17 +1,15 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { McpClient } from "./client.js";
 import type { HostConfiguration } from "./launcher.js";
-import { snapshotOwnedPages } from "./browser-helpers.js";
 import { errMessage } from "../shared/utils.js";
-import type { TestLog } from "./test-log.js";
 import { normalizeTestFile, testIdentityKey } from "./test-identity.js";
+import { EnvironmentStopError } from "./attention-policy.js";
 
 export interface TestResult {
     file: string;
     name: string;
-    status: "passed" | "failed" | "skipped" | "expected-failure" | "unexpected-pass" | "flaky";
+    status: "passed" | "failed" | "skipped" | "expected-failure" | "unexpected-pass" | "flaky" | "not-run";
     durationMs: number;
     step?: string;
     error?: string;
@@ -19,6 +17,7 @@ export interface TestResult {
     requirements?: string[];
     cleanupErrors?: string[];
     screenshots?: string[];
+    failureBundle?: string;
     captureErrors?: string[];
     reason?: string;
     attempts?: Array<{ attempt: number; status: "passed" | "failed"; error?: string; location?: string; step?: string }>;
@@ -27,7 +26,6 @@ export interface TestResult {
 
 export interface FailedIdentity { file: string; name: string; }
 export interface RerunSelection { identities: FailedIdentity[]; }
-export interface FailureCapture { screenshots: string[]; captureErrors: string[]; }
 
 export async function resolveLogDirectory(configuration: HostConfiguration): Promise<string> {
     if (configuration.logDirectory) return configuration.logDirectory;
@@ -48,6 +46,7 @@ export async function readFailedSelection(directory: string): Promise<RerunSelec
         if (identities.length !== value.failed.length) throw new Error("failed entries must contain string file and name fields");
         return { identities };
     } catch (error) {
+        if (error instanceof EnvironmentStopError) throw error;
         throw new Error(`Cannot read rerun selection ${filePath}: ${errMessage(error)}`, { cause: error });
     }
 }
@@ -72,83 +71,30 @@ export function matchesSelection(file: string, name: string, selected: Set<strin
     return selected === undefined || selected.has(identityKey(file, name));
 }
 
-export async function captureFailure(
-    client: McpClient,
-    baseline: Parameters<typeof snapshotOwnedPages>[1],
-    directory: string,
-    identity: FailedIdentity,
-    log: TestLog,
-): Promise<FailureCapture> {
-    const screenshots: string[] = [];
-    const captureErrors: string[] = [];
-    const prefix = sanitize(`${path.basename(identity.file)}-${identity.name}`);
-    await captureTarget("window", "window.screen.screenshot", [], prefix, client, directory, identity, screenshots, captureErrors, log);
-    try {
-        const pages = await snapshotOwnedPages(client, baseline, (event, details) => log.write({ event, ...identity, ...details }));
-        for (const page of pages) {
-            await captureTarget(`browser-${page.id}`, `pages[${JSON.stringify(page.id)}].editor.screenshot`, [], `${prefix}-browser-${sanitize(page.id)}`, client, directory, identity, screenshots, captureErrors, log);
-        }
-    } catch (error) {
-        const message = `Could not inspect test-opened browser pages for screenshots: ${errMessage(error)}`;
-        captureErrors.push(message);
-        log.write({ event: "screenshot", ...identity, target: "browser-pages", ok: false, error: message });
-    }
-    return { screenshots, captureErrors };
-}
-
-async function captureTarget(
-    target: string,
-    apiPath: string,
-    args: unknown[],
-    prefix: string,
-    client: McpClient,
-    directory: string,
-    identity: FailedIdentity,
-    screenshots: string[],
-    captureErrors: string[],
-    log: TestLog,
-): Promise<void> {
-    try {
-        const image = await client.image(apiPath, args, client.timeouts.screenshot ?? 5000);
-        if (!image) throw new Error("MCP returned no image content block.");
-        const extension = image.mimeType === "image/png" ? ".png" : image.mimeType === "image/jpeg" ? ".jpg" : undefined;
-        if (!extension) throw new Error(`Unsupported screenshot MIME type: ${image.mimeType}`);
-        const screenshotDirectory = path.join(directory, "screenshots");
-        await fs.mkdir(screenshotDirectory, { recursive: true });
-        const relative = path.posix.join("screenshots", `${prefix}-${randomUUID()}${extension}`);
-        const absolute = path.join(directory, relative);
-        await fs.writeFile(absolute, Buffer.from(image.data, "base64"), { flag: "wx" });
-        screenshots.push(relative);
-        log.write({ event: "screenshot", ...identity, target, ok: true, path: relative });
-    } catch (error) {
-        const message = `${target} screenshot failed: ${errMessage(error)}`;
-        captureErrors.push(message);
-        log.write({ event: "screenshot", ...identity, target, ok: false, error: message });
-    }
-}
-
 export async function writeReports(
     results: TestResult[],
-    options: { directory: string; target: string; startedAt: string; stale: FailedIdentity[]; setupFailure?: unknown; retainedApp?: { pid: number; url: string } },
+    options: { directory: string; target: string; startedAt: string; stale: FailedIdentity[]; setupFailure?: unknown; retainedApp?: { pid: number; url: string }; environmentStop?: string },
 ): Promise<void> {
     await fs.mkdir(options.directory, { recursive: true });
     const failed = results.filter((result) => result.status === "failed");
-    const failedForRerun = results.filter((result) => result.status === "failed" || result.status === "unexpected-pass");
+    const failedForRerun = results.filter((result) => result.status === "failed" || result.status === "unexpected-pass" || (options.environmentStop && result.status === "not-run"));
     const passed = results.filter((result) => result.status === "passed");
     const skipped = results.filter((result) => result.status === "skipped");
     const expectedFailure = results.filter((result) => result.status === "expected-failure");
     const unexpectedPass = results.filter((result) => result.status === "unexpected-pass");
     const flaky = results.filter((result) => result.status === "flaky");
+    const notRun = results.filter((result) => result.status === "not-run");
     const payload = {
         runAt: options.startedAt,
         target: options.target,
-        summary: { passed: passed.length, failed: failed.length + (options.setupFailure ? 1 : 0), skipped: skipped.length, expectedFailure: expectedFailure.length, unexpectedPass: unexpectedPass.length, flaky: flaky.length },
+        summary: { passed: passed.length, failed: failed.length + (options.setupFailure ? 1 : 0), skipped: skipped.length, expectedFailure: expectedFailure.length, unexpectedPass: unexpectedPass.length, flaky: flaky.length, notRun: notRun.length },
+        ...(options.environmentStop ? { environmentStop: options.environmentStop } : {}),
         stale: options.stale,
         ...(options.setupFailure ? { setupFailure: errMessage(options.setupFailure) } : {}),
         ...(options.retainedApp ? { retainedApp: options.retainedApp } : {}),
         results,
     };
-    const lines = ["# Persephone test report", "", `Run: ${markdown(options.startedAt)}`, `Target: ${markdown(options.target)}`, "", `Passed: ${passed.length}  Failed: ${failed.length + (options.setupFailure ? 1 : 0)}  Skipped: ${skipped.length}  Expected failure: ${expectedFailure.length}  Unexpected pass: ${unexpectedPass.length}  Flaky: ${flaky.length}`, ""];
+    const lines = ["# Persephone test report", "", `Run: ${markdown(options.startedAt)}`, `Target: ${markdown(options.target)}`, "", `Passed: ${passed.length}  Failed: ${failed.length + (options.setupFailure ? 1 : 0)}  Skipped: ${skipped.length}  Not run: ${notRun.length}  Expected failure: ${expectedFailure.length}  Unexpected pass: ${unexpectedPass.length}  Flaky: ${flaky.length}`, ...(options.environmentStop ? ["", `Environment stop: ${markdown(options.environmentStop)}`, "A not-run test may already have changed state."] : []), ""];
     for (const result of results) {
         lines.push(`## ${markdown(result.status.toUpperCase())}: ${markdown(result.name)}`, "", `File: \`${markdown(result.file)}\``, `Duration: ${result.durationMs} ms`);
         if (result.step) lines.push(`Step: ${markdown(result.step)}`);
@@ -158,7 +104,8 @@ export async function writeReports(
         if (result.error) lines.push("", "Error:", "", fenced(result.error));
         if (result.attempts?.length) lines.push("", "Attempts:", ...result.attempts.map((attempt) => `- ${attempt.attempt}: ${attempt.status}${attempt.error ? ` — ${markdown(attempt.error)}` : ""}${attempt.location ? ` (${markdown(attempt.location)})` : ""}`));
         if (result.cleanupErrors?.length) lines.push("", "Cleanup errors:", ...result.cleanupErrors.map((error) => `- ${markdown(error)}`));
-        if (result.captureErrors?.length) lines.push("", "Screenshot capture errors:", ...result.captureErrors.map((error) => `- ${markdown(error)}`));
+        if (result.failureBundle) lines.push("", `Failure bundle: [${markdown(result.failureBundle)}](${encodeURI(result.failureBundle)})`);
+        if (result.captureErrors?.length) lines.push("", "Capture errors:", ...result.captureErrors.map((error) => `- ${markdown(error)}`));
         if (result.screenshots?.length) lines.push("", "Screenshots:", ...result.screenshots.map((screenshot) => `- [${markdown(screenshot)}](${encodeURI(screenshot)})`));
         lines.push("");
     }
@@ -174,10 +121,6 @@ export async function writeReports(
 
 function identityKey(file: string, name: string): string {
     return testIdentityKey({ file, name });
-}
-
-function sanitize(value: string): string {
-    return value.replaceAll(/[\\/]/g, "_").replaceAll(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 120) || "test";
 }
 
 function markdown(value: unknown): string {

@@ -83,11 +83,12 @@ async function compareWithBaseline(baselinePath, results, selection) {
     return comparison;
 }
 
-export async function writeAggregateReport(results, { target, selection, startedAt, gone = [], baselinePath }) {
+export async function writeAggregateReport(results, { target, selection, startedAt, gone = [], baselinePath, environmentStop }) {
     const comparison = await compareWithBaseline(baselinePath, results, selection);
     const failed = results.filter((item) => item.status === "failed");
     const passed = results.filter((item) => item.status === "passed");
     const skipped = results.filter((item) => item.status === "skipped");
+    const notRun = results.filter((item) => item.status === "not-run");
     const changed = comparison?.filter((item) => item.outcome !== "unchanged") ?? [];
     const resultOrder = new Map(selection.map((item, index) => [`${item.file}\0${item.name}`, index]));
     results.sort((left, right) => (resultOrder.get(`${left.file}\0${left.name}`) ?? Number.MAX_SAFE_INTEGER) - (resultOrder.get(`${right.file}\0${right.name}`) ?? Number.MAX_SAFE_INTEGER));
@@ -97,10 +98,10 @@ export async function writeAggregateReport(results, { target, selection, started
         ...(skipReason ? { skipReason } : {}), ...(failure ? { failure } : {}),
         ...(resultTarget ? { target: resultTarget } : {}), ...(appMainLog ? { appMainLog } : {}),
     }));
-    const payload = { runAt: startedAt, target, selection, summary: { passed: passed.length, failed: failed.length, skipped: skipped.length }, results: reportResults,
+    const payload = { runAt: startedAt, target, selection, summary: { passed: passed.length, failed: failed.length, skipped: skipped.length, notRun: notRun.length }, ...(environmentStop ? { environmentStop } : {}), results: reportResults,
         ...(gone.length ? { gone } : {}),
         ...(comparison ? { baseline: baselinePath, comparison, parity: { unchanged: comparison.length - changed.length, changed: changed.length } } : {}) };
-    const lines = ["# Integration test report", "", `Run: ${startedAt}`, `Target: ${target}`, `Passed: ${passed.length}  Failed: ${failed.length}  Skipped: ${skipped.length}`, ...(comparison ? [`Baseline changes: ${changed.length} (${baselinePath})`] : []), ""];
+    const lines = ["# Integration test report", "", `Run: ${startedAt}`, `Target: ${target}`, `Passed: ${passed.length}  Failed: ${failed.length}  Skipped: ${skipped.length}  Not run: ${notRun.length}`, ...(environmentStop ? [`Environment stop: ${environmentStop}`, "A not-run test may already have changed state."] : []), ...(comparison ? [`Baseline changes: ${changed.length} (${baselinePath})`] : []), ""];
     for (const result of results) {
         lines.push(`## ${result.status.toUpperCase()}: ${result.name}`, "", `File: \`${result.file}\``, `Duration: ${result.durationMs} ms`);
         if (result.skipReason) lines.push(`Reason: ${result.skipReason}`);
@@ -114,10 +115,11 @@ export async function writeAggregateReport(results, { target, selection, started
     await mkdir(REPORT_ROOT, { recursive: true });
     await atomic(path.join(REPORT_ROOT, "latest.json"), `${JSON.stringify(payload, null, 2)}\n`);
     await atomic(path.join(REPORT_ROOT, "latest.md"), `${lines.join("\n")}\n`);
-    await atomic(path.join(REPORT_ROOT, "last-failed.json"), `${JSON.stringify({ version: 1, failed: failed.map(({ file, name }) => ({ file, name })) }, null, 2)}\n`);
+    const rerun = results.filter((item) => item.status === "failed" || (environmentStop && item.status === "not-run"));
+    await atomic(path.join(REPORT_ROOT, "last-failed.json"), `${JSON.stringify({ version: 1, failed: rerun.map(({ file, name }) => ({ file, name })) }, null, 2)}\n`);
     console.log(`Integration tests: ${passed.length} passed, ${failed.length} failed, ${skipped.length} skipped${comparison ? `; baseline changes ${changed.length}` : ""}. Reports: ${REPORT_ROOT}`);
     for (const item of changed) console.log(`BASELINE ${item.outcome}: ${item.file} — ${item.name} (${item.baselineStatus} → ${item.newStatus})`);
-    return { passed: passed.length, failed: failed.length, skipped: skipped.length, changed: changed.length };
+    return { passed: passed.length, failed: failed.length, skipped: skipped.length, notRun: notRun.length, changed: changed.length };
 }
 
 async function atomic(file, content) {

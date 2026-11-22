@@ -4,6 +4,7 @@ import { errMessage } from "../shared/utils.js";
 import { formatStep } from "./step-format.js";
 import { PERSEPHONE_CALL_RESULT_TYPE_META_KEY } from "../shared/mcp-result-type.js";
 import { modelCallMaxLength } from "./model-call-options.js";
+import { classifyAttention, EnvironmentStopError } from "./attention-policy.js";
 
 export interface Timeouts { startup: number; request: number; wait: number; poll: number; shutdown: number; scale?: number; cleanup?: number; screenshot?: number; secondInstance?: number; }
 export interface McpImage { mimeType: string; data: string; }
@@ -33,18 +34,18 @@ export class McpClient {
         }
         throw new Error(`MCP did not become ready: ${errMessage(lastError)}`);
     }
-    async call(path?: string, args?: unknown, timeout = this.timeouts.request, maxLength?: number, dialog = false, allowNavigation = false): Promise<unknown> {
+    async call(path?: string, args?: unknown, timeout = this.timeouts.request, maxLength?: number, dialog = false, allowNavigation = false, testWindowIndex?: number): Promise<unknown> {
         const result = await this.rawCall(path, args, { timeout, maxLength: modelCallMaxLength(path, maxLength), allowNavigation, hints: "never" });
-        return this.decode(result, path, args, maxLength !== undefined, dialog);
+        return this.decode(result, path, args, maxLength !== undefined, dialog, false, testWindowIndex);
     }
-    async callText(path?: string, args?: unknown, timeout = this.timeouts.request, maxLength?: number, dialog = false, allowNavigation = false): Promise<string> {
+    async callText(path?: string, args?: unknown, timeout = this.timeouts.request, maxLength?: number, dialog = false, allowNavigation = false, testWindowIndex?: number): Promise<string> {
         const result = await this.rawCall(path, args, { timeout, maxLength: modelCallMaxLength(path, maxLength), allowNavigation, hints: "never" });
-        return this.decode(result, path, args, maxLength !== undefined, dialog, true) as string;
+        return this.decode(result, path, args, maxLength !== undefined, dialog, true, testWindowIndex) as string;
     }
     /** Assigns `value` to the writable property named by `path` (the `call` tool's `value` field). */
-    async set(path: string, value: unknown, timeout = this.timeouts.request): Promise<unknown> {
+    async set(path: string, value: unknown, timeout = this.timeouts.request, testWindowIndex?: number): Promise<unknown> {
         const result = await this.rawCall(path, undefined, { timeout, hints: "never", value });
-        return this.decode(result, path, { value });
+        return this.decode(result, path, { value }, false, false, false, testWindowIndex);
     }
     async rawCall(path?: string, args?: unknown, options: { timeout?: number; maxLength?: number; allowNavigation?: boolean; hints?: "always" | "never"; value?: unknown } = {}): Promise<{ isError?: boolean; content?: ContentBlock[]; _meta?: Record<string, unknown> }> {
         if (!this.client) throw new Error("MCP connection is not healthy.");
@@ -70,7 +71,7 @@ export class McpClient {
             block.type === "image" && typeof block.mimeType === "string" && typeof block.data === "string");
         return image ? { mimeType: image.mimeType, data: image.data } : undefined;
     }
-    private decode(result: { isError?: boolean; content?: ContentBlock[]; _meta?: Record<string, unknown> }, path?: string, args?: unknown, maxLengthSupplied = false, allowDialog = false, textOnly = false): unknown {
+    private decode(result: { isError?: boolean; content?: ContentBlock[]; _meta?: Record<string, unknown> }, path?: string, args?: unknown, maxLengthSupplied = false, allowDialog = false, textOnly = false, testWindowIndex?: number): unknown {
         const blocks = result.content ?? [];
         if (result.isError) throw this.serverError(path, args, blocks);
         const raw = this.readableBlocks(blocks);
@@ -79,7 +80,11 @@ export class McpClient {
         if (pendingIndex !== -1) {
             if (allowDialog && pendingIndex === 0 && isTextBlock(blocks[0]) && blocks[0].text === "Pending: the action is waiting on a dialog. Answer it, then re-read state.") {
                 let index = 1;
-                if (startsWithText(blocks[index], "Attention:")) index++;
+                if (startsWithText(blocks[index], "Attention:")) {
+                    const classification = classifyAttention((blocks[index] as { text: string }).text, path, testWindowIndex);
+                    if (classification.origin === "outside") throw new EnvironmentStopError(classification.cause);
+                    index++;
+                }
                 if (startsWithText(blocks[index], "--- events ---")) index++;
                 if (index === blocks.length) return { pending: true };
             }
@@ -87,7 +92,9 @@ export class McpClient {
         }
         let index = 0;
         if (startsWithText(blocks[index], "Attention:")) {
-            if (!allowDialog) throw new Error(`${formatStep("call", path, args)} returned unexpected attention. Raw reply: ${raw}`);
+            const classification = classifyAttention((blocks[index] as { text: string }).text, path, testWindowIndex);
+            if (classification.origin === "outside") throw new EnvironmentStopError(classification.cause);
+            if (!allowDialog) throw new Error(`${classification.cause}\n${formatStep("call", path, args)} returned unexpected attention. Raw reply: ${raw}`);
             index++;
         }
         if (startsWithText(blocks[index], "--- events ---")) index++;

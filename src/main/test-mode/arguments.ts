@@ -16,6 +16,7 @@ export interface TestControllerArguments {
     mcpPort?: number;
     retries: number;
     grep?: string;
+    window?: string;
 }
 
 export function hasTestControllerArguments(args: string[]): boolean {
@@ -23,7 +24,8 @@ export function hasTestControllerArguments(args: string[]): boolean {
         || argument === "--with" || argument.startsWith("--with=") || argument === "--keep-open"
         || argument === "--mcp-port" || argument.startsWith("--mcp-port=") || argument === "--timeout-scale"
         || argument.startsWith("--timeout-scale=") || argument === "--retries" || argument.startsWith("--retries=")
-        || argument === "--grep" || argument.startsWith("--grep=") || (argument.startsWith("--test-") && !isTestInstanceOption(argument)));
+        || argument === "--grep" || argument.startsWith("--grep=") || argument === "--window" || argument.startsWith("--window=")
+        || (argument.startsWith("--test-") && !isTestInstanceOption(argument)));
 }
 
 export function parseTestControllerArguments(args: string[], cwd = process.cwd()): TestControllerArguments | undefined {
@@ -44,6 +46,7 @@ export function parseTestControllerArguments(args: string[], cwd = process.cwd()
     let retries = 0;
     let retriesSeen = false;
     let grep: string | undefined;
+    let window: string | undefined;
     for (let index = 0; index < args.length; index += 1) {
         const argument = args[index];
         if (argument === "--test" || argument.startsWith("--test=")) {
@@ -79,6 +82,11 @@ export function parseTestControllerArguments(args: string[], cwd = process.cwd()
             if (!value || value.startsWith("--")) throw new Error("--grep requires a regular expression.");
             try { new RegExp(value); } catch { throw new Error("--grep requires a valid JavaScript regular expression."); }
             grep = value;
+        } else if (argument === "--window" || argument.startsWith("--window=")) {
+            if (window !== undefined) throw new Error("Duplicate --window option.");
+            const value = argument === "--window" ? args[++index] : argument.slice("--window=".length);
+            if (!value || value.startsWith("--")) throw new Error("--window requires a window index or title substring.");
+            window = value;
         } else if (isTestInstanceOption(argument)) {
             continue;
         } else if (argument === "--test-selection" || argument.startsWith("--test-selection=")) {
@@ -120,5 +128,6 @@ export function parseTestControllerArguments(args: string[], cwd = process.cwd()
     if (logFile && logDirectory) throw new Error("--log and --log-dir cannot be combined.");
     if (logFile && rerunFailed) throw new Error("--log cannot be combined with --rerun-failed.");
     if (attach && (keepOpen || mcpPort !== undefined)) throw new Error("--attach cannot be combined with --keep-open or --mcp-port.");
-    return { testPath, attach, cwd, logFile, logDirectory, rerunFailed, testSelection, testSetup, with: withTags, timeoutScale, keepOpen, mcpPort, retries, grep };
+    if (window !== undefined && !attach) throw new Error("--window requires --attach.");
+    return { testPath, attach, cwd, logFile, logDirectory, rerunFailed, testSelection, testSetup, with: withTags, timeoutScale, keepOpen, mcpPort, retries, grep, window };
 }
