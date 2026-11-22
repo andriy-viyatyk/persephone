@@ -33,6 +33,7 @@ const FACADE_FILES = [
 ];
 const BOARDS_FILE = "src/renderer/scripting/ai-vision/namespaces/boards.ts";
 const BROWSER_MEMBERS_FILE = "src/renderer/scripting/ai-vision/browser-automation-members.ts";
+const BROWSER_PLAYWRIGHT_ALIASES_FILE = "src/renderer/scripting/ai-vision/browser-playwright-aliases.ts";
 const BOARD_FACADE_DEFINITIONS_FILE = "src/renderer/scripting/api-wrapper/board-editor-facade-definitions.ts";
 const BOARDS_TYPES_FILE = "src/renderer/api/types/boards.d.ts";
 
@@ -88,6 +89,7 @@ function importedSource(file, name) {
             if ((element.name.text === name || element.propertyName?.text === name) && statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier)) {
                 const specifier = statement.moduleSpecifier.text;
                 if (specifier.endsWith("/browser-automation-members")) return BROWSER_MEMBERS_FILE;
+                if (specifier.endsWith("/browser-playwright-aliases")) return BROWSER_PLAYWRIGHT_ALIASES_FILE;
                 if (specifier.endsWith("/board-editor-facade-definitions")) return BOARD_FACADE_DEFINITIONS_FILE;
             }
         }

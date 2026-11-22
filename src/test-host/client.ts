@@ -3,6 +3,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { errMessage } from "../shared/utils.js";
 import { formatStep } from "./step-format.js";
 import { PERSEPHONE_CALL_RESULT_TYPE_META_KEY } from "../shared/mcp-result-type.js";
+import { modelCallMaxLength } from "./model-call-options.js";
 
 export interface Timeouts { startup: number; request: number; wait: number; poll: number; shutdown: number; scale?: number; cleanup?: number; screenshot?: number; secondInstance?: number; }
 export interface McpImage { mimeType: string; data: string; }
@@ -32,12 +33,12 @@ export class McpClient {
         }
         throw new Error(`MCP did not become ready: ${errMessage(lastError)}`);
     }
-    async call(path?: string, args?: unknown, timeout = this.timeouts.request, maxLength?: number, dialog = false): Promise<unknown> {
-        const result = await this.rawCall(path, args, { timeout, maxLength, hints: "never" });
+    async call(path?: string, args?: unknown, timeout = this.timeouts.request, maxLength?: number, dialog = false, allowNavigation = false): Promise<unknown> {
+        const result = await this.rawCall(path, args, { timeout, maxLength: modelCallMaxLength(path, maxLength), allowNavigation, hints: "never" });
         return this.decode(result, path, args, maxLength !== undefined, dialog);
     }
-    async callText(path?: string, args?: unknown, timeout = this.timeouts.request, maxLength?: number, dialog = false): Promise<string> {
-        const result = await this.rawCall(path, args, { timeout, maxLength, hints: "never" });
+    async callText(path?: string, args?: unknown, timeout = this.timeouts.request, maxLength?: number, dialog = false, allowNavigation = false): Promise<string> {
+        const result = await this.rawCall(path, args, { timeout, maxLength: modelCallMaxLength(path, maxLength), allowNavigation, hints: "never" });
         return this.decode(result, path, args, maxLength !== undefined, dialog, true) as string;
     }
     /** Assigns `value` to the writable property named by `path` (the `call` tool's `value` field). */
@@ -45,13 +46,14 @@ export class McpClient {
         const result = await this.rawCall(path, undefined, { timeout, hints: "never", value });
         return this.decode(result, path, { value });
     }
-    async rawCall(path?: string, args?: unknown, options: { timeout?: number; maxLength?: number; hints?: "always" | "never"; value?: unknown } = {}): Promise<{ isError?: boolean; content?: ContentBlock[]; _meta?: Record<string, unknown> }> {
+    async rawCall(path?: string, args?: unknown, options: { timeout?: number; maxLength?: number; allowNavigation?: boolean; hints?: "always" | "never"; value?: unknown } = {}): Promise<{ isError?: boolean; content?: ContentBlock[]; _meta?: Record<string, unknown> }> {
         if (!this.client) throw new Error("MCP connection is not healthy.");
         const request: Record<string, unknown> = { hints: options.hints ?? "never" };
         if (path !== undefined) request.path = path;
         if (args !== undefined) request.args = args;
         if ("value" in options) request.value = options.value;
         if (options.maxLength !== undefined) request.maxLength = options.maxLength;
+        if (options.allowNavigation !== undefined) request.allowNavigation = options.allowNavigation;
         return await this.client.callTool({ name: "call", arguments: request }, undefined, { timeout: options.timeout ?? this.timeouts.request }) as { isError?: boolean; content?: ContentBlock[]; _meta?: Record<string, unknown> };
     }
     async listTools(): Promise<unknown> {

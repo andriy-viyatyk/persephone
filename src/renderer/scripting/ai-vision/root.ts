@@ -36,6 +36,8 @@ export interface AiRootOptions {
 
 export interface IAiCallContext {
     readonly timeoutMs?: number;
+    readonly maxLength?: number;
+    readonly allowNavigation?: boolean;
     readonly eventCursor?: number;
     readonly tipCollector?: AgentTipCollector;
 }

@@ -1,3 +1,22 @@
+## EPIC-203 — Browser automation fixes for web-app tests
+
+Completed 2026-11-22. Step 1b of the [web-app testing review](../reviews/web-app-testing-review.md) roadmap
+(E1, E4, E6, E7, G1, G3, G4, H1, H2, A5). Trusted input scrolls a target inside its own scroll containers before the
+hit test and names a clipping container when it stays clipped; `focus(locator)` and `{ focus: "focus" }` on keyboard
+calls avoid the click; `drag(source, { by })`, an outside `targetPosition`, `steps` and `holdMs`; `clickAt` / `dragTo`
+on browser and board pages. Page-model calls report `page-navigated` (or `{ navigated: true }` with the
+`allowNavigation` call option), fail a cut reply with `result-truncated` instead of returning 220 of 365 rows, and keep
+key order (the sort came from Chromium's CDP by-value transfer; `evaluate` keeps it, documented). The runner reads
+models unbounded by default. Hidden Playwright aliases (`dblclick`, `fill`, `press`, `goto`, …) and one-line
+suggestions (`getByRole`, `locator`, `waitForLoadState`, …) through `patches/ai-vision+1.4.0.patch`; an automation
+right-click no longer opens Persephone's browser menu unless `nativeMenu: true`. Bridge 1.59.0. **Open:** upstream the
+ai-vision patch and drop it; `app.call` in scripts and boards has no `allowNavigation`; `evaluate` key order (roadmap
+step 4). Completion skills by Codex (Luna). Epic document: [EPIC-203](EPIC-203.md).
+
+- [x] **Browser input: scroll containers, focus, drag by offset, coordinates (US-2150).**
+- [x] **Page-model replies: navigation, truncation, key order (US-2151).**
+- [x] **Playwright names, "did you mean", automation right-click (US-2152).**
+
 ## EPIC-202 — Web-app test runner fixes
 
 Completed 2026-11-22. Step 1a of the [web-app testing review](../reviews/web-app-testing-review.md) roadmap

@@ -1,5 +1,6 @@
 import { resolveElementLocator, resolveActionablePoint } from "./locator";
 import { clickElement } from "./mouse";
+import { focusElement } from "./focus";
 import { dispatchKeyDown, dispatchKeyUp, pressKey, pressSyntheticKey } from "./input";
 import type { IAutomationTarget, ISyntheticInputHost } from "./types";
 import type { ActionablePoint, RefLocator } from "./locator";
@@ -10,6 +11,7 @@ export interface KeyboardActionOptions {
     nth?: number;
     timeout?: number;
     synthetic?: boolean;
+    focus?: "focus" | "click";
 }
 
 function requireKeyName(method: string, key: unknown): void {
@@ -28,6 +30,7 @@ async function keyboardAction(
         return { cdp: input.cdp, sessionId: input.sessionId };
     }
     const locator = resolveElementLocator(options.target);
+    if (options.focus === "focus") return focusElement(target, locator, options);
     const action = await resolveActionablePoint(target, locator, options);
     await clickElement(target, locator, options);
     return action;

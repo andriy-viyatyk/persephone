@@ -243,6 +243,7 @@ export function callTools(ctx: IToolContext, tips: AgentTipsRegistry): IMcpToolD
                 hints: z.enum(["auto", "always", "never"]).optional().describe("auto (default): the member list for each kind of object is sent once per session, live children always; always: repeat member lists; never: no hints."),
                 maxLength: z.number().int().min(1).optional().describe("Bound string or structured results (default 20000); truncated results carry totalLength for strings or shown/total for collections. An image result (e.g. a screenshot) is returned whole."),
                 timeoutMs: z.number().int().positive().optional().describe("How long to wait for a call under pages[i].editor.app — a board's or a web page's own model. Raise it for an operation you know is slow (default 30000). It has no effect on any other path."),
+                allowNavigation: z.boolean().optional().describe("Return { navigated: true } if a page-model method call under pages[i].editor.app loses its document during invocation. Applies only to a page-model method call under pages[i].editor.app."),
                 windowIndex,
             },
             handler: async (args: ToolArgs): Promise<IMcpToolResult> => {

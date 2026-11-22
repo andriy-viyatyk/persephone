@@ -1,11 +1,13 @@
 import type {
     IBrowserActionOptions, IBrowserClickOptions, IBrowserConsoleLevel, IBrowserDragOptions,
+    IBrowserCoordinateOptions, IBrowserDragDestination, IBrowserDragTimingOptions,
     IBrowserElementLocator, IBrowserEvaluateFunction, IBrowserEvaluateOptions, IBrowserFormField,
     IBrowserHoverOptions, IBrowserKeyboardOptions, IBrowserNetworkRequest, IBrowserNetworkRequestsOptions,
     IBrowserResponse, IBrowserResponseWaitOptions, IBrowserScreenshot, IBrowserScreenshotOptions,
     IBrowserSelectOptions, IBrowserTypeOptions,
 } from "../../api/types/browser-editor";
-import { clickElement, checkElement, hoverElement, dragElements, uncheckElement } from "../../automation/mouse";
+import { clickAtCoordinates, clickElement, checkElement, dragCoordinates, hoverElement, dragElements, uncheckElement } from "../../automation/mouse";
+import { focusElement } from "../../automation/focus";
 import { keyDownOnTarget, keyUpOnTarget, pressKeyOnTarget } from "../../automation/keyboard";
 import { clearElement, typeTextInto, selectOption, fillForm, setInputFiles } from "../../automation/forms";
 import { evaluateInTarget, waitFor, type WaitMode } from "../../automation/queries";
@@ -90,6 +92,17 @@ export class AutomationSurface {
     click(locator: IBrowserElementLocator, options?: IBrowserClickOptions): Promise<void> {
         return this.run("click", options?.tabId, () => clickElement(this.target, resolveElementLocator(locator), options), { passive: false, tip: true });
     }
+    focus(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void> {
+        return this.run("focus", options?.tabId, async () => {
+            await focusElement(this.target, resolveElementLocator(locator), options);
+        }, { passive: false, tip: true });
+    }
+    clickAt(position: { x: number; y: number }, options?: IBrowserCoordinateOptions): Promise<void> {
+        return this.run("clickAt", options?.tabId, () => clickAtCoordinates(this.target, position, options), { passive: false, tip: true });
+    }
+    dragTo(points: { from: { x: number; y: number }; to: { x: number; y: number } }, options?: IBrowserDragTimingOptions): Promise<void> {
+        return this.run("dragTo", options?.tabId, () => dragCoordinates(this.target, points.from, points.to, options), { passive: false, tip: true });
+    }
     hover(locator: IBrowserElementLocator, options?: IBrowserHoverOptions): Promise<void> {
         return this.run("hover", options?.tabId, () => hoverElement(this.target, resolveElementLocator(locator), options), { passive: false });
     }
@@ -117,8 +130,11 @@ export class AutomationSurface {
     keyUp(key: string, options?: IBrowserKeyboardOptions): Promise<void> {
         return this.run("keyUp", options?.tabId, () => keyUpOnTarget(this.target, key, options), { passive: false });
     }
-    drag(source: IBrowserElementLocator, destination: IBrowserElementLocator, options?: IBrowserDragOptions): Promise<void> {
-        return this.run("drag", options?.tabId, () => dragElements(this.target, resolveElementLocator(source), resolveElementLocator(destination), options), { passive: false, tip: true });
+    drag(source: IBrowserElementLocator, destination: IBrowserDragDestination, options?: IBrowserDragOptions): Promise<void> {
+        const resolvedDestination = typeof destination === "object" && destination !== null && "by" in destination
+            ? destination
+            : resolveElementLocator(destination);
+        return this.run("drag", options?.tabId, () => dragElements(this.target, resolveElementLocator(source), resolvedDestination, options), { passive: false, tip: true });
     }
     fillForm(fields: IBrowserFormField[]): Promise<void> {
         const active = this.target.activeTab?.id;

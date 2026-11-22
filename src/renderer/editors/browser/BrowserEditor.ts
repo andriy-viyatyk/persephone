@@ -23,6 +23,7 @@ import { BrowserUrlBarModel } from "./BrowserUrlBarModel";
 import { BrowserBookmarksModel } from "./BrowserBookmarksModel";
 import { resolveBrowserProfile } from "./browser-profile";
 import { BrowserTargetModel } from "./BrowserTargetModel";
+import { BrowserAutomationMenuGuard } from "./BrowserAutomationMenuGuard";
 import { BrowserTabsModel } from "./BrowserTabsModel";
 import { BrowserTorModel } from "./BrowserTorModel";
 import { BrowserProfileNetworkModel } from "./BrowserProfileNetworkModel";
@@ -121,6 +122,7 @@ export class BrowserEditor extends EditorModel<
     readonly urlBar: BrowserUrlBarModel;
     readonly bookmarks: BrowserBookmarksModel;
     readonly target: BrowserTargetModel;
+    readonly automationMenuGuard = new BrowserAutomationMenuGuard();
     readonly tabs: BrowserTabsModel;
     readonly tor: BrowserTorModel;
     readonly network: BrowserProfileNetworkModel;
@@ -186,9 +188,10 @@ export class BrowserEditor extends EditorModel<
     armProfileNetwork = async (): Promise<void> => this.network.armProxy();
     showNetworkInfoDialog = async (): Promise<void> => this.network.showInfoDialog();
     retryProfileNetwork = async (): Promise<void> => { try { await this.network.armProxy(); } catch { /* `networkError` carries the error-panel reason. */ } };
-    releaseTab = (internalTabId: string): void => { this.popups.releaseTab(internalTabId); this.webview.clearPendingLoad(internalTabId); this.siteExtensions.onTabReleased(internalTabId); this.translation.onTabReleased(internalTabId); this.pageRemote.onTabReleased(internalTabId); };
+    releaseTab = (internalTabId: string): void => { this.automationMenuGuard.clearTab(internalTabId); this.popups.releaseTab(internalTabId); this.webview.clearPendingLoad(internalTabId); this.siteExtensions.onTabReleased(internalTabId); this.translation.onTabReleased(internalTabId); this.pageRemote.onTabReleased(internalTabId); };
 
     async dispose(): Promise<void> {
+        this.automationMenuGuard.dispose();
         this.popups.dispose();
         this.webview.dispose();
         this.translation.dispose();

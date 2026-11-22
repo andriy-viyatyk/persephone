@@ -21,6 +21,7 @@ export interface McpCallParams {
     hints?: HintMode;
     maxLength?: number;
     timeoutMs?: number;
+    allowNavigation?: boolean;
     value?: unknown;
     seenKinds?: string[];
     eventCursor?: number;

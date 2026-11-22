@@ -6,6 +6,17 @@ summary: "Which bridge version added each persephone.* member and manifest field
 
 # Boards — bridge version history and compatibility
 
+Bridge `1.59.0` extends trusted board input with `focus(locator)` and `focus: "focus"` on
+keyboard actions, relative and timed drags, and `clickAt` / `dragTo` in the selected board-frame
+viewport. It also scrolls targets within nested containers before hit testing and reports the
+nearest clipping container when a target remains clipped. Browser page-model replies observed through
+`persephone.call()` now report navigation during invocation as `page-navigated`, fail reported length
+cuts with `result-truncated`, and preserve page-side object key order. These additions are available
+through `persephone.call()` and `$help` / `$describe`; no manifest permission is required. Browser
+editor calls also accept hidden Playwright aliases with browser-specific unknown-name suggestions,
+and trusted automation right-clicks leave Persephone's browser menu closed by default unless
+`nativeMenu: true` is passed.
+
 Bridge `1.58.0` adds `persephone.setWorkingFolder(path)`, which sets or clears the transient folder
 used as the board page's initial File Explorer root. It requires no manifest permission; only the
 trusted main frame may call it. Boards using it should declare `minBridgeVersion: "1.58.0"`.

@@ -151,6 +151,12 @@ export interface IBoardEditor {
     readonly activeTab: IBrowserTab | undefined;
     /** Get a board accessibility snapshot; `root`, `interactive`, `maxNodes`, and `maxChars` narrow or bound the tree. */
     snapshot(options?: { tabId?: string; root?: string | { ref: string }; interactive?: boolean; maxNodes?: number; maxChars?: number }): Promise<string>;
+    /** Focus a visible element in the selected board frame without pointer input. */
+    focus(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void>;
+    /** Trusted click at selected board-frame viewport CSS pixels. */
+    clickAt(position: { x: number; y: number }, options?: { tabId?: string }): Promise<void>;
+    /** Trusted drag between selected board-frame viewport CSS pixel coordinates. */
+    dragTo(points: { from: { x: number; y: number }; to: { x: number; y: number } }, options?: { tabId?: string; steps?: number; holdMs?: number }): Promise<void>;
     click(locator: IBrowserElementLocator, options?: IBrowserClickOptions): Promise<void>;
     hover(locator: IBrowserElementLocator, options?: IBrowserHoverOptions): Promise<void>;
     type(locator: IBrowserElementLocator, text: string, options?: IBrowserTypeOptions): Promise<void>;
@@ -158,7 +164,7 @@ export interface IBoardEditor {
     check(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void>;
     uncheck(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void>;
     clear(locator: IBrowserElementLocator, options?: IBrowserTypeOptions): Promise<void>;
-    drag(source: IBrowserElementLocator, destination: IBrowserElementLocator, options?: IBrowserDragOptions): Promise<void>;
+    drag(source: IBrowserElementLocator, destination: import("./browser-editor").IBrowserDragDestination, options?: IBrowserDragOptions): Promise<void>;
     fillForm(fields: IBrowserFormField[]): Promise<void>;
     setInputFiles(locator: IBrowserElementLocator, paths: string[], options?: { tabId?: string }): Promise<void>;
     pressKey(key: string, options?: IBrowserKeyboardOptions): Promise<void>;

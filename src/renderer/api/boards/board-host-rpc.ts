@@ -4,7 +4,7 @@ import { BoardGrant } from "../../../shared/board/board-grant";
 import { BOARD_THEME_METHODS } from "../../../shared/board/board-call-route";
 import { isPositiveIntegerTimeout } from "../../../shared/ai-vision-timeout";
 import { errMessage } from "../../../shared/utils";
-import { UNBOUNDED_CALL_MAX_LENGTH } from "../../scripting/ai-vision/call-limits";
+import { UNBOUNDED_CALL_MAX_LENGTH } from "../../../shared/ai-vision-call-limits";
 import { resolveAiCall } from "../../scripting/ai-vision/call";
 import { eventLog } from "../../scripting/ai-vision/event-log";
 import { ScriptContext } from "../../scripting/ScriptContext";
@@ -138,7 +138,7 @@ async function handleBoardCall(params: BoardCallParams): Promise<unknown> {
         const result = await resolveAiCall(context, request, undefined, {
             page: context.page,
             restricted: () => boardRegistry.isPermitted(boardRoot) ? undefined : "This Board is not permitted to use persephone.call().",
-            callContext: { eventCursor: boardEventCursor(boardEditor) },
+            callContext: { eventCursor: boardEventCursor(boardEditor), maxLength: request.maxLength },
         });
         if (result.error) throw new Error(result.error);
         advanceBoardEventCursor(boardEditor, request.path, result.result);

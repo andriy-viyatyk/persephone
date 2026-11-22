@@ -34,6 +34,8 @@ export interface IBrowserClickOptions {
     tabId?: string;
     button?: "left" | "right" | "middle";
     clickCount?: number;
+    /** For browser guests, allow Persephone's browser context menu after a right-click. */
+    nativeMenu?: boolean;
     modifiers?: IBrowserMouseModifier[];
     position?: IBrowserMousePosition;
     force?: boolean;
@@ -67,11 +69,16 @@ export interface IBrowserKeyboardOptions {
     nth?: number;
     timeout?: number;
     synthetic?: boolean;
+    /** Focus the target directly instead of using the default trusted click. */
+    focus?: "focus" | "click";
 }
 
+export interface IBrowserCoordinateOptions { tabId?: string; button?: "left" | "right" | "middle"; clickCount?: number; /** For browser guests, allow Persephone's browser context menu after a right-click. */ nativeMenu?: boolean }
+export interface IBrowserDragTimingOptions extends IBrowserCoordinateOptions { steps?: number; holdMs?: number }
+export type IBrowserDragDestination = IBrowserElementLocator | { by: IBrowserMousePosition };
 export interface IBrowserDragOptions {
     tabId?: string; position?: IBrowserMousePosition; targetPosition?: IBrowserMousePosition;
-    modifiers?: IBrowserMouseModifier[]; force?: boolean; nth?: number; timeout?: number;
+    modifiers?: IBrowserMouseModifier[]; force?: boolean; nth?: number; timeout?: number; steps?: number; holdMs?: number;
 }
 export type IBrowserFormField =
     | { name: string; locator: IBrowserElementLocator; action: "type"; value: string; options?: IBrowserTypeOptions }
@@ -240,6 +247,12 @@ export interface IBrowserEditor {
      * await browser.snapshot({ root: { ref: "e40" }, maxChars: 8000 });
      */
     snapshot(options?: { tabId?: string; root?: string | { ref: string }; interactive?: boolean; maxNodes?: number; maxChars?: number }): Promise<string>;
+    /** Focus a visible element without dispatching pointer input. */
+    focus(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void>;
+    /** Trusted click at selected page viewport CSS pixels from the top-left. */
+    clickAt(position: IBrowserMousePosition, options?: IBrowserCoordinateOptions): Promise<void>;
+    /** Trusted drag between selected page viewport CSS pixel coordinates. */
+    dragTo(points: { from: IBrowserMousePosition; to: IBrowserMousePosition }, options?: IBrowserDragTimingOptions): Promise<void>;
 
     // --- Query methods ---
 
@@ -286,7 +299,7 @@ export interface IBrowserEditor {
     clear(locator: IBrowserElementLocator, options?: IBrowserTypeOptions): Promise<void>;
 
     /** Drag between actionable elements in the same frame. */
-    drag(source: IBrowserElementLocator, destination: IBrowserElementLocator, options?: IBrowserDragOptions): Promise<void>;
+    drag(source: IBrowserElementLocator, destination: IBrowserDragDestination, options?: IBrowserDragOptions): Promise<void>;
     /** Fill named locator actions in order, stopping at the first failing field. */
     fillForm(fields: IBrowserFormField[]): Promise<void>;
     /** Assign local files directly to an input[type=file], including hidden inputs. */

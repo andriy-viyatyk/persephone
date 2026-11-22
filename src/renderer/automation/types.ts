@@ -53,6 +53,9 @@ export interface IAutomationTarget {
 
     /** Optional: ensure a tab is attachable before a command runs. */
     ensureReady?(tabId?: string): Promise<void>;
+
+    /** Browser hosts can suppress their native menu for one trusted automation right-click. */
+    automationContextMenu?(tabId: string | undefined, phase: "arm" | "release"): string | undefined;
 }
 
 /** Host seams used only by the explicit synthetic input compatibility path. */

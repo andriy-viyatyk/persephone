@@ -27,6 +27,12 @@ stand-in such as `site`; a returned value is JSON data, not a live editor object
 helper must return a stand-in, wrap it with `ctx.handle(node)`. Use `ctx.call(path, args)` for a
 call-tree path the stand-in cannot represent.
 
+For page-model calls that may navigate, pass the call option separately from model arguments:
+`ctx.call(path, args, { allowNavigation: true })`. Model reads through this runner are unbounded by
+default; pass `maxLength` when you need a cap. The browser facade also supports hidden aliases such
+as `dblclick`. Use `focus(locator)` or `{ target: locator, focus: "focus" }` before keys when the
+page needs focus without a click.
+
 An awaitable stand-in is not a full Promise: its `.then(read)` returns the chained Promise, but
 `.catch()` and `.finally()` throw with guidance. Handle errors with `try { await node } catch {}`.
 

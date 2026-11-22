@@ -275,6 +275,14 @@ snapshots for structure or controls the model does not represent.
   positions, and track a seen-set. Do not trust row order or `aria-posinset` alone.
 - Verify `$help`, a small collection result, and one explicit read path before using the model.
 
+Keep replies within the model's own collection and string bounds. A larger call `maxLength` only
+raises the reply-size cap; structural shaping still limits arrays to 500 items and nesting to depth
+8, and long nested strings can carry truncation markers. If a reported length cut reaches the caller,
+the call fails with `result-truncated`; raise `maxLength` only when the model itself can supply the
+extra data. Page-model replies preserve object-key order, but generic browser `evaluate()` values can
+be reordered during transfer. Return `JSON.stringify(value)` from `evaluate()` when key order matters.
+Temporary extensions expose the same page model, so these reply limits apply there too.
+
 ## Complete generic example
 
 Adapt the role, id, label, body selectors, and action to the site's actual structure. This example

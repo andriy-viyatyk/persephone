@@ -59,7 +59,7 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
         state.step = formatStep("call", apiPath, args);
         if (!prestarted) logStep("step-start", "call", apiPath, args);
         try {
-            const result = await active.call(apiPath, args, options.timeout ?? timeouts.request, options.maxLength, options.dialog);
+            const result = await active.call(apiPath, args, options.timeout ?? timeouts.request, options.maxLength, options.dialog, options.allowNavigation);
             if (args === undefined && apiPath !== undefined && isMethodDescriptor(result, apiPath)) {
                 throw new TypeError(`${apiPath} is a method; call ctx.call(${JSON.stringify(apiPath)}, []) with an argument array.`);
             }
@@ -72,11 +72,11 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
             throw error;
         }
     };
-    const callText = async (apiPath?: string, args?: unknown, options: { timeout?: number; maxLength?: number; dialog?: boolean } = {}) => {
+    const callText = async (apiPath?: string, args?: unknown, options: CallOptions = {}) => {
         state.step = formatStep("callText", apiPath, args);
         logStep("step-start", "callText", apiPath, args);
         try {
-            const result = await active.callText(apiPath, args, options.timeout ?? timeouts.request, options.maxLength, options.dialog);
+            const result = await active.callText(apiPath, args, options.timeout ?? timeouts.request, options.maxLength, options.dialog, options.allowNavigation);
             logStep("step-result", "callText", apiPath, args, { ok: true, result: resultPreview(result) });
             return result;
         } catch (error) {
@@ -129,7 +129,7 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
                 do {
                     polls++;
                     value = typeof pathOrCallback === "string"
-                        ? await call(pathOrCallback, undefined, { maxLength: options.maxLength, dialog: options.dialog }, true)
+                        ? await call(pathOrCallback, undefined, { maxLength: options.maxLength, dialog: options.dialog, allowNavigation: options.allowNavigation }, true)
                         : await pathOrCallback(context);
                     state.step = `wait for ${target}`;
                     if (await predicate(value)) {

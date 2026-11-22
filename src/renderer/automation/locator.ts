@@ -28,10 +28,11 @@ export interface MouseActionOptions {
 export interface ClickActionOptions extends MouseActionOptions {
     button?: "left" | "right" | "middle";
     clickCount?: number;
+    nativeMenu?: boolean;
 }
 export interface DragOptions {
     tabId?: string; position?: MousePosition; targetPosition?: MousePosition; modifiers?: MouseModifier[];
-    force?: boolean; nth?: number; timeout?: number;
+    force?: boolean; nth?: number; timeout?: number; steps?: number; holdMs?: number;
 }
 
 export interface ActionablePoint {
@@ -83,6 +84,8 @@ function actionabilityFunction(): string {
             const beforeScroll = el.getBoundingClientRect();
             if (beforeScroll.top < 0 || beforeScroll.left < 0 || beforeScroll.bottom > innerHeight || beforeScroll.right > innerWidth) {
                 el.scrollIntoView({ block: 'center', inline: 'center' });
+            } else {
+                el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
             }
             const rect = el.getBoundingClientRect();
             if (!rect.width || !rect.height) throw new Error('ACTIONABILITY_TRANSIENT: Element has zero size.');
@@ -137,6 +140,24 @@ function actionabilityFunction(): string {
                    window (the window-only check above did not scroll). Scroll it into view; the retry
                    re-checks. */
                 if (hit && hit.contains(el)) el.scrollIntoView({ block: 'center', inline: 'center' });
+                let ancestor = el.parentNode;
+                while (ancestor) {
+                    const container = ancestor instanceof ShadowRoot ? ancestor.host : ancestor;
+                    if (container instanceof Element) {
+                        const style = getComputedStyle(container);
+                        const rect = container.getBoundingClientRect();
+                        const left = rect.left + container.clientLeft;
+                        const top = rect.top + container.clientTop;
+                        const right = left + container.clientWidth;
+                        const bottom = top + container.clientHeight;
+                        const clipsX = style.overflowX !== 'visible' && (x < left || x > right);
+                        const clipsY = style.overflowY !== 'visible' && (y < top || y > bottom);
+                        if (clipsX || clipsY) {
+                            throw new Error('ACTIONABILITY_TRANSIENT: Element is clipped by ' + describe(container) + '.');
+                        }
+                    }
+                    ancestor = container instanceof Element ? container.parentNode : null;
+                }
                 throw new Error('ACTIONABILITY_TRANSIENT: Element does not receive pointer events; covered by ' + describe(hit) + '.');
             }
         }

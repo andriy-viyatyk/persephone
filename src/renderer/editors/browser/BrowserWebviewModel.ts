@@ -337,6 +337,7 @@ export class BrowserWebviewModel {
                 this.model.pageRemote.onSignal(internalTabId, data);
                 break;
             case "context-menu": {
+                if (this.model.automationMenuGuard.consume(internalTabId)) break;
                 const webview = this.get(internalTabId);
                 if (!webview) break;
                 await showBrowserContextMenu({ model: this.model, webview, internalTabId, data });

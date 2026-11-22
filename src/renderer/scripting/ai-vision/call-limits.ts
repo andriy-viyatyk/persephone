@@ -22,4 +22,4 @@
  * This does not disable every cap: `ai-vision` independently limits arrays (`MAX_ARRAY_ITEMS`) and
  * object depth (`MAX_DEPTH`), which are about shape rather than transport size and still apply.
  */
-export const UNBOUNDED_CALL_MAX_LENGTH = Number.MAX_SAFE_INTEGER;
+export { UNBOUNDED_CALL_MAX_LENGTH } from "../../../shared/ai-vision-call-limits";

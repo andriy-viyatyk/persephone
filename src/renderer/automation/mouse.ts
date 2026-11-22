@@ -36,14 +36,21 @@ export async function clickElement(
         type: "mouseMoved", x: action.x, y: action.y, modifiers: modifierFlags,
     });
     for (let count = 1; count <= clickCount; count++) {
-        await dispatchMouseEvent(action.cdp, action.sessionId, {
-            type: "mousePressed", x: action.x, y: action.y, button, buttons: buttonFlag,
-            modifiers: modifierFlags, clickCount: count,
-        });
-        await dispatchMouseEvent(action.cdp, action.sessionId, {
-            type: "mouseReleased", x: action.x, y: action.y, button,
-            modifiers: modifierFlags, clickCount: count,
-        });
+        const menuTabId = button === "right" && options.nativeMenu !== true
+            ? target.automationContextMenu?.(options.tabId, "arm")
+            : undefined;
+        try {
+            await dispatchMouseEvent(action.cdp, action.sessionId, {
+                type: "mousePressed", x: action.x, y: action.y, button, buttons: buttonFlag,
+                modifiers: modifierFlags, clickCount: count,
+            });
+            await dispatchMouseEvent(action.cdp, action.sessionId, {
+                type: "mouseReleased", x: action.x, y: action.y, button,
+                modifiers: modifierFlags, clickCount: count,
+            });
+        } finally {
+            if (menuTabId) target.automationContextMenu?.(menuTabId, "release");
+        }
     }
 }
 
@@ -118,28 +125,99 @@ export async function uncheckElement(target: IAutomationTarget & ISyntheticInput
 
 /** Drag between two actionable elements, restoring intercepted Chromium HTML5 drag behavior. */
 export async function dragElements(
-    target: IAutomationTarget, source: ElementLocator, destination: ElementLocator, options: DragOptions = {},
+    target: IAutomationTarget, source: ElementLocator, destination: ElementLocator | { by: MousePosition }, options: DragOptions = {},
 ): Promise<void> {
+    validateDragOptions(options);
     const from = await resolveActionablePoint(target, source, options);
-    const to = await resolveActionablePoint(target, destination, { ...options, position: options.targetPosition });
+    let to: Pick<ActionablePoint, "x" | "y" | "cdp" | "sessionId">;
+    if (isDragOffset(destination)) {
+        if (!destination.by || typeof destination.by !== "object" || Array.isArray(destination.by)
+            || Object.keys(destination.by).length !== 2
+            || !Object.prototype.hasOwnProperty.call(destination.by, "x")
+            || !Object.prototype.hasOwnProperty.call(destination.by, "y")) {
+            throw new Error("A drag offset must contain exactly finite x and y coordinates.");
+        }
+        const { x, y } = validatePoint(destination.by, "drag offset", false);
+        to = { ...from, x: from.x + x, y: from.y + y };
+    } else {
+        if (options.targetPosition) validatePoint(options.targetPosition, "targetPosition", false);
+        const anchor = await resolveActionablePoint(target, destination, { ...options, position: undefined });
+        to = {
+            ...anchor,
+            x: anchor.x + (options.targetPosition?.x ?? anchor.width / 2) - anchor.width / 2,
+            y: anchor.y + (options.targetPosition?.y ?? anchor.height / 2) - anchor.height / 2,
+        };
+    }
     await dispatchDragPoints(target, from, to, options);
 }
 
-/** Dispatch a trusted click at viewport CSS pixels without locator actionability. */
-export async function clickAtCoordinates(target: IAutomationTarget, position: MousePosition, options: { tabId?: string; button?: "left" | "right" | "middle"; clickCount?: number } = {}): Promise<void> {
-    if (!Number.isFinite(position.x) || !Number.isFinite(position.y) || position.x < 0 || position.y < 0) {
-        throw new Error("clickAt coordinates must be non-negative finite viewport CSS pixels.");
+function isDragOffset(destination: ElementLocator | { by: MousePosition }): destination is { by: MousePosition } {
+    if (!destination || typeof destination !== "object" || !("by" in destination)) return false;
+    const keys = Object.keys(destination);
+    if (keys.length !== 1 || keys[0] !== "by") throw new Error("A drag offset destination must have exactly the form { by: { x, y } }.");
+    return true;
+}
+
+function validatePoint(point: MousePosition, name: string, nonNegative = true): MousePosition {
+    if (!point || typeof point !== "object" || !Number.isFinite(point.x) || !Number.isFinite(point.y)
+        || (nonNegative && (point.x < 0 || point.y < 0))) {
+        throw new Error(`${name} must contain finite ${nonNegative ? "non-negative " : ""}x and y coordinates.`);
     }
+    return point;
+}
+
+function validateDragOptions(options: DragOptions): void {
+    if (options.position !== undefined) validatePoint(options.position, "position");
+    if (options.targetPosition !== undefined) validatePoint(options.targetPosition, "targetPosition", false);
+    if (options.steps !== undefined && (!Number.isInteger(options.steps) || options.steps < 1 || options.steps > 1000)) {
+        throw new Error("steps must be a positive integer no greater than 1000.");
+    }
+    if (options.holdMs !== undefined && (!Number.isFinite(options.holdMs) || options.holdMs < 0 || options.holdMs > 10000)) {
+        throw new Error("holdMs must be a finite number from 0 to 10000.");
+    }
+}
+
+/** Dispatch a trusted click at viewport CSS pixels without locator actionability. */
+export async function clickAtCoordinates(
+    target: IAutomationTarget & ISyntheticInputHost,
+    position: MousePosition,
+    options: { tabId?: string; button?: "left" | "right" | "middle"; clickCount?: number; nativeMenu?: boolean } = {},
+    behavior: { focusHost?: boolean } = {},
+): Promise<void> {
+    validatePoint(position, "clickAt coordinates");
+    if (behavior.focusHost !== false) target.focusWebview(options.tabId);
     const input = target.inputCdp(options.tabId);
     const point = input.mapPoint(position, []);
     const button = options.button ?? "left";
     const clickCount = options.clickCount ?? 1;
+    if (!Number.isInteger(clickCount) || clickCount < 1) throw new Error("clickCount must be a positive integer.");
     await dispatchMouseEvent(input.cdp, input.sessionId, { type: "mouseMoved", ...point });
-    await dispatchMouseEvent(input.cdp, input.sessionId, { type: "mousePressed", ...point, button, buttons: button === "left" ? 1 : 0, clickCount });
-    await dispatchMouseEvent(input.cdp, input.sessionId, { type: "mouseReleased", ...point, button, buttons: 0, clickCount });
+    for (let count = 1; count <= clickCount; count++) {
+        const menuTabId = button === "right" && options.nativeMenu !== true
+            ? target.automationContextMenu?.(options.tabId, "arm")
+            : undefined;
+        try {
+            await dispatchMouseEvent(input.cdp, input.sessionId, { type: "mousePressed", ...point, button, buttons: button === "left" ? 1 : button === "right" ? 2 : 4, clickCount: count });
+            await dispatchMouseEvent(input.cdp, input.sessionId, { type: "mouseReleased", ...point, button, buttons: 0, clickCount: count });
+        } finally {
+            if (menuTabId) target.automationContextMenu?.(menuTabId, "release");
+        }
+    }
 }
 
-export async function dragCoordinates(target: IAutomationTarget, fromPosition: MousePosition, toPosition: MousePosition, options: DragOptions = {}): Promise<void> {
+export async function dragCoordinates(
+    target: IAutomationTarget & ISyntheticInputHost,
+    fromPosition: MousePosition,
+    toPosition: MousePosition,
+    options: DragOptions = {},
+    behavior: { validateCoordinates?: boolean; focusHost?: boolean } = {},
+): Promise<void> {
+    if (behavior.validateCoordinates !== false) {
+        validatePoint(fromPosition, "drag start coordinates");
+        validatePoint(toPosition, "drag end coordinates");
+    }
+    validateDragOptions(options);
+    if (behavior.focusHost !== false) target.focusWebview(options.tabId);
     const input = target.inputCdp(options.tabId);
     const from = { ...input.mapPoint(fromPosition, []), cdp: input.cdp, sessionId: input.sessionId };
     const to = { ...input.mapPoint(toPosition, []), cdp: input.cdp, sessionId: input.sessionId };
@@ -184,6 +262,8 @@ async function dispatchDragPoints(
     let pressed = false;
     let intercepted = false;
     const modifierFlags = getModifierFlags(options.modifiers);
+    const steps = options.steps ?? 4;
+    const holdMs = options.holdMs ?? 0;
     const appDragGuard = guardAppWindowDragStart(target);
     try {
         await cdp.send("Input.setInterceptDrags", { enabled: true }, sessionId);
@@ -191,7 +271,7 @@ async function dispatchDragPoints(
         token = await ipcRenderer.invoke(BrowserChannel.armDragIntercept, key, sessionId);
         await dispatchMouseEvent(cdp, sessionId, { type: "mousePressed", x: from.x, y: from.y, button: "left", buttons: 1, clickCount: 1, modifiers: modifierFlags });
         pressed = true;
-        const steps = 4;
+        if (holdMs > 0) await new Promise(resolve => setTimeout(resolve, holdMs));
         for (let step = 1; step <= steps; step++) {
             const progress = step / steps;
             await dispatchMouseEvent(cdp, sessionId, {

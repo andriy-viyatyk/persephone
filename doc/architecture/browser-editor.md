@@ -380,6 +380,15 @@ webContents                      BrowserChannel          BrowserEditorView
     editFlags, x, y                  isEditable, editFlags
 ```
 
+Trusted automation right-clicks normally suppress the app menu while preserving the page's own
+`contextmenu` handler. `mouse.ts` arms `BrowserAutomationMenuGuard` for the captured internal tab
+before dispatching the right-button press and releases it afterward. `BrowserWebviewModel` consumes
+the next guest `context-menu` event for that tab before showing the app menu. The guard is renderer
+side because the existing guest event has no input-origin field; a request not consumed by a page
+menu handler expires 500 ms after release. A physical right-click on the same tab during that brief
+grace period can therefore lose its app menu once. Callers can opt into the app menu with
+`nativeMenu: true`; user right-clicks are unaffected.
+
 ### Context-Sensitive Items
 
 `webview-context-menu.ts` builds the menu dynamically based on `params` fields from the `context-menu` event; `BrowserWebviewModel` supplies the webview and editor callbacks.
@@ -447,9 +456,11 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/renderer/api/browser-profiles.ts` | Renderer | Browser profile settings rules, partition lookup, and permission-decision IPC |
 | `src/renderer/editors/browser/search-engines.ts` | Renderer | Search-engine definitions and URL detection |
 | `src/renderer/editors/browser/BrowserTorModel.ts` | Renderer | Tor proxy arming, daemon listeners/reconnect, and cleanup |
-| `src/renderer/editors/browser/BrowserWebviewModel.ts` | Renderer | Private webview registry, readiness and navigation commands, guest event routing |
+| `src/renderer/editors/browser/BrowserWebviewModel.ts` | Renderer | Private webview registry, readiness and navigation commands, guest event routing, and automation menu suppression |
+| `src/renderer/editors/browser/BrowserAutomationMenuGuard.ts` | Renderer | Per-tab consume-once suppression entries for trusted automation right-click menus |
 | `src/renderer/editors/browser/BrowserSiteExtensionController.ts` | Renderer | Site-extension trust, injection, actions, fetch routing, and reload lifecycle |
 | `src/renderer/editors/browser/BrowserPageRemote.ts` | Renderer | Page/WebMCP model registration, probing, privacy checks, revalidation, and remote requests |
+| `src/renderer/editors/browser/page-model-reply.ts` | Renderer | Page-model reply length normalization, truncation errors, and navigation-loss detection |
 | `src/renderer/editors/browser/BrowserFindModel.ts` | Renderer | Find-in-page state and commands |
 | `src/renderer/editors/browser/BrowserPromptsModel.ts` | Renderer | Transient blocked-popup and permission-prompt state and actions |
 | `src/renderer/editors/browser/BrowserTranslationController.ts` | Renderer | Translation toolbar workflow and per-tab page translation lifecycle |
@@ -471,7 +482,7 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/renderer/editors/browser/url-display.ts`, `BrowserUrlDisplayView.ts` | Renderer | URL-bar presentation rules (userinfo stripped, security marker, host/scheme/path parts, origin label) and the unfocused URL rendering plus "Not secure" chip |
 | `src/renderer/editors/browser/BrowserExclusiveAccessNotice.ts` | Renderer | Host notice naming the origin and Esc when a page goes full screen or locks the pointer |
 | `src/preload-webview/exclusive-access-reporter.ts` | Guest | Reports pointer lock from every frame (`pointer-lock` guest message) |
-| `src/renderer/automation/locator.ts`, `mouse.ts`, `keyboard.ts`, `forms.ts`, `queries.ts`, `page-events.ts`, `navigation.ts`, `page-state.ts`, `synthetic.ts` | Renderer | Shared target-neutral automation operations grouped by job |
+| `src/renderer/automation/locator.ts`, `mouse.ts`, `focus.ts`, `keyboard.ts`, `forms.ts`, `queries.ts`, `page-events.ts`, `navigation.ts`, `page-state.ts`, `synthetic.ts` | Renderer | Shared target-neutral automation operations grouped by job |
 | `src/renderer/automation/ref.ts` | Renderer | Host-scoped accessibility refs and iframe CDP-session maps |
 | `src/renderer/automation/snapshot.ts` | Renderer | Accessibility tree → YAML formatter for automation snapshots |
 | `src/renderer/automation/CdpSession.ts` | Renderer | CDP session wrapper (IPC to main process debugger) |
@@ -1455,6 +1466,17 @@ the original string is returned.
 The proxy sender invokes the selected page remote through CDP and labels the page-authored subtree
 as data. The `.app` subtree does not contribute to the page or `pages` overview descriptors.
 
+Page-model method calls and property reads preserve reply shaping metadata until the host applies its
+`maxLength` policy. A truncated reply fails with `result-truncated` and names the limit to raise.
+MCP callers may opt into `allowNavigation: true` on the call options; if an invoked document navigates
+away before replying, the result is `{ navigated: true }`, while the default is the `page-navigated`
+error. This option belongs to the call envelope, not the page model's argument list. Programmatic
+runner model reads are unbounded by default; MCP keeps the agent-facing default cap. Remote page code
+that silently truncates without reporting it cannot be detected. Page-model replies are serialized in
+the page before CDP transfer to retain JavaScript key enumeration order (including numeric-key rules).
+Generic `evaluate()` return-by-value keeps Chromium's key-sorting behavior; return `JSON.stringify(value)`
+when insertion order must survive that path.
+
 The URL bar's Site permissions control indicates when the active regular page has a live model
 registration: green identifies a page-published model and blue identifies a model after a trusted
 site extension was successfully injected into the same document. The popover repeats that source
@@ -1565,6 +1587,7 @@ relative to the app window's zoom.
 
 Browser automation lives in `src/renderer/automation/`. Operations are separated by job: `locator.ts`
 resolves selectors and snapshot refs; `mouse.ts`, `keyboard.ts`, and `forms.ts` perform input;
+`focus.ts` focuses an actionable element in its own document without pointer input;
 `queries.ts` handles evaluation, queries, and waits; `page-events.ts` reads readiness, dialogs,
 console, and page errors; `navigation.ts` owns navigation and response waits; `page-state.ts` owns
 screenshots, viewport, and network state; and `synthetic.ts` contains the explicit legacy synthetic

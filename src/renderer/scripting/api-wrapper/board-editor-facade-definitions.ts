@@ -78,6 +78,8 @@ export const BOARD_MEMBERS: readonly IAiMember[] = [
 ];
 
 export const BOARD_AUTOMATION_TAB_MEMBERS: readonly IAiMember[] = [
+    method("clickAt", "clickAt(position: { x: number; y: number }, options?: { tabId?: string }): Promise<void>", "Trusted click at selected board-frame viewport CSS pixels from the top-left; points beyond the viewport are left to Chromium to clip."),
+    method("dragTo", "dragTo({ from: { x: number; y: number }, to: { x: number; y: number } }, options?: { tabId?: string; steps?: number; holdMs?: number }): Promise<void>", "Trusted drag between selected board-frame viewport CSS pixels, with optional move count and pre-move hold."),
     property("tabs", "List the board's main frame and declared secondary-view frames."),
     property("activeTab", "The selected board frame, or undefined when no frame is active."),
     method(
@@ -133,8 +135,11 @@ is not a privacy grant. screenshot() returns the existing metadata-plus-image ca
 available. As verified live by US-1335, snapshots contain no password or plain-text input values;
 evaluate() and existing value reads remain capable of exposing page data.
 
-click() and hover() use trusted CDP mouse input by default and retry actionability failures for up
-to 5 seconds. More than one visible selector match fails immediately; use a snapshot ref, narrow
+clickAt() and dragTo() use trusted coordinates in the selected board frame's viewport CSS pixels;
+they do not use host-window or board offsets. click() and hover() use trusted CDP mouse input by default and retry actionability failures for up
+to 5 seconds. Actionable targets scroll within nested containers before hit testing; if the chosen
+point remains clipped, the timeout names the nearest inspectable clipping container. More than one
+visible selector match fails immediately; use a snapshot ref, narrow
 the selector, or pass a zero-based { nth } index among visible matches. Click accepts button,
 clickCount, modifiers, position, force, synthetic, nth, timeout and tabId; hover accepts position,
 modifiers, force, synthetic, nth, timeout and tabId. Hover sends one pointer move. Pass
@@ -143,10 +148,14 @@ modifiers, force, synthetic, nth, timeout and tabId. Hover sends one pointer mov
 Keyboard, fill, check, uncheck and clear use trusted CDP input by default. type() clears editable
 content before inserting; slowly sends mapped key events and submit presses Enter. select() is a
 programmatic native-select operation with untrusted input/change events; custom dropdowns use
-trusted click() + pressKey(). keyDown()/keyUp() keep modifier state across calls. Ctrl+C/V use the
+trusted click() + pressKey(). Targeted key calls click by default; { focus: "focus" } focuses without
+pointer input. keyDown()/keyUp() keep modifier state across calls. Ctrl+C/V use the
 real OS clipboard; Persephone does not save or restore clipboard contents.
 
 drag() replays intercepted HTML5 drag data, and source and target must resolve in the same frame.
+Use { by: { x, y } } for a relative endpoint, or targetPosition for an outside-box destination
+after its in-box anchor is actionable. steps defaults to 4 (maximum 1000); holdMs is a pre-move
+hold up to 10000 ms.
 fillForm() applies named type/select/check/uncheck fields sequentially and reports the first failing
 field. setInputFiles() assigns existing local files directly to hidden or visible file inputs; it
 does not open or intercept the native chooser. screenshot() supports element targets and PNG/JPEG;

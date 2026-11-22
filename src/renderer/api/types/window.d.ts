@@ -26,6 +26,7 @@ import type {
     IBrowserConsoleMessage,
     IBrowserPageError,
     IBrowserDragOptions,
+    IBrowserDragDestination,
     IBrowserFormField,
     IBrowserScreenshotOptions,
     IBrowserEvaluateOptions,
@@ -81,6 +82,8 @@ export interface IWindowScreen {
     snapshot(options?: { tabId?: string; root?: string | { ref: string }; interactive?: boolean; maxNodes?: number; maxChars?: number }): Promise<string>;
     /** Click an app-window element by CSS selector or explicit snapshot ref. */
     click(locator: IBrowserElementLocator, options?: IBrowserClickOptions): Promise<void>;
+    /** Focus a visible app-window element without dispatching pointer input. */
+    focus(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void>;
     /** Trusted click at app-window renderer viewport CSS pixels from the top-left. */
     clickAt(position: { x: number; y: number }): Promise<void>;
     /** Hover an app-window element by CSS selector or explicit snapshot ref. */
@@ -94,9 +97,9 @@ export interface IWindowScreen {
     uncheck(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void>;
     clear(locator: IBrowserElementLocator, options?: IBrowserTypeOptions): Promise<void>;
     /** Drag one app-window element onto another. An HTML5 drag-and-drop (a draggable source, such as an Explorer row) is not supported in the app window and fails with an error; use the panel's own commands instead. */
-    drag(source: IBrowserElementLocator, destination: IBrowserElementLocator, options?: IBrowserDragOptions): Promise<void>;
+    drag(source: IBrowserElementLocator, destination: IBrowserDragDestination, options?: IBrowserDragOptions): Promise<void>;
     /** Drag between app-window viewport CSS pixel coordinates using the shared drag dispatch. */
-    dragTo(options: { from: { x: number; y: number }; to: { x: number; y: number } }): Promise<void>;
+    dragTo(options: { from: { x: number; y: number }; to: { x: number; y: number } }, timing?: { steps?: number; holdMs?: number }): Promise<void>;
     fillForm(fields: IBrowserFormField[]): Promise<void>;
     setInputFiles(locator: IBrowserElementLocator, paths: string[], options?: { tabId?: string }): Promise<void>;
     pressKey(key: string, options?: IBrowserKeyboardOptions): Promise<void>;

@@ -34,6 +34,14 @@ export class BrowserTargetModel implements IAutomationTarget, ISyntheticInputHos
         return createInputSession(this.cdp(tabId), sessionId);
     }
 
+    automationContextMenu(tabId: string | undefined, phase: "arm" | "release"): string | undefined {
+        const targetTabId = tabId ?? this.model.state.get().activeTabId;
+        if (!targetTabId || this.model.popups.has(targetTabId) || !this.model.findTab(targetTabId)) return undefined;
+        if (phase === "arm") this.model.automationMenuGuard.arm(targetTabId);
+        else this.model.automationMenuGuard.release(targetTabId);
+        return targetTabId;
+    }
+
     focusWebview(tabId?: string): void {
         const state = this.model.state.get();
         const targetTab = tabId || state.activeTabId;

@@ -16,6 +16,7 @@ export interface EditorFacadeDescription {
     highlightOptions?: { all?: boolean };
     summarize?: IAiVisionDescriptor["summarize"];
     provide?: (elementProvide: NonNullable<IAiVisionDescriptor["provide"]>) => IAiVisionDescriptor["provide"];
+    suggest?: IAiVisionDescriptor["suggest"];
     restricted?: IAiVisionDescriptor["restricted"];
 }
 
@@ -81,6 +82,7 @@ export abstract class EditorFacadeBase<TEditor extends EditorModelInstance> {
             help: withEditorGuideHelp(this.id, description.help),
             ...(description.summarize ? { summarize: description.summarize } : {}),
             ...(description.restricted ? { restricted: description.restricted } : {}),
+            ...(description.suggest ? { suggest: description.suggest } : {}),
         };
         return descriptor;
     }

@@ -16,6 +16,7 @@ import {
 } from "../../scripting/ai-vision/event-log";
 import { agentMayAccessBrowserPage, privateBrowserRefusal } from "./agent-access";
 import { DEFAULT_URL } from "./browser-state";
+import { normalizePageModelReply, isPageModelContextLoss } from "./page-model-reply";
 import type { BrowserEditor } from "./BrowserEditor";
 import type { BrowserEditorState } from "./browser-state";
 
@@ -306,6 +307,8 @@ export class BrowserPageRemote {
         registration: BrowserAiVisionRegistration,
         request: IAiRemoteRequest,
         timeoutMs: number,
+        maxLength: number,
+        allowNavigation: boolean,
     ): Promise<IAiRemoteResponse> {
         const refusal = this.accessRefusal();
         if (refusal) return { ok: false, error: refusal };
@@ -315,32 +318,42 @@ export class BrowserPageRemote {
             return { ok: false, error: this.aiVisionDocumentRefusal() };
         }
         const webMcp = this.isWebMcpRequest(request, registration);
-        const routedRequest = webMcp && registration.siteShape && registration.webMcpNamespace
+        const routedRequestBase = webMcp && registration.siteShape && registration.webMcpNamespace
             ? { ...request, path: request.path.slice(registration.webMcpNamespace.length).replace(/^\./, "") }
             : request;
+        const routedRequest = { ...routedRequestBase, maxLength };
         const remoteExpression = webMcp ? WEBMCP_REMOTE_PAGE_GLOBAL : AI_VISION_PAGE_GLOBAL;
         const missingRemoteError = JSON.stringify(this.aiVisionMissingRefusal());
-        const expression = `(() => {
+        const expression = `(async () => {
     const remote = window[${JSON.stringify(remoteExpression)}];
-    if (!remote) return { ok: false, error: ${missingRemoteError} };
-    return remote.handle(JSON.parse(${JSON.stringify(JSON.stringify(routedRequest))}));
+    if (!remote) return JSON.stringify({ ok: false, error: ${missingRemoteError} });
+    return JSON.stringify(await remote.handle(JSON.parse(${JSON.stringify(JSON.stringify(routedRequest))})));
 })()`;
         let timer: ReturnType<typeof setTimeout> | undefined;
+        let evaluating = false;
         try {
             const response = await Promise.race([
                 (async () => {
                     await ensureTargetReady(this.model.target, registration.internalTabId);
-                    return evaluateInTarget(this.model.target, expression, registration.internalTabId) as Promise<IAiRemoteResponse>;
+                    evaluating = true;
+                    return evaluateInTarget(this.model.target, expression, registration.internalTabId);
                 })(),
                 new Promise<never>((_, reject) => {
                     timer = setTimeout(() => reject(new BrowserPageRemoteTimeoutError()), timeoutMs);
                 }),
             ]);
-            return isAiVisionResponse(response)
-                ? response
-                : { ok: false, error: "The page returned an invalid AiVision response." };
+            const parsed = typeof response === "string" ? tryParseJson<unknown>(response, undefined) : undefined;
+            if (!isAiVisionResponse(parsed)) return { ok: false, error: "The page returned an invalid AiVision response." };
+            // Method results and property reads are both shaped in the page; a cut must not pass silently.
+            if (request.action === "ai:invoke" || request.action === "ai:get") return normalizePageModelReply(parsed, maxLength, webMcp);
+            return parsed;
         } catch (error) {
             if (error instanceof BrowserPageRemoteTimeoutError) throw error;
+            if (evaluating && request.action === "ai:invoke" && isPageModelContextLoss(error)) {
+                return allowNavigation
+                    ? { ok: true, result: { navigated: true } }
+                    : { ok: false, code: "page-navigated", error: "Page navigated during the model call; its result is unavailable." };
+            }
             return { ok: false, error: errMessage(error, "The browser page AiVision call failed.") };
         } finally {
             if (timer !== undefined) clearTimeout(timer);

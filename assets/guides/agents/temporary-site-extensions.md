@@ -88,3 +88,5 @@ boundary from the page itself.
 
 For persistent scripts, consent, fetch hosts, and saved extension management, see
 [Site extensions](./site-extensions.md).
+
+The temporary model uses the same reply-size and structural limits described there.

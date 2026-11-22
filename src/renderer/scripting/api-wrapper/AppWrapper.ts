@@ -6,7 +6,7 @@ import type { PageWrapper } from "./PageWrapper";
 import type { EventChannel, EventHandler } from "../../api/events/EventChannel";
 import type { IApp, IAppCallOptions } from "../../api/types/app";
 import { getAiVision, resolveCall } from "ai-vision";
-import { UNBOUNDED_CALL_MAX_LENGTH } from "../ai-vision/call-limits";
+import { UNBOUNDED_CALL_MAX_LENGTH } from "../../../shared/ai-vision-call-limits";
 import { AiRoot } from "../ai-vision/root";
 import { isPositiveIntegerTimeout } from "../../../shared/ai-vision-timeout";
 import { codedError } from "../../../shared/coded-error";
@@ -149,7 +149,7 @@ class AppWrapperImplementation {
             // so it does not get the agent-facing default. See UNBOUNDED_CALL_MAX_LENGTH.
             maxLength: options?.maxLength ?? UNBOUNDED_CALL_MAX_LENGTH,
         };
-        const callContext = { timeoutMs: options?.timeoutMs };
+        const callContext = { timeoutMs: options?.timeoutMs, maxLength: request.maxLength };
         const result = await resolveCall(new AiRoot(this as unknown as AppWrapper, {
             page: this.contextPage,
             callContext,

@@ -1,6 +1,6 @@
 import { AgentTipCollector } from "./agent-tip-collector";
 import { ScriptContext } from "../ScriptContext";
-import { ICallRequest, ICallResult, resolveCall, SeenKinds } from "ai-vision";
+import { DEFAULT_MAX_LENGTH, ICallRequest, ICallResult, resolveCall, SeenKinds } from "ai-vision";
 import { AiRoot } from "./root";
 import type { AiRootOptions, IAiCallContext } from "./root";
 import { resolveWithAttention } from "./attention";
@@ -49,7 +49,12 @@ export function resolveAiCall(
     rootOptions?: AiRootOptions,
 ): Promise<ICallResult> {
     const timeoutMs = (request as ICallRequest & { timeoutMs?: number }).timeoutMs;
-    const callContext: IAiCallContext = { ...rootOptions?.callContext, timeoutMs };
+    const callContext: IAiCallContext = {
+        ...rootOptions?.callContext,
+        timeoutMs,
+        maxLength: request.maxLength ?? DEFAULT_MAX_LENGTH,
+        allowNavigation: (request as ICallRequest & { allowNavigation?: boolean }).allowNavigation === true,
+    };
     return resolveCall(new AiRoot(context.app, {
         ...rootOptions,
         callContext,

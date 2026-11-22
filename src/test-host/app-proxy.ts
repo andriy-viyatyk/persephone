@@ -1,4 +1,4 @@
-export interface CallOptions { timeout?: number; maxLength?: number; dialog?: boolean; }
+export interface CallOptions { timeout?: number; maxLength?: number; dialog?: boolean; allowNavigation?: boolean; }
 export interface HandleMetadata { pageId?: string; }
 type Call = (path?: string, args?: unknown, options?: CallOptions) => Promise<unknown>;
 type PathSegment = { key: string; mode: "member" | "index" };

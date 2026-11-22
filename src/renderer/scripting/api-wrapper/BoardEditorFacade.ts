@@ -22,6 +22,7 @@ import type {
     IBrowserTypeOptions,
     IBrowserConsoleLevel,
     IBrowserDragOptions,
+    IBrowserDragDestination,
     IBrowserFormField,
     IBrowserScreenshotOptions,
     IBrowserEvaluateOptions,
@@ -133,6 +134,12 @@ export class BoardEditorFacade extends EditorFacadeBase<BoardEditorModel> implem
     /** Click a board element by CSS selector or explicit snapshot ref. */
     click(locator: IBrowserElementLocator, options?: IBrowserClickOptions): Promise<void> { return this.automation.click(locator, options); }
 
+    focus(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void> { return this.automation.focus(locator, options); }
+
+    clickAt(position: { x: number; y: number }, options?: { tabId?: string }): Promise<void> { return this.automation.clickAt(position, options); }
+
+    dragTo(points: { from: { x: number; y: number }; to: { x: number; y: number } }, options?: { tabId?: string; steps?: number; holdMs?: number }): Promise<void> { return this.automation.dragTo(points, options); }
+
     /** Hover a board element by CSS selector or explicit snapshot ref. */
     hover(locator: IBrowserElementLocator, options?: IBrowserHoverOptions): Promise<void> { return this.automation.hover(locator, options); }
 
@@ -170,7 +177,7 @@ export class BoardEditorFacade extends EditorFacadeBase<BoardEditorModel> implem
 
     drag(
         source: IBrowserElementLocator,
-        destination: IBrowserElementLocator,
+        destination: IBrowserDragDestination,
         options?: IBrowserDragOptions,
     ): Promise<void> { return this.automation.drag(source, destination, options); }
 

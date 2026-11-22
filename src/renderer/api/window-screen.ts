@@ -3,7 +3,7 @@ import { windowRecording } from "./window-recording";
 import type { RecordingRegion } from "../../ipc/api-param-types";
 import type {
     IBrowserActionOptions, IBrowserClickOptions, IBrowserConsoleLevel, IBrowserDragOptions,
-    IBrowserElementLocator, IBrowserEvaluateFunction, IBrowserEvaluateOptions, IBrowserFormField,
+    IBrowserDragDestination, IBrowserElementLocator, IBrowserEvaluateFunction, IBrowserEvaluateOptions, IBrowserFormField,
     IBrowserHoverOptions, IBrowserKeyboardOptions, IBrowserNetworkRequest, IBrowserResponse,
     IBrowserResponseWaitOptions, IBrowserScreenshot, IBrowserScreenshotOptions, IBrowserSelectOptions,
     IBrowserTypeOptions,
@@ -40,8 +40,9 @@ export class WindowScreen implements IWindowScreen {
     }
     click(locator: IBrowserElementLocator, options?: IBrowserClickOptions): Promise<void> { return this.automation.click(locator, options); }
     clickAt(position: { x: number; y: number }): Promise<void> {
-        return this.automation.runHostOperation("clickAt", undefined, () => clickAtCoordinates(appTarget, position), { passive: false, tip: false });
+        return this.automation.runHostOperation("clickAt", undefined, () => clickAtCoordinates(appTarget, position, {}, { focusHost: false }), { passive: false, tip: false });
     }
+    focus(locator: IBrowserElementLocator, options?: IBrowserActionOptions): Promise<void> { return this.automation.focus(locator, options); }
     hover(locator: IBrowserElementLocator, options?: IBrowserHoverOptions): Promise<void> { return this.automation.hover(locator, options); }
     type(locator: IBrowserElementLocator, text: string, options?: IBrowserTypeOptions): Promise<void> { return this.automation.type(locator, text, options); }
     select(locator: IBrowserElementLocator, values: string | string[], options?: IBrowserSelectOptions): Promise<void> { return this.automation.select(locator, values, options); }
@@ -54,9 +55,9 @@ export class WindowScreen implements IWindowScreen {
     evaluate(expression: string | IBrowserEvaluateFunction, options?: IBrowserEvaluateOptions): Promise<unknown> { return this.automation.evaluate(expression, options); }
     waitFor(options: WaitForOption): Promise<void> { return this.automation.waitFor(options); }
     screenshot(options?: IBrowserScreenshotOptions): Promise<IBrowserScreenshot | undefined> { return this.automation.screenshot(options); }
-    drag(source: IBrowserElementLocator, destination: IBrowserElementLocator, options?: IBrowserDragOptions): Promise<void> { return this.automation.drag(source, destination, options); }
-    dragTo(options: { from: { x: number; y: number }; to: { x: number; y: number } }): Promise<void> {
-        return this.automation.runHostOperation("dragTo", undefined, () => dragCoordinates(appTarget, options.from, options.to), { passive: false, tip: false });
+    drag(source: IBrowserElementLocator, destination: IBrowserDragDestination, options?: IBrowserDragOptions): Promise<void> { return this.automation.drag(source, destination, options); }
+    dragTo(options: { from: { x: number; y: number }; to: { x: number; y: number } }, timing?: { steps?: number; holdMs?: number }): Promise<void> {
+        return this.automation.runHostOperation("dragTo", undefined, () => dragCoordinates(appTarget, options.from, options.to, timing, { validateCoordinates: false, focusHost: false }), { passive: false, tip: false });
     }
     fillForm(fields: IBrowserFormField[]): Promise<void> { return this.automation.fillForm(fields); }
     setInputFiles(locator: IBrowserElementLocator, paths: string[], options?: TabOption): Promise<void> { return this.automation.setInputFiles(locator, paths, options); }
