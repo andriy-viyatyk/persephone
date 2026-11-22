@@ -28,6 +28,7 @@ export interface HostConfiguration {
     timeoutScale: number;
     keepOpen: boolean;
     retries?: number;
+    testTimeout?: number;
     grep?: string;
 }
 interface ChildState { process: ChildProcess; exit: Promise<string | number | null>; outputsClosed: Promise<void>; exited?: string | number | null; }

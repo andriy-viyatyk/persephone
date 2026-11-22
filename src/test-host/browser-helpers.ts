@@ -45,9 +45,12 @@ export async function usePage(
     getClient: () => McpClient,
     requestTimeout: number,
     sessionPages: Set<string>,
+    assertActive: () => void = () => undefined,
 ): Promise<object> {
+    assertActive();
     validateUsePageOptions(options);
     const pages = pageList(await testWindow.call(getClient(), "pages.all", undefined, requestTimeout));
+    assertActive();
     const matches = pages.filter((page) => page.editor === "browser-view"
         && matchesCriterion(options.url, page.url, (url, criterion) => typeof criterion === "string"
             ? url.startsWith(criterion)
@@ -57,6 +60,7 @@ export async function usePage(
             : testRegularExpression(criterion, title)));
     if (matches.length !== 1) throw new Error(`ctx.usePage matched ${matches.length} pages.`);
     const match = matches[0];
+    assertActive();
     sessionPages.add(match.id);
     return editorHandle(context, match.id);
 }

@@ -59,8 +59,10 @@ protected during per-test cleanup, but its containing window is disposed at run 
 `ctx.openBrowser` remains the choice when the test should create a fresh page and automate sign-in.
 Storage state is planned for later work (F2) and is not available yet.
 
-The runner snapshots pages and pop-ups before each test. In owned runs and runner-created attached
-windows, cleanup closes pages and pop-ups first opened during that test. In a selected `--window`, it
+The runner snapshots pages and pop-ups before each file's `beforeAll` and before each test. File
+pages remain available through every attempt and are cleaned after `afterAll`; per-test cleanup
+uses its later baseline. In owned runs and runner-created attached windows, cleanup closes pages
+and pop-ups first opened during that test. In a selected `--window`, it
 closes pages opened through `ctx.openBrowser` and their new pop-ups, plus new pop-ups on session pages;
 other new pages are left open. Session pages are never closed, even when first seen after the
 baseline or also opened through `openBrowser`. Baseline pop-ups remain open, and untrackable pop-ups
@@ -102,8 +104,15 @@ Start with the console summary and `report.md` or `report.json`: each result has
 test name, status, duration, failing step and error. When a stack points into the test file,
 `report.md` also includes a `Location:` line with its file and line number. The failing step is the
 step that threw, even if the test's `finally` block runs later. `last-failed.json` stores file/name pairs for
-the next `--rerun-failed` run. Failure screenshots are saved under `screenshots/` and their paths
+the next `--rerun-failed` run. A failed `<beforeAll>` or `<afterAll>` identity expands to the file's
+discovered descriptors on rerun; normal filters and skip rules still apply. Failure screenshots are saved under `screenshots/` and their paths
 appear in the report and `tests.log`.
+
+Per-test timeout errors name the effective scaled duration and the step active at expiry. The
+timeout snapshot remains the result step even if abandoned asynchronous work settles later. The
+runner captures failure diagnostics and then performs page cleanup using their existing independent
+operation bounds. A request already sent to the app is not cancelled, so its effects may arrive
+after the timeout; later context calls are rejected.
 
 When a test throws and report output is enabled, the runner writes one
 `failures/<test>-a<attempt>-<id>.json` bundle for that failed attempt. `report.md` links to the
@@ -127,10 +136,10 @@ screenshots may still contain sensitive page content; inspect and handle these l
 accordingly. Reports under `reports/` and `test-results/` are local output and belong in `.gitignore`.
 
 `tests.log` is JSON Lines: each line is a JSON event. Its event names include `run-start`,
-`test-start`, `test-outcome`, `step-start`, `step-result`, `step-error`, `wait-start`,
+`test-start`, `test-outcome`, `hook-start`, `hook-result`, `step-start`, `step-result`, `step-error`, `wait-start`,
 `wait-result`, `wait-error`, `cleanup`, `screenshot`, `log`, `rerun-stale`, and `run-summary`.
-Call and stand-in steps include the path and a shortened argument preview. `waitFor` is logged as
-one wait rather than one entry per poll.
+Call and stand-in steps include the path and a shortened argument preview. `waitFor` and each
+polling assertion are logged as one wait rather than one entry per sample.
 
 With a launched app and `--log-dir`, inspect the other JSONL logs:
 

@@ -14,6 +14,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
+- **Web-app regression tests:** wait for changing UI with `ctx.expect.poll`, bound an attempt with
+  `--test-timeout` or its per-test `timeout` option, and share setup and cleanup through file hooks.
 - **Drop a folder to browse it:** dropping one folder from Windows Explorer onto Persephone now
   opens a new page with the Explorer panel rooted at that folder. Dropping several files or folders
   still opens a link collection page.

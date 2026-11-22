@@ -107,7 +107,8 @@ The general product runner supports these suite-independent options:
 | `--test-setup <module>` | Dynamically load a setup module that adds members to each context. |
 | `--test-selection <json-file>` | Read a version 1 manifest of exact `{ file, name }` identities. |
 | `--with <tag,...>` | Enable named non-`launch` requirement tags. |
-| `--timeout-scale <number>` | Scale startup, request, wait, polling, cleanup, screenshot, shutdown, and second-instance deadlines. |
+| `--timeout-scale <number>` | Scale startup, request, wait, polling, test, cleanup, screenshot, shutdown, and second-instance deadlines. |
+| `--test-timeout <ms>` | Set the default attempt bound (300000 ms); `0` disables it. A descriptor `timeout` overrides it, and both values are scaled once. |
 | `--keep-open` | Retain an owned app after invocation failure and record its PID and MCP URL. |
 | `--mcp-port <port>` | Request an available MCP port for an owned app; default selection is ephemeral. |
 | `--grep <regex>` | Select product tests whose names match this case-sensitive JavaScript regular expression. |
@@ -127,6 +128,25 @@ included in `last-failed.json`. A test that still fails after its retries remain
 `--grep` filters descriptor names after exact manifest and rerun selection; it does not change
 whether a requested rerun identity exists.
 
+The per-attempt timeout defaults to 300000 ms. `--test-timeout <ms>` or its `=` form sets the run
+default; an optional `timeout` on `test`, `test.skip`, `test.only`, or `test.fails` overrides it.
+Both are non-negative safe integer milliseconds, and `0` disables the bound. Positive values are
+scaled once by `--timeout-scale`. Retries receive a fresh bound. The wrapper forwards its allowlisted
+`--timeout-scale` value but does not expose arbitrary product options such as `--test-timeout`.
+Timeout covers `beforeEach` and the body; `afterEach` uses a separate bound of the same duration.
+File hooks use the scaled run-level timeout. Failure capture and cleanup use their own bounds. An
+already dispatched MCP call or arbitrary JavaScript cannot be cancelled and may finish after expiry;
+later context and retained setup-adapter calls reject.
+
+Named `beforeAll`, `beforeEach`, `afterEach`, and `afterAll` exports are optional file hooks. They
+receive context instances with independent lifetimes and per-hook `--test-setup` extensions.
+`beforeEach` and `afterEach` run on every attempt; file hooks run only when selection and skip rules
+leave at least one runnable descriptor. File pages remain open through attempts and are cleaned
+after `afterAll`. Hook failures use `<beforeAll>` / `<afterAll>` pseudo-results or the test result,
+and are included in reports and `tests.log`. Failed file-hook identities expand to their file's
+descriptors under `--rerun-failed`. See the [file-hook guide](../../assets/guides/agents/web-app-tests/file-hooks.md)
+for ordering, failure precedence, attach ownership, and diagnostics.
+
 The product context handles per-test page and pop-up cleanup. It supports scoped `app`, unscoped
 `root`, `openBrowser`, `usePage`, `handle`, path `call`/`callText` (including `{ dialog: true }`), `set`,
 `waitFor`, `expect`, `script`,
@@ -135,12 +155,24 @@ suite-only fixture helpers. The setup hook receives the current context, `{ file
 profileDirectory, attach }`, and a getter for the current MCP client adapter, so an app restart
 uses the replacement connection.
 
+`ctx.waitFor(pathOrCallback, predicate, options)` accepts `timeout`, `maxLength`, `dialog`,
+`allowNavigation`, and `message`. It returns the matching value, stops immediately on callback or
+predicate errors, and prepends `message` to timeout errors when supplied. Its explicit timeout is
+scaled by `--timeout-scale`; its default wait and poll intervals are already scaled.
+`ctx.expect.poll(callback, options)` accepts a callback that receives `ctx` and retries ordinary
+callback errors as well as matcher mismatches. Its async matchers mirror every `ctx.expect(value)`
+matcher, including recursive `.not`; matcher arguments are checked before sampling, and `toThrow`
+requires each sample to be a synchronous function. The default timeout and interval are the scaled
+wait and poll settings. Explicit timeout is scaled; explicit interval is in milliseconds. A timeout
+reports the expected matcher and compact last value or error. Each polling assertion emits one
+`wait-start` and one `wait-result` or `wait-error` event.
+
 Browser downloads in an owned test instance bypass the native Save dialog and use
 `<userData>/test-downloads/`, adding a ` (n)` suffix when a filename already exists. The path is
 available from `app.downloads.downloads[i].savePath` after completion. Attached instances retain
 their normal Save dialog behavior.
 
-Before each test, the runner snapshots page ownership and browser pop-ups. In owned runs and
+Before each file hook and test, the runner snapshots page ownership and browser pop-ups. In owned runs and
 runner-created attached windows, cleanup closes pages and pop-ups first opened during that test,
 including pages opened through `ctx.call`. In a selected `--window`, it closes only tracked
 `ctx.openBrowser` pages and their new pop-ups; other new pages are left open and logged. `ctx.usePage`
@@ -271,8 +303,13 @@ app stand-in (`ctx.app.boards.*`,
 `ctx.app.pages[id].editor.*`) for structured calls; bind stand-in call options with
 `ctx.app.withOptions({ timeout?, maxLength?, dialog? })`; use `ctx.call` for paths the stand-in
 cannot express, `ctx.callText` for exact text, and `ctx.set` for writable property assignments.
-Path-based
-`waitFor` accepts the same options and resolves to the matching poll value.
+Path-based `waitFor` accepts `timeout`, `maxLength`, `dialog`, `allowNavigation`, and `message`, and
+resolves to the matching poll value. Callback and predicate failures still propagate immediately.
+`expect.poll` shares the same host polling loop, defaults to the same scaled timeout and interval,
+and retries callback failures until a matcher succeeds or its timeout expires. Polling assertions
+accept `timeout`, `interval`, and `message`; explicit timeout is scaled while interval is in
+milliseconds. Their final `AssertionError` includes the expected matcher and a compact last value or
+error, and they produce one wait log pair per assertion.
 
 A coded error from any namespace of the agent call tree arrives as `Error [<code>]: <message>`, and
 the test host restores the code as `error.code` on `ctx.call` errors. Tests should assert both

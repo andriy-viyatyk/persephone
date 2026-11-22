@@ -17,6 +17,7 @@ Playwright for server CI.
 |---|---|---|
 | Understand call paths, stand-ins, and a complete test example | [Call boundary and worked example](./call-boundary-and-examples.md) | `guides.agents["web-app-tests"]["call-boundary-and-examples"]` |
 | Reuse a signed-in browser page, configure attached windows, or inspect captured failures and logs | [Attached runs, session pages, and results](./attached-runs-and-results.md) | `guides.agents["web-app-tests"]["attached-runs-and-results"]` |
+| Share setup and cleanup across tests in one file | [File hooks](./file-hooks.md) | `guides.agents["web-app-tests"]["file-hooks"]` |
 ## Turn exploration into a test
 
 Explore the site first with the `call` tool: inspect `pages[id].editor.$help`, take a snapshot,
@@ -58,6 +59,8 @@ The options argument is optional. Each `requires` entry must be a non-empty tag 
 built in and is skipped under `--attach`; every other tag is skipped unless enabled with `--with`.
 Requirement tags belong to the test suite, so customers can use their own tag names.
 
+For async polling assertions and wait messages, see [the polling examples and matcher options](./call-boundary-and-examples.md#polling-assertions).
+
 Every test receives these `ctx` members:
 
 - `app` — awaitable stand-in for paths in the live call tree.
@@ -67,7 +70,7 @@ Every test receives these `ctx` members:
 - `call(path, args?, options?)` — path-based call; useful for stand-in escape hatches.
 - `callText(path, args?, options?)` — path-based call returning text without JSON parsing.
 - `set(path, value, { timeout? })` — assign a writable property (one whose `$help` says it is writable). Assigning through `ctx.app` throws, because an assignment cannot be awaited.
-- `waitFor(pathOrCallback, predicate, { timeout?, maxLength?, dialog? })` — host-side polling of a call or callback.
+- `waitFor(pathOrCallback, predicate, { timeout?, maxLength?, dialog?, allowNavigation?, message? })` — host-side polling of a call or callback.
 - `expect(value, message?)` — assertions with `toBe`, `toEqual`, `toContain`, `toBeTruthy`, `toBeFalsy`, `toBeNull`, `toBeUndefined`, `toBeDefined`, `toBeGreaterThan`, `toBeGreaterThanOrEqual`, `toBeLessThan`, `toBeLessThanOrEqual`, `toHaveLength`, `toHaveProperty`, `toMatch`, `toMatchObject`, `toContainEqual`, and `toThrow`. Every matcher also supports `.not`, for example `ctx.expect(value).not.toBe(expected)`. A supplied message is shown before the generated assertion failure.
 - `script(code)` — run `script.execute` and return its completed text.
 - `file(relative)` — resolve a fixture path relative to this test file.
@@ -118,6 +121,7 @@ Options:
 - `--grep <regex>` runs tests whose names match the case-sensitive JavaScript regular expression.
 - `--retries <n>` retries failed tests up to `n` additional attempts; the default is `0`.
 - `--timeout-scale <number>` scales the runner's timeouts; the default is `1`.
+- `--test-timeout <ms>` sets the default per-attempt test timeout; the default is `300000` ms.
 - `--keep-open` leaves an owned app running after a failed run and prints its PID and MCP URL in `report.json`.
 - `--mcp-port <port>` requests the MCP port for an owned app; the runner refuses the port if it is occupied.
 - `--attach --profile-dir <path>` attaches using MCP settings in that directory and verifies the connected app's user-data directory before running tests.

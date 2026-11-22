@@ -15,6 +15,7 @@ export interface TestControllerArguments {
     keepOpen: boolean;
     mcpPort?: number;
     retries: number;
+    testTimeout: number;
     grep?: string;
     window?: string;
 }
@@ -24,6 +25,7 @@ export function hasTestControllerArguments(args: string[]): boolean {
         || argument === "--with" || argument.startsWith("--with=") || argument === "--keep-open"
         || argument === "--mcp-port" || argument.startsWith("--mcp-port=") || argument === "--timeout-scale"
         || argument.startsWith("--timeout-scale=") || argument === "--retries" || argument.startsWith("--retries=")
+        || argument === "--test-timeout" || argument.startsWith("--test-timeout=")
         || argument === "--grep" || argument.startsWith("--grep=") || argument === "--window" || argument.startsWith("--window=")
         || (argument.startsWith("--test-") && !isTestInstanceOption(argument)));
 }
@@ -45,6 +47,8 @@ export function parseTestControllerArguments(args: string[], cwd = process.cwd()
     let timeoutScaleSeen = false;
     let retries = 0;
     let retriesSeen = false;
+    let testTimeout = 300_000;
+    let testTimeoutSeen = false;
     let grep: string | undefined;
     let window: string | undefined;
     for (let index = 0; index < args.length; index += 1) {
@@ -76,6 +80,12 @@ export function parseTestControllerArguments(args: string[], cwd = process.cwd()
             const value = argument === "--retries" ? args[++index] : argument.slice("--retries=".length);
             if (!value || value.startsWith("--") || !/^\d+$/.test(value) || !Number.isSafeInteger(Number(value))) throw new Error("--retries requires a non-negative safe integer.");
             retries = Number(value);
+        } else if (argument === "--test-timeout" || argument.startsWith("--test-timeout=")) {
+            if (testTimeoutSeen) throw new Error("Duplicate --test-timeout option.");
+            testTimeoutSeen = true;
+            const value = argument === "--test-timeout" ? args[++index] : argument.slice("--test-timeout=".length);
+            if (!value || value.startsWith("--") || !/^\d+$/.test(value) || !Number.isSafeInteger(Number(value))) throw new Error("--test-timeout requires a non-negative safe integer.");
+            testTimeout = Number(value);
         } else if (argument === "--grep" || argument.startsWith("--grep=")) {
             if (grep !== undefined) throw new Error("Duplicate --grep option.");
             const value = argument === "--grep" ? args[++index] : argument.slice("--grep=".length);
@@ -129,5 +139,5 @@ export function parseTestControllerArguments(args: string[], cwd = process.cwd()
     if (logFile && rerunFailed) throw new Error("--log cannot be combined with --rerun-failed.");
     if (attach && (keepOpen || mcpPort !== undefined)) throw new Error("--attach cannot be combined with --keep-open or --mcp-port.");
     if (window !== undefined && !attach) throw new Error("--window requires --attach.");
-    return { testPath, attach, cwd, logFile, logDirectory, rerunFailed, testSelection, testSetup, with: withTags, timeoutScale, keepOpen, mcpPort, retries, grep, window };
+    return { testPath, attach, cwd, logFile, logDirectory, rerunFailed, testSelection, testSetup, with: withTags, timeoutScale, keepOpen, mcpPort, retries, testTimeout, grep, window };
 }

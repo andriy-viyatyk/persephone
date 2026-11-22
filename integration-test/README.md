@@ -33,6 +33,10 @@ are mutually exclusive. Paths are passed as separate OS arguments, including pat
 `--open` directly launches the selected app and leaves reports unchanged. Use
 `npm run test:ui:call -- --close` to close a retained app before a profile reset.
 
+The product runner's per-attempt timeout defaults to 300000 ms and scales with `--timeout-scale`.
+Direct product runs can override it with `--test-timeout <ms>`; the suite wrapper forwards only its
+allowlisted product options (including `--timeout-scale`) and keeps the shared default.
+
 The isolated profile is `integration-test/.profile`, identity `uitest`, with MCP 17865, video
 17866, Mneme 17700, Tor 19052, HTTP fixtures 17867, and HTTPS fixtures 17868. The seed's
 `appSettings.json` sets `link-open-behavior` to `internal-browser`, so URL actions in tests stay in
@@ -105,6 +109,9 @@ and `--timeout-scale`. It passes `--keep-open` only to the last runnable module.
 are documented in the [web-app test guide](../assets/guides/agents/web-app-tests/index.md); the suite
 setup adds only `ctx.fixture()`, `ctx.httpUrl()`, and the compatibility `ctx._getClient()` helper.
 Existing `test` imports remain in `lib/context.mjs`.
+
+The wrapper does not forward arbitrary product arguments such as `--test-timeout`; its modules use
+the shared 300000 ms default unless a descriptor sets its own timeout.
 
 Product reports, logs, and screenshots are staged under
 `reports/runs/<run-id>/<module-id>/`. The wrapper keeps aggregate

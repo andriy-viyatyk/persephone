@@ -7,6 +7,30 @@ summary: "Understand how test stand-ins resolve call paths and follow a complete
 # Call boundary and worked example
 
 Return to [Web-app regression tests](./index.md) for test setup and run commands, or see [attached runs, session pages, and results](./attached-runs-and-results.md) for reuse and diagnostics.
+
+## Per-test timeouts
+
+Each attempt is bounded by 300,000 ms by default. Set the run default with `--test-timeout <ms>`
+or `--test-timeout=<ms>`; a descriptor's `timeout` overrides that run value. The option is
+available on `test`, `test.skip`, `test.only`, and `test.fails`:
+
+```js
+test("scheduled job", async (ctx) => { /* steps */ }, { timeout: 480000 });
+test.fails("known failure", async (ctx) => { /* steps */ }, { reason: "issue", timeout: 10000 });
+```
+
+Timeout values are non-negative safe integer milliseconds. `0` disables the bound. Positive
+values are multiplied once by `--timeout-scale`, rounded, and clamped to the timer limit. A retry
+gets a fresh bound. The bound covers `beforeEach` and the test body; `afterEach` gets a separate
+fresh bound of the same duration after failure capture. File hooks use the scaled run-level timeout.
+Failure capture and page cleanup run afterward with their own limits. A timeout reports
+`Test timed out after N ms; last step: <step>` and keeps the step captured at expiry. A timed-out
+`test.fails` remains an expected failure when cleanup succeeds.
+
+The host cannot cancel an already dispatched MCP request, arbitrary JavaScript, synchronous loops,
+or spawned processes. Such work can finish after timeout and may still affect the app; later context
+and retained setup-adapter calls are rejected, but server-side effects already in flight are not
+undone. An in-flight `restartApp()` is allowed to finish before failure capture and cleanup.
 ## Crossing the call boundary
 
 `ctx.app` is the root of Persephone's test call tree. It is separate from the script-facing `app`
@@ -23,10 +47,42 @@ arguments still need an explicit `[]` when called through `ctx.call`. At the res
 top-level `undefined` arrives as `null`, and undefined-valued object properties are dropped.
 Functions and other non-JSON argument values are not supported.
 
-`waitFor(pathOrCallback, predicate, { timeout, maxLength, dialog })` resolves to the value from the
-poll that satisfies the predicate. `timeout` sets the polling deadline; `maxLength` and `dialog` are
-forwarded for each path poll. Set `dialog: true` when polling while a renderer dialog or popup menu
-has attention, including reads from `dialogs` or `menus`.
+`waitFor(pathOrCallback, predicate, { timeout, maxLength, dialog, allowNavigation, message })` resolves to the value from the
+poll that satisfies the predicate. `timeout` sets the polling deadline; `maxLength`, `dialog`, and
+`allowNavigation` are forwarded for each path poll. Set `dialog: true` when polling while a renderer
+dialog or popup menu has attention, including reads from `dialogs` or `menus`. Callback and predicate
+errors still stop `waitFor` immediately. An optional `message` is prepended to its timeout error.
+
+## Polling assertions
+
+Use `ctx.expect.poll` when the value is expected to become true eventually. Its callback receives
+`ctx` and runs again for each sample; synchronous values, promises, and awaited stand-ins are
+supported. Ordinary callback throws and rejections count as “not yet” and are retried. Environment
+stop errors escape immediately. Each matcher returns a promise, so await it:
+
+```js
+await ctx.expect.poll(() => site.app.dialog, {
+  timeout: 5000,
+  interval: 200,
+  message: "Dialog should open",
+}).toMatchObject({ title: "Ready" });
+await ctx.expect.poll(async (ctx) => await ctx.app.pages.activePage.id)
+  .not.toBeUndefined();
+```
+
+Polling assertions support every `expect` matcher: `toBe`, `toEqual`, `toContain`, `toBeTruthy`,
+`toBeFalsy`, `toBeNull`, `toBeUndefined`, `toBeDefined`, `toBeGreaterThan`,
+`toBeGreaterThanOrEqual`, `toBeLessThan`, `toBeLessThanOrEqual`, `toHaveLength`, `toHaveProperty`,
+`toMatch`, `toMatchObject`, `toContainEqual`, and `toThrow`. Every matcher supports recursive
+`.not`; matcher arguments are validated once before the callback runs. `toThrow` expects the callback
+sample itself to be a synchronous function, which the matcher invokes on each sample.
+
+The default timeout is the runner's scaled `waitFor` timeout (10 seconds by default), and the default
+interval is its scaled 200 ms poll delay. An explicit timeout is multiplied by `--timeout-scale`;
+an explicit interval is already in milliseconds and is not scaled again. Both must be positive finite
+numbers. On timeout, the assertion shows an optional message, a compact expected matcher, then the
+last actual value or callback error. `waitFor` retains its immediate callback/predicate error behavior;
+only `expect.poll` retries callback errors.
 
 `openBrowser()` returns the existing editor stand-in, with a local `pageId` property containing the
 created page's id. Use that id for paths such as `pages[pageId]`; it is metadata on the returned

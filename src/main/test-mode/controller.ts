@@ -45,6 +45,7 @@ export async function startTestController(profileArgs: ReturnType<typeof parseAp
             timeoutScale: options.timeoutScale,
             keepOpen: options.keepOpen,
             retries: options.retries,
+            testTimeout: options.testTimeout,
             grep: options.grep,
             executable: process.execPath,
             devMain: app.isPackaged ? undefined : path.resolve(__dirname, "main.js"),

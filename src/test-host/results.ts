@@ -61,9 +61,21 @@ export function selectForRerun(
     selection: RerunSelection | undefined,
 ): { selected: Set<string> | undefined; stale: FailedIdentity[] } {
     if (!selection) return { selected: undefined, stale: [] };
+    const files = new Map(discovered.map(({ file, tests }) => [identityKey(file, "<file>"), { file, tests }]));
     const available = new Set(discovered.flatMap(({ file, tests }) => tests.map(({ name }) => identityKey(file, name))));
-    const selected = new Set(selection.identities.map(({ file, name }) => identityKey(file, name)));
-    const stale = selection.identities.filter(({ file, name }) => !available.has(identityKey(file, name)));
+    const selected = new Set<string>();
+    const stale: FailedIdentity[] = [];
+    for (const identity of selection.identities) {
+        if (identity.name === "<beforeAll>" || identity.name === "<afterAll>") {
+            const group = files.get(identityKey(identity.file, "<file>"));
+            if (!group) { stale.push(identity); continue; }
+            for (const descriptor of group.tests) selected.add(identityKey(group.file, descriptor.name));
+            continue;
+        }
+        const key = identityKey(identity.file, identity.name);
+        if (available.has(key)) selected.add(key);
+        else stale.push(identity);
+    }
     return { selected, stale };
 }
 
@@ -100,7 +112,7 @@ export async function writeReports(
         if (result.step) lines.push(`Step: ${markdown(result.step)}`);
         if (result.location) lines.push(`Location: \`${markdown(result.location)}\``);
         if (result.skipReason) lines.push(`Reason: ${markdown(result.skipReason)}`);
-        if (result.reason) lines.push(`Expected failure reason: ${markdown(result.reason)}`);
+        if (result.reason) lines.push(`${result.status === "expected-failure" || result.status === "unexpected-pass" ? "Expected failure reason" : "Reason"}: ${markdown(result.reason)}`);
         if (result.error) lines.push("", "Error:", "", fenced(result.error));
         if (result.attempts?.length) lines.push("", "Attempts:", ...result.attempts.map((attempt) => `- ${attempt.attempt}: ${attempt.status}${attempt.error ? ` — ${markdown(attempt.error)}` : ""}${attempt.location ? ` (${markdown(attempt.location)})` : ""}`));
         if (result.cleanupErrors?.length) lines.push("", "Cleanup errors:", ...result.cleanupErrors.map((error) => `- ${markdown(error)}`));

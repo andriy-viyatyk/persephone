@@ -64,6 +64,11 @@ one epic per step.
 - **Step 1b — [EPIC-203](../../epics/EPIC-203.md) (done 2026-11-22):** items 4, 8 (sorting from Chromium's CDP
   transfer: fixed for page-model replies, documented for `evaluate`), 15, 16, 18, 21 (input half), 22 (menu half)
   and half of 1.
-- **Step 2 — [EPIC-204](../../epics/EPIC-204.md) (in progress):** items 3 (session-page half), 11, 13, 22 (runner
+- **Step 2 — [EPIC-204](../../epics/EPIC-204.md) (done 2026-11-22):** items 3 (session-page half), 11, 13, 22 (runner
   half), 23.
-- Still open after step 2: 1 (rest), 2, 3 (storage-state half, F2), 5, 9, 10, 17, 19, 20 — roadmap steps 3–7.
+- **Step 3 — [EPIC-205](../../epics/EPIC-205.md) (done 2026-11-22):** item 24 (`waitFor` message; the `expect`
+  message was step 1a) and the runner half of 2 (inside `ctx.expect.poll` a stand-in that is not there yet counts as
+  "not yet"). Also polling assertions (B2), file-level hooks (B4) and a per-test timeout (B7), which the suite had
+  worked around (a wrapped `test()` for a `finally`, `waitFor` + `expect` pairs).
+- Still open after step 3: 1 (rest), 2 (bridge half, G2), 3 (storage-state half, F2), 5, 9, 10, 17, 19, 20 — roadmap
+  steps 4–7.

@@ -1,3 +1,21 @@
+## EPIC-205 — Test structure for web-app tests
+
+Completed 2026-11-22. Step 3 of the [web-app testing review](../reviews/web-app-testing-review.md) roadmap (B2, B4,
+B7, and the `waitFor` message of US-2138 item 24). `ctx.expect.poll(fn, { timeout, interval, message })` takes every
+matcher including `.not`; an error from the callback (a member that is not there yet) counts as "not yet", and a
+timeout shows the message, the expected side and the last actual value or error. `ctx.waitFor` takes `message`. One
+poll loop (`src/test-host/poll.ts`) serves both. Every test attempt is bounded: default 300 000 ms, `--test-timeout
+<ms>` (0 = none), per-test `{ timeout }`, all scaled by `--timeout-scale`; a timed-out attempt reports `Test timed out
+after N ms; last step: …`, its abandoned body's later calls are refused, and failure capture, `afterEach` and cleanup
+still run. Test files can export `beforeAll`, `beforeEach`, `afterEach`, `afterAll`; a failing `beforeAll` is one
+located `<beforeAll>` failure and the file's tests are `not-run`. `runner.ts` shrank from 286 to 151 lines
+(`test-file-run.ts`, `test-result.ts`, `file-hooks.ts`, `file-hook-run.ts`). Completion skills by Codex (Luna).
+Epic document: [EPIC-205](EPIC-205.md).
+
+- [x] **Polling assertions and wait messages (US-2157).**
+- [x] **Per-test timeout (US-2158).**
+- [x] **File-level hooks (US-2159).**
+
 ## EPIC-204 — Test window and session pages for web-app tests
 
 Completed 2026-11-22. Step 2 of the [web-app testing review](../reviews/web-app-testing-review.md) roadmap (A1, A2,
