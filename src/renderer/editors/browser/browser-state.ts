@@ -80,6 +80,8 @@ export interface BrowserEditorState extends IEditorState {
      * read and drive. Deliberately not persisted: after a restart the page counts as the user's.
      */
     openedByAgent: boolean;
+    /** Ephemeral test-run adoption; never persisted. */
+    testPowerAdopted: boolean;
     /** `profile-src` token while this page's profile is proxied, else "". */
     networkToken: string;
     /** Proxy shown in the URL bar, e.g. "SOCKS5 127.0.0.1:1080"; "" when direct. */
@@ -154,6 +156,7 @@ export const getDefaultBrowserPageState = (): BrowserEditorState => {
         lastSearchQuery: "",
         // Ephemeral state (managed by sub-models)
         openedByAgent: false,
+        testPowerAdopted: false,
         networkToken: "",
         networkLabel: "",
         networkError: "",

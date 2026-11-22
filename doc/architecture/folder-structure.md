@@ -561,6 +561,15 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   │   ├── SitePermissionsPopover.ts # Site-permission popover content
 │   │   ├── PageZoomPopover.ts        # Page zoom popover content
 │   │   ├── BrowserWebviewModel.ts    # Private guest registry, readiness, navigation, event routing
+│   │   ├── BrowserTestPowerAdoption.ts # Ephemeral runner adoption of existing browser pages
+│   │   ├── BrowserStorageState.ts    # Capture/apply browser storage state for tests
+│   │   ├── BrowserStorageFacade.ts   # Page local/session storage helpers
+│   │   ├── BrowserDownloadCapture.ts # Wait for and resolve a test-page download capture
+│   │   ├── BrowserRequestRoutes.ts   # Page-scoped declarative request routes
+│   │   ├── BrowserClipboardFacade.ts # Page-scoped clipboard recording and test paste
+│   │   ├── page-clipboard-recorder.ts # Page-side copy recorder and scoped paste hook
+│   │   ├── BrowserClock.ts           # Page fake-clock registration and controls
+│   │   ├── browser-clock-script.ts   # Document-start clock and timer patch
 │   │   ├── BrowserSiteExtensionController.ts # Saved/temporary extension selection, injection, actions, and fetch routing
 │   │   ├── SiteExtensionInjection.ts  # Shared guarded injection and in-document teardown expressions
 │   │   ├── TemporarySiteExtensions.ts # Page-memory test-extension registry, validation, and outcomes
@@ -1199,6 +1208,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── git-service.ts          # Git access via simple-git — status, stage/unstage/commit, branch/switch, fetch/push/pull, ahead-behind, log/show, --version probe — main-process only
 ├── download-path-queue.ts  # One Save dialog at a time per page, bounded queue
 ├── download-service.ts     # Browser downloads stage in temp (paused at 32 MB) while an async Save As dialog is open; test instances save under test-mode/test-downloads; completed files receive Mark-of-the-Web from the final redirect URL
+├── download-capture.ts     # Armed test-page downloads saved under a temporary capture root for run-folder collection
 ├── session-src-protocol.ts # Short-lived URL-bound capability; reuses routed URL parsing and enforces board network policy/DNS pinning per redirect hop
 ├── native-dialog-tracker.ts # Per-window native dialog state, attention snapshots, and helper-backed cancellation
 ├── search-service.ts       # File search host — owns one search-worker thread per sender window, relays its batches to the renderer; cancel/window-close is worker.terminate()
@@ -1236,6 +1246,10 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── cdp-service.ts          # CDP composition and target routing for call-path automation
 ├── cdp/                    # Per-WebContents CDP target and feature owners
 │   ├── CdpTarget.ts        # Debugger lifecycle, enabled domains, and event dispatch
+│   ├── cdp-browser-test-methods.ts # Test-power CDP handlers and attach/detach lifecycle wiring
+│   ├── cdp-init-scripts.ts # Per-target document-start script registration
+│   ├── cdp-storage-state.ts # Cookie state capture and application
+│   ├── cdp-request-routes.ts # Page-scoped Fetch request interception
 │   ├── cdp-page-events.ts  # Dialog policy and page event state
 │   ├── cdp-waits.ts        # Navigation and response wait lifecycle
 │   ├── cdp-network-collector.ts # Per-target network response collection

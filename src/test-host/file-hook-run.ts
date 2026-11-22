@@ -27,7 +27,7 @@ export async function runFileHook(input: FileHookInput): Promise<{ client: McpCl
     const timeout = scaleTimeout(input.configuration.testTimeout ?? 300_000, input.timeouts.scale ?? 1);
     const lifetime = createTestLifetime(timeout, input.name);
     let client = input.launcher.client ?? input.client;
-    const context = createContext(client, input.launcher, input.timeouts, input.configuration.attach, input.testWindow, lifetime, input.log, { file: input.file, test: input.name, profileDirectory: input.configuration.profileDirectory });
+    const context = createContext(client, input.launcher, input.timeouts, input.configuration.attach, input.testWindow, lifetime, input.log, { file: input.file, test: input.name, profileDirectory: input.configuration.profileDirectory }, input.outputDirectory);
     let baseline = input.baseline;
     const started = Date.now();
     let failure: unknown;
@@ -75,7 +75,7 @@ export async function runFileHook(input: FileHookInput): Promise<{ client: McpCl
             captureErrors.push(`App restart did not finish after file hook failure: ${errMessage(error)}`);
         }
         client = input.launcher.client ?? client;
-        try { capture = await captureFailure(client, baseline, input.outputDirectory, { file: input.file, name: input.name }, 1, started, context._state.pagesUnderTest(), context._state.sessionPages, input.log, input.testWindow); }
+        try { capture = await captureFailure(client, baseline, input.outputDirectory, { file: input.file, name: input.name }, 1, started, context._state.pagesUnderTest(), context._state.sessionPages, input.log, input.testWindow, context._state.attachments); }
         catch (error) {
             if (error instanceof EnvironmentStopError) throw error;
             captureErrors.push(`Failure capture failed: ${errMessage(error)}`);
@@ -91,6 +91,7 @@ export async function runFileHook(input: FileHookInput): Promise<{ client: McpCl
         ...(capture.failureBundle ? { failureBundle: capture.failureBundle } : {}),
         ...(capture.screenshots.length ? { screenshots: capture.screenshots } : {}),
         ...(capture.captureErrors.length ? { captureErrors: capture.captureErrors } : {}),
+        ...(context._state.attachments.length ? { attachments: context._state.attachments } : {}),
     };
     return { client: input.launcher.client ?? client, result, ownedPages: context._state.ownedPages, sessionPages: context._state.sessionPages };
 }

@@ -23,6 +23,7 @@ import { testInstanceDownloadPath } from "./test-mode/downloads";
 import { t } from "../shared/i18n/t";
 import { downloadRequestLimiter } from "./browser/download-request-limiter";
 import { SavePathQueue } from "./download-path-queue";
+import { cleanupDownloadCaptures, downloadCapture } from "./download-capture";
 
 const MAX_PERSISTED = 5;
 const PROGRESS_THROTTLE_MS = 500;
@@ -124,6 +125,7 @@ class DownloadService {
     init(): void {
         this.loadPersisted();
         void this.cleanupTemporaryDownloads();
+        void cleanupDownloadCaptures();
         app.on("session-created", (ses) => {
             this.hookSession(ses);
         });
@@ -250,6 +252,8 @@ class DownloadService {
             } satisfies BoardNotifyMsg);
             return;
         }
+
+        if (downloadCapture.capture(item, webContents)) return;
 
         return this.handleOrdinaryDownload(item, webContents);
     }

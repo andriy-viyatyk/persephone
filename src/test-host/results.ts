@@ -5,6 +5,8 @@ import type { HostConfiguration } from "./launcher.js";
 import { errMessage } from "../shared/utils.js";
 import { normalizeTestFile, testIdentityKey } from "./test-identity.js";
 import { EnvironmentStopError } from "./attention-policy.js";
+import type { StorageStateRedactor } from "./storage-state-redaction.js";
+import type { DownloadAttachment } from "./captured-downloads.js";
 
 export interface TestResult {
     file: string;
@@ -17,6 +19,7 @@ export interface TestResult {
     requirements?: string[];
     cleanupErrors?: string[];
     screenshots?: string[];
+    attachments?: DownloadAttachment[];
     failureBundle?: string;
     captureErrors?: string[];
     reason?: string;
@@ -85,7 +88,7 @@ export function matchesSelection(file: string, name: string, selected: Set<strin
 
 export async function writeReports(
     results: TestResult[],
-    options: { directory: string; target: string; startedAt: string; stale: FailedIdentity[]; setupFailure?: unknown; retainedApp?: { pid: number; url: string }; environmentStop?: string },
+    options: { directory: string; target: string; startedAt: string; stale: FailedIdentity[]; setupFailure?: unknown; retainedApp?: { pid: number; url: string }; environmentStop?: string; redactor?: StorageStateRedactor },
 ): Promise<void> {
     await fs.mkdir(options.directory, { recursive: true });
     const failed = results.filter((result) => result.status === "failed");
@@ -96,18 +99,21 @@ export async function writeReports(
     const unexpectedPass = results.filter((result) => result.status === "unexpected-pass");
     const flaky = results.filter((result) => result.status === "flaky");
     const notRun = results.filter((result) => result.status === "not-run");
+    const sanitizedResults = options.redactor?.redact(results) as TestResult[] | undefined ?? results;
+    const setupFailureText = options.setupFailure ? options.redactor?.scrub(errMessage(options.setupFailure)) ?? errMessage(options.setupFailure) : undefined;
+    const environmentStopText = options.environmentStop ? options.redactor?.scrub(options.environmentStop) ?? options.environmentStop : undefined;
     const payload = {
         runAt: options.startedAt,
         target: options.target,
         summary: { passed: passed.length, failed: failed.length + (options.setupFailure ? 1 : 0), skipped: skipped.length, expectedFailure: expectedFailure.length, unexpectedPass: unexpectedPass.length, flaky: flaky.length, notRun: notRun.length },
-        ...(options.environmentStop ? { environmentStop: options.environmentStop } : {}),
+        ...(environmentStopText ? { environmentStop: environmentStopText } : {}),
         stale: options.stale,
-        ...(options.setupFailure ? { setupFailure: errMessage(options.setupFailure) } : {}),
+        ...(setupFailureText ? { setupFailure: setupFailureText } : {}),
         ...(options.retainedApp ? { retainedApp: options.retainedApp } : {}),
-        results,
+        results: sanitizedResults,
     };
-    const lines = ["# Persephone test report", "", `Run: ${markdown(options.startedAt)}`, `Target: ${markdown(options.target)}`, "", `Passed: ${passed.length}  Failed: ${failed.length + (options.setupFailure ? 1 : 0)}  Skipped: ${skipped.length}  Not run: ${notRun.length}  Expected failure: ${expectedFailure.length}  Unexpected pass: ${unexpectedPass.length}  Flaky: ${flaky.length}`, ...(options.environmentStop ? ["", `Environment stop: ${markdown(options.environmentStop)}`, "A not-run test may already have changed state."] : []), ""];
-    for (const result of results) {
+    const lines = ["# Persephone test report", "", `Run: ${markdown(options.startedAt)}`, `Target: ${markdown(options.target)}`, "", `Passed: ${passed.length}  Failed: ${failed.length + (options.setupFailure ? 1 : 0)}  Skipped: ${skipped.length}  Not run: ${notRun.length}  Expected failure: ${expectedFailure.length}  Unexpected pass: ${unexpectedPass.length}  Flaky: ${flaky.length}`, ...(environmentStopText ? ["", `Environment stop: ${markdown(environmentStopText)}`, "A not-run test may already have changed state."] : []), ""];
+    for (const result of sanitizedResults) {
         lines.push(`## ${markdown(result.status.toUpperCase())}: ${markdown(result.name)}`, "", `File: \`${markdown(result.file)}\``, `Duration: ${result.durationMs} ms`);
         if (result.step) lines.push(`Step: ${markdown(result.step)}`);
         if (result.location) lines.push(`Location: \`${markdown(result.location)}\``);
@@ -119,12 +125,17 @@ export async function writeReports(
         if (result.failureBundle) lines.push("", `Failure bundle: [${markdown(result.failureBundle)}](${encodeURI(result.failureBundle)})`);
         if (result.captureErrors?.length) lines.push("", "Capture errors:", ...result.captureErrors.map((error) => `- ${markdown(error)}`));
         if (result.screenshots?.length) lines.push("", "Screenshots:", ...result.screenshots.map((screenshot) => `- [${markdown(screenshot)}](${encodeURI(screenshot)})`));
+        if (result.attachments?.length) lines.push("", "Downloads:", ...result.attachments.map((attachment) => {
+            const label = markdown(attachment.suggestedFilename).replaceAll("\\", "\\\\").replaceAll("[", "\\[").replaceAll("]", "\\]");
+            const href = attachment.path.split("/").map(encodeURIComponent).join("/");
+            return `- [${label}](${href}) (${attachment.size} bytes)`;
+        }));
         lines.push("");
     }
     if (options.stale.length) {
         lines.push("## Stale rerun identities", "", ...options.stale.map((item) => `- ${markdown(item.file)} — ${markdown(item.name)}`), "");
     }
-    if (options.setupFailure) lines.push("## Runner setup error", "", fenced(errMessage(options.setupFailure)), "");
+    if (setupFailureText) lines.push("## Runner setup error", "", fenced(setupFailureText), "");
     if (options.retainedApp) lines.push(`Owned app retained after failure: PID ${options.retainedApp.pid}, MCP ${markdown(options.retainedApp.url)}`, "");
     await atomicWrite(path.join(options.directory, "report.json"), `${JSON.stringify(payload, null, 2)}\n`);
     await atomicWrite(path.join(options.directory, "report.md"), `${lines.join("\n")}\n`);

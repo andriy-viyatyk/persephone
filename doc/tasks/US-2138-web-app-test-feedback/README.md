@@ -76,5 +76,10 @@ one epic per step.
   `:has-text()`/`:visible`, the object form, refs handed out by a page model (`runtime.ref`) and the other runtime
   helpers, locator reads (`count`, `isVisible`, `isEnabled`, `isChecked`, `innerText`, `allInnerTexts`,
   `boundingBox`, bulk `query`) and `waitForFunction`.
-- Still open after step 4: 1 (rest), 2 (bridge half, G2), 3 (storage-state half, F2), 5, 9, 10, 17, 19, 20 — roadmap
-  steps 5–7.
+- **Step 5 — [EPIC-207](../../epics/EPIC-207.md) (done 2026-11-22):** items 3 (storage-state half: `storageState()`
+  and `ctx.openBrowser(url, { storageState })` applied before the app's scripts), 9 (`waitForDownload()`, saved to the
+  run folder without a Save dialog and attached to the report), 19 (page-scoped `clipboard.arm/readText/writeText`,
+  never an OS clipboard read) and 20 (declarative `route`/`unroute`). Also init scripts at document start
+  (`addInitScript`), storage helpers (`storage.set/clear`) and a fake clock (`clock.install/fastForward`). Test powers
+  are limited to pages the agent opened or `ctx.usePage` adopted.
+- Still open after step 5: 1 (rest), 2 (bridge half, G2), 5, 10, 17 — roadmap steps 6–7.

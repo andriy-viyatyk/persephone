@@ -502,8 +502,22 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/main/browser-dom-snapshot.ts` | Main | DOM and loaded-resource collection, including iframe content |
 | `src/main/host-fullscreen-controller.ts` | Main | Per-window host fullscreen intent and registered-guest coordination |
 | `src/main/cdp-service.ts` | Main | CDP service composition and app, board, and browser target routing |
+| `src/main/cdp/cdp-browser-test-methods.ts` | Main | Test-power CDP handler composition and attach/detach lifecycle |
 | `src/main/cdp/CdpTarget.ts` and feature modules | Main | Per-WebContents debugger state and page-event, wait, network, drag, and AiVision owners |
+| `src/main/cdp/cdp-init-scripts.ts` | Main | Per-target document-start script registrations and cleanup |
+| `src/main/cdp/cdp-storage-state.ts` | Main | Cookie storage-state capture and application through CDP |
+| `src/main/cdp/cdp-request-routes.ts` | Main | Page-scoped Fetch interception for declarative route actions and routed request metadata |
+| `src/main/download-capture.ts` | Main | Captures armed test-page downloads outside the normal Save dialog flow |
 | `src/main/network-logger.ts` | Main | Per-page HTTP request/response logging via `session.webRequest`, circular buffer, IPC access |
+| `src/main/network-logger.ts` `recordRoutedRequest()` | Main | Records metadata for requests fulfilled or aborted before `session.webRequest` sees them |
+| `src/renderer/editors/browser/BrowserTestPowerAdoption.ts`, `agent-access.ts` | Renderer | Ephemeral `ctx.usePage()` adoption and shared test-power access predicate |
+| `src/renderer/editors/browser/BrowserStorageState.ts`, `BrowserStorageFacade.ts` | Renderer | Storage-state workflow and current-page storage clear/set facade |
+| `src/renderer/editors/browser/BrowserRequestRoutes.ts` | Renderer | Browser facade adapter for page-scoped declarative routes |
+| `src/renderer/editors/browser/BrowserDownloadCapture.ts` | Renderer | Browser facade adapter for armed test-page download capture |
+| `src/renderer/editors/browser/BrowserClipboardFacade.ts`, `page-clipboard-recorder.ts` | Renderer / page | Page-produced copy recording and scoped synthetic next-paste input; never reads the OS clipboard |
+| `src/renderer/editors/browser/BrowserClock.ts`, `browser-clock-script.ts` | Renderer / page | Per-page fake-time state and document-start timer patching |
+| `src/test-host/storage-state-redaction.ts` | Test host | Sensitive browser state classification and log/report redaction |
+| `src/test-host/captured-downloads.ts` | Test host | Copies captured files into run output and attaches report metadata |
 | `src/main/tor-service.ts` | Main | Tor process lifecycle: spawn/kill tor.exe, restart, per-partition SOCKS5 proxy (armed before the daemon starts so the partition fails closed), torrc generation, exit-IP lookup |
 | `src/main/tor-src-protocol.ts`, `src/main/routed-fetch-protocol.ts` | Main | Tor partition policy plus the shared simple routed-fetch implementation |
 | `src/main/session-proxy.ts` | Main | Shared session proxy primitives (apply one proxy with no fallback, set direct, geo lookup) used by Tor and profile networks |
@@ -1428,6 +1442,37 @@ const tabs = browser.tabs;                  // list of internal tabs
 
 **Interface:** [`IBrowserEditor`](../../src/renderer/api/types/browser-editor.d.ts) — navigation, query (getText, getValue, exists), interaction (click, type, select, check), wait methods, tab management, CDP access, accessibility snapshot
 **Implementation:** [`BrowserEditorFacade`](../../src/renderer/scripting/api-wrapper/BrowserEditorFacade.ts)
+
+### Browser test powers
+
+Browser test powers are exposed as focused `BrowserEditorFacade` collaborators. `BrowserTestPowerAdoption`
+tracks ephemeral pages adopted by the web-app test runner; `agentMayUseBrowserTestPower` in
+`agent-access.ts` permits a page opened by the agent or adopted with `ctx.usePage()` in the current
+run. Adoption is removed at cleanup and is not persisted. Existing private-page restrictions still
+apply.
+
+`addInitScript()` stores source per browser tab through the CDP init-script owner and runs it on
+future documents before page-authored scripts. It covers the main frame and same-process child frames;
+OOPIFs are outside this registration. Storage-state capture reads cookies (including HttpOnly cookies)
+and current-origin local/session storage; applying it sets profile cookies and seeds Web Storage with
+a temporary init script. Because state contains sign-in material, the test host's
+`storage-state-redaction.ts` classifies storage state, storage writes, init source, and apply arguments
+before writing logs, reports, or failure bundles. Storage helpers are facaded separately by
+`BrowserStorageFacade`.
+
+Request routes use declarative actions through the existing browser IPC and CDP target lifecycle.
+`cdp-request-routes.ts` owns page-scoped `Fetch` interception; the latest matching route wins. Fulfilled
+and aborted requests bypass `session.webRequest`, so `recordRoutedRequest()` records their metadata
+for network inspection. Delay-only routes continue the request and remain logged by the session.
+Routes are removed when explicitly cleared or during test cleanup.
+
+`waitForDownload()` arms capture only for a test-power page. The main process writes captured bytes
+under its temporary capture root; the test host verifies confinement before copying them into the
+run output folder and attaching the result. This path skips the Save dialog and does not add captures
+to normal browser download history. Clipboard access is page-scoped: `page-clipboard-recorder.ts`
+records text produced by the page's own copy action, and staged writes supply only the next page paste;
+the host never reads the OS clipboard. `BrowserClock` installs a page timer script at document start,
+with time advancing in real time and `fastForward()` applying an explicit jump.
 
 The facade has an optional page-authored `.app` child. After `did-stop-loading` for a real document,
 `BrowserPageRemote` probes `window.__aiVision` and the app-owned WebMCP remote unless the existing

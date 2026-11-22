@@ -92,6 +92,7 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
         const hasOnly = focusSelected.some((descriptor) => descriptor.mode === "only");
         if (hasOnly) console.log("Focused run: executing test.only descriptors only.");
         client = await launcher.start();
+        if (log) client.setStorageStateRedactor(log.redactor);
         testWindow = await TestWindowOwner.start(client, configuration.attach, configuration.window);
         const fileState = await runSelectedFiles({ files, configuration, launcher, timeouts, setup, log, outputDirectory, results, selected: rerun.selected, hasOnly, testWindow, client });
         client = fileState.client;
@@ -100,6 +101,7 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
         if (error instanceof EnvironmentStopError) environmentStop = error.message;
         else setupFailure = error;
     } finally {
+        const scrub = (value: string | undefined): string | undefined => value === undefined ? undefined : log?.redactor.scrub(value) ?? value;
         if (testWindow && configuration.attach) {
             try {
                 const attachedClient = launcher.client ?? client;
@@ -114,22 +116,22 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
         } catch (error) { setupFailure ??= error; }
         try { launcher.close(); } catch (error) { setupFailure ??= error; }
         if (outputDirectory) {
-            try { await writeReports(results, { directory: outputDirectory, target: configuration.testPath, startedAt: started, stale, setupFailure, retainedApp, environmentStop }); }
+            try { await writeReports(results, { directory: outputDirectory, target: configuration.testPath, startedAt: started, stale, setupFailure, retainedApp, environmentStop, redactor: log?.redactor }); }
             catch (error) { setupFailure ??= error; }
         }
         const count = (status: TestResult["status"]) => results.filter((result) => result.status === status).length;
         try { log?.write({ event: "run-summary", startedAt: started, passed: count("passed"), failed: count("failed") + (setupFailure ? 1 : 0), skipped: count("skipped"), expectedFailure: count("expected-failure"), unexpectedPass: count("unexpected-pass"), flaky: count("flaky"), notRun: count("not-run"), ...(environmentStop ? { environmentStop } : {}), ...(setupFailure ? { setupFailure: errMessage(setupFailure) } : {}) }); }
         finally { log?.close(); }
-        console.log(`Test run ${started}: ${count("passed")} passed, ${count("failed") + (setupFailure ? 1 : 0)} failed, ${count("skipped")} skipped, ${count("not-run")} not run, ${count("expected-failure")} expected failure, ${count("unexpected-pass")} unexpected passes, ${count("flaky")} flaky.${environmentStop ? ` Environment stop: ${environmentStop}` : ""}`);
+        console.log(`Test run ${started}: ${count("passed")} passed, ${count("failed") + (setupFailure ? 1 : 0)} failed, ${count("skipped")} skipped, ${count("not-run")} not run, ${count("expected-failure")} expected failure, ${count("unexpected-pass")} unexpected passes, ${count("flaky")} flaky.${environmentStop ? ` Environment stop: ${scrub(environmentStop)}` : ""}`);
         for (const result of results.filter((item) => item.status !== "passed")) {
-            console.log(`${result.status.toUpperCase()} ${displayPath(configuration.cwd, result.file)} — ${result.name}${result.step ? ` — ${result.step}` : ""}${result.reason ? ` — ${result.reason}` : ""}${result.error ? `\n${result.error}` : ""}`);
-            for (const cleanupError of result.cleanupErrors ?? []) console.error(`CLEANUP ${cleanupError}`);
+            console.log(`${result.status.toUpperCase()} ${displayPath(configuration.cwd, result.file)} — ${result.name}${result.step ? ` — ${scrub(result.step)}` : ""}${result.reason ? ` — ${scrub(result.reason)}` : ""}${result.error ? `\n${scrub(result.error)}` : ""}`);
+            for (const cleanupError of result.cleanupErrors ?? []) console.error(`CLEANUP ${scrub(cleanupError)}`);
             for (const screenshot of result.screenshots ?? []) console.log(`Screenshot: ${outputDirectory ? path.join(outputDirectory, screenshot) : screenshot}`);
-            for (const captureError of result.captureErrors ?? []) console.error(`CAPTURE ${captureError}`);
+            for (const captureError of result.captureErrors ?? []) console.error(`CAPTURE ${scrub(captureError)}`);
         }
         for (const identity of stale) console.log(`STALE ${displayPath(configuration.cwd, identity.file)} — ${identity.name} (saved as failed, no longer exists; skipped)`);
         if (outputDirectory) console.log(`Results: ${outputDirectory}`); else if (configuration.logFile) console.log(`Log: ${configuration.logFile}`);
-        if (setupFailure) console.error(`Test runner setup failed: ${errMessage(setupFailure)}`);
+        if (setupFailure) console.error(`Test runner setup failed: ${scrub(errMessage(setupFailure))}`);
         if (retainedApp) console.log(`Owned app retained after failure (PID ${retainedApp.pid}, MCP ${retainedApp.url}).`);
         const summary = results.filter((result) => result.status !== "passed");
         if (summary.length) {
@@ -139,7 +141,7 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
                 const location = result.location ?? displayPath(configuration.cwd, result.file);
                 const attemptError = result.attempts?.find((attempt) => attempt.error)?.error;
                 const detail = result.status === "skipped" ? result.skipReason : result.status === "expected-failure" ? result.reason : firstErrorLine(result.error ?? attemptError, result.step) ?? result.reason;
-                console.log(`${labels[result.status]} — ${result.name} — ${location}${detail ? ` — ${detail}` : ""}`);
+                console.log(`${labels[result.status]} — ${result.name} — ${location}${detail ? ` — ${scrub(detail)}` : ""}`);
             }
         }
     }

@@ -56,6 +56,8 @@ export const BrowserChannel = {
     armResponseWait: "browser:arm-response-wait",
     /** Await and consume a previously armed response wait. Args: (token) */
     awaitResponseWait: "browser:await-response-wait",
+    /** Wait for the next download from a registered browser page. */
+    waitForDownload: "browser:wait-for-download",
     /** Arm one Input.dragIntercepted listener. Args: (key, sessionId?) */
     armDragIntercept: "browser:arm-drag-intercept",
     /** Consume an armed drag listener, returning data or null on timeout. Args: (token, waitMs) */
@@ -66,6 +68,16 @@ export const BrowserChannel = {
     cdpDetach: "browser:cdp-detach",
     /** Renderer → Main (invoke): send CDP command. Args: (key: string, method: string, params?: object) */
     cdpSend: "browser:cdp-send",
+    /** Register source for future documents in one browser tab. */
+    addInitScript: "browser:add-init-script",
+    /** Remove one browser-tab init script by its opaque ID. */
+    removeInitScript: "browser:remove-init-script",
+    /** Remove all init scripts registered for one browser tab. */
+    clearInitScripts: "browser:clear-init-scripts",
+    getStorageStateCookies: "browser:get-storage-state-cookies",
+    setStorageStateCookies: "browser:set-storage-state-cookies",
+    addRequestRoute: "browser:add-request-route",
+    removeRequestRoutes: "browser:remove-request-routes",
     /** Renderer → Main (invoke): dispatch keyboard input to a registered app or browser target. */
     cdpSendInputEvent: "browser:cdp-send-input-event",
     /** Renderer → Main: mute/unmute a webview's audio. Args: (key: string, muted: boolean) */
@@ -128,6 +140,59 @@ export interface BrowserPopupSnapshot {
 export interface CdpAttachOptions {
     aiVisionBinding?: boolean;
 }
+
+export interface BrowserInitScriptRequest {
+    registrationKey: string;
+    source: string;
+}
+
+export interface BrowserInitScriptRemovalRequest {
+    registrationKey: string;
+    id: string;
+}
+
+export interface BrowserInitScriptTargetRequest {
+    registrationKey: string;
+}
+
+export type BrowserInitScriptId = string;
+
+export interface BrowserCookie {
+    name: string; value: string; url?: string; domain?: string; path?: string; expires?: number;
+    httpOnly?: boolean; secure?: boolean; sameSite?: "Strict" | "Lax" | "None";
+    priority?: "Low" | "Medium" | "High"; sameParty?: boolean;
+    sourceScheme?: "Unset" | "NonSecure" | "Secure"; sourcePort?: number;
+    size?: number; session?: boolean; partitionKey?: { topLevelSite: string; hasCrossSiteAncestor?: boolean }; partitionKeyOpaque?: boolean;
+}
+export interface BrowserStorageCookiesRequest { registrationKey: string; urls: string[]; }
+export interface BrowserSetStorageCookiesRequest { registrationKey: string; cookies: BrowserCookie[]; }
+export interface BrowserDownloadWaitOptions { timeout?: number; }
+export interface BrowserDownloadWaitRequest { registrationKey: string; options?: BrowserDownloadWaitOptions; }
+export interface BrowserDownloadResult { suggestedFilename: string; path: string; size: number; }
+
+export type BrowserRoutePattern = string | BrowserResponsePattern;
+export type BrowserRouteAbortReason =
+    | "Failed" | "Aborted" | "TimedOut" | "AccessDenied" | "ConnectionClosed"
+    | "ConnectionReset" | "ConnectionRefused" | "ConnectionAborted" | "ConnectionFailed"
+    | "NameNotResolved" | "InternetDisconnected" | "AddressUnreachable"
+    | "BlockedByClient" | "BlockedByResponse";
+export interface BrowserRouteResponse {
+    status?: number;
+    body?: string;
+    bodyBase64?: string;
+    headers?: Record<string, string>;
+    contentType?: string;
+    delayMs?: number;
+}
+export type BrowserRouteAction = "abort" | { abort: BrowserRouteAbortReason } | BrowserRouteResponse;
+export interface BrowserRouteOptions { times?: number; method?: string | string[]; resourceTypes?: string[]; }
+export interface BrowserRouteRequest {
+    registrationKey: string;
+    pattern: BrowserRoutePattern;
+    response: BrowserRouteAction;
+    options?: BrowserRouteOptions;
+}
+export interface BrowserRouteRemovalRequest { registrationKey: string; pattern?: BrowserRoutePattern; }
 
 export interface BrowserKeyboardInputEvent {
     type: "keyDown" | "keyUp";

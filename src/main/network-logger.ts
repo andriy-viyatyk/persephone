@@ -205,6 +205,38 @@ function hookSession(ses: Session): void {
     });
 }
 
+let nextRoutedRequestId = -1;
+
+/**
+ * Record a request a page route (`cdp/cdp-request-routes.ts`) answered itself with a fulfil or an abort: such a request
+ * never reaches the session's webRequest listeners, so without this it would be missing from `networkRequests()` and
+ * the failure bundle. Metadata only — the routed body and response headers are never stored. Ids are negative so they
+ * cannot collide with webRequest ids (and never match a CDP response body).
+ */
+export function recordRoutedRequest(key: string, request: { url: string; method: string; resourceType: string; statusCode?: number; error?: string }): void {
+    if (!pageLogs.has(key)) {
+        pageLogs.set(key, []);
+        pagePending.set(key, new Map());
+    }
+    const log = pageLogs.get(key);
+    if (log.length >= MAX_LOG_ENTRIES) {
+        const removed = log.shift();
+        pagePending.get(key)?.delete(removed.id);
+    }
+    log.push({
+        id: nextRoutedRequestId--,
+        url: request.url,
+        method: request.method,
+        resourceType: request.resourceType.toLowerCase(),
+        referrer: "",
+        timestamp: Date.now(),
+        requestHeaders: {},
+        requestBody: undefined,
+        ...(request.statusCode === undefined ? {} : { statusCode: request.statusCode, statusLine: `HTTP/1.1 ${request.statusCode} (routed)` }),
+        ...(request.error === undefined ? {} : { error: request.error }),
+    });
+}
+
 /** Clear the network log for a page. Called when webview is unregistered. */
 export function clearNetworkLog(key: string): void {
     pageLogs.delete(key);

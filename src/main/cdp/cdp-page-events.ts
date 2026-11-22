@@ -219,6 +219,15 @@ async function pageEventsForSender(
     return pageEventsForTarget(key, target);
 }
 
+/** Arm the existing Runtime exception collector before a registered init script can execute. */
+export async function preparePageErrorCapture(
+    key: string,
+    route: CdpFeatureTarget,
+    resolveBoardSession: ResolveBoardSession,
+): Promise<void> {
+    await pageEventsForSender(key, route, resolveBoardSession);
+}
+
 export async function getPageEvents(key: string, route: CdpFeatureTarget, resolveBoardSession: ResolveBoardSession): Promise<PageEventsSnapshot> {
     const state = await pageEventsForSender(key, route, resolveBoardSession);
     return { policy: state.policy, dialogs: state.dialogs.map(dialog => ({ ...dialog })),

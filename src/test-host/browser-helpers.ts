@@ -3,19 +3,26 @@ import type { TestContext } from "./context.js";
 import { errMessage } from "../shared/utils.js";
 import type { TestWindowOwner } from "./test-window.js";
 import { EnvironmentStopError } from "./attention-policy.js";
+import fs from "node:fs/promises";
+import path from "node:path";
+import type { BrowserCookie } from "../ipc/browser-ipc.js";
 
 type LogHostEvent = (event: string, details: Record<string, unknown>) => void;
 export interface BrowserPage { id: string; editor: string; title?: string; url?: string; }
 export interface UsePageOptions { url?: string | RegExp; title?: string | RegExp; }
+export interface TestStorageState { cookies: BrowserCookie[]; origins: Array<{ origin: string; localStorage: Array<{ name: string; value: string }>; sessionStorage: Array<{ name: string; value: string }> }>; }
+export type StorageStateInput = TestStorageState | string;
 interface OwnershipSnapshot { pages: BrowserPage[]; popups: Map<string, Set<string>>; untrackablePopups: Set<string>; errors: string[]; }
 
 export async function openBrowser(
     context: Pick<TestContext, "call" | "app" | "handle">,
     url: string,
-    options: { profile?: string; incognito?: boolean; timeout?: number },
+    options: { profile?: string; incognito?: boolean; timeout?: number; storageState?: StorageStateInput },
     waitTimeout: number,
     requestTimeout: number,
     onCreated: (pageId: string) => void,
+    testFile?: string,
+    removeInitScript?: (pageId: string, id: string) => Promise<unknown>,
 ): Promise<object> {
     if (typeof url !== "string" || !url) throw new TypeError("ctx.openBrowser(url) requires a non-empty URL.");
     const profileNames = await context.call("settings.browserProfiles");
@@ -34,7 +41,27 @@ export async function openBrowser(
     if (!created) throw new Error("browser page was not created; Persephone refused it, see the app notification");
     onCreated(created.id);
     const navigationTimeout = options.timeout ?? waitTimeout;
-    await context.call(`pages[${JSON.stringify(created.id)}].editor.navigateAndWait`, [url, { waitUntil: "domcontentloaded", timeout: navigationTimeout }], { timeout: Math.max(requestTimeout, navigationTimeout + 1000) });
+    let initScriptId: unknown;
+    if (options.storageState !== undefined) {
+        let state = options.storageState;
+        if (typeof state === "string") {
+            const statePath = path.isAbsolute(state) ? state : path.resolve(testFile ? path.dirname(testFile) : process.cwd(), state);
+            try { state = JSON.parse(await fs.readFile(statePath, "utf8")); }
+            catch { throw new Error("Could not read valid browser storage state JSON."); }
+        }
+        initScriptId = await context.call(`pages[${JSON.stringify(created.id)}].editor.applyStorageStateForTestRun`, [state]);
+    }
+    try {
+        await context.call(`pages[${JSON.stringify(created.id)}].editor.navigateAndWait`, [url, { waitUntil: "domcontentloaded", timeout: navigationTimeout }], { timeout: Math.max(requestTimeout, navigationTimeout + 1000) });
+    } finally {
+        if (typeof initScriptId === "string") {
+            try {
+                if (removeInitScript) await removeInitScript(created.id, initScriptId);
+                else await context.call(`pages[${JSON.stringify(created.id)}].editor.removeInitScript`, [initScriptId]);
+            }
+            catch { /* Best-effort removal; registration is also cleared when the owned page closes. */ }
+        }
+    }
     return editorHandle(context, created.id);
 }
 
@@ -61,6 +88,8 @@ export async function usePage(
     if (matches.length !== 1) throw new Error(`ctx.usePage matched ${matches.length} pages.`);
     const match = matches[0];
     assertActive();
+    await testWindow.call(getClient(), `pages[${JSON.stringify(match.id)}].editor.adoptForTestRun`, [], requestTimeout);
+    assertActive();
     sessionPages.add(match.id);
     return editorHandle(context, match.id);
 }
@@ -82,6 +111,51 @@ export async function closePagesOpenedSince(client: McpClient, baseline: Ownersh
     const errors: string[] = [...baseline.errors];
     const selectedWindow = testWindow.mode === "attached-selected";
     const sweep = (phase: "before-snapshot" | "after-close") => sweepRendererDialogs(client, log, cleanupTimeout, phase, testWindow);
+    for (const pageId of sessionPages) {
+        log("cleanup", { action: "clear-clipboard", pageId });
+        try {
+            await boundedCall(client, `pages[${JSON.stringify(pageId)}].editor.clearClipboardForTestRun`, [], cleanupTimeout, testWindow);
+            log("cleanup", { action: "clipboard-cleared", pageId, ok: true });
+        } catch {
+            errors.push(`Could not clear clipboard state on adopted page ${pageId}.`);
+            log("cleanup", { action: "clipboard-cleared", pageId, ok: false });
+        }
+        log("cleanup", { action: "clear-request-routes", pageId });
+        try {
+            await boundedCall(client, `pages[${JSON.stringify(pageId)}].editor.unrouteAll`, [], cleanupTimeout, testWindow);
+            log("cleanup", { action: "request-routes-cleared", pageId, ok: true });
+        } catch (error) {
+            const message = `Could not clear request routes on adopted page ${pageId}: ${errMessage(error)}`;
+            errors.push(message);
+            log("cleanup", { action: "request-routes-cleared", pageId, ok: false, error: message });
+        }
+        log("cleanup", { action: "uninstall-clock", pageId });
+        try {
+            await boundedCall(client, `pages[${JSON.stringify(pageId)}].editor.clock.uninstall`, [], cleanupTimeout, testWindow);
+            log("cleanup", { action: "clock-uninstalled", pageId, ok: true });
+        } catch (error) {
+            const message = `Could not uninstall browser clock on adopted page ${pageId}: ${errMessage(error)}`;
+            errors.push(message);
+            log("cleanup", { action: "clock-uninstalled", pageId, ok: false, error: message });
+        }
+        log("cleanup", { action: "clear-init-scripts", pageId });
+        try {
+            const removed = await boundedCall(client, `pages[${JSON.stringify(pageId)}].editor.clearInitScripts`, undefined, cleanupTimeout, testWindow);
+            log("cleanup", { action: "init-scripts-cleared", pageId, removed, ok: true });
+        } catch (error) {
+            const message = `Could not clear init scripts on adopted page ${pageId}: ${errMessage(error)}`;
+            errors.push(message);
+            log("cleanup", { action: "init-scripts-cleared", pageId, ok: false, error: message });
+        }
+        try {
+            await boundedCall(client, `pages[${JSON.stringify(pageId)}].editor.releaseFromTestRun`, [], cleanupTimeout, testWindow);
+            log("cleanup", { action: "test-power-released", pageId, ok: true });
+        } catch (error) {
+            const message = `Could not release test access on adopted page ${pageId}: ${errMessage(error)}`;
+            errors.push(message);
+            log("cleanup", { action: "test-power-released", pageId, ok: false, error: message });
+        }
+    }
     const beforeSnapshot = await sweep("before-snapshot");
     if (beforeSnapshot.found) errors.push("The test left a renderer dialog open; cleanup dismissed it.");
     errors.push(...beforeSnapshot.errors);

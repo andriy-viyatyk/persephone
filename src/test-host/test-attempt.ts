@@ -13,6 +13,7 @@ import { EnvironmentStopError } from "./attention-policy.js";
 import { createTestLifetime, TestTimeoutError } from "./test-timeout.js";
 import { scaleTimeout } from "./timeouts.js";
 import { invokeHook, logHookResult, logHookStart } from "./file-hooks.js";
+import type { DownloadAttachment } from "./captured-downloads.js";
 
 export interface AttemptInput {
     descriptor: TestDescriptor; file: string; client: McpClient; launcher: TestLauncher; timeouts: Timeouts;
@@ -23,6 +24,7 @@ export interface AttemptInput {
 export interface AttemptResult {
     client: McpClient; durationMs: number; error?: string; thrown?: unknown; step?: string; cleanupErrors: string[];
     screenshots: string[]; captureErrors: string[]; failureBundle?: string; location?: string;
+    attachments: DownloadAttachment[];
 }
 
 export async function runAttempt(input: AttemptInput): Promise<AttemptResult> {
@@ -32,7 +34,7 @@ export async function runAttempt(input: AttemptInput): Promise<AttemptResult> {
     const timeout = scaleTimeout(descriptor.timeout ?? configuration.testTimeout ?? 300_000, timeouts.scale ?? 1);
     const lifetime = createTestLifetime(timeout);
     let client = launcher.client ?? input.client;
-    const context = createContext(client, launcher, timeouts, configuration.attach, input.testWindow, lifetime, log, { ...identity, profileDirectory: configuration.profileDirectory });
+    const context = createContext(client, launcher, timeouts, configuration.attach, input.testWindow, lifetime, log, { ...identity, profileDirectory: configuration.profileDirectory }, input.outputDirectory);
     let baseline: Awaited<ReturnType<typeof beginPageOwnership>> | undefined;
     let thrown: unknown;
     let error: string | undefined;
@@ -48,7 +50,7 @@ export async function runAttempt(input: AttemptInput): Promise<AttemptResult> {
         }
         client = launcher.client ?? client;
         if (!(caught instanceof EnvironmentStopError) && baseline && input.outputDirectory) {
-            try { capture = await captureFailure(client, baseline, input.outputDirectory, { file, name: descriptor.name }, input.attempt, started, context._state.pagesUnderTest(), context._state.sessionPages, log, input.testWindow); }
+            try { capture = await captureFailure(client, baseline, input.outputDirectory, { file, name: descriptor.name }, input.attempt, started, context._state.pagesUnderTest(), context._state.sessionPages, log, input.testWindow, context._state.attachments); }
             catch (captureError) {
                 if (captureError instanceof EnvironmentStopError) throw captureError;
                 capture.captureErrors.push(`Failure capture failed: ${errMessage(captureError)}`);
@@ -137,5 +139,5 @@ export async function runAttempt(input: AttemptInput): Promise<AttemptResult> {
     const absoluteLocation = testFileLocation(thrown, file);
     const line = absoluteLocation ? /:(\d+)$/.exec(absoluteLocation)?.[1] : undefined;
     const location = line ? `${displayPath(configuration.cwd, file)}:${line}` : undefined;
-    return { client, durationMs: Date.now() - started, ...(error !== undefined ? { error } : {}), ...(thrown !== undefined ? { thrown } : {}), ...(step ? { step } : {}), ...(location ? { location } : {}), cleanupErrors, screenshots: capture.screenshots, captureErrors: capture.captureErrors, ...(capture.failureBundle ? { failureBundle: capture.failureBundle } : {}) };
+    return { client, durationMs: Date.now() - started, ...(error !== undefined ? { error } : {}), ...(thrown !== undefined ? { thrown } : {}), ...(step ? { step } : {}), ...(location ? { location } : {}), cleanupErrors, screenshots: capture.screenshots, captureErrors: capture.captureErrors, attachments: context._state.attachments, ...(capture.failureBundle ? { failureBundle: capture.failureBundle } : {}) };
 }

@@ -12,6 +12,7 @@ export interface IBrowserAccessFlags {
     isIncognito?: boolean;
     isTor?: boolean;
     openedByAgent?: boolean;
+    testPowerAdopted?: boolean;
 }
 
 export function isPrivateBrowserSession(state: IBrowserAccessFlags | undefined): boolean {
@@ -20,6 +21,12 @@ export function isPrivateBrowserSession(state: IBrowserAccessFlags | undefined):
 
 export function agentMayAccessBrowserPage(state: IBrowserAccessFlags | undefined): boolean {
     return !isPrivateBrowserSession(state) || !!state?.openedByAgent;
+}
+
+export const BROWSER_TEST_POWER_REFUSAL = "This test power is available only on a page the agent opened (ctx.openBrowser() or pages.showBrowserPage over MCP) or one adopted with ctx.usePage(); pages the user opened are refused, and user-opened incognito/Tor pages cannot be adopted.";
+
+export function agentMayUseBrowserTestPower(state: IBrowserAccessFlags | undefined): boolean {
+    return agentMayAccessBrowserPage(state) && (!!state?.openedByAgent || !!state?.testPowerAdopted);
 }
 
 export function privateBrowserRefusal(state: IBrowserAccessFlags): string {

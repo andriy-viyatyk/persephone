@@ -13,19 +13,25 @@ export function logIncomingRequest(
     outcome: McpCallOutcome,
     durationMs: number,
 ): void {
+    const sensitive = classify(params);
     const responseResult = "result" in outcome ? outcome.result : undefined;
-    const result = responseResult && typeof responseResult === "object"
+    const projectedResult = responseResult && typeof responseResult === "object"
         ? Object.fromEntries(Object.entries(responseResult).filter(([key]) => key !== "_tipObservations"))
         : responseResult;
+    const result = sensitive === "storage-set" ? projectedResult
+        : sensitive ? summary(projectedResult)
+            : projectedResult;
+    const safeParams = sanitizeParams(params, sensitive);
+    const safeError = "error" in outcome && sensitive ? "[sensitive operation failed]" : "error" in outcome ? outcome.error : null;
     requestHistory.push({
         type: "output.mcp-request",
         id: crypto.randomUUID(),
         timestamp: Date.now(),
         direction: "incoming",
         method,
-        params,
+        params: safeParams,
         result: result ?? null,
-        error: "error" in outcome ? outcome.error : null,
+        error: safeError,
         durationMs,
     });
     if (requestHistory.length > MAX_REQUEST_LOG_ENTRIES) {
@@ -37,6 +43,49 @@ export function logIncomingRequest(
     if (logEditor instanceof LogViewEditor) {
         logEditor.addEntry("output.mcp-request", requestHistory[requestHistory.length - 1]);
     }
+}
+
+function classify(params: unknown): "storage-state" | "storage-set" | "clipboard-read" | "clipboard-write" | "clipboard-reset" | "sensitive" | undefined {
+    if (!params || typeof params !== "object" || !("path" in params) || typeof params.path !== "string") return undefined;
+    // Match the trailing member after `editor` whatever prefix addresses the page:
+    // `pages["id"].editor.x`, `windows[1].pages[2].editor.x`, `page.editor.x`.
+    const path = params.path.trim();
+    if (/(?:^|[.\]])editor\.storage\.set$/.test(path)) return "storage-set";
+    if (/(?:^|[.\]])editor\.clipboard\.readText$/.test(path)) return "clipboard-read";
+    if (/(?:^|[.\]])editor\.clipboard\.writeText$/.test(path)) return "clipboard-write";
+    if (/(?:^|[.\]])editor\.clearClipboardForTestRun$/.test(path)) return "clipboard-reset";
+    if (/(?:^|[.\]])editor\.(?:storageState|applyStorageStateForTestRun|addInitScript)$/.test(path)) return "storage-state";
+    return undefined;
+}
+
+function sanitizeParams(params: unknown, kind: ReturnType<typeof classify>): unknown {
+    if (!params || typeof params !== "object" || !kind) return params;
+    const source = params as Record<string, unknown>;
+    const result = { ...source };
+    if (kind === "storage-set") {
+        if ("args" in result) result.args = "[sensitive storage arguments omitted]";
+        if ("value" in result) result.value = "[sensitive storage value omitted]";
+    } else if (kind === "clipboard-write") {
+        if ("args" in result) result.args = "[sensitive clipboard arguments omitted]";
+        if ("value" in result) result.value = "[sensitive clipboard value omitted]";
+    } else {
+        if ("args" in result) result.args = summary(result.args);
+        if ("value" in result) result.value = summary(result.value);
+    }
+    return result;
+}
+
+function summary(value: unknown): string {
+    let serialized = "";
+    try { serialized = JSON.stringify(value) ?? ""; } catch { /* retain only the fallback summary */ }
+    const counts = countItems(value);
+    return `[sensitive data omitted: ${counts} items, ${serialized.length} characters]`;
+}
+
+function countItems(value: unknown): number {
+    if (Array.isArray(value)) return value.reduce((total, item) => total + countItems(item), 0);
+    if (value && typeof value === "object") return Object.values(value).reduce((total, item) => total + countItems(item), 0);
+    return value === undefined ? 0 : 1;
 }
 
 /** Show the MCP server request log page (creates if needed, backfills history). */

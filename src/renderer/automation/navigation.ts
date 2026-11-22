@@ -7,7 +7,7 @@ import type { IAutomationTarget, INavigableTarget, ITabInfoTarget } from "./type
  */
 export type UrlPatternInput = string | RegExp | { regex: string; flags?: string };
 
-type WireUrlPattern = string | { source: string; flags: string };
+export type WireUrlPattern = string | { source: string; flags: string };
 
 function isRegexDescriptor(value: unknown): value is { regex: string; flags?: string } {
     return typeof value === "object" && value !== null && !(value instanceof RegExp)
@@ -16,10 +16,13 @@ function isRegexDescriptor(value: unknown): value is { regex: string; flags?: st
 
 /** Normalize a pattern for the main-process waiter; a `{ regex }` descriptor is compiled once here
  *  so an invalid expression fails at the call instead of at the waiter. */
-function toWirePattern(value: UrlPatternInput, method: string): WireUrlPattern {
+export function toWirePattern(value: UrlPatternInput, method: string): WireUrlPattern {
     if (typeof value === "string") return value;
     if (value instanceof RegExp) return { source: value.source, flags: value.flags };
     if (isRegexDescriptor(value)) {
+        if (Object.keys(value).some((key) => key !== "regex" && key !== "flags")) {
+            throw new Error(`${method}: regex patterns accept only regex and flags.`);
+        }
         const flags = value.flags ?? "";
         if (typeof flags !== "string") throw new Error(`${method}: regex flags must be a string.`);
         const compiled = new RegExp(value.regex, flags);

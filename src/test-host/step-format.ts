@@ -1,10 +1,13 @@
 const MAX_STEP_ARGUMENT_LENGTH = 240;
 
-export function formatStep(operation: "call" | "callText" | "set", apiPath?: string, args?: unknown): string {
+import { sensitiveMemberKind, sensitiveSummary, type StorageStateRedactor } from "./storage-state-redaction.js";
+
+export function formatStep(operation: "call" | "callText" | "set", apiPath?: string, args?: unknown, redactor?: StorageStateRedactor): string {
     const target = apiPath ?? "<overview>";
     if (args === undefined) return `${operation} ${target}`;
     let summary: string;
-    try { summary = safePreview(args, new Set(), 0); }
+    const sensitiveKind = sensitiveMemberKind(apiPath);
+    try { summary = sensitiveKind ? sensitiveSummary(args, sensitiveKind) : safePreview(redactor?.redact(args) ?? args, new Set(), 0); }
     catch { summary = "[arguments unavailable for preview]"; }
     const shortened = summary.length > MAX_STEP_ARGUMENT_LENGTH
         ? `${summary.slice(0, MAX_STEP_ARGUMENT_LENGTH - 1)}…`

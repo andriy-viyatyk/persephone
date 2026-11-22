@@ -220,6 +220,29 @@ export interface IBrowserEditor {
     chooseSiteActionResult(token: string, index: number): Promise<SiteActionOutcome>;
     /** Attach a page-scoped test script for one exact HTTP(S) host authority. */
     attachTestExtension(options: ITemporarySiteExtensionOptions): Promise<ITemporarySiteExtensionAttachResult>;
+    /** Register source to run unchanged before scripts in future documents in the selected browser tab. */
+    addInitScript(source: string, options?: { tabId?: string }): Promise<string>;
+    /** Route matching requests on this test-power page. Newest matching route wins. */
+    route(urlOrRegex: BrowserUrlPattern, response: BrowserRouteAction, options?: BrowserRouteOptions & { tabId?: string }): Promise<void>;
+    /** Remove routes equivalent to pattern, or all routes when omitted. */
+    unroute(urlOrRegex?: BrowserUrlPattern, options?: { tabId?: string }): Promise<void>;
+    /** Remove every request route on the selected browser tab. */
+    unrouteAll(options?: { tabId?: string }): Promise<void>;
+    storageState(options?: { tabId?: string }): Promise<IBrowserStorageState>;
+    /** Page-scoped clipboard observation and one-shot test paste input. */
+    readonly clipboard: IBrowserClipboard;
+    /** Page-scoped fake clock controls. */
+    readonly clock: IBrowserClock;
+    /**
+     * Wait for the next eligible page download. Through the test runner, path is the copied output path.
+     * suggestedFilename is the original page-supplied DownloadItem.getFilename() value.
+     */
+    waitForDownload(options?: { timeout?: number }): Promise<{ suggestedFilename: string; path: string; size: number }>;
+    readonly storage: IBrowserStorage;
+    /** Remove one init script previously registered on the selected browser tab. */
+    removeInitScript(id: string, options?: { tabId?: string }): Promise<boolean>;
+    /** Remove all init scripts registered on the selected browser tab and return their count. */
+    clearInitScripts(options?: { tabId?: string }): Promise<number>;
     /** Detach the temporary rule for a host authority and clean up its current documents. */
     detachTestExtension(host: string): Promise<ITemporarySiteExtensionDetachResult>;
     /** Read attached temporary test extensions without exposing their source or params. */
@@ -443,6 +466,30 @@ export interface IBrowserEditor {
     /** Release a key held by keyDown. */
     keyUp(key: string, options?: IBrowserKeyboardOptions): Promise<void>;
 }
+
+export interface IBrowserStorageEntry { name: string; value: string; }
+export interface IBrowserStorageCookie { name: string; value: string; url?: string; domain?: string; path?: string; expires?: number; httpOnly?: boolean; secure?: boolean; sameSite?: "Strict" | "Lax" | "None"; priority?: "Low" | "Medium" | "High"; sameParty?: boolean; sourceScheme?: "Unset" | "NonSecure" | "Secure"; sourcePort?: number; size?: number; session?: boolean; partitionKey?: { topLevelSite: string; hasCrossSiteAncestor?: boolean }; partitionKeyOpaque?: boolean; }
+export interface IBrowserStorageState { cookies: IBrowserStorageCookie[]; origins: Array<{ origin: string; localStorage: IBrowserStorageEntry[]; sessionStorage: IBrowserStorageEntry[] }> }
+export interface IBrowserStorage { clear(options?: { prefix?: string; area?: "local" | "session" }): Promise<void>; set(key: string, value: string, options?: { area?: "local" | "session" }): Promise<void>; }
+export interface IBrowserClock {
+    install(options?: { now?: Date | number | string }): Promise<void>;
+    fastForward(ms: number): Promise<void>;
+    uninstall(): Promise<void>;
+}
+export interface IBrowserClipboard {
+    /** Install page-side recording now and for later documents in the selected tab. */
+    arm(): Promise<void>;
+    /** Return text/plain observed from this page's own writes, or null before one is observed. */
+    readText(): Promise<string | null>;
+    /** Stage text for the page's next clipboard read or trusted keyboard paste. */
+    writeText(text: string): Promise<void>;
+}
+
+export type BrowserUrlPattern = string | RegExp | { regex: string; flags?: string };
+export type BrowserRouteAbortReason = "Failed" | "Aborted" | "TimedOut" | "AccessDenied" | "ConnectionClosed" | "ConnectionReset" | "ConnectionRefused" | "ConnectionAborted" | "ConnectionFailed" | "NameNotResolved" | "InternetDisconnected" | "AddressUnreachable" | "BlockedByClient" | "BlockedByResponse";
+export type BrowserRouteAction = "abort" | { abort: BrowserRouteAbortReason } | BrowserRouteResponse;
+export interface BrowserRouteResponse { status?: number; body?: string; bodyBase64?: string; headers?: Record<string, string>; contentType?: string; delayMs?: number; }
+export interface BrowserRouteOptions { times?: number; method?: string | string[]; resourceTypes?: string[]; }
 
 /** Current metadata for one real browser pop-up window. */
 export interface IBrowserPopup {

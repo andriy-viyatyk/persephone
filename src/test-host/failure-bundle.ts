@@ -7,6 +7,7 @@ import { errMessage } from "../shared/utils.js";
 import type { TestLog } from "./test-log.js";
 import type { TestWindowOwner } from "./test-window.js";
 import { EnvironmentStopError } from "./attention-policy.js";
+import type { DownloadAttachment } from "./captured-downloads.js";
 
 type PageKind = "owned" | "session";
 interface CapturePage { pageId: string; kind: PageKind; url: string | null; title: string | null; pageErrors: unknown[]; consoleErrors: unknown[]; failedRequests: unknown[]; screenshot: string | null; }
@@ -23,6 +24,7 @@ export async function captureFailure(
     sessionPages: ReadonlySet<string>,
     log: TestLog,
     testWindow: TestWindowOwner,
+    attachments: DownloadAttachment[] = [],
 ): Promise<FailureCapture> {
     const screenshots: string[] = [];
     const captureErrors: string[] = [];
@@ -50,7 +52,7 @@ export async function captureFailure(
     try {
         const relative = path.posix.join("failures", `${prefix}-a${attempt}-${randomUUID()}.json`);
         await fs.mkdir(path.join(directory, "failures"), { recursive: true });
-        await fs.writeFile(path.join(directory, relative), `${JSON.stringify({ pages: captured }, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
+        await fs.writeFile(path.join(directory, relative), `${JSON.stringify(log.redactor.redact({ pages: captured, downloads: attachments }), null, 2)}\n`, { encoding: "utf8", flag: "wx" });
         failureBundle = relative;
     } catch (error) {
         const message = `Failure bundle write failed: ${errMessage(error)}`;

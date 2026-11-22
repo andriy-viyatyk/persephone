@@ -7,7 +7,6 @@
 import type { WebContents } from "electron";
 import { boardFrameRegistry, type BoardFrameRegistration } from "./board-host/BoardFrameRegistry";
 import {
-    type CdpAttachOptions,
     type PageDialogPolicy,
     type PageEventsSnapshot,
     type BrowserResponsePattern,
@@ -21,6 +20,7 @@ import * as cdpDragIntercept from "./cdp/cdp-drag-intercept";
 import * as cdpNetworkCollector from "./cdp/cdp-network-collector";
 import * as cdpPageEvents from "./cdp/cdp-page-events";
 import * as cdpWaits from "./cdp/cdp-waits";
+import * as cdpBrowserTestFeatures from "./cdp/cdp-browser-test-methods";
 
 const BOARD_FRAME_REPLACEMENT_TIMEOUT_MS = 5000;
 
@@ -28,6 +28,11 @@ let getWebContents: ((key: string) => WebContents | undefined) | undefined;
 let onAiVisionSignalCallback: ((webContents: WebContents, payload: string, executionContextId: number, mainContext: boolean) => void) | undefined;
 
 export function clearCdpTargetState(key: string): void {
+    clearTransientTargetState(key);
+    cdpBrowserTestFeatures.clearBrowserTestCdpState(key);
+}
+
+function clearTransientTargetState(key: string): void {
     cdpWaits.clearKey(key);
     cdpNetworkCollector.clearKey(key);
     cdpPageEvents.clearKey(key);
@@ -42,8 +47,12 @@ function attachTarget(wc: WebContents): CdpTarget {
     const target = CdpTarget.for(wc);
     if (!target.ensureAttached()) return target;
     cdpAiVisionBinding.onTargetAttached(wc);
+    cdpBrowserTestFeatures.onBrowserTestTargetAttached(wc, {
+        kind: "browser", webContents: wc, cdp: target, attach: () => target,
+    });
     target.onDetached(() => {
         cdpAiVisionBinding.onTargetDetached(wc);
+        cdpBrowserTestFeatures.onBrowserTestTargetDetached(wc);
         cdpNetworkCollector.onTargetDetached(wc);
         cdpWaits.onTargetDetached(wc);
         cdpPageEvents.onTargetDetached(wc);
@@ -311,6 +320,7 @@ export const cdpService = {
             () => resolveTarget(key, event.sender), resolveBoardSession);
     },
     awaitResponseWait(token: string) { return cdpWaits.awaitResponseWait(token); },
+    ...cdpBrowserTestFeatures.createBrowserTestCdpMethods(resolveTarget, resolveBoardSession),
     async armDragIntercept(event: Electron.IpcMainInvokeEvent, key: string, sessionId?: string): Promise<string> {
         const route = resolveTarget(key, event.sender);
         await cdpPageEvents.getPageEvents(key, route, resolveBoardSession);
@@ -318,43 +328,7 @@ export const cdpService = {
         return cdpDragIntercept.armDragIntercept({ ...context, isBoard: route.kind === "board" }, key, sessionId);
     },
     takeDragIntercept(token: string, waitMs: number) { return cdpDragIntercept.takeDragIntercept(token, waitMs); },
-    async cdpAttach(event: Electron.IpcMainInvokeEvent, key: string, options?: CdpAttachOptions): Promise<boolean> {
-        const target = resolveTarget(key, event.sender);
-        if (target.kind === "app") {
-            const wc = target.webContents;
-            if (!wc || wc.isDestroyed()) return false;
-            try { attachTarget(wc); return true; } catch { return false; }
-        }
-        if (target.kind === "board") {
-            if (target.registration.host.isDestroyed()) return false;
-            try { attachTarget(target.registration.host); return true; } catch { return false; }
-        }
-        const wc = target.webContents;
-        if (!wc || wc.isDestroyed()) return false;
-        const onAiVisionSignal = onAiVisionSignalCallback;
-        if (options?.aiVisionBinding === true && !onAiVisionSignal) return false;
-        try {
-            attachTarget(wc);
-            if (options?.aiVisionBinding === true && onAiVisionSignal) {
-                await cdpAiVisionBinding.ensureAiVisionBinding(wc, target.attach, onAiVisionSignal);
-            }
-            return true;
-        } catch { return false; }
-    },
-    async cdpDetach(key: string): Promise<void> {
-        const target = resolveTarget(key, undefined);
-        if (target.kind === "app") return;
-        if (target.kind === "board") {
-            target.registration.sessionId = undefined;
-            clearCdpTargetState(key);
-            return;
-        }
-        const wc = target.webContents;
-        if (!wc || wc.isDestroyed() || !target.cdp?.attached) return;
-        target.cdp.detach();
-        cdpAiVisionBinding.clearAiVisionBinding(wc);
-        clearCdpTargetState(key);
-    },
+    ...cdpBrowserTestFeatures.createCdpLifecycleMethods(resolveTarget, resolveBoardSession, onAiVisionSignalCallback, clearTransientTargetState),
     async cdpSend(event: Electron.IpcMainInvokeEvent, key: string, method: string, params?: object, sessionId?: string) {
         const target = resolveTarget(key, event.sender);
         if (target.kind === "app") {
@@ -369,6 +343,7 @@ export const cdpService = {
         if (!wc || wc.isDestroyed()) throw new Error("WebContents not found or destroyed");
         if (!target.cdp?.attached) { try { attachTarget(wc); } catch { throw new Error("Failed to attach CDP debugger"); } }
         const cdp = target.cdp ?? attachTarget(wc);
+        await cdpBrowserTestFeatures.restoreBrowserTestTargetState(key, wc, target, resolveBoardSession);
         await cdpNetworkCollector.ensureNetworkCollector(key, wc, cdp);
         return wc.debugger.sendCommand(method, params, sessionId);
     },

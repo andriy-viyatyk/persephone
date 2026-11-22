@@ -1,4 +1,4 @@
-import { BrowserChannel, type BrowserKeyboardInputEvent, type PageDialogPolicy, type BrowserResponsePattern, type BrowserResponseWaitOptions } from "../browser-ipc";
+import { BrowserChannel, type BrowserInitScriptRemovalRequest, type BrowserInitScriptRequest, type BrowserInitScriptTargetRequest, type BrowserKeyboardInputEvent, type PageDialogPolicy, type BrowserResponsePattern, type BrowserResponseWaitOptions, type BrowserStorageCookiesRequest, type BrowserSetStorageCookiesRequest, type BrowserDownloadWaitRequest, type BrowserRouteRequest, type BrowserRouteRemovalRequest } from "../browser-ipc";
 import { cdpService, resolveTarget } from "../../main/cdp-service";
 import { sendElectronKeyboardInput } from "../../main/cdp-key-input";
 import { guardedIpcHandle } from "../../main/ipc-sender-guard";
@@ -14,11 +14,19 @@ export function initCdpHandlers(): void {
     guardedIpcHandle(BrowserChannel.awaitNavigationWait, (_event, token: string) => cdpService.awaitNavigationWait(token));
     guardedIpcHandle(BrowserChannel.armResponseWait, (event, key: string, pattern: string | BrowserResponsePattern, options: BrowserResponseWaitOptions) => cdpService.armResponseWait(event, key, pattern, options));
     guardedIpcHandle(BrowserChannel.awaitResponseWait, (_event, token: string) => cdpService.awaitResponseWait(token));
+    guardedIpcHandle(BrowserChannel.waitForDownload, (event, request: BrowserDownloadWaitRequest) => cdpService.waitForDownload(event, request));
     guardedIpcHandle(BrowserChannel.armDragIntercept, (event, key: string, sessionId?: string) => cdpService.armDragIntercept(event, key, sessionId));
     guardedIpcHandle(BrowserChannel.takeDragIntercept, (_event, token: string, waitMs: number) => cdpService.takeDragIntercept(token, waitMs));
     guardedIpcHandle(BrowserChannel.cdpAttach, (event, key: string, options: Parameters<typeof cdpService.cdpAttach>[2]) => cdpService.cdpAttach(event, key, options));
     guardedIpcHandle(BrowserChannel.cdpDetach, (_event, key: string) => cdpService.cdpDetach(key));
     guardedIpcHandle(BrowserChannel.cdpSend, (event, key: string, method: string, params?: object, sessionId?: string) => cdpService.cdpSend(event, key, method, params, sessionId));
+    guardedIpcHandle(BrowserChannel.addInitScript, (event, request: BrowserInitScriptRequest) => cdpService.addInitScript(event, request));
+    guardedIpcHandle(BrowserChannel.removeInitScript, (event, request: BrowserInitScriptRemovalRequest) => cdpService.removeInitScript(event, request));
+    guardedIpcHandle(BrowserChannel.clearInitScripts, (event, request: BrowserInitScriptTargetRequest) => cdpService.clearInitScripts(event, request));
+    guardedIpcHandle(BrowserChannel.getStorageStateCookies, (event, request: BrowserStorageCookiesRequest) => cdpService.getStorageStateCookies(event, request));
+    guardedIpcHandle(BrowserChannel.setStorageStateCookies, (event, request: BrowserSetStorageCookiesRequest) => cdpService.setStorageStateCookies(event, request));
+    guardedIpcHandle(BrowserChannel.addRequestRoute, (event, request: BrowserRouteRequest) => cdpService.addRequestRoute(event, request));
+    guardedIpcHandle(BrowserChannel.removeRequestRoutes, (event, request: BrowserRouteRemovalRequest) => cdpService.removeRequestRoutes(event, request));
     guardedIpcHandle(BrowserChannel.cdpSendInputEvent, (event, key: string, input: BrowserKeyboardInputEvent) => {
         const target = resolveTarget(key, event.sender);
         if (target.kind === "board") return false;

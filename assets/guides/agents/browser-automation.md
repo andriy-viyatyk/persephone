@@ -63,8 +63,8 @@ Use trusted click plus keys for custom dropdowns.
 
 For keys, `pressKey("Control+C")` targets the focused element. Pass `target` to focus a locator by
 trusted click first, or use `focus: "focus"` to avoid a click. `keyDown()` holds a key across calls
-until `keyUp()` releases it. Ctrl+C/V use the real OS clipboard; Persephone does not save or restore
-its contents.
+until `keyUp()` releases it. Trusted Ctrl+C keeps Chromium's normal OS clipboard behavior. The
+test-only page clipboard is described in [Browser](./browser.md#page-scoped-test-clipboard).
 On a browser page, `pressKey` reaches the focused web page and Persephone's browser shortcuts,
 including zoom, reload, and developer tools.
 `Ctrl+L` is BrowserEditor-root only, so focus Persephone chrome (for example, a toolbar control)
@@ -125,11 +125,9 @@ applies.
 `networkRequests()` history and its `includeBodies` / `maxBodyBytes` options are browser-page-only;
 boards and `window.screen` return `[]`. Response bodies are omitted by default. Opt in with
 `networkRequests({ includeBodies: true })` or `waitForResponse(..., { includeBody: true })`.
-Responses are capped at 64 KiB by default and 1 MiB maximum. Binary content is returned as base64
-with the corresponding encoding flag. A body the page read as a Blob is not kept by Chromium and is
-omitted. History bodies are available only for requests made after
-automation first touched the tab, and only while Chromium still buffers them. Bodies may contain
-secrets; they are fetched only on request and are never logged or persisted.
+
+Request routing and captured downloads for web-app tests are covered in [Browser](./browser.md#capturing-a-download-in-a-web-app-test),
+[Browser request routing](./browser-request-routing.md), and the [web-app test guide](./web-app-tests/index.md).
 
 JavaScript dialogs default to dismiss during automation activity and its two-second grace period.
 Dialogs opened while the agent is idle remain user-controlled. `dialogs()` reads pending/handled
@@ -139,6 +137,10 @@ Electron runtime throws instead of showing it), so only `alert`, `confirm` and `
 dialogs occur. `consoleMessages()` and `pageErrors()` return bounded recent records.
 
 ## Other operations
+
+For document-start scripts, fake page time, and browser storage state, see [Browser](./browser.md)
+and the [web-app regression test guide](./web-app-tests/index.md). Storage-state files contain
+authentication secrets and belong only in an existing git-ignored local folder.
 
 ```js
 const editor = pages[id].editor;

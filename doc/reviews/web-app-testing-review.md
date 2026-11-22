@@ -291,7 +291,7 @@ consumed (from the `claude-limits` status-line snapshot, before → after).
 | 2 | [EPIC-204](../epics/EPIC-204.md) | done 2026-11-22 | <1% (61% → 61%) |
 | 3 | [EPIC-205](../epics/EPIC-205.md) | done 2026-11-22 | ~1% (61% → 62%) |
 | 4 | [EPIC-206](../epics/EPIC-206.md) | done 2026-11-22 | ~1% (62% → 63%) |
-| 5 | — | in progress | — |
+| 5 | [EPIC-207](../epics/EPIC-207.md) | done 2026-11-22 | ~1% (63% → 64%) |
 | 6 | — | — | — |
 | 7 | — | — | — |
 

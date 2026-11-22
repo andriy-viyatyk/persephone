@@ -61,7 +61,7 @@ export async function runHostPoll(options: HostPollOptions): Promise<HostPollRes
             options.check?.();
             if (matched) {
                 options.setStep(options.step);
-                options.log?.write({ event: "wait-result", ...options.identity, target: options.target, ok: true, polls, result: resultPreview(value) });
+                options.log?.write({ event: "wait-result", ...options.identity, target: options.target, ok: true, polls, result: resultPreview(value, options.target, options.log.redactor) });
                 return { outcome, polls };
             }
             if (Date.now() >= deadline) break;
@@ -84,7 +84,7 @@ export async function runHostPoll(options: HostPollOptions): Promise<HostPollRes
     options.setError?.(timeoutError.message);
     options.markFailure(timeoutError);
     const details = outcome.kind === "value"
-        ? { result: resultPreview(outcome.value) }
+        ? { result: resultPreview(outcome.value, options.target, options.log?.redactor) }
         : { lastError: safePreview(errMessage(outcome.error)) };
     options.log?.write({ event: "wait-error", ...options.identity, target: options.target, ok: false, polls, error: timeoutError.message, ...details });
     throw timeoutError;

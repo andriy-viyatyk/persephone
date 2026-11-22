@@ -1,3 +1,26 @@
+## EPIC-207 — Page environment for web-app tests
+
+Completed 2026-11-22. Step 5 of the [web-app testing review](../reviews/web-app-testing-review.md) roadmap (F1–F7;
+US-2138 items 3 storage half, 9, 19, 20). Init scripts at document start (`addInitScript`/`removeInitScript`/
+`clearInitScripts`, CDP `Page.addScriptToEvaluateOnNewDocument` in `cdp/cdp-init-scripts.ts`, restored after a
+debugger reattach). Test powers (`storageState`, `waitForDownload`, `route`, `clipboard`) only on pages the agent
+opened or `ctx.usePage` adopted (`agentMayUseBrowserTestPower`, hidden runner members `adoptForTestRun`/
+`releaseFromTestRun`). `storageState()` (HttpOnly cookies via `Network.getCookies`, current-origin Web Storage) and
+`ctx.openBrowser(url, { storageState })` applied before the first page script; state never reaches runner logs,
+reports, bundles or the MCP request log. `storage.set/clear`. `waitForDownload()` saves under an app temp root, the
+runner copies into the run folder (realpath-confined) and attaches it. Declarative `route`/`unroute`/`unrouteAll` over
+CDP `Fetch` (page-scoped, request stage, last route wins; routed outcomes logged as metadata). Page-scoped
+`clipboard.arm/readText/writeText` (page-side recorder, never an OS clipboard read). `clock.install/fastForward/
+uninstall` (time keeps flowing). Bridge 1.61.0. Completion skills by Codex (Luna). Epic document:
+[EPIC-207](EPIC-207.md).
+
+- [x] **Init scripts at document start (US-2165).**
+- [x] **Storage state and storage helpers (US-2166).**
+- [x] **Captured downloads (US-2167).**
+- [x] **Declarative request routing (US-2168).**
+- [x] **Page-scoped clipboard (US-2169).**
+- [x] **Fake clock (US-2170).**
+
 ## EPIC-206 — Locators for browser automation
 
 Completed 2026-11-22. Step 4 of the [web-app testing review](../reviews/web-app-testing-review.md) roadmap (D0–D5,

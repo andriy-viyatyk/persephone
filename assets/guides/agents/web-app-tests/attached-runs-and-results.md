@@ -31,6 +31,22 @@ profile's `test-downloads` folder (a ` (1)` suffix keeps names unique). Find the
 `app.downloads.downloads[i].savePath` once its `status` is `completed`. An app joined with
 `--attach` still asks where to save.
 
+For a test-owned capture, use `site.waitForDownload()` on a page opened by the agent or adopted
+with `ctx.usePage()`. Start the promise before clicking the export control and await it afterward.
+The same capture works in owned and `--attach` runs without a Save dialog: the app writes to its
+fixed temporary capture folder, then the runner validates and copies the file into the run output's
+`downloads/` folder and removes the app-side copy. The returned `path` points to that output file.
+`report.json` records `{ suggestedFilename, path, size }` with a relative path; `report.md` links
+the attachment, and a failed test's bundle includes the same relative reference. A captured file
+can be at most 32 MiB.
+
+Capture applies only to an armed waiter and the existing browser download gate still applies. A
+trusted `site.click()` supplies a real gesture when needed; arming a wait alone does not. If the
+click request reaches the page before the wait request is armed, the download follows the ordinary
+route (including a Save dialog for an attached app) and the waiter times out. Captured downloads,
+including agent-opened incognito downloads, do not appear in normal download history, recent
+downloads, or the general download UI.
+
 `DOMContentLoaded` only means the document is ready. Wait for the site's own hydrated or
 authenticated state before interacting:
 
@@ -57,7 +73,19 @@ not reload or close the session page between tests; new pop-ups on it are still 
 per-test cleanup. A session page adopted in an owned run or a runner-created attached window is
 protected during per-test cleanup, but its containing window is disposed at run end.
 `ctx.openBrowser` remains the choice when the test should create a fresh page and automate sign-in.
-Storage state is planned for later work (F2) and is not available yet.
+`ctx.usePage()` adopts the matched page for test-only storage-state access. User-opened incognito or
+Tor pages are refused; ordinary pages remain open and are not navigated. Cleanup clears init-script
+registrations and releases adoption even if its later page snapshot fails. A captured state reads
+cookies from that page's profile/partition for its current URL, so treat it as a secret. See the
+[storage-state example](./call-boundary-and-examples.md#storage-state).
+Clipboard helpers are also limited to agent-opened or adopted pages; user-opened incognito/Tor
+pages remain refused. Call `site.clipboard.arm()` before the page action, then `readText()` returns
+only page-observed text/plain writes and never reads the OS clipboard. `writeText(text)` stages a
+one-shot value for the page's next clipboard read or trusted Ctrl+V / Windows Shift+Insert. Staged
+keyboard paste sends an untrusted synthetic event and uses `insertText` for an uncancelled paste
+into an editable field; context-menu and Electron-menu Paste remain native OS clipboard operations.
+Adopted-page cleanup also resets the page clipboard recorder before clearing init scripts and
+releasing test access. Clipboard text is excluded from runner logs and reports.
 
 The runner snapshots pages and pop-ups before each file's `beforeAll` and before each test. File
 pages remain available through every attempt and are cleaned after `afterAll`; per-test cleanup
@@ -122,7 +150,8 @@ does not remove the failed attempt's link. Cleanup-only failures do not create a
 
 Each bundle lists pages under test in the scoped test window: page ID and owned/session kind, URL,
 title, page errors, console errors, failed requests, and a relative screenshot path (`null` if
-capture failed). Each diagnostic list keeps at most the newest 100 entries. Page errors and failed
+capture failed). It also lists captured downloads by original suggested filename, relative output
+path, and byte size. Each diagnostic list keeps at most the newest 100 entries. Page errors and failed
 requests are limited to timestamps at or after the test attempt started; console records are
 requested from that time and filtered to errors. Network records contain method, URL, status, and
 `durationMs: null` because the API does not provide a duration. Active-tab APIs and bounded event

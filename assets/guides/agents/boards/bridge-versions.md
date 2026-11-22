@@ -6,6 +6,30 @@ summary: "Which bridge version added each persephone.* member and manifest field
 
 # Boards — bridge version history and compatibility
 
+Bridge `1.61.0` exposes browser-editor `addInitScript(source, options?)`, `waitForDownload(options?)`, and
+`route(urlOrRegex, response, options?)`, `unroute(urlOrRegex?)`, and `unrouteAll()`;
+`removeInitScript(id, options?)`, and `clearInitScripts(options?)` through
+`window.persephone.call()`. Init scripts are scoped to one browser tab and run before scripts in
+future documents; they do not run in the current document. Source is limited to 1,000,000
+characters and each tab can hold 50 registrations. They cover the main frame and same-process child
+frames, not OOPIFs. DevTools detaches CDP, pausing scripts until the next automation call restores
+registrations. `waitForDownload()` is limited to agent-opened or test-adopted pages, waits up to
+595 seconds, and reports the page-supplied filename plus the captured file path and size. Request routes
+are declarative, page-scoped, and limited to test-power pages; the newest matching route wins. See
+[Browser automation](../browser.md) for lifecycle details.
+The browser editor also exposes `storageState()` and page-scoped `storage.clear()` / `storage.set()`.
+Hidden `adoptForTestRun()`, `releaseFromTestRun()`, and `applyStorageStateForTestRun(state)` members
+support the web-app test runner through the same call tree. Storage state contains sensitive cookie
+and origin data; see the browser and web-app test guides for access and persistence behavior.
+The browser editor also exposes `clipboard.arm()`, `clipboard.readText()`, and
+`clipboard.writeText(text)` for page-scoped test clipboard observation and input. This is part of
+Bridge `1.61.0`; it does not require a version bump. `readText()` reports only text observed from
+the page's own writes and never reads the OS clipboard.
+The browser editor also exposes `clock.install({ now? })`, `clock.fastForward(ms)`, and
+`clock.uninstall()` through `window.persephone.call()`. Install before navigation when application
+startup must use fake page time; fast-forward runs due page timers. This extends Bridge `1.61.0`
+without another version bump.
+
 Bridge `1.60.0` resolves selectors through one shared path. The existing `text=` selector now
 works for synthetic typing and focus, file input selection, and snapshot roots through board calls.
 Browser page-model refs are converted to ordinary automation refs before results reach board calls.

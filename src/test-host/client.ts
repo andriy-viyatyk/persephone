@@ -5,13 +5,16 @@ import { formatStep } from "./step-format.js";
 import { PERSEPHONE_CALL_RESULT_TYPE_META_KEY } from "../shared/mcp-result-type.js";
 import { modelCallMaxLength } from "./model-call-options.js";
 import { classifyAttention, EnvironmentStopError } from "./attention-policy.js";
+import { sensitiveMemberKind, sensitiveSummary, StorageStateRedactor } from "./storage-state-redaction.js";
 
 export interface Timeouts { startup: number; request: number; wait: number; poll: number; shutdown: number; scale?: number; cleanup?: number; screenshot?: number; secondInstance?: number; }
 export interface McpImage { mimeType: string; data: string; }
 export class McpClient {
     private client?: Client;
     private transport?: StreamableHTTPClientTransport;
+    private redactor?: StorageStateRedactor;
     constructor(private readonly url: string, readonly timeouts: Timeouts, private readonly child?: { exit: Promise<string | number | null>; exited?: string | number | null }) {}
+    setStorageStateRedactor(redactor: StorageStateRedactor): void { this.redactor = redactor; }
     async connect(): Promise<void> {
         const deadline = Date.now() + this.timeouts.startup;
         let lastError: unknown;
@@ -74,7 +77,7 @@ export class McpClient {
     private decode(result: { isError?: boolean; content?: ContentBlock[]; _meta?: Record<string, unknown> }, path?: string, args?: unknown, maxLengthSupplied = false, allowDialog = false, textOnly = false, testWindowIndex?: number): unknown {
         const blocks = result.content ?? [];
         if (result.isError) throw this.serverError(path, args, blocks);
-        const raw = this.readableBlocks(blocks);
+        const raw = this.safeReply(path, blocks);
         if (!blocks.length) throw new Error(`${formatStep("call", path, args)} returned no content blocks. Raw reply: ${raw}`);
         const pendingIndex = blocks.findIndex((block) => isTextBlock(block) && block.text.startsWith("Pending:"));
         if (pendingIndex !== -1) {
@@ -88,13 +91,13 @@ export class McpClient {
                 if (startsWithText(blocks[index], "--- events ---")) index++;
                 if (index === blocks.length) return { pending: true };
             }
-            throw new Error(`${formatStep("call", path, args)} is still pending. Raw reply: ${raw}`);
+            throw new Error(`${formatStep("call", path, args, this.redactor)} is still pending. Raw reply: ${raw}`);
         }
         let index = 0;
         if (startsWithText(blocks[index], "Attention:")) {
             const classification = classifyAttention((blocks[index] as { text: string }).text, path, testWindowIndex);
             if (classification.origin === "outside") throw new EnvironmentStopError(classification.cause);
-            if (!allowDialog) throw new Error(`${classification.cause}\n${formatStep("call", path, args)} returned unexpected attention. Raw reply: ${raw}`);
+            if (!allowDialog) throw new Error(`${classification.cause}\n${formatStep("call", path, args, this.redactor)} returned unexpected attention. Raw reply: ${raw}`);
             index++;
         }
         if (startsWithText(blocks[index], "--- events ---")) index++;
@@ -102,13 +105,13 @@ export class McpClient {
         const body = isTextBlock(first) ? first.text : undefined;
         // A failed call always sets isError (handled above). A successful string result that merely
         // starts with "Error: " (e.g. a page returning String(error)) is a value, not a failure.
-        if (body === undefined) throw new Error(`${formatStep("call", path, args)} returned no valid text body. Raw reply: ${raw}`);
+        if (body === undefined) throw new Error(`${formatStep("call", path, args, this.redactor)} returned no valid text body. Raw reply: ${raw}`);
         if (startsWithText(blocks[index], "[truncated:")) {
             index++;
-            if (!maxLengthSupplied) throw new Error(`${formatStep("call", path, args)} was truncated without maxLength. Raw reply: ${raw}`);
+            if (!maxLengthSupplied) throw new Error(`${formatStep("call", path, args, this.redactor)} was truncated without maxLength. Raw reply: ${raw}`);
         }
         for (const prefix of ["--- tip (", "Warning: ", "--- hint ("]) if (startsWithText(blocks[index], prefix)) index++;
-        if (index !== blocks.length) throw new Error(`${formatStep("call", path, args)} returned unexpected supplementary content. Raw reply: ${raw}`);
+        if (index !== blocks.length) throw new Error(`${formatStep("call", path, args, this.redactor)} returned unexpected supplementary content. Raw reply: ${raw}`);
         if (textOnly) return body;
         const resultType = result._meta?.[PERSEPHONE_CALL_RESULT_TYPE_META_KEY];
         if (resultType === "string") return body;
@@ -116,22 +119,31 @@ export class McpClient {
         try { return JSON.parse(body); } catch { return body; }
     }
     private serverError(path: string | undefined, args: unknown, blocks: ContentBlock[]): Error {
-        const text = blocks.filter(isTextBlock).map((block) => block.text).join("\n");
+        // App-side errors of the sensitive members never echo values; the run redactor still scrubs any registered
+        // state value from the text. Without a redactor a sensitive member's error text is withheld.
+        const rawText = blocks.filter(isTextBlock).map((block) => block.text).join("\n");
+        const text = this.redactor ? this.redactor.scrub(rawText)
+            : sensitiveMemberKind(path) ? "Sensitive browser operation failed." : rawText;
         const metadata = blocks.filter((block) => !isTextBlock(block));
-        const readableMetadata = metadata.length ? `\nNon-text content: ${this.readableBlocks(metadata)}` : "";
+        const readableMetadata = metadata.length && !sensitiveMemberKind(path) ? `\nNon-text content: ${this.readableBlocks(metadata)}` : "";
         let errorText = text || "MCP returned an error without text content.";
         if (/ is not a member of [^.]+\./.test(errorText) && !/Did you mean/.test(errorText)) {
             const resolved = /\(resolved up to "(.*)"\)/.exec(errorText)?.[1];
             const helpPath = resolved ? `${resolved}.$help` : "$help";
             errorText += `\nList members: ctx.call(${JSON.stringify(helpPath)})`;
         }
-        const error = new Error(`${formatStep("call", path, args)}\n${errorText}${readableMetadata}`);
+        const error = new Error(`${formatStep("call", path, args, this.redactor)}\n${errorText}${readableMetadata}`);
         // A coded error's line reads `Error [<code>]: <message>` in every namespace (ai-vision 1.4.0+).
         const code = /^Error \[([^\]\s]+)\]: /m.exec(text)?.[1];
         return code ? Object.assign(error, { code }) : error;
     }
     private readableBlocks(blocks: ContentBlock[]): string {
         try { return JSON.stringify(blocks); } catch (error) { return errMessage(error, "MCP reply could not be serialized."); }
+    }
+    private safeReply(path: string | undefined, blocks: ContentBlock[]): string {
+        const kind = sensitiveMemberKind(path);
+        if (kind) return sensitiveSummary(blocks, kind);
+        return this.redactor?.scrub(this.readableBlocks(blocks)) ?? this.readableBlocks(blocks);
     }
     async close(): Promise<void> {
         const client = this.client; const transport = this.transport;

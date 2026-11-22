@@ -6,6 +6,19 @@ summary: "Attach, inspect, replace, and detach a page-scoped test script that ru
 
 # Temporary site extensions for app testing
 
+Temporary extensions inject after the matching document loads and provide the host-scoped
+`site.app` model and runtime. For code that must run before page-authored scripts, use the separate
+browser-editor `addInitScript(source, options?)`, `removeInitScript(id, options?)`, and
+`clearInitScripts(options?)` methods. Registration returns an opaque ID; remove returns whether it
+existed and clear returns the number removed. Source is limited to 1,000,000 characters and a tab
+can hold 50 registrations. Init scripts run unchanged before page scripts on future documents, not
+in the current document. They cover the main frame and same-process child frames, but not OOPIFs;
+they persist through reload and cross-origin navigation and are cleared when that tab closes. They
+pause while DevTools has detached CDP; the next automation call restores registrations before it
+runs. For example, `const id = await pages[pageId].editor.addInitScript("window.testMode = true");`.
+Init scripts do not create a `site.app` model. See
+[Browser](./browser.md#init-scripts-at-document-start) for the full behavior.
+
 Use a temporary extension when a test needs the same page model or site actions on each matching
 load. It is kept only in one browser page's memory, does not prompt for saved-extension trust, and
 does not receive the privileged cross-host fetch broker. The normal site extension runtime still

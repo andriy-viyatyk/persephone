@@ -18,6 +18,7 @@ Playwright for server CI.
 | Understand call paths, Playwright-to-Persephone locators, and a complete test example | [Call boundary and worked example](./call-boundary-and-examples.md) | `guides.agents["web-app-tests"]["call-boundary-and-examples"]` |
 | Reuse a signed-in browser page, configure attached windows, or inspect captured failures and logs | [Attached runs, session pages, and results](./attached-runs-and-results.md) | `guides.agents["web-app-tests"]["attached-runs-and-results"]` |
 | Share setup and cleanup across tests in one file | [File hooks](./file-hooks.md) | `guides.agents["web-app-tests"]["file-hooks"]` |
+| Choose test commands, runner options, output locations, and exit-code behavior | [Run and configure tests](./run-options.md) | `guides.agents["web-app-tests"]["run-options"]` |
 ## Turn exploration into a test
 
 Explore the site first with the `call` tool: inspect `pages[id].editor.$help`, take a snapshot,
@@ -64,7 +65,7 @@ For async polling assertions and wait messages, see [the polling examples and ma
 Every test receives these `ctx` members:
 
 - `app` — awaitable stand-in for paths in the live call tree.
-- `openBrowser(url, { profile?, incognito?, timeout? })` — create and navigate a browser page; returns its editor handle.
+- `openBrowser(url, { profile?, incognito?, timeout?, storageState? })` — create a browser page, optionally apply saved state before its first navigation, and return its editor handle.
 - `usePage({ url?, title? })` — adopt one already open browser page in the test window; returns its editor handle.
 - `handle(node)` — keep a stand-in awaitable when returning it from an async helper.
 - `call(path, args?, options?)` — path-based call; useful for stand-in escape hatches.
@@ -82,61 +83,59 @@ Every test receives these `ctx` members:
 `requires: ["launch"]` so they are skipped there. `ctx.waitFor` polls a value with a predicate;
 the browser editor's `site.waitFor({ selector })` waits for a DOM condition.
 
-## Run tests
+Use `site.storageState()` to capture cookies for the current URL and local/session storage for the
+current origin. `ctx.openBrowser(url, { storageState })` accepts that object or a JSON file path;
+relative paths resolve beside the test file. Cookies are installed before navigation, and Web
+Storage is seeded at document start only for matching origins. The temporary script is removed when
+the initial navigation settles; a redirect or early reload can reseed a matching origin before
+then. Store state files only in an existing git-ignored local folder: they contain sign-in tokens.
+`ctx.usePage()` adopts normal browser pages for storage-state capture and releases adoption at
+cleanup; user-opened incognito/Tor pages cannot be adopted. See the [save/load example](./call-boundary-and-examples.md#storage-state).
 
-In an installed app on Windows, run `persephone-test.exe` from beside the installed
-`persephone.exe`. The console wrapper finds that sibling executable, adds `--test`, forwards the
-arguments, waits, streams output, and returns the app's exit code:
+### Route page requests
 
-```powershell
-persephone-test.exe .\web-tests --profile qa --log-dir .\web-test-logs
+`site.route(pattern, response, options?)` configures declarative Fetch request routing on an
+agent-opened or test-adopted page. It accepts URL strings as globs, RegExp values in test code, or
+JSON `{ regex, flags? }` patterns through calls. Newest matching route wins; optional method,
+resource-type, and positive `times` filters constrain matches. Routes stay active through navigation.
+The response can fulfil UTF-8 `body`, `bodyBase64`, status and headers, delay fulfilment, continue
+after a delay-only object, or abort. `site.unroute(pattern?)` and `site.unrouteAll()` remove routes.
+At run cleanup the runner clears routes on every adopted page before releasing test access; owned
+pages clear routes on close.
+
+Routes are limited to 50 per page, 1 MiB per response body, 30 seconds per delay, and 2,000 pattern
+characters. Cross-origin fulfillments still need CORS response headers. Route an `OPTIONS` preflight
+separately with allow-origin, allow-methods, and allow-headers when required. Only the page target is
+attached: OOPIFs and dedicated workers are not covered, and service workers may bypass routing.
+DevTools detach pauses routes until the next CDP attach restores them.
+
+### Use the page clipboard
+
+The page-scoped clipboard facade is available on pages opened with `ctx.openBrowser()` or adopted
+with `ctx.usePage()`. Call `site.clipboard.arm()` before the copy action, then read only text/plain
+observed from that page with `site.clipboard.readText()`; the result is `null` until a page write is
+observed. `site.clipboard.writeText(text)` stages one value for the page's next clipboard read or
+trusted Ctrl+V / Windows Shift+Insert. Keyboard paste dispatches an untrusted synthetic event and
+uses `insertText` for an uncancelled paste into an editable target. Menus still use the OS clipboard.
+The host never reads OS clipboard contents. Adopted-page cleanup resets the recorder and removes its
+document-start registration.
+
+### Advance scheduled page work with a fake clock
+
+Use `site.clock` when a web app schedules work several minutes after startup. Open `about:blank`,
+install the clock before navigating so app startup uses fake timers, then fast-forward the required
+duration:
+
+```js
+const site = await ctx.openBrowser("about:blank");
+await site.clock.install({ now: "2026-01-01T00:00:00Z" });
+await site.navigateAndWait("http://localhost:5173");
+await site.clock.fastForward(4 * 60 * 1000);
 ```
 
-`persephone.exe --test <file-or-folder>` starts the same test controller directly. `persephone.exe`
-is a GUI-subsystem program, so its console output is not shown by a normal shell invocation; use
-`persephone-test.exe` when you need visible console output and a waited exit code.
-
-For a developer checkout, run the app entry point and pass the test options:
-
-```powershell
-electron . --test .\web-tests --profile qa --log-dir .\web-test-logs
-```
-
-The package entry point loads `.vite/build/main.js`. Passing that file directly makes Electron use
-the app name `Electron`, so `--attach` looks for the wrong settings folder. Use `electron .` from
-the checkout.
-
-Options:
-
-- `--test <file|folder>` runs one `.test.mjs` file or recursively discovers files in a folder.
-- `--profile <name>` selects the Persephone app profile. It does not select a browser profile.
-- `--attach` connects to an already running profile instead of launching an owned app. MCP must be enabled in that profile.
-- `--window <index-or-title>` selects an existing open test window and requires `--attach`. Decimal values are window record indexes; other values are case-insensitive title substrings. Exactly one open window must match. Title collisions are resolved by choosing the numeric index.
-- `--log <file>` writes only the test-step JSONL log at that file; it does not create reports or screenshots.
-- `--log-dir <folder>` writes test results and test-mode app logs into that folder.
-- `--rerun-failed` reruns only file/name identities in `last-failed.json` from the selected results folder.
-- `--test-setup <module>` loads a user module that adds suite-specific members to each test context.
-- `--test-selection <json-file>` restricts `--test` discovery to exact file/name identities in a versioned manifest; requirements are still checked.
-- `--with <tag,...>` enables the named `requires` tags; `launch` remains skipped under `--attach`.
-- `--grep <regex>` runs tests whose names match the case-sensitive JavaScript regular expression.
-- `--retries <n>` retries failed tests up to `n` additional attempts; the default is `0`.
-- `--timeout-scale <number>` scales the runner's timeouts; the default is `1`.
-- `--test-timeout <ms>` sets the default per-attempt test timeout; the default is `300000` ms.
-- `--keep-open` leaves an owned app running after a failed run and prints its PID and MCP URL in `report.json`.
-- `--mcp-port <port>` requests the MCP port for an owned app; the runner refuses the port if it is occupied.
-- `--attach --profile-dir <path>` attaches using MCP settings in that directory and verifies the connected app's user-data directory before running tests.
-
-Without `--log` or `--log-dir`, output goes to `test-results/` next to a test file, or inside the
-folder passed to `--test`; that default folder is replaced each run. A run continues through test
-failures and exits `0` when there are no failed tests, unexpected passes, or runner setup failures;
-otherwise it exits `1`. Expected failures and flaky tests do not change the exit code.
-
-The repository's `npm run test:ui` wrapper keeps suite filters, fixture setup, profile resets, and
-baseline comparison outside the product host. It starts one product invocation per module and
-stores that invocation's reports and logs under `integration-test/reports/runs/<run-id>/<module-id>/`.
-The wrapper aggregates them into `integration-test/reports/latest.md`, `latest.json`,
-`last-failed.json`, and `screenshots/`. A direct product run uses the output location selected by
-`--log` or `--log-dir` and does not create those suite-level reports. With `--attach --profile-dir`,
-the controller reads the selected profile's MCP settings, then checks the connected app's
-`main.runtime.paths.userData` before running tests.
-
+The clock covers `Date`, `Date.now()`, `performance.now()`, timeout/interval, and animation-frame
+functions; `queueMicrotask` stays native. Time also advances with real elapsed time, and due timers
+fire automatically. Installing after load does not migrate already scheduled native timers or
+references captured before installation. The fake does not control workers, OOPIFs, network timing,
+or painting. Call `site.clock.uninstall()` when finished. Runner cleanup does this for adopted pages
+before clearing their init scripts; pages opened by `ctx.openBrowser()` close during cleanup.

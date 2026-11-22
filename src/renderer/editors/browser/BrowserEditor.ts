@@ -43,12 +43,14 @@ import { BrowserPageRemote } from "./BrowserPageRemote";
 import { BrowserFindModel } from "./BrowserFindModel";
 import { BrowserPromptsModel } from "./BrowserPromptsModel";
 import { BrowserShortcutTable } from "./BrowserShortcutTable";
+import { releaseBrowserClipboardTab } from "./BrowserClipboardFacade";
 import { BrowserGuestChannel } from "./BrowserGuestChannel";
 import { BrowserPopupModel } from "./BrowserPopupModel";
 import { BrowserSitePermissionsModel } from "./BrowserSitePermissionsModel";
 import { BrowserPageLinkOpener } from "./BrowserPageLinkOpener";
 import { fs as appFs } from "../../api/fs";
 import type { IAudibleEditor } from "../base/audible-editor";
+import { BrowserTestPowerAdoption } from "./BrowserTestPowerAdoption";
 
 export interface BrowserNewOptions { profileName?: string; incognito?: boolean; tor?: boolean; url?: string; openedByAgent?: boolean; }
 interface BrowserRestoreOptions extends EditorRestoreOptions { retryTorOnFailure?: boolean; }
@@ -129,6 +131,7 @@ export class BrowserEditor extends EditorModel<
     readonly sitePermissions: BrowserSitePermissionsModel;
     /** Opens URLs taken from page data (context-menu links/images, `target=_blank`) under the page-open policy. */
     readonly pageLinks: BrowserPageLinkOpener;
+    readonly testPowerAdoption: BrowserTestPowerAdoption;
     private readonly shortcuts: BrowserShortcutTable;
     private keyDownSub: () => void;
     private readonly incognitoId = crypto.randomUUID();
@@ -172,6 +175,7 @@ export class BrowserEditor extends EditorModel<
         this.target = new BrowserTargetModel(this);
         this.sitePermissions = new BrowserSitePermissionsModel(this);
         this.pageLinks = new BrowserPageLinkOpener(this);
+        this.testPowerAdoption = new BrowserTestPowerAdoption(this);
         this.webview.init();
         this.keyDownSub = globalKeyDown.subscribe((event) => this.handleBrowserShortcut(event, "global"));
         this.own(this.keyDownSub);
@@ -188,7 +192,7 @@ export class BrowserEditor extends EditorModel<
     armProfileNetwork = async (): Promise<void> => this.network.armProxy();
     showNetworkInfoDialog = async (): Promise<void> => this.network.showInfoDialog();
     retryProfileNetwork = async (): Promise<void> => { try { await this.network.armProxy(); } catch { /* `networkError` carries the error-panel reason. */ } };
-    releaseTab = (internalTabId: string): void => { this.automationMenuGuard.clearTab(internalTabId); this.popups.releaseTab(internalTabId); this.webview.clearPendingLoad(internalTabId); this.siteExtensions.onTabReleased(internalTabId); this.translation.onTabReleased(internalTabId); this.pageRemote.onTabReleased(internalTabId); };
+    releaseTab = (internalTabId: string): void => { releaseBrowserClipboardTab(this, internalTabId); this.automationMenuGuard.clearTab(internalTabId); this.popups.releaseTab(internalTabId); this.webview.clearPendingLoad(internalTabId); this.siteExtensions.onTabReleased(internalTabId); this.translation.onTabReleased(internalTabId); this.pageRemote.onTabReleased(internalTabId); };
 
     async dispose(): Promise<void> {
         this.automationMenuGuard.dispose();

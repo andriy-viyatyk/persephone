@@ -1,6 +1,7 @@
 import type { CallOptions, HandleMetadata } from "./app-proxy.js";
 import type { Expect, PollOptions, PollMatchers } from "./poll-expect.js";
-import type { UsePageOptions } from "./browser-helpers.js";
+import type { StorageStateInput, UsePageOptions } from "./browser-helpers.js";
+import type { DownloadAttachment } from "./captured-downloads.js";
 
 export type { CallOptions };
 export type { Expect, PollOptions, PollMatchers };
@@ -10,7 +11,7 @@ export interface WaitOptions extends CallOptions { message?: string; }
 export interface TestContext {
     app: object;
     root: object;
-    openBrowser(url: string, options?: { profile?: string; incognito?: boolean; timeout?: number }): Promise<object>;
+    openBrowser(url: string, options?: { profile?: string; incognito?: boolean; timeout?: number; storageState?: StorageStateInput }): Promise<object>;
     usePage(options: UsePageOptions): Promise<object>;
     /** The same stand-in, but `await` and async returns keep it instead of reading the node. */
     handle(node: unknown, metadata?: HandleMetadata): object;
@@ -27,7 +28,7 @@ export interface TestContext {
     file(relative: string): string;
     /** Note a line in `tests.log` and the console, for context a later reader needs. */
     log(message: string): void;
-    _state: { step: string; error?: string; stepOf(error: unknown): string; ownedPages: Set<string>; sessionPages: Set<string>; pagesUnderTest(): ReadonlySet<string> };
+    _state: { step: string; error?: string; stepOf(error: unknown): string; ownedPages: Set<string>; sessionPages: Set<string>; attachments: DownloadAttachment[]; pagesUnderTest(): ReadonlySet<string> };
 }
 
 export { createContext } from "./context-operations.js";

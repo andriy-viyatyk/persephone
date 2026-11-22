@@ -7,6 +7,7 @@ import { runFileHook } from "./file-hook-run.js";
 import { matchesSelection, type TestResult } from "./results.js";
 import { runAttempt } from "./test-attempt.js";
 import { buildTestResult } from "./test-result.js";
+import type { DownloadAttachment } from "./captured-downloads.js";
 import type { TestDescriptor } from "./test-api.js";
 import { testIdentityKey } from "./test-identity.js";
 import type { TestLog } from "./test-log.js";
@@ -82,6 +83,7 @@ export async function runSelectedFiles(input: {
             let finalAttempt: Awaited<ReturnType<typeof runAttempt>> | undefined;
             let failureBundle: string | undefined;
             let failureScreenshots: string[] = [];
+            let attachments: DownloadAttachment[] = [];
             const captureErrors: string[] = [];
             const retryLimit = input.configuration.retries ?? 0;
             for (let attemptNumber = 1; attemptNumber <= retryLimit + 1; attemptNumber++) {
@@ -98,6 +100,7 @@ export async function runSelectedFiles(input: {
                     break;
                 }
                 attemptClient = finalAttempt.client;
+                attachments = finalAttempt.attachments;
                 if (finalAttempt.error) { failureBundle = finalAttempt.failureBundle; failureScreenshots = finalAttempt.screenshots; }
                 captureErrors.push(...finalAttempt.captureErrors);
                 const failed = Boolean(finalAttempt.error || finalAttempt.cleanupErrors.length);
@@ -110,7 +113,7 @@ export async function runSelectedFiles(input: {
             if (state.environmentStop) break;
             client = attemptClient;
             if (!finalAttempt) throw new Error(`Test "${descriptor.name}" completed without an attempt result.`);
-            const result = buildTestResult({ file: group.file, descriptor, durationMs: Date.now() - started, finalAttempt, attempts, failureBundle, failureScreenshots, captureErrors });
+            const result = buildTestResult({ file: group.file, descriptor, durationMs: Date.now() - started, finalAttempt, attempts, failureBundle, failureScreenshots, captureErrors, attachments });
             input.results.push(result);
             input.log.write({ event: "test-outcome", ...identity, status: result.status, durationMs: result.durationMs, ...(result.step ? { step: result.step } : {}), ...(result.error ? { error: result.error } : {}), ...(result.cleanupErrors?.length ? { cleanupErrors: result.cleanupErrors } : {}), ...(result.attempts ? { attempts: result.attempts } : {}) });
         }

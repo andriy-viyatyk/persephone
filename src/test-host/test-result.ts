@@ -1,10 +1,11 @@
 import type { TestDescriptor } from "./test-api.js";
 import type { TestResult } from "./results.js";
 import type { AttemptResult } from "./test-attempt.js";
+import type { DownloadAttachment } from "./captured-downloads.js";
 
 export function buildTestResult(input: {
     file: string; descriptor: TestDescriptor; durationMs: number; finalAttempt: AttemptResult;
-    attempts: NonNullable<TestResult["attempts"]>; failureBundle?: string; failureScreenshots: string[]; captureErrors: string[];
+    attempts: NonNullable<TestResult["attempts"]>; failureBundle?: string; failureScreenshots: string[]; captureErrors: string[]; attachments: DownloadAttachment[];
 }): TestResult {
     const { descriptor, finalAttempt: done } = input;
     const attemptFailed = Boolean(done.error || done.cleanupErrors.length);
@@ -23,6 +24,7 @@ export function buildTestResult(input: {
         ...(requirements.length ? { requirements } : {}), ...(done.cleanupErrors.length ? { cleanupErrors: done.cleanupErrors } : {}),
         ...(input.failureBundle ? { failureBundle: input.failureBundle } : {}), ...(input.failureScreenshots.length ? { screenshots: input.failureScreenshots } : {}),
         ...(input.captureErrors.length ? { captureErrors: input.captureErrors } : {}), ...(descriptor.reason ? { reason: descriptor.reason } : {}),
+        ...(input.attachments.length ? { attachments: input.attachments } : {}),
         ...(input.attempts.length > 1 ? { attempts: input.attempts } : {}),
         ...(done.location ?? failedAttempt?.location ? { location: done.location ?? failedAttempt?.location } : {}),
     };

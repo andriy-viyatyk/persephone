@@ -650,7 +650,7 @@ editor-specific operations. Editors without an operation facade still return a
 | `page.editor` | `SvgEditorFacade` | `SvgEditor` | `svg` (read-only), `savePngToFile()` |
 | `page.editor` | `HtmlEditorFacade` | `HtmlEditor` | `html` (read-only) |
 | `page.editor` | `MermaidEditorFacade` | `MermaidEditor` | `svgUrl`, `loading`, `error` (read-only), `savePngToFile()` |
-| `page.editor` | `BrowserEditorFacade` | `BrowserEditor` | `url`, `title`, shared snapshot/click/hover/type/select/key/evaluate/wait/screenshot/network operations, navigation, and inner-tab management |
+| `page.editor` | `BrowserEditorFacade` | `BrowserEditor` | `url`, `title`, shared automation, navigation, inner-tab management, document-start scripts, storage state/helpers, request routes, captured downloads, page clipboard, and fake clock |
 | `page.editor` | `McpInspectorFacade` | `McpInspectorEditorModel` | `connect()`, `disconnect()`, connection params, server info, `availablePanels`, panel selection, `history`, `clearHistory()`, `showHistory()` |
 | `page.editor` | `BoardEditorFacade` | `BoardEditorModel` | Board state, `getManifest()` normalized manifest snapshot, shared frame automation operations, secondary-frame selection, and reload |
 | `page.editor` | `BoardInfoEditorFacade` | `BoardInfoEditorModel` | Install/properties state, including normalized manifest-backed properties |
@@ -667,6 +667,21 @@ editor-specific operations. Editors without an operation facade still return a
 | `page.editor` | `GitTreeEditorFacade` | `GitTreeEditorModel` | bounded history, changes/ref snapshots, refresh, open change |
 | `page.editor` | `LogViewEditorFacade` | `LogViewEditor` | entry snapshots, non-blocking push, dialog read-back, clear |
 | `page.editor` | `GenericEditorFacade` | Any registered editor without an operation facade | `id`, `name` only |
+
+Browser test powers are exposed only for pages the agent opened or the current web-app test run
+adopted with `ctx.usePage()`, subject to the existing private-page restriction. `addInitScript()`
+runs on future documents. `storageState()` captures cookies and current-origin Web Storage; applying
+state can change the profile cookie jar. Treat storage state, storage writes, init source, and apply
+arguments as secrets: the test host redacts them from logs, reports, and failure bundles. The storage
+helpers operate on the selected page's local or session storage.
+
+`route()` and `unroute()` accept declarative URL patterns and response actions; they are page-scoped,
+and the newest matching route wins. `waitForDownload()` returns the filename, captured path, and size;
+the runner copies the capture under that test run's output folder and attaches it to the report.
+`page.editor.clipboard` observes only text copied by the page and can stage text for the page's next
+paste; it does not read the OS clipboard. `page.editor.clock` installs fake page time and supports
+explicit fast-forwarding. These methods are implemented by small collaborators composed by
+`BrowserEditorFacade`, with CDP ownership in `src/main/cdp/` rather than another branch in the facade.
 
 The Board and Board Info facades expose observations and screen-local actions only. Board Info's
 `setInstallDir(dir)` selects an explicit filesystem path for installation, while trust and
