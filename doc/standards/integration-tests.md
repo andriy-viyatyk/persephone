@@ -110,11 +110,22 @@ The general product runner supports these suite-independent options:
 | `--timeout-scale <number>` | Scale startup, request, wait, polling, cleanup, screenshot, shutdown, and second-instance deadlines. |
 | `--keep-open` | Retain an owned app after invocation failure and record its PID and MCP URL. |
 | `--mcp-port <port>` | Request an available MCP port for an owned app; default selection is ephemeral. |
+| `--grep <regex>` | Select product tests whose names match this case-sensitive JavaScript regular expression. |
+| `--retries <n>` | Retry failed product tests up to `n` additional times; the default is `0`. |
 
 With `--attach --profile-dir <path>`, the controller reads that directory's MCP settings and
-checks the connected app's user-data identity. The suite wrapper passes these product options as
-separate process arguments. It sends `--keep-open` only to the last runnable module when requested.
+checks the connected app's user-data identity. The suite wrapper passes its configured product
+options as separate process arguments. It sends `--keep-open` only to the last runnable module when requested.
 The second-instance and dev-server probe deadlines remain wrapper-owned and are scaled there too.
+
+The product runner also supports `test.skip`, `test.only`, and `test.fails(name, fn, { reason })` in
+test modules. If any selected test uses `test.only`, only those focused tests run. A skipped test
+keeps the `skipped` status; a failing `test.fails` becomes `expected-failure`, while a passing one
+becomes `unexpected-pass`. A test that passes after a failed retry is `flaky`. `expected-failure`
+and `flaky` are reported but do not fail the invocation; `unexpected-pass` does fail it and is
+included in `last-failed.json`. A test that still fails after its retries remains `failed`.
+`--grep` filters descriptor names after exact manifest and rerun selection; it does not change
+whether a requested rerun identity exists.
 
 The product context handles per-test page and pop-up cleanup. It supports `app`, `openBrowser`,
 `handle`, path `call`/`callText` (including `{ dialog: true }`), `set`, `waitFor`, `expect`, `script`,
@@ -168,6 +179,11 @@ Each invocation writes `report.md`, `report.json`, `last-failed.json`, `tests.lo
 and app logs under the unique ignored path `integration-test/reports/runs/<run-id>/<module-id>/`.
 The per-module `app-main.log` stays with those artifacts and is linked from the suite report when
 the module has a setup or launch failure.
+
+Product test results may also include a source `Location:` in `report.md` when the thrown stack
+contains a frame from that test file. The console output ends with a `Summary:` list of non-passed
+tests, including their status, name, file or location, and a short reason or first error line when
+available. `report.json` retains each result's optional location and retry-attempt details.
 
 The wrapper owns `integration-test/reports/latest.md`, `latest.json`, `last-failed.json`, and
 `screenshots/`. It maps the module results back to their original `tests/...` identities, preserves

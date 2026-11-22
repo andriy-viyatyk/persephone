@@ -286,8 +286,8 @@ consumed (from the `claude-limits` status-line snapshot, before → after).
 
 | Step | Epic | Status | 7d used |
 |---|---|---|---|
-| 1a | — | in progress | — |
-| 1b | — | — | — |
+| 1a | [EPIC-202](../epics/EPIC-202.md) | done 2026-11-22 | ~1% (59% → 60%) |
+| 1b | — | in progress | — |
 | 2 | — | — | — |
 | 3 | — | — | — |
 | 4 | — | — | — |

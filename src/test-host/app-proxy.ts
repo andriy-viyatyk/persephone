@@ -9,6 +9,11 @@ const SEGMENTS = Symbol("persephone.appStandIn.segments");
 const OPTIONS = Symbol("persephone.appStandIn.options");
 const METADATA = Symbol("persephone.appStandIn.metadata");
 
+/** Identifies app proxies without reading a proxy property or triggering its call behavior. */
+export function isAppStandIn(value: unknown): boolean {
+    return typeof value === "function" && Boolean((value as unknown as Record<symbol, unknown>)[SEGMENTS]);
+}
+
 export function createAppProxy(call: Call, beforeCall: (path: string, args?: unknown) => void, onError: (error: unknown) => void): object {
     return createNode(call, beforeCall, onError, [], true, {});
 }

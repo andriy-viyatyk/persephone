@@ -28,3 +28,7 @@ export async function readTestSelection(file: string): Promise<Set<string>> {
 export function selectedByManifest(file: string, name: string, selected: Set<string> | undefined): boolean {
     return selected === undefined || selected.has(testIdentityKey({ file, name }));
 }
+
+export function selectedByGrep(name: string, pattern: RegExp | undefined): boolean {
+    return pattern === undefined || pattern.test(name);
+}

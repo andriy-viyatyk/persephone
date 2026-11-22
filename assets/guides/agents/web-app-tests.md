@@ -55,7 +55,7 @@ Every test receives these `ctx` members:
 - `callText(path, args?, options?)` — path-based call returning text without JSON parsing.
 - `set(path, value, { timeout? })` — assign a writable property (one whose `$help` says it is writable). Assigning through `ctx.app` throws, because an assignment cannot be awaited.
 - `waitFor(pathOrCallback, predicate, { timeout?, maxLength?, dialog? })` — host-side polling of a call or callback.
-- `expect(value)` — assertions with `toBe`, `toEqual`, `toContain`, `toBeTruthy`, `toBeGreaterThan`, `toBeLessThanOrEqual`, and `toMatch`.
+- `expect(value, message?)` — assertions with `toBe`, `toEqual`, `toContain`, `toBeTruthy`, `toBeFalsy`, `toBeNull`, `toBeUndefined`, `toBeDefined`, `toBeGreaterThan`, `toBeGreaterThanOrEqual`, `toBeLessThan`, `toBeLessThanOrEqual`, `toHaveLength`, `toHaveProperty`, `toMatch`, `toMatchObject`, `toContainEqual`, and `toThrow`. Every matcher also supports `.not`, for example `ctx.expect(value).not.toBe(expected)`. A supplied message is shown before the generated assertion failure.
 - `script(code)` — run `script.execute` and return its completed text.
 - `file(relative)` — resolve a fixture path relative to this test file.
 - `log(message)` — add a note to `tests.log` and runner console output.
@@ -93,8 +93,23 @@ handle and is never sent as a call-tree member. Tests may leave pages unsaved be
 closes pages they opened. Cleanup belongs in `finally`, and cleanup code must catch its own errors
 so it never throws over the test's original result.
 
-`ctx.expect(value)` also supports `toBeGreaterThan(number)`,
-`toBeLessThanOrEqual(number)`, and `toMatch(RegExp)`; failures are recorded as the current test step.
+Matcher failures are recorded as the current test step. `toThrow` accepts a synchronous function and
+optionally a string, regular expression, or error constructor to match. `toHaveProperty` accepts a
+dotted path and an optional expected value. Pass ordinary values to `expect`; await a stand-in or
+read one of its properties first.
+
+Use modifiers to focus, skip, or document a known failure:
+
+```js
+test.skip("later", async (ctx) => { /* skipped */ });
+test.only("focus this test", async (ctx) => { /* runs alone among selected tests */ });
+test.fails("known issue", async (ctx) => { /* should fail */ }, { reason: "issue description" });
+```
+
+If any selected test uses `test.only`, only selected `only` tests run. A `test.fails` test that fails
+is reported as `expected-failure`; if it passes, it is `unexpected-pass` and fails the run. A normal
+failure that passes on a retry is `flaky`. Expected failures and flaky tests are listed but do not
+fail the run; unexpected passes do (exit code `1`).
 
 ## Browser page and profile behavior
 
@@ -158,14 +173,15 @@ persephone-test.exe .\web-tests --profile qa --log-dir .\web-test-logs
 is a GUI-subsystem program, so its console output is not shown by a normal shell invocation; use
 `persephone-test.exe` when you need visible console output and a waited exit code.
 
-For a developer checkout on the user's machine, the equivalent command is:
+For a developer checkout, run the app entry point and pass the test options:
 
 ```powershell
-electron .vite/build/main.js --test .\web-tests --profile qa --log-dir .\web-test-logs
+electron . --test .\web-tests --profile qa --log-dir .\web-test-logs
 ```
 
-The dev command runs the built development main bundle with the Electron executable; it does not
-use the installed console wrapper.
+The package entry point loads `.vite/build/main.js`. Passing that file directly makes Electron use
+the app name `Electron`, so `--attach` looks for the wrong settings folder. Use `electron .` from
+the checkout.
 
 Options:
 
@@ -178,6 +194,8 @@ Options:
 - `--test-setup <module>` loads a user module that adds suite-specific members to each test context.
 - `--test-selection <json-file>` restricts `--test` discovery to exact file/name identities in a versioned manifest; requirements are still checked.
 - `--with <tag,...>` enables the named `requires` tags; `launch` remains skipped under `--attach`.
+- `--grep <regex>` runs tests whose names match the case-sensitive JavaScript regular expression.
+- `--retries <n>` retries failed tests up to `n` additional attempts; the default is `0`.
 - `--timeout-scale <number>` scales the runner's timeouts; the default is `1`.
 - `--keep-open` leaves an owned app running after a failed run and prints its PID and MCP URL in `report.json`.
 - `--mcp-port <port>` requests the MCP port for an owned app; the runner refuses the port if it is occupied.
@@ -185,7 +203,8 @@ Options:
 
 Without `--log` or `--log-dir`, output goes to `test-results/` next to a test file, or inside the
 folder passed to `--test`; that default folder is replaced each run. A run continues through test
-failures and exits `0` when none failed, or `1` for test or runner setup failures.
+failures and exits `0` when there are no failed tests, unexpected passes, or runner setup failures;
+otherwise it exits `1`. Expected failures and flaky tests do not change the exit code.
 
 The repository's `npm run test:ui` wrapper keeps suite filters, fixture setup, profile resets, and
 baseline comparison outside the product host. It starts one product invocation per module and
@@ -199,8 +218,9 @@ the controller reads the selected profile's MCP settings, then checks the connec
 ## Triage a failed run
 
 Start with the console summary and `report.md` or `report.json`: each result has its file, exact
-test name, status, duration, failing step and error. The failing step is the step that threw,
-even if the test's `finally` block runs later. `last-failed.json` stores file/name pairs for
+test name, status, duration, failing step and error. When a stack points into the test file,
+`report.md` also includes a `Location:` line with its file and line number. The failing step is the
+step that threw, even if the test's `finally` block runs later. `last-failed.json` stores file/name pairs for
 the next `--rerun-failed` run. Failure screenshots are saved under `screenshots/` and their paths
 appear in the report and `tests.log`.
 
@@ -223,19 +243,21 @@ These logs do not contain request or response headers or bodies. In `--attach` m
 cannot add test-mode logging to the already running app, so the app-main, app-console, site-console,
 and network logs are not captured for that instance.
 
-Fix all failures shown in the first full run, then run `--rerun-failed` to check only those tests.
-If a call fails with an unknown-member error, read the member list included in the error. Correct
-the path using that list; you usually do not need to explore the same node again.
+Fix failures shown in the first full run, then run `--rerun-failed` to check only those tests.
+The console ends with a `Summary:` block listing each non-passed test, its file or source location,
+and a short reason when available. An unknown-member error stays short; when there is no close
+suggestion, it tells you how to list members, for example `List members: ctx.call("pages.$help")`.
+Use the indicated `$help` call to inspect that node, then correct the path.
 
 ## Worked example: authenticated dashboard
 
-Assume the user has already logged in to the browser profile named `customer-qa`:
+Assume the user has already logged in to the browser profile named `qa-browser`:
 
 ```js
 export default [
   test("opens the orders dashboard", async (ctx) => {
-    const site = await ctx.openBrowser("https://shop.example.test/orders", {
-      profile: "customer-qa",
+    const site = await ctx.openBrowser("https://example.test/orders", {
+      profile: "qa-browser",
     });
     await site.waitFor({ selector: "[data-testid='orders-dashboard']" });
     await site.click("[data-testid='refresh-orders']");

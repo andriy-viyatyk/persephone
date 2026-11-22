@@ -33,16 +33,16 @@ export class McpClient {
         throw new Error(`MCP did not become ready: ${errMessage(lastError)}`);
     }
     async call(path?: string, args?: unknown, timeout = this.timeouts.request, maxLength?: number, dialog = false): Promise<unknown> {
-        const result = await this.rawCall(path, args, { timeout, maxLength, hints: "always" });
+        const result = await this.rawCall(path, args, { timeout, maxLength, hints: "never" });
         return this.decode(result, path, args, maxLength !== undefined, dialog);
     }
     async callText(path?: string, args?: unknown, timeout = this.timeouts.request, maxLength?: number, dialog = false): Promise<string> {
-        const result = await this.rawCall(path, args, { timeout, maxLength, hints: "always" });
+        const result = await this.rawCall(path, args, { timeout, maxLength, hints: "never" });
         return this.decode(result, path, args, maxLength !== undefined, dialog, true) as string;
     }
     /** Assigns `value` to the writable property named by `path` (the `call` tool's `value` field). */
     async set(path: string, value: unknown, timeout = this.timeouts.request): Promise<unknown> {
-        const result = await this.rawCall(path, undefined, { timeout, hints: "always", value });
+        const result = await this.rawCall(path, undefined, { timeout, hints: "never", value });
         return this.decode(result, path, { value });
     }
     async rawCall(path?: string, args?: unknown, options: { timeout?: number; maxLength?: number; hints?: "always" | "never"; value?: unknown } = {}): Promise<{ isError?: boolean; content?: ContentBlock[]; _meta?: Record<string, unknown> }> {
@@ -110,7 +110,13 @@ export class McpClient {
         const text = blocks.filter(isTextBlock).map((block) => block.text).join("\n");
         const metadata = blocks.filter((block) => !isTextBlock(block));
         const readableMetadata = metadata.length ? `\nNon-text content: ${this.readableBlocks(metadata)}` : "";
-        const error = new Error(`${formatStep("call", path, args)}\n${text || "MCP returned an error without text content."}${readableMetadata}`);
+        let errorText = text || "MCP returned an error without text content.";
+        if (/ is not a member of [^.]+\./.test(errorText) && !/Did you mean/.test(errorText)) {
+            const resolved = /\(resolved up to "(.*)"\)/.exec(errorText)?.[1];
+            const helpPath = resolved ? `${resolved}.$help` : "$help";
+            errorText += `\nList members: ctx.call(${JSON.stringify(helpPath)})`;
+        }
+        const error = new Error(`${formatStep("call", path, args)}\n${errorText}${readableMetadata}`);
         // A coded error's line reads `Error [<code>]: <message>` in every namespace (ai-vision 1.4.0+).
         const code = /^Error \[([^\]\s]+)\]: /m.exec(text)?.[1];
         return code ? Object.assign(error, { code }) : error;

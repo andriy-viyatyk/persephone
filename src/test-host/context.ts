@@ -1,4 +1,3 @@
-import assert from "node:assert/strict";
 import path from "node:path";
 import type { McpClient, Timeouts } from "./client.js";
 import type { TestLauncher } from "./launcher.js";
@@ -7,6 +6,7 @@ import { asHandle, createAppProxy, type CallOptions, type HandleMetadata } from 
 import { formatStep } from "./step-format.js";
 import { openBrowser as openBrowserHelper } from "./browser-helpers.js";
 import { resultPreview, stepEventArguments, type TestLog } from "./test-log.js";
+import { createExpect, safePreview, type ExpectMatchers } from "./expect.js";
 
 export type { CallOptions } from "./app-proxy.js";
 
@@ -20,7 +20,7 @@ export interface TestContext {
     /** Assign `value` to a writable call-tree property; the stand-in cannot express an assignment. */
     set(path: string, value: unknown, options?: { timeout?: number }): Promise<unknown>;
     waitFor(pathOrCallback: string | ((ctx: TestContext) => Promise<unknown>), predicate: (value: unknown) => boolean, options?: CallOptions): Promise<unknown>;
-    expect(value: unknown): { toBe(expected: unknown): void; toEqual(expected: unknown): void; toContain(expected: unknown): void; toBeTruthy(): void; toBeGreaterThan(expected: number): void; toBeLessThanOrEqual(expected: number): void; toMatch(expected: RegExp): void };
+    expect(value: unknown, message?: string): ExpectMatchers;
     script(code: string): Promise<string>; restartApp(): Promise<void>; launchSecondInstance(args?: string[]): Promise<number>;
     /** Resolve a path next to the test file, for fixtures the test ships with. */
     file(relative: string): string;
@@ -150,15 +150,7 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
             markFailure(timedOut);
             throw timedOut;
         },
-        expect(value) { return {
-            toBe(expected: unknown) { check(`assert ${JSON.stringify(value)} toBe ${JSON.stringify(expected)}`, () => assert.ok(Object.is(value, expected), `Expected ${JSON.stringify(value)} to be ${JSON.stringify(expected)}.`)); },
-            toEqual(expected: unknown) { check(`assert ${preview(value)} toEqual ${preview(expected)}`, () => assert.deepStrictEqual(value, expected)); },
-            toContain(expected: unknown) { check(`assert ${preview(value)} toContain ${preview(expected)}`, () => assert.ok(typeof value === "string" ? value.includes(String(expected)) : Array.isArray(value) && value.includes(expected), `Expected ${preview(value)} to contain ${preview(expected)}.`)); },
-            toBeTruthy() { check(`assert ${preview(value)} toBeTruthy`, () => assert.ok(value, `Expected ${preview(value)} to be truthy.`)); },
-            toBeGreaterThan(expected: number) { check(`assert ${preview(value)} toBeGreaterThan ${expected}`, () => assert.ok(typeof value === "number" && value > expected, `Expected ${preview(value)} to be greater than ${expected}.`)); },
-            toBeLessThanOrEqual(expected: number) { check(`assert ${preview(value)} toBeLessThanOrEqual ${expected}`, () => assert.ok(typeof value === "number" && value <= expected, `Expected ${preview(value)} to be less than or equal to ${expected}.`)); },
-            toMatch(expected: RegExp) { check(`assert ${preview(value)} toMatch ${String(expected)}`, () => assert.match(value as string, expected)); },
-        }; },
+        expect(value, message) { return createExpect(value, message, check); },
         async script(code) {
             const result = await call("script.execute", [code]);
             if (!result || typeof result !== "object") throw new Error("Script did not return completed text.");
@@ -175,7 +167,7 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
             return path.resolve(path.dirname(identity.file), relative);
         },
         log(message) {
-            const text = typeof message === "string" ? message : preview(message);
+            const text = typeof message === "string" ? message : safePreview(message);
             log?.write({ event: "log", ...identity, message: text });
             console.log(`[${identity?.test ?? "test"}] ${text}`);
         },
@@ -190,11 +182,4 @@ function isMethodDescriptor(value: unknown, apiPath: string): value is { kind: "
         && "signature" in value && typeof value.signature === "string"
         && "summary" in value && typeof value.summary === "string"
         && "note" in value && value.note === `Call it as "${apiPath}()" (or pass "args").`;
-}
-
-/** A bounded JSON rendering of an asserted value for step names and failure messages. */
-function preview(value: unknown): string {
-    let text: string;
-    try { text = JSON.stringify(value) ?? String(value); } catch { text = String(value); }
-    return text.length > 300 ? `${text.slice(0, 300)}…` : text;
 }

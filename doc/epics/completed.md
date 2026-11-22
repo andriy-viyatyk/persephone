@@ -1,3 +1,21 @@
+## EPIC-202 — Web-app test runner fixes
+
+Completed 2026-11-22. Step 1a of the [web-app testing review](../reviews/web-app-testing-review.md) roadmap
+(B1, B3, B5, B6, C3, C4, C5), all in `src/test-host/`. `ctx.expect` has the Jest/Playwright matcher set, `.not` and
+`expect(value, message)` (`src/test-host/expect.ts`); an unknown matcher lists the supported ones and a stand-in is
+refused with "await it first". `test.skip`, `test.only` and `test.fails(name, fn, { reason })`; new statuses
+`expected-failure`, `unexpected-pass` (fails the run) and `flaky`; `--retries <n>` (each attempt fully set up and
+cleaned, `src/test-host/test-attempt.ts`) and `--grep <regex>`. The runner asks for `hints: "never"`; an unknown member
+without a close suggestion adds `List members: ctx.call("<path>.$help")`. Results carry the test file's `file:line`
+(`src/test-host/source-location.ts`) and the console ends with a `Summary:` block. **Deviation:** no full member list
+in `tests.log` (not available with `hints: "never"`). **Open:** no `--help` in the Rust `persephone-test` launcher;
+the integration suite's own `test()` has no modifiers. Completion skills by Codex (Luna). Epic document:
+[EPIC-202](EPIC-202.md).
+
+- [x] **Complete the `expect` matcher set (US-2147).**
+- [x] **Test modifiers, `--grep` and `--retries` (US-2148).**
+- [x] **Short, located failures (US-2149).**
+
 ## EPIC-201 — Board data and network isolation
 
 Completed 2026-11-19. Board services get a profile-scoped data folder in `PERSEPHONE_BOARD_DATA`

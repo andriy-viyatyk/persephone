@@ -1,19 +1,20 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { createContext, type TestContext } from "./context.js";
 import type { McpClient, Timeouts } from "./client.js";
 import { TestLauncher, type HostConfiguration } from "./launcher.js";
 import { errMessage } from "../shared/utils.js";
-import { beginPageOwnership, closePagesOpenedSince } from "./browser-helpers.js";
-import { captureFailure, matchesSelection, prepareLogDirectory, readFailedSelection, resolveLogDirectory, selectForRerun, writeReports, type TestResult } from "./results.js";
+import { matchesSelection, prepareLogDirectory, readFailedSelection, resolveLogDirectory, selectForRerun, writeReports, type TestResult } from "./results.js";
 import { TestLog } from "./test-log.js";
 import { createHostTimeouts } from "./timeouts.js";
 import { loadContextSetup } from "./context-setup.js";
-import { readTestSelection, selectedByManifest } from "./test-selection.js";
+import { readTestSelection, selectedByGrep, selectedByManifest } from "./test-selection.js";
 import { testIdentityKey } from "./test-identity.js";
+import { runAttempt } from "./test-attempt.js";
+import type { TestDescriptor } from "./test-api.js";
+import { displayPath } from "./source-location.js";
 
-interface Descriptor { name: string; run: (context: TestContext) => Promise<void>; requires?: string[]; }
+type Descriptor = TestDescriptor;
 type DiscoveredFile = { file: string; tests: Descriptor[] };
 
 async function discover(target: string): Promise<DiscoveredFile[]> {
@@ -46,6 +47,8 @@ async function discover(target: string): Promise<DiscoveredFile[]> {
             for (const descriptor of exported) {
                 const requires = descriptor.requires ?? [];
                 if (!Array.isArray(requires) || requires.some((tag) => typeof tag !== "string" || !tag.trim()) || new Set(requires).size !== requires.length) throw new Error(`Test '${descriptor.name}' requires unique non-empty tag strings.`);
+                if (descriptor.mode !== undefined && !["skip", "only", "fails"].includes(descriptor.mode)) throw new Error(`Test '${descriptor.name}' has an invalid mode.`);
+                if (descriptor.mode === "fails" && (typeof descriptor.reason !== "string" || !descriptor.reason.trim())) throw new Error(`Test '${descriptor.name}' in fails mode requires a non-empty reason.`);
             }
             discovered.push({ file, tests: exported });
         } catch (error) {
@@ -96,35 +99,44 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
                 logFile: configuration.logFile,
                 logDirectory: configuration.logDirectory,
                 rerunFailed: configuration.rerunFailed,
+                retries: configuration.retries ?? 0,
+                grep: configuration.grep,
             },
         });
 
         const files = await discover(configuration.testPath);
+        const discoveredFiles = files.map((group) => ({ file: group.file, tests: [...group.tests] }));
         const selected = configuration.testSelection ? await readTestSelection(configuration.testSelection) : undefined;
         const setup = await loadContextSetup(configuration.testSetup);
-        for (const group of files) group.tests = group.tests.filter((descriptor) => selectedByManifest(group.file, descriptor.name, selected));
         if (configuration.testSelection) {
-            const found = new Set(files.flatMap((group) => group.tests.map((descriptor) => testIdentityKey({ file: group.file, name: descriptor.name }))));
+            const found = new Set(discoveredFiles.flatMap((group) => group.tests.map((descriptor) => testIdentityKey({ file: group.file, name: descriptor.name }))));
             const missing = [...selected].filter((key) => !found.has(key));
             if (missing.length) throw new Error(`Test selection contains ${missing.length} identities outside ${configuration.testPath}.`);
         }
-        const selection = selectForRerun(files, rerunSelection);
+        const selection = selectForRerun(discoveredFiles, rerunSelection);
         stale = selection.stale;
         for (const identity of stale) log.write({ event: "rerun-stale", ...identity });
         if (configuration.rerunFailed && selection.selected?.size === 0) {
             console.warn("No saved failed tests were discovered; see stale identities in report.md.");
         }
 
+        const grep = configuration.grep === undefined ? undefined : new RegExp(configuration.grep);
+        for (const group of files) group.tests = group.tests.filter((descriptor) => selectedByManifest(group.file, descriptor.name, selected)
+            && selectedByGrep(descriptor.name, grep));
+        const focusSelected = files.flatMap((group) => group.tests.filter((descriptor) => matchesSelection(group.file, descriptor.name, selection.selected)));
+        const hasOnly = focusSelected.some((descriptor) => descriptor.mode === "only");
+        if (hasOnly) console.log("Focused run: executing test.only descriptors only.");
         client = await launcher.start();
         for (const group of files) {
             for (const descriptor of group.tests) {
                 if (!matchesSelection(group.file, descriptor.name, selection.selected)) continue;
+                if (hasOnly && descriptor.mode !== "only") continue;
                 const testStarted = Date.now();
                 const identity = { file: group.file, test: descriptor.name };
                 log.write({ event: "test-start", ...identity });
                 const requirements = descriptor.requires ?? [];
                 const missing = requirements.filter((tag) => tag !== "launch" && !configuration.with.includes(tag));
-                const reason = missing.length ? `requires opt-in tags: ${missing.join(", ")}` : configuration.attach && requirements.includes("launch") ? "requires an owned app launch" : undefined;
+                const reason = descriptor.mode === "skip" ? "test.skip" : missing.length ? `requires opt-in tags: ${missing.join(", ")}` : configuration.attach && requirements.includes("launch") ? "requires an owned app launch" : undefined;
                 if (reason) {
                     const result: TestResult = { file: group.file, name: descriptor.name, status: "skipped", durationMs: Date.now() - testStarted, skipReason: reason, ...(requirements.length ? { requirements } : {}) };
                     results.push(result);
@@ -132,56 +144,58 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
                     continue;
                 }
 
-                client = launcher.client ?? client;
-                if (!client) throw new Error("MCP client was not initialized.");
-                const context = createContext(client, launcher, timeouts, configuration.attach, log, { ...identity, profileDirectory: configuration.profileDirectory });
-                let baseline;
-                let errorText: string | undefined;
-                let failingStep: string | undefined;
-                let capture = { screenshots: [] as string[], captureErrors: [] as string[] };
-                let cleanupErrors: string[] = [];
-                try {
-                    baseline = await beginPageOwnership(client, (event, details) => log?.write({ event, ...identity, ...details }));
-                    const getClient = (): McpClient => {
-                        const current = launcher.client ?? client;
-                        if (!current) throw new Error("MCP client is not available during test setup.");
-                        return current;
-                    };
-                    const extendedContext = setup ? await setup(context, { file: group.file, name: descriptor.name, profileDirectory: configuration.profileDirectory, attach: configuration.attach }, getClient) : context;
-                    await descriptor.run(extendedContext);
-                } catch (error) {
-                    errorText = errMessage(error);
-                    failingStep = context._state.stepOf(error);
-                    client = launcher.client ?? client;
-                    if (baseline && outputDirectory) capture = await captureFailure(client, baseline, outputDirectory, { file: group.file, name: descriptor.name }, log);
-                } finally {
-                    client = launcher.client ?? client;
-                    if (baseline) cleanupErrors = await closePagesOpenedSince(client, baseline, (event, details) => log?.write({ event, ...identity, ...details }), timeouts.cleanup ?? 3000, configuration.attach ? context._state.ownedPages : undefined);
+                let attemptClient = launcher.client ?? client;
+                if (!attemptClient) throw new Error("MCP client was not initialized.");
+                const attempts: NonNullable<TestResult["attempts"]> = [];
+                let finalAttempt: Awaited<ReturnType<typeof runAttempt>> | undefined;
+                const retryLimit = configuration.retries ?? 0;
+                for (let attemptNumber = 1; attemptNumber <= retryLimit + 1; attemptNumber++) {
+                    attemptClient = launcher.client ?? attemptClient;
+                    log.write({ event: "test-attempt-start", ...identity, attempt: attemptNumber, ...(attempts.at(-1)?.error ? { priorFailure: attempts.at(-1)?.error } : {}) });
+                    finalAttempt = await runAttempt({ descriptor, file: group.file, client: attemptClient, launcher, timeouts, configuration, setup, log, outputDirectory, attempt: attemptNumber });
+                    attemptClient = finalAttempt.client;
+                    const failed = Boolean(finalAttempt.error || finalAttempt.cleanupErrors.length);
+                    const expectedFailure = descriptor.mode === "fails" && failed && finalAttempt.cleanupErrors.length === 0;
+                    const failedAttempt = descriptor.mode === "fails" ? !expectedFailure : failed;
+                    attempts.push({ attempt: attemptNumber, status: failedAttempt ? "failed" : "passed", ...(finalAttempt.error ? { error: finalAttempt.error } : {}), ...(finalAttempt.location ? { location: finalAttempt.location } : {}), ...(finalAttempt.step ? { step: finalAttempt.step } : {}) });
+                    log.write({ event: "test-attempt-result", ...identity, attempt: attemptNumber, status: failedAttempt ? "failed" : "passed", ...(finalAttempt.error ? { error: finalAttempt.error } : {}) });
+                    if (!failedAttempt || attemptNumber > retryLimit) break;
                 }
-
+                client = attemptClient;
+                if (!finalAttempt) throw new Error(`Test "${descriptor.name}" completed without an attempt result.`);
+                const done = finalAttempt;
+                const attemptFailed = Boolean(done.error || done.cleanupErrors.length);
+                let status: TestResult["status"] = attemptFailed ? "failed" : "passed";
+                let errorText = done.error;
+                if (descriptor.mode === "fails") {
+                    if (!attemptFailed) { status = "unexpected-pass"; errorText = `Expected failure: ${descriptor.reason}`; }
+                    else if (!done.cleanupErrors.length) status = "expected-failure";
+                } else if (!attemptFailed && attempts.length > 1) status = "flaky";
                 const durationMs = Date.now() - testStarted;
-                const status = errorText || cleanupErrors.length ? "failed" : "passed";
                 const result: TestResult = {
                     file: group.file,
                     name: descriptor.name,
                     status,
                     durationMs,
-                    ...(failingStep ? { step: failingStep } : cleanupErrors.length && !errorText ? { step: "per-test cleanup" } : {}),
-                    ...(errorText ? { error: errorText } : cleanupErrors.length ? { error: "Per-test cleanup found leftover state or failed to complete." } : {}),
+                    ...(done.step ? { step: done.step } : done.cleanupErrors.length && !errorText ? { step: "per-test cleanup" } : attempts.findLast((attempt) => attempt.status === "failed")?.step ? { step: attempts.findLast((attempt) => attempt.status === "failed")?.step } : {}),
+                    ...(errorText ? { error: errorText } : done.cleanupErrors.length ? { error: "Per-test cleanup found leftover state or failed to complete." } : {}),
                     ...(requirements.length ? { requirements } : {}),
-                    ...(cleanupErrors.length ? { cleanupErrors } : {}),
-                    ...(capture.screenshots.length ? { screenshots: capture.screenshots } : {}),
-                    ...(capture.captureErrors.length ? { captureErrors: capture.captureErrors } : {}),
+                    ...(done.cleanupErrors.length ? { cleanupErrors: done.cleanupErrors } : {}),
+                    ...(done.screenshots.length ? { screenshots: done.screenshots } : {}),
+                    ...(done.captureErrors.length ? { captureErrors: done.captureErrors } : {}),
+                    ...(descriptor.reason ? { reason: descriptor.reason } : {}),
+                    ...(attempts.length > 1 ? { attempts } : {}),
+                    ...(done.location ?? attempts.findLast((attempt) => attempt.location)?.location ? { location: done.location ?? attempts.findLast((attempt) => attempt.location)?.location } : {}),
                 };
                 results.push(result);
-                log.write({ event: "test-outcome", ...identity, status, durationMs, ...(result.step ? { step: result.step } : {}), ...(result.error ? { error: result.error } : {}), ...(cleanupErrors.length ? { cleanupErrors } : {}) });
+                log.write({ event: "test-outcome", ...identity, status, durationMs, ...(result.step ? { step: result.step } : {}), ...(result.error ? { error: result.error } : {}), ...(done.cleanupErrors.length ? { cleanupErrors: done.cleanupErrors } : {}), ...(result.attempts ? { attempts: result.attempts } : {}) });
             }
         }
     } catch (error) {
         setupFailure = error;
     } finally {
         try {
-            if (configuration.keepOpen && !configuration.attach && (results.some((result) => result.status === "failed") || setupFailure)) retainedApp = await launcher.retain();
+            if (configuration.keepOpen && !configuration.attach && (results.some((result) => result.status === "failed" || result.status === "unexpected-pass") || setupFailure)) retainedApp = await launcher.retain();
             else await launcher.stop();
         }
         catch (error) { setupFailure ??= error; }
@@ -194,9 +208,12 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
         const passed = results.filter((result) => result.status === "passed").length;
         const failed = results.filter((result) => result.status === "failed").length + (setupFailure ? 1 : 0);
         const skipped = results.filter((result) => result.status === "skipped").length;
-        try { log?.write({ event: "run-summary", startedAt: started, passed, failed, skipped, ...(setupFailure ? { setupFailure: errMessage(setupFailure) } : {}) }); }
+        const expectedFailure = results.filter((result) => result.status === "expected-failure").length;
+        const unexpectedPass = results.filter((result) => result.status === "unexpected-pass").length;
+        const flaky = results.filter((result) => result.status === "flaky").length;
+        try { log?.write({ event: "run-summary", startedAt: started, passed, failed, skipped, expectedFailure, unexpectedPass, flaky, ...(setupFailure ? { setupFailure: errMessage(setupFailure) } : {}) }); }
         finally { log?.close(); }
-        console.log(`Test run ${started}: ${passed} passed, ${failed} failed, ${skipped} skipped.`);
+        console.log(`Test run ${started}: ${passed} passed, ${failed} failed, ${skipped} skipped, ${expectedFailure} expected failure, ${unexpectedPass} unexpected passes, ${flaky} flaky.`);
         for (const result of results.filter((item) => item.status !== "passed")) {
             console.log(`${result.status.toUpperCase()} ${displayPath(configuration.cwd, result.file)} — ${result.name}${result.step ? ` — ${result.step}` : ""}${result.error ? `\n${result.error}` : ""}`);
             for (const cleanupError of result.cleanupErrors ?? []) console.error(`CLEANUP ${cleanupError}`);
@@ -208,13 +225,25 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
         else if (configuration.logFile) console.log(`Log: ${configuration.logFile}`);
         if (setupFailure) console.error(`Test runner setup failed: ${errMessage(setupFailure)}`);
         if (retainedApp) console.log(`Owned app retained after failure (PID ${retainedApp.pid}, MCP ${retainedApp.url}).`);
+        const summaryResults = results.filter((result) => result.status !== "passed");
+        if (summaryResults.length) {
+            console.log("Summary:");
+            for (const result of summaryResults) {
+                const labels: Record<TestResult["status"], string> = { passed: "PASSED", failed: "FAILED", skipped: "SKIPPED", "expected-failure": "EXPECTED FAILURE", "unexpected-pass": "UNEXPECTED PASS", flaky: "FLAKY" };
+                const location = result.location ?? displayPath(configuration.cwd, result.file);
+                const attemptError = result.attempts?.find((attempt) => attempt.error)?.error;
+                const detail = result.status === "skipped" ? result.skipReason
+                    : result.status === "expected-failure" ? result.reason
+                        : firstErrorLine(result.error ?? attemptError, result.step) ?? result.reason;
+                console.log(`${labels[result.status]} — ${result.name} — ${location}${detail ? ` — ${detail}` : ""}`);
+            }
+        }
     }
 
-    return results.some((result) => result.status === "failed") || setupFailure ? 1 : 0;
+    return results.some((result) => result.status === "failed" || result.status === "unexpected-pass") || setupFailure ? 1 : 0;
 }
 
-/** Relative to the caller's cwd when the file is inside it; otherwise the absolute path. */
-function displayPath(cwd: string, file: string): string {
-    const relative = path.relative(cwd, file);
-    return relative && !relative.startsWith("..") && !path.isAbsolute(relative) ? relative : file;
+/** The first meaningful error line; a call error repeats its step on its first line, so that line is skipped. */
+function firstErrorLine(error: string | undefined, step: string | undefined): string | undefined {
+    return error?.split(/\r?\n/).map((line) => line.trim()).find((line) => line && line !== step);
 }

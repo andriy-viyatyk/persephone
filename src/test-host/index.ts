@@ -1,12 +1,11 @@
 import { run } from "./runner.js";
 import type { HostConfiguration } from "./launcher.js";
-import type { TestContext } from "./context.js";
 import { errMessage } from "../shared/utils.js";
-import { test as createTestDescriptor } from "./test-api.js";
+import { test as createTestDescriptor, type TestFunction } from "./test-api.js";
 import { TEST_HOST_CONFIG_MARKER } from "../ipc/test-host-protocol.js";
 
 type ControllerConfiguration = HostConfiguration;
-declare global { var test: (name: string, run: (context: TestContext) => Promise<void>, options?: { requires?: string[] }) => unknown; }
+declare global { var test: TestFunction; }
 
 /** Flush both output streams, then exit: a utility process does not exit when its event loop is idle. */
 function exitAfterFlush(code: number): void {

@@ -11,7 +11,7 @@ import { normalizeTestFile, testIdentityKey } from "./test-identity.js";
 export interface TestResult {
     file: string;
     name: string;
-    status: "passed" | "failed" | "skipped";
+    status: "passed" | "failed" | "skipped" | "expected-failure" | "unexpected-pass" | "flaky";
     durationMs: number;
     step?: string;
     error?: string;
@@ -20,6 +20,9 @@ export interface TestResult {
     cleanupErrors?: string[];
     screenshots?: string[];
     captureErrors?: string[];
+    reason?: string;
+    attempts?: Array<{ attempt: number; status: "passed" | "failed"; error?: string; location?: string; step?: string }>;
+    location?: string;
 }
 
 export interface FailedIdentity { file: string; name: string; }
@@ -130,23 +133,30 @@ export async function writeReports(
 ): Promise<void> {
     await fs.mkdir(options.directory, { recursive: true });
     const failed = results.filter((result) => result.status === "failed");
+    const failedForRerun = results.filter((result) => result.status === "failed" || result.status === "unexpected-pass");
     const passed = results.filter((result) => result.status === "passed");
     const skipped = results.filter((result) => result.status === "skipped");
+    const expectedFailure = results.filter((result) => result.status === "expected-failure");
+    const unexpectedPass = results.filter((result) => result.status === "unexpected-pass");
+    const flaky = results.filter((result) => result.status === "flaky");
     const payload = {
         runAt: options.startedAt,
         target: options.target,
-        summary: { passed: passed.length, failed: failed.length + (options.setupFailure ? 1 : 0), skipped: skipped.length },
+        summary: { passed: passed.length, failed: failed.length + (options.setupFailure ? 1 : 0), skipped: skipped.length, expectedFailure: expectedFailure.length, unexpectedPass: unexpectedPass.length, flaky: flaky.length },
         stale: options.stale,
         ...(options.setupFailure ? { setupFailure: errMessage(options.setupFailure) } : {}),
         ...(options.retainedApp ? { retainedApp: options.retainedApp } : {}),
         results,
     };
-    const lines = ["# Persephone test report", "", `Run: ${markdown(options.startedAt)}`, `Target: ${markdown(options.target)}`, "", `Passed: ${passed.length}  Failed: ${failed.length + (options.setupFailure ? 1 : 0)}  Skipped: ${skipped.length}`, ""];
+    const lines = ["# Persephone test report", "", `Run: ${markdown(options.startedAt)}`, `Target: ${markdown(options.target)}`, "", `Passed: ${passed.length}  Failed: ${failed.length + (options.setupFailure ? 1 : 0)}  Skipped: ${skipped.length}  Expected failure: ${expectedFailure.length}  Unexpected pass: ${unexpectedPass.length}  Flaky: ${flaky.length}`, ""];
     for (const result of results) {
         lines.push(`## ${markdown(result.status.toUpperCase())}: ${markdown(result.name)}`, "", `File: \`${markdown(result.file)}\``, `Duration: ${result.durationMs} ms`);
         if (result.step) lines.push(`Step: ${markdown(result.step)}`);
+        if (result.location) lines.push(`Location: \`${markdown(result.location)}\``);
         if (result.skipReason) lines.push(`Reason: ${markdown(result.skipReason)}`);
+        if (result.reason) lines.push(`Expected failure reason: ${markdown(result.reason)}`);
         if (result.error) lines.push("", "Error:", "", fenced(result.error));
+        if (result.attempts?.length) lines.push("", "Attempts:", ...result.attempts.map((attempt) => `- ${attempt.attempt}: ${attempt.status}${attempt.error ? ` — ${markdown(attempt.error)}` : ""}${attempt.location ? ` (${markdown(attempt.location)})` : ""}`));
         if (result.cleanupErrors?.length) lines.push("", "Cleanup errors:", ...result.cleanupErrors.map((error) => `- ${markdown(error)}`));
         if (result.captureErrors?.length) lines.push("", "Screenshot capture errors:", ...result.captureErrors.map((error) => `- ${markdown(error)}`));
         if (result.screenshots?.length) lines.push("", "Screenshots:", ...result.screenshots.map((screenshot) => `- [${markdown(screenshot)}](${encodeURI(screenshot)})`));
@@ -159,7 +169,7 @@ export async function writeReports(
     if (options.retainedApp) lines.push(`Owned app retained after failure: PID ${options.retainedApp.pid}, MCP ${markdown(options.retainedApp.url)}`, "");
     await atomicWrite(path.join(options.directory, "report.json"), `${JSON.stringify(payload, null, 2)}\n`);
     await atomicWrite(path.join(options.directory, "report.md"), `${lines.join("\n")}\n`);
-    await atomicWrite(path.join(options.directory, "last-failed.json"), `${JSON.stringify({ version: 1, failed: failed.map(({ file, name }) => ({ file: normalizeTestFile(file), name })) }, null, 2)}\n`);
+    await atomicWrite(path.join(options.directory, "last-failed.json"), `${JSON.stringify({ version: 1, failed: failedForRerun.map(({ file, name }) => ({ file: normalizeTestFile(file), name })) }, null, 2)}\n`);
 }
 
 function identityKey(file: string, name: string): string {

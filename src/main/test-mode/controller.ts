@@ -43,6 +43,8 @@ export async function startTestController(profileArgs: ReturnType<typeof parseAp
             with: options.with,
             timeoutScale: options.timeoutScale,
             keepOpen: options.keepOpen,
+            retries: options.retries,
+            grep: options.grep,
             executable: process.execPath,
             devMain: app.isPackaged ? undefined : path.resolve(__dirname, "main.js"),
             packaged: app.isPackaged,

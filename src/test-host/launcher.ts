@@ -26,6 +26,8 @@ export interface HostConfiguration {
     with: string[];
     timeoutScale: number;
     keepOpen: boolean;
+    retries?: number;
+    grep?: string;
 }
 interface ChildState { process: ChildProcess; exit: Promise<string | number | null>; outputsClosed: Promise<void>; exited?: string | number | null; }
 export class TestLauncher {
