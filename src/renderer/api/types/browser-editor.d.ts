@@ -24,9 +24,53 @@ import type { SiteAction, SiteActionOutcome } from "./site-extensions";
  * await browser.waitForNavigation({ tabId: newTab });
  * const title = await browser.getText("h1", { tabId: newTab });
  */
-/** CSS selector or text= locator string, or a host-local accessibility snapshot ref. */
-export type IBrowserElementLocator = string | { ref: string };
+/** CSS, text=, role=, label=, placeholder=, testid=, title= or alt= locator string, or a host-local accessibility snapshot ref. */
+export interface IBrowserLocatorRegex { regex: string; flags?: string }
+export interface IBrowserLocatorModifiers {
+    /** Restrict matches to descendants of another locator; { ref } must name a main-frame element. */
+    within?: string | { ref: string } | IBrowserLocatorObject;
+    /** Role-name matcher, or a JSON-safe regular expression object. */
+    name?: string | IBrowserLocatorRegex;
+    /** Exact match for name, label, placeholder, title, alt, or text. */
+    exact?: boolean;
+    /** Filter the matched element by normalized DOM text. */
+    hasText?: string;
+    /** Require visibility when true; false adds no filter. */
+    visible?: boolean;
+    /** Signed raw selector-step index; negative values count from the end. */
+    nth?: number;
+}
+export type IBrowserLocatorObject = IBrowserLocatorModifiers & (
+    | { role: string; label?: never; placeholder?: never; testId?: never; title?: never; alt?: never; text?: never; selector?: never }
+    | { label: string; role?: never; placeholder?: never; testId?: never; title?: never; alt?: never; text?: never; selector?: never }
+    | { placeholder: string; role?: never; label?: never; testId?: never; title?: never; alt?: never; text?: never; selector?: never }
+    | { testId: string; role?: never; label?: never; placeholder?: never; title?: never; alt?: never; text?: never; selector?: never }
+    | { title: string; role?: never; label?: never; placeholder?: never; testId?: never; alt?: never; text?: never; selector?: never }
+    | { alt: string; role?: never; label?: never; placeholder?: never; testId?: never; title?: never; text?: never; selector?: never }
+    | { text: string; role?: never; label?: never; placeholder?: never; testId?: never; title?: never; alt?: never; selector?: never }
+    | { selector: string; role?: never; label?: never; placeholder?: never; testId?: never; title?: never; alt?: never; text?: never }
+);
+/**
+ * Selector strings support CSS, text/role/attribute engines, chaining (>>), suffix filters,
+ * positional nth= steps, and a leading main-frame ref=e12 step. A ref= step must be first.
+ * Object form accepts exactly one of role, label, placeholder, testId, title, alt, text, selector,
+ * plus name/exact/within/hasText/visible/nth modifiers. Regex names use { regex, flags? } so they
+ * remain JSON-safe; exact is limited to role name, label, placeholder, title, alt, and text.
+ * Selector nth= selects from the raw ordered union; action option { nth } selects after final visibility filtering.
+ * Snapshot-root and wait selector APIs remain selector/ref-only.
+ */
+export type IBrowserElementLocator = string | { ref: string } | IBrowserLocatorObject;
 export type IBrowserJsonValue = null | boolean | number | string | IBrowserJsonValue[] | { [key: string]: IBrowserJsonValue };
+export type IBrowserLocatorReadOptions = { nth?: number; tabId?: string };
+export type IBrowserQueryField = "role" | "name" | "text" | "visible" | "enabled" | "checked" | "tag" | "ref" | "value" | "attributes";
+export interface IBrowserQueryOptions extends IBrowserLocatorReadOptions { fields?: IBrowserQueryField[] }
+export interface IBrowserQueryResult { matches: Array<Record<string, unknown>>; truncated: boolean }
+export interface IBrowserWaitForFunctionOptions {
+    args?: IBrowserJsonValue[];
+    timeout?: number;
+    polling?: "raf" | number;
+    tabId?: string;
+}
 export type IBrowserEvaluateFunction = (...args: never[]) => unknown;
 export type IBrowserMousePosition = { x: number; y: number };
 export type IBrowserMouseModifier = "Alt" | "Control" | "Meta" | "Shift";
@@ -236,7 +280,7 @@ export interface IBrowserEditor {
      * Get an accessibility snapshot of the page as a YAML-like tree.
      * Format matches Playwright MCP's browser_snapshot output. It may begin with
      * `# <overlay>` when a modal covers the page. Pass a returned ref explicitly as
-     * `{ ref: "e52" }`; plain strings are always CSS selectors.
+     * `{ ref: "e52" }`; plain strings accept CSS, text=, role=, label=, placeholder=, testid=, title= or alt=.
      *
      * @example
      * const snapshot = await browser.snapshot();
@@ -256,27 +300,46 @@ export interface IBrowserEditor {
 
     // --- Query methods ---
 
-    /** Get textContent by CSS selector or explicit snapshot ref. Returns null if not found. */
+    /** Get textContent by CSS, text=, role=, label=, placeholder=, testid=, title=, alt= or explicit snapshot ref. Returns null if not found. */
     getText(locator: IBrowserElementLocator, options?: { tabId?: string }): Promise<string | null>;
 
-    /** Get a value by CSS selector or explicit snapshot ref. Returns null if not found. */
+    /** Get a value by CSS, text=, role=, label=, placeholder=, testid=, title=, alt= or explicit snapshot ref. Returns null if not found. */
     getValue(locator: IBrowserElementLocator, options?: { tabId?: string }): Promise<string | null>;
 
-    /** Get an attribute by CSS selector or explicit snapshot ref. Returns null if unavailable. */
+    /** Get an attribute by CSS, text=, role=, label=, placeholder=, testid=, title=, alt= or explicit snapshot ref. Returns null if unavailable. */
     getAttribute(locator: IBrowserElementLocator, attribute: string, options?: { tabId?: string }): Promise<string | null>;
 
-    /** Get innerHTML by CSS selector or explicit snapshot ref. Returns null if not found. */
+    /** Get innerHTML by CSS, text=, role=, label=, placeholder=, testid=, title=, alt= or explicit snapshot ref. Returns null if not found. */
     getHtml(locator: IBrowserElementLocator, options?: { tabId?: string }): Promise<string | null>;
 
-    /** Check whether a CSS selector or explicit snapshot ref identifies an element. */
+    /** Check whether a CSS, text=, role=, label=, placeholder=, testid=, title=, alt= locator or explicit snapshot ref identifies an element. */
     exists(locator: IBrowserElementLocator, options?: { tabId?: string }): Promise<boolean>;
+
+    /** Count resolver matches immediately; nth selects a zero-based match. */
+    count(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<number>;
+    /** Read visibility immediately; zero matches returns false and multiple matches are strict. */
+    isVisible(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean>;
+    /** Read enabled state immediately using native disabled and inherited aria-disabled rules. */
+    isEnabled(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean>;
+    /** Read native or supported ARIA checked state immediately. */
+    isChecked(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean>;
+    /** Read untrimmed innerText from one HTML element. */
+    innerText(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<string>;
+    /** Read innerText for every resolver match, in resolver order. */
+    allInnerTexts(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<string[]>;
+    /** Read a visible element's CSS-pixel box relative to the target viewport. */
+    boundingBox(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<{ x: number; y: number; width: number; height: number } | null>;
+    /** Capture bounded element fields; role and name are Chromium accessibility facts. */
+    query(locator: IBrowserElementLocator, options?: IBrowserQueryOptions): Promise<IBrowserQueryResult>;
+    /** Poll a page function until it returns a truthy JSON value or the timeout expires. */
+    waitForFunction(fn: string | IBrowserEvaluateFunction, options?: IBrowserWaitForFunctionOptions): Promise<IBrowserJsonValue>;
 
     // --- Interaction methods ---
 
-    /** Click by CSS selector or ref using trusted mouse input by default. */
+    /** Click by CSS, text=, role=, label=, placeholder=, testid=, title=, alt= locator or ref using trusted mouse input by default. */
     click(locator: IBrowserElementLocator, options?: IBrowserClickOptions): Promise<void>;
 
-    /** Move the page pointer over a CSS selector or ref. */
+    /** Move the page pointer over a CSS, text=, role=, label=, placeholder=, testid=, title=, alt= locator or ref. */
     hover(locator: IBrowserElementLocator, options?: IBrowserHoverOptions): Promise<void>;
 
     /**

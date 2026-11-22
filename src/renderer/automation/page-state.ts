@@ -2,15 +2,16 @@ const { ipcRenderer } = require("electron"); // eslint-disable-line @typescript-
 import { BrowserChannel, type NetworkLogEntry } from "../../ipc/browser-ipc";
 import { callOnRef, getRefSessionId, parseRef } from "./ref";
 import { resolveElementLocator } from "./locator";
-import { FRAME_OFFSETS_FN, resolveCandidatesSource, VISIBLE_FN } from "./page-scripts";
+import { FRAME_OFFSETS_FN, VISIBLE_FN } from "./page-scripts";
+import { evaluateWithCandidates } from "./selector-execution";
 import { errMessage } from "../../shared/utils";
 import type { IAutomationTarget, ITabInfoTarget } from "./types";
-import type { RefLocator } from "./locator";
+import type { LocatorInput } from "./locator";
 
 
 export type ScreenshotFormat = "png" | "jpeg";
 export interface ScreenshotOptions {
-    tabId?: string; target?: string | RefLocator; fullPage?: boolean; format?: ScreenshotFormat; quality?: number;
+    tabId?: string; target?: LocatorInput; fullPage?: boolean; format?: ScreenshotFormat; quality?: number;
     /** Zero-based among visible matches when a `target` selector matches several. */
     nth?: number;
     /** Facade supplied to enforce host-specific capture behavior. */
@@ -57,12 +58,11 @@ export async function takeScreenshot(
                     ${FRAME_OFFSETS_FN}
                     return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, frameOffsets };
                 }`, true)
-                : await cdp.evaluate(`(() => {
-                    const force = false; ${resolveCandidatesSource()}
+                : await evaluateWithCandidates(cdp, locator.selector, `(resolve) => {
                     // Same strictness as every other action: count visible matches, { nth } picks one.
                     const nth = ${JSON.stringify(options.nth ?? null)};
                     ${VISIBLE_FN}
-                    const matches = (${JSON.stringify(locator.selector)}.startsWith('text=') ? resolveCandidates(${JSON.stringify(locator.selector)}, 'query') : [...document.querySelectorAll(${JSON.stringify(locator.selector)})]).filter(visible);
+                    const matches = resolve('query').filter(visible);
                     if (!matches.length) throw new Error('Screenshot element not found or not visible.');
                     if (matches.length > 1 && nth === null) throw new Error('Ambiguous screenshot selector: ' + matches.length + ' visible matches. Use a ref, narrow the selector, or pass { nth }.');
                     const chosen = matches[nth ?? 0];
@@ -71,7 +71,7 @@ export async function takeScreenshot(
                     if (!(rect.width > 0 && rect.height > 0)) throw new Error('Screenshot element is not visible.');
                     ${FRAME_OFFSETS_FN}
                     return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, frameOffsets };
-                })()`);
+                }`);
             if (!(box.width > 0 && box.height > 0)) throw new Error("Screenshot element is not visible.");
             const input = target.inputCdp(tabId, sessionId);
             const point = input.mapPoint({ x: box.x, y: box.y }, box.frameOffsets);

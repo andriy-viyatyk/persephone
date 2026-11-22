@@ -1,7 +1,8 @@
 import { callOnRef, getRefSessionId } from "./ref";
 import { errMessage } from "../../shared/utils";
 import type { IAutomationTarget, IInputSession } from "./types";
-import { FRAME_OFFSETS_FN, resolveCandidatesSource, VISIBLE_FN } from "./page-scripts";
+import { FRAME_OFFSETS_FN, VISIBLE_FN } from "./page-scripts";
+import { evaluateWithCandidates } from "./selector-execution";
 
 
 export interface RefLocator {
@@ -11,6 +12,27 @@ export interface RefLocator {
 export interface SelectorLocator {
     selector: string;
 }
+
+interface LocatorRegex { regex: string; flags?: string }
+interface LocatorModifiers {
+    name?: string | LocatorRegex;
+    exact?: boolean;
+    within?: string | RefLocator | LocatorObject;
+    hasText?: string;
+    visible?: boolean;
+    nth?: number;
+}
+export type LocatorObject = LocatorModifiers & (
+    | { role: string; label?: never; placeholder?: never; testId?: never; title?: never; alt?: never; text?: never; selector?: never }
+    | { label: string; role?: never; placeholder?: never; testId?: never; title?: never; alt?: never; text?: never; selector?: never }
+    | { placeholder: string; role?: never; label?: never; testId?: never; title?: never; alt?: never; text?: never; selector?: never }
+    | { testId: string; role?: never; label?: never; placeholder?: never; title?: never; alt?: never; text?: never; selector?: never }
+    | { title: string; role?: never; label?: never; placeholder?: never; testId?: never; alt?: never; text?: never; selector?: never }
+    | { alt: string; role?: never; label?: never; placeholder?: never; testId?: never; title?: never; text?: never; selector?: never }
+    | { text: string; role?: never; label?: never; placeholder?: never; testId?: never; title?: never; alt?: never; selector?: never }
+    | { selector: string; role?: never; label?: never; placeholder?: never; testId?: never; title?: never; alt?: never; text?: never }
+);
+export type LocatorInput = string | RefLocator | LocatorObject;
 
 export type ElementLocator = RefLocator | SelectorLocator;
 
@@ -53,8 +75,7 @@ const RETRY_INTERVAL = 100;
 function actionabilityFunction(): string {
     // hitTest=false (programmatic operations such as select) keeps the other checks but skips
     // the receives-pointer-events test: nothing is dispatched at a point.
-    return `async function(selector, nth, force, position, hitTest = true) {
-        ${resolveCandidatesSource()}
+    return `async function(resolve, selector, nth, force, position, hitTest = true) {
         const describe = el => {
             if (!el) return 'unknown element';
             const id = el.id ? '#' + el.id : '';
@@ -65,12 +86,12 @@ function actionabilityFunction(): string {
         };
         const displayed = el => { const style = getComputedStyle(el); return style.visibility !== 'hidden' && style.display !== 'none'; };
         let el = this;
-        if (selector !== null) {
-            if (!force && !selector.startsWith('text=')) {
-                const allMatches = [...document.querySelectorAll(selector)];
+        if (resolve !== null) {
+            if (!force) {
+                const allMatches = resolve('query');
                 if (allMatches.length > 0 && !allMatches.some(displayed)) throw new Error('ACTIONABILITY_TRANSIENT: Element is not visible.');
             }
-            const matches = resolveCandidates(selector, 'action');
+            const matches = resolve('action', { force });
             if (matches.length > 1 && nth == null)
                 throw new Error('ACTIONABILITY_FATAL: Ambiguous selector ' + JSON.stringify(selector) + ': ' + matches.length + ' visible matches (' + matches.slice(0, 5).map((m, i) => i + ': ' + describe(m)).join('; ') + (matches.length > 5 ? '; …' : '') + '). Use a ref, narrow the selector, or pass { nth } (zero-based among visible matches).');
             if (nth != null && (!Number.isInteger(nth) || nth < 0))
@@ -181,12 +202,10 @@ export async function resolveActionablePoint(
     let lastReason: string;
     while (true) {
         try {
-            const script = `(${actionabilityFunction()})(`+
-                `${"selector" in locator ? JSON.stringify(locator.selector) : "null"},`+
-                `${options.nth ?? "null"},${Boolean(options.force)},${JSON.stringify(options.position ?? null)},${options.hitTest !== false})`;
             const result = "ref" in locator
-                ? await callOnRef(baseCdp, locator.ref, `function() { return (${actionabilityFunction()}).call(this, null, null, ${Boolean(options.force)}, ${JSON.stringify(options.position ?? null)}, ${options.hitTest !== false}); }`, true)
-                : await input.cdp.evaluate(script);
+                ? await callOnRef(baseCdp, locator.ref, `function() { return (${actionabilityFunction()}).call(this, null, null, null, ${Boolean(options.force)}, ${JSON.stringify(options.position ?? null)}, ${options.hitTest !== false}); }`, true)
+                : await evaluateWithCandidates(input.cdp, locator.selector,
+                    `(resolve) => (${actionabilityFunction()}).call(null, resolve, ${JSON.stringify(locator.selector)}, ${options.nth ?? "null"}, ${Boolean(options.force)}, ${JSON.stringify(options.position ?? null)}, ${options.hitTest !== false})`);
             const point = input.mapPoint({ x: result.x, y: result.y }, result.frameOffsets);
             return { ...result, ...point, locator, cdp: input.cdp, sessionId: input.sessionId };
         } catch (error: unknown) {
@@ -214,13 +233,109 @@ export function resolveElementLocator(value: unknown): ElementLocator {
         && typeof (value as { ref?: unknown }).ref === "string") {
         return { ref: (value as { ref: string }).ref };
     }
-    throw new Error("Expected a CSS selector string or an object of the form { ref: string }.");
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+        return { selector: compileLocatorObject(value as Record<string, unknown>, new Set()) };
+    }
+    throw new Error("Expected a selector string, { ref: string }, or a supported object locator.");
+}
+
+const LOCATOR_KEYS = ["role", "label", "placeholder", "testId", "title", "alt", "text", "selector"] as const;
+const LOCATOR_MODIFIERS = ["name", "exact", "within", "hasText", "visible", "nth"] as const;
+const LOCATOR_SUPPORTED = [...LOCATOR_KEYS, ...LOCATOR_MODIFIERS].join(", ");
+
+function compileLocatorObject(value: Record<string, unknown>, ancestors: Set<object>): string {
+    if (ancestors.has(value)) throw new Error("Object locator within contains a cycle.");
+    ancestors.add(value);
+    try {
+        const keys = Object.keys(value);
+        const unknown = keys.filter(key => !(LOCATOR_KEYS as readonly string[]).includes(key)
+            && !(LOCATOR_MODIFIERS as readonly string[]).includes(key));
+        if (unknown.length) throw new Error(`Unknown locator key "${unknown[0]}". Supported keys: ${LOCATOR_SUPPORTED}.`);
+        const whatKeys = keys.filter(key => (LOCATOR_KEYS as readonly string[]).includes(key));
+        if (whatKeys.length !== 1) throw new Error(`Object locator requires exactly one of: ${LOCATOR_KEYS.join(", ")}.`);
+        const engine = whatKeys[0];
+        const raw = value[engine];
+        if (typeof raw !== "string" || !raw.length) throw new Error(`Locator ${engine} must be a non-empty string.`);
+        if (value.name !== undefined && engine !== "role") throw new Error("Locator name is only supported with role.");
+        if (value.exact !== undefined && typeof value.exact !== "boolean") throw new Error("Locator exact must be a boolean.");
+        if (value.exact !== undefined && (engine === "selector" || engine === "testId" || (engine === "role" && value.name === undefined))) {
+            throw new Error("Locator exact requires a role name or a label, placeholder, title, alt, or text value.");
+        }
+        if (engine === "role" && !/^[\w-]+$/.test(raw)) throw new Error("Locator role must match ^[\\w-]+$.");
+        let ownStep: string;
+        if (engine === "role") {
+            let name = "";
+            if (value.name !== undefined) {
+                let encoded: string;
+                if (typeof value.name === "string") encoded = JSON.stringify(value.name);
+                else if (value.name && typeof value.name === "object" && !Array.isArray(value.name)) {
+                    const regex = value.name as Record<string, unknown>;
+                    if (Object.keys(regex).some(key => key !== "regex" && key !== "flags") || typeof regex.regex !== "string") {
+                        throw new Error("Role name regex must be { regex: string, flags?: string }.");
+                    }
+                    if (value.exact !== undefined) throw new Error("Locator exact cannot be combined with a regex role name.");
+                    const flags = regex.flags === undefined ? "" : regex.flags;
+                    if (typeof flags !== "string" || /[^dgimsuvy]/.test(flags) || new Set(flags).size !== flags.length) {
+                        throw new Error("Role name regex flags are invalid.");
+                    }
+                    try { new RegExp(regex.regex, flags); } catch { throw new Error("Role name regex is invalid."); }
+                    encoded = `/${escapeRegexDelimiters(regex.regex)}/${flags}`;
+                } else throw new Error("Role name must be a string or { regex, flags? }.");
+                name = `[name=${encoded}${value.exact === true ? "s" : ""}]`;
+            }
+            ownStep = `role=${raw}${name}`;
+        } else if (engine === "selector") {
+            if (value.exact !== undefined) throw new Error("Locator exact is not supported with selector.");
+            ownStep = raw;
+        } else {
+            if (value.name !== undefined) throw new Error("Locator name is only supported with role.");
+            const exact = value.exact === true;
+            ownStep = engine === "testId" ? `testid=${JSON.stringify(raw)}`
+                : engine === "text" ? `text=${JSON.stringify(raw)}${exact ? "" : "i"}`
+                    : `${engine.toLowerCase()}=${JSON.stringify(raw)}${exact ? "s" : ""}`;
+        }
+        if (value.hasText !== undefined && typeof value.hasText !== "string") throw new Error("Locator hasText must be a string.");
+        if (value.visible !== undefined && typeof value.visible !== "boolean") throw new Error("Locator visible must be a boolean.");
+        if (value.nth !== undefined && (typeof value.nth !== "number" || !Number.isSafeInteger(value.nth))) throw new Error("Locator nth must be a safe signed integer.");
+        let selector = "";
+        if (value.within !== undefined) {
+            if (typeof value.within === "string") {
+                if (!value.within.trim()) throw new Error("Locator within cannot be an empty string.");
+                selector = value.within;
+            } else if (value.within && typeof value.within === "object" && !Array.isArray(value.within)) {
+                const within = value.within as Record<string, unknown>;
+                if (typeof within.ref === "string") selector = `ref=${within.ref}`;
+                else selector = compileLocatorObject(within, ancestors);
+            } else throw new Error("Locator within must be a selector string or locator object.");
+        }
+        selector = selector ? `${selector} >> ${ownStep}` : ownStep;
+        if (value.hasText !== undefined || value.visible === true) {
+            const filters = value.hasText !== undefined ? `:has-text(${JSON.stringify(value.hasText)})` : "";
+            selector += ` >> :scope${filters}${value.visible === true ? ":visible" : ""}`;
+        }
+        if (value.nth !== undefined) selector += ` >> nth=${value.nth}`;
+        return selector;
+    } finally {
+        ancestors.delete(value);
+    }
+}
+
+function escapeRegexDelimiters(value: string): string {
+    let result = "", escaped = false, inClass = false;
+    for (const char of value) {
+        if (char === "/" && !escaped && !inClass) result += "\\";
+        result += char;
+        if (escaped) escaped = false;
+        else if (char === "\\") escaped = true;
+        else if (char === "[") inClass = true;
+        else if (char === "]") inClass = false;
+    }
+    return result;
 }
 function locatorFunction(locator: ElementLocator, nth: number | undefined, body: string, allowHidden = false): string {
     if ("ref" in locator) return `function() { ${body} }`;
-    return `(() => {
-        const force = false; ${resolveCandidatesSource()}
-        const allMatches = (${JSON.stringify(locator.selector)}.startsWith('text=') ? resolveCandidates(${JSON.stringify(locator.selector)}, 'query') : [...document.querySelectorAll(${JSON.stringify(locator.selector)})]);
+    return `(resolve) => {
+        const allMatches = resolve('query');
         ${VISIBLE_FN}
         const visibleMatches = allMatches.filter(visible);
         if (visibleMatches.length > 1 && ${nth == null}) throw new Error('Ambiguous selector: ' + ${JSON.stringify(locator.selector)});
@@ -228,15 +343,14 @@ function locatorFunction(locator: ElementLocator, nth: number | undefined, body:
         const el = matches[${nth ?? 0}];
         if (!el) throw new Error('Element not found or not visible: ' + ${JSON.stringify(locator.selector)});
         return (function() { ${body} }).call(el);
-    })()`;
+    }`;
 }
 
 export async function runOnLocator<T>(
     cdp: ActionablePoint["cdp"], locator: ElementLocator, nth: number | undefined, body: string, allowHidden = false,
 ): Promise<T> {
-    const script = locatorFunction(locator, nth, body, allowHidden);
     return "ref" in locator
-        ? callOnRef(cdp, locator.ref, script, true) as Promise<T>
-        : cdp.evaluate(script);
+        ? callOnRef(cdp, locator.ref, `function() { ${body} }`, true) as Promise<T>
+        : evaluateWithCandidates<T>(cdp, locator.selector, locatorFunction(locator, nth, body, allowHidden));
 }
 

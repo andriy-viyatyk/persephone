@@ -3,11 +3,11 @@ import { clickElement } from "./mouse";
 import { focusElement } from "./focus";
 import { dispatchKeyDown, dispatchKeyUp, pressKey, pressSyntheticKey } from "./input";
 import type { IAutomationTarget, ISyntheticInputHost } from "./types";
-import type { ActionablePoint, RefLocator } from "./locator";
+import type { ActionablePoint, LocatorInput } from "./locator";
 
 export interface KeyboardActionOptions {
     tabId?: string;
-    target?: string | RefLocator;
+    target?: LocatorInput;
     nth?: number;
     timeout?: number;
     synthetic?: boolean;

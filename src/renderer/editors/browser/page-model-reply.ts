@@ -1,5 +1,4 @@
 import { shapeResult, type IAiRemoteResponse } from "ai-vision";
-import { errMessage } from "../../../shared/utils";
 
 /** Applies the host's length policy while the remote response metadata is still available. */
 export function normalizePageModelReply(
@@ -25,12 +24,4 @@ export function normalizePageModelReply(
         };
     }
     return webMcp ? { ok: true, result: shaped?.result } : response;
-}
-
-/** CDP's two wordings for an evaluation whose document went away mid-call. */
-const CONTEXT_LOSS_MESSAGES = ["Cannot find context with specified id", "Inspected target navigated or closed"];
-
-export function isPageModelContextLoss(error: unknown): boolean {
-    const message = errMessage(error);
-    return CONTEXT_LOSS_MESSAGES.some((text) => message.includes(text));
 }

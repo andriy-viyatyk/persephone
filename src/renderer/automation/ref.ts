@@ -164,15 +164,19 @@ export async function callOnRef(
         return (${fn}).call(el);
     }`;
 
-    const result = await cdp.send("Runtime.callFunctionOn", {
-        objectId,
-        functionDeclaration: wrapped,
-        returnByValue,
-        awaitPromise: true,
-    }, sessionId);
+    try {
+        const result = await cdp.send("Runtime.callFunctionOn", {
+            objectId,
+            functionDeclaration: wrapped,
+            returnByValue,
+            awaitPromise: true,
+        }, sessionId);
 
-    if (result.exceptionDetails) {
-        throw new Error(cdpExceptionMessage(result.exceptionDetails, "callOnRef failed"));
+        if (result.exceptionDetails) {
+            throw new Error(cdpExceptionMessage(result.exceptionDetails, "callOnRef failed"));
+        }
+        return returnByValue ? result.result?.value : result;
+    } finally {
+        await cdp.send("Runtime.releaseObject", { objectId }, sessionId).catch((): undefined => undefined);
     }
-    return returnByValue ? result.result?.value : result;
 }

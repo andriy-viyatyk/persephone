@@ -8,7 +8,11 @@ import type { IWindowScreen, IWindowRecording } from "../../../api/types/window"
 const WINDOW_SCREEN_HELP = `Persephone's own application window, not a browser page. The shared
 automation operations act on the complete current app-window accessibility tree, including the
 active page's visible content. snapshot() returns refs that must be passed explicitly as
-{ ref: "..." }; strings may be CSS selectors or text= locators. App navigation, browser tabs, and JavaScript
+{ ref: "..." }; strings accept CSS, text=, role=, label=, placeholder=, testid=, title= and alt= locators.
+role= uses Chromium's accessibility role/name, for example role=button[name="Save"]. Name matching
+normalizes whitespace; unquoted/plain quoted values are case-insensitive substrings, "value"s is
+case-sensitive exact, and /pattern/flags is regex. testid= matches data-testid exactly. text= keeps
+its quoted exact and unquoted substring behavior. App navigation, browser tabs, and JavaScript
 dialog policy are absent because this target has none; open and switch Persephone pages through pages and
 pages.showPage(pageId). Page DOM reads can be scoped to
 \`[data-name="page-slot"][data-page-id="<id>"]\`; popups, menus, and dialogs render outside the page
@@ -21,8 +25,16 @@ snapshot({ root: selectorOrRef }) to narrow a large tree. \`interactive: true\` 
 nodes and their ancestors, and a page with no such nodes can produce an empty string. The app window
 has no elements inventory.
 
+Selector strings accept \`>>\` chains, CSS \`:has-text("...")\` and \`:visible\` suffixes, signed \`nth=N\`
+steps, and a leading ref=e12 scope (main-frame only; ref= must be first). For example,
+\`ref=e12 >> text=Save\` selects text below a ref. Locator objects accept one of role, label,
+placeholder, testId, title, alt, text, or selector, with name/exact/within/hasText/visible/nth
+modifiers; regex role names use \`{ regex, flags? }\`. Snapshot roots remain selector/ref-only.
+
 Quoted text= matches exactly and case-sensitively after whitespace normalization; unquoted text=
-matches a case-insensitive substring. Nested visible matches prefer the smallest element, and nth
+matches a case-insensitive substring. role= candidates use Chromium accessibility facts and exclude
+ignored nodes unless [include-hidden] is present; selector strings run in the main frame, while refs
+may target joined frame content. Fullscreen remains CSS-only. Nested visible text matches prefer the smallest element, and nth
 selects within that list. This shared locator works on browser pages and boards as well. focus(locator)
 focuses without pointer input. clickAt({x,y}) and dragTo({from,to}) use trusted Persephone app-window
 renderer viewport CSS pixels from the top-left. clickAt bypasses locator actionability; dragTo shares
@@ -47,7 +59,12 @@ applies named type/select/check/uncheck fields in order and names the first fail
 setInputFiles() assigns existing local files directly to hidden or visible file inputs and does not
 intercept a native chooser. screenshot() supports element targets and PNG/JPEG; cross-origin frame
 refs and fullPage are unsupported on this host. evaluate() accepts JSON-safe args for functions and
-function-expression strings; arrow strings are invoked. consoleMessages() and pageErrors() read
+function-expression strings; arrow strings are invoked. Locator reads are immediate and strict for
+single-element operations; pass { nth } to select a zero-based match. query() captures at most 200
+matches and requested text, values, attributes and refs expose page data; role/name come from Chromium
+accessibility facts. Increase outer call maxLength for larger results. waitForFunction() executes
+serialized caller-authored JavaScript in the app window and can mutate page state; args and results
+must be JSON-safe. consoleMessages() and pageErrors() read
 Persephone's renderer records; this target has no page JavaScript dialog policy.
 
 recording.start({ region, openPlayer? }) immediately records the current Persephone window, active

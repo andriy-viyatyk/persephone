@@ -483,6 +483,10 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/renderer/editors/browser/BrowserExclusiveAccessNotice.ts` | Renderer | Host notice naming the origin and Esc when a page goes full screen or locks the pointer |
 | `src/preload-webview/exclusive-access-reporter.ts` | Guest | Reports pointer lock from every frame (`pointer-lock` guest message) |
 | `src/renderer/automation/locator.ts`, `mouse.ts`, `focus.ts`, `keyboard.ts`, `forms.ts`, `queries.ts`, `page-events.ts`, `navigation.ts`, `page-state.ts`, `synthetic.ts` | Renderer | Shared target-neutral automation operations grouped by job |
+| `src/renderer/automation/selector-execution.ts`, `page-scripts.ts` | Renderer | Single host entry for candidate execution; page-side `resolveCandidates` owns selector grammar and matching |
+| `src/renderer/automation/locator-reads.ts`, `wait-for-function.ts`, `json-value.ts`, `context-loss.ts` | Renderer | Strict locator reads and bulk capture, predicate waits, JSON-safe values, and navigation context-loss classification |
+| `src/renderer/editors/browser/page-model-refs.ts`, `src/site-extension-helpers.ts` | Renderer / injected page bundle | Convert page-model markers to ordinary refs; own runtime helpers and weak element registry |
+| `src/shared/automation-page-primitives.ts` | Shared | Visibility and native value updates reused by automation and site-extension models |
 | `src/renderer/automation/ref.ts` | Renderer | Host-scoped accessibility refs and iframe CDP-session maps |
 | `src/renderer/automation/snapshot.ts` | Renderer | Accessibility tree → YAML formatter for automation snapshots |
 | `src/renderer/automation/CdpSession.ts` | Renderer | CDP session wrapper (IPC to main process debugger) |
@@ -1586,13 +1590,20 @@ relative to the app window's zoom.
 ## Browser Automation (MCP)
 
 Browser automation lives in `src/renderer/automation/`. Operations are separated by job: `locator.ts`
-resolves selectors and snapshot refs; `mouse.ts`, `keyboard.ts`, and `forms.ts` perform input;
+owns action resolution and delegates selector execution to `selector-execution.ts`, the single host
+entry for page code that needs candidates. `page-scripts.ts` owns `resolveCandidates` and the one
+selector grammar; every shared selector consumer routes through that entry. `locator-reads.ts` owns
+strict locator reads and bulk capture, while `wait-for-function.ts` owns page predicate waits.
+`json-value.ts` validates JSON-safe page arguments and results, and `context-loss.ts` centralizes
+navigation/context-loss classification. `mouse.ts`, `keyboard.ts`, and `forms.ts` perform input;
 `focus.ts` focuses an actionable element in its own document without pointer input;
 `queries.ts` handles evaluation, queries, and waits; `page-events.ts` reads readiness, dialogs,
 console, and page errors; `navigation.ts` owns navigation and response waits; `page-state.ts` owns
 screenshots, viewport, and network state; and `synthetic.ts` contains the explicit legacy synthetic
 input path. `page-scripts.ts` holds shared in-page snippets for visibility checks, frame offsets,
-and selector resolution. `input-session.ts` owns the common CDP input session and coordinate mapping.
+and selector resolution. The selector host entry supplies Chromium accessibility facts for `role=`
+selectors while leaving parsing and matching in `resolveCandidates`. `input-session.ts` owns the
+common CDP input session and coordinate mapping.
 Board-only dialog actions are kept with the board editor in `editors/board/board-dialogs.ts`.
 
 Browser pages (`BrowserTargetModel`), trusted board frames (`BoardTargetModel`), and the app window
@@ -1658,6 +1669,15 @@ full pointer actionability and hit-testing. Ctrl+C/V use the OS clipboard withou
 
 CSS `:hover` does not apply inside browser `<webview>` elements, even though trusted pointer events
 are delivered. This limitation is specific to browser webviews; page script listeners can respond.
+
+Selector strings support CSS plus the `text=`, `role=`, `label=`, `placeholder=`, `testid=`,
+`title=`, `alt=`, and `ref=` engines. Chaining and filters are parsed only by `resolveCandidates`;
+object locators are normalized to that grammar before execution. Chromium's accessibility tree
+provides role/name facts, matching the snapshot source. `locator-reads.ts` owns immediate read
+cardinality rules and bulk field capture. `wait-for-function.ts` evaluates serialized predicates in
+the target page and applies JSON-value validation and context-loss handling through the shared
+helpers. These owners are also used by browser, board, and app-window facades via
+`AutomationSurface`.
 
 ### Snapshots and refs
 

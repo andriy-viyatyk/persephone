@@ -19,6 +19,11 @@ import type {
     IBrowserScreenshotOptions,
     IBrowserEvaluateOptions,
     IBrowserEvaluateFunction,
+    IBrowserLocatorReadOptions,
+    IBrowserQueryOptions,
+    IBrowserQueryResult,
+    IBrowserWaitForFunctionOptions,
+    IBrowserJsonValue,
 } from "./browser-editor";
 import type { BoardEditorKind } from "./common";
 
@@ -171,6 +176,15 @@ export interface IBoardEditor {
     keyDown(key: string, options?: IBrowserKeyboardOptions): Promise<void>;
     keyUp(key: string, options?: IBrowserKeyboardOptions): Promise<void>;
     evaluate(expression: string | IBrowserEvaluateFunction, options?: IBrowserEvaluateOptions): Promise<unknown>;
+    count(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<number>;
+    isVisible(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean>;
+    isEnabled(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean>;
+    isChecked(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean>;
+    innerText(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<string>;
+    allInnerTexts(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<string[]>;
+    boundingBox(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<{ x: number; y: number; width: number; height: number } | null>;
+    query(locator: IBrowserElementLocator, options?: IBrowserQueryOptions): Promise<IBrowserQueryResult>;
+    waitForFunction(fn: string | IBrowserEvaluateFunction, options?: IBrowserWaitForFunctionOptions): Promise<IBrowserJsonValue>;
     waitFor(options: {
         selector?: string;
         state?: "attached" | "detached" | "visible" | "hidden";

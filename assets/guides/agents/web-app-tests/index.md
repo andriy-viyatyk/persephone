@@ -15,7 +15,7 @@ Playwright for server CI.
 
 | If you need to... | Read | Object-model path |
 |---|---|---|
-| Understand call paths, stand-ins, and a complete test example | [Call boundary and worked example](./call-boundary-and-examples.md) | `guides.agents["web-app-tests"]["call-boundary-and-examples"]` |
+| Understand call paths, Playwright-to-Persephone locators, and a complete test example | [Call boundary and worked example](./call-boundary-and-examples.md) | `guides.agents["web-app-tests"]["call-boundary-and-examples"]` |
 | Reuse a signed-in browser page, configure attached windows, or inspect captured failures and logs | [Attached runs, session pages, and results](./attached-runs-and-results.md) | `guides.agents["web-app-tests"]["attached-runs-and-results"]` |
 | Share setup and cleanup across tests in one file | [File hooks](./file-hooks.md) | `guides.agents["web-app-tests"]["file-hooks"]` |
 ## Turn exploration into a test

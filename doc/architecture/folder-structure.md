@@ -912,9 +912,14 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── types.ts            # Narrow target seams: automation, synthetic input, navigation, and tabs
 │   ├── CdpSession.ts       # CDP session wrapper (IPC to main process debugger)
 │   ├── snapshot.ts         # Accessibility snapshot (main frame + iframes, overlay detection)
-│   ├── page-scripts.ts     # Shared in-page visibility, frame-offset, and locator snippets
+│   ├── selector-execution.ts # Single host entry for page-side selector candidate execution
+│   ├── page-scripts.ts     # resolveCandidates: one selector grammar plus visibility/frame snippets
+│   ├── locator-reads.ts    # Strict locator reads and bulk field capture
+│   ├── wait-for-function.ts # Serialized page predicate polling and deadlines
+│   ├── context-loss.ts     # Navigation/context-loss classification
+│   ├── json-value.ts       # JSON-safe automation values
 │   ├── input-session.ts    # CDP input session and shared frame-coordinate mapping
-│   ├── locator.ts          # Locator parsing, strictness, and element resolution
+│   ├── locator.ts          # Actionability and locator action resolution
 │   ├── mouse.ts            # Mouse actions and shared pointer dispatch
 │   ├── keyboard.ts         # Key actions and modifier mapping
 │   ├── forms.ts            # Text, select, checkbox, and file input operations

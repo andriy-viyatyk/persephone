@@ -1,5 +1,7 @@
 import { callOnRef } from "./ref";
 import { pressKey } from "./input";
+import { evaluateWithCandidates } from "./selector-execution";
+import { setNativeInputValue } from "../../shared/automation-page-primitives";
 import type { CdpSession } from "./CdpSession";
 import type { IAutomationTarget, ISyntheticInputHost } from "./types";
 
@@ -13,15 +15,14 @@ type ElementKind = "input" | "textarea" | "contentEditable" | "unknown";
  * Resolve and focus an element only for the explicitly requested synthetic fill path.
  */
 async function focusElementBySelector(cdp: CdpSession, selector: string): Promise<ElementKind> {
-    const s = JSON.stringify(selector);
-    return await cdp.evaluate(`(() => {
+    return await evaluateWithCandidates(cdp, selector, `(resolve) => {
         // Legacy synthetic compatibility picks the first selector match, preferring a visible
         // alternative only when that first match is hidden. Trusted operations use strict locators.
-        let el = document.querySelector(${s});
-        if (!el) throw new Error('Element not found: ' + ${s});
+        const all = resolve('query');
+        let el = all[0];
+        if (!el) throw new Error('Element not found: ' + ${JSON.stringify(selector)});
         // In this explicitly synthetic route only, if the first match is hidden, try a visible alternative.
         if (el.offsetHeight === 0 || getComputedStyle(el).display === 'none') {
-            const all = document.querySelectorAll(${s});
             for (const candidate of all) {
                 if (candidate.offsetHeight > 0 && getComputedStyle(candidate).display !== 'none') {
                     el = candidate;
@@ -35,7 +36,7 @@ async function focusElementBySelector(cdp: CdpSession, selector: string): Promis
         if (el.tagName === 'TEXTAREA') return 'textarea';
         if (el.isContentEditable) return 'contentEditable';
         return 'unknown';
-    })()`);
+    }`);
 }
 
 /**
@@ -59,24 +60,17 @@ async function focusElementByRef(cdp: CdpSession, ref: string): Promise<ElementK
  */
 async function fillInput(cdp: CdpSession, selector: string | undefined, ref: string | undefined, text: string): Promise<void> {
     const t = JSON.stringify(text);
-    // JS snippet that sets value using native prototype setter (bypasses framework interception)
-    // and dispatches InputEvent (not just Event) to trigger framework change detection
     const fillCode = `
         this.scrollIntoView({ block: 'center' });
         this.focus();
-        const proto = this.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-        const nativeSetter = Object.getOwnPropertyDescriptor(proto, 'value').set;
-        nativeSetter.call(this, ${t});
-        this.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: ${t} }));
-        this.dispatchEvent(new Event('change', { bubbles: true }));
+        (${setNativeInputValue.toString()})(this, ${t});
     `;
     if (selector) {
-        const s = JSON.stringify(selector);
-        await cdp.evaluate(`(() => {
-            const el = document.querySelector(${s});
-            if (!el) throw new Error('Element not found: ' + ${s});
+        await evaluateWithCandidates(cdp, selector, `(resolve) => {
+            const el = resolve('query')[0];
+            if (!el) throw new Error('Element not found: ' + ${JSON.stringify(selector)});
             (function() { ${fillCode} }).call(el);
-        })()`);
+        }`);
     } else if (ref) {
         await callOnRef(cdp, ref, `function() { ${fillCode} }`);
     }

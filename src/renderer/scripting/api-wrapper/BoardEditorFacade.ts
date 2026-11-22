@@ -27,6 +27,11 @@ import type {
     IBrowserScreenshotOptions,
     IBrowserEvaluateOptions,
     IBrowserEvaluateFunction,
+    IBrowserLocatorReadOptions,
+    IBrowserQueryOptions,
+    IBrowserQueryResult,
+    IBrowserWaitForFunctionOptions,
+    IBrowserJsonValue,
 } from "../../api/types/browser-editor";
 import {
     createRemoteProxy,
@@ -168,6 +173,15 @@ export class BoardEditorFacade extends EditorFacadeBase<BoardEditorModel> implem
 
     /** Evaluate JavaScript in the selected or explicitly requested board frame. */
     evaluate(expression: string | IBrowserEvaluateFunction, options?: IBrowserEvaluateOptions): Promise<unknown> { return this.automation.evaluate(expression, options); }
+    count(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<number> { return this.automation.count(locator, options); }
+    isVisible(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean> { return this.automation.isVisible(locator, options); }
+    isEnabled(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean> { return this.automation.isEnabled(locator, options); }
+    isChecked(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean> { return this.automation.isChecked(locator, options); }
+    innerText(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<string> { return this.automation.innerText(locator, options); }
+    allInnerTexts(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<string[]> { return this.automation.allInnerTexts(locator, options); }
+    boundingBox(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<{ x: number; y: number; width: number; height: number } | null> { return this.automation.boundingBox(locator, options); }
+    query(locator: IBrowserElementLocator, options?: IBrowserQueryOptions): Promise<IBrowserQueryResult> { return this.automation.query(locator, options); }
+    waitForFunction(fn: string | IBrowserEvaluateFunction, options?: IBrowserWaitForFunctionOptions): Promise<IBrowserJsonValue> { return this.automation.waitForFunction(fn, options); }
 
     /** Wait for exactly one selector, text, textGone, or time condition in a board frame. */
     waitFor(options: WaitForOption): Promise<void> { return this.automation.waitFor(options); }

@@ -1,11 +1,14 @@
 import { callOnRef } from "./ref";
 import { cdpExceptionMessage, type CdpSession } from "./CdpSession";
-import { resolveCandidatesSource, VISIBLE_FN } from "./page-scripts";
+import { VISIBLE_FN } from "./page-scripts";
+import { evaluateWithCandidates } from "./selector-execution";
 import type { IAutomationTarget } from "./types";
 import type { ElementLocator } from "./locator";
+import { isJsonValue } from "./json-value";
+import type { JsonValue } from "./json-value";
 
 
-export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+export type { JsonValue } from "./json-value";
 export type EvaluateFunction = (...args: never[]) => unknown;
 export async function evaluateInTarget(
     target: IAutomationTarget,
@@ -71,20 +74,6 @@ async function evaluateStringCode(
     }
 }
 
-function isJsonValue(value: unknown, seen = new Set<object>()): value is JsonValue {
-    if (value === null || typeof value === "string" || typeof value === "boolean") return true;
-    if (typeof value === "number") return Number.isFinite(value);
-    if (typeof value !== "object") return false;
-    if (seen.has(value)) return false;
-    seen.add(value);
-    const valid = Array.isArray(value)
-        ? value.every(item => isJsonValue(item, seen))
-        : Object.getPrototypeOf(value) === Object.prototype
-            && Object.values(value as Record<string, unknown>).every(item => isJsonValue(item, seen));
-    seen.delete(value);
-    return valid;
-}
-
 /** Read an element's text using a selector or a host-local accessibility ref. */
 export async function getElementText(
     target: IAutomationTarget,
@@ -92,9 +81,8 @@ export async function getElementText(
     tabId?: string,
 ): Promise<string | null> {
     if ("selector" in locator) {
-        return target.cdp(tabId).evaluate(
-            `(() => { const force = false; ${resolveCandidatesSource()} return resolveCandidates(${JSON.stringify(locator.selector)}, 'query')[0]?.textContent ?? null; })()`,
-        );
+        return evaluateWithCandidates(target.cdp(tabId), locator.selector,
+            "(resolve) => resolve('query')[0]?.textContent ?? null");
     }
     return callOnRef(target.cdp(tabId), locator.ref,
         "function() { return this.textContent ?? null; }", true);
@@ -107,9 +95,8 @@ export async function getElementValue(
     tabId?: string,
 ): Promise<string | null> {
     if ("selector" in locator) {
-        return target.cdp(tabId).evaluate(
-            `(() => { const force = false; ${resolveCandidatesSource()} return resolveCandidates(${JSON.stringify(locator.selector)}, 'query')[0]?.value ?? null; })()`,
-        );
+        return evaluateWithCandidates(target.cdp(tabId), locator.selector,
+            "(resolve) => resolve('query')[0]?.value ?? null");
     }
     return callOnRef(target.cdp(tabId), locator.ref,
         "function() { return this.value ?? null; }", true);
@@ -123,9 +110,8 @@ export async function getElementAttribute(
     tabId?: string,
 ): Promise<string | null> {
     if ("selector" in locator) {
-        return target.cdp(tabId).evaluate(
-            `(() => { const force = false; ${resolveCandidatesSource()} return resolveCandidates(${JSON.stringify(locator.selector)}, 'query')[0]?.getAttribute(${JSON.stringify(attribute)}) ?? null; })()`,
-        );
+        return evaluateWithCandidates(target.cdp(tabId), locator.selector,
+            `(resolve) => resolve('query')[0]?.getAttribute(${JSON.stringify(attribute)}) ?? null`);
     }
     return callOnRef(target.cdp(tabId), locator.ref,
         `function() { return this.getAttribute(${JSON.stringify(attribute)}); }`, true);
@@ -138,9 +124,8 @@ export async function getElementHtml(
     tabId?: string,
 ): Promise<string | null> {
     if ("selector" in locator) {
-        return target.cdp(tabId).evaluate(
-            `(() => { const force = false; ${resolveCandidatesSource()} return resolveCandidates(${JSON.stringify(locator.selector)}, 'query')[0]?.innerHTML ?? null; })()`,
-        );
+        return evaluateWithCandidates(target.cdp(tabId), locator.selector,
+            "(resolve) => resolve('query')[0]?.innerHTML ?? null");
     }
     return callOnRef(target.cdp(tabId), locator.ref,
         "function() { return this.innerHTML ?? null; }", true);
@@ -153,9 +138,8 @@ export async function elementExists(
     tabId?: string,
 ): Promise<boolean> {
     if ("selector" in locator) {
-        return target.cdp(tabId).evaluate(
-            `(() => { const force = false; ${resolveCandidatesSource()} return !!resolveCandidates(${JSON.stringify(locator.selector)}, 'query')[0]; })()`,
-        );
+        return evaluateWithCandidates(target.cdp(tabId), locator.selector,
+            "(resolve) => !!resolve('query')[0]");
     }
     await callOnRef(target.cdp(tabId), locator.ref, "function() { return true; }", true);
     return true;
@@ -186,17 +170,15 @@ export async function waitFor(target: IAutomationTarget, options: WaitForOptions
             let satisfied: boolean;
             if (mode.kind === "selector") {
                 const state = mode.state ?? "attached";
-                const selector = JSON.stringify(mode.selector);
-                satisfied = await cdp.evaluate(`(() => {
-                    const force = false; ${resolveCandidatesSource()}
-                    const el = resolveCandidates(${selector}, 'query')[0];
+                satisfied = await evaluateWithCandidates(cdp, mode.selector, `(resolve) => {
+                    const el = resolve('query')[0];
                     const attached = !!el;
                     ${VISIBLE_FN}
                     const isVisible = !!el && visible(el);
                     return ${JSON.stringify(state)} === 'attached' ? attached
                         : ${JSON.stringify(state)} === 'detached' ? !attached
                         : ${JSON.stringify(state)} === 'visible' ? isVisible : !isVisible;
-                })()`);
+                }`);
             } else {
                 const contains = await cdp.evaluate(`!!document.body?.innerText?.includes(${JSON.stringify(mode.text)})`);
                 satisfied = mode.kind === "text" ? contains : !contains;

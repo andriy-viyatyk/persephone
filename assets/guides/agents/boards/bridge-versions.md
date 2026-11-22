@@ -6,6 +6,40 @@ summary: "Which bridge version added each persephone.* member and manifest field
 
 # Boards — bridge version history and compatibility
 
+Bridge `1.60.0` resolves selectors through one shared path. The existing `text=` selector now
+works for synthetic typing and focus, file input selection, and snapshot roots through board calls.
+Browser page-model refs are converted to ordinary automation refs before results reach board calls.
+Selector strings also support `role=`, `label=`, `placeholder=`, `testid=`, `title=`, and `alt=`
+alongside CSS and `text=`. For example, use `role=button[name="Save"]` or `label=Email`;
+role and name come from Chromium's accessibility tree, and role name matching normalizes whitespace
+and supports substring, case-sensitive exact (`"Save"s`), and `/pattern/flags` forms. Role state
+filters support checked, disabled, expanded, level, pressed, and selected; role matches exclude
+ignored accessibility nodes unless `[include-hidden]` is specified. `testid=` compares `data-testid`
+exactly, and quoted `text=` retains exact matching. Selector strings run in the selected board
+frame's main frame; snapshot refs may address joined frame content. Fullscreen remains CSS-only.
+Selector strings support `>>` chaining, CSS `:has-text("...")` and `:visible` suffix filters,
+and signed `nth=N` steps. Locator objects accept exactly one of `role`, `label`, `placeholder`,
+`testId`, `title`, `alt`, `text`, or `selector`, with `name`, `exact`, `within`, `hasText`,
+`visible`, and `nth` modifiers. Regex role names use JSON-safe `{ regex, flags? }` objects.
+For example, `ref=e12 >> text=Save` scopes to a main-frame ref and `ref=` must be the first step;
+frame refs remain available through the direct `{ ref }` form. Snapshot roots and wait selector
+APIs remain selector/ref-only.
+
+Bridge `1.60.0` also exposes `count`, `isVisible`, `isEnabled`, `isChecked`, `innerText`,
+`allInnerTexts`, `boundingBox`, `query`, and `waitForFunction` through `window.persephone.call()`.
+Locator reads resolve through the same selector engines. Single-element reads use strict matching;
+pass `{ nth }` to choose a zero-based match. `query` defaults to role, name, trimmed text, visible,
+enabled, checked, tag, and ref, and captures at most 200 matches in document order. `value` and
+`attributes` are opt-in because they expose page data; raise the outer call `maxLength` for large
+results. Role and name are Chromium accessibility facts and may be null when no exposed AX node
+exists. Returned refs are ordinary snapshot refs and remain valid while their element stays in the DOM.
+Snapshot pointer-generic names may include descendant text even when query's AX name is empty. Selector
+engines retain their own query ordering and visibility rules. `boundingBox` uses main-viewport CSS
+pixels; OOPIF refs are unsupported. `waitForFunction` accepts a function or source string, JSON-safe
+args and results, rAF or numeric polling, and a timeout capped at 28 seconds. It runs caller-authored
+JavaScript in the board page and can mutate page state; over `persephone.call()` provide a source
+string because call arguments must be JSON. This wait does not extend the outer request timeout.
+
 Bridge `1.59.0` extends trusted board input with `focus(locator)` and `focus: "focus"` on
 keyboard actions, relative and timed drags, and `clickAt` / `dragTo` in the selected board-frame
 viewport. It also scrolls targets within nested containers before hit testing and reports the

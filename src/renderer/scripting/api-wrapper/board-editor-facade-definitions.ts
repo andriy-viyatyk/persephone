@@ -118,9 +118,21 @@ helpSearch to discover it.
 
 Board content is rendered in a cross-origin iframe, and the shared automation members reach that
 content. Use snapshot() for the iframe's complete accessibility content and pass its returned refs
-as { ref: "..." }; plain strings are CSS selectors or text= locators. Quoted text matches exactly
-and case-sensitively after whitespace normalization; unquoted text matches a case-insensitive
-substring. Nested visible matches prefer the smallest element, and nth selects within those matches.
+as { ref: "..." }; selector strings run in the selected board frame's main frame, while snapshot
+refs may target joined cross-frame content. Strings accept CSS, text=, role=, label=, placeholder=,
+testid=, title= and alt=; role= uses Chromium accessibility role/name, for example
+role=button[name="Save"]. Role name matching normalizes whitespace; unquoted/plain quoted values
+are case-insensitive substrings, "value"s is case-sensitive exact, and /pattern/flags is regex.
+Role state filters support checked, disabled, expanded, level, pressed, and selected; ignored AX nodes
+are excluded unless [include-hidden] is specified. testid= matches data-testid exactly. Quoted text=
+remains exact after whitespace normalization and unquoted text= is a case-insensitive substring.
+Selector strings also support \`>>\` chaining, CSS \`:has-text("...")\` and \`:visible\` suffixes,
+signed nth=N steps, and a leading ref=e12 main-frame scope; for example
+\`ref=e12 >> text=Save\`. A ref= step must be first. Direct { ref } retains iframe refs. Object
+locators accept exactly one of role, label, placeholder, testId, title, alt, text, selector, with
+name/exact/within/hasText/visible/nth modifiers and JSON-safe \`{ regex, flags? }\` role names.
+Selector nth= selects from the raw ordered union; action option { nth } selects after final visibility
+filtering. Snapshot roots and wait selector APIs remain selector/ref-only. Fullscreen remains CSS-only.
 The board page's own chrome--toolbar
 controls, the Trust-this-Board prompt, and secondary-view controls--is what elements names and
 highlight points at, not iframe content. Everything rendered inside the iframe is reachable only
@@ -160,4 +172,10 @@ fillForm() applies named type/select/check/uncheck fields sequentially and repor
 field. setInputFiles() assigns existing local files directly to hidden or visible file inputs; it
 does not open or intercept the native chooser. screenshot() supports element targets and PNG/JPEG;
 cross-origin frame refs are unsupported, and fullPage is unsupported for boards. evaluate() accepts
-JSON-safe args for functions and function-expression strings; arrow strings are invoked.`;
+JSON-safe args for functions and function-expression strings; arrow strings are invoked. count(),
+isVisible(), isEnabled(), isChecked(), innerText(), allInnerTexts(), boundingBox() and query() read
+the selected board frame. query() exposes requested page text, values, attributes and refs; values can
+contain sensitive page data, and role/name come from Chromium accessibility facts. It captures at most
+200 matches; increase outer call maxLength for larger requested fields. Reads are immediate and strict
+where a single element is required; pass { nth } to select one. waitForFunction() executes serialized
+caller-authored code in the board page and can mutate it; results and args must be JSON-safe.`;

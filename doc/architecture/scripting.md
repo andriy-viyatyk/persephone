@@ -684,9 +684,10 @@ belongs to the Persephone script facade and does not change the board-frame `per
 Browser and board automation facades, together with `app.window.screen`, share the target-neutral
 operations through `AutomationSurface` in `/src/renderer/scripting/api-wrapper/`. The surface
 centralizes readiness, activity leases, and browser tip recording. The underlying work is split
-among `locator.ts`, `mouse.ts`, `keyboard.ts`, `forms.ts`, `queries.ts`, `page-events.ts`,
-`navigation.ts`, `page-state.ts`, and `synthetic.ts`; shared in-page snippets and CDP input
-coordinate mapping live in `page-scripts.ts` and `input-session.ts`. Targets implement narrow
+among `selector-execution.ts`, `page-scripts.ts`, `locator.ts`, `locator-reads.ts`,
+`wait-for-function.ts`, `mouse.ts`, `keyboard.ts`, `forms.ts`, `queries.ts`, `page-events.ts`,
+`navigation.ts`, `page-state.ts`, and `synthetic.ts`; CDP input coordinate mapping lives in
+`input-session.ts`. Targets implement narrow
 capability interfaces in `automation/types.ts` so an operation depends only on the host methods it
 uses. Browser pages add navigation and inner-tab management; boards add frame selection and board
 lifecycle state; `window.screen` is the complete current application-window host and has no browser
@@ -719,11 +720,24 @@ script behavior. `LogEntryHandle<TEntry>` supplies the shared rich-handle runtim
 markdown, Mermaid, grid, and progress output; each configured handle retains its existing public
 properties and optional open/completion actions.
 
-String locators may use `text=` on all three hosts. A quoted value matches exact text after
-whitespace normalization and is case-sensitive; an unquoted value matches a case-insensitive
-substring after trimming and whitespace normalization. Nested matches resolve to the innermost
-visible element, and `nth` indexes that visible result list. `force` bypasses actionability checks
-for an otherwise valid match. The app-window host also exposes `clickAt({ x, y })` and
+Locator strings use one grammar owned by `resolveCandidates` in
+`/src/renderer/automation/page-scripts.ts`; `selector-execution.ts` is the single host entry for
+running page-side candidate resolution, including its Chromium accessibility preflight for
+`role=`. Supported engines are CSS, `text=`, `role=`, `label=`, `placeholder=`, `testid=`, `title=`,
+`alt=`, and `ref=`. `>>` chains steps, while CSS steps can use `:has-text("…")` and `:visible`.
+Values match case-insensitive substrings by default; quoted `"…"s` is exact and `/pattern/flags`
+uses a regular expression. String `nth=N` selects in the raw ordered candidate list (negative values
+count from the end); action option `{ nth }` selects among visible action matches. Object locators
+are normalized into the same grammar and do not have a separate resolver.
+
+`locator-reads.ts` owns `count`, `isVisible`, `isEnabled`, `isChecked`, `innerText`,
+`allInnerTexts`, `boundingBox`, and bulk `query`; single-element reads enforce strictness, while
+`query` captures selected fields in one page evaluation. `wait-for-function.ts` owns
+`waitForFunction`, with JSON argument/result checks in `json-value.ts` and navigation context-loss
+classification in `context-loss.ts`. Page-model helpers are implemented by `src/site-extension-helpers.ts`;
+`runtime.ref()` markers become ordinary automation refs through `page-model-refs.ts`. Shared
+visibility and controlled-input primitives are in `src/shared/automation-page-primitives.ts`.
+The app-window host also exposes `clickAt({ x, y })` and
 `dragTo({ from, to })` in renderer viewport CSS pixels from the top-left; coordinate clicks bypass
 locator actionability, while coordinate drags use the shared trusted drag dispatch.
 
@@ -1438,9 +1452,14 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 /src/renderer/automation/
 ├── types.ts                     # Narrow operation target interfaces
 ├── CdpSession.ts                # CDP session wrapper
-├── page-scripts.ts              # Shared in-page locator, visibility, and frame snippets
+├── selector-execution.ts        # Single host entry for page-side selector candidate execution
+├── page-scripts.ts              # resolveCandidates: the one selector grammar plus visibility/frame snippets
+├── locator-reads.ts              # Strict locator reads and bulk field capture
+├── wait-for-function.ts          # Serialized page predicate polling and deadlines
+├── context-loss.ts               # Navigation/context-loss classification
+├── json-value.ts                 # JSON-safe automation value validation
 ├── input-session.ts             # CDP input session and shared coordinate mapping
-├── locator.ts                   # Locator parsing and element resolution
+├── locator.ts                   # Actionability and locator action resolution
 ├── mouse.ts                     # Mouse operations and pointer dispatch
 ├── keyboard.ts                  # Keyboard operations and modifier mapping
 ├── forms.ts                     # Form controls and file input operations
@@ -1450,6 +1469,11 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 ├── page-state.ts                # Screenshots, viewport, and network state
 ├── synthetic.ts                 # Explicit synthetic-input compatibility path
 └── ref.ts                       # Host-scoped refs and iframe session stores
+
+`/src/renderer/editors/browser/page-model-refs.ts` converts page-model ref markers to ordinary
+CDP-backed automation refs. `/src/site-extension-helpers.ts` owns the page-model runtime helpers and
+marker registry; `/src/shared/automation-page-primitives.ts` shares page-side visibility and native
+input-value behavior with automation.
 
 /src/renderer/scripting/ai-vision/
 ├── root.ts                      # Renderer object-model root and root namespaces

@@ -5,6 +5,7 @@ import type {
     IBrowserHoverOptions, IBrowserKeyboardOptions, IBrowserNetworkRequest, IBrowserNetworkRequestsOptions,
     IBrowserResponse, IBrowserResponseWaitOptions, IBrowserScreenshot, IBrowserScreenshotOptions,
     IBrowserSelectOptions, IBrowserTypeOptions,
+    IBrowserLocatorReadOptions, IBrowserQueryOptions, IBrowserQueryResult, IBrowserWaitForFunctionOptions, IBrowserJsonValue,
 } from "../../api/types/browser-editor";
 import { clickAtCoordinates, clickElement, checkElement, dragCoordinates, hoverElement, dragElements, uncheckElement } from "../../automation/mouse";
 import { focusElement } from "../../automation/focus";
@@ -18,6 +19,8 @@ import {
 import { networkRequests, takeScreenshot } from "../../automation/page-state";
 import { waitForResponse, type UrlPatternInput } from "../../automation/navigation";
 import { resolveElementLocator } from "../../automation/locator";
+import { locatorAllInnerTexts, locatorBoundingBox, locatorCount, locatorInnerText, locatorIsChecked, locatorIsEnabled, locatorIsVisible, locatorQuery, validateLocatorQueryFields } from "../../automation/locator-reads";
+import { waitForFunction } from "../../automation/wait-for-function";
 import type { IAutomationTarget, ISyntheticInputHost, ITabInfoTarget } from "../../automation/types";
 import type { PageDialogPolicy } from "../../../ipc/browser-ipc";
 
@@ -156,6 +159,34 @@ export class AutomationSurface {
     }
     evaluate(expression: string | IBrowserEvaluateFunction, options?: IBrowserEvaluateOptions): Promise<unknown> {
         return this.run("evaluate", options?.tabId, () => evaluateInTarget(this.target, expression, options), { passive: false, tip: true });
+    }
+    count(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<number> {
+        return this.run("count", options?.tabId, () => locatorCount(this.target, resolveElementLocator(locator), options), { passive: false, tip: true });
+    }
+    isVisible(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean> {
+        return this.run("isVisible", options?.tabId, () => locatorIsVisible(this.target, resolveElementLocator(locator), options), { passive: false, tip: true });
+    }
+    isEnabled(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean> {
+        return this.run("isEnabled", options?.tabId, () => locatorIsEnabled(this.target, resolveElementLocator(locator), options), { passive: false, tip: true });
+    }
+    isChecked(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean> {
+        return this.run("isChecked", options?.tabId, () => locatorIsChecked(this.target, resolveElementLocator(locator), options), { passive: false, tip: true });
+    }
+    innerText(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<string> {
+        return this.run("innerText", options?.tabId, () => locatorInnerText(this.target, resolveElementLocator(locator), options), { passive: false, tip: true });
+    }
+    allInnerTexts(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<string[]> {
+        return this.run("allInnerTexts", options?.tabId, () => locatorAllInnerTexts(this.target, resolveElementLocator(locator), options), { passive: false, tip: true });
+    }
+    boundingBox(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<{ x: number; y: number; width: number; height: number } | null> {
+        return this.run("boundingBox", options?.tabId, () => locatorBoundingBox(this.target, resolveElementLocator(locator), options), { passive: false, tip: true });
+    }
+    query(locator: IBrowserElementLocator, options?: IBrowserQueryOptions): Promise<IBrowserQueryResult> {
+        validateLocatorQueryFields(options?.fields);
+        return this.run("query", options?.tabId, () => locatorQuery(this.target, resolveElementLocator(locator), options), { passive: false, tip: true });
+    }
+    waitForFunction(fn: string | IBrowserEvaluateFunction, options?: IBrowserWaitForFunctionOptions): Promise<IBrowserJsonValue> {
+        return this.run<IBrowserJsonValue>("waitForFunction", options?.tabId, () => waitForFunction(this.target, fn, options), { passive: false, tip: true });
     }
     waitFor(options: WaitForOption): Promise<void> {
         if (options.state !== undefined && options.selector === undefined) throw new Error("'state' can only be used with 'selector'.");

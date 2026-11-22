@@ -10,6 +10,14 @@ Use a temporary extension when a test needs the same page model or site actions 
 load. It is kept only in one browser page's memory, does not prompt for saved-extension trust, and
 does not receive the privileged cross-host fetch broker. The normal site extension runtime still
 provides `expose`, `onDispose`, `setActions`, and `runtime.params`.
+It also provides `runtime.ref`, `visible`, `accessibleName`, `setValue`, `waitFor`, and
+`afterReturn`, with the same behavior as a saved extension. `runtime.ref(element)` returns a
+`{ ref }` locator for a connected element in the main document; return it from a model method and
+pass the result to `click()`, `type()`, or another locator action. Use [Page-model runtime helpers](./site-extensions.md#page-model-runtime-helpers)
+for signatures and a worked example. `accessibleName` is a page-side approximation; role and name
+selector facts come from Chromium's accessibility tree. `afterReturn()` schedules a callback after
+the reply is produced on a best-effort basis. If navigation wins, use `{ allowNavigation: true }` to
+recover the reply.
 
 ## Attach an inline script or file
 

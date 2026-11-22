@@ -70,5 +70,11 @@ one epic per step.
   message was step 1a) and the runner half of 2 (inside `ctx.expect.poll` a stand-in that is not there yet counts as
   "not yet"). Also polling assertions (B2), file-level hooks (B4) and a per-test timeout (B7), which the suite had
   worked around (a wrapped `test()` for a `finally`, `waitFor` + `expect` pairs).
-- Still open after step 3: 1 (rest), 2 (bridge half, G2), 3 (storage-state half, F2), 5, 9, 10, 17, 19, 20 — roadmap
-  steps 4–7.
+- **Step 4 — [EPIC-206](../../epics/EPIC-206.md) (done 2026-11-22):** no numbered item is closed by it alone; it
+  removes the reason for the pilot model's generic layer and its fourteen tag-and-return `*Target` members. Selector
+  engines (`role=`, `label=`, `placeholder=`, `testid=`, `title=`, `alt=`, `ref=`), `>>` chaining, `nth=`,
+  `:has-text()`/`:visible`, the object form, refs handed out by a page model (`runtime.ref`) and the other runtime
+  helpers, locator reads (`count`, `isVisible`, `isEnabled`, `isChecked`, `innerText`, `allInnerTexts`,
+  `boundingBox`, bulk `query`) and `waitForFunction`.
+- Still open after step 4: 1 (rest), 2 (bridge half, G2), 3 (storage-state half, F2), 5, 9, 10, 17, 19, 20 — roadmap
+  steps 5–7.

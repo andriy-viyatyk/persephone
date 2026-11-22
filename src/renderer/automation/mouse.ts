@@ -2,7 +2,8 @@ const { ipcRenderer } = require("electron"); // eslint-disable-line @typescript-
 import { BrowserChannel } from "../../ipc/browser-ipc";
 import { callOnRef, getRefSessionId } from "./ref";
 import { resolveActionablePoint, runOnLocator } from "./locator";
-import { FRAME_OFFSETS_FN, resolveCandidatesSource } from "./page-scripts";
+import { FRAME_OFFSETS_FN } from "./page-scripts";
+import { evaluateWithCandidates } from "./selector-execution";
 import { MODIFIER_BITS } from "./input";
 import { errMessage } from "../../shared/utils";
 import type { IAutomationTarget, ISyntheticInputHost } from "./types";
@@ -18,7 +19,8 @@ export async function clickElement(
     if (options.synthetic) {
         target.focusWebview(options.tabId);
         if ("selector" in locator) {
-            await action.cdp.evaluate(`(() => { const force = false; ${resolveCandidatesSource()} const matches = resolveCandidates(${JSON.stringify(locator.selector)}, 'query', { visibleOnly: true, nth: ${options.nth ?? 0} }); const el = matches[0]; if (!el) throw new Error('Element not found'); el.click(); })()`);
+            await evaluateWithCandidates(action.cdp, locator.selector,
+                `(resolve) => { const matches = resolve('query', { visibleOnly: true, nth: ${options.nth ?? 0} }); const el = matches[0]; if (!el) throw new Error('Element not found'); el.click(); }`);
         } else {
             await callOnRef(action.cdp, locator.ref, "function() { this.click(); }");
         }
@@ -65,7 +67,8 @@ export async function hoverElement(
         target.focusWebview(options.tabId);
         const syntheticHover = "function() { this.dispatchEvent(new MouseEvent('mouseenter', {bubbles:false, composed:true})); this.dispatchEvent(new MouseEvent('mouseover', {bubbles:true, composed:true})); }";
         if ("selector" in locator) {
-            await action.cdp.evaluate(`(() => { const force = false; ${resolveCandidatesSource()} const matches = resolveCandidates(${JSON.stringify(locator.selector)}, 'query', { visibleOnly: true, nth: ${options.nth ?? 0} }); const el = matches[0]; if (!el) throw new Error('Element not found'); el.dispatchEvent(new MouseEvent('mouseenter', {bubbles:false, composed:true})); el.dispatchEvent(new MouseEvent('mouseover', {bubbles:true, composed:true})); })()`);
+            await evaluateWithCandidates(action.cdp, locator.selector,
+                `(resolve) => { const matches = resolve('query', { visibleOnly: true, nth: ${options.nth ?? 0} }); const el = matches[0]; if (!el) throw new Error('Element not found'); el.dispatchEvent(new MouseEvent('mouseenter', {bubbles:false, composed:true})); el.dispatchEvent(new MouseEvent('mouseover', {bubbles:true, composed:true})); }`);
         } else {
             await callOnRef(action.cdp, locator.ref, syntheticHover);
         }

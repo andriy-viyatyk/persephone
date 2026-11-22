@@ -1,6 +1,7 @@
 /** Accessibility snapshots for browser automation. */
 import type { CdpSession } from "./CdpSession";
 import { getRefSessionId, parseRef, setFrameSessions } from "./ref";
+import { evaluateCandidateObject } from "./selector-execution";
 
 interface AXNode {
     nodeId: string;
@@ -184,15 +185,20 @@ export function formatAccessibilityTree(nodes: AXNode[], framePrefix = ""): stri
 }
 
 async function resolveSelectorRoot(cdp: CdpSession, selector: string): Promise<number> {
-    const { root } = await cdp.send("DOM.getDocument", { depth: 0 });
-    const { nodeIds } = await cdp.send("DOM.querySelectorAll", { nodeId: root.nodeId, selector });
-    const count = (nodeIds || []).length;
-    if (count === 0) throw new Error(`snapshot root selector matched no elements: ${selector}`);
-    if (count > 1) throw new Error(`snapshot root selector matched ${count} elements: ${selector}`);
-    const { nodeId } = await cdp.send("DOM.querySelector", { nodeId: root.nodeId, selector });
-    const { node } = await cdp.send("DOM.describeNode", { nodeId });
-    if (!node.backendNodeId) throw new Error(`Could not resolve snapshot root selector: ${selector}`);
-    return node.backendNodeId;
+    await cdp.send("DOM.getDocument", { depth: 0 });
+    const objectId = await evaluateCandidateObject(cdp, selector, `(resolve) => {
+        const matches = resolve('query');
+        if (matches.length === 0) throw new Error('snapshot root selector matched no elements: ' + ${JSON.stringify(selector)});
+        if (matches.length > 1) throw new Error('snapshot root selector matched ' + matches.length + ' elements: ' + ${JSON.stringify(selector)});
+        return matches[0];
+    }`);
+    try {
+        const { node } = await cdp.send("DOM.describeNode", { objectId });
+        if (!node.backendNodeId) throw new Error(`Could not resolve snapshot root selector: ${selector}`);
+        return node.backendNodeId;
+    } finally {
+        await cdp.send("Runtime.releaseObject", { objectId }).catch((): undefined => undefined);
+    }
 }
 
 async function getOwnedIframeTargets(

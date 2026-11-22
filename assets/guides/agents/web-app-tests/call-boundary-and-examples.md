@@ -136,3 +136,44 @@ unexpected response status for the dashboard request. A request status and URL a
 its headers and body are not.
 
 The runner retries its own page bookkeeping reads up to three times when attention is present, 200 ms apart by default (scaled by `--timeout-scale`); it never replays test calls. Attention in the test window fails the test with its cause. Attention identified in another window, persistent unidentifiable attention on a runner read, or a closed/replaced test window stops the run (exit 3). The interrupted test and remaining selected tests are `not-run`; the interrupted test may already have changed state. After a stop, `--rerun-failed` selects the failures and tests that did not run. The report names the cause. Untracked OS-level dialogs may not produce an attention reply.
+
+## Playwright patterns in Persephone
+
+Use the browser editor's selector strings and read members through the page stand-in. Calls still cross
+the JSON boundary, so a function passed to `waitForFunction` must be function source text, not a
+JavaScript callback.
+
+| Playwright | Persephone test |
+|---|---|
+| `page.getByRole("button", { name: "Save" }).click()` | `await site.click('role=button[name="Save"]')` |
+| `page.getByLabel("Email").fill(value)` | `await site.type("label=Email", value)` |
+| `page.getByPlaceholder("Search").fill(value)` | `await site.type("placeholder=Search", value)` |
+| `page.getByTestId("save").click()` | `await site.click("testid=save")` |
+| `page.getByTitle("Refresh").click()` | `await site.click("title=Refresh")` |
+| `page.getByAltText("Logo")` | `await site.click("alt=Logo")` |
+| `page.getByText("Saved")` | `site.click("text=Saved")` or `site.count("text=Saved")` |
+| Snapshot ref from a model (Playwright has no `ref=` engine) | `await site.click({ ref: "e12" })` |
+| `page.locator("ul").getByRole("listitem").nth(-1)` | `site.click("ul >> role=listitem >> nth=-1")` |
+| `locator.count()` / `locator.isVisible()` | `site.count(locator)` / `site.isVisible(locator)` |
+| `locator.isEnabled()` / `locator.isChecked()` | `site.isEnabled(locator)` / `site.isChecked(locator)` |
+| `locator.innerText()` / `locator.allInnerTexts()` | `site.innerText(locator)` / `site.allInnerTexts(locator)` |
+| `locator.boundingBox()` | `site.boundingBox(locator)` |
+| `page.waitForFunction(fn, arg)` | `site.waitForFunction("(arg) => predicate(arg)", { args: [arg] })` |
+| Read several matches and fields | `site.query(locator, { fields: ["text", "ref"] })` |
+
+`locator` may be a selector, `{ ref }`, or the object form, such as
+`{ role: "button", name: "Save", exact: true, visible: true }`. Selector `nth=N` chooses from
+the raw ordered list (negative values count from the end); an action option `{ nth }` counts after
+visible-match filtering. Read members are immediate: multi-match scalar reads are strict, while
+`count`, `allInnerTexts`, and `query` return lists. `query` returns at most 200 rows and its default
+fields are `role`, `name`, `text`, `visible`, `enabled`, `checked`, `tag`, and `ref`. Requested
+`text` is trimmed to 1,000 characters; optional `value` is a string or null, and optional
+`attributes` returns up to 50 attributes with values capped at 1,000 characters. Invalid or duplicate
+field names are rejected. `allInnerTexts` returns each page `innerText` in resolver order; unlike
+`query`'s `text`, it is not trimmed or capped.
+
+`waitForFunction` accepts `args`, `timeout` (default 10 seconds, capped at 28 seconds), and
+`polling` (`"raf"` or a numeric interval from 10 to 10,000 ms). The function source runs in the
+page and can change it; its result must be JSON-serializable. The test host's request deadline is
+30 seconds by default, so keep the wait below that bound. See [browser locator and wait details](../browser-automation.md)
+for selector matching, strictness, hidden-role limitations, and result-field limits.

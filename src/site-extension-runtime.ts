@@ -7,6 +7,7 @@ import type { IAiElementDeclaration } from "ai-vision";
 import { AI_VISION_HOST_SIGNAL } from "ai-vision";
 import { validateSiteActions } from "./shared/site-extension-actions";
 import type { SiteActionDefinition } from "./shared/site-extension-actions";
+import { createSiteExtensionHelpers } from "./site-extension-helpers";
 
 interface SiteRuntime {
     readonly schemaVersion: number;
@@ -30,6 +31,7 @@ if (!target.__persephoneSiteRuntime) {
     const cleanups: Array<() => void> = [];
     let handlers = new Map<string, () => unknown>();
     let nextFetchId = 0;
+    const helpers = createSiteExtensionHelpers();
     const fetches = new Map<number, { resolve: (text: string) => void; reject: (error: Error) => void }>();
     const publish = (items: unknown): void => {
         const signal = (window as unknown as Record<string, unknown>)[AI_VISION_HOST_SIGNAL];
@@ -41,6 +43,7 @@ if (!target.__persephoneSiteRuntime) {
         expose(root) {
             remote?.dispose();
             remote = expose(root);
+            helpers.bindRemote(remote);
             return remote;
         },
         onDispose(callback) {
@@ -98,6 +101,7 @@ if (!target.__persephoneSiteRuntime) {
             return serialized;
         },
         dispose() {
+            helpers.dispose();
             handlers.clear();
             for (const pending of fetches.values()) pending.reject(new Error("Fetch cancelled"));
             fetches.clear();
@@ -117,5 +121,12 @@ if (!target.__persephoneSiteRuntime) {
         createElements: (declarations: readonly IAiElementDeclaration[]) =>
             createElements(declarations, highlightElement),
     };
+    Object.assign(runtime, helpers.publicApi);
+    Object.defineProperties(runtime, {
+        __lookupElement: { value: helpers.lookupElement },
+        __ownsRemote: { value: helpers.ownsRemote },
+        __beginInvocation: { value: helpers.beginInvocation },
+        __finishInvocation: { value: helpers.finishInvocation },
+    });
     target.__persephoneSiteRuntime = Object.freeze(runtime);
 }

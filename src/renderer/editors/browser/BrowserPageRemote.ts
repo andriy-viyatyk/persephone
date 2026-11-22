@@ -16,7 +16,9 @@ import {
 } from "../../scripting/ai-vision/event-log";
 import { agentMayAccessBrowserPage, privateBrowserRefusal } from "./agent-access";
 import { DEFAULT_URL } from "./browser-state";
-import { normalizePageModelReply, isPageModelContextLoss } from "./page-model-reply";
+import { normalizePageModelReply } from "./page-model-reply";
+import { isAutomationContextLoss } from "../../automation/context-loss";
+import { convertSiteModelRefs } from "./page-model-refs";
 import type { BrowserEditor } from "./BrowserEditor";
 import type { BrowserEditorState } from "./browser-state";
 
@@ -324,10 +326,23 @@ export class BrowserPageRemote {
         const routedRequest = { ...routedRequestBase, maxLength };
         const remoteExpression = webMcp ? WEBMCP_REMOTE_PAGE_GLOBAL : AI_VISION_PAGE_GLOBAL;
         const missingRemoteError = JSON.stringify(this.aiVisionMissingRefusal());
+        const isModelCall = request.action === "ai:get" || request.action === "ai:invoke";
+        const isMethodCall = request.action === "ai:invoke";
         const expression = `(async () => {
     const remote = window[${JSON.stringify(remoteExpression)}];
-    if (!remote) return JSON.stringify({ ok: false, error: ${missingRemoteError} });
-    return JSON.stringify(await remote.handle(JSON.parse(${JSON.stringify(JSON.stringify(routedRequest))})));
+    if (!remote) return JSON.stringify({ runtimeOwned: false, response: { ok: false, error: ${missingRemoteError} } });
+    const runtime = window.__persephoneSiteRuntime;
+    const runtimeOwned = !${webMcp} && !!runtime && typeof runtime.__ownsRemote === "function" && runtime.__ownsRemote(remote);
+    const invocation = runtimeOwned && ${isMethodCall} ? runtime.__beginInvocation() : undefined;
+    try {
+        const response = await remote.handle(JSON.parse(${JSON.stringify(JSON.stringify(routedRequest))}));
+        const serialized = JSON.stringify({ runtimeOwned, response });
+        if (invocation !== undefined) runtime.__finishInvocation(invocation, true);
+        return serialized;
+    } catch (error) {
+        if (invocation !== undefined) runtime.__finishInvocation(invocation, false);
+        throw error;
+    }
 })()`;
         let timer: ReturnType<typeof setTimeout> | undefined;
         let evaluating = false;
@@ -343,13 +358,31 @@ export class BrowserPageRemote {
                 }),
             ]);
             const parsed = typeof response === "string" ? tryParseJson<unknown>(response, undefined) : undefined;
-            if (!isAiVisionResponse(parsed)) return { ok: false, error: "The page returned an invalid AiVision response." };
+            if (!parsed || typeof parsed !== "object") return { ok: false, error: "The page returned an invalid AiVision response." };
+            const envelope = parsed as { runtimeOwned?: unknown; response?: unknown };
+            if (!isAiVisionResponse(envelope.response)) return { ok: false, error: "The page returned an invalid AiVision response." };
             // Method results and property reads are both shaped in the page; a cut must not pass silently.
-            if (request.action === "ai:invoke" || request.action === "ai:get") return normalizePageModelReply(parsed, maxLength, webMcp);
-            return parsed;
+            if (isModelCall) {
+                const normalized = normalizePageModelReply(envelope.response, maxLength, webMcp);
+                if (!webMcp && envelope.runtimeOwned === true && normalized.ok) {
+                    const isCurrentDocument = (): boolean => {
+                        const latest = this.getRegistration(registration.internalTabId);
+                        return this.documentGeneration(registration.internalTabId) === registration.generation
+                            && latest?.token === registration.token;
+                    };
+                    const result = await convertSiteModelRefs(
+                        this.model.target.cdp(registration.internalTabId),
+                        normalized.result,
+                        isCurrentDocument,
+                    );
+                    return { ...normalized, result };
+                }
+                return normalized;
+            }
+            return envelope.response;
         } catch (error) {
             if (error instanceof BrowserPageRemoteTimeoutError) throw error;
-            if (evaluating && request.action === "ai:invoke" && isPageModelContextLoss(error)) {
+            if (evaluating && request.action === "ai:invoke" && isAutomationContextLoss(error)) {
                 return allowNavigation
                     ? { ok: true, result: { navigated: true } }
                     : { ok: false, code: "page-navigated", error: "Page navigated during the model call; its result is unavailable." };

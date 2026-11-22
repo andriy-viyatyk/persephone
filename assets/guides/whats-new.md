@@ -14,6 +14,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
+- **Browser automation has richer locators and reads.** Browser pages, boards, and the app window accept role, label, text, and other selector engines, chained locators, state and text reads, and page predicates; site models can return clickable element refs.
 - **Web-app regression tests:** wait for changing UI with `ctx.expect.poll`, bound an attempt with
   `--test-timeout` or its per-test `timeout` option, and share setup and cleanup through file hooks.
 - **Drop a folder to browse it:** dropping one folder from Windows Explorer onto Persephone now

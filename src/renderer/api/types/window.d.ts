@@ -31,6 +31,11 @@ import type {
     IBrowserScreenshotOptions,
     IBrowserEvaluateOptions,
     IBrowserEvaluateFunction,
+    IBrowserLocatorReadOptions,
+    IBrowserQueryOptions,
+    IBrowserQueryResult,
+    IBrowserWaitForFunctionOptions,
+    IBrowserJsonValue,
 } from "./browser-editor";
 
 export interface IMenuBarFolder {
@@ -107,6 +112,15 @@ export interface IWindowScreen {
     keyUp(key: string, options?: IBrowserKeyboardOptions): Promise<void>;
     /** Run JavaScript in the app window and return the result. */
     evaluate(expression: string | IBrowserEvaluateFunction, options?: IBrowserEvaluateOptions): Promise<unknown>;
+    count(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<number>;
+    isVisible(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean>;
+    isEnabled(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean>;
+    isChecked(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean>;
+    innerText(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<string>;
+    allInnerTexts(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<string[]>;
+    boundingBox(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<{ x: number; y: number; width: number; height: number } | null>;
+    query(locator: IBrowserElementLocator, options?: IBrowserQueryOptions): Promise<IBrowserQueryResult>;
+    waitForFunction(fn: string | IBrowserEvaluateFunction, options?: IBrowserWaitForFunctionOptions): Promise<IBrowserJsonValue>;
     /** Wait for exactly one selector, text, textGone, or time condition. */
     waitFor(options: {
         selector?: string;

@@ -1,3 +1,23 @@
+## EPIC-206 — Locators for browser automation
+
+Completed 2026-11-22. Step 4 of the [web-app testing review](../reviews/web-app-testing-review.md) roadmap (D0–D5,
+G6). Every caller-supplied selector now resolves through one page-side grammar (`resolveCandidates` in
+`automation/page-scripts.ts`) and one host entry (`automation/selector-execution.ts`); `fullscreen(selector)` stays
+a CSS-only main-process exception. Engines `role=` (role, name and states from Chromium's accessibility tree, so they
+agree with the snapshot), `label=`, `placeholder=`, `testid=`, `title=`, `alt=`, `ref=` and the existing `text=`;
+`>>` chaining, `nth=N`, `:has-text()`/`:visible` CSS suffixes, and a JSON-safe object form compiled to the same
+grammar. Page models get `runtime.ref` (ordinary `e<id>` refs, clicked with trusted input), `visible`,
+`accessibleName`, `setValue`, `waitFor`, `afterReturn`. Locator reads `count`, `isVisible`, `isEnabled`,
+`isChecked`, `innerText`, `allInnerTexts`, `boundingBox`, bulk `query(locator, { fields })`, and
+`waitForFunction`. Bridge 1.60.0. `[include-hidden]` adds nothing in practice (Chromium's AX query omits hidden
+nodes). Completion skills by Codex (Luna). Epic document: [EPIC-206](EPIC-206.md).
+
+- [x] **One selector resolution path (US-2160).**
+- [x] **Selector engines (US-2161).**
+- [x] **Chaining, filters and the object form (US-2162).**
+- [x] **Model refs and runtime helpers (US-2163).**
+- [x] **Locator read members and waitForFunction (US-2164).**
+
 ## EPIC-205 — Test structure for web-app tests
 
 Completed 2026-11-22. Step 3 of the [web-app testing review](../reviews/web-app-testing-review.md) roadmap (B2, B4,

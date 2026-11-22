@@ -591,9 +591,16 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Agent Tools call-tree node and typed search/toolset operations | `/src/renderer/scripting/ai-vision/namespaces/tools.ts`, `/src/renderer/api/tools/tool-search.ts`, `/src/renderer/api/tools/toolset-operations.ts` |
 | Shared browser-like automation operations (locator resolution waits for two consecutive stable frames before clicks; mouse, focus, keyboard, forms, queries, page events, navigation, synthetic input, and screenshot/viewport/network state) | `/src/renderer/automation/locator.ts`, `/src/renderer/automation/mouse.ts`, `/src/renderer/automation/focus.ts`, `/src/renderer/automation/keyboard.ts`, `/src/renderer/automation/forms.ts`, `/src/renderer/automation/queries.ts`, `/src/renderer/automation/page-events.ts`, `/src/renderer/automation/navigation.ts`, `/src/renderer/automation/synthetic.ts`, `/src/renderer/automation/page-state.ts` |
 | Shared in-page snippets and CDP input session coordinate mapping | `/src/renderer/automation/page-scripts.ts`, `/src/renderer/automation/input-session.ts` |
+| Shared selector execution entry and one page-side selector grammar (`resolveCandidates`, including Chromium AX facts for role selectors) | `/src/renderer/automation/selector-execution.ts`, `/src/renderer/automation/page-scripts.ts` |
+| Locator read members and capped bulk capture | `/src/renderer/automation/locator-reads.ts` |
+| In-page predicate polling and navigation/context-loss mapping | `/src/renderer/automation/wait-for-function.ts`, `/src/renderer/automation/context-loss.ts` |
+| JSON-safe automation values | `/src/renderer/automation/json-value.ts` |
 | Shared browser-like AiVision members (common automation descriptor for browser, board, and app-window hosts) | `/src/renderer/scripting/ai-vision/browser-automation-members.ts` |
 | Legacy browser synthetic input compatibility | `/src/renderer/automation/input.ts` |
 | Browser ref resolution and per-host iframe-session stores (a snapshot ref is a `backendDOMNodeId`; `StaticText` refs are coerced to their nearest element, and frame maps are keyed by the host registration key) | `/src/renderer/automation/ref.ts` |
+| Page-model marker conversion to ordinary CDP refs | `/src/renderer/editors/browser/page-model-refs.ts` |
+| Site-extension page-model helpers and temporary element-ref registry | `/src/site-extension-helpers.ts` |
+| Shared page-side visibility and native input-value primitives | `/src/shared/automation-page-primitives.ts` |
 | CDP session wrapper      | `/src/renderer/automation/CdpSession.ts`           |
 | Accessibility snapshot   | `/src/renderer/automation/snapshot.ts`              |
 | App-window automation target (`IAutomationTarget` plus app-window operations; `APP_WINDOW_CDP_KEY` routes to the calling window's own webContents in `cdp-service`; snapshot includes the active page while hidden page content is excluded by the AX tree) | `/src/renderer/automation/AppTargetModel.ts` |

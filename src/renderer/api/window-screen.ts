@@ -7,6 +7,7 @@ import type {
     IBrowserHoverOptions, IBrowserKeyboardOptions, IBrowserNetworkRequest, IBrowserResponse,
     IBrowserResponseWaitOptions, IBrowserScreenshot, IBrowserScreenshotOptions, IBrowserSelectOptions,
     IBrowserTypeOptions,
+    IBrowserLocatorReadOptions, IBrowserQueryOptions, IBrowserQueryResult, IBrowserWaitForFunctionOptions, IBrowserJsonValue,
 } from "./types/browser-editor";
 import { appTarget } from "../automation/AppTargetModel";
 import { clickAtCoordinates, dragCoordinates } from "../automation/mouse";
@@ -53,6 +54,15 @@ export class WindowScreen implements IWindowScreen {
     keyDown(key: string, options?: IBrowserKeyboardOptions): Promise<void> { return this.automation.keyDown(key, options); }
     keyUp(key: string, options?: IBrowserKeyboardOptions): Promise<void> { return this.automation.keyUp(key, options); }
     evaluate(expression: string | IBrowserEvaluateFunction, options?: IBrowserEvaluateOptions): Promise<unknown> { return this.automation.evaluate(expression, options); }
+    count(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<number> { return this.automation.count(locator, options); }
+    isVisible(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean> { return this.automation.isVisible(locator, options); }
+    isEnabled(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean> { return this.automation.isEnabled(locator, options); }
+    isChecked(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean> { return this.automation.isChecked(locator, options); }
+    innerText(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<string> { return this.automation.innerText(locator, options); }
+    allInnerTexts(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<string[]> { return this.automation.allInnerTexts(locator, options); }
+    boundingBox(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<{ x: number; y: number; width: number; height: number } | null> { return this.automation.boundingBox(locator, options); }
+    query(locator: IBrowserElementLocator, options?: IBrowserQueryOptions): Promise<IBrowserQueryResult> { return this.automation.query(locator, options); }
+    waitForFunction(fn: string | IBrowserEvaluateFunction, options?: IBrowserWaitForFunctionOptions): Promise<IBrowserJsonValue> { return this.automation.waitForFunction(fn, options); }
     waitFor(options: WaitForOption): Promise<void> { return this.automation.waitFor(options); }
     screenshot(options?: IBrowserScreenshotOptions): Promise<IBrowserScreenshot | undefined> { return this.automation.screenshot(options); }
     drag(source: IBrowserElementLocator, destination: IBrowserDragDestination, options?: IBrowserDragOptions): Promise<void> { return this.automation.drag(source, destination, options); }

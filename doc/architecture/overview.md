@@ -285,7 +285,7 @@ installed by the native `theme/global-styles.ts` module.
 | **editors/** | File type handling, content editing | `registry.ts`, `text/`, `grid/`, `browser/`, etc. |
 | **content/** | Content I/O pipeline — providers, transformers, pipes | `ContentPipe.ts`, `parsers.ts`, `resolvers.ts`, `providers/`, `transformers/` |
 | **scripting/** | Script sandbox, API wrappers, facades | `ScriptRunner.ts`, `ScriptContext.ts`, `api-wrapper/` |
-| **automation/** | Target-neutral browser-like operations, CDP sessions, input sessions, page snippets, and host-scoped refs for Object Model call paths | `locator.ts`, `mouse.ts`, `keyboard.ts`, `forms.ts`, `queries.ts`, `page-events.ts`, `page-state.ts`, `navigation.ts`, `synthetic.ts`, `input-session.ts`, `page-scripts.ts`, `ref.ts`, `snapshot.ts`, target models |
+| **automation/** | Target-neutral browser-like operations, one host selector-execution entry, page-side selector grammar, locator reads, predicate waits, CDP sessions, input sessions, and host-scoped refs | `selector-execution.ts`, `page-scripts.ts`, `locator-reads.ts`, `wait-for-function.ts`, `json-value.ts`, `context-loss.ts`, operation modules, target models |
 | **uikit/** | Standalone reusable framework-free component library built from `VanillaView` classes and native DOM builders | `Button/`, `Menu/`, `Tree/`, `ListBox/`, `Select/`, `DataGrid/` (the av-grid boundary), … — import from defining files; see `uikit/CLAUDE.md` |
 | **components/** | Persephone-coupled components and native views only (KEEP-only) | `icons/`, `page-manager/`, `file-search/`, `tree-provider/`, `file-list/`, `file-grid/`, `git-tree/` |
 | **core/** | State primitives, utilities | `state/` (TOneState, TModel), `utils/` |

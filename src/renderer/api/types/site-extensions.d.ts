@@ -101,6 +101,18 @@ export interface SiteExtensionActionRuntime {
     setActions(items: SiteActionDefinition[]): void;
     /** Fetch cookieless HTTPS text from a separately trusted host. */
     fetchText(url: string): Promise<string>;
+    /** Return an element as an ordinary browser automation ref. Main-document elements only. */
+    ref(element: Element): { ref: string };
+    /** Match the shared automation visibility rule: sized, displayed, and not hidden by visibility. */
+    visible(element: Element): boolean;
+    /** Synchronous accessible-name approximation; snapshots use Chromium's accessibility name instead. */
+    accessibleName(element: Element): string;
+    /** Set an input or textarea through its native value setter and synthetic input/change events. */
+    setValue(element: HTMLInputElement | HTMLTextAreaElement, value: string): void;
+    /** Poll immediately, then every 100 ms by default, until truthy or the 5000 ms timeout. */
+    waitFor<T>(predicate: () => T | Promise<T>, options?: { timeout?: number; interval?: number }): Promise<Awaited<T>>;
+    /** Run after the reply has been produced; use allowNavigation if navigation still wins. */
+    afterReturn(callback: () => void): void;
     onDispose(callback: () => void): void;
     dispose(): void;
 }

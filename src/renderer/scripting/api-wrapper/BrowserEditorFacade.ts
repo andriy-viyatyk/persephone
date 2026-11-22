@@ -9,7 +9,7 @@ import { setViewport as setViewportOperation, clearViewport as clearViewportOper
 import { navigateAndWait as navigateAndWaitOperation, navigateBackAndWait, waitForNavigationEvents, type UrlPatternInput } from "../../automation/navigation";
 import { resolveElementLocator } from "../../automation/locator";
 import { createRemoteProxy, DEFAULT_MAX_LENGTH, type IAiElementDeclaration, type IAiMember, type IAiNodeShape, type IAiVisible, type IAiVisionDescriptor, type IAiVisionShape } from "ai-vision";
-import type { IBrowserActionOptions, IBrowserClickOptions, IBrowserCoordinateOptions, IBrowserEditor, IBrowserElementLocator, IBrowserHoverOptions, IBrowserKeyboardOptions, IBrowserNetworkRequest, IBrowserNetworkRequestsOptions, IBrowserResponse, IBrowserResponseWaitOptions, IBrowserScreenshot, IBrowserScreenshotOptions, IBrowserSelectOptions, IBrowserTab, IBrowserTypeOptions, IBrowserDialogPolicy, IBrowserConsoleLevel, IBrowserDragDestination, IBrowserDragOptions, IBrowserFormField, IBrowserViewportOptions, IBrowserEvaluateOptions, IBrowserEvaluateFunction, ITemporarySiteExtensionOptions, ITemporarySiteExtensionAttachResult, ITemporarySiteExtensionDetachResult, ITemporarySiteExtensionListItem } from "../../api/types/browser-editor";
+import type { IBrowserActionOptions, IBrowserClickOptions, IBrowserCoordinateOptions, IBrowserEditor, IBrowserElementLocator, IBrowserHoverOptions, IBrowserKeyboardOptions, IBrowserNetworkRequest, IBrowserNetworkRequestsOptions, IBrowserResponse, IBrowserResponseWaitOptions, IBrowserScreenshot, IBrowserScreenshotOptions, IBrowserSelectOptions, IBrowserTab, IBrowserTypeOptions, IBrowserDialogPolicy, IBrowserConsoleLevel, IBrowserDragDestination, IBrowserDragOptions, IBrowserFormField, IBrowserViewportOptions, IBrowserEvaluateOptions, IBrowserEvaluateFunction, IBrowserLocatorReadOptions, IBrowserQueryOptions, IBrowserQueryResult, IBrowserWaitForFunctionOptions, IBrowserJsonValue, ITemporarySiteExtensionOptions, ITemporarySiteExtensionAttachResult, ITemporarySiteExtensionDetachResult, ITemporarySiteExtensionListItem } from "../../api/types/browser-editor";
 import { BROWSER_AUTOMATION_MEMBERS } from "../ai-vision/browser-automation-members";
 import { BROWSER_PLAYWRIGHT_ALIAS_MEMBERS, provideBrowserPlaywrightAlias, suggestBrowserPlaywrightName } from "../ai-vision/browser-playwright-aliases";
 import { appCallTimeout } from "../../api/ai-vision-call-timeout";
@@ -185,7 +185,12 @@ to hidden or visible file inputs; it does not intercept native chooser dialogs. 
 element targets, PNG/JPEG, and fullPage on browser pages only; target and fullPage cannot be combined,
 and cross-origin iframe refs are unsupported as element targets. evaluate() accepts JSON-safe args
 for functions and function-expression strings; arrow strings are invoked. setViewport() and
-clearViewport() are browser-only and emulate page metrics inside the existing webview box.`;
+clearViewport() are browser-only and emulate page metrics inside the existing webview box. Locator
+reads are immediate; strict single-element reads require exactly one match, and { nth } selects a
+zero-based match. query() captures at most 200 matches; requested text, values and attributes expose
+page data, and role/name use Chromium accessibility facts. Increase outer call maxLength for larger
+results. waitForFunction() serializes and executes caller-authored JavaScript in the page, so it can
+mutate page state; return values and args must be JSON-safe.`;
 
 /**
  * Safe facade around BrowserEditor for script access.
@@ -520,6 +525,16 @@ export class BrowserEditorFacade extends EditorFacadeBase<BrowserEditor> impleme
         return this.automation.runHostOperation("exists", options?.tabId,
             () => elementExists(this.model.target, resolveElementLocator(locator), options?.tabId), { passive: false, tip: true });
     }
+
+    count(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<number> { return this.automation.count(locator, options); }
+    isVisible(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean> { return this.automation.isVisible(locator, options); }
+    isEnabled(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean> { return this.automation.isEnabled(locator, options); }
+    isChecked(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<boolean> { return this.automation.isChecked(locator, options); }
+    innerText(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<string> { return this.automation.innerText(locator, options); }
+    allInnerTexts(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<string[]> { return this.automation.allInnerTexts(locator, options); }
+    boundingBox(locator: IBrowserElementLocator, options?: IBrowserLocatorReadOptions): Promise<{ x: number; y: number; width: number; height: number } | null> { return this.automation.boundingBox(locator, options); }
+    query(locator: IBrowserElementLocator, options?: IBrowserQueryOptions): Promise<IBrowserQueryResult> { return this.automation.query(locator, options); }
+    waitForFunction(fn: string | IBrowserEvaluateFunction, options?: IBrowserWaitForFunctionOptions): Promise<IBrowserJsonValue> { return this.automation.waitForFunction(fn, options); }
 
     // =====================================================================
     // Interaction methods

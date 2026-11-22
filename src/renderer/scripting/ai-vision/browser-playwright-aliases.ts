@@ -36,12 +36,17 @@ export const BROWSER_PLAYWRIGHT_ALIAS_MEMBERS: readonly IAiMember[] = [
 
 /** Each text completes the resolver's "Did you mean …?" line. */
 const BROWSER_PLAYWRIGHT_SUGGESTIONS: Readonly<Record<string, string>> = {
-    getByRole: 'a CSS or text= selector passed to the action, e.g. click(\'button[aria-label="Save"]\') or click("text=Save") (role locators are not available yet)',
-    locator: 'passing the selector straight to the action, e.g. click(".popover button")',
+    getByRole: 'click(\'role=button[name="Save"]\')',
+    getByLabel: 'type(\'label=Email\', "name@example.com")',
+    getByText: 'click("text=Save")',
+    getByTestId: 'click("testid=save")',
+    getByPlaceholder: 'type("placeholder=Email", "name@example.com")',
+    getByTitle: 'click("title=Refresh")',
+    getByAltText: 'click("alt=Logo")',
+    locator: 'passing a chained selector or object locator, e.g. click("role=dialog >> role=button[name=\"Save\"]") or click({ role: "button", name: "Save", within: { ref: "e12" } })',
     waitForLoadState: 'waitForNavigation({ waitUntil: "load" }) (it waits for the next navigation)',
-    isVisible: 'exists(selector), or waitForSelector(selector, { state: "visible" }) (it waits and throws on timeout)',
-    $: "exists(selector), getText(selector), getValue(selector) or evaluate(...)",
-    $$: "evaluate(...) returning the values you need (element handles are not exposed)",
+    $: "query(selector) or an existing scalar read such as getText(selector)",
+    $$: "query(selector) or allInnerTexts(selector)",
     content: 'getHtml(selector), or evaluate("document.documentElement.outerHTML") for the whole document',
 };
 

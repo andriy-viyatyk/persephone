@@ -5,9 +5,10 @@ import { checkElement, clickElement, uncheckElement } from "./mouse";
 import { pressKey, typeMappedCharacter } from "./input";
 import { typeText } from "./synthetic";
 import { getRefSessionId, parseRef } from "./ref";
+import { evaluateCandidateObject } from "./selector-execution";
 import { errMessage } from "../../shared/utils";
 import type { IAutomationTarget, ISyntheticInputHost } from "./types";
-import type { ActionablePoint, ElementLocator, RefLocator, MouseActionOptions } from "./locator";
+import type { ActionablePoint, ElementLocator, LocatorInput, MouseActionOptions } from "./locator";
 
 
 export interface TypeActionOptions extends MouseActionOptions {
@@ -15,9 +16,9 @@ export interface TypeActionOptions extends MouseActionOptions {
     submit?: boolean;
 }
 export type FillFormField =
-    | { name: string; locator: string | RefLocator; action: "type"; value: string; options?: TypeActionOptions }
-    | { name: string; locator: string | RefLocator; action: "select"; value: string | string[]; options?: MouseActionOptions }
-    | { name: string; locator: string | RefLocator; action: "check" | "uncheck"; options?: MouseActionOptions };
+    | { name: string; locator: LocatorInput; action: "type"; value: string; options?: TypeActionOptions }
+    | { name: string; locator: LocatorInput; action: "select"; value: string | string[]; options?: MouseActionOptions }
+    | { name: string; locator: LocatorInput; action: "check" | "uncheck"; options?: MouseActionOptions };
 async function selectEditableContent(
     cdp: ActionablePoint["cdp"], locator: ElementLocator, nth: number | undefined,
     sessionId: string | undefined, kind: string,
@@ -197,22 +198,24 @@ export async function setInputFiles(
     const cdp = target.cdp(options.tabId);
     const sessionId = "ref" in locator ? getRefSessionId(cdp, locator.ref) : undefined;
     // DOM.getDocument first: it enables the DOM agent, which every DOM.* call below needs.
-    // CSS-only DOM.querySelectorAll, not DOM.performSearch — the latter is also a plain-text
-    // search, so "#f" could match text in a script and break the strictness count.
-    const { root } = await cdp.send("DOM.getDocument", { depth: 0 }, sessionId);
+    await cdp.send("DOM.getDocument", { depth: 0 }, sessionId);
     let backendNodeId: number;
     if ("ref" in locator) {
         backendNodeId = parseRef(locator.ref).backendNodeId;
     } else {
-        const { nodeIds } = await cdp.send("DOM.querySelectorAll", { nodeId: root.nodeId, selector: locator.selector }, sessionId);
-        const count = (nodeIds as number[] | undefined)?.length ?? 0;
-        if (count !== 1) {
-            throw new Error(count === 0
-                ? `Element not found: ${locator.selector}`
-                : `Ambiguous selector "${locator.selector}": ${count} matches. Use a ref or narrow the selector.`);
+        const selector = locator.selector;
+        const objectId = await evaluateCandidateObject(cdp, selector, `(resolve) => {
+            const matches = resolve('query');
+            if (matches.length === 0) throw new Error('Element not found: ' + ${JSON.stringify(selector)});
+            if (matches.length > 1) throw new Error('Ambiguous selector "' + ${JSON.stringify(selector)} + '": ' + matches.length + ' matches. Use a ref or narrow the selector.');
+            return matches[0];
+        }`);
+        try {
+            const described = await cdp.send("DOM.describeNode", { objectId }, sessionId);
+            backendNodeId = described.node.backendNodeId;
+        } finally {
+            await cdp.send("Runtime.releaseObject", { objectId }, sessionId).catch((): undefined => undefined);
         }
-        const described = await cdp.send("DOM.describeNode", { nodeId: nodeIds[0] }, sessionId);
-        backendNodeId = described.node.backendNodeId;
     }
     const node = await cdp.send("DOM.describeNode", { backendNodeId }, sessionId);
     const attributes = node.node?.attributes as string[] | undefined;
