@@ -10,8 +10,10 @@ import { chooseMcpPort } from "./ports";
 import { probeProfile, readProfileMcp, resolveProfileDirectory } from "./profile";
 import type { TestControllerArguments } from "./arguments";
 import { errMessage } from "../../shared/utils";
+import { Console } from "node:console";
 
 export async function startTestController(profileArgs: ReturnType<typeof parseApplicationProfile>, options: TestControllerArguments): Promise<void> {
+    if (options.reporter === "json-lines") globalThis.console = new Console({ stdout: process.stderr, stderr: process.stderr });
     const originalUserData = app.getPath("userData");
     const targetProfile = resolveProfileDirectory(profileArgs, originalUserData);
     let temporaryDirectory: string | undefined;
@@ -47,6 +49,7 @@ export async function startTestController(profileArgs: ReturnType<typeof parseAp
             retries: options.retries,
             testTimeout: options.testTimeout,
             grep: options.grep,
+            reporter: options.reporter,
             executable: process.execPath,
             devMain: app.isPackaged ? undefined : path.resolve(__dirname, "main.js"),
             packaged: app.isPackaged,

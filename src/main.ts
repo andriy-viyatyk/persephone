@@ -7,8 +7,9 @@ import { parseApplicationProfile } from "./main/application-profile";
 // could miss. No module in its graph reads userData at load time (data paths resolve lazily), so
 // the profile's setPath below still takes effect for everything.
 import { setupMainProcess } from "./main/main-setup";
-import { parseTestControllerArguments } from "./main/test-mode/arguments";
+import { parseInitSuiteArguments, parseTestControllerArguments } from "./main/test-mode/arguments";
 import { startTestController } from "./main/test-mode/controller";
+import { initializeTestSuite } from "./main/test-mode/init-suite";
 import { errMessage } from "./shared/utils";
 import { guardStandardStreams } from "./main/stdio-guard";
 
@@ -34,12 +35,22 @@ let profile: ReturnType<typeof parseApplicationProfile> | undefined;
 try {
     const startupArguments = process.argv.slice(process.defaultApp ? 2 : 1);
     profile = parseApplicationProfile(startupArguments);
-    const testArguments = parseTestControllerArguments(profile.remainingArgs);
-    if (testArguments) {
-        void startTestController(profile, testArguments);
-    } else startWithProfile(profile);
+    const initArgumentsPresent = profile.remainingArgs.some((argument) => argument === "--init" || argument.startsWith("--init="));
+    const initArguments = initArgumentsPresent ? parseInitSuiteArguments(profile.remainingArgs, process.cwd()) : undefined;
+    if (initArguments) {
+        void initializeTestSuite(initArguments.destination).then((exitCode) => app.exit(exitCode));
+    } else {
+        const testArguments = parseTestControllerArguments(profile.remainingArgs);
+        if (testArguments) {
+            void startTestController(profile, testArguments);
+        } else startWithProfile(profile);
+    }
 } catch (error) {
-    if (process.argv.some((argument) => argument === "--test" || argument.startsWith("--test="))) {
+    const initArgumentsPresent = process.argv.some((argument) => argument === "--init" || argument.startsWith("--init="));
+    if (initArgumentsPresent) {
+        console.error(`Test suite init arguments: ${errMessage(error)}`);
+        app.exit(1);
+    } else if (process.argv.some((argument) => argument === "--test" || argument.startsWith("--test="))) {
         console.error(`Test runner arguments: ${errMessage(error)}`);
         app.exit(1);
     } else {

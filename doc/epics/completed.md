@@ -1,3 +1,22 @@
+## EPIC-209 — Guides and scaffolding for web-app tests
+
+Completed 2026-11-23. Step 7, the last step, of the [web-app testing review](../reviews/web-app-testing-review.md)
+roadmap (G5, G7, H3, H4, H5). A temporary extension's `scriptPath` takes a file, an ordered list or a folder (direct
+`.js` files in name order), concatenated into one shared scope with errors mapped to `file:line`
+(`editors/browser/temporary-extension-sources.ts`). `--reporter json-lines` writes a versioned JSON event stream to
+stdout (`run-start`, `test-start`, `test-end`, `hook-failure`, `run-end`); all human output, test `console.*` and an
+owned app's stdout go to stderr (`test-host/json-lines-reporter.ts`). `persephone-test --init <folder>` writes a
+generic offline starter suite from `assets/test-suite-template/` (loopback fixture page, two-file model, smoke test,
+run script, `AGENTS.md`), refuses a non-empty folder, and starts no window (`main/test-mode/init-suite.ts`). New guide
+page `web-app-tests/browser-models-and-playwright.md` (matchers, session pages, test-window scope, Playwright →
+Persephone table, model vs test) and a "Test models" section in `temporary-site-extensions.md`; stale `allowNavigation`
+and hover help text corrected. Bridge 1.63.0. Completion skills by Codex (Luna). Epic document: [EPIC-209](EPIC-209.md).
+
+- [x] **Page model in several files (US-2176).**
+- [x] **`--reporter json-lines` on stdout (US-2177).**
+- [x] **`persephone-test --init <folder>` starter suite (US-2178).**
+- [x] **Web-app test guides and test-model section (US-2179).**
+
 ## EPIC-208 — Input fidelity for web-app tests
 
 Completed 2026-11-22. Step 6 of the [web-app testing review](../reviews/web-app-testing-review.md) roadmap (E2, E3,

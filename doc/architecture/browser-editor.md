@@ -458,7 +458,8 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/renderer/editors/browser/BrowserTorModel.ts` | Renderer | Tor proxy arming, daemon listeners/reconnect, and cleanup |
 | `src/renderer/editors/browser/BrowserWebviewModel.ts` | Renderer | Private webview registry, readiness and navigation commands, guest event routing, and automation menu suppression |
 | `src/renderer/editors/browser/BrowserAutomationMenuGuard.ts` | Renderer | Per-tab consume-once suppression entries for trusted automation right-click menus |
-| `src/renderer/editors/browser/BrowserSiteExtensionController.ts` | Renderer | Site-extension trust, injection, actions, fetch routing, and reload lifecycle |
+| `src/renderer/editors/browser/BrowserSiteExtensionController.ts` | Renderer | Site-extension trust, source selection, injection, actions, fetch routing, and reload lifecycle |
+| `src/renderer/editors/browser/temporary-extension-sources.ts` | Renderer | Temporary extension path validation, ordered file loading, combined-source construction, and error-location mapping |
 | `src/renderer/editors/browser/BrowserPageRemote.ts` | Renderer | Page/WebMCP model registration, probing, privacy checks, revalidation, and remote requests |
 | `src/renderer/editors/browser/page-model-reply.ts` | Renderer | Page-model reply length normalization, truncation errors, and navigation-loss detection |
 | `src/renderer/editors/browser/BrowserFindModel.ts` | Renderer | Find-in-page state and commands |
@@ -1564,8 +1565,14 @@ path is resolved relative to its extension folder and rejected when its normaliz
 folder. This is a lexical check; a symlink inside the extension folder can still point outside it,
 so this path check is not a filesystem sandbox.
 
-`BrowserSiteExtensionController` checks each completed document's URL and privacy mode before loading an
-extension. Incognito and Tor pages are always skipped. A matching extension runs in the page's
+`BrowserSiteExtensionController` coordinates saved and temporary extension injection for each
+completed document. Temporary source resolution is delegated to `temporary-extension-sources.ts`,
+which validates absolute paths and reads either one script, an explicitly ordered file list, or the
+direct `.js` files in a folder sorted by name. It also records each source's line range so an
+injection error can be mapped back to its original file. Saved and temporary selection, privacy and
+trust policy, page actions, and fetch routing remain controller responsibilities. Incognito and Tor
+pages are skipped for saved extensions; temporary extensions can run there when explicitly
+authorized by the agent. A matching saved extension runs in the page's
 main world through CDP `Runtime.evaluate`, with the standalone site-extension runtime loaded before
 the extension script; this path is not subject to the site's script CSP. Extensions do not run until
 the user trusts them. Trust is owned by the main process and persisted separately from extension

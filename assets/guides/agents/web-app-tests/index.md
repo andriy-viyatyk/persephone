@@ -15,7 +15,8 @@ Playwright for server CI.
 
 | If you need to... | Read | Object-model path |
 |---|---|---|
-| Understand call paths, Playwright-to-Persephone locators, and a complete test example | [Call boundary and worked example](./call-boundary-and-examples.md) | `guides.agents["web-app-tests"]["call-boundary-and-examples"]` |
+| Read a complete call-boundary test example | [Call boundary and worked example](./call-boundary-and-examples.md) | `guides.agents["web-app-tests"]["call-boundary-and-examples"]` |
+| Check matchers, browser-model scope, and Playwright mappings | [Browser models and Playwright](./browser-models-and-playwright.md) | `guides.agents["web-app-tests"]["browser-models-and-playwright"]` |
 | Reuse a signed-in browser page, configure attached windows, or inspect captured failures and logs | [Attached runs, session pages, and results](./attached-runs-and-results.md) | `guides.agents["web-app-tests"]["attached-runs-and-results"]` |
 | Share setup and cleanup across tests in one file | [File hooks](./file-hooks.md) | `guides.agents["web-app-tests"]["file-hooks"]` |
 | Choose test commands, runner options, output locations, and exit-code behavior | [Run and configure tests](./run-options.md) | `guides.agents["web-app-tests"]["run-options"]` |
@@ -85,7 +86,7 @@ Every test receives these `ctx` members:
 - `callText(path, args?, options?)` — path-based call returning text without JSON parsing.
 - `set(path, value, { timeout? })` — assign a writable property (one whose `$help` says it is writable). Assigning through `ctx.app` throws, because an assignment cannot be awaited.
 - `waitFor(pathOrCallback, predicate, { timeout?, maxLength?, dialog?, allowNavigation?, message? })` — host-side polling of a call or callback.
-- `expect(value, message?)` — assertions with `toBe`, `toEqual`, `toContain`, `toBeTruthy`, `toBeFalsy`, `toBeNull`, `toBeUndefined`, `toBeDefined`, `toBeGreaterThan`, `toBeGreaterThanOrEqual`, `toBeLessThan`, `toBeLessThanOrEqual`, `toHaveLength`, `toHaveProperty`, `toMatch`, `toMatchObject`, `toContainEqual`, and `toThrow`. Every matcher also supports `.not`, for example `ctx.expect(value).not.toBe(expected)`. A supplied message is shown before the generated assertion failure.
+- `expect(value, message?)` and `expect.poll()` share the same matchers; see the [matcher reference](./browser-models-and-playwright.md).
 - `script(code)` — run `script.execute` and return its completed text.
 - `file(relative)` — resolve a fixture path relative to this test file.
 - `log(message)` — add a note to `tests.log` and runner console output.

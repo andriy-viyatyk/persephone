@@ -138,7 +138,7 @@ common page tasks:
 | `runtime.accessibleName(element)` | Get a page-side approximation from labels, ARIA, alt text, content, or title. It is not Chromium's accessible-name computation; use `role=` selectors or snapshots for Chromium accessibility facts. |
 | `runtime.setValue(input, value)` | Set an `HTMLInputElement` or `HTMLTextAreaElement` with its native setter and dispatch untrusted `input` and `change` events. |
 | `runtime.waitFor(predicate, options)` | Poll until a predicate returns a truthy value. Defaults: 5,000 ms timeout and 100 ms interval. Errors from the predicate reject the wait. |
-| `runtime.afterReturn(callback)` | Schedule work after one model call's reply has been produced. This is best effort; if navigation wins, use the call option `{ allowNavigation: true }` to recover its result. |
+| `runtime.afterReturn(callback)` | Schedule work after one model call's reply is serialized. This is best effort; if cross-document navigation destroys the in-flight call, `{ allowNavigation: true }` returns `{ navigated: true }`, not the original value. |
 
 `runtime.ref()` only accepts an element connected to the main document. A model may return the
 helper's `{ ref }` result directly; the host converts it to an ordinary snapshot ref before the
@@ -166,8 +166,10 @@ test("clicks Save by its model ref", async (ctx) => {
 
 `afterReturn()` can only be queued while exactly one model call is in flight; concurrent calls are
 rejected because the callback cannot be assigned to one reply. It runs on a later timer turn after
-the reply is serialized, without an end-to-end delivery acknowledgment. Use navigation recovery if
-the callback navigates the page.
+the reply is serialized, without an end-to-end delivery acknowledgment. Use it to schedule navigation
+after reply serialization. If navigation still destroys the method invocation,
+`allowNavigation: true` returns `{ navigated: true }`; the method's value is available only when the
+reply arrives before navigation. Without the option, the call fails with `page-navigated`.
 
 `waitFor()` runs in the page and is also bounded by the outer model call's request timeout. When a
 model must support an older app runtime, check that a helper exists before using it, for example
@@ -329,12 +331,13 @@ snapshots for structure or controls the model does not represent.
 - Verify `$help`, a small collection result, and one explicit read path before using the model.
 
 Keep replies within the model's own collection and string bounds. A larger call `maxLength` only
-raises the reply-size cap; structural shaping still limits arrays to 500 items and nesting to depth
-8, and long nested strings can carry truncation markers. If a reported length cut reaches the caller,
-the call fails with `result-truncated`; raise `maxLength` only when the model itself can supply the
-extra data. Page-model replies preserve object-key order, but generic browser `evaluate()` values can
-be reordered during transfer. Return `JSON.stringify(value)` from `evaluate()` when key order matters.
-Temporary extensions expose the same page model, so these reply limits apply there too.
+raises the reply-size cap; long nested strings can carry truncation markers. If a reported length cut
+reaches the caller, the call fails with `result-truncated`; raise `maxLength` only when the model
+itself can supply the extra data. Site-extension models use the site-shape path and do not receive
+the host's generic 500-item array or depth shaping limits. Page-model replies preserve object-key
+order, but generic browser `evaluate()` values can be reordered during transfer. Return
+`JSON.stringify(value)` from `evaluate()` when key order matters. Temporary extensions expose the
+same page model and reply behavior.
 
 ## Complete generic example
 

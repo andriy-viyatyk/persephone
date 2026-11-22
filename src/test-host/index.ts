@@ -3,6 +3,7 @@ import type { HostConfiguration } from "./launcher.js";
 import { errMessage } from "../shared/utils.js";
 import { test as createTestDescriptor, type TestFunction } from "./test-api.js";
 import { TEST_HOST_CONFIG_MARKER } from "../ipc/test-host-protocol.js";
+import { redirectGlobalConsoleToStderr } from "./json-lines-reporter.js";
 
 type ControllerConfiguration = HostConfiguration;
 declare global { var test: TestFunction; }
@@ -19,6 +20,7 @@ async function main(): Promise<void> {
         const raw = markerIndex >= 0 ? process.argv[markerIndex + 1] : undefined;
         if (!raw) throw new Error("Missing test host configuration.");
         const configuration = JSON.parse(raw) as ControllerConfiguration;
+        if (configuration.reporter === "json-lines") redirectGlobalConsoleToStderr();
         globalThis.test = createTestDescriptor;
         code = await run(configuration);
     } catch (error) {

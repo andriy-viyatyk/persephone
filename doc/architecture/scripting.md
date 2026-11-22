@@ -351,8 +351,10 @@ Trust for saved extensions is owned by the main process and bound to the configu
 folder and the extension's exact host list. Editing the script does not invalidate consent;
 changing its hosts does. Saved extensions do not run in Incognito or Tor. An agent may attach a
 temporary extension to an agent-accessible private browser page; it remains page-scoped and has no
-privileged fetch broker. See [Browser Editor Architecture](./browser-editor.md#site-extensions) for
-the injection, prompt, and remote-model lifecycle.
+privileged fetch broker. Its `scriptPath` may name one file, an explicitly ordered list of files, or
+a folder whose direct `.js` files are loaded in name order. See
+[Browser Editor Architecture](./browser-editor.md#site-extensions) for source resolution and the
+injection, prompt, and remote-model lifecycle.
 
 ### `app.proc` — Process Execution
 

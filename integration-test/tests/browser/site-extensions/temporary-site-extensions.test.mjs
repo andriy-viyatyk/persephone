@@ -178,14 +178,116 @@ export default [
         }
     }),
 
+    test("ordered scriptPath files share one scope and folders select direct JavaScript files", async (ctx) => {
+        const server = await startServer();
+        const folder = ctx.fixture("us-2176/temporary-site-extensions/multi-file");
+        const firstPath = ctx.fixture("us-2176/temporary-site-extensions/multi-file/00-first.js");
+        const secondPath = ctx.fixture("us-2176/temporary-site-extensions/multi-file/10-second.JS");
+        const middlePath = ctx.fixture("us-2176/temporary-site-extensions/multi-file/05-middle.js");
+        const explicitFirstPath = ctx.fixture("us-2176/temporary-site-extensions/explicit-order/z-first.js");
+        const explicitSecondPath = ctx.fixture("us-2176/temporary-site-extensions/explicit-order/a-second.js");
+        const ignoredPath = ctx.fixture("us-2176/temporary-site-extensions/multi-file/20-ignored.txt");
+        const nestedPath = ctx.fixture("us-2176/temporary-site-extensions/multi-file/nested/30-nested.js");
+        let page;
+        try {
+            await ctx.app.fs.mkdir(folder);
+            await ctx.app.fs.mkdir(ctx.fixture("us-2176/temporary-site-extensions/multi-file/nested"));
+            await ctx.app.fs.mkdir(ctx.fixture("us-2176/temporary-site-extensions/explicit-order"));
+            await ctx.app.fs.write(firstPath, "window.__us2176Order = ['first'];\nfunction us2176FirstHelper() { return 'shared'; }\n");
+            await ctx.app.fs.write(secondPath, "window.__us2176Order.push(us2176FirstHelper());\nwindow.__us2176SecondLoaded = true;\n");
+            await ctx.app.fs.write(ignoredPath, "window.__us2176Ignored = true;\n");
+            await ctx.app.fs.write(nestedPath, "window.__us2176Nested = true;\n");
+            page = await openBrowser(ctx, `${server.url}/multi-file`, undefined);
+
+            await ctx.app.fs.write(explicitFirstPath, "window.__us2176ExplicitOrder = ['caller first'];\n");
+            await ctx.app.fs.write(explicitSecondPath, "window.__us2176ExplicitOrder.push('caller second');\n");
+            const listed = await ctx.app.pages[page.id].editor.attachTestExtension({
+                host: server.host,
+                scriptPath: [explicitFirstPath, explicitSecondPath],
+            });
+            ctx.expect(listed.targets[0].status).toBe("injected");
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("window.__us2176ExplicitOrder")).toEqual(["caller first", "caller second"]);
+            ctx.expect((await ctx.app.pages[page.id].editor.testExtensions)[0].scriptPath).toEqual([explicitFirstPath, explicitSecondPath]);
+
+            await ctx.app.pages[page.id].editor.detachTestExtension(server.host);
+            const sharedScope = await ctx.app.pages[page.id].editor.attachTestExtension({
+                host: server.host,
+                scriptPath: [firstPath, secondPath],
+            });
+            ctx.expect(sharedScope.targets[0].status).toBe("injected");
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("window.__us2176Order")).toEqual(["first", "shared"]);
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("window.__us2176SecondLoaded")).toBe(true);
+
+            await ctx.app.pages[page.id].editor.detachTestExtension(server.host);
+            const directory = await ctx.app.pages[page.id].editor.attachTestExtension({ host: server.host, scriptPath: folder });
+            ctx.expect(directory.targets[0].status).toBe("injected");
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("window.__us2176Order")).toEqual(["first", "shared"]);
+            ctx.expect(await ctx.app.pages[page.id].editor.evaluate("window.__us2176Ignored === true || window.__us2176Nested === true")).toBe(false);
+            ctx.expect((await ctx.app.pages[page.id].editor.testExtensions)[0].scriptPath).toBe(folder);
+
+            await ctx.app.fs.write(secondPath, "window.__us2176Order.push(us2176FirstHelper() + ' updated');\nwindow.__us2176SecondLoaded = true;\n");
+            await ctx.app.fs.write(middlePath, "window.__us2176Order.push('middle');\n");
+            await ctx.app.pages[page.id].editor.reload();
+            ctx.expect(await ctx.waitFor(
+                (activeContext) => activeContext.app.pages[page.id].editor.evaluate("window.__us2176Order"),
+                (value) => Array.isArray(value) && value.length === 3,
+            )).toEqual(["first", "middle", "shared updated"]);
+            await ctx.app.fs.delete(middlePath);
+            await ctx.app.fs.write(secondPath, "window.__us2176Order.push(us2176FirstHelper() + ' final');\nwindow.__us2176SecondLoaded = true;\n");
+            await ctx.app.pages[page.id].editor.reload();
+            ctx.expect(await ctx.waitFor(
+                (activeContext) => activeContext.app.pages[page.id].editor.evaluate("window.__us2176Order"),
+                (value) => Array.isArray(value) && value.includes("shared final"),
+            )).toEqual(["first", "shared final"]);
+        } finally {
+            await detachIfAttached(ctx, page, server.host);
+            await closeBrowser(ctx, page);
+            await server.close();
+        }
+    }),
+
+    test("multi-file runtime and syntax errors report the source file and line", async (ctx) => {
+        const server = await startServer();
+        const firstPath = ctx.fixture("us-2176/temporary-site-extensions/errors/00-first.js");
+        const secondPath = ctx.fixture("us-2176/temporary-site-extensions/errors/10-second.js");
+        let page;
+        try {
+            await ctx.app.fs.mkdir(ctx.fixture("us-2176/temporary-site-extensions/errors"));
+            await ctx.app.fs.write(firstPath, "function us2176Throw() { throw new Error('runtime failure'); }\n");
+            await ctx.app.fs.write(secondPath, "throw new Error('runtime failure');\n");
+            page = await openBrowser(ctx, `${server.url}/multi-file-errors`, undefined);
+            await ctx.app.pages[page.id].editor.attachTestExtension({ host: server.host, scriptPath: [firstPath, secondPath] });
+            const runtimeFailure = await ctx.waitFor(
+                (activeContext) => activeContext.app.pages[page.id].editor.testExtensions,
+                (items) => items[0]?.failedTabs?.length === 1,
+            );
+            ctx.expect(runtimeFailure[0].failedTabs[0].error).toContain("10-second.js:1");
+            ctx.expect(runtimeFailure[0].failedTabs[0].error).toContain("runtime failure");
+
+            await ctx.app.fs.write(secondPath, "const = ;\n");
+            await ctx.app.pages[page.id].editor.attachTestExtension({ host: server.host, scriptPath: [firstPath, secondPath] });
+            const syntaxFailure = await ctx.waitFor(
+                (activeContext) => activeContext.app.pages[page.id].editor.testExtensions,
+                (items) => items[0]?.failedTabs?.length === 1,
+            );
+            ctx.expect(syntaxFailure[0].failedTabs[0].error).toContain("10-second.js:1");
+        } finally {
+            await detachIfAttached(ctx, page, server.host);
+            await closeBrowser(ctx, page);
+            await server.close();
+        }
+    }),
+
     test("invalid sources, paths, hosts, and params do not register or replace a rule", async (ctx) => {
         const server = await startServer();
         const folder = "us-2054/temporary-site-extensions/validation";
         const scriptPath = ctx.fixture(`${folder}/available.js`);
         const missingPath = ctx.fixture(`${folder}/missing.js`);
+        const emptyFolder = ctx.fixture(`${folder}/empty-folder`);
         let page;
         try {
             await ctx.app.fs.write(scriptPath, "window.__us2054Stable = true;\n");
+            await ctx.app.fs.mkdir(emptyFolder);
             page = await openBrowser(ctx, `${server.url}/validation`, undefined);
             const initial = await ctx.app.pages[page.id].editor.attachTestExtension({ host: server.host, name: "stable", source: "window.__us2054Stable = true;" });
             ctx.expect(initial.targets[0].status).toBe("injected");
@@ -196,6 +298,9 @@ export default [
                 { host: server.host, source: "x", scriptPath },
                 { host: server.host, scriptPath: "relative.js" },
                 { host: server.host, scriptPath: missingPath },
+                { host: server.host, scriptPath: [] },
+                { host: server.host, scriptPath: [scriptPath, missingPath] },
+                { host: server.host, scriptPath: emptyFolder },
                 { host: "https://example.test/path", source: "x" },
                 { host: "*.example.test", source: "x" },
                 { host: server.host, source: "x", params: [] },

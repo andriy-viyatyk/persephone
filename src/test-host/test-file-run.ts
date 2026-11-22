@@ -149,7 +149,8 @@ export async function runSelectedFiles(input: {
             for (const descriptor of list) {
                 const key = testIdentityKey({ file: group.file, name: descriptor.name });
                 if (input.results.some((result) => testIdentityKey(result) === key) || !matchesSelection(group.file, descriptor.name, input.selected) || (input.hasOnly && descriptor.mode !== "only")) continue;
-                input.results.push({ file: group.file, name: descriptor.name, status: "not-run", durationMs: 0, error: reason, reason });
+                const result: TestResult = { file: group.file, name: descriptor.name, status: "not-run", durationMs: 0, error: reason, reason };
+                input.results.push(result);
             }
         }
     }

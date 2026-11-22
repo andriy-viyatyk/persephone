@@ -14,7 +14,7 @@ import { SiteExtensionTrustPrompt } from "./site-extension-trust-prompt";
 import type { BrowserEditor } from "./BrowserEditor";
 import { isPrivateBrowserSession } from "./agent-access";
 import { ensureTargetReady } from "../../automation/page-events";
-import { evaluateInTarget } from "../../automation/queries";
+import { evaluateInTarget, EvaluationError } from "../../automation/queries";
 import { errMessage } from "../../../shared/utils";
 import { t } from "../../../shared/i18n/t";
 import { withTimeout } from "../../core/utils/utils";
@@ -25,6 +25,7 @@ import { TemporarySiteExtensions } from "./TemporarySiteExtensions";
 import type { TemporarySiteExtensionEntry, TemporarySiteExtensionOptions } from "./TemporarySiteExtensions";
 import { matchTemporarySiteExtensionHost } from "../../../shared/temporary-site-extension";
 import { SiteExtensionInjection, temporarySiteExtensionPredicate } from "./SiteExtensionInjection";
+import { mapTemporaryExtensionErrorLocation, resolveTemporaryExtensionSources, type TemporaryExtensionSourceFile } from "./temporary-extension-sources";
 
 interface BrowserSiteExtensionState {
     siteExtensionTrustPrompts: SiteExtensionTrustPromptData[];
@@ -46,6 +47,26 @@ function boundExtensionError(message: string): string {
 function pageExtensionError(message: string): string {
     const labelled = `Page-derived extension error: ${stripExtensionErrorControls(message)}`;
     return labelled.length > 512 ? `${labelled.slice(0, 511)}…` : labelled;
+}
+
+function temporaryExtensionDisplayName(scriptPath?: string | string[]): string {
+    if (typeof scriptPath === "string") return scriptPath;
+    if (scriptPath?.length) return `${scriptPath[0]} (+${scriptPath.length - 1} files)`;
+    return "inline script";
+}
+
+function parseTemporaryExtensionError(value: string): { message: string; stack: string } {
+    try {
+        const parsed: unknown = JSON.parse(value);
+        if (parsed && typeof parsed === "object") {
+            const record = parsed as { message?: unknown; stack?: unknown };
+            if (typeof record.message === "string") return {
+                message: record.message,
+                stack: typeof record.stack === "string" ? record.stack : "",
+            };
+        }
+    } catch { /* older or malformed page result: preserve it as the message */ }
+    return { message: value, stack: "" };
 }
 
 export class BrowserSiteExtensionController {
@@ -471,7 +492,7 @@ export class BrowserSiteExtensionController {
             : `temporary-${selection.entry.revision}-${crypto.randomUUID()}`;
         const name = selection.kind === "saved"
             ? selection.extension.name
-            : selection.entry.name ?? selection.entry.scriptPath ?? "inline script";
+            : selection.entry.name ?? temporaryExtensionDisplayName(selection.entry.scriptPath);
         const host = selection.kind === "saved" ? pageUrl.hostname : selection.entry.hostname;
         const pageIdentityCurrent = (): boolean => {
             if (this.documentId(tabId) !== documentId) return false;
@@ -493,22 +514,31 @@ export class BrowserSiteExtensionController {
             : temporarySiteExtensionPredicate(selection.entry.hostname, selection.entry.explicitPort);
         if ((selection.kind === "saved" && pageUrl.protocol !== "https:") || !isAllowed()) return { status: "not-current" };
         let expression: string;
+        let sourceStartLine: number;
+        let sourceFiles: TemporaryExtensionSourceFile[] = [];
         try {
             const sourcePromise = selection.kind === "saved"
-                ? fs.read(selection.extension.scriptPath)
+                ? fs.read(selection.extension.scriptPath).then((source) => ({ source, files: [] as TemporaryExtensionSourceFile[] }))
                 : selection.entry.source !== undefined
-                    ? Promise.resolve(selection.entry.source)
-                    : fs.read(selection.entry.scriptPath);
-            const [source, runtime] = await Promise.all([sourcePromise, api.getSiteExtensionRuntime()]);
+                    ? Promise.resolve({ source: selection.entry.source, files: [] as TemporaryExtensionSourceFile[] })
+                    : selection.entry.scriptPath === undefined
+                        ? Promise.reject(new Error("Temporary extension has no scriptPath."))
+                        : resolveTemporaryExtensionSources(selection.entry.scriptPath).then((resolved) => {
+                            sourceFiles = resolved.files;
+                            return resolved;
+                        });
+            const [resolvedSource, runtime] = await Promise.all([sourcePromise, api.getSiteExtensionRuntime()]);
             if (!isAllowed()) return { status: "not-current" };
-            expression = SiteExtensionInjection.createExpression({
+            const built = SiteExtensionInjection.createExpression({
                 host,
                 id,
                 policyExpression: pagePredicate,
                 params: selection.kind === "temporary" ? selection.entry.serializedParams : "{}",
                 runtime,
-                source,
+                source: resolvedSource.source,
             });
+            expression = built.expression;
+            sourceStartLine = built.sourceStartLine;
         } catch (error) {
             console.warn(`[site-extension] ${id}: extension files could not be read`);
             return { status: "extension-error", error: boundExtensionError(`Extension files could not be read: ${errMessage(error, "read failed")}`) };
@@ -585,14 +615,21 @@ export class BrowserSiteExtensionController {
         } catch (error) {
             clearOwnActions();
             console.warn(`[site-extension] ${id}: ${errMessage(error, "injection failed").slice(0, 256)}`);
-            return { status: "extension-error", error: boundExtensionError(`Extension evaluation failed: ${errMessage(error, "injection failed")}`) };
+            const location = error instanceof EvaluationError && error.exceptionLineNumber !== undefined
+                ? mapTemporaryExtensionErrorLocation({ lineNumber: error.exceptionLineNumber, lineNumberIsZeroBased: true }, sourceStartLine, sourceFiles)
+                : undefined;
+            return { status: "extension-error", error: boundExtensionError(`Extension evaluation failed${location ? ` at ${location}` : ""}: ${errMessage(error, "injection failed")}`) };
         }
         if (!isAllowed() || this.actionDocuments.get(tabId) !== actionDocument) { clearOwnActions(); return { status: "not-current" }; }
         const detail = String(result);
         if (detail !== "ok") clearOwnActions();
         if (detail.startsWith("extension-error:")) {
             console.warn(`[site-extension] ${id}: extension script failed`);
-            return { status: "extension-error", error: pageExtensionError(detail.slice("extension-error:".length)) };
+            const payload = parseTemporaryExtensionError(detail.slice("extension-error:".length));
+            const location = payload.stack
+                ? mapTemporaryExtensionErrorLocation({ stack: payload.stack }, sourceStartLine, sourceFiles)
+                : undefined;
+            return { status: "extension-error", error: pageExtensionError(`${location ? `${location}: ` : ""}${payload.message}`) };
         }
         if (detail === "host-mismatch" || detail === "already-injected") return { status: "not-current" };
         if (detail !== "ok") return { status: "extension-error", error: boundExtensionError("Extension evaluation returned an unexpected result.") };

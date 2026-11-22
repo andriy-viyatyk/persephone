@@ -85,6 +85,11 @@ fixtures, profile seeding, suite filters and aggregate reports. The suite contra
 are documented in [UI integration tests](../standards/integration-tests.md) and the
 [web-app test guide](../../assets/guides/agents/web-app-tests/index.md).
 
+`persephone-test --reporter json-lines` streams versioned run, test, hook-failure, and completion
+events to stdout while keeping ordinary diagnostics on stderr; `report.json` remains the detailed
+per-run artifact. `persephone-test --init <folder>` copies the offline starter suite from
+`assets/test-suite-template/` and exits without starting an app window.
+
 ### Main-process persistence
 
 **JSON files in the data folder** (`<userData>/data/`) are read and written through `JsonFileStore`

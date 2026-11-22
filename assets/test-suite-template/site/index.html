@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mock list</title>
+</head>
+<body>
+  <main>
+    <h1>Mock list</h1>
+    <form id="item-form">
+      <label>New item <input name="item" autocomplete="off"></label>
+      <button type="submit">Add item</button>
+    </form>
+    <ul aria-label="Items"></ul>
+  </main>
+  <script>
+    const form = document.querySelector("#item-form");
+    const input = form.querySelector("input[name='item']");
+    const list = document.querySelector("ul");
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const value = input.value.trim();
+      if (!value) return;
+      const item = document.createElement("li");
+      item.textContent = value;
+      list.append(item);
+      input.value = "";
+    });
+  </script>
+</body>
+</html>

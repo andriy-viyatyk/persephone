@@ -30,12 +30,19 @@ The package entry point loads `.vite/build/main.js`. Passing that file directly 
 the app name `Electron`, so `--attach` looks for the wrong settings folder. Use `electron .` from
 the checkout.
 
-Options:
+## Initialize a starter suite
 
+Create a generic offline suite with `persephone-test.exe --init <folder>` or
+`persephone-test.exe --init=<folder>`. Init writes into an absent or empty folder; if the folder
+contains entries, it lists conflicts on stderr, writes nothing, and exits 1. In a developer checkout,
+run `electron . --test --init .\web-test-starter` from the repository root. Init exits without
+starting the test host or a window.
+
+Options:
 - `--test <file|folder>` runs one `.test.mjs` file or recursively discovers files in a folder.
 - `--profile <name>` selects the Persephone app profile. It does not select a browser profile.
 - `--attach` connects to an already running profile instead of launching an owned app. MCP must be enabled in that profile.
-- `--window <index-or-title>` selects an existing open test window and requires `--attach`. Decimal values are window record indexes; other values are case-insensitive title substrings. Exactly one open window must match. Title collisions are resolved by choosing the numeric index.
+- `--window <index-or-title>` selects an existing open test window and requires `--attach`. Decimal values are window record indexes; other values are case-insensitive title substrings and must match exactly one open window. If several windows match, use a decimal index or a more specific title.
 - `--log <file>` writes only the test-step JSONL log at that file; it does not create reports or screenshots.
 - `--log-dir <folder>` writes test results and test-mode app logs into that folder.
 - `--rerun-failed` reruns only file/name identities in `last-failed.json` from the selected results folder.
@@ -43,6 +50,7 @@ Options:
 - `--test-selection <json-file>` restricts `--test` discovery to exact file/name identities in a versioned manifest; requirements are still checked.
 - `--with <tag,...>` enables the named `requires` tags; `launch` remains skipped under `--attach`.
 - `--grep <regex>` runs tests whose names match the case-sensitive JavaScript regular expression.
+- `--reporter json-lines` writes versioned run-event JSON lines to stdout and routes console output to stderr. Suite calls to `process.stdout.write()` bypass this redirect and can pollute the JSON stream.
 - `--retries <n>` retries failed tests up to `n` additional attempts; the default is `0`.
 - `--timeout-scale <number>` scales the runner's timeouts; the default is `1`.
 - `--test-timeout <ms>` sets the default per-attempt test timeout; the default is `300000` ms.

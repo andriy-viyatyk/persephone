@@ -10,14 +10,16 @@ export class TestLog {
     private readonly descriptor: number;
     readonly redactor = new StorageStateRedactor();
 
-    constructor(readonly filePath: string) {
+    constructor(readonly filePath: string, private readonly onEvent?: (event: TestLogEvent) => void) {
         fs.mkdirSync(path.dirname(filePath), { recursive: true });
         this.descriptor = fs.openSync(filePath, "w");
     }
 
     write(event: TestLogEvent): void {
-        const line = `${JSON.stringify(this.redactor.redact({ at: new Date().toISOString(), ...event }))}\n`;
+        const redacted = this.redactor.redact({ at: new Date().toISOString(), ...event }) as TestLogEvent;
+        const line = `${JSON.stringify(redacted)}\n`;
         fs.writeSync(this.descriptor, line, undefined, "utf8");
+        this.onEvent?.(redacted);
     }
 
     close(): void {

@@ -10,6 +10,13 @@ import type { JsonValue } from "./json-value";
 
 export type { JsonValue } from "./json-value";
 export type EvaluateFunction = (...args: never[]) => unknown;
+
+export class EvaluationError extends Error {
+    constructor(message: string, readonly exceptionLineNumber?: number) {
+        super(message);
+        this.name = "EvaluationError";
+    }
+}
 export async function evaluateInTarget(
     target: IAutomationTarget,
     code: string | EvaluateFunction,
@@ -32,7 +39,7 @@ export async function evaluateInTarget(
             awaitPromise: true,
             returnByValue: true,
         }, undefined);
-        if (result.exceptionDetails) throw new Error(cdpExceptionMessage(result.exceptionDetails, "Evaluation failed"));
+        if (result.exceptionDetails) throw new EvaluationError(cdpExceptionMessage(result.exceptionDetails, "Evaluation failed"), result.exceptionDetails.lineNumber);
         return result.result?.value;
     } finally {
         await cdp.send("Runtime.releaseObject", { objectId }, undefined).catch((): undefined => undefined);
@@ -48,7 +55,7 @@ async function evaluateStringCode(
     cdp: CdpSession, code: string, args: JsonValue[], argsGiven: boolean,
 ): Promise<unknown> {
     const evaluated = await cdp.send("Runtime.evaluate", { expression: code, returnByValue: false, awaitPromise: true });
-    if (evaluated.exceptionDetails) throw new Error(cdpExceptionMessage(evaluated.exceptionDetails, "Evaluation failed"));
+    if (evaluated.exceptionDetails) throw new EvaluationError(cdpExceptionMessage(evaluated.exceptionDetails, "Evaluation failed"), evaluated.exceptionDetails.lineNumber);
     const remote = evaluated.result ?? {};
     const objectId: string | undefined = remote.objectId;
     try {
@@ -60,7 +67,7 @@ async function evaluateStringCode(
                 awaitPromise: true,
                 returnByValue: true,
             });
-            if (called.exceptionDetails) throw new Error(cdpExceptionMessage(called.exceptionDetails, "Evaluation failed"));
+            if (called.exceptionDetails) throw new EvaluationError(cdpExceptionMessage(called.exceptionDetails, "Evaluation failed"), called.exceptionDetails.lineNumber);
             return called.result?.value;
         }
         if (argsGiven) throw new Error("evaluate args require the code to evaluate to a function, e.g. \"(a, b) => a + b\".");

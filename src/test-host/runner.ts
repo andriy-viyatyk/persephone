@@ -17,6 +17,7 @@ import { EnvironmentStopError } from "./attention-policy.js";
 import { validateTestDescriptors } from "./test-descriptor-validation.js";
 import { readFileHooks } from "./file-hooks.js";
 import { runSelectedFiles, type DiscoveredFile } from "./test-file-run.js";
+import { JsonLinesReporter, type RunTotals } from "./json-lines-reporter.js";
 
 async function discover(target: string): Promise<DiscoveredFile[]> {
     const stat = await fs.stat(target);
@@ -55,8 +56,21 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
     const timeouts: Timeouts = createHostTimeouts(configuration.timeoutScale);
     const launcher = new TestLauncher(configuration, timeouts);
     const started = new Date().toISOString();
+    const startedAtMs = Date.now();
+    const reporter = configuration.reporter === "json-lines" ? new JsonLinesReporter(configuration.cwd) : undefined;
     const results: TestResult[] = [];
+    let selectedDescriptors: Array<{ file: string; name: string }> = [];
     let outputDirectory: string | undefined, log: TestLog | undefined, setupFailure: unknown;
+    let discoveredFileCount = 0, selectedTestCount = 0, runStartEmitted = false;
+    const startedTestKeys = new Set<string>(), endedTestKeys = new Set<string>();
+    const forwardLogEvent = (event: import("./test-log.js").TestLogEvent): void => {
+        if (event.file && event.test && (event.event === "test-start" || event.event === "test-outcome")) {
+            const key = testIdentityKey({ file: String(event.file), name: String(event.test) });
+            if (event.event === "test-start") startedTestKeys.add(key);
+            else endedTestKeys.add(key);
+        }
+        reporter?.testEvent(event);
+    };
     let stale: Array<{ file: string; name: string }> = [], client: McpClient | undefined;
     let testWindow: TestWindowOwner | undefined, retainedApp: { pid: number; url: string } | undefined, environmentStop: string | undefined;
     try {
@@ -70,11 +84,12 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
                 for (const name of ["app-main.log", "app-console.log", "site-console.log", "network.log"]) await fs.writeFile(path.join(outputDirectory, name), "", "utf8");
                 configuration.logDirectory = outputDirectory;
             }
-            log = new TestLog(path.join(outputDirectory, "tests.log"));
-        } else log = new TestLog(configuration.logFile);
+            log = new TestLog(path.join(outputDirectory, "tests.log"), reporter ? forwardLogEvent : undefined);
+        } else log = new TestLog(configuration.logFile, reporter ? forwardLogEvent : undefined);
         log.write({ event: "run-start", startedAt: started, outputDirectory: outputDirectory ?? configuration.logFile, configuration: { testPath: configuration.testPath, cwd: configuration.cwd, attach: configuration.attach, profile: configuration.profile, logFile: configuration.logFile, logDirectory: configuration.logDirectory, rerunFailed: configuration.rerunFailed, retries: configuration.retries ?? 0, testTimeout: configuration.testTimeout ?? 300_000, grep: configuration.grep } });
 
         const files = await discover(configuration.testPath);
+        discoveredFileCount = files.length;
         const selected = configuration.testSelection ? await readTestSelection(configuration.testSelection) : undefined;
         const setup = await loadContextSetup(configuration.testSetup);
         if (selected) {
@@ -90,6 +105,10 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
         for (const group of files) group.tests = group.tests.filter((descriptor) => selectedByManifest(group.file, descriptor.name, selected) && selectedByGrep(descriptor.name, grep));
         const focusSelected = files.flatMap((group) => group.tests.filter((descriptor) => matchesSelection(group.file, descriptor.name, rerun.selected)));
         const hasOnly = focusSelected.some((descriptor) => descriptor.mode === "only");
+        selectedTestCount = files.reduce((total, group) => total + group.tests.filter((descriptor) => matchesSelection(group.file, descriptor.name, rerun.selected) && (!hasOnly || descriptor.mode === "only")).length, 0);
+        selectedDescriptors = files.flatMap((group) => group.tests.filter((descriptor) => matchesSelection(group.file, descriptor.name, rerun.selected) && (!hasOnly || descriptor.mode === "only")).map((descriptor) => ({ file: group.file, name: descriptor.name })));
+        reporter?.runStart(started, discoveredFileCount, selectedTestCount);
+        runStartEmitted = Boolean(reporter);
         if (hasOnly) console.log("Focused run: executing test.only descriptors only.");
         client = await launcher.start();
         if (log) client.setStorageStateRedactor(log.redactor);
@@ -115,13 +134,33 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
             else await launcher.stop();
         } catch (error) { setupFailure ??= error; }
         try { launcher.close(); } catch (error) { setupFailure ??= error; }
+        if (reporter) {
+            const reason = setupFailure ? errMessage(setupFailure) : environmentStop;
+            for (const descriptor of selectedDescriptors) {
+                const key = testIdentityKey(descriptor);
+                // Stream-only events for descriptors the run never reached; results and tests.log stay as in the default mode.
+                const result = results.find((item) => testIdentityKey(item) === key)
+                    ?? { ...descriptor, status: "not-run" as const, durationMs: 0, ...(reason ? { error: reason, reason } : {}) };
+                const scrubbed = (event: import("./test-log.js").TestLogEvent) => (log ? log.redactor.redact(event) : event) as import("./test-log.js").TestLogEvent;
+                if (!startedTestKeys.has(key)) reporter.testEvent(scrubbed({ event: "test-start", file: descriptor.file, test: descriptor.name }));
+                if (!endedTestKeys.has(key)) reporter.testEvent(scrubbed({ event: "test-outcome", file: descriptor.file, test: descriptor.name, status: result.status, durationMs: result.durationMs, ...(result.error ? { error: result.error } : {}), ...(result.cleanupErrors?.length ? { cleanupErrors: result.cleanupErrors } : {}), ...(result.attempts ? { attempts: result.attempts } : {}) }));
+            }
+        }
         if (outputDirectory) {
             try { await writeReports(results, { directory: outputDirectory, target: configuration.testPath, startedAt: started, stale, setupFailure, retainedApp, environmentStop, redactor: log?.redactor }); }
             catch (error) { setupFailure ??= error; }
         }
+        if (reporter && !runStartEmitted) {
+            reporter.runStart(started, discoveredFileCount, selectedTestCount);
+        }
         const count = (status: TestResult["status"]) => results.filter((result) => result.status === status).length;
+        const totals: RunTotals = { passed: count("passed"), failed: count("failed") + (setupFailure ? 1 : 0), skipped: count("skipped"), expectedFailure: count("expected-failure"), unexpectedPass: count("unexpected-pass"), flaky: count("flaky"), notRun: count("not-run") };
         try { log?.write({ event: "run-summary", startedAt: started, passed: count("passed"), failed: count("failed") + (setupFailure ? 1 : 0), skipped: count("skipped"), expectedFailure: count("expected-failure"), unexpectedPass: count("unexpected-pass"), flaky: count("flaky"), notRun: count("not-run"), ...(environmentStop ? { environmentStop } : {}), ...(setupFailure ? { setupFailure: errMessage(setupFailure) } : {}) }); }
         finally { log?.close(); }
+        if (reporter) {
+            const error = setupFailure ? errMessage(setupFailure) : environmentStop;
+            reporter.runEnd(started, new Date().toISOString(), Date.now() - startedAtMs, totals, outputDirectory ?? null, log?.redactor.scrub(error ?? ""));
+        }
         console.log(`Test run ${started}: ${count("passed")} passed, ${count("failed") + (setupFailure ? 1 : 0)} failed, ${count("skipped")} skipped, ${count("not-run")} not run, ${count("expected-failure")} expected failure, ${count("unexpected-pass")} unexpected passes, ${count("flaky")} flaky.${environmentStop ? ` Environment stop: ${scrub(environmentStop)}` : ""}`);
         for (const result of results.filter((item) => item.status !== "passed")) {
             console.log(`${result.status.toUpperCase()} ${displayPath(configuration.cwd, result.file)} — ${result.name}${result.step ? ` — ${scrub(result.step)}` : ""}${result.reason ? ` — ${scrub(result.reason)}` : ""}${result.error ? `\n${scrub(result.error)}` : ""}`);

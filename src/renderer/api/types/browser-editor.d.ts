@@ -532,7 +532,7 @@ export interface IBrowserPopup {
 export interface ITemporarySiteExtensionOptions {
     host: string;
     name?: string;
-    scriptPath?: string;
+    scriptPath?: string | string[];
     source?: string;
     params?: Record<string, IBrowserJsonValue>;
 }
@@ -547,7 +547,7 @@ export interface ITemporarySiteExtensionDetachResult {
 export interface ITemporarySiteExtensionListItem {
     host: string;
     name?: string;
-    scriptPath?: string;
+    scriptPath?: string | string[];
     inline: boolean;
     injectedTabs: string[];
     /** Tabs whose last injection attempt failed, with the reason (for example an unreadable scriptPath). */

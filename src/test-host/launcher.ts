@@ -30,6 +30,7 @@ export interface HostConfiguration {
     retries?: number;
     testTimeout?: number;
     grep?: string;
+    reporter: "human" | "json-lines";
 }
 interface ChildState { process: ChildProcess; exit: Promise<string | number | null>; outputsClosed: Promise<void>; exited?: string | number | null; }
 export class TestLauncher {
@@ -66,7 +67,7 @@ export class TestLauncher {
         const outputsClosed = new Promise<void>((resolve) => {
             let openStreams = 2;
             const streamClosed = (): void => { openStreams -= 1; if (openStreams === 0) resolve(); };
-            this.pipeOutput(childProcess.stdout, "stdout", process.stdout, streamClosed);
+            this.pipeOutput(childProcess.stdout, "stdout", this.configuration.reporter === "json-lines" ? process.stderr : process.stdout, streamClosed);
             this.pipeOutput(childProcess.stderr, "stderr", process.stderr, streamClosed);
         });
         const state: ChildState = { process: childProcess, exit: Promise.resolve(null), outputsClosed };

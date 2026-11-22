@@ -1,11 +1,10 @@
-import { fs } from "../../api/fs";
-import { fpIsAbsolute } from "../../core/utils/file-path";
+import { resolveTemporaryExtensionSources, validateTemporaryExtensionPath } from "./temporary-extension-sources";
 import { matchTemporarySiteExtensionHost, parseTemporarySiteExtensionHost } from "../../../shared/temporary-site-extension";
 
 export interface TemporarySiteExtensionOptions {
     host: string;
     name?: string;
-    scriptPath?: string;
+    scriptPath?: string | string[];
     source?: string;
     params?: Record<string, unknown>;
 }
@@ -16,7 +15,7 @@ export interface TemporarySiteExtensionEntry {
     readonly explicitPort?: number;
     readonly key: string;
     readonly name?: string;
-    readonly scriptPath?: string;
+    readonly scriptPath?: string | string[];
     readonly inline: boolean;
     readonly source?: string;
     readonly params: Record<string, unknown>;
@@ -27,7 +26,7 @@ export interface TemporarySiteExtensionEntry {
 export interface TemporarySiteExtensionListItem {
     host: string;
     name?: string;
-    scriptPath?: string;
+    scriptPath?: string | string[];
     inline: boolean;
     injectedTabs: string[];
     /** Tabs whose last injection attempt failed, with the reason (for example an unreadable scriptPath). */
@@ -48,16 +47,15 @@ export class TemporarySiteExtensions {
         const hasPath = options.scriptPath !== undefined;
         const hasSource = options.source !== undefined;
         if (hasPath === hasSource) throw new Error("Provide exactly one of scriptPath or source.");
-        let scriptPath: string | undefined;
+        let scriptPath: string | string[] | undefined;
         let source: string | undefined;
         if (hasPath) {
-            if (typeof options.scriptPath !== "string" || !options.scriptPath || options.scriptPath.length > 4096) {
-                throw new Error("scriptPath must be a non-empty absolute file path of at most 4096 characters.");
+            if (typeof options.scriptPath !== "string" && !Array.isArray(options.scriptPath)) {
+                throw new Error("scriptPath must be an absolute file path, a non-empty list of file paths, or a folder path.");
             }
-            if (!fpIsAbsolute(options.scriptPath)) throw new Error("scriptPath must be an absolute file path.");
-            scriptPath = options.scriptPath;
-            try { await fs.read(scriptPath); }
-            catch { throw new Error("scriptPath could not be read; the temporary extension was not attached."); }
+            validateTemporaryExtensionPath(options.scriptPath);
+            scriptPath = Array.isArray(options.scriptPath) ? [...options.scriptPath] : options.scriptPath;
+            await resolveTemporaryExtensionSources(scriptPath);
         } else {
             if (typeof options.source !== "string") throw new Error("source must be a string.");
             source = options.source;
@@ -101,7 +99,7 @@ export class TemporarySiteExtensions {
         return [...this.entries.values()].map((entry) => ({
             host: entry.host,
             ...(entry.name === undefined ? {} : { name: entry.name }),
-            ...(entry.scriptPath === undefined ? {} : { scriptPath: entry.scriptPath }),
+            ...(entry.scriptPath === undefined ? {} : { scriptPath: Array.isArray(entry.scriptPath) ? [...entry.scriptPath] : entry.scriptPath }),
             inline: entry.inline,
             injectedTabs: [...(this.outcomes.get(entry.key) ?? [])]
                 .filter(([, outcome]) => outcome.status === "injected").map(([tabId]) => tabId),

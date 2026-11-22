@@ -17,7 +17,34 @@ export interface TestControllerArguments {
     retries: number;
     testTimeout: number;
     grep?: string;
+    reporter: "human" | "json-lines";
     window?: string;
+}
+
+export interface InitSuiteArguments {
+    destination: string;
+}
+
+export function parseInitSuiteArguments(args: string[], cwd = process.cwd()): InitSuiteArguments | undefined {
+    let destination: string | undefined;
+    let testMarkerSeen = false;
+
+    for (let index = 0; index < args.length; index += 1) {
+        const argument = args[index];
+        if (argument === "--init" || argument.startsWith("--init=")) {
+            if (destination !== undefined) throw new Error("Duplicate --init option.");
+            const value = argument === "--init" ? args[++index] : argument.slice("--init=".length);
+            if (!value || value.startsWith("--")) throw new Error("--init requires a destination folder path.");
+            destination = path.resolve(cwd, value);
+        } else if (argument === "--test") {
+            if (testMarkerSeen) throw new Error("Duplicate --test marker with --init.");
+            testMarkerSeen = true;
+        } else {
+            throw new Error(`Unexpected argument with --init: ${argument}`);
+        }
+    }
+
+    return destination === undefined ? undefined : { destination };
 }
 
 export function hasTestControllerArguments(args: string[]): boolean {
@@ -27,6 +54,7 @@ export function hasTestControllerArguments(args: string[]): boolean {
         || argument.startsWith("--timeout-scale=") || argument === "--retries" || argument.startsWith("--retries=")
         || argument === "--test-timeout" || argument.startsWith("--test-timeout=")
         || argument === "--grep" || argument.startsWith("--grep=") || argument === "--window" || argument.startsWith("--window=")
+        || argument === "--reporter" || argument.startsWith("--reporter=")
         || (argument.startsWith("--test-") && !isTestInstanceOption(argument)));
 }
 
@@ -50,6 +78,8 @@ export function parseTestControllerArguments(args: string[], cwd = process.cwd()
     let testTimeout = 300_000;
     let testTimeoutSeen = false;
     let grep: string | undefined;
+    let reporter: TestControllerArguments["reporter"] = "human";
+    let reporterSeen = false;
     let window: string | undefined;
     for (let index = 0; index < args.length; index += 1) {
         const argument = args[index];
@@ -97,6 +127,13 @@ export function parseTestControllerArguments(args: string[], cwd = process.cwd()
             const value = argument === "--window" ? args[++index] : argument.slice("--window=".length);
             if (!value || value.startsWith("--")) throw new Error("--window requires a window index or title substring.");
             window = value;
+        } else if (argument === "--reporter" || argument.startsWith("--reporter=")) {
+            if (reporterSeen) throw new Error("Duplicate --reporter option.");
+            reporterSeen = true;
+            const value = argument === "--reporter" ? args[++index] : argument.slice("--reporter=".length);
+            if (!value || value.startsWith("--")) throw new Error("--reporter requires a value (human or json-lines).");
+            if (value !== "human" && value !== "json-lines") throw new Error(`Unsupported --reporter value: ${value}. Expected human or json-lines.`);
+            reporter = value;
         } else if (isTestInstanceOption(argument)) {
             continue;
         } else if (argument === "--test-selection" || argument.startsWith("--test-selection=")) {
@@ -139,5 +176,5 @@ export function parseTestControllerArguments(args: string[], cwd = process.cwd()
     if (logFile && rerunFailed) throw new Error("--log cannot be combined with --rerun-failed.");
     if (attach && (keepOpen || mcpPort !== undefined)) throw new Error("--attach cannot be combined with --keep-open or --mcp-port.");
     if (window !== undefined && !attach) throw new Error("--window requires --attach.");
-    return { testPath, attach, cwd, logFile, logDirectory, rerunFailed, testSelection, testSetup, with: withTags, timeoutScale, keepOpen, mcpPort, retries, testTimeout, grep, window };
+    return { testPath, attach, cwd, logFile, logDirectory, rerunFailed, testSelection, testSetup, with: withTags, timeoutScale, keepOpen, mcpPort, retries, testTimeout, grep, reporter, window };
 }

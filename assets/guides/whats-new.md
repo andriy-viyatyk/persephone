@@ -1182,5 +1182,5 @@ See [GitHub Issues](https://github.com/andriy-viyatyk/persephone/issues) for pla
 
 ### Coming Soon
 
-- Testing infrastructure
+- Web-app test suites with a starter template, reusable page models, and JSON Lines results
 - Keyboard shortcut customization

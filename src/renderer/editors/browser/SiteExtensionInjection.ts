@@ -7,6 +7,11 @@ export interface SiteExtensionInjectionExpressionOptions {
     source: string;
 }
 
+export interface SiteExtensionInjectionExpression {
+    expression: string;
+    sourceStartLine: number;
+}
+
 export function temporarySiteExtensionPredicate(hostname: string, explicitPort?: number): string {
     const expectedPort = explicitPort === undefined
         ? "(current.protocol === \"https:\" ? 443 : 80)"
@@ -16,9 +21,9 @@ export function temporarySiteExtensionPredicate(hostname: string, explicitPort?:
 
 /** Builds the common main-world expression after the host has approved a selected source. */
 export class SiteExtensionInjection {
-    static createExpression(options: SiteExtensionInjectionExpressionOptions): string {
+    static createExpression(options: SiteExtensionInjectionExpressionOptions): SiteExtensionInjectionExpression {
         const { host, id, policyExpression, params, runtime, source } = options;
-        return `(() => {
+        const prefix = `(() => {
     const host = ${JSON.stringify(host)};
     const params = ${params};
     const freezeParams = value => { if (value && typeof value === "object") { Object.values(value).forEach(freezeParams); Object.freeze(value); } return value; };
@@ -30,16 +35,21 @@ export class SiteExtensionInjection {
     });
 ${runtime}
     try {
-${source}
+`;
+        const suffix = `
     } catch (error) {
         console.error("[site-extension] " + ${JSON.stringify(id)} + ":", error);
         let message = "Unknown page error";
         try { message = error && typeof error === "object" && typeof error.message === "string" ? error.message : String(error); }
         catch { /* retain the safe fallback */ }
-        return "extension-error:" + message;
+        let stack = "";
+        try { stack = error && typeof error === "object" && typeof error.stack === "string" ? error.stack : ""; }
+        catch { /* retain the safe fallback */ }
+        return "extension-error:" + JSON.stringify({ message, stack });
     }
     return "ok";
 })()`;
+        return { expression: prefix + source + suffix, sourceStartLine: prefix.split("\n").length };
     }
 
     static createTeardownExpression(policyExpression: string, expectedId?: string): string {

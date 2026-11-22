@@ -33,6 +33,13 @@ running profile whose MCP server is enabled. Attach uses that instance without t
 of its shutdown. The user workflow and examples are in
 [`assets/guides/agents/web-app-tests/index.md`](../../assets/guides/agents/web-app-tests/index.md).
 
+`persephone-test.exe --init <folder>` copies the offline starter suite from
+`assets/test-suite-template/` into an absent or empty destination and exits without launching a
+window. It refuses to overwrite files. The general runner accepts `--reporter human` (default) or
+`--reporter json-lines`; JSON Lines mode emits versioned run, test, hook-failure, and run-end events
+to stdout, with console diagnostics directed to stderr. The existing per-run `report.json` format
+is unchanged.
+
 The wrapper starts the read-only HTTP fixture servers once on loopback ports 17867 (HTTP) and
 17868 (HTTPS), both serving `integration-test/fixtures/http/`. The HTTPS server uses the committed
 test-only certificate in `integration-test/lib/tls/`; `ctx.httpsUrl(path)` builds a local HTTPS
@@ -113,6 +120,7 @@ The general product runner supports these suite-independent options:
 | `--mcp-port <port>` | Request an available MCP port for an owned app; default selection is ephemeral. |
 | `--grep <regex>` | Select product tests whose names match this case-sensitive JavaScript regular expression. |
 | `--retries <n>` | Retry failed product tests up to `n` additional times; the default is `0`. |
+| `--reporter` | Select `human` (default) or `json-lines` output; JSON Lines emits versioned events to stdout. |
 
 With `--attach --profile-dir <path>`, the controller reads that directory's MCP settings and
 checks the connected app's user-data identity. The suite wrapper passes its configured product

@@ -6,6 +6,11 @@ summary: "Which bridge version added each persephone.* member and manifest field
 
 # Boards — bridge version history and compatibility
 
+Bridge `1.63.0` lets `pages[i].editor.attachTestExtension()` accept `scriptPath` as an ordered
+array of absolute files or a folder of direct `.js` / `.JS` files, in addition to one file. Board
+`persephone.call()` forwards the option through its existing browser-editor route. Files in a folder
+load in plain filename order and all selected files run in one scope.
+
 Bridge `1.62.0` treats a trusted click as delivered when the target closes during the release command,
 adds `hoverFirst` to click options (default true; automatic hover reveal runs only after a not-visible
 actionability result), and applies CSS `:hover` to browser and board guests until the next pointer action.

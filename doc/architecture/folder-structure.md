@@ -13,7 +13,7 @@ persephone/
 │   ├── shared/             # Shared types, constants, cross-process helpers, board manifest/value objects and service-channel protocol, plus i18n runtime/catalogs
 │   ├── module-service-host/ # Typed utility-process host, split into lifecycle, request, provider, capability, and service-API modules
 │   ├── node-script-host/    # Typed entry point for Node-style scripts executed in an Electron utility process
-│   ├── test-host/           # Web-app and UI test host, context APIs, app proxy, runner, and reports
+│   ├── test-host/           # Web-app and UI test host, context APIs, app proxy, runner, and reports; json-lines-reporter.ts owns JSONL stdout formatting
 │   ├── ipc/                # Cross-process contracts, including test-host startup and test-instance options
 │   ├── renderer.ts          # Locale/NLS and synchronous theme preflight; app bootstrap and mount
 │   ├── preload.ts          # Preload script (main renderer)
@@ -83,7 +83,8 @@ persephone/
 │   │   ├── .env.example    # Required env var names (no values)
 │   │   ├── .gitignore      # Ignores .env
 │   │   └── CLAUDE.md       # Toolset authoring guide (manifest, stdin/stdout contract, .env, requirements)
-│   └── demo-board/         # Bundled Demo board — exercises the full board surface
+│   ├── demo-board/         # Bundled Demo board — exercises the full board surface
+│   └── test-suite-template/ # Offline starter suite copied by `persephone-test --init`
 ├── snip-tool/              # Rust native screen snip tool + Windows clipboard helper (persephone-snip.exe; `clipboard-read`/`clipboard-write`/`clipboard-watch` subcommands)
 │   ├── src/main.rs         # Entry point, PNG encoding, stdout output, subcommand dispatch
 │   ├── src/capture.rs      # Monitor enumeration + GDI screen capture
@@ -1132,8 +1133,9 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ```
 /src/main/
 ├── main-setup.ts           # Application setup and window creation
-├── test-mode/              # Windowless test controller, child-instance options, test-mode logging, browser-download destination, HTTPS trust, and fake media switches with optional WAV capture
+├── test-mode/              # Windowless test controller, child-instance options, starter-suite initialization, test-mode logging, browser-download destination, HTTPS trust, and fake media switches with optional WAV capture
 │   ├── certificates.ts     # Exact SHA-256 fingerprint allowlist for owned test-instance certificate errors
+│   ├── init-suite.ts       # Copies the offline starter suite without overwriting existing files
 │   └── media-capture.ts    # Fake media switches and optional file-backed audio input for test instances
 ├── main-services.ts        # Ordered app-level service startup, phase boundaries, and reverse disposal
 ├── capability-client.ts    # Per-caller-owner capability list/get/invoke client

@@ -293,7 +293,7 @@ consumed (from the `claude-limits` status-line snapshot, before → after).
 | 4 | [EPIC-206](../epics/EPIC-206.md) | done 2026-11-22 | ~1% (62% → 63%) |
 | 5 | [EPIC-207](../epics/EPIC-207.md) | done 2026-11-22 | ~1% (63% → 64%) |
 | 6 | [EPIC-208](../epics/EPIC-208.md) | done 2026-11-22 | ~2% (64% → 66%) |
-| 7 | — | in progress | — |
+| 7 | [EPIC-209](../epics/EPIC-209.md) | done 2026-11-23 | ~1% (66% → 67%) |
 
 After step 5 the pilot suite should be rewritten in part as the acceptance check: the model should lose its generic
 layer and the `*Target` members, and the 518 boolean assertions and most of the 104 sleeps should go.
