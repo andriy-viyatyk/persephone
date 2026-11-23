@@ -1,9 +1,10 @@
 # Web-app testing review: runner, page models and browser automation
 
-**Date:** 2026-11-22 · **Status:** proposal, reviewed against the source 2026-11-22 (corrections in sections B, C,
-D, F and 5) · **Input:** the first real suite written with the
-web-app test runner ([EPIC-186](../epics/completed.md)), and the 24 feedback items it produced in
-[US-2138](../tasks/US-2138-web-app-test-feedback/README.md).
+**Date:** 2026-11-22 · **Status:** implemented 2026-11-23 (all roadmap steps, see "Roadmap progress"; follow-ups
+closed in US-2180) · **Input:** the first real suite written with the
+web-app test runner ([EPIC-186](../epics/completed.md)), and the 24 feedback items it produced in US-2138
+(closed 2026-11-23, see [completed tasks](../tasks/completed.md); its item list is in git history at `68cdd1e4`,
+`doc/tasks/US-2138-web-app-test-feedback/README.md`).
 
 This review reads the pilot suite as evidence, not only its feedback list. The list says what the agent tripped on.
 The suite's own code says what the agent had to build because Persephone did not have it. The second source is the
