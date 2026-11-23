@@ -10,7 +10,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 5.0.21 (Upcoming)
+## Version 5.0.22 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 5.0.21
 
 ### Improvements
 
@@ -18,7 +24,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Web-app regression tests:** wait for changing UI with `ctx.expect.poll`, bound an attempt with
   `--test-timeout` or its per-test `timeout` option, and share setup and cleanup through file hooks.
   Prepare pages with document-start scripts and a fake clock, save or apply browser storage state,
-  capture downloads, route requests, and use the page-scoped clipboard without reading the OS clipboard.
+  capture downloads, route requests, and use a page-scoped clipboard: once armed, copy, cut and paste
+  on the page stay inside it and never read or overwrite your Windows clipboard.
 - **Browser automation follows pointer state more closely.** Hover-revealed controls can be exposed
   before clicking, clicks that never reach the page are reported, and scripts can hold and move a
   pointer button while inspecting the page. Test cleanup releases held buttons and keys, and page
@@ -32,9 +39,6 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Clicks and typing reach browser pop-up windows reliably.** Agent and test input sent to a
   pop-up right after it opened, or while it was behind another window, could be lost while the call
   still reported success. Input now waits until the pop-up is in front and has drawn.
-- **Web-app tests no longer touch your clipboard.** Once a test arms a page's clipboard
-  (`clipboard.arm()`), copy, cut and paste on that page, from the keyboard or a menu, and the page's
-  Clipboard API stay inside the page: your Windows clipboard is neither overwritten nor read.
 - **Test runs always finish.** Stopping the test app no longer waits forever when the app or one of
   its helper processes does not exit, and end-of-test cleanup retries once when a menu or dialog the
   test opened appears during cleanup.
@@ -455,26 +459,13 @@ The move removes note script execution; HTML, Mermaid, and SVG previews; Monaco 
 
 ### New Features
 
-- **Audio Player board:** a music player with a queue, visualizer, equalizer, crossfade, and its own
-  music catalog with ratings, tags, play counts and playlists. Install it from the board catalog, or
-  open an audio file and pick it from the editor switch's **+** button.
-- **Boards can route files and follow their sources:** `singleInstanceMasks` sends selected file
-  types to one board page while other matching files open in place. Boards can step through the
-  Explorer folder or Link Editor list a file was opened from, react to page visibility, show the tab's
-  mute button, and move an authorized file to the Recycle Bin. Board toolbar inputs get a clear (x)
-  button. See the [Boards guide](./boards/index.md).
-- **Boards can watch authorized files and folders:** `persephone.watch()` reports file changes in
-  batches, respects the board's existing file access, and stops when access is revoked or the board
-  closes.
-- **Open files follow moves:** renaming or moving a file from Persephone's Explorer keeps its tab
-  open at the new location, including unsaved edits. Renames made outside Persephone are followed
-  when the file watcher can see both paths; deleted files remain marked as deleted.
+- **Audio Player board:** a music player with a queue, equalizer, crossfade and its own music catalog.
+- **Board file routing and watching:** boards can claim file types, follow their source list, and watch authorized files.
+- **Open files follow moves:** renaming or moving a file keeps its tab open at the new location.
 
 ### Breaking Changes
 
-- **Video Player audio uses native controls:** audio files still play in Video Player, with themed
-  controls for play/pause, seeking, and volume. The audio visualizer, Next and shuffle moved to the
-  Audio Player board; see the [Video Player guide](./editors/video.md).
+- **Video Player audio uses native controls:** the visualizer, Next and shuffle moved to the Audio Player board.
 
 ---
 
