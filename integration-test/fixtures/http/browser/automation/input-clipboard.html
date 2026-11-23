@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Clipboard isolation</title>
+</head>
+<body>
+<p id="plain">plain selection</p>
+<div id="custom" tabindex="0">custom copy source</div>
+<input id="cut-source" value="cut me">
+<input id="paste-target">
+<button id="api-write" type="button">Write through the Clipboard API</button>
+<button id="api-read" type="button">Read through the Clipboard API</button>
+<script>
+window.results = { apiRead: null };
+document.getElementById("custom").addEventListener("copy", (event) => {
+    event.clipboardData.setData("text/plain", "custom payload");
+    event.preventDefault();
+});
+document.getElementById("api-write").addEventListener("click", () => {
+    navigator.clipboard.writeText("api payload");
+});
+document.getElementById("api-read").addEventListener("click", async () => {
+    window.results.apiRead = await navigator.clipboard.readText();
+});
+window.selectContents = (id) => {
+    const element = document.getElementById(id);
+    element.focus();
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    getSelection().removeAllRanges();
+    getSelection().addRange(range);
+};
+</script>
+</body>
+</html>

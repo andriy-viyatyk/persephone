@@ -150,8 +150,10 @@ observed and never reads the OS clipboard. `writeText(text)` stages one value fo
 `navigator.clipboard.readText()` or trusted Ctrl+V / Windows Shift+Insert. Paste dispatches an
 untrusted synthetic event; if the page does not cancel it and focus is on an editable input,
 textarea, or contenteditable, `document.execCommand("insertText")` performs the text insertion.
-Rich-HTML paste is not emulated. Context-menu and Electron-menu Paste remain native OS clipboard
-operations. The API requires a page opened by the agent or adopted with `ctx.usePage()`; user-opened
+Rich-HTML paste is not emulated. After `arm()` the page's clipboard is isolated from the OS
+clipboard: copy, cut and paste from the keyboard, the context menu or the Edit menu, and
+`navigator.clipboard` reads and writes, never touch it. A paste with nothing staged delivers the
+page's own last copy. The API requires a page opened by the agent or adopted with `ctx.usePage()`; user-opened
 incognito/Tor pages remain refused.
 
 ### Page fake clock

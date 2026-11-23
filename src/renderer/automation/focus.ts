@@ -9,7 +9,7 @@ export async function focusElement(
     options: MouseActionOptions = {},
 ): Promise<Pick<ActionablePoint, "cdp" | "sessionId">> {
     const action = await resolveActionablePoint(target, locator, { ...options, hitTest: false });
-    target.focusWebview(options.tabId);
+    await target.focusWebview(options.tabId);
     const baseCdp = target.cdp(options.tabId);
     const sessionId = "ref" in locator ? getRefSessionId(baseCdp, locator.ref) : undefined;
     const body = `

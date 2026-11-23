@@ -29,7 +29,7 @@ export async function clickElement(
         };
     let action = await resolveActionablePoint(target, locator, { ...options, ...revealOptions });
     if (options.synthetic) {
-        target.focusWebview(options.tabId);
+        await target.focusWebview(options.tabId);
         if ("selector" in locator) {
             await evaluateWithCandidates(action.cdp, locator.selector,
                 `(resolve) => { const matches = resolve('query', { visibleOnly: true, nth: ${options.nth ?? 0} }); const el = matches[0]; if (!el) throw new Error('Element not found'); el.click(); }`);
@@ -40,7 +40,7 @@ export async function clickElement(
     }
     // A real click into the page also moves the embedder's focus to the webview. Without it the
     // host keeps focus elsewhere (a new tab's URL bar), and text typed after this click went there.
-    target.focusWebview(options.tabId);
+    await target.focusWebview(options.tabId);
     const modifierFlags = getModifierFlags(options.modifiers);
     const button = options.button ?? "left";
     const clickCount = options.clickCount ?? 1;
@@ -115,7 +115,7 @@ export async function hoverElement(
     await clearForcedHoverForLocator(target, locator, options.tabId);
     const action = await resolveActionablePoint(target, locator, options);
     if (options.synthetic) {
-        target.focusWebview(options.tabId);
+        await target.focusWebview(options.tabId);
         const syntheticHover = "function() { this.dispatchEvent(new MouseEvent('mouseenter', {bubbles:false, composed:true})); this.dispatchEvent(new MouseEvent('mouseover', {bubbles:true, composed:true})); }";
         if ("selector" in locator) {
             await evaluateWithCandidates(action.cdp, locator.selector,
@@ -229,7 +229,7 @@ export async function clickAtCoordinates(
     behavior: { focusHost?: boolean } = {},
 ): Promise<void> {
     validatePoint(position, "clickAt coordinates");
-    if (behavior.focusHost !== false) target.focusWebview(options.tabId);
+    if (behavior.focusHost !== false) await target.focusWebview(options.tabId);
     const input = target.inputCdp(options.tabId);
     await clearForcedHover(input.cdp, input.sessionId);
     const point = input.mapPoint(position, []);
@@ -262,7 +262,7 @@ export async function dragCoordinates(
         validatePoint(toPosition, "drag end coordinates");
     }
     validateDragOptions(options);
-    if (behavior.focusHost !== false) target.focusWebview(options.tabId);
+    if (behavior.focusHost !== false) await target.focusWebview(options.tabId);
     const input = target.inputCdp(options.tabId);
     await clearForcedHover(input.cdp, input.sessionId);
     const from = { ...input.mapPoint(fromPosition, []), cdp: input.cdp, sessionId: input.sessionId };

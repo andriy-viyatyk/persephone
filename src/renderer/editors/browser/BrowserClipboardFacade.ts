@@ -19,7 +19,7 @@ export class BrowserClipboardFacade implements IAiVisible {
             kind: "BrowserClipboard",
             summary: "Page-scoped clipboard observation and one-shot test input.",
             members: MEMBERS,
-            help: "Call arm() before the page action to observe. readText() reports only text/plain writes observed from this page and returns null before one; it never reads the OS clipboard. writeText(text) stages a one-shot navigator.clipboard.readText(), Ctrl+V, or Windows Shift+Insert value. Keyboard paste dispatches an untrusted paste event and uses insertText for an uncancelled editable target. Context-menu and Electron-menu Paste remain native.",
+            help: "Call arm() before the page action to observe. readText() reports only text/plain writes observed from this page and returns null before one; it never reads the OS clipboard. writeText(text) stages a one-shot navigator.clipboard.readText(), Ctrl+V, or Windows Shift+Insert value. After arm() the page's clipboard is isolated from the OS clipboard: copy, cut and paste (keyboard, context menu and Electron menu) and navigator.clipboard read/write never touch it. Copy and cut are replayed against a private buffer; paste delivers the staged text, else the page's own last copy, as an untrusted paste event, with insertText for an uncancelled editable target.",
             summarize: () => ({ kind: "BrowserClipboard" }),
         };
     }

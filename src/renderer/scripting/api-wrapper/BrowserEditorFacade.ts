@@ -192,14 +192,14 @@ popup teardown also discard their input state.
 Keyboard, fill, check, uncheck and clear use trusted CDP input by default. type() clears editable
 content before inserting; slowly sends mapped key events and submit presses Enter. select() is a
 programmatic native-select operation with untrusted input/change events; it checks visible, enabled
-and stable but not the pointer hit-test; custom dropdowns use trusted click() + pressKey(). Common
-Playwright aliases are accepted through call but omitted from member lists: dblclick(), fill(),
-press(key, options?), goto(), selectOption() with string value(s), setChecked(), textContent(),
-inputValue(), waitForTimeout(), goBack(), and goForward().
+and stable but not the pointer hit-test; custom dropdowns use trusted click() + pressKey().
+Playwright names also work (not listed as members): dblclick(), fill(), press(key, options?), goto(),
+selectOption() with string value(s), setChecked(), textContent(), inputValue(), waitForTimeout(),
+goBack(), goForward().
 Targeted keyboard calls click their target by default; pass { focus: "focus" } to focus without
 pointer input. A targetless call uses the page's current focus. keyDown()/keyUp() keep modifier state
 across calls. Ctrl+C/V use the
-real OS clipboard; Persephone does not save or restore clipboard contents.
+real OS clipboard until clipboard.arm(); after arm() the page's clipboard is isolated from the OS one.
 waitForSelector() defaults to attached; selector state can be attached, detached, visible, or hidden.
 Visible means a positive-size box with visibility other than hidden and display other than none.
 Waits poll on 100 ms timers and default to 10000 ms. navigate() remains fire-and-forget.

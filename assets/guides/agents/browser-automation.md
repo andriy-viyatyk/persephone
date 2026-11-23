@@ -99,7 +99,7 @@ Use trusted click plus keys for custom dropdowns.
 
 For keys, `pressKey("Control+C")` targets the focused element. Pass `target` to focus a locator by
 trusted click first, or use `focus: "focus"` to avoid a click. `keyDown()` holds a key across calls
-until `keyUp()` releases it. Trusted Ctrl+C keeps Chromium's normal OS clipboard behavior. The
+until `keyUp()` releases it. Trusted Ctrl+C writes the OS clipboard until the page clipboard is armed. The
 test-only page clipboard is described in [Browser](./browser.md#page-scoped-test-clipboard).
 On a browser page, `pressKey` reaches the focused web page and Persephone's browser shortcuts,
 including zoom, reload, and developer tools.

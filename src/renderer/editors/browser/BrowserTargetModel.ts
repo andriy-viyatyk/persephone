@@ -42,11 +42,13 @@ export class BrowserTargetModel implements IAutomationTarget, ISyntheticInputHos
         return targetTabId;
     }
 
-    focusWebview(tabId?: string): void {
+    async focusWebview(tabId?: string): Promise<void> {
         const state = this.model.state.get();
         const targetTab = tabId || state.activeTabId;
         if (this.model.popups.has(targetTab)) {
-            void this.model.popups.focus(targetTab).catch((): undefined => undefined);
+            // Awaited: input sent before the popup window is raised and has drawn a frame can be
+            // dropped silently (the click "succeeds" and the page never sees it).
+            await this.model.popups.focus(targetTab).catch((): undefined => undefined);
             return;
         }
         const webview = this.model.webview.get(targetTab);

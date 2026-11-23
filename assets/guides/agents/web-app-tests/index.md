@@ -130,7 +130,8 @@ with `ctx.usePage()`. Call `site.clipboard.arm()` before the copy action, then r
 observed from that page with `site.clipboard.readText()`; the result is `null` until a page write is
 observed. `site.clipboard.writeText(text)` stages one value for the page's next clipboard read or
 trusted Ctrl+V / Windows Shift+Insert. Keyboard paste dispatches an untrusted synthetic event and
-uses `insertText` for an uncancelled paste into an editable target. Menus still use the OS clipboard.
+uses `insertText` for an uncancelled paste into an editable target. After `arm()` the page's
+clipboard is isolated from the OS clipboard, menus and `navigator.clipboard` included.
 The host never reads OS clipboard contents. Adopted-page cleanup resets the recorder and removes its
 document-start registration.
 

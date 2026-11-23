@@ -38,87 +38,92 @@ function pageClipboardRecorderOperation(operation: ClipboardOperation, value?: s
     if (recorder.installed) return;
     recorder.installed = true;
 
+    // While installed, the page's clipboard is isolated from the operating system's: native copy,
+    // cut and paste are cancelled and replayed against a private DataTransfer, so a test never
+    // overwrites the user's clipboard and never reads it. A cancelled clipboard event with no data
+    // leaves the OS clipboard untouched.
     const activeRecorder = recorder;
     const record = (text: string) => { activeRecorder.text = text; };
-    let activeClipboardEvent: ClipboardEvent | null = null;
-    let eventText: string | null = null;
+    /** One-shot staged text first, else the page's own last copy. */
+    const takePasteText = (): string => {
+        const staged = activeRecorder.staged;
+        activeRecorder.staged = null;
+        return staged ?? activeRecorder.text ?? "";
+    };
     let alive = true;
-    const dataTransferPrototype = DataTransfer.prototype;
-    const setDataDescriptor = Object.getOwnPropertyDescriptor(dataTransferPrototype, "setData");
-    const originalSetData = dataTransferPrototype.setData;
-    const wrappedSetData = function(format: string, data: string): void {
-        if (activeClipboardEvent && format.toLowerCase() === "text/plain") eventText = data;
-        return originalSetData.call(this, format, data);
-    };
-    dataTransferPrototype.setData = wrappedSetData;
+    const isEditable = (target: EventTarget | null) => target instanceof HTMLInputElement
+        || target instanceof HTMLTextAreaElement
+        || (target instanceof HTMLElement && target.isContentEditable);
 
-    const observeCopy = (event: ClipboardEvent) => {
-        activeClipboardEvent = event;
-        eventText = null;
+    const replayCopy = (type: "copy" | "cut", target: EventTarget) => {
         const selectionText = window.getSelection()?.toString() ?? "";
-        queueMicrotask(() => {
-            if (!alive) return;
-            let clipboardText: string | null = eventText;
-            const handlerSetText = eventText !== null;
-            if (clipboardText === null) {
-                try { clipboardText = event.clipboardData?.getData("text/plain") ?? null; }
-                catch { clipboardText = null; }
-            }
-            record(handlerSetText ? clipboardText ?? "" : clipboardText || selectionText);
-            activeClipboardEvent = null;
-            eventText = null;
-        });
+        const transfer = new DataTransfer();
+        const replay = new ClipboardEvent(type, { bubbles: true, cancelable: true, clipboardData: transfer });
+        const handled = !target.dispatchEvent(replay);
+        if (handled) {
+            record(transfer.getData("text/plain"));
+            return;
+        }
+        record(selectionText);
+        if (type === "cut" && selectionText && isEditable(target)) document.execCommand("delete");
     };
-    const observeKeydown = (event: KeyboardEvent) => {
-        if (!alive || !event.isTrusted || activeRecorder.staged === null) return;
+    const replayPaste = (target: EventTarget) => {
+        const text = takePasteText();
+        const transfer = new DataTransfer();
+        transfer.setData("text/plain", text);
+        const replay = new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: transfer });
+        const handled = !target.dispatchEvent(replay);
+        if (!handled && text && isEditable(target)) document.execCommand("insertText", false, text);
+    };
+    const interceptClipboardEvent = (event: ClipboardEvent) => {
+        // Replays are untrusted, as is a page's own `new ClipboardEvent(...)`; neither touches the OS.
+        if (!alive || !event.isTrusted) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const target = event.target ?? document;
+        if (event.type === "paste") replayPaste(target);
+        else replayCopy(event.type as "copy" | "cut", target);
+    };
+    // Keyboard paste is replayed from keydown so it reaches a focused element that is not editable,
+    // where Chromium may fire no native paste event; cancelling the keydown also cancels that paste.
+    const interceptPasteShortcut = (event: KeyboardEvent) => {
+        if (!alive || !event.isTrusted) return;
         const pasteShortcut = (event.ctrlKey && event.key.toLowerCase() === "v")
             || (event.shiftKey && event.key === "Insert");
         if (!pasteShortcut) return;
-        const text = activeRecorder.staged;
-        activeRecorder.staged = null;
         event.preventDefault();
-        const transfer = new DataTransfer();
-        transfer.setData("text/plain", text);
-        const paste = new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: transfer });
-        const target = document.activeElement ?? document;
-        const handled = !target.dispatchEvent(paste);
-        if (handled) return;
-        const editable = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement
-            || (target instanceof HTMLElement && target.isContentEditable);
-        if (editable) document.execCommand("insertText", false, text);
+        replayPaste(document.activeElement ?? document);
     };
-    window.addEventListener("copy", observeCopy, true);
-    window.addEventListener("cut", observeCopy, true);
-    document.addEventListener("keydown", observeKeydown, true);
+    window.addEventListener("copy", interceptClipboardEvent, true);
+    window.addEventListener("cut", interceptClipboardEvent, true);
+    window.addEventListener("paste", interceptClipboardEvent, true);
+    document.addEventListener("keydown", interceptPasteShortcut, true);
 
     const clipboard = navigator.clipboard;
     const clipboardDescriptors = new Map<string, PropertyDescriptor | undefined>();
     const clipboardWrappers = new Map<string, (...args: never[]) => unknown>();
     if (clipboard) {
-        for (const method of ["readText", "writeText", "write"]) clipboardDescriptors.set(method, Object.getOwnPropertyDescriptor(clipboard, method));
-        const originalReadText = clipboard.readText.bind(clipboard);
-        const originalWriteText = clipboard.writeText.bind(clipboard);
-        const originalWrite = clipboard.write.bind(clipboard);
+        for (const method of ["read", "readText", "writeText", "write"]) clipboardDescriptors.set(method, Object.getOwnPropertyDescriptor(clipboard, method));
         try {
-            const wrappedReadText = () => {
-                if (activeRecorder.staged !== null) {
-                    const staged = activeRecorder.staged;
-                    activeRecorder.staged = null;
-                    return Promise.resolve(staged);
-                }
-                return originalReadText();
-            };
-            const wrappedWriteText = (text: string) => originalWriteText(text).then(() => { record(text); });
-            const wrappedWrite = (items: ClipboardItems) => originalWrite(items).then(async () => {
+            // Isolated like the events above: reads never reach the OS clipboard, writes stay here.
+            const wrappedReadText = () => Promise.resolve(takePasteText());
+            const wrappedRead = () => Promise.resolve([new ClipboardItem({ "text/plain": new Blob([takePasteText()], { type: "text/plain" }) })]);
+            const wrappedWriteText = (text: string) => { record(String(text)); return Promise.resolve(); };
+            const wrappedWrite = async (items: ClipboardItems) => {
                 for (const item of items) {
                     if (!item.types.includes("text/plain")) continue;
                     try { record(await (await item.getType("text/plain")).text()); }
-                    catch { /* A successful native write remains successful if observation fails. */ }
+                    catch { /* A write the page cannot read back is simply not recorded. */ }
                 }
-            });
+            };
+            clipboardWrappers.set("read", wrappedRead);
             clipboardWrappers.set("readText", wrappedReadText);
             clipboardWrappers.set("writeText", wrappedWriteText);
             clipboardWrappers.set("write", wrappedWrite);
+            Object.defineProperty(clipboard, "read", {
+                configurable: true,
+                value: wrappedRead,
+            });
             Object.defineProperty(clipboard, "readText", {
                 configurable: true,
                 value: wrappedReadText,
@@ -135,16 +140,14 @@ function pageClipboardRecorderOperation(operation: ClipboardOperation, value?: s
     }
     activeRecorder.cleanup = () => {
         alive = false;
-        window.removeEventListener("copy", observeCopy, true);
-        window.removeEventListener("cut", observeCopy, true);
-        document.removeEventListener("keydown", observeKeydown, true);
-        try {
-            if (dataTransferPrototype.setData === wrappedSetData && setDataDescriptor) Object.defineProperty(dataTransferPrototype, "setData", setDataDescriptor);
-        } catch { /* Page changes to the prototype are left intact. */ }
+        window.removeEventListener("copy", interceptClipboardEvent, true);
+        window.removeEventListener("cut", interceptClipboardEvent, true);
+        window.removeEventListener("paste", interceptClipboardEvent, true);
+        document.removeEventListener("keydown", interceptPasteShortcut, true);
         if (!clipboard) return;
         for (const [method, wrapper] of clipboardWrappers) {
             try {
-                if (clipboard[method as "readText" | "writeText" | "write"] !== wrapper) continue;
+                if (clipboard[method as "read" | "readText" | "writeText" | "write"] !== wrapper) continue;
                 const descriptor = clipboardDescriptors.get(method);
                 if (descriptor) Object.defineProperty(clipboard, method, descriptor);
                 else delete (clipboard as unknown as Record<string, unknown>)[method];

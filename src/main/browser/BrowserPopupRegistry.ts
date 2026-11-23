@@ -9,6 +9,21 @@ import { onWebContentsGone } from "../webcontents-lifetime";
 
 // Keep agent close requests bounded while allowing ordinary beforeunload handlers to run.
 const POPUP_CLOSE_TIMEOUT_MS = 3000;
+// How long agent input waits for a just-raised popup to draw before it is sent anyway.
+const POPUP_FIRST_FRAME_TIMEOUT_MS = 1000;
+// A world of its own, so the page's main-world requestAnimationFrame cannot be replaced under it.
+const FRAME_PROBE_WORLD_ID = 1789;
+
+/** Resolve after the page draws its next frame (two animation frames), or after the time limit. */
+async function waitForNextFrame(contents: WebContents, timeoutMs: number): Promise<void> {
+    let timer: NodeJS.Timeout | undefined;
+    const frame = contents.executeJavaScriptInIsolatedWorld(FRAME_PROBE_WORLD_ID, [{
+        code: "new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))",
+    }]).catch((): undefined => undefined);
+    const limit = new Promise<void>((resolve) => { timer = setTimeout(resolve, timeoutMs); });
+    try { await Promise.race([frame, limit]); }
+    finally { clearTimeout(timer); }
+}
 
 interface PopupEntry {
     readonly id: string;
@@ -166,10 +181,14 @@ export class BrowserPopupRegistry {
     }
 
     /** Bring an owned popup's window to the front and focus its page before agent input. */
-    focus(id: string, rootKey: string, sender: WebContents): void {
+    async focus(id: string, rootKey: string, sender: WebContents): Promise<void> {
         const entry = this.requireEntry(id, rootKey, sender);
+        const wasFocused = entry.window.isFocused();
         entry.window.focus();
         entry.webContents.focus();
+        // A window that was just raised (or just opened) may not have drawn yet, and Chromium routes
+        // trusted mouse input by the hit-test data of a drawn frame; until then input is dropped.
+        if (!wasFocused) await waitForNextFrame(entry.webContents, POPUP_FIRST_FRAME_TIMEOUT_MS);
     }
 
     insertText(id: string, rootKey: string, sender: WebContents, text: string): void {

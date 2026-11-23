@@ -333,6 +333,46 @@ export default [
         }
     }),
 
+    test("an armed page clipboard copies, cuts and pastes within the page", async (ctx) => {
+        // The OS clipboard is not read here: the suite must not touch it. Isolation shows as the page
+        // pasting its own copy and the Clipboard API reading back only page-written text.
+        const page = await openInputPage(ctx, "input-clipboard.html");
+        try {
+            const editor = ctx.app.pages[page.id].editor;
+            await editor.waitFor({ selector: "#paste-target" });
+            await editor.clipboard.arm();
+
+            await editor.evaluate("() => window.selectContents('plain')");
+            await editor.pressKey("Control+c");
+            ctx.expect(await editor.clipboard.readText()).toBe("plain selection");
+
+            await editor.evaluate("() => window.selectContents('custom')");
+            await editor.pressKey("Control+c");
+            ctx.expect(await editor.clipboard.readText()).toBe("custom payload");
+            await editor.click("#paste-target");
+            await editor.pressKey("Control+v");
+            ctx.expect(await editor.getValue("#paste-target")).toBe("custom payload");
+
+            await editor.evaluate("() => { const input = document.getElementById('cut-source'); input.focus(); input.select(); }");
+            await editor.pressKey("Control+x");
+            ctx.expect(await editor.getValue("#cut-source")).toBe("");
+            ctx.expect(await editor.clipboard.readText()).toBe("cut me");
+
+            await editor.click("#api-write");
+            await ctx.waitFor(() => editor.clipboard.readText(), (text) => text === "api payload");
+            await editor.click("#api-read");
+            await ctx.waitFor(() => editor.evaluate("() => window.results.apiRead"), (text) => text === "api payload");
+
+            await editor.clipboard.writeText("staged text");
+            await editor.evaluate("() => { const input = document.getElementById('paste-target'); input.value = ''; }");
+            await editor.click("#paste-target");
+            await editor.pressKey("Control+v");
+            ctx.expect(await editor.getValue("#paste-target")).toBe("staged text");
+        } finally {
+            await closeBrowserPage(ctx, page);
+        }
+    }),
+
     test("evaluate invokes a string function with JSON-safe arguments", async (ctx) => {
         const page = await openInputPage(ctx);
         try {

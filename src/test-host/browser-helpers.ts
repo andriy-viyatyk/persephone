@@ -159,15 +159,22 @@ export async function closePagesOpenedSince(client: McpClient, baseline: Ownersh
     const beforeSnapshot = await sweep("before-snapshot");
     if (beforeSnapshot.found) errors.push("The test left a renderer dialog open; cleanup dismissed it.");
     errors.push(...beforeSnapshot.errors);
-    let current: OwnershipSnapshot;
-    try { current = await readSnapshot(client, "cleanup", log, testWindow); }
-    catch (error) {
-        if (error instanceof EnvironmentStopError) throw error;
-        errors.push(`Could not inspect browser pages for cleanup: ${errMessage(error)}`);
-        const afterSnapshot = await sweep("after-close");
-        if (afterSnapshot.found) errors.push("A renderer dialog remained during cleanup; cleanup dismissed it.");
-        errors.push(...afterSnapshot.errors);
-        return errors;
+    let current: OwnershipSnapshot | undefined;
+    // Two attempts: a menu or dialog the test's last action opened can appear between the sweep above
+    // and this read (the read then answers with attention), and a busy app can time out one read.
+    for (let attempt = 1; !current; attempt++) {
+        try { current = await readSnapshot(client, "cleanup", log, testWindow); }
+        catch (error) {
+            if (error instanceof EnvironmentStopError) throw error;
+            const afterSnapshot = await sweep("after-close");
+            if (afterSnapshot.found) errors.push("The test left a renderer dialog or popup menu open; cleanup dismissed it.");
+            errors.push(...afterSnapshot.errors);
+            if (attempt >= 2) {
+                errors.push(`Could not inspect browser pages for cleanup: ${errMessage(error)}`);
+                return errors;
+            }
+            log("cleanup", { action: "snapshot-retry", error: errMessage(error) });
+        }
     }
 
     errors.push(...current.errors);

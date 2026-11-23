@@ -180,7 +180,7 @@ export async function typeText(target: IAutomationTarget & ISyntheticInputHost, 
     const cdp = target.cdp(tabId);
 
     // The old synthetic path still asks Electron to focus the host before DOM evaluation.
-    target.focusWebview(tabId);
+    await target.focusWebview(tabId);
 
     // The selector/ref check above guarantees ref when selector is absent.
     // Detect element type

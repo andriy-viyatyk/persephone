@@ -1470,9 +1470,16 @@ Routes are removed when explicitly cleared or during test cleanup.
 `waitForDownload()` arms capture only for a test-power page. The main process writes captured bytes
 under its temporary capture root; the test host verifies confinement before copying them into the
 run output folder and attaching the result. This path skips the Save dialog and does not add captures
-to normal browser download history. Clipboard access is page-scoped: `page-clipboard-recorder.ts`
-records text produced by the page's own copy action, and staged writes supply only the next page paste;
-the host never reads the OS clipboard. `BrowserClock` installs a page timer script at document start,
+to normal browser download history. Clipboard access is page-scoped: once armed, `page-clipboard-recorder.ts`
+isolates the page from the OS clipboard. Trusted `copy`/`cut`/`paste` events (keyboard, context menu,
+Electron menu) are cancelled in the capture phase and replayed as untrusted events against a private
+`DataTransfer` (a cancelled clipboard event with no data leaves the OS clipboard untouched); keyboard
+paste is replayed from `keydown`, and `navigator.clipboard` read/write methods are replaced. Paste
+delivers the staged text, else the page's own last copy. The host never reads the OS clipboard.
+
+Trusted input to an owned pop-up window awaits `BrowserTargetModel.focusWebview()`: the main side
+(`BrowserPopupRegistry.focus()`) raises the window and, when it was not already focused, waits for
+its next frame (bounded) because Chromium drops mouse input routed to a window that has not drawn. `BrowserClock` installs a page timer script at document start,
 with time advancing in real time and `fastForward()` applying an explicit jump.
 
 The facade has an optional page-authored `.app` child. After `did-stop-loading` for a real document,

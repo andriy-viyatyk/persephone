@@ -29,6 +29,15 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Bug Fixes
 
+- **Clicks and typing reach browser pop-up windows reliably.** Agent and test input sent to a
+  pop-up right after it opened, or while it was behind another window, could be lost while the call
+  still reported success. Input now waits until the pop-up is in front and has drawn.
+- **Web-app tests no longer touch your clipboard.** Once a test arms a page's clipboard
+  (`clipboard.arm()`), copy, cut and paste on that page, from the keyboard or a menu, and the page's
+  Clipboard API stay inside the page: your Windows clipboard is neither overwritten nor read.
+- **Test runs always finish.** Stopping the test app no longer waits forever when the app or one of
+  its helper processes does not exit, and end-of-test cleanup retries once when a menu or dialog the
+  test opened appears during cleanup.
 - **Attached test runs no longer close your pages.** With `persephone-test.exe --attach`, the
   cleanup after each test closed every page that had appeared in the window during the test,
   including pages you had just opened yourself, and answered your own **Unsaved Changes** prompt with

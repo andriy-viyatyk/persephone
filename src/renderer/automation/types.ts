@@ -61,7 +61,7 @@ export interface IAutomationTarget {
 /** Host seams used only by the explicit synthetic input compatibility path. */
 export interface ISyntheticInputHost {
     /** Focus the host webview for explicit synthetic compatibility. */
-    focusWebview(tabId?: string): void;
+    focusWebview(tabId?: string): void | Promise<void>;
 
     /** Insert text through the host's legacy native insertion seam for explicit synthetic compatibility. */
     insertText(text: string, tabId?: string): Promise<void>;

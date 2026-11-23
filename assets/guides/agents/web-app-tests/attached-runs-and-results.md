@@ -83,7 +83,8 @@ pages remain refused. Call `site.clipboard.arm()` before the page action, then `
 only page-observed text/plain writes and never reads the OS clipboard. `writeText(text)` stages a
 one-shot value for the page's next clipboard read or trusted Ctrl+V / Windows Shift+Insert. Staged
 keyboard paste sends an untrusted synthetic event and uses `insertText` for an uncancelled paste
-into an editable field; context-menu and Electron-menu Paste remain native OS clipboard operations.
+into an editable field. After `arm()` copy, cut, paste (keyboard and menus) and `navigator.clipboard`
+never touch the OS clipboard; a paste with nothing staged delivers the page's own last copy.
 Adopted-page cleanup also resets the page clipboard recorder before clearing init scripts and
 releasing test access. Clipboard text is excluded from runner logs and reports.
 

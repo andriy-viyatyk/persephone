@@ -28,8 +28,8 @@ export const browserPopupService = {
         const registration = browserGuests.owned(request?.registrationKey, event.sender);
         if (registration) browserPopups.closeOwned(registration.key, event.sender);
     },
-    focusPopup(event: IpcMainInvokeEvent, request: { registrationKey: string; popupId: string }): void {
-        browserPopups.focus(requirePopupId(request?.popupId), requireOwnedRootKey(event, request?.registrationKey), event.sender);
+    async focusPopup(event: IpcMainInvokeEvent, request: { registrationKey: string; popupId: string }): Promise<void> {
+        await browserPopups.focus(requirePopupId(request?.popupId), requireOwnedRootKey(event, request?.registrationKey), event.sender);
     },
     insertPopupText(event: IpcMainInvokeEvent, request: { registrationKey: string; popupId: string; text: string }): void {
         if (typeof request?.text !== "string") throw new Error("Popup text must be a string.");

@@ -253,8 +253,9 @@ await site.pressKey("Control+V");
 
 Test clipboard access requires an agent-opened or `ctx.usePage()` adopted page. Staged Ctrl+V and
 Windows Shift+Insert dispatch an untrusted synthetic paste event; if it is not cancelled and focus
-is editable, `insertText` inserts the staged text. Rich HTML is not emulated. Context-menu and
-Electron-menu Paste continue to use the OS clipboard. Adopted-page cleanup resets recorder state
+is editable, `insertText` inserts the staged text. Rich HTML is not emulated. After `arm()` the
+page's clipboard is isolated: copy, cut, paste (keyboard and menus) and `navigator.clipboard` never
+touch the OS clipboard, and a paste with nothing staged delivers the page's own last copy. Adopted-page cleanup resets recorder state
 and removes its init-script registration.
 
 ### Mock page requests

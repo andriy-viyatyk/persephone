@@ -32,6 +32,26 @@ export interface HostConfiguration {
     grep?: string;
     reporter: "human" | "json-lines";
 }
+/** Whether the promise settled (resolved or rejected) within the time limit. */
+async function settlesWithin(promise: Promise<unknown> | undefined, ms: number): Promise<boolean> {
+    if (!promise) return true;
+    let timer: NodeJS.Timeout | undefined;
+    const settled = promise.then(() => true, () => true);
+    const timedOut = new Promise<boolean>((resolve) => { timer = setTimeout(() => resolve(false), ms); });
+    try { return await Promise.race([settled, timedOut]); }
+    finally { clearTimeout(timer); }
+}
+
+/** Force-kill a process and its descendants; best effort. */
+function killProcessTree(child: ChildProcess): void {
+    if (!child.pid) return;
+    if (process.platform === "win32") {
+        spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true }).once("error", () => { /* best effort */ });
+    } else {
+        child.kill("SIGKILL");
+    }
+}
+
 interface ChildState { process: ChildProcess; exit: Promise<string | number | null>; outputsClosed: Promise<void>; exited?: string | number | null; }
 export class TestLauncher {
     child?: ChildState;
@@ -86,15 +106,29 @@ export class TestLauncher {
             try { await this.client.call("window.close", [], Math.min(this.timeouts.shutdown, this.timeouts.request)); }
             catch { /* Best-effort; the bounded kill below still runs. */ }
         }
-        await this.client?.close(); this.client = undefined;
-        if (state && state.exited === undefined) {
-            await Promise.race([state.exit, new Promise((resolve) => setTimeout(resolve, this.timeouts.shutdown))]);
+        // Every wait below is bounded: a stop that never returns hangs an unattended run.
+        await settlesWithin(this.client?.close(), this.timeouts.shutdown); this.client = undefined;
+        if (!state) return;
+        if (state.exited === undefined) {
+            await settlesWithin(state.exit, this.timeouts.shutdown);
             if (state.exited === undefined) {
                 state.process.kill();
-                await Promise.race([state.exit, new Promise((resolve) => setTimeout(resolve, this.timeouts.shutdown))]);
+                await settlesWithin(state.exit, this.timeouts.shutdown);
             }
+            // On Windows kill() ends only the main process; Electron's helper processes can survive it.
+            if (state.exited === undefined) {
+                killProcessTree(state.process);
+                await settlesWithin(state.exit, this.timeouts.shutdown);
+            }
+            if (state.exited === undefined) process.stderr.write(`[persephone-test] The app (pid ${state.process.pid}) did not exit after being killed; continuing.\n`);
         }
-        await state?.outputsClosed;
+        // The output pipes close only when every process holding them exits, and a surviving helper
+        // process holds them open. Stop reading them rather than wait for it.
+        if (!await settlesWithin(state.outputsClosed, this.timeouts.shutdown)) {
+            state.process.stdout?.destroy();
+            state.process.stderr?.destroy();
+            await settlesWithin(state.outputsClosed, this.timeouts.shutdown);
+        }
     }
 
     async retain(): Promise<{ pid: number; url: string } | undefined> {
