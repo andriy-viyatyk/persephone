@@ -16,6 +16,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 - **Browser automation works again in the installed app.** In 5.0.21, actions that check whether an
   element is visible, such as a double-click, failed with `ReferenceError: Wn is not defined`.
+- **Board toolbar buttons no longer vanish after a board loads.** A board that set up its toolbar
+  early while loading (Agent Chat, for example) could show its buttons for a moment and then lose
+  them until the next reload.
 
 ---
 

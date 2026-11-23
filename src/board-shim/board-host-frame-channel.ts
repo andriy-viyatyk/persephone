@@ -17,6 +17,12 @@ type RequestHandler = (params: unknown, context: HostFrameContext) => unknown | 
 type EventHandler = (payload: unknown, context: HostFrameContext) => void;
 type PendingMeta = { method: keyof BoardToHostRequests };
 
+// Toolbar and status-bar events wait for the host's port init. The host sends it only after it has
+// handled the frame's load (retiring the previous document's chrome), so an event sent earlier would be
+// stamped with the old frame generation and cleared a moment later (the board's buttons flash and vanish).
+// If no init arrives this long after the document loads, the events are sent anyway.
+const CHROME_INIT_FALLBACK_MS = 5000;
+
 function ownKey(value: object, key: string): boolean { return Object.prototype.hasOwnProperty.call(value, key); }
 function objectPayload(value: unknown): Record<string, unknown> {
     return typeof value === "object" && value !== null ? value as Record<string, unknown> : {};
@@ -28,7 +34,8 @@ export class HostFrameChannel {
     private readonly requestHandlers: Partial<Record<keyof HostToBoardRequests, RequestHandler>> = {};
     private readonly eventHandlers: Partial<Record<keyof HostToBoardEvents, EventHandler>> = {};
     private initHandler: ((init: BoardPortInitMsg, ports: readonly MessagePort[]) => void) | undefined;
-    private toolbarDocumentLoaded = typeof document !== "undefined" && document.readyState === "complete";
+    private chromeReady = false;
+    private chromeFallbackTimer: ReturnType<typeof setTimeout> | undefined;
     private readonly pendingDocumentMessages: Array<() => void> = [];
     private listening = false;
 
@@ -41,7 +48,8 @@ export class HostFrameChannel {
         this.listening = true;
         // event.source is the load-bearing boundary: host messages must come from the embedding window.
         window.addEventListener("message", this.handleMessage);
-        if (!this.toolbarDocumentLoaded) window.addEventListener("load", this.handleDocumentLoad, { once: true });
+        if (document.readyState === "complete") this.startChromeFallback();
+        else window.addEventListener("load", this.startChromeFallback, { once: true });
     }
 
     request<M extends keyof BoardToHostRequests>(
@@ -116,13 +124,18 @@ export class HostFrameChannel {
         }, BOARD_TO_HOST_EVENTS_AFTER_LOAD.has(name));
     }
 
-    private readonly handleDocumentLoad = (): void => {
-        this.toolbarDocumentLoaded = true;
+    private readonly startChromeFallback = (): void => {
+        if (this.chromeReady || this.chromeFallbackTimer !== undefined) return;
+        this.chromeFallbackTimer = setTimeout(this.releaseChrome, CHROME_INIT_FALLBACK_MS);
+    };
+    private readonly releaseChrome = (): void => {
+        if (this.chromeFallbackTimer !== undefined) clearTimeout(this.chromeFallbackTimer);
+        this.chromeFallbackTimer = undefined;
+        this.chromeReady = true;
         for (const send of this.pendingDocumentMessages.splice(0)) send();
     };
     private afterLoad(send: () => void, deferred = true): void {
-        if (!deferred || this.toolbarDocumentLoaded || document.readyState === "complete") {
-            this.toolbarDocumentLoaded = true;
+        if (!deferred || this.chromeReady) {
             send();
             return;
         }
@@ -144,6 +157,7 @@ export class HostFrameChannel {
     private dispatch(event: MessageEvent): void {
         if (isBoardPortInit(event.data)) {
             this.initHandler?.(event.data, event.ports);
+            this.releaseChrome();
             return;
         }
         const envelope = readFrameEnvelope(event.data);
