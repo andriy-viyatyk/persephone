@@ -12,7 +12,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.22 (Upcoming)
 
-*No changes yet.*
+### Bug Fixes
+
+- **Browser automation works again in the installed app.** In 5.0.21, actions that check whether an
+  element is visible, such as a double-click, failed with `ReferenceError: Wn is not defined`.
 
 ---
 

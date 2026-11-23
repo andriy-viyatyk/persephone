@@ -1,4 +1,6 @@
-/** Page-side visibility rule shared by automation and site-extension models. */
+// Page-side visibility rule shared by automation and site-extension models.
+// Both functions are serialized into pages with toString(), so neither may call another module
+// function: the production build renames them, and the page would get an undefined name.
 function displayed(element: Element): boolean {
     const style = getComputedStyle(element);
     return style.visibility !== "hidden" && style.display !== "none";
@@ -6,7 +8,9 @@ function displayed(element: Element): boolean {
 
 function visible(element: Element): boolean {
     const rect = element.getBoundingClientRect();
-    return rect.width > 0 && rect.height > 0 && displayed(element);
+    if (rect.width <= 0 || rect.height <= 0) return false;
+    const style = getComputedStyle(element);
+    return style.visibility !== "hidden" && style.display !== "none";
 }
 
 export function isVisibleElement(element: Element): boolean {
