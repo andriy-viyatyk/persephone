@@ -120,7 +120,11 @@ a live main frame belonging to a Persephone `BrowserWindow` in the application s
 
 Packaged builds lock Electron fuses in `electron-builder.yml`: `RunAsNode`, `NODE_OPTIONS` (including
 `NODE_EXTRA_CA_CERTS`), and Node inspector arguments are disabled; embedded asar integrity validation
-and load-only-from-asar are enabled; and browser cookie encryption is enabled. Board Node scripts
+and load-only-from-asar are enabled; and browser cookie encryption is enabled. Dev and release share
+the same userData folder, so `scripts/dev.mjs` also turns on the cookie-encryption fuse in the dev
+`electron.exe` before launch; otherwise dev drops the release build's encrypted cookies and every site
+signs out. That edit invalidates the dev exe's Widevine VMP signature, so DRM playback is off in dev.
+Board Node scripts
 therefore run in an Electron utility process from the host built from `src/node-script-host/index.ts`,
 rather than relaunching the application executable as Node. Browser downloads are tagged with the Windows
 Mark-of-the-Web (`Zone.Identifier`) so Windows security features can identify internet-origin files.

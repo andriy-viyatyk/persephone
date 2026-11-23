@@ -23,6 +23,7 @@ import { builtinModules } from "node:module";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import electronPath from "electron";
+import { FuseV1Options, FuseVersion, flipFuses, getCurrentFuseWire } from "@electron/fuses";
 
 const nodeExternals = [
     "electron",
@@ -333,5 +334,29 @@ await Promise.all([
     watchBuild("test-host", nodeEsmEntryConfig("test-host", "src/test-host/index.ts", ".vite/test-host", { bundleDependencies: true }), { restartOnChange: false }),
 ]);
 
+await ensureDevCookieEncryption();
 console.log("\x1b[36m[dev]\x1b[0m Launching Electron...");
 startElectron();
+
+// The release exe has the EnableCookieEncryption fuse on (electron-builder.yml), and dev shares
+// its userData folder. A dev electron.exe with the fuse off cannot read those encrypted cookies:
+// it drops them and every site signs out. Turning the fuse on here keeps both builds on the same
+// DPAPI-encrypted cookie store. Changing the exe invalidates its Widevine VMP signature
+// (electron.exe.sig), so DRM playback does not work in dev. An Electron reinstall resets the
+// fuse, and the next `npm start` turns it on again.
+async function ensureDevCookieEncryption() {
+    try {
+        const wire = await getCurrentFuseWire(electronPath);
+        if (wire[FuseV1Options.EnableCookieEncryption] === "1".charCodeAt(0)) return;
+        await flipFuses(electronPath, {
+            version: FuseVersion.V1,
+            [FuseV1Options.EnableCookieEncryption]: true,
+        });
+        console.log("\x1b[36m[dev]\x1b[0m Turned on cookie encryption in the dev electron.exe (matches the release build)");
+    } catch (error) {
+        console.warn(
+            `\x1b[33m[dev]\x1b[0m Could not turn on cookie encryption in the dev electron.exe; ` +
+            `sites signed in from the release build will sign out here: ${error?.message ?? error}`,
+        );
+    }
+}
