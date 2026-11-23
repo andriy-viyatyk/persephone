@@ -239,9 +239,8 @@ before clearing any remaining init-script registrations.
 
 ### Page clipboard
 
-Arm recording before the action whose output you need. The recorder observes this page's own
-text/plain copy/cut writes and successful Clipboard API writes; it cannot recover text from before
-arming and never reads the OS clipboard.
+Arm recording before the action whose output you need. The recorder sees this page's text/plain
+copy/cut and Clipboard API writes made after arming, never the OS clipboard.
 
 ```js
 await site.clipboard.arm();
@@ -251,12 +250,10 @@ await site.clipboard.writeText("pasted by the test");
 await site.pressKey("Control+V");
 ```
 
-Test clipboard access requires an agent-opened or `ctx.usePage()` adopted page. Staged Ctrl+V and
-Windows Shift+Insert dispatch an untrusted synthetic paste event; if it is not cancelled and focus
-is editable, `insertText` inserts the staged text. Rich HTML is not emulated. After `arm()` the
-page's clipboard is isolated: copy, cut, paste (keyboard and menus) and `navigator.clipboard` never
-touch the OS clipboard, and a paste with nothing staged delivers the page's own last copy. Adopted-page cleanup resets recorder state
-and removes its init-script registration.
+Requires an agent-opened or `ctx.usePage()` adopted page. Staged Ctrl+V or Shift+Insert sends a
+synthetic paste event; if not cancelled and focus is editable, the staged text is inserted (no rich
+HTML). After `arm()` copy, cut, paste and `navigator.clipboard` never touch the OS clipboard; a
+paste with nothing staged gets the page's last copy. Adopted-page cleanup resets the recorder.
 
 ### Mock page requests
 
@@ -315,9 +312,8 @@ workers are not attached; service workers may bypass it. DevTools detaches the d
 the next CDP attach restores declarations. Run cleanup calls `unrouteAll()` on adopted pages before
 releasing adoption, and closes owned pages.
 
-Use the browser editor's selector strings and read members through the page stand-in. Calls still cross
-the JSON boundary, so a function passed to `waitForFunction` must be function source text, not a
-JavaScript callback.
+Use the browser editor's selector strings through the page stand-in. Calls cross the JSON
+boundary, so `waitForFunction` takes function source text, not a callback.
 
 | Playwright | Persephone test |
 |---|---|
