@@ -243,18 +243,15 @@ export default [
         }
     }),
 
-    test("Folder View creates, renames, deletes, copies, and moves local fixture items", async (ctx) => {
+    test("Folder View creates, renames, and deletes local fixture items", async (ctx) => {
         const folder = ctx.fixture("us-2072/folder-operations");
         const workspaceParent = ctx.fixture("us-2072/folder-operations/workspace");
         const projectPath = ctx.fixture("us-2072/folder-operations/workspace/project");
-        const destinationPath = `${projectPath}\\destination`;
         const filePath = (name) => `${projectPath}\\${name}`;
         let pageId;
         try {
             await removeFixtureDirectory(ctx, folder);
-            await ctx.app.fs.mkdir(destinationPath);
             await ctx.app.fs.write(filePath("source.txt"), "Copy this fixture.\n");
-            await ctx.app.fs.write(filePath("move.txt"), "Move this fixture.\n");
             pageId = await openFolderView(ctx, workspaceParent, "project");
 
             await openContextMenu(ctx, '[data-type="category-view"]', "source.txt");
@@ -332,6 +329,27 @@ export default [
                 (items) => !items.some((item) => item.title === "renamed.txt"),
             );
 
+        } finally {
+            await closeOpenMenu(ctx);
+            await closePage(ctx, pageId);
+            await removeFixtureDirectory(ctx, folder);
+        }
+    }),
+
+    test("Folder View copies and moves local fixture items with the OS file clipboard", async (ctx) => {
+        const folder = ctx.fixture("us-2072/folder-clipboard-operations");
+        const workspaceParent = ctx.fixture("us-2072/folder-clipboard-operations/workspace");
+        const projectPath = ctx.fixture("us-2072/folder-clipboard-operations/workspace/project");
+        const destinationPath = `${projectPath}\\destination`;
+        const filePath = (name) => `${projectPath}\\${name}`;
+        let pageId;
+        try {
+            await removeFixtureDirectory(ctx, folder);
+            await ctx.app.fs.mkdir(destinationPath);
+            await ctx.app.fs.write(filePath("source.txt"), "Copy this fixture.\n");
+            await ctx.app.fs.write(filePath("move.txt"), "Move this fixture.\n");
+            pageId = await openFolderView(ctx, workspaceParent, "project");
+
             await openContextMenu(ctx, '[data-type="category-view"]', "source.txt");
             await chooseMenuAction(ctx, "copy");
             await openContextMenu(ctx, '[data-type="category-view"]', "destination");
@@ -350,7 +368,7 @@ export default [
             await closePage(ctx, pageId);
             await removeFixtureDirectory(ctx, folder);
         }
-    }),
+    }, { requires: ["desktop"] }),
 
     test("Archive Folder View lists a nested category and exposes no write actions", async (ctx) => {
         const folder = ctx.fixture("us-2072/archive-folder-view");

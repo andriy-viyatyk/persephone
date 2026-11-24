@@ -18,6 +18,7 @@ Playwright for server CI.
 | Read a complete call-boundary test example | [Call boundary and worked example](./call-boundary-and-examples.md) | `guides.agents["web-app-tests"]["call-boundary-and-examples"]` |
 | Check matchers, browser-model scope, and Playwright mappings | [Browser models and Playwright](./browser-models-and-playwright.md) | `guides.agents["web-app-tests"]["browser-models-and-playwright"]` |
 | Reuse a signed-in browser page, configure attached windows, or inspect captured failures and logs | [Attached runs, session pages, and results](./attached-runs-and-results.md) | `guides.agents["web-app-tests"]["attached-runs-and-results"]` |
+| Run while locked, on another desktop, or minimized | [Unattended runs](./unattended-runs.md) | `guides.agents["web-app-tests"]["unattended-runs"]` |
 | Share setup and cleanup across tests in one file | [File hooks](./file-hooks.md) | `guides.agents["web-app-tests"]["file-hooks"]` |
 | Choose test commands, runner options, output locations, and exit-code behavior | [Run and configure tests](./run-options.md) | `guides.agents["web-app-tests"]["run-options"]` |
 ## Turn exploration into a test
@@ -118,20 +119,9 @@ cleanup; user-opened incognito/Tor pages cannot be adopted. See the [save/load e
 
 ### Route page requests
 
-`site.route(pattern, response, options?)` configures declarative Fetch request routing on an
-agent-opened or test-adopted page. It accepts URL strings as globs, RegExp values in test code, or
-JSON `{ regex, flags? }` patterns through calls. Newest matching route wins; optional method,
-resource-type, and positive `times` filters constrain matches. Routes stay active through navigation.
-The response can fulfil UTF-8 `body`, `bodyBase64`, status and headers, delay fulfilment, continue
-after a delay-only object, or abort. `site.unroute(pattern?)` and `site.unrouteAll()` remove routes.
-At run cleanup the runner clears routes on every adopted page before releasing test access; owned
-pages clear routes on close.
-
-Routes are limited to 50 per page, 1 MiB per response body, 30 seconds per delay, and 2,000 pattern
-characters. Cross-origin fulfillments still need CORS response headers. Route an `OPTIONS` preflight
-separately with allow-origin, allow-methods, and allow-headers when required. Only the page target is
-attached: OOPIFs and dedicated workers are not covered, and service workers may bypass routing.
-DevTools detach pauses routes until the next CDP attach restores them.
+Use `site.route()` to configure Fetch routing for an agent-opened or adopted page, then
+`site.unroute()` or `site.unrouteAll()` to remove routes. See [browser models and Playwright](./browser-models-and-playwright.md)
+for patterns, response options, limits, and frame/worker coverage.
 
 ### Use the page clipboard
 

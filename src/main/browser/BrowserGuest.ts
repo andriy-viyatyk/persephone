@@ -4,6 +4,7 @@ import { BrowserChannel, BrowserEvent } from "../../ipc/browser-ipc";
 import { errMessage } from "../../shared/utils";
 import { getNavigationScheme, getPageOpenAction } from "../../shared/browser-navigation-policy";
 import { destroyPopupWithNodeIntegration, guardPopupWindow, popupWindowOptions } from "./popup-policy";
+import { desktopPlacement } from "../test-mode/desktop-placement";
 import { BrowserPopupGate } from "./popup-gate";
 import { BrowserUnloadGuard } from "./unload-guard";
 import { UserActivation } from "./user-activation";
@@ -188,6 +189,7 @@ export class BrowserGuest {
             const registerPopup = (window: BrowserWindow, openerId: string, opener: WebContents): string | undefined =>
                 hooks.registerPopup(window, rootKey, openerId, opener, rootSender);
             guardPopupWindow(childWindow, rootSender, sendPopupEvent, registerPopup, rootTabId, rootContents);
+            desktopPlacement.showPlacedWindow(childWindow);
         });
         on("destroyed", () => this.hooks.unregisterFromRegistry(this));
     }

@@ -19,6 +19,10 @@ If instead you are **driving** a board or page that already publishes one, you w
 sections of [Boards](./boards/index.md) and [Browser automation](./browser.md). This page is the other
 half: how to make `.app` exist.
 
+`main.session.locked` reports session lock; `windows[i].desktopVisible` requires a shown,
+unminimized window and unlocked session; `main.unseenMode` controls throttling. Other desktops need
+a probe. See [Agent events](./events.md) for lock and unlock notifications.
+
 ## Inspecting a page's content pipe
 
 The active page's primary content pipe is available to MCP agents at `pages[pageId].pipe` when the

@@ -288,7 +288,8 @@ export type BrowserEventType =
     | "ai-vision-signal"
     | "popup-opened"
     | "popup-changed"
-    | "popup-closed";
+    | "popup-closed"
+    | "visibility-mode-changed";
 
 export type BrowserPermissionKey =
     | "camera" | "microphone" | "geolocation" | "notifications" | "midi" | "midiSysex"
@@ -356,6 +357,8 @@ export interface BrowserEventData {
     mainContext?: boolean;
     permissionRequest?: BrowserPermissionPromptData;
     popup?: BrowserPopupSnapshot;
+    /** Current process-wide unseen mode, forwarded to a specific browser guest frame by its host. */
+    unseenModeEnabled?: boolean;
 }
 
 export interface BrowserPermissionDecisionEntry {

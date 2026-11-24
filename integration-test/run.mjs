@@ -1,6 +1,6 @@
 import { access, mkdir, open, readFile, readdir, rename, unlink, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -13,14 +13,15 @@ import { collectModuleReport, writeAggregateReport } from "./lib/aggregate-repor
 import electronPath from "electron";
 
 function parseArguments(args) {
-    const options = { target: "dev", app: undefined, area: undefined, test: undefined, keepOpen: false, rerunFailed: false, open: false, attach: false, list: false, with: [], timeoutScale: 1, baseline: undefined };
+    const options = { target: "dev", app: undefined, area: undefined, test: undefined, keepOpen: false, rerunFailed: false, open: false, attach: false, list: false, help: false, with: [], timeoutScale: 1, baseline: undefined, desktop: undefined };
     const seen = new Set();
     for (let index = 0; index < args.length; index += 1) {
         const flag = args[index];
-        if (!["--area", "--test", "--keep-open", "--rerun-failed", "--timeout-scale", "--prod", "--app", "--open", "--attach", "--with", "--list", "--baseline"].includes(flag)) throw new Error(`Unknown option: ${flag}`);
+        if (!["--area", "--test", "--keep-open", "--rerun-failed", "--timeout-scale", "--prod", "--app", "--open", "--attach", "--with", "--list", "--baseline", "--desktop", "--help"].includes(flag)) throw new Error(`Unknown option: ${flag}`);
         if (seen.has(flag)) throw new Error(`Duplicate option: ${flag}`);
         seen.add(flag);
         if (flag === "--prod") { options.target = "prod"; continue; }
+        if (flag === "--help") { options.help = true; continue; }
         if (flag === "--open" || flag === "--attach" || flag === "--keep-open" || flag === "--rerun-failed" || flag === "--list") {
             const key = { "--open": "open", "--attach": "attach", "--keep-open": "keepOpen", "--rerun-failed": "rerunFailed", "--list": "list" }[flag];
             options[key] = true;
@@ -36,6 +37,7 @@ function parseArguments(args) {
             options.area = areas;
         }
         else if (flag === "--test") options.test = value;
+        else if (flag === "--desktop") options.desktop = value;
         else if (flag === "--baseline") {
             options.baseline = path.resolve(value);
             if (!existsSync(options.baseline)) throw new Error(`--baseline file not found: ${options.baseline}`);
@@ -57,6 +59,10 @@ function parseArguments(args) {
     }
     if (seen.has("--prod") && seen.has("--app")) throw new Error("--prod and --app are mutually exclusive.");
     if (options.open && options.attach) throw new Error("--open and --attach cannot be combined.");
+    if (options.attach && options.desktop !== undefined) throw new Error("--attach cannot be combined with --desktop.");
+    if (options.desktop !== undefined && !options.with.includes("virtual-desktop")) throw new Error("--desktop requires --with virtual-desktop.");
+    if (options.with.includes("virtual-desktop") && options.desktop === undefined) throw new Error("--with virtual-desktop requires --desktop <selector>.");
+    if (options.help && args.length > 1) throw new Error("--help cannot be combined with other options.");
     if (options.list && ["--open", "--keep-open", "--rerun-failed"].some((flag) => seen.has(flag))) {
         throw new Error("--list cannot be combined with --open, --keep-open or --rerun-failed.");
     }
@@ -69,6 +75,20 @@ function parseArguments(args) {
     }
     options.selection = { area: options.area, test: options.test, rerunFailed: options.rerunFailed, with: options.with, timeoutScale: options.timeoutScale };
     return options;
+}
+
+function renderHelp() {
+    console.log("Usage: npm run test:ui -- [--area <prefix,...>] [--test <text>] [--with <tag,...>] [--desktop <number|name>]");
+    console.log("Use --with virtual-desktop --desktop 2 to run the Windows placement module on another desktop.");
+    console.log("--desktop applies only to owned runs and cannot be combined with --attach.");
+}
+
+function readCurrentVirtualDesktop() {
+    if (process.platform !== "win32") throw new Error("The virtual-desktop integration test requires Windows.");
+    const output = execFileSync("reg.exe", ["query", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VirtualDesktops", "/v", "CurrentVirtualDesktop"], { encoding: "utf8", windowsHide: true });
+    const match = output.match(/CurrentVirtualDesktop\s+REG_BINARY\s+((?:[0-9a-f]{2}\s*){16})/i);
+    if (!match) throw new Error("Could not read a 16-byte CurrentVirtualDesktop registry value.");
+    return match[1].replaceAll(/\s/g, "").toLowerCase();
 }
 
 async function discoverTests() {
@@ -178,7 +198,7 @@ function classify(descriptor, options) {
         return `boards checkout not found at ${options.boardsDirectory}; set PERSEPHONE_BOARDS_DIR to its boards folder`;
     }
     if (options.attach && descriptor.requires.includes("launch")) return "needs a launched app (not available with --attach)";
-    const missing = descriptor.requires.filter((tag) => tag !== "launch" && !options.with.includes(tag));
+    const missing = descriptor.requires.filter((tag) => tag !== "launch" && tag !== "desktop" && !options.with.includes(tag));
     return missing.length ? `missing opt-in: ${missing.join(", ")}` : null;
 }
 
@@ -231,6 +251,7 @@ async function main() {
     catch (error) { console.error(error.message); process.exitCode = 2; return; }
 
     const startedAt = new Date().toISOString();
+    if (options.help) { renderHelp(); return; }
     let selection = [];
     try {
         options.boardsDirectory = process.env.PERSEPHONE_BOARDS_DIR !== undefined
@@ -343,6 +364,7 @@ async function main() {
                 if (options.attach) productArgs.push("--attach");
                 productArgs.push("--test-selection", manifestPath, "--test-setup", TEST_SETUP_PATH, "--log-dir", stageDirectory, "--timeout-scale", String(options.timeoutScale));
                 if (options.with.length) productArgs.push("--with", options.with.join(","));
+                if (!options.attach && options.desktop !== undefined) productArgs.push("--desktop", options.desktop);
                 if (!options.attach) productArgs.push("--mcp-port", "17865");
                 if (options.keepOpen && !options.attach && runnableModules.at(-1)?.[0] === moduleId) productArgs.push("--keep-open");
                 let executable;
@@ -356,7 +378,27 @@ async function main() {
                     executable = electronPath;
                     args = [DEV_MAIN_PATH, "--test", testFolder, ...productArgs];
                 }
-                const exitCode = await runProduct(executable, args, (child) => { currentChild = child; }, !options.attach, testAudioCaptureFile);
+                const attachedUnseenModeBaseline = options.attach ? await attachClient.call("main.unseenMode.enabled") : undefined;
+                if (options.attach && typeof attachedUnseenModeBaseline !== "boolean") throw new Error("main.unseenMode.enabled did not return a boolean before the attached product run.");
+                let exitCode;
+                const desktopBefore = options.desktop !== undefined && moduleTests.some((test) => test.requires.includes("virtual-desktop"))
+                    ? readCurrentVirtualDesktop()
+                    : undefined;
+                try {
+                    exitCode = await runProduct(executable, args, (child) => { currentChild = child; }, !options.attach, testAudioCaptureFile);
+                } finally {
+                    currentChild = undefined;
+                    if (options.attach) {
+                        const restoredState = await attachClient.call("main.unseenMode.enabled");
+                        if (restoredState !== attachedUnseenModeBaseline) {
+                            throw new Error(`Attached product runner changed main.unseenMode.enabled from ${attachedUnseenModeBaseline} to ${restoredState}.`);
+                        }
+                    }
+                }
+                if (desktopBefore !== undefined) {
+                    const desktopAfter = readCurrentVirtualDesktop();
+                    if (desktopAfter !== desktopBefore) throw new Error(`The integration run changed the current Windows virtual desktop (${desktopBefore} -> ${desktopAfter}).`);
+                }
                 currentChild = undefined;
                 const collected = await collectModuleReport(stageDirectory, moduleTests, {
                     name: options.target === "attach" ? "attach" : options.target, attach: options.attach, with: options.with,

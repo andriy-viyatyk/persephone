@@ -55,6 +55,22 @@ no remote attribution. Error and warning toast notifications are also added to t
 agent can notice failures without first asking for the alert list; informational and success toasts
 are not added.
 
+Windows session transitions are recorded once in each renderer window's event history. A lock
+event reports that hidden-page animation frames stop and timers slow without unseen mode, lists OS
+operations that remain unavailable even with unseen mode, and gives the current mode value plus
+`main.unseenMode.enable` with an empty argument array. An unlock event reports the current unlocked
+state and mode; minimized or other-desktop windows may still be unusable. The live process state is
+`main.session.locked`.
+
+The event text is (with the current boolean substituted):
+
+```text
+Windows session locked; without unseen mode, animation frames stop (and anything waiting for them) and timers slow to about 1 s. OS clipboard, native file dialogs, real OS focus, and global hotkeys remain unavailable in every mode. main.unseenMode.enabled is {true|false}; call main.unseenMode.enable with args: [] to keep frames and timers running.
+Windows session unlocked; main.session.locked is false, desktopVisible still depends on the window's minimized/virtual-desktop state, and main.unseenMode.enabled remains {true|false}.
+```
+
+The mode placeholder is replaced with the value captured when the transition is published.
+
 When an event says that a shape changed, read the named `pages["<id>"].editor.app` path again
 before using that model. A guide-button event tells you which control the user skipped or advanced.
 Dialog events do not include passwords, input text, or other dialog values.

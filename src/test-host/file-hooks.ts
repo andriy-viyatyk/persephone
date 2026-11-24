@@ -46,7 +46,7 @@ export function logHookResult(log: TestLog, details: { file: string; test: strin
 
 export function runnableReason(descriptor: TestDescriptor, attach: boolean, withTags: string[]): { reason?: string; requirements: string[] } {
     const requirements = descriptor.requires ?? [];
-    const missing = requirements.filter((tag) => tag !== "launch" && !withTags.includes(tag));
+    const missing = requirements.filter((tag) => tag !== "launch" && tag !== "desktop" && !withTags.includes(tag));
     const reason = descriptor.mode === "skip" ? "test.skip" : missing.length ? `requires opt-in tags: ${missing.join(", ")}` : attach && requirements.includes("launch") ? "requires an owned app launch" : undefined;
     return { reason, requirements };
 }

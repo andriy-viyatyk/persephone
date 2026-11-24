@@ -13,6 +13,10 @@ files:
   - "!.vite/node-script-host/**"
   - "!.vite/test-host/**"
   - "!node_modules/**/{CHANGELOG.md,README.md,readme.md,LICENSE,license,LICENCE}"
+  # koffi ships prebuilt binaries for every OS plus its C++ sources; the app needs only win32_x64
+  # (index.js picks the binary with a per-platform switch, so the others are never required).
+  - "!node_modules/koffi/{src,vendor,doc}/**"
+  - "!node_modules/koffi/build/koffi/!(win32_x64)/**"
   - "!node_modules/**/*.{ts,map}"
 
 # Assets go into resources/ (outside asar), matching Forge behavior
@@ -48,6 +52,8 @@ extraFiles:
     to: mneme.exe
 
 asar: true
+asarUnpack:
+  - node_modules/koffi/build/koffi/win32_x64/koffi.node
 
 # Electron fuses, flipped by electron-builder right before signing (EPIC-118 / US-1591).
 # - runAsNode off: persephone.exe is not a Node runtime. Board Node scripts run in a

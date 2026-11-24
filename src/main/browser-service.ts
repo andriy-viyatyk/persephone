@@ -17,6 +17,7 @@ import { openWindows } from "./open-windows";
 import { collectDom, collectLoadedResources } from "./browser-dom-snapshot";
 import { BrowserGuest, BrowserGuestHostHooks } from "./browser/BrowserGuest";
 import { browserGuests } from "./browser/BrowserGuestRegistry";
+import { unseenMode } from "./unseen-mode";
 import { browserPopups } from "./browser/BrowserPopupRegistry";
 import { guardBrowserGuestAtCreation } from "./browser/navigation-scheme-guards";
 import { applyPageDialogPreferences } from "./browser/page-dialog-guard";
@@ -158,7 +159,7 @@ export function initializeBrowserService(): void {
     app.on("web-contents-created", (_event, contents) => {
         if (contents.getType() === "webview") guardBrowserGuestAtCreation(contents);
         contents.on("will-attach-webview", (_event, webPreferences, params) => {
-            const argumentsList = webPreferences.additionalArguments || [];
+            let argumentsList = webPreferences.additionalArguments || [];
             const browserPreload = typeof params.preload === "string" && params.preload.toLowerCase().includes("preload-webview");
             if (browserPreload) {
                 webPreferences.nodeIntegrationInSubFrames = true;
@@ -167,6 +168,11 @@ export function initializeBrowserService(): void {
                 // Isolate browser-tab zoom from other guests sharing the origin.
                 webPreferences.zoomMode = "isolated";
                 applyPageDialogPreferences(webPreferences);
+                webPreferences.additionalArguments = [
+                    ...argumentsList.filter((argument) => argument !== "--persephone-unseen-mode-enabled"),
+                    ...(unseenMode.enabled ? ["--persephone-unseen-mode-enabled"] : []),
+                ];
+                argumentsList = webPreferences.additionalArguments;
             }
             if (!isPersistentBrowserProfilePartition(params.partition)) {
                 if (argumentsList.includes("--persephone-webmcp-enabled")) {

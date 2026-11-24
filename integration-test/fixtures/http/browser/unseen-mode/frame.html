@@ -1,0 +1,12 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Unseen mode same-origin frame</title>
+<script>
+window.firstVisibilityState = document.visibilityState;
+window.firstHidden = document.hidden;
+window.visibilityChanges = [];
+document.addEventListener("visibilitychange", () => {
+    window.visibilityChanges.push({ state: document.visibilityState, hidden: document.hidden });
+});
+</script>
+<p>Same-origin frame</p>

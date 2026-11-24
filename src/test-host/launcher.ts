@@ -19,6 +19,7 @@ export interface HostConfiguration {
     attach: boolean;
     window?: string;
     windowName?: string;
+    desktop?: string;
     testPath: string;
     logFile?: string;
     logDirectory?: string;
@@ -65,6 +66,7 @@ export class TestLauncher {
         if (this.configuration.profile) args.push("--profile", this.configuration.profile, "--profile-dir", this.configuration.profileDirectory);
         args.push("--test-instance", `--test-mcp-port=${this.configuration.port}`);
         if (this.configuration.logDirectory) args.push(`--test-log-dir=${this.configuration.logDirectory}`);
+        if (this.configuration.desktop) args.push(`--test-desktop=${this.configuration.desktop}`);
         return args;
     }
     private developmentMain(): string {
@@ -86,6 +88,10 @@ export class TestLauncher {
         // `detached` for --keep-open: on Windows libuv puts non-detached children in a job object that
         // kills them when this host exits, so a retained app would die with the run.
         const childProcess = spawn(this.configuration.executable, this.arguments(), { cwd: this.configuration.cwd, stdio: ["ignore", "pipe", "pipe"], windowsHide: false, detached: this.configuration.keepOpen });
+        let startupStderr = "";
+        childProcess.stderr?.on("data", (chunk: Buffer | string) => {
+            startupStderr = `${startupStderr}${chunk.toString()}`.slice(-8_192);
+        });
         const outputsClosed = new Promise<void>((resolve) => {
             let openStreams = 2;
             const streamClosed = (): void => { openStreams -= 1; if (openStreams === 0) resolve(); };
@@ -99,7 +105,19 @@ export class TestLauncher {
         });
         this.child = state;
         this.client = new McpClient(`http://127.0.0.1:${this.configuration.port}/mcp`, this.timeouts, state);
-        await this.client.connect(); return this.client;
+        try {
+            await Promise.race([
+                this.client.connect(),
+                state.exit.then((code) => { throw new Error(`Owned test app exited before MCP connected (code ${code}).${startupStderr.trim() ? ` Startup stderr: ${startupStderr.trim()}` : ""}`); }),
+            ]);
+            return this.client;
+        } catch (error) {
+            const message = errMessage(error);
+            if (state.exited !== undefined && startupStderr.trim() && !message.includes("Startup stderr:")) {
+                throw new Error(`${message} Startup stderr: ${startupStderr.trim()}`, { cause: error });
+            }
+            throw error;
+        }
     }
     async stop(): Promise<void> {
         const state = this.child; this.child = undefined;

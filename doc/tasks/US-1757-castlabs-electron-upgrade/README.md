@@ -70,6 +70,12 @@ fixes and stays a few months behind current Chrome rather than a year behind.
       `CanIncludeInClipboardHistory` format, or copies vanish from Win+V. Check by enumerating Win32
       clipboard formats after a write (a small PowerShell `EnumClipboardFormats` script, as in
       US-1756), and check Persephone's own clipboard history captures and restores text and images.
+- [ ] Unseen-mode webview visibility (EPIC-211, US-2197): `src/main/browser/PageVisibilityOverride.ts`
+      relies on Electron internals. These are a guest `WebContents` `_sendInternal` method and the
+      `GUEST_INSTANCE_VISIBILITY_CHANGE` message, which drives a webview top document's
+      non-configurable `document.visibilityState`. Run `npm run test:ui -- --area core/unseen-mode`.
+      If Electron renamed these, the main process logs "[unseen-mode] Electron guest internals
+      changed" and the minimized-visibility test fails.
 - [ ] Local packaged build with dev stopped: `npm run dist` → `release/persephone-setup-X.Y.Z.exe`
       and the zip. It is Authenticode-signed but **not VMP-signed** (no EVS locally), so DRM won't
       play. The user installs and smoke-tests: clipboard, Explorer file copy, voice insertion,

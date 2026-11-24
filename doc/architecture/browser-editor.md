@@ -536,6 +536,20 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/renderer/editors/shared/link-open-menu.ts` | Renderer | Shared helper for "Open in..." browser menu items |
 | `src/renderer/core/state/events.ts` | Renderer | `globalKeyDown` Subscription for keyboard event broadcasting, `browserUrlChanged` for cross-editor URL event broadcasting (including navigation-return claims), `windowClosing` for resource cleanup on window close, `secondaryViewsToggled` for sidebar open/close, `panelExpanded` for secondary panel expansion |
 
+## Unseen mode and guest visibility
+
+Electron gives a `<webview>` guest's top document own, non-configurable
+`document.visibilityState` and `document.hidden` properties. The guest preload cannot override
+these through `Document.prototype`. Electron updates them from the main process by sending the
+private `GUEST_INSTANCE_VISIBILITY_CHANGE` message through the guest's `_sendInternal` method.
+`PageVisibilityOverride` wraps that method to keep the top document visible while unseen mode is
+enabled, and sends the window's real state when the mode is disabled. The preload visibility shim
+handles subframes and reconciles visibility changes in the page's main world.
+
+This path depends on Electron internals and is verified against the shipped Electron build. Check
+the message name, `_sendInternal`, and property behavior after Electron upgrades. If the method is
+missing, the implementation warns once and leaves the top document's real visibility intact.
+
 ## Why the Main Process Bridge?
 
 The `<webview>` DOM element's event API is unreliable — events like `page-favicon-updated` don't fire consistently on back/forward navigation. The main process has direct access to the real `webContents` object, where these events fire reliably. The bridge:

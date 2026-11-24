@@ -60,7 +60,7 @@ export async function collectModuleReport(stageDirectory, selected, target) {
 
 function skipReason(item, target) {
     if (target.attach && item.requires?.includes("launch")) return "requires an owned app launch";
-    if (item.requires?.some((tag) => tag !== "launch" && !target.with.includes(tag))) return `requires opt-in tags: ${item.requires.filter((tag) => tag !== "launch" && !target.with.includes(tag)).join(", ")}`;
+    if (item.requires?.some((tag) => tag !== "launch" && tag !== "desktop" && !target.with.includes(tag))) return `requires opt-in tags: ${item.requires.filter((tag) => tag !== "launch" && tag !== "desktop" && !target.with.includes(tag)).join(", ")}`;
     return undefined;
 }
 

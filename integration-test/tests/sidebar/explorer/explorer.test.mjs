@@ -63,7 +63,7 @@ export default [
         }
     }),
 
-    test("Explorer context menu creates, renames, deletes, copies, and moves fixture entries", async (ctx) => {
+    test("Explorer context menu creates, renames, and deletes fixture entries", async (ctx) => {
         const fixtureFolder = "us-2039/explorer-file-operations-reviewed";
         const fixture = await openExplorerFixture(ctx, fixtureFolder, {
             "source.txt": "Copy and move me.\n",
@@ -142,6 +142,35 @@ export default [
             await ctx.waitFor((activeContext) => activeContext.app.fs.exists(filePath("keyboard-delete.txt")), (exists) => exists === false);
             await waitForExplorerEntry(ctx, fixture.pageId, "keyboard-delete.txt", false);
 
+            await openTreeContextMenu(ctx, "renamed-folder");
+            await chooseTreeMenuItem(ctx, "delete");
+            await /* ctx.call remains because the app stand-in cannot pass call options such as dialog or maxLength. */ ctx.call("window.screen.click", ['text="Delete"'], { dialog: true });
+            const folderDeletion = await ctx.waitFor(
+                async (activeContext) => ({
+                    stat: await activeContext.app.fs.stat(filePath("renamed-folder")),
+                    items: await explorerItems(activeContext, fixture.pageId),
+                }),
+                (state) => !state.stat.exists && !state.items.some((item) => item.title === "renamed-folder"),
+            );
+            ctx.expect(folderDeletion.stat.exists).toBe(false);
+            ctx.expect(folderDeletion.items.some((item) => item.title === "renamed-folder")).toBe(false);
+
+        } finally {
+            await closeExplorerFixture(ctx, fixture);
+        }
+    }),
+
+    test("Explorer copies and moves fixture entries with the OS file clipboard", async (ctx) => {
+        const fixtureFolder = "us-2039/explorer-file-clipboard";
+        const fixture = await openExplorerFixture(ctx, fixtureFolder, {
+            "source.txt": "Copy and move me.\n",
+            "move.txt": "Move me without replacing another file.\n",
+            "destination/.keep": "placeholder\n",
+        });
+        const filePath = (name) => ctx.fixture(`${fixtureFolder}/${name}`);
+        try {
+            await fixture.pageRoot.panels.explorer.expand(filePath("destination"));
+
             // Copy and cut use the Explorer's real OS file clipboard; paste into the destination folder.
             await openTreeContextMenu(ctx, "source.txt");
             await chooseTreeMenuItem(ctx, "copy");
@@ -168,24 +197,10 @@ export default [
             );
             ctx.expect(movedSnapshot).toContain('treeitem "move.txt" [level=3]');
             await waitForExplorerEntry(ctx, fixture.pageId, "move.txt", false);
-
-            await openTreeContextMenu(ctx, "renamed-folder");
-            await chooseTreeMenuItem(ctx, "delete");
-            await /* ctx.call remains because the app stand-in cannot pass call options such as dialog or maxLength. */ ctx.call("window.screen.click", ['text="Delete"'], { dialog: true });
-            const folderDeletion = await ctx.waitFor(
-                async (activeContext) => ({
-                    stat: await activeContext.app.fs.stat(filePath("renamed-folder")),
-                    items: await explorerItems(activeContext, fixture.pageId),
-                }),
-                (state) => !state.stat.exists && !state.items.some((item) => item.title === "renamed-folder"),
-            );
-            ctx.expect(folderDeletion.stat.exists).toBe(false);
-            ctx.expect(folderDeletion.items.some((item) => item.title === "renamed-folder")).toBe(false);
-
         } finally {
             await closeExplorerFixture(ctx, fixture);
         }
-    }),
+    }, { requires: ["desktop"] }),
 
     test("dragging an Explorer file row fails safely without moving the file or wedging the app", async (ctx) => {
         const fixture = await openExplorerFixture(ctx, "us-2039/explorer-drag-cancel", {

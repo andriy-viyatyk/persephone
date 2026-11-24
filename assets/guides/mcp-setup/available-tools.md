@@ -43,6 +43,11 @@ Useful paths include:
   at it. Use `settings.set` to change a value, not `highlight`.
 - `main.runtime.resourcesDir` and `main.runtime.demoBoardDir` for application and Demo-board
   resource paths, and `boards.assetsBaseUrl` / `boards.manifestUrl` for the published-board catalog.
+- `main.unseenMode.enabled`, `main.unseenMode.managedCount`, `main.unseenMode.enable()`, and
+  `main.unseenMode.disable()` to control process-wide animation and timer throttling while unseen.
+- `main.session.locked` for the current Windows session state and `windows[i].desktopVisible` for
+  whether a particular window is shown, not minimized, and the session is unlocked. Detection of
+  another virtual desktop requires an installed visibility probe.
 
 For example:
 

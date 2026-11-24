@@ -11,6 +11,8 @@ export const BrowserGuestMessageChannel = {
     translationReady: "translation-ready",
     /** A frame's pointer lock started or ended; the host shows the Esc notice. */
     pointerLock: "pointer-lock",
+    /** A document has started and needs the host's latest unseen-mode state. */
+    visibilityDocumentStart: "visibility-document-start",
 } as const;
 
 /** Longest page title the host keeps (tab label, restore data, agent tools); longer titles are cut. */
@@ -40,7 +42,8 @@ export type GuestMessage =
     | { channel: typeof BrowserGuestMessageChannel.clickedImages; payload: string[] }
     | { channel: typeof BrowserGuestMessageChannel.translationUnits; payload: TranslationUnitsMessage }
     | { channel: typeof BrowserGuestMessageChannel.translationReady; payload: { scope: TranslationFrameScope } }
-    | { channel: typeof BrowserGuestMessageChannel.pointerLock; payload: { locked: boolean } };
+    | { channel: typeof BrowserGuestMessageChannel.pointerLock; payload: { locked: boolean } }
+    | { channel: typeof BrowserGuestMessageChannel.visibilityDocumentStart };
 
 export interface GuestMessageTransport {
     sendToHost(channel: string, ...args: unknown[]): void;
@@ -49,7 +52,8 @@ export interface GuestMessageTransport {
 export function sendToHost(transport: GuestMessageTransport, msg: GuestMessage): void {
     if (msg.channel === BrowserGuestMessageChannel.pointerDown
         || msg.channel === BrowserGuestMessageChannel.showFindBar
-        || msg.channel === BrowserGuestMessageChannel.hideFindBar) {
+        || msg.channel === BrowserGuestMessageChannel.hideFindBar
+        || msg.channel === BrowserGuestMessageChannel.visibilityDocumentStart) {
         transport.sendToHost(msg.channel);
     } else {
         transport.sendToHost(msg.channel, msg.payload);
@@ -71,6 +75,8 @@ export function parseGuestMessage(channel: string, args: unknown[]): GuestMessag
         case BrowserGuestMessageChannel.showFindBar:
             return { channel };
         case BrowserGuestMessageChannel.hideFindBar:
+            return { channel };
+        case BrowserGuestMessageChannel.visibilityDocumentStart:
             return { channel };
         case BrowserGuestMessageChannel.clickedImages:
             return Array.isArray(payload) && payload.length ? { channel, payload: payload as string[] } : undefined;

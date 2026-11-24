@@ -60,7 +60,10 @@ After window selection, human output identifies it as `Test window: [7] "app-tes
 - `--test-timeout <ms>` sets the default per-attempt test timeout; the default is `300000` ms.
 - `--keep-open` leaves an owned app running after a failed run and prints its PID and MCP URL in `report.json`.
 - `--mcp-port <port>` requests the MCP port for an owned app; the runner refuses the port if it is occupied.
+- `--desktop <number|name>` places owned-run windows on an existing numbered or exactly named desktop; see [unattended runs](./unattended-runs.md) for selection rules and limits.
 - `--attach --profile-dir <path>` attaches using MCP settings in that directory and verifies the connected app's user-data directory before running tests.
+
+Use `{ requires: ["desktop"] }` for tests that need the real desktop; see [unattended runs](./unattended-runs.md) for skip behavior and reasons.
 
 `ctx.waitFor` stops on read errors by default. Set `retryErrors: true` in its options to retry read errors until a match or timeout; predicate errors, environment stops, and lifetime cancellation still escape immediately. A timeout reports the last read error when the final poll failed to read a value.
 

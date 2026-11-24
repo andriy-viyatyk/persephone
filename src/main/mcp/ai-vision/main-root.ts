@@ -11,6 +11,7 @@ import { MainNode } from "./main-services";
 import { cancelNativeDialogs, getNativeDialogState } from "../../native-dialog-tracker";
 import type { NativeDialogKind } from "../../native-dialog-tracker";
 import { TestWindowOperations } from "./test-window-operations";
+import { desktopAwareness } from "../../desktop-awareness";
 
 /**
  * The main process's half of the AiVision tree.
@@ -23,7 +24,7 @@ import { TestWindowOperations } from "./test-window-operations";
  */
 
 /** Members of one window that the main process answers itself; anything else is forwarded. */
-export const WINDOW_MEMBER_NAMES: readonly string[] = ["index", "windowId", "name", "status", "pageCount", "activePageId", "pages", "open", "focus", "nativeDialog"];
+export const WINDOW_MEMBER_NAMES: readonly string[] = ["index", "windowId", "name", "status", "pageCount", "activePageId", "pages", "open", "focus", "nativeDialog", "desktopVisible"];
 
 const MAIN_ROOT_MEMBERS: readonly IAiMember[] = [
     { name: "windows", kind: "property", node: true, summary: "All windows; windows[i] addresses one." },
@@ -42,6 +43,7 @@ const WINDOW_MEMBERS: readonly IAiMember[] = [
     { name: "open", kind: "method", signature: "open()", summary: "Open (or reopen) this window with its persisted pages, and focus it." },
     { name: "focus", kind: "method", signature: "focus()", summary: "Bring an open window to the front." },
     { name: "nativeDialog", kind: "property", node: true, summary: "Open native dialog state; dismiss cancels it." },
+    { name: "desktopVisible", kind: "property", summary: "Whether this window is shown, not minimized, and the session is unlocked; another virtual desktop is detectable only when a virtual-desktop probe is installed." },
 ];
 
 const WINDOWS_MEMBERS: readonly IAiMember[] = [
@@ -83,6 +85,10 @@ export class WindowNode implements IAiVisible {
 
     get nativeDialog(): NativeDialogNode {
         return new NativeDialogNode(this.data?.window?.window);
+    }
+
+    get desktopVisible(): boolean {
+        return desktopAwareness.isDesktopVisibleForIndex(this.index);
     }
 
     get status(): "open" | "closed" | "missing" {
@@ -151,7 +157,7 @@ export class WindowNode implements IAiVisible {
     get aiVision(): IAiVisionDescriptor {
         return {
             kind: "Window",
-            summary: "One Persephone window, its pages, and any native dialog it owns.",
+            summary: "One Persephone window, its pages, visibility, and any native dialog it owns.",
             members: WINDOW_MEMBERS,
             children: () => [
                 ...(this.status === "open"

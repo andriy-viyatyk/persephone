@@ -124,7 +124,7 @@ export default [
                 .map((page) => page.id);
             await closeOwnedPages(ctx, [...createdPages, pageId]);
         }
-    }),
+    }, { requires: ["desktop"] }),
 
     test("Escape and a click outside dismiss the tab context menu", async (ctx) => {
         const initialPageIds = new Set((await ctx.app.pages.all).map((page) => page.id));

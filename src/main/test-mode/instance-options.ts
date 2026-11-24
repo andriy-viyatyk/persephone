@@ -1,12 +1,13 @@
 import path from "node:path";
 import { isTestInstanceOption } from "../../ipc/test-host-protocol";
 
-export interface TestInstanceOptions { port: number; logDirectory?: string; }
+export interface TestInstanceOptions { port: number; logDirectory?: string; desktop?: string; }
 
 export function parseTestInstanceOptions(args: string[]): { options?: TestInstanceOptions; remaining: string[] } {
     let found = false;
     let port: number | undefined;
     let logDirectory: string | undefined;
+    let desktop: string | undefined;
     const remaining: string[] = [];
     for (const argument of args) {
         if (argument === "--test-instance") {
@@ -22,13 +23,18 @@ export function parseTestInstanceOptions(args: string[]): { options?: TestInstan
             const value = argument.slice("--test-log-dir=".length);
             if (!value || !path.isAbsolute(value)) throw new Error("--test-log-dir must contain an absolute folder path.");
             logDirectory = value;
+        } else if (argument.startsWith("--test-desktop")) {
+            if (desktop !== undefined || !argument.startsWith("--test-desktop=")) throw new Error("Invalid or duplicate --test-desktop option.");
+            desktop = argument.slice("--test-desktop=".length);
+            if (!desktop) throw new Error("--test-desktop requires a virtual desktop selector.");
         } else remaining.push(argument);
     }
     if (found !== (port !== undefined)) throw new Error("--test-instance and --test-mcp-port must be provided together.");
     if (logDirectory !== undefined && !found) throw new Error("--test-log-dir requires --test-instance.");
+    if (desktop !== undefined && !found) throw new Error("--test-desktop requires --test-instance.");
     if (!found) return { remaining };
     if (port === undefined) throw new Error("--test-instance requires --test-mcp-port.");
-    return { options: { port, ...(logDirectory === undefined ? {} : { logDirectory }) }, remaining };
+    return { options: { port, ...(logDirectory === undefined ? {} : { logDirectory }), ...(desktop === undefined ? {} : { desktop }) }, remaining };
 }
 
 /** Remove test-instance options without validating them. Launch operands are read at module load

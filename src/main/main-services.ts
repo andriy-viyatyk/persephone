@@ -60,6 +60,9 @@ import { takeBoardStartupInput, takeStartupInputsForMain } from "./launch-inputs
 import { siteExtensionTrustService } from "./site-extension-trust-service";
 import { capabilityBackendRegistry, type CapabilityBackendRegistryStartDependencies } from "./capability-backend-registry";
 import type { PermissionPolicyStartDependencies } from "./permission-policy-service";
+import { unseenMode } from "./unseen-mode";
+import { desktopAwareness } from "./desktop-awareness";
+import { desktopPlacement } from "./test-mode/desktop-placement";
 
 export interface MainService {
     start?(): void | Promise<void>;
@@ -115,6 +118,24 @@ function startBrowserComposition(dependencies: typeof browserCompositionDependen
 }
 
 const mainServiceTable: readonly MainServiceRow[] = [
+    {
+        name: "virtual desktop placement",
+        service: { start: () => desktopPlacement.start(), dispose: () => desktopPlacement.dispose() },
+        startPhase: "setup-before-certificate",
+        disposalPhase: "quit",
+    },
+    {
+        name: "unseen mode",
+        service: { start: () => unseenMode.start(), dispose: () => unseenMode.dispose() },
+        startPhase: "setup-before-certificate",
+        disposalPhase: "quit",
+    },
+    {
+        name: "desktop awareness",
+        service: { start: () => desktopAwareness.start(), dispose: () => desktopAwareness.dispose() },
+        startPhase: "setup-before-certificate",
+        disposalPhase: "quit",
+    },
     {
         name: "board origin lookup",
         service: { start: () => openWindows.setBoardOriginLookup(getBoardRootForHost) },

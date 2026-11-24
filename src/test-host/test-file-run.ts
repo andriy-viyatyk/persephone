@@ -14,6 +14,7 @@ import type { TestLog } from "./test-log.js";
 import type { TestWindowOwner } from "./test-window.js";
 import { runnableReason, type TestFileHooks } from "./file-hooks.js";
 import { errMessage } from "../shared/utils.js";
+import { desktopRequirementReason } from "./desktop-requirement.js";
 
 export interface DiscoveredFile { file: string; tests: TestDescriptor[]; hooks: TestFileHooks; }
 export interface FileRunState { client: McpClient; environmentStop?: string; }
@@ -27,7 +28,7 @@ export async function runSelectedFiles(input: {
     const skipped = (group: DiscoveredFile, descriptor: TestDescriptor, reason: string, requirements: string[], durationMs: number): void => {
         const result: TestResult = { file: group.file, name: descriptor.name, status: "skipped", durationMs, skipReason: reason, ...(requirements.length ? { requirements } : {}) };
         input.results.push(result);
-        input.log.write({ event: "test-outcome", file: group.file, test: descriptor.name, status: result.status, durationMs, reason });
+        input.log.write({ event: "test-outcome", file: group.file, test: descriptor.name, status: result.status, durationMs, reason, skipReason: reason });
     };
     for (let groupIndex = 0; groupIndex < input.files.length; groupIndex++) {
         const group = input.files[groupIndex];
@@ -77,6 +78,10 @@ export async function runSelectedFiles(input: {
             if (beforeAllFailed) {
                 const result: TestResult = { file: group.file, name: descriptor.name, status: "not-run", durationMs: 0, error: "beforeAll failed", reason: "beforeAll failed" };
                 input.results.push(result); input.log.write({ event: "test-outcome", ...identity, status: "not-run", durationMs: 0, reason: "beforeAll failed" }); continue;
+            }
+            if (descriptor.requires?.includes("desktop")) {
+                const reason = await desktopRequirementReason(client, input.testWindow);
+                if (reason) { skipped(group, descriptor, reason, disposition.requirements, Date.now() - started); continue; }
             }
             let attemptClient = input.launcher.client ?? client;
             const attempts: NonNullable<TestResult["attempts"]> = [];

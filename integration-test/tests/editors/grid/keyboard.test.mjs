@@ -115,5 +115,5 @@ export default [
             if (growthPage) await close(ctx, growthPage.id);
             if (fillPage) await close(ctx, fillPage.id);
         }
-    }),
+    }, { requires: ["desktop"] }),
 ];

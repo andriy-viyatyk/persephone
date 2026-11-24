@@ -23,6 +23,7 @@ export interface TestControllerArguments {
     summaryOnly: boolean;
     window?: string;
     windowName?: string;
+    desktop?: string;
 }
 
 export interface InitSuiteArguments {
@@ -60,6 +61,7 @@ export function hasTestControllerArguments(args: string[]): boolean {
         || argument === "--grep" || argument.startsWith("--grep=") || argument === "--window" || argument.startsWith("--window=")
         || argument === "--reporter" || argument.startsWith("--reporter=")
         || argument === "--summary-only"
+        || argument === "--desktop" || argument.startsWith("--desktop=")
         || argument === "--window-name" || argument.startsWith("--window-name=")
         || (argument.startsWith("--test-") && !isTestInstanceOption(argument)));
 }
@@ -89,6 +91,7 @@ export function parseTestControllerArguments(args: string[], cwd = process.cwd()
     let window: string | undefined;
     let windowName: string | undefined;
     let summaryOnly = false;
+    let desktop: string | undefined;
     for (let index = 0; index < args.length; index += 1) {
         const argument = args[index];
         if (argument === "--test" || argument.startsWith("--test=")) {
@@ -99,6 +102,11 @@ export function parseTestControllerArguments(args: string[], cwd = process.cwd()
         } else if (argument === "--attach") {
             if (attach) throw new Error("Duplicate --attach option.");
             attach = true;
+        } else if (argument === "--desktop" || argument.startsWith("--desktop=")) {
+            if (desktop !== undefined) throw new Error("Duplicate --desktop option.");
+            const value = argument === "--desktop" ? args[++index] : argument.slice("--desktop=".length);
+            if (!value || value.startsWith("--")) throw new Error("--desktop requires a virtual desktop number or exact name.");
+            desktop = value;
         } else if (argument === "--log" || argument.startsWith("--log=")) {
             if (logFile !== undefined) throw new Error("Duplicate --log option.");
             const value = argument === "--log" ? args[++index] : argument.slice("--log=".length);
@@ -192,9 +200,10 @@ export function parseTestControllerArguments(args: string[], cwd = process.cwd()
     if (logFile && logDirectory) throw new Error("--log and --log-dir cannot be combined.");
     if (logFile && rerunFailed) throw new Error("--log cannot be combined with --rerun-failed.");
     if (attach && (keepOpen || mcpPort !== undefined)) throw new Error("--attach cannot be combined with --keep-open or --mcp-port.");
+    if (attach && desktop !== undefined) throw new Error("--attach cannot be combined with --desktop.");
     if (window !== undefined && !attach) throw new Error("--window requires --attach.");
     if (windowName !== undefined && !attach) throw new Error("--window-name requires --attach.");
     if (windowName !== undefined && window !== undefined) throw new Error("--window-name cannot be combined with --window.");
     if (summaryOnly && reporter === "json-lines") throw new Error("--summary-only applies only to human output and cannot be combined with --reporter json-lines.");
-    return { testPath, attach, cwd, logFile, logDirectory, rerunFailed, testSelection, testSetup, with: withTags, timeoutScale, keepOpen, mcpPort, retries, testTimeout, grep, reporter, window, windowName, summaryOnly };
+    return { testPath, attach, cwd, logFile, logDirectory, rerunFailed, testSelection, testSetup, with: withTags, timeoutScale, keepOpen, mcpPort, retries, testTimeout, grep, reporter, window, windowName, summaryOnly, desktop };
 }

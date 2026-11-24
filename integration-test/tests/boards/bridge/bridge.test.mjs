@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { test } from "../../../lib/context.mjs";
 import { closeBoardPage, fixtureBoard, openBoardPage, resetBoardFile, trustFixtureBoard, untrustBoard } from "../../helpers/boards.mjs";
 
@@ -23,12 +24,15 @@ export default [
     }),
 
     test("board bridge reports the app bridge version", async (ctx) => {
+        const bridgeVersionSource = await readFile(new URL("../../../../src/shared/board-bridge-version.ts", import.meta.url), "utf8");
+        const bridgeVersion = /BOARD_BRIDGE_VERSION\s*=\s*["']([^"']+)["']/.exec(bridgeVersionSource)?.[1];
+        ctx.expect(bridgeVersion).toBeTruthy();
         const root = fixtureBoard(ctx, POSITIVE_BOARD);
         let page;
         try {
             await trustFixtureBoard(ctx, root);
             page = await openBoardPage(ctx, root);
-            ctx.expect(await page.editor.evaluate("() => window.persephone.version")).toBe("1.62.0");
+            ctx.expect(await page.editor.evaluate("() => window.persephone.version")).toBe(bridgeVersion);
         } finally {
             await closeBoardPage(ctx, page?.id);
             await untrustBoard(ctx, root);

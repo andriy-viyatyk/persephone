@@ -1,5 +1,5 @@
 import { PAGE_ZOOM_DEFAULT, PAGE_ZOOM_STEP, clampPageZoom, isValidPageZoom } from "../../../shared/browser-zoom";
-import type { BrowserEvent, BrowserPermissionPromptData, BrowserRegisterRequest } from "../../../ipc/browser-ipc";
+import { BrowserChannel, type BrowserEvent, type BrowserPermissionPromptData, type BrowserRegisterRequest } from "../../../ipc/browser-ipc";
 import { BrowserGuestMessageChannel, type GuestMessage } from "../../../ipc/browser-guest-messages";
 import { browserUrlChanged, type BrowserUrlEvent } from "../../core/state/events";
 import { DEFAULT_URL } from "./browser-state";
@@ -19,11 +19,17 @@ export class BrowserWebviewModel {
     private readonly detachGuest = new Map<string, () => void>();
     private readonly registeredGuests = new Set<string>();
     private readonly pendingLoads = new Map<string, string>();
+    private readonly visibilityModeByTab = new Map<string, boolean>();
+    /** Frames that announced a document start, keyed by tab then `processId:frameId`; every
+     *  unseen-mode change goes to all of them, not only to frames still waiting for a first state. */
+    private readonly visibilityFrames = new Map<string, Map<string, [number, number]>>();
     attach(tabId: string, webview: Electron.WebviewTag): void {
         this.detachGuest.get(tabId)?.();
         this.detachGuest.delete(tabId);
         this.registeredGuests.delete(tabId);
         this.pendingLoads.delete(tabId);
+        this.visibilityModeByTab.delete(tabId);
+        this.visibilityFrames.delete(tabId);
         this.webviewRefs.set(tabId, webview);
         const onDomReady = (): void => {
             if (this.get(tabId) !== webview) return;
@@ -55,6 +61,8 @@ export class BrowserWebviewModel {
         if (this.get(tabId) !== webview) return false;
         this.webviewRefs.delete(tabId);
         this.pendingLoads.delete(tabId);
+        this.visibilityModeByTab.delete(tabId);
+        this.visibilityFrames.delete(tabId);
         this.detachGuest.get(tabId)?.();
         this.detachGuest.delete(tabId);
         if (this.registeredGuests.delete(tabId)) this.model.guest.unregister(tabId);
@@ -237,6 +245,14 @@ export class BrowserWebviewModel {
 
     handleGuestMessage(tabId: string, msg: Exclude<GuestMessage, { channel: "pointer-lock" }>, frameId: [number, number]): void {
         switch (msg.channel) {
+            case BrowserGuestMessageChannel.visibilityDocumentStart: {
+                let frames = this.visibilityFrames.get(tabId);
+                if (!frames) { frames = new Map(); this.visibilityFrames.set(tabId, frames); }
+                frames.set(`${frameId[0]}:${frameId[1]}`, frameId);
+                const mode = this.visibilityModeByTab.get(tabId);
+                if (mode !== undefined) this.sendVisibilityMode(tabId, frameId, mode);
+                return;
+            }
             case BrowserGuestMessageChannel.pageTitle:
                 this.model.updateTab(tabId, { pageTitle: msg.payload }); return;
             case BrowserGuestMessageChannel.pageFavicon: {
@@ -274,6 +290,17 @@ export class BrowserWebviewModel {
         const { internalTabId, type, data } = browserEvent;
 
         switch (type) {
+            case "visibility-mode-changed": {
+                if (typeof data.unseenModeEnabled !== "boolean") break;
+                this.visibilityModeByTab.set(internalTabId, data.unseenModeEnabled);
+                // The top document can announce itself before this host listens for guest messages,
+                // so the main frame always gets the change too; the shim ignores a repeated state.
+                this.sendVisibilityModeToMainFrame(internalTabId, data.unseenModeEnabled);
+                for (const frameId of this.visibilityFrames.get(internalTabId)?.values() ?? []) {
+                    this.sendVisibilityMode(internalTabId, frameId, data.unseenModeEnabled);
+                }
+                break;
+            }
             case "zoom-intent": {
                 const tab = this.model.findTab(internalTabId);
                 if (!tab || !data.zoomIntent) break;
@@ -345,5 +372,21 @@ export class BrowserWebviewModel {
             }
         }
     };
+
+    private visibilityModeEvent(tabId: string, enabled: boolean): BrowserEvent {
+        return { tabId: this.model.id, internalTabId: tabId, type: "visibility-mode-changed", data: { unseenModeEnabled: enabled } };
+    }
+
+    private sendVisibilityMode(tabId: string, frameId: [number, number], enabled: boolean): void {
+        const webview = this.get(tabId);
+        if (!webview) return;
+        void webview.sendToFrame(frameId, BrowserChannel.event, this.visibilityModeEvent(tabId, enabled)).catch((): void => undefined);
+    }
+
+    private sendVisibilityModeToMainFrame(tabId: string, enabled: boolean): void {
+        const webview = this.get(tabId);
+        if (!webview) return;
+        void webview.send(BrowserChannel.event, this.visibilityModeEvent(tabId, enabled)).catch((): void => undefined);
+    }
 
 }

@@ -1,9 +1,20 @@
 import { EventLog } from "ai-vision";
 import type { IAiEvent } from "ai-vision";
 import { onDialogClosed } from "../../api/dialogs/dialogs-state";
+import rendererEvents from "../../../ipc/renderer/renderer-events";
 
 /** The event history shared by all AiVision calls in this renderer window. */
 export const eventLog = new EventLog({ cap: 200, hostOrigin: "persephone" });
+
+/** Record a Windows session lock transition in this renderer's MCP event history. */
+export function logSessionLockChanged(locked: boolean, text: string): void {
+    eventLog.push({
+        kind: locked ? "session-locked" : "session-unlocked",
+        text,
+    });
+}
+
+rendererEvents.eSessionLockChanged.subscribe(({ locked, text }) => logSessionLockChanged(locked, text));
 
 function pagePath(pageId: string, suffix: string): string {
     return `pages[${JSON.stringify(pageId)}]${suffix}`;

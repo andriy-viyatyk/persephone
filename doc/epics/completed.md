@@ -1,3 +1,30 @@
+## EPIC-211 — Tests in an unseen window (locked screen, other virtual desktop, minimized)
+
+Completed 2026-11-24. A window that is open when Windows locks, when the user switches desktops, or when it is
+minimized is marked hidden by Chromium: no animation frames, timers at about 1 s, stale screenshots. The US-2184 POC
+measured this and proved the fixes. Unseen mode (`main/unseen-mode.ts`, `main.unseenMode`) turns background throttling
+off at runtime; it is on in runner-owned instances and for the length of an `--attach` run. With it on, web pages in a
+minimized window report `visible`: the main process rewrites Electron's guest visibility message
+(`main/browser/PageVisibilityOverride.ts`, relies on Electron internals — recheck on upgrades, see US-1757) and a
+preload shim covers subframes. `main/desktop-awareness.ts` adds `main.session.locked`, `windows[i].desktopVisible` and
+a lock/unlock event for agents. Tests that need the OS clipboard, a native dialog or real focus declare
+`requires: ["desktop"]` and skip with a reason while locked or unseen. `--desktop <n|name>` opens an owned run's
+windows on another virtual desktop without activating them (`main/virtual-desktop-manager.ts` via koffi and
+`IVirtualDesktopManager`; guards in `main/test-mode/desktop-placement.ts`). Verified with the user on a real lock, on
+desktop 2 (pop-ups, boards, native dialog) and in an installed release build; bugs found then were fixed (nested
+pop-ups blocked by the focus guard, `restore()` switching the user's desktop, koffi packaging every platform). Open:
+the terminal test "Open terminal here warns when the folder disappears" fails only while locked; unseen mode in
+cross-origin iframes is unchecked. Guide: `web-app-tests/unattended-runs.md`. Completion skills by Codex (Luna).
+Epic document: [EPIC-211](EPIC-211.md).
+
+- [x] **Investigation + POC (US-2184).**
+- [x] **Unseen test mode (US-2192).**
+- [x] **Lock awareness (US-2193).**
+- [x] **"Needs a visible desktop" test requirement (US-2194).**
+- [x] **`--desktop <n|name>` (US-2195).**
+- [x] **Guides: unattended runs (US-2196).**
+- [x] **Minimized windows report `visible` (US-2197).**
+
 ## EPIC-210 — Web-app test feedback, round 2
 
 Completed 2026-11-24. 14 items from rewriting an external pilot suite (233 tests) on 5.0.22, each checked against the

@@ -73,6 +73,8 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
     };
     let stale: Array<{ file: string; name: string }> = [], client: McpClient | undefined;
     let testWindow: TestWindowOwner | undefined, retainedApp: { pid: number; url: string } | undefined, environmentStop: string | undefined;
+    let attachedUnseenModeBaseline: boolean | undefined;
+    let attachedUnseenModeRestorePending = false;
     try {
         if (attachPort !== undefined) configuration.port = attachPort;
         let rerunSelection;
@@ -110,6 +112,13 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
         if (hasOnly) console.log("Focused run: executing test.only descriptors only.");
         client = await launcher.start();
         if (log) client.setStorageStateRedactor(log.redactor);
+        if (configuration.attach) {
+            const previousState = await client.call("main.unseenMode.enabled");
+            if (typeof previousState !== "boolean") throw new Error("main.unseenMode.enabled did not return a boolean.");
+            attachedUnseenModeBaseline = previousState;
+            attachedUnseenModeRestorePending = true;
+            await client.call("main.unseenMode.enable", []);
+        }
         testWindow = await TestWindowOwner.start(client, configuration.attach, configuration.window, configuration.windowName);
         reporter?.runStart(started, discoveredFileCount, selectedTestCount, testWindow.identityInfo);
         runStartEmitted = Boolean(reporter);
@@ -132,6 +141,22 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
                 else if (testWindow.mode === "attached-created") await testWindow.disposeCreatedWindow(attachedClient);
                 else await testWindow.assertIdentity(attachedClient);
             } catch (error) { if (error instanceof EnvironmentStopError) environmentStop ??= error.message; else setupFailure ??= error; }
+        }
+        if (attachedUnseenModeRestorePending) {
+            const attachedClient = launcher.client ?? client;
+            if (!attachedClient) {
+                const restoreError = new Error("Attached unseen-mode restoration failed: MCP client was not initialized.");
+                setupFailure = setupFailure
+                    ? new Error(`${errMessage(setupFailure)}\n${restoreError.message}`, { cause: setupFailure })
+                    : restoreError;
+            } else try {
+                await attachedClient.call(attachedUnseenModeBaseline ? "main.unseenMode.enable" : "main.unseenMode.disable", []);
+            } catch (error) {
+                const restoreError = new Error(`Attached unseen-mode restoration failed: ${errMessage(error)}`, { cause: error });
+                setupFailure = setupFailure
+                    ? new Error(`${errMessage(setupFailure)}\n${restoreError.message}`, { cause: setupFailure })
+                    : restoreError;
+            }
         }
         try {
             if (configuration.keepOpen && !configuration.attach && (results.some((result) => result.status === "failed" || result.status === "unexpected-pass") || setupFailure)) retainedApp = await launcher.retain();

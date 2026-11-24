@@ -5,6 +5,7 @@ import type { BrowserEvent } from "../../ipc/browser-ipc";
 import { getPageOpenAction } from "../../shared/browser-navigation-policy";
 import { attachNavigationSchemeGuards } from "./navigation-scheme-guards";
 import { guardPageDialogs } from "./page-dialog-guard";
+import { desktopPlacement } from "../test-mode/desktop-placement";
 
 type SendEvent = (type: BrowserEvent["type"], data: BrowserEvent["data"]) => void;
 
@@ -41,6 +42,7 @@ export function popupWindowOptions(anchor: Electron.Rectangle | undefined, featu
     const center = anchor ?? area;
     return {
         autoHideMenuBar: true,
+        ...(desktopPlacement.isActive() ? { show: false } : {}),
         width,
         height,
         x: clamp(Math.round(center.x + (center.width - width) / 2), area.x, area.x + area.width - width),
@@ -89,7 +91,8 @@ export function guardPopupWindow(
     childContents.setWindowOpenHandler(({ url, disposition, features }) => {
         if (getPageOpenAction(url) !== "open") return { action: "deny" };
         const tab = disposition === "foreground-tab" || disposition === "background-tab";
-        if (!userActivated || !globalPopupRateLimiter.check(tab ? "tabs" : "popups")) {
+        const activated = userActivated || desktopPlacement.hasFocusRequest(childWindow);
+        if (!activated || !globalPopupRateLimiter.check(tab ? "tabs" : "popups")) {
             sendEvent("popups-blocked", { url });
             return { action: "deny" };
         }
@@ -104,5 +107,6 @@ export function guardPopupWindow(
     childContents.on("did-create-window", (grandchild, details) => {
         if (destroyPopupWithNodeIntegration(grandchild, details)) return;
         guardPopupWindow(grandchild, sender, sendEvent, registerPopup, popupId, childContents);
+        desktopPlacement.showPlacedWindow(grandchild);
     });
 }

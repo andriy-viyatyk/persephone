@@ -33,7 +33,7 @@ export class JsonLinesReporter {
             const identity = this.identity(event);
             if (!identity || !isTestStatus(event.status)) return;
             const errors = [event.error, ...(Array.isArray(event.cleanupErrors) ? event.cleanupErrors : [])];
-            this.write({ version: 1, event: "test-end", ...identity, status: event.status, durationMs: finiteDuration(event.durationMs), errorSummary: errorSummary(errors), retryCount: Array.isArray(event.attempts) ? Math.max(0, event.attempts.length - 1) : 0 });
+            this.write({ version: 1, event: "test-end", ...identity, status: event.status, durationMs: finiteDuration(event.durationMs), errorSummary: errorSummary(errors), ...(event.status === "skipped" && typeof event.skipReason === "string" ? { skipReason: event.skipReason } : {}), retryCount: Array.isArray(event.attempts) ? Math.max(0, event.attempts.length - 1) : 0 });
         } else if (event.event === "hook-result" && event.ok === false) {
             const identity = this.identity(event);
             const summary = errorSummary([event.error]);

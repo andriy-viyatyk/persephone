@@ -65,6 +65,14 @@ clock, and init-script registrations. The adopted page stays open; the runner do
 navigate it. Cleanup does not restore cookies, local or session storage, form contents, app state,
 URL, or arbitrary page effects.
 
+When `main.unseenMode.enabled` is true, `pages[id].editor.evaluate()` observes embedded browser
+documents and their frames with `document.visibilityState === "visible"` and
+`document.hidden === false`, even while the app window is minimized. Hidden `visibilitychange`
+events are suppressed. Disabling the mode restores Chromium's real state and emits one event when
+the page's exposed state changes. A new subframe is reconciled to the latest mode after its
+document-start announcement, so an early inline script can briefly read the previous mode.
+Standalone popup windows keep their real visibility behavior.
+
 In a selected existing window, unrelated pages remain open. Cleanup closes pages created by
 `ctx.openBrowser()` and their new pop-ups, plus pop-ups created on adopted session pages. Owned
 windows and runner-created attached windows use a baseline diff to close new pages. The
@@ -158,3 +166,20 @@ probe is already active; it returns immediately when no probe is active. See
 [temporary model guidance](../temporary-site-extensions.md#test-models) for the lifecycle and example.
 
 For the existing `--init` and JSON Lines references, see [run options](./run-options.md).
+
+## Declarative routing (`site.route`)
+
+`site.route(pattern, response, options?)` configures declarative Fetch request routing on an
+agent-opened or test-adopted page. It accepts URL strings as globs, RegExp values in test code, or
+JSON `{ regex, flags? }` patterns through calls. Newest matching route wins; optional method,
+resource-type, and positive `times` filters constrain matches. Routes stay active through navigation.
+The response can fulfil UTF-8 `body`, `bodyBase64`, status and headers, delay fulfilment, continue
+after a delay-only object, or abort. `site.unroute(pattern?)` and `site.unrouteAll()` remove routes.
+At run cleanup the runner clears routes on every adopted page before releasing test access; owned
+pages clear routes on close.
+
+Routes are limited to 50 per page, 1 MiB per response body, 30 seconds per delay, and 2,000 pattern
+characters. Cross-origin fulfillments still need CORS response headers. Route an `OPTIONS` preflight
+separately with allow-origin, allow-methods, and allow-headers when required. Only the page target is
+attached: OOPIFs and dedicated workers are not covered, and service workers may bypass routing.
+DevTools detach pauses routes until the next CDP attach restores them.

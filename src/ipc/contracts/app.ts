@@ -28,6 +28,11 @@ export interface AppApi {
 
 export interface AppEvents {
     eUpdateAvailable: EventObject<UpdateCheckResult>;
+    eSessionLockChanged: EventObject<{
+        locked: boolean;
+        unseenModeEnabled: boolean;
+        text: string;
+    }>;
 }
 
 

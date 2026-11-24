@@ -12,7 +12,6 @@ Overview of all active and planned epics and tasks.
 
 - *(no epic)*
   - [ ] [US-2139: Board hotkeys](tasks/US-2139-board-hotkeys/README.md) — recorded idea, not investigated: a board declares an action with a default hotkey, the user can rebind it, and it works with no board page open
-  - [ ] [US-2184: Test runs in an unseen window (locked screen, other virtual desktop)](tasks/US-2184-unseen-window-test-runs/README.md) — investigation + POC: keep test windows rendering when hidden, and a desktop-visible flag so OS-dependent tests skip instead of failing, and a runner option to start the test window on a chosen virtual desktop
 
 ## Scheduled
 

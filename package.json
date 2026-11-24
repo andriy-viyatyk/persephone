@@ -83,6 +83,7 @@
     "jschardet": "^4.1.0",
     "json5": "^2.2.3",
     "jszip": "^3.10.2",
+    "koffi": "2.9.0",
     "libarchive-wasm": "^1.2.0",
     "mermaid": "^12.3.0",
     "monaco-editor": "^0.57.0",

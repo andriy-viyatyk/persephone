@@ -101,6 +101,15 @@ the operating system's default browser.
 The tagged Tor network test also requires `PERSEPHONE_TEST_TOR_EXE` to point to a compatible
 `tor.exe`; it remains skipped unless both `network` and `tor` are enabled.
 
+On Windows, `npm run test:ui -- --with virtual-desktop --desktop 2` opts into the real placement
+module and moves every window in each owned run to the selected existing virtual desktop. The
+selector is a 1-based desktop number or an exact case-insensitive desktop name; a missing selector
+reports the available desktops and says to create one with Win+Ctrl+D. It cannot be used with
+`--attach`. Placed windows use inactive display and ignore focus requests, and
+`windows[i].desktopVisible` reports whether each window is on the current desktop. Native file
+dialogs remain managed by Windows and are not guaranteed to appear on the selected desktop. The
+`virtual-desktop` requirement stays skipped unless explicitly enabled with `--with`.
+
 Owned product test instances enable Chromium's `use-fake-device-for-media-stream` and `mute-audio`
 switches before app readiness. This prevents tests from accessing a real microphone or playing
 through a real speaker. After each profile reset the wrapper generates
@@ -109,6 +118,19 @@ absolute path in `PERSEPHONE_TEST_AUDIO_CAPTURE_FILE` to owned module launches. 
 uses it only in test instances and only when it names an existing WAV. `--open` and `--attach` do
 not receive or install this fake media setup; tests that need capture, playback, or voice paths must
 declare `requires: ["launch"]` so they run only against an owned test instance.
+
+Owned test instances start with `main.unseenMode.enabled` set to `true`; ordinary instances start
+disabled. This runtime setting disables Chromium animation and timer throttling for eligible process
+WebContents while enabled. Each attached product-runner invocation reads the prior value, enables
+the setting for setup, tests, and cleanup, then restores that value before disconnecting. This is
+temporary process state, not persisted profile state. A hard termination of the host cannot run its
+`finally` block, so the setting may remain enabled until manually disabled or Persephone quits.
+
+`main.session.locked` and `windows[i].desktopVisible` are live main-process AiVision paths. Tests
+read them with `ctx.call("main.session.locked", [])` and
+`ctx.call("windows[index].desktopVisible", [])`; this goes through `createContext()` and
+`TestWindowOwner.call()` to `McpClient.call()`. The `main` and `windows` roots stay unprefixed by
+`TestWindowOwner.scope()`.
 
 ## Product host options
 
@@ -123,6 +145,7 @@ The general product runner supports these suite-independent options:
 | `--test-timeout <ms>` | Set the default attempt bound (300000 ms); `0` disables it. A descriptor `timeout` overrides it, and both values are scaled once. |
 | `--keep-open` | Retain an owned app after invocation failure and record its PID and MCP URL. |
 | `--mcp-port <port>` | Request an available MCP port for an owned app; default selection is ephemeral. |
+| `--desktop <number|name>` | Place owned windows on an existing Windows virtual desktop; requires the suite opt-in and cannot be combined with `--attach`. |
 | `--grep <regex>` | Select product tests whose names match this case-sensitive JavaScript regular expression. |
 | `--retries <n>` | Retry failed product tests up to `n` additional times; the default is `0`. |
 | `--reporter` | Select `human` (default) or `json-lines` output; JSON Lines emits versioned events to stdout. |
@@ -390,3 +413,55 @@ test pass; repair the owning application behavior instead. Keep modules focused 
 feature when needed.
 
 The runner retries its own page bookkeeping reads up to three times when attention is present, 200 ms apart by default (scaled by `--timeout-scale`); it never replays test calls. Attention in the test window fails the test with its cause. Attention identified in another window, persistent unidentifiable attention on a runner read, or a closed/replaced test window stops the run (exit 3). The interrupted test and remaining selected tests are `not-run`; the interrupted test may already have changed state. After a stop, `--rerun-failed` selects the failures and tests that did not run. The report names the cause. Untracked OS-level dialogs may not produce an attention reply.
+
+## Minimized browser Page Visibility
+
+When `main.unseenMode` is enabled, embedded browser guest documents and their frames expose
+`document.visibilityState === "visible"` and `document.hidden === false` while minimized. Hidden
+`visibilitychange` events are suppressed, and disabling the mode restores Chromium's real state
+with one event when the exposed state changes. This applies to every embedded browser guest,
+including user browsing; standalone popup windows report real visibility. A new document receives
+the host's latest state after its document-start announcement, so a stale creation-time snapshot
+can briefly be observed by its first script.
+
+`tests/core/unseen-mode/minimized-page-visibility.test.mjs` covers the top page and a same-origin
+iframe through the off/on/disable-while-minimized flow, fresh-document reconciliation, and window
+restore. Cross-origin and out-of-process iframe first-script behavior remains a manual live-dev
+check.
+
+Electron's `<webview>` top document is a special case: Electron defines own, non-configurable
+`document.visibilityState` and `document.hidden` properties on it, so the preload cannot replace
+those properties through `Document.prototype`. Electron drives them by sending the private
+`GUEST_INSTANCE_VISIBILITY_CHANGE` message through the guest's `_sendInternal` method. The main
+process `PageVisibilityOverride` wraps that method and substitutes `"visible"` while unseen mode is
+enabled; when the mode changes, it sends the current state through the original method. The
+document-start preload shim handles subframes. This relies on Electron internals verified against
+the shipped Electron build: re-check the channel and method on each Electron upgrade. If the method
+is unavailable, the top document keeps its real visibility.
+
+## Desktop awareness and placement
+
+On Windows, `main.session.locked` is maintained from Electron's `powerMonitor` lock and unlock
+events. `windows[i].desktopVisible` is derived live and is false for a destroyed, minimized, hidden,
+locked, or non-current-virtual-desktop window. The virtual desktop probe uses the COM
+`IVirtualDesktopManager` methods `IsWindowOnCurrentVirtualDesktop`, `GetWindowDesktopId`, and
+`MoveWindowToDesktop`. Desktop enumeration and names come from the current user's Explorer
+`VirtualDesktopIDs` and per-desktop `Name` registry values. Those registry values are binary GUID
+arrays and UTF-16 strings respectively; keep the value-type and length checks when changing this
+adapter.
+
+The adapter uses `koffi` to call `CoCreateInstance`, `RegGetValueW`, and the COM vtable. Its vtable
+slots 3–5 follow the three `IUnknown` entries. HWND and `HKEY_CURRENT_USER` arguments are passed as
+`intptr_t` integers (BigInt for the HWND on 64-bit Windows); `koffi.as()` does not convert an integer
+to a pointer. Treat negative HRESULTs as failures, except `TYPE_E_ELEMENTNOTFOUND` from
+`GetWindowDesktopId` for a window that has not yet been shown.
+
+The wrapper accepts `--desktop <number|name>` only for owned Windows runs and requires the
+`virtual-desktop` opt-in tag; it cannot be combined with `--attach`. Desktop selection happens
+before a run window's first show. Moving during `browser-window-created` is too early: Windows may
+return success without changing the placement. The guard therefore moves immediately before the
+first `showInactive()`. It replaces `show()` and `showInactive()` with the placement guard, swallows
+`focus()`, `moveTop()`, `setAlwaysOnTop()`, and `webContents.focus()`, and routes `restore()` through
+`showInactive()` so a minimized run cannot switch the user's desktop. A focus request is still
+recorded for policy checks even though no native focus event occurs. If placement fails, the owned
+run exits with an error. Native OS dialogs remain outside these window guards.

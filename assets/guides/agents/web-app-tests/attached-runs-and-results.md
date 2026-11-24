@@ -126,6 +126,10 @@ including after setup or test failures. `ctx.root` is the unscoped app proxy. Ex
 another window. Awaiting `ctx.app` with no path describes the selected window, not the renderer overview.
 Prefer unprefixed paths; `ctx.root` and explicit `windows[i]` paths can reach outside the test window.
 
+For unseen-mode controls, owned/attached run defaults and restoration, see [unattended runs](./unattended-runs.md).
+
+For minimized browser-page visibility and its iframe behavior, see [unattended runs](./unattended-runs.md).
+
 Use `--attach --window <index-or-title>` to reuse an open window. A decimal value selects the exact
 `windows[i]` record index; `name:<name>` selects an exact case-insensitive name; any other value
 selects a unique case-insensitive substring of the OS window title. Names avoid collisions with the

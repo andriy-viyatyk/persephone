@@ -11,6 +11,7 @@ import { probeProfile, readProfileMcp, resolveProfileDirectory } from "./profile
 import type { TestControllerArguments } from "./arguments";
 import { errMessage } from "../../shared/utils";
 import { Console } from "node:console";
+import { virtualDesktopManager } from "../virtual-desktop-manager";
 
 export async function startTestController(profileArgs: ReturnType<typeof parseApplicationProfile>, options: TestControllerArguments): Promise<void> {
     if (options.reporter === "json-lines") globalThis.console = new Console({ stdout: process.stderr, stderr: process.stderr });
@@ -30,6 +31,10 @@ export async function startTestController(profileArgs: ReturnType<typeof parseAp
         if (options.attach && !running) throw new Error("Cannot attach: no running instance owns the requested profile pipe.");
         const mcp = options.attach ? await readProfileMcp(targetProfile, profileArgs.name) : { port: await chooseMcpPort(options.mcpPort) };
         await app.whenReady();
+        if (options.desktop !== undefined) {
+            if (process.platform !== "win32") throw new Error("--desktop is supported only on Windows.");
+            virtualDesktopManager.resolveSelector(options.desktop);
+        }
         const configuration = {
             testPath: options.testPath,
             cwd: options.cwd,
@@ -39,6 +44,7 @@ export async function startTestController(profileArgs: ReturnType<typeof parseAp
             attach: options.attach,
             window: options.window,
             windowName: options.windowName,
+            desktop: options.desktop,
             logFile: options.logFile,
             logDirectory: options.logDirectory,
             rerunFailed: options.rerunFailed,

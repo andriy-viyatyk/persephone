@@ -12,6 +12,9 @@ import { MAIN_SCRIPT_DISABLED_MESSAGE, isMainScriptsEnabled } from "./main-scrip
 import { executeMainScript, MAIN_SCRIPT_TIMEOUT_MS } from "./main-script";
 import type { WindowsNode } from "./main-root";
 import { pathWatchService } from "../../path-watch-service";
+import { MainUnseenModeNode } from "./main-unseen-mode";
+import { MainSessionNode } from "./main-session";
+import { desktopAwareness } from "../../desktop-awareness";
 
 const CAUTION_TOR_RESTART = "restarts the shared Tor daemon and disrupts every active Tor browser partition; bootstrap can take up to 90 seconds.";
 const CAUTION_BOARD_CANCEL = "aborts the board archive download and removes its partial ZIP.";
@@ -29,7 +32,11 @@ const MAIN_MEMBERS: readonly IAiMember[] = [
     { name: "runtime", kind: "property", node: true, summary: "Bounded application, runtime, path, uptime, and memory diagnostics." },
     { name: "script", kind: "property", node: true, summary: "Settings-gated main-process script execution." },
     { name: "watchers", kind: "property", node: true, summary: "Read-only bounded path-watch diagnostics." },
+    { name: "unseenMode", kind: "property", node: true, summary: "Temporary process-wide control for animation and timer throttling while unseen." },
+    { name: "session", kind: "property", node: true, summary: "Current process-wide Windows session lock state." },
 ];
+
+const MAIN_HELP = "Main is process-wide. It exposes windows, session lock state, mcp, tor, boards, downloads, networkLog, runtime, read-only watchers diagnostics, the temporary unseenMode control, and the settings-gated script branch.";
 
 const WATCHERS_MEMBERS: readonly IAiMember[] = [
     { name: "summary", kind: "property", summary: "Watcher and subscription counts plus aggregate events, batches, and rescans." },
@@ -293,6 +300,8 @@ export class MainNode implements IAiVisible {
     readonly runtime = new MainRuntimeNode();
     readonly script = new MainScriptNode();
     readonly watchers = new MainWatchersNode();
+    readonly unseenMode = new MainUnseenModeNode();
+    readonly session = new MainSessionNode(desktopAwareness);
 
     constructor(readonly windows: WindowsNode) {}
 
@@ -301,7 +310,7 @@ export class MainNode implements IAiVisible {
             kind: "Main",
             summary: "Main-process diagnostics and gated scripting.",
             members: MAIN_MEMBERS,
-            help: "Main is process-wide. It exposes windows, mcp, tor, boards, downloads, networkLog, runtime, read-only watchers diagnostics, and the settings-gated script branch.",
+            help: MAIN_HELP,
             children: (): readonly IAiChild[] => MAIN_MEMBERS.map(member => ({ segment: `.${member.name}`, kind: member.name === "windows" ? "Windows" : `Main${member.name[0].toUpperCase()}${member.name.slice(1)}`, summary: member.summary })),
             summarize: () => ({ kind: "Main", services: MAIN_MEMBERS.map(member => member.name) }),
         };
