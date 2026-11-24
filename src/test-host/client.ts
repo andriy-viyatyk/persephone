@@ -3,7 +3,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { errMessage } from "../shared/utils.js";
 import { formatStep } from "./step-format.js";
 import { PERSEPHONE_CALL_RESULT_TYPE_META_KEY } from "../shared/mcp-result-type.js";
-import { modelCallMaxLength } from "./model-call-options.js";
+import { runnerCallMaxLength } from "./model-call-options.js";
 import { classifyAttention, EnvironmentStopError } from "./attention-policy.js";
 import { sensitiveMemberKind, sensitiveSummary, StorageStateRedactor } from "./storage-state-redaction.js";
 
@@ -38,17 +38,17 @@ export class McpClient {
         throw new Error(`MCP did not become ready: ${errMessage(lastError)}`);
     }
     async call(path?: string, args?: unknown, timeout = this.timeouts.request, maxLength?: number, dialog = false, allowNavigation = false, testWindowIndex?: number): Promise<unknown> {
-        const result = await this.rawCall(path, args, { timeout, maxLength: modelCallMaxLength(path, maxLength), allowNavigation, hints: "never" });
-        return this.decode(result, path, args, maxLength !== undefined, dialog, false, testWindowIndex);
+        const result = await this.rawCall(path, args, { timeout, maxLength: runnerCallMaxLength(maxLength), allowNavigation, hints: "never" });
+        return this.decode(result, path, args, maxLength, dialog, false, testWindowIndex);
     }
     async callText(path?: string, args?: unknown, timeout = this.timeouts.request, maxLength?: number, dialog = false, allowNavigation = false, testWindowIndex?: number): Promise<string> {
-        const result = await this.rawCall(path, args, { timeout, maxLength: modelCallMaxLength(path, maxLength), allowNavigation, hints: "never" });
-        return this.decode(result, path, args, maxLength !== undefined, dialog, true, testWindowIndex) as string;
+        const result = await this.rawCall(path, args, { timeout, maxLength: runnerCallMaxLength(maxLength), allowNavigation, hints: "never" });
+        return this.decode(result, path, args, maxLength, dialog, true, testWindowIndex) as string;
     }
     /** Assigns `value` to the writable property named by `path` (the `call` tool's `value` field). */
     async set(path: string, value: unknown, timeout = this.timeouts.request, testWindowIndex?: number): Promise<unknown> {
-        const result = await this.rawCall(path, undefined, { timeout, hints: "never", value });
-        return this.decode(result, path, { value }, false, false, false, testWindowIndex);
+        const result = await this.rawCall(path, undefined, { timeout, maxLength: runnerCallMaxLength(undefined), hints: "never", value });
+        return this.decode(result, path, { value }, undefined, false, false, testWindowIndex);
     }
     async rawCall(path?: string, args?: unknown, options: { timeout?: number; maxLength?: number; allowNavigation?: boolean; hints?: "always" | "never"; value?: unknown } = {}): Promise<{ isError?: boolean; content?: ContentBlock[]; _meta?: Record<string, unknown> }> {
         if (!this.client) throw new Error("MCP connection is not healthy.");
@@ -74,7 +74,7 @@ export class McpClient {
             block.type === "image" && typeof block.mimeType === "string" && typeof block.data === "string");
         return image ? { mimeType: image.mimeType, data: image.data } : undefined;
     }
-    private decode(result: { isError?: boolean; content?: ContentBlock[]; _meta?: Record<string, unknown> }, path?: string, args?: unknown, maxLengthSupplied = false, allowDialog = false, textOnly = false, testWindowIndex?: number): unknown {
+    private decode(result: { isError?: boolean; content?: ContentBlock[]; _meta?: Record<string, unknown> }, path?: string, args?: unknown, maxLength?: number, allowDialog = false, textOnly = false, testWindowIndex?: number): unknown {
         const blocks = result.content ?? [];
         if (result.isError) throw this.serverError(path, args, blocks);
         const raw = this.safeReply(path, blocks);
@@ -108,7 +108,9 @@ export class McpClient {
         if (body === undefined) throw new Error(`${formatStep("call", path, args, this.redactor)} returned no valid text body. Raw reply: ${raw}`);
         if (startsWithText(blocks[index], "[truncated:")) {
             index++;
-            if (!maxLengthSupplied) throw new Error(`${formatStep("call", path, args, this.redactor)} was truncated without maxLength. Raw reply: ${raw}`);
+            if (maxLength !== undefined && sensitiveMemberKind(path) === "storage-state")
+                throw new Error(`${formatStep("call", path, args, this.redactor)} storageState reply exceeded maxLength ${maxLength}; raise it.`);
+            if (maxLength === undefined) throw new Error(`${formatStep("call", path, args, this.redactor)} was truncated without maxLength. Raw reply: ${raw}`);
         }
         for (const prefix of ["--- tip (", "Warning: ", "--- hint ("]) if (startsWithText(blocks[index], prefix)) index++;
         if (index !== blocks.length) throw new Error(`${formatStep("call", path, args, this.redactor)} returned unexpected supplementary content. Raw reply: ${raw}`);
@@ -131,6 +133,9 @@ export class McpClient {
             const resolved = /\(resolved up to "(.*)"\)/.exec(errorText)?.[1];
             const helpPath = resolved ? `${resolved}.$help` : "$help";
             errorText += `\nList members: ctx.call(${JSON.stringify(helpPath)})`;
+        }
+        if (/ is not a member of page:[^.]+\./.test(errorText)) {
+            errorText += "\nIf the member exists on the exposed model, add it to aiVision.members.";
         }
         const error = new Error(`${formatStep("call", path, args, this.redactor)}\n${errorText}${readableMetadata}`);
         // A coded error's line reads `Error [<code>]: <message>` in every namespace (ai-vision 1.4.0+).

@@ -401,7 +401,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Browser test-power access and adoption state (agent-opened or test-adopted page gate) | `/src/renderer/editors/browser/agent-access.ts`, `/src/renderer/editors/browser/BrowserTestPowerAdoption.ts` |
 | Browser init scripts and storage state (document-start scripts, cookie/Web Storage capture and apply, redacted test logging) | `/src/main/cdp/cdp-init-scripts.ts`, `/src/main/cdp/cdp-storage-state.ts`, `/src/renderer/editors/browser/BrowserStorageState.ts`, `/src/renderer/editors/browser/BrowserStorageFacade.ts`, `/src/test-host/storage-state-redaction.ts` |
 | Browser request routing (page-scoped Fetch interception and routed-request log metadata) | `/src/main/cdp/cdp-request-routes.ts`, `/src/main/network-logger.ts`, `/src/renderer/editors/browser/BrowserRequestRoutes.ts` |
-| Browser captured downloads (test-page capture and run-folder attachment) | `/src/main/download-capture.ts`, `/src/renderer/editors/browser/BrowserDownloadCapture.ts`, `/src/test-host/captured-downloads.ts` |
+| Browser captured downloads (test-page capture, MIME/URL metadata and run-folder attachment) | `/src/main/download-capture.ts`, `/src/renderer/editors/browser/BrowserDownloadCapture.ts`, `/src/test-host/captured-downloads.ts`, `/src/test-host/url-redaction.ts` |
 | Browser page clipboard recorder and facade (page-produced copy text and scoped next-paste input) | `/src/renderer/editors/browser/page-clipboard-recorder.ts`, `/src/renderer/editors/browser/BrowserClipboardFacade.ts` |
 | Browser fake clock (CDP lifecycle and page timer script) | `/src/renderer/editors/browser/BrowserClock.ts`, `/src/renderer/editors/browser/browser-clock-script.ts` |
 | Browser state and partition rules (state/defaults, tab/group IDs, title policy; shared partition helper; `BrowserEditor` owns stable private-session IDs and the resolved partition) | `/src/renderer/editors/browser/browser-state.ts`, `/src/shared/browser-partition.ts`, `/src/renderer/editors/browser/BrowserEditor.ts` |
@@ -539,8 +539,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Product test-host matcher implementation and safe assertion previews | `/src/test-host/expect.ts` |
 | Product test-host shared polling loop (deadline, samples, quiet logging and final wait diagnostics) | `/src/test-host/poll.ts` |
 | Product test-host async polling matcher adapter and `Expect` / `PollMatchers` types | `/src/test-host/poll-expect.ts` |
-| Test-runner page-model call options (unbounded default reads under `pages[i].editor.app`) | `/src/test-host/model-call-options.ts` |
-| Test-window owner (selects/creates the run window, scopes app paths, and validates its live identity) | `/src/test-host/test-window.ts` |
+| Test-runner whole-value read limit (unbounded default, with explicit caller caps preserved) | `/src/test-host/model-call-options.ts` |
+| Test-window owner (selects/creates the run window, including named windows, scopes app paths, and validates its live identity) | `/src/test-host/test-window.ts` |
 | Test-runner attention policy (retries side-effect-free bookkeeping reads and stops on environment failures) | `/src/test-host/attention-policy.ts` |
 | Per-attempt failure bundle (page screenshots and bounded, redacted page/console/network diagnostics) | `/src/test-host/failure-bundle.ts` |
 | One isolated test attempt (context/setup, failure capture, cleanup and source location) | `/src/test-host/test-attempt.ts` |
@@ -555,7 +555,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Launch argument parsing and open-path validation | `/src/main/utils.ts` |
 | Window creation and persisted bounds (main; BrowserWindow setup and collaboration with per-window controllers) | `/src/main/open-window.ts` |
 | Voice Typing target ownership and shortcut/session routing (main; per-window shortcut handling including right Ctrl tap detection, and captured-WebContents insertion with clipboard fallback) | `/src/main/voice-typing-controller.ts` |
-| Window close / hide / quit arbitration and test-window lifecycle (main; the `eBeforeQuit` round-trip, close-to-tray, and test-window creation, selection, identity, and disposal) | `/src/main/open-windows.ts`, `/src/main/mcp/ai-vision/test-window-operations.ts` |
+| Window close / hide / quit arbitration and test-window lifecycle (main; the `eBeforeQuit` round-trip, close-to-tray, persistent normal-window names, and test-window creation, selection, identity, and disposal) | `/src/main/open-windows.ts`, `/src/main/window-names.ts`, `/src/main/mcp/ai-vision/test-window-operations.ts` |
 | Board-window and shortcut identity (root hash, stable ICO path, launcher selection for packaged/dev builds, and quoted launch-root normalization) | `/src/main/board-window-identity.ts` |
 | System tray (main; Show App / Quit menu, click-toggles-visibility. Quit sets `openWindows.doQuit`, the one flag that overrides close-to-tray) | `/src/main/tray-setup.ts` |
 | Windows browser registration | `/src/main/browser-registration.ts`           |

@@ -54,7 +54,9 @@ The filters may be used together; adoption must resolve to exactly one page. Use
 captures applicable profile cookies and current-origin local and session storage. `openBrowser`
 accepts that object or a JSON file path relative to the test file. Cookies are applied before the
 first navigation; Web Storage is seeded at document start for matching origins. Treat state files
-as credentials and keep them in an ignored local directory. `usePage` accepts normal-profile pages;
+as credentials and keep them in an ignored local directory. `storageState()` returns the whole
+state by default; with an explicit `maxLength` that is too small it fails and asks you to raise the
+cap, instead of returning partial state. `usePage` accepts normal-profile pages;
 user-opened Incognito and Tor pages are refused.
 For setup examples, see [attached runs and results](./attached-runs-and-results.md).
 

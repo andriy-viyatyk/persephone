@@ -2,18 +2,21 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-export interface CapturedDownload { suggestedFilename: string; path: string; size: number; }
-export interface DownloadAttachment { suggestedFilename: string; path: string; size: number; }
+import { redactUrl } from "./url-redaction.js";
+
+export interface CapturedDownload { suggestedFilename: string; path: string; size: number; mimeType: string; url: string; }
+export interface DownloadAttachment { suggestedFilename: string; path: string; size: number; mimeType: string; url: string; }
 
 const CAPTURE_ROOT_NAME = "persephone-test-downloads";
 
 /** Validate the app-owned capture path, copy it into run output, and remove the app-side file. */
-export async function copyCapturedDownload(result: CapturedDownload, outputDirectory: string): Promise<{ result: CapturedDownload; attachment: DownloadAttachment }> {
+export async function copyCapturedDownload(result: CapturedDownload, outputDirectory: string, scrub: (value: string) => string = (value) => value): Promise<{ result: CapturedDownload; attachment: DownloadAttachment }> {
     let trustedSource: string | undefined;
     let outputPath: string | undefined;
     let outputCreated = false;
     try {
         if (!result || typeof result !== "object" || typeof result.path !== "string" || typeof result.suggestedFilename !== "string"
+            || typeof result.mimeType !== "string" || typeof result.url !== "string"
             || !Number.isSafeInteger(result.size) || result.size < 0 || hasParentSegment(result.path)) {
             throw new Error("Captured download result is invalid.");
         }
@@ -47,8 +50,9 @@ export async function copyCapturedDownload(result: CapturedDownload, outputDirec
             }
         }
         await fs.unlink(trustedSource);
-        const copied = { suggestedFilename: result.suggestedFilename, path: outputPath, size: stat.size };
-        return { result: copied, attachment: { suggestedFilename: result.suggestedFilename, path: relative, size: stat.size } };
+        const url = scrub(redactUrl(result.url) ?? "[redacted URL]");
+        const copied = { suggestedFilename: result.suggestedFilename, path: outputPath, size: stat.size, mimeType: result.mimeType, url };
+        return { result: copied, attachment: { suggestedFilename: result.suggestedFilename, path: relative, size: stat.size, mimeType: result.mimeType, url } };
     } catch (error) {
         if (outputCreated && outputPath) await fs.unlink(outputPath).catch((): void => undefined);
         if (trustedSource) await fs.unlink(trustedSource).catch((): void => undefined);

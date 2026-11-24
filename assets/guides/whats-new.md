@@ -6,6 +6,9 @@ summary: "Release notes, newest first — the last 10 releases in full, older on
 
 # What's New
 
+- Runner `ctx.waitFor` can opt into retrying transient read errors; captured downloads report MIME type and a redacted URL; `--summary-only` keeps human run summaries compact.
+- Attached web-app tests can name a normal window and reuse it with `--window name:<name>` or `--window-name <name>`, preserving a signed-in browser session between runs.
+
 Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
@@ -19,6 +22,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Board toolbar buttons no longer vanish after a board loads.** A board that set up its toolbar
   early while loading (Agent Chat, for example) could show its buttons for a moment and then lose
   them until the next reload.
+- **Browser automation label locators ignore nested control text.** A wrapping label such as
+  `Show:<select>…</select>` now matches its select by `Show`, not by an option's text.
+
+### Improvements
+
+- **Web-app test runner reads whole values by default.** Explicit caps still truncate ordinary
+  results; a truncated `storageState()` read reports how to raise its cap.
 
 ---
 

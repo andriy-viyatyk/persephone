@@ -18,6 +18,7 @@ export interface HostConfiguration {
     port: number;
     attach: boolean;
     window?: string;
+    windowName?: string;
     testPath: string;
     logFile?: string;
     logDirectory?: string;
@@ -31,6 +32,7 @@ export interface HostConfiguration {
     testTimeout?: number;
     grep?: string;
     reporter: "human" | "json-lines";
+    summaryOnly: boolean;
 }
 /** Whether the promise settled (resolved or rejected) within the time limit. */
 async function settlesWithin(promise: Promise<unknown> | undefined, ms: number): Promise<boolean> {

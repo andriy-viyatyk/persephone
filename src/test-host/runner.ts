@@ -107,12 +107,16 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
         const hasOnly = focusSelected.some((descriptor) => descriptor.mode === "only");
         selectedTestCount = files.reduce((total, group) => total + group.tests.filter((descriptor) => matchesSelection(group.file, descriptor.name, rerun.selected) && (!hasOnly || descriptor.mode === "only")).length, 0);
         selectedDescriptors = files.flatMap((group) => group.tests.filter((descriptor) => matchesSelection(group.file, descriptor.name, rerun.selected) && (!hasOnly || descriptor.mode === "only")).map((descriptor) => ({ file: group.file, name: descriptor.name })));
-        reporter?.runStart(started, discoveredFileCount, selectedTestCount);
-        runStartEmitted = Boolean(reporter);
         if (hasOnly) console.log("Focused run: executing test.only descriptors only.");
         client = await launcher.start();
         if (log) client.setStorageStateRedactor(log.redactor);
-        testWindow = await TestWindowOwner.start(client, configuration.attach, configuration.window);
+        testWindow = await TestWindowOwner.start(client, configuration.attach, configuration.window, configuration.windowName);
+        reporter?.runStart(started, discoveredFileCount, selectedTestCount, testWindow.identityInfo);
+        runStartEmitted = Boolean(reporter);
+        if (testWindow.identityInfo) {
+            const { index, windowId, name } = testWindow.identityInfo;
+            console.log(`Test window: [${index}]${name ? ` \"${name}\"` : ""} (windowId ${windowId})`);
+        }
         const fileState = await runSelectedFiles({ files, configuration, launcher, timeouts, setup, log, outputDirectory, results, selected: rerun.selected, hasOnly, testWindow, client });
         client = fileState.client;
         environmentStop = fileState.environmentStop;
@@ -135,6 +139,7 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
         } catch (error) { setupFailure ??= error; }
         try { launcher.close(); } catch (error) { setupFailure ??= error; }
         if (reporter) {
+            if (!runStartEmitted) reporter.runStart(started, discoveredFileCount, selectedTestCount);
             const reason = setupFailure ? errMessage(setupFailure) : environmentStop;
             for (const descriptor of selectedDescriptors) {
                 const key = testIdentityKey(descriptor);
@@ -150,9 +155,6 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
             try { await writeReports(results, { directory: outputDirectory, target: configuration.testPath, startedAt: started, stale, setupFailure, retainedApp, environmentStop, redactor: log?.redactor }); }
             catch (error) { setupFailure ??= error; }
         }
-        if (reporter && !runStartEmitted) {
-            reporter.runStart(started, discoveredFileCount, selectedTestCount);
-        }
         const count = (status: TestResult["status"]) => results.filter((result) => result.status === status).length;
         const totals: RunTotals = { passed: count("passed"), failed: count("failed") + (setupFailure ? 1 : 0), skipped: count("skipped"), expectedFailure: count("expected-failure"), unexpectedPass: count("unexpected-pass"), flaky: count("flaky"), notRun: count("not-run") };
         try { log?.write({ event: "run-summary", startedAt: started, passed: count("passed"), failed: count("failed") + (setupFailure ? 1 : 0), skipped: count("skipped"), expectedFailure: count("expected-failure"), unexpectedPass: count("unexpected-pass"), flaky: count("flaky"), notRun: count("not-run"), ...(environmentStop ? { environmentStop } : {}), ...(setupFailure ? { setupFailure: errMessage(setupFailure) } : {}) }); }
@@ -162,11 +164,13 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
             reporter.runEnd(started, new Date().toISOString(), Date.now() - startedAtMs, totals, outputDirectory ?? null, log?.redactor.scrub(error ?? ""));
         }
         console.log(`Test run ${started}: ${count("passed")} passed, ${count("failed") + (setupFailure ? 1 : 0)} failed, ${count("skipped")} skipped, ${count("not-run")} not run, ${count("expected-failure")} expected failure, ${count("unexpected-pass")} unexpected passes, ${count("flaky")} flaky.${environmentStop ? ` Environment stop: ${scrub(environmentStop)}` : ""}`);
-        for (const result of results.filter((item) => item.status !== "passed")) {
-            console.log(`${result.status.toUpperCase()} ${displayPath(configuration.cwd, result.file)} — ${result.name}${result.step ? ` — ${scrub(result.step)}` : ""}${result.reason ? ` — ${scrub(result.reason)}` : ""}${result.error ? `\n${scrub(result.error)}` : ""}`);
-            for (const cleanupError of result.cleanupErrors ?? []) console.error(`CLEANUP ${scrub(cleanupError)}`);
-            for (const screenshot of result.screenshots ?? []) console.log(`Screenshot: ${outputDirectory ? path.join(outputDirectory, screenshot) : screenshot}`);
-            for (const captureError of result.captureErrors ?? []) console.error(`CAPTURE ${scrub(captureError)}`);
+        if (!configuration.summaryOnly) {
+            for (const result of results.filter((item) => item.status !== "passed")) {
+                console.log(`${result.status.toUpperCase()} ${displayPath(configuration.cwd, result.file)} — ${result.name}${result.step ? ` — ${scrub(result.step)}` : ""}${result.reason ? ` — ${scrub(result.reason)}` : ""}${result.error ? `\n${scrub(result.error)}` : ""}`);
+                for (const cleanupError of result.cleanupErrors ?? []) console.error(`CLEANUP ${scrub(cleanupError)}`);
+                for (const screenshot of result.screenshots ?? []) console.log(`Screenshot: ${outputDirectory ? path.join(outputDirectory, screenshot) : screenshot}`);
+                for (const captureError of result.captureErrors ?? []) console.error(`CAPTURE ${scrub(captureError)}`);
+            }
         }
         for (const identity of stale) console.log(`STALE ${displayPath(configuration.cwd, identity.file)} — ${identity.name} (saved as failed, no longer exists; skipped)`);
         if (outputDirectory) console.log(`Results: ${outputDirectory}`); else if (configuration.logFile) console.log(`Log: ${configuration.logFile}`);
@@ -180,7 +184,8 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
                 const location = result.location ?? displayPath(configuration.cwd, result.file);
                 const attemptError = result.attempts?.find((attempt) => attempt.error)?.error;
                 const detail = result.status === "skipped" ? result.skipReason : result.status === "expected-failure" ? result.reason : firstErrorLine(result.error ?? attemptError, result.step) ?? result.reason;
-                console.log(`${labels[result.status]} — ${result.name} — ${location}${detail ? ` — ${scrub(detail)}` : ""}`);
+                const step = result.step ? compactStep(scrub(result.step)) : undefined;
+                console.log(`${labels[result.status]} — ${result.name} — ${location}${step ? ` — ${step}` : ""}${detail ? ` — ${scrub(detail)}` : ""}`);
             }
         }
     }
@@ -189,4 +194,9 @@ export async function run(configuration: HostConfiguration, attachPort?: number)
 
 function firstErrorLine(error: string | undefined, step: string | undefined): string | undefined {
     return error?.split(/\r?\n/).map((line) => line.trim()).find((line) => line && line !== step);
+}
+
+function compactStep(value: string): string {
+    const singleLine = value.replaceAll(/[\r\n\t]+/g, " ").replaceAll(/\s{2,}/g, " ").trim();
+    return singleLine.length <= 120 ? singleLine : `${singleLine.slice(0, 119)}…`;
 }

@@ -257,7 +257,7 @@ export interface IBrowserEditor {
      * Wait for the next eligible page download. Through the test runner, path is the copied output path.
      * suggestedFilename is the original page-supplied DownloadItem.getFilename() value.
      */
-    waitForDownload(options?: { timeout?: number }): Promise<{ suggestedFilename: string; path: string; size: number }>;
+    waitForDownload(options?: { timeout?: number }): Promise<{ suggestedFilename: string; path: string; size: number; mimeType: string; url: string }>;
     readonly storage: IBrowserStorage;
     /** Remove one init script previously registered on the selected browser tab. */
     removeInitScript(id: string, options?: { tabId?: string }): Promise<boolean>;

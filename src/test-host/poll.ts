@@ -85,7 +85,7 @@ export async function runHostPoll(options: HostPollOptions): Promise<HostPollRes
     options.markFailure(timeoutError);
     const details = outcome.kind === "value"
         ? { result: resultPreview(outcome.value, options.target, options.log?.redactor) }
-        : { lastError: safePreview(errMessage(outcome.error)) };
+        : { lastError: options.log?.redactor.scrub(safePreview(errMessage(outcome.error))) ?? safePreview(errMessage(outcome.error)) };
     options.log?.write({ event: "wait-error", ...options.identity, target: options.target, ok: false, polls, error: timeoutError.message, ...details });
     throw timeoutError;
 }

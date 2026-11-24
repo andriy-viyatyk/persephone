@@ -62,6 +62,47 @@ async function readDownload(ctx, savePath) {
 }
 
 export default [
+    test("runner download results include MIME type and a redacted URL attachment", async (ctx) => {
+        const page = await openBrowserPage(ctx, fixturePage(ctx, "downloads", "index.html"));
+        try {
+            await page.editor.waitFor({ selector: "#download-runner-metadata" });
+            const pending = ctx.app.pages[page.id].editor.waitForDownload({ timeout: 10000 });
+            await page.editor.click("#download-runner-metadata");
+            const download = await pending;
+            ctx.expect(download.mimeType).toBe("application/octet-stream");
+            ctx.expect(download.url).toContain("token=%E2%80%A6");
+            ctx.expect(download.url).not.toContain("secret-value");
+            ctx.expect(download.url).not.toContain("private-fragment");
+            ctx.expect(download.path.replaceAll("\\", "/")).toContain("/downloads/us2190-runner.txt");
+            ctx.expect(await readDownload(ctx, download.path)).toBe(DOWNLOAD_LINE);
+            const attachment = ctx._state.attachments.find((item) => item.suggestedFilename === download.suggestedFilename);
+            ctx.expect(attachment.mimeType).toBe(download.mimeType);
+            ctx.expect(attachment.url).toBe(download.url);
+        } finally { await closeBrowserPage(ctx, page); }
+    }),
+
+    test("runner download results redact non-HTTP URLs", async (ctx) => {
+        const page = await openBrowserPage(ctx, fixturePage(ctx, "downloads", "index.html"));
+        try {
+            await page.editor.waitFor({ selector: "#download-complete" });
+            const pending = ctx.app.pages[page.id].editor.waitForDownload({ timeout: 10000 });
+            await page.editor.evaluate(`() => {
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(new Blob([${JSON.stringify(DOWNLOAD_LINE)}], { type: "text/plain" }));
+                link.href = url;
+                link.download = "us2190-blob.txt";
+                link.click();
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
+            }`);
+            const download = await pending;
+            ctx.expect(download.url).toBe("[redacted URL]");
+            ctx.expect(download.mimeType).toContain("text/plain");
+            ctx.expect(await readDownload(ctx, download.path)).toBe(DOWNLOAD_LINE);
+            const attachment = ctx._state.attachments.find((item) => item.suggestedFilename === download.suggestedFilename);
+            ctx.expect(attachment.url).toBe(download.url);
+        } finally { await closeBrowserPage(ctx, page); }
+    }),
+
     test("download completes into the test folder and Clear removes the manager entry", async (ctx) => {
         const filename = "us2081-complete.txt";
         await resetFixture(ctx, "complete");

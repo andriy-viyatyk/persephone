@@ -190,6 +190,48 @@ export default [
         }
     }),
 
+    test("label locators match associated labels without nested control text", async (ctx) => {
+        const page = await openInputPage(ctx);
+        try {
+            const editor = ctx.app.pages[page.id].editor;
+            await editor.waitFor({ selector: "#label-show-select" });
+
+            ctx.expect(await editor.count('label="Show:"s')).toBe(1);
+            ctx.expect(await editor.getAttribute('label="Show:"s', "id")).toBe("label-show-select");
+            ctx.expect(await editor.count("label=Show")).toBe(1);
+            ctx.expect(await editor.count("label=All")).toBe(0);
+            await editor.select('label="Show:"s', "all");
+            ctx.expect(await editor.getValue("#label-show-select")).toBe("all");
+
+            ctx.expect(await editor.getAttribute('label="Search"s', "id")).toBe("label-wrapped-input");
+            ctx.expect(await editor.count('label="wrapped input content"s')).toBe(0);
+            ctx.expect(await editor.getAttribute('label="Notes"s', "id")).toBe("label-textarea");
+            ctx.expect(await editor.count('label="textarea child content"s')).toBe(0);
+            ctx.expect(await editor.getAttribute('label="Inline nested label"s', "id")).toBe("label-inline-input");
+            ctx.expect(await editor.getAttribute('label="Joined inlinetext"s', "id")).toBe("label-adjacent-input");
+            ctx.expect(await editor.getAttribute('label="Line Break"s', "id")).toBe("label-break-input");
+            ctx.expect(await editor.getAttribute('label="Block Boundary"s', "id")).toBe("label-block-input");
+            ctx.expect(await editor.getAttribute('label="Visible visible override text"s', "id")).toBe("label-hidden-input");
+            ctx.expect(await editor.count("label=hidden attribute text")).toBe(0);
+            ctx.expect(await editor.count("label=display hidden text")).toBe(0);
+            ctx.expect(await editor.count("label=visibility hidden text")).toBe(0);
+            ctx.expect(await editor.getAttribute('label=visible override text', "id")).toBe("label-hidden-input");
+            ctx.expect(await editor.count('label="other control text"s')).toBe(0);
+            ctx.expect(await editor.getAttribute('label="Primary"s', "id")).toBe("label-other-control-input");
+
+            ctx.expect(await editor.getAttribute('label="Separate label"s', "id")).toBe("label-separate-input");
+            ctx.expect(await editor.getAttribute('label="First label"s', "id")).toBe("label-multiple-input");
+            ctx.expect(await editor.getAttribute('label="Second label"s', "id")).toBe("label-multiple-input");
+            ctx.expect(await editor.getAttribute('label=/Second label/', "id")).toBe("label-multiple-input");
+            ctx.expect(await editor.getAttribute({ label: "Second label", exact: true }, "id")).toBe("label-multiple-input");
+            ctx.expect(await editor.getAttribute('label="ARIA label source"s', "id")).toBe("label-aria-input");
+            ctx.expect(await editor.getAttribute('label="ARIA labelledby source"s', "id")).toBe("label-aria-labelledby-input");
+            ctx.expect(await editor.getAttribute('label="Ancestor reference source"s', "id")).toBe("label-aria-ancestor-input");
+        } finally {
+            await closeBrowserPage(ctx, page);
+        }
+    }),
+
     test("check and uncheck change checkbox state, including through an associated label", async (ctx) => {
         const page = await openInputPage(ctx);
         try {

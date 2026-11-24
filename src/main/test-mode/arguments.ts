@@ -1,5 +1,7 @@
 import path from "node:path";
 import { isTestInstanceOption } from "../../ipc/test-host-protocol";
+import { normalizeWindowName } from "../window-names";
+import { errMessage } from "../../shared/utils";
 
 export interface TestControllerArguments {
     testPath: string;
@@ -18,7 +20,9 @@ export interface TestControllerArguments {
     testTimeout: number;
     grep?: string;
     reporter: "human" | "json-lines";
+    summaryOnly: boolean;
     window?: string;
+    windowName?: string;
 }
 
 export interface InitSuiteArguments {
@@ -55,6 +59,8 @@ export function hasTestControllerArguments(args: string[]): boolean {
         || argument === "--test-timeout" || argument.startsWith("--test-timeout=")
         || argument === "--grep" || argument.startsWith("--grep=") || argument === "--window" || argument.startsWith("--window=")
         || argument === "--reporter" || argument.startsWith("--reporter=")
+        || argument === "--summary-only"
+        || argument === "--window-name" || argument.startsWith("--window-name=")
         || (argument.startsWith("--test-") && !isTestInstanceOption(argument)));
 }
 
@@ -81,6 +87,8 @@ export function parseTestControllerArguments(args: string[], cwd = process.cwd()
     let reporter: TestControllerArguments["reporter"] = "human";
     let reporterSeen = false;
     let window: string | undefined;
+    let windowName: string | undefined;
+    let summaryOnly = false;
     for (let index = 0; index < args.length; index += 1) {
         const argument = args[index];
         if (argument === "--test" || argument.startsWith("--test=")) {
@@ -127,6 +135,12 @@ export function parseTestControllerArguments(args: string[], cwd = process.cwd()
             const value = argument === "--window" ? args[++index] : argument.slice("--window=".length);
             if (!value || value.startsWith("--")) throw new Error("--window requires a window index or title substring.");
             window = value;
+        } else if (argument === "--window-name" || argument.startsWith("--window-name=")) {
+            if (windowName !== undefined) throw new Error("Duplicate --window-name option.");
+            const value = argument === "--window-name" ? args[++index] : argument.slice("--window-name=".length);
+            if (!value || value.startsWith("--")) throw new Error("--window-name requires a name.");
+            try { windowName = normalizeWindowName(value); }
+            catch (error) { throw new Error(`Invalid --window-name: ${errMessage(error)}`, { cause: error }); }
         } else if (argument === "--reporter" || argument.startsWith("--reporter=")) {
             if (reporterSeen) throw new Error("Duplicate --reporter option.");
             reporterSeen = true;
@@ -134,6 +148,9 @@ export function parseTestControllerArguments(args: string[], cwd = process.cwd()
             if (!value || value.startsWith("--")) throw new Error("--reporter requires a value (human or json-lines).");
             if (value !== "human" && value !== "json-lines") throw new Error(`Unsupported --reporter value: ${value}. Expected human or json-lines.`);
             reporter = value;
+        } else if (argument === "--summary-only") {
+            if (summaryOnly) throw new Error("Duplicate --summary-only option.");
+            summaryOnly = true;
         } else if (isTestInstanceOption(argument)) {
             continue;
         } else if (argument === "--test-selection" || argument.startsWith("--test-selection=")) {
@@ -176,5 +193,8 @@ export function parseTestControllerArguments(args: string[], cwd = process.cwd()
     if (logFile && rerunFailed) throw new Error("--log cannot be combined with --rerun-failed.");
     if (attach && (keepOpen || mcpPort !== undefined)) throw new Error("--attach cannot be combined with --keep-open or --mcp-port.");
     if (window !== undefined && !attach) throw new Error("--window requires --attach.");
-    return { testPath, attach, cwd, logFile, logDirectory, rerunFailed, testSelection, testSetup, with: withTags, timeoutScale, keepOpen, mcpPort, retries, testTimeout, grep, reporter, window };
+    if (windowName !== undefined && !attach) throw new Error("--window-name requires --attach.");
+    if (windowName !== undefined && window !== undefined) throw new Error("--window-name cannot be combined with --window.");
+    if (summaryOnly && reporter === "json-lines") throw new Error("--summary-only applies only to human output and cannot be combined with --reporter json-lines.");
+    return { testPath, attach, cwd, logFile, logDirectory, rerunFailed, testSelection, testSetup, with: withTags, timeoutScale, keepOpen, mcpPort, retries, testTimeout, grep, reporter, window, windowName, summaryOnly };
 }

@@ -37,10 +37,20 @@ helper must return a stand-in, wrap it with `ctx.handle(node)`. Use `ctx.call(pa
 call-tree path the stand-in cannot represent.
 
 For page-model calls that may navigate, pass the call option separately from model arguments:
-`ctx.call(path, args, { allowNavigation: true })`. Model reads through this runner are unbounded by
-default; pass `maxLength` when you need a cap. The browser facade also supports hidden aliases such
-as `dblclick`. Use `focus(locator)` or `{ target: locator, focus: "focus" }` before keys when the
-page needs focus without a click.
+`ctx.call(path, args, { allowNavigation: true })`. Runner calls return whole values by default;
+pass `maxLength` to cap them. The browser facade also supports aliases such as `dblclick`. Use
+`focus(locator)` or `{ target: locator, focus: "focus" }` before keys when needed.
+
+### Reset page state
+
+To reset localStorage between tests, use the page's `site.storage` helpers:
+
+```js
+await site.storage.clear({ prefix: "test:", area: "local" });
+await site.storage.set("test:mode", "ready", { area: "local" });
+```
+
+See [storage state](../browser.md#init-scripts-at-document-start).
 
 An awaitable stand-in is not a full Promise: its `.then(read)` returns the chained Promise, but
 `.catch()` and `.finally()` throw with guidance. Handle errors with `try { await node } catch {}`.

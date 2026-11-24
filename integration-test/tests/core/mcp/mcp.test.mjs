@@ -1,4 +1,6 @@
 import { test } from "../../../lib/context.mjs";
+import { closeBrowserPage, fixturePage, openBrowserPage } from "../../browser/helpers.mjs";
+import { untrustBoard } from "../../helpers/boards.mjs";
 
 const closePages = async (ctx, pageIds) => {
     for (const pageId of pageIds) {
@@ -45,6 +47,7 @@ export default [
         ctx.expect(normalized).toContain("us2032definitelyunknownmember");
         ctx.expect(normalized).toContain("not a member of pages");
         ctx.expect(normalized).toContain("resolved up to");
+        ctx.expect(normalized).not.toContain("aivision.members");
     }),
 
     test("maxLength truncation returns a bounded body and an explicit marker", async (ctx) => {
@@ -95,6 +98,85 @@ export default [
         }
     }),
 
+    test("normal windows accept unique names and exact name selection", async (ctx) => {
+        const firstName = "us2189-main-window";
+        const duplicateName = "us2189-duplicate-window";
+        await ctx.set("windows[0].name", firstName);
+        let created;
+        try {
+            const selected = await ctx.call("windows.selectTestWindow", [`name:${firstName}`]);
+            ctx.expect(selected.index).toBe(0);
+            ctx.expect(selected.name).toBe(firstName);
+            const titled = await ctx.call("windows.selectTestWindow", [firstName]);
+            ctx.expect(titled.index).toBe(0);
+            const missing = await ctx.call("windows.selectTestWindow", ["name:us2189-missing"]);
+            ctx.expect(missing.count).toBe(0);
+
+            for (const invalid of ["", "  ", "bad/name", "x".repeat(65)]) {
+                let failure;
+                try { await ctx.set("windows[0].name", invalid); } catch (error) { failure = error; }
+                ctx.expect(Boolean(failure)).toBe(true);
+            }
+
+            created = await ctx.call("windows.createTestWindow", []);
+            await ctx.set(`windows[${created.index}].name`, duplicateName);
+            let duplicateFailure;
+            try { await ctx.set(`windows[${created.index}].name`, firstName.toUpperCase()); } catch (error) { duplicateFailure = error; }
+            ctx.expect(duplicateFailure.message).toContain("already in use");
+            let malformedFailure;
+            try { await ctx.call("windows.selectTestWindow", ["name:bad/name"]); } catch (error) { malformedFailure = error; }
+            ctx.expect(malformedFailure.message).toContain("Window name");
+        } finally {
+            await ctx.set("windows[0].name", null);
+            if (created) {
+                await ctx.set(`windows[${created.index}].name`, null);
+                await ctx.call("windows.disposeTestWindow", [created.index, created.windowId]);
+            }
+        }
+    }),
+
+    test("named test-window creation reuses the same live identity", async (ctx) => {
+        const name = "us2189-create-reuse";
+        let created;
+        try {
+            created = await ctx.call("windows.createOrSelectNamedTestWindow", [name]);
+            ctx.expect(created.name).toBe(name);
+            ctx.expect(created.created).toBe(true);
+            const reused = await ctx.call("windows.createOrSelectNamedTestWindow", [name]);
+            ctx.expect(reused.index).toBe(created.index);
+            ctx.expect(reused.windowId).toBe(created.windowId);
+            ctx.expect(reused.created).toBe(false);
+        } finally {
+            if (created) {
+                await ctx.call(`windows[${created.index}].window.close`, []);
+                await ctx.waitFor(() => ctx.call("windows.selectTestWindow", [`name:${name}`]), (result) => result.count === 0);
+            }
+        }
+    }),
+
+    test("board windows cannot be named", async (ctx) => {
+        const directory = ctx.fixture("us2189-board-name");
+        await ctx.app.fs.mkdir(directory);
+        let root;
+        let boardWindowIndex;
+        try {
+            root = await ctx.app.boards.createBoard("NamedWindow", directory);
+            const priorOpen = new Set((await ctx.call("windows")).open);
+            await ctx.app.boards.openBoardWindow(root);
+            const current = await ctx.waitFor("windows", (summary) => summary.open.some((index) => !priorOpen.has(index)));
+            boardWindowIndex = current.open.find((index) => !priorOpen.has(index));
+            let failure;
+            try { await ctx.set(`windows[${boardWindowIndex}].name`, "us2189-board"); } catch (error) { failure = error; }
+            ctx.expect(failure.message).toContain("normal window");
+        } finally {
+            if (boardWindowIndex !== undefined) {
+                try { await ctx.call(`windows[${boardWindowIndex}].window.close`, []); } catch { /* Already closed. */ }
+            }
+            await untrustBoard(ctx, root);
+            try { await ctx.app.fs.removeDir(directory, true); } catch { /* Work folder is already gone. */ }
+        }
+    }),
+
     test("method calls require an argument array and assertion helpers cover comparisons", async (ctx) => {
         let failure;
         try { await ctx.call("ui.alerts.list"); } catch (error) { failure = error; }
@@ -115,5 +197,49 @@ export default [
 
         ctx.expect(Boolean(failure)).toBe(true);
         ctx.expect(/timed?\s*out|timeout/i.test(failure.message)).toBe(true);
+    }),
+
+    test("waitFor retries read errors only when opted in and reports the last read error", async (ctx) => {
+        let reads = 0;
+        const settled = await ctx.waitFor(() => {
+            reads += 1;
+            if (reads === 1) throw new Error("temporary read failure");
+            return "settled";
+        }, (value) => value === "settled", { retryErrors: true, timeout: 1000 });
+        ctx.expect(settled).toBe("settled");
+        ctx.expect(reads).toBe(2);
+
+        let defaultReads = 0;
+        let defaultError;
+        try {
+            await ctx.waitFor(() => { defaultReads += 1; throw new Error("immediate read failure"); }, () => true);
+        } catch (error) { defaultError = error; }
+        ctx.expect(defaultError.message).toContain("immediate read failure");
+        ctx.expect(defaultReads).toBe(1);
+
+        let predicateError;
+        try { await ctx.waitFor(() => "value", () => { throw new Error("predicate failure"); }, { retryErrors: true }); }
+        catch (error) { predicateError = error; }
+        ctx.expect(predicateError.message).toContain("predicate failure");
+
+        let timeoutError;
+        try {
+            await ctx.waitFor(() => { throw new Error("last read failure"); }, () => false, { retryErrors: true, timeout: 100 });
+        } catch (error) { timeoutError = error; }
+        ctx.expect(timeoutError.message).toContain("Last error:");
+        ctx.expect(timeoutError.message).toContain("last read failure");
+
+        const page = await openBrowserPage(ctx, fixturePage(ctx, "page-models", "page-model.html"));
+        const secret = "us2190-redaction-secret";
+        try {
+            await page.editor.evaluate(`() => localStorage.setItem("redaction", ${JSON.stringify(secret)})`);
+            await ctx.call(`pages[${JSON.stringify(page.id)}].editor.storageState`, []);
+            let redactedTimeout;
+            try {
+                await ctx.waitFor(() => { throw new Error(secret); }, () => false, { retryErrors: true, timeout: 100 });
+            } catch (error) { redactedTimeout = error; }
+            ctx.expect(redactedTimeout.message).not.toContain(secret);
+            ctx.expect(redactedTimeout.message).toContain("[redacted]");
+        } finally { await closeBrowserPage(ctx, page); }
     }),
 ];

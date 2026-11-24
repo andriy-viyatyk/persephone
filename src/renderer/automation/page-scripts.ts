@@ -220,6 +220,28 @@ export function resolveCandidatesSource(): string {
     return String.raw`function resolveCandidates(selector, mode, options = {}, axFacts = [], scope = document) {
         ${VISIBLE_FN}
         ${selectorParserSource()}
+        function labelOwnText(label) {
+            const controls = 'input,select,textarea,button,meter,output,progress';
+            if (!label.querySelector(controls)) return label.innerText || label.textContent || '';
+            let text = '';
+            function walk(node) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    const visibility = getComputedStyle(node.parentElement).visibility;
+                    if (visibility !== 'hidden' && visibility !== 'collapse') text += node.nodeValue || '';
+                    return;
+                }
+                if (node.nodeType !== Node.ELEMENT_NODE || node.matches(controls + ',script,style,[hidden]')) return;
+                const display = getComputedStyle(node).display;
+                if (display === 'none') return;
+                if (node.localName === 'br') { text += ' '; return; }
+                const block = /^(block|flow-root|list-item|flex|grid|table)/.test(display);
+                if (block) text += ' ';
+                for (const child of node.childNodes) walk(child);
+                if (block) text += ' ';
+            }
+            walk(label);
+            return text;
+        }
         const steps = parseSelector(selector);
         let candidates = [scope];
         let finalTextSingle = steps.length === 1 && steps[0].engine === 'text';
@@ -277,12 +299,12 @@ export function resolveCandidatesSource(): string {
                     const wanted = parseValue(step.source);
                     const controls = [...parent.querySelectorAll('input:not([type="hidden"]),select,textarea,button,meter,output,progress')];
                     result = controls.filter(control => {
-                        const labels = [];
-                        if ('labels' in control && control.labels) labels.push(...control.labels);
+                        const labels = 'labels' in control && control.labels ? [...control.labels] : [];
                         const ids = (control.getAttribute('aria-labelledby') || '').trim().split(/\s+/).filter(Boolean);
-                        for (const id of ids) { const node = control.ownerDocument.getElementById(id); if (node) labels.push(node); }
+                        const references = ids.map(id => control.ownerDocument.getElementById(id)).filter(Boolean);
                         const ariaLabel = control.getAttribute('aria-label');
-                        return labels.some(label => matchesValue(label.innerText || label.textContent || '', wanted))
+                        return labels.some(label => matchesValue(labelOwnText(label), wanted))
+                            || references.some(node => matchesValue(node.innerText || node.textContent || '', wanted))
                             || (ariaLabel !== null && matchesValue(ariaLabel, wanted));
                     });
                 } else {

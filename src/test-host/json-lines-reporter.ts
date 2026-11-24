@@ -21,8 +21,8 @@ export function redirectGlobalConsoleToStderr(): void {
 export class JsonLinesReporter {
     constructor(private readonly cwd: string) {}
 
-    runStart(startedAt: string, fileCount: number, testCount: number): void {
-        this.write({ version: 1, event: "run-start", startedAt, fileCount, testCount });
+    runStart(startedAt: string, fileCount: number, testCount: number, testWindow?: { index: number; windowId: number; name?: string }): void {
+        this.write({ version: 1, event: "run-start", startedAt, fileCount, testCount, ...(testWindow ? { testWindow } : {}) });
     }
 
     testEvent(event: TestLogEvent): void {

@@ -6,7 +6,7 @@ import type { DownloadAttachment } from "./captured-downloads.js";
 export type { CallOptions };
 export type { Expect, PollOptions, PollMatchers };
 
-export interface WaitOptions extends CallOptions { message?: string; }
+export interface WaitOptions extends CallOptions { message?: string; retryErrors?: boolean; }
 
 export interface TestContext {
     app: object;

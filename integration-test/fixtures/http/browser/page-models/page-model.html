@@ -10,6 +10,7 @@
   <output id="fixture-ready">Page model fixture ready.</output>
   <script>
     let version = 1;
+    let getterReads = 0;
     const remote = {
       get version() { return version; },
       describe() {
@@ -36,6 +37,11 @@
         if (typeof signal === "function") signal(JSON.stringify({ type: "shape", version, schemaVersion: 1 }));
       },
     };
+    Object.defineProperty(remote, "undocumentedOwnMember", { get() { getterReads += 1; return "must not be read"; } });
+    Object.setPrototypeOf(remote, Object.create(Object.prototype, {
+      undocumentedPrototypeMember: { get() { getterReads += 1; return "must not be read"; } },
+    }));
+    window.__fixtureGetterReads = () => getterReads;
     window.__aiVision = remote;
 
     void document.modelContext.registerTool({

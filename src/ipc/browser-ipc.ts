@@ -168,7 +168,7 @@ export interface BrowserStorageCookiesRequest { registrationKey: string; urls: s
 export interface BrowserSetStorageCookiesRequest { registrationKey: string; cookies: BrowserCookie[]; }
 export interface BrowserDownloadWaitOptions { timeout?: number; }
 export interface BrowserDownloadWaitRequest { registrationKey: string; options?: BrowserDownloadWaitOptions; }
-export interface BrowserDownloadResult { suggestedFilename: string; path: string; size: number; }
+export interface BrowserDownloadResult { suggestedFilename: string; path: string; size: number; mimeType: string; url: string; }
 
 export type BrowserRoutePattern = string | BrowserResponsePattern;
 export type BrowserRouteAbortReason =

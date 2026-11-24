@@ -124,7 +124,13 @@ make the order clear. File-backed errors include the file and line.
 `expose(root)` requires `root.aiVision`. Without it, it throws
 `The exposed root must carry an AiVision descriptor.` The minimum descriptor has `kind`, `summary`,
 and `members`; each member has `name`, `kind` (`"property"` or `"method"`), and `summary`. A method
-may also declare `signature`. Expose only the model members the test needs.
+may also declare `signature`. Every member a test calls must be listed in `aiVision.members`; an
+exposed but unlisted member is not callable through the test bridge. Expose only the model members
+the test needs.
+
+When ordered model files add properties to one root, preserve getters without calling them:
+`Object.defineProperties(root, Object.getOwnPropertyDescriptors(part))`. `Object.assign(root, part)`
+reads source properties and therefore calls getters.
 
 ### Worked test-model example
 

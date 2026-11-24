@@ -195,7 +195,7 @@ class DownloadCapture {
                 }
             }
             waiter.partPath = undefined;
-            this.requests.settle(id, { suggestedFilename: item.getFilename(), path: finalPath, size: stat.size });
+            this.requests.settle(id, { suggestedFilename: item.getFilename(), path: finalPath, size: stat.size, mimeType: item.getMimeType(), url: item.getURL() });
         } catch (error) {
             const message = error instanceof Error && error.message === "Browser download exceeds the 32 MiB capture limit."
                 ? error.message

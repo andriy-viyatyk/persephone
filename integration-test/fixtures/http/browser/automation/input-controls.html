@@ -61,6 +61,22 @@
             <option value="red">Red</option><option value="green">Green</option><option value="blue">Blue</option>
         </select>
     </section>
+    <section aria-label="Label locator cases">
+        <label id="label-show">Show:<select id="label-show-select"><option value="all">All</option><option value="selected">Selected</option></select></label>
+        <label>Search <input id="label-wrapped-input" value="wrapped input content"></label>
+        <label>Notes<textarea id="label-textarea">textarea child content</textarea></label>
+        <label for="label-inline-input">Inline  <span>nested</span>   label<input id="label-inline-input"></label>
+        <label for="label-adjacent-input">Joined <span>inline</span>text<input id="label-adjacent-input"></label>
+        <label for="label-break-input">Line<br>Break<input id="label-break-input"></label>
+        <label for="label-block-input">Block<span style="display:block">Boundary</span><input id="label-block-input"></label>
+        <label for="label-hidden-input">Visible <span hidden>hidden attribute text</span><span style="display:none">display hidden text</span><span style="visibility:hidden">visibility hidden text</span><span style="visibility:hidden"><span style="visibility:visible">visible override text</span></span><input id="label-hidden-input"></label>
+        <label for="label-other-control-input">Primary <button type="button">other control text</button><input id="label-other-control-input"></label>
+        <label for="label-separate-input">Separate label</label><input id="label-separate-input">
+        <label for="label-multiple-input">First label</label><label for="label-multiple-input">Second label</label><input id="label-multiple-input">
+        <input id="label-aria-input" aria-label="ARIA label source">
+        <span id="label-aria-reference">ARIA labelledby source</span><input id="label-aria-labelledby-input" aria-labelledby="label-aria-reference">
+        <div id="label-aria-ancestor">Ancestor reference source <input id="label-aria-ancestor-input" aria-labelledby="label-aria-ancestor"></div>
+    </section>
     <section aria-label="Checkbox controls">
         <label><input id="visible-check" type="checkbox">Visible check</label>
         <input id="hidden-check" type="checkbox"><label for="hidden-check">Hidden input label</label>

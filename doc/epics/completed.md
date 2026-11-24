@@ -1,3 +1,26 @@
+## EPIC-210 — Web-app test feedback, round 2
+
+Completed 2026-11-24. 14 items from rewriting an external pilot suite (233 tests) on 5.0.22, each checked against the
+source and routed to a task (replaces the feedback task US-2185). Runner calls now return whole values unless the test
+passes `maxLength`, so failure capture and `storageState()` no longer fail on large replies
+(`test-host/model-call-options.ts`, `failure-bundle.ts`). `label=` matches a wrapping label's own text, without the
+nested control's text (`automation/page-scripts.ts`). Windows can be named (`windows[i].name`, saved across restarts,
+shown in the title; `main/window-names.ts`). `--attach --window name:<n>` selects a named window, and
+`--window-name <n>` creates or reuses one and keeps it open. The run prints its test window at start. `ctx.waitFor`
+takes `{ retryErrors }`; `waitForDownload()` returns `mimeType` and a redacted `url`; `--summary-only` prints just the
+summary, which now names the failing step. Calling a page-model member that isn't listed in `aiVision.members` now
+hints at the descriptor list. The guide gaps are filled. The "lost trusted click" (item 11) was reproduced on a fixture.
+It is an app-readiness race (the click hit a same-named placeholder button), so it was closed without code changes;
+the guides advise waiting for the app to be ready. Completion skills by Codex (Luna). Epic document:
+[EPIC-210](EPIC-210.md).
+
+- [x] **Runner reads whole values (US-2186).**
+- [x] **`label=` uses the label's own text (US-2187).**
+- [x] **Lost trusted click after a re-render (US-2188)** — not a Persephone bug; closed with findings.
+- [x] **Named test windows (US-2189).**
+- [x] **Runner API gaps: `retryErrors`, download MIME/URL, `--summary-only`, member hint (US-2190).**
+- [x] **Web-app test guide gaps, round 2 (US-2191).**
+
 ## EPIC-209 — Guides and scaffolding for web-app tests
 
 Completed 2026-11-23. Step 7, the last step, of the [web-app testing review](../reviews/web-app-testing-review.md)

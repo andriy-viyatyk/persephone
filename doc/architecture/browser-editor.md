@@ -1469,8 +1469,11 @@ Routes are removed when explicitly cleared or during test cleanup.
 
 `waitForDownload()` arms capture only for a test-power page. The main process writes captured bytes
 under its temporary capture root; the test host verifies confinement before copying them into the
-run output folder and attaching the result. This path skips the Save dialog and does not add captures
-to normal browser download history. Clipboard access is page-scoped: once armed, `page-clipboard-recorder.ts`
+run output folder and attaching the result. Completion metadata includes the suggested filename,
+size, MIME type and source URL. The test host redacts credentials, query values and fragments from
+the URL before returning or reporting it; direct facade calls retain Electron's original URL. This
+path skips the Save dialog and does not add captures to normal browser download history. Clipboard
+access is page-scoped: once armed, `page-clipboard-recorder.ts`
 isolates the page from the OS clipboard. Trusted `copy`/`cut`/`paste` events (keyboard, context menu,
 Electron menu) are cancelled in the capture phase and replayed as untrusted events against a private
 `DataTransfer` (a cancelled clipboard event with no data leaves the OS clipboard untouched); keyboard

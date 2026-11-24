@@ -190,6 +190,23 @@ export default [
         }
     }),
 
+    test("unknown page model members suggest declaration without invoking getters", async (ctx) => {
+        const page = await openBrowserPage(ctx, pageModelFixtureUrl(ctx, "page-model.html"));
+        try {
+            await page.editor.waitFor({ selector: "#fixture-ready" });
+            await waitForAppDescribe(ctx, page.id, (descriptor) => hasMember(descriptor, "greeting"));
+            for (const member of ["undocumentedOwnMember", "undocumentedPrototypeMember", "unknownTypo"]) {
+                let error;
+                try { await ctx.call(`pages[${JSON.stringify(page.id)}].editor.app.${member}`); }
+                catch (failure) { error = failure; }
+                ctx.expect(error.message).toContain("not a member of page:");
+                ctx.expect(error.message).toContain("add it to aiVision.members");
+            }
+            ctx.expect(await page.editor.evaluate("() => window.__fixtureGetterReads()" )).toBe(0);
+            ctx.expect(await ctx.app.pages[page.id].editor.app.greeting()).toBe("Hello, fixture.");
+        } finally { await closeBrowserPage(ctx, page); }
+    }),
+
     test("Incognito pages do not receive the Persephone WebMCP model", async (ctx) => {
         const page = await openToolsPage(ctx, { incognito: true });
         try {

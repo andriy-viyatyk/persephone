@@ -54,6 +54,10 @@ authenticated state before interacting:
 await site.waitFor({ selector: "[data-testid='account-home']" });
 ```
 
+If loading rows reuse a final row's accessible name, a click after navigation can hit a placeholder
+and do nothing. Poll an app-specific model or DOM signal with `ctx.expect.poll` or `site.waitFor`
+until the row's final content appears. `{ synthetic: true }` does not fix a readiness race.
+
 When sign-in cannot be automated, keep a dedicated Persephone test window open, sign in there by
 hand once, and run against that existing window. A session page must use a normal browser profile
 (not incognito or Tor). `url` matches a case-sensitive URL prefix and `title` a case-sensitive page
@@ -68,7 +72,14 @@ const site = await ctx.usePage({ url: "https://example.test/" });
 await site.waitFor({ selector: "[data-testid='account-home']" });
 ```
 
-Run with `--attach --window <title or index>` to preserve that window after the run. `usePage` does
+Give the normal window a stable name with `windows[i].name = "signed-in"`, then run with
+`--attach --window name:signed-in` to preserve that exact window after the run. Its OS title shows
+the name after the current app/profile title. Names survive app restarts for windows in the startup
+snapshot, but an explicit close clears the name. A name on a closed restored window is reserved;
+open that record or clear its name before reusing it. Use a normal browser profile so the signed-in
+session remains available to `ctx.usePage`.
+
+`--attach --window <title or index>` also preserves that window after the run. `usePage` does
 not reload or close the session page between tests; new pop-ups on it are still closed during
 per-test cleanup. A session page adopted in an owned run or a runner-created attached window is
 protected during per-test cleanup, but its containing window is disposed at run end.
@@ -104,6 +115,8 @@ snapshot and after closing owned pages, choosing `Don't Save` for `Unsaved Chang
 fails; the expected prompt raised by cleanup while closing an owned page does not fail the test.
 A popup menu left open is closed and fails the test the same way. Workspace pages (a folder opened
 with `pages.openFile`) are owned pages too. Native OS dialogs are outside the runner's cleanup scope.
+A page's own right-click menu is DOM and needs no `menus[0].close()`. Persephone's menu appears only
+when the click opts in with `{ button: "right", nativeMenu: true }`; runner cleanup closes it.
 
 With `--attach`, the runner creates a separate test window by default. All unprefixed `ctx.app`,
 `ctx.call`, `ctx.callText`, `ctx.set`, `ctx.waitFor`, `ctx.script`, setup `rawCall`, page ownership,
@@ -114,9 +127,13 @@ another window. Awaiting `ctx.app` with no path describes the selected window, n
 Prefer unprefixed paths; `ctx.root` and explicit `windows[i]` paths can reach outside the test window.
 
 Use `--attach --window <index-or-title>` to reuse an open window. A decimal value selects the exact
-`windows[i]` record index; any other value selects a unique case-insensitive substring of the OS
-window title. If no window matches or several match, the error reports only the match count. Window
-titles can collide, so use the numeric index when titles match. The selected window is never closed.
+`windows[i]` record index; `name:<name>` selects an exact case-insensitive name; any other value
+selects a unique case-insensitive substring of the OS window title. Names avoid collisions with the
+main window, whose title can also contain a profile suffix. `--attach --window-name <name>` creates
+and names a normal window on the first run, then reuses it on later runs. Named windows use the same
+conservative cleanup and stay open, so adopted pages and their signed-in session remain available.
+If no selector match exists or several title matches exist, the error reports the match count. The
+selected window is never closed.
 Its cleanup closes only pages opened through `ctx.openBrowser` (and new pop-ups of those pages),
 leaves other new pages open, and sweeps renderer dialogs and popup menus only in that window. The
 created test window uses the baseline page diff for cleanup. On failure, both attached modes capture
@@ -152,7 +169,9 @@ does not remove the failed attempt's link. Cleanup-only failures do not create a
 Each bundle lists pages under test in the scoped test window: page ID and owned/session kind, URL,
 title, page errors, console errors, failed requests, and a relative screenshot path (`null` if
 capture failed). It also lists captured downloads by original suggested filename, relative output
-path, and byte size. Each diagnostic list keeps at most the newest 100 entries. Page errors and failed
+path, byte size, MIME type, and redacted URL. Runner results and attachments share this URL; HTTP(S)
+credentials, query values, and fragments are removed, while non-HTTP URLs become `[redacted URL]`.
+Direct browser facade calls return Electron's original URL. Each diagnostic list keeps at most the newest 100 entries. Page errors and failed
 requests are limited to timestamps at or after the test attempt started; console records are
 requested from that time and filtered to errors. Network records contain method, URL, status, and
 `durationMs: null` because the API does not provide a duration. Active-tab APIs and bounded event
@@ -164,6 +183,10 @@ fragments are removed, and every query value is replaced while query keys remain
 text and console arguments receive the same query redaction. Other diagnostic text, page titles, and
 screenshots may still contain sensitive page content; inspect and handle these local artifacts
 accordingly. Reports under `reports/` and `test-results/` are local output and belong in `.gitignore`.
+
+Human output identifies the selected window before tests. In JSON Lines mode, `run-start` carries
+`testWindow: { index, windowId, name? }`; setup failures still emit a `run-start` without identity
+before synthetic test events. JSON events remain on stdout and human diagnostics go to stderr.
 
 `tests.log` is JSON Lines: each line is a JSON event. Its event names include `run-start`,
 `test-start`, `test-outcome`, `hook-start`, `hook-result`, `step-start`, `step-result`, `step-error`, `wait-start`,
@@ -186,7 +209,9 @@ and network logs are not captured for that instance.
 
 Fix failures shown in the first full run, then run `--rerun-failed` to check only those tests.
 The console ends with a `Summary:` block listing each non-passed test, its file or source location,
-and a short reason when available. An unknown-member error stays short; when there is no close
+the final failing step when available, and a short reason. `--summary-only` omits the separate full
+per-result detail block; explicit `ctx.log`, child-process output, and critical errors remain visible.
+The step is redacted, flattened to one line, and limited to 120 characters. An unknown-member error stays short; when there is no close
 suggestion, it tells you how to list members, for example `List members: ctx.call("pages.$help")`.
 Use the indicated `$help` call to inspect that node, then correct the path.
 

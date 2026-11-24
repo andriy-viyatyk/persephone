@@ -228,7 +228,7 @@ String locators use one shared grammar. CSS remains available, alongside these e
 | Engine | Example | Match |
 |---|---|---|
 | `role=` | `role=button[name="Save"]` | Chromium accessibility role and name. |
-| `label=` | `label=Email` | A control's associated label, `aria-labelledby`, or `aria-label`. |
+| `label=` | `label=Email` | Associated label (minus nested controls), `aria-labelledby`, or `aria-label`. |
 | `placeholder=` | `placeholder=Search` | The placeholder attribute. |
 | `testid=` | `testid=save` | Exact, case-sensitive `data-testid`. |
 | `title=` / `alt=` | `title=Refresh` / `alt=Logo` | The corresponding attribute. |
@@ -271,6 +271,10 @@ pixels; out-of-process frame refs cannot be translated. Pass `{ nth }` to choose
 bounded. `isChecked` supports native checkbox/radio controls and supported ARIA checkable roles;
 unsupported or mixed state throws. `isEnabled` follows native disabled controls and inherited
 `aria-disabled`.
+
+When a button name occurs both in an open dialog and on the page, scope the action to the dialog:
+`dialog[open] >> role=button[name="Discard"s]`. An unscoped action matching both fails immediately
+in strict mode; it does not choose one.
 
 `query(locator, { fields })` returns `{ matches, truncated }`, capped at 200 elements. Defaults are
 `role`, `name`, `text`, `visible`, `enabled`, `checked`, `tag`, and `ref`; request `value` or

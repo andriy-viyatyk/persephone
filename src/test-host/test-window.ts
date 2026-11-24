@@ -6,7 +6,7 @@ import { EnvironmentStopError } from "./attention-policy.js";
 export type TestWindowMode = "owned" | "attached-created" | "attached-selected";
 type RawCallOptions = { timeout?: number; maxLength?: number; allowNavigation?: boolean; hints?: "always" | "never"; value?: unknown };
 
-interface WindowIdentity { index: number; windowId: number; }
+interface WindowIdentity { index: number; windowId: number; name?: string; }
 
 export { EnvironmentStopError } from "./attention-policy.js";
 
@@ -14,12 +14,19 @@ export { EnvironmentStopError } from "./attention-policy.js";
 export class TestWindowOwner {
     private constructor(readonly mode: TestWindowMode, private readonly identity?: WindowIdentity) {}
     get index(): number | undefined { return this.identity?.index; }
+    get identityInfo(): Readonly<WindowIdentity> | undefined { return this.identity; }
 
-    static async start(client: McpClient, attach: boolean, selector?: string): Promise<TestWindowOwner> {
+    static async start(client: McpClient, attach: boolean, selector?: string, windowName?: string): Promise<TestWindowOwner> {
         if (!attach) {
             const windowId = await client.call("windows[0].windowId");
             if (!Number.isSafeInteger(windowId)) throw new Error("The owned test window did not return a valid live identity.");
-            return new TestWindowOwner("owned", { index: 0, windowId: windowId as number });
+            const name = await client.call("windows[0].name");
+            return new TestWindowOwner("owned", { index: 0, windowId: windowId as number, ...(typeof name === "string" ? { name } : {}) });
+        }
+        if (windowName !== undefined) {
+            const identity = await client.call("windows.createOrSelectNamedTestWindow", [windowName]) as WindowIdentity & { created?: boolean };
+            assertIdentityShape(identity);
+            return new TestWindowOwner("attached-selected", identity);
         }
         if (selector === undefined) {
             const identity = await client.call("windows.createTestWindow", []) as WindowIdentity;
@@ -28,6 +35,7 @@ export class TestWindowOwner {
         }
         const result = await client.call("windows.selectTestWindow", [selector]) as WindowIdentity | { count: number };
         if (result && typeof result === "object" && "count" in result && typeof result.count === "number") {
+            if (result.count === 0 && selector.startsWith("name:")) throw new Error(`--window name "${selector.slice(5)}" matched no open windows.`);
             if (result.count === 0) throw new Error("--window matched 0 open windows.");
             throw new Error(`--window matched ${result.count} open windows; specify an index or a more specific title.`);
         }

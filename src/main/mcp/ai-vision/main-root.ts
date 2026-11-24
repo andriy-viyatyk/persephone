@@ -23,7 +23,7 @@ import { TestWindowOperations } from "./test-window-operations";
  */
 
 /** Members of one window that the main process answers itself; anything else is forwarded. */
-export const WINDOW_MEMBER_NAMES: readonly string[] = ["index", "windowId", "status", "pageCount", "activePageId", "pages", "open", "focus", "nativeDialog"];
+export const WINDOW_MEMBER_NAMES: readonly string[] = ["index", "windowId", "name", "status", "pageCount", "activePageId", "pages", "open", "focus", "nativeDialog"];
 
 const MAIN_ROOT_MEMBERS: readonly IAiMember[] = [
     { name: "windows", kind: "property", node: true, summary: "All windows; windows[i] addresses one." },
@@ -34,6 +34,7 @@ const MAIN_ROOT_MEMBERS: readonly IAiMember[] = [
 const WINDOW_MEMBERS: readonly IAiMember[] = [
     { name: "index", kind: "property", summary: "Window index — the value other tools take as windowIndex." },
     { name: "windowId", kind: "property", summary: "Live Electron window identity; absent when this window is closed." },
+    { name: "name", kind: "property", writable: true, summary: "Persistent normal-window name; set null to clear." },
     { name: "status", kind: "property", summary: "\"open\" or \"closed\" (a closed window keeps its pages and can be reopened)." },
     { name: "pageCount", kind: "property", summary: "Number of pages the window holds (persisted state)." },
     { name: "activePageId", kind: "property", summary: "Id of the window's active page." },
@@ -46,12 +47,17 @@ const WINDOW_MEMBERS: readonly IAiMember[] = [
 const WINDOWS_MEMBERS: readonly IAiMember[] = [
     { name: "count", kind: "property", summary: "Number of windows, open and closed." },
     { name: "createTestWindow", kind: "method", signature: "createTestWindow()", summary: "Web-app test runner: create a ready test window for an attached run." },
-    { name: "selectTestWindow", kind: "method", signature: "selectTestWindow(selector)", summary: "Web-app test runner: select one open window by index or unique title substring; unmatched results contain a count only." },
+    { name: "selectTestWindow", kind: "method", signature: "selectTestWindow(selector)", summary: "Web-app test runner: select one open window by index, exact name:name, or unique title substring; unmatched results contain a count only." },
+    { name: "createOrSelectNamedTestWindow", kind: "method", signature: "createOrSelectNamedTestWindow(name)", summary: "Web-app test runner: reuse a live named normal window or create and name one." },
     { name: "disposeTestWindow", kind: "method", signature: "disposeTestWindow(index, windowId)", summary: "Web-app test runner: dispose a window created by createTestWindow when its live identity still matches." },
 ];
 
 const WINDOWS_HELP = `
-Persephone can have several windows. windows[i] is one window; its own members (status, open(),
+Persephone can have several windows. windows[i] is one window; set its writable name to give a
+normal window a persistent selector, or set it to null to clear it. Names cannot be assigned to
+boards or closed windows. windows.selectTestWindow("name:<name>") selects an exact live name;
+windows.createOrSelectNamedTestWindow(name) reuses a live named window or creates one. Its own
+members (status, open(),
 focus(), nativeDialog, persisted pages) are answered by the main process. nativeDialog reports
 owned native dialogs and dismiss() cancels them without choosing or confirming a path. Anything deeper is answered by that
 window itself: prefix any path with "windows[i]." — windows[1].pages, windows[1].page.content,
@@ -89,6 +95,9 @@ export class WindowNode implements IAiVisible {
         const window = this.data?.window?.window;
         return window && !window.isDestroyed() ? window.id : undefined;
     }
+
+    get name(): string | undefined { return this.data?.name; }
+    set name(value: string | null | undefined) { openWindows.setWindowName(this.index, value); }
 
     get pageCount(): number {
         return windowStates.getState(this.index)?.pages?.length ?? 0;
@@ -150,7 +159,7 @@ export class WindowNode implements IAiVisible {
                     : []),
                 { segment: ".nativeDialog", kind: "NativeDialog", summary: "Owned native dialog state and cancellation." },
             ],
-            summarize: () => ({ kind: "Window", index: this.index, status: this.status, pageCount: this.pageCount, activePageId: this.activePageId ?? null }),
+            summarize: () => ({ kind: "Window", index: this.index, name: this.name ?? null, status: this.status, pageCount: this.pageCount, activePageId: this.activePageId ?? null }),
         };
     }
 }
@@ -199,6 +208,7 @@ export class WindowsNode implements IAiVisible {
 
     createTestWindow() { return this.testWindowOperations.createTestWindow(); }
     selectTestWindow(selector: string) { return this.testWindowOperations.selectTestWindow(selector); }
+    createOrSelectNamedTestWindow(name: string) { return this.testWindowOperations.createOrSelectNamedTestWindow(name); }
     disposeTestWindow(index: number, windowId: number): void { this.testWindowOperations.disposeTestWindow(index, windowId); }
 
     get aiVision(): IAiVisionDescriptor {

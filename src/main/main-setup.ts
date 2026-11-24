@@ -15,6 +15,7 @@ import { redirectTestInstanceLocalAppData } from "./test-mode/local-app-data";
 import { installClientCertificatePolicy } from "./client-certificate-policy";
 
 export function setupMainProcess(): void {
+    app.on("before-quit", () => { openWindows.doQuit = true; });
     let testInstance: ReturnType<typeof parseTestInstanceOptions>["options"];
     try { testInstance = parseTestInstanceOptions(process.argv.slice(process.defaultApp ? 2 : 1)).options; }
     catch (error) { console.error(error); app.exit(1); return; }

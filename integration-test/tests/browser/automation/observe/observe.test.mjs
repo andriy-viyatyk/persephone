@@ -8,6 +8,41 @@ async function captureError(operation) {
 }
 
 export default [
+    test("runner reads whole browser values without truncation by default", async (ctx) => {
+        const page = await openBrowserPage(ctx, fixturePage(ctx, "automation", "observe-network.html"));
+        const storageValue = `observe-sensitive-token-${"x".repeat(120 * 1024)}`;
+        try {
+            await page.editor.evaluate(`localStorage.setItem("observe-large-state", ${JSON.stringify(storageValue)})`);
+            const state = await page.editor.storageState();
+            const origin = state.origins.find((entry) => entry.origin === new URL(fixturePage(ctx, "automation", "observe-network.html")).origin);
+            ctx.expect(origin?.localStorage.find((entry) => entry.name === "observe-large-state")?.value).toBe(storageValue);
+
+            const storagePath = `pages[${JSON.stringify(page.id)}].editor.storageState`;
+            const cappedStorageError = await captureError(() => ctx.call(storagePath, [], { maxLength: 100 }));
+            ctx.expect(cappedStorageError?.message).toContain("maxLength 100");
+            ctx.expect(cappedStorageError?.message).toContain("raise it");
+            ctx.expect(cappedStorageError?.message).not.toContain("observe-sensitive-token");
+            ctx.expect(cappedStorageError?.message).not.toContain("[truncated:");
+            ctx.expect(cappedStorageError?.message).not.toContain("Raw reply:");
+
+            const evaluatePath = `pages[${JSON.stringify(page.id)}].editor.evaluate`;
+            const cappedText = await ctx.callText(evaluatePath, [`"ordinary-" + "c".repeat(25000)`], { maxLength: 200 });
+            ctx.expect(cappedText.length).toBeLessThan(25000);
+
+            const fullText = await ctx.callText(evaluatePath, [`"runner-whole-text-" + "t".repeat(25000)`]);
+            ctx.expect(fullText).toBe(`runner-whole-text-${"t".repeat(25000)}`);
+
+            const fullStructuredValue = await page.editor.evaluate(`({ value: "s".repeat(25000) })`);
+            ctx.expect(fullStructuredValue.value).toBe("s".repeat(25000));
+
+            const scopedText = await ctx.callText(`windows[0].${evaluatePath}`, [`"scoped-whole-text-" + "w".repeat(25000)`]);
+            ctx.expect(scopedText).toBe(`scoped-whole-text-${"w".repeat(25000)}`);
+        } finally {
+            try { await page.editor.evaluate("localStorage.removeItem('observe-large-state')"); } catch { /* close the page even if storage cleanup fails */ }
+            await closeBrowserPage(ctx, page);
+        }
+    }),
+
     test("waitFor selector states track attachment and visibility", async (ctx) => {
         const page = await openBrowserPage(ctx, fixturePage(ctx, "automation", "observe-waits.html"));
         try {

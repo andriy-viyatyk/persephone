@@ -56,6 +56,20 @@ async function waitForSavedSession(ctx, matches) {
 }
 
 export default [
+    test("a named normal window keeps its name after an app restart", async (ctx) => {
+        const name = "us2189-restart-window";
+        try {
+            await ctx.set("windows[0].name", name);
+            await ctx.restartApp();
+            const restored = await ctx.waitFor("windows[0].name", (value) => value === name);
+            ctx.expect(restored).toBe(name);
+            const selected = await ctx.call("windows.selectTestWindow", [`name:${name}`]);
+            ctx.expect(selected.index).toBe(0);
+        } finally {
+            try { await ctx.set("windows[0].name", null); } catch { /* Restart failures leave no live target to clear. */ }
+        }
+    }, { requires: ["launch"] }),
+
     test("text, grid, markdown, grouped, untitled, active, and pinned pages restore after restart", async (ctx) => {
         const fixtureDirectory = "us-2030-page-session";
         const pageIds = new Set();

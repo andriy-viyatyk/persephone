@@ -12,11 +12,12 @@ import { createContextExpect, type Expect } from "./poll-expect.js";
 import type { TestWindowOwner } from "./test-window.js";
 import type { TestLifetime } from "./test-timeout.js";
 import { sensitiveMemberKind, sensitiveSummary } from "./storage-state-redaction.js";
-import { copyCapturedDownload, type DownloadAttachment } from "./captured-downloads.js";
+import { copyCapturedDownload, type CapturedDownload, type DownloadAttachment } from "./captured-downloads.js";
+import { EnvironmentStopError } from "./attention-policy.js";
 
 export type { CallOptions } from "./app-proxy.js";
 
-export interface WaitOptions extends CallOptions { message?: string; }
+export interface WaitOptions extends CallOptions { message?: string; retryErrors?: boolean; }
 
 export interface TestContext {
     app: object;
@@ -83,7 +84,7 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
             lifetime.assertActive();
             if (apiPath?.endsWith(".waitForDownload") || apiPath === "waitForDownload") {
                 if (!outputDirectory) throw new Error("Captured downloads require a test output directory.");
-                const copied = await copyCapturedDownload(result as { suggestedFilename: string; path: string; size: number }, outputDirectory);
+                const copied = await copyCapturedDownload(result as CapturedDownload, outputDirectory, (value) => log?.redactor.scrub(value) ?? value);
                 result = copied.result;
                 state.attachments.push(copied.attachment);
             }
@@ -194,10 +195,16 @@ export function createContext(client: McpClient, launcher: TestLauncher, timeout
                 read: () => typeof pathOrCallback === "string"
                     ? call(pathOrCallback, undefined, { maxLength: options.maxLength, dialog: options.dialog, allowNavigation: options.allowNavigation }, true)
                     : Promise.resolve(pathOrCallback(context)),
+                retryReadError: (error) => options.retryErrors === true && !(error instanceof EnvironmentStopError),
                 match: (value) => predicate(value),
                 step: `wait for ${target}`,
                 timeoutError(outcome, _polls, scaledTimeout) {
-                    const value = outcome.kind === "value" ? outcome.value : undefined;
+                    if (outcome.kind === "error") {
+                        const lastError = log?.redactor.scrub(errMessage(outcome.error)) ?? errMessage(outcome.error);
+                        const base = `Timed out after ${scaledTimeout} ms waiting for ${target}; Last error: ${safePreview(lastError)}`;
+                        return new Error(options.message === undefined ? base : `${log?.redactor.scrub(options.message) ?? options.message}\n${base}`);
+                    }
+                    const value = outcome.value;
                     const sensitiveKind = sensitiveMemberKind(typeof pathOrCallback === "string" ? pathOrCallback : undefined);
                     const lastValue = sensitiveKind
                         ? sensitiveSummary(value, sensitiveKind)

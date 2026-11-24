@@ -40,6 +40,11 @@ window. It refuses to overwrite files. The general runner accepts `--reporter hu
 to stdout, with console diagnostics directed to stderr. The existing per-run `report.json` format
 is unchanged.
 
+After selection, the host prints the window index, optional persistent name, and live Electron
+`windowId` before test events. JSON Lines `run-start` includes optional
+`testWindow: { index, windowId, name? }`; if setup fails before selection, the fallback start event
+has no identity and comes before synthetic test events.
+
 The wrapper starts the read-only HTTP fixture servers once on loopback ports 17867 (HTTP) and
 17868 (HTTPS), both serving `integration-test/fixtures/http/`. The HTTPS server uses the committed
 test-only certificate in `integration-test/lib/tls/`; `ctx.httpsUrl(path)` builds a local HTTPS
@@ -121,6 +126,7 @@ The general product runner supports these suite-independent options:
 | `--grep <regex>` | Select product tests whose names match this case-sensitive JavaScript regular expression. |
 | `--retries <n>` | Retry failed product tests up to `n` additional times; the default is `0`. |
 | `--reporter` | Select `human` (default) or `json-lines` output; JSON Lines emits versioned events to stdout. |
+| `--summary-only` | Suppress the final per-test detail block in human output; it cannot be combined with `--reporter json-lines`. |
 
 With `--attach --profile-dir <path>`, the controller reads that directory's MCP settings and
 checks the connected app's user-data identity. The suite wrapper passes its configured product
@@ -164,9 +170,11 @@ profileDirectory, attach }`, and a getter for the current MCP client adapter, so
 uses the replacement connection.
 
 `ctx.waitFor(pathOrCallback, predicate, options)` accepts `timeout`, `maxLength`, `dialog`,
-`allowNavigation`, and `message`. It returns the matching value, stops immediately on callback or
-predicate errors, and prepends `message` to timeout errors when supplied. Its explicit timeout is
-scaled by `--timeout-scale`; its default wait and poll intervals are already scaled.
+`allowNavigation`, `message`, and `retryErrors`. It returns the matching value and prepends `message`
+to timeout errors when supplied. Callback and predicate errors propagate immediately by default;
+`retryErrors: true` retries read errors until a match or timeout, but does not retry predicate errors,
+environment stops, or lifetime cancellation. Its explicit timeout is scaled by `--timeout-scale`;
+its default wait and poll intervals are already scaled.
 `ctx.expect.poll(callback, options)` accepts a callback that receives `ctx` and retries ordinary
 callback errors as well as matcher mismatches. Its async matchers mirror every `ctx.expect(value)`
 matcher, including recursive `.not`; matcher arguments are checked before sampling, and `toThrow`
@@ -178,7 +186,10 @@ reports the expected matcher and compact last value or error. Each polling asser
 Browser downloads in an owned test instance bypass the native Save dialog and use
 `<userData>/test-downloads/`, adding a ` (n)` suffix when a filename already exists. The path is
 available from `app.downloads.downloads[i].savePath` after completion. Attached instances retain
-their normal Save dialog behavior.
+their normal Save dialog behavior. `waitForDownload()` returns the suggested filename, copied path,
+size, MIME type, and URL. Runner results redact URL credentials, query values, and fragments; URLs
+outside HTTP(S) are replaced with `[redacted URL]`. Direct browser facade calls return Electron's
+original URL.
 
 Before each file hook and test, the runner snapshots page ownership and browser pop-ups. In owned runs and
 runner-created attached windows, cleanup closes pages and pop-ups first opened during that test,
@@ -200,12 +211,20 @@ With `--attach`, a new test window is created by default, and runner operations 
 context and setup `rawCall` paths are scoped to it. Its page baseline diff owns pages that appeared
 during the run; the runner sweeps its popup menus and renderer dialogs and closes the created window
 after per-test cleanup. `--attach --window <index-or-title>` instead selects an existing open window:
-decimal values select a record index, while other values select a unique case-insensitive substring
-of the OS window title. No match and ambiguous matches report only the number of matches. Window
-titles can collide, so use an index when needed. Cleanup in a selected window closes only tracked
-`ctx.openBrowser` pages and their new pop-ups, logs other new pages as `leave-unowned-pages`, and
-sweeps renderer dialogs and popup menus only in that selected window. It never closes the selected
-window. Other windows are not inspected by runner bookkeeping.
+decimal values select a record index, `name:<name>` selects an exact case-insensitive persistent
+name, and other values select a unique case-insensitive substring of the OS window title. A name
+can be assigned through `windows[i].name`; `--attach --window-name <name>` creates a named normal
+window or reuses its live match, and cannot be combined with `--window`. Names survive app restarts
+for windows in the startup snapshot; an explicitly closed window loses its name, while a restored
+closed record reserves its name until opened or renamed. No match and ambiguous title matches report
+only the match count. Window titles can collide, so use a name or index when needed. Cleanup in a
+selected window closes only tracked `ctx.openBrowser` pages and their new pop-ups, logs other new
+pages as `leave-unowned-pages`, and sweeps renderer dialogs and popup menus only in that window. It
+never closes the selected window. Other windows are not inspected by runner bookkeeping.
+
+After selection, human output identifies the test window by index, optional name, and live Electron
+`windowId`. JSON Lines `run-start` events carry the same optional `testWindow` identity; a setup
+failure before selection emits the fallback event without identity before synthetic test events.
 
 Use `ctx.usePage({ url, title? })` to adopt a signed-in browser page in the selected test window.
 String URLs are case-sensitive prefixes; string titles are case-sensitive substrings, and either
@@ -252,6 +271,9 @@ Returning a stand-in from an async helper therefore reads it; use `ctx.handle(no
 same path as a stand-in instead. `.catch` and `.finally` are rejected with guidance to use
 `try { await node } catch {}`. Function arguments cannot cross the call boundary; use
 `waitFor({ selector })` or `ctx.script(code)` for those cases.
+
+An unknown member on a page model adds a hint to list the model's `aiVision.members` descriptor.
+The hint is conditional and does not inspect or invoke the missing property.
 
 Every failed test reports the step that threw, even if cleanup runs afterward. `tests.log` records
 test lifecycle and steps as JSON lines. In test mode, `app-console.log`, `site-console.log`,

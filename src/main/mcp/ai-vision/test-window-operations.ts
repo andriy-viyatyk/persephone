@@ -1,10 +1,11 @@
 import { openWindows } from "../../open-windows";
 import type { OpenWindowData } from "../../open-windows";
 import { errMessage } from "../../../shared/utils";
+import { normalizeWindowName } from "../../window-names";
 
 const WINDOW_READY_TIMEOUT = 30_000;
 
-interface TestWindowIdentity { index: number; windowId: number; }
+interface TestWindowIdentity { index: number; windowId: number; name?: string; }
 
 /** Owns window selection and the lifetime of windows created specifically for attached tests. */
 export class TestWindowOperations {
@@ -32,6 +33,15 @@ export class TestWindowOperations {
 
     selectTestWindow(selector: string): TestWindowIdentity | { count: number } {
         if (typeof selector !== "string" || !selector) throw new Error("--window requires a window index or title substring.");
+        if (selector.startsWith("name:")) {
+            const name = normalizeWindowName(selector.slice(5)).toLowerCase();
+            const matches = this.windows.allWindowData().flatMap((record) => {
+                if (record.boardRoot || record.name?.toLowerCase() !== name) return [];
+                const identity = this.liveIdentity(record);
+                return identity ? [identity] : [];
+            });
+            return matches.length === 1 ? matches[0] : { count: matches.length };
+        }
         const numeric = /^\d+$/.test(selector);
         if (numeric) {
             const index = Number(selector);
@@ -48,6 +58,34 @@ export class TestWindowOperations {
             return title.toLocaleLowerCase().includes(normalized) ? [identity] : [];
         });
         return matches.length === 1 ? matches[0] : { count: matches.length };
+    }
+
+    async createOrSelectNamedTestWindow(value: string): Promise<TestWindowIdentity & { created: boolean }> {
+        const name = normalizeWindowName(value);
+        const key = name.toLowerCase();
+        const existing = this.windows.allWindowData().find((record) => !record.boardRoot && record.name?.toLowerCase() === key);
+        if (existing) {
+            const identity = this.liveIdentity(existing);
+            if (!identity) throw new Error(`Window name "${name}" is reserved by a closed window. Open or rename that window before reusing the name.`);
+            const readyRecord = existing;
+            await waitForWindow(readyRecord, WINDOW_READY_TIMEOUT);
+            this.assertLive(identity);
+            return { ...identity, name, created: false };
+        }
+        const record = this.windows.createWindow();
+        const identity = this.identityOf(record);
+        this.created.set(this.key(identity), identity);
+        try {
+            this.windows.setWindowName(identity.index, name);
+            await waitForWindow(record, WINDOW_READY_TIMEOUT);
+            this.assertLive(identity);
+            this.created.delete(this.key(identity));
+            return { ...identity, name, created: true };
+        } catch (error) {
+            try { this.disposeTestWindow(identity.index, identity.windowId); }
+            catch (cleanupError) { throw new Error(`Named test window setup failed: ${errMessage(error)}; cleanup failed: ${errMessage(cleanupError)}`, { cause: cleanupError }); }
+            throw error;
+        }
     }
 
     disposeTestWindow(index: number, windowId: number): void {
@@ -68,7 +106,7 @@ export class TestWindowOperations {
     private liveIdentity(record: OpenWindowData): TestWindowIdentity | undefined {
         const window = record.window?.window;
         if (!window || window.isDestroyed()) return undefined;
-        return { index: record.index, windowId: window.id };
+        return { index: record.index, windowId: window.id, ...(record.name ? { name: record.name } : {}) };
     }
 
     private identityOf(record: OpenWindowData): TestWindowIdentity {

@@ -11,6 +11,7 @@ import { parseLaunchInputs } from "./launch-inputs";
 import { isTestInstance } from "./test-mode/instance-options";
 import fs from "node:fs";
 import path from "node:path";
+import { WindowNames, normalizePersistedWindowNames } from "./window-names";
 
 export interface OpenWindowData {
     window?: OpenWindow;
@@ -19,14 +20,15 @@ export interface OpenWindowData {
     ready?: () => void;
     boardRoot?: string;
     rendererReady?: boolean;
+    name?: string;
 }
 
-interface PersistedOpenWindow { index: number }
+interface PersistedOpenWindow { index: number; name?: string }
 
 function validateOpenWindows(raw: unknown): PersistedOpenWindow[] | null {
     if (!Array.isArray(raw) || raw.some((window) => !window || typeof window !== "object"
         || !Number.isFinite((window as { index?: unknown }).index))) return null;
-    return raw.map((window) => ({ index: (window as PersistedOpenWindow).index }));
+    return normalizePersistedWindowNames(raw as unknown[]);
 }
 
 const windowsStore = new JsonFileStore<PersistedOpenWindow[]>("openWindows.json", {
@@ -42,6 +44,7 @@ class OpenWindows {
     private readonly windowListeners = new Set<(window: BrowserWindow) => void>();
     private lastFocusedNormalWindow: number | undefined;
     private boardHostRootLookup?: BoardHostRootLookup;
+    private readonly windowNames = new WindowNames(this);
 
     subscribeWindowCreated(listener: (window: BrowserWindow) => void): () => void {
         this.windowListeners.add(listener);
@@ -117,6 +120,7 @@ class OpenWindows {
             this.windows.push(windowData);
         }
         windowData.window = newWindow;
+        this.windowNames.applyTitle(windowData);
         this.notifyWindowCreated(newWindow);
         windowData.whenReady = new Promise<void>((resolve) => {
             windowData.ready = () => {
@@ -274,6 +278,8 @@ class OpenWindows {
     allWindowData = (): OpenWindowData[] => [...this.windows];
     findWindowDataByIndex = (index: number): OpenWindowData | undefined => this.windows.find((record) => record.index === index);
 
+    setWindowName = (index: number, value: unknown): void => this.windowNames.setName(index, value);
+
     resolveWindowClose = (browserWindow: BrowserWindow | null | undefined, result: WindowCloseResolution): void => {
         const data = this.findWindowDataByWindow(browserWindow);
         const win = data?.window;
@@ -310,6 +316,7 @@ class OpenWindows {
         const openWindow = openWindowData?.window;
         if (openWindowData?.boardRoot) { openWindow?.close(); return; }
         const isLastWindow = !this.windows.some(w => w !== openWindowData && !w.boardRoot && w.window);
+        if (isLastWindow && canQuit && process.platform !== "darwin") this.doQuit = true;
         if (isLastWindow && !this.doQuit && !canQuit) {
             if (openWindow.quitTimeout) {
                 clearTimeout(openWindow.quitTimeout);
@@ -367,8 +374,12 @@ class OpenWindows {
         normalInputs.forEach((input) => this.handleLaunchInput(input));
     };
 
+    saveWindowNames = (): void => {
+        this.saveState();
+    };
+
     private saveState = (): void => {
-        windowsStore.saveSync(this.windows.filter((w) => !w.boardRoot).map((w) => ({ index: w.index })));
+        windowsStore.saveSync(this.windows.filter((w) => !w.boardRoot).map((w) => ({ index: w.index, ...(w.name ? { name: w.name } : {}) })));
     };
 
     private loadState = (): OpenWindowData[] => {

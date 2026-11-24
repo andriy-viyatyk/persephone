@@ -8,6 +8,8 @@ import type { TestLog } from "./test-log.js";
 import type { TestWindowOwner } from "./test-window.js";
 import { EnvironmentStopError } from "./attention-policy.js";
 import type { DownloadAttachment } from "./captured-downloads.js";
+import { redactUrl } from "./url-redaction.js";
+import { UNBOUNDED_CALL_MAX_LENGTH } from "../shared/ai-vision-call-limits.js";
 
 type PageKind = "owned" | "session";
 interface CapturePage { pageId: string; kind: PageKind; url: string | null; title: string | null; pageErrors: unknown[]; consoleErrors: unknown[]; failedRequests: unknown[]; screenshot: string | null; }
@@ -75,7 +77,7 @@ async function captureDiagnostics(client: McpClient, page: BrowserPage, started:
     const base = `pages[${JSON.stringify(page.id)}].editor`;
     const timeout = client.timeouts.request;
     const read = async (property: string, args?: unknown): Promise<unknown> => {
-        try { return await testWindow.call(client, `${base}.${property}`, args, timeout); }
+        try { return await testWindow.call(client, `${base}.${property}`, args, timeout, UNBOUNDED_CALL_MAX_LENGTH); }
         catch (error) {
             if (error instanceof EnvironmentStopError) throw error;
             captureErrors.push(`${page.id} ${property} capture failed: ${errMessage(error)}`);
@@ -136,16 +138,4 @@ function projectDiagnostic(entry: Record<string, unknown>, keys: string[], urlKe
     return projected;
 }
 function redactText(value: string): string { return value.replaceAll(/https?:\/\/[^\s"'<>]+/gi, (url) => redactUrl(url)); }
-function redactUrl(value: unknown): string | null {
-    if (typeof value !== "string") return null;
-    try {
-        const url = new URL(value);
-        if (url.protocol !== "http:" && url.protocol !== "https:") return "[redacted URL]";
-        url.username = ""; url.password = ""; url.hash = "";
-        const query = [...url.searchParams.entries()];
-        url.search = "";
-        for (const [key] of query) url.searchParams.append(key, "\u2026");
-        return url.toString();
-    } catch { return "[redacted URL]"; }
-}
 function sanitize(value: string): string { return value.replaceAll(/[\\/]/g, "_").replaceAll(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 120) || "test"; }
