@@ -12,6 +12,7 @@ import { startTestController } from "./main/test-mode/controller";
 import { initializeTestSuite } from "./main/test-mode/init-suite";
 import { errMessage } from "./shared/utils";
 import { guardStandardStreams } from "./main/stdio-guard";
+import { isWindows } from "./shared/platform";
 
 guardStandardStreams();
 
@@ -25,7 +26,7 @@ function startWithProfile(profile: ReturnType<typeof parseApplicationProfile>): 
         app.setPath("userData", directory);
         if (app.getPath("sessionData") !== directory) app.setPath("sessionData", directory);
         // Separate taskbar group for the profile's normal windows (board windows set their own ids).
-        app.setAppUserModelId(`com.viyatyk.persephone.profile.${name}`);
+        if (isWindows) app.setAppUserModelId(`com.viyatyk.persephone.profile.${name}`);
     }
     if (!app.requestSingleInstanceLock()) app.quit();
     else setupMainProcess();

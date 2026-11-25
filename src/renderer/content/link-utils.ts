@@ -1,6 +1,7 @@
 import type { IPipeDescriptor } from "../api/types/io.pipe";
 import type { ILinkData } from "../../shared/link-data";
 import { isArchivePath, parseArchivePath } from "../core/utils/file-path";
+import { isWindows } from "../../shared/platform";
 import { TREE_CATEGORY_PREFIX } from "./tree-providers/tree-provider-link";
 
 // Node's `url` module for `pathToFileURL` (correct drive-letter / percent
@@ -20,7 +21,8 @@ const url = require("url");
 export function normalizeFileUrl(raw: string): string {
     let path = raw;
     if (path.startsWith("file:///")) {
-        path = path.slice(8); // "file:///C:/..." → "C:/..."
+        if (isWindows) path = path.slice(8); // "file:///C:/..." → "C:/..."
+        else path = path.slice(7); // Preserve the leading slash in POSIX paths.
     } else if (path.startsWith("file://")) {
         path = path.slice(7); // "file://C:/..." → "C:/..."
     }
@@ -46,10 +48,11 @@ export function toFileUrl(pathOrUrl: string): string {
 }
 
 /**
- * Check if a string looks like a valid Windows file path.
- * Accepts drive-letter paths (C:\..., C:/...) and UNC paths (\\...).
+ * Check if a string looks like a valid local file path.
+ * Accepts absolute POSIX paths off Windows, plus Windows drive-letter and UNC paths.
  */
 export function isPlausibleFilePath(path: string): boolean {
+    if (!isWindows && path.startsWith("/")) return true;
     if (/^[A-Za-z]:[/\\]/.test(path)) return true;
     if (path.startsWith("\\\\")) return true;
     return false;

@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Active (started 2026-11-25; US-2198 and US-2199 implemented)
+**Status:** Active (started 2026-11-25; US-2198, US-2199 and US-2200 implemented)
 **Created:** 2026-11-25
 
 ## Overview
@@ -37,7 +37,7 @@ Task documents are created when each task starts.
 |------|-------|-------|--------|
 | [US-2198](../tasks/US-2198-linux-dev-environment/README.md) | Linux development environment and first launch: the WSL checkout, how to sync it from Windows, Node and build dependencies, `scripts/dev.mjs` on Linux. Record every failure up to a working window | Claude (live), Codex for script changes | Implemented (2026-11-25) |
 | [US-2199](../tasks/US-2199-platform-layer/README.md) | Platform layer: `src/shared/platform.ts` and `platformFeatures`, how the feature table reaches the renderer, and the ESLint rule with an allowlist of the existing `process.platform` checks | Codex (plan + implement), Claude reviews the plan | Implemented (2026-11-25) |
-| US-2200 | Startup blockers: guard `setAppUserModelId` / `setAppDetails` (WIN-38), the renderer data-folder fallback (WIN-26), a platform-aware pipe server (WIN-6), and turning features off when their helper binary is missing (mneme, snip), plus what US-2198 found: POSIX file paths and `file:///` URLs (WIN-22, US-2198 F5 — no local file opens on Linux without it) | Codex (plan + implement), Claude live check | Planned |
+| [US-2200](../tasks/US-2200-linux-startup-blockers/README.md) | Startup blockers: guard `setAppUserModelId` / `setAppDetails` (WIN-38), the renderer data-folder fallback (WIN-26), a platform-aware pipe server (WIN-6), and disabling unsupported Linux helper features (mneme, snip) via static availability and main-process guards; dynamic Windows missing-helper hiding is deferred, plus what US-2198 found: POSIX file paths and `file:///` URLs (WIN-22, US-2198 F5 — no local file opens on Linux without it) | Codex (plan + implement), Claude live check | Implemented (2026-11-25) |
 | US-2201 | Runtime discovery pass: walk through every editor and main feature in WSL; write `runtime-findings.md`; update roadmap phases 1–4 and the parity table | Claude (live) | Planned |
 
 **Order:** US-2198 → US-2199 → US-2200 → US-2201. US-2198 may find blockers that move into US-2200. If the platform

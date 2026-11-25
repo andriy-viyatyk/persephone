@@ -18,7 +18,10 @@
     try {
       const p = require("path");
       const f = require("fs");
-      const sp = p.join(process.env.APPDATA, "persephone", "data", "appSettings.json");
+      const dataArgument = process.argv.find(value => value.startsWith("--persephone-data-dir="));
+      const dataDirectory = dataArgument?.slice("--persephone-data-dir=".length);
+      if (!dataDirectory) throw new Error("Missing renderer data directory argument.");
+      const sp = p.join(dataDirectory, "appSettings.json");
       const raw = f.readFileSync(sp, "utf-8").replace(/^\s*\/\/.*$/gm, "");
       const t = JSON.parse(raw).theme;
       if (t) {
@@ -30,7 +33,7 @@
         };
         let background = bgs[t];
         if (!background && /^custom-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(t)) {
-          const themePath = p.join(process.env.APPDATA, "persephone", "data", "themes", t + ".theme.json");
+          const themePath = p.join(dataDirectory, "themes", t + ".theme.json");
           const theme = JSON.parse(f.readFileSync(themePath, "utf-8"));
           const isObject = value => value !== null && typeof value === "object" && !Array.isArray(value);
           const supportedColor = value => {

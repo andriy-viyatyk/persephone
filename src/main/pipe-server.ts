@@ -1,24 +1,29 @@
-import { applicationProfileName } from "./application-profile";
+import fs from "node:fs/promises";
 import net from "node:net";
 import os from "node:os";
+import path from "node:path";
+import { isWindows } from "../shared/platform";
+import { applicationProfileName } from "./application-profile";
 import { openWindows } from "./open-windows";
 import { parseLaunchArguments } from "./utils";
 
-export function getPipePath(profile = applicationProfileName()): string {
-    return `\\\\.\\pipe\\persephone-${os.userInfo().username}${profile ? `-${profile}` : ""}`;
+export function getPipePath(profile = applicationProfileName()): string | undefined {
+    if (isWindows) return `\\\\.\\pipe\\persephone-${os.userInfo().username}${profile ? `-${profile}` : ""}`;
+    const runtimeDirectory = process.env.XDG_RUNTIME_DIR;
+    if (!runtimeDirectory) return undefined;
+    return path.join(runtimeDirectory, `persephone${profile ? `-${profile}` : ""}.sock`);
 }
 
 let server: net.Server | undefined;
+let ownedSocket: { server: net.Server; path: string; device: number; inode: number } | undefined;
+let missingRuntimeDirectoryLogged = false;
 
 function handleMessage(message: string): void {
     const trimmed = message.trim();
 
     if (trimmed.startsWith("OPEN ")) {
         const argument = trimmed.substring(5).trim();
-        if (!argument) {
-            return;
-        }
-
+        if (!argument) return;
         dispatchInputs(parseLaunchArguments([argument], process.cwd()));
     } else if (trimmed.startsWith("BOARD ")) {
         const root = trimmed.substring(6).trim();
@@ -64,49 +69,122 @@ function handleConnection(socket: net.Socket): void {
     });
 
     socket.on("error", () => {
-        // Client disconnected — ignore
+        // Client disconnected.
     });
+}
+
+async function socketIdentity(socketPath: string): Promise<{ device: number; inode: number } | undefined> {
+    try {
+        const details = await fs.lstat(socketPath);
+        if (!details.isSocket()) return undefined;
+        return { device: details.dev, inode: details.ino };
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+        throw error;
+    }
+}
+
+async function removeSocketIfUnchanged(
+    socketPath: string,
+    identity: { device: number; inode: number },
+): Promise<void> {
+    const current = await socketIdentity(socketPath);
+    if (!current || current.device !== identity.device || current.inode !== identity.inode) return;
+    try {
+        await fs.unlink(socketPath);
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+}
+
+function closeOwnedSocket(pipeServer: net.Server): void {
+    const socket = ownedSocket;
+    if (!socket || socket.server !== pipeServer) return;
+    ownedSocket = undefined;
+    void removeSocketIfUnchanged(socket.path, socket).catch((error: unknown) => {
+        console.error("Pipe socket cleanup failed:", error);
+    });
+}
+
+function rememberOwnedSocket(pipeServer: net.Server, socketPath: string): void {
+    if (isWindows) return;
+    void socketIdentity(socketPath).then((identity) => {
+        if (identity && server === pipeServer) ownedSocket = { server: pipeServer, path: socketPath, ...identity };
+    }).catch((error: unknown) => {
+        console.error("Could not inspect pipe socket:", error);
+    });
+}
+
+function listen(pipeServer: net.Server, pipePath: string): void {
+    server = pipeServer;
+    pipeServer.once("listening", () => rememberOwnedSocket(pipeServer, pipePath));
+    pipeServer.on("close", () => closeOwnedSocket(pipeServer));
+    pipeServer.listen(pipePath);
+}
+
+function probePipe(pipePath: string): Promise<"connected" | "unavailable" | "unsafe"> {
+    const probe = net.createConnection(pipePath);
+    return new Promise((resolve) => {
+        probe.once("connect", () => { probe.end(); resolve("connected"); });
+        probe.once("error", (error: NodeJS.ErrnoException) => {
+            resolve(error.code === "ENOENT" || error.code === "ECONNREFUSED" ? "unavailable" : "unsafe");
+        });
+    });
+}
+
+async function removeStaleSocket(pipePath: string): Promise<boolean> {
+    const beforeProbe = await socketIdentity(pipePath);
+    if (!beforeProbe) return true;
+
+    const result = await probePipe(pipePath);
+    if (result === "connected") return false;
+    if (result === "unsafe") throw new Error("Could not safely probe profile pipe.");
+
+    const afterProbe = await socketIdentity(pipePath);
+    if (!afterProbe) return true;
+    if (afterProbe.device !== beforeProbe.device || afterProbe.inode !== beforeProbe.inode) return false;
+    await removeSocketIfUnchanged(pipePath, beforeProbe);
+    return true;
+}
+
+async function recoverAddressInUse(pipePath: string, failedServer: net.Server): Promise<void> {
+    if (server === failedServer) server = undefined;
+    try {
+        // Windows: a named pipe leaves no file; reclaim only when nobody answers (any probe error).
+        if (isWindows ? (await probePipe(pipePath)) === "connected" : !(await removeStaleSocket(pipePath))) return;
+        const replacement = net.createServer(handleConnection);
+        replacement.on("error", (error) => console.error("Pipe server retry failed:", error));
+        listen(replacement, pipePath);
+    } catch (error) {
+        console.error("Pipe server recovery failed:", error);
+    }
 }
 
 export function startPipeServer(): void {
-    if (server) {
+    if (server) return;
+    const pipePath = getPipePath();
+    if (!pipePath) {
+        if (!missingRuntimeDirectoryLogged) {
+            console.error("Pipe server unavailable: XDG_RUNTIME_DIR is not set.");
+            missingRuntimeDirectoryLogged = true;
+        }
         return;
     }
 
-    server = net.createServer(handleConnection);
-
-    server.on("error", (err: NodeJS.ErrnoException) => {
-        if (err.code === "EADDRINUSE") {
-            // Stale pipe from a crashed instance — remove and retry once
-            server = undefined;
-            net.connect(getPipePath())
-                .on("error", () => {
-                    // Nobody listening — safe to reclaim
-                    retryPipeServer();
-                })
-                .on("connect", function () {
-                    // Another instance is actually listening — don't interfere
-                    this.end();
-                });
+    const nextServer = net.createServer(handleConnection);
+    nextServer.on("error", (error: NodeJS.ErrnoException) => {
+        if (error.code === "EADDRINUSE") {
+            void recoverAddressInUse(pipePath, nextServer);
         } else {
-            console.error("Pipe server error:", err);
+            console.error("Pipe server error:", error);
         }
     });
-
-    server.listen(getPipePath());
-}
-
-function retryPipeServer(): void {
-    server = net.createServer(handleConnection);
-    server.on("error", (err) => {
-        console.error("Pipe server retry failed:", err);
-    });
-    server.listen(getPipePath());
+    listen(nextServer, pipePath);
 }
 
 export function stopPipeServer(): void {
-    if (server) {
-        server.close();
-        server = undefined;
-    }
+    const current = server;
+    if (!current) return;
+    server = undefined;
+    current.close();
 }

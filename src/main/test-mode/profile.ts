@@ -14,8 +14,10 @@ export function resolveProfileDirectory(profile: ApplicationProfileArguments, de
 }
 
 export async function probeProfile(profileName: string | undefined, timeoutMs = 500): Promise<boolean> {
+    const pipePath = getPipePath(profileName);
+    if (!pipePath) throw new Error("cannot probe profile: XDG_RUNTIME_DIR is not set");
     return new Promise((resolve, reject) => {
-        const socket = net.createConnection(getPipePath(profileName));
+        const socket = net.createConnection(pipePath);
         const timer = setTimeout(() => { socket.destroy(); reject(new Error("Timed out probing the profile pipe.")); }, timeoutMs);
         socket.once("connect", () => { clearTimeout(timer); socket.end(); resolve(true); });
         socket.once("error", (error: NodeJS.ErrnoException) => {

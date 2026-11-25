@@ -1,8 +1,9 @@
 import { isSchemeRegistered, schemeOf } from "../../content/scheme-registry";
+import { isPlausibleFilePath } from "../../content/link-utils";
 import "../../content/builtin-schemes";
 
 const PIPELINE_INPUT_FORMS =
-    "an HTTP(S) URL, a file:// URL, a Windows/UNC path, or a registered Persephone link scheme";
+    "an HTTP(S) URL, a file:// URL, an absolute local path, or a registered Persephone link scheme";
 
 function pipelineInputError(memberName: string, detail: string): Error {
     return new TypeError(`${memberName} ${detail}. Expected ${PIPELINE_INPUT_FORMS}.`);
@@ -21,10 +22,6 @@ export function validateBrowserOpenInput(value: unknown): string {
         throw new TypeError("pages.openUrlInBrowserTab requires a non-empty string URL or search query.");
     }
     return value;
-}
-
-function isWindowsOrUncPath(value: string): boolean {
-    return /^[A-Za-z]:[/\\]/.test(value) || value.startsWith("\\\\");
 }
 
 function isValidHttpUrl(value: string): boolean {
@@ -81,7 +78,7 @@ export function validatePipelineOpenInput(value: unknown, memberName = "pages.op
     if (href.length === 0) {
         throw pipelineInputError(memberName, "requires a supported non-empty URL or file path");
     }
-    if (isWindowsOrUncPath(href) || isValidHttpUrl(href) || isValidFileUrl(href)) {
+    if (isPlausibleFilePath(href) || isValidHttpUrl(href) || isValidFileUrl(href)) {
         return href;
     }
     if (isValidDataUrl(href) || isValidRegisteredScheme(href)) {

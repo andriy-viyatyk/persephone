@@ -18,6 +18,7 @@ import { boardAppId, boardProfileArgument, boardRootForLaunchArgs, boardWindowIc
 import { BoardRoot } from "../shared/board/board-root";
 import { boardWindowStateKey } from "./board-root-hashes";
 import { VoiceTypingController, type VoiceTypingState } from "./voice-typing-controller";
+import { isWindows } from "../shared/platform";
 
 interface WindowState {
     width: number;
@@ -62,7 +63,7 @@ export class OpenWindow {
         if (image.isEmpty() || size.width !== 256 || size.height !== 256) throw new Error("Board icons must be 256x256 PNG images.");
         this.window.setIcon(image);
         const iconPath = await writeBoardWindowIcon(this.boardRoot, image.toPNG());
-        this.window.setAppDetails({
+        if (isWindows) this.window.setAppDetails({
             appId: boardAppId(this.boardRoot),
             relaunchCommand: `"${getBoardLauncherPath()}" --board "${boardRootForLaunchArgs(this.boardRoot)}"${boardProfileArgument()}`,
             relaunchDisplayName: displayName.trim(),
@@ -127,7 +128,7 @@ export class OpenWindow {
 
         if (boardRoot) {
             const displayName = path.basename(boardRoot);
-            this.window.setAppDetails({
+            if (isWindows) this.window.setAppDetails({
                 appId: boardAppId(boardRoot),
                 relaunchCommand: `"${getBoardLauncherPath()}" --board "${boardRootForLaunchArgs(boardRoot)}"${boardProfileArgument()}`,
                 relaunchDisplayName: displayName,

@@ -16,6 +16,7 @@ import { openWindows } from "./open-windows";
 import type { MnemeStatus } from "../ipc/contracts/mcp-mneme";
 import { SidecarProcess, SidecarStartResult } from "./sidecar-process";
 import { mcpEndpointUrl } from "../shared/mcp-endpoint";
+import { getPlatformFeature } from "../shared/platform-features";
 
 const DEFAULT_PORT = 7700;
 const READINESS_TIMEOUT_MS = 20_000;
@@ -80,6 +81,10 @@ function toStatus(result: SidecarStartResult): MnemeStatus {
 }
 
 export function startMneme(port?: number): Promise<MnemeStatus> {
+    const availability = getPlatformFeature("memory.mnemeSidecar");
+    if (availability.available === false) {
+        return Promise.resolve({ running: false, url: getMnemeUrl(), error: availability.reason });
+    }
     if (sidecar.isRunning) return Promise.resolve(getMnemeStatus());
 
     // Join an in-flight start before touching `currentPort` — the pending

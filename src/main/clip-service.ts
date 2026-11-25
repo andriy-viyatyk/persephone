@@ -74,6 +74,11 @@ export async function writeClipboardFiles(paths: string[], cut: boolean): Promis
             resolve(false);
         });
 
+        child.stdin.on("error", (err) => {
+            console.error("Failed to write clip tool input:", err);
+            resolve(false);
+        });
+
         if (paths.length) {
             child.stdin.write(paths.join("\r\n") + "\r\n", "utf8");
         }

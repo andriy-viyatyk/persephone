@@ -2,6 +2,7 @@ import { spawn } from "child_process";
 import { app, nativeImage } from "electron";
 import path from "path";
 import { openWindows } from "./open-windows";
+import { getPlatformFeature } from "../shared/platform-features";
 
 /** Resolve the persephone-snip.exe path (also hosts the clipboard subcommands
  *  used by `clip-service.ts`. Packaged: beside persephone.exe; dev:
@@ -14,6 +15,7 @@ export function getSnipToolPath(): string {
 }
 
 export async function startScreenSnip(hideWindows: boolean): Promise<string | null> {
+    if (!getPlatformFeature("screen.snip").available) return null;
     const snipExe = getSnipToolPath();
 
     // "Snip Persephone" (hideWindows === false) leaves every window untouched so the
