@@ -257,8 +257,7 @@ form is convenient for composed locators, for example
 locator kinds include `role`, `label`, `placeholder`, `testId`, `title`, `alt`, `text`, and `selector`,
 with `name`, `exact`, `within`, `hasText`, `visible`, and `nth` modifiers. A role name may also be
 `{ regex, flags? }`; `within` accepts any locator form. A direct `{ ref }` keeps its frame scope;
-a `ref=` string step must be first and resolves within the target's main frame
-(the selected board frame for a board).
+a `ref=` string step must be first and resolves in the target's main frame (a board's selected frame).
 
 For actions, `{ nth }` counts visible matches after final action visibility filtering. This differs
 from selector `nth=N`, which chooses from the raw ordered list before that filtering. Actions require
@@ -267,14 +266,12 @@ methods are immediate: `count` and `allInnerTexts` allow multiple matches; `isVi
 for zero but is strict for multiple; `isEnabled`, `isChecked`, and `innerText` require exactly one.
 `boundingBox` is strict for multiple, returns null for no visible match, and reports viewport CSS
 pixels; out-of-process frame refs cannot be translated. Pass `{ nth }` to choose a single match.
-`innerText` preserves the page's untrimmed `innerText`; `query`'s `text` field is trimmed and
-bounded. `isChecked` supports native checkbox/radio controls and supported ARIA checkable roles;
-unsupported or mixed state throws. `isEnabled` follows native disabled controls and inherited
-`aria-disabled`.
+`innerText` is untrimmed; `query`'s `text` is trimmed and bounded. `isChecked` supports native and
+ARIA checkable controls (mixed or unsupported state throws); `isEnabled` follows native `disabled`
+and inherited `aria-disabled`.
 
-When a button name occurs both in an open dialog and on the page, scope the action to the dialog:
-`dialog[open] >> role=button[name="Discard"s]`. An unscoped action matching both fails immediately
-in strict mode; it does not choose one.
+A name in both an open dialog and the page fails strict mode; scope it:
+`dialog[open] >> role=button[name="Discard"s]`.
 
 `query(locator, { fields })` returns `{ matches, truncated }`, capped at 200 elements. Defaults are
 `role`, `name`, `text`, `visible`, `enabled`, `checked`, `tag`, and `ref`; request `value` or

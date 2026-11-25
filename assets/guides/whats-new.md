@@ -6,14 +6,33 @@ summary: "Release notes, newest first — the last 10 releases in full, older on
 
 # What's New
 
-- Runner `ctx.waitFor` can opt into retrying transient read errors; captured downloads report MIME type and a redacted URL; `--summary-only` keeps human run summaries compact.
-- Attached web-app tests can name a normal window and reuse it with `--window name:<name>` or `--window-name <name>`, preserving a signed-in browser session between runs.
-
 Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 5.0.22 (Upcoming)
+## Version 5.0.23 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 5.0.22
+
+### Improvements
+
+- **Web-app tests keep running when nobody is watching.** Tests run at full speed on a locked
+  screen, in a window on another virtual desktop, or in a minimized window: the test window keeps
+  drawing, timers run normally, and screenshots stay current. `--desktop <number|name>` opens the
+  test run's windows on another virtual desktop without switching yours. Tests that need the real
+  desktop (the Windows clipboard, file dialogs) declare `requires: ["desktop"]` and are skipped with
+  a reason while the screen is locked. Agents are told when the screen locks or unlocks.
+- **Web-app tests can reuse a named window.** Attached runs can name a normal window and reuse it
+  with `--window name:<name>` or `--window-name <name>`, keeping a signed-in browser session between
+  runs.
+- **Test runner details:** `ctx.waitFor` can retry transient read errors, captured downloads report
+  their MIME type and a redacted URL, and `--summary-only` keeps run summaries compact.
+- **Web-app test runner reads whole values by default.** Explicit caps still truncate ordinary
+  results; a truncated `storageState()` read reports how to raise its cap.
 
 ### Bug Fixes
 
@@ -24,11 +43,6 @@ Release notes and changelog for Persephone (formerly js-notepad).
   them until the next reload.
 - **Browser automation label locators ignore nested control text.** A wrapping label such as
   `Show:<select>…</select>` now matches its select by `Show`, not by an option's text.
-
-### Improvements
-
-- **Web-app test runner reads whole values by default.** Explicit caps still truncate ordinary
-  results; a truncated `storageState()` read reports how to raise its cap.
 
 ---
 
@@ -465,9 +479,7 @@ The move removes note script execution; HTML, Mermaid, and SVG previews; Monaco 
 
 ## Version 5.0.12
 
-### Bug Fixes
-
-- **Quitting no longer shows a main-process error.** Closing the app after a file or folder had been watched raised "Object has been destroyed".
+*Maintenance release: bug fixes and improvements.*
 
 ---
 
