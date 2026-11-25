@@ -4,6 +4,7 @@ import type { FSWatcher, Stats } from "node:fs";
 import { errMessage } from "../shared/utils";
 import { isPathInside } from "./utils";
 import type { PathWatchBatch, PathWatchChange, PathWatchOwner } from "../ipc/api-types";
+import { pathsAreCaseInsensitive } from "../shared/platform";
 
 const DEFAULT_DEBOUNCE_MS = 300;
 const MIN_DEBOUNCE_MS = 50;
@@ -131,7 +132,7 @@ function normalizePath(input: string): { path: string; key: string } {
     const normalized = resolved.length > parsed.root.length
         ? resolved.replace(/[\\/]+$/, "")
         : resolved;
-    return { path: normalized, key: process.platform === "win32" ? normalized.toLowerCase() : normalized };
+    return { path: normalized, key: pathsAreCaseInsensitive ? normalized.toLowerCase() : normalized };
 }
 
 async function statPath(target: string): Promise<Stats | undefined> {

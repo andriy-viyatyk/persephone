@@ -5,13 +5,14 @@ import type { SiteExtensionTrustSnapshot } from "../ipc/api-types";
 import { openWindows } from "./open-windows";
 import { SerialQueue } from "../shared/serial-queue";
 import { JsonFileStore } from "./json-file-store";
+import { pathsAreCaseInsensitive } from "../shared/platform";
 
 interface SiteExtensionTrustFile { version: 1; folder?: string; extensions: SiteExtensionTrustSnapshot }
 
 /** Folder identity for comparison: Windows paths are case-insensitive. */
 function folderKey(folder: string): string {
     const resolved = path.resolve(folder);
-    return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+    return pathsAreCaseInsensitive ? resolved.toLowerCase() : resolved;
 }
 
 function parseTrustFile(parsed: unknown): SiteExtensionTrustFile {

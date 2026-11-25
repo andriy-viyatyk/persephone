@@ -9,8 +9,8 @@ Overview of all active and planned epics and tasks.
 ## Active
 
 - **EPIC-212** — [Linux bring-up and the platform layer (multiplatform phase 0)](epics/EPIC-212.md) — first epic of the [multiplatform roadmap](reviews/multiplatform-roadmap.md); starts with live investigation in WSL
-  - [ ] US-2198: Linux development environment and first launch
-  - [ ] US-2199: Platform layer (`platform.ts`, `platformFeatures`, ESLint rule)
+  - [ ] [US-2198: Linux development environment and first launch](tasks/US-2198-linux-dev-environment/README.md)
+  - [ ] [US-2199: Platform layer](tasks/US-2199-platform-layer/README.md) (`platform.ts`, `platformFeatures`, ESLint rule)
   - [ ] US-2200: Startup blockers
   - [ ] US-2201: Runtime discovery pass
 

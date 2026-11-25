@@ -1,5 +1,6 @@
 import { createContentsElement } from "../../uikit/shared/create-contents-element";
 import { englishMessage, t } from "../../../shared/i18n/t";
+import { getPlatformFeature } from "../../../shared/platform-features";
 import { settings } from "../../api/settings";
 import { PopoverView, type PopoverViewProps } from "../../uikit/Popover/PopoverView";
 import { SwitchView } from "../../uikit/Switch/SwitchView";
@@ -61,15 +62,20 @@ class HeaderQuickSettingsContentView extends VanillaView<HeaderQuickSettingsCont
     }
 
     protected onMount(): void {
+        const snipAvailable = getPlatformFeature("screen.snip").available;
+        const visibleServices = QUICK_SERVICE_ENTRIES.filter((entry) =>
+            entry.key !== "mneme.enabled" || getPlatformFeature("memory.mnemeSidecar").available);
         this.root.append(
-            this.createSnipRow(t("shell.snipScreen"), true),
-            this.createSnipRow(t("shell.snipPersephone"), false),
+            ...(snipAvailable ? [
+                this.createSnipRow(t("shell.snipScreen"), true),
+                this.createSnipRow(t("shell.snipPersephone"), false),
+            ] : []),
             this.createRecordRow(),
             ...this.createRecordChoices(),
             this.createSeparator(),
         );
-        QUICK_SERVICE_ENTRIES.forEach((entry) => this.root.append(this.createServiceRow(entry)));
-        for (const entry of QUICK_SERVICE_ENTRIES) {
+        visibleServices.forEach((entry) => this.root.append(this.createServiceRow(entry)));
+        for (const entry of visibleServices) {
             this.own(settings.watch(entry.key, () => this.syncServiceSwitches()));
         }
         this.syncServiceSwitches();
@@ -118,6 +124,7 @@ class HeaderQuickSettingsContentView extends VanillaView<HeaderQuickSettingsCont
         chevron.dataset.part = "chevron";
         chevron.append(createIconElement("chevron-right"));
         row.append(icon, labelElement, chevron);
+        if (!this.firstAction) this.firstAction = row;
         this.listen(row, "click", () => {
             // `hidden` is boolean | "until-found"; any hidden state means the choices are closed.
             const open = Boolean(this.recordChoices[0]?.hidden);

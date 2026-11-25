@@ -1,3 +1,5 @@
+import { pathsAreCaseInsensitive } from "../../../shared/platform";
+
 /**
  * Archive-aware path utility module.
  *
@@ -258,7 +260,7 @@ export function fpIsAbsolute(filePath: string): boolean {
  */
 export function fpNormalizeForCompare(filePath: string): string {
     const resolved = path.resolve(filePath).replace(/\\/g, "/").replace(/\/+$/, "");
-    return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+    return pathsAreCaseInsensitive ? resolved.toLowerCase() : resolved;
 }
 
 /** True for the URL and data values treated as virtual by page navigation. */

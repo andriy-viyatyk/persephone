@@ -275,6 +275,76 @@ const vanillaViewPlugin = {
     },
 };
 
+// Existing checks only; this allowlist is a shrinking baseline after path policy migrations.
+const existingPlatformChecks = {
+    "src/ipc/main/voice-typing-handlers.ts": 1,
+    "src/main/audio-service.ts": 2,
+    "src/main/board-file-access.ts": 4,
+    "src/main/command-runner.ts": 2,
+    "src/main/download-service.ts": 1,
+    "src/main/main-setup.ts": 1,
+    "src/main/module-service/record.ts": 1,
+    "src/main/one-shot-frame-grant.ts": 1,
+    "src/main/open-windows.ts": 1,
+    "src/main/os-drag-service.ts": 1,
+    "src/main/permission-policy-service.ts": 3,
+    "src/main/terminal-launcher.ts": 1,
+    "src/main/test-mode/controller.ts": 1,
+    "src/main/test-mode/desktop-placement.ts": 1,
+    "src/main/virtual-desktop-manager.ts": 2,
+    "src/main/windows-env.ts": 1,
+    "src/main/windows-sso.ts": 1,
+    "src/renderer/api/speech/MicrophoneCapture.ts": 3,
+    "src/renderer/audio/CaptureSourcePool.ts": 1,
+    "src/renderer/editors/monaco/contributions/transcript/TranscriptController.ts": 1,
+    "src/renderer/editors/monaco/contributions/transcript/TranscriptToolbarContributionView.ts": 2,
+    "src/test-host/launcher.ts": 1,
+};
+
+const platformCheckPlugin = {
+    rules: {
+        "no-scattered-platform-checks": {
+            meta: {
+                type: "problem",
+                schema: [],
+                messages: { scattered: "Direct platform checks are limited to the existing shrinking baseline; use src/shared/platform.ts." },
+            },
+            create(context) {
+                const normalizedFilename = context.filename.replace(/\\/g, "/");
+                const srcIndex = normalizedFilename.lastIndexOf("/src/");
+                const filePath = srcIndex >= 0 ? normalizedFilename.slice(srcIndex + 1) : normalizedFilename;
+                if (!filePath.startsWith("src/")) return {};
+                if (filePath === "src/shared/platform.ts" || filePath === "src/shared/platform-features.ts") return {};
+                const maximum = existingPlatformChecks[filePath] ?? 0;
+                let occurrenceCount = 0;
+                const countOccurrence = (node) => {
+                    occurrenceCount += 1;
+                    if (occurrenceCount > maximum) context.report({ node, messageId: "scattered" });
+                };
+                return {
+                    MemberExpression(node) {
+                        if (node.computed || node.property.type !== "Identifier" || node.property.name !== "platform") return;
+                        const object = node.object;
+                        const isProcess = object.type === "Identifier" && object.name === "process";
+                        const isGlobalProcess = object.type === "MemberExpression" && !object.computed
+                            && object.object.type === "Identifier" && object.object.name === "globalThis"
+                            && object.property.type === "Identifier" && object.property.name === "process";
+                        if (isProcess || isGlobalProcess) countOccurrence(node);
+                    },
+                    CallExpression(node) {
+                        const callee = node.callee;
+                        if (callee.type === "MemberExpression" && !callee.computed
+                            && callee.object.type === "Identifier" && callee.object.name === "os"
+                            && callee.property.type === "Identifier" && callee.property.name === "platform") {
+                            countOccurrence(node);
+                        }
+                    },
+                };
+            },
+        },
+    },
+};
+
 function isExcludedI18nFile(filename) {
     return filename.includes("/src/shared/i18n/")
         || filename.includes("/src/renderer/automation/")
@@ -703,6 +773,7 @@ export default tseslint.config(
         ],
         plugins: {
             "vanilla-view": vanillaViewPlugin,
+            "platform-check": platformCheckPlugin,
         },
         languageOptions: {
             parser: tseslint.parser,
@@ -765,6 +836,13 @@ export default tseslint.config(
             "vanilla-view/no-indirect-view-subclass": "error",
             "vanilla-view/bind-handle-outside-mount": "error",
             "vanilla-view/no-hardcoded-ui-strings": "error",
+        },
+    },
+
+    {
+        files: ["src/**/*.ts", "src/**/*.tsx"],
+        rules: {
+            "platform-check/no-scattered-platform-checks": "error",
         },
     },
 

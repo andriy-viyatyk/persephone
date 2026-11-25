@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { BoardWatchOptions } from "../../../ipc/board-bridge/port-protocol";
+import { pathsAreCaseInsensitive } from "../../../shared/platform";
 import type { PathWatchBatch, PathWatchOwner } from "../../../ipc/api-types";
 import { BoardRpcError } from "./errors";
 import { boardTrustService } from "../../board-trust-service";
@@ -18,7 +19,7 @@ const MAX_BOARD_WATCHES = 64;
 
 function normalizeWatchPath(value: string): string {
     const normalized = path.normalize(value);
-    return process.platform === "win32" ? normalized.toLowerCase() : normalized;
+    return pathsAreCaseInsensitive ? normalized.toLowerCase() : normalized;
 }
 
 function watchPathInScope(scopePath: string, candidatePath: string, kind: "file" | "folder"): boolean {

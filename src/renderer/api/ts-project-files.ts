@@ -1,6 +1,7 @@
 import { fs } from "./fs";
 import { fpBasename, fpExtname, fpJoin, fpNormalizeForCompare, fpRelative, fpResolve } from "../core/utils/file-path";
 import type { TsProject } from "./ts-project-registry";
+import { pathsAreCaseInsensitive } from "../../shared/platform";
 
 // ── Tuning constants  ───────────────────────────────────────────────
 /** Most `.ts`/`.tsx` files registered for one project. */
@@ -42,7 +43,7 @@ export function compileTsGlob(pattern: string): RegExp {
             source += char.replace(/[.+^${}()|[\]\\/]/g, "\\$&");
         }
     }
-    return new RegExp(`^${source}$`, process.platform === "win32" ? "i" : "");
+    return new RegExp(`^${source}$`, pathsAreCaseInsensitive ? "i" : "");
 }
 
 function relativePosix(project: TsProject, absolutePath: string): string {

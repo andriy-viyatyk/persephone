@@ -1,4 +1,5 @@
 import type { IAiMember, IAiVisionDescriptor } from "ai-vision";
+import { getPlatformFeature } from "../../../../shared/platform-features";
 
 const SHELL_MEMBERS: readonly IAiMember[] = [
     { name: "openExternal", kind: "method", signature: "openExternal(url: string)", summary: "Open a URL in the OS default browser.", caution: "opens or focuses an external application" },
@@ -19,11 +20,16 @@ const ENCRYPTION_SERVICE_MEMBERS: readonly IAiMember[] = [
 ];
 
 export function describeShell(_instance: unknown): IAiVisionDescriptor {
+    const snipAvailability = getPlatformFeature("screen.snip");
+    const snipReason = snipAvailability.available === false ? ` ${snipAvailability.reason}` : "";
+    const members = SHELL_MEMBERS.map((member) => member.name === "startScreenSnip"
+        ? { ...member, summary: `${member.summary}${snipReason}` }
+        : member);
     return {
         kind: "Shell",
         summary: "Open URLs, capture screen snippets, encrypt/decrypt text, and inspect runtime/update versions.",
-        members: SHELL_MEMBERS,
-        help: "Use openExternal and startScreenSnip only when opening external UI is intended; use encryption for text protected by a password.",
+        members,
+        help: `Use openExternal and startScreenSnip only when opening external UI is intended; use encryption for text protected by a password.${snipReason}`,
         summarize: () => ({ kind: "Shell" }),
     };
 }

@@ -15,6 +15,7 @@ import { bindDomain } from "./endpoint-registry";
 import { startScreenSnip } from "../../main/snip-service";
 import { readClipboardFiles, writeClipboardFiles } from "../../main/clip-service";
 import { startOsFileDrag } from "../../main/os-drag-service";
+import { getPlatformFeature } from "../../shared/platform-features";
 
 export function initClipboardHandlers(): void {
     bindDomain<ClipboardApi>({
@@ -28,8 +29,11 @@ export function initClipboardHandlers(): void {
         setClipboardHealthMonitoring: async (event: IpcMainEvent, active: boolean) =>
             setClipboardHealthMonitoringService(event.sender.id, active),
         restartClipboard: async (_event: IpcMainEvent, maxItems: number) => restartClipboardService(maxItems),
-        startScreenSnip: async (_event: IpcMainEvent, hideWindows: boolean) =>
-            startScreenSnip(hideWindows),
+        startScreenSnip: async (_event: IpcMainEvent, hideWindows: boolean) => {
+            const availability = getPlatformFeature("screen.snip");
+            if (availability.available === false) throw new Error(availability.reason);
+            return startScreenSnip(hideWindows);
+        },
         clipboardWriteText: async (_event: IpcMainEvent, text: string) => writeClipboardText(text),
         clipboardWritePng: async (_event: IpcMainEvent, bytes: Uint8Array) => writeClipboardPng(bytes),
         clipboardReadFilePaths: async () => readClipboardFiles(),

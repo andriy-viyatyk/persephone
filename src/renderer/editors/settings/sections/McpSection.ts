@@ -13,6 +13,7 @@ import { DotView } from "../../../uikit/Dot/DotView";
 import { SubtreeSwap } from "../../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { t } from "../../../../shared/i18n/t";
+import { getPlatformFeature } from "../../../../shared/platform-features";
 import { mcpEndpointUrl } from "../../../../shared/mcp-endpoint";
 import { McpSectionModel, defaultMcpSectionState, type McpSectionProps, type McpSectionState } from "./McpSectionModel";
 import { createSectionRoot, helpHeader, panel, text } from "./settings-native";
@@ -145,26 +146,28 @@ export class McpSectionView extends VanillaView<Record<string, never>> {
 
         const mcpStatusHost = document.createElement("div");
         mcpStatusHost.style.display = "contents";
-        const mnemeStatusHost = document.createElement("div");
-        mnemeStatusHost.style.display = "contents";
         this.root.append(mcpStatusHost);
         this.mcpStatusSwap = new SubtreeSwap(mcpStatusHost);
-        this.root.append(
-            helpHeader(t("settings.mnemeTitle"), t("settings.mnemeDescription"), (cleanup) => this.own(cleanup)),
-        );
-        const mnemeRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
-        const mnemeEnabled = this.child(new CheckboxField({ store: appSettingsStore as SettingsStore<boolean>, id: "mneme.enabled", label: t("settings.mnemeEnable") }));
-        mnemeRow.append(mnemeEnabled.root);
-        mnemeEnabled.mount();
-        this.root.append(mnemeRow);
-        const mnemePortRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
-        mnemePortRow.append(text(t("settings.portLabel"), { size: "sm" }));
-        this.mnemePortField = this.child(new PortField({ store: appSettingsStore as SettingsStore<number>, id: "mneme.port", range: settingRange("mneme.port"), fallback: model.props.mnemePort, width: 72, disabled: model.props.mnemeEnabled }));
-        mnemePortRow.append(this.mnemePortField.root);
-        this.mnemePortField.mount();
-        this.root.append(mnemePortRow);
-        this.root.append(mnemeStatusHost);
-        this.mnemeStatusSwap = new SubtreeSwap(mnemeStatusHost);
+        if (getPlatformFeature("memory.mnemeSidecar").available) {
+            this.root.append(
+                helpHeader(t("settings.mnemeTitle"), t("settings.mnemeDescription"), (cleanup) => this.own(cleanup)),
+            );
+            const mnemeRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
+            const mnemeEnabled = this.child(new CheckboxField({ store: appSettingsStore as SettingsStore<boolean>, id: "mneme.enabled", label: t("settings.mnemeEnable") }));
+            mnemeRow.append(mnemeEnabled.root);
+            mnemeEnabled.mount();
+            this.root.append(mnemeRow);
+            const mnemePortRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
+            mnemePortRow.append(text(t("settings.portLabel"), { size: "sm" }));
+            this.mnemePortField = this.child(new PortField({ store: appSettingsStore as SettingsStore<number>, id: "mneme.port", range: settingRange("mneme.port"), fallback: model.props.mnemePort, width: 72, disabled: model.props.mnemeEnabled }));
+            mnemePortRow.append(this.mnemePortField.root);
+            this.mnemePortField.mount();
+            this.root.append(mnemePortRow);
+            const mnemeStatusHost = document.createElement("div");
+            mnemeStatusHost.style.display = "contents";
+            this.root.append(mnemeStatusHost);
+            this.mnemeStatusSwap = new SubtreeSwap(mnemeStatusHost);
+        }
 
         this.root.append(
             panel({ paddingTop: "sm", paddingBottom: "md" }, text(t("settings.aiClientConfiguration"), { color: "light", size: "xs" })),

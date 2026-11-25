@@ -16,6 +16,7 @@ import {
 import { copyPathToOsClipboard } from "./os-clipboard";
 import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
 import { t } from "../../../shared/i18n/t";
+import { getPlatformFeature } from "../../../shared/platform-features";
 
 export interface ItemMenuActions {
     createFile(directory: string): void;
@@ -188,7 +189,7 @@ export function getFolderMenuItems(options: FolderMenuOptions): MenuItem[] {
 
     pushEditGroup(items, { provider, item, directory, actions, allowRenameDelete: !isRoot });
 
-    if (isLocalFileProvider(provider)) {
+    if (isLocalFileProvider(provider) && getPlatformFeature("terminal.launch").available) {
         items.push({
             startGroup: true,
             id: "open-terminal-here",

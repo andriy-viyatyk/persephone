@@ -1,4 +1,5 @@
 import { fpRelative, fpSep } from "../core/utils/file-path";
+import { pathsAreCaseInsensitive } from "../../shared/platform";
 
 export interface RootsTreeNode<K extends string> {
     value: string;
@@ -26,7 +27,7 @@ interface BuildNode {
 }
 
 function normSeg(segment: string): string {
-    return process.platform === "win32" ? segment.toLowerCase() : segment;
+    return pathsAreCaseInsensitive ? segment.toLowerCase() : segment;
 }
 
 function sortNodes<K extends string>(nodes: RootsTreeNode<K>[]): void {

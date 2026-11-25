@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { BoardRoot } from "../shared/board/board-root";
+import { pathsAreCaseInsensitive } from "../shared/platform";
 
 function sha256Hex(text: string): string {
     return createHash("sha256").update(text).digest("hex");
@@ -12,7 +13,7 @@ export function boardRootDigest(root: BoardRoot): string {
 
 /** Bundled storage folder. Windows storage keys historically lower-cased the bundled id. */
 export function bundledBoardDigest(bundledId: string): string {
-    return sha256Hex(`bundled:${process.platform === "win32" ? bundledId.toLowerCase() : bundledId}`);
+    return sha256Hex(`bundled:${pathsAreCaseInsensitive ? bundledId.toLowerCase() : bundledId}`);
 }
 
 /** The board:// origin host. */

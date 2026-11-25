@@ -1,5 +1,6 @@
 import { t } from "../../../shared/i18n/t";
 import { createLinkData } from "../../../shared/link-data";
+import { getPlatformFeature } from "../../../shared/platform-features";
 import { app } from "../../api/app";
 import { api } from "../../../ipc/renderer/api";
 import { libraryService } from "../../api/library-service";
@@ -58,37 +59,42 @@ interface FolderUiEntry {
     capture: (view: VanillaView<unknown>) => MenuBarRightViewHandle;
 }
 
-const genericMenu = (context: MenuBarFolderUiContext, folder: MenuFolder): MenuItem[] => [
-    {
-        label: t("shell.openInNewTab"),
-        icon: createIconElement("open-file"),
-        onClick: () => context.openFolderInTab(folder),
-    },
-    {
-        label: t("shell.removeFolder"),
-        icon: createIconElement("remove"),
-        onClick: () => {
-            const folderId = folder.id;
-            if (folderId) menuFolders.remove(folderId);
+const genericMenu = (context: MenuBarFolderUiContext, folder: MenuFolder): MenuItem[] => {
+    const items: MenuItem[] = [
+        {
+            label: t("shell.openInNewTab"),
+            icon: createIconElement("open-file"),
+            onClick: () => context.openFolderInTab(folder),
         },
-    },
-    {
-        label: t("shell.showInFileExplorer"),
-        icon: createIconElement("folder-open"),
-        onClick: () => { if (folder.path) api.showFolder(folder.path); },
-    },
-    {
-        id: "open-terminal-here",
-        label: t("shell.openTerminalHere"),
-        icon: createIconElement("terminal"),
-        onClick: async () => {
-            const folderPath = folder.path;
-            if (!folderPath) return;
-            const { openTerminalAt } = await import("../../api/terminal");
-            openTerminalAt(folderPath);
+        {
+            label: t("shell.removeFolder"),
+            icon: createIconElement("remove"),
+            onClick: () => {
+                const folderId = folder.id;
+                if (folderId) menuFolders.remove(folderId);
+            },
         },
-    },
-];
+        {
+            label: t("shell.showInFileExplorer"),
+            icon: createIconElement("folder-open"),
+            onClick: () => { if (folder.path) api.showFolder(folder.path); },
+        },
+    ];
+    if (getPlatformFeature("terminal.launch").available) {
+        items.push({
+            id: "open-terminal-here",
+            label: t("shell.openTerminalHere"),
+            icon: createIconElement("terminal"),
+            onClick: async () => {
+                const folderPath = folder.path;
+                if (!folderPath) return;
+                const { openTerminalAt } = await import("../../api/terminal");
+                openTerminalAt(folderPath);
+            },
+        });
+    }
+    return items;
+};
 
 const genericProps = (context: MenuBarFolderUiContext, key: string): TreeProviderViewProps => {
     const folder = menuFolders.find(key);

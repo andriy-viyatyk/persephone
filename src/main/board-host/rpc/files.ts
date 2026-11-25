@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { pathsAreCaseInsensitive } from "../../../shared/platform";
 import path from "node:path";
 import crypto from "node:crypto";
 import { dialog, shell } from "electron";
@@ -66,7 +67,7 @@ function folderMaskMatches(name: string, masks: string[] | undefined): boolean {
     const escaped = masks.map((mask) => [...mask].map((character) => character === "*" ? ".*"
         : character === "?" ? "."
             : character.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(""));
-    const flags = process.platform === "win32" ? "i" : "";
+    const flags = pathsAreCaseInsensitive ? "i" : "";
     return escaped.some((mask) => new RegExp(`^${mask}$`, flags).test(name));
 }
 

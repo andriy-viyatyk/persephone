@@ -2,6 +2,7 @@ import { app } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import type { BoardLogLevel } from "../ipc/api-types";
+import { pathsAreCaseInsensitive } from "../shared/platform";
 import { BoardRoot } from "../shared/board/board-root";
 import { bundledBoardId } from "./bundled-boards";
 import { SerialQueue } from "../shared/serial-queue";
@@ -19,7 +20,7 @@ const queues = new Map<string, BoardLogQueue>();
 
 function normalizePath(filePath: string): string {
     const resolved = path.resolve(filePath);
-    return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+    return pathsAreCaseInsensitive ? resolved.toLowerCase() : resolved;
 }
 
 export function boardLogPath(root: string): string {
