@@ -68,8 +68,8 @@ generic one.
 | Editors, scripting, grids, markdown, compare, archives | ✓ | **Same** | Path fixes in Phase 1 (WIN-22–24) |
 | Browser editor, profiles, automation, AI vision, web-app tests | ✓ | **Same** | File-access grants (WIN-25); Widevine without verified-media-path (VMP) signing, so some streaming sites may refuse |
 | Boards, board windows, board Node scripts | ✓ | **Same** | Board data folder (WIN-12) and the test sandbox (WIN-13) |
-| MCP server, agent tools, guides | ✓ | **Same** | Guides need Linux paths and commands (inventory "Guide references") |
-| Integration test runner (`--test`) | ✓ | **Same** | On Linux the app binary writes to the console, so no console-wrapper `.exe` is needed (WIN-32, 35) |
+| MCP server, agent tools, guides | ✓ | **Same** | Guides need Linux paths and commands (inventory "Guide references"). Works in WSL, except while a native dialog is open (R-2) |
+| Integration test runner (`--test`) | ✓ | **Same** | On Linux the app binary writes to the console, so no console-wrapper `.exe` is needed (WIN-32, 35). Today the test host can't launch the app on Linux (R-1) |
 | Single instance, opening files into the running app, named profiles | ✓ | **Same** | Electron second-instance or a Unix socket (WIN-6, 7, 38) |
 | "Open terminal here" | ✓ | **Same** | Detect `x-terminal-emulator`, `gnome-terminal`, `konsole` and others; configurable (WIN-10) |
 | File associations, "Open with", installer shortcuts | ✓ | **Equivalent** | `.desktop` file and MIME types from the `.deb`; the AppImage offers integration on first run (WIN-3) |
@@ -159,21 +159,33 @@ runtime-findings addendum.
   - make the pipe server platform-aware (WIN-6);
   - when the mneme or snip binary is missing, turn the feature off.
 - Create `src/shared/platform.ts`, `platformFeatures` and the ESLint rule (decisions 1–2).
-- Runtime discovery pass: walk through every editor and main feature in WSL and record what breaks. This becomes
-  `multiplatform-2026-11/runtime-findings.md`, and later phases are adjusted from it.
+- Runtime discovery pass: walk through every editor and main feature in WSL and record what breaks. Done 2026-11-25:
+  [`multiplatform-2026-11/runtime-findings.md`](multiplatform-2026-11/runtime-findings.md); Phases 1–2 below are
+  adjusted from it.
 
 ### Phase 1 — Core parity (epic)
 
 **Exit:** the integration suite runs on Linux under Xvfb, and every test without `requires: ["windows"]` passes.
 
+Adjusted from the [runtime findings](multiplatform-2026-11/runtime-findings.md) (2026-11-25):
+
+- **First:** the test host must be able to launch the app on Linux (R-1). Today it runs as an Electron
+  `utilityProcess`, and Chromium children can't start from there. Start it as a plain Node child on Linux. Nothing
+  else in the exit can be measured until this works.
+- The native-dialog tracker must stop reading a Windows HWND on Linux (R-2). Today any open file dialog breaks every
+  window-routed MCP call. Gate `boards.createShortcut` in the same change (R-3).
+
 - Paths and files: file-URL and path recognition (WIN-22, 23), separators (WIN-24), browser file-access grants
   (WIN-25), case-sensitive comparisons in the clipboard and elsewhere (WIN-16), and the board data folder and test
   sandbox environment (WIN-12, 13).
-- Text: the encoding fallback becomes locale-aware with UTF-8 as the default (WIN-27).
-- Fonts with Linux alternatives, checked for layout (WIN-29).
+- Text: the encoding fallback becomes locale-aware with UTF-8 as the default (WIN-27). Lower priority: a
+  Windows-1251 file already decoded correctly in WSL (R-10).
+- Fonts with Linux alternatives, checked for layout (WIN-29). Check emoji and icon glyphs on stock Ubuntu Desktop; the
+  WSL image lacked an emoji font (R-4).
 - Keymap with a primary modifier and its labels (WIN-28, decision 7).
-- Default shell for `app.proc` and scripting is `/bin/sh` on Linux; the module-service environment uses Linux
-  variables.
+- The module-service environment uses Linux variables. `app.proc` already runs through `/bin/sh` on Linux (R-9).
+- Backslash as a separator in path comparison keys (`fpNormalizeForCompare`, `comparePathKey`) only on Windows (R-8,
+  WIN-24).
 - Test runner and suite: find the Linux binary (WIN-35), make fixtures portable, and tag the tests that need
   Windows (WIN-36).
 - GitHub Actions job: build plus the suite on `ubuntu-latest` (development only, no release yet).
@@ -182,15 +194,19 @@ runtime-findings addendum.
 
 **Exit:** a manual checklist passes in a Hyper-V Ubuntu 26.04 VM, on GNOME Wayland.
 
-- Window chrome, tray and close-to-tray fallback (WIN-30).
-- Single instance, opening files into the running app, profiles; measure the handoff (WIN-7, decision 4).
+- Window chrome, tray and close-to-tray fallback (WIN-30). Close-to-tray is on by default, and closing the window
+  leaves a running app with no window (R-5).
+- Single instance, opening files into the running app, profiles; measure the handoff (WIN-7, decision 4). The Unix
+  socket already works, including stale-socket reclaim (US-2200). Make its cleanup on quit synchronous if leftover
+  sockets matter (R-6).
 - Terminal detection and settings (WIN-10); VLC and Tor (WIN-11).
 - Default browser and scheme handlers (WIN-8); board `.desktop` shortcuts (WIN-9).
 - File clipboard and drag and drop (WIN-15, 17); clipboard history limits on Wayland (WIN-16).
 - Notifications, theme, lock and unseen-mode wording (WIN-31). `--desktop` reports itself as not offered (WIN-14).
 - Decide whether Electron runs as a native Wayland app or through XWayland (the X11 compatibility layer), by testing
   chrome, drag and drop, clipboard and screen capture in both.
-- Settings and i18n: platform-neutral labels, and Linux options in the terminal settings.
+- Settings and i18n: platform-neutral labels, and Linux options in the terminal settings. The `appSettings.json`
+  comments and defaults name `tor.exe`, `vlc.exe`, `pwsh`/`cmd` and `mneme.exe` (R-7).
 
 ### Phase 3 — Native helpers and media (epic)
 

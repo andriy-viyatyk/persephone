@@ -12,7 +12,7 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-2198: Linux development environment and first launch](tasks/US-2198-linux-dev-environment/README.md)
   - [ ] [US-2199: Platform layer](tasks/US-2199-platform-layer/README.md) (`platform.ts`, `platformFeatures`, ESLint rule)
   - [ ] [US-2200: Startup blockers](tasks/US-2200-linux-startup-blockers/README.md)
-  - [ ] US-2201: Runtime discovery pass
+  - [ ] [US-2201: Runtime discovery pass](tasks/US-2201-linux-runtime-discovery/README.md)
 
 ## Planned
 
