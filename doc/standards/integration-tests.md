@@ -23,7 +23,7 @@ Run `npm start`, then `npm run test:ui`. The default target is `dev`; optional t
 validates the selected app and invokes its sibling `persephone-test.exe`. `--open` uses the direct
 app launcher and records the retained PID without changing reports.
 
-The product runner can also run a standalone test file directly with
+On Windows, the product runner can also run a standalone test file directly with
 `persephone-test.exe <file.mjs> --profile <name> [--log <file> | --log-dir <folder>]`.
 The console launcher forwards those arguments to a windowless controller; the controller starts a
 test-host utility process and a separate visible Persephone instance in the selected profile. The
@@ -32,6 +32,15 @@ of renderer restarts. A named profile must be free unless `--attach` is used wit
 running profile whose MCP server is enabled. Attach uses that instance without taking ownership
 of its shutdown. The user workflow and examples are in
 [`assets/guides/agents/web-app-tests/index.md`](../../assets/guides/agents/web-app-tests/index.md).
+
+For Linux development, run the suite from the Linux checkout with `npm run test:ui`. Linux profile
+probing and attach use the product's Unix-domain socket under `$XDG_RUNTIME_DIR`; a missing runtime
+directory prevents the profile probe. On Windows, the same profile endpoint is the named pipe.
+
+When the Linux test host starts an app, it removes Electron's inherited `CHROME_DESKTOP` variable
+from that child environment. Electron adds the variable to its own main-process environment, but a
+test app inheriting it exits during Chromium zygote startup. Other display/session and test-fixture
+variables are retained. This Linux development adjustment does not change the Windows spawn.
 
 `persephone-test.exe --init <folder>` copies the offline starter suite from
 `assets/test-suite-template/` into an absent or empty destination and exits without launching a

@@ -5,6 +5,16 @@
 For translated UI strings, catalog keys, and language-pack conventions, see the
 [localization standard](localization.md).
 
+### Platform-specific behavior
+
+Use `isWindows`, `isLinux`, or `isMac` from `src/shared/platform.ts` for OS-specific
+branches. Use `getPlatformFeature(id)` from `src/shared/platform-features.ts` when deciding
+whether a feature is offered; do not duplicate availability rules at call sites. Direct
+`process.platform` checks are restricted by the `platform-check/no-scattered-platform-checks`
+ESLint rule to the shared owner and the existing per-platform collaborators. Keep its allowlist
+to reviewed legacy checks that are being removed, not a permanent registry for new call sites.
+The platform modules stay pure and do not import Electron or probe runtime helper binaries.
+
 ### Use TypeScript for All New Code
 
 ```typescript

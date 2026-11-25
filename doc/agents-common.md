@@ -152,6 +152,7 @@ complete (`N/N`) with no stale hashes. Work that changed no catalog messages ski
 | Work with capabilities (board/platform/agent) | [architecture/capabilities.md](architecture/capabilities.md) |
 | Check coding style            | [standards/coding-style.md](standards/coding-style.md) |
 | Run or add UI integration tests | [standards/integration-tests.md](standards/integration-tests.md) |
+| Set up Linux development in WSL | [linux-development.md](linux-development.md) |
 | Write or split a guide page   | [standards/guide-structure.md](standards/guide-structure.md) |
 | Add or update translated UI text | [standards/localization.md](standards/localization.md) |
 | Styling / inline-style inventory | [architecture/styling-inventory.md](architecture/styling-inventory.md) |

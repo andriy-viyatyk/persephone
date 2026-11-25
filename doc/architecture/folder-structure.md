@@ -44,7 +44,7 @@ persephone/
 │   │   ├── service-port-inbox.ts # Early service-channel port buffering and delivery
 │   │   ├── board-context-menu.ts # Board-frame context menu and image/editable-field actions
 │   │   └── board-console-mirror.ts # Board errors and console warnings/errors sent to the host
-├── launcher/               # Rust launchers (Named Pipe client and console test-runner shim)
+├── launcher/               # Rust launchers (Windows named-pipe client and console test-runner shim)
 │   ├── src/main.rs
 │   ├── build.rs
 │   └── Cargo.toml
@@ -1152,7 +1152,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── open-windows.ts         # Multi-window management and broadcasting
 ├── global-mute-service.ts  # Main-owned mute leases and effective audio state across managed application contents
 ├── window-states.ts        # Window state persistence
-├── pipe-server.ts          # Named Pipe server (launcher integration)
+├── pipe-server.ts          # Platform-specific instance endpoint (launcher integration)
 ├── mcp-http-server.ts      # Public MCP HTTP policy and listener lifecycle; sessions use the shared MCP host
 ├── routed-fetch-protocol.ts # Shared parser and simple routed-fetch handler for Tor/profile schemes
 ├── board-manifest-reader.ts # Main-owned normalized board manifest reader and mtime cache

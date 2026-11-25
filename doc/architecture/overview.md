@@ -33,7 +33,7 @@ persephone is an **Electron desktop application** — a Windows Notepad replacem
 │ - Window management │ - Native VanillaView application     │
 │ - System tray       │ - Monaco Editor                       │
 │ - File dialogs      │ - Object Model (app.*)                │
-│ - Named Pipe server │ - Script execution                    │
+│ - Instance endpoint │ - Script execution                    │
 │ - MCP HTTP server   │ - MCP command handler                 │
 │ - Native menus      │ - Editor system                       │
 │ - Version service   │                                       │
@@ -50,20 +50,42 @@ persephone is an **Electron desktop application** — a Windows Notepad replacem
 - Scripts can `require()` any Node.js module or npm package
 - Multi-window support — each window has its own `app` instance
 
+### Platform identity and feature availability
+
+`src/shared/platform.ts` is the pure shared owner of the Node platform value and the
+`isWindows`, `isLinux`, and `isMac` predicates. It has no Electron dependency, so main and
+renderer code can use the same identity helpers. `src/shared/platform-features.ts` owns the
+static availability matrix for platform-specific features; callers use
+`getPlatformFeature(id)` for an `{ available, reason? }` result. UI surfaces hide unavailable
+features, while MCP and scripting entry points return the shared reason. This matrix describes
+implemented availability, not runtime helper discovery.
+
+The ESLint platform-check rule in `eslint.config.mjs` limits new direct `process.platform`
+checks to the shared platform module and documented per-platform collaborators. Keep the
+existing-check allowlist shrinking as call sites move to the shared predicates.
+
 ### Application profiles
 
 The optional `--profile` argument selects a separate application data root at
-`%APPDATA%/persephone-profiles/<name>`. Names are normalized to lowercase and limited to
+`<Electron appData>/persephone-profiles/<name>`. Electron supplies the platform-specific
+`appData` location. Names are normalized to lowercase and limited to
 1–32 ASCII letters, digits, and hyphens; `default` is reserved. Without the option, the
 existing data root remains in use. Main sets Electron's `userData` and `sessionData` before
-acquiring the single-instance lock, and the launcher and pipe server route requests by profile.
+acquiring the single-instance lock, and the platform-specific instance endpoint routes requests by profile.
 Board window identities and shortcuts retain the profile as well. This application profile is
 separate from the browser profiles that select session partitions within an application instance.
 
 `--profile-dir <path>` overrides the data root for a named profile and requires `--profile <name>`;
 using it alone is an argument error. The path is resolved to an absolute path. The profile name
-still determines the instance identity, ports and pipe routing, and board-window relaunches retain
+still determines the instance identity, ports and endpoint routing, and board-window relaunches retain
 both options.
+
+The instance endpoint is a Windows named pipe on Windows and a Unix-domain socket under
+`$XDG_RUNTIME_DIR` on Linux. If the Linux runtime directory is unset, the socket server does not
+start and profile probing fails closed. On Linux, startup probes an existing socket before reclaiming
+a stale socket path, and shutdown removes the socket owned by that process. Linux launches hand off
+through Electron's single-instance lock and `second-instance` event; the Rust named-pipe launcher
+remains Windows-only.
 
 Main passes the profile name to renderer windows at creation. Unconfigured named profiles use
 ports 7965 (MCP), 7800 (Mneme), 7966 (video streaming), and 9052 (Tor); explicit settings
@@ -78,6 +100,11 @@ visible window. The host imports the test file, sends requests through the insta
 endpoint, gathers per-test results, and returns the final exit code. This lets the host survive a
 renderer crash or an app restart. `persephone-test.exe` is the console entry point that forwards
 arguments and exposes the runner's output and exit status to command shells.
+
+The Linux development test host removes `CHROME_DESKTOP` from the environment used to spawn the
+test app. Electron's main process sets this variable, and inheriting it caused the child app's
+Chromium zygote to exit during startup. Other inherited display, session, and test-fixture variables
+are preserved. The Windows spawn environment is unchanged.
 
 The product runner owns test execution, context APIs, page cleanup, screenshots, and per-run
 reports. The repository's `integration-test/run.mjs` stays a suite wrapper: it owns test discovery,

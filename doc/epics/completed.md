@@ -1,3 +1,46 @@
+## EPIC-212 — Linux bring-up and the platform layer (multiplatform phase 0)
+
+Completed 2026-11-25. This is phase 0 of the [multiplatform roadmap](../reviews/multiplatform-roadmap.md): the dev
+build (`npm start`) runs in WSL Ubuntu 26.04 (WSLg), and nothing is released for Linux yet.
+
+- **Bring-up:** koffi was bumped to 2.16.3, because glibc 2.43 rejects the old binary's executable stack. The setup is
+  in [linux-development.md](../linux-development.md).
+- **Platform layer:**
+  - `src/shared/platform.ts` gives platform identity and `pathsAreCaseInsensitive`.
+  - `src/shared/platform-features.ts` is one feature table, read through `getPlatformFeature`.
+  - A local ESLint rule caps `process.platform` checks per file, with an allowlist that only shrinks.
+- **Startup blockers fixed:**
+  - POSIX paths and `file:///` URLs open;
+  - the launcher pipe is a Unix socket in `$XDG_RUNTIME_DIR` off Windows, with stale-socket reclaim;
+  - the renderer and the first-paint theme script take the data folder from Electron;
+  - the taskbar identity calls run only on Windows;
+  - Mneme and snip are gated in the main process.
+- **Runtime discovery:** the pass ([runtime-findings.md](../reviews/multiplatform-2026-11/runtime-findings.md),
+  R-1…R-10) adjusted roadmap phases 1–2.
+- **Fixed from the findings:**
+  - an open native dialog no longer breaks window-routed MCP calls on Linux, because the tracker no longer reads the
+    Windows window handle there;
+  - `boards.createShortcut` is gated;
+  - the UI test runner launches its app on Linux: Electron's main process sets `CHROME_DESKTOP`, and an app spawned
+    with it inherited dies at startup, so the launcher removes it. `core/smoke` passes in WSL.
+- **Checks:** Windows was re-checked on every task: typecheck, lint and the affected `test:ui` areas.
+- **Open, all for Phase 1–2:**
+  - the rest of the UI suite on Linux;
+  - a named profile, a board window and an unset `XDG_RUNTIME_DIR` on Linux;
+  - the tray (close-to-tray);
+  - emoji fonts;
+  - the Windows native-dialog checks by hand.
+- **Completion skills:** run by Codex (Luna).
+
+Epic document: [EPIC-212](EPIC-212.md).
+
+- [x] **Linux development environment and first launch (US-2198).**
+- [x] **Platform layer (US-2199).**
+- [x] **Startup blockers (US-2200).**
+- [x] **Runtime discovery pass (US-2201).**
+- [x] **Native-dialog tracker and board shortcut on Linux (US-2202).**
+- [x] **UI test runner launches the app on Linux (US-2203).**
+
 ## EPIC-211 — Tests in an unseen window (locked screen, other virtual desktop, minimized)
 
 Completed 2026-11-24. A window that is open when Windows locks, when the user switches desktops, or when it is
