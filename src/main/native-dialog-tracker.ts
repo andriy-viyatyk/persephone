@@ -2,6 +2,7 @@ import { spawn } from "child_process";
 import { BrowserWindow } from "electron";
 import { getSnipToolPath } from "./snip-service";
 import { errMessage } from "../shared/utils";
+import { isWindows } from "../shared/platform";
 
 export type NativeDialogKind = "file" | "folder" | "messageBox";
 
@@ -13,6 +14,7 @@ interface NativeDialogState {
 interface NativeDialogCommandResult {
     cancelled: number;
     titles: string[];
+    reason?: string;
 }
 
 const activeDialogs = new WeakMap<BrowserWindow, NativeDialogState>();
@@ -130,6 +132,7 @@ export async function getNativeDialogState(browserWindow: BrowserWindow | undefi
     const state = activeDialogs.get(browserWindow);
     const activeKind = state?.activeKinds.keys().next().value as NativeDialogKind | undefined;
     if (!activeKind) return { open: false };
+    if (!isWindows) return { open: true, kind: activeKind };
     const result = await runDialogCommand(["dialog-info", ownerHwnd(browserWindow)]);
     return {
         open: true,
@@ -142,6 +145,9 @@ export async function cancelNativeDialogs(browserWindow: BrowserWindow): Promise
     const state = activeDialogs.get(browserWindow);
     for (const controller of state?.messageBoxControllers ?? []) controller.abort();
     if (browserWindow.isDestroyed()) return { cancelled: 0, titles: [] };
+    if (!isWindows) {
+        return { cancelled: 0, titles: [], reason: "Native dialog cancellation is not available on this platform." };
+    }
     const result = await runDialogCommand(["dialog-cancel", ownerHwnd(browserWindow)]);
     return result ?? { cancelled: 0, titles: [] };
 }
@@ -154,6 +160,10 @@ export async function getNativeDialogAttention(
     const state = await getNativeDialogState(browserWindow);
     if (!state.open || !state.kind) return undefined;
     const dialogName = state.kind === "messageBox" ? "messageBox" : state.kind;
+    if (!isWindows) {
+        return { text: "Attention: a native " + dialogName + " dialog is open in window " + windowIndex
+            + "; native dialog cancellation is not available on this platform. Close the dialog manually." };
+    }
     const title = state.title ? " (title: " + state.title + ")" : "";
     return { text: "Attention: a native " + dialogName + " dialog is open in window " + windowIndex
         + title + "; call windows[" + windowIndex + "].nativeDialog.dismiss() to cancel it." };

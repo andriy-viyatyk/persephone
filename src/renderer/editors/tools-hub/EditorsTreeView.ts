@@ -25,6 +25,7 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { editorCategories, type CategoryRef } from "../../api/editor-categories";
 import { getCreatableItemLabel, getCreatableItems, getDisabledBundledBoardItems, type CreatableItem } from "../../api/creatable-items";
 import { createCreatableItemIcon } from "./creatable-item-icon";
+import { getPlatformFeature } from "../../../shared/platform-features";
 import "./EditorsTreeView.css";
 
 interface BuiltinEditorNode {
@@ -294,7 +295,7 @@ export class EditorsTreeView extends VanillaView<EditorsTreeViewProps> {
         if (update) items.push({ label: t("shell.updateBoard", { version: update.latestVersion }), onClick: () => { void runBoardUpdate(update).then(this.refresh); } });
         items.push({ label: t("shell.copyBoardPath"), onClick: () => toClipboard(root) });
         items.push({ label: t("shell.openBoardFolder"), onClick: () => { void app.pages.openPath(root); } });
-        items.push({
+        if (getPlatformFeature("desktop.boardShortcut").available) items.push({
             id: "create-board-shortcut",
             label: t("shell.createBoardShortcut"),
             onClick: () => { void createBoardShortcut(root); },

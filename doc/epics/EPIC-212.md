@@ -39,8 +39,10 @@ Task documents are created when each task starts.
 | [US-2199](../tasks/US-2199-platform-layer/README.md) | Platform layer: `src/shared/platform.ts` and `platformFeatures`, how the feature table reaches the renderer, and the ESLint rule with an allowlist of the existing `process.platform` checks | Codex (plan + implement), Claude reviews the plan | Implemented (2026-11-25) |
 | [US-2200](../tasks/US-2200-linux-startup-blockers/README.md) | Startup blockers: guard `setAppUserModelId` / `setAppDetails` (WIN-38), the renderer data-folder fallback (WIN-26), a platform-aware pipe server (WIN-6), and disabling unsupported Linux helper features (mneme, snip) via static availability and main-process guards; dynamic Windows missing-helper hiding is deferred, plus what US-2198 found: POSIX file paths and `file:///` URLs (WIN-22, US-2198 F5 — no local file opens on Linux without it) | Codex (plan + implement), Claude live check | Implemented (2026-11-25) |
 | [US-2201](../tasks/US-2201-linux-runtime-discovery/README.md) | Runtime discovery pass: walk through every editor and main feature in WSL; write `runtime-findings.md`; update roadmap phases 1–4 and the parity table | Claude (live) | Done (2026-11-25) |
+| [US-2202](../tasks/US-2202-linux-native-dialogs/README.md) | Native-dialog tracker and board shortcut on Linux: an open native dialog no longer breaks window-routed MCP calls (runtime finding R-2), and `boards.createShortcut` reports "not available" on Linux (R-3) | Codex (plan + implement), Claude live check | Implemented (2026-11-25) |
+| [US-2203](../tasks/US-2203-linux-test-runner-launch/README.md) | UI test runner launches the app on Linux (R-1): the test host can start Persephone in WSL and one area (`core/smoke`) runs. Making the suite pass stays in Phase 1; if no launch path works, the result is recorded and R-1 moves to Phase 1 | Codex (plan + implement), Claude live check | Implemented (2026-11-25) |
 
-**Order:** US-2198 → US-2199 → US-2200 → US-2201. US-2198 may find blockers that move into US-2200. If the platform
+**Order:** US-2198 → US-2199 → US-2200 → US-2201 → US-2202 and US-2203 (both from the US-2201 findings; independent of each other). US-2198 may find blockers that move into US-2200. If the platform
 layer's shape depends on what US-2198 finds, US-2199 waits for it.
 
 ## Epic-level decisions

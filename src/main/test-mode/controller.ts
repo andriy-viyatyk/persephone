@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { parseApplicationProfile } from "../application-profile";
 import { getNodeHostEntryPath } from "../utils";
+import { isWindows } from "../../shared/platform";
 import { chooseMcpPort } from "./ports";
 import { probeProfile, readProfileMcp, resolveProfileDirectory } from "./profile";
 import type { TestControllerArguments } from "./arguments";
@@ -32,7 +33,7 @@ export async function startTestController(profileArgs: ReturnType<typeof parseAp
         const mcp = options.attach ? await readProfileMcp(targetProfile, profileArgs.name) : { port: await chooseMcpPort(options.mcpPort) };
         await app.whenReady();
         if (options.desktop !== undefined) {
-            if (process.platform !== "win32") throw new Error("--desktop is supported only on Windows.");
+            if (!isWindows) throw new Error("--desktop is supported only on Windows.");
             virtualDesktopManager.resolveSelector(options.desktop);
         }
         const configuration = {

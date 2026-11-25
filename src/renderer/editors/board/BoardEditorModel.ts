@@ -55,6 +55,7 @@ import type { IContentPipe } from "../../api/types/io.pipe";
 import type { BoardSourceContext } from "../../../shared/board-source-context";
 import type { ILink } from "../../api/types/io.tree";
 import { findSourceProvider, navigateToSourceItem } from "../shared/source-context";
+import { getPlatformFeature } from "../../../shared/platform-features";
 
 export interface BoardEditorState extends EditorStateBase {
     /** State-type discriminator. */
@@ -336,13 +337,13 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> implements I
                 onClick: () => { if (boardRoot) void app.pages.openPath(boardRoot); },
                 disabled: !boardRoot,
             },
-            {
+            ...(getPlatformFeature("desktop.boardShortcut").available ? [{
                 id: "create-board-shortcut",
                 label: t("shell.createBoardShortcut"),
                 onClick: () => { if (boardRoot) void createBoardShortcut(boardRoot); },
                 disabled: !boardRoot,
                 startGroup: true,
-            },
+            }] : []),
         ];
     }
 

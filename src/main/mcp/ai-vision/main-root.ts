@@ -12,6 +12,7 @@ import { cancelNativeDialogs, getNativeDialogState } from "../../native-dialog-t
 import type { NativeDialogKind } from "../../native-dialog-tracker";
 import { TestWindowOperations } from "./test-window-operations";
 import { desktopAwareness } from "../../desktop-awareness";
+import { isWindows } from "../../../shared/platform";
 
 /**
  * The main process's half of the AiVision tree.
@@ -42,7 +43,9 @@ const WINDOW_MEMBERS: readonly IAiMember[] = [
     { name: "pages", kind: "property", summary: "The window's pages. Open window: the live Pages collection (windows[i].pages[0].content works). Closed window: summaries from persisted state (id, title, type, editor, filePath) — open() it to get the live collection. `type` contains the editor registry ID (`editorId`); on an open window use `editor`, which is the actionable one." },
     { name: "open", kind: "method", signature: "open()", summary: "Open (or reopen) this window with its persisted pages, and focus it." },
     { name: "focus", kind: "method", signature: "focus()", summary: "Bring an open window to the front." },
-    { name: "nativeDialog", kind: "property", node: true, summary: "Open native dialog state; dismiss cancels it." },
+    { name: "nativeDialog", kind: "property", node: true, summary: isWindows
+        ? "Open native dialog state; dismiss cancels it."
+        : "Open native dialog state; dismiss reports that native cancellation is unavailable." },
     { name: "desktopVisible", kind: "property", summary: "Whether this window is shown, not minimized, and the session is unlocked; another virtual desktop is detectable only when a virtual-desktop probe is installed." },
 ];
 
@@ -61,7 +64,7 @@ boards or closed windows. windows.selectTestWindow("name:<name>") selects an exa
 windows.createOrSelectNamedTestWindow(name) reuses a live named window or creates one. Its own
 members (status, open(),
 focus(), nativeDialog, persisted pages) are answered by the main process. nativeDialog reports
-owned native dialogs and dismiss() cancels them without choosing or confirming a path. Anything deeper is answered by that
+owned native dialogs${isWindows ? " and dismiss() cancels them" : "; native cancellation is unavailable off Windows"} without choosing or confirming a path. Anything deeper is answered by that
 window itself: prefix any path with "windows[i]." — windows[1].pages, windows[1].page.content,
 windows[1].helpSearch(...). A path without the prefix targets the main (first open) window.
 `;
@@ -163,7 +166,9 @@ export class WindowNode implements IAiVisible {
                 ...(this.status === "open"
                     ? [{ segment: ".pages", kind: "Pages", summary: this.pageCount + " page(s), answered by the window" }]
                     : []),
-                { segment: ".nativeDialog", kind: "NativeDialog", summary: "Owned native dialog state and cancellation." },
+                { segment: ".nativeDialog", kind: "NativeDialog", summary: isWindows
+                    ? "Owned native dialog state and cancellation."
+                    : "Tracked native dialog state; cancellation is unavailable off Windows." },
             ],
             summarize: () => ({ kind: "Window", index: this.index, name: this.name ?? null, status: this.status, pageCount: this.pageCount, activePageId: this.activePageId ?? null }),
         };
@@ -173,8 +178,10 @@ export class WindowNode implements IAiVisible {
 const NATIVE_DIALOG_MEMBERS: readonly IAiMember[] = [
     { name: "open", kind: "property", summary: "Whether this window owns an open native dialog." },
     { name: "kind", kind: "property", summary: "Native dialog kind: file, folder, or messageBox." },
-    { name: "title", kind: "property", summary: "Title of the owned native dialog when available." },
-    { name: "dismiss", kind: "method", signature: "dismiss()", summary: "Cancel native dialogs owned by this window." },
+    { name: "title", kind: "property", summary: isWindows ? "Title of the owned native dialog when available." : "Unavailable off Windows; tracked dialog kind remains available." },
+    { name: "dismiss", kind: "method", signature: "dismiss()", summary: isWindows
+        ? "Cancel native dialogs owned by this window."
+        : "Abort registered message-box controllers and report that native cancellation is unavailable; close native dialogs manually." },
 ];
 
 class NativeDialogNode implements IAiVisible {
@@ -197,9 +204,13 @@ class NativeDialogNode implements IAiVisible {
     get aiVision(): IAiVisionDescriptor {
         return {
             kind: "NativeDialog",
-            summary: "Native dialogs owned by one Persephone window; agents may cancel but cannot choose or confirm paths.",
+            summary: isWindows
+                ? "Native dialogs owned by one Persephone window; agents may cancel but cannot choose or confirm paths."
+                : "Tracked native dialogs owned by one Persephone window; native cancellation is unavailable and dialogs must be closed manually.",
             members: NATIVE_DIALOG_MEMBERS,
-            help: "Use dismiss() to cancel an owned file picker. This cannot enter a path or confirm Save/Open.",
+            help: isWindows
+                ? "Use dismiss() to cancel an owned file picker. This cannot enter a path or confirm Save/Open."
+                : "Native dialog cancellation is unavailable on this platform. Use the operating system controls to close an owned dialog.",
             summarize: async () => ({ kind: "NativeDialog", ...(await this.state()) }),
         };
     }

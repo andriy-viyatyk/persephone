@@ -7,6 +7,7 @@ import { fpBasename, fpIsAbsolute, fpJoin, fpResolve } from "../../core/utils/fi
 import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText } from "../../api/boards/board-display-text";
 import { readBoardManifest } from "../../api/boards/board-manifest-io";
 import { renderBoardIconDataUrl } from "./board-window-icon";
+import { getPlatformFeature } from "../../../shared/platform-features";
 
 function safeShortcutName(name: string): string {
     const forbidden = '<>:"/\\|?*';
@@ -25,6 +26,8 @@ export async function createBoardShortcutCore(
     root: string,
     options?: CreateBoardShortcutOptions,
 ): Promise<{ linkPath: string; displayName: string } | null> {
+    const availability = getPlatformFeature("desktop.boardShortcut");
+    if (availability.available === false) throw new Error(availability.reason);
     const manifest = await readBoardManifest(root);
     if (manifest) await ensureBoardDisplayText(root, manifest);
     const fallback = manifest?.name?.trim() || fpBasename(root);

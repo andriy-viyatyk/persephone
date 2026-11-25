@@ -5,6 +5,7 @@ import { StringDecoder } from "node:string_decoder";
 import { McpClient, type Timeouts } from "./client.js";
 import { isTestInstanceOption } from "../ipc/test-host-protocol.js";
 import { errMessage } from "../shared/utils.js";
+import { isLinux, isWindows } from "../shared/platform.js";
 
 const MAX_MAIN_OUTPUT_LINE_CHARS = 8_192;
 
@@ -48,7 +49,7 @@ async function settlesWithin(promise: Promise<unknown> | undefined, ms: number):
 /** Force-kill a process and its descendants; best effort. */
 function killProcessTree(child: ChildProcess): void {
     if (!child.pid) return;
-    if (process.platform === "win32") {
+    if (isWindows) {
         spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true }).once("error", () => { /* best effort */ });
     } else {
         child.kill("SIGKILL");
@@ -73,6 +74,17 @@ export class TestLauncher {
         if (!this.configuration.devMain) throw new Error("Development main bundle path is missing.");
         return this.configuration.devMain;
     }
+    /**
+     * Linux: the controller's Electron main process sets CHROME_DESKTOP, and this host inherits it. A Persephone
+     * started with it inherited dies at once ("Zygote process exited prematurely", SIGTRAP), so it is removed.
+     * Verified in WSL Ubuntu 26.04 (US-2203); Windows keeps the inherited environment unchanged.
+     */
+    private appEnvironment(): NodeJS.ProcessEnv | undefined {
+        if (!isLinux) return undefined;
+        const environment = { ...process.env };
+        delete environment.CHROME_DESKTOP;
+        return environment;
+    }
     async start(): Promise<McpClient> {
         if (this.configuration.attach) {
             this.client = new McpClient(`http://127.0.0.1:${this.configuration.port}/mcp`, this.timeouts);
@@ -87,7 +99,8 @@ export class TestLauncher {
         // and tests run against a real, visible window.
         // `detached` for --keep-open: on Windows libuv puts non-detached children in a job object that
         // kills them when this host exits, so a retained app would die with the run.
-        const childProcess = spawn(this.configuration.executable, this.arguments(), { cwd: this.configuration.cwd, stdio: ["ignore", "pipe", "pipe"], windowsHide: false, detached: this.configuration.keepOpen });
+        const environment = this.appEnvironment();
+        const childProcess = spawn(this.configuration.executable, this.arguments(), { cwd: this.configuration.cwd, stdio: ["ignore", "pipe", "pipe"], windowsHide: false, detached: this.configuration.keepOpen, ...(environment ? { env: environment } : {}) });
         let startupStderr = "";
         childProcess.stderr?.on("data", (chunk: Buffer | string) => {
             startupStderr = `${startupStderr}${chunk.toString()}`.slice(-8_192);
@@ -205,7 +218,8 @@ export class TestLauncher {
         const childArgs = this.configuration.packaged ? [] : [this.developmentMain()];
         if (this.configuration.profile) childArgs.push("--profile", this.configuration.profile, "--profile-dir", this.configuration.profileDirectory);
         childArgs.push(...args);
-        const child = spawn(this.configuration.executable, childArgs, { cwd: this.configuration.cwd, stdio: "ignore", windowsHide: true });
+        const environment = this.appEnvironment();
+        const child = spawn(this.configuration.executable, childArgs, { cwd: this.configuration.cwd, stdio: "ignore", windowsHide: true, ...(environment ? { env: environment } : {}) });
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => { child.kill(); reject(new Error(`Second instance did not exit within ${this.timeouts.secondInstance ?? 15000} ms.`)); }, this.timeouts.secondInstance ?? 15000);
             child.once("error", (error) => { clearTimeout(timer); reject(error); });

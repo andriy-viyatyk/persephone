@@ -37,6 +37,7 @@ import { isBoardRootBusy, subscribeBusyBoardRoots } from "../../api/boards/busy-
 import "../../uikit/Button/Button.css";
 import "../../uikit/SegmentedControl/SegmentedControl.css";
 import { t } from "../../../shared/i18n/t";
+import { getPlatformFeature } from "../../../shared/platform-features";
 
 type BodyView = BoardsTreeView | ToolsTreeView | BoardsEmptyBodyView;
 
@@ -413,13 +414,13 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps<
                 icon: createIconElement("folder-open", { width: 14, height: 14 }),
                 onClick: () => { void app.pages.openPath(root); },
             },
-            {
+            ...(getPlatformFeature("desktop.boardShortcut").available ? [{
                 id: "create-board-shortcut",
                 label: t("shell.createBoardShortcut"),
                 icon: createIconElement("open-link", { width: 14, height: 14 }),
                 onClick: () => { void createBoardShortcut(root); },
                 startGroup: true,
-            },
+            }] : []),
             {
                 id: "delete-board",
                 label: t("explorer.deleteBoardMenu"),
