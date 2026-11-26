@@ -167,7 +167,11 @@ no stage may add a deliberate delay. The final GNOME check still verifies the fu
   with existing Vite warnings. No unit tests or test harnesses were added.
 - [x] Run affected existing browser and board UI integration areas on Windows (Claude, after restarting `npm start`):
   `browser`, `boards` and `core/startup`, 211 passed, 2 skipped. Manual GNOME checks: see "VM results" below.
-- [ ] Windows toast click (manual, on the user's desktop): not yet run.
+- [x] Windows toast click (the user, 2026-11-26): with the window minimized and another page active, clicking the
+  toast restored the window and activated the browser page; the page's `onclick` ran. The dev app (`electron.exe`)
+  shows no toasts on its own: Windows needs an AppUserModelID backed by a Start Menu shortcut, which the installer
+  creates for release builds. For the check, a temporary shortcut was made with `shell.writeShortcutLink(...,
+  { appUserModelId })` plus `app.setAppUserModelId(...)` from `main.script`, then removed.
 
 ### Manual verification (Claude: Ubuntu VM and Windows)
 
