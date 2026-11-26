@@ -20,6 +20,7 @@ export type PlatformFeatureId =
     | "speech.windowsVoiceTyping";
 export type FeatureAvailability = { available: true } | { available: false; reason: string };
 type PlatformSlot = "win32" | "linux" | "darwin" | "unsupported";
+export type PlatformFeatureRuntimeAvailability = Partial<Record<"desktop.tray" | "desktop.closeToTray", boolean>>;
 
 const featureAvailability: Record<PlatformFeatureId, Record<PlatformSlot, boolean>> = {
     "terminal.launch": { win32: true, linux: false, darwin: false, unsupported: false },
@@ -52,9 +53,14 @@ function unavailableReason(platform: PlatformSlot): string {
     return `Not available on ${name}.`;
 }
 
-/** Read the static availability of one platform feature. */
-export function getPlatformFeature(id: PlatformFeatureId): FeatureAvailability {
+/** Read platform availability, with optional runtime discovery for tray features. */
+export function getPlatformFeature(
+    id: PlatformFeatureId,
+    runtimeAvailability?: PlatformFeatureRuntimeAvailability,
+): FeatureAvailability {
     const currentPlatform: PlatformSlot = supportedPlatform ?? "unsupported";
+    if (currentPlatform === "linux" && (id === "desktop.tray" || id === "desktop.closeToTray")
+        && runtimeAvailability?.[id] === true) return { available: true };
     if (featureAvailability[id][currentPlatform]) return { available: true };
     return { available: false, reason: unavailableReason(currentPlatform) };
 }

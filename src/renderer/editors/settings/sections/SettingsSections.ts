@@ -6,11 +6,10 @@ import { api } from "../../../../ipc/renderer/api";
 import { createComponentModelDriver, TComponentModel, type ComponentModelDriver } from "../../../core/state/model";
 import { ButtonView } from "../../../uikit/Button/ButtonView";
 import { DotView } from "../../../uikit/Dot/DotView";
-import { HelpIconView } from "../../../uikit/HelpIcon/HelpIconView";
 import { SubtreeSwap } from "../../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { createDepsGate, type DepsGate } from "../../../uikit/shared/deps-gate";
-import { createSectionRoot, helpIcon, helpLabel, panel, settingsFieldLabel, text } from "./settings-native";
+import { createSectionRoot, helpLabel, panel, settingsFieldLabel, text } from "./settings-native";
 import { t } from "../../../../shared/i18n/t";
 import { createLibraryPathField, PathField } from "../fields/PathField";
 import { appSettingsStore } from "../fields/settings-store";
@@ -59,41 +58,6 @@ export class LinkBehaviorSectionView extends VanillaView<Record<string, never>> 
         host.append(field.root);
         field.mount();
         this.root.append(host);
-    }
-}
-
-export class WindowBehaviorSectionView extends VanillaView<Record<string, never>> {
-    private description: HelpIconView | undefined;
-
-    public constructor(props: Record<string, never>) {
-        super(props, createSectionRoot("settings-section"));
-    }
-
-    protected onMount(): void {
-        const row = panel({ direction: "row", align: "center", paddingBottom: "md" });
-        const checkbox = this.child(new CheckboxField({
-            store: appSettingsStore as SettingsStore<boolean>,
-            id: "window.close-to-tray",
-            label: t("settings.keepRunningTray"),
-        }));
-        row.append(checkbox.root);
-        checkbox.mount();
-        this.description = helpIcon(t("settings.keepRunningTray"), t("settings.lastWindowTray"), (cleanup) => this.own(cleanup));
-        row.append(this.description.root);
-        this.root.append(row);
-        this.sync();
-        this.own(settings.watch("window.close-to-tray", () => this.sync()));
-    }
-
-    protected onDispose(): void {
-        this.description = undefined;
-    }
-
-    private sync(): void {
-        const closeToTray = settings.get("window.close-to-tray");
-        if (this.description) {
-            this.description.update({ label: t("settings.moreInformation", { label: t("settings.keepRunningTray") }), text: closeToTray ? t("settings.lastWindowTray") : t("settings.lastWindowQuit") });
-        }
     }
 }
 

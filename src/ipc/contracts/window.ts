@@ -3,7 +3,13 @@ import type { PageDragData, PageDescriptor, WindowPages } from "../../shared/typ
 import type { IWindowDisplay, IWindowMoveResult, WindowDisplayTarget } from "../api-param-types";
 import type { EventObject } from "./event-object";
 
+export interface TrayAvailabilitySnapshot {
+    trayAvailable: boolean;
+    closeToTrayAvailable: boolean;
+}
+
 export interface WindowApi {
+    getTrayAvailability: () => Promise<TrayAvailabilitySnapshot>;
     setBoardWindowIdentity: (request: { displayName: string; iconDataUrl: string }) => Promise<void>;
     createBoardShortcut: (request: CreateBoardShortcutRequest) => Promise<boolean>;
     openBoardWindow: (boardRoot: string) => Promise<void>;

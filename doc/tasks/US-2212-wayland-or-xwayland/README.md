@@ -54,8 +54,8 @@ session, so Wayland is where the platform goes. Its two problems are fixable or 
 
 - **Startup show** is a bug in Persephone, owned by US-2213: on Wayland, show the window without waiting for
   `ready-to-show` (or with a short fallback timer).
-- **No window position** is how Wayland works. US-2213 restores the saved size and maximized state on Wayland and
-  leaves placement to GNOME; saved positions are not applied there.
+- **No window position** is how Wayland works. US-2213 restores the saved size on Linux and leaves placement to
+  GNOME; saved positions are not applied there (maximized state is not saved on any platform today).
 
 **Fallback:** `--ozone-platform=x11` runs the app through XWayland if a user hits a Wayland problem. It needs no code;
 it is documented in [linux-development.md](../../linux-development.md) and, in Phase 4, can go into the `.desktop` file

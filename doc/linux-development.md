@@ -64,6 +64,31 @@ WSL's GUI support is not a GNOME desktop, so desktop-integration checks (EPIC-21
 `persephone-vm`, Ubuntu 26.04.1 Desktop, GNOME on Wayland, user `dev` with automatic login and passwordless
 `sudo`. It needs membership in the local **Hyper-V Administrators** group, not elevation.
 
+### Development dock identity
+
+Install a per-user desktop entry to give the dev app its own dock icon and XWayland window class. From the
+Linux checkout, substitute its absolute path and the Node installation from the WSL setup above:
+
+```bash
+checkout="$(realpath ~/persephone)"
+node="$(realpath "$HOME/.local/node/bin/node")"
+mkdir -p "$HOME/.local/share/applications"
+sed -e "s|@CHECKOUT@|$checkout|g" -e "s|@NODE@|$node|g" \
+    scripts/linux-vm/com.viyatyk.persephone.desktop \
+    > "$HOME/.local/share/applications/com.viyatyk.persephone.desktop"
+chmod +x "$HOME/.local/share/applications/com.viyatyk.persephone.desktop"
+desktop-file-validate "$HOME/.local/share/applications/com.viyatyk.persephone.desktop"
+```
+
+The entry launches `scripts/dev.mjs` directly, uses the checkout's absolute `assets/icon.png`, and sets
+`StartupWMClass` for XWayland grouping. Remove it with:
+
+```bash
+rm "$HOME/.local/share/applications/com.viyatyk.persephone.desktop"
+```
+
+This is a development-only entry. Packaged desktop files and icon installation belong to the Linux release phase.
+
 Agents control it with plain OpenSSH (key `~/.ssh/persephone-vm`, host alias `persephone-vm` in `~/.ssh/config`,
 password login disabled) and with [`scripts/linux-vm/vm.ps1`](../scripts/linux-vm/vm.ps1):
 

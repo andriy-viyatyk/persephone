@@ -4,12 +4,25 @@ import { getAssetPath } from './utils';
 import { openWindows } from './open-windows';
 import { t } from '../shared/i18n/t';
 import { getAudioCaptureCount, subscribeAudioCaptureCount } from './audio-capture-state';
+import { isLinux } from '../shared/platform';
+import { TrayAvailabilityLinux } from './tray-availability-linux';
 
 let tray: Tray | null = null;
 let unsubscribeAudioCaptureCount: (() => void) | undefined;
+const trayAvailability = new TrayAvailabilityLinux();
 
 export function setupTray() {
-    if (!tray) tray = new Tray(getAssetPath('icon.png'));
+    openWindows.setTrayAvailability(trayAvailability);
+    if (!tray) {
+        try {
+            tray = new Tray(getAssetPath('icon.png'));
+            trayAvailability.setTrayCreated(true);
+        } catch (error) {
+            trayAvailability.setTrayCreated(false);
+            if (!isLinux) throw error;
+            return;
+        }
+    }
     unsubscribeAudioCaptureCount?.();
     unsubscribeAudioCaptureCount = subscribeAudioCaptureCount(rebuildTray);
     rebuildTray();
@@ -20,6 +33,7 @@ export function setupTray() {
             openWindows.showWindows();
         }
     });
+    if (isLinux) void trayAvailability.refresh();
 }
 
 export function rebuildTray(): void {

@@ -31,9 +31,9 @@ import {
     createScriptLibrarySection,
     TerminalSectionView,
     VideoPlayerSectionView,
-    WindowBehaviorSectionView,
     VoiceTypingSettingsSectionView,
 } from "./sections/SettingsSections";
+import { WindowBehaviorSectionView } from "./sections/WindowBehaviorSection";
 import { helpHeader, sectionTitle } from "./sections/settings-native";
 import "./settings.css";
 import "../../uikit/Button/Button.css";

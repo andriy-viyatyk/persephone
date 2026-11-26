@@ -19,6 +19,7 @@ import { BoardRoot } from "../shared/board/board-root";
 import { boardWindowStateKey } from "./board-root-hashes";
 import { VoiceTypingController, type VoiceTypingState } from "./voice-typing-controller";
 import { isWindows } from "../shared/platform";
+import { windowPlatformPolicy } from "./window-platform-policy";
 
 interface WindowState {
     width: number;
@@ -41,6 +42,7 @@ export class OpenWindow {
     canQuit = false;
     quitTimeout: ReturnType<typeof setTimeout> | null = null;
     onClose?: (window: OpenWindow) => void;
+    onCloseStart?: () => void;
     onRendererUnavailable?: (window: OpenWindow) => void;
     private readonly voiceTypingController = new VoiceTypingController((eventName, data) => this.send(eventName, data));
     private readonly boardHostRootLookup?: BoardHostRootLookup;
@@ -82,19 +84,18 @@ export class OpenWindow {
             y: undefined as number | undefined,
         });
 
-        if (position) {
+        if (position && windowPlatformPolicy.useWindowPosition) {
             windowState.x = position.x - Math.floor(windowState.width / 2);
             windowState.y = position.y - 16;
         }
 
-        windowState = this.ensureVisiblePosition(windowState);
+        if (windowPlatformPolicy.useWindowPosition) windowState = this.ensureVisiblePosition(windowState);
 
         this.window = new BrowserWindow({
-            show: false, // show after size fix on 'ready-to-show' event
+            show: false,
             height: windowState.height,
             width: windowState.width,
-            x: windowState.x,
-            y: windowState.y,
+            ...(windowPlatformPolicy.useWindowPosition ? { x: windowState.x, y: windowState.y } : {}),
             icon: getAssetPath("icon.png"),
             frame: false,
             webPreferences: {
@@ -135,10 +136,12 @@ export class OpenWindow {
             });
         }
 
-        this.window.once("ready-to-show", () => {
-            this.window?.setSize(windowState.width, windowState.height);
-            this.window?.show();
-        });
+        if (windowPlatformPolicy.waitForReadyToShow) {
+            this.window.once("ready-to-show", () => {
+                this.window?.setSize(windowState.width, windowState.height);
+                this.window?.show();
+            });
+        }
 
         this.window.webContents.on("render-process-gone", () => this.onRendererUnavailable?.(this));
         this.window.webContents.on("did-start-navigation", (_event, _url, _inPlace, isMainFrame) => {
@@ -148,6 +151,7 @@ export class OpenWindow {
         this.window.on("close", (event) => {
             if (!this.canQuit) {
                 event.preventDefault();
+                this.onCloseStart?.();
                 this.send("eBeforeQuit", undefined);
                 // If renderer is crashed or unresponsive, force-quit after timeout.
                 //
@@ -334,6 +338,7 @@ export class OpenWindow {
                 ),
             );
         }
+        if (!windowPlatformPolicy.waitForReadyToShow) this.window.show();
 
         // this.window.webContents.openDevTools();
     }
@@ -350,15 +355,17 @@ export class OpenWindow {
             if (this.window.isMinimized()) {
                 this.window.restore();
             }
-            // Re-check position against current display layout (display may have
-            // changed since window was last shown, e.g. VM disconnect, dock/undock)
-            const currentBounds = this.window.getBounds();
-            const fixed = this.ensureVisiblePosition(currentBounds);
-            if (
-                fixed.x !== currentBounds.x || fixed.y !== currentBounds.y ||
-                fixed.width !== currentBounds.width || fixed.height !== currentBounds.height
-            ) {
-                this.window.setBounds(fixed);
+            if (windowPlatformPolicy.useWindowPosition) {
+                // Re-check position against current display layout (display may have
+                // changed since window was last shown, e.g. VM disconnect, dock/undock)
+                const currentBounds = this.window.getBounds();
+                const fixed = this.ensureVisiblePosition(currentBounds);
+                if (
+                    fixed.x !== currentBounds.x || fixed.y !== currentBounds.y ||
+                    fixed.width !== currentBounds.width || fixed.height !== currentBounds.height
+                ) {
+                    this.window.setBounds(fixed);
+                }
             }
             this.window.focus();
         }
@@ -380,12 +387,18 @@ export class OpenWindow {
         if (this.window && !this.window.isMaximized() && !this.window.isFullScreen()) {
             const bounds = this.window?.getBounds();
             if (bounds) {
-                electronStore.set(this.boardRoot ? boardWindowStateKey(BoardRoot.from(this.boardRoot)) : "windowState", {
-                    width: bounds.width,
-                    height: bounds.height,
-                    x: bounds.x,
-                    y: bounds.y,
-                });
+                const key = this.boardRoot ? boardWindowStateKey(BoardRoot.from(this.boardRoot)) : "windowState";
+                if (windowPlatformPolicy.saveWindowPosition) {
+                    electronStore.set(key, {
+                        width: bounds.width,
+                        height: bounds.height,
+                        x: bounds.x,
+                        y: bounds.y,
+                    });
+                } else {
+                    const previous = electronStore.get<WindowState>(key, { width: 1024, height: 680 });
+                    electronStore.set(key, { ...previous, width: bounds.width, height: bounds.height });
+                }
             }
         }
     }, 500);

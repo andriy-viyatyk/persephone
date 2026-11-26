@@ -14,6 +14,7 @@ import { bindDomain } from "./endpoint-registry";
 
 export function initWindowHandlers(): void {
     bindDomain<WindowApi>({
+        getTrayAvailability: async () => openWindows.getTrayAvailabilitySnapshot(),
         setBoardWindowIdentity: async (event: IpcMainEvent, request: { displayName: string; iconDataUrl: string }) =>
             openWindows.updateBoardIdentity(BrowserWindow.fromWebContents(event.sender), request),
         createBoardShortcut: async (event: IpcMainEvent, request: CreateBoardShortcutRequest) =>

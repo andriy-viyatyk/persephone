@@ -12,6 +12,9 @@ import { isTestInstance } from "./test-mode/instance-options";
 import fs from "node:fs";
 import path from "node:path";
 import { WindowNames, normalizePersistedWindowNames } from "./window-names";
+import { isLinux } from "../shared/platform";
+import { getPlatformFeature } from "../shared/platform-features";
+import type { TrayAvailabilityLinux, TrayAvailabilitySnapshot } from "./tray-availability-linux";
 
 export interface OpenWindowData {
     window?: OpenWindow;
@@ -44,6 +47,7 @@ class OpenWindows {
     private readonly windowListeners = new Set<(window: BrowserWindow) => void>();
     private lastFocusedNormalWindow: number | undefined;
     private boardHostRootLookup?: BoardHostRootLookup;
+    private trayAvailability?: TrayAvailabilityLinux;
     private readonly windowNames = new WindowNames(this);
 
     subscribeWindowCreated(listener: (window: BrowserWindow) => void): () => void {
@@ -61,6 +65,25 @@ class OpenWindows {
 
     setBoardOriginLookup(lookup: BoardHostRootLookup): void {
         this.boardHostRootLookup = lookup;
+    }
+
+    setTrayAvailability(availability: TrayAvailabilityLinux): void {
+        this.trayAvailability = availability;
+    }
+
+    getTrayAvailabilitySnapshot = (): TrayAvailabilitySnapshot =>
+        this.trayAvailability?.snapshot() ?? { trayAvailable: false, closeToTrayAvailable: false };
+
+    private refreshTrayAvailabilityForClose = (window: OpenWindow): void => {
+        if (!isLinux || isTestInstance() || !this.trayAvailability) return;
+        const record = this.findWindowDataByOpenWindow(window);
+        if (!record || record.boardRoot) return;
+        const isLastNormalWindow = !this.windows.some((item) => item !== record && !item.boardRoot && item.window);
+        if (isLastNormalWindow) void this.trayAvailability.refresh();
+    };
+
+    private registerWindowCloseStart(window: OpenWindow): void {
+        window.onCloseStart = () => this.refreshTrayAvailabilityForClose(window);
     }
 
     private trackRendererAvailability = (window: OpenWindow): void => {
@@ -112,6 +135,7 @@ class OpenWindows {
         const newWindow = new OpenWindow(dropPosition, undefined, { boardHostRootLookup: this.boardHostRootLookup });
         newWindow.index = wIndex;
         newWindow.onClose = this.windowOnClose;
+        this.registerWindowCloseStart(newWindow);
         this.trackRendererAvailability(newWindow);
         newWindow.window.on("focus", () => { if (!newWindow.boardRoot) this.lastFocusedNormalWindow = newWindow.window.id; });
         let windowData = this.windows.find((w) => w.index === index);
@@ -170,6 +194,7 @@ class OpenWindows {
         const win = new OpenWindow(undefined, root, { boardHostRootLookup: this.boardHostRootLookup });
         win.index = data.index;
         win.onClose = this.windowOnClose;
+        this.registerWindowCloseStart(win);
         this.trackRendererAvailability(win);
         win.window.on("focus", () => { if (!win.boardRoot) this.lastFocusedNormalWindow = win.window.id; });
         data.window = win;
@@ -312,12 +337,21 @@ class OpenWindows {
         browserWindow: BrowserWindow | null | undefined,
         canQuit: boolean
     ) => {
+        const pendingTrayProbe = isLinux ? this.trayAvailability?.pending : undefined;
+        if (pendingTrayProbe) {
+            void pendingTrayProbe.then(() => this.setCanQuit(browserWindow, canQuit));
+            return;
+        }
         const openWindowData = this.findWindowDataByWindow(browserWindow);
         const openWindow = openWindowData?.window;
         if (openWindowData?.boardRoot) { openWindow?.close(); return; }
         const isLastWindow = !this.windows.some(w => w !== openWindowData && !w.boardRoot && w.window);
-        if (isLastWindow && canQuit && process.platform !== "darwin") this.doQuit = true;
-        if (isLastWindow && !this.doQuit && !canQuit) {
+        const trayAvailable = getPlatformFeature("desktop.closeToTray", {
+            "desktop.closeToTray": this.getTrayAvailabilitySnapshot().closeToTrayAvailable,
+        }).available;
+        const effectiveCanQuit = canQuit || (isLinux && !trayAvailable);
+        if (isLastWindow && effectiveCanQuit && process.platform !== "darwin") this.doQuit = true;
+        if (isLastWindow && !this.doQuit && !effectiveCanQuit) {
             if (openWindow.quitTimeout) {
                 clearTimeout(openWindow.quitTimeout);
                 openWindow.quitTimeout = null;
