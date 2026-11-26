@@ -1,3 +1,4 @@
+import path from "node:path";
 import { test } from "../../../lib/context.mjs";
 import {
     clickTabMenuItem,
@@ -205,7 +206,7 @@ export default [
         try {
             const page = await openTextPage(ctx, `${folder}/rename`, oldName, "rename this file\n");
             owned.add(page.id);
-            const newPath = `${page.filePath.slice(0, page.filePath.lastIndexOf("\\") + 1)}${newName}`;
+            const newPath = path.join(path.dirname(page.filePath), newName);
             if (await ctx.app.fs.exists(newPath)) await ctx.app.fs.delete(newPath);
             await openTabMenu(ctx, page.id, "rename");
             await clickTabMenuItem(ctx, "rename");

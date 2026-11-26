@@ -1,3 +1,4 @@
+import path from "node:path";
 import { test } from "../../../lib/context.mjs";
 
 export default [
@@ -88,7 +89,7 @@ export default [
         const before = await bounds();
         ctx.expect(before.width > 0 && before.height > 0).toBe(true);
         const paths = await ctx.app.main.runtime.paths;
-        const configPath = `${paths.userData}\\config.json`;
+        const configPath = path.join(paths.userData, "config.json");
         const readSavedBounds = async (activeContext) => {
             const text = await activeContext.callText("fs.read", [configPath], { maxLength: 1024 });
             const match = text.match(/"windowState"\s*:\s*({[^}]+})/);

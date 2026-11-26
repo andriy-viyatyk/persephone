@@ -44,7 +44,7 @@ export default [
 
     test("Tor check page reports a Tor exit", async (ctx) => {
         const torPath = process.env.PERSEPHONE_TEST_TOR_EXE;
-        if (!torPath) throw new Error("PERSEPHONE_TEST_TOR_EXE must name a usable tor.exe for this requires: [network, tor] test.");
+        if (!torPath) throw new Error("PERSEPHONE_TEST_TOR_EXE must name a usable Tor executable for this requires: [network, tor] test.");
 
         const setting = "tor.exe-path";
         const previousPath = await ctx.app.settings.get(setting);

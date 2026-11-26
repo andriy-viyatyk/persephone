@@ -1,4 +1,5 @@
 import { t } from "../../../shared/i18n/t";
+import { isPrimaryModifier } from "../../../shared/keymap";
 import type { MermaidEditor, MermaidEditorState } from "./MermaidEditor";
 import { createPanelElement, type PanelStyleProps } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
@@ -183,6 +184,7 @@ export class MermaidBodyView extends VanillaView<MermaidBodyViewProps> {
             src: svgUrl,
             alt: t("editors.mermaidDiagram"),
             onCopyToClipboard: (blob) => this.model.imageActions.copy(blob),
+            matchesPrimaryModifier: isPrimaryModifier,
         };
     }
 }

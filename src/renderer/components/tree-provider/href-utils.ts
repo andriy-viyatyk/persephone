@@ -1,8 +1,9 @@
-/** Case-insensitive href equality. File paths can reach tree-provider views from the OS with
- * different casing, while selection remains case-insensitive. */
+import { hrefCompareKey } from "../../../shared/path-containment";
+import { pathsAreCaseInsensitive } from "../../../shared/platform";
+
+/** Href equality follows the platform's case rule; separators are compared as written. */
 export function hrefKey(href: string): string {
-    // Provider href identity is case-insensitive; filesystem watch paths use their own boundary key.
-    return href.toLowerCase();
+    return pathsAreCaseInsensitive ? href.toLowerCase() : href;
 }
 
 export function sameHref(a: string, b: string): boolean {
@@ -14,7 +15,7 @@ export function sameHrefs(a: string[], b: string[]): boolean {
     return a.length === b.length && a.every((href, index) => sameHref(href, b[index]));
 }
 
-/** Case- and separator-insensitive href form for self/descendant drop guards. */
+/** Platform-aware href form for self/descendant drop guards. */
 export function normalizeHref(href: string): string {
-    return href.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+    return hrefCompareKey(href).replace(/\/+$/, "");
 }

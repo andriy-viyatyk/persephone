@@ -46,7 +46,11 @@ export interface IExecuteOptions {
     /**
      * Shell to run the command line through. Default `true` (the OS default
      * shell). A string picks a specific shell (`"bash"`, `"pwsh"`); `false`
-     * runs the executable directly without a shell.
+     * runs the executable directly without a shell. On Linux, a direct command
+     * line splits on spaces/tabs outside double quotes; double quotes group text
+     * and represent empty arguments, and backslashes before double quotes follow
+     * Windows argv escaping rules. Single quotes and shell syntax have no special
+     * meaning, so quote executable paths containing spaces.
      */
     shell?: boolean | string;
     /**

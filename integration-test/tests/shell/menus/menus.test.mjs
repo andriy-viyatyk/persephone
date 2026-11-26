@@ -1,3 +1,4 @@
+import path from "node:path";
 import { test } from "../../../lib/context.mjs";
 import {
     clickTabMenuItem,
@@ -14,7 +15,7 @@ const menuFixtureRoot = "us-2037/menus";
 export default [
     test("tab context menu lists its actions and Save writes the changed fixture", async (ctx) => {
         const folder = ctx.fixture(`${menuFixtureRoot}/tab-save`);
-        const filePath = `${folder}\\menu-save.txt`;
+        const filePath = path.join(folder, "menu-save.txt");
         let pageId;
         try {
             await ctx.app.fs.removeDir(folder, true);

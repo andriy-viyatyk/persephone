@@ -80,12 +80,12 @@ export function buildRootsTree<K extends string>(
                 displaySegments = [label];
                 keySegments = [root];
             } else {
-                displaySegments = relativePath.split(/[\\/]/).filter(Boolean);
+                displaySegments = relativePath.split(fpSep).filter(Boolean);
                 keySegments = [...displaySegments];
                 displaySegments[displaySegments.length - 1] = label;
             }
         } else {
-            displaySegments = root.split(/[\\/]/).filter(Boolean);
+            displaySegments = root.split(fpSep).filter(Boolean);
             keySegments = [...displaySegments];
             if (displaySegments.length > 0) displaySegments[displaySegments.length - 1] = label;
         }

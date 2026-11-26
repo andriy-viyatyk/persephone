@@ -6,6 +6,7 @@ import { McpClient, type Timeouts } from "./client.js";
 import { isTestInstanceOption } from "../ipc/test-host-protocol.js";
 import { errMessage } from "../shared/utils.js";
 import { isLinux, isWindows } from "../shared/platform.js";
+import { normalizeTestFile } from "./test-identity.js";
 
 const MAX_MAIN_OUTPUT_LINE_CHARS = 8_192;
 
@@ -240,7 +241,7 @@ export class TestLauncher {
             const paths = await client.call("main.runtime.paths");
             const userData = paths && typeof paths === "object" && "userData" in paths && typeof paths.userData === "string" ? paths.userData : undefined;
             const connectedDirectory = userData ? await fs.promises.realpath(userData) : undefined;
-            if (!connectedDirectory || connectedDirectory.toLowerCase() !== canonical.toLowerCase()) throw new Error(`Connected app profile identity did not match ${canonical}.`);
+            if (!connectedDirectory || normalizeTestFile(connectedDirectory) !== normalizeTestFile(canonical)) throw new Error(`Connected app profile identity did not match ${canonical}.`);
         } catch (error) {
             await client.close();
             throw new Error(`Cannot verify attached profile identity: ${errMessage(error)}`, { cause: error });

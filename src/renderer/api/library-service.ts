@@ -9,6 +9,7 @@ import type { PathWatchBatch } from "../../ipc/api-types";
 import { subscribe } from "./path-watch";
 import { api } from "../../ipc/renderer/api";
 import { t } from "../../shared/i18n/t";
+import { isWindows } from "../../shared/platform";
 
 // =============================================================================
 // Types
@@ -185,7 +186,8 @@ class LibraryService extends TModel<LibraryServiceState> {
                 } else {
                     const ext = fpExtname(dirent.name).toLowerCase();
                     if (ext === ".ts" || ext === ".js") {
-                        const relativePath = fpRelative(baseDir, fullPath).replace(/\\/g, "/");
+                        const nativeRelativePath = fpRelative(baseDir, fullPath);
+                        const relativePath = isWindows ? nativeRelativePath.replace(/\\/g, "/") : nativeRelativePath;
                         result.push(relativePath);
                     }
                 }

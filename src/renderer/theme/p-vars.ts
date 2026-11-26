@@ -1,3 +1,5 @@
+import { isWindows } from "../../shared/platform";
+
 /**
  * The `--p-*` design contract, and the `:root` bridge that makes it resolve.
  *
@@ -64,14 +66,25 @@ export const P_VAR_SOURCES: Record<string, string> = {
     "--p-graph-group-border": "--color-graph-group-border",
 };
 
-/**
- * The application's monospace stack, as one definition.
- *
- * `global-styles` sets it on `body` through `--p-font-family`, and av-grid's `--avg-font-family`
- * falls back to the same variable. Without it the grid renders in a system sans stack, because
- * av-grid's own root sets `font-family` rather than inheriting it.
- */
-export const APP_FONT_FAMILY = 'Consolas, monospace, "Courier New"';
+/** The application's monospace stack, also consumed by av-grid through `--p-font-family`. */
+export const APP_FONT_FAMILY = isWindows
+    ? 'Consolas, monospace, "Courier New"'
+    : '"Ubuntu Mono", "DejaVu Sans Mono", "Noto Sans Mono", "Liberation Mono", "Noto Color Emoji", monospace';
+
+/** Sans stack for Markdown prose while preserving its existing system font preferences. */
+export const MARKDOWN_SANS_FONT_FAMILY = isWindows
+    ? '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif'
+    : '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Ubuntu, "DejaVu Sans", "Noto Color Emoji", Helvetica, Arial, sans-serif';
+
+/** Code stack for Markdown, with Linux fonts before the generic fallback. */
+export const MARKDOWN_CODE_FONT_FAMILY = isWindows
+    ? 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace'
+    : 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", "Ubuntu Mono", "DejaVu Sans Mono", "Noto Sans Mono", "Noto Color Emoji", monospace';
+
+/** Error view keeps its own Windows ordering and gets Linux monospace fallbacks. */
+export const ERROR_VIEW_FONT_FAMILY = isWindows
+    ? 'Consolas, "Courier New", monospace'
+    : '"Ubuntu Mono", "DejaVu Sans Mono", "Noto Sans Mono", "Liberation Mono", "Noto Color Emoji", monospace';
 
 /**
  * The two non-color tokens av-grid reads. They are not in `P_VAR_SOURCES` because they are not
@@ -81,6 +94,9 @@ export const APP_FONT_FAMILY = 'Consolas, monospace, "Courier New"';
 const P_VAR_LITERALS: Record<string, string> = {
     "--p-font-base": "var(--font-base)",
     "--p-font-family": APP_FONT_FAMILY,
+    "--p-font-family-sans": MARKDOWN_SANS_FONT_FAMILY,
+    "--p-font-family-markdown-code": MARKDOWN_CODE_FONT_FAMILY,
+    "--p-font-family-error-view": ERROR_VIEW_FONT_FAMILY,
 };
 
 const P_VARS_STYLE_ATTRIBUTE = "data-persephone-p-vars";

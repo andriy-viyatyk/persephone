@@ -85,4 +85,8 @@ export default test("minimized browser pages expose unseen-mode visibility in ev
     }
 // The mode-off steps need real minimize/restore transitions of a window the user can see; on a
 // locked screen or another virtual desktop the window is already occluded.
-}, { requires: ["desktop"] });
+}, {
+    // "windows": minimizing needs a window manager that honours it. WSLg and Xvfb do not;
+    // re-check on GNOME in the multiplatform Phase 2 VM.
+    requires: ["desktop", "windows"],
+});

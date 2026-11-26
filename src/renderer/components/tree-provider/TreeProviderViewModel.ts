@@ -592,11 +592,11 @@ export class TreeProviderViewModel extends TComponentModel<
         if (!tree) return;
 
         // Compute ancestor directory paths from href to rootPath.
-        const rootLower = provider.rootPath.toLowerCase();
+        const rootKey = hrefKey(provider.rootPath);
         const ancestors: string[] = [];
         let current = href;
         let parent = fpDirname(current);
-        while (parent !== current && parent.toLowerCase() !== rootLower) {
+        while (parent !== current && hrefKey(parent) !== rootKey) {
             ancestors.unshift(parent);
             current = parent;
             parent = fpDirname(current);

@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { test } from "../../../lib/context.mjs";
 import { closeBoardPage, fixtureBoard, openBoardPage, resetBoardFile, trustFixtureBoard, untrustBoard } from "../../helpers/boards.mjs";
 
@@ -107,9 +108,9 @@ export default [
 
     test("board-scoped file access reads, writes, and lists files", async (ctx) => {
         const root = fixtureBoard(ctx, POSITIVE_BOARD);
-        const startPath = `${root}\\data\\start.json`;
-        const resultPath = `${root}\\data\\result.txt`;
-        const dataPath = `${root}\\data`;
+        const startPath = path.join(root, "data", "start.json");
+        const resultPath = path.join(root, "data", "result.txt");
+        const dataPath = path.join(root, "data");
         let page;
         try {
             await resetBoardFile(ctx, root, "data/start.json", '{"value":"fixture-start"}\n');

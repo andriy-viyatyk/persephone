@@ -338,7 +338,7 @@ The following rules are enforced at error level by `import-x/no-restricted-paths
 4. **Content (`contentZones`):** `content/` does not import `components/` or `scripting/`; editor imports are limited to the catalog, registry and browser action files. These retain file-to-editor resolution and the browser `instanceof` check.
 5. **Components (`componentsZone`, `componentsScriptingZone`):** non-story `components/` does not import `scripting/`; its only permitted editor module is the generic `editors/base/editor-catalog.ts`.
 6. **UIKit (`uikitZone`, Rule 6):** non-story `uikit/` imports only `core/`, `theme/` and itself among renderer layers; it does not import `shared/`, IPC, main, renderer composition roots, host or preload modules. Stories retain the UI boundary.
-7. **Theme (`themeZones`):** `theme/` does not import UIKit or application layers. Its only permitted IPC module is `ipc/renderer/api`, used for native theme synchronization.
+7. **Theme (`themeZones`):** `theme/` does not import UIKit or application layers. It may import only the pure `shared/platform.ts` helper for platform-owned theme values; that helper has no renderer dependency. Its only permitted IPC module is `ipc/renderer/api`, used for native theme synchronization.
 8. **API (`apiBoardZone`, `capabilitiesBoardZone`):** its board-editor imports are limited by the documented US-1824 exceptions, and capabilities cannot import board-editor implementation.
 9. **Editor base (the `editors/base` zones):** editor base does not import board implementation or domain modules, except the pure `shared/board/board-editor-id.ts` helper.
 10. **Audio (`audioZone`):** `audio/` does not import other renderer layers; IPC and shared contracts remain available.

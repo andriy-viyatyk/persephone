@@ -23,9 +23,7 @@ function buildGlobalStyles(): string {
         button {
             font-family: var(
                 --vscode-editor-font-family,
-                Consolas,
-                monospace,
-                "Courier New"
+                var(--p-font-family)
             );
             font-size: var(--vscode-editor-font-size, 14px);
             font-weight: var(--vscode-editor-font-weight, normal);

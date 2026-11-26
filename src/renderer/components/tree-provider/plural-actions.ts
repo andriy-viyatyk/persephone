@@ -15,6 +15,7 @@ import { copyPathsToOsClipboard } from "./os-clipboard";
 import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
 import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
+import { hrefCompareKey } from "../../../shared/path-containment";
 
 /**
  * Drop any selected item that lives inside another selected folder. A folder-level action
@@ -32,9 +33,9 @@ import { t } from "../../../shared/i18n/t";
 export function pruneNestedItems<T extends Pick<ILink, "href" | "isDirectory">>(items: T[]): T[] {
     const dirs = items
         .filter((i) => i.isDirectory)
-        .map((i) => i.href.replace(/\\/g, "/").toLowerCase().replace(/\/?$/, "/"));
+        .map((i) => hrefCompareKey(i.href).replace(/\/?$/, "/"));
     return items.filter((i) => {
-        const href = i.href.replace(/\\/g, "/").toLowerCase();
+        const href = hrefCompareKey(i.href);
         // `href !== d.slice(0, -1)` keeps a selected folder from pruning itself.
         return !dirs.some((d) => href !== d.slice(0, -1) && href.startsWith(d));
     });

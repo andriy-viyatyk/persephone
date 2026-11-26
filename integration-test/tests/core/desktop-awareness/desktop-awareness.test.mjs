@@ -13,4 +13,8 @@ export default test("session and desktop visibility reflect the unlocked test wi
     } finally {
         await ctx.call(`${windowPath}.window.restore`, []).catch(() => {});
     }
-}, { requires: ["desktop"] });
+}, {
+    // "windows": minimizing needs a window manager that honours it. WSLg and Xvfb do not;
+    // re-check on GNOME in the multiplatform Phase 2 VM.
+    requires: ["desktop", "windows"],
+});

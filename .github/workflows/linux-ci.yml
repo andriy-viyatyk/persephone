@@ -1,0 +1,119 @@
+name: Linux CI
+
+on:
+  push:
+    branches: [main, 'upcoming-*']
+    paths-ignore: ['doc/**', '*.md']
+  pull_request:
+    paths-ignore: ['doc/**', '*.md']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.3'
+          cache: npm
+
+      - name: Log runner image
+        run: |
+          cat /etc/os-release
+          uname -m
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libnss3 libasound2t64 libgbm1 libxss1 libxtst6 \
+            libatk-bridge2.0-0t64 libcups2t64 libdrm2 libsecret-1-0 \
+            build-essential curl xz-utils fonts-noto-core fonts-noto-color-emoji \
+            xvfb xauth dbus dbus-x11 git
+
+      - name: Install JavaScript dependencies
+        run: |
+          npm ci
+          node node_modules/electron/install.js
+
+      - name: Prepare runner environment
+        run: |
+          test -w "$HOME"
+          git config --global user.name 'Persephone CI'
+          git config --global user.email 'ci@example.invalid'
+          mkdir -p "$RUNNER_TEMP/persephone-runtime"
+          chmod 700 "$RUNNER_TEMP/persephone-runtime"
+          echo "XDG_RUNTIME_DIR=$RUNNER_TEMP/persephone-runtime" >> "$GITHUB_ENV"
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run UI integration suite
+        id: ui
+        run: dbus-run-session -- xvfb-run -a npm run test:ui -- --prod
+
+      - name: Summarize UI integration suite
+        if: always()
+        env:
+          UI_OUTCOME: ${{ steps.ui.outcome }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const reportPath = 'integration-test/reports/latest.json';
+          const outcome = process.env.UI_OUTCOME || 'unknown';
+          const markdownCharacters = new Set(['\\', '`', '*', '_', '{', '}', '[', ']', '(', ')', '#', '+', '-', '.', '!', '|', '>']);
+          const escapeMarkdown = (value) => [...String(value)].map((character) => markdownCharacters.has(character) ? `\\${character}` : character).join('');
+          const unavailable = (reason) => `## UI integration suite\n\nReport unavailable: ${reason}\nSuite step outcome: ${escapeMarkdown(outcome)}\n`;
+          let body;
+
+          if (!['success', 'failure', 'cancelled'].includes(outcome)) {
+            body = unavailable('the suite step did not run');
+          } else if (!fs.existsSync(reportPath)) {
+            body = unavailable('integration-test/reports/latest.json was not created');
+          } else {
+            try {
+              const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+              const totals = report.summary;
+              if (!totals || !['passed', 'failed', 'skipped', 'notRun'].every((key) => Number.isInteger(totals[key])) || !Array.isArray(report.results)) {
+                throw new Error('aggregate report has an invalid summary or results list');
+              }
+              const skipped = report.results.filter((result) => result.status === 'skipped');
+              body = [
+                '## UI integration suite',
+                '',
+                `- Passed: ${totals.passed}`,
+                `- Failed: ${totals.failed}`,
+                `- Skipped: ${totals.skipped}`,
+                `- Not run: ${totals.notRun}`,
+                '',
+                '### Skipped tests',
+                '',
+                ...(skipped.length
+                  ? skipped.map((result) => `- ${escapeMarkdown(result.file)} — ${escapeMarkdown(result.name)}: ${escapeMarkdown(result.skipReason || 'reason not recorded')}`)
+                  : ['None.']),
+                '',
+              ].join('\n');
+            } catch (error) {
+              body = unavailable(`invalid aggregate report (${escapeMarkdown(error.message)})`);
+            }
+          }
+
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, body);
+          NODE
+
+      - name: Upload UI integration reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-ui-reports
+          path: integration-test/reports/
+          if-no-files-found: warn

@@ -1,5 +1,6 @@
 import type { CategoryViewMode } from "../../components/tree-provider/CategoryViewModel";
 import { fs } from "../../api/fs";
+import { isWindows, pathsAreCaseInsensitive } from "../../../shared/platform";
 
 const FILE_NAME = "folderViewMode.json";
 
@@ -63,7 +64,8 @@ class FolderViewModeService {
 
 /** Normalize path separators to forward slashes and lowercase for consistent lookup. */
 function normalizePath(p: string): string {
-    return p.replace(/\\/g, "/").toLowerCase();
+    const normalized = isWindows ? p.replace(/\\/g, "/") : p;
+    return pathsAreCaseInsensitive ? normalized.toLowerCase() : normalized;
 }
 
 /** Get parent path. Returns same path for root (e.g., "d:/"). */

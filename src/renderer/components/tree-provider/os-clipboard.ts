@@ -11,6 +11,7 @@ import { api } from "../../../ipc/renderer/api";
 import { ui } from "../../api/ui";
 import { copyPathsInto } from "../../api/copy-files";
 import { fpBasename } from "../../core/utils/file-path";
+import { hrefCompareKey } from "../../../shared/path-containment";
 import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
 
@@ -50,11 +51,11 @@ export async function pasteOsClipboardInto(
     // Collision confirm BEFORE the progress overlay (same wording as the
     // drag-drop import in TreeProviderViewModel.importFiles).
     const existing = new Set(
-        (await provider.list(targetDir)).map((l) => l.title.toLowerCase()),
+        (await provider.list(targetDir)).map((l) => hrefCompareKey(l.title)),
     );
     const clashing = clip.paths
         .map((p) => fpBasename(p))
-        .filter((name) => existing.has(name.toLowerCase()));
+        .filter((name) => existing.has(hrefCompareKey(name)));
     if (clashing.length) {
         const bt = await ui.confirm(
             t("menus.overwriteItems", { count: clashing.length, names: clashing.join(", ") } as never),

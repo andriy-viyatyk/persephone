@@ -27,8 +27,8 @@ async function cleanupFixture(ctx, handle) {
     await untrustBoard(ctx, handle.root);
 }
 
-function captureTest(name, run) {
-    return test(name, run, { requires: ["launch"] });
+function captureTest(name, run, options = {}) {
+    return test(name, run, { ...options, requires: ["launch", ...(options.requires ?? [])] });
 }
 
 export default [
@@ -146,7 +146,7 @@ export default [
         } finally {
             await cleanupFixture(ctx, handle);
         }
-    }),
+    }, { requires: ["windows"] }),
 
     captureTest("microphone capture with computer-audio cancellation delivers chunks", async (ctx) => {
         let handle;
@@ -164,7 +164,7 @@ export default [
         } finally {
             await cleanupFixture(ctx, handle);
         }
-    }),
+    }, { requires: ["windows"] }),
 
     captureTest("playback completes and malformed playback is rejected", async (ctx) => {
         let handle;

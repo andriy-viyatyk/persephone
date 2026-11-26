@@ -24,6 +24,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { isWindows } from "../shared/platform";
 import { parentPort } from "node:worker_threads";
 import picomatch from "picomatch";
 import {
@@ -264,7 +265,8 @@ function executeSearch(request: SearchRequest, post: (msg: SearchWorkerMessage) 
 
             if (!entry.isFile()) continue;
 
-            const relPath = path.relative(rootPath, fullPath).replace(/\\/g, "/");
+            const relativePath = path.relative(rootPath, fullPath);
+            const relPath = isWindows ? relativePath.replace(/\\/g, "/") : relativePath;
 
             // Check exclude patterns on file
             if (excludeMatcher.matchFile(relPath)) continue;

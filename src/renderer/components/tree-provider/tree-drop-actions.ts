@@ -15,7 +15,7 @@ import type { IFileLink, ILink, ITreeProvider } from "../../api/types/io.tree";
 import { ui } from "../../api/ui";
 import { copyPathsInto } from "../../api/copy-files";
 import { fpDirname, fpNormalizeForCompare } from "../../core/utils/file-path";
-import { isKeyInside } from "../../../shared/path-containment";
+import { hrefCompareKey, isKeyInside } from "../../../shared/path-containment";
 import { pruneNestedItems } from "./plural-actions";
 import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
 import { DialogButton } from "../../api/dialogs/dialog-buttons";
@@ -149,10 +149,10 @@ async function moveFilesInto(
 
     // Overwrite-collision confirm (same wording/pattern as importFilesInto / dropOsFilesInto).
     const existing = new Set(
-        (await provider.list(targetPath)).map((l) => l.title.toLowerCase()),
+        (await provider.list(targetPath)).map((l) => hrefCompareKey(l.title)),
     );
     const clashing = moving
-        .filter((i) => existing.has(i.title.toLowerCase()))
+        .filter((i) => existing.has(hrefCompareKey(i.title)))
         .map((i) => i.title);
     if (clashing.length) {
         const ob = await ui.confirm(
@@ -250,10 +250,10 @@ export async function dropOsFilesInto(
 
     // Overwrite-collision confirm (same wording/pattern as importFilesInto).
     const existing = new Set(
-        (await provider.list(targetDir)).map((l) => l.title.toLowerCase()),
+        (await provider.list(targetDir)).map((l) => hrefCompareKey(l.title)),
     );
     const clashing = items
-        .filter((i) => existing.has(i.name.toLowerCase()))
+        .filter((i) => existing.has(hrefCompareKey(i.name)))
         .map((i) => i.name);
     if (clashing.length) {
         const ob = await ui.confirm(

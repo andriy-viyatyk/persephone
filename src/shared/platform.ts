@@ -1,3 +1,4 @@
+// Loaded directly by Node 24; keep runtime imports compatible with type stripping.
 export type SupportedPlatform = "win32" | "linux" | "darwin";
 
 /** The exact Node platform value, including platforms not supported by Persephone. */

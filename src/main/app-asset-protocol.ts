@@ -2,6 +2,7 @@ import { net, session } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { getAssetPath } from "./utils";
+import { isWindows } from "../shared/platform";
 
 export const APP_ASSET_CORS_ALLOWLIST = [
     "vendor/dtln-aec/dtln_aec_128_1.onnx",
@@ -34,7 +35,7 @@ export function registerAppAssetProtocol(partition: string): void {
         const file = path.join(getAssetPath(), relativePath);
         const fileUrl = pathToFileURL(file).toString();
         const response = await net.fetch(fileUrl, { bypassCustomProtocolHandlers: true });
-        const normalizedPath = relativePath.replace(/\\/g, "/");
+        const normalizedPath = isWindows ? relativePath.replace(/\\/g, "/") : relativePath;
         if (!APP_ASSET_CORS_ALLOWLIST.includes(normalizedPath as typeof APP_ASSET_CORS_ALLOWLIST[number])) {
             return response;
         }

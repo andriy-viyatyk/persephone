@@ -12,6 +12,7 @@ import type {
 } from "../ipc/clipboard-ipc";
 import { errMessage } from "../shared/utils";
 import { SerialQueue } from "../shared/serial-queue";
+import { resolvedPathCompareKey } from "../shared/path-containment";
 import { writeClipboardFiles } from "./clip-service";
 import { getSnipToolPath } from "./snip-service";
 import { openWindows } from "./open-windows";
@@ -264,7 +265,7 @@ function getPayloadPath(id: string, suffix: string): string {
 }
 
 function isSamePath(left: string, right: string): boolean {
-    return path.resolve(left).toLowerCase() === path.resolve(right).toLowerCase();
+    return resolvedPathCompareKey(path.resolve(left)) === resolvedPathCompareKey(path.resolve(right));
 }
 
 function isExpectedPayloadPath(filePath: string, id: string, flavor: ClipboardFlavor): boolean {

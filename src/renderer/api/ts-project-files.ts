@@ -1,7 +1,7 @@
 import { fs } from "./fs";
 import { fpBasename, fpExtname, fpJoin, fpNormalizeForCompare, fpRelative, fpResolve } from "../core/utils/file-path";
 import type { TsProject } from "./ts-project-registry";
-import { pathsAreCaseInsensitive } from "../../shared/platform";
+import { isWindows, pathsAreCaseInsensitive } from "../../shared/platform";
 
 // ── Tuning constants  ───────────────────────────────────────────────
 /** Most `.ts`/`.tsx` files registered for one project. */
@@ -47,7 +47,8 @@ export function compileTsGlob(pattern: string): RegExp {
 }
 
 function relativePosix(project: TsProject, absolutePath: string): string {
-    return fpRelative(project.root, absolutePath).replace(/\\/g, "/");
+    const relativePath = fpRelative(project.root, absolutePath);
+    return isWindows ? relativePath.replace(/\\/g, "/") : relativePath;
 }
 
 function isExcluded(project: TsProject, relativePath: string): boolean {
@@ -135,7 +136,8 @@ export async function enumerateProjectFiles(project: TsProject): Promise<Project
 export function canonicalizeProjectPath(project: TsProject, filePath: string): string {
     const known = project.knownPaths.get(fpNormalizeForCompare(filePath));
     if (known) return known;
-    const resolved = fpResolve(filePath).replace(/\\/g, "/");
+    const nativeResolved = fpResolve(filePath);
+    const resolved = isWindows ? nativeResolved.replace(/\\/g, "/") : nativeResolved;
     const rest = resolved.slice(project.key.length).replace(/^\/+/, "");
     return rest ? fpJoin(project.root, rest) : project.root;
 }

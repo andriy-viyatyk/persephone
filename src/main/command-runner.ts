@@ -35,6 +35,8 @@ import { NODE_SCRIPT_END_STDIN_KIND, NODE_SCRIPT_MARKER, NODE_SCRIPT_STDIN_KIND,
 import { getNodeHostEntryPath } from "./utils";
 import { onWebContentsGone } from "./webcontents-lifetime";
 import { boardProcessEnvironment } from "./board-process-environment";
+import { isLinux } from "../shared/platform";
+import { parseLinuxDirectCommand } from "./command-line-linux";
 
 /** Coalesce stdout/stderr bursts into one message per ~tick to cut message count. */
 const COALESCE_MS = 16;
@@ -222,7 +224,10 @@ export function startJobTo(sink: JobSink, msg: RunnerStartMsg, boardRoot?: strin
 
     let proc: ChildProcessWithoutNullStreams;
     try {
-        proc = spawn(command, msg.args ?? [], {
+        const directCommand = isLinux && opts?.shell === false && msg.args === undefined
+            ? parseLinuxDirectCommand(command)
+            : undefined;
+        proc = spawn(directCommand?.[0] ?? command, directCommand ? directCommand.slice(1) : msg.args ?? [], {
             shell: opts?.shell ?? true,
             cwd: opts?.cwd,
             env: boardRoot ? boardProcessEnvironment(baseEnvironment, boardRoot) : baseEnvironment,

@@ -4,6 +4,7 @@ import { errMessage } from "../../shared/utils";
 import { fpJoin, fpNormalizeForCompare, fpRelative, fpResolve, isArchivePath, isAsarPath, isPlainLocalPath } from "../core/utils/file-path";
 import { compileTsGlob } from "./ts-project-files";
 import { isKeyInside } from "../../shared/path-containment";
+import { isWindows } from "../../shared/platform";
 
 export interface TsProject {
     /** Absolute root in the BOARD's spelling (not the realpath). */
@@ -60,7 +61,8 @@ async function readConfig(root: string, tsconfigPath: string): Promise<ParsedCon
     const includeGlobs = Array.isArray(config.include) ? stringArray(config.include) : (hasFiles ? [] : ["**/*"]);
     const excludeGlobs = [...DEFAULT_EXCLUDES, ...stringArray(config.exclude)];
     if (typeof options.outDir === "string" && options.outDir.trim()) {
-        const outDir = fpRelative(root, fpResolve(root, options.outDir)).replace(/\\/g, "/");
+        const nativeOutDir = fpRelative(root, fpResolve(root, options.outDir));
+        const outDir = isWindows ? nativeOutDir.replace(/\\/g, "/") : nativeOutDir;
         if (outDir && !outDir.startsWith("..") && !/^[a-z]:/i.test(outDir)) excludeGlobs.push(outDir);
     }
     return {

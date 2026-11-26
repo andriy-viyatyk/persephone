@@ -15,6 +15,7 @@ import {
 } from "../../api/ts-project-files";
 import { tsProjectRegistry, type TsProject, type TsProjectChange } from "../../api/ts-project-registry";
 import type { MonacoEditorHostView } from "./MonacoEditorHostView";
+import { isWindows } from "../../../shared/platform";
 
 // Project IntelliSense: a registered TypeScript project folder is loaded lazily as extra libs
 // at real file URIs into Monaco's single TS worker, while a page edits a `.ts` file under it.
@@ -64,7 +65,7 @@ function isProjectLanguageFile(filePath: string | undefined, language: string | 
 }
 
 function toUri(filePath: string): monaco.Uri {
-    return monaco.Uri.file(filePath.replace(/\\/g, "/"));
+    return monaco.Uri.file(isWindows ? filePath.replace(/\\/g, "/") : filePath);
 }
 
 /** The file URI a page's model should have, when its file belongs to a registered project. */

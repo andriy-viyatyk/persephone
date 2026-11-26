@@ -1,4 +1,4 @@
-import { pathsAreCaseInsensitive } from "../../../shared/platform";
+import { isWindows } from "../../../shared/platform";
 
 /**
  * Archive-aware path utility module.
@@ -12,7 +12,7 @@ import { pathsAreCaseInsensitive } from "../../../shared/platform";
  * - Inner path: "word/document.xml"
  */
 
-import { isKeyInside, type PathContainmentOptions } from "../../../shared/path-containment";
+import { isKeyInside, resolvedPathCompareKey, type PathContainmentOptions } from "../../../shared/path-containment";
 
 const path = require("path") as typeof import("path");
 
@@ -155,7 +155,7 @@ export function isAsarFile(filePath: string): boolean {
  * isAsarPath("D:/normal/file.js")            → false
  */
 export function isAsarPath(filePath: string): boolean {
-    const normalized = filePath.replace(/\\/g, "/");
+    const normalized = isWindows ? filePath.replace(/\\/g, "/") : filePath;
     return normalized.includes(".asar/");
 }
 
@@ -172,7 +172,9 @@ export function isAsarPath(filePath: string): boolean {
 export function fpBasename(filePath: string, ext?: string): string {
     if (isArchivePath(filePath)) {
         const { innerPath } = parseArchivePath(filePath);
-        return path.basename(innerPath || filePath, ext);
+        return isWindows
+            ? path.basename(innerPath || filePath, ext)
+            : path.posix.basename(innerPath || filePath, ext);
     }
     return path.basename(filePath, ext);
 }
@@ -188,7 +190,9 @@ export function fpBasename(filePath: string, ext?: string): string {
 export function fpExtname(filePath: string): string {
     if (isArchivePath(filePath)) {
         const { innerPath } = parseArchivePath(filePath);
-        return path.extname(innerPath || filePath);
+        return isWindows
+            ? path.extname(innerPath || filePath)
+            : path.posix.extname(innerPath || filePath);
     }
     return path.extname(filePath);
 }
@@ -259,8 +263,7 @@ export function fpIsAbsolute(filePath: string): boolean {
  * (a case-insensitive filesystem). Use only for equality checks, never for display.
  */
 export function fpNormalizeForCompare(filePath: string): string {
-    const resolved = path.resolve(filePath).replace(/\\/g, "/").replace(/\/+$/, "");
-    return pathsAreCaseInsensitive ? resolved.toLowerCase() : resolved;
+    return resolvedPathCompareKey(path.resolve(filePath));
 }
 
 /** True for the URL and data values treated as virtual by page navigation. */

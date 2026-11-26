@@ -1,10 +1,11 @@
+import path from "node:path";
 import { test } from "../../../lib/context.mjs";
 import { closeOrphanedUs2036Pages, closeOwnedPages, closePendingDialog, closeShellPage, waitForDialog } from "../../helpers/shell-helpers.mjs";
 
 export default [
     test("toolset registration opens with its proposed tools and Cancel leaves it unregistered", async (ctx) => {
         const folder = ctx.fixture("us-2036/toolset");
-        const toolsetRoot = `${folder}\\DialogProbe`;
+        const toolsetRoot = path.join(folder, "DialogProbe");
         let beforeTools;
         try {
             await closePendingDialog(ctx);
@@ -127,7 +128,7 @@ export default [
             const staleBoardPages = (await ctx.app.pages.all).filter((page) => page.title === manifest.name);
             await closeOwnedPages(ctx, staleBoardPages.map((page) => page.id));
             await ctx.app.fs.removeDir(folder, true).catch(() => {});
-            await ctx.app.fs.write(`${folder}\\board-manifest.json`, JSON.stringify(manifest, null, 2));
+            await ctx.app.fs.write(path.join(folder, "board-manifest.json"), JSON.stringify(manifest, null, 2));
             const before = await ctx.app.pages.all;
             const pending = await /* ctx.call remains because the app stand-in cannot pass call options such as { dialog: true }. */ ctx.call("boards.registerBoard", [folder], { dialog: true });
             ctx.expect(pending.pending).toBe(true);

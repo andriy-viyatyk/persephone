@@ -1,11 +1,12 @@
 import { rm } from "node:fs/promises";
 import { test } from "../../../lib/context.mjs";
+import { samePath } from "../../helpers/path-comparison.mjs";
 
 const FOLDER_NAME = "US-2117 terminal fixture folder";
 const MARKER_NAME = "us-2117-terminal-working-directory.txt";
 
 function terminalTest(name, run) {
-    return test(name, run, { requires: ["launch"] });
+    return test(name, run, { requires: ["launch", "windows"] });
 }
 
 async function removeNamedFolder(ctx, folderPath) {
@@ -84,7 +85,7 @@ export default [
                 },
                 (value) => typeof value === "string" && value.trim().length > 0,
             );
-            ctx.expect(recordedDirectory.trim().toLowerCase()).toBe(workDir.toLowerCase());
+            ctx.expect(samePath(recordedDirectory.trim(), workDir)).toBe(true);
         } finally {
             await cleanupTerminalTest(ctx, { originalCommand, wasOpen, selectedId, workDir });
         }

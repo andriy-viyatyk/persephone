@@ -9,6 +9,7 @@ import { BOARD_GUIDES_PREFIX, BOARD_SELF_EDITOR_ID } from "../../../shared/guide
 import { errMessage } from "../../../shared/utils";
 import { guard } from "../../core/utils/guard";
 import { t } from "../../../shared/i18n/t";
+import { keymap, matchesShortcut } from "../../../shared/keymap";
 import { pageHistoryControls } from "./PageHistoryControls";
 
 function findGuidePath(
@@ -108,8 +109,8 @@ export class KeyboardService {
                 void api.openDevTools();
                 break;
 
-            case "Tab":
-                if (e.ctrlKey) {
+            case keymap.nextTab.code:
+                if (matchesShortcut(e, e.shiftKey ? keymap.previousTab : keymap.nextTab)) {
                     e.preventDefault();
                     pages.closePopover();
                     if (e.shiftKey) pages.navigation.showPrevious();
@@ -117,9 +118,9 @@ export class KeyboardService {
                 }
                 break;
 
-            case "F4":
-            case "KeyW":
-                if (e.ctrlKey) {
+            case keymap.closePageF4.code:
+            case keymap.closePageW.code:
+                if (matchesShortcut(e, e.code === keymap.closePageF4.code ? keymap.closePageF4 : keymap.closePageW)) {
                     e.preventDefault();
                     const focusedPage = pages.query.focusedPage;
                     if (focusedPage && pages.query.isRightPinned(focusedPage.id)) {
@@ -130,10 +131,10 @@ export class KeyboardService {
                 }
                 break;
 
-            case "KeyN":
-                if (e.ctrlKey) {
+            case keymap.newPage.code:
+                if (matchesShortcut(e, keymap.newPage)) {
                     e.preventDefault();
-                    if (e.shiftKey) {
+                    if (matchesShortcut(e, keymap.newWindow)) {
                         api.openNewWindow();
                     } else if (!appWindow.isBoardMode) {
                         // Board windows open only the board's own pages.
@@ -142,18 +143,18 @@ export class KeyboardService {
                 }
                 break;
 
-            case "KeyO":
-                if (e.ctrlKey) {
+            case keymap.openFile.code:
+                if (matchesShortcut(e, keymap.openFile)) {
                     e.preventDefault();
                     pages.openFileWithDialog();
                 }
                 break;
 
-            case "BracketRight":
-            case "BracketLeft":
-                if (e.ctrlKey && e.altKey) {
+            case keymap.nextTheme.code:
+            case keymap.previousTheme.code:
+                if (matchesShortcut(e, e.code === keymap.nextTheme.code ? keymap.nextTheme : keymap.previousTheme)) {
                     e.preventDefault();
-                    themeService.cycle(e.code === "BracketRight" ? 1 : -1);
+                    themeService.cycle(e.code === keymap.nextTheme.code ? 1 : -1);
                 }
                 break;
         }

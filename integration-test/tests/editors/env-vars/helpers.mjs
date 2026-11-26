@@ -1,9 +1,13 @@
+import path from "node:path";
 import { closeOwnedPages } from "../../helpers/shell-helpers.mjs";
+import { comparablePath } from "../../helpers/path-comparison.mjs";
 
 export async function createStore(ctx, folder, filename, content = "{}\n") {
     const filePath = ctx.fixture(`${folder}/${filename}`);
     let originalPath = await ctx.app.settings.get("board-vars.file");
-    if (typeof originalPath === "string" && originalPath.toLowerCase().includes("\\integration-test\\.profile\\work\\us-2052\\")) {
+    const originalPathComparison = typeof originalPath === "string" ? comparablePath(originalPath) : "";
+    const fixturePathPrefix = comparablePath(path.join("integration-test", ".profile", "work", "us-2052", "_")).slice(0, -1);
+    if (originalPathComparison.includes(fixturePathPrefix)) {
         await ctx.app.settings.set("board-vars.file", "");
         originalPath = "";
     }

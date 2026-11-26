@@ -4,7 +4,7 @@ import type { FSWatcher, Stats } from "node:fs";
 import { errMessage } from "../shared/utils";
 import { isPathInside } from "./utils";
 import type { PathWatchBatch, PathWatchChange, PathWatchOwner } from "../ipc/api-types";
-import { pathsAreCaseInsensitive } from "../shared/platform";
+import { isWindows, pathsAreCaseInsensitive } from "../shared/platform";
 
 const DEFAULT_DEBOUNCE_MS = 300;
 const MIN_DEBOUNCE_MS = 50;
@@ -124,14 +124,19 @@ function moveId(): string {
 function normalizePath(input: string): { path: string; key: string } {
     // URL schemes have two or more letters; a single letter is a Windows drive. Archive inner
     // paths ("x.zip!inner") need no check: they do not exist on disk, so subscribe rejects them.
-    if (typeof input !== "string" || input.length === 0 || /(?:^|[\\/])[^\\/]*\.asar(?:[\\/]|$)/i.test(input) || /^(?:[a-z]{2,}:|\\\\\\?\\)/i.test(input)) {
+    const hasArchiveBoundary = isWindows
+        ? /(?:^|[\\/])[^\\/]*\.asar(?:[\\/]|$)/i.test(input)
+        : /(?:^|\/)[^/]*\.asar(?:\/|$)/i.test(input);
+    const hasWindowsDevicePrefix = isWindows && input.startsWith("\\\\?\\");
+    if (typeof input !== "string" || input.length === 0 || hasArchiveBoundary || hasWindowsDevicePrefix || /^(?:[a-z]{2,}:)/i.test(input)) {
         throw new Error("Path watch supports local filesystem paths only.");
     }
     const resolved = path.resolve(input);
     const parsed = path.parse(resolved);
-    const normalized = resolved.length > parsed.root.length
+    const withoutTrailingSeparator = isWindows
         ? resolved.replace(/[\\/]+$/, "")
-        : resolved;
+        : resolved.replace(/\/+$/, "");
+    const normalized = resolved.length > parsed.root.length ? withoutTrailingSeparator : resolved;
     return { path: normalized, key: pathsAreCaseInsensitive ? normalized.toLowerCase() : normalized };
 }
 
@@ -643,7 +648,7 @@ function removeSubscription(id: string): void {
 }
 
 async function createSubscription(targetPath: string, options: PathWatchSubscribeOptions, onBatch: (batch: PathWatchBatch) => void): Promise<PathWatchSubscribeResult> {
-    const requestedFolder = /[\\/]$/.test(targetPath);
+    const requestedFolder = isWindows ? /[\\/]$/.test(targetPath) : /\/$/.test(targetPath);
     const target = normalizePath(await canonicalPath(targetPath));
     const recursive = options.recursive ?? false;
     const label = typeof options.label === "string" ? options.label.slice(0, 120) : "unknown";

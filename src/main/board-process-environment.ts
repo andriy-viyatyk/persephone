@@ -1,5 +1,6 @@
 import path from "node:path";
 import { app } from "electron";
+import { isLinux } from "../shared/platform";
 import { BoardRoot } from "../shared/board/board-root";
 import { boardDataIdFromRoot } from "../shared/board/board-data-id";
 import { applicationProfileName } from "./application-profile";
@@ -15,7 +16,7 @@ export function boardDataPath(boardRoot: string): string | undefined {
     if (!boardId) return undefined;
 
     let dataRoot: string;
-    if (applicationProfileName() || isTestInstance()) {
+    if (applicationProfileName() || isTestInstance() || isLinux) {
         dataRoot = path.join(app.getPath("userData"), "board-data");
     } else {
         const localAppData = process.env.LOCALAPPDATA;

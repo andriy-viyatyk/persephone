@@ -1,3 +1,4 @@
+import path from "node:path";
 import { test } from "../../../lib/context.mjs";
 import { closePage } from "../../editors/helpers.mjs";
 
@@ -69,12 +70,12 @@ async function cancelPendingDialog(ctx) {
 
 async function createToolsetFixture(ctx, relativeFolder, name, manifest, scripts = {}) {
     const folder = ctx.fixture(relativeFolder);
-    const root = `${folder}\\${name}`;
+    const root = path.join(folder, name);
     await removeFixtureDirectory(ctx, folder);
     await ctx.app.fs.mkdir(root);
-    await ctx.app.fs.write(`${root}\\tools-manifest.json`, JSON.stringify(manifest, null, 2));
+    await ctx.app.fs.write(path.join(root, "tools-manifest.json"), JSON.stringify(manifest, null, 2));
     for (const [filename, source] of Object.entries(scripts)) {
-        await ctx.app.fs.write(`${root}\\${filename}`, source);
+        await ctx.app.fs.write(path.join(root, filename), source);
     }
     return { folder, root };
 }
@@ -115,7 +116,7 @@ async function registerToolset(ctx, name, folder) {
     ctx.expect(title).toBe("Register this toolset?");
     // ctx.call remains because the app stand-in cannot pass call options such as { dialog: true }.
     ctx.expect(await ctx.call("dialogs[0].toolsetName", [], { dialog: true })).toBe(name);
-    const expectedRoot = `${folder}\\${name}`;
+    const expectedRoot = path.join(folder, name);
     // ctx.call remains because the app stand-in cannot pass call options such as { dialog: true }.
     ctx.expect(await ctx.call("dialogs[0].toolsetRoot", [], { dialog: true })).toBe(expectedRoot);
     // ctx.call remains because the app stand-in cannot pass call options such as { dialog: true }.
@@ -170,7 +171,7 @@ export default [
     test("registered toolset is found by search and execute returns structured success and failure results", async (ctx) => {
         const name = "AgentToolsProbe";
         const folder = ctx.fixture("us-2073/execute");
-        const root = `${folder}\\${name}`;
+        const root = path.join(folder, name);
         const initialPageIds = new Set((await ctx.app.pages.all).map((page) => page.id));
         const beforeTools = await ctx.app.tools.search("");
         const cleanupState = { folder, root, initialPageIds };
@@ -215,7 +216,7 @@ export default [
     test("toolset editor shows a valid toolset and opens its execution log", async (ctx) => {
         const name = "AgentToolsEditorProbe";
         const folder = ctx.fixture("us-2073/editor");
-        const root = `${folder}\\${name}`;
+        const root = path.join(folder, name);
         const initialPages = await ctx.app.pages.all;
         const initialPageIds = new Set(initialPages.map((page) => page.id));
         const beforeTools = await ctx.app.tools.search("");
@@ -290,7 +291,7 @@ export default [
             ],
         };
         const folder = ctx.fixture("us-2073/invalid");
-        const root = `${folder}\\${name}`;
+        const root = path.join(folder, name);
         const initialPageIds = new Set((await ctx.app.pages.all).map((page) => page.id));
         const beforeTools = await ctx.app.tools.search("");
         const cleanupState = { folder, root, initialPageIds };

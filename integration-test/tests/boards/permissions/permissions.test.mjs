@@ -1,3 +1,4 @@
+import path from "node:path";
 import { test } from "../../../lib/context.mjs";
 import { closeBoardPage, fixtureBoard, openBoardPage, resetBoardFile, trustFixtureBoard, untrustBoard } from "../../helpers/boards.mjs";
 
@@ -148,7 +149,7 @@ export default [
                 return results.map((result) => result.status === "rejected" ? String(result.reason) : "fulfilled");
             }`);
             for (const message of outcome) ctx.expect(message).toContain("permission-denied");
-            ctx.expect(await ctx.app.fs.read(`${root}\\probe.txt`)).toBe("fixture-probe-content\n");
+            ctx.expect(await ctx.app.fs.read(path.join(root, "probe.txt"))).toBe("fixture-probe-content\n");
         } finally {
             await bestEffort(() => closeBoardPage(ctx, page?.id));
             await bestEffort(() => untrustBoard(ctx, root));

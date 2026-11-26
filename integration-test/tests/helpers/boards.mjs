@@ -1,10 +1,8 @@
-function comparableRoot(value) {
-    return value.replace(/[\\/]+/g, "\\").replace(/\\$/, "").toLowerCase();
-}
+import path from "node:path";
+import { samePath } from "./path-comparison.mjs";
 
 function sameRoot(left, right) {
-    return typeof left === "string" && typeof right === "string"
-        && comparableRoot(left) === comparableRoot(right);
+    return samePath(left, right);
 }
 
 /** Retry the title read until the renderer has registered the dialog. */
@@ -21,7 +19,7 @@ export function fixtureBoard(ctx, rel) {
 }
 
 export async function resetBoardFile(ctx, root, relPath, content) {
-    await ctx.app.fs.write(`${root}/${relPath}`, content);
+    await ctx.app.fs.write(path.join(root, relPath), content);
 }
 
 export async function trustFixtureBoard(ctx, root) {

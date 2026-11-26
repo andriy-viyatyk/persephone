@@ -72,7 +72,8 @@ export default [
         } finally {
             await closePublishedSample(ctx, handle);
         }
-    }, requiresPublishedBoard),
+    // "windows": the board's runtime installer supports Windows x64 only; on Linux it says so instead.
+    }, { requires: [...requiresPublishedBoard.requires, "windows"] }),
 
     test("registers speech.synthesize and describes local voices", async (ctx) => {
         let handle;

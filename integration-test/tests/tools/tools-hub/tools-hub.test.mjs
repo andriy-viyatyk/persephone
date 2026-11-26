@@ -1,3 +1,4 @@
+import path from "node:path";
 import { test } from "../../../lib/context.mjs";
 
 const HUB_ID = "tools-hub-page";
@@ -124,7 +125,7 @@ export default [
 
     test("Tools tab lists a fixture toolset and unregister removes it", async (ctx) => {
         const folder = ctx.fixture("us-2067/toolsets");
-        const root = `${folder}\\ToolsHubProbe`;
+        const root = path.join(folder, "ToolsHubProbe");
         let hubOwnership;
         try {
             await removeFixtureDirectory(ctx, folder);

@@ -1,3 +1,4 @@
+import path from "node:path";
 import { test } from "../../../lib/context.mjs";
 import { activatePage, closeBrowserPage, openBrowserPage } from "../helpers.mjs";
 
@@ -336,10 +337,10 @@ runtime.setActions([{ id: "valid", label: "Valid", run: () => ({ kind: "message"
             const trusted = await ctx.waitFor((activeContext) => activeContext.app.siteExtensions.list(), (items) => items.find((item) => item.id === first.id)?.trustState === "trusted");
             ctx.expect(trusted.find((item) => item.id === first.id).hostsChangedSinceTrust).toBe(false);
             const secondId = uniqueId("conflict");
-            const secondFolder = `${state.folder}\\${secondId}`;
+            const secondFolder = path.join(state.folder, secondId);
             state.ids.add(secondId);
-            await ctx.app.fs.write(`${secondFolder}\\manifest.json`, JSON.stringify({ name: "US-2089 conflict", version: "1.0.0", description: "Conflict fixture", hosts: [HOST], fetchHosts: [], script: "extension.js" }));
-            await ctx.app.fs.write(`${secondFolder}\\extension.js`, "// conflict-only fixture\\n");
+            await ctx.app.fs.write(path.join(secondFolder, "manifest.json"), JSON.stringify({ name: "US-2089 conflict", version: "1.0.0", description: "Conflict fixture", hosts: [HOST], fetchHosts: [], script: "extension.js" }));
+            await ctx.app.fs.write(path.join(secondFolder, "extension.js"), "// conflict-only fixture\\n");
             const conflicts = await ctx.waitFor((activeContext) => activeContext.app.siteExtensions.list(), (items) => items.filter((item) => [first.id, secondId].includes(item.id) && item.status === "conflict").length === 2);
             for (const conflict of conflicts.filter((item) => [first.id, secondId].includes(item.id))) {
                 ctx.expect(conflict.conflictingHosts).toEqual([HOST]);

@@ -6,6 +6,7 @@ import type { AppSettingsKey } from "../../api/settings-schema";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { boardIdentity } from "../../editors/board/board-identity";
+import { formatShortcut, keymap } from "../../../shared/keymap";
 import type { EditorModelInstance as EditorModel } from "../../editors/base";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { SplitButtonView } from "../../uikit/SplitButton/SplitButtonView";
@@ -68,7 +69,7 @@ export class PageTabsView extends VanillaView<object> {
         this.addButton = new SplitButtonView({
             name: "page-tabs-add",
             size: "md",
-            title: t("shell.addPageCtrlN", { shortcut: "Ctrl+N" }),
+            title: t("shell.addPageCtrlN", { shortcut: formatShortcut(keymap.newPage) }),
             icon: "plus",
             onClick: () => pages.lifecycle.addEmptyPage(),
             menuTitle: "New editor page",
@@ -351,7 +352,7 @@ export class PageTabsView extends VanillaView<object> {
         this.addButton.update({
             name: "page-tabs-add",
             size: "md",
-            title: t("shell.addPageCtrlN", { shortcut: "Ctrl+N" }),
+            title: t("shell.addPageCtrlN", { shortcut: formatShortcut(keymap.newPage) }),
             icon: "plus",
             onClick: () => pages.lifecycle.addEmptyPage(),
             menuTitle: "New editor page",

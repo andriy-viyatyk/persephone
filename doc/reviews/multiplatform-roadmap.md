@@ -163,7 +163,7 @@ runtime-findings addendum.
   [`multiplatform-2026-11/runtime-findings.md`](multiplatform-2026-11/runtime-findings.md); Phases 1–2 below are
   adjusted from it.
 
-### Phase 1 — Core parity (epic)
+### Phase 1 — Core parity ([EPIC-213](../epics/EPIC-213.md))
 
 **Exit:** the integration suite runs on Linux under Xvfb, and every test without `requires: ["windows"]` passes.
 

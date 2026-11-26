@@ -1,5 +1,6 @@
 import { test } from "../../../lib/context.mjs";
 import { fixtureBoard, trustFixtureBoard, untrustBoard } from "../../helpers/boards.mjs";
+import { samePath } from "../../helpers/path-comparison.mjs";
 
 const BOARD = "speech/fixture-speech-synthesizer";
 
@@ -36,7 +37,7 @@ export default [
                 await ctx.app.boards.stopService(root);
                 await ctx.waitFor(
                     () => ctx.app.boards.list(),
-                    (boards) => boards.some((board) => board.root.toLowerCase() === root.toLowerCase() && board.service?.state === "stopped"),
+                    (boards) => boards.some((board) => samePath(board.root, root) && board.service?.state === "stopped"),
                 );
             } catch { /* Service may not have started. */ }
             await untrustBoard(ctx, root);

@@ -19,9 +19,11 @@ raw `call` tool response for the unchanged MCP tests.
 ## Runs and profile lifecycle
 
 Run `npm start`, then `npm run test:ui`. The default target is `dev`; optional targets are
-`--prod` and `--app <persephone.exe>`. `--prod` performs one guarded production build. `--app`
-validates the selected app and invokes its sibling `persephone-test.exe`. `--open` uses the direct
-app launcher and records the retained PID without changing reports.
+`--prod` and `--app <path>`. `--prod` performs one guarded production build. Windows `--app`
+requires `persephone.exe` and invokes its sibling `persephone-test.exe`; Linux `--app` requires an
+executable named `persephone` and runs it directly with `--test`. Linux packaged execution is an
+invocation path only: this repository does not currently build or verify a Linux package. `--open`
+uses the selected app directly and records the retained PID without changing reports.
 
 On Windows, the product runner can also run a standalone test file directly with
 `persephone-test.exe <file.mjs> --profile <name> [--log <file> | --log-dir <folder>]`.
@@ -33,9 +35,12 @@ running profile whose MCP server is enabled. Attach uses that instance without t
 of its shutdown. The user workflow and examples are in
 [`assets/guides/agents/web-app-tests/index.md`](../../assets/guides/agents/web-app-tests/index.md).
 
-For Linux development, run the suite from the Linux checkout with `npm run test:ui`. Linux profile
-probing and attach use the product's Unix-domain socket under `$XDG_RUNTIME_DIR`; a missing runtime
-directory prevents the profile probe. On Windows, the same profile endpoint is the named pipe.
+For Linux development, run the suite from the Linux checkout with Node 24 and `npm run test:ui`.
+The wrapper loads the pure shared platform and requirement modules directly from their `.ts` source;
+Node 24 strips their erasable TypeScript syntax. Linux profile probing and attach use the product's
+Unix-domain socket under `$XDG_RUNTIME_DIR`; the wrapper checks the `uitest` socket before deleting
+the profile and requires a non-empty runtime directory. On Windows, the same profile endpoint is
+the named pipe.
 
 When the Linux test host starts an app, it removes Electron's inherited `CHROME_DESKTOP` variable
 from that child environment. Electron adds the variable to its own main-process environment, but a
@@ -64,8 +69,11 @@ it, so HTTPS fixture tests need a normal owned run. For every
 selected module id, a normal run replaces `.profile` from `seed/`, recopies fixtures into
 `.profile/work`, writes an exact file/name manifest, and invokes the product runner. Nested module
 ids receive separate app instances too. The manifest limits that invocation to its exact tests;
-it does not bypass `requires`. The product host checks requirements for every run: `launch` is
-skipped with `--attach`, and other tags run only when supplied by `--with`.
+it does not bypass `requires`. The product host checks requirements for every run: `windows` is an
+automatic platform requirement and is skipped on other platforms before file hooks, `launch` is
+skipped with `--attach`, and opt-in tags run only when supplied by `--with`. The `desktop`
+requirement remains a live visibility check after window selection. The wrapper's `--list` reports
+each automatic platform skip and its reason.
 
 Owned test instances set the main process's `%LOCALAPPDATA%` to
 `<userData>/test-local-app-data` before child processes start. Board services inherit this value, so
@@ -102,13 +110,13 @@ The selected app is never stopped by attach.
 `--area` selects whole-segment path prefixes and `--test` selects a substring of the descriptor
 name. `--list` prints the filtered suite without starting the app. `--rerun-failed` selects current
 file/name identities from the wrapper's `reports/last-failed.json` and reports removed identities
-as gone. `--with` accepts the suite's external tags (`network`, `mic`, `tor`, `git`, `mneme`); it
-does not accept the built-in `launch` tag. The seed sets `link-open-behavior` to
+as gone. `--with` accepts opt-in tags such as `network`, `mic`, `tor`, `git`, and `mneme`; automatic
+tags (`launch`, `windows`, `desktop`, and `published-board-checkout`) cannot be supplied. The seed sets `link-open-behavior` to
 `internal-browser`, keeping URL actions on local fixtures inside the test app instead of opening
 the operating system's default browser.
 
-The tagged Tor network test also requires `PERSEPHONE_TEST_TOR_EXE` to point to a compatible
-`tor.exe`; it remains skipped unless both `network` and `tor` are enabled.
+The tagged Tor network test also requires `PERSEPHONE_TEST_TOR_EXE` to point to a compatible Tor
+executable (a `tor.exe` on Windows); it remains skipped unless both `network` and `tor` are enabled.
 
 On Windows, `npm run test:ui -- --with virtual-desktop --desktop 2` opts into the real placement
 module and moves every window in each owned run to the selected existing virtual desktop. The

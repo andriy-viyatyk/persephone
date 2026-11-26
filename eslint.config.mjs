@@ -704,8 +704,10 @@ const themeZones = [
     { target: "./src/renderer/theme", from: ["./src/renderer/api", "./src/renderer/audio",
         "./src/renderer/automation", "./src/renderer/components", "./src/renderer/content",
         "./src/renderer/editors", "./src/renderer/guides", "./src/renderer/i18n",
-        "./src/renderer/scripting", "./src/renderer/types", "./src/renderer/uikit", "./src/shared", "./src/main"],
+        "./src/renderer/scripting", "./src/renderer/types", "./src/renderer/uikit", "./src/main"],
         message: "theme/ must not import application layers or uikit/." },
+    { target: "./src/renderer/theme", from: "./src/shared", except: ["platform.ts"],
+        message: "theme/ may import only shared/platform.ts for platform-specific theme values." },
     { target: "./src/renderer/theme", from: "./src/ipc", except: ["renderer/api.ts"],
         message: "theme/ uses IPC only for native theme synchronization." },
 ];

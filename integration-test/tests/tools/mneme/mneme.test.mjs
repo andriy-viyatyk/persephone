@@ -1,4 +1,5 @@
 import { test } from "../../../lib/context.mjs";
+import path from "node:path";
 import { closePage } from "../../editors/helpers.mjs";
 
 const CONFIG_PAGE_ID = "mneme-config-page";
@@ -140,12 +141,12 @@ export default [
             await removeFixtureDirectory(ctx, fixtureFolder);
             if (configPageOwned) await closePage(ctx, CONFIG_PAGE_ID);
         }
-    }, { requires: ["mneme"] }),
+    }, { requires: ["mneme", "windows"] }),
 
     test("Mneme Root browses, searches, and opens a fixture document", async (ctx) => {
         const fixtureFolder = ctx.fixture("us-2075/root");
-        const notesFolder = `${fixtureFolder}\\notes`;
-        const documentPath = `${notesFolder}\\mneme-fixture.md`;
+        const notesFolder = path.join(fixtureFolder, "notes");
+        const documentPath = path.join(notesFolder, "mneme-fixture.md");
         const initialPages = await ctx.app.pages.all;
         const initialPageIds = new Set(initialPages.map((page) => page.id));
         const previousEnabled = await ctx.app.settings.get("mneme.enabled");
@@ -291,5 +292,5 @@ export default [
             await removeFixtureDirectory(ctx, fixtureFolder);
             await closeOwnedPages(ctx, configPageOwned ? initialPageIds : new Set([...initialPageIds, CONFIG_PAGE_ID]));
         }
-    }, { requires: ["mneme"] }),
+    }, { requires: ["mneme", "windows"] }),
 ];

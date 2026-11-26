@@ -5,6 +5,8 @@
  * jschardet-based encoding detection, and iconv-lite encoding/decoding.
  */
 
+import { isWindows } from "../../../shared/platform";
+
 const iconv = require("iconv-lite");
 const jschardet = require("jschardet");
 
@@ -24,6 +26,52 @@ const LARGE_FILE_THRESHOLD = 20 * 1024 * 1024; // 20MB
 const DETECTION_MIN_CONFIDENCE = 0.05;
 
 /**
+ * Normalize a locale charset only when it names a supported legacy codec.
+ * Arbitrary iconv codecs are intentionally excluded because locale strings are only a hint.
+ */
+function normalizeLegacyLocaleCharset(charset: string): string | undefined {
+    const normalized = charset.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    if (/^cp\d+$/.test(normalized)) {
+        if (!iconv.encodingExists(normalized)) return undefined;
+        const encoding = normalized === "cp1251" ? "windows-1251" : normalized;
+        return iconv.encodingExists(encoding) ? encoding : undefined;
+    }
+    if (/^windows\d+$/.test(normalized)) {
+        const encoding = normalized.replace(/^windows/, "windows-");
+        return iconv.encodingExists(encoding) ? encoding : undefined;
+    }
+    if (/^iso8859\d+$/.test(normalized)) {
+        const encoding = normalized.replace(/^iso8859/, "iso-8859-");
+        return iconv.encodingExists(encoding) ? encoding : undefined;
+    }
+    if (normalized === "koi8r" || normalized === "koi8u") {
+        if (!iconv.encodingExists(normalized)) return undefined;
+        const encoding = normalized === "koi8r" ? "koi8-r" : "koi8-u";
+        return iconv.encodingExists(encoding) ? encoding : undefined;
+    }
+
+    return undefined;
+}
+
+/** Select the last-resort codec from the host platform and inherited locale environment. */
+function defaultTextEncoding(): string {
+    if (isWindows) return "windows-1251";
+
+    const locale = [process.env.LC_ALL, process.env.LC_CTYPE, process.env.LANG]
+        .find((value) => value?.trim());
+    if (!locale) return "utf-8";
+
+    const normalizedLocale = locale.trim();
+    if (/^(?:c|posix)$/i.test(normalizedLocale)) return "utf-8";
+
+    const localeParts = normalizedLocale.match(/^[a-z0-9_-]+\.([^.@\s]+)(?:@[a-z0-9_-]+)?$/i);
+    if (!localeParts) return "utf-8";
+
+    return normalizeLegacyLocaleCharset(localeParts[1]) ?? "utf-8";
+}
+
+/**
  * Decode a binary buffer to string with automatic encoding detection.
  *
  * Detection order:
@@ -32,7 +80,7 @@ const DETECTION_MIN_CONFIDENCE = 0.05;
  * 3. Explicit encoding override (if provided)
  * 4. jschardet detection (above DETECTION_MIN_CONFIDENCE)
  * 5. UTF-8 without replacement characters
- * 6. Fallback: Windows-1251
+ * 6. Fallback: Windows-1251 on Windows; supported legacy charset from locale elsewhere, else UTF-8
  */
 export function decodeBuffer(buffer: Buffer, encoding?: string, diagnostic?: CodecDiagnostic): DecodedText {
     // BOM detection
@@ -87,7 +135,8 @@ export function decodeBuffer(buffer: Buffer, encoding?: string, diagnostic?: Cod
     }
 
     // Final fallback
-    return { content: iconv.decode(buffer, "windows-1251"), encoding: "windows-1251" };
+    const fallback = defaultTextEncoding();
+    return { content: iconv.decode(buffer, fallback), encoding: fallback };
 }
 
 /**

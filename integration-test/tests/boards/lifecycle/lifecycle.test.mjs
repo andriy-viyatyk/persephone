@@ -1,5 +1,7 @@
 import { test } from "../../../lib/context.mjs";
+import path from "node:path";
 import { closeBoardPage, fixtureBoard, openBoardPage, resetBoardFile, trustFixtureBoard, untrustBoard, waitForBoardDialog } from "../../helpers/boards.mjs";
+import { samePath } from "../../helpers/path-comparison.mjs";
 
 const FOREIGN_BOARD = "lifecycle/foreign";
 const FIXTURE_INDEX = `<!doctype html>
@@ -9,11 +11,7 @@ const FIXTURE_INDEX = `<!doctype html>
 </html>
 `;
 
-function sameRoot(left, right) {
-    return typeof left === "string" && typeof right === "string"
-        && left.replace(/[\\/]+/g, "\\").replace(/\\$/, "").toLowerCase()
-            === right.replace(/[\\/]+/g, "\\").replace(/\\$/, "").toLowerCase();
-}
+const sameRoot = samePath;
 
 async function removeWork(ctx, dir) {
     if (!dir) return;
@@ -55,7 +53,7 @@ export default [
         try {
             root = await ctx.app.boards.createBoard("Blank", dir);
             ctx.expect(typeof root).toBe("string");
-            ctx.expect(sameRoot(root, `${dir}/Blank`)).toBe(true);
+            ctx.expect(sameRoot(root, path.join(dir, "Blank"))).toBe(true);
             const expectedFiles = [
                 "board-manifest.json", "index.html", "app.js", "board-base.css", "lang/en.json", "scripts/hello.js",
             ];
@@ -347,7 +345,7 @@ document.getElementById("run").addEventListener("click", async () => {
         let root;
         try {
             root = await ctx.app.boards.createBoard("Blank", dir);
-            const linkPath = `${dir}/test-shortcut.lnk`;
+            const linkPath = path.join(dir, "test-shortcut.lnk");
             const created = await ctx.app.boards.createShortcut(root, { linkPath });
             ctx.expect(sameRoot(created?.linkPath, linkPath)).toBe(true);
             ctx.expect(await ctx.app.fs.exists(linkPath)).toBe(true);
@@ -358,5 +356,5 @@ document.getElementById("run").addEventListener("click", async () => {
         } finally {
             await cleanupBoard(ctx, root, null, dir);
         }
-    }),
+    }, { requires: ["windows"] }),
 ];

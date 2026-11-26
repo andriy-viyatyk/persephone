@@ -21,7 +21,7 @@ import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { Cleanup } from "../../core/utils/DisposableStore";
 import { createIconElement } from "../../uikit/shared/slots";
-import { fpBasename, fpDirname } from "../../core/utils/file-path";
+import { fpBasename, fpDirname, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { BOARD_MANIFEST_FILE } from "../../../shared/board/board-manifest-schema";
 import type { ExplorerEditor } from "./ExplorerEditorModel";
 import { openBoardsPanel, openClipboardPanel } from "./page-explorer";
@@ -363,7 +363,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         const provider = this.provider;
         if (!item?.isDirectory || !provider?.navigable) return;
         const rootPath = this.model.rootPath;
-        if (item.href.toLowerCase() !== rootPath.toLowerCase()) {
+        if (fpNormalizeForCompare(item.href) !== fpNormalizeForCompare(rootPath)) {
             event.items.push({
                 startGroup: true,
                 id: "make-root",

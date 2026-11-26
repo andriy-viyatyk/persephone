@@ -16,6 +16,7 @@ import { subscribe } from "../../api/path-watch";
 import { fs } from "../../api/fs";
 import { fpDirname, fpNormalizeForCompare, isArchivePath, isAsarPath } from "../../core/utils/file-path";
 import { isKeyInside } from "../../../shared/path-containment";
+import { isWindows } from "../../../shared/platform";
 import type { ClassifiedTreeWatchBatch } from "./tree-provider-capabilities";
 
 // Direct Node.js imports — FileTreeProvider is a low-level filesystem provider
@@ -137,8 +138,8 @@ export class FileTreeProvider implements ITreeProvider {
 
         // Add ".." entry to navigate to parent (unless at root)
         const result: ITreeProviderItem[] = [];
-        const normalized = dirPath.replace(/\\/g, "/");
-        const rootNormalized = this.sourceUrl.replace(/\\/g, "/");
+        const normalized = isWindows ? dirPath.replace(/\\/g, "/") : dirPath;
+        const rootNormalized = isWindows ? this.sourceUrl.replace(/\\/g, "/") : this.sourceUrl;
         if (normalized !== rootNormalized) {
             const parentItem: ParentRowItem = {
                 title: "..",
@@ -194,8 +195,8 @@ export class FileTreeProvider implements ITreeProvider {
     }
 
     getCategorySegments(category: string): ICategorySegment[] {
-        const root = this.rootPath.replace(/\\/g, "/").replace(/\/+$/, "");
-        const cur = category.replace(/\\/g, "/").replace(/\/+$/, "");
+        const root = (isWindows ? this.rootPath.replace(/\\/g, "/") : this.rootPath).replace(/\/+$/, "");
+        const cur = (isWindows ? category.replace(/\\/g, "/") : category).replace(/\/+$/, "");
         if (!cur || cur === root) return [];
         const rel = cur.startsWith(root + "/") ? cur.slice(root.length + 1) : cur;
         const parts = rel.split("/").filter(Boolean);

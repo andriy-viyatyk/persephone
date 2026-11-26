@@ -13,7 +13,7 @@ import type { FileSearchState } from "../../components/file-search";
 import { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
 import { TREE_PROVIDER_HOST_TRAIT, TreeProviderHost } from "../base/tree-provider-host";
 import type { IPageHost } from "../../api/pages/IPageHost";
-import { fpDirname } from "../../core/utils/file-path";
+import { fpDirname, fpIsInside, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { createFolderIconElement } from "../../components/icons/icon-elements";
 import { createLinkData } from "../../../shared/link-data";
 import { hrefKey } from "../../components/tree-provider/href-utils";
@@ -209,7 +209,7 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
     }
 
     makeRoot(newRoot: string): void {
-        if (newRoot.toLowerCase() === this.rootPath.toLowerCase()) return;
+        if (fpNormalizeForCompare(newRoot) === fpNormalizeForCompare(this.rootPath)) return;
         this.treeState = undefined;
         this.state.update((s) => { s.rootPath = newRoot; });
     }
@@ -241,7 +241,7 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
             return;
         }
         const filePath = newMainEditor.filePath;
-        if (filePath && filePath.toLowerCase().startsWith(this.rootPath.toLowerCase())) {
+        if (filePath && fpIsInside(this.rootPath, filePath)) {
             this._selectAndReveal(filePath);
         } else {
             this._selectAndReveal(null);

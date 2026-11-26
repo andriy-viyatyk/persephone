@@ -1,17 +1,15 @@
 import { test } from "../../../lib/context.mjs";
 import path from "node:path";
+import { isLinux, isWindows } from "../../../../src/shared/platform.ts";
 import { closeBoardPage, fixtureBoard, openBoardPage, trustFixtureBoard, untrustBoard } from "../../helpers/boards.mjs";
+import { comparablePath, samePath } from "../../helpers/path-comparison.mjs";
 
 const MODULE_SERVICE = "module-service";
 const ROUND_TRIP_BOARD = `${MODULE_SERVICE}/round-trip-board`;
 const SETTINGS_BOARD = `${MODULE_SERVICE}/settings-board`;
 const CRASH_BOARD = `${MODULE_SERVICE}/crash-board`;
 
-function sameRoot(left, right) {
-    return typeof left === "string" && typeof right === "string"
-        && left.replace(/[\\/]+/g, "\\").replace(/\\+$/, "").toLowerCase()
-            === right.replace(/[\\/]+/g, "\\").replace(/\\+$/, "").toLowerCase();
-}
+const sameRoot = samePath;
 
 async function serviceRecord(ctx, root) {
     const boards = await ctx.app.boards.list();
@@ -42,31 +40,34 @@ async function cleanupFixture(ctx, root, pageIds = []) {
     }
 }
 
-const SANDBOX_ENVIRONMENT_KEYS = [
-    "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "APPDATA", "LOCALAPPDATA",
-    "CLAUDE_CONFIG_DIR", "CODEX_HOME", "PATH", "PATHEXT", "SystemRoot",
-];
-
-function normalizedPath(value) {
-    return value.replace(/[\\/]+/g, "\\").replace(/\\+$/, "").toLowerCase();
-}
-
-function selectedEnvironmentFromSet(output) {
-    const selected = new Map(SANDBOX_ENVIRONMENT_KEYS.map((key) => [key.toLowerCase(), key]));
-    const result = {};
-    for (const line of output.split(/\r?\n/)) {
-        const separator = line.indexOf("=");
-        if (separator < 0) continue;
-        const key = selected.get(line.slice(0, separator).toLowerCase());
-        if (key) result[key] = line.slice(separator + 1);
-    }
-    return result;
-}
-
 function assertSandboxEnvironment(ctx, environment, userData) {
     const testHome = path.join(userData, "test-home");
     const testBin = path.join(userData, "test-bin");
     const localAppData = path.join(userData, "test-local-app-data");
+    ctx.expect(comparablePath(environment.CLAUDE_CONFIG_DIR)).toBe(comparablePath(path.join(testHome, ".claude")));
+    ctx.expect(comparablePath(environment.CODEX_HOME)).toBe(comparablePath(path.join(testHome, ".codex")));
+    if (isLinux) {
+        const expected = {
+            HOME: testHome,
+            XDG_CONFIG_HOME: path.join(testHome, ".config"),
+            XDG_DATA_HOME: path.join(testHome, ".local", "share"),
+            XDG_CACHE_HOME: path.join(testHome, ".cache"),
+            XDG_STATE_HOME: path.join(testHome, ".local", "state"),
+            CLAUDE_CONFIG_DIR: path.join(testHome, ".claude"),
+            CODEX_HOME: path.join(testHome, ".codex"),
+        };
+        for (const [key, value] of Object.entries(expected)) {
+            ctx.expect(comparablePath(environment[key])).toBe(comparablePath(value));
+        }
+        ctx.expect(environment.XDG_RUNTIME_DIR).toBe(null);
+        const expectedPath = [testBin, "/usr/local/bin", "/usr/bin", "/bin"];
+        ctx.expect(environment.PATH.split(path.delimiter).map(comparablePath)).toEqual(expectedPath.map(comparablePath));
+        ctx.expect(environment.PATH).not.toContain(path.join(testHome, ".npm"));
+        ctx.expect(environment.PATH).not.toContain(path.join(testHome, ".claude"));
+        ctx.expect(environment.PATH).not.toContain(path.join(testHome, ".codex"));
+        return;
+    }
+    if (!isWindows) return;
     const { root } = path.parse(testHome);
     const expected = {
         USERPROFILE: testHome,
@@ -74,11 +75,9 @@ function assertSandboxEnvironment(ctx, environment, userData) {
         HOMEPATH: path.relative(root, testHome).replace(/^/, path.sep),
         APPDATA: path.join(testHome, "AppData", "Roaming"),
         LOCALAPPDATA: localAppData,
-        CLAUDE_CONFIG_DIR: path.join(testHome, ".claude"),
-        CODEX_HOME: path.join(testHome, ".codex"),
     };
     for (const [key, value] of Object.entries(expected)) {
-        ctx.expect(normalizedPath(environment[key])).toBe(normalizedPath(value));
+        ctx.expect(comparablePath(environment[key])).toBe(comparablePath(value));
     }
 
     const systemRoot = environment.SystemRoot;
@@ -89,11 +88,11 @@ function assertSandboxEnvironment(ctx, environment, userData) {
         path.join(systemRoot, "System32", "Wbem"),
         path.join(systemRoot, "System32", "WindowsPowerShell", "v1.0"),
     ];
-    ctx.expect(environment.PATH.split(path.delimiter).map(normalizedPath)).toEqual(expectedPath.map(normalizedPath));
-    ctx.expect(environment.PATH.toLowerCase().includes("\\appdata\\local\\programs\\")).toBe(false);
-    ctx.expect(environment.PATH.toLowerCase().includes("\\npm\\")).toBe(false);
-    ctx.expect(environment.PATH.toLowerCase().includes("\\claude\\")).toBe(false);
-    ctx.expect(environment.PATH.toLowerCase().includes("\\codex\\")).toBe(false);
+    ctx.expect(environment.PATH.split(path.delimiter).map(comparablePath)).toEqual(expectedPath.map(comparablePath));
+    ctx.expect(comparablePath(environment.PATH).includes(comparablePath("\\appdata\\local\\programs\\"))).toBe(false);
+    ctx.expect(comparablePath(environment.PATH).includes(comparablePath("\\npm\\"))).toBe(false);
+    ctx.expect(comparablePath(environment.PATH).includes(comparablePath("\\claude\\"))).toBe(false);
+    ctx.expect(comparablePath(environment.PATH).includes(comparablePath("\\codex\\"))).toBe(false);
 }
 
 function serviceTest(name, run) {
@@ -266,31 +265,43 @@ export default [
             ctx.expect(sameRoot(serviceReply.boardData, path.join(userData, "board-data", "round-trip-board"))).toBe(true);
             assertSandboxEnvironment(ctx, serviceReply.environment, userData);
 
-            const executeResult = await page.editor.evaluate(`async () => {
-                const output = await window.persephone.execute("set").getText();
-                return output;
-            }`);
-            const executeEnvironment = selectedEnvironmentFromSet(executeResult);
-            ctx.expect(Object.keys(executeEnvironment).sort()).toEqual([...SANDBOX_ENVIRONMENT_KEYS].sort());
+            const executeEnvironment = await page.editor.evaluate(
+                "async () => await window.persephone.execute('node scripts/environment.mjs').getJson(/@@RESULT@@(.*)/)",
+            );
             assertSandboxEnvironment(ctx, executeEnvironment, userData);
 
             const executeNodeEnvironment = await page.editor.evaluate(
                 "async () => await window.persephone.executeNode('scripts/environment.mjs').getJson(/@@RESULT@@(.*)/)",
             );
             assertSandboxEnvironment(ctx, executeNodeEnvironment, userData);
-            ctx.expect(executeEnvironment.PATHEXT).toBe(serviceReply.environment.PATHEXT);
-            ctx.expect(executeNodeEnvironment.PATHEXT).toBe(serviceReply.environment.PATHEXT);
-            for (const lookup of executeNodeEnvironment.pathLookups) {
-                ctx.expect(normalizedPath(lookup)).toBe(normalizedPath(executeNodeEnvironment.PATH));
+            if (isWindows) {
+                ctx.expect(executeEnvironment.PATHEXT).toBe(serviceReply.environment.PATHEXT);
+                ctx.expect(executeNodeEnvironment.PATHEXT).toBe(serviceReply.environment.PATHEXT);
+                for (const lookup of executeEnvironment.pathLookups) {
+                    ctx.expect(comparablePath(lookup)).toBe(comparablePath(executeEnvironment.PATH));
+                }
+                for (const lookup of executeNodeEnvironment.pathLookups) {
+                    ctx.expect(comparablePath(lookup)).toBe(comparablePath(executeNodeEnvironment.PATH));
+                }
             }
 
             const testHome = path.join(userData, "test-home");
-            for (const folder of ["AppData", ".claude", ".codex"]) {
-                ctx.expect(await ctx.app.fs.listDir(testHome)).toContain(folder);
-            }
-            ctx.expect(await ctx.app.fs.listDir(path.join(testHome, "AppData"))).toContain("Roaming");
-            for (const folder of ["test-bin", "test-local-app-data"]) {
-                ctx.expect(await ctx.app.fs.listDir(userData)).toContain(folder);
+            if (isWindows) {
+                for (const folder of ["AppData", ".claude", ".codex"]) {
+                    ctx.expect(await ctx.app.fs.listDir(testHome)).toContain(folder);
+                }
+                ctx.expect(await ctx.app.fs.listDir(path.join(testHome, "AppData"))).toContain("Roaming");
+                for (const folder of ["test-bin", "test-local-app-data"]) {
+                    ctx.expect(await ctx.app.fs.listDir(userData)).toContain(folder);
+                }
+            } else if (isLinux) {
+                for (const folder of [".config", ".local", ".cache", ".claude", ".codex"]) {
+                    ctx.expect(await ctx.app.fs.listDir(testHome)).toContain(folder);
+                }
+                ctx.expect(await ctx.app.fs.listDir(path.join(testHome, ".local"))).toContain("share");
+                ctx.expect(await ctx.app.fs.listDir(path.join(testHome, ".local"))).toContain("state");
+                ctx.expect(await ctx.app.fs.listDir(userData)).toContain("test-bin");
+                ctx.expect(await ctx.app.fs.listDir(path.join(userData, "test-bin"))).toContain("node");
             }
 
             const nodeCheck = await ctx.script(`

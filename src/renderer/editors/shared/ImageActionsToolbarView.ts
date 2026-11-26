@@ -6,6 +6,7 @@ import { restoreFocus } from "../../uikit/shared/focus-restore";
 import { DrawIcon } from "../../theme/language-icons";
 import { createIconComponentElement } from "../../theme/icons";
 import { t } from "../../../shared/i18n/t";
+import { formatShortcut, keymap } from "../../../shared/keymap";
 import { notifyEditCapabilityFailure } from "../../api/capability-feedback";
 import { ui } from "../../api/ui";
 import { errMessage } from "../../../shared/utils";
@@ -113,7 +114,7 @@ export class ImageActionsToolbarView extends VanillaView<ImageActionsToolbarView
             ? t("editors.openInDrawingEditor")
             : action === "save" ? t("editors.saveAsPng")
                 : prefix === "html-" ? t("editors.copyImageToClipboard")
-                    : t("editors.copyImageWithShortcut", { shortcut: "Ctrl+C" });
+                    : t("editors.copyImageWithShortcut", { shortcut: formatShortcut(keymap.copyImage) });
         return {
             name: `${prefix}${action === "draw" ? "open-draw" : action}`,
             size: "sm",

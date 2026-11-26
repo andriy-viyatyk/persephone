@@ -1,3 +1,4 @@
+import path from "node:path";
 import { test } from "../../../lib/context.mjs";
 
 const builtInThemeIds = [
@@ -23,7 +24,7 @@ function escapedRegExp(value) {
 
 async function savedSettingText(ctx, key, value) {
     const paths = await ctx.app.main.runtime.paths;
-    const settingsPath = `${paths.userData}\\data\\appSettings.json`;
+    const settingsPath = path.join(paths.userData, "data", "appSettings.json");
     const text = await ctx.callText("fs.read", [settingsPath], { maxLength: 12000 });
     const encodedValue = JSON.stringify(value);
     const entry = new RegExp(`"${escapedRegExp(key)}"\\s*:\\s*${escapedRegExp(encodedValue)}(?:[,\\n])`);

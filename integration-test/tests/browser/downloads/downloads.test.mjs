@@ -1,4 +1,5 @@
 // Open in Windows Default App and Show in Folder launch external programs and stay uncovered.
+import path from "node:path";
 import { test } from "../../../lib/context.mjs";
 import { activatePage, closeBrowserPage, closePage, fixturePage, openBrowserPage } from "../helpers.mjs";
 
@@ -73,7 +74,7 @@ export default [
             ctx.expect(download.url).toContain("token=%E2%80%A6");
             ctx.expect(download.url).not.toContain("secret-value");
             ctx.expect(download.url).not.toContain("private-fragment");
-            ctx.expect(download.path.replaceAll("\\", "/")).toContain("/downloads/us2190-runner.txt");
+            ctx.expect(download.path.includes(`${path.sep}${path.join("downloads", "us2190-runner.txt")}`)).toBe(true);
             ctx.expect(await readDownload(ctx, download.path)).toBe(DOWNLOAD_LINE);
             const attachment = ctx._state.attachments.find((item) => item.suggestedFilename === download.suggestedFilename);
             ctx.expect(attachment.mimeType).toBe(download.mimeType);
@@ -116,7 +117,7 @@ export default [
             ctx.expect(entry.filename).toBe(filename);
             ctx.expect(entry.totalBytes).toBe(DOWNLOAD_LINE.length);
             ctx.expect(entry.receivedBytes).toBe(DOWNLOAD_LINE.length);
-            ctx.expect(entry.savePath.replaceAll("\\", "/").endsWith(`/test-downloads/${filename}`)).toBe(true);
+            ctx.expect(entry.savePath.endsWith(path.join("test-downloads", filename))).toBe(true);
             ctx.expect(await readDownload(ctx, entry.savePath)).toBe(expectedBody());
 
             const snapshot = await openDownloadsPopup(ctx, page.id);
@@ -203,7 +204,7 @@ export default [
             await page.editor.click("#download-open");
 
             const entry = await waitForDownload(ctx, filename, "completed");
-            ctx.expect(entry.savePath.replaceAll("\\", "/").endsWith(`/test-downloads/${filename}`)).toBe(true);
+            ctx.expect(entry.savePath.endsWith(path.join("test-downloads", filename))).toBe(true);
             ctx.expect(await readDownload(ctx, entry.savePath)).toBe(expectedBody());
 
             const snapshot = await openDownloadsPopup(ctx, page.id);

@@ -7,11 +7,10 @@ import {
     SERVICE_SHUTDOWN_TIMEOUT_MS,
 } from "../../ipc/module-service-channels";
 import { errMessage } from "../../shared/utils";
-import { getActiveLocale } from "../../shared/i18n/active-locale";
 import { ServiceError, type ServiceRecord, killUtilityProcessSync } from "./record";
 import { getNodeHostEntryPath, isPathInside } from "../utils";
 import * as boardLog from "../board-log";
-import { boardProcessEnvironment } from "../board-process-environment";
+import { buildServiceEnvironment } from "./process-environment";
 
 function delay(milliseconds: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -55,7 +54,7 @@ export class ModuleServiceProcess {
     ) {
         this.child = utilityProcess.fork(getNodeHostEntryPath("module-service-host.mjs", "module-service-host"), [entryPath], {
             cwd: record.boardRoot,
-            env: this.buildServiceEnvironment(record.boardRoot),
+            env: buildServiceEnvironment(record.boardRoot),
             stdio: "pipe",
             serviceName: `Persephone board service: ${record.boardRoot}`,
         });
@@ -233,25 +232,6 @@ export class ModuleServiceProcess {
         for (const line of text.split(/\r?\n/).filter((entry) => entry.length > 0)) {
             void boardLog.append(this.record.boardRoot, level, line).catch(() => {});
         }
-    }
-
-    private buildServiceEnvironment(boardRoot: string): NodeJS.ProcessEnv {
-        const allowed = [
-            "Path", "PATH", "SystemRoot", "SystemDrive", "WINDIR", "TEMP", "TMP", "USERPROFILE",
-            "APPDATA", "LOCALAPPDATA", "PROGRAMDATA", "ProgramData", "ALLUSERSPROFILE", "ProgramFiles",
-            "ProgramW6432", "ProgramFiles(x86)", "CommonProgramFiles", "CommonProgramW6432",
-            "CommonProgramFiles(x86)", "HOMEDRIVE", "HOMEPATH", "USERNAME", "ComSpec", "PATHEXT", "OS",
-            "PROCESSOR_ARCHITECTURE", "NUMBER_OF_PROCESSORS", "LANG", "LC_ALL", "TZ",
-        ];
-        const environment: NodeJS.ProcessEnv = {};
-        for (const key of allowed) {
-            const value = process.env[key];
-            if (value !== undefined) environment[key] = value;
-        }
-        environment.PERSEPHONE_SERVICE = "1";
-        environment.PERSEPHONE_BOARD_ROOT = boardRoot;
-        environment.PERSEPHONE_LOCALE = getActiveLocale();
-        return boardProcessEnvironment(environment, boardRoot);
     }
 
     private hostConfig(): ServiceHostConfig {

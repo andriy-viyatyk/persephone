@@ -14,6 +14,7 @@ import { SidecarProcess } from "./sidecar-process";
 import { errMessage } from "../shared/utils";
 import { applySessionProxy, lookupGeo } from "./session-proxy";
 import { onWebContentsGone } from "./webcontents-lifetime";
+import { isWindows } from "../shared/platform";
 
 const TOR_BOOTSTRAP_TIMEOUT_MS = 90_000;
 const FETCH_IDLE_GRACE_MS = 60_000;
@@ -405,7 +406,7 @@ class TorService {
         if (!fs.existsSync(torrcPath)) {
             const content = [
                 `SocksPort ${socksPort}`,
-                `DataDirectory ${dataDir.replace(/\\/g, "/")}`,
+                `DataDirectory ${isWindows ? dataDir.replace(/\\/g, "/") : dataDir}`,
             ].join("\n");
             fs.writeFileSync(torrcPath, content, "utf-8");
         }

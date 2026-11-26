@@ -34,6 +34,9 @@ export interface RunnerSpawnOptions {
      * Shell to run the command line through. Default `true` (the OS default
      * shell — `cmd.exe` on Windows). A string picks a specific shell (e.g.
      * `"bash"`, `"pwsh"`); `false` runs the executable directly (no shell).
+     * On Linux, direct command lines split on spaces/tabs outside double quotes;
+     * quotes group text or represent empty arguments, with Windows argv escaping
+     * for backslashes before quotes. Single quotes and shell syntax are literal.
      */
     shell?: boolean | string;
     /** Optional caller-chosen job name, stored on the live job. Lets a board

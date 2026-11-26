@@ -13,6 +13,8 @@ import { app } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import type { BrowserFileAccessPrompt } from "../ipc/browser-ipc";
+import { isLinux, isWindows } from "../shared/platform";
+import { fileSystemAccessToPromptLinux } from "./file-system-access-policy-linux";
 import { normalizeOrigin } from "./site-permission-store";
 
 /** Windows shortcut and DLL-redirect files: Chrome never lets a page pick or write these. */
@@ -86,10 +88,18 @@ export function fileSystemAccessToPrompt(details: Electron.FilesystemPermissionR
     // cross-origin subframes; this keeps a subframe from riding on the top site's prompt.
     if (details.requestingUrl && normalizeOrigin(details.requestingUrl) !== topOrigin) return undefined;
     const filePath = details.filePath;
-    if (!filePath || !DRIVE_PATH.test(filePath)) return undefined;
+    if (!filePath) return undefined;
     const isDirectory = details.isDirectory === true;
-    if (!isDirectory && BLOCKED_FILE_EXTENSIONS.has(path.win32.extname(filePath).toLowerCase())) return undefined;
-    const folders = sensitiveFolders();
-    if (candidatePaths(filePath).some((candidate) => isSensitive(candidate, folders))) return undefined;
+    if (isWindows) {
+        if (!DRIVE_PATH.test(filePath)) return undefined;
+        if (!isDirectory && BLOCKED_FILE_EXTENSIONS.has(path.win32.extname(filePath).toLowerCase())) return undefined;
+        const folders = sensitiveFolders();
+        if (candidatePaths(filePath).some((candidate) => isSensitive(candidate, folders))) return undefined;
+    } else if (isLinux) {
+        if (!isDirectory && BLOCKED_FILE_EXTENSIONS.has(path.win32.extname(filePath).toLowerCase())) return undefined;
+        if (!fileSystemAccessToPromptLinux(filePath)) return undefined;
+    } else {
+        return undefined;
+    }
     return { path: filePath, access: details.fileAccessType === "writable" ? "write" : "read", isDirectory };
 }

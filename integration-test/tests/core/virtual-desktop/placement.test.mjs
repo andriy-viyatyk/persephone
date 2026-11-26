@@ -19,4 +19,4 @@ export default test("owned windows stay on the selected virtual desktop", async 
         await closeBrowserPage(ctx, browserPage && { id: browserPage.pageId });
         if (secondWindow) await ctx.call("windows.disposeTestWindow", [secondWindow.index, secondWindow.windowId]).catch(() => {});
     }
-}, { requires: ["launch", "virtual-desktop"] });
+}, { requires: ["launch", "virtual-desktop", "windows"] });

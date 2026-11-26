@@ -61,6 +61,7 @@ import {
 } from "../../theme/language-icons";
 
 import { fpExtname } from "../../core/utils/file-path";
+import { isWindows } from "../../../shared/platform";
 import { customEditorRegistry } from "../../api/boards/custom-editor-registry";
 import { editorCatalog } from "../../editors/base/editor-catalog";
 import { subscribeBoardIconChanges } from "./board-icon-cache";
@@ -196,7 +197,8 @@ export function resolveFileIcon(fileName: string, language?: string): ResolvedFi
     const lang = getLanguageById(language || "") || (ext ? getLanguageByExtension(ext) : undefined);
     const staticIcon = getFilePatternIcon(fileName) || (lang ? languageIconMap[lang.id] : undefined);
     const boardMatches = customEditorRegistry.getBoardsForFile(fileName);
-    const iconBoardMatches = /[\\/]/.test(fileName)
+    const isPath = fileName.includes("/") || (isWindows && fileName.includes("\\"));
+    const iconBoardMatches = isPath
         ? boardMatches
         : boardMatches.filter((board) => board.folderMasks.length === 0);
     const resolvedEditorId = editorCatalog.resolveFile(fileName);

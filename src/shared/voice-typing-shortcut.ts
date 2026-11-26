@@ -1,7 +1,16 @@
+import { formatShortcut, keymap } from "./keymap";
+
 const MODIFIER_ORDER = ["Ctrl", "Alt", "Shift", "Meta"] as const;
 const RESERVED_CHORDS = new Set([
-    "Ctrl+Tab", "Ctrl+W", "Ctrl+F4", "Ctrl+N", "Ctrl+Shift+N", "Ctrl+O",
-    "Ctrl+Alt+[", "Ctrl+Alt+]", "Ctrl+R", "Ctrl+Shift+R", "Ctrl+F5", "Ctrl+Shift+F5",
+    formatShortcut(keymap.nextTab, "Ctrl"),
+    formatShortcut(keymap.closePageW, "Ctrl"),
+    formatShortcut(keymap.closePageF4, "Ctrl"),
+    formatShortcut(keymap.newPage, "Ctrl"),
+    formatShortcut(keymap.newWindow, "Ctrl"),
+    formatShortcut(keymap.openFile, "Ctrl"),
+    formatShortcut(keymap.previousTheme, "Ctrl"),
+    formatShortcut(keymap.nextTheme, "Ctrl"),
+    "Ctrl+R", "Ctrl+Shift+R", "Ctrl+F5", "Ctrl+Shift+F5",
     "F5", "F12", "Alt+ArrowLeft", "Alt+ArrowRight",
 ]);
 const RESERVED_KEYS = new Set(["Escape", "Enter", "Tab"]);

@@ -1,5 +1,7 @@
 import { promises as nodeFs } from "node:fs";
+import path from "node:path";
 import JSZip from "jszip";
+import { isLinux, isWindows } from "../../../../src/shared/platform.ts";
 import { test } from "../../../lib/context.mjs";
 import { answerInputDialog } from "../../helpers/sidebar-helpers.mjs";
 import { closePage } from "../helpers.mjs";
@@ -15,7 +17,7 @@ async function removeFixtureDirectory(ctx, folder) {
 function rowLine(snapshot, name) {
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
     // Tile mode names a row by its full path, so a name right after a path separator also matches.
-    const pattern = new RegExp(`(?:treeitem "${escaped}"|generic "(?:[^"\\s]+ )?${escaped}"|"[^"]*\\\\${escaped}")`, "u");
+    const pattern = new RegExp(`(?:treeitem "${escaped}"|generic "(?:[^"\\s]+ )?${escaped}"|"[^"]*[\\\\/]${escaped}")`, "u");
     return snapshot.split("\n").find((entry) => pattern.test(entry) && /\bref=e\d+\b/u.test(entry));
 }
 
@@ -91,10 +93,66 @@ async function closeOpenMenu(ctx) {
 }
 
 export default [
+    test("Folder View keeps case-distinct filenames separate through rename", async (ctx) => {
+        const folder = ctx.fixture("us-2205/folder-case-identity");
+        const workspaceParent = path.join(folder, "workspace");
+        const projectPath = path.join(workspaceParent, "project");
+        const useCaseOnlyNames = isLinux && !isWindows;
+        const firstName = useCaseOnlyNames ? "Case.txt" : "first.txt";
+        const secondName = useCaseOnlyNames ? "case.txt" : "second.txt";
+        const renamedName = useCaseOnlyNames ? "Renamed.txt" : "renamed-first.txt";
+        const filePath = (name) => path.join(projectPath, name);
+        const openedPageIds = [];
+        let pageId;
+        try {
+            await removeFixtureDirectory(ctx, folder);
+            await nodeFs.mkdir(projectPath, { recursive: true });
+            await nodeFs.writeFile(filePath(firstName), "First file contents.\n");
+            await nodeFs.writeFile(filePath(secondName), "Second file contents.\n");
+            pageId = await openFolderView(ctx, workspaceParent, "project");
+
+            const items = await ctx.app.pages[pageId].editor.items;
+            ctx.expect(items.some((item) => item.title === firstName)).toBe(true);
+            ctx.expect(items.some((item) => item.title === secondName)).toBe(true);
+
+            await openContextMenu(ctx, '[data-type="category-view"]', firstName);
+            await chooseMenuAction(ctx, "rename");
+            await answerInputDialog(ctx, renamedName, "Rename");
+            await ctx.waitFor((activeContext) => activeContext.app.fs.exists(filePath(renamedName)), Boolean);
+            ctx.expect(await nodeFs.readFile(filePath(renamedName), "utf8")).toBe("First file contents.\n");
+            ctx.expect(await nodeFs.readFile(filePath(secondName), "utf8")).toBe("Second file contents.\n");
+            ctx.expect(await ctx.app.fs.exists(filePath(firstName))).toBe(false);
+            await ctx.waitFor(
+                (activeContext) => activeContext.app.pages[pageId].editor.items,
+                (currentItems) => currentItems.some((item) => item.title === renamedName)
+                    && currentItems.some((item) => item.title === secondName)
+                    && !currentItems.some((item) => item.title === firstName),
+            );
+
+            const firstPage = await ctx.app.pages.openFile(filePath(renamedName));
+            openedPageIds.push(firstPage.id);
+            const secondPage = await ctx.app.pages.openFile(filePath(secondName));
+            openedPageIds.push(secondPage.id);
+            ctx.expect(await ctx.waitFor(
+                (activeContext) => activeContext.app.pages[firstPage.id].content,
+                (content) => content === "First file contents.\n",
+            )).toBe("First file contents.\n");
+            ctx.expect(await ctx.waitFor(
+                (activeContext) => activeContext.app.pages[secondPage.id].content,
+                (content) => content === "Second file contents.\n",
+            )).toBe("Second file contents.\n");
+        } finally {
+            await closeOpenMenu(ctx);
+            for (const openedPageId of openedPageIds) await closePage(ctx, openedPageId);
+            await closePage(ctx, pageId);
+            await removeFixtureDirectory(ctx, folder);
+        }
+    }),
+
     test("pages.openFolder uses Folder View routing and editorless pages cannot be saved", async (ctx) => {
         const fixture = ctx.fixture("us-2124/open-folder");
-        const projectPath = `${fixture}\\project`;
-        const filePath = `${projectPath}\\notes.txt`;
+        const projectPath = path.join(fixture, "project");
+        const filePath = path.join(projectPath, "notes.txt");
         let folderPageId;
         let workspacePageId;
         try {
@@ -139,10 +197,10 @@ export default [
         try {
             await removeFixtureDirectory(ctx, folder);
             await ctx.app.fs.mkdir(projectPath);
-            await ctx.app.fs.mkdir(`${nestedPath}\\deeper`);
-            await ctx.app.fs.write(`${projectPath}\\top.txt`, "Top level fixture.\n");
-            await ctx.app.fs.write(`${nestedPath}\\inside.txt`, "Nested fixture.\n");
-            await ctx.app.fs.write(`${nestedPath}\\deeper\\leaf.txt`, "Deep fixture.\n");
+            await ctx.app.fs.mkdir(path.join(nestedPath, "deeper"));
+            await ctx.app.fs.write(path.join(projectPath, "top.txt"), "Top level fixture.\n");
+            await ctx.app.fs.write(path.join(nestedPath, "inside.txt"), "Nested fixture.\n");
+            await ctx.app.fs.write(path.join(nestedPath, "deeper", "leaf.txt"), "Deep fixture.\n");
 
             pageId = await openFolderView(ctx, workspaceParent, "project");
             const editor = ctx.app.pages[pageId].editor;
@@ -203,8 +261,8 @@ export default [
         try {
             await removeFixtureDirectory(ctx, folder);
             await ctx.app.fs.mkdir(nestedPath);
-            await ctx.app.fs.write(`${projectPath}\\first.txt`, "First fixture.\n");
-            await ctx.app.fs.write(`${nestedPath}\\second.txt`, "Second fixture.\n");
+            await ctx.app.fs.write(path.join(projectPath, "first.txt"), "First fixture.\n");
+            await ctx.app.fs.write(path.join(nestedPath, "second.txt"), "Second fixture.\n");
             pageId = await openFolderView(ctx, workspaceParent, "project");
             projectMode = await ctx.app.pages[pageId].editor.viewMode;
 
@@ -247,7 +305,7 @@ export default [
         const folder = ctx.fixture("us-2072/folder-operations");
         const workspaceParent = ctx.fixture("us-2072/folder-operations/workspace");
         const projectPath = ctx.fixture("us-2072/folder-operations/workspace/project");
-        const filePath = (name) => `${projectPath}\\${name}`;
+        const filePath = (name) => path.join(projectPath, name);
         let pageId;
         try {
             await removeFixtureDirectory(ctx, folder);
@@ -340,8 +398,8 @@ export default [
         const folder = ctx.fixture("us-2072/folder-clipboard-operations");
         const workspaceParent = ctx.fixture("us-2072/folder-clipboard-operations/workspace");
         const projectPath = ctx.fixture("us-2072/folder-clipboard-operations/workspace/project");
-        const destinationPath = `${projectPath}\\destination`;
-        const filePath = (name) => `${projectPath}\\${name}`;
+        const destinationPath = path.join(projectPath, "destination");
+        const filePath = (name) => path.join(projectPath, name);
         let pageId;
         try {
             await removeFixtureDirectory(ctx, folder);
@@ -354,21 +412,21 @@ export default [
             await chooseMenuAction(ctx, "copy");
             await openContextMenu(ctx, '[data-type="category-view"]', "destination");
             await chooseMenuAction(ctx, "paste");
-            await ctx.waitFor((activeContext) => activeContext.app.fs.exists(`${destinationPath}\\source.txt`), Boolean);
+            await ctx.waitFor((activeContext) => activeContext.app.fs.exists(path.join(destinationPath, "source.txt")), Boolean);
             ctx.expect(await ctx.app.fs.exists(filePath("source.txt"))).toBe(true);
 
             await openContextMenu(ctx, '[data-type="category-view"]', "move.txt");
             await chooseMenuAction(ctx, "cut");
             await openContextMenu(ctx, '[data-type="category-view"]', "destination");
             await chooseMenuAction(ctx, "paste");
-            await ctx.waitFor((activeContext) => activeContext.app.fs.exists(`${destinationPath}\\move.txt`), Boolean);
+            await ctx.waitFor((activeContext) => activeContext.app.fs.exists(path.join(destinationPath, "move.txt")), Boolean);
             await ctx.waitFor((activeContext) => activeContext.app.fs.exists(filePath("move.txt")), (exists) => exists === false);
         } finally {
             await closeOpenMenu(ctx);
             await closePage(ctx, pageId);
             await removeFixtureDirectory(ctx, folder);
         }
-    }, { requires: ["desktop"] }),
+    }, { requires: ["desktop", "windows"] }),
 
     test("Archive Folder View lists a nested category and exposes no write actions", async (ctx) => {
         const folder = ctx.fixture("us-2072/archive-folder-view");

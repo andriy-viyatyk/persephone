@@ -1,13 +1,9 @@
 import { registerPublishedBoard } from "../helpers/published-boards.mjs";
 import { openBoardPage } from "../helpers/boards.mjs";
-
-function comparableRoot(value) {
-    return value.replace(/[\\/]+/g, "\\").replace(/\\+$/, "").toLowerCase();
-}
+import { samePath } from "../helpers/path-comparison.mjs";
 
 export function samePublishedRoot(left, right) {
-    return typeof left === "string" && typeof right === "string"
-        && comparableRoot(left) === comparableRoot(right);
+    return samePath(left, right);
 }
 
 export async function openPublishedSample(ctx, boardId, sampleRel) {

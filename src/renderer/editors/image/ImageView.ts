@@ -3,6 +3,7 @@ import { PageToolbarView } from "../base/PageToolbarView";
 import { EditorStatusBarView } from "../base/EditorStatusBarView";
 import { ImageViewportView } from "../../uikit/ImageViewport/ImageViewportView";
 import { t } from "../../../shared/i18n/t";
+import { isPrimaryModifier } from "../../../shared/keymap";
 import type { ImageViewportProps } from "../../uikit/ImageViewport/ImageViewportView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { fpBasename } from "../../core/utils/file-path";
@@ -82,6 +83,7 @@ export class ImageEditorView extends VanillaView<{ model: ImageEditor }> {
             src: url || "",
             alt: filePath ? fpBasename(filePath) : t("editors.imageFallback"),
             onCopyToClipboard: (blob) => this.model.imageActions.copy(blob),
+            matchesPrimaryModifier: isPrimaryModifier,
         };
     }
 }

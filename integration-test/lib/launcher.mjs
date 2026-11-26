@@ -4,6 +4,8 @@ import path from "node:path";
 import net from "node:net";
 import os from "node:os";
 import electronPath from "electron";
+import { isLinux, isWindows } from "../../src/shared/platform.ts";
+import { profileSocketName } from "../../src/shared/profile-socket.ts";
 import {
     DEV_MAIN_PATH, DEV_MARKER_PATH, FIXTURE_ROOT, MCP_URL, PROFILE_ROOT, REPOSITORY_ROOT,
     RUNNER_ROOT, SEED_ROOT, TEST_PORTS, HTTP_FIXTURE_PORT, HTTPS_FIXTURE_PORT, PROD_BUILD_BLOCKED_MESSAGE, RESTART_DEV_NOTICE,
@@ -39,7 +41,7 @@ function probePipe(pipePath, timeout) {
         const socket = net.createConnection(pipePath);
         const timer = setTimeout(() => {
             socket.destroy();
-            reject(new Error(`The uitest named pipe probe timed out: ${pipePath}`));
+            reject(new Error(`The uitest profile endpoint probe timed out: ${pipePath}`));
         }, timeout);
         socket.once("connect", () => {
             clearTimeout(timer);
@@ -49,7 +51,7 @@ function probePipe(pipePath, timeout) {
         socket.once("error", (error) => {
             clearTimeout(timer);
             if (error.code === "ENOENT" || error.code === "ECONNREFUSED") resolve();
-            else reject(new Error(`Could not safely probe the uitest named pipe: ${error.message}`));
+            else reject(new Error(`Could not safely probe the uitest profile endpoint: ${error.message}`));
         });
     });
 }
@@ -80,20 +82,34 @@ export async function verifyDevTarget(timeouts) {
 export async function validateExecutable(appPath) {
     const resolved = path.resolve(appPath);
     const executableName = path.basename(resolved);
-    const validName = process.platform === "win32"
+    if (!isWindows && !isLinux) throw new Error(`Packaged integration runs are not supported on ${process.platform}.`);
+    const validName = isWindows
         ? executableName.toLowerCase() === "persephone.exe"
-        : executableName === "persephone.exe";
+        : executableName === "persephone";
     if (!validName) {
-        throw new Error(`Expected a Persephone executable named persephone.exe. Check the sibling path: ${path.join(path.dirname(resolved), "persephone.exe")}`);
+        const expectedName = isWindows ? "persephone.exe" : "persephone";
+        throw new Error(`Expected a Persephone executable named ${expectedName}. Check the sibling path: ${path.join(path.dirname(resolved), expectedName)}`);
     }
     try {
         const info = await stat(resolved);
         if (!info.isFile()) throw new Error("not a regular file");
-        await access(resolved, constants.R_OK);
+        await access(resolved, isLinux ? constants.X_OK : constants.R_OK);
     } catch (error) {
-        throw new Error(`Cannot read Persephone executable at ${resolved}: ${error.message}. Check the sibling path: ${path.join(path.dirname(resolved), "persephone.exe")}`);
+        const requirement = isLinux ? "execute" : "read";
+        const expectedName = isWindows ? "persephone.exe" : "persephone";
+        throw new Error(`Cannot ${requirement} Persephone executable at ${resolved}: ${error.message}. Check the sibling path: ${path.join(path.dirname(resolved), expectedName)}`);
     }
     return resolved;
+}
+
+export async function packagedTestCommand(appPath, testFolder, productArgs) {
+    if (isWindows) {
+        const executable = path.join(path.dirname(appPath), "persephone-test.exe");
+        await access(executable);
+        return { executable, args: [testFolder, ...productArgs] };
+    }
+    if (isLinux) return { executable: appPath, args: ["--test", testFolder, ...productArgs] };
+    throw new Error(`Packaged integration runs are not supported on ${process.platform}.`);
 }
 
 function markerHasLivePid(markerText) {
@@ -164,9 +180,13 @@ export async function prepareProfile(timeouts, { ports = TEST_PORTS } = {}) {
         if (error.code !== "ENOENT") throw error;
     }
     await assertPortsFree(ports);
-    if (process.platform === "win32") {
+    if (isWindows) {
         const pipePath = `\\\\.\\pipe\\persephone-${os.userInfo().username}-uitest`;
         await probePipe(pipePath, timeouts.devProbe);
+    } else if (isLinux) {
+        const runtimeDirectory = process.env.XDG_RUNTIME_DIR;
+        if (!runtimeDirectory?.trim()) throw new Error("XDG_RUNTIME_DIR must be set to a non-empty directory before resetting the integration test profile.");
+        await probePipe(path.join(runtimeDirectory, profileSocketName("uitest")), timeouts.devProbe);
     }
     await rm(resolved, { recursive: true, force: true });
     await cp(SEED_ROOT, resolved, { recursive: true });
@@ -193,6 +213,7 @@ export function createLauncher({ profilePath, timeouts, target = "dev", appPath 
     let childState = null;
 
     function targetCommand(args = []) {
+        if (target === "exe" && !isWindows && !isLinux) throw new Error(`Packaged integration runs are not supported on ${process.platform}.`);
         const executable = target === "exe" ? appPath : electronPath;
         const profileArgs = ["--profile", "uitest", "--profile-dir", profilePath];
         const appArgs = target === "exe" ? profileArgs : [".", ...profileArgs];

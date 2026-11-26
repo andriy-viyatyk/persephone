@@ -1,3 +1,5 @@
+import { isWindows } from "./platform";
+
 const MIME_TYPES: Record<string, string> = {
     ".aac": "audio/aac",
     ".avi": "video/x-msvideo",
@@ -59,7 +61,9 @@ const MIME_TYPES: Record<string, string> = {
 
 /** Resolve a MIME type from the final filename extension. */
 export function mimeTypeForPath(name: string): string {
-    const pathName = name.split(/[?#]/, 1)[0].replace(/\\/g, "/");
+    const inputPath = name.split(/[?#]/, 1)[0];
+    const isUrl = /^[a-z][a-z0-9+.-]*:\/\//i.test(name);
+    const pathName = isWindows || isUrl ? inputPath.replace(/\\/g, "/") : inputPath;
     const basename = pathName.slice(pathName.lastIndexOf("/") + 1);
     const dot = basename.lastIndexOf(".");
     if (dot <= 0) return "application/octet-stream";

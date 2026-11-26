@@ -1,7 +1,11 @@
 import { app } from "../../api/app";
-import { fpJoin } from "../../core/utils/file-path";
+import { fpJoin, fpNormalizeForCompare, isPlainLocalPath } from "../../core/utils/file-path";
 import type { ILink } from "../../api/types/io.tree";
 import type { LinkItem } from "./linkTypes";
+
+function linkIdentity(href: string): string {
+    return isPlainLocalPath(href) ? fpNormalizeForCompare(href) : href.toLowerCase();
+}
 
 export interface LinkImportResult {
     links: Partial<LinkItem>[];
@@ -16,7 +20,7 @@ export class LinkImporter {
         onExistingMoved?: (link: LinkItem, category: string) => void,
         limit = 100,
     ): Promise<LinkImportResult> {
-        const existingHrefs = new Set(existingLinks.map((link) => link.href.toLowerCase()));
+        const existingHrefs = new Set(existingLinks.map((link) => linkIdentity(link.href)));
         const directLinks: Partial<LinkItem>[] = [];
         const foldersToScan: ILink[] = [];
 
@@ -24,10 +28,10 @@ export class LinkImporter {
             if (item.isDirectory) {
                 foldersToScan.push(item);
             } else {
-                if (existingHrefs.has(item.href.toLowerCase())) {
+                if (existingHrefs.has(linkIdentity(item.href))) {
                     if (moveExistingToCategory !== undefined) {
                         const existing = existingLinks.find(
-                            (link) => link.href.toLowerCase() === item.href.toLowerCase(),
+                            (link) => linkIdentity(link.href) === linkIdentity(item.href),
                         );
                         if (existing && existing.category !== moveExistingToCategory) {
                             onExistingMoved?.(existing, moveExistingToCategory);
@@ -35,7 +39,7 @@ export class LinkImporter {
                     }
                     continue;
                 }
-                existingHrefs.add(item.href.toLowerCase());
+                existingHrefs.add(linkIdentity(item.href));
                 directLinks.push({
                     title: item.title,
                     href: item.href,
@@ -84,8 +88,8 @@ export class LinkImporter {
                     });
                     continue;
                 }
-                if (existingHrefs.has(fullPath.toLowerCase())) continue;
-                existingHrefs.add(fullPath.toLowerCase());
+                if (existingHrefs.has(linkIdentity(fullPath))) continue;
+                existingHrefs.add(linkIdentity(fullPath));
                 links.push({
                     title: entry.name,
                     href: fullPath,

@@ -1,5 +1,6 @@
 import { test } from "../../../lib/context.mjs";
 import { readFile } from "node:fs/promises";
+import { isLinux } from "../../../../src/shared/platform.ts";
 
 function nodeCommand(source, extraArgument) {
     const base = `node -e "${source}"`;
@@ -102,10 +103,16 @@ export default [
         const cwd = ctx.fixture("us-2117/proc/cwd");
         await ctx.app.fs.removeDir(cwd, true);
         await ctx.app.fs.mkdir(cwd);
+        // Direct spawn: Windows runs a bare executable (a whole command line is not split there);
+        // Linux splits a quoted command line (US-2207).
+        const echoScript = ctx.fixture("us-2117/proc/stdin-echo.mjs");
+        await ctx.app.fs.write(echoScript, "process.stdin.pipe(process.stdout);\n");
+        const directCommand = isLinux ? `node ${JSON.stringify(echoScript)}` : "cmd.exe";
+        const stdinText = isLinux ? "proc stdin fixture" : "echo proc stdin fixture\r\nexit\r\n";
         const result = await scriptJson(ctx, `
-            const inputHandle = app.proc.execute("cmd.exe", { shell: false });
+            const inputHandle = app.proc.execute(${JSON.stringify(directCommand)}, { shell: false });
             const inputPromise = inputHandle.getText();
-            inputHandle.write("echo proc stdin fixture\\r\\nexit\\r\\n");
+            inputHandle.write(${JSON.stringify(stdinText)});
             inputHandle.endStdin();
             const input = await inputPromise;
 
@@ -118,10 +125,31 @@ export default [
         ctx.expect(result.options).toEqual([cwd, "synthetic-env-value"]);
     }),
 
+    ...(isLinux ? [procTest("Linux direct command lines preserve quoted arguments", async (ctx) => {
+        await ensureNodeAvailable(ctx);
+        const source = "process.stdout.write(JSON.stringify(process.argv.slice(1)))";
+        const expected = ["argument with spaces", "", String.raw`back\slash"quote`];
+        const command = String.raw`node -e ${JSON.stringify(source)} "argument with spaces" "" "back\slash\"quote"`;
+        const result = await scriptJson(ctx, `
+            const handle = app.proc.execute(${JSON.stringify(command)}, { shell: false });
+            return JSON.stringify(await handle.getJson());
+        `);
+        ctx.expect(result).toEqual(expected);
+    })] : []),
+
+    ...(isLinux ? [procTest("Linux direct command lines report unmatched quotes", async (ctx) => {
+        const result = await scriptJson(ctx, `
+            const handle = app.proc.execute('node "unterminated', { shell: false });
+            const error = await new Promise((resolve) => handle.on("error", resolve));
+            return JSON.stringify(error);
+        `);
+        ctx.expect(result.message).toContain("Unmatched double quote");
+    })] : []),
+
     procTest("spawn failures are reported as errors", async (ctx) => {
         const missingPath = ctx.fixture("us-2117/proc/missing-executable.exe");
         const result = await scriptJson(ctx, `
-            const handle = app.proc.execute(${JSON.stringify(missingPath)}, { shell: false });
+            const handle = app.proc.execute(${JSON.stringify(isLinux ? JSON.stringify(missingPath) : missingPath)}, { shell: false });
             const error = await new Promise((resolve) => handle.on("error", resolve));
             return JSON.stringify(error);
         `);

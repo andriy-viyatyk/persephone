@@ -8,6 +8,14 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
+- **EPIC-213** — [Linux core parity (multiplatform phase 1)](epics/EPIC-213.md)
+  - [ ] [US-2204: Suite on Linux: runner and baseline](tasks/US-2204-linux-suite-runner/README.md)
+  - [ ] [US-2205: Path semantics](tasks/US-2205-linux-path-semantics/README.md)
+  - [ ] [US-2206: Browser file-system grants on Linux](tasks/US-2206-linux-file-access-grants/README.md)
+  - [ ] [US-2207: Board and module environments](tasks/US-2207-linux-board-module-env/README.md)
+  - [ ] [US-2208: Keymap with a primary modifier](tasks/US-2208-keymap-primary-modifier/README.md)
+  - [ ] [US-2209: Encoding fallback and fonts](tasks/US-2209-linux-encoding-fonts/README.md)
+  - [ ] [US-2210: Linux CI job](tasks/US-2210-linux-ci-job/README.md)
 
 ## Planned
 

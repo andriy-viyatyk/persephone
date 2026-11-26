@@ -15,6 +15,7 @@ export interface ImageViewportProps {
     src: string;
     alt?: string;
     onCopyToClipboard?: (blob: Blob) => Promise<void> | void;
+    matchesPrimaryModifier?: (event: Pick<KeyboardEvent, "ctrlKey" | "metaKey">) => boolean;
 }
 
 export class ImageViewportView extends VanillaView<ImageViewportProps> {
@@ -169,7 +170,7 @@ export class ImageViewportView extends VanillaView<ImageViewportProps> {
                 this.resetView();
                 break;
             case "c":
-                if (event.ctrlKey) {
+                if (this.props.matchesPrimaryModifier?.(event) ?? event.ctrlKey) {
                     event.preventDefault();
                     void this.copyToClipboard();
                 }

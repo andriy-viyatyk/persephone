@@ -1,5 +1,6 @@
 import path from "node:path";
 import { test } from "../../../lib/context.mjs";
+import { samePath } from "../../helpers/path-comparison.mjs";
 
 const DISCARD = '[data-name="video-recording-discard"]';
 
@@ -21,7 +22,7 @@ export default [
             ctx.expect(result.stoppedBy).toBe("agent");
 
             const recordingsDir = await ctx.app.fs.resolveDataPath("recordings");
-            ctx.expect(path.dirname(result.path).toLowerCase()).toBe(recordingsDir.toLowerCase());
+            ctx.expect(samePath(path.dirname(result.path), recordingsDir)).toBe(true);
             ctx.expect(await ctx.app.fs.exists(result.path)).toBe(true);
 
             await ctx.waitFor((active) => active.app.pages.all, (pages) => pages.some((page) => page.editor === "video-view"));

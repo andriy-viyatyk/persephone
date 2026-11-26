@@ -8,6 +8,7 @@ import { GitTreeModel } from "../../components/git-tree";
 import { CompareIcon } from "../../theme/icons";
 import { git } from "../../api/git";
 import type { ILinkDiffRevision } from "../../api/types/io.link-data";
+import { isWindows } from "../../../shared/platform";
 
 /**
  * A revision selection for one side of the diff.
@@ -92,7 +93,8 @@ export class FileDiffEditor extends TextHostEditorModel<FileDiffEditorState> {
         const root = this.repoRoot;
         const filePath = this.filePath;
         if (!root || !filePath) return undefined;
-        return fpRelative(root, filePath).replace(/\\/g, "/");
+        const relativePath = fpRelative(root, filePath);
+        return isWindows ? relativePath.replace(/\\/g, "/") : relativePath;
     }
 
     get language(): string | undefined {

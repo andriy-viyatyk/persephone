@@ -1,3 +1,6 @@
+import { promises as nodeFs } from "node:fs";
+import path from "node:path";
+import { isWindows } from "../../../../src/shared/platform.ts";
 import { test } from "../../../lib/context.mjs";
 import {
     chooseTreeMenuItem,
@@ -14,6 +17,51 @@ import {
 import { shellPagePath } from "../../helpers/shell-helpers.mjs";
 
 export default [
+    test("Explorer keeps native filename separators distinct during rename", async (ctx) => {
+        const fixture = await openExplorerFixture(ctx, "us-2205/explorer-path-identity", {});
+        const literalName = isWindows ? "before.txt" : "a\\b.txt";
+        const renamedName = isWindows ? "after.txt" : "renamed.txt";
+        const nestedName = isWindows ? "sibling.txt" : "a/b.txt";
+        const nestedEntryName = isWindows ? nestedName : "b.txt";
+        const literalPath = path.join(fixture.folderPath, literalName);
+        const renamedPath = path.join(fixture.folderPath, renamedName);
+        const nestedPath = path.join(fixture.folderPath, nestedName);
+        try {
+            await nodeFs.mkdir(path.dirname(nestedPath), { recursive: true });
+            await nodeFs.writeFile(literalPath, "Literal file contents.\n");
+            await nodeFs.writeFile(nestedPath, "Nested file contents.\n");
+            await explorerItems(ctx, fixture.pageId, [literalName, isWindows ? "sibling.txt" : "a"]);
+
+            const literalRow = await explorerRowRef(ctx, literalName);
+            await ctx.app.window.screen.click({ ref: literalRow });
+            ctx.expect(await ctx.waitFor(
+                (activeContext) => activeContext.app.pages[fixture.pageId].content,
+                (value) => value === "Literal file contents.\n",
+            )).toBe("Literal file contents.\n");
+
+            if (!isWindows) await fixture.pageRoot.panels.explorer.expand(path.dirname(nestedPath));
+            const nestedRow = await explorerRowRef(ctx, nestedEntryName);
+            await ctx.app.window.screen.click({ ref: nestedRow });
+            ctx.expect(await ctx.waitFor(
+                (activeContext) => activeContext.app.pages[fixture.pageId].content,
+                (value) => value === "Nested file contents.\n",
+            )).toBe("Nested file contents.\n");
+
+            await openTreeContextMenu(ctx, literalName);
+            await chooseTreeMenuItem(ctx, "rename");
+            await answerInputDialog(ctx, renamedName, "Rename");
+            await ctx.waitFor((activeContext) => activeContext.app.fs.exists(renamedPath), Boolean);
+            ctx.expect(await nodeFs.readFile(renamedPath, "utf8")).toBe("Literal file contents.\n");
+            ctx.expect(await nodeFs.readFile(nestedPath, "utf8")).toBe("Nested file contents.\n");
+            ctx.expect(await ctx.app.fs.exists(literalPath)).toBe(false);
+            await waitForExplorerEntry(ctx, fixture.pageId, renamedName);
+            await waitForExplorerEntry(ctx, fixture.pageId, literalName, false);
+        } finally {
+            await closeExplorerFixture(ctx, fixture);
+            await nodeFs.rm(fixture.folderPath, { recursive: true, force: true });
+        }
+    }),
+
     test("Explorer lists fixture entries, expands folders, navigates in place, and reveals the active file", async (ctx) => {
         const fixture = await openExplorerFixture(ctx, "us-2039/explorer-navigation", {
             "top.txt": "Top level.\n",
@@ -200,7 +248,7 @@ export default [
         } finally {
             await closeExplorerFixture(ctx, fixture);
         }
-    }, { requires: ["desktop"] }),
+    }, { requires: ["desktop", "windows"] }),
 
     test("dragging an Explorer file row fails safely without moving the file or wedging the app", async (ctx) => {
         const fixture = await openExplorerFixture(ctx, "us-2039/explorer-drag-cancel", {

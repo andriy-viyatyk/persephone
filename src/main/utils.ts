@@ -3,14 +3,12 @@ import path from 'path';
 import fs from 'fs';
 import { app } from 'electron';
 import type { LaunchInput } from "../shared/launch-input";
-import { isKeyInside, type PathContainmentOptions } from "../shared/path-containment";
+import { isKeyInside, resolvedPathCompareKey, type PathContainmentOptions } from "../shared/path-containment";
 import { stripTestInstanceOptions } from "./test-mode/instance-options";
-import { pathsAreCaseInsensitive } from "../shared/platform";
 
 /** Comparison key for non-board paths. Board roots use BoardRoot.key. */
 export function comparePathKey(filePath: string): string {
-    const resolved = path.resolve(filePath).replace(/\\/g, "/").replace(/\/+$/, "");
-    return pathsAreCaseInsensitive ? resolved.toLowerCase() : resolved;
+    return resolvedPathCompareKey(path.resolve(filePath));
 }
 
 export function isPathInside(parent: string, child: string, options?: PathContainmentOptions): boolean {

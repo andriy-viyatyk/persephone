@@ -1,5 +1,9 @@
 import { test } from "../../../lib/context.mjs";
 import { close, open } from "../../helpers/pilot-helpers.mjs";
+import { isWindows } from "../../../../src/shared/platform.ts";
+
+const addCursorBelowKey = isWindows ? "Control+Alt+ArrowDown" : "Shift+Alt+ArrowDown";
+const formatDocumentKey = isWindows ? "Shift+Alt+f" : "Control+Shift+i";
 
 async function openPage(ctx, folder, filename, content, editor = "monaco") {
     return open(ctx, `${folder}/${filename}`, content, editor);
@@ -121,7 +125,7 @@ export default [
         try {
             page = await openPage(ctx, "us-2043/multi-cursor", "two-lines.txt", "one\ntwo\n");
             await ctx.app.window.screen.pressKey("Control+Home", { target: ".monaco-editor-host-root .monaco-editor" });
-            await ctx.app.window.screen.pressKey("Control+Alt+ArrowDown");
+            await ctx.app.window.screen.pressKey(addCursorBelowKey);
             await ctx.app.window.screen.pressKey("X");
 
             ctx.expect(await ctx.waitFor(
@@ -139,7 +143,7 @@ export default [
         let page;
         try {
             page = await openPage(ctx, "us-2043/format-json", "record.json", initial);
-            await ctx.app.window.screen.pressKey("Shift+Alt+f", { target: ".monaco-editor-host-root .monaco-editor" });
+            await ctx.app.window.screen.pressKey(formatDocumentKey, { target: ".monaco-editor-host-root .monaco-editor" });
 
             const formatted = await ctx.waitFor(
                 (activeContext) => activeContext.callText(`pages[${JSON.stringify(page.id)}].content`),

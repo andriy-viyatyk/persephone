@@ -1,4 +1,5 @@
 import { ImageViewportView } from "../../uikit/ImageViewport/ImageViewportView";
+import { isPrimaryModifier } from "../../../shared/keymap";
 import type { ImageViewportProps } from "../../uikit/ImageViewport/ImageViewportView";
 import {
     createPanelElement,
@@ -26,6 +27,7 @@ function viewportProps(model: SvgEditor, content: string): ImageViewportProps {
         src: `data:image/svg+xml,${encodeURIComponent(content)}`,
         alt: "SVG Preview",
         onCopyToClipboard: (blob) => model.imageActions.copy(blob),
+        matchesPrimaryModifier: isPrimaryModifier,
     };
 }
 

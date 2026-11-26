@@ -1,4 +1,4 @@
-import { access, mkdir, open, readFile, readdir, rename, unlink, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, readdir, rename, unlink, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -6,11 +6,13 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { REQUIREMENT_TAGS, validateRequirements } from "./lib/context.mjs";
 import { createTimeouts, DEV_MAIN_PATH, HTTP_FIXTURE_PORT, HTTP_FIXTURE_URL, HTTPS_FIXTURE_PORT, KEEP_OPEN_PATH, LOCK_PATH, MCP_URL, PROFILE_ROOT, REPORT_ROOT, REPOSITORY_ROOT, RUNNER_ROOT, RUNS_ROOT, TEST_ROOT, TEST_SETUP_PATH } from "./lib/config.mjs";
-import { APP_PORTS, assertPortsFree, assertProductionBuildAllowed, buildProduction, createLauncher, prepareProfile, refreshFixtures, validateExecutable, verifyDevTarget } from "./lib/launcher.mjs";
+import { APP_PORTS, assertPortsFree, assertProductionBuildAllowed, buildProduction, createLauncher, packagedTestCommand, prepareProfile, refreshFixtures, validateExecutable, verifyDevTarget } from "./lib/launcher.mjs";
 import { McpClient } from "./lib/client.mjs";
 import { fixtureCertificateFingerprint, startHttpFixtures } from "./lib/http-fixtures.mjs";
 import { collectModuleReport, writeAggregateReport } from "./lib/aggregate-report.mjs";
 import electronPath from "electron";
+import { isWindows } from "../src/shared/platform.ts";
+import { automaticRequirementReason, isAutomaticRequirement } from "../src/shared/test-requirements.ts";
 
 function parseArguments(args) {
     const options = { target: "dev", app: undefined, area: undefined, test: undefined, keepOpen: false, rerunFailed: false, open: false, attach: false, list: false, help: false, with: [], timeoutScale: 1, baseline: undefined, desktop: undefined };
@@ -52,8 +54,8 @@ function parseArguments(args) {
             if (tags.some((tag) => !tag)) throw new Error("--with contains an empty tag.");
             if (new Set(tags).size !== tags.length) throw new Error("--with contains duplicate tags.");
             if (tags.includes("published-board-checkout")) throw new Error("--with published-board-checkout is not allowed; the wrapper enables it when the boards checkout exists.");
-            const invalid = tags.filter((tag) => !REQUIREMENT_TAGS.includes(tag) || tag === "launch");
-            if (invalid.length) throw new Error(`Unknown --with tag: ${invalid.join(", ")}. Allowed tags: ${REQUIREMENT_TAGS.filter((tag) => tag !== "launch").join(", ")}.`);
+            const invalid = tags.filter((tag) => !REQUIREMENT_TAGS.includes(tag) || tag === "launch" || isAutomaticRequirement(tag));
+            if (invalid.length) throw new Error(`Unknown or automatic --with tag: ${invalid.join(", ")}. Allowed tags: ${REQUIREMENT_TAGS.filter((tag) => tag !== "launch" && !isAutomaticRequirement(tag)).join(", ")}.`);
             options.with = tags;
         }
     }
@@ -84,7 +86,7 @@ function renderHelp() {
 }
 
 function readCurrentVirtualDesktop() {
-    if (process.platform !== "win32") throw new Error("The virtual-desktop integration test requires Windows.");
+    if (!isWindows) throw new Error("The virtual-desktop integration test requires Windows.");
     const output = execFileSync("reg.exe", ["query", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VirtualDesktops", "/v", "CurrentVirtualDesktop"], { encoding: "utf8", windowsHide: true });
     const match = output.match(/CurrentVirtualDesktop\s+REG_BINARY\s+((?:[0-9a-f]{2}\s*){16})/i);
     if (!match) throw new Error("Could not read a 16-byte CurrentVirtualDesktop registry value.");
@@ -190,15 +192,21 @@ function renderTestList(tests, options) {
         }
     }
     print(roots);
+    for (const descriptor of tests) {
+        const reason = automaticRequirementReason(descriptor.requires, isWindows);
+        if (reason) console.log(`  SKIPPED ${descriptor.file}: ${descriptor.name} — ${reason}`);
+    }
     console.log(`Total: ${tests.length} tests, ${skippedCount(tests)} skipped by requirements.`);
 }
 
 function classify(descriptor, options) {
+    const automaticReason = automaticRequirementReason(descriptor.requires, isWindows);
+    if (automaticReason) return automaticReason;
     if (descriptor.requires.includes("published-board-checkout") && !options.boardsCheckoutAvailable) {
         return `boards checkout not found at ${options.boardsDirectory}; set PERSEPHONE_BOARDS_DIR to its boards folder`;
     }
     if (options.attach && descriptor.requires.includes("launch")) return "needs a launched app (not available with --attach)";
-    const missing = descriptor.requires.filter((tag) => tag !== "launch" && tag !== "desktop" && !options.with.includes(tag));
+    const missing = descriptor.requires.filter((tag) => tag !== "launch" && tag !== "desktop" && !isAutomaticRequirement(tag) && !options.with.includes(tag));
     return missing.length ? `missing opt-in: ${missing.join(", ")}` : null;
 }
 
@@ -370,10 +378,7 @@ async function main() {
                 let executable;
                 let args;
                 if (options.target === "exe") {
-                    const testRunner = path.join(path.dirname(options.app), "persephone-test.exe");
-                    await access(testRunner);
-                    executable = testRunner;
-                    args = [testFolder, ...productArgs];
+                    ({ executable, args } = await packagedTestCommand(options.app, testFolder, productArgs));
                 } else {
                     executable = electronPath;
                     args = [DEV_MAIN_PATH, "--test", testFolder, ...productArgs];

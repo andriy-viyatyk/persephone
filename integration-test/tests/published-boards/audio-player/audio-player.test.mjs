@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { test } from "../../../lib/context.mjs";
+import { samePath } from "../../helpers/path-comparison.mjs";
 import { closePublishedSample, openPublishedBoard, openPublishedSample } from "../helpers.mjs";
 
 const requiresPublishedBoard = { requires: ["launch", "published-board-checkout"] };
@@ -35,16 +36,6 @@ async function writeFixture(ctx, relativePath, content) {
     await mkdir(dirname(file), { recursive: true });
     await writeFile(file, content);
     return file;
-}
-
-function comparablePath(value) {
-    return typeof value === "string"
-        ? value.replace(/\\/g, "/").replace(/\/+$/, "").toLocaleLowerCase()
-        : "";
-}
-
-function samePath(left, right) {
-    return comparablePath(left) === comparablePath(right);
 }
 
 function waitForModel(ctx, editor) {

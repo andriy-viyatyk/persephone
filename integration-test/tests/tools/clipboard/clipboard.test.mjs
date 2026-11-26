@@ -204,7 +204,7 @@ export default [
         } finally {
             await cleanupClipboardTest(ctx, folder, initialPageIds, previousClipboardText, hubOwnership);
         }
-    }, { requires: ["desktop"] }),
+    }, { requires: ["desktop", "windows"] }),
 
     test("Copying a stored clipboard row captures a new top entry", async (ctx) => {
         const folder = ctx.fixture("us-2070/copy-again");
@@ -230,7 +230,7 @@ export default [
         } finally {
             await cleanupClipboardTest(ctx, folder, initialPageIds, previousClipboardText, hubOwnership);
         }
-    }, { requires: ["desktop"] }),
+    }, { requires: ["desktop", "windows"] }),
 
     test("Selecting a clipboard row opens its content and remove deletes the stored item", async (ctx) => {
         const folder = ctx.fixture("us-2070/open-remove");
@@ -261,7 +261,7 @@ export default [
         } finally {
             await cleanupClipboardTest(ctx, folder, initialPageIds, previousClipboardText, hubOwnership);
         }
-    }, { requires: ["desktop"] }),
+    }, { requires: ["desktop", "windows"] }),
 
     test("Clear empties history and disabling hides the clipboard call-tree node", async (ctx) => {
         const folder = ctx.fixture("us-2070/clear-disable");
@@ -296,5 +296,5 @@ export default [
         } finally {
             await cleanupClipboardTest(ctx, folder, initialPageIds, previousClipboardText, hubOwnership);
         }
-    }, { requires: ["desktop"] }),
+    }, { requires: ["desktop", "windows"] }),
 ];

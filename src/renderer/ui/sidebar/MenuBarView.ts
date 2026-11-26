@@ -1,4 +1,5 @@
 import { t } from "../../../shared/i18n/t";
+import { formatShortcut, keymap } from "../../../shared/keymap";
 import { api } from "../../../ipc/renderer/api";
 import { pages } from "../../api/pages";
 import { menuFolders, type MenuFolder } from "../../api/menu-folders";
@@ -75,14 +76,14 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
         name: "menubar-open-file",
         size: "md",
         icon: "open-file",
-        title: t("shell.openFileCtrlO", { shortcut: "Ctrl+O" }),
+        title: t("shell.openFileCtrlO", { shortcut: formatShortcut(keymap.openFile) }),
         onClick: () => { void this.openFile(); },
     });
     private readonly newWindowButton = new IconButtonView({
         name: "menubar-new-window",
         size: "md",
         icon: "new-window",
-        title: t("shell.newWindowCtrlShiftN", { shortcut: "Ctrl+Shift+N" }),
+        title: t("shell.newWindowCtrlShiftN", { shortcut: formatShortcut(keymap.newWindow) }),
         onClick: () => { void this.newWindow(); },
     });
     private readonly spacer = new SpacerView({});

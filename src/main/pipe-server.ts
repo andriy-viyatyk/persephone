@@ -3,6 +3,7 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { isWindows } from "../shared/platform";
+import { profileSocketName } from "../shared/profile-socket";
 import { applicationProfileName } from "./application-profile";
 import { openWindows } from "./open-windows";
 import { parseLaunchArguments } from "./utils";
@@ -11,7 +12,7 @@ export function getPipePath(profile = applicationProfileName()): string | undefi
     if (isWindows) return `\\\\.\\pipe\\persephone-${os.userInfo().username}${profile ? `-${profile}` : ""}`;
     const runtimeDirectory = process.env.XDG_RUNTIME_DIR;
     if (!runtimeDirectory) return undefined;
-    return path.join(runtimeDirectory, `persephone${profile ? `-${profile}` : ""}.sock`);
+    return path.join(runtimeDirectory, profileSocketName(profile));
 }
 
 let server: net.Server | undefined;

@@ -14,7 +14,8 @@ import { git } from "../../api/git";
 import { ui } from "../../api/ui";
 import { settings } from "../../api/settings";
 import { createLinkData } from "../../../shared/link-data";
-import { fpJoin } from "../../core/utils/file-path";
+import { fpBasename, fpJoin } from "../../core/utils/file-path";
+import { isWindows } from "../../../shared/platform";
 import { toClipboard } from "../../api/clipboard";
 import { DirectoryWatcher } from "../../api/file-watcher";
 import { decodeGitTreeLink, encodeGitTreeLink } from "../../content/git-tree-link";
@@ -68,7 +69,7 @@ export interface GitTreeSelectionState {
 /** Basename of a repo top-level path (folder name), or "Git" when empty.
  *  Shared by the tab title (`initFromRepoRoot`) and the `repoName` getter. */
 function repoFolderName(repoRoot: string): string {
-    return repoRoot.replace(/[/\\]+$/, "").split(/[/\\]/).pop() || "Git";
+    return fpBasename(repoRoot) || "Git";
 }
 
 export const getDefaultGitTreeEditorState = (): GitTreeEditorState => ({
@@ -507,7 +508,7 @@ export class GitTreeEditorModel extends EditorModel<GitTreeEditorState> {
         // diff itself is still valid (HEAD vs empty). Left ungated for now —
         // the common M/A/?/staged cases work; revisit if it proves problematic.
         const absPath = fpJoin(repoRoot, change.path);
-        const norm = (p?: string | null) => p?.replace(/\\/g, "/");
+        const norm = (p?: string | null) => p && (isWindows ? p.replace(/\\/g, "/") : p);
         // Skip redundant navigation. The file's diff is already the
         // page's main editor → nothing to do (also covers slow repeat clicks).
         if (norm(this.page.mainEditor?.getNavigatorTarget?.()?.filePath) === norm(absPath)) {

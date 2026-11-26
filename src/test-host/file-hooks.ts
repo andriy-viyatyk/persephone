@@ -1,6 +1,8 @@
 import type { TestContext } from "./context.js";
 import type { TestDescriptor } from "./test-api.js";
 import { errMessage } from "../shared/utils.js";
+import { automaticRequirementReason, isAutomaticRequirement } from "../shared/test-requirements.js";
+import { isWindows } from "../shared/platform.js";
 import type { TestLog } from "./test-log.js";
 
 export type HookName = "beforeAll" | "beforeEach" | "afterEach" | "afterAll";
@@ -46,7 +48,8 @@ export function logHookResult(log: TestLog, details: { file: string; test: strin
 
 export function runnableReason(descriptor: TestDescriptor, attach: boolean, withTags: string[]): { reason?: string; requirements: string[] } {
     const requirements = descriptor.requires ?? [];
-    const missing = requirements.filter((tag) => tag !== "launch" && tag !== "desktop" && !withTags.includes(tag));
-    const reason = descriptor.mode === "skip" ? "test.skip" : missing.length ? `requires opt-in tags: ${missing.join(", ")}` : attach && requirements.includes("launch") ? "requires an owned app launch" : undefined;
+    const automaticReason = automaticRequirementReason(requirements, isWindows);
+    const missing = requirements.filter((tag) => tag !== "launch" && tag !== "desktop" && !isAutomaticRequirement(tag) && !withTags.includes(tag));
+    const reason = descriptor.mode === "skip" ? "test.skip" : automaticReason ?? (missing.length ? `requires opt-in tags: ${missing.join(", ")}` : attach && requirements.includes("launch") ? "requires an owned app launch" : undefined);
     return { reason, requirements };
 }
