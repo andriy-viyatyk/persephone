@@ -1798,7 +1798,21 @@
     "shell.pageHistoryBackEmpty": "戻る (Alt+Left)",
     "shell.pageHistoryForward": "{title} に進む (Alt+Right)",
     "shell.pageHistoryForwardEmpty": "進む (Alt+Right)",
-    "board.permissionProcessAccessDetail": "このプロセスは、ボードの他の権限に関係なく、ファイルとネットワークにアクセスできます。"
+    "board.permissionProcessAccessDetail": "このプロセスは、ボードの他の権限に関係なく、ファイルとネットワークにアクセスできます。",
+    "settings.terminalLinuxDescription": "「ここでターミナルを開く」に使う実行ファイル名または絶対パス。空欄にするとインストール済みのターミナルを検出します。追加の引数が必要な場合はラッパースクリプトを使用してください。",
+    "settings.vlcExecutableLabel": "VLC 実行ファイル:",
+    "settings.selectVlcExecutable": "VLC 実行ファイルを選択",
+    "settings.torExecutableLabel": "Tor 実行ファイル:",
+    "settings.selectTorExecutable": "Tor 実行ファイルを選択",
+    "settings.removeTorExecutablePath": "Tor 実行ファイルのパスを削除",
+    "settings.clipboardFocusedLinux": "Linux では、Persephone のウィンドウにフォーカスがある間だけクリップボードを履歴に取り込みます。バックグラウンドの変更は監視しないため、連続したコピーを取りこぼすことがあります。",
+    "settings.defaultBrowserLinuxDescription": "Linux で HTTP、HTTPS、HTML の既定のブラウザーに Persephone を設定し、現在の選択を確認するか、関連付けを解除します。",
+    "settings.defaultBrowserSelected": "Persephone が既定のブラウザーに選択されています",
+    "settings.defaultBrowserNotSelected": "別のブラウザーが既定に選択されています",
+    "settings.setDefaultBrowser": "既定のブラウザーに設定",
+    "settings.defaultBrowserStatusFailed": "既定のブラウザーを確認できませんでした: {error}",
+    "settings.defaultBrowserActionFailed": "既定のブラウザーを変更できませんでした: {error}",
+    "shell.boardShortcutLinuxFileType": "Linux アプリケーションランチャー"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3497,6 +3511,20 @@
     "shell.pageHistoryBackEmpty": "912b177e",
     "shell.pageHistoryForward": "5c000bca",
     "shell.pageHistoryForwardEmpty": "ca1b9197",
-    "board.permissionProcessAccessDetail": "d35d972a"
+    "board.permissionProcessAccessDetail": "d35d972a",
+    "settings.terminalLinuxDescription": "87aa04dd",
+    "settings.vlcExecutableLabel": "fb7c42ba",
+    "settings.selectVlcExecutable": "395c535e",
+    "settings.torExecutableLabel": "52dea194",
+    "settings.selectTorExecutable": "0c030248",
+    "settings.removeTorExecutablePath": "231dccdf",
+    "settings.clipboardFocusedLinux": "180b4ba7",
+    "settings.defaultBrowserLinuxDescription": "c29f67ba",
+    "settings.defaultBrowserSelected": "1443bc59",
+    "settings.defaultBrowserNotSelected": "9f226922",
+    "settings.setDefaultBrowser": "258a70d4",
+    "settings.defaultBrowserStatusFailed": "4f5be8a9",
+    "settings.defaultBrowserActionFailed": "4944ce04",
+    "shell.boardShortcutLinuxFileType": "6a779289"
   }
 }

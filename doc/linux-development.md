@@ -122,7 +122,7 @@ Setup notes:
   `Host` header's port. Stop a WSL Persephone first; WSL forwards the same localhost port.
 - **Screen lock and idle blanking are off** (`gsettings` over SSH with `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus`);
   a locked session swallows console typing.
-- **Display backend:** the app runs as a native Wayland client, Electron's default ([US-2212](tasks/US-2212-wayland-or-xwayland/README.md)).
+- **Display backend:** the app runs as a native Wayland client, Electron's default (US-2212).
   `npm start -- --ozone-platform=x11` runs it through XWayland as a fallback. Wayland apps cannot learn their window
   position, and GNOME drops clipboard writes from an app window that has had no user input.
 - **Screen size:** 1920x1080, set in GNOME with `gdctl set --persistent ...`; the Hyper-V console window follows it.

@@ -1847,7 +1847,21 @@
     "shell.pageHistoryBackEmpty": "Tagasi (Alt+Left)",
     "shell.pageHistoryForward": "Edasi lehele {title} (Alt+Right)",
     "shell.pageHistoryForwardEmpty": "Edasi (Alt+Right)",
-    "board.permissionProcessAccessDetail": "See protsess pääseb teie failidele ja võrgule juurde tahvli muudest õigustest sõltumata."
+    "board.permissionProcessAccessDetail": "See protsess pääseb teie failidele ja võrgule juurde tahvli muudest õigustest sõltumata.",
+    "settings.terminalLinuxDescription": "Käivitatava faili nimi või absoluutne tee käsule Ava terminal siin. Jäta tühjaks, et tuvastada installitud terminal; lisaargumentide jaoks kasuta ümbrisskripti.",
+    "settings.vlcExecutableLabel": "VLC käivitatav fail:",
+    "settings.selectVlcExecutable": "Vali VLC käivitatav fail",
+    "settings.torExecutableLabel": "Tori käivitatav fail:",
+    "settings.selectTorExecutable": "Vali Tori käivitatav fail",
+    "settings.removeTorExecutablePath": "Eemalda Tori käivitatava faili tee",
+    "settings.clipboardFocusedLinux": "Linuxis loeb ajalugu lõikepuhvrit ainult siis, kui Persephone aken on fookuses. Taustal muudatusi ei jälgita ja kiired kopeerimised võivad vahele jääda.",
+    "settings.defaultBrowserLinuxDescription": "Määra Persephone Linuxis HTTP, HTTPS-i ja HTML-i vaikebrauseriks, vaata praegust valikut või eemalda selle seos.",
+    "settings.defaultBrowserSelected": "Persephone on valitud vaikebrauseriks",
+    "settings.defaultBrowserNotSelected": "Vaikebrauseriks on valitud teine brauser",
+    "settings.setDefaultBrowser": "Määra vaikebrauseriks",
+    "settings.defaultBrowserStatusFailed": "Vaikebrauseri kontrollimine nurjus: {error}",
+    "settings.defaultBrowserActionFailed": "Vaikebrauseri muutmine nurjus: {error}",
+    "shell.boardShortcutLinuxFileType": "Linuxi rakendusekäivitaja"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3546,6 +3560,20 @@
     "shell.pageHistoryBackEmpty": "912b177e",
     "shell.pageHistoryForward": "5c000bca",
     "shell.pageHistoryForwardEmpty": "ca1b9197",
-    "board.permissionProcessAccessDetail": "d35d972a"
+    "board.permissionProcessAccessDetail": "d35d972a",
+    "settings.terminalLinuxDescription": "87aa04dd",
+    "settings.vlcExecutableLabel": "fb7c42ba",
+    "settings.selectVlcExecutable": "395c535e",
+    "settings.torExecutableLabel": "52dea194",
+    "settings.selectTorExecutable": "0c030248",
+    "settings.removeTorExecutablePath": "231dccdf",
+    "settings.clipboardFocusedLinux": "180b4ba7",
+    "settings.defaultBrowserLinuxDescription": "c29f67ba",
+    "settings.defaultBrowserSelected": "1443bc59",
+    "settings.defaultBrowserNotSelected": "9f226922",
+    "settings.setDefaultBrowser": "258a70d4",
+    "settings.defaultBrowserStatusFailed": "4f5be8a9",
+    "settings.defaultBrowserActionFailed": "4944ce04",
+    "shell.boardShortcutLinuxFileType": "6a779289"
   }
 }

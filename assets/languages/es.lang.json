@@ -1896,7 +1896,21 @@
     "shell.pageHistoryBackEmpty": "Volver (Alt+Left)",
     "shell.pageHistoryForward": "Avanzar a {title} (Alt+Right)",
     "shell.pageHistoryForwardEmpty": "Avanzar (Alt+Right)",
-    "board.permissionProcessAccessDetail": "Este proceso puede acceder a tus archivos y a la red, independientemente de los demás permisos del tablero."
+    "board.permissionProcessAccessDetail": "Este proceso puede acceder a tus archivos y a la red, independientemente de los demás permisos del tablero.",
+    "settings.terminalLinuxDescription": "Nombre del ejecutable o ruta absoluta para Abrir terminal aquí. Déjalo vacío para detectar un terminal instalado; usa un script envoltorio si necesitas argumentos adicionales.",
+    "settings.vlcExecutableLabel": "Ejecutable de VLC:",
+    "settings.selectVlcExecutable": "Seleccionar ejecutable de VLC",
+    "settings.torExecutableLabel": "Ejecutable de Tor:",
+    "settings.selectTorExecutable": "Seleccionar ejecutable de Tor",
+    "settings.removeTorExecutablePath": "Quitar la ruta del ejecutable de Tor",
+    "settings.clipboardFocusedLinux": "En Linux, el historial lee el portapapeles solo mientras una ventana de Persephone tiene el foco. No supervisa los cambios en segundo plano y puede omitir copias rápidas.",
+    "settings.defaultBrowserLinuxDescription": "Establece Persephone como navegador predeterminado de Linux para HTTP, HTTPS y HTML, consulta la selección actual o quita su asociación.",
+    "settings.defaultBrowserSelected": "Persephone es el navegador predeterminado seleccionado",
+    "settings.defaultBrowserNotSelected": "Hay otro navegador seleccionado como predeterminado",
+    "settings.setDefaultBrowser": "Establecer como navegador predeterminado",
+    "settings.defaultBrowserStatusFailed": "No se pudo comprobar el navegador predeterminado: {error}",
+    "settings.defaultBrowserActionFailed": "No se pudo actualizar el navegador predeterminado: {error}",
+    "shell.boardShortcutLinuxFileType": "Lanzador de aplicaciones de Linux"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3595,6 +3609,20 @@
     "shell.pageHistoryBackEmpty": "912b177e",
     "shell.pageHistoryForward": "5c000bca",
     "shell.pageHistoryForwardEmpty": "ca1b9197",
-    "board.permissionProcessAccessDetail": "d35d972a"
+    "board.permissionProcessAccessDetail": "d35d972a",
+    "settings.terminalLinuxDescription": "87aa04dd",
+    "settings.vlcExecutableLabel": "fb7c42ba",
+    "settings.selectVlcExecutable": "395c535e",
+    "settings.torExecutableLabel": "52dea194",
+    "settings.selectTorExecutable": "0c030248",
+    "settings.removeTorExecutablePath": "231dccdf",
+    "settings.clipboardFocusedLinux": "180b4ba7",
+    "settings.defaultBrowserLinuxDescription": "c29f67ba",
+    "settings.defaultBrowserSelected": "1443bc59",
+    "settings.defaultBrowserNotSelected": "9f226922",
+    "settings.setDefaultBrowser": "258a70d4",
+    "settings.defaultBrowserStatusFailed": "4f5be8a9",
+    "settings.defaultBrowserActionFailed": "4944ce04",
+    "shell.boardShortcutLinuxFileType": "6a779289"
   }
 }

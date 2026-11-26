@@ -1945,7 +1945,21 @@
     "shell.pageHistoryBackEmpty": "Назад (Alt+Left)",
     "shell.pageHistoryForward": "Уперед до {title} (Alt+Right)",
     "shell.pageHistoryForwardEmpty": "Уперед (Alt+Right)",
-    "board.permissionProcessAccessDetail": "Цей процес має доступ до ваших файлів і мережі незалежно від інших дозволів дошки."
+    "board.permissionProcessAccessDetail": "Цей процес має доступ до ваших файлів і мережі незалежно від інших дозволів дошки.",
+    "settings.terminalLinuxDescription": "Назва виконуваного файла або абсолютний шлях для команди «Відкрити термінал тут». Залиште поле порожнім, щоб знайти встановлений термінал; для додаткових аргументів використовуйте скрипт-обгортку.",
+    "settings.vlcExecutableLabel": "Виконуваний файл VLC:",
+    "settings.selectVlcExecutable": "Вибрати виконуваний файл VLC",
+    "settings.torExecutableLabel": "Виконуваний файл Tor:",
+    "settings.selectTorExecutable": "Вибрати виконуваний файл Tor",
+    "settings.removeTorExecutablePath": "Видалити шлях до виконуваного файла Tor",
+    "settings.clipboardFocusedLinux": "У Linux історія зчитує буфер обміну, лише коли вікно Persephone у фокусі. Зміни буфера у фоновому режимі не відстежуються, тому швидкі копіювання можуть бути пропущені.",
+    "settings.defaultBrowserLinuxDescription": "Зробіть Persephone типовим браузером Linux для HTTP, HTTPS і HTML, перевірте поточний вибір або вилучіть його обробник.",
+    "settings.defaultBrowserSelected": "Persephone вибрано типовим браузером",
+    "settings.defaultBrowserNotSelected": "Інший браузер вибрано типовим",
+    "settings.setDefaultBrowser": "Зробити типовим браузером",
+    "settings.defaultBrowserStatusFailed": "Не вдалося перевірити типовий браузер: {error}",
+    "settings.defaultBrowserActionFailed": "Не вдалося змінити типовий браузер: {error}",
+    "shell.boardShortcutLinuxFileType": "Засіб запуску програм Linux"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3644,6 +3658,20 @@
     "shell.pageHistoryBackEmpty": "912b177e",
     "shell.pageHistoryForward": "5c000bca",
     "shell.pageHistoryForwardEmpty": "ca1b9197",
-    "board.permissionProcessAccessDetail": "d35d972a"
+    "board.permissionProcessAccessDetail": "d35d972a",
+    "settings.terminalLinuxDescription": "87aa04dd",
+    "settings.vlcExecutableLabel": "fb7c42ba",
+    "settings.selectVlcExecutable": "395c535e",
+    "settings.torExecutableLabel": "52dea194",
+    "settings.selectTorExecutable": "0c030248",
+    "settings.removeTorExecutablePath": "231dccdf",
+    "settings.clipboardFocusedLinux": "180b4ba7",
+    "settings.defaultBrowserLinuxDescription": "c29f67ba",
+    "settings.defaultBrowserSelected": "1443bc59",
+    "settings.defaultBrowserNotSelected": "9f226922",
+    "settings.setDefaultBrowser": "258a70d4",
+    "settings.defaultBrowserStatusFailed": "4f5be8a9",
+    "settings.defaultBrowserActionFailed": "4944ce04",
+    "shell.boardShortcutLinuxFileType": "6a779289"
   }
 }

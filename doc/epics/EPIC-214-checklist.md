@@ -66,7 +66,7 @@ records the result.
 
 | # | Check | Owner | Result |
 |---|-------|-------|--------|
-| 24 | A desktop notification appears in GNOME's notification list, and clicking it focuses the app | US-2218 | pass after [US-2222](../tasks/US-2222-notification-click-focus/README.md): shown with app name and icon; a click restores the app and shows the source tab (GNOME and Windows) |
+| 24 | A desktop notification appears in GNOME's notification list, and clicking it focuses the app | US-2218 | pass after US-2222: shown with app name and icon; a click restores the app and shows the source tab (GNOME and Windows) |
 | 25 | Switching GNOME between light and dark changes the app theme when it follows the OS | US-2218 | not applicable: no OS-follow theme mode on any platform (backlog) |
 | 26 | Locking the screen is detected; unseen-mode text does not say "Windows" | US-2218 | pass after fix (US-2218) |
 | 27 | Virtual-desktop placement and `--desktop` report themselves as not offered | US-2218 | pass after fix (US-2218) |

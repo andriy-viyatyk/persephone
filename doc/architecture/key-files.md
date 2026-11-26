@@ -18,6 +18,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Shared application shortcut identities, matching and labels | `/src/shared/keymap.ts` |
 | Automatic integration-test platform requirements | `/src/shared/test-requirements.ts` |
 | Static platform feature availability table and reason lookup | `/src/shared/platform-features.ts` |
+| Platform-specific window readiness, position restore and position persistence policy | `/src/main/window-platform-policy.ts` |
 | ESLint platform-check restriction and existing-check allowlist | `/eslint.config.mjs` |
 | Cross-process file, URL, and diff launch-input contract | `/src/shared/launch-input.ts` |
 | ILinkData helpers (pipeline fields and persistence-safe `cleanForStorage()` boundary) | `/src/shared/link-data.ts` |
@@ -102,6 +103,9 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Page open request construction and shared open hints (source link, path, title, editor target, session context, fragment/line/text reveal and diff revisions) | `/src/renderer/api/pages/open-request.ts` |
 | Page/editor descriptor migrations (dated migrations for legacy editor IDs, board paths/links, pin state, legacy Explorer panel ownership and Markdown-only page history) | `/src/renderer/api/pages/descriptor-migrations.ts` |
 | Browser page opening (`showBrowserPage` — Tor gate + arm-before-mount fail-closed sequence; `openUrlInBrowserTab` — address-input resolution, profile matching + nearest-tab reuse, skipping board-owned Run pages. Lives beside the browser editor so the startup-loaded pages model has no static import of the browser chunk; the lifecycle reaches it via dynamic import) | `/src/renderer/editors/browser/browser-pages.ts` |
+| Linux default-browser desktop entry serialization and XDG registration/check/removal | `/src/main/linux-desktop-entry.ts`, `/src/main/linux-browser-registration.ts` |
+| Default-browser registration orchestration and platform delegation | `/src/main/browser-registration.ts` |
+| Linux board `.desktop` shortcut creation and verification | `/src/main/linux-board-shortcut.ts`, `/src/renderer/editors/board/linux-board-shortcut-options.ts` |
 | Editor switch dispatch (catalog candidate selection plus first-match strategy dispatch; reached via dynamic import from `PageModel`) | `/src/renderer/editors/base/editor-switch.ts`, `/src/renderer/editors/base/editor-switch-strategies.ts` |
 | Explorer provisioning for a page (`toggleNavigator`, auto-init of an Explorer beside a mandatory sidebar, root-folder derivation from panel editors, and explicit root option for board pages) | `/src/renderer/editors/explorer/page-explorer.ts` |
 | Explorer model's file-tree provider, navigation state, search state, listing/open operations, and tree-host trait | `/src/renderer/editors/explorer/ExplorerEditorModel.ts`, `/src/renderer/editors/base/tree-provider-host.ts` |
@@ -543,7 +547,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Linux test-app spawn environment (removes Electron's inherited `CHROME_DESKTOP`) | `/src/test-host/launcher.ts` |
 | Owned test-window desktop selection and activation-suppression guards (`--desktop`, pre-show placement) | `/src/main/test-mode/desktop-placement.ts`, `/src/main/test-mode/arguments.ts` |
 | Windows virtual desktop enumeration, COM placement/current-desktop probe, and koffi adapter | `/src/main/virtual-desktop-manager.ts` |
-| Windows session lock state and live per-window desktop visibility | `/src/main/desktop-awareness.ts` |
+| Platform session-lock state and live per-window desktop visibility | `/src/main/desktop-awareness.ts`, `/src/main/desktop-awareness-linux.ts` |
 | Process-wide unseen-mode throttling and attached browser guest lifecycle | `/src/main/unseen-mode.ts`, `/src/main/browser/PageVisibilityOverride.ts` |
 | Product test-suite initializer (`--init` argument handling and starter-suite asset copying) | `/src/main/test-mode/arguments.ts`, `/src/main/test-mode/init-suite.ts`, `/assets/test-suite-template/` |
 | Product test host (MCP client, test-window ownership and path scoping, session pages, failure bundles, context and matchers, test selection and retries, file hooks, isolated attempt lifecycle, cleanup, status reports and logs) | `/src/test-host/` |
@@ -565,12 +569,12 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Agent guide for authoring and diagnosing web-app test files | `/assets/guides/agents/web-app-tests/index.md` |
 | Per-profile instance endpoint (Windows named pipe or Linux Unix-domain socket) | `/src/main/pipe-server.ts` |
 | Launch argument parsing and open-path validation | `/src/main/utils.ts` |
-| Window creation and persisted bounds (main; BrowserWindow setup and collaboration with per-window controllers) | `/src/main/open-window.ts` |
+| Window creation and persisted bounds (main; BrowserWindow setup and collaboration with per-window controllers) | `/src/main/open-window.ts`, `/src/main/window-platform-policy.ts` |
 | Voice Typing target ownership and shortcut/session routing (main; per-window shortcut handling including right Ctrl tap detection, and captured-WebContents insertion with clipboard fallback) | `/src/main/voice-typing-controller.ts` |
 | Window close / hide / quit arbitration and test-window lifecycle (main; the `eBeforeQuit` round-trip, close-to-tray, persistent normal-window names, and test-window creation, selection, identity, and disposal) | `/src/main/open-windows.ts`, `/src/main/window-names.ts`, `/src/main/mcp/ai-vision/test-window-operations.ts` |
 | Board-window and shortcut identity (root hash, stable ICO path, launcher selection for packaged/dev builds, and quoted launch-root normalization) | `/src/main/board-window-identity.ts` |
-| System tray (main; Show App / Quit menu, click-toggles-visibility. Quit sets `openWindows.doQuit`, the one flag that overrides close-to-tray) | `/src/main/tray-setup.ts` |
-| Windows browser registration | `/src/main/browser-registration.ts`           |
+| System tray and Linux host availability (Show App / Quit menu, tray-click visibility, availability snapshot used by close-to-tray arbitration) | `/src/main/tray-setup.ts`, `/src/main/tray-availability-linux.ts`, `/src/main/open-windows.ts` |
+| Default-browser registration orchestration (Windows registry and Linux XDG handler) | `/src/main/browser-registration.ts`, `/src/main/linux-browser-registration.ts` |
 | MCP HTTP listener policy and lifecycle | `/src/main/mcp-http-server.ts`, `/src/main/mcp/private-session-endpoints.ts` |
 | Shared MCP transport-session lifecycle and request helpers | `/src/main/mcp/mcp-session-host.ts` |
 | Shared Tor/profile routed-URL parsing and fetch response handling | `/src/main/routed-fetch-protocol.ts` |
@@ -596,7 +600,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Video playback view (native media controls; hls.js for HLS; stable media nodes) | `/src/renderer/editors/video/VPlayer.ts` |
 | Video streaming server (main-side HTTP range sessions for local, HTTP, and renderer-pipe sources; shares range response handling with faststart and plain-file paths) | `/src/main/video-stream-server.ts` |
 | VLC launcher             | `/src/main/vlc-launcher.ts`                       |
-| Terminal launcher (main; `detectTerminal` via `where`, `openTerminalAt` via `cmd /c start` so a console shell gets a visible window; supports pwsh/powershell/cmd/wt) | `/src/main/terminal-launcher.ts` |
+| Terminal launcher (main; platform dispatch, Windows console launch and Linux terminal detection/command execution) | `/src/main/terminal-launcher.ts`, `/src/main/linux-terminal-launcher.ts` |
 | Terminal open helper (renderer; reads `terminal.command`, auto-detects pwsh→powershell→cmd on first use and saves it, then launches — drives the "Open Terminal here" folder menu item) | `/src/renderer/api/terminal.ts` |
 | Guide AiVision node (guide tree, page reads, layout extraction, and text search) | `/src/main/mcp/ai-vision/guides.ts` |
 | Main-process board guide mounts (trusted-board discovery and isolated guide roots for MCP) | `/src/main/mcp/ai-vision/board-guide-mounts.ts` |
@@ -639,9 +643,12 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Rust screen snip, clipboard, and Windows SSO helper (`clipboard-read`/`clipboard-write`/`clipboard-watch`/`sso-cookies` subcommands; CF_HDROP interop, JSON-lines watcher protocol, and proof-of-possession cookie retrieval) | `/snip-tool/src/main.rs`, `/snip-tool/src/clipboard.rs`, `/snip-tool/src/clipboard_watch.rs`, `/snip-tool/src/sso_cookies.rs` |
 | Screen snip service (main; spawns the snip exe, returns PNG data URL; optionally hides windows for the capture) | `/src/main/snip-service.ts` |
 | Window recording file service (main; owner-checked sessions, serialized chunk writes, one-shot media permission grant, finalization, and seven-day cleanup) | `/src/main/recording-service.ts`, `/src/main/media-grants.ts` |
-| Clipboard history service (main; watcher, storage and asynchronous MIME capture and copy-back) | `/src/main/clipboard-service.ts` |
-| File-clipboard service (main; Windows-Explorer copy/paste interop — CF_HDROP read/write via the snip exe; degrades to empty when the exe is missing) | `/src/main/clip-service.ts` |
-| Native OS file drag-out service (main; `startOsFileDrag` via `webContents.startDrag` — real CF_HDROP so Windows Explorer / Teams accept the dragged file; win32-only, shell icon via `app.getFileIcon` + fallback) | `/src/main/os-drag-service.ts` |
+| Clipboard history service (main; persistent payload store and platform capture backends, with focused-window polling on Linux/Wayland) | `/src/main/clipboard-service.ts`, `/src/main/clipboard-history-linux.ts`, `/src/main/clipboard-history-persistence.ts` |
+| File-clipboard service (main; Windows CF_HDROP via snip and Linux `text/uri-list` plus GNOME cut convention) | `/src/main/clip-service.ts`, `/src/main/clip-service-linux.ts`, `/src/main/clip-service-windows.ts` |
+| Native file drag-out backend (Linux Electron `startDrag`) | `/src/main/os-drag-service.ts`, `/src/main/os-drag-service-linux.ts` |
+| Shared notification-click observation and browser/board focus restoration | `/src/shared/notification-click-observer.ts`, `/src/preload-webview/notification-click.ts`, `/src/renderer/editors/browser/browser-notification-focus.ts`, `/src/renderer/editors/board/frame/board-notification-focus.ts` |
+| Linux desktop executable lookup and optional external-tool discovery | `/src/main/linux-executable-lookup.ts` |
+| Native OS file drag-out service (main; platform dispatch to Linux `startDrag` and Windows CF_HDROP, with shell icon lookup on Windows) | `/src/main/os-drag-service.ts`, `/src/main/os-drag-service-linux.ts` |
 | Provider-backed tree view model (the Explorer, Archive, Mneme, Script-library and link-category trees; controlled expansion, debounced search projections, provider watch refresh, selection and actions) | `/src/renderer/components/tree-provider/TreeProviderViewModel.ts` |
 | Provider tree data store (root builds and optional provider-supplied root icon hints, expansion-triggered child listing, generation guards, and serialized watch-batch refresh) | `/src/renderer/components/tree-provider/provider-tree-store.ts`, `/src/renderer/components/tree-provider/tree-provider-node.ts` |
 | Provider tree expansion and search projection (saved expanded paths, normal/deep-search expansion, visible hrefs, and filtered tree construction) | `/src/renderer/components/tree-provider/provider-tree-expansion.ts`, `/src/renderer/components/tree-provider/tree-search-filter.ts` |

@@ -8,21 +8,6 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-214** — [Linux desktop integration (multiplatform phase 2)](epics/EPIC-214.md)
-  - [ ] [US-2211: VM and desktop checklist](tasks/US-2211-linux-vm-and-checklist/README.md)
-  - [ ] [US-2212: Wayland or XWayland](tasks/US-2212-wayland-or-xwayland/README.md)
-  - [ ] [US-2213: Window chrome, tray and close-to-tray](tasks/US-2213-linux-window-and-tray/README.md)
-  - [ ] [US-2214: Single instance, file handoff and profiles](tasks/US-2214-linux-single-instance/README.md)
-  - [ ] [US-2215: Terminal, VLC and Tor](tasks/US-2215-terminal-vlc-tor/README.md)
-  - [ ] [US-2216: Default browser and board shortcuts](tasks/US-2216-default-browser-and-board-shortcuts/README.md)
-  - [ ] [US-2217: File clipboard, drag and drop, clipboard history](tasks/US-2217-file-clipboard-and-drag/README.md)
-  - [ ] [US-2218: Notifications, theme, lock and virtual desktops](tasks/US-2218-notifications-theme-lock-desktops/README.md)
-  - [ ] [US-2219: GNOME checks carried over from EPIC-213](tasks/US-2219-gnome-checks/README.md)
-  - [ ] US-2220: Phase 2 exit run — results in the [checklist](epics/EPIC-214-checklist.md); Linux half of row 35 run in the VM; US-2223 open
-  - [ ] US-2221: Hide the Windows website sign-in option on Linux (Browser Profiles shows `settings.windowsSsoExplanation`; gate the checkbox and help in `BrowserProfilesSection.ts` on the existing `browser.windowsSso` platform feature)
-  - [ ] [US-2222: Clicking a website notification brings Persephone forward](tasks/US-2222-notification-click-focus/README.md) — done; checked on GNOME and Windows
-  - [ ] US-2223: Wake-word test on Linux: the synthetic recording reaches review instead of a quality rejection; fixed in the test (platform audio processing differs), passes on Windows and in the VM
-
 ## Planned
 
 - *(no epic)*

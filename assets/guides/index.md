@@ -44,6 +44,7 @@ editor when one is available, or the guide contents otherwise.
 - [Tabs & Navigation](tabs-and-navigation/index.md) - Tab management, grouping, sidebar, and session restore
 - [Encryption](./encryption.md) - Password-based file encryption
 - [Keyboard Shortcuts](./shortcuts.md) - Complete shortcut reference
+- [Linux desktop integration](./desktop-integration.md) - Default browser, board launchers, file clipboard and drag, notifications, and tray behavior
 
 ## Key Features
 

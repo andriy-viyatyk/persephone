@@ -1945,7 +1945,21 @@
     "shell.pageHistoryBackEmpty": "Wstecz (Alt+Left)",
     "shell.pageHistoryForward": "Dalej do „{title}” (Alt+Right)",
     "shell.pageHistoryForwardEmpty": "Dalej (Alt+Right)",
-    "board.permissionProcessAccessDetail": "Ten proces może uzyskiwać dostęp do Twoich plików i sieci niezależnie od pozostałych uprawnień tablicy."
+    "board.permissionProcessAccessDetail": "Ten proces może uzyskiwać dostęp do Twoich plików i sieci niezależnie od pozostałych uprawnień tablicy.",
+    "settings.terminalLinuxDescription": "Nazwa pliku wykonywalnego lub ścieżka bezwzględna dla polecenia Otwórz terminal tutaj. Pozostaw puste, aby wykryć zainstalowany terminal; dodatkowe argumenty obsłuży skrypt pośredniczący.",
+    "settings.vlcExecutableLabel": "Plik wykonywalny VLC:",
+    "settings.selectVlcExecutable": "Wybierz plik wykonywalny VLC",
+    "settings.torExecutableLabel": "Plik wykonywalny Tor:",
+    "settings.selectTorExecutable": "Wybierz plik wykonywalny Tor",
+    "settings.removeTorExecutablePath": "Usuń ścieżkę pliku wykonywalnego Tor",
+    "settings.clipboardFocusedLinux": "W systemie Linux historia odczytuje schowek tylko wtedy, gdy okno Persephone jest aktywne. Nie monitoruje zmian w tle i może pominąć szybkie kopiowanie.",
+    "settings.defaultBrowserLinuxDescription": "Ustaw Persephone jako domyślną przeglądarkę w systemie Linux dla HTTP, HTTPS i HTML, sprawdź bieżący wybór lub usuń skojarzenie.",
+    "settings.defaultBrowserSelected": "Persephone jest wybraną domyślną przeglądarką",
+    "settings.defaultBrowserNotSelected": "Wybrano inną przeglądarkę domyślną",
+    "settings.setDefaultBrowser": "Ustaw jako domyślną przeglądarkę",
+    "settings.defaultBrowserStatusFailed": "Nie można sprawdzić domyślnej przeglądarki: {error}",
+    "settings.defaultBrowserActionFailed": "Nie można zmienić domyślnej przeglądarki: {error}",
+    "shell.boardShortcutLinuxFileType": "Program uruchamiający aplikacje Linux"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3644,6 +3658,20 @@
     "shell.pageHistoryBackEmpty": "912b177e",
     "shell.pageHistoryForward": "5c000bca",
     "shell.pageHistoryForwardEmpty": "ca1b9197",
-    "board.permissionProcessAccessDetail": "d35d972a"
+    "board.permissionProcessAccessDetail": "d35d972a",
+    "settings.terminalLinuxDescription": "87aa04dd",
+    "settings.vlcExecutableLabel": "fb7c42ba",
+    "settings.selectVlcExecutable": "395c535e",
+    "settings.torExecutableLabel": "52dea194",
+    "settings.selectTorExecutable": "0c030248",
+    "settings.removeTorExecutablePath": "231dccdf",
+    "settings.clipboardFocusedLinux": "180b4ba7",
+    "settings.defaultBrowserLinuxDescription": "c29f67ba",
+    "settings.defaultBrowserSelected": "1443bc59",
+    "settings.defaultBrowserNotSelected": "9f226922",
+    "settings.setDefaultBrowser": "258a70d4",
+    "settings.defaultBrowserStatusFailed": "4f5be8a9",
+    "settings.defaultBrowserActionFailed": "4944ce04",
+    "shell.boardShortcutLinuxFileType": "6a779289"
   }
 }

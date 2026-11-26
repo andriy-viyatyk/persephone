@@ -112,7 +112,8 @@ export async function isLinuxDefaultBrowserSelected(): Promise<boolean> {
         await execFile(check, ["check", "default-web-browser", LINUX_BROWSER_HANDLER_ID], { encoding: "utf8", windowsHide: true });
         return selected === LINUX_BROWSER_HANDLER_ID;
     } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === "1") return false;
+        const code: unknown = (error as NodeJS.ErrnoException).code;
+        if (code === 1 || code === "1") return false;
         throw new Error(`Linux command xdg-settings failed: ${errMessage(error)}`, { cause: error });
     }
 }

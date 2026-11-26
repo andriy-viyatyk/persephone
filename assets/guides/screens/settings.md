@@ -153,14 +153,14 @@ continues unfiltered. The active recording UI indicates these private captures.
 ## Clipboard history
 
 The **Clipboard** section contains an opt-in **Enable clipboard history** toggle and a **Maximum
-  history items** limit. History is off by default. When enabled, Persephone records supported copied
+history items** limit. History is off by default. When enabled, Persephone records supported copied
 text, HTML, images, and file lists—including copies made in Persephone's Text Editor/Monaco and
 Browser tabs—for the [Clipboard panel](./sidebar.md#clipboard), retaining between 1 and 1000 items
-(100 by default). Capture depends on the copy reaching the Windows clipboard, not on which editor or
-  page supplied it. On Linux, capture samples only while a Persephone window is focused. It does not
-  monitor clipboard changes in the background, can miss rapid copies, and does not provide the
-  Windows clipboard exclusion metadata. The section warns that occasionally-copied secrets may
-remain on disk in readable form; disable the feature or clear its history when that matters.
+(100 by default). Capture depends on the copy reaching the system clipboard, not on which editor or
+page supplied it. On Linux, capture samples only while a Persephone window is focused. It does not
+monitor clipboard changes in the background, can miss rapid copies, and does not provide the
+Windows clipboard exclusion metadata. Copied secrets may remain on disk in readable form; disable
+history or clear it when that matters.
 
 ## Browser site permissions
 
@@ -279,6 +279,8 @@ for the fact that a valid saved session is always attempted and there is no sett
 
 In a named [application profile](../getting-started.md#separate-application-profiles), the Default
 Browser panel explains that browser registration must be managed from the usual instance.
+For Linux browser registration, clipboard, tray, and notification behavior, see [Linux desktop
+integration](../desktop-integration.md).
 
 ## Connected MCP versus file editing
 

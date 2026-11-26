@@ -1847,7 +1847,21 @@
     "shell.pageHistoryBackEmpty": "Vissza (Alt+Left)",
     "shell.pageHistoryForward": "Előre ide: {title} (Alt+Right)",
     "shell.pageHistoryForwardEmpty": "Előre (Alt+Right)",
-    "board.permissionProcessAccessDetail": "Ez a folyamat a tábla többi engedélyétől függetlenül hozzáférhet a fájljaihoz és a hálózathoz."
+    "board.permissionProcessAccessDetail": "Ez a folyamat a tábla többi engedélyétől függetlenül hozzáférhet a fájljaihoz és a hálózathoz.",
+    "settings.terminalLinuxDescription": "A Terminál megnyitása itt végrehajtható fájlneve vagy abszolút elérési útja. Hagyja üresen a telepített terminál felismeréséhez; további argumentumokhoz használjon burkoló parancsfájlt.",
+    "settings.vlcExecutableLabel": "VLC végrehajtható fájl:",
+    "settings.selectVlcExecutable": "VLC végrehajtható fájl kiválasztása",
+    "settings.torExecutableLabel": "Tor végrehajtható fájl:",
+    "settings.selectTorExecutable": "Tor végrehajtható fájl kiválasztása",
+    "settings.removeTorExecutablePath": "Tor végrehajtható fájl útvonalának eltávolítása",
+    "settings.clipboardFocusedLinux": "Linuxon az előzmények csak akkor olvassák a vágólapot, ha egy Persephone-ablak van fókuszban. A háttérbeli változásokat nem figyelik, ezért a gyors másolások kimaradhatnak.",
+    "settings.defaultBrowserLinuxDescription": "A Persephone beállítása Linuxon alapértelmezett böngészőként HTTP, HTTPS és HTML esetén, az aktuális választás megtekintése vagy a társítás eltávolítása.",
+    "settings.defaultBrowserSelected": "A Persephone van kiválasztva alapértelmezett böngészőként",
+    "settings.defaultBrowserNotSelected": "Másik böngésző van kiválasztva alapértelmezettként",
+    "settings.setDefaultBrowser": "Beállítás alapértelmezett böngészőként",
+    "settings.defaultBrowserStatusFailed": "Nem sikerült ellenőrizni az alapértelmezett böngészőt: {error}",
+    "settings.defaultBrowserActionFailed": "Nem sikerült módosítani az alapértelmezett böngészőt: {error}",
+    "shell.boardShortcutLinuxFileType": "Linux alkalmazásindító"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3546,6 +3560,20 @@
     "shell.pageHistoryBackEmpty": "912b177e",
     "shell.pageHistoryForward": "5c000bca",
     "shell.pageHistoryForwardEmpty": "ca1b9197",
-    "board.permissionProcessAccessDetail": "d35d972a"
+    "board.permissionProcessAccessDetail": "d35d972a",
+    "settings.terminalLinuxDescription": "87aa04dd",
+    "settings.vlcExecutableLabel": "fb7c42ba",
+    "settings.selectVlcExecutable": "395c535e",
+    "settings.torExecutableLabel": "52dea194",
+    "settings.selectTorExecutable": "0c030248",
+    "settings.removeTorExecutablePath": "231dccdf",
+    "settings.clipboardFocusedLinux": "180b4ba7",
+    "settings.defaultBrowserLinuxDescription": "c29f67ba",
+    "settings.defaultBrowserSelected": "1443bc59",
+    "settings.defaultBrowserNotSelected": "9f226922",
+    "settings.setDefaultBrowser": "258a70d4",
+    "settings.defaultBrowserStatusFailed": "4f5be8a9",
+    "settings.defaultBrowserActionFailed": "4944ce04",
+    "shell.boardShortcutLinuxFileType": "6a779289"
   }
 }

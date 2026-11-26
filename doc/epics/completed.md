@@ -1,3 +1,39 @@
+## EPIC-214 — Linux desktop integration (multiplatform phase 2)
+
+Completed 2026-11-26. Phase 2 of the [multiplatform roadmap](../reviews/multiplatform-roadmap.md): desktop integration
+checked on Ubuntu 26.04 GNOME Wayland in a Hyper-V VM the agent drives. Nothing is released for Linux yet.
+
+- **VM:** `scripts/linux-vm/` (`vm.ps1`, real input with ydotool, MCP tunnel); see
+  [linux-development.md](../linux-development.md). The UI suite runs there; GitHub Linux CI is manual only.
+- **Display:** native Wayland (US-2212). Window geometry restores size only on Linux; tray shown only with a tray host.
+- **Single instance and handoff:** file, profile and board handoff work; Chromium reorders a second instance's switches,
+  so launchers pass `--board=<root>`.
+- **Desktop entries:** default-browser registration through `xdg-settings` with a hidden handler entry; board
+  launchers as `.desktop` files.
+- **Files:** file clipboard, drag to and from Files and the desktop, clipboard history on Linux.
+- **Session:** lock state sampled from the idle state (Electron has no lock events on Linux); virtual-desktop placement
+  stays Windows-only.
+- **Notifications:** a click restores the window and shows the source tab or board panel (GNOME raises it with the
+  click's activation token).
+- **Exit run:** the 35-row [checklist](EPIC-214-checklist.md); the full suite passed on Windows and in the VM.
+- **Completion skills:** run by Codex (Luna); the review fixed a numeric exit-code check in default-browser detection.
+
+Epic document: [EPIC-214](EPIC-214.md).
+
+- [x] **VM and desktop checklist (US-2211).**
+- [x] **Wayland or XWayland (US-2212).**
+- [x] **Window chrome, tray and close-to-tray (US-2213).**
+- [x] **Single instance, file handoff and profiles (US-2214).**
+- [x] **Terminal, VLC and Tor (US-2215).**
+- [x] **Default browser and board shortcuts (US-2216).**
+- [x] **File clipboard, drag and drop, clipboard history (US-2217).**
+- [x] **Notifications, theme, lock and virtual desktops (US-2218).**
+- [x] **GNOME checks carried over from EPIC-213 (US-2219).**
+- [x] **Phase 2 exit run (US-2220).**
+- [x] **Hide the Windows website sign-in option on Linux (US-2221).**
+- [x] **Notification click brings Persephone forward (US-2222).**
+- [x] **Platform-neutral wake-word synthetic-recording test (US-2223).**
+
 ## EPIC-213 — Linux core parity (multiplatform phase 1)
 
 Completed 2026-11-26. Phase 1 of the [multiplatform roadmap](../reviews/multiplatform-roadmap.md): the UI integration

@@ -1148,6 +1148,7 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── application-profile.ts  # Profile argument validation and main-process profile identity
 ├── windows-env.ts          # Windows env backfill — reconstructs missing standard folder/system vars (APPDATA, LOCALAPPDATA, ProgramFiles*, …) at startup so child processes get a full env even when the app was launched from a degraded shell; win32-only, backfill-only
 ├── open-window.ts          # Window creation and composition of per-window collaborators
+├── window-platform-policy.ts # Compositor-aware window readiness and bounds persistence policy
 ├── voice-typing-controller.ts # Per-window voice-typing shortcuts, session state and captured-target text insertion
 ├── open-windows.ts         # Multi-window management and broadcasting
 ├── global-mute-service.ts  # Main-owned mute leases and effective audio state across managed application contents
@@ -1196,11 +1197,16 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── preload-webview.ts      # Browser guest preload entry point
 ├── preload-webview/
 │   └── chrome-shim.ts           # Guest window.chrome compatibility shim
+│   ├── notification-click.ts    # Forwards guest notification-click events through shared observer
 │   └── page-reporters.ts        # Guest title, favicon, input, find, and image messages
 │   └── exclusive-access-reporter.ts # Every frame: reports pointer lock to the host
 │   └── webmcp-bridge.ts         # Guest WebMCP bridge
 │   └── page-translation-agent.ts # Guest-frame text discovery, mutation tracking, and reversible translated DOM updates
-├── browser-registration.ts # Default browser registration
+├── browser-registration.ts # Default browser registration orchestration
+├── linux-desktop-entry.ts  # Linux desktop-entry Exec/value serialization and app invocation
+├── linux-browser-registration.ts # Linux default-browser handler and XDG association management
+├── linux-executable-lookup.ts # Linux executable discovery on PATH
+├── linux-board-shortcut.ts # Verified Linux board .desktop launcher creation
 ├── ipc-sender-guard.ts     # Shared authorization for every ipcMain registration; accepts only the app's live main frame
 ├── html-preview-protocol.ts # Isolated html-preview:// origin, folder-confined sibling resources, and per-preview storage cleanup
 ├── sidecar-process.ts      # Shared sidecar lifecycle (spawn → stdout-readiness sentinel → stop) used by tor-service and mneme-service: start dedupe, readiness timeout, stale-child guard, unexpected-death callback, stop-and-wait before respawn
@@ -1261,14 +1267,22 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 ├── mneme-service.ts        # Mneme concerns on top of sidecar-process: port/config wiring and MnemeStatus broadcasts for the knowledge-base service
 ├── snip-service.ts         # Screen snip (spawns persephone-snip.exe, reads PNG from stdout; exports getSnipToolPath for clipboard services)
 ├── recording-service.ts    # Per-webContents video recording files, ordered chunk writes, permission grants, and seven-day cleanup
-├── clipboard-service.ts    # Opt-in clipboard history — watcher sidecar, payload files/index, duplicate promotion, retention, and status broadcasts
-├── clip-service.ts         # Windows file-clipboard (CF_HDROP) read/write via the snip exe's clipboard subcommands — Explorer copy/paste interop; degrades to empty result when the exe is missing
+├── clipboard-service.ts    # Opt-in clipboard history — shared storage and platform capture backends
+├── clipboard-history-linux.ts # Focused-window clipboard sampling on Linux/Wayland
+├── clipboard-history-persistence.ts # Clipboard history payload/index persistence
+├── clip-service.ts         # Platform dispatch for file clipboard read/write
+├── clip-service-linux.ts   # Linux text/uri-list and GNOME cut/copy file clipboard interop
+├── clip-service-windows.ts # Windows file clipboard (CF_HDROP) via snip executable
+├── os-drag-service-linux.ts # Linux native file drag-out via Electron startDrag
 ├── version-service.ts      # Version checking (runs in main, not renderer)
 ├── published-boards-service.ts # Published-boards catalog — net.fetch raw boards-manifest.json (24h-gated, cached, isSafeBoardId/isSafeAssetName-guarded), getBoardVersions(id) on demand, ePublishedBoardsUpdated broadcast; screenshotUrl derived on the way out (never cached); PERSEPHONE_BOARDS_BRANCH dev override
 ├── board-download-service.ts # Streamed board-archive download — net.fetch → temp file + incremental sha256 verify, throttled eBoardInstallProgress, digest check
 ├── video-stream-server.ts  # Local HTTP streaming server (shared range handling, faststart MP4 relocation, session management)
 ├── vlc-launcher.ts         # VLC process launcher (spawn + auto-detect VLC path)
-├── terminal-launcher.ts    # Terminal launcher — detectTerminal (pwsh→powershell→cmd via `where`) + openTerminalAt (cmd /c start, gives the console shell its own window) for "Open Terminal here"
+├── terminal-launcher.ts    # Platform-dispatched terminal launcher for "Open Terminal here"
+├── linux-terminal-launcher.ts # Linux terminal detection and working-directory command launch
+├── desktop-awareness-linux.ts # Linux session-lock polling
+├── tray-availability-linux.ts # Linux StatusNotifier host probe for tray and close-to-tray availability
 ├── tray-setup.ts           # System tray
 ├── drag-model.ts           # Tab drag between windows
 ├── e-store.ts              # Electron store wrapper

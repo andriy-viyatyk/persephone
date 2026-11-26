@@ -1896,7 +1896,21 @@
     "shell.pageHistoryBackEmpty": "Indietro (Alt+Left)",
     "shell.pageHistoryForward": "Avanti a {title} (Alt+Right)",
     "shell.pageHistoryForwardEmpty": "Avanti (Alt+Right)",
-    "board.permissionProcessAccessDetail": "Questo processo può accedere ai tuoi file e alla rete, indipendentemente dalle altre autorizzazioni della bacheca."
+    "board.permissionProcessAccessDetail": "Questo processo può accedere ai tuoi file e alla rete, indipendentemente dalle altre autorizzazioni della bacheca.",
+    "settings.terminalLinuxDescription": "Nome dell’eseguibile o percorso assoluto per Apri terminale qui. Lascia vuoto per rilevare un terminale installato; usa uno script wrapper se servono argomenti aggiuntivi.",
+    "settings.vlcExecutableLabel": "Eseguibile VLC:",
+    "settings.selectVlcExecutable": "Seleziona eseguibile VLC",
+    "settings.torExecutableLabel": "Eseguibile Tor:",
+    "settings.selectTorExecutable": "Seleziona eseguibile Tor",
+    "settings.removeTorExecutablePath": "Rimuovi percorso eseguibile Tor",
+    "settings.clipboardFocusedLinux": "Su Linux, la cronologia legge gli appunti solo quando una finestra di Persephone è attiva. Non controlla le modifiche in background e può perdere copie rapide.",
+    "settings.defaultBrowserLinuxDescription": "Imposta Persephone come browser predefinito di Linux per HTTP, HTTPS e HTML, controlla la selezione corrente o rimuovi l’associazione.",
+    "settings.defaultBrowserSelected": "Persephone è il browser predefinito selezionato",
+    "settings.defaultBrowserNotSelected": "È selezionato un altro browser come predefinito",
+    "settings.setDefaultBrowser": "Imposta come browser predefinito",
+    "settings.defaultBrowserStatusFailed": "Impossibile verificare il browser predefinito: {error}",
+    "settings.defaultBrowserActionFailed": "Impossibile aggiornare il browser predefinito: {error}",
+    "shell.boardShortcutLinuxFileType": "Avvio applicazioni Linux"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3595,6 +3609,20 @@
     "shell.pageHistoryBackEmpty": "912b177e",
     "shell.pageHistoryForward": "5c000bca",
     "shell.pageHistoryForwardEmpty": "ca1b9197",
-    "board.permissionProcessAccessDetail": "d35d972a"
+    "board.permissionProcessAccessDetail": "d35d972a",
+    "settings.terminalLinuxDescription": "87aa04dd",
+    "settings.vlcExecutableLabel": "fb7c42ba",
+    "settings.selectVlcExecutable": "395c535e",
+    "settings.torExecutableLabel": "52dea194",
+    "settings.selectTorExecutable": "0c030248",
+    "settings.removeTorExecutablePath": "231dccdf",
+    "settings.clipboardFocusedLinux": "180b4ba7",
+    "settings.defaultBrowserLinuxDescription": "c29f67ba",
+    "settings.defaultBrowserSelected": "1443bc59",
+    "settings.defaultBrowserNotSelected": "9f226922",
+    "settings.setDefaultBrowser": "258a70d4",
+    "settings.defaultBrowserStatusFailed": "4f5be8a9",
+    "settings.defaultBrowserActionFailed": "4944ce04",
+    "shell.boardShortcutLinuxFileType": "6a779289"
   }
 }

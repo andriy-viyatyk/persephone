@@ -66,6 +66,9 @@ app runs. Incognito and Tor choices stay in memory for that private session and 
 On HTTPS pages, the site-info popover also has **View certificate**
 ([details](layout.md#when-site-permissions-are-open)).
 
+When a website notification is clicked, Persephone brings its window forward and shows the browser
+page and inner tab that created it. Your page's notification click handler still runs.
+
 ## Site extensions
 
 When a site extension matches a regular browser page, a bar above the page names the extension

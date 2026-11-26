@@ -1798,7 +1798,21 @@
     "shell.pageHistoryBackEmpty": "后退 (Alt+Left)",
     "shell.pageHistoryForward": "前进到{title} (Alt+Right)",
     "shell.pageHistoryForwardEmpty": "前进 (Alt+Right)",
-    "board.permissionProcessAccessDetail": "此进程可以访问您的文件和网络，不受看板其他权限的限制。"
+    "board.permissionProcessAccessDetail": "此进程可以访问您的文件和网络，不受看板其他权限的限制。",
+    "settings.terminalLinuxDescription": "“在此处打开终端”的可执行文件名或绝对路径。留空可自动检测已安装的终端；需要额外参数时请使用包装脚本。",
+    "settings.vlcExecutableLabel": "VLC 可执行文件：",
+    "settings.selectVlcExecutable": "选择 VLC 可执行文件",
+    "settings.torExecutableLabel": "Tor 可执行文件：",
+    "settings.selectTorExecutable": "选择 Tor 可执行文件",
+    "settings.removeTorExecutablePath": "移除 Tor 可执行文件路径",
+    "settings.clipboardFocusedLinux": "在 Linux 上，仅当 Persephone 窗口处于焦点时，历史记录才会读取剪贴板。后台不会监视剪贴板更改，因此可能遗漏快速复制。",
+    "settings.defaultBrowserLinuxDescription": "将 Persephone 设为 Linux 中 HTTP、HTTPS 和 HTML 的默认浏览器，检查当前选择，或移除其关联。",
+    "settings.defaultBrowserSelected": "已选择 Persephone 作为默认浏览器",
+    "settings.defaultBrowserNotSelected": "已选择其他浏览器作为默认浏览器",
+    "settings.setDefaultBrowser": "设为默认浏览器",
+    "settings.defaultBrowserStatusFailed": "无法检查默认浏览器：{error}",
+    "settings.defaultBrowserActionFailed": "无法更改默认浏览器：{error}",
+    "shell.boardShortcutLinuxFileType": "Linux 应用程序启动器"
   },
   "source": {
     "settings.moreInformation": "cc9b9183",
@@ -3497,6 +3511,20 @@
     "shell.pageHistoryBackEmpty": "912b177e",
     "shell.pageHistoryForward": "5c000bca",
     "shell.pageHistoryForwardEmpty": "ca1b9197",
-    "board.permissionProcessAccessDetail": "d35d972a"
+    "board.permissionProcessAccessDetail": "d35d972a",
+    "settings.terminalLinuxDescription": "87aa04dd",
+    "settings.vlcExecutableLabel": "fb7c42ba",
+    "settings.selectVlcExecutable": "395c535e",
+    "settings.torExecutableLabel": "52dea194",
+    "settings.selectTorExecutable": "0c030248",
+    "settings.removeTorExecutablePath": "231dccdf",
+    "settings.clipboardFocusedLinux": "180b4ba7",
+    "settings.defaultBrowserLinuxDescription": "c29f67ba",
+    "settings.defaultBrowserSelected": "1443bc59",
+    "settings.defaultBrowserNotSelected": "9f226922",
+    "settings.setDefaultBrowser": "258a70d4",
+    "settings.defaultBrowserStatusFailed": "4f5be8a9",
+    "settings.defaultBrowserActionFailed": "4944ce04",
+    "shell.boardShortcutLinuxFileType": "6a779289"
   }
 }
