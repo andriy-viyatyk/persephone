@@ -1,5 +1,5 @@
 // Dev helper: copy the locally-downloaded embedding model into the Mneme cache
-// layout so `mneme.exe` finds it under `npm start` — no network download.
+// layout so `mneme` finds it under `npm start` — no network download.
 //
 // Source (the local dev copy, gitignored):
 //   temp/mneme-model/onnx/model_int8.onnx
@@ -39,7 +39,7 @@ const files = [
 
 if (!fs.existsSync(srcDir)) {
     console.error(`[mneme:model] Local dev model not found at ${srcDir}`);
-    console.error("[mneme:model] Download gte-multilingual-base (int8 ONNX) + tokenizer there first, or run `mneme.exe model-update`.");
+    console.error("[mneme:model] Download gte-multilingual-base (int8 ONNX) + tokenizer there first, or run `mneme model-update`.");
     process.exit(1);
 }
 

@@ -9,7 +9,7 @@ editorId: ["mneme-config", "mneme-root"]
 
 **Mneme** is an optional, built-in knowledge base. Point it at one or more folders of Markdown documents and it indexes them for fast **full-text** and **semantic** (meaning-based) search. You can browse, edit, and organize those documents inside Persephone, and AI agents (Claude and others) can read, search, and maintain the same knowledge base over MCP.
 
-Mneme is **off by default** and runs as a separate local service (`mneme.exe`) that Persephone launches in the background when you enable it. Your files on disk are always the source of truth — the search index is derived and can be rebuilt at any time.
+Mneme is **off by default** and runs as a separate local service that Persephone launches in the background when you enable it. Persephone connects to the service over loopback HTTP. Your files on disk are always the source of truth — the search index is derived and can be rebuilt at any time.
 
 > **Privacy:** Mneme runs entirely on your machine over loopback (`127.0.0.1`). Indexing and search are local; enabling semantic search downloads an embedding model once, after which no document data leaves your computer.
 
@@ -115,7 +115,7 @@ Evidence: `MnemeConfigView.ts:54-87`, `ModelPanel.ts:87-113`, `RootsPanel.ts:46-
 2. Scroll to the **Mneme (vector memory)** section.
 3. Check **Enable Mneme**.
 
-Persephone launches the Mneme service and connects to it over loopback HTTP. A status line then shows **Running / Stopped**, the server URL (e.g. `http://127.0.0.1:7700/mcp`), and a **Copy URL** button.
+Persephone launches the Mneme service and connects to it over loopback HTTP. If the helper cannot start, Persephone stays open and shows a notification with the failure reason. A status line then shows **Running / Stopped**, the server URL (e.g. `http://127.0.0.1:7700/mcp`), and a **Copy URL** button.
 
 - **Port** — defaults to `7700`, or `7800` in a named [application profile](./getting-started.md#separate-application-profiles). To change it, toggle Mneme **off**, edit the port, then toggle it back **on** (the port field is locked while Mneme is running).
 - When disabled (the default), the service is never launched and no indexing happens.
@@ -128,7 +128,7 @@ Open it from the **Tools & Editors** panel → **Tools** (or from the **+** menu
 - **Include / ignore** — per-root glob patterns control which files are indexed and searched. They do **not** hide files from browsing: the whole folder stays navigable; include/ignore only scope what search looks at.
 - **Reindex** — rebuild or refresh a root's index. Long-running reindexing shows live progress, and an always-on watcher keeps the index in sync automatically as files change on disk.
 - **Index inventory** — each root's indexed file counts and status at a glance.
-- **Embedding model** — full-text search works with no model. To enable semantic (**vector** / **hybrid**) search, download the embedding model from the model panel; status shows whether it is present. Until then, vector and hybrid searches fall back to full-text with a note.
+- **Embedding model** — full-text search works with no model. On first run, download the embedding model from the model panel using **Load model**; Mneme fetches and verifies it in the local model cache. Status shows whether it is present. To enable semantic (**vector** / **hybrid**) search, the model must be loaded. Until then, vector and hybrid searches fall back to full-text with a note.
 
   When no embedding model is loaded, the model panel header shows a yellow **"Model not loaded — semantic search unavailable"** warning, and the button reads **Load model** (highlighted) instead of **Update model**. Click **Load model** to download the model file.
 

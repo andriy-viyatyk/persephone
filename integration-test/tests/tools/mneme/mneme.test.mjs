@@ -141,7 +141,7 @@ export default [
             await removeFixtureDirectory(ctx, fixtureFolder);
             if (configPageOwned) await closePage(ctx, CONFIG_PAGE_ID);
         }
-    }, { requires: ["mneme", "windows"] }),
+    }, { requires: ["mneme"] }),
 
     test("Mneme Root browses, searches, and opens a fixture document", async (ctx) => {
         const fixtureFolder = ctx.fixture("us-2075/root");
@@ -292,5 +292,5 @@ export default [
             await removeFixtureDirectory(ctx, fixtureFolder);
             await closeOwnedPages(ctx, configPageOwned ? initialPageIds : new Set([...initialPageIds, CONFIG_PAGE_ID]));
         }
-    }, { requires: ["mneme", "windows"] }),
+    }, { requires: ["mneme"] }),
 ];
