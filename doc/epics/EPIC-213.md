@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed (2026-11-26)
 **Created:** 2026-11-26
 
 ## Overview
@@ -35,13 +35,13 @@ Already done in Phase 0, so not repeated here: POSIX paths and `file:///` URLs (
 
 | Task | Title | Owner | Status |
 |------|-------|-------|--------|
-| [US-2204](../tasks/US-2204-linux-suite-runner/README.md) | **Suite on Linux: runner and baseline.** The runner finds the Linux app binary (WIN-35); tests that need Windows declare `requires: ["windows"]` and report "skipped" on Linux (WIN-36); then a full `test:ui` run in WSL under Xvfb and in WSLg, with every failure recorded against the task that owns it (or a new task) | Codex (plan + implement), Claude runs the suite | Implemented (2026-11-26) |
-| [US-2205](../tasks/US-2205-linux-path-semantics/README.md) | **Path semantics.** Backslash as a separator only on Windows in `file-path.ts`, `fpNormalizeForCompare`, `comparePathKey` and `FileTreeProvider` (WIN-24, R-8); case-sensitive path equality in the clipboard service and anywhere else that lowercases unconditionally (WIN-16, first half). Reuse the existing case-preserving helpers listed in the inventory | Codex (plan + implement), Claude live check | Implemented (2026-11-26) |
-| [US-2206](../tasks/US-2206-linux-file-access-grants/README.md) | **Browser file-system grants on Linux.** `file-system-access-policy.ts` accepts POSIX absolute paths and uses the native `path` module; sensitive folders get a home/XDG list beside the Windows one (WIN-25) | Codex (plan + implement), Claude live check | Implemented (2026-11-26) |
-| [US-2207](../tasks/US-2207-linux-board-module-env/README.md) | **Board and module environments.** Board data folder from Electron or XDG instead of `LOCALAPPDATA`, keeping profile isolation (WIN-12); the board test sandbox and the module-service process environment use HOME/XDG, a POSIX `node` and Linux variables (WIN-13, R-9) | Codex (plan + implement), Claude live check | Implemented (2026-11-26) |
-| [US-2208](../tasks/US-2208-keymap-primary-modifier/README.md) | **Keymap with a primary modifier.** One keymap owns application shortcuts and their labels; the primary modifier is Ctrl on Windows and Linux with a `darwin` slot (WIN-28, decision 7). Note which shortcuts GNOME takes for itself; the GNOME check itself is Phase 2 (VM) | Codex (plan + implement), Claude reviews the plan | Implemented (2026-11-26) |
-| [US-2209](../tasks/US-2209-linux-encoding-fonts/README.md) | **Encoding fallback and fonts.** Locale-aware encoding fallback, UTF-8 by default off Windows, Windows-1251 behaviour on Windows unchanged (WIN-27, R-10); Linux font alternatives in the font stacks and an emoji/icon glyph check (WIN-29, R-4) | Codex (plan + implement), Claude live check | Implemented (2026-11-26) |
-| [US-2210](../tasks/US-2210-linux-ci-job/README.md) | **Linux CI job.** A GitHub Actions workflow on `ubuntu-latest`: install, typecheck, lint, build, and `test:ui` under Xvfb; skipped tests listed in the job summary. Not part of the release workflow | Codex (plan + implement), Claude checks the first run | Implemented (2026-11-26) |
+| [US-2204](../tasks/US-2204-linux-suite-runner/README.md) | **Suite on Linux: runner and baseline.** The runner finds the Linux app binary (WIN-35); tests that need Windows declare `requires: ["windows"]` and report "skipped" on Linux (WIN-36); then a full `test:ui` run in WSL under Xvfb and in WSLg, with every failure recorded against the task that owns it (or a new task) | Codex (plan + implement), Claude runs the suite | Done |
+| [US-2205](../tasks/US-2205-linux-path-semantics/README.md) | **Path semantics.** Backslash as a separator only on Windows in `file-path.ts`, `fpNormalizeForCompare`, `comparePathKey` and `FileTreeProvider` (WIN-24, R-8); case-sensitive path equality in the clipboard service and anywhere else that lowercases unconditionally (WIN-16, first half). Reuse the existing case-preserving helpers listed in the inventory | Codex (plan + implement), Claude live check | Done |
+| [US-2206](../tasks/US-2206-linux-file-access-grants/README.md) | **Browser file-system grants on Linux.** `file-system-access-policy.ts` accepts POSIX absolute paths and uses the native `path` module; sensitive folders get a home/XDG list beside the Windows one (WIN-25) | Codex (plan + implement), Claude live check | Done |
+| [US-2207](../tasks/US-2207-linux-board-module-env/README.md) | **Board and module environments.** Board data folder from Electron or XDG instead of `LOCALAPPDATA`, keeping profile isolation (WIN-12); the board test sandbox and the module-service process environment use HOME/XDG, a POSIX `node` and Linux variables (WIN-13, R-9) | Codex (plan + implement), Claude live check | Done |
+| [US-2208](../tasks/US-2208-keymap-primary-modifier/README.md) | **Keymap with a primary modifier.** One keymap owns application shortcuts and their labels; the primary modifier is Ctrl on Windows and Linux with a `darwin` slot (WIN-28, decision 7). Note which shortcuts GNOME takes for itself; the GNOME check itself is Phase 2 (VM) | Codex (plan + implement), Claude reviews the plan | Done |
+| [US-2209](../tasks/US-2209-linux-encoding-fonts/README.md) | **Encoding fallback and fonts.** Locale-aware encoding fallback, UTF-8 by default off Windows, Windows-1251 behaviour on Windows unchanged (WIN-27, R-10); Linux font alternatives in the font stacks and an emoji/icon glyph check (WIN-29, R-4) | Codex (plan + implement), Claude live check | Done |
+| [US-2210](../tasks/US-2210-linux-ci-job/README.md) | **Linux CI job.** A GitHub Actions workflow on `ubuntu-latest`: install, typecheck, lint, build, and `test:ui` under Xvfb; skipped tests listed in the job summary. Not part of the release workflow | Codex (plan + implement), Claude checks the first run | Done |
 
 **Order:** US-2204 first: it decides what the rest must fix and may add tasks. US-2205 to US-2209 are independent of
 each other and follow in any order. US-2210 is last, once the suite passes locally.
@@ -88,12 +88,16 @@ From roadmap §4 and §9, plus EPIC-212. Only the ones this epic relies on are l
   - Windows full suite: 559 passed, 1 failed, 11 skipped. The failure was the `proc` stdin fixture, fixed
     (the area then passed 6/6).
   - Typecheck and lint pass on Windows.
-- **Open: WebGL on Linux test machines.** Gem Keep's three tests need WebGL. WSLg has no usable GPU process
-  for Chromium (`webglAvailable: false`; once the dev app also died with "GPU process isn't usable"), and current
-  Chromium no longer falls back to SwiftShader for WebGL unless started with `--enable-unsafe-swiftshader`. Xvfb on
-  CI is likely the same. Choices: start test instances with that switch on Linux, add an automatic `webgl`
-  requirement, or accept the failures until a GPU-backed runner. Not decided; left untagged so it stays visible.
-- **Open: US-2210 first CI run.** The workflow is written but has not run, because nothing is pushed yet.
+- **WebGL on Linux test machines (decided 2026-11-26).** Gem Keep's three tests need WebGL2. WSLg and Xvfb have no
+  usable GPU process for Chromium, and current Chromium falls back to SwiftShader only with
+  `--enable-unsafe-swiftshader`. Persephone itself does not use WebGL (only game boards do), so the user chose to skip
+  them: `webgl` is a second automatic requirement in `src/shared/test-requirements.ts`, present on Windows only.
+- **First CI runs (US-2210).** Run 1: every test failed because Chromium's setuid sandbox helper was not root-owned
+  (Ubuntu 24+ blocks unprivileged user namespaces); the workflow now sets `chrome-sandbox` to root:root 4755, keeping
+  the sandbox on. Run 2: 462 passed, 2 failed, 109 skipped; the two failures were window maximize/restore in
+  `core/startup`, because Xvfb has no window manager. The workflow now starts Openbox inside the Xvfb display.
+- Completion skills run by Codex (Luna): review found no defects; developer docs updated; no guide or translation
+  changes.
 - Minimize-dependent tests (`desktop-awareness`, `minimized-page-visibility`) are tagged `windows` because WSLg and
   Xvfb ignore `minimize()`. Re-check them on GNOME in the Phase 2 VM.
 - The user's customer project is never named in these documents.

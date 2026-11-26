@@ -1,3 +1,35 @@
+## EPIC-213 — Linux core parity (multiplatform phase 1)
+
+Completed 2026-11-26. Phase 1 of the [multiplatform roadmap](../reviews/multiplatform-roadmap.md): the UI integration
+suite runs on Linux, locally in WSL and in GitHub Actions. Nothing is released for Linux yet.
+
+- **Suite on Linux:** the runner finds the Linux binary; `windows` and `webgl` are automatic requirements
+  (`src/shared/test-requirements.ts`) that skip on Linux; fixtures build paths portably. WSL went from 423 passed /
+  50 failed to 464 passed / 0 failed.
+- **Paths:** a backslash is a filename character off Windows, and comparisons are case-sensitive where the file system
+  is (`path-containment.ts` compare keys; Windows unchanged).
+- **Browser file-access grants:** POSIX paths and a home/XDG protected-folder list
+  (`file-system-access-policy-linux.ts`).
+- **Board and module environments:** board data under Electron's `userData` on Linux; per-platform test sandbox and
+  module-service environment collaborators; quoted command-line splitting for `shell: false` on Linux.
+- **Keymap:** `src/shared/keymap.ts` owns application shortcuts and their labels, with a primary modifier.
+- **Encoding and fonts:** the encoding fallback follows the locale off Windows (Windows-1251 behaviour unchanged);
+  Linux font alternatives after the Windows ones.
+- **CI:** `.github/workflows/linux-ci.yml` on `ubuntu-latest` (typecheck, lint, suite under Xvfb with Openbox). The
+  Chromium setuid sandbox helper is made root-owned so the sandbox stays on.
+- **Open, for Phase 2 (VM):** minimize-dependent tests on GNOME, the CP1251-locale start, font screenshots.
+- **Completion skills:** run by Codex (Luna).
+
+Epic document: [EPIC-213](EPIC-213.md).
+
+- [x] **Suite on Linux: runner and baseline (US-2204).**
+- [x] **Path semantics (US-2205).**
+- [x] **Browser file-system grants on Linux (US-2206).**
+- [x] **Board and module environments (US-2207).**
+- [x] **Keymap with a primary modifier (US-2208).**
+- [x] **Encoding fallback and fonts (US-2209).**
+- [x] **Linux CI job (US-2210).**
+
 ## EPIC-212 — Linux bring-up and the platform layer (multiplatform phase 0)
 
 Completed 2026-11-25. This is phase 0 of the [multiplatform roadmap](../reviews/multiplatform-roadmap.md): the dev

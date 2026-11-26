@@ -35,7 +35,7 @@ jobs:
           sudo apt-get install -y libnss3 libasound2t64 libgbm1 libxss1 libxtst6 \
             libatk-bridge2.0-0t64 libcups2t64 libdrm2 libsecret-1-0 \
             build-essential curl xz-utils fonts-noto-core fonts-noto-color-emoji \
-            xvfb xauth dbus dbus-x11 git
+            xvfb xauth dbus dbus-x11 git openbox
 
       - name: Install JavaScript dependencies
         run: |
@@ -63,7 +63,8 @@ jobs:
 
       - name: Run UI integration suite
         id: ui
-        run: dbus-run-session -- xvfb-run -a npm run test:ui -- --prod
+        # Openbox: Xvfb alone has no window manager, so maximize/restore would never happen.
+        run: dbus-run-session -- xvfb-run -a bash -c 'openbox & sleep 2; npm run test:ui -- --prod'
 
       - name: Summarize UI integration suite
         if: always()

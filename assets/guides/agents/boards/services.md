@@ -34,13 +34,16 @@ cwd. Standard Node built-ins (filesystem, networking, streams, crypto, workers, 
 available; `electron`, `app`, `BrowserWindow`, `webContents`, and `ipcMain` are not. Imports resolve
 from the board root, including its `node_modules`. The environment is sanitized to the supervisor
 allowlist plus `PERSEPHONE_SERVICE=1`, `PERSEPHONE_BOARD_ROOT`, `PERSEPHONE_LOCALE`, and
-`PERSEPHONE_BOARD_DATA`. The board data path is profile-scoped: the default profile uses
-`%LOCALAPPDATA%\Persephone\board-data\<id>`, while named profiles and test instances use
-`<userData>\board-data\<id>`. Persephone passes the path but does not create the board folder;
-the board creates it on first write. If the variable is absent (including on an older host), use
-the legacy `%LOCALAPPDATA%\Persephone\board-data\<id>` path. Named profiles start empty and
-there is no automatic migration; users can copy an individual board data folder into the named
-profile when needed.
+`PERSEPHONE_BOARD_DATA`. On Linux, the environment allowlist includes `PATH`, `HOME`, XDG config,
+data, cache, state and runtime directories, `TMPDIR`, locale, and timezone variables; Windows
+uses its Windows system and user variables. The board data path is profile-scoped: the default
+Windows profile uses
+`%LOCALAPPDATA%\Persephone\board-data\<id>`, while Linux, named profiles, and test instances use
+`<userData>/board-data/<id>`. Persephone passes the path but does not create the board folder;
+the board creates it on first write. If the variable is absent on Windows (including on an older
+host), use the legacy `%LOCALAPPDATA%\Persephone\board-data\<id>` path. Named profiles start empty
+and there is no automatic migration; users can copy an individual board data folder into the
+named profile when needed.
 `PERSEPHONE_LOCALE` is the resolved Persephone UI locale at service spawn, including regional codes
 such as `pt-BR` and the verification locale `en-XA`; a service that starts before the first renderer
 reports its locale receives the initialized `en` default. The host updates

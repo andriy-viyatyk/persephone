@@ -15,6 +15,10 @@ ESLint rule to the shared owner and the existing per-platform collaborators. Kee
 to reviewed legacy checks that are being removed, not a permanent registry for new call sites.
 The platform modules stay pure and do not import Electron or probe runtime helper binaries.
 
+For centrally owned application shortcuts, define the shared descriptor in
+`src/shared/keymap.ts`. Match events and render shortcut labels from that descriptor so the key,
+required modifiers, and displayed primary modifier stay aligned across platforms.
+
 ### Use TypeScript for All New Code
 
 ```typescript

@@ -397,7 +397,8 @@ When the primary pipe changes (e.g., after decryption adds a `DecryptTransformer
 3. **Explicit override** -- if encoding was previously detected and passed in
 4. **jschardet** -- statistical detection when confidence is above `DETECTION_MIN_CONFIDENCE` (`0.05`). jschardet 4 uses lower scores for valid single-byte encodings than earlier releases, so the threshold is intentionally low; UTF-8 and ASCII usually score much higher.
 5. **UTF-8 probe** -- decode as UTF-8 and check for replacement characters (`U+FFFD`)
-6. **Fallback** -- Windows-1251
+6. **Fallback** -- Windows-1251 on Windows. Elsewhere, use a supported legacy charset parsed from
+   `LC_ALL`, `LC_CTYPE`, or `LANG`; if none is supported, use UTF-8.
 
 The detector recognizes Windows-1252 and BOM-less UTF-16 when jschardet identifies them. The detected encoding is stored on the pipe (`pipe.encoding`) and persisted in `IPipeDescriptor` so that write-back uses the same encoding. `encodeString()` handles the reverse, including BOM insertion for UTF-8-BOM and UTF-16 variants. The threshold is defined in `text-encoding.ts` as `DETECTION_MIN_CONFIDENCE`.
 

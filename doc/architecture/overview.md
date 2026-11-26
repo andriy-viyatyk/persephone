@@ -64,6 +64,12 @@ The ESLint platform-check rule in `eslint.config.mjs` limits new direct `process
 checks to the shared platform module and documented per-platform collaborators. Keep the
 existing-check allowlist shrinking as call sites move to the shared predicates.
 
+Renderer paths go through `src/renderer/core/utils/file-path.ts`, which uses the current
+platform's native path semantics. Backslashes are separators on Windows and ordinary filename
+characters on POSIX; path comparisons preserve case on POSIX. Application shortcuts whose
+identities are centrally owned use `src/shared/keymap.ts` for their key, modifiers, and display
+label, with `Ctrl` as the primary modifier except on macOS (`Cmd`).
+
 ### Application profiles
 
 The optional `--profile` argument selects a separate application data root at
@@ -551,10 +557,13 @@ host in place through the `locale-changed` parent control message when that effe
 The host consumes this control message by updating `process.env.PERSEPHONE_LOCALE`; it is not sent
 to service callbacks and does not restart the service. The shared
 `src/main/board-process-environment.ts` funnel also adds `PERSEPHONE_BOARD_DATA` to board service
-and board-launched process environments. The default profile uses
-`%LOCALAPPDATA%\Persephone\board-data\<id>`; named profiles and test instances use
-`<userData>\board-data\<id>`. The host does not create the folder, and named profiles do not
-migrate existing data automatically. Boards without the variable use the legacy LocalAppData path.
+and board-launched process environments. The default Windows profile uses
+`%LOCALAPPDATA%\Persephone\board-data\<id>`; Linux, named profiles, and test instances use
+`<userData>/board-data/<id>`. The host does not create the folder, and named profiles do not
+migrate existing data automatically. Boards without the variable use the legacy LocalAppData path
+on Windows.
+Module services receive an allowlisted environment: Linux passes `HOME`, XDG, locale, and POSIX
+process variables, while Windows retains its Windows system and user variables.
 This is a process environment contract and changes no bridge protocol or version. The supervisor
 delegates service state and process lifecycle to `src/main/module-service/process.ts`, trust indexing to
 `src/main/module-service/trust-directory.ts`, channel delivery to

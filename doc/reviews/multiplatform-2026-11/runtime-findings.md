@@ -5,10 +5,11 @@ development build ran on Linux in EPIC-212.
 
 - **Environment:** WSL Ubuntu 26.04.1 LTS with WSLg (Chromium runs on X11 through XWayland), the dev build
   (`npm start`) as a normal user, driven over MCP.
-- **Sources:**
-  - [US-2198](../../tasks/US-2198-linux-dev-environment/README.md): bring-up, findings F1–F12;
-  - [US-2200](../../tasks/US-2200-linux-startup-blockers/README.md): startup blockers;
-  - [US-2201](../../tasks/US-2201-linux-runtime-discovery/README.md): this pass, 2026-11-25.
+- **Sources** (the task folders were deleted after the epic closed; read them from git history with
+  `git show 0f0932b8:doc/tasks/<folder>/README.md`):
+  - US-2198 (`US-2198-linux-dev-environment`): bring-up, findings F1–F12;
+  - US-2200 (`US-2200-linux-startup-blockers`): startup blockers;
+  - US-2201 (`US-2201-linux-runtime-discovery`): this pass, 2026-11-25.
 - **Not covered:** a real GNOME Wayland session, the packaged app and AppArmor. Those wait for the Hyper-V VM and
   Phase 4.
 

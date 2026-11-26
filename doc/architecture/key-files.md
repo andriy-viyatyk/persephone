@@ -15,6 +15,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 |--------------------------|---------------------------------------------------|
 | Shared types (IEditorState)| `/src/shared/types.ts`                            |
 | Shared platform identity and OS predicates | `/src/shared/platform.ts` |
+| Shared application shortcut identities, matching and labels | `/src/shared/keymap.ts` |
+| Automatic integration-test platform requirements | `/src/shared/test-requirements.ts` |
 | Static platform feature availability table and reason lookup | `/src/shared/platform-features.ts` |
 | ESLint platform-check restriction and existing-check allowlist | `/eslint.config.mjs` |
 | Cross-process file, URL, and diff launch-input contract | `/src/shared/launch-input.ts` |
@@ -70,7 +72,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Service channel port delivery and receiver ownership routing | `/src/main/channel-delivery.ts`, `/src/renderer/api/service-channel-ports.ts` |
 | One-shot app media grants and frame-bound hidden audio-window grants | `/src/main/one-shot-frame-grant.ts`, `/src/main/media-grants.ts` |
 | Browser site permission policy and persistent/private decision store | `/src/main/permission-policy-service.ts`, `/src/main/site-permission-store.ts` |
-| Browser File System Access requests (sensitive-path blocklist, same-origin requester, one-shot prompt data) | `/src/main/file-system-access-policy.ts` |
+| Browser File System Access requests (sensitive-path blocklist, same-origin requester, one-shot prompt data) | `/src/main/file-system-access-policy.ts`, `/src/main/file-system-access-policy-linux.ts` |
 | Capability declarations, normalization and shared contract | `/src/shared/capability-contract.ts` |
 | Capability deadlines, payload and concurrency limits | `/src/shared/capability-limits.ts` |
 | Named capability proxy builder | `/src/shared/capability-client.ts` |
@@ -111,7 +113,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Node.js HTTP client (board requests enforce manifest network permissions and `appScripting`; direct requests DNS-pin each hop to prechecked addresses) | `/src/renderer/api/node-fetch.ts` |
 | Shared board network address policy and DNS-pinned lookup callback | `/src/shared/board-network-guard.ts` |
 | Node.js HTTP proxy tunnels (SOCKS5 and HTTP CONNECT parsing, handshakes, and pooled agents) | `/src/renderer/api/proxy-tunnel.ts` |
-| Path utilities           | `/src/renderer/core/utils/file-path.ts`           |
+| Platform-native path utilities (archive-aware; POSIX backslashes remain filename characters) | `/src/renderer/core/utils/file-path.ts` |
+| Platform-aware application shortcut handling | `/src/renderer/api/internal/KeyboardService.ts`, `/src/shared/keymap.ts` |
 | Element-wise identity comparison for freshly allocated model arrays (`sameItems`) | `/src/renderer/core/utils/utils.ts` |
 | Renderer clipboard helpers (text and PNG via main-process IPC) | `/src/renderer/api/clipboard.ts`, `/src/renderer/editors/shared/image-actions.ts`, `/src/ipc/main/clipboard-handlers.ts`, `/src/ipc/main/media-handlers.ts` |
 | Native CSS property type contract shared by core and UIKit | `/src/renderer/core/native-css-properties.ts` |
@@ -198,7 +201,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Guide provider (read-only packaged guide content; scheme identity and front-matter stripping) | `/src/renderer/content/providers/GuideProvider.ts` |
 | Board provider delegate (read/write, optional ranged read, stat and watch over the renderer service lease; operation deadlines and control cap are policy-driven) | `/src/renderer/content/providers/ProxyProvider.ts` |
 | Board pipe content-type helper (logical extension and archive-entry MIME mapping for ranged resource responses) | `/src/renderer/content/board-pipe-utils.ts` |
-| Shared text codec (`decodeBuffer` / `encodeString`; jschardet confidence floor is `DETECTION_MIN_CONFIDENCE`) | `/src/renderer/core/utils/text-encoding.ts` |
+| Shared text codec (`decodeBuffer` / `encodeString`; platform and locale fallback) | `/src/renderer/core/utils/text-encoding.ts` |
 | Link parsers (Layer 1)   | `/src/renderer/content/parsers.ts`                |
 | Typed link-action dispatch (clears caller input and executes the action recorded by each parser/resolver step) | `/src/renderer/content/open-actions/dispatch.ts` |
 | Non-content link actions (browser routing, folder pages, capabilities and notices) | `/src/renderer/content/open-actions/` |
@@ -536,7 +539,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | File-search walk (worker thread; the directory walk, picomatch include/exclude matchers, per-file line matching, batching and the matched-line cap. Bundled as its OWN entry to `.vite/build/search-worker.js` and loaded by `search-service` as **source** — the walk is entirely synchronous `fs` I/O, so running it on the main-process event loop froze the window message pump and, worse, made cancellation structurally impossible: the cancel IPC handler could not run until the search it was meant to stop had finished. Two constraints follow from `{ eval: true }` — it must never import `electron`, and the bundle must externalize only node builtins so `picomatch` stays inlined) | `/src/main/search-worker.ts` |
 | File-search host (main; one worker per sender `webContents`, relays batches/progress/complete to the renderer. Cancel — from the panel, a changed query, a replacing search, or the window closing via `sender.once("destroyed")` — is `worker.terminate()`, not a flag, because a blocked worker would never read one. `getWorkerSource()` reads the worker bundle beside `main.js` with `fs.readFileSync` and caches it only when `app.isPackaged`: `new Worker(path)` can't be trusted to resolve an entry inside the packaged asar, while `readFileSync` is asar-aware — the same trick `board-protocol-service` uses for the board shim, and the dev-time skip lets a rebuilt worker apply without restarting Electron) | `/src/main/search-service.ts` |
 | Application profile parsing and renderer metadata/default-port helpers | `/src/main/application-profile.ts`, `/src/shared/application-profile.ts` |
-| Product UI test controller, instance options, browser-profile checks, test-mode console/network logging, exact-fingerprint HTTPS fixture trust, test-instance-only loopback catalog URL, fake media switches plus optional WAV input, and profile-local `%LOCALAPPDATA%` inherited by child processes (only owned test instances redirect it; `--open`/attach retain the real value) | `/src/main/test-mode/`, `/src/main/test-mode/certificates.ts`, `/src/main/test-mode/published-boards-catalog.ts`, `/src/main/test-mode/media-capture.ts`, `/src/main/test-mode/local-app-data.ts` |
+| Product UI test controller, instance options, browser-profile checks, test-mode console/network logging, exact-fingerprint HTTPS fixture trust, test-instance-only loopback catalog URL, fake media switches plus optional WAV input, and profile-local `%LOCALAPPDATA%` inherited by child processes (only owned Windows test instances redirect it; `--open`/attach retain the real value) | `/src/main/test-mode/`, `/src/main/test-mode/certificates.ts`, `/src/main/test-mode/published-boards-catalog.ts`, `/src/main/test-mode/media-capture.ts`, `/src/main/test-mode/local-app-data.ts` |
 | Linux test-app spawn environment (removes Electron's inherited `CHROME_DESKTOP`) | `/src/test-host/launcher.ts` |
 | Owned test-window desktop selection and activation-suppression guards (`--desktop`, pre-show placement) | `/src/main/test-mode/desktop-placement.ts`, `/src/main/test-mode/arguments.ts` |
 | Windows virtual desktop enumeration, COM placement/current-desktop probe, and koffi adapter | `/src/main/virtual-desktop-manager.ts` |
@@ -875,7 +878,9 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Private MCP session endpoint manager (lazy loopback listener, per-service bearer grants, bounded transport lifecycle, revocation, and private client count) | `/src/main/mcp/private-session-endpoints.ts` |
 | Module-service process (one utility-process generation, including spawn, handshake, dispatch, logging, and exit) | `/src/main/module-service/process.ts` |
 | Board process environment funnel (profile-scoped `PERSEPHONE_BOARD_DATA` path for services and board-launched processes) | `/src/main/board-process-environment.ts` |
-| Test-mode board process sandbox (isolated home/config paths and sanitized `PATH` for board services and board-launched processes) | `/src/main/test-mode/board-process-sandbox.ts` |
+| Module-service process environment allowlists by platform | `/src/main/module-service/process-environment.ts`, `/src/main/module-service/process-environment-linux.ts`, `/src/main/module-service/process-environment-windows.ts` |
+| Test-mode board process sandbox (isolated home/config paths and sanitized process variables by platform) | `/src/main/test-mode/board-process-sandbox.ts`, `/src/main/test-mode/board-process-sandbox-linux.ts`, `/src/main/test-mode/board-process-sandbox-windows.ts` |
+| Linux direct command-line parser for `app.proc` | `/src/main/command-line-linux.ts` |
 | Shared board data identity (exact board-root folder name and safe path-segment validation, with bundled-id support) | `/src/shared/board/board-data-id.ts` |
 | Module-service trust directory (trusted snapshot and indexed provider eligibility/discovery) | `/src/main/module-service/trust-directory.ts` |
 | Module-service channel broker (direct and capability channel delivery and cleanup) | `/src/main/module-service/channel-broker.ts` |
