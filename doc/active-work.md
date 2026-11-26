@@ -18,7 +18,7 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-2217: File clipboard, drag and drop, clipboard history](tasks/US-2217-file-clipboard-and-drag/README.md)
   - [ ] [US-2218: Notifications, theme, lock and virtual desktops](tasks/US-2218-notifications-theme-lock-desktops/README.md)
   - [ ] [US-2219: GNOME checks carried over from EPIC-213](tasks/US-2219-gnome-checks/README.md)
-  - [ ] US-2220: Phase 2 exit run — results in the [checklist](epics/EPIC-214-checklist.md); Linux CI half of row 35 waits for a push
+  - [ ] US-2220: Phase 2 exit run — results in the [checklist](epics/EPIC-214-checklist.md); Linux CI half of row 35: run the now-manual workflow once before the epic closes
   - [ ] US-2221: Hide the Windows website sign-in option on Linux (Browser Profiles shows `settings.windowsSsoExplanation`; gate the checkbox and help in `BrowserProfilesSection.ts` on the existing `browser.windowsSso` platform feature)
   - [ ] [US-2222: Clicking a website notification brings Persephone forward](tasks/US-2222-notification-click-focus/README.md) — planned idea from the US-2218 VM check; not investigated
 

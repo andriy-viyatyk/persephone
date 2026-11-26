@@ -87,4 +87,4 @@ records the result.
 | # | Check | Owner | Result |
 |---|-------|-------|--------|
 | 34 | Every feature marked not offered is hidden or explained in the UI, settings, MCP `$help` and guides | US-2220 | pass: virtual-desktop placement, Windows website sign-in, Mneme sidecar and background clipboard history are hidden or explained (US-2215, 2217, 2218, 2221) |
-| 35 | The Linux CI job is green and the full Windows suite passes once | US-2220 | Windows half passes: full suite 559 passed, 11 skipped, 1 flaky (published audio-player M3U, passed on rerun). Linux CI: pending the push |
+| 35 | The Linux CI job is green and the full Windows suite passes once | US-2220 | Windows half passes: full suite 559 passed, 11 skipped, 1 flaky (published audio-player M3U, passed on rerun). Linux CI: now manual only; run it on demand before the epic closes |

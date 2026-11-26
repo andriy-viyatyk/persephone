@@ -21,8 +21,35 @@ async function dismissTorSetupNotifications(ctx) {
     }
 }
 
+// Linux opens the Tor page and reports a missing Tor inside it (an empty setting searches PATH),
+// so it checks that the page never loads its URL without Tor. The path is a missing one so the
+// result does not depend on whether the machine has tor installed. A visible Tor page blocks
+// window.screen, so this reads only page and main-process state.
+async function linuxTorMissing(ctx) {
+    const setting = "tor.exe-path";
+    const previousPath = await ctx.app.settings.get(setting);
+    const priorPageIds = new Set((await ctx.app.pages.all).map((page) => page.id));
+    const url = ctx.httpUrl("/browser/page-tools/certificate.html");
+    let page;
+    try {
+        await ctx.app.settings.set(setting, "/nonexistent/persephone-test/tor");
+        await ctx.app.pages.showBrowserPage({ tor: true, url });
+        const pages = await ctx.waitFor(
+            (activeContext) => activeContext.app.pages.all,
+            (items) => items.some((item) => !priorPageIds.has(item.id) && item.editor === "browser-view"),
+        );
+        page = { id: pages.find((item) => !priorPageIds.has(item.id) && item.editor === "browser-view").id };
+        await ctx.waitFor("main.tor.status", (status) => !status.running && !status.pending);
+        ctx.expect(await ctx.app.pages[page.id].editor.url).not.toBe(url);
+    } finally {
+        await closeBrowserPage(ctx, page);
+        try { await ctx.app.settings.set(setting, previousPath); } catch { /* Preserve the test result. */ }
+    }
+}
+
 export default [
     test("Tor page without tor.exe is refused and reports the setup notice", async (ctx) => {
+        if (process.platform !== "win32") return linuxTorMissing(ctx);
         const setting = "tor.exe-path";
         const previousPath = await ctx.app.settings.get(setting);
         const priorPageIds = new Set((await ctx.app.pages.all).map((page) => page.id));

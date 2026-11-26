@@ -1,11 +1,8 @@
 name: Linux CI
 
+# Manual only: the run is long and costly, and Linux checks normally run in the local Ubuntu VM
+# (scripts/linux-vm). Start it from the Actions tab or with `gh workflow run linux-ci.yml --ref <branch>`.
 on:
-  push:
-    branches: [main, 'upcoming-*']
-    paths-ignore: ['doc/**', '*.md']
-  pull_request:
-    paths-ignore: ['doc/**', '*.md']
   workflow_dispatch:
 
 permissions:

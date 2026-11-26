@@ -126,3 +126,8 @@ Setup notes:
   `npm start -- --ozone-platform=x11` runs it through XWayland as a fallback. Wayland apps cannot learn their window
   position, and GNOME drops clipboard writes from an app window that has had no user input.
 - **Screen size:** 1920x1080, set in GNOME with `gdctl set --persistent ...`; the Hyper-V console window follows it.
+- **UI tests:** run the suite in the VM over SSH from a login shell (`bash -lc`, so `npm` is on PATH) with the
+  session variables above. Without `npm start` in the VM, run `npm run build-prod` and then
+  `npm run test:ui -- --prod --area <area>`. The build replaces the dev bundle, so run `npm start` again afterwards.
+- **GitHub Linux CI** (`.github/workflows/linux-ci.yml`) runs only on demand: the Actions tab, or
+  `gh workflow run linux-ci.yml --ref <branch>`. The VM is the usual Linux check.
