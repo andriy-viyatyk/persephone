@@ -287,7 +287,10 @@ export async function armNavigationWait(
             && typeof tree.frameTree.frame.id === "string") {
             mainFrameId = tree.frameTree.frame.id;
             if (typeof tree.frameTree.frame.url === "string") currentUrl = tree.frameTree.frame.url;
-            committed = kind === "navigation" && request.adoptInProgress === true && wc.isLoading();
+            // Enabling lifecycle events replays the current document's events, so `loaded` is already true
+            // when that document finished loading. A load in progress then belongs to a new navigation that
+            // has not committed yet; adopting it would resolve with the previous document's URL.
+            committed = kind === "navigation" && request.adoptInProgress === true && wc.isLoading() && !loaded;
             navigationStarted = committed;
         }
     } catch (error: unknown) {

@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Planned
+**Status:** Active
 **Created:** 2026-11-26
 
 ## Overview
@@ -36,7 +36,7 @@ left GNOME-only checks for this epic (see US-2219).
 
 | Task | Title | Owner | Status |
 |------|-------|-------|--------|
-| US-2211 | **VM and desktop checklist.** Set up a Hyper-V Ubuntu 26.04 Desktop VM (GNOME, Wayland session), get a dev build into it, and let Claude drive it over MCP. Write the Phase 2 checklist from the goals below, one line per check, each naming the task that owns it | Claude, with the user for Hyper-V | Planned |
+| [US-2211](../tasks/US-2211-linux-vm-and-checklist/README.md) | **VM and desktop checklist.** Set up a Hyper-V Ubuntu 26.04 Desktop VM (GNOME, Wayland session) that Claude controls over SSH (commands, files, repo sync, Persephone MCP through a tunnel), get a dev build into it, and write the Phase 2 checklist, one line per check, each naming the task that owns it | Claude, with the user for Hyper-V | In progress |
 | US-2212 | **Wayland or XWayland.** Run Electron natively on Wayland and through XWayland in the VM; compare window chrome, drag and drop, clipboard, screen capture and HiDPI. Record the choice and set the default switch. Decides details for US-2213, 2217 and 2218, so it runs early | Claude (measure), Codex (implement the switch) | Planned |
 | US-2213 | **Window chrome, tray and close-to-tray.** Frameless window behaviour on GNOME (move, resize, snap, maximize); tray availability detected through `platformFeatures`; close-to-tray only when a tray is present, otherwise closing quits or minimizes (WIN-30, R-5) | Codex (plan + implement), Claude VM check | Planned |
 | US-2214 | **Single instance, file handoff and profiles.** Electron's single-instance lock and `second-instance` pass files and profiles to the running app; measure the handoff and decide whether a Linux launcher is needed (decision 4, WIN-7). Make the socket cleanup on quit synchronous if leftover sockets matter (R-6) | Codex (plan + implement), Claude VM check | Planned |
@@ -92,4 +92,8 @@ From roadmap §4 and §9, plus EPIC-212 and EPIC-213. Only the ones this epic re
 
 - 2026-11-26: Created from roadmap Phase 2, the inventory, runtime findings R-4 to R-7 and the open items EPIC-213
   left for the VM.
+- 2026-11-26: The VM exists (US-2211): installed unattended, controlled over SSH and `scripts/linux-vm/vm.ps1`,
+  dev build running in GNOME Wayland and reachable over MCP. First findings are in the US-2211 document; the main one
+  is that the main window never shows on native Wayland (`ready-to-show` does not fire for a hidden window), which
+  US-2213 owns.
 - The user's customer project is never named in these documents.

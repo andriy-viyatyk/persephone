@@ -57,3 +57,42 @@ an MCP port distinct from the Windows instance (7875 instead of 7865).
 
 This setup documents only development and test work. Linux packaging, installation, and user
 release instructions belong to the later Linux release phase.
+
+## Ubuntu VM (desktop checks)
+
+WSL's GUI support is not a GNOME desktop, so desktop-integration checks (EPIC-214) run in a Hyper-V VM:
+`persephone-vm`, Ubuntu 26.04.1 Desktop, GNOME on Wayland, user `dev` with automatic login and passwordless
+`sudo`. It needs membership in the local **Hyper-V Administrators** group, not elevation.
+
+Agents control it with plain OpenSSH (key `~/.ssh/persephone-vm`, host alias `persephone-vm` in `~/.ssh/config`,
+password login disabled) and with [`scripts/linux-vm/vm.ps1`](../scripts/linux-vm/vm.ps1):
+
+| Command | Does |
+|---|---|
+| `ssh persephone-vm '<command>'` | Run any shell command in the VM |
+| `vm.ps1 status`, `start`, `stop` | VM state, and whether its address answers |
+| `vm.ps1 sync` | Copy the Windows checkout into `~/persephone` (keeps the VM's `node_modules`) |
+| `vm.ps1 app-start`, `app-stop`, `app-log` | Run `npm start` as a `systemd --user` unit inside the GNOME session |
+| `vm.ps1 tunnel` | Forward the VM app's MCP port 7875 to Windows `localhost:7875` |
+| `node scripts/linux-vm/mcp-call.mjs <path> [args]` | Call the VM app's MCP through the tunnel |
+| `vm.ps1 screenshot [file]`, `type "<text>" -Enter`, `key ctrl+alt+t` | See and type into the VM console without SSH |
+| `vm.ps1 checkpoint <name>`, `restore <name>`, `checkpoints` | Hyper-V checkpoints (`dev-ready` holds the configured dev setup) |
+| `vm.ps1 fix-network` | Re-address the VM after a Windows reboot moved the Default Switch subnet |
+
+Setup notes:
+
+- **Install:** unattended, from the desktop ISO with an `autoinstall.yaml` added at its root and `autoinstall` on the
+  boot command line (`xorriso ... -map ... -boot_image any replay`). Generation 2 VM, Secure Boot with the
+  `MicrosoftUEFICertificateAuthority` template, 4 vCPU, 8 GB, 80 GB disk, `Default Switch`.
+- **Network:** DHCP on the Default Switch does not answer on this host, so the VM has a static address
+  (`<switch network>.50`, gateway and DNS at the host's switch address) in `/etc/netplan/50-static.yaml`, with IPv6
+  link-local only. NAT and DNS work. `fix-network` types the new address through the console keyboard.
+- **Console typing:** `Msvm_Keyboard.TypeText` drops and reorders keys; `vm.ps1 type` sends one key at a time.
+- **Chromium sandbox:** Ubuntu 26.04 blocks unprivileged user namespaces, so after `npm ci` run
+  `sudo chown root:root node_modules/electron/dist/chrome-sandbox && sudo chmod 4755 node_modules/electron/dist/chrome-sandbox`
+  (CI does the same). Do not use `--no-sandbox`.
+- **MCP:** enable it in the VM profile (`"mcp.enabled": true`, `"mcp.port": 7875` in
+  `~/.config/persephone/data/appSettings.json`). The tunnel keeps the port number because the MCP server checks the
+  `Host` header's port. Stop a WSL Persephone first; WSL forwards the same localhost port.
+- **Screen lock and idle blanking are off** (`gsettings` over SSH with `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus`);
+  a locked session swallows console typing.
