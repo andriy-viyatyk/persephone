@@ -12,6 +12,17 @@ Overview of all active and planned epics and tasks.
 
 ## Planned
 
+- **EPIC-214** — [Linux desktop integration (multiplatform phase 2)](epics/EPIC-214.md)
+  - [ ] US-2211: VM and desktop checklist
+  - [ ] US-2212: Wayland or XWayland
+  - [ ] US-2213: Window chrome, tray and close-to-tray
+  - [ ] US-2214: Single instance, file handoff and profiles
+  - [ ] US-2215: Terminal, VLC and Tor
+  - [ ] US-2216: Default browser and board shortcuts
+  - [ ] US-2217: File clipboard, drag and drop, clipboard history
+  - [ ] US-2218: Notifications, theme, lock and virtual desktops
+  - [ ] US-2219: GNOME checks carried over from EPIC-213
+  - [ ] US-2220: Phase 2 exit run
 - *(no epic)*
   - [ ] [US-2139: Board hotkeys](tasks/US-2139-board-hotkeys/README.md) — recorded idea, not investigated: a board declares an action with a default hotkey, the user can rebind it, and it works with no board page open
 

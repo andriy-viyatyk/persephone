@@ -190,7 +190,7 @@ Adjusted from the [runtime findings](multiplatform-2026-11/runtime-findings.md) 
   Windows (WIN-36).
 - GitHub Actions job: build plus the suite on `ubuntu-latest` (development only, no release yet).
 
-### Phase 2 — Desktop integration (epic)
+### Phase 2 — Desktop integration ([EPIC-214](../epics/EPIC-214.md))
 
 **Exit:** a manual checklist passes in a Hyper-V Ubuntu 26.04 VM, on GNOME Wayland.
 

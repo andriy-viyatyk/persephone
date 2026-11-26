@@ -261,6 +261,9 @@ export default [
             ctx.expect(navigation.url).toContain("/destination");
             ctx.expect(await ctx.app.pages[page.id].editor.evaluate("document.body.textContent.trim()", options)).toBe("Navigation completed");
 
+            // waitForNavigation adopts a load still in progress when armed, so let /destination finish first.
+            await ctx.waitFor((activeContext) => activeContext.app.pages[page.id].editor.popups,
+                (items) => items.some((item) => item.id === popup.id && item.url.includes("/destination") && !item.loading));
             const lifecyclePromise = ctx.app.pages[page.id].editor.waitForNavigation({ ...options, timeout: 10000 });
             await ctx.app.pages[page.id].editor.evaluate("location.href = '/next-navigation'", options);
             const lifecycle = await lifecyclePromise;
