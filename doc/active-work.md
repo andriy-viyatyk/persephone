@@ -20,6 +20,8 @@ Overview of all active and planned epics and tasks.
 ## Planned
 
 - *(no epic)*
+  - [ ] US-2231: Theme Editor `theme.edit` test leaves a dialog open on Linux — found in the EPIC-215 exit run (2026-11-27): `published-boards/theme-editor` "opens from the theme.edit capability" fails in the VM (cleanup: "The test left a renderer dialog open") on two runs; passes on Windows. Reproduce with `npm run test:ui -- --prod --area published-boards/theme-editor` in the VM
+  - [ ] US-2232: Minimized browser page visibility test fails on Windows — found in the EPIC-215 exit run (2026-11-27): `core/unseen-mode` "minimized browser pages expose unseen-mode visibility in every frame" times out on three runs; the top frame reports hidden but the iframe stays `visible` with no visibilitychange. EPIC-215 changed no browser code; check whether it predates the epic
   - [ ] [US-2139: Board hotkeys](tasks/US-2139-board-hotkeys/README.md) — recorded idea, not investigated: a board declares an action with a default hotkey, the user can rebind it, and it works with no board page open
 
 ## Scheduled
