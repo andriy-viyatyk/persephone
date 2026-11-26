@@ -74,13 +74,13 @@ and harden ourselves. No new code is needed on either side.
 - [x] Claude can start, stop and restore the VM from Windows without elevation.
 - [x] A dev build runs in the VM's GNOME Wayland session and answers MCP through the tunnel.
 - [x] Checkpoint `dev-ready` exists (no `clean` one: the setup ran straight through; a fresh install is the reset).
-- [ ] The checklist exists and every line names its owning task.
+- [x] The checklist exists and every line names its owning task ([EPIC-214-checklist.md](../../epics/EPIC-214-checklist.md)).
 
 ## Progress (2026-11-26)
 
 - Done: steps 1–8. The VM was installed unattended (8 minutes). The control layer is [`scripts/linux-vm/vm.ps1`](../../../scripts/linux-vm/vm.ps1) and [`mcp-call.mjs`](../../../scripts/linux-vm/mcp-call.mjs); the setup is documented in [linux-development.md](../../linux-development.md#ubuntu-vm-desktop-checks).
 - Deviations from the plan: the Default Switch DHCP does not answer on this host, so the VM uses a static address (`<switch network>.50`) instead of `persephone-vm.mshome.net`; `vm.ps1 fix-network` re-addresses it after a host reboot. The tunnel keeps port 7875.
-- Open: step 9, the checklist.
+- Done: step 9, the checklist ([EPIC-214-checklist.md](../../epics/EPIC-214-checklist.md), 35 checks). The VM also has a desktop shortcut on the host for the user (Hyper-V console) and runs at 1920x1080, set with `gdctl --persistent`.
 
 ## Findings for later tasks
 

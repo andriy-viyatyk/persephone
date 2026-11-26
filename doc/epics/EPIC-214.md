@@ -23,7 +23,7 @@ left GNOME-only checks for this epic (see US-2219).
 
 ## Goals
 
-- A manual checklist passes in the VM on GNOME Wayland. This is the roadmap's Phase 2 exit.
+- A manual checklist ([EPIC-214-checklist.md](EPIC-214-checklist.md)) passes in the VM on GNOME Wayland. This is the roadmap's Phase 2 exit.
 - Closing the window never leaves a running app with no way back: close-to-tray applies only when a tray exists.
 - A second `persephone <file>` opens the file in the running app, including with a named profile, and the handoff
   time is measured.
@@ -36,7 +36,7 @@ left GNOME-only checks for this epic (see US-2219).
 
 | Task | Title | Owner | Status |
 |------|-------|-------|--------|
-| [US-2211](../tasks/US-2211-linux-vm-and-checklist/README.md) | **VM and desktop checklist.** Set up a Hyper-V Ubuntu 26.04 Desktop VM (GNOME, Wayland session) that Claude controls over SSH (commands, files, repo sync, Persephone MCP through a tunnel), get a dev build into it, and write the Phase 2 checklist, one line per check, each naming the task that owns it | Claude, with the user for Hyper-V | In progress |
+| [US-2211](../tasks/US-2211-linux-vm-and-checklist/README.md) | **VM and desktop checklist.** Set up a Hyper-V Ubuntu 26.04 Desktop VM (GNOME, Wayland session) that Claude controls over SSH (commands, files, repo sync, Persephone MCP through a tunnel), get a dev build into it, and write the Phase 2 checklist, one line per check, each naming the task that owns it | Claude, with the user for Hyper-V | Done |
 | US-2212 | **Wayland or XWayland.** Run Electron natively on Wayland and through XWayland in the VM; compare window chrome, drag and drop, clipboard, screen capture and HiDPI. Record the choice and set the default switch. Decides details for US-2213, 2217 and 2218, so it runs early | Claude (measure), Codex (implement the switch) | Planned |
 | US-2213 | **Window chrome, tray and close-to-tray.** Frameless window behaviour on GNOME (move, resize, snap, maximize); tray availability detected through `platformFeatures`; close-to-tray only when a tray is present, otherwise closing quits or minimizes (WIN-30, R-5) | Codex (plan + implement), Claude VM check | Planned |
 | US-2214 | **Single instance, file handoff and profiles.** Electron's single-instance lock and `second-instance` pass files and profiles to the running app; measure the handoff and decide whether a Linux launcher is needed (decision 4, WIN-7). Make the socket cleanup on quit synchronous if leftover sockets matter (R-6) | Codex (plan + implement), Claude VM check | Planned |
