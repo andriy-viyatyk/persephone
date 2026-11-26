@@ -157,10 +157,9 @@ history items** limit. History is off by default. When enabled, Persephone recor
 text, HTML, images, and file lists—including copies made in Persephone's Text Editor/Monaco and
 Browser tabs—for the [Clipboard panel](./sidebar.md#clipboard), retaining between 1 and 1000 items
 (100 by default). Capture depends on the copy reaching the system clipboard, not on which editor or
-page supplied it. On Linux, capture samples only while a Persephone window is focused. It does not
-monitor clipboard changes in the background, can miss rapid copies, and does not provide the
-Windows clipboard exclusion metadata. Copied secrets may remain on disk in readable form; disable
-history or clear it when that matters.
+page supplied it. History works on Windows; Linux lacks support because GNOME Wayland cannot expose
+clipboard watching. Copied secrets may remain on disk. Linux hides Clipboard Settings; restored
+panels report unavailable without loading items.
 
 ## Browser site permissions
 
@@ -221,7 +220,7 @@ file. Section names are containers for highlighting rather than individual setti
 | Links | `[data-name="settings-section-link-behavior"]` |
 | Default Browser | `[data-name="settings-section-default-browser"]` |
 | File Search | `[data-name="settings-section-file-search"]` |
-| Clipboard | `[data-name="settings-section-clipboard"]` |
+| Clipboard (Windows) | `[data-name="settings-section-clipboard"]` |
 | MCP Server / Mneme | `[data-name="settings-section-mcp"]` |
 | Git Integration | `[data-name="settings-section-git-integration"]` |
 | Board Environment Variables | `[data-name="settings-section-board-vars"]` |
@@ -258,7 +257,7 @@ example.
 | `mcp.enabled` | Off by default; enables the MCP server and starts it immediately when saved |
 | `mcp.port` | Defaults to 7865, or 7965 in a named application profile; changing it requires disabling and re-enabling MCP to move a running server |
 | `git.enabled` | Off by default; controls whether Git Tree and Git Diff features appear |
-| `clipboard.enabled` | Off by default; records supported clipboard items for the Clipboard sidebar panel |
+| `clipboard.enabled` | Off by default; records clipboard items for the Clipboard sidebar panel on Windows; saved key is retained on unsupported platforms |
 | `clipboard.max-items` | Defaults to 100; retains between 1 and 1000 clipboard history items |
 | `voice-typing.shortcut` | Defaults to `Alt+V`; starts and stops voice typing, and can be changed under General |
 | `voice-typing.translate-shortcut` | Defaults to `Alt+Shift+V`; starts and stops voice typing with translation to English |

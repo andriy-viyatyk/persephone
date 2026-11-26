@@ -5,6 +5,7 @@ import type {
     ClipboardHistorySnapshot,
 } from "../../../../ipc/clipboard-ipc";
 import type { AppWrapper } from "../../api-wrapper/AppWrapper";
+import { getPlatformFeature } from "../../../../shared/platform-features";
 import {
     choiceRule,
     numberRule,
@@ -41,7 +42,7 @@ const CLIPBOARD_MEMBERS: readonly IAiMember[] = [
 ];
 
 const CLIPBOARD_HELP = `
-Clipboard history is stored newest first and is available only when clipboard.enabled is true. On Linux, history samples only while a Persephone window is focused; there is no background clipboard monitoring, and rapid copies may be missed.
+Clipboard history is stored newest first and is available only on supported platforms when clipboard.enabled is true.
 On Wayland, a clipboard write made without recent user input to a Persephone window may be dropped by the compositor.
 Read items for the first page of preview and payload-path metadata, or use list(offset, limit) for
 later pages; offset is zero-based and limit is at most 100. Each list result includes total and
@@ -174,6 +175,10 @@ export class ClipboardHistoryNode implements IAiVisible {
             summary: "Stored clipboard history, newest first.",
             members: CLIPBOARD_MEMBERS,
             help: CLIPBOARD_HELP,
+            restricted: () => {
+                const availability = getPlatformFeature("clipboard.history");
+                return "reason" in availability ? availability.reason : undefined;
+            },
             summarize: async () => {
                 const snapshot = await this.clipboardHistory.getSnapshot();
                 return {

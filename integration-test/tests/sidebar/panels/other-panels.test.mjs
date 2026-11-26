@@ -30,6 +30,51 @@ export default [
         }
     }),
 
+    test("Linux keeps clipboard history unavailable for copied settings", async (ctx) => {
+        const original = await ctx.app.settings.get("clipboard.enabled");
+        const beforeIds = new Set((await ctx.app.pages.all).map((page) => page.id));
+        const fixtureFolder = ctx.fixture("us-2229/clipboard-workspace");
+        try {
+            await ctx.app.settings.set("clipboard.enabled", true);
+            ctx.expect(await ctx.app.settings.get("clipboard.enabled")).toBe(true);
+            ctx.expect((await ctx.app.settings.sections).some((section) => section.id === "clipboard")).toBe(false);
+
+            await ctx.app.window.openMenuBar();
+            await ctx.app.window.screen.click('[data-name="menubar-settings"]');
+            await ctx.waitFor(
+                (activeContext) => activeContext.app.window.screen.evaluate('() => Boolean(document.querySelector(\'[data-name="settings-root"]\'))'),
+                Boolean,
+            );
+            ctx.expect(await ctx.app.window.screen.evaluate('() => Boolean(document.querySelector(\'[data-name="settings-section-clipboard"]\'))')).toBe(false);
+
+            await ctx.app.window.screen.click('[data-name="header-snip-button"]');
+            ctx.expect(await ctx.app.window.screen.evaluate('() => Boolean(document.querySelector(\'[data-name="header-quick-settings-clipboard-enabled"]\'))')).toBe(false);
+            await ctx.app.window.screen.pressKey("Escape");
+
+            await ctx.app.fs.mkdir(fixtureFolder);
+            const workspace = await ctx.app.pages.openFile(fixtureFolder);
+            await ctx.waitFor((activeContext) => activeContext.app.pages[workspace.id].panels.explorer, Boolean);
+            ctx.expect(await ctx.app.window.screen.evaluate('() => Boolean(document.querySelector(\'[data-name="explorer-clipboard"]\'))')).toBe(false);
+
+            await ctx.app.window.menuBar.open("tools-editors");
+            const creatableRows = await readSidebarRows(ctx, '[data-name="editors-tree"] [role="treeitem"]');
+            ctx.expect(creatableRows.some((row) => row.includes("Clipboard"))).toBe(false);
+            ctx.expect((await ctx.app.settings.sections).some((section) => section.id === "clipboard")).toBe(false);
+
+            let directClipboardRejected = false;
+            try {
+                await ctx.app.clipboard.items;
+            } catch {
+                directClipboardRejected = true;
+            }
+            ctx.expect(directClipboardRejected).toBe(true);
+        } finally {
+            if (await ctx.app.window.menuBar.isOpen) await ctx.app.window.menuBar.close();
+            await closePages(ctx, (await ctx.app.pages.all).filter((page) => !beforeIds.has(page.id)).map((page) => page.id));
+            await ctx.app.settings.set("clipboard.enabled", original);
+        }
+    }, { requires: ["linux"] }),
+
     test("Recent Files lists a closed fixture file and opens it from the list", async (ctx) => {
         const filePath = ctx.fixture("us-2041-panels/recent/closed-note.txt");
         const ownedIds = [];
@@ -181,7 +226,7 @@ export default [
             if (await ctx.app.window.menuBar.isOpen) await ctx.app.window.menuBar.close();
             await closePages(ctx, ownedIds);
         }
-    }),
+    }, { requires: ["windows"] }),
 
     test("Menu Bar switches folders and Escape closes the sidebar", async (ctx) => {
         try {

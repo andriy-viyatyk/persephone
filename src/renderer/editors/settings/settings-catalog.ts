@@ -61,12 +61,20 @@ export const SETTINGS_SECTION_HEADER_METADATA: Readonly<Record<string, SettingsS
 export function createSettingsSectionDescriptors(
     factories: Readonly<Record<string, () => IOwnedView>>,
 ): SettingsSectionDescriptor[] {
-    return SETTINGS_CATALOG.filter((catalog) => catalog.id !== "default-browser" || getPlatformFeature("desktop.defaultBrowser").available).map((catalog) => {
+    return getAvailableSettingsCatalog().map((catalog) => {
         const metadata = SETTINGS_SECTION_HEADER_METADATA[catalog.id];
         const create = factories[catalog.id];
         if (!metadata) throw new Error(`No Settings section header registered for ${catalog.id}.`);
         if (!create) throw new Error(`No Settings section view registered for ${catalog.id}.`);
         return { catalog, create, ...metadata };
+    });
+}
+
+export function getAvailableSettingsCatalog(): readonly SettingsCatalogSection[] {
+    return SETTINGS_CATALOG.filter((catalog) => {
+        if (catalog.id === "default-browser") return getPlatformFeature("desktop.defaultBrowser").available;
+        if (catalog.id === "clipboard") return getPlatformFeature("clipboard.history").available;
+        return true;
     });
 }
 
@@ -142,12 +150,12 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         groupTitleKey: "settings.groupGeneral",
         id: "clipboard",
         titleKey: "settings.groupTitleClipboard",
-        description: "Configure opt-in clipboard history and its item limit. On Linux, history is sampled only while a Persephone window is focused; there is no background clipboard monitoring.",
+        description: "Configure opt-in clipboard history and its item limit.",
         elementName: "settings-section-clipboard",
         panelName: "settings-panel-clipboard",
         where: "Settings > General > Clipboard",
         rows: [
-            { key: "clipboard.enabled", label: "Clipboard history", purpose: "Whether copied clipboard content is recorded for the history feature; disabled by default. On Linux, sampling occurs only while a Persephone window is focused and may miss rapid copies." },
+            { key: "clipboard.enabled", label: "Clipboard history", purpose: "Whether copied clipboard content is recorded for the history feature; disabled by default." },
             { key: "clipboard.max-items", label: "Maximum clipboard items", purpose: "The number of clipboard history items to retain, from 1 through 1000; invalid stored values fall back to 100." },
         ],
     },

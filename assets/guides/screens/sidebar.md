@@ -83,7 +83,8 @@ layout anchors.
 +---------------------------------------------------------------------+
 ```
 
-Clipboard can be opened from **Tools & Editors** even while history is disabled. In that state the
+Clipboard can be opened from **Tools & Editors** on supported platforms even while history is
+disabled. In that state the
 panel shows a **Disabled** badge and a top warning with **Open Settings**; **Restart** is not shown.
 Stored rows remain usable: click a row to open its content in the current page, right-click for
 **Remove**, use **Clear** to remove all history after confirmation, or use the row's **Copy** action.
@@ -96,7 +97,9 @@ row; **Home**, **End**, page navigation, and **Enter** keep their usual list beh
 as a new newest row and the selection follows it. File-list rows open as a readable list of the
 stored absolute paths, rather than the watcher's metadata JSON.
 The **Clipboard** header button in Explorer remains available only while history is enabled; use
-**Tools & Editors** for the dedicated Clipboard page in either state. The health badge and
+**Tools & Editors** for the dedicated Clipboard page in either state. On Linux, a restored panel
+shows an unavailable message and can be closed; it does not load saved history or offer settings,
+clear, or restart actions. The health badge and
 **Restart** action appear for enabled-listener failures; **Clear** appears when the panel is expanded
 and has items.
 
@@ -251,8 +254,8 @@ a new top row and keeps the selection with that content. File-list items open as
 history is opt-in and is configured in [Settings](./settings.md#clipboard-history). When enabled, copies
 made anywhere inside Persephone—including the Text Editor/Monaco and a Browser tab—appear here too;
 capture depends on the copy reaching the system clipboard, not on which editor or page supplied it.
-On Linux, history samples only while a Persephone window is focused; it cannot monitor background
-clipboard changes and may miss rapid copies.
+Clipboard history is unavailable on Linux because GNOME Wayland gives apps no way to watch the
+clipboard.
 Stored rows remain available for browsing and cleanup while the feature is disabled.
 
 ### Search

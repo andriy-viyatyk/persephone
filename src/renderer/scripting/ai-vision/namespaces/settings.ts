@@ -5,7 +5,7 @@ import type { ISettings } from "../../../api/types/settings";
 import { createElements } from "ai-vision/dom";
 import { englishMessage } from "../../../../shared/i18n/t";
 import type { IAiElementDeclaration, IAiMember, IAiVisionDescriptor } from "ai-vision";
-import { SETTINGS_CATALOG, type SettingsCatalogRow, type SettingsCatalogSection } from "../../../editors/settings/settings-catalog";
+import { getAvailableSettingsCatalog, type SettingsCatalogRow, type SettingsCatalogSection } from "../../../editors/settings/settings-catalog";
 // After Phase 2 extraction, UI consumers use t(key) and agent-facing output uses englishMessage(key) with the same catalog key.
 
 function createSettingsElements(catalog: readonly SettingsCatalogSection[]): readonly IAiElementDeclaration[] {
@@ -22,6 +22,7 @@ function createSettingsElements(catalog: readonly SettingsCatalogSection[]): rea
     ];
 }
 
+const SETTINGS_CATALOG = getAvailableSettingsCatalog();
 const SETTINGS_ELEMENTS = createSettingsElements(SETTINGS_CATALOG);
 const SETTINGS_AGENT_SECTIONS = SETTINGS_CATALOG.map((section) => ({
     groupId: section.groupId,

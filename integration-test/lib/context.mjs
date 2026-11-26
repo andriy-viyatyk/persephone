@@ -1,4 +1,4 @@
-export const REQUIREMENT_TAGS = Object.freeze(["network", "mic", "tor", "git", "mneme", "launch", "desktop", "virtual-desktop", "published-board-checkout", "windows", "webgl"]);
+export const REQUIREMENT_TAGS = Object.freeze(["network", "mic", "tor", "git", "mneme", "launch", "desktop", "virtual-desktop", "published-board-checkout", "windows", "linux", "webgl"]);
 
 export function validateRequirements(value, label = "test descriptor") {
     const requirements = value === undefined ? [] : value;

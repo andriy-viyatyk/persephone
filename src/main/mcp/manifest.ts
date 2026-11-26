@@ -1,6 +1,9 @@
 import fs from "node:fs";
 import { app as electronApp } from "electron";
 import { getAssetPath } from "../utils";
+import { getPlatformFeature } from "../../shared/platform-features";
+
+const clipboardHistoryAvailability = getPlatformFeature("clipboard.history");
 
 // ——— Server identity ————————————————————————————————————————————————————————
 
@@ -30,7 +33,9 @@ export const SERVER_INSTRUCTIONS = [
     "For capability calls and provider/consumer guidance, use `capabilities.$help` and `guides.agents.capabilities.index` or `persephone://guides/capabilities`.",
     "To add a language or fix a translation, follow `guides.agents.languages`; use `guides.agents[\"languages-glossary\"]` when choosing terminology.",
     "For Agent Tools, find registered tools with `tools.search()` and run one with `tools.execute(id, args)`.",
-    "Clipboard history is opt-in: when `clipboard.enabled` is true, discover stored history under `clipboard` with `call`; when it is false, that node is absent. This reads stored history only and never the live OS clipboard.",
+    clipboardHistoryAvailability.available
+        ? "Clipboard history is opt-in: when `clipboard.enabled` is true, discover stored history under `clipboard` with `call`; when it is false, that node is absent. This reads stored history only and never the live OS clipboard."
+        : `Clipboard history is unavailable: ${"reason" in clipboardHistoryAvailability ? clipboardHistoryAvailability.reason : ""} The clipboard node is unavailable.`,
     "For Persephone controls, start with `guides.screens` or `guides.screens.index`; for browser automation use `guides.agents.browser`. For a reusable model on a page without `.app`, read `guides.agents[\"site-extensions\"]` or `persephone://guides/site-extensions`. The `persephone://guides/*` resources are the same files as `guides.*`.",
 ].join("\n");
 

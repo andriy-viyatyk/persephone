@@ -50,9 +50,8 @@ The right panel shows the contents of the selected folder:
 - Right-click a file or folder for the clipboard group **Cut**, **Copy**, **Paste**, followed by
   the shared edit group **Rename**, **Delete**, **New File**, **New Folder**. On a file row, Paste
     and the new-item actions target its parent folder; on a folder row, they target that folder.
-    File clipboard copy and cut work on Windows and Linux. Linux clipboard history is sampled only
-    while a Persephone window is focused; it does not monitor changes in the background and may miss
-    rapid copies.
+    File clipboard copy and cut work on Windows and Linux. Clipboard history is available on Windows;
+    it is unavailable on Linux because GNOME Wayland gives apps no way to watch the clipboard.
 - Right-click a folder for **Open Terminal here** (Windows only — see [Open Terminal here](file-explorer-and-panels.md#open-terminal-here))
 - Search files by name with `Ctrl+F` when the file explorer is active
 - **Drag a file out to the OS** — drag a file from the tree onto Windows Explorer or into a Microsoft Teams chat to copy/attach it there. No modifier key needed. Dragging it into another folder in the tree instead asks whether to **Move** or **Copy** it there. Currently one file at a time.
@@ -100,12 +99,12 @@ Persephone shows the corresponding “No … editor is registered” message.
 
 **Open Folder** — The first entry in the default Top category. Clicking it shows a native Select Folder dialog; once you pick a folder, a new tab opens with the File Explorer panel rooted at that folder — Persephone's equivalent of a VS Code workspace. This is identical to right-clicking a folder in the Explorer sidebar and choosing **"Open in New Tab"**.
 
-Items include all standard editors (Script, Grid, Links, Excalidraw, Browser, Video Player) and tools such as **Clipboard** and MCP Inspector, as well as individual browser profiles (Incognito and named profiles). Clipboard is always available regardless of the clipboard-history setting.
+Items include all standard editors (Script, Grid, Links, Excalidraw, Browser, Video Player) and tools such as **Clipboard** on supported platforms and MCP Inspector, as well as individual browser profiles (Incognito and named profiles). Clipboard is available regardless of the clipboard-history setting on Windows.
 
-**Clipboard** — Opens one dedicated page whose sidebar contains the Clipboard history panel. If
+**Clipboard** — On Windows, opens one dedicated page whose sidebar contains the Clipboard history panel. If
 history is disabled, the panel shows a **Disabled** badge, an explanation, and an **Open Settings**
-button; existing rows can still be opened, copied, removed, or cleared. The panel closes with its
-page when you close the last panel. See [Page Area and Sidebar](../screens/sidebar.md#clipboard).
+button; existing rows can still be opened, copied, removed, or cleared. A restored panel on Linux
+shows an unavailable message and can be closed. See [Page Area and Sidebar](../screens/sidebar.md#clipboard).
 
 ### Script Library
 

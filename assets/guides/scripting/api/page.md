@@ -165,9 +165,10 @@ state, elements, and available close operation. A child is `undefined` when its 
 currently rendered.
 
 When the Clipboard panel is present, it is available as `page.panels["clipboard"]`. The dedicated
-Clipboard page can show it even when clipboard history is disabled; it exposes the generic panel
-identity and its live `elements`, while the panel's visible controls handle opening, copying,
-removing, and clearing stored history.
+Clipboard page can show it even when clipboard history is disabled on supported platforms; it
+exposes the generic panel identity and its live `elements`, while the panel's visible controls
+handle opening, copying, removing, and clearing stored history. A restored panel on Linux shows an
+unavailable message and can be closed without loading saved history.
 
 ```javascript
 const panels = page.panels;

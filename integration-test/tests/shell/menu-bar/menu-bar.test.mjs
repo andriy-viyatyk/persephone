@@ -142,7 +142,7 @@ export default [
                 if (current !== original) await ctx.app.settings.set(key, original);
             }
         }
-    }),
+    }, { requires: ["windows"] }),
 
     test("seeded header status indicators include quick settings and MCP", async (ctx) => {
         const elements = await ctx.app.ui.elements;

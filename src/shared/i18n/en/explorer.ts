@@ -32,6 +32,7 @@ export const explorerCatalog = {
     failedLoadClipboardHistory: { message: "Failed to load clipboard history." },
     failedRestartClipboardListener: { message: "Failed to restart clipboard listener." },
     clipboardHistoryDisabled: { message: "Clipboard history is disabled in Settings." },
+    clipboardHistoryUnavailablePlatform: { message: "Clipboard history is unavailable on this platform." },
     clipboardListenerUnavailableNewItems: { message: "Clipboard listener is unavailable. No new items will be captured." },
     clipboardListenerUnavailableWithError: { message: "Clipboard listener is unavailable. No new items will be captured. {error}" },
     alreadyAtRoot: { message: "Already at root" },

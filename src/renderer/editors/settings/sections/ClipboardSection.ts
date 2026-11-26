@@ -7,14 +7,11 @@ import { NumberField } from "../fields/NumberField";
 import { NotificationView } from "../../../uikit/Notification/NotificationView";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { t } from "../../../../shared/i18n/t";
-import { getPlatformFeature } from "../../../../shared/platform-features";
-import { isLinux } from "../../../../shared/platform";
 import { createSectionRoot, panel, text } from "./settings-native";
 import "../../../uikit/Notification/Notification.css";
 
 export class ClipboardSectionView extends VanillaView<Record<string, never>> {
     private warning: NotificationView | undefined;
-    private focusedNote: NotificationView | undefined;
 
     public constructor(props: Record<string, never>) {
         super(props, createSectionRoot("settings-section"));
@@ -52,16 +49,9 @@ export class ClipboardSectionView extends VanillaView<Record<string, never>> {
         this.root.append(this.warning.root);
         this.warning.mount();
 
-        if (isLinux && !getPlatformFeature("clipboard.backgroundWatch").available) {
-            this.focusedNote = this.child(new NotificationView({ type: "info", message: t("settings.clipboardFocusedLinux") }));
-            this.root.append(this.focusedNote.root);
-            this.focusedNote.mount();
-        }
-
     }
 
     protected onDispose(): void {
         this.warning = undefined;
-        this.focusedNote = undefined;
     }
 }

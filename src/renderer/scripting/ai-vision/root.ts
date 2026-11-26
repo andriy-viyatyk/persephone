@@ -6,6 +6,7 @@ import { eventLog } from "./event-log";
 import { EventsNode } from "./namespaces/events";
 import { toolsNode } from "./namespaces/tools";
 import { ClipboardHistoryNode } from "./namespaces/clipboard";
+import { getPlatformFeature } from "../../../shared/platform-features";
 
 import type { AppWrapper } from "../api-wrapper/AppWrapper";
 import type { PageCollectionWrapper } from "../api-wrapper/PageCollectionWrapper";
@@ -95,7 +96,7 @@ const CLIPBOARD_ROOT_MEMBER: IAiMember = {
     name: "clipboard",
     kind: "property",
     node: true,
-    summary: "Stored clipboard history, available only when clipboard.enabled is true. On Linux it is sampled only while a Persephone window is focused; no background monitoring is available.",
+    summary: "Stored clipboard history, available on supported platforms only when clipboard.enabled is true.",
 };
 
 const SCRIPT_EXECUTION_CAUTION = "runs arbitrary renderer code with the user's privileges; it can read and write files, spawn processes, access the network, and affect the app";
@@ -317,7 +318,7 @@ export class AiRoot implements IAiVisible {
     }
 
     private clipboardEnabled(): boolean {
-        return !!this.app.settings.get("clipboard.enabled");
+        return getPlatformFeature("clipboard.history").available && !!this.app.settings.get("clipboard.enabled");
     }
 }
 

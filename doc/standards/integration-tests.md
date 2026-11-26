@@ -69,7 +69,7 @@ it, so HTTPS fixture tests need a normal owned run. For every
 selected module id, a normal run replaces `.profile` from `seed/`, recopies fixtures into
 `.profile/work`, writes an exact file/name manifest, and invokes the product runner. Nested module
 ids receive separate app instances too. The manifest limits that invocation to its exact tests;
-it does not bypass `requires`. The product host checks requirements for every run: `windows` and
+it does not bypass `requires`. The product host checks requirements for every run: `windows`, `linux`, and
 `webgl` are automatic platform requirements and are skipped on other platforms before file hooks
 (`webgl` because Linux test machines have no GPU for Chromium; only game boards need it), `launch` is
 skipped with `--attach`, and opt-in tags run only when supplied by `--with`. The `desktop`
@@ -112,7 +112,7 @@ The selected app is never stopped by attach.
 name. `--list` prints the filtered suite without starting the app. `--rerun-failed` selects current
 file/name identities from the wrapper's `reports/last-failed.json` and reports removed identities
 as gone. `--with` accepts opt-in tags such as `network`, `mic`, `tor`, `git`, and `mneme`; automatic
-tags (`launch`, `windows`, `webgl`, `desktop`, and `published-board-checkout`) cannot be supplied. The seed sets `link-open-behavior` to
+tags (`launch`, `windows`, `linux`, `webgl`, `desktop`, and `published-board-checkout`) cannot be supplied. The seed sets `link-open-behavior` to
 `internal-browser`, keeping URL actions on local fixtures inside the test app instead of opening
 the operating system's default browser.
 

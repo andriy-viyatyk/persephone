@@ -15,8 +15,7 @@ import { writeClipboardFiles } from "./clip-service";
 import { getSnipToolPath } from "./snip-service";
 import { openWindows } from "./open-windows";
 import { SidecarProcess } from "./sidecar-process";
-import { isLinux } from "../shared/platform";
-import { isLinuxClipboardHistoryRunning, startLinuxClipboardHistory, stopLinuxClipboardHistory } from "./clipboard-history-linux";
+import { getPlatformFeature } from "../shared/platform-features";
 import { persistClipboardSample, type ClipboardCapturedPayload, type ClipboardHistoryFileList, type ClipboardHistoryStoredItem } from "./clipboard-history-persistence";
 
 const READINESS_TIMEOUT_MS = 20_000;
@@ -146,11 +145,13 @@ function getIndexPath(): string {
 }
 
 function getStatus(): ClipboardStatus {
-    const running = isLinux ? isLinuxClipboardHistoryRunning() : sidecar.isRunning;
+    if (!getPlatformFeature("clipboard.history").available) {
+        return { enabled: false, running: false, health: "disabled", monitoring: false };
+    }
     return {
         enabled,
-        running,
-        health: isLinux ? (lastError ? "error" : enabled ? "running" : "disabled") : health,
+        running: sidecar.isRunning,
+        health,
         monitoring: monitoringOwners.size > 0,
         ...(lastError ? { error: lastError } : {}),
     };
@@ -565,14 +566,6 @@ async function captureChange(event: ClipboardChangeEvent): Promise<void> {
     await persistClipboardSample(payloads, files, event.timestampMs, historyPersistence);
 }
 
-export function captureLinuxClipboardSample(
-    payloads: Array<{ flavor: ClipboardFlavor; bytes: Buffer }>,
-    files: ClipboardFileListWire | null,
-    capturedAt: number,
-): Promise<void> {
-    return enqueue(() => persistClipboardSample(payloads, files, capturedAt, historyPersistence));
-}
-
 function markEmittedSequence(sequence: number): void {
     lastEmittedSequence = sequence;
     if (lastObservedSequence !== null && isAheadOrEqual(sequence, lastObservedSequence)) {
@@ -759,30 +752,24 @@ async function stopWatcher(): Promise<void> {
 }
 
 async function setEnabledInternal(value: boolean, cap: number): Promise<ClipboardStatus> {
+    if (!getPlatformFeature("clipboard.history").available) {
+        enabled = false;
+        lastError = undefined;
+        health = "disabled";
+        stopPingMonitoring();
+        return getStatus();
+    }
     maxItems = cap;
     await ensureHistoryLoaded();
     if (await trimHistory()) broadcastHistory("removed");
 
     if (!value) {
         enabled = false;
-        if (isLinux) {
-            stopLinuxClipboardHistory();
-            lastError = undefined;
-            broadcastStatus();
-        } else await stopWatcher();
+        await stopWatcher();
         return getStatus();
     }
 
     enabled = true;
-    if (isLinux) {
-        lastError = undefined;
-        startLinuxClipboardHistory(captureLinuxClipboardSample, (message) => {
-            lastError = message;
-            broadcastStatus();
-        });
-        broadcastStatus();
-        return getStatus();
-    }
     if (sidecar.isRunning) return getStatus();
     return startWatcher();
 }
@@ -925,7 +912,7 @@ export function copyClipboardItem(id: string): Promise<boolean> {
 export function setClipboardHealthMonitoring(ownerId: number, active: boolean): ClipboardStatus {
     if (active) {
         registerOwner(ownerId);
-        if (!isLinux) startPingMonitoring();
+        if (getPlatformFeature("clipboard.history").available) startPingMonitoring();
     } else {
         unregisterOwner(ownerId);
     }
@@ -935,20 +922,17 @@ export function setClipboardHealthMonitoring(ownerId: number, active: boolean): 
 
 export function restartClipboard(cap: number): Promise<ClipboardStatus> {
     return enqueue(async () => {
+        if (!getPlatformFeature("clipboard.history").available) {
+            enabled = false;
+            lastError = undefined;
+            health = "disabled";
+            stopPingMonitoring();
+            return getStatus();
+        }
         maxItems = cap;
         await ensureHistoryLoaded();
         if (await trimHistory()) broadcastHistory("removed");
         enabled = true;
-        if (isLinux) {
-            lastError = undefined;
-            stopLinuxClipboardHistory();
-            startLinuxClipboardHistory(captureLinuxClipboardSample, (message) => {
-                lastError = message;
-                broadcastStatus();
-            });
-            broadcastStatus();
-            return getStatus();
-        }
         stopPingMonitoring();
         await sidecar.stopAndWaitGracefully();
         return startWatcher();
@@ -956,7 +940,6 @@ export function restartClipboard(cap: number): Promise<ClipboardStatus> {
 }
 
 export function shutdownClipboard(): void {
-    if (isLinux) stopLinuxClipboardHistory();
     stopPingMonitoring();
     sidecar.stop();
     enabled = false;

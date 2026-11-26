@@ -16,6 +16,7 @@ import { DEFAULT_BROWSER_COLOR, MEMORY_ICON_COLOR } from "../theme/palette-color
 import { createFolderIconElement } from "../components/icons/icon-elements";
 import { createIconElement } from "../uikit/shared/slots";
 import { englishMessage, t } from "../../shared/i18n/t";
+import { getPlatformFeature } from "../../shared/platform-features";
 import type { MessageKey } from "../../shared/i18n/en";
 
 // =============================================================================
@@ -235,7 +236,11 @@ export function getCreatableItems(
             } satisfies CreatableItem;
         });
 
-    return [...staticItems, ...bundledItems, ...profileItems];
+    return [
+        ...staticItems.filter((item) => item.id !== "clipboard" || getPlatformFeature("clipboard.history").available),
+        ...bundledItems,
+        ...profileItems,
+    ];
 }
 
 /** Resolve an app-owned creatable label at the point where UI text is rendered. */

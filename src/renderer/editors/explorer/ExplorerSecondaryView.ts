@@ -30,6 +30,7 @@ import type { PageModel } from "../../api/pages/PageModel";
 import { TreeRevealController } from "../base/tree-provider-host";
 import "../../uikit/IconButton/IconButton.css";
 import { t } from "../../../shared/i18n/t";
+import { getPlatformFeature } from "../../../shared/platform-features";
 
 export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProps<ExplorerEditor>> {
     private model: ExplorerEditor;
@@ -178,6 +179,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
     }
 
     private setClipboardButton(enabled: boolean): void {
+        enabled = enabled && getPlatformFeature("clipboard.history").available;
         if (enabled) {
             if (this.clipboardButton) return;
             this.clipboardButton = this.child(new IconButtonView({

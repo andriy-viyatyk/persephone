@@ -31,14 +31,17 @@ logic, loops, or Node.js.
 | `app.openRawLink(href, options?)` | Open any link (file path, URL, or in-app scheme) in a new/reused tab and make it active. `options.editor` requests a specific editor or capability (e.g. `{ editor: "md-view" }` or `{ editor: "image.edit" }`); falls back to the default when omitted/unmatched |
 | `app.call(path, options?)` | Resolve the live AiVision tree from the script's own page context; returns the full value by default, or an explicitly bounded value when `maxLength` is supplied, and rejects `Error` on resolver failure |
 
-The MCP `call` root also exposes `clipboard` only when `clipboard.enabled` is true. It is stored
-history, not the live Windows clipboard: use `clipboard.items` or `clipboard.list(offset, limit)`
+The MCP `call` root also exposes `clipboard` only on supported platforms when
+`clipboard.enabled` is true. It is stored history, not the live OS clipboard: use `clipboard.items`
+or `clipboard.list(offset, limit)`
 for newest-first previews, `clipboard.read(id, flavor?)` for a stored text, HTML, image, or file-list
 payload, and `clipboard.remove(id)` or `clipboard.clear()` only when the user explicitly asks for
 deletion. A file-list read returns a plain `string[]` of absolute paths; its `dropEffect` remains
 metadata on the history item for copy-versus-cut semantics. Older file-list payloads written as
 JSON are still read, but new payloads are stored as one path per line. The feature is opt-in, and
-stored non-excluded content may remain readable on disk.
+stored non-excluded content may remain readable on disk. Clipboard history is unavailable on Linux
+because GNOME Wayland gives apps no way to watch the clipboard; a copied enabled setting does not
+make its MCP node available there.
 
 ### `app.call(path, options?)`
 

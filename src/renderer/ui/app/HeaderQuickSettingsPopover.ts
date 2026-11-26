@@ -64,7 +64,9 @@ class HeaderQuickSettingsContentView extends VanillaView<HeaderQuickSettingsCont
     protected onMount(): void {
         const snipAvailable = getPlatformFeature("screen.snip").available;
         const visibleServices = QUICK_SERVICE_ENTRIES.filter((entry) =>
-            entry.key !== "mneme.enabled" || getPlatformFeature("memory.mnemeSidecar").available);
+            entry.key === "mneme.enabled"
+                ? getPlatformFeature("memory.mnemeSidecar").available
+                : entry.key !== "clipboard.enabled" || getPlatformFeature("clipboard.history").available);
         this.root.append(
             ...(snipAvailable ? [
                 this.createSnipRow(t("shell.snipScreen"), true),

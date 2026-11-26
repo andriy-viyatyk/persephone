@@ -13,7 +13,7 @@ export type PlatformFeatureId =
     | "desktop.tray"
     | "desktop.closeToTray"
     | "clipboard.files"
-    | "clipboard.backgroundWatch"
+    | "clipboard.history"
     | "desktop.fileDragOut"
     | "audio.computerCapture"
     | "audio.computerCancellation"
@@ -35,7 +35,7 @@ const featureAvailability: Record<PlatformFeatureId, Record<PlatformSlot, boolea
     "desktop.tray": { win32: true, linux: false, darwin: false, unsupported: false },
     "desktop.closeToTray": { win32: true, linux: false, darwin: false, unsupported: false },
     "clipboard.files": { win32: true, linux: true, darwin: false, unsupported: false },
-    "clipboard.backgroundWatch": { win32: true, linux: false, darwin: false, unsupported: false },
+    "clipboard.history": { win32: true, linux: false, darwin: false, unsupported: false },
     "desktop.fileDragOut": { win32: true, linux: true, darwin: false, unsupported: false },
     "audio.computerCapture": { win32: true, linux: false, darwin: false, unsupported: false },
     "audio.computerCancellation": { win32: true, linux: false, darwin: false, unsupported: false },

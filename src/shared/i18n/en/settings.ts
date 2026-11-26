@@ -121,7 +121,6 @@ export const settingsCatalog = {
     clipboardDescription: { message: "Keep a local history of copied clipboard items" },
     clipboardEnable: { message: "Enable clipboard history" },
     clipboardMaximumHistory: { message: "Maximum history items:" },
-    clipboardFocusedLinux: { message: "On Linux, history samples the clipboard only while a Persephone window is focused. It does not monitor clipboard changes in the background and may miss rapid copies." },
     clipboardReadableWarning: { message: "Occasionally-copied secrets may remain on disk in readable form." },
     boardSettingsDescription: { message: "Settings provided by this board." },
     boardFolderDescription: { message: "Folder path provided by this board." },

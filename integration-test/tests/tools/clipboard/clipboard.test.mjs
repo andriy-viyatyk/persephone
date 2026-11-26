@@ -180,7 +180,7 @@ export default [
         } finally {
             await cleanupClipboardTest(ctx, folder, initialPageIds, undefined, hubOwnership);
         }
-    }),
+    }, { requires: ["windows"] }),
 
     test("Clipboard captures renderer text at the top of history and exposes it in the node", async (ctx) => {
         const folder = ctx.fixture("us-2070/capture");

@@ -4,6 +4,7 @@ import { ClipboardHistoryModel } from "../../api/clipboard-history";
 import type { ClipboardHistoryItem } from "../../../ipc/clipboard-ipc";
 import { errMessage } from "../../../shared/utils";
 import { t, untranslated } from "../../../shared/i18n/t";
+import { getPlatformFeature } from "../../../shared/platform-features";
 import { createFileIconElement, subscribeFileIconElements } from "../../components/icons/icon-elements";
 import type { SecondaryViewProps } from "../base/secondary-views/secondary-view-registry";
 import {
@@ -42,6 +43,7 @@ interface ClipboardRowControls {
 const MAX_PREVIEW_LENGTH = 200;
 
 export default class ClipboardSecondaryView extends VanillaView<SecondaryViewProps<ClipboardPanelEditor>> {
+    private readonly historyAvailable = getPlatformFeature("clipboard.history").available;
     private model: ClipboardPanelEditor;
     private readonly clipboardHistory = new ClipboardHistoryModel();
     private header: SideBarPanelHeaderHandle | undefined;
@@ -145,6 +147,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         }));
 
         this.list = this.child(new ListBoxView<ClipboardListItem>(this.listProps()));
+        this.list.root.hidden = !this.historyAvailable;
         this.listen(this.list.root, "keydown", this.handleArrowKeys, { capture: true });
         this.own(subscribeFileIconElements(() => {
             if (this.isDisposed) return;
@@ -200,7 +203,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             if (state.selectedId !== previous.selectedId) this.list?.update(this.listProps());
         }));
         this.updatePresentation();
-        void this.clipboardHistory.startMonitoring();
+        if (this.historyAvailable) void this.clipboardHistory.startMonitoring();
     }
 
     protected onUpdate(props: SecondaryViewProps<ClipboardPanelEditor>): void {
@@ -311,7 +314,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
     private listProps(): Parameters<ListBoxView<ClipboardListItem>["update"]>[0] {
         return {
             name: "clipboard-history",
-            items: this.rows,
+            items: this.historyAvailable ? this.rows : [],
             variant: "browse",
             // The selected row is the one the page is showing, which is persistent navigation
             // state rather than a pick — the same treatment the Explorer tree gets.
@@ -460,20 +463,23 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
     }
 
     private updateUnavailableNotification(): void {
-        const disabled = !this.loading && this.isDisabled();
-        const unavailable = !disabled && !this.loading && this.items.length === 0 && this.isUnavailable();
-        if (!disabled && !unavailable) {
+        const unavailablePlatform = !this.historyAvailable;
+        const disabled = this.historyAvailable && !this.loading && this.isDisabled();
+        const unavailable = this.historyAvailable && !disabled && !this.loading && this.items.length === 0 && this.isUnavailable();
+        if (!unavailablePlatform && !disabled && !unavailable) {
             this.notificationHost?.replaceChildren();
             return;
         }
 
         const status = this.status;
-        const message = disabled
+        const message = unavailablePlatform
+            ? t("explorer.clipboardHistoryUnavailablePlatform")
+            : disabled
             ? t("explorer.clipboardHistoryDisabled")
             : status?.error
             ? t("explorer.clipboardListenerUnavailableWithError", { error: status.error })
             : t("explorer.clipboardListenerUnavailableNewItems");
-        const type = disabled || status?.health !== "error" ? "warning" : "error";
+        const type = unavailablePlatform || disabled || status?.health !== "error" ? "warning" : "error";
         if (!this.unavailableNotification) {
             this.unavailableNotification = this.child(new NotificationView({
                 name: "clipboard-unavailable",
@@ -495,6 +501,17 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
     }
 
     private updateHeader(props: SecondaryViewProps<ClipboardPanelEditor>): void {
+        if (!this.historyAvailable) {
+            this.headerActions?.replaceChildren(...(this.closeButton ? [this.closeButton.root] : []));
+            this.header?.update({
+                headerHost: props.headerHost,
+                icon: props.iconElement,
+                badge: undefined,
+                title: t("shell.clipboard"),
+                actions: this.headerActions,
+            });
+            return;
+        }
         const disabled = this.isDisabled();
         const unavailable = !disabled && this.isUnavailable();
         const showHealth = disabled || unavailable;
