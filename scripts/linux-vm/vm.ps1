@@ -7,7 +7,8 @@
   ./vm.ps1 status | start | stop | screenshot [path] | type "<text>" [-Enter] | key ctrl+alt+t
   ./vm.ps1 fix-network     # after a Windows reboot moved the Default Switch subnet
   ./vm.ps1 sync            # copy the Windows checkout into ~/persephone (no node_modules)
-  ./vm.ps1 app-start | app-stop | app-log
+  ./vm.ps1 app-start [x11] | app-stop | app-log   # x11 = run through XWayland instead of native Wayland
+  ./vm.ps1 input-setup     # tools for real input in the session (ydotool, xclip); then ssh ... ptr.sh (see that file)
   ./vm.ps1 tunnel          # forward the VM app's MCP port 7875 to localhost:7875 (runs until stopped;
                            # conflicts with a WSL Persephone on the same port, so stop that first)
   ./vm.ps1 checkpoint <name> | restore <name> | checkpoints
@@ -62,7 +63,8 @@ function Send-Combo([string]$Combo) {
 
 function Save-Screenshot([string]$Out) {
     Add-Type -AssemblyName System.Drawing
-    $w = 1024; $h = 768
+    # The guest screen size (set in GNOME with gdctl), so the capture is 1:1 with screen pixels.
+    $w = 1920; $h = 1080
     $vm = Get-CimInstance -Namespace root\virtualization\v2 -ClassName Msvm_ComputerSystem -Filter "ElementName='$VmName'"
     $settings = Get-CimAssociatedInstance -InputObject $vm -ResultClassName Msvm_VirtualSystemSettingData |
         Where-Object { $_.VirtualSystemType -eq 'Microsoft:Hyper-V:System:Realized' }
@@ -131,9 +133,14 @@ switch ($Command) {
     }
     "app-start" {
         # systemd --user carries the GNOME session's WAYLAND_DISPLAY/DISPLAY, so the app opens on the real desktop.
-        ssh $VmName "systemctl --user stop persephone-dev 2>/dev/null; systemctl --user reset-failed persephone-dev 2>/dev/null; systemd-run --user --unit=persephone-dev --working-directory=/home/dev/persephone bash -lc 'npm start' && echo started"
+        # The [p] keeps pkill from matching this ssh command line itself.
+        $flags = if ($Arg -eq "x11") { " -- --ozone-platform=x11" } else { "" }
+        ssh $VmName "systemctl --user stop persephone-dev 2>/dev/null; pkill -f '[p]ersephone/node_modules/electron'; systemctl --user reset-failed persephone-dev 2>/dev/null; systemd-run --user --unit=persephone-dev --working-directory=/home/dev/persephone bash -lc 'npm start$flags' && echo started"
     }
-    "app-stop" { ssh $VmName "systemctl --user stop persephone-dev; pkill -f persephone/node_modules/electron; echo stopped" }
+    "app-stop" { ssh $VmName "systemctl --user stop persephone-dev; pkill -f '[p]ersephone/node_modules/electron'; echo stopped" }
+    "input-setup" {
+        ssh $VmName "sudo apt-get install -y -qq ydotool xclip >/dev/null; export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus; gsettings set org.gnome.desktop.peripherals.mouse accel-profile flat; gsettings set org.gnome.desktop.peripherals.mouse speed 0; chmod +x ~/persephone/scripts/linux-vm/ptr.sh; echo ready"
+    }
     "app-log" { ssh $VmName "journalctl --user -u persephone-dev --no-pager -n 40" }
     "tunnel" { ssh -N -o ExitOnForwardFailure=yes -L "${McpLocalPort}:localhost:7875" $VmName }
     "checkpoint" { Checkpoint-VM $VmName -SnapshotName $Arg; "checkpoint $Arg" }

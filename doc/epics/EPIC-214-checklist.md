@@ -13,7 +13,7 @@ records the result.
 
 | # | Check | Owner | Result |
 |---|-------|-------|--------|
-| 1 | The app runs natively on Wayland or through XWayland as US-2212 decided, and the choice shows in the log | US-2212 | |
+| 1 | The app runs as a native Wayland client by default (US-2212), and `--ozone-platform=x11` still starts it through XWayland | US-2212 | |
 | 2 | Starting the app shows the main window, rendered, without any MCP or main-process help | US-2213 | |
 | 3 | The window moves by its title area, resizes from every edge, snaps to half screen with Super+Left/Right | US-2213 | |
 | 4 | Maximize, restore and minimize from the window buttons; double-clicking the title area maximizes | US-2213 | |

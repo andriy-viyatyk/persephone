@@ -72,10 +72,11 @@ password login disabled) and with [`scripts/linux-vm/vm.ps1`](../scripts/linux-v
 | `ssh persephone-vm '<command>'` | Run any shell command in the VM |
 | `vm.ps1 status`, `start`, `stop` | VM state, and whether its address answers |
 | `vm.ps1 sync` | Copy the Windows checkout into `~/persephone` (keeps the VM's `node_modules`) |
-| `vm.ps1 app-start`, `app-stop`, `app-log` | Run `npm start` as a `systemd --user` unit inside the GNOME session |
+| `vm.ps1 app-start [x11]`, `app-stop`, `app-log` | Run `npm start` as a `systemd --user` unit inside the GNOME session; `x11` runs it through XWayland |
 | `vm.ps1 tunnel` | Forward the VM app's MCP port 7875 to Windows `localhost:7875` |
 | `node scripts/linux-vm/mcp-call.mjs <path> [args]` | Call the VM app's MCP through the tunnel |
-| `vm.ps1 screenshot [file]`, `type "<text>" -Enter`, `key ctrl+alt+t` | See and type into the VM console without SSH |
+| `vm.ps1 screenshot [file]`, `type "<text>" -Enter`, `key ctrl+alt+t` | See (1920x1080, 1:1) and type into the VM console without SSH |
+| `vm.ps1 input-setup`, then `ssh persephone-vm '~/persephone/scripts/linux-vm/ptr.sh click 900 45'` | Real pointer and key input in the session (ydotool): clicks, drags, shortcuts |
 | `vm.ps1 checkpoint <name>`, `restore <name>`, `checkpoints` | Hyper-V checkpoints (`dev-ready` holds the configured dev setup) |
 | `vm.ps1 fix-network` | Re-address the VM after a Windows reboot moved the Default Switch subnet |
 
@@ -96,3 +97,7 @@ Setup notes:
   `Host` header's port. Stop a WSL Persephone first; WSL forwards the same localhost port.
 - **Screen lock and idle blanking are off** (`gsettings` over SSH with `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus`);
   a locked session swallows console typing.
+- **Display backend:** the app runs as a native Wayland client, Electron's default ([US-2212](tasks/US-2212-wayland-or-xwayland/README.md)).
+  `npm start -- --ozone-platform=x11` runs it through XWayland as a fallback. Wayland apps cannot learn their window
+  position, and GNOME drops clipboard writes from an app window that has had no user input.
+- **Screen size:** 1920x1080, set in GNOME with `gdctl set --persistent ...`; the Hyper-V console window follows it.

@@ -49,7 +49,7 @@ it to parity and ship it.
 | In scope | Out of scope (for now) |
 |---|---|
 | **The newest Ubuntu LTS only**, currently 26.04 LTS, x86_64, GNOME on Wayland (GNOME has no X11 session since Ubuntu 25.10). The target moves to each new LTS | Older Ubuntu releases (22.04, 24.04) and X11 sessions |
-| Other x86_64 distributions that can run the AppImage: they may work, but are not tested or supported | macOS builds, signing and notarization (but see §8) |
+| **Debian stable** (currently 13), GNOME on Wayland: install check of the `.deb` and AppImage in Phase 4 (decision 6). Other x86_64 distributions that can run the AppImage may work, but are not tested or supported | macOS builds, signing and notarization (but see §8) |
 | Publishing on GitHub Releases | Other channels: an apt repository, Flathub, the AUR |
 | | ARM64 Linux (Raspberry Pi, ARM laptops) |
 | Development in WSL2 and testing in a Hyper-V Ubuntu VM on the user's laptop | Flatpak and Snap (their sandboxes fight Persephone's file and process access) |
@@ -224,6 +224,11 @@ Adjusted from the [runtime findings](multiplatform-2026-11/runtime-findings.md) 
 **Exit:** Persephone's first Linux release, `.deb` and AppImage, is published next to the Windows build. Installing
 it on a fresh Ubuntu 26.04 VM passes the checklist. Published on GitHub Releases only.
 
+- **Debian check (decision 6):** a second Hyper-V VM with Debian stable (GNOME, Wayland), built and controlled the
+  same way as `persephone-vm`. Install the `.deb` and the AppImage there and run the install, window, tray-fallback
+  (plain GNOME has no tray), file-handoff and default-browser lines of the checklist. Failures that are Debian-only
+  are fixed if small, otherwise listed as known limits in the release notes.
+
 - electron-builder Linux targets, the Linux `koffi` binary, Linux helpers in `extraFiles`, and the `.desktop` file,
   MIME types and icons (WIN-1, 3).
 - Sandbox and AppArmor for both formats (WIN-37, decision 6).
@@ -293,3 +298,7 @@ These cost little now and avoid a rewrite later:
 4. **Distribution:** GitHub Releases only.
 5. **Live Linux checks stay with Claude for now.** Why Codex can't start Persephone (on Windows, and possibly in WSL)
    is a separate question to look at later. Until then, task briefs for Codex leave runtime checks to Claude.
+6. **Debian (2026-11-26):** Debian stable is checked as well, in Phase 4, once the `.deb` and AppImage exist: a second
+   VM with Debian's GNOME desktop. Debian is Ubuntu's parent and shares the `.deb` format; the main expected
+   difference is that plain GNOME has no tray, which the Phase 2 close-to-tray fallback already handles. Other
+   desktops (KDE, Xfce) stay untested.
