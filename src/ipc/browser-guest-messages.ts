@@ -13,6 +13,8 @@ export const BrowserGuestMessageChannel = {
     pointerLock: "pointer-lock",
     /** A document has started and needs the host's latest unseen-mode state. */
     visibilityDocumentStart: "visibility-document-start",
+    /** A trusted native notification click occurred in this guest document. */
+    notificationClick: "notification-click",
 } as const;
 
 /** Longest page title the host keeps (tab label, restore data, agent tools); longer titles are cut. */
@@ -45,22 +47,29 @@ export type GuestMessage =
     | { channel: typeof BrowserGuestMessageChannel.pointerLock; payload: { locked: boolean } }
     | { channel: typeof BrowserGuestMessageChannel.visibilityDocumentStart };
 
+export interface NotificationClickGuestMessage {
+    channel: typeof BrowserGuestMessageChannel.notificationClick;
+}
+
+export type ParsedGuestMessage = GuestMessage | NotificationClickGuestMessage;
+
 export interface GuestMessageTransport {
     sendToHost(channel: string, ...args: unknown[]): void;
 }
 
-export function sendToHost(transport: GuestMessageTransport, msg: GuestMessage): void {
+export function sendToHost(transport: GuestMessageTransport, msg: ParsedGuestMessage): void {
     if (msg.channel === BrowserGuestMessageChannel.pointerDown
         || msg.channel === BrowserGuestMessageChannel.showFindBar
         || msg.channel === BrowserGuestMessageChannel.hideFindBar
-        || msg.channel === BrowserGuestMessageChannel.visibilityDocumentStart) {
+        || msg.channel === BrowserGuestMessageChannel.visibilityDocumentStart
+        || msg.channel === BrowserGuestMessageChannel.notificationClick) {
         transport.sendToHost(msg.channel);
     } else {
         transport.sendToHost(msg.channel, msg.payload);
     }
 }
 
-export function parseGuestMessage(channel: string, args: unknown[]): GuestMessage | undefined {
+export function parseGuestMessage(channel: string, args: unknown[]): ParsedGuestMessage | undefined {
     const payload = args[0];
     const record = payload as { scope?: { document?: unknown }; items?: unknown } | undefined;
     switch (channel) {
@@ -77,6 +86,8 @@ export function parseGuestMessage(channel: string, args: unknown[]): GuestMessag
         case BrowserGuestMessageChannel.hideFindBar:
             return { channel };
         case BrowserGuestMessageChannel.visibilityDocumentStart:
+            return { channel };
+        case BrowserGuestMessageChannel.notificationClick:
             return { channel };
         case BrowserGuestMessageChannel.clickedImages:
             return Array.isArray(payload) && payload.length ? { channel, payload: payload as string[] } : undefined;

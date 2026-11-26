@@ -89,6 +89,7 @@ export interface HostToBoardRequests {
 
 export interface BoardToHostEvents {
     interact: NoPayload;
+    "notification.click": NoPayload;
     error: { message: string };
     log: { level: "warn" | "error"; message: string };
     busy: { busy: boolean };

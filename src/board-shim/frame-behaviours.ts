@@ -4,6 +4,7 @@ import { installBoardDiagnostics } from "./board-console-mirror";
 import type { HostFrameChannel } from "./board-host-frame-channel";
 import type { MainPortChannel } from "./main-port-channel";
 import type { HostText } from "./i18n-api";
+import { installNotificationClickObserver } from "../shared/notification-click-observer";
 
 export function installFrameBehaviours(deps: {
     hostFrame: HostFrameChannel;
@@ -12,6 +13,9 @@ export function installFrameBehaviours(deps: {
     openRawLink: (href: string, options?: BoardOpenRawLinkOptions) => Promise<void>;
 }): void {
     const { hostFrame, mainPort, hostText, openRawLink } = deps;
+    installNotificationClickObserver(() => {
+        try { hostFrame.emit("notification.click", {}); } catch { /* parent gone */ }
+    });
     window.addEventListener("keydown", (event: KeyboardEvent) => {
         if ((event.ctrlKey || event.metaKey) && (event.key === "s" || event.key === "S")) {
             if (event.defaultPrevented) return;

@@ -19,6 +19,7 @@ import { ContentOpenBridge } from "./content-open-bridge";
 import { SharedStateBridge } from "./shared-state-bridge";
 import { ContentHostBridge } from "./content-host-bridge";
 import { WorkingFolderBridge } from "./working-folder-bridge";
+import { BoardNotificationFocus } from "./board-notification-focus";
 import { releaseAutomationInputs } from "../../../automation/input";
 
 export interface BoardFrameCompositionOptions {
@@ -49,6 +50,7 @@ export class BoardFrameComposition {
     ) {
         const { model, boardRoot, isMain } = options;
         const hostEvents = new BoardHostEvents(model, session);
+        const notificationFocus = new BoardNotificationFocus(model, session);
         const workingFolderBridge = new WorkingFolderBridge(model, boardRoot, session);
         this.subscriptions.push(session.onRetire(({ generation }) => {
             void releaseAutomationInputs([`${model.id}/${session.tabId}`]).catch((): undefined => undefined);
@@ -148,6 +150,7 @@ export class BoardFrameComposition {
                 contentHostBridge,
                 notifyBridge,
                 workingFolderBridge,
+                notificationFocus,
             },
         );
     }

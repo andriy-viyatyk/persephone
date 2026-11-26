@@ -352,6 +352,9 @@ export class OpenWindow {
 
     focus = () => {
         if (this.window) {
+            if (!this.window.isVisible()) {
+                this.window.show();
+            }
             if (this.window.isMinimized()) {
                 this.window.restore();
             }

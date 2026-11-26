@@ -12,6 +12,7 @@ import { LinkActionView, LinkBreadcrumbView } from "../link-editor/LinkToolbarVi
 import { LinkBodyView } from "../link-editor/LinkBody";
 import { BrowserExclusiveAccessNotice } from "./BrowserExclusiveAccessNotice";
 import { originLabel } from "./url-display";
+import { BrowserNotificationFocus } from "./browser-notification-focus";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const WEBVIEW_PRELOAD_URL = (window as any).webviewPreloadUrl as string;
 const isBlankUrl = (url: string | undefined): boolean => !url || url === "about:blank";
@@ -30,6 +31,7 @@ class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps> {
     private readonly webview: Electron.WebviewTag;
     /** Names the origin and Esc when this page goes full screen or locks the pointer. */
     private readonly notice: BrowserExclusiveAccessNotice;
+    private readonly notificationFocus: BrowserNotificationFocus;
     private htmlFullscreen = false;
 
     public constructor(props: BrowserWebviewItemProps) {
@@ -41,6 +43,7 @@ class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps> {
         this.model = props.model;
         this.tabId = props.tab.id;
         this.webview = webview;
+        this.notificationFocus = new BrowserNotificationFocus(this.model);
         this.webview.src = props.tab.url;
         this.webview.partition = props.partition;
         this.webview.preload = WEBVIEW_PRELOAD_URL;
@@ -77,6 +80,10 @@ class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps> {
             if (msg.channel === BrowserGuestMessageChannel.pointerLock) {
                 if (msg.payload.locked) this.notice.show("pointer-lock", originLabel(this.props.tab.url));
                 else this.notice.hide("pointer-lock");
+                return;
+            }
+            if (msg.channel === BrowserGuestMessageChannel.notificationClick) {
+                this.notificationFocus.show(this.tabId, this.webview);
                 return;
             }
             this.model.webview.handleGuestMessage(this.tabId, msg, event.frameId);

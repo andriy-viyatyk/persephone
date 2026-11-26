@@ -11,6 +11,7 @@ import type { SharedStateBridge } from "./shared-state-bridge";
 import type { AiVisionBridge } from "./ai-vision-bridge";
 import type { NotifyBridge } from "./notify-bridge";
 import type { WorkingFolderBridge } from "./working-folder-bridge";
+import type { BoardNotificationFocus } from "./board-notification-focus";
 import { codedError } from "../../../../shared/coded-error";
 import type {
     BoardToHostEvents,
@@ -129,6 +130,7 @@ export interface BoardHostFeatures {
     aiVisionBridge: AiVisionBridge;
     notifyBridge: NotifyBridge;
     workingFolderBridge: WorkingFolderBridge;
+    notificationFocus: BoardNotificationFocus;
 }
 
 export class BoardHostRouter {
@@ -282,6 +284,16 @@ export class BoardHostRouter {
                 undefined,
                 {
                     handle: (_payload, context) => this.features.hostEvents.interact(context.frame),
+                }
+            ),
+            "notification.click": event(
+                "notification.click",
+                undefined,
+                {
+                    handle: (_payload, context) => this.features.notificationFocus.show(
+                        context.generation,
+                        context.frame,
+                    ),
                 }
             ),
             error: event(
