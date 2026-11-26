@@ -106,7 +106,9 @@ export default [
                 || value.x !== before.x || value.y !== before.y,
         );
         ctx.expect(changed.width !== before.width || changed.height !== before.height).toBe(true);
-        ctx.expect(changed.x !== before.x || changed.y !== before.y).toBe(true);
+        // Linux saves and restores size only (window-platform-policy.ts): Wayland apps cannot read or set position.
+        const restoresPosition = process.platform === "win32";
+        if (restoresPosition) ctx.expect(changed.x !== before.x || changed.y !== before.y).toBe(true);
         await ctx.waitFor(
             readSavedBounds,
             (saved) => saved.width !== savedBefore.width || saved.height !== savedBefore.height
@@ -117,7 +119,7 @@ export default [
         const after = await ctx.waitFor(bounds, (value) => value.width > 0 && value.height > 0);
         // The app saves DIP bounds; the renderer reads them back through the display scale factor
         // (125% on a typical laptop), which can round a restored edge by 1 px either way.
-        for (const key of ["x", "y", "width", "height"]) {
+        for (const key of restoresPosition ? ["x", "y", "width", "height"] : ["width", "height"]) {
             ctx.expect(Math.abs(after[key] - changed[key]) <= 1).toBe(true);
         }
     }, { requires: ["launch"] }),

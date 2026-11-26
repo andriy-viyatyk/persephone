@@ -148,7 +148,8 @@ export default [
     }),
 
     test("Settings page checkbox and app.settings stay synchronized", async (ctx) => {
-        const key = "window.close-to-tray";
+        // microphone.clean is shown on every platform; close-to-tray hides without a tray host (CI Xvfb).
+        const key = "microphone.clean";
         const original = await ctx.app.settings.get(key);
         const beforeIds = new Set((await ctx.app.pages.all).map((page) => page.id));
         let settingTouched = false;
@@ -156,7 +157,7 @@ export default [
             ctx.expect(typeof original).toBe("boolean");
             await openSettingsFromMenu(ctx);
             settingTouched = true;
-            await ctx.app.window.screen.click('[data-name="settings-section-window-behavior"] [data-type="checkbox"]');
+            await ctx.app.window.screen.click('[data-name="microphone.clean"] [data-type="checkbox"]');
             const uiValue = await ctx.waitFor(
                 (active) => active.app.settings.get(key),
                 (value) => value === !original,
@@ -165,7 +166,7 @@ export default [
 
             await ctx.app.settings.set(key, original);
             const reflectedValue = await ctx.waitFor(
-                (active) => active.app.window.screen.evaluate("() => document.querySelector('[data-name=\\\"settings-section-window-behavior\\\"] [data-type=\\\"checkbox\\\"]')?.getAttribute('data-checked')"),
+                (active) => active.app.window.screen.evaluate("() => document.querySelector('[data-name=\\\"microphone.clean\\\"] [data-type=\\\"checkbox\\\"]')?.getAttribute('data-checked')"),
                 (value) => value === String(original),
             );
             ctx.expect(reflectedValue).toBe(String(original));

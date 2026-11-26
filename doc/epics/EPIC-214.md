@@ -48,6 +48,7 @@ left GNOME-only checks for this epic (see US-2219).
 | [US-2220](EPIC-214-checklist.md) | **Phase 2 exit run.** Run the US-2211 checklist in the VM on GNOME Wayland, record the results in this epic, and file anything that fails as a task | Claude | Done, except the Linux CI run (row 35) after the push |
 | US-2221 | **Windows sign-in option on Linux.** Settings → Browser Profiles still shows the Windows website sign-in checkbox and its explanation ("send this device's Windows sign-in to Microsoft"); hide them where `browser.windowsSso` is not available (decision 4). Found in the US-2215 VM check | Claude | Done |
 | [US-2222](../tasks/US-2222-notification-click-focus/README.md) | **Notification click focus.** Clicking a website notification fires the page's `onclick` but does not restore or focus Persephone (likely the same on Windows). Found in the US-2218 VM check (checklist row 24) | Codex (plan + implement), Claude VM check | Planned |
+| US-2223 | **Wake-word synthetic recording on Linux.** The test's synthetic tone sweep is rejected on quality on Windows but reaches the review dialog on Linux, so capture or its audio processing differs. Found in the exit run's VM suite (checklist row 35) | Codex (investigate), Claude VM check | Planned |
 
 **Order:** US-2211 first; nothing can be checked without the VM. US-2212 next, because the Wayland choice changes how
 US-2213, 2217 and 2218 are built. US-2213 to US-2219 are then independent of each other. US-2220 is last.
