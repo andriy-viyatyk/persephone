@@ -220,7 +220,10 @@ class OpenWindows {
 
     handleSecondInstance = (commandLine: string[], workingDirectory: string): void => {
         const inputs = parseLaunchInputs(commandLine, workingDirectory);
-        if (inputs.length === 0 || inputs.some((input) => input.kind !== "board")) this.bringToFront(); inputs.forEach((input) => this.handleLaunchInput(input));
+        if (inputs.length === 0 || inputs.some((input) => input.kind !== "board")) this.bringToFront();
+        inputs.filter((input) => input.kind === "board").forEach((input) => this.handleLaunchInput(input));
+        // A launch that arrives while the window is still loading waits for its renderer, or the file is lost.
+        void this.dispatchNormalInputs(inputs);
     };
 
     windowAction = (window: BrowserWindow | null, action: "maximize" | "minimize" | "restore" | "close"): void => {

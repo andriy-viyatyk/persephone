@@ -12,7 +12,7 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-2211: VM and desktop checklist](tasks/US-2211-linux-vm-and-checklist/README.md)
   - [ ] [US-2212: Wayland or XWayland](tasks/US-2212-wayland-or-xwayland/README.md)
   - [ ] [US-2213: Window chrome, tray and close-to-tray](tasks/US-2213-linux-window-and-tray/README.md)
-  - [ ] US-2214: Single instance, file handoff and profiles
+  - [ ] [US-2214: Single instance, file handoff and profiles](tasks/US-2214-linux-single-instance/README.md)
   - [ ] US-2215: Terminal, VLC and Tor
   - [ ] US-2216: Default browser and board shortcuts
   - [ ] US-2217: File clipboard, drag and drop, clipboard history
