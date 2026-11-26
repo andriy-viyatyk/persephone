@@ -61,8 +61,9 @@ boards such as Agent Chat can use the same setting.
 ### Transcript
 
 In a Monaco text page, choose **Transcript** in the right side of the editor toolbar and select
-**Microphone (me)**, **Computer audio**, or **Both**. Computer audio and Both are available only on
-Windows. Audio is processed locally by the selected provider. Use it for a call, a video playing on
+**Microphone (me)**, **Computer audio**, or **Both**. Computer audio and Both are available on
+Windows and Linux. Linux computer-audio cancellation remains unavailable because its echo tuning
+has not been verified. Audio is processed locally by the selected provider. Use it for a call, a video playing on
 the computer, or to dictate notes. In Both mode use headphones: without them the microphone also
 hears the speakers and their words appear a second time as **Me**. While capturing, the toolbar
 shows the live audio level and a **Stop** button. Stop ends capture and waits for

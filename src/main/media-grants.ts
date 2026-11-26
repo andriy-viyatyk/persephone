@@ -1,5 +1,6 @@
 import { webContents, type WebContents } from "electron";
 import { OneShotFrameGrant } from "./one-shot-frame-grant";
+import { getPlatformFeature } from "../shared/platform-features";
 
 // Grant window and cleanup grace period; keep both values aligned across grant kinds.
 const MEDIA_GRANT_TTL_MS = 5000;
@@ -31,10 +32,10 @@ export const transcriptLoopbackGrant = new OneShotFrameGrant({
     ttlMs: MEDIA_GRANT_TTL_MS,
     cleanupDelayMs: MEDIA_GRANT_CLEANUP_DELAY_MS,
     bindFrame: true,
-    platform: "win32",
+    isEligible: () => getPlatformFeature("audio.computerCapture").available,
     resolveTarget: (id) => webContents.fromId(id),
     listenForDestroyed: true,
-    clearBeforePlatformCheck: true,
+    clearBeforeEligibilityCheck: true,
 });
 
 export const audioWindowMicrophoneGrant = new OneShotFrameGrant({
@@ -50,7 +51,7 @@ export const audioWindowLoopbackGrant = new OneShotFrameGrant({
     ttlMs: MEDIA_GRANT_TTL_MS,
     cleanupDelayMs: MEDIA_GRANT_CLEANUP_DELAY_MS,
     bindFrame: true,
-    platform: "win32",
+    isEligible: () => getPlatformFeature("audio.computerCapture").available,
     listenForDestroyed: true,
     validateTarget: (target) => target === audioWindowTargetResolver(),
     validateBeforeClear: true,

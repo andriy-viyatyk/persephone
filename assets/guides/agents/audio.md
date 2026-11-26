@@ -60,10 +60,12 @@ suppression, automatic gain control, or echo cancellation; hardware or OS proces
 It cannot be combined with `echoCancel: true`. The default processing mode is `"default"`.
 Boards using `processing` must declare `minBridgeVersion: "1.53.0"`. Computer capture rejects
 these microphone options and is
-available on Windows only. Unsupported systems reject with `no-handler`.
+available on Windows and Linux. Other systems reject with `no-handler` and report the platform
+feature's availability reason.
 
 `cancelComputerAudio: true` requests DTLN loopback cancellation on Windows. It defaults to false;
-on other systems true returns `no-handler`. The option is rejected on computer capture and with
+Linux cancellation is unavailable because its echo tuning has not been verified; other unavailable
+platforms return their feature reason with `no-handler`. The option is rejected on computer capture and with
 raw processing, including when explicitly false. `echoCancel` controls Chromium's echo
 cancellation; a loopback request disables Chromium AEC even when `echoCancel` is true. If the
 reference fails, DTLN continues with a zero reference and Settings reports the failure. DTLN noise
@@ -184,9 +186,9 @@ stream; it cannot stop another caller's playback or capture. Board services and 
 infer identity from `caller.id`, which is author-chosen metadata.
 
 Persephone uses separate, one-use, short-lived, frame-bound grants for the hidden audio window's
-microphone and Windows loopback requests. These grants are armed only by main immediately before
+microphone and loopback requests. These grants are armed only by main immediately before
 the browser request, consumed by that exact live frame, and never exposed through the board bridge.
-Computer capture requests Windows display audio and discards the video track. Normal browser,
+Computer capture requests Electron display audio and discards the video track. Normal browser,
 Transcript and voice typing use the guarded app-frame loopback grant for their internal references.
 Only microphone permission is needed for an internal reference; direct computer capture requires
 `computerAudio`.

@@ -37,7 +37,7 @@ const featureAvailability: Record<PlatformFeatureId, Record<PlatformSlot, boolea
     "clipboard.files": { win32: true, linux: true, darwin: false, unsupported: false },
     "clipboard.history": { win32: true, linux: false, darwin: false, unsupported: false },
     "desktop.fileDragOut": { win32: true, linux: true, darwin: false, unsupported: false },
-    "audio.computerCapture": { win32: true, linux: false, darwin: false, unsupported: false },
+    "audio.computerCapture": { win32: true, linux: true, darwin: false, unsupported: false },
     "audio.computerCancellation": { win32: true, linux: false, darwin: false, unsupported: false },
     "speech.windowsVoiceTyping": { win32: true, linux: false, darwin: false, unsupported: false },
 };
@@ -62,5 +62,8 @@ export function getPlatformFeature(
     if (currentPlatform === "linux" && (id === "desktop.tray" || id === "desktop.closeToTray")
         && runtimeAvailability?.[id] === true) return { available: true };
     if (featureAvailability[id][currentPlatform]) return { available: true };
+    if (id === "audio.computerCancellation" && currentPlatform === "linux") {
+        return { available: false, reason: "Computer-audio cancellation is unavailable on Linux because its echo tuning has not been verified." };
+    }
     return { available: false, reason: unavailableReason(currentPlatform) };
 }

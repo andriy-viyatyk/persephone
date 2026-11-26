@@ -7,6 +7,7 @@ import {
     armVoiceTypingMediaGrant,
 } from "../../main/media-grants";
 import { requireAppWindow } from "../../main/ipc-sender-policies";
+import { getPlatformFeature } from "../../shared/platform-features";
 import type { VoiceTypingApi } from "../contracts/voice-typing";
 import { bindDomain } from "./endpoint-registry";
 
@@ -19,7 +20,7 @@ export function initVoiceTypingHandlers(): void {
         armVoiceTypingMicrophone: async (event: IpcMainEvent) => armVoiceTypingMediaGrant(event.sender.id),
         clearVoiceTypingMicrophone: async (event: IpcMainEvent) => clearVoiceTypingMediaGrant(event.sender.id),
         armTranscriptLoopback: async (event: IpcMainEvent) => {
-            if (process.platform !== "win32") throw new Error("permission-denied");
+            if (!getPlatformFeature("audio.computerCapture").available) throw new Error("permission-denied");
             armTranscriptLoopbackGrant(event.sender.id);
         },
         clearTranscriptLoopback: async (event: IpcMainEvent) => clearTranscriptLoopbackGrant(event.sender.id),

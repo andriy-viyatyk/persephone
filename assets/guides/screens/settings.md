@@ -10,7 +10,7 @@ editorId: "settings-view"
 
 **Microphone Audio** controls local cleaning of managed microphone capture. The attenuation limit
 is in dB; zero means unlimited. Resonance cuts are disabled by default and saved per identified
-microphone. The device list is selected to the current Windows default microphone when available.
+microphone. The device list is selected to the current system default microphone when available.
 Changing capture settings can affect Wake Word recognition; re-record enrollments.
 
 Settings opens from the Menu Bar gear icon, `[data-name="menubar-settings"]`. Its fixed two-level
@@ -136,7 +136,7 @@ In **General > Microphone Audio**, **Clean microphone audio** enables local nois
 Persephone-managed microphone capture with DTLN. A consumer requesting computer sound cancellation
 also runs DTLN noise removal when cleaning is off. **Attenuation limit** bounds suppression using
 each frame's RMS in dB; enter `0` for unlimited attenuation. Select a microphone under **Resonance settings for** to manage
-its profile. The current Windows default is selected when it can be identified; profiles are saved
+its profile. The current system default is selected when it can be identified; profiles are saved
 per microphone and resonance reduction is off by default. Enabling it exposes frequency, Q, and cut
 controls for that microphone. Frequencies must be from 20 to 7,999 Hz; saved notch profiles outside
 that range are ignored when settings are loaded or changed. These settings affect the managed audio

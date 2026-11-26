@@ -126,6 +126,30 @@ export default [
         }
     }),
 
+    captureTest("Linux cancellation reports no-handler and its reason in settings help", async (ctx) => {
+        let handle;
+        try {
+            handle = await openFixture(ctx);
+            const outcome = await handle.app.invalidCapture({ source: "microphone", cancelComputerAudio: true });
+            ctx.expect(outcome).toBe("no-handler");
+
+            const reason = "Computer-audio cancellation is unavailable on Linux because its echo tuning has not been verified.";
+            const sections = await ctx.call("settings.sections");
+            const microphoneSection = sections.find((section) => section.id === "microphone-audio");
+            ctx.expect(microphoneSection?.description).toContain(reason);
+
+            await ctx.call("settings.highlight", ["microphone.clean"]);
+            const visibleReason = await ctx.waitFor(
+                () => ctx.app.window.screen.evaluate(`() => document.querySelector('[data-name="settings-section-microphone-audio"]')?.textContent ?? ""`),
+                (value) => value.includes(reason),
+            );
+            ctx.expect(visibleReason).toContain(reason);
+
+        } finally {
+            await cleanupFixture(ctx, handle);
+        }
+    }, { requires: ["linux"] }),
+
     captureTest("computer capture delivers the fake loopback fixture", async (ctx) => {
         let handle;
         try {
@@ -146,7 +170,7 @@ export default [
         } finally {
             await cleanupFixture(ctx, handle);
         }
-    }, { requires: ["windows"] }),
+    }),
 
     captureTest("microphone capture with computer-audio cancellation delivers chunks", async (ctx) => {
         let handle;

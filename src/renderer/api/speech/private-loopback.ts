@@ -16,7 +16,7 @@ export function openPrivateLoopback(context: AudioContext, borrowed?: MediaStrea
                 stream.getVideoTracks().forEach((track) => track.stop());
                 if (!stream.getAudioTracks().length) {
                     stream.getTracks().forEach((track) => track.stop());
-                    throw new Error("Windows did not provide an audio track");
+                    throw new Error("Computer audio did not provide an audio track");
                 }
             } finally { await api.clearTranscriptLoopback().catch(() => {}); }
         }

@@ -28,6 +28,50 @@ async function isVisible(ctx, selector) {
     }`);
 }
 
+async function displayRequestDenied(ctx) {
+    return ctx.app.window.screen.evaluate(`async () => {
+        try {
+            const stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true });
+            stream.getTracks().forEach((track) => track.stop());
+            return false;
+        } catch {
+            return true;
+        }
+    }`);
+}
+
+async function transcribeFromSource(ctx, source) {
+    let root;
+    let pageId;
+    try {
+        root = fixtureBoard(ctx, "voice/fixture-transcriber");
+        await trustFixtureBoard(ctx, root);
+        pageId = await createTextPage(ctx, `us-2228-transcript-${source}.txt`, "Transcript fixture: \n");
+        await ctx.app.window.screen.pressKey("Control+End", { target: EDITOR_SELECTOR });
+
+        await ctx.waitFor(() => isVisible(ctx, inPage(pageId, "transcript-button")), (visible) => visible === true);
+        await ctx.app.window.screen.click(inPage(pageId, "transcript-button"));
+        const modeId = source === "both" ? "transcript-mode-both" : "transcript-mode-computer-audio";
+        await ctx.waitFor(() => isVisible(ctx, `[data-name="${modeId}"]`), (visible) => visible === true);
+        ctx.expect(await displayRequestDenied(ctx)).toBe(true);
+        await ctx.app.window.screen.click(`[data-name="${modeId}"]`);
+
+        await ctx.waitFor(() => isVisible(ctx, inPage(pageId, "transcript-stop")), (visible) => visible === true);
+        ctx.expect(await displayRequestDenied(ctx)).toBe(true);
+        const inserted = await ctx.waitFor(
+            () => ctx.callText(`pages[${JSON.stringify(pageId)}].content`),
+            (content) => content.includes(FIXTURE_TEXT),
+        );
+        ctx.expect(inserted).toContain(FIXTURE_TEXT);
+
+        await ctx.app.window.screen.click(inPage(pageId, "transcript-stop"));
+        await ctx.waitFor(() => isVisible(ctx, inPage(pageId, "transcript-button")), (visible) => visible === true);
+    } finally {
+        // The transcribed page is unsaved: the runner's per-test cleanup closes it and answers Don't Save.
+        await untrustBoard(ctx, root);
+    }
+}
+
 // The shortcut test covers the app before-input-event route, recording overlay and transcription.
 // The Transcript toolbar also exercises the shared microphone capture and speech.transcribe path.
 export default [
@@ -84,6 +128,10 @@ export default [
             await untrustBoard(ctx, root);
         }
     }, { requires: ["launch"] }),
+
+    test("Transcript transcribes from computer audio", async (ctx) => transcribeFromSource(ctx, "computer"), { requires: ["launch"] }),
+
+    test("Transcript transcribes from Both sources", async (ctx) => transcribeFromSource(ctx, "both"), { requires: ["launch"] }),
 
     test("configured voice-typing shortcut transcribes from the microphone", async (ctx) => {
         let root;

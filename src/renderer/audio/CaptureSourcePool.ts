@@ -8,6 +8,7 @@ import { PcmAudioCapture } from "./dsp/PcmAudioCapture";
 import { microphoneDeviceId, resolveMicrophoneDevice } from "./dsp/microphone-device";
 import type { LoopbackLease } from "./dsp/LoopbackReference";
 import { MICROPHONE_TUNING, type MicrophoneCleaningOptions, type MicrophoneNotch } from "../../shared/microphone-cleaning-types";
+import { getPlatformFeature } from "../../shared/platform-features";
 
 export interface CaptureOptions {
     source: "microphone" | "computer";
@@ -202,7 +203,8 @@ export class CaptureSourcePool {
                     ...(options.deviceId ? { deviceId: { exact: options.deviceId } } : {}),
                 } });
             }
-            if (process.platform !== "win32") throw new Error("Computer audio capture is supported on Windows only.");
+            const feature = getPlatformFeature("audio.computerCapture");
+            if (!feature.available) throw new Error("reason" in feature ? feature.reason : "Computer audio capture is unavailable.");
             const stream = await this.options.mediaDevices.getDisplayMedia({ audio: true, video: true });
             stream.getVideoTracks().forEach((track) => track.stop());
             if (!stream.getAudioTracks().length) {

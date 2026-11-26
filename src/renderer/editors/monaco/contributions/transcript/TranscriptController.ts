@@ -8,6 +8,7 @@ import { MicrophoneCapture, TranscriptDisplayCapture } from "../../../../api/spe
 import { SpeechSessionClient } from "../../../../api/speech/SpeechSessionClient";
 import { SpeechTranscriptionProvider } from "../../../../api/speech/SpeechTranscriptionProvider";
 import { PcmAudioCapture } from "../../../../audio/dsp/PcmAudioCapture";
+import { getPlatformFeature } from "../../../../../shared/platform-features";
 
 export type TranscriptSource = "microphone" | "computer" | "both";
 export interface TranscriptState { status: "idle" | "starting" | "recording" | "transcribing"; level: number }
@@ -43,7 +44,7 @@ export class TranscriptController {
 
     public async start(source: TranscriptSource): Promise<void> {
         if (this.sources.length || this.finishing) return;
-        if (source !== "microphone" && process.platform !== "win32") return;
+        if (source !== "microphone" && !getPlatformFeature("audio.computerCapture").available) return;
         const releaseLease = liveSpeechSessionCoordinator.acquire("transcript");
         if (!releaseLease) { ui.notify(t("transcript.sessionConflict"), "warning"); return; }
         this.releaseLease = releaseLease;

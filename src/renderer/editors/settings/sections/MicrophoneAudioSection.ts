@@ -13,6 +13,7 @@ import { t } from "../../../../shared/i18n/t";
 import type { AudioProcessingStatus } from "../../../../ipc/audio-channels";
 import { MICROPHONE_TUNING, type MicrophoneNotch } from "../../../../shared/microphone-cleaning-types";
 import { microphoneSettings } from "../../../api/speech/microphone-settings";
+import { getPlatformFeature } from "../../../../shared/platform-features";
 import { NumberField } from "../fields/NumberField";
 import { appSettingsStore } from "../fields/settings-store";
 import type { SettingsStore } from "../fields/settings-store";
@@ -44,6 +45,12 @@ export class MicrophoneAudioSectionView extends VanillaView<Record<string, never
         this.cleanCheckbox.mount();
         this.root.append(cleanRow);
 
+        const cancellation = getPlatformFeature("audio.computerCancellation");
+        if (!cancellation.available) {
+            const reason = "reason" in cancellation ? cancellation.reason : "";
+            this.root.append(panel({ paddingBottom: "md" }, text(t("settings.microphoneCancellationUnavailable", { reason }), { color: "light", size: "xs" })));
+        }
+
         const attenuationRow = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "md" });
         attenuationRow.dataset.name = "microphone.attenuation-db";
         const attenuationField = this.child(new NumberField({
@@ -64,7 +71,7 @@ export class MicrophoneAudioSectionView extends VanillaView<Record<string, never
         this.deviceSelect.mount();
         deviceRow.append(helpLabel(t("settings.microphoneDevice"), t("settings.microphoneDeviceHelp"), (cleanup) => this.own(cleanup)), deviceHost);
         this.root.append(deviceRow);
-        // Connecting or removing a headset changes the list and the Windows default.
+        // Connecting or removing a headset changes the list and the system default.
         const onDeviceChange = (): void => { void this.loadDevices(); };
         navigator.mediaDevices.addEventListener("devicechange", onDeviceChange);
         this.own(() => navigator.mediaDevices.removeEventListener("devicechange", onDeviceChange));

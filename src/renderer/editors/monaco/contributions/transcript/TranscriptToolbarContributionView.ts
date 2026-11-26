@@ -5,6 +5,7 @@ import { VanillaView } from "../../../../uikit/shared/vanilla-view";
 import { api } from "../../../../../ipc/renderer/api";
 import { boardRegistry } from "../../../../api/boards/board-registry";
 import { t } from "../../../../../shared/i18n/t";
+import { getPlatformFeature } from "../../../../../shared/platform-features";
 import { TranscriptController, type TranscriptSource, type TranscriptState } from "./TranscriptController";
 import "./TranscriptToolbarContributionView.css";
 
@@ -31,9 +32,13 @@ export class TranscriptToolbarContributionView extends VanillaView<TranscriptToo
         this.meter.setAttribute("aria-label", t("transcript.audioLevel"));
         this.meter.setAttribute("aria-valuemin", "0");
         this.meter.setAttribute("aria-valuemax", "100");
+        const computerCapture = getPlatformFeature("audio.computerCapture");
+        const unavailableLabel = (label: string): string => computerCapture.available
+            ? label
+            : t("transcript.unavailableMode", { label, reason: "reason" in computerCapture ? computerCapture.reason : "" });
         this.items = [
-            { id: "transcript-mode-both", label: t("transcript.both"), onClick: () => this.start("both"), disabled: process.platform !== "win32" },
-            { id: "transcript-mode-computer-audio", label: t("transcript.computerAudio"), onClick: () => this.start("computer"), disabled: process.platform !== "win32" },
+            { id: "transcript-mode-both", label: unavailableLabel(t("transcript.both")), onClick: () => this.start("both"), disabled: !computerCapture.available },
+            { id: "transcript-mode-computer-audio", label: unavailableLabel(t("transcript.computerAudio")), onClick: () => this.start("computer"), disabled: !computerCapture.available },
             { id: "transcript-mode-microphone-me", label: t("transcript.microphoneMe"), onClick: () => this.start("microphone") },
         ];
         this.button = this.child(new IconButtonView(this.buttonProps()));

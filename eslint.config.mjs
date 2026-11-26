@@ -277,24 +277,16 @@ const vanillaViewPlugin = {
 
 // Existing checks only; this allowlist is a shrinking baseline after path policy migrations.
 const existingPlatformChecks = {
-    "src/ipc/main/voice-typing-handlers.ts": 1,
-    "src/main/audio-service.ts": 2,
     "src/main/board-file-access.ts": 4,
     "src/main/command-runner.ts": 2,
     "src/main/download-service.ts": 1,
     "src/main/main-setup.ts": 1,
     "src/main/module-service/record.ts": 1,
-    "src/main/one-shot-frame-grant.ts": 1,
     "src/main/open-windows.ts": 1,
-    "src/main/permission-policy-service.ts": 3,
     "src/main/test-mode/controller.ts": 1,
     "src/main/virtual-desktop-manager.ts": 2,
     "src/main/windows-env.ts": 1,
     "src/main/windows-sso.ts": 1,
-    "src/renderer/api/speech/MicrophoneCapture.ts": 3,
-    "src/renderer/audio/CaptureSourcePool.ts": 1,
-    "src/renderer/editors/monaco/contributions/transcript/TranscriptController.ts": 1,
-    "src/renderer/editors/monaco/contributions/transcript/TranscriptToolbarContributionView.ts": 2,
     "src/test-host/launcher.ts": 1,
 };
 

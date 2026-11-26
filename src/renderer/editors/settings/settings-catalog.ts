@@ -4,6 +4,11 @@ import type { IOwnedView } from "../../uikit/shared/vanilla-view";
 import { isLinux } from "../../../shared/platform";
 import { getPlatformFeature } from "../../../shared/platform-features";
 
+const computerCancellationFeature = getPlatformFeature("audio.computerCancellation");
+const computerCancellationDescription = computerCancellationFeature.available
+    ? "Computer-audio cancellation is available on this platform."
+    : "reason" in computerCancellationFeature ? computerCancellationFeature.reason : "";
+
 export interface SettingsCatalogRow {
     readonly key: AppSettingsKey | "site-extensions";
     readonly label: string;
@@ -136,11 +141,11 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
     },
     {
         groupId: "general", groupTitleKey: "settings.groupGeneral", id: "microphone-audio",
-        titleKey: "settings.microphoneTitle", description: "Microphone cleaning and device resonance settings.",
+        titleKey: "settings.microphoneTitle", description: `Microphone cleaning and device resonance settings. ${computerCancellationDescription}`,
         elementName: "settings-section-microphone-audio", panelName: "settings-panel-microphone-audio",
         where: "Settings > General > Microphone Audio",
         rows: [
-            { key: "microphone.clean", label: "Clean microphone audio", purpose: "Enable DTLN noise suppression. A consumer requesting computer sound cancellation also runs DTLN when this is off." },
+            { key: "microphone.clean", label: "Clean microphone audio", purpose: `Enable DTLN noise suppression. Computer sound cancellation also runs DTLN when cleaning is off. ${computerCancellationDescription}` },
             { key: "microphone.attenuation-db", label: "Attenuation limit", purpose: "Limit frame-RMS suppression in dB; zero is unlimited." },
             { key: "microphone.notches", label: "Microphone resonance", purpose: "Per-device resonance reduction frequency, Q and cut. Frequencies must be between 20 and 7999 Hz inclusive; invalid device profiles are discarded." },
         ],

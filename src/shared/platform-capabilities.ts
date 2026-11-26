@@ -1,6 +1,11 @@
 import { EditorId } from "./editor-ids";
 import { PLATFORM_AUDIO_CAPABILITY_ID, PLATFORM_CAPABILITY_IDS } from "./capability-constants";
 import type { CapabilityMethod } from "./capability-contract";
+import { getPlatformFeature } from "./platform-features";
+const computerCaptureFeature = getPlatformFeature("audio.computerCapture");
+const computerCancellationFeature = getPlatformFeature("audio.computerCancellation");
+const computerCaptureAvailability = computerCaptureFeature.available ? "Computer audio capture is available on this platform." : "reason" in computerCaptureFeature ? computerCaptureFeature.reason : "";
+const computerCancellationAvailability = computerCancellationFeature.available ? "Computer-audio cancellation is available on this platform." : "reason" in computerCancellationFeature ? computerCancellationFeature.reason : "";
 /** Built-in capability metadata in editor registration order. */
 export const PLATFORM_CAPABILITIES = [
     { editorId: EditorId.monaco, id: PLATFORM_CAPABILITY_IDS.textOpen, version: 1, priority: 50 },
@@ -30,7 +35,7 @@ export const PLATFORM_AUDIO_METHODS: Record<string, CapabilityMethod> = {
     muteApp: { kind: "channel", summary: "Mute app playback while a board listens.", args: [], returns: "MuteLease", timeoutMs: 15000, agent: false },
     devices: { kind: "call", summary: "List available microphone inputs.", args: [],
         returns: "{ deviceId: string; label: string; isDefault: boolean }[]", timeoutMs: 10000, agent: false },
-    capture: { kind: "channel", summary: "Board-only streaming: capture shared PCM.",
+    capture: { kind: "channel", summary: `Board-only streaming: capture shared PCM. ${computerCaptureAvailability} ${computerCancellationAvailability}`,
         args: [{ name: "open", type: '{ source: "microphone" | "computer"; deviceId?: string; echoCancel?: boolean; processing?: "default" | "raw"; cancelComputerAudio?: boolean }' }],
         returns: "CapabilityChannel", timeoutMs: 15000, agent: true },
     play: { kind: "channel", summary: "Board-only streaming: play mono PCM.",

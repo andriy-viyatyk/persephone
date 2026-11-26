@@ -13,12 +13,12 @@ export interface OneShotFrameGrantOptions {
     ttlMs: number;
     cleanupDelayMs: number;
     bindFrame: boolean;
-    platform?: NodeJS.Platform;
+    isEligible?: () => boolean;
     resolveTarget?: (id: number) => WebContents | undefined;
     validateTarget?: (target: WebContents) => boolean;
     listenForDestroyed?: boolean;
     clearExpiredHas?: boolean;
-    clearBeforePlatformCheck?: boolean;
+    clearBeforeEligibilityCheck?: boolean;
     clearBeforeTargetResolution?: boolean;
     validateBeforeClear?: boolean;
 }
@@ -31,8 +31,7 @@ export class OneShotFrameGrant {
 
     arm(target: GrantTarget): void {
         const id = typeof target === "number" ? target : target.id;
-        if (this.options.clearBeforePlatformCheck) this.clear(id);
-        if (this.options.platform && process.platform !== this.options.platform) return;
+        if (this.options.clearBeforeEligibilityCheck) this.clear(id);
         if (this.options.clearBeforeTargetResolution) this.clear(id);
 
         const contents = typeof target === "number" ? this.options.resolveTarget?.(target) : target;
@@ -40,6 +39,7 @@ export class OneShotFrameGrant {
             (this.options.validateTarget !== undefined && !this.options.validateTarget(contents))
             || (this.options.bindFrame && contents.isDestroyed())
         )) return;
+        if (this.options.isEligible && !this.options.isEligible()) return;
         this.clear(id);
         if (this.options.bindFrame && (!contents || contents.isDestroyed())) return;
         if (contents && this.options.validateTarget && !this.options.validateTarget(contents)) return;

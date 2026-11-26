@@ -10,6 +10,7 @@ import { MAX_SERVICE_CHANNELS_PER_BOARD } from "../shared/capability-limits";
 import { BoardGrant } from "../shared/board/board-grant";
 import { errMessage } from "../shared/utils";
 import { codedError } from "../shared/coded-error";
+import { getPlatformFeature } from "../shared/platform-features";
 import { openElectronServiceChannel } from "../shared/service-channel-node";
 import { PendingRequests } from "../shared/pending-requests";
 import { onWebContentsGone } from "./webcontents-lifetime";
@@ -353,8 +354,14 @@ class AudioService {
         if (argument.processing === "raw" && argument.echoCancel === true) throw codedError("rejected", "Raw capture cannot enable echo cancellation.");
         if (argument.processing === "raw" && "cancelComputerAudio" in argument) throw codedError("rejected", "Raw capture cannot request computer audio cancellation.");
         if (argument.source === "computer" && (argument.deviceId !== undefined || argument.echoCancel !== undefined || argument.processing !== undefined || "cancelComputerAudio" in argument)) throw codedError("rejected", "Computer capture does not accept microphone options.");
-        if (argument.source === "computer" && process.platform !== "win32") throw codedError("no-handler", "Computer audio capture is supported on Windows only.");
-        if (argument.cancelComputerAudio === true && process.platform !== "win32") throw codedError("no-handler", "Computer audio cancellation is supported on Windows only.");
+        const captureFeature = getPlatformFeature("audio.computerCapture");
+        if (argument.source === "computer" && !captureFeature.available) {
+            throw codedError("no-handler", "reason" in captureFeature ? captureFeature.reason : "");
+        }
+        const cancellationFeature = getPlatformFeature("audio.computerCancellation");
+        if (argument.cancelComputerAudio === true && !cancellationFeature.available) {
+            throw codedError("no-handler", "reason" in cancellationFeature ? cancellationFeature.reason : "");
+        }
         return { source: argument.source as "microphone" | "computer",
             ...(argument.deviceId !== undefined ? { deviceId: argument.deviceId as string } : {}),
             ...(argument.echoCancel !== undefined ? { echoCancel: argument.echoCancel as boolean } : {}),

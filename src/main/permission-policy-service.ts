@@ -5,6 +5,7 @@ import { boardTrustService } from "./board-trust-service";
 import { fileSystemAccessToPrompt } from "./file-system-access-policy";
 import type { BrowserFileAccessPrompt } from "../ipc/browser-ipc";
 import { getBoardRootForHost } from "./board-protocol-service";
+import { getPlatformFeature } from "../shared/platform-features";
 import {
     audioWindowLoopbackGrant,
     audioWindowMicrophoneGrant,
@@ -193,9 +194,9 @@ function handleRequest(ses: Session, request: PermissionRequest): void {
                 && recordingGrant.has(webContents.id);
             // getDisplayMedia arrives as "media" with empty mediaTypes, not "display-capture" (verified on
             // Electron 43). The display-media handler consumes the Transcript grant, so it is only checked here.
-            const isTranscriptDisplay = permission === "media" && types.length === 0 && process.platform === "win32"
+            const isTranscriptDisplay = permission === "media" && types.length === 0 && getPlatformFeature("audio.computerCapture").available
                 && transcriptLoopbackGrant.has(webContents.id, webContents.mainFrame);
-            const isAudioWindowDisplay = permission === "media" && types.length === 0 && process.platform === "win32"
+            const isAudioWindowDisplay = permission === "media" && types.length === 0 && getPlatformFeature("audio.computerCapture").available
                 && audioWindowLoopbackGrant.has(webContents.id, webContents.mainFrame);
             const allowed = isVoiceTypingAudio || isAudioWindowMicrophone || isScreenRecordingVideo || isTranscriptDisplay || isAudioWindowDisplay;
             if (isVoiceTypingAudio) voiceTypingGrant.clear(webContents.id);
@@ -264,7 +265,7 @@ function installAppDisplayMedia(ses: Session): void {
     ses.setDisplayMediaRequestHandler((request, callback) => {
         const transcriptGrant = request.videoRequested && request.audioRequested && transcriptLoopbackGrant.consume(request.frame);
         const audioGrant = request.videoRequested && request.audioRequested && audioWindowLoopbackGrant.consume(request.frame);
-        if (process.platform !== "win32" || !request.videoRequested || !request.audioRequested || (!transcriptGrant && !audioGrant)) {
+        if (!getPlatformFeature("audio.computerCapture").available || !request.videoRequested || !request.audioRequested || (!transcriptGrant && !audioGrant)) {
             callback({});
             return;
         }

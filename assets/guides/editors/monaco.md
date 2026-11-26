@@ -126,7 +126,9 @@ downloads language models as needed and can translate offline after the models a
 Microphone capture follows **Settings > General > Microphone Audio**; computer audio is unaffected.
 
 Choose the microphone button in the right side of the toolbar, then select **Microphone (me)**,
-**Computer audio**, or **Both**. Computer audio and Both are available on Windows. Install and
+**Computer audio**, or **Both**. Computer audio and Both are available on Windows and Linux.
+Linux computer-audio cancellation remains unavailable because its echo tuning has not been verified.
+Install and
 trust the Speech to Text board from Tools & Editors first; it must support live transcription.
 The Speech to Text board processes audio locally. Computer audio captures sound played by the
 computer, so use it for calls or videos. In Both mode, microphone text is labeled **Me** and

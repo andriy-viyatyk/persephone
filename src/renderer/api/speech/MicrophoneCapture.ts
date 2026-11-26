@@ -5,6 +5,7 @@ import { resolveMicrophoneDevice } from "../../audio/dsp/microphone-device";
 import { settings } from "../settings";
 import { openPrivateLoopback } from "./private-loopback";
 import { microphoneOptions, reportMicrophoneStatus, watchMicrophoneSettings } from "./microphone-settings";
+import { getPlatformFeature } from "../../../shared/platform-features";
 
 /** Reopening the default microphone after its device disappears (a headset unplugged). */
 const MICROPHONE_REOPEN = {
@@ -36,13 +37,14 @@ export interface OpenedMicrophoneCapture {
 
 /** Opens the Windows default microphone; undefined when the caller stopped while access was being armed. */
 async function requestMicrophone(isCurrent: () => boolean): Promise<MediaStream | undefined> {
+    const cancellationAvailable = getPlatformFeature("audio.computerCancellation").available;
     await api.armVoiceTypingMicrophone();
     try {
         if (!isCurrent()) return undefined;
         return await navigator.mediaDevices.getUserMedia({ audio: {
             channelCount: 1,
-            echoCancellation: process.platform !== "win32",
-            noiseSuppression: !(settings.get("microphone.clean") || process.platform === "win32"),
+            echoCancellation: !cancellationAvailable,
+            noiseSuppression: !(settings.get("microphone.clean") || cancellationAvailable),
             autoGainControl: true,
         } });
     } finally {
@@ -96,7 +98,7 @@ export class MicrophoneCapture {
                 sharedContext: context,
                 cleaning: microphoneOptions(stream),
                 onStatus: status,
-                referenceAcquire: process.platform === "win32"
+                referenceAcquire: getPlatformFeature("audio.computerCancellation").available
                     ? () => openPrivateLoopback(captureContext, options.borrowedLoopbackStream?.())
                     : undefined,
                 ownsStream: true,
