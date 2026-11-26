@@ -1,6 +1,8 @@
 import { powerMonitor, type BrowserWindow } from "electron";
 import { openWindows } from "./open-windows";
 import { unseenMode } from "./unseen-mode";
+import { isLinux } from "../shared/platform";
+import { isSessionLocked, watchLinuxSessionLock } from "./desktop-awareness-linux";
 
 export interface VirtualDesktopVisibilityProbe {
     isOnCurrentDesktop(window: BrowserWindow): boolean;
@@ -11,6 +13,7 @@ export class DesktopAwarenessService {
     private lockedValue = false;
     private started = false;
     private virtualDesktopProbe: VirtualDesktopVisibilityProbe | undefined;
+    private stopLinuxWatch: (() => void) | undefined;
 
     private readonly onLockScreen = (): void => this.setLocked(true);
     private readonly onUnlockScreen = (): void => this.setLocked(false);
@@ -22,13 +25,19 @@ export class DesktopAwarenessService {
     start(): void {
         if (this.started) return;
         this.started = true;
-        this.lockedValue = powerMonitor.getSystemIdleState(60) === "locked";
+        this.lockedValue = isSessionLocked();
+        if (isLinux) {
+            this.stopLinuxWatch = watchLinuxSessionLock((locked) => this.setLocked(locked));
+            return;
+        }
         powerMonitor.on("lock-screen", this.onLockScreen);
         powerMonitor.on("unlock-screen", this.onUnlockScreen);
     }
 
     dispose(): void {
         if (this.started) {
+            this.stopLinuxWatch?.();
+            this.stopLinuxWatch = undefined;
             powerMonitor.removeListener("lock-screen", this.onLockScreen);
             powerMonitor.removeListener("unlock-screen", this.onUnlockScreen);
         }
@@ -64,12 +73,13 @@ export class DesktopAwarenessService {
 
     private getLockMessage(locked: boolean, unseenModeEnabled: boolean): string {
         if (locked) {
-            return "Windows session locked; without unseen mode, animation frames stop (and anything waiting for them) and timers slow to about 1 s. "
+            return "Session locked; without unseen mode, animation frames stop (and anything waiting for them) and timers slow to about 1 s. "
                 + "OS clipboard, native file dialogs, real OS focus, and global hotkeys remain unavailable in every mode. "
                 + `main.unseenMode.enabled is ${unseenModeEnabled}; call main.unseenMode.enable with args: [] to keep frames and timers running.`;
         }
-        return "Windows session unlocked; main.session.locked is false, desktopVisible still depends on the window's minimized/virtual-desktop state, "
-            + `and main.unseenMode.enabled remains ${unseenModeEnabled}.`;
+        return "Session unlocked; main.session.locked is false, desktopVisible still depends on the window's minimized/virtual-desktop state, "
+            + "and Linux workspace visibility is not detected. "
+            + `main.unseenMode.enabled remains ${unseenModeEnabled}.`;
     }
 }
 

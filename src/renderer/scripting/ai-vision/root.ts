@@ -95,7 +95,7 @@ const CLIPBOARD_ROOT_MEMBER: IAiMember = {
     name: "clipboard",
     kind: "property",
     node: true,
-    summary: "Stored clipboard history, available only when clipboard.enabled is true.",
+    summary: "Stored clipboard history, available only when clipboard.enabled is true. On Linux it is sampled only while a Persephone window is focused; no background monitoring is available.",
 };
 
 const SCRIPT_EXECUTION_CAUTION = "runs arbitrary renderer code with the user's privileges; it can read and write files, spawn processes, access the network, and affect the app";

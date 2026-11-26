@@ -49,7 +49,10 @@ The right panel shows the contents of the selected folder:
 - Click a file to open it
 - Right-click a file or folder for the clipboard group **Cut**, **Copy**, **Paste**, followed by
   the shared edit group **Rename**, **Delete**, **New File**, **New Folder**. On a file row, Paste
-  and the new-item actions target its parent folder; on a folder row, they target that folder.
+    and the new-item actions target its parent folder; on a folder row, they target that folder.
+    File clipboard copy and cut work on Windows and Linux. Linux clipboard history is sampled only
+    while a Persephone window is focused; it does not monitor changes in the background and may miss
+    rapid copies.
 - Right-click a folder for **Open Terminal here** (Windows only — see [Open Terminal here](file-explorer-and-panels.md#open-terminal-here))
 - Search files by name with `Ctrl+F` when the file explorer is active
 - **Drag a file out to the OS** — drag a file from the tree onto Windows Explorer or into a Microsoft Teams chat to copy/attach it there. No modifier key needed. Dragging it into another folder in the tree instead asks whether to **Move** or **Copy** it there. Currently one file at a time.

@@ -7,6 +7,8 @@ import { execFileSync } from "node:child_process";
 import { getLauncherPath } from "./browser-registration";
 import { BoardRoot } from "../shared/board/board-root";
 import { boardWindowKey } from "./board-root-hashes";
+import { isLinux } from "../shared/platform";
+import { createLinuxBoardShortcut } from "./linux-board-shortcut";
 
 /** electron-builder's uninstall key for appId `com.viyatyk.persephone` (a UUID v5 of the appId). */
 const INSTALLED_UNINSTALL_KEY = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\de6947fe-4b42-50ca-ab55-d20f314ae2b2";
@@ -103,7 +105,8 @@ export async function createBoardShortcut(request: {
     }
     if (!path.isAbsolute(request.linkPath)) throw new Error("linkPath must be absolute.");
     const resolvedLinkPath = path.resolve(request.linkPath);
-    if (path.extname(resolvedLinkPath).toLowerCase() !== ".lnk") throw new Error("linkPath must end in .lnk.");
+    const extension = isLinux ? ".desktop" : ".lnk";
+    if (path.extname(resolvedLinkPath).toLowerCase() !== extension) throw new Error(`linkPath must end in ${extension}.`);
     const parentPath = path.dirname(resolvedLinkPath);
     if (!existsSync(parentPath) || !statSync(parentPath).isDirectory()) throw new Error("linkPath parent directory does not exist.");
     if (existsSync(resolvedLinkPath) && request.overwrite !== true) throw new Error("File exists; pass overwrite: true.");
@@ -113,6 +116,8 @@ export async function createBoardShortcut(request: {
     const image = nativeImage.createFromDataURL(request.iconDataUrl);
     const size = image.getSize();
     if (image.isEmpty() || size.width !== 256 || size.height !== 256) throw new Error("Board icons must be 256x256 PNG images.");
+
+    if (isLinux) return createLinuxBoardShortcut(request, image.toPNG());
 
     const iconPath = await writeBoardWindowIcon(request.boardRoot, image.toPNG());
     const details: Electron.ShortcutDetails = {

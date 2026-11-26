@@ -153,15 +153,17 @@ export interface IBoards {
     createDemoBoard(name: string, dir: string): Promise<string>;
 
     /**
-     * Create a Windows shortcut that launches a board in its board-mode window.
+     * Create a Windows `.lnk` shortcut or Linux `.desktop` launcher that opens a board in its board-mode window.
      * The board root must be absolute, contain `board-manifest.json`, and be trusted (or bundled).
      * Without `opts.linkPath`, shows the standard Save dialog and returns `null` if it is cancelled.
-     * With `opts.linkPath`, no dialog is shown; the destination must be an absolute `.lnk` path
-     * whose parent directory exists. Existing targets are refused unless `overwrite` is `true`.
+     * On Linux, the Save dialog defaults to the user applications folder; on Windows it defaults
+     * to the board folder. With `opts.linkPath`, no dialog is shown; the destination must be an
+     * absolute platform-appropriate path (`.lnk` on Windows, `.desktop` on Linux) whose parent
+     * directory exists. Existing targets are refused unless `overwrite` is `true`.
      * Errors reject to the caller without showing a UI notification. The returned path is absolute.
      *
      * @param boardRoot - Absolute root folder of a trusted or bundled board.
-     * @param opts.linkPath - Optional explicit absolute `.lnk` destination.
+     * @param opts.linkPath - Optional explicit absolute `.lnk` (Windows) or `.desktop` (Linux) destination.
      * @param opts.overwrite - Allow replacing an existing explicit destination.
      * @returns The created shortcut path, or `null` when the Save dialog is cancelled.
      * @throws If the root is invalid/untrusted or the destination cannot be written or verified.

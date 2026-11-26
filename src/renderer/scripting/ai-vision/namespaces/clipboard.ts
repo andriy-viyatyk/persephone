@@ -41,7 +41,8 @@ const CLIPBOARD_MEMBERS: readonly IAiMember[] = [
 ];
 
 const CLIPBOARD_HELP = `
-Clipboard history is stored newest first and is available only when clipboard.enabled is true.
+Clipboard history is stored newest first and is available only when clipboard.enabled is true. On Linux, history samples only while a Persephone window is focused; there is no background clipboard monitoring, and rapid copies may be missed.
+On Wayland, a clipboard write made without recent user input to a Persephone window may be dropped by the compositor.
 Read items for the first page of preview and payload-path metadata, or use list(offset, limit) for
 later pages; offset is zero-based and limit is at most 100. Each list result includes total and
 revision so you can detect changes while paging.
@@ -51,7 +52,7 @@ primary flavour. Text and HTML return strings, files return the stored absolute 
 array, and images return stored PNG data as an image record. Raise call.maxLength if a long
 text value or PNG base64 value is reported as truncated.
 
-Excluded clipboard changes were never stored and cannot be reached here. Stored non-excluded
+On Windows, clipboard changes excluded by Windows privacy metadata were never stored and cannot be reached here. Stored
 content is retained as readable files under the application's data folder by design. This node
 never reads the live OS clipboard and does not accept arbitrary filesystem paths.
 

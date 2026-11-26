@@ -7,6 +7,10 @@ import { SubtreeSwap } from "../../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { t } from "../../../../shared/i18n/t";
 import { createSectionRoot, panel, text } from "./settings-native";
+import { isLinux } from "../../../../shared/platform";
+import { getPlatformFeature } from "../../../../shared/platform-features";
+import { errMessage } from "../../../../shared/utils";
+import { ui } from "../../../api/ui";
 
 const defaultDefaultBrowserSectionState = {
     registered: null as boolean | null,
@@ -30,12 +34,14 @@ class DefaultBrowserStatusView extends VanillaView<{ registered: DefaultBrowserS
         if (this.props.registered === null) {
             this.statusPanel.append(text(t("settings.defaultBrowserChecking"), { size: "sm", color: "light" }));
         } else if (this.props.registered) {
-            this.statusPanel.append(text(t("settings.defaultBrowserRegistered"), { size: "sm", color: "success" }));
+            this.statusPanel.append(text(t(isLinux ? "settings.defaultBrowserSelected" : "settings.defaultBrowserRegistered"), { size: "sm", color: "success" }));
+            if (isLinux) this.appendButton({ variant: "link", size: "sm", background: "light", disabled: this.props.busy, onClick: this.props.onRegister }, t("settings.setDefaultBrowser"));
             this.appendButton({ variant: "link", size: "sm", background: "light", disabled: this.props.busy, onClick: this.props.onUnregister }, t("settings.unregister"));
         } else {
-            this.appendButton({ variant: "link", size: "sm", background: "light", disabled: this.props.busy, onClick: this.props.onRegister }, t("settings.registerDefaultBrowser"));
+            if (isLinux) this.statusPanel.append(text(t("settings.defaultBrowserNotSelected"), { size: "sm", color: "light" }));
+            this.appendButton({ variant: "link", size: "sm", background: "light", disabled: this.props.busy, onClick: this.props.onRegister }, t(isLinux ? "settings.setDefaultBrowser" : "settings.registerDefaultBrowser"));
         }
-        this.appendButton({ variant: "link", size: "sm", background: "light", onClick: this.props.onOpenSettings }, t("settings.openWindowsDefaultApps"));
+        if (!isLinux) this.appendButton({ variant: "link", size: "sm", background: "light", onClick: this.props.onOpenSettings }, t("settings.openWindowsDefaultApps"));
     }
 
     protected onUpdate(): void {}
@@ -62,6 +68,7 @@ export class DefaultBrowserSectionView extends VanillaView<Record<string, never>
     }
 
     protected onMount(): void {
+        if (!getPlatformFeature("desktop.defaultBrowser").available) return;
         if (rendererProfileName()) {
             this.root.append(text(t("settings.profileBrowserRegistration"), { size: "sm", color: "light" }));
             return;
@@ -99,8 +106,14 @@ export class DefaultBrowserSectionView extends VanillaView<Record<string, never>
     }
 
     private checkStatus = async (): Promise<void> => {
-        const registered = await api.isRegisteredAsDefaultBrowser();
-        if (this.live) this.state.update((state) => { state.registered = registered; });
+        try {
+            const registered = await api.isRegisteredAsDefaultBrowser();
+            if (this.live) this.state.update((state) => { state.registered = registered; });
+        } catch (error) {
+            if (this.live) {
+                ui.notify(t("settings.defaultBrowserStatusFailed", { error: errMessage(error) }), "error");
+            }
+        }
     };
 
     private handleRegister = async (): Promise<void> => {
@@ -108,6 +121,8 @@ export class DefaultBrowserSectionView extends VanillaView<Record<string, never>
         try {
             await api.registerAsDefaultBrowser();
             await this.checkStatus();
+        } catch (error) {
+            ui.notify(t("settings.defaultBrowserActionFailed", { error: errMessage(error) }), "error");
         } finally {
             if (this.live) this.state.update((state) => { state.busy = false; });
         }
@@ -118,6 +133,8 @@ export class DefaultBrowserSectionView extends VanillaView<Record<string, never>
         try {
             await api.unregisterAsDefaultBrowser();
             await this.checkStatus();
+        } catch (error) {
+            ui.notify(t("settings.defaultBrowserActionFailed", { error: errMessage(error) }), "error");
         } finally {
             if (this.live) this.state.update((state) => { state.busy = false; });
         }

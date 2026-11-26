@@ -51,7 +51,7 @@ export const SETTINGS_SECTION_HEADER_METADATA: Readonly<Record<string, SettingsS
     "video-player": { titleKey: "settings.groupTitleVideoPlayer", helpKey: "settings.videoPlayerDescription", headerPlacement: "section" },
     "site-extensions": { titleKey: "settings.groupTitleSiteExtensions", helpKey: "settings.siteExtensionsAgentDescription", headerPlacement: "section" },
     "browser-profiles": { titleKey: "settings.groupTitleBrowserProfiles", helpKey: "settings.browserProfilesDescription", headerPlacement: "section" },
-    "default-browser": { titleKey: "settings.groupTitleDefaultBrowser", helpKey: "settings.defaultBrowserDescription", headerPlacement: "wrapper" },
+    "default-browser": { titleKey: "settings.groupTitleDefaultBrowser", helpKey: isLinux ? "settings.defaultBrowserLinuxDescription" : "settings.defaultBrowserDescription", headerPlacement: "wrapper" },
     "link-behavior": { titleKey: "settings.groupTitleLinks", helpKey: "settings.linksIntroduction", headerPlacement: "wrapper" },
     mcp: { titleKey: "settings.mcpTitle", helpKey: "settings.mcpDescription", headerPlacement: "section" },
     "git-integration": { titleKey: "settings.groupTitleGitIntegration", helpKey: "settings.gitHelp", headerPlacement: "section" },
@@ -61,7 +61,7 @@ export const SETTINGS_SECTION_HEADER_METADATA: Readonly<Record<string, SettingsS
 export function createSettingsSectionDescriptors(
     factories: Readonly<Record<string, () => IOwnedView>>,
 ): SettingsSectionDescriptor[] {
-    return SETTINGS_CATALOG.map((catalog) => {
+    return SETTINGS_CATALOG.filter((catalog) => catalog.id !== "default-browser" || getPlatformFeature("desktop.defaultBrowser").available).map((catalog) => {
         const metadata = SETTINGS_SECTION_HEADER_METADATA[catalog.id];
         const create = factories[catalog.id];
         if (!metadata) throw new Error(`No Settings section header registered for ${catalog.id}.`);
@@ -142,12 +142,12 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         groupTitleKey: "settings.groupGeneral",
         id: "clipboard",
         titleKey: "settings.groupTitleClipboard",
-        description: "Configure the opt-in clipboard history tracker and its item limit.",
+        description: "Configure opt-in clipboard history and its item limit. On Linux, history is sampled only while a Persephone window is focused; there is no background clipboard monitoring.",
         elementName: "settings-section-clipboard",
         panelName: "settings-panel-clipboard",
         where: "Settings > General > Clipboard",
         rows: [
-            { key: "clipboard.enabled", label: "Clipboard history", purpose: "Whether copied clipboard content is recorded for the history feature; disabled by default." },
+            { key: "clipboard.enabled", label: "Clipboard history", purpose: "Whether copied clipboard content is recorded for the history feature; disabled by default. On Linux, sampling occurs only while a Persephone window is focused and may miss rapid copies." },
             { key: "clipboard.max-items", label: "Maximum clipboard items", purpose: "The number of clipboard history items to retain, from 1 through 1000; invalid stored values fall back to 100." },
         ],
     },
@@ -260,7 +260,9 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         groupTitleKey: "settings.groupBrowser",
         id: "default-browser",
         titleKey: "settings.groupTitleDefaultBrowser",
-        description: "Register Persephone as a Windows default browser and inspect registration status.",
+        description: isLinux
+            ? "Set Persephone as the Linux default browser for HTTP, HTTPS and HTML, inspect current selection, or remove its handler."
+            : "Register Persephone as a Windows default browser and inspect registration status.",
         elementName: "settings-section-default-browser",
         panelName: "settings-panel-default-browser",
         where: "Settings > Browser > Default Browser",

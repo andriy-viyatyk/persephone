@@ -15,10 +15,11 @@ summary: "Open an existing board, run it in its own window, edit and reload, man
 
 ## Run a board in its own window
 
-Create a Windows shortcut for the board, then open that shortcut to launch the board in a dedicated
-Persephone window. To create one, right-click the board in the **Boards** panel, the **Tools &
-Editors** Editors tree, or its open page tab and choose **Create shortcut…**. The Save dialog starts
-in the board's folder; choose another location such as **Desktop** if you want the shortcut there.
+Create a Windows shortcut or Linux application launcher for the board, then open it to launch the
+board in a dedicated Persephone window. To create one, right-click the board in the **Boards** panel,
+the **Tools & Editors** Editors tree, or its open page tab and choose **Create shortcut…**. The Save dialog starts
+in the board's folder on Windows and in the user applications folder on Linux; choose another
+location such as **Desktop** if you want the launcher there.
 
 You can also ask an AI agent connected to Persephone to create the shortcut or open the board in
 its own window. The board must be trusted or bundled; ask the agent to trust an untrusted board
@@ -30,9 +31,13 @@ closed or dragged away. Pages the board opens appear in ordinary tabs beside it 
 normally. Board windows do not have the **+** new-page button, and `Ctrl+N` does not create a page
 there. The File Explorer button is also hidden from the locked board page's toolbar.
 
-A shortcut created while running a development build opens the board in that running development
-instance when available; if no installed Persephone launcher is available, it uses the normal
-launcher.
+On Windows, a development shortcut prefers an installed Persephone launcher and hands off to the
+running development instance when available. On Linux, a development launcher uses the current
+checkout and Electron binary; a second launch hands off to the running instance for that profile.
+Launching it by itself requires the development renderer server to be running.
+
+Linux application launchers save a PNG icon under Persephone's user data. A launcher saved to Desktop
+can require GNOME's **Allow Launching** action before it opens.
 
 Bundled boards are opened from the **Built-in** folder in the Editors list. They do not
 write to the board trust list. Their stable bundled identity also means an open page and its saved

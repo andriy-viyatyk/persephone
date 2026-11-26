@@ -4,6 +4,8 @@ import path from "node:path";
 import { app } from "electron";
 import { applicationProfileName } from "./application-profile";
 import { t } from "../shared/i18n/t";
+import { isLinux, isWindows } from "../shared/platform";
+import { isLinuxDefaultBrowserSelected, registerLinuxDefaultBrowser, unregisterLinuxDefaultBrowser } from "./linux-browser-registration";
 
 /**
  * Manages Windows browser registration in HKCU (no admin required).
@@ -79,7 +81,9 @@ function shellNotify(): void {
     }
 }
 
-export function registerAsDefaultBrowser(): void {
+export async function registerAsDefaultBrowser(): Promise<void> {
+    if (isLinux) return registerLinuxDefaultBrowser();
+    if (!isWindows) throw new Error("Default browser registration is not available on this platform.");
     if (applicationProfileName()) throw new Error(t("settings.profileBrowserRegistration"));
     const launcher = getLauncherPath();
     const prefix = "SOFTWARE\\Clients\\StartMenuInternet\\persephone";
@@ -116,7 +120,9 @@ export function registerAsDefaultBrowser(): void {
     shellNotify();
 }
 
-export function unregisterAsDefaultBrowser(): void {
+export async function unregisterAsDefaultBrowser(): Promise<void> {
+    if (isLinux) return unregisterLinuxDefaultBrowser();
+    if (!isWindows) throw new Error("Default browser registration is not available on this platform.");
     if (applicationProfileName()) throw new Error(t("settings.profileBrowserRegistration"));
     regDelete("SOFTWARE\\Clients\\StartMenuInternet\\persephone");
     regDelete("SOFTWARE\\Classes\\PersephoneURL");
@@ -127,12 +133,15 @@ export function unregisterAsDefaultBrowser(): void {
     shellNotify();
 }
 
-export function isRegisteredAsDefaultBrowser(): boolean {
+export async function isRegisteredAsDefaultBrowser(): Promise<boolean> {
+    if (isLinux) return isLinuxDefaultBrowserSelected();
+    if (!isWindows) return false;
     const result = regQuery("SOFTWARE\\Clients\\StartMenuInternet\\persephone");
     return result !== null;
 }
 
 export function openDefaultAppsSettings(): void {
+    if (isLinux || !isWindows) return;
     try {
         execSync("start ms-settings:defaultapps?registeredAppUser=persephone", { windowsHide: true, stdio: "ignore" });
     } catch {

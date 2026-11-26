@@ -21,11 +21,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
 ### Improvements
 
 - **Web-app tests keep running when nobody is watching.** Tests run at full speed on a locked
-  screen, in a window on another virtual desktop, or in a minimized window: the test window keeps
-  drawing, timers run normally, and screenshots stay current. `--desktop <number|name>` opens the
-  test run's windows on another virtual desktop without switching yours. Tests that need the real
-  desktop (the Windows clipboard, file dialogs) declare `requires: ["desktop"]` and are skipped with
-  a reason while the screen is locked. Agents are told when the screen locks or unlocks.
+  screen, in a window on another Windows virtual desktop, or in a minimized window: the test window
+  keeps drawing, timers run normally, and screenshots stay current. Windows-only `--desktop
+  <number|name>` opens the test run's windows on another virtual desktop without switching yours.
+  Linux workspace placement and visibility are unavailable. Tests that need the real desktop (the
+  Windows clipboard, file dialogs) declare `requires: ["desktop"]` and are skipped with a reason
+  while the session is locked. Agents are told when session lock events are delivered.
 - **Web-app tests can reuse a named window.** Attached runs can name a normal window and reuse it
   with `--window name:<name>` or `--window-name <name>`, keeping a signed-in browser session between
   runs.

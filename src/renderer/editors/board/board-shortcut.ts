@@ -8,6 +8,8 @@ import { boardDisplayText, boardMetadataKeys, ensureBoardDisplayText } from "../
 import { readBoardManifest } from "../../api/boards/board-manifest-io";
 import { renderBoardIconDataUrl } from "./board-window-icon";
 import { getPlatformFeature } from "../../../shared/platform-features";
+import { isLinux } from "../../../shared/platform";
+import { getLinuxBoardShortcutDialogOptions } from "./linux-board-shortcut-options";
 
 function safeShortcutName(name: string): string {
     const forbidden = '<>:"/\\|?*';
@@ -33,10 +35,15 @@ export async function createBoardShortcutCore(
     const fallback = manifest?.name?.trim() || fpBasename(root);
     const displayName = boardDisplayText(root, manifest, boardMetadataKeys.name, fallback);
     const fileName = safeShortcutName(displayName) || safeShortcutName(fpBasename(root)) || "Board";
-    const dialogPath = options?.linkPath !== undefined ? undefined : await fs.showSaveDialog({
-        defaultPath: fpJoin(root, `${fileName}.lnk`),
-        filters: [{ name: t("shell.boardShortcutFileType"), extensions: ["lnk"] }],
-    });
+    const shortcutOptions = options?.linkPath !== undefined
+        ? undefined
+        : isLinux
+            ? await getLinuxBoardShortcutDialogOptions(fileName)
+            : {
+                defaultPath: fpJoin(root, `${fileName}.lnk`),
+                filters: [{ name: t("shell.boardShortcutFileType"), extensions: ["lnk"] }],
+            };
+    const dialogPath = shortcutOptions ? await fs.showSaveDialog(shortcutOptions) : undefined;
     const linkPath = options?.linkPath ?? dialogPath;
     if (!linkPath) return null;
     if (!fpIsAbsolute(linkPath)) throw new Error("linkPath must be absolute.");

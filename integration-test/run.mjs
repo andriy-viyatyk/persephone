@@ -81,8 +81,12 @@ function parseArguments(args) {
 
 function renderHelp() {
     console.log("Usage: npm run test:ui -- [--area <prefix,...>] [--test <text>] [--with <tag,...>] [--desktop <number|name>]");
-    console.log("Use --with virtual-desktop --desktop 2 to run the Windows placement module on another desktop.");
-    console.log("--desktop applies only to owned runs and cannot be combined with --attach.");
+    console.log("--desktop is Windows-only and applies only to owned runs; it cannot be combined with --attach.");
+    // Node loads this file with type stripping, which cannot resolve platform-features.ts (its imports have no
+    // extension), so the runner checks the platform itself; in the app the rule is desktop.virtualPlacement.
+    console.log(isWindows
+        ? "Use --with virtual-desktop --desktop 2 to run the Windows placement module on another desktop."
+        : "Virtual desktop placement is not available on this platform.");
 }
 
 function readCurrentVirtualDesktop() {
@@ -260,6 +264,13 @@ async function main() {
 
     const startedAt = new Date().toISOString();
     if (options.help) { renderHelp(); return; }
+    if (options.desktop !== undefined) {
+        if (!isWindows) {
+            console.error("--desktop: virtual desktop placement is available only on Windows.");
+            process.exitCode = 2;
+            return;
+        }
+    }
     let selection = [];
     try {
         options.boardsDirectory = process.env.PERSEPHONE_BOARDS_DIR !== undefined

@@ -13,16 +13,14 @@ is in dB; zero means unlimited. Resonance cuts are disabled by default and saved
 microphone. The device list is selected to the current Windows default microphone when available.
 Changing capture settings can affect Wake Word recognition; re-record enrollments.
 
-Settings opens as an ordinary page from the Menu Bar gear icon, `[data-name="menubar-settings"]`.
-The page has a fixed two-level **Content** tree on the left and a scrollable stack of outlined
-panels on the right. Built-in sections appear in the General, Editors, Browser, and Integrations
-groups. Trusted or bundled boards can add their own panel under Editors (when they are a custom
-editor) or Boards.
+Settings opens from the Menu Bar gear icon, `[data-name="menubar-settings"]`. Its fixed two-level
+**Content** tree sits left of scrollable section panels. Built-in sections are grouped under
+General, Editors, Browser, and Integrations. Trusted or bundled boards can add panels under
+Editors (custom editors) or Boards.
 
-When connected over MCP, read `settings.sections` for the built-in settings catalogue. Use
-`settings.highlight(key)` to open or activate Settings and point at the containing section; `key`
-is a settings key, not a DOM selector. Board-owned settings are read through the board bridge,
-not through `app.settings`.
+Through MCP, `settings.sections` lists built-in settings. `settings.highlight(key)` opens Settings
+and points to the containing section; `key` is a setting key, not a DOM selector. Board settings
+use the board bridge, not `app.settings`.
 
 ## Layout
 
@@ -38,9 +36,8 @@ not through `app.settings`.
 +---------------------------------------------------------------------+
 ```
 
-The Content tree always has exactly two levels: a group and its sections. Groups start expanded.
-Click a group or section to scroll the panels to the corresponding content. Scrolling the panels
-updates the selected section automatically, so the tree acts as a scroll-spy while you browse.
+The Content tree has two levels: groups and sections. Groups start expanded. Select a group or
+section to scroll to its content; scrolling the panels updates the selected section.
 
 ### User-facing label → `elements` name
 
@@ -156,11 +153,13 @@ continues unfiltered. The active recording UI indicates these private captures.
 ## Clipboard history
 
 The **Clipboard** section contains an opt-in **Enable clipboard history** toggle and a **Maximum
-history items** limit. History is off by default. When enabled, Persephone records supported copied
+  history items** limit. History is off by default. When enabled, Persephone records supported copied
 text, HTML, images, and file lists—including copies made in Persephone's Text Editor/Monaco and
 Browser tabs—for the [Clipboard panel](./sidebar.md#clipboard), retaining between 1 and 1000 items
 (100 by default). Capture depends on the copy reaching the Windows clipboard, not on which editor or
-page supplied it. The section warns that occasionally-copied secrets may
+  page supplied it. On Linux, capture samples only while a Persephone window is focused. It does not
+  monitor clipboard changes in the background, can miss rapid copies, and does not provide the
+  Windows clipboard exclusion metadata. The section warns that occasionally-copied secrets may
 remain on disk in readable form; disable the feature or clear its history when that matters.
 
 ## Browser site permissions

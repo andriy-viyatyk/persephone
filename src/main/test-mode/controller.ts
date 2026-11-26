@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { parseApplicationProfile } from "../application-profile";
 import { getNodeHostEntryPath } from "../utils";
-import { isWindows } from "../../shared/platform";
+import { getPlatformFeature } from "../../shared/platform-features";
 import { chooseMcpPort } from "./ports";
 import { probeProfile, readProfileMcp, resolveProfileDirectory } from "./profile";
 import type { TestControllerArguments } from "./arguments";
@@ -22,6 +22,10 @@ export async function startTestController(profileArgs: ReturnType<typeof parseAp
     let host: UtilityProcess | undefined;
     let exitCode = 1;
     try {
+        if (options.desktop !== undefined) {
+            const availability = getPlatformFeature("desktop.virtualPlacement");
+            if (availability.available === false) throw new Error(`--desktop: ${availability.reason}`);
+        }
         // Switch to throwaway data synchronously, before the first await: Chromium starts its GPU and
         // network processes at ready, and they must never open a real profile's folder.
         temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), "persephone-test-controller-"));
@@ -33,7 +37,6 @@ export async function startTestController(profileArgs: ReturnType<typeof parseAp
         const mcp = options.attach ? await readProfileMcp(targetProfile, profileArgs.name) : { port: await chooseMcpPort(options.mcpPort) };
         await app.whenReady();
         if (options.desktop !== undefined) {
-            if (!isWindows) throw new Error("--desktop is supported only on Windows.");
             virtualDesktopManager.resolveSelector(options.desktop);
         }
         const configuration = {

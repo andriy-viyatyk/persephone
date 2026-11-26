@@ -13,6 +13,7 @@ import type { NativeDialogKind } from "../../native-dialog-tracker";
 import { TestWindowOperations } from "./test-window-operations";
 import { desktopAwareness } from "../../desktop-awareness";
 import { isWindows } from "../../../shared/platform";
+import { getPlatformFeature } from "../../../shared/platform-features";
 
 /**
  * The main process's half of the AiVision tree.
@@ -46,7 +47,7 @@ const WINDOW_MEMBERS: readonly IAiMember[] = [
     { name: "nativeDialog", kind: "property", node: true, summary: isWindows
         ? "Open native dialog state; dismiss cancels it."
         : "Open native dialog state; dismiss reports that native cancellation is unavailable." },
-    { name: "desktopVisible", kind: "property", summary: "Whether this window is shown, not minimized, and the session is unlocked; another virtual desktop is detectable only when a virtual-desktop probe is installed." },
+    { name: "desktopVisible", kind: "property", summary: "Whether this window is shown, not minimized, and the session is unlocked; Linux workspace visibility is not detected." },
 ];
 
 const WINDOWS_MEMBERS: readonly IAiMember[] = [
@@ -56,6 +57,11 @@ const WINDOWS_MEMBERS: readonly IAiMember[] = [
     { name: "createOrSelectNamedTestWindow", kind: "method", signature: "createOrSelectNamedTestWindow(name)", summary: "Web-app test runner: reuse a live named normal window or create and name one." },
     { name: "disposeTestWindow", kind: "method", signature: "disposeTestWindow(index, windowId)", summary: "Web-app test runner: dispose a window created by createTestWindow when its live identity still matches." },
 ];
+
+const virtualPlacementAvailability = getPlatformFeature("desktop.virtualPlacement");
+const desktopVisibilityHelp = virtualPlacementAvailability.available === false
+    ? `desktopVisible does not detect other workspaces (${virtualPlacementAvailability.reason})`
+    : "desktopVisible also checks whether a window is on the current virtual desktop.";
 
 const WINDOWS_HELP = `
 Persephone can have several windows. windows[i] is one window; set its writable name to give a
@@ -67,6 +73,7 @@ focus(), nativeDialog, persisted pages) are answered by the main process. native
 owned native dialogs${isWindows ? " and dismiss() cancels them" : "; native cancellation is unavailable off Windows"} without choosing or confirming a path. Anything deeper is answered by that
 window itself: prefix any path with "windows[i]." — windows[1].pages, windows[1].page.content,
 windows[1].helpSearch(...). A path without the prefix targets the main (first open) window.
+${desktopVisibilityHelp}
 `;
 
 interface IPersistedPageState {

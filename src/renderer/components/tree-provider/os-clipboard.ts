@@ -14,6 +14,7 @@ import { fpBasename } from "../../core/utils/file-path";
 import { hrefCompareKey } from "../../../shared/path-containment";
 import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
+import { isLinux } from "../../../shared/platform";
 
 /** Put N files/folders on the OS clipboard (Windows Explorer can paste them).
  *  `cut: true` marks them for move — pasting (here or in Explorer) relocates them. */
@@ -87,7 +88,12 @@ export async function pasteOsClipboardInto(
         } else if (move) {
             // Cut clipboard fully consumed — clear it so a second paste
             // doesn't fail on the now-moved sources (Explorer behavior).
-            await api.clipboardWriteFilePaths([], false);
+            const current = isLinux ? await api.clipboardReadFilePaths() : clip;
+            if (!isLinux || (current.dropEffect === clip.dropEffect &&
+                current.paths.length === clip.paths.length &&
+                current.paths.every((filePath, index) => filePath === clip.paths[index]))) {
+                await api.clipboardWriteFilePaths([], false);
+            }
         }
     } catch (err) {
         ui.notify(err?.message || t("menus.failedToPaste"), "warning");

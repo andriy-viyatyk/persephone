@@ -33,7 +33,7 @@ const MAIN_MEMBERS: readonly IAiMember[] = [
     { name: "script", kind: "property", node: true, summary: "Settings-gated main-process script execution." },
     { name: "watchers", kind: "property", node: true, summary: "Read-only bounded path-watch diagnostics." },
     { name: "unseenMode", kind: "property", node: true, summary: "Temporary process-wide control for animation and timer throttling while unseen." },
-    { name: "session", kind: "property", node: true, summary: "Current process-wide Windows session lock state." },
+    { name: "session", kind: "property", node: true, summary: "Current process-wide desktop session lock state." },
 ];
 
 const MAIN_HELP = "Main is process-wide. It exposes windows, session lock state, mcp, tor, boards, downloads, networkLog, runtime, read-only watchers diagnostics, the temporary unseenMode control, and the settings-gated script branch.";

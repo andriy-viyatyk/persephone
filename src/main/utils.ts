@@ -129,13 +129,22 @@ export function isValidOpenPath(filePath: string | undefined): boolean {
 export function launchOperands(argv: string[]): string[] {
     const { remainingArgs: raw } = parseApplicationProfile(stripTestInstanceOptions(argv.slice(1)));
     const operands: string[] = [];
+    // Under `electron <appPath>` the first positional argument is the app path. It is not always the first
+    // operand: Chromium moves switches such as `--board=<root>` ahead of it in a second instance's command line.
+    let skipAppPath = process.defaultApp;
     for (let index = 0; index < raw.length; index += 1) {
         if (raw[index] === "--board" && raw[index + 1]) {
             operands.push("--board", raw[index + 1]);
             index += 1;
-        } else if (!raw[index].startsWith("--")) operands.push(raw[index]);
+        } else if (raw[index].startsWith("--board=") && raw[index].length > "--board=".length) {
+            // The attached form survives Chromium's switch reordering in a second instance's command line.
+            operands.push("--board", raw[index].slice("--board=".length));
+        } else if (!raw[index].startsWith("--")) {
+            if (skipAppPath) skipAppPath = false;
+            else operands.push(raw[index]);
+        }
     }
-    return process.defaultApp ? operands.slice(1) : operands;
+    return operands;
 }
 
 /** Parse ordered launch operands using the caller's working directory for relative paths. */

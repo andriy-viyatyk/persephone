@@ -8,6 +8,7 @@ export const shellCatalog = {
     activeInAppMcpConnections: { message: { one: "{count} in-app agent connection", other: "{count} in-app agent connections" }, note: "Keep MCP unchanged as the protocol name; these connections come from board agents." },
     boardView: { message: "Board View" },
     boardShortcutFileType: { message: "Windows shortcut" },
+    boardShortcutLinuxFileType: { message: "Linux application launcher" },
     boardShortcutCreated: { message: "Created shortcut for {name}." },
     boardShortcutFailed: { message: "Could not create board shortcut: {error}" },
     boardShortcutVerificationFailed: { message: "Windows did not confirm the shortcut details." },

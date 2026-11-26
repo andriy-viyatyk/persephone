@@ -3,6 +3,7 @@ import { virtualDesktopManager, type ResolvedVirtualDesktop } from "../virtual-d
 import { desktopAwareness } from "../desktop-awareness";
 import { isTestInstance, parseTestInstanceOptions } from "./instance-options";
 import { errMessage } from "../../shared/utils";
+import { getPlatformFeature } from "../../shared/platform-features";
 
 /** Owns pre-show placement and activation suppression for an owned desktop-selected run. */
 export class DesktopPlacementService {
@@ -42,6 +43,12 @@ export class DesktopPlacementService {
         this.started = true;
         const options = parseTestInstanceOptions(process.argv.slice(1)).options;
         if (isTestInstance() && options?.desktop) {
+            const availability = getPlatformFeature("desktop.virtualPlacement");
+            if (availability.available === false) {
+                console.error(`[test-desktop] --test-desktop: ${availability.reason}`);
+                app.exit(1);
+                return;
+            }
             try {
                 this.target = virtualDesktopManager.resolveSelector(options.desktop);
             } catch (error) {
@@ -51,7 +58,7 @@ export class DesktopPlacementService {
             }
             app.on("browser-window-created", this.onBrowserWindowCreated);
         }
-        if (process.platform === "win32") desktopAwareness.setVirtualDesktopProbe({
+        if (getPlatformFeature("desktop.virtualPlacement").available) desktopAwareness.setVirtualDesktopProbe({
             isOnCurrentDesktop: (window) => {
                 try {
                     return virtualDesktopManager.isOnCurrentDesktop(window);

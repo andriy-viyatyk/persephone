@@ -7,12 +7,13 @@ summary: "Keep tests and Persephone agents working when the screen is locked, a 
 # Unattended runs
 
 Persephone can keep web-app tests drawing when nobody is watching the test window. This covers a
-locked Windows session, a window on another virtual desktop, and a minimized window. It does not
-make desktop-bound Windows operations available while locked.
+locked desktop session, a window on another Windows virtual desktop, and a minimized window. Linux
+workspace placement and visibility are not detected, and desktop-bound operations remain unavailable
+while locked.
 
 ## What Chromium changes when a window goes unseen
 
-A window that is already open when Windows locks the session or the user switches virtual desktops
+A window that is already open when the desktop session locks or, on Windows, the user switches virtual desktops
 can be marked hidden by Chromium. A minimized window is hidden too. Without unseen mode, animation
 frames stop, timers can fall to about one second, and screenshots may be stale. Chromium sometimes
 recovers on its own after roughly 14–48 seconds, but that recovery is inconsistent and should not
@@ -56,9 +57,10 @@ unseen-mode value and the available workarounds or limits. The event appears on 
 answered by a renderer. Calls on `main.*` and `windows[i].*` paths are answered by the main process
 and do not include that event block; use a page or app renderer call to receive it.
 
-Read `main.session.locked` for the current process-wide lock state. Read
-`windows[i].desktopVisible` for a particular window: it is false when Windows is locked, the window
-is minimized or hidden, or it is on another virtual desktop.
+Read `main.session.locked` for the current process-wide lock state. Lock state and event delivery
+depend on the desktop session. Read `windows[i].desktopVisible` for a particular window: it is false
+when the session is locked, the window is minimized or hidden, or (on Windows) it is on another
+virtual desktop. Linux workspace visibility is not detected.
 
 Use `{ requires: ["desktop"] }` for a test that performs an OS clipboard operation, opens a native
 file dialog, or depends on real desktop focus/input. The host evaluates this requirement
@@ -81,12 +83,12 @@ The first reason is used when `main.session.locked` is true. Otherwise, a false
 
 ## Choose a virtual desktop
 
-`--desktop <n|name>` opens all windows in an owned run on an existing Windows virtual desktop. A
+`--desktop <n|name>` is Windows-only. It opens all windows in an owned run on an existing Windows virtual desktop. A
 number is 1-based; a name must match exactly, ignoring case. Unknown desktops fail before the run
 starts and report the available numbered/name list, with a reminder to create one using
 **Win+Ctrl+D**. The option is not supported with `--attach`.
 
-Persephone moves its windows without activating them, so the user's current desktop does not switch.
+On Windows, Persephone moves its windows without activating them, so the user's current desktop does not switch. Linux does not support `--desktop` placement.
 The target desktop must already exist; create one with **Win+Ctrl+D**. On Windows 11 a native file
 dialog opens on the same desktop as its test window, so it does not interrupt the user, but nobody
 there can answer it. Keep tests that need a native dialog tagged `requires: ["desktop"]`.

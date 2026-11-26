@@ -79,13 +79,13 @@ dialogs").
 The `boards` namespace also exposes shortcut and window operations:
 
 - **`boards.createShortcut(boardRoot, opts?)`**
-  -> `Promise<{ linkPath: string } | null>`: create a Windows `.lnk` that launches the board in
-  its board-mode window. The root must be absolute, contain `board-manifest.json`, and be trusted
-  or bundled; an untrusted board is rejected with guidance to call `boards.registerBoard(root)`.
-  Without `opts.linkPath`, the existing Save dialog appears and cancellation returns `null`. Pass
-  an absolute `.lnk` `opts.linkPath` to skip the dialog; its parent directory must exist, and an
-  existing shortcut is refused unless `opts.overwrite` is `true`. The returned `linkPath` is the
-  resolved absolute destination. Failures reject to the caller without a UI notification.
+  -> `Promise<{ linkPath: string } | null>`: create a Windows `.lnk` or Linux `.desktop` board-mode
+  launcher. The root must be absolute, contain `board-manifest.json`, and be trusted or bundled;
+  untrusted boards are rejected with guidance to call `boards.registerBoard(root)`. Without
+  `opts.linkPath`, the Save dialog appears and cancellation returns `null`; Linux defaults to the
+  user applications. An explicit absolute `.lnk` (Windows) or `.desktop` (Linux) path skips the
+  dialog; its parent must exist, and existing files require `opts.overwrite: true`. Returns an
+  absolute path; failures reject without a UI notification.
 - **`boards.openBoardWindow(boardRoot)`**
   -> `Promise<void>`: create a visible board-mode window or focus the existing one for that root.
   The root must contain `board-manifest.json` and be trusted or bundled; this agent call

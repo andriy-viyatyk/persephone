@@ -2,6 +2,8 @@
 
 Ideas and future tasks not yet planned for implementation.
 
+- [ ] **Follow the OS light/dark theme, all platforms.**
+
 ## Follow-ups from EPIC-130 (editors follow file and folder moves)
 
 - [ ] **Follow moved video sources.** Pipe-backed video sources currently recover only when a

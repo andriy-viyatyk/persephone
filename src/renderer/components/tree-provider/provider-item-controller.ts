@@ -2,6 +2,7 @@ import type { ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
 import { app } from "../../api/app";
 import { ContextMenuEvent } from "../../api/events/events";
 import { api } from "../../../ipc/renderer/api";
+import { getPlatformFeature } from "../../../shared/platform-features";
 import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
 import type { MenuItem } from "../../uikit/Menu";
 import { copyPathsToOsClipboard } from "./os-clipboard";
@@ -162,7 +163,8 @@ export class ProviderItemController {
         // process until a real mouse button is released (see guardAppWindowDragStart in automation/mouse.ts).
         if (event.defaultPrevented) return false;
         const provider = this.options.provider();
-        if (!isLocalFileProvider(provider) || !this.options.canStartOsDrag(item)) return false;
+        if (!getPlatformFeature("desktop.fileDragOut").available ||
+            !isLocalFileProvider(provider) || !this.options.canStartOsDrag(item)) return false;
         const paths = this.dragItemsFor(item).map((target) => target.href);
         if (!paths.length) return false;
         event.preventDefault();

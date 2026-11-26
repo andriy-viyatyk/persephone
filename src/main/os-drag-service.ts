@@ -11,6 +11,8 @@
 
 import { app, nativeImage, WebContents } from "electron";
 import { existsSync } from "fs";
+import { isLinux, isWindows } from "../shared/platform";
+import { startLinuxFileDrag } from "./os-drag-service-linux";
 
 // 1x1 PNG — an ultimate fallback so `startDrag` never throws on an empty icon
 // (it rejects an empty NativeImage). Only used when `app.getFileIcon` fails,
@@ -18,10 +20,9 @@ import { existsSync } from "fs";
 const FALLBACK_ICON_DATA_URL =
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
-/** Start a native OS drag carrying `paths` as files. Win32-only; a no-op on
- *  other platforms and when no path exists on disk. */
+/** Start a native OS drag carrying `paths` as files on supported platforms. */
 export async function startOsFileDrag(sender: WebContents, paths: string[]): Promise<void> {
-    if (process.platform !== "win32") return;
+    if (!isWindows && !isLinux) return;
 
     const files = paths.filter((p) => {
         try {
@@ -37,12 +38,14 @@ export async function startOsFileDrag(sender: WebContents, paths: string[]): Pro
         icon = nativeImage.createFromDataURL(FALLBACK_ICON_DATA_URL);
     }
 
+    if (isLinux) {
+        startLinuxFileDrag(sender, files, icon);
+        return;
+    }
     // `files` overrides `file` when present; `file` is still required by the type.
-    sender.startDrag(
-        files.length > 1
-            ? { file: files[0], files, icon }
-            : { file: files[0], icon },
-    );
+    sender.startDrag(files.length > 1
+        ? { file: files[0], files, icon }
+        : { file: files[0], icon });
 }
 
 async function resolveIcon(filePath: string): Promise<Electron.NativeImage | null> {

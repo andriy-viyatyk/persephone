@@ -1,12 +1,10 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { createHash, randomUUID } from "node:crypto";
 import { app, clipboard, ClipboardItem, nativeImage, webContents } from "electron";
 import type {
     ClipboardDropEffect,
     ClipboardFlavor,
     ClipboardHistoryChanged,
-    ClipboardHistoryItem,
     ClipboardHistorySnapshot,
     ClipboardStatus,
 } from "../ipc/clipboard-ipc";
@@ -17,6 +15,9 @@ import { writeClipboardFiles } from "./clip-service";
 import { getSnipToolPath } from "./snip-service";
 import { openWindows } from "./open-windows";
 import { SidecarProcess } from "./sidecar-process";
+import { isLinux } from "../shared/platform";
+import { isLinuxClipboardHistoryRunning, startLinuxClipboardHistory, stopLinuxClipboardHistory } from "./clipboard-history-linux";
+import { persistClipboardSample, type ClipboardCapturedPayload, type ClipboardHistoryFileList, type ClipboardHistoryStoredItem } from "./clipboard-history-persistence";
 
 const READINESS_TIMEOUT_MS = 20_000;
 const PING_INTERVAL_MS = 1_000;
@@ -74,19 +75,14 @@ interface ClipboardPong {
     lastEmittedSequence: number | null;
 }
 
-interface ClipboardIndexItem extends ClipboardHistoryItem {
-    hash: string;
-}
+type ClipboardIndexItem = ClipboardHistoryStoredItem;
 
 interface ClipboardIndexFile {
     version: 1;
     items: ClipboardIndexItem[];
 }
 
-interface CapturedPayload {
-    flavor: ClipboardFlavor;
-    bytes: Buffer;
-}
+type CapturedPayload = ClipboardCapturedPayload;
 
 interface LoadedPayloads {
     bytes: Partial<Record<ClipboardFlavor, Buffer>>;
@@ -150,10 +146,11 @@ function getIndexPath(): string {
 }
 
 function getStatus(): ClipboardStatus {
+    const running = isLinux ? isLinuxClipboardHistoryRunning() : sidecar.isRunning;
     return {
         enabled,
-        running: sidecar.isRunning,
-        health,
+        running,
+        health: isLinux ? (lastError ? "error" : enabled ? "running" : "disabled") : health,
         monitoring: monitoringOwners.size > 0,
         ...(lastError ? { error: lastError } : {}),
     };
@@ -503,6 +500,21 @@ async function stagePayloads(id: string, payloads: CapturedPayload[]): Promise<R
     }
 }
 
+const historyPersistence = {
+    isEnabled: () => enabled,
+    maxItems: () => maxItems,
+    items: () => historyItems,
+    setItems: (items: ClipboardIndexItem[]) => { historyItems = items; },
+    stage: stagePayloads,
+    writeIndex,
+    deleteItem: deleteItemFiles,
+    primary: getPrimary,
+    preview: (payloads: CapturedPayload[], files: ClipboardHistoryFileList | null) => getPreview(payloads, files),
+    broadcast: broadcastHistory,
+    log,
+    removeFile,
+};
+
 async function captureChange(event: ClipboardChangeEvent): Promise<void> {
     if (!enabled || event.exclusion.excluded) return;
 
@@ -510,13 +522,7 @@ async function captureChange(event: ClipboardChangeEvent): Promise<void> {
     const payloads: CapturedPayload[] = [];
     let files: ClipboardFileListWire | null = null;
 
-    if (event.files && isValidFileList(event.files)) {
-        files = event.files;
-        payloads.push({
-            flavor: "files",
-            bytes: Buffer.from(files.paths.join("\r\n"), "utf8"),
-        });
-    }
+    if (event.files && isValidFileList(event.files)) files = event.files;
 
     let items: Electron.ClipboardItem[] = [];
     try {
@@ -556,44 +562,15 @@ async function captureChange(event: ClipboardChangeEvent): Promise<void> {
         }
     }
 
-    if (!payloads.length) return;
+    await persistClipboardSample(payloads, files, event.timestampMs, historyPersistence);
+}
 
-    const primary = getPrimary(payloads);
-    const primaryPayload = payloads.find((payload) => payload.flavor === primary);
-    if (!primaryPayload) return;
-
-    // The flavour is part of the identity: a file list is now stored as its plain paths, so
-    // copying a path as text would otherwise hash identically to copying the file itself and
-    // silently replace it in the history.
-    const hash = createHash("sha256").update(primary).update("\0").update(primaryPayload.bytes).digest("hex");
-    const duplicateItems = historyItems.filter((item) => item.hash === hash);
-    const id = randomUUID();
-    let payloadPaths: Record<ClipboardFlavor, string> | undefined;
-    try {
-        payloadPaths = await stagePayloads(id, payloads);
-        const nextItem: ClipboardIndexItem = {
-            id,
-            capturedAt: event.timestampMs,
-            primary,
-            preview: getPreview(payloads, files),
-            payloads: payloadPaths,
-            hash,
-            ...(files ? { dropEffect: files.dropEffect } : {}),
-        };
-        const duplicateIds = new Set(duplicateItems.map((item) => item.id));
-        const remaining = historyItems.filter((item) => !duplicateIds.has(item.id));
-        const nextItems = [nextItem, ...remaining];
-        const kept = nextItems.slice(0, maxItems);
-        await writeIndex(kept);
-        historyItems = kept;
-        await Promise.all([...duplicateItems, ...nextItems.slice(maxItems)].map(deleteItemFiles));
-        broadcastHistory("captured");
-    } catch (err) {
-        if (payloadPaths) {
-            await Promise.all(Object.values(payloadPaths).map(removeFile));
-        }
-        log(`Clipboard capture failed: ${errMessage(err)}`);
-    }
+export function captureLinuxClipboardSample(
+    payloads: Array<{ flavor: ClipboardFlavor; bytes: Buffer }>,
+    files: ClipboardFileListWire | null,
+    capturedAt: number,
+): Promise<void> {
+    return enqueue(() => persistClipboardSample(payloads, files, capturedAt, historyPersistence));
 }
 
 function markEmittedSequence(sequence: number): void {
@@ -788,11 +765,24 @@ async function setEnabledInternal(value: boolean, cap: number): Promise<Clipboar
 
     if (!value) {
         enabled = false;
-        await stopWatcher();
+        if (isLinux) {
+            stopLinuxClipboardHistory();
+            lastError = undefined;
+            broadcastStatus();
+        } else await stopWatcher();
         return getStatus();
     }
 
     enabled = true;
+    if (isLinux) {
+        lastError = undefined;
+        startLinuxClipboardHistory(captureLinuxClipboardSample, (message) => {
+            lastError = message;
+            broadcastStatus();
+        });
+        broadcastStatus();
+        return getStatus();
+    }
     if (sidecar.isRunning) return getStatus();
     return startWatcher();
 }
@@ -935,7 +925,7 @@ export function copyClipboardItem(id: string): Promise<boolean> {
 export function setClipboardHealthMonitoring(ownerId: number, active: boolean): ClipboardStatus {
     if (active) {
         registerOwner(ownerId);
-        startPingMonitoring();
+        if (!isLinux) startPingMonitoring();
     } else {
         unregisterOwner(ownerId);
     }
@@ -949,6 +939,16 @@ export function restartClipboard(cap: number): Promise<ClipboardStatus> {
         await ensureHistoryLoaded();
         if (await trimHistory()) broadcastHistory("removed");
         enabled = true;
+        if (isLinux) {
+            lastError = undefined;
+            stopLinuxClipboardHistory();
+            startLinuxClipboardHistory(captureLinuxClipboardSample, (message) => {
+                lastError = message;
+                broadcastStatus();
+            });
+            broadcastStatus();
+            return getStatus();
+        }
         stopPingMonitoring();
         await sidecar.stopAndWaitGracefully();
         return startWatcher();
@@ -956,6 +956,7 @@ export function restartClipboard(cap: number): Promise<ClipboardStatus> {
 }
 
 export function shutdownClipboard(): void {
+    if (isLinux) stopLinuxClipboardHistory();
     stopPingMonitoring();
     sidecar.stop();
     enabled = false;
