@@ -19,3 +19,6 @@ assets/boards/*/lib/** -text
 # Integration-test fixtures and seed are compared byte-for-byte: never convert line endings.
 integration-test/fixtures/** -text
 integration-test/seed/** -text
+
+# Shell scripts run in Linux (the VM, WSL, CI) from a Windows checkout: CRLF breaks bash.
+*.sh text eol=lf
