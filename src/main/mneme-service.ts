@@ -16,6 +16,7 @@ import { openWindows } from "./open-windows";
 import type { MnemeStatus } from "../ipc/contracts/mcp-mneme";
 import { SidecarProcess, SidecarStartResult } from "./sidecar-process";
 import { mcpEndpointUrl } from "../shared/mcp-endpoint";
+import { helperExecutableName } from "../shared/platform";
 import { getPlatformFeature } from "../shared/platform-features";
 
 const DEFAULT_PORT = 7700;
@@ -35,9 +36,9 @@ const sidecar = new SidecarProcess({
 
 function getMnemeExePath(): string {
     if (app.isPackaged) {
-        return path.join(path.dirname(process.execPath), "mneme.exe");
+        return path.join(path.dirname(process.execPath), helperExecutableName("mneme"));
     }
-    return path.join(__dirname, "../../mneme/target/release/mneme.exe");
+    return path.join(__dirname, "../../mneme/target/release", helperExecutableName("mneme"));
 }
 
 /**

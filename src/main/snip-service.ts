@@ -2,16 +2,17 @@ import { spawn } from "child_process";
 import { app, nativeImage } from "electron";
 import path from "path";
 import { openWindows } from "./open-windows";
+import { helperExecutableName } from "../shared/platform";
 import { getPlatformFeature } from "../shared/platform-features";
 
-/** Resolve the persephone-snip.exe path (also hosts the clipboard subcommands
+/** Resolve the persephone-snip helper path (also hosts the clipboard subcommands
  *  used by `clip-service.ts`. Packaged: beside persephone.exe; dev:
  *  the local cargo release build. */
 export function getSnipToolPath(): string {
     if (app.isPackaged) {
-        return path.join(path.dirname(process.execPath), "persephone-snip.exe");
+        return path.join(path.dirname(process.execPath), helperExecutableName("persephone-snip"));
     }
-    return path.join(__dirname, "../../snip-tool/target/release/persephone-snip.exe");
+    return path.join(__dirname, "../../snip-tool/target/release", helperExecutableName("persephone-snip"));
 }
 
 export async function startScreenSnip(hideWindows: boolean): Promise<string | null> {

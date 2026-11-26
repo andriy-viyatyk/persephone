@@ -3,7 +3,7 @@ name = "persephone-snip"
 version = "1.0.0"
 edition = "2021"
 
-[dependencies]
+[target.'cfg(windows)'.dependencies]
 png = "0.17"
 windows-sys = { version = "0.52", features = [
     "Win32_Foundation",

@@ -25,6 +25,37 @@ only changed files. Run `npm ci` again when `package-lock.json` changes.
 The Windows checkout uses CRLF line endings. `rsync` preserves them; this is fine for TypeScript
 and JavaScript, but shell scripts run in WSL need LF line endings.
 
+## Rust helpers
+
+Install Rust separately in both the WSL environment and the Ubuntu VM. The validated WSL setup
+used rustup's minimal profile, and the VM already had Rust installed. For a fresh environment in
+either one, install rustup as the normal Linux user:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --profile minimal
+```
+
+Ensure the Cargo bin directory is on the login-shell `PATH` (add this line to `~/.profile` if
+needed), then verify the toolchain:
+
+```bash
+export PATH="$HOME/.cargo/bin:$PATH"
+cargo --version
+```
+
+After syncing source into each `~/persephone` checkout, build both release helpers there:
+
+```bash
+cargo build --release --manifest-path mneme/Cargo.toml
+cargo build --release --manifest-path snip-tool/Cargo.toml
+```
+
+The development app looks for `mneme/target/release/mneme` and
+`snip-tool/target/release/persephone-snip`. Source sync excludes `target`, so build the helpers
+separately after syncing. The Linux snip helper currently exits with an unsupported-platform
+message for every invocation; the existing platform feature gates also keep snipping and the
+Mneme sidecar unavailable on Linux. Linux packaging is deferred to the release phase.
+
 ## Runtime dependencies
 
 Install the Electron runtime libraries, build tools, and fonts needed by the development build:

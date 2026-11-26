@@ -16,23 +16,33 @@
 //   sso-cookies <uri>        — Windows single sign-on cookies for a Microsoft
 //                              sign-in URI as one JSON line (see sso_cookies.rs)
 
+#[cfg(windows)]
 mod capture;
+#[cfg(windows)]
 mod clipboard;
+#[cfg(windows)]
 mod clipboard_watch;
+#[cfg(windows)]
 mod dialogs;
+#[cfg(windows)]
 mod overlay;
+#[cfg(windows)]
 mod sso_cookies;
 
 // clipboard-watch emits change events and health-check responses as JSON lines.
 
+#[cfg(windows)]
 use std::io::Write;
 
+#[cfg(windows)]
 #[link(name = "user32")]
 extern "system" {
     fn SetProcessDpiAwarenessContext(value: isize) -> i32;
 }
+#[cfg(windows)]
 const DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2: isize = -4;
 
+#[cfg(windows)]
 fn main() {
     match std::env::args().nth(1).as_deref() {
         Some("clipboard-read") => clipboard::read(),
@@ -45,6 +55,13 @@ fn main() {
     }
 }
 
+#[cfg(not(windows))]
+fn main() {
+    eprintln!("persephone-snip: not supported on this platform yet");
+    std::process::exit(1);
+}
+
+#[cfg(windows)]
 fn run_snip() {
     // Declare Per-Monitor DPI V2 awareness so that EnumDisplayMonitors,
     // GetDC, BitBlt, and CreateWindowExW all use physical pixel coordinates.
@@ -81,6 +98,7 @@ fn run_snip() {
 }
 
 /// Encode BGRA pixels as an RGB PNG.
+#[cfg(windows)]
 fn encode_png(bgra: &[u8], width: u32, height: u32) -> Vec<u8> {
     let pixel_count = (width as usize) * (height as usize);
     let mut rgb = Vec::with_capacity(pixel_count * 3);

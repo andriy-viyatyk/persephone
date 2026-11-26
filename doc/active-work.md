@@ -10,11 +10,11 @@ Overview of all active and planned epics and tasks.
 
 - **EPIC-215** — [Linux native helpers and media (multiplatform phase 3)](epics/EPIC-215.md)
   - [ ] US-2224: Capture mechanisms on GNOME Wayland — done, decisions in the epic
-  - [ ] US-2225: Linux builds of the Rust helpers
+  - [ ] [US-2225: Linux builds of the Rust helpers](tasks/US-2225-linux-rust-helpers/README.md)
   - [ ] US-2226: Mneme on Linux
   - [ ] US-2227: Screen snip on Linux
   - [ ] US-2228: System audio and meeting transcript on Linux
-  - [ ] US-2229: Hide clipboard history on Linux
+  - [ ] [US-2229: Hide clipboard history on Linux](tasks/US-2229-hide-clipboard-history-linux/README.md)
   - [ ] US-2230: Phase 3 exit run
 
 ## Planned
