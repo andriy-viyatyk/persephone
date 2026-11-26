@@ -2,6 +2,7 @@ import path from "node:path";
 import { isTestInstanceOption } from "../../ipc/test-host-protocol";
 import { normalizeWindowName } from "../window-names";
 import { errMessage } from "../../shared/utils";
+import { isAutomaticRequirement } from "../../shared/test-requirements";
 
 export interface TestControllerArguments {
     testPath: string;
@@ -179,7 +180,8 @@ export function parseTestControllerArguments(args: string[], cwd = process.cwd()
             withTags = value.split(",").map((tag) => tag.trim());
             if (withTags.some((tag) => !tag) || new Set(withTags).size !== withTags.length) throw new Error("--with requires unique non-empty comma-separated tags.");
             if (withTags.includes("launch")) throw new Error("--with does not accept the built-in launch requirement tag.");
-            if (withTags.includes("windows")) throw new Error("--with does not accept the automatic windows requirement tag.");
+            const automaticTag = withTags.find(isAutomaticRequirement);
+            if (automaticTag) throw new Error(`--with does not accept the automatic ${automaticTag} requirement tag.`);
         } else if (argument === "--timeout-scale" || argument.startsWith("--timeout-scale=")) {
             if (timeoutScaleSeen) throw new Error("Duplicate --timeout-scale option.");
             timeoutScaleSeen = true;

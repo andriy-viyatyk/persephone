@@ -1,7 +1,8 @@
 import { test } from "../../../lib/context.mjs";
 import { closePublishedSample, openPublishedBoard } from "../helpers.mjs";
 
-const requiresPublishedBoard = { requires: ["launch", "published-board-checkout"] };
+// "webgl": the game renders with WebGL2, which Linux test machines lack (src/shared/test-requirements.ts).
+const requiresPublishedBoard = { requires: ["launch", "published-board-checkout", "webgl"] };
 
 async function getGemKeepReadiness(editor) {
     return editor.evaluate(`() => {
