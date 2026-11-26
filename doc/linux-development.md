@@ -52,9 +52,10 @@ cargo build --release --manifest-path snip-tool/Cargo.toml
 
 The development app looks for `mneme/target/release/mneme` and
 `snip-tool/target/release/persephone-snip`. Source sync excludes `target`, so build the helpers
-separately after syncing. The Linux snip helper currently exits with an unsupported-platform
-message for every invocation; the existing platform feature gates also keep snipping and the
-Mneme sidecar unavailable on Linux. Linux packaging is deferred to the release phase.
+separately after syncing. On Linux, the snip helper's no-argument invocation opens the desktop
+Screenshot portal for an interactive capture; other subcommands remain unsupported. The portal
+response is read from its local file URI, and the helper attempts to remove that returned file.
+Linux packaging is deferred to the release phase.
 
 ## Runtime dependencies
 

@@ -27,7 +27,7 @@ const featureAvailability: Record<PlatformFeatureId, Record<PlatformSlot, boolea
     "desktop.fileAssociations": { win32: true, linux: false, darwin: false, unsupported: false },
     "desktop.defaultBrowser": { win32: true, linux: true, darwin: false, unsupported: false },
     "desktop.boardShortcut": { win32: true, linux: true, darwin: false, unsupported: false },
-    "screen.snip": { win32: true, linux: false, darwin: false, unsupported: false },
+    "screen.snip": { win32: true, linux: true, darwin: false, unsupported: false },
     "memory.mnemeSidecar": { win32: true, linux: false, darwin: false, unsupported: false },
     "desktop.virtualPlacement": { win32: true, linux: false, darwin: false, unsupported: false },
     "browser.windowsSso": { win32: true, linux: false, darwin: false, unsupported: false },

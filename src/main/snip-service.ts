@@ -45,6 +45,9 @@ export async function startScreenSnip(hideWindows: boolean): Promise<string | nu
                 if (code === 0 && chunks.length > 0) {
                     resolve(Buffer.concat(chunks));
                 } else {
+                    if (code !== 0) {
+                        console.error(`snip-tool exited with code ${code}`);
+                    }
                     resolve(null);
                 }
             });

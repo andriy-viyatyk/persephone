@@ -1,12 +1,10 @@
 // persephone-snip: Native screen snip tool + Windows file-clipboard helper.
 //
-// No arguments (default): captures all monitors, shows fullscreen overlays,
-// lets the user draw a selection rectangle, then writes the cropped PNG to
-// stdout.
-//   Exit codes: 0 — success (PNG written to stdout)
-//               1 — cancelled or error (nothing written)
+// No arguments (default): captures a screen selection and writes PNG bytes to
+// stdout. Windows uses fullscreen overlays; Linux uses the desktop Screenshot
+// portal. Cancellation exits 1 on Windows and exits 0 without output on Linux.
 //
-// Subcommands (US-807):
+// Windows-only subcommands (US-807):
 //   clipboard-read           — CF_HDROP file list + drop effect as JSON to stdout
 //   clipboard-write [--cut]  — set CF_HDROP from stdin path list (see clipboard.rs)
 //   clipboard-watch [--trusted-pid <pid>]
@@ -26,6 +24,8 @@ mod clipboard_watch;
 mod dialogs;
 #[cfg(windows)]
 mod overlay;
+#[cfg(target_os = "linux")]
+mod screenshot_linux;
 #[cfg(windows)]
 mod sso_cookies;
 
@@ -55,7 +55,20 @@ fn main() {
     }
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
+fn main() {
+    if std::env::args_os().len() != 1 {
+        eprintln!("persephone-snip: Linux supports only no-argument screen capture");
+        std::process::exit(1);
+    }
+
+    if let Err(error) = screenshot_linux::capture() {
+        eprintln!("persephone-snip: {error}");
+        std::process::exit(1);
+    }
+}
+
+#[cfg(not(any(windows, target_os = "linux")))]
 fn main() {
     eprintln!("persephone-snip: not supported on this platform yet");
     std::process::exit(1);

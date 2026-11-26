@@ -209,7 +209,10 @@ before capture begins, then Pause or Resume and Stop with the elapsed time. Clic
 service row to toggle it; the popover stays open so you can change several services at once. Mneme's Config &
 monitoring and root search editors are documented in [Mneme](../mneme.md), and MCP connection
 inspection is documented in [MCP Inspector](./mcp-inspector.md). The Snip actions open an Image View
-page after capture.
+page after capture. On GNOME, **Snip Screen** opens the interactive Screenshot portal picker. GNOME
+also saves the image under `~/Pictures/Screenshots/` and copies it to the clipboard; Persephone
+attempts to delete the returned screenshot file after reading it. If deletion fails, the helper
+warns on stderr and still opens the captured image. Other desktops may behave differently.
 
 The header's conditional controls are not errors when absent. Check the current state with
 `ui.elements` or `window.screen.snapshot()` before describing one. Use `ui.highlight` to point at a

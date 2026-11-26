@@ -17,6 +17,10 @@ windows-sys = { version = "0.52", features = [
     "Win32_Networking_WinInet",
 ] }
 
+[target.'cfg(target_os = "linux")'.dependencies]
+dbus = { version = "0.9", features = ["vendored"] }
+url = "2"
+
 [build-dependencies]
 winres = "0.1"
 
