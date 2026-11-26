@@ -208,7 +208,7 @@ Adjusted from the [runtime findings](multiplatform-2026-11/runtime-findings.md) 
 - Settings and i18n: platform-neutral labels, and Linux options in the terminal settings. The `appSettings.json`
   comments and defaults name `tor.exe`, `vlc.exe`, `pwsh`/`cmd` and `mneme.exe` (R-7).
 
-### Phase 3 — Native helpers and media (epic)
+### Phase 3 — Native helpers and media ([EPIC-215](../epics/EPIC-215.md))
 
 **Exit:** snip, system-audio transcript and mneme work on Ubuntu 26.04 (Wayland).
 
