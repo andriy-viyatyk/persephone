@@ -23,7 +23,7 @@ type PlatformSlot = "win32" | "linux" | "darwin" | "unsupported";
 export type PlatformFeatureRuntimeAvailability = Partial<Record<"desktop.tray" | "desktop.closeToTray", boolean>>;
 
 const featureAvailability: Record<PlatformFeatureId, Record<PlatformSlot, boolean>> = {
-    "terminal.launch": { win32: true, linux: false, darwin: false, unsupported: false },
+    "terminal.launch": { win32: true, linux: true, darwin: false, unsupported: false },
     "desktop.fileAssociations": { win32: true, linux: false, darwin: false, unsupported: false },
     "desktop.defaultBrowser": { win32: true, linux: false, darwin: false, unsupported: false },
     "desktop.boardShortcut": { win32: true, linux: false, darwin: false, unsupported: false },
@@ -31,7 +31,7 @@ const featureAvailability: Record<PlatformFeatureId, Record<PlatformSlot, boolea
     "memory.mnemeSidecar": { win32: true, linux: false, darwin: false, unsupported: false },
     "desktop.virtualPlacement": { win32: true, linux: false, darwin: false, unsupported: false },
     "browser.windowsSso": { win32: true, linux: false, darwin: false, unsupported: false },
-    "media.vlcAutoDetect": { win32: true, linux: false, darwin: false, unsupported: false },
+    "media.vlcAutoDetect": { win32: true, linux: true, darwin: false, unsupported: false },
     "desktop.tray": { win32: true, linux: false, darwin: false, unsupported: false },
     "desktop.closeToTray": { win32: true, linux: false, darwin: false, unsupported: false },
     "clipboard.files": { win32: true, linux: false, darwin: false, unsupported: false },

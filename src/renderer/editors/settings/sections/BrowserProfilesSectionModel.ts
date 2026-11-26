@@ -9,6 +9,7 @@ import { api } from "../../../../ipc/renderer/api";
 import type { BrowserPermissionDecisionEntry } from "../../../../ipc/browser-ipc";
 import { TAG_COLORS } from "../../../theme/palette-colors";
 import { t } from "../../../../shared/i18n/t";
+import { isLinux } from "../../../../shared/platform";
 
 export interface BrowserProfilesSectionProps {
     profiles: BrowserProfile[];
@@ -106,7 +107,9 @@ export class BrowserProfilesSectionModel extends TComponentModel<BrowserProfiles
     handleKeyDown = (event: KeyboardEvent) => { if (event.key === "Enter") this.handleAddProfile(); };
 
     handleBrowseTorExe = async () => {
-        const result = await api.showOpenFileDialog({ title: t("settings.selectTorExe"), filters: [{ name: t("settings.executableFiles"), extensions: ["exe"] }] });
+        const result = await api.showOpenFileDialog(isLinux
+            ? { title: t("settings.selectTorExecutable") }
+            : { title: t("settings.selectTorExe"), filters: [{ name: t("settings.executableFiles"), extensions: ["exe"] }] });
         if (result?.[0]) settings.set("tor.exe-path", result[0]);
     };
 

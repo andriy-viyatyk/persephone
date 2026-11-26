@@ -288,7 +288,6 @@ const existingPlatformChecks = {
     "src/main/open-windows.ts": 1,
     "src/main/os-drag-service.ts": 1,
     "src/main/permission-policy-service.ts": 3,
-    "src/main/terminal-launcher.ts": 1,
     "src/main/test-mode/controller.ts": 1,
     "src/main/test-mode/desktop-placement.ts": 1,
     "src/main/virtual-desktop-manager.ts": 2,

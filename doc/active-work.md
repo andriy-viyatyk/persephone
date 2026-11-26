@@ -13,12 +13,13 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-2212: Wayland or XWayland](tasks/US-2212-wayland-or-xwayland/README.md)
   - [ ] [US-2213: Window chrome, tray and close-to-tray](tasks/US-2213-linux-window-and-tray/README.md)
   - [ ] [US-2214: Single instance, file handoff and profiles](tasks/US-2214-linux-single-instance/README.md)
-  - [ ] US-2215: Terminal, VLC and Tor
+  - [ ] [US-2215: Terminal, VLC and Tor](tasks/US-2215-terminal-vlc-tor/README.md)
   - [ ] US-2216: Default browser and board shortcuts
   - [ ] US-2217: File clipboard, drag and drop, clipboard history
   - [ ] US-2218: Notifications, theme, lock and virtual desktops
   - [ ] US-2219: GNOME checks carried over from EPIC-213
   - [ ] US-2220: Phase 2 exit run
+  - [ ] US-2221: Hide the Windows website sign-in option on Linux (Browser Profiles shows `settings.windowsSsoExplanation`; gate the checkbox and help in `BrowserProfilesSection.ts` on the existing `browser.windowsSso` platform feature)
 
 ## Planned
 

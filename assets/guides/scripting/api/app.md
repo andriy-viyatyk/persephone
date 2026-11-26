@@ -139,10 +139,12 @@ const result = await res.json();
 Choose a route for each request. A routed request never falls back to a direct connection; it
 rejects if the route cannot be used. SOCKS5 sends the target host name to the proxy for DNS
 resolution, so host names are not looked up locally and `.onion` addresses work through Tor.
-The first Tor request can wait for the daemon to start and bootstrap (up to 90 seconds).
+The first Tor request can wait for the daemon to start and bootstrap (up to 90 seconds). On
+Linux, an empty `tor.exe-path` setting searches PATH for `tor`; on Windows, configure the setting
+with the Tor executable path.
 
 ```javascript
-// Use Persephone's Tor daemon; requires the tor.exe-path setting
+// Use Persephone's Tor daemon; Linux can detect tor from PATH when tor.exe-path is empty
 const throughTor = await app.fetch("https://check.torproject.org/api/ip", { tor: true });
 
 // Use an explicit SOCKS5 proxy (socks5h:// is also accepted)

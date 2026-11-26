@@ -3,10 +3,11 @@ import { settings } from "./settings";
 import { ui } from "./ui";
 import { errMessage } from "../../shared/utils";
 import { t } from "../../shared/i18n/t";
+import { isLinux } from "../../shared/platform";
 
 /** Open a terminal window rooted at `dirPath`, using the configured
  *  `terminal.command`. On first use (empty setting) the terminal is
- *  auto-detected (pwsh -> powershell -> cmd) and saved so the user can change
+ *  auto-detected and saved so the user can change
  *  it in Settings afterwards. */
 export async function openTerminalAt(dirPath: string): Promise<void> {
     try {
@@ -15,7 +16,7 @@ export async function openTerminalAt(dirPath: string): Promise<void> {
             command = await api.detectTerminal();
             if (command) settings.set("terminal.command", command);
         }
-        await api.openTerminal(dirPath, command || "powershell");
+        await api.openTerminal(dirPath, isLinux ? command : command || "powershell");
     } catch (err) {
         ui.notify(errMessage(err, t("api.failedToOpenTerminal")), "warning");
     }

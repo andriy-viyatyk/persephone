@@ -17,6 +17,7 @@ import { BrowserProfilesSectionModel, defaultBrowserProfilesSectionState, type B
 import { browserProfiles } from "../../../api/browser-profiles";
 import type { BrowserPermissionDecisionEntry } from "../../../../ipc/browser-ipc";
 import { t } from "../../../../shared/i18n/t";
+import { isLinux } from "../../../../shared/platform";
 import { listBrowserTranslationTargets } from "../../../api/translation/TranslationWorkflow";
 import { PathField } from "../fields/PathField";
 import { PortField } from "../fields/PortField";
@@ -331,17 +332,17 @@ class TorProfileRowView extends VanillaView<TorProfileRowProps> {
         this.root.append(this.exePanel);
         const exeTarget = document.createElement("div");
         exeTarget.style.display = "contents";
-        this.exePanel.append(settingsFieldLabel(t("settings.torExeLabel")), exeTarget);
+        this.exePanel.append(settingsFieldLabel(t(isLinux ? "settings.torExecutableLabel" : "settings.torExeLabel")), exeTarget);
         const exePath = this.child(new PathField({
             store: appSettingsStore as SettingsStore<string>,
             variant: "link-or-placeholder",
             id: "tor.exe-path",
-            title: t("settings.torExeLabel"),
-            emptyText: t("settings.notConfiguredValue"),
+            title: t(isLinux ? "settings.torExecutableLabel" : "settings.torExeLabel"),
+            emptyText: t(isLinux ? "settings.autoDetect" : "settings.notConfiguredValue"),
             browse: () => this.props.model.handleBrowseTorExe(),
             clear: this.props.model.handleClearTorExe,
-            clearLabel: t("settings.removeTorExePath"),
-            clearTitle: t("settings.removeTorExePath"),
+            clearLabel: t(isLinux ? "settings.removeTorExecutablePath" : "settings.removeTorExePath"),
+            clearTitle: t(isLinux ? "settings.removeTorExecutablePath" : "settings.removeTorExePath"),
             showPathTitle: true,
             host: exeTarget,
             fallback: "",

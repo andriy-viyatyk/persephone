@@ -15,6 +15,7 @@ import { errMessage } from "../shared/utils";
 import { applySessionProxy, lookupGeo } from "./session-proxy";
 import { onWebContentsGone } from "./webcontents-lifetime";
 import { isWindows } from "../shared/platform";
+import { resolveTorExecutable } from "./tor-executable";
 
 const TOR_BOOTSTRAP_TIMEOUT_MS = 90_000;
 const FETCH_IDLE_GRACE_MS = 60_000;
@@ -98,7 +99,9 @@ class TorService {
         this.clearFetchIdleTimer();
         this.activePartitions.add(partition);
         this.socksPort = socksPort;
-        this.torExePath = torExePath;
+        const resolved = resolveTorExecutable(torExePath);
+        if (!resolved.executable) return this.settleStart({ success: false, error: resolved.error }, partition);
+        this.torExePath = resolved.executable;
 
         // Tor already running — just configure the new partition
         if (this.sidecar.isRunning) {
@@ -108,7 +111,7 @@ class TorService {
 
         // Starts Tor, or joins an in-flight start/restart if one is pending —
         // either way the outcome is applied to this caller's partition.
-        const result = await this.sidecar.start(torExePath, [
+        const result = await this.sidecar.start(resolved.executable, [
             "-f",
             this.ensureTorrc(socksPort),
         ]);
@@ -162,7 +165,8 @@ class TorService {
     async acquireFetch(senderId: number, torExePath: string, socksPort: number): Promise<
         { success: true; socksPort: number } | { success: false; error: string }
     > {
-        if (!torExePath) return { success: false, error: "Tor is not configured: set tor.exe-path in Settings." };
+        const resolved = resolveTorExecutable(torExePath);
+        if (!resolved.executable) return { success: false, error: resolved.error ?? "Tor failed to start." };
         this.clearFetchIdleTimer();
         this.bumpLease(senderId, 1);
         if (this.sidecar.isRunning) return { success: true, socksPort: this.socksPort };
@@ -176,10 +180,10 @@ class TorService {
             return { success: true, socksPort: runningPort };
         }
         this.socksPort = socksPort;
-        this.torExePath = torExePath;
+        this.torExePath = resolved.executable;
         let result: { success: boolean; error?: string };
         try {
-            result = await this.sidecar.start(torExePath, ["-f", this.ensureTorrc(socksPort)]);
+            result = await this.sidecar.start(resolved.executable, ["-f", this.ensureTorrc(socksPort)]);
         } catch (error: unknown) {
             this.bumpLease(senderId, -1);
             return { success: false, error: errMessage(error, "Tor failed to start.") };

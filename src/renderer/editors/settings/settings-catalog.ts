@@ -1,6 +1,7 @@
 import type { MessageKey } from "../../../shared/i18n/en";
 import type { AppSettingsKey } from "../../api/settings-schema";
 import type { IOwnedView } from "../../uikit/shared/vanilla-view";
+import { isLinux } from "../../../shared/platform";
 
 export interface SettingsCatalogRow {
     readonly key: AppSettingsKey | "site-extensions";
@@ -42,7 +43,7 @@ export const SETTINGS_SECTION_HEADER_METADATA: Readonly<Record<string, SettingsS
     "voice-typing": { titleKey: "settings.voiceTypingSettingTitle", helpKey: "settings.voiceTypingSettingDescription", headerPlacement: "section" },
     "microphone-audio": { titleKey: "settings.microphoneTitle", helpKey: "settings.microphoneDescription", headerPlacement: "section" },
     clipboard: { titleKey: "settings.groupTitleClipboard", helpKey: "settings.clipboardDescription", headerPlacement: "section" },
-    terminal: { titleKey: "settings.groupTitleTerminal", helpKey: "settings.terminalDescription", headerPlacement: "section" },
+    terminal: { titleKey: "settings.groupTitleTerminal", helpKey: isLinux ? "settings.terminalLinuxDescription" : "settings.terminalDescription", headerPlacement: "section" },
     "file-search": { titleKey: "settings.groupTitleFileSearch", headerPlacement: "section" },
     "editor-behavior": { titleKey: "settings.groupTitleEditorBehavior", helpKey: "settings.editorBehaviorDescription", headerPlacement: "section" },
     "script-library": { titleKey: "settings.groupTitleScriptLibrary", helpKey: "settings.scriptLibraryDescription", headerPlacement: "section" },
@@ -154,12 +155,12 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         groupTitleKey: "settings.groupGeneral",
         id: "terminal",
         titleKey: "settings.groupTitleTerminal",
-        description: "Choose the command used by Open Terminal here.",
+        description: isLinux ? "Choose the executable used by Open Terminal here." : "Choose the command used by Open Terminal here.",
         elementName: "settings-section-terminal",
         panelName: "settings-panel-terminal",
         where: "Settings > General > Terminal",
         rows: [
-            { key: "terminal.command", label: "Terminal command", purpose: "The command used by Open Terminal here; empty auto-detects pwsh, powershell, or cmd." },
+            { key: "terminal.command", label: "Terminal command", purpose: isLinux ? "Executable name or absolute path used by Open Terminal here; empty detects the first installed terminal." : "The command used by Open Terminal here; empty auto-detects pwsh, powershell, or cmd." },
         ],
     },
     {
@@ -212,7 +213,7 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         panelName: "settings-panel-video-player",
         where: "Settings > Editors > Video Player",
         rows: [
-            { key: "vlc-path", label: "VLC path", purpose: "The vlc.exe path used for formats Chromium cannot decode; empty enables auto-detection." },
+            { key: "vlc-path", label: "VLC path", purpose: isLinux ? "The VLC executable path for formats Chromium cannot decode; empty searches PATH for vlc." : "The vlc.exe path used for formats Chromium cannot decode; empty enables auto-detection." },
             { key: "video-stream.port", label: "Video stream port", purpose: "The local port used by the video streaming server." },
         ],
     },
@@ -246,7 +247,7 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
             { key: "browser-default-bookmarks-file", label: "Default profile bookmarks", purpose: "The .link.json file holding bookmarks for the default browser profile." },
             { key: "browser-incognito-bookmarks-file", label: "Incognito bookmarks", purpose: "The separate .link.json bookmarks file used in incognito mode." },
             { key: "browser-windows-sso", label: "Windows single sign-on", purpose: "Send this device's Windows sign-in to Microsoft sign-in pages from browser profiles (not Incognito or Tor); off by default." },
-            { key: "tor.exe-path", label: "Tor executable", purpose: "The tor.exe path required for Browser (Tor) mode; empty disables it." },
+            { key: "tor.exe-path", label: "Tor executable", purpose: isLinux ? "The Tor executable for Browser (Tor) mode; empty searches PATH for tor." : "The tor.exe path required for Browser (Tor) mode; empty disables it." },
             { key: "tor.socks-port", label: "Tor SOCKS port", purpose: "The SOCKS proxy port used by Tor." },
             { key: "tor.bookmarks-file", label: "Tor bookmarks", purpose: "The .link.json bookmarks file used for Browser (Tor) mode." },
         ],

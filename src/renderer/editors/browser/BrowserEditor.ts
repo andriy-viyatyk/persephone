@@ -52,6 +52,7 @@ import { BrowserPageLinkOpener } from "./BrowserPageLinkOpener";
 import { fs as appFs } from "../../api/fs";
 import type { IAudibleEditor } from "../base/audible-editor";
 import { BrowserTestPowerAdoption } from "./BrowserTestPowerAdoption";
+import { isWindows } from "../../../shared/platform";
 
 export interface BrowserNewOptions { profileName?: string; incognito?: boolean; tor?: boolean; url?: string; openedByAgent?: boolean; }
 interface BrowserRestoreOptions extends EditorRestoreOptions { retryTorOnFailure?: boolean; }
@@ -69,13 +70,15 @@ export class BrowserEditor extends EditorModel<
     static async createNew(options: BrowserNewOptions = {}): Promise<BrowserNewResult> {
         if (options.tor) {
             const torPath = settings.get("tor.exe-path");
-            if (!torPath) return { refused: t("browser.browserTorNeedsExe") };
-            if (!(await appFs.exists(torPath))) return { refused: t("browser.browserTorExeNotFound", { path: torPath }) };
+            if (isWindows) {
+                if (!torPath) return { refused: t("browser.browserTorNeedsExe") };
+                if (!(await appFs.exists(torPath))) return { refused: t("browser.browserTorExeNotFound", { path: torPath }) };
+            }
         }
         const editor = new BrowserEditor(new TComponentState(getDefaultBrowserPageState()));
         try {
             editor.configureMode(options); editor.applyRememberedSearchEngine();
-            if (options.url) editor.navigate(options.url);
+            if (options.url && !options.tor) editor.navigate(options.url);
             await editor.restore({ retryTorOnFailure: true });
             const networkError = editor.state.get().networkError;
             if (networkError) throw new Error(t("browser.browserProxyOpenFailed", { error: networkError }));

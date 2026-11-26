@@ -25,7 +25,11 @@ export async function showBrowserPage(
     }
     const { editor } = result;
     const page = model.lifecycle.addPage(editor);
-    if (options?.tor) void editor.tor.init();
+    if (options?.tor) {
+        void editor.tor.init().then((result) => {
+            if (result.success && options.url) editor.navigate(options.url);
+        });
+    }
     return page;
 }
 

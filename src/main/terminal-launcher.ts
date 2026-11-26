@@ -1,5 +1,7 @@
 import { spawn, execFileSync } from "child_process";
 import fs from "node:fs";
+import { isLinux, isWindows } from "../shared/platform";
+import { detectLinuxTerminal, openLinuxTerminalAt } from "./linux-terminal-launcher";
 
 /** Whether an executable resolves on PATH (Windows `where`). */
 function commandExists(name: string): boolean {
@@ -11,8 +13,10 @@ function commandExists(name: string): boolean {
     }
 }
 
-/** Pick the best available terminal: pwsh (PowerShell 7) -> powershell (5.1) -> cmd. */
+/** Pick the first available terminal for the current supported platform. */
 export function detectTerminal(): string {
+    if (isLinux) return detectLinuxTerminal();
+    if (!isWindows) return "";
     if (commandExists("pwsh")) return "pwsh";
     if (commandExists("powershell")) return "powershell";
     return "cmd";
@@ -24,11 +28,10 @@ function commandKind(command: string): string {
     return base.toLowerCase().replace(/\.exe$/, "");
 }
 
-/** Open a new terminal window with `dirPath` as its working directory.
- *  win32-only; a no-op on other platforms. `command` is a command name or path
- *  (pwsh / powershell / cmd / wt, or a full path). */
-export function openTerminalAt(dirPath: string, command: string): void {
-    if (process.platform !== "win32") return;
+/** Open a new terminal window with `dirPath` as its working directory. */
+export function openTerminalAt(dirPath: string, command: string): void | Promise<void> {
+    if (isLinux) return openLinuxTerminalAt(dirPath, command);
+    if (!isWindows) return;
 
     if (!dirPath || !fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) {
         throw new Error(`Not a folder: ${dirPath}`);

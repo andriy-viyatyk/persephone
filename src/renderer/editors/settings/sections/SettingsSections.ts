@@ -1,22 +1,20 @@
 import { app } from "../../../api/app";
 import { settings } from "../../../api/settings";
-import { settingDefault, settingOptions, settingRange } from "../../../api/settings-schema";
+import { settingDefault, settingOptions } from "../../../api/settings-schema";
 import { ui } from "../../../api/ui";
-import { api } from "../../../../ipc/renderer/api";
 import { createComponentModelDriver, TComponentModel, type ComponentModelDriver } from "../../../core/state/model";
 import { ButtonView } from "../../../uikit/Button/ButtonView";
 import { DotView } from "../../../uikit/Dot/DotView";
 import { SubtreeSwap } from "../../../uikit/shared/subtree-swap";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { createDepsGate, type DepsGate } from "../../../uikit/shared/deps-gate";
-import { createSectionRoot, helpLabel, panel, settingsFieldLabel, text } from "./settings-native";
+import { createSectionRoot, helpLabel, panel, text } from "./settings-native";
 import { t } from "../../../../shared/i18n/t";
 import { createLibraryPathField, PathField } from "../fields/PathField";
 import { appSettingsStore } from "../fields/settings-store";
 import type { SettingsStore } from "../fields/settings-store";
 import { CheckboxField } from "../fields/CheckboxField";
 import { ChoiceField } from "../fields/ChoiceField";
-import { PortField } from "../fields/PortField";
 import { createShortcutCaptureState, ShortcutField } from "../fields/ShortcutField";
 import "../../../uikit/Button/Button.css";
 import "../../../uikit/Dot/Dot.css";
@@ -24,14 +22,6 @@ import "../../../uikit/IconButton/IconButton.css";
 
 const LINK_ITEM_LABELS = ["settings.openDefaultOsBrowser", "settings.openInternalBrowser"] as const;
 const LINK_ITEMS = settingOptions("link-open-behavior").map((value, index) => ({ value, key: LINK_ITEM_LABELS[index] }));
-
-const TERMINAL_ITEMS: readonly { value: string; key: "settings.autoDetectTerminal" | "settings.powershell7" | "settings.windowsPowershell" | "settings.commandPrompt" | "settings.windowsTerminal" }[] = [
-    { value: "", key: "settings.autoDetectTerminal" },
-    { value: "pwsh", key: "settings.powershell7" },
-    { value: "powershell", key: "settings.windowsPowershell" },
-    { value: "cmd", key: "settings.commandPrompt" },
-    { value: "wt", key: "settings.windowsTerminal" },
-];
 
 const voiceTypingChoiceStore: SettingsStore<string> = {
     get: (id) => {
@@ -282,65 +272,6 @@ export function createScriptLibrarySection(): LibraryPathSectionView {
         reset: () => settings.set("script-library.path", ""),
         clearLabel: t("settings.unlink"),
     });
-}
-
-export class VideoPlayerSectionView extends VanillaView<Record<string, never>> {
-    public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
-
-    protected onMount(): void {
-        const outer = panel({ direction: "column", rounded: "sm", background: "dark" });
-        const pathRow = panel({ direction: "row", align: "center", gap: "md", paddingTop: "xs", paddingRight: "md", paddingBottom: "sm", paddingLeft: "xxl" });
-        pathRow.append(settingsFieldLabel(t("settings.vlcPathLabel")));
-        const pathField = this.child(new PathField({
-            store: appSettingsStore as SettingsStore<string>,
-            variant: "link-or-placeholder",
-            id: "vlc-path",
-            title: t("settings.vlcPathLabel"),
-            emptyText: t("settings.autoDetect"),
-            browse: this.handleBrowseVlc,
-            clear: () => settings.set("vlc-path", ""),
-            clearLabel: t("settings.removeVlcPath"),
-            fallback: "",
-        }));
-        pathRow.append(pathField.root);
-        pathField.mount();
-        const portRow = panel({ direction: "row", align: "center", gap: "md", paddingTop: "xs", paddingRight: "md", paddingBottom: "sm", paddingLeft: "xxl" });
-        portRow.append(settingsFieldLabel(t("settings.streamPortLabel")));
-        const portField = this.child(new PortField({
-            store: appSettingsStore as SettingsStore<number>,
-            id: "video-stream.port",
-            range: settingRange("video-stream.port"),
-            width: 56,
-            fallback: settings.get("video-stream.port"),
-        }));
-        portRow.append(portField.root);
-        portField.mount();
-        outer.append(pathRow, portRow);
-        this.root.append(outer);
-    }
-
-    private readonly handleBrowseVlc = async (): Promise<void> => {
-        const result = await api.showOpenFileDialog({ title: t("settings.selectVlcExe"), filters: [{ name: t("settings.executableFiles"), extensions: ["exe"] }] });
-        if (result?.[0]) settings.set("vlc-path", result[0]);
-    };
-}
-
-export class TerminalSectionView extends VanillaView<Record<string, never>> {
-    public constructor(props: Record<string, never>) { super(props, createSectionRoot("settings-section")); }
-
-    protected onMount(): void {
-        const host = panel({ maxWidth: 360 });
-        const field = this.child(new ChoiceField({
-            store: appSettingsStore as SettingsStore<string>,
-            id: "terminal.command",
-            items: TERMINAL_ITEMS.map((item) => ({ value: item.value, label: t(item.key) })),
-            ariaLabel: t("settings.groupTitleTerminal"),
-            keepUnknownValue: true,
-        }));
-        host.append(field.root);
-        field.mount();
-        this.root.append(host);
-    }
 }
 
 export class VoiceTypingSettingsSectionView extends VanillaView<Record<string, never>> {

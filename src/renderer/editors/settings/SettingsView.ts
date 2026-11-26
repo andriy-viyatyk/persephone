@@ -29,10 +29,10 @@ import {
     GitIntegrationSectionView,
     LinkBehaviorSectionView,
     createScriptLibrarySection,
-    TerminalSectionView,
-    VideoPlayerSectionView,
     VoiceTypingSettingsSectionView,
 } from "./sections/SettingsSections";
+import { TerminalSectionView } from "./sections/TerminalSection";
+import { VideoPlayerSectionView } from "./sections/VideoPlayerSection";
 import { WindowBehaviorSectionView } from "./sections/WindowBehaviorSection";
 import { helpHeader, sectionTitle } from "./sections/settings-native";
 import "./settings.css";
