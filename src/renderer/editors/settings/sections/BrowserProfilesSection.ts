@@ -18,6 +18,7 @@ import { browserProfiles } from "../../../api/browser-profiles";
 import type { BrowserPermissionDecisionEntry } from "../../../../ipc/browser-ipc";
 import { t } from "../../../../shared/i18n/t";
 import { isLinux } from "../../../../shared/platform";
+import { getPlatformFeature } from "../../../../shared/platform-features";
 import { listBrowserTranslationTargets } from "../../../api/translation/TranslationWorkflow";
 import { PathField } from "../fields/PathField";
 import { PortField } from "../fields/PortField";
@@ -517,18 +518,21 @@ export class BrowserProfilesSectionView extends VanillaView<Record<string, never
         addPanel.append(colorPanel);
         this.root.append(addPanel);
 
-        const ssoPanel = panel({ direction: "row", align: "center", paddingTop: "lg" });
-        this.windowsSso = this.child(new CheckboxField({
-            store: appSettingsStore as SettingsStore<boolean>,
-            id: "browser-windows-sso",
-            label: t("settings.allowWindowsSso"),
-        }));
-        ssoPanel.append(
-            this.windowsSso.root,
-            helpIcon(t("settings.allowWindowsSso"), t("settings.windowsSsoExplanation"), (cleanup) => this.own(cleanup)).root,
-        );
-        this.windowsSso.mount();
-        this.root.append(ssoPanel);
+        // Windows website sign-in has no Linux counterpart; the option is not offered there (EPIC-214 decision 4).
+        if (getPlatformFeature("browser.windowsSso").available) {
+            const ssoPanel = panel({ direction: "row", align: "center", paddingTop: "lg" });
+            this.windowsSso = this.child(new CheckboxField({
+                store: appSettingsStore as SettingsStore<boolean>,
+                id: "browser-windows-sso",
+                label: t("settings.allowWindowsSso"),
+            }));
+            ssoPanel.append(
+                this.windowsSso.root,
+                helpIcon(t("settings.allowWindowsSso"), t("settings.windowsSsoExplanation"), (cleanup) => this.own(cleanup)).root,
+            );
+            this.windowsSso.mount();
+            this.root.append(ssoPanel);
+        }
 
         driver.mount();
 

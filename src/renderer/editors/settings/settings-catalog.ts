@@ -2,6 +2,7 @@ import type { MessageKey } from "../../../shared/i18n/en";
 import type { AppSettingsKey } from "../../api/settings-schema";
 import type { IOwnedView } from "../../uikit/shared/vanilla-view";
 import { isLinux } from "../../../shared/platform";
+import { getPlatformFeature } from "../../../shared/platform-features";
 
 export interface SettingsCatalogRow {
     readonly key: AppSettingsKey | "site-extensions";
@@ -246,7 +247,9 @@ export const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
             { key: "browser-translate-target", label: "Translate pages into", purpose: "Target language for browser page translation; app language follows the active application language." },
             { key: "browser-default-bookmarks-file", label: "Default profile bookmarks", purpose: "The .link.json file holding bookmarks for the default browser profile." },
             { key: "browser-incognito-bookmarks-file", label: "Incognito bookmarks", purpose: "The separate .link.json bookmarks file used in incognito mode." },
-            { key: "browser-windows-sso", label: "Windows single sign-on", purpose: "Send this device's Windows sign-in to Microsoft sign-in pages from browser profiles (not Incognito or Tor); off by default." },
+            ...(getPlatformFeature("browser.windowsSso").available
+                ? [{ key: "browser-windows-sso", label: "Windows single sign-on", purpose: "Send this device's Windows sign-in to Microsoft sign-in pages from browser profiles (not Incognito or Tor); off by default." } satisfies SettingsCatalogRow]
+                : []),
             { key: "tor.exe-path", label: "Tor executable", purpose: isLinux ? "The Tor executable for Browser (Tor) mode; empty searches PATH for tor." : "The tor.exe path required for Browser (Tor) mode; empty disables it." },
             { key: "tor.socks-port", label: "Tor SOCKS port", purpose: "The SOCKS proxy port used by Tor." },
             { key: "tor.bookmarks-file", label: "Tor bookmarks", purpose: "The .link.json bookmarks file used for Browser (Tor) mode." },
