@@ -65,6 +65,7 @@ export class ProxyTreeProvider implements ITreeProvider {
     private readonly requests = new Set<AbortController>();
     private readonly unsubscribeAvailability: () => void;
     private lastAcceptedRoot: string | undefined;
+    private rootReadOnly = false;
     private disposed = false;
     private clipboardSourceFactory?: () => ITreeProvider;
 
@@ -124,23 +125,24 @@ export class ProxyTreeProvider implements ITreeProvider {
     get writable(): boolean {
         const accepted = this.currentAcceptedProvider();
         if (!accepted) return false;
+        if (this.rootReadOnly) return false;
         const capabilities = moduleService.providerTreeCapabilities(accepted.boardRoot, this.type);
         return moduleService.providerWritable(accepted.boardRoot, this.type) === true
             || capabilities?.mkdir === true || capabilities?.rename === true || capabilities?.delete === true;
     }
 
     get mkdir(): ITreeProvider["mkdir"] {
-        return this.hasCapability("mkdir") ? (path) => this.runWrite("treeMkdir", path) : undefined;
+        return this.writable && this.hasCapability("mkdir") ? (path) => this.runWrite("treeMkdir", path) : undefined;
     }
 
     get rename(): ITreeProvider["rename"] {
-        return this.hasCapability("rename")
+        return this.writable && this.hasCapability("rename")
             ? (oldPath, newPath) => this.runWrite("treeRename", oldPath, newPath)
             : undefined;
     }
 
     get deleteItem(): ITreeProvider["deleteItem"] {
-        return this.hasCapability("delete") ? (href) => this.deleteByHref(href) : undefined;
+        return this.writable && this.hasCapability("delete") ? (href) => this.deleteByHref(href) : undefined;
     }
 
     async list(path: string): Promise<ILink[]> {
@@ -153,6 +155,7 @@ export class ProxyTreeProvider implements ITreeProvider {
         if (!active || !BoardRoot.tryFrom(active.boardRoot)?.equals(accepted.boardRoot)) {
             throw new ProviderUnavailableError(this.type, providerDeclarationFor(this.type));
         }
+        this.recordRootReadOnly(path, result.readOnly);
         const items = result.items;
         for (const item of items) {
             const scheme = schemeOf(item.href);
@@ -206,6 +209,7 @@ export class ProxyTreeProvider implements ITreeProvider {
     private async listTransferChildren(path: string): Promise<TransferEntry[]> {
         const accepted = await this.requireAcceptedProvider();
         const result = await this.request(accepted, "treeList", path);
+        if (result.ok && result.operation === "treeList") this.recordRootReadOnly(path, result.readOnly);
         if (!result.ok || result.operation !== "treeList" || result.truncated) {
             throw new Error(`Board tree listing is incomplete at "${path}".`);
         }
@@ -431,8 +435,12 @@ export class ProxyTreeProvider implements ITreeProvider {
 
     private hasCapability(capability: "mkdir" | "rename" | "delete"): boolean {
         const accepted = this.currentAcceptedProvider();
-        return accepted !== undefined
+        return this.writable && accepted !== undefined
             && moduleService.providerTreeCapabilities(accepted.boardRoot, this.type)?.[capability] === true;
+    }
+
+    private recordRootReadOnly(path: string, readOnly: boolean | undefined): void {
+        if (path === this.rootPath) this.rootReadOnly = readOnly === true;
     }
 
     private async runWrite(
@@ -442,7 +450,7 @@ export class ProxyTreeProvider implements ITreeProvider {
     ): Promise<void> {
         const capability = operation === "treeMkdir" ? "mkdir" : "rename";
         const accepted = await this.requireAcceptedProvider();
-        if (moduleService.providerTreeCapabilities(accepted.boardRoot, this.type)?.[capability] !== true) {
+        if (!this.writable || moduleService.providerTreeCapabilities(accepted.boardRoot, this.type)?.[capability] !== true) {
             throw new ProviderUnavailableError(this.type, providerDeclarationFor(this.type));
         }
         await this.request(accepted, operation, path, newPath);
@@ -452,7 +460,7 @@ export class ProxyTreeProvider implements ITreeProvider {
         const path = this.hrefToPath.get(hrefKey(href));
         if (!path) throw new Error(`Cannot delete unknown board tree href "${href}".`);
         const accepted = await this.requireAcceptedProvider();
-        if (moduleService.providerTreeCapabilities(accepted.boardRoot, this.type)?.delete !== true) {
+        if (!this.writable || moduleService.providerTreeCapabilities(accepted.boardRoot, this.type)?.delete !== true) {
             throw new ProviderUnavailableError(this.type, providerDeclarationFor(this.type));
         }
         await this.request(accepted, "treeDelete", path);

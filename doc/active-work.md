@@ -14,8 +14,9 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-2253: Drop across trees](tasks/US-2253-drop-across-trees/README.md)
   - [ ] [US-2254: Copy/paste across trees](tasks/US-2254-paste-across-trees/README.md)
   - [ ] [US-2255: Download to…](tasks/US-2255-download-to/README.md)
-  - [ ] US-2256: Test board and UI tests
+  - [ ] [US-2256: Test board and UI tests](tasks/US-2256-transfer-ui-tests/README.md)
   - [ ] US-2257: Guides
+  - [ ] US-2258: Per-connection read-only board trees (a board flags a read-only tree in its root listing; write actions hidden)
 
 ## Planned
 

@@ -9,6 +9,7 @@ import { openUrlDialogId } from "../../../api/dialogs/OpenUrlDialog";
 import { passwordDialogId } from "../../../api/dialogs/PasswordDialog";
 import { registerToolsetDialogId } from "../../../api/dialogs/RegisterToolsetDialog";
 import { textDialogId } from "../../../api/dialogs/TextDialog";
+import { treeTransferConflictDialogId } from "../../../api/dialogs/TreeTransferConflictDialog";
 import { torInfoDialogId } from "../../../api/dialogs/TorInfoDialog";
 import { trustBoardDialogId } from "../../../api/dialogs/TrustBoardDialog";
 import { dialogsState } from "../../../api/dialogs/dialogs-state";
@@ -26,6 +27,7 @@ import { OpenUrlDialogAdapter } from "./open-url";
 import { PasswordDialogAdapter } from "./password";
 import { RegisterToolsetDialogAdapter } from "./register-toolset";
 import { TextDialogAdapter } from "./text";
+import { TreeTransferConflictDialogAdapter } from "./tree-transfer-conflict";
 import { TorInfoDialogAdapter } from "./tor-info";
 import { TrustBoardDialogAdapter } from "./trust-board";
 import { UnknownDialogAdapter } from "./unknown";
@@ -37,6 +39,7 @@ const adapterFactories = new Map<symbol, AdapterFactory>([
     [confirmationDialogId as unknown as symbol, (entry) => new ConfirmationDialogAdapter(entry)],
     [inputDialogId as unknown as symbol, (entry) => new InputDialogAdapter(entry)],
     [textDialogId as unknown as symbol, (entry) => new TextDialogAdapter(entry)],
+    [treeTransferConflictDialogId as unknown as symbol, (entry) => new TreeTransferConflictDialogAdapter(entry)],
     [passwordDialogId as unknown as symbol, (entry) => new PasswordDialogAdapter(entry)],
     [commitDialogId as unknown as symbol, (entry) => new CommitDialogAdapter(entry)],
     [createBoardDialogId as unknown as symbol, (entry) => new CreateBoardDialogAdapter(entry)],

@@ -417,7 +417,9 @@ function requestTree(
         }
         if (message.operation === "treeList"
             && (!Array.isArray((value as { items?: unknown }).items)
-                || typeof (value as { truncated?: unknown }).truncated !== "boolean")) {
+                || typeof (value as { truncated?: unknown }).truncated !== "boolean"
+                || ((value as { readOnly?: unknown }).readOnly !== undefined
+                    && typeof (value as { readOnly?: unknown }).readOnly !== "boolean"))) {
             throw codedError("provider-invalid-result", "Tree list response was malformed.");
         }
         if (message.operation === "treeStat") {

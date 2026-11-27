@@ -72,7 +72,7 @@ export async function createNewFolder(context: ItemCrudContext, directory: strin
 
 export async function renameItem(context: ItemCrudContext, item: ITreeProviderItem): Promise<void> {
     const { provider } = context;
-    if (!provider.rename) return;
+    if (!provider.writable || !provider.rename) return;
 
     const inputResult = await ui.input(t("menus.enterNewName"), {
         title: item.isDirectory ? t("menus.renameFolder") : t("menus.renameFile"),
@@ -99,7 +99,7 @@ export async function deleteItemAction(
     item: ITreeProviderItem,
 ): Promise<void> {
     const { provider } = context;
-    if (!provider.deleteItem) return;
+    if (!provider.writable || !provider.deleteItem) return;
 
     const button = await ui.confirm(
         t("menus.deleteItemConfirmation", { title: item.title }),

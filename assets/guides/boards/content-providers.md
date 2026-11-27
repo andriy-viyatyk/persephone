@@ -44,7 +44,11 @@ its declaration:
 Register the tree from the declared module service with `persephone.treeProviders.register()`.
 The type must be declared with `tree: true`; Persephone refuses tree registration for other types.
 `list()` and `stat()` are required. `list(config, path, { signal })` returns
-`{ items, truncated }`. Each item has a unique single-segment `name`, its child `path`, an `href`
+`{ items, truncated, readOnly? }`. Set `readOnly: true` when listing a folder on a connection
+that cannot be changed. Persephone applies the flag when it appears in the tree's root listing:
+write menus, Cut, Paste, and drop targets are disabled for that tree, while Copy and Download to…
+remain available. The flag can change when the root is listed again, and the service must still
+reject writes for read-only connections. Each item has a unique single-segment `name`, its child `path`, an `href`
 using one of the board's declared schemes, and an `isDirectory` flag; `size` and ISO `mtime` are
 optional. `stat(config, path, { signal })` returns `{ exists, isDirectory, size?, mtime? }`.
 Optional `mkdir(config, path)`, `rename(config, oldPath, newPath)`, and `delete(config, path)`

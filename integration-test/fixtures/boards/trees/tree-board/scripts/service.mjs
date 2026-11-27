@@ -38,6 +38,15 @@ function createSeed() {
     addDirectory("/_test/fail/nested");
     addFile("/_test/fail/nested/retry.txt", "The second nested listing succeeds.\n");
     addDirectory("/_test/truncated");
+    addDirectory("/_test/conflicts");
+    addDirectory("/_test/conflicts/payload");
+    addFile("/_test/conflicts/payload/first.txt", "fixture first source\n");
+    addFile("/_test/conflicts/payload/second.txt", "fixture second source\n");
+    addFile("/_test/empty.bin", new Uint8Array());
+    const large = new Uint8Array(5 * 1024 * 1024 + 37);
+    for (let index = 0; index < large.length; index++) large[index] = (index * 31 + 17) % 256;
+    tree.set("/_test/large.bin", { isDirectory: false, content: large });
+    addFile("/_test/read-fails.bin", "This path fails while being read.\n");
     return tree;
 }
 
@@ -83,11 +92,15 @@ function treeItems(config, path, entries) {
 }
 
 for (const connection of ["a", "b", "ro"]) connections.set(connection, createSeed());
+connections.get("a").set("/_test/drag-source.txt", { isDirectory: false, content: new TextEncoder().encode("drag source from a\n") });
+connections.get("b").set("/_test/drag-target", { isDirectory: true });
+connections.get("ro").set("/_test/readonly-target", { isDirectory: true });
 
 persephone.providers.register(TYPE, {
     writable: true,
     readBinary(config) {
         const { connection, path } = pathFromUrl(config.url);
+        if (path === "/_test/read-fails.bin") throw new Error("tree-test-read-failed");
         const item = treeFor(connection).get(path);
         if (!item || item.isDirectory) throw new Error("tree-test-file-not-found");
         return item.content;
@@ -103,6 +116,7 @@ persephone.providers.register(TYPE, {
     readRange(config, range) {
         if (range.end - range.start + 1 > 1024 * 1024) throw new Error("tree-test-range-too-large");
         const { connection, path } = pathFromUrl(config.url);
+        if (path === "/_test/read-fails.bin") throw new Error("tree-test-read-failed");
         const item = treeFor(connection).get(path);
         if (!item || item.isDirectory) throw new Error("tree-test-file-not-found");
         return item.content.slice(range.start, range.end + 1);
@@ -120,6 +134,20 @@ persephone.providers.register(TYPE, {
     },
     writeChunk(handle, data, { signal }) {
         if (signal.aborted || !stagedWrites.has(handle) || handle.closed) throw new Error("tree-test-write-closed");
+        if (handle.path.startsWith("/_test/slow/")) {
+            return new Promise((resolve, reject) => {
+                const abort = () => reject(new Error("tree-test-write-cancelled"));
+                signal.addEventListener("abort", abort, { once: true });
+                setTimeout(() => {
+                    signal.removeEventListener("abort", abort);
+                    if (signal.aborted) reject(new Error("tree-test-write-cancelled"));
+                    else {
+                        handle.chunks.push(new Uint8Array(data));
+                        resolve();
+                    }
+                }, 250);
+            });
+        }
         handle.chunks.push(new Uint8Array(data));
     },
     writeCommit(handle, { signal }) {
@@ -167,11 +195,14 @@ persephone.treeProviders.register(TYPE, {
                 const itemPath = `${path}/${name}`;
                 return { name, path: itemPath, href: hrefFor(config.conn, itemPath), isDirectory: false, size: 0 };
             });
-            return { items: items.slice(0, MAX_ITEMS), truncated: true };
+            return { items: items.slice(0, MAX_ITEMS), truncated: true, ...(config.conn === "ro" ? { readOnly: true } : {}) };
         }
         const tree = treeFor(config.conn);
         const entries = directChildren(tree, path);
-        return { items: treeItems(config, path, entries.slice(0, MAX_ITEMS)), truncated: entries.length > MAX_ITEMS };
+        return {
+            items: treeItems(config, path, entries.slice(0, MAX_ITEMS)), truncated: entries.length > MAX_ITEMS,
+            ...(config.conn === "ro" ? { readOnly: true } : {}),
+        };
     },
     stat(config, path) {
         const item = treeFor(config.conn).get(path);

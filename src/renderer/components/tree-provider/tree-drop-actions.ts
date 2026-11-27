@@ -67,7 +67,7 @@ export async function moveTreeItemsWithResults(
     sourcePaths: string[],
     target: DropTarget,
 ): Promise<TreeTransferResult["items"]> {
-    if (!items.length || items.length !== sourcePaths.length) return [];
+    if (!provider.writable || !items.length || items.length !== sourcePaths.length) return [];
     if (!provider.rename) {
         ui.notify(t("dialogs.treeTransferRenameUnsupported"), "warning");
         return items.map((source) => ({ source, status: "failed", failures: [t("dialogs.treeTransferRenameUnsupported")] }));
@@ -328,6 +328,7 @@ export async function moveItemsInto(
     sourceItems: ILink[],
     target: DropTarget,
 ): Promise<boolean> {
+    if (!provider.writable) return false;
     const targetPath = target.path;
 
     // Separate directory (category) items from regular link items
@@ -463,7 +464,7 @@ export async function importFilesInto(
     items: IFileLink[],
     targetCategory: string,
 ): Promise<boolean> {
-    if (!provider.importFiles || !items.length) return false;
+    if (!provider.writable || !provider.importFiles || !items.length) return false;
 
     // Collision check via the provider's existing list(); confirm overwrite.
     // Only meaningful for file-backed providers (those with fs rename) where a
@@ -499,7 +500,7 @@ export async function dropOsFilesInto(
     items: IFileLink[],
     target: DropTarget,
 ): Promise<boolean> {
-    if (!isLocalFileProvider(provider)) return false;
+    if (!provider.writable || !isLocalFileProvider(provider)) return false;
     if (!items.length) return false;
 
     const targetDir = target.path;

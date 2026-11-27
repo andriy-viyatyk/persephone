@@ -52,8 +52,14 @@ export interface TreeProviderStatResult {
     deleteMode?: "recursive" | "empty-only";
 }
 
+export interface TreeProviderListResult {
+    items: unknown;
+    truncated: boolean;
+    readOnly?: boolean;
+}
+
 export interface TreeProviderImplementationDeclaration {
-    list(config: Record<string, unknown>, path: string, context: { signal: AbortSignal }): unknown | Promise<unknown>;
+    list(config: Record<string, unknown>, path: string, context: { signal: AbortSignal }): TreeProviderListResult | Promise<TreeProviderListResult>;
     stat(config: Record<string, unknown>, path: string, context: { signal: AbortSignal }): TreeProviderStatResult | Promise<TreeProviderStatResult>;
     mkdir?(config: Record<string, unknown>, path: string): unknown | Promise<unknown>;
     rename?(config: Record<string, unknown>, oldPath: string, newPath: string): unknown | Promise<unknown>;

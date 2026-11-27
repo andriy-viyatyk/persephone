@@ -160,10 +160,19 @@ export function createTreeProviderDispatch(dependencies: {
         }
         if (request.operation === "treeList") {
             const value = await Promise.resolve(implementation.list(request.config, request.path, { signal }));
-            if (!isRecord(value) || typeof value.truncated !== "boolean") return resultFailure("list() returned malformed results.");
+            if (!isRecord(value) || typeof value.truncated !== "boolean") {
+                return resultFailure("list() returned malformed results.");
+            }
+            if (value.readOnly !== undefined && typeof value.readOnly !== "boolean") {
+                return resultFailure("list() returned malformed results.");
+            }
+            const readOnly = value.readOnly as boolean | undefined;
             const items = copyTreeItems(value.items, request.path);
             if (!items) return resultFailure("list() returned malformed or oversized items.");
-            return { kind: "provider-result", operation: "treeList", ok: true, items, truncated: value.truncated };
+            return {
+                kind: "provider-result", operation: "treeList", ok: true, items, truncated: value.truncated,
+                ...(readOnly !== undefined ? { readOnly } : {}),
+            };
         }
         if (request.operation === "treeStat") {
             const stat = copyTreeStat(await Promise.resolve(implementation.stat(request.config, request.path, { signal })));

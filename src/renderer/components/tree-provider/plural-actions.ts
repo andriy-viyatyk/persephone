@@ -148,7 +148,7 @@ export async function deleteItemsBatch(
     items: ILink[],
     onSingle: (item: ILink) => Promise<void>,
 ): Promise<BatchDeleteOutcome> {
-    if (!provider.deleteItem || !items.length) return "none";
+    if (!provider.writable || !provider.deleteItem || !items.length) return "none";
 
     const targets = pruneNestedItems(items);
     if (!targets.length) return "none";

@@ -251,7 +251,7 @@ export type ProviderResult =
     | { kind: "provider-result"; operation: "writeBegin"; ok: true; writeId: string }
     | { kind: "provider-result"; operation: "writeChunk" | "writeCommit" | "writeAbort"; ok: true; writeId: string }
     | { kind: "provider-result"; operation: "stat"; ok: true; stat: ProviderWireStat }
-    | { kind: "provider-result"; operation: "treeList"; ok: true; items: ProviderTreeItem[]; truncated: boolean }
+    | { kind: "provider-result"; operation: "treeList"; ok: true; items: ProviderTreeItem[]; truncated: boolean; readOnly?: boolean }
     | { kind: "provider-result"; operation: "treeStat"; ok: true; stat: ProviderTreeStat }
     | { kind: "provider-result"; operation: "treeMkdir" | "treeRename" | "treeDelete"; ok: true }
     | { kind: "provider-result"; operation: "watchSubscribe" | "watchUnsubscribe" | "statusSubscribe" | "statusUnsubscribe"; ok: true }
