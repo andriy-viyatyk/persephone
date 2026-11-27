@@ -12,18 +12,18 @@
   ./vm.ps1 tunnel          # forward the VM app's MCP port 7875 to localhost:7875 (runs until stopped;
                            # conflicts with a WSL Persephone on the same port, so stop that first)
   ./vm.ps1 checkpoint <name> | restore <name> | checkpoints
-  ./vm.ps1 <command> -Vm persephone-clean   # any command against another VM (default persephone-vm)
+  ./vm.ps1 <command> -Vm <name>   # any command against another VM (default persephone-vm)
 #>
 param(
     [Parameter(Position = 0)][string]$Command = "status",
     [Parameter(Position = 1)][string]$Arg = "",
     [switch]$Enter,
-    # persephone-vm (dev), persephone-clean (clean Ubuntu 26.04) or persephone-debian (clean Debian 13)
+    # persephone-vm (dev); clean installs are checked in CI (.github/workflows/linux-distros.yml)
     [string]$Vm = "persephone-vm"
 )
 $ErrorActionPreference = "Stop"
 $VmName = $Vm              # also the SSH host alias in ~/.ssh/config
-$Octets = @{ "persephone-vm" = 50; "persephone-clean" = 51; "persephone-debian" = 52 }
+$Octets = @{ "persephone-vm" = 50 }
 if (-not $Octets.ContainsKey($VmName)) { throw "Unknown VM: $VmName" }
 $HostOctet = $Octets[$VmName]   # the VM's address is <Default Switch network>.<HostOctet>
 $Repo = Resolve-Path "$PSScriptRoot\..\.."

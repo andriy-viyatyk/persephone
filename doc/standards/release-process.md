@@ -10,10 +10,10 @@ portable ZIP. The release workflow also builds the Linux packages in CI on `ubun
 `persephone-<version>-linux-amd64.deb` (the only Linux format). Both
 platforms' assets are attached to the same draft.
 
-Before publishing a Linux package, Claude checks the `.deb` in the clean Ubuntu 26.04 and Debian 13
-VMs documented in [`linux-development.md`](../linux-development.md#clean-install-vms). Restore each
-VM's `clean` checkpoint before the install check, and run only one VM at a time. Follow that
-document's install checklist. The user remains in control of publication: the release stays a draft
+Before publishing a Linux package, Claude runs the
+[distro install check](../linux-development.md#install-check-on-other-distributions) on the draft
+(`gh workflow run linux-distros.yml --ref <branch> -f tag=vX.Y.Z`) and waits for it to pass on every
+distribution. The user remains in control of publication: the release stays a draft
 until the user publishes it.
 
 ## Branch & Version Convention

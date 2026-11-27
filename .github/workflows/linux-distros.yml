@@ -1,0 +1,127 @@
+name: Linux distro install check
+
+# Manual only. Installs a release's .deb on several distributions and runs the smoke UI tests against
+# the installed app. It replaces the clean install VMs: run it on the draft release before publishing,
+# `gh workflow run linux-distros.yml --ref <branch> -f tag=vX.Y.Z`. The tests come from the same tag.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag whose .deb is checked (a draft release works)
+        required: true
+        type: string
+
+permissions:
+  contents: write  # read access to draft releases needs write scope
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the release package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'persephone-*-linux-amd64.deb' --dir deb
+          ls -l deb
+
+      - name: Keep the package for the install jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: deb/*.deb
+          if-no-files-found: error
+
+  install:
+    needs: fetch
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ['debian:13', 'ubuntu:24.04', 'ubuntu:26.04']
+    container:
+      image: ${{ matrix.image }}
+      # Privileged so Chromium's setuid sandbox can create its namespaces; the app runs as a normal
+      # user with the sandbox on, as it does on a desktop install.
+      options: --privileged
+    steps:
+      - name: Install test tools
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          set -eu
+          cat /etc/os-release
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates curl git xz-utils xvfb xauth \
+            dbus dbus-x11 openbox fonts-noto-core
+
+      - name: Checkout the tested tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.3'
+          cache: npm
+
+      - name: Install the test runner
+        # The runner resolves the electron package's path even for --app runs, so keep its install script.
+        run: npm ci
+
+      - name: Download the package
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-deb
+          path: deb
+
+      - name: Install the package
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          set -eu
+          apt-get install -y ./deb/persephone-*-linux-amd64.deb
+          test -x /opt/persephone/persephone
+          ls -l /opt/persephone/chrome-sandbox
+
+      - name: Run smoke tests against the installed app
+        id: ui
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The package keeps chrome-sandbox non-setuid when user namespaces work, and on Ubuntu its
+          # AppArmor profile allows them. Containers load no AppArmor profile, so lift the runner
+          # kernel's restriction instead: the sandbox then uses user namespaces as on a desktop.
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            echo 0 > /proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          fi
+          useradd --create-home tester
+          chown -R tester:tester "$GITHUB_WORKSPACE"
+          runtime="/tmp/runtime-tester"
+          install -d -m 700 -o tester -g tester "$runtime"
+          su tester -s /bin/bash -c "cd '$GITHUB_WORKSPACE' && export HOME=/home/tester XDG_RUNTIME_DIR=$runtime PATH='$PATH' && \
+            dbus-run-session -- xvfb-run -a bash -c 'openbox & sleep 2; npm run test:ui -- --app /opt/persephone/persephone --area core/smoke,core/startup'"
+
+      - name: Summarize
+        if: always()
+        shell: bash
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: |
+          report="$GITHUB_WORKSPACE/integration-test/reports/latest.json"
+          if [ -f "$report" ]; then
+            node -e "const r=require(process.argv[1]).summary;console.log('## '+process.env.IMAGE+'\n\n- Passed: '+r.passed+'\n- Failed: '+r.failed+'\n- Skipped: '+r.skipped+'\n- Not run: '+r.notRun)" "$report" >> "$GITHUB_STEP_SUMMARY"
+          else
+            printf '## %s\n\nReport unavailable.\n' "$IMAGE" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ strategy.job-index }}
+          path: integration-test/reports/
+          if-no-files-found: warn

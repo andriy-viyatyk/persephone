@@ -216,27 +216,19 @@ Setup notes:
 - **GitHub Linux CI** (`.github/workflows/linux-ci.yml`) runs only on demand: the Actions tab, or
   `gh workflow run linux-ci.yml --ref <branch>`. The VM is the usual Linux check.
 
-### Clean install VMs
+### Install check on other distributions
 
-Package install checks run in two VMs without development tools, so a library missing from the `.deb` is not
-hidden by the dev setup. Both are built like `persephone-vm` (same `dev` user, SSH key, passwordless `sudo`,
-automatic login, screen lock and blanking off) and have a `clean` checkpoint taken at the logged-in desktop.
-Restore it before every install check. Every `vm.ps1` command takes `-Vm <name>`.
-
-| VM | System | Address | Install source |
-|---|---|---|---|
-| `persephone-clean` | Ubuntu 26.04.1 Desktop | `<switch network>.51` | The desktop ISO with `autoinstall.yaml` (a late command writes the static netplan) |
-| `persephone-debian` | Debian 13.8 GNOME (Wayland) | `<switch network>.52` | The netinst ISO with `preseed.cfg` and a one-entry `grub.cfg` (static network on the kernel command line) |
-
-Install configs and credentials live in `%USERPROFILE%\VMs\<vm>\`, never in the repository. Each VM has 6 GB,
-4 vCPU and a 60 GB disk. **Run one VM at a time**: the host cannot hold two of them next to WSL and Persephone.
-`fix-network` writes Ubuntu's netplan, so it works only for the two Ubuntu VMs; after a subnet move, fix the
-Debian VM's network from its console.
+The `.deb` is install-checked in CI instead of in dedicated VMs:
+[`.github/workflows/linux-distros.yml`](../.github/workflows/linux-distros.yml) downloads a release's package
+(a draft works) and, in Debian 13, Ubuntu 24.04 and Ubuntu 26.04 containers, installs it with `apt`, then runs the
+`core/smoke` and `core/startup` UI tests against `/opt/persephone/persephone` under Xvfb. The tests come from the same
+tag. The containers run privileged and the app runs as a normal user, so Chromium's sandbox stays on.
 
 ```powershell
-./vm.ps1 stop; ./vm.ps1 restore clean -Vm persephone-clean; ./vm.ps1 start -Vm persephone-clean
-scp release/persephone-*-linux-amd64.deb persephone-clean:
-ssh persephone-clean 'sudo apt-get install -y ./persephone-*-linux-amd64.deb'
+gh workflow run linux-distros.yml --ref <branch> -f tag=vX.Y.Z
 ```
+
+Containers have no desktop session: GNOME on Wayland, the tray, desktop integration, the real clipboard and GPU
+rendering are checked in `persephone-vm` (or a throwaway VM when a clean desktop install matters).
 
 The Hyper-V thumbnail refuses a full-size capture on some VMs; `screenshot` then saves a 1280x720 image.
