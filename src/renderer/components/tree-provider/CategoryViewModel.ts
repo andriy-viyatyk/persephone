@@ -1,19 +1,27 @@
 import { TComponentModel } from "../../core/state/model";
+import { ui } from "../../api/ui";
 import type { ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
-import { isLocalFileProvider, isWatchable } from "../../content/tree-providers/tree-provider-capabilities";
+import { isLocalFileProvider, isWatchable, treeTransferCapability } from "../../content/tree-providers/tree-provider-capabilities";
 import {
     dropOsFilesInto,
+    copyLocalItemsInto,
     moveItemsInto,
+    moveTreeItemsInto,
+    transferTreeFiles,
+    transferTreeItems,
     type DropTarget,
 } from "./tree-drop-actions";
-import { fpBasename } from "../../core/utils/file-path";
+import { treeItemListPath, treePathBasename } from "./tree-provider-path";
 import {
     getTraitDragDataFromEvent,
     hasTraitDragData,
     isFileDrag,
+    LINK,
+    resolveTraits,
 } from "../../core/traits";
 import { ProviderItemController } from "./provider-item-controller";
 import { getTraitDropAction } from "./drop-dispatch";
+import { treeDropMode } from "./tree-drop-mode";
 import { DropTargetTracker } from "../../uikit/shared/drop-target-tracker";
 import type { IMountableView } from "../../uikit/shared/vanilla-view";
 import { sameHref, sameHrefs } from "./href-utils";
@@ -469,7 +477,7 @@ export class CategoryViewModel extends TComponentModel<
      *  the `importLinks` branch the Explorer tree has. */
     get acceptsDrops(): boolean {
         const { provider } = this.props;
-        return !!provider.writable && isLocalFileProvider(provider);
+        return !!provider.writable && (isLocalFileProvider(provider) || !!treeTransferCapability(provider));
     }
 
     /**
@@ -481,7 +489,7 @@ export class CategoryViewModel extends TComponentModel<
     private acceptsDrag = (dataTransfer: DataTransfer): boolean => {
         if (!this.acceptsDrops) return false;
         if (hasTraitDragData(dataTransfer)) return true;
-        return !!this.props.provider.importFiles && isFileDrag(dataTransfer);
+        return (!!this.props.provider.importFiles || !!treeTransferCapability(this.props.provider)) && isFileDrag(dataTransfer);
     };
 
     /** The drag target's key: a folder row's href, or `null` for the view itself (whitespace,
@@ -556,7 +564,7 @@ export class CategoryViewModel extends TComponentModel<
         const payload = getTraitDragDataFromEvent(e);
         if (!payload) return;
         if (!this.canDropOn(item, payload)) return;
-        void this.performDrop(item, payload);
+        void this.performDrop(item, payload, e);
     };
 
     /** The directory a drop on `item` writes into, as an href — for the self-drop guards. */
@@ -566,15 +574,12 @@ export class CategoryViewModel extends TComponentModel<
     /** Where a drop on `item` lands. A folder targets itself; everything else (a file row,
      *  whitespace, the empty-folder placeholder) targets the open folder. */
     private dropTargetFor = (item: ITreeProviderItem | null): DropTarget => {
-        // `href` rather than `getItemListPath` — drops are gated to the file provider, where the
-        // href IS the absolute path the provider lists and `copyPathsInto` writes into. The
-        // reconstructed list path (`category + "/" + title`) would work too but yields mixed
-        // separators, and the tree's own drop paths use the href for the same reason.
+        // Resolve provider list paths for folders; item hrefs can be opaque on board trees.
         if (item?.isDirectory) {
-            return { path: item.href, title: item.title };
+            return { path: treeItemListPath(this.props.provider, item), title: item.title };
         }
         const { category, provider } = this.props;
-        return { path: category, title: fpBasename(category) || provider.displayName };
+        return { path: category, title: treePathBasename(provider, category) || provider.displayName };
     };
 
     /** Drop-time acceptance, with the payload in hand. Ported from
@@ -583,26 +588,47 @@ export class CategoryViewModel extends TComponentModel<
         item: ITreeProviderItem | null,
         payload: import("../../core/traits").TraitDragPayload,
     ): boolean => {
-        return !!getTraitDropAction(this.props.provider, this.dropDirHref(item), payload, false);
+        return !!getTraitDropAction(this.props.provider, this.dropDirHref(item), payload, false, false,
+            this.dropTargetFor(item).path)
+            || !!getTraitDropAction(this.props.provider, this.dropDirHref(item), payload, false, true,
+                this.dropTargetFor(item).path);
 
     };
 
     private performDrop = async (
         item: ITreeProviderItem | null,
         payload: import("../../core/traits").TraitDragPayload,
+        event: DragEvent,
     ) => {
+        const target = this.dropTargetFor(item);
         const action = getTraitDropAction(
             this.props.provider,
             this.dropDirHref(item),
             payload,
             false,
+            treeDropMode(
+                resolveTraits(payload.typeId)?.get(LINK)?.getSourceId?.(payload.data) === this.props.provider.sourceUrl,
+                event,
+            ) === "copy",
+            target.path,
         );
         if (!action) return;
-        const target = this.dropTargetFor(item);
 
         let changed = false;
         if (action.kind === "move") {
             changed = await moveItemsInto(this.props.provider, action.items, target);
+        } else if (action.kind === "copy-local") {
+            changed = await copyLocalItemsInto(this.props.provider, action.items, target);
+        } else if (action.kind === "move-tree") {
+            changed = await moveTreeItemsInto(action.provider, action.items, action.sourcePaths, target);
+        } else if (action.kind === "transfer") {
+            changed = await transferTreeItems(action.sourceProvider, this.props.provider, action.items, target,
+                treeDropMode(action.sourceProvider.sourceUrl === this.props.provider.sourceUrl, event));
+        } else if (action.kind === "transfer-files") {
+            changed = await transferTreeFiles(action.files, this.props.provider, target, treeDropMode(false, event));
+        } else if (action.kind === "transfer-source-unavailable") {
+            ui.notify(t("dialogs.treeTransferLiveSourceUnavailable"), "warning");
+            changed = true;
         } else if (action.kind === "import-files") {
             changed = await dropOsFilesInto(this.props.provider, action.files, target);
         }

@@ -3,6 +3,9 @@ import { TGlobalState } from "../../core/state/state";
 interface ProgressItem {
     id: number;
     label: string;
+    cancelLabel?: string;
+    cancelling: boolean;
+    cancel?: () => void;
 }
 
 interface ScreenLock {
@@ -40,6 +43,11 @@ export interface ProgressHandle {
     show<T>(promise: Promise<T>): Promise<T>;
 }
 
+export interface CancelableProgressHandle extends ProgressHandle {
+    readonly signal: AbortSignal;
+    cancel(): void;
+}
+
 function updateItemLabel(id: number, label: string) {
     progressState.update(s => {
         const item = s.items.find(i => i.id === id);
@@ -60,18 +68,33 @@ function updateItemLabel(id: number, label: string) {
  * }
  * await progress.show(run());
  */
-export function createProgress(label: string): ProgressHandle {
+export function createProgress(label: string): ProgressHandle;
+export function createProgress(label: string, options: { cancelLabel: string }): CancelableProgressHandle;
+export function createProgress(label: string, options?: { cancelLabel: string }): ProgressHandle | CancelableProgressHandle {
     const id = ++nextId;
     let currentLabel = label;
+    const controller = new AbortController();
 
-    const handle: ProgressHandle = {
+    const handle: CancelableProgressHandle = {
+        signal: controller.signal,
+        cancel() {
+            if (controller.signal.aborted) return;
+            progressState.update((state) => {
+                const current = state.items.find((entry) => entry.id === id);
+                if (current) current.cancelling = true;
+            });
+            controller.abort();
+        },
         get label() { return currentLabel; },
         set label(value: string) {
             currentLabel = value;
             updateItemLabel(id, value);
         },
         show<T>(promise: Promise<T>): Promise<T> {
-            const item: ProgressItem = { id, label: currentLabel };
+            const item: ProgressItem = {
+                id, label: currentLabel, cancelLabel: options?.cancelLabel, cancelling: false,
+                cancel: options ? handle.cancel : undefined,
+            };
             let settled = false;
 
             const timer = setTimeout(() => {
@@ -80,11 +103,12 @@ export function createProgress(label: string): ProgressHandle {
                 }
             }, PROGRESS_DELAY);
 
-            promise.finally(() => {
+            const settle = () => {
                 settled = true;
                 clearTimeout(timer);
                 progressState.update(s => { s.items = s.items.filter(i => i.id !== id); });
-            });
+            };
+            void promise.then(settle, settle);
 
             return promise;
         },
@@ -116,6 +140,7 @@ export function notifyProgress(label: string, timeout = 2000): void {
     const item: ProgressItem = {
         id,
         label,
+        cancelling: false,
     };
 
     progressState.update(s => { s.notifications = [...s.notifications, item]; });

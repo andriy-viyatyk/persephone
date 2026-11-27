@@ -46,6 +46,7 @@ const linkTraits = new TraitSet()
     .add(LINK, {
         getItems: (data: unknown) => (data as LinkDragData).items,
         getSourceId: (data: unknown) => (data as LinkDragData).sourceId,
+        getTreeDragToken: (data: unknown) => (data as LinkDragData).treeDragToken,
     })
     // A link to a local file is also a file producer: dropping it on a file-backed
     // target (Mneme) copies the file; non-file links contribute nothing and are

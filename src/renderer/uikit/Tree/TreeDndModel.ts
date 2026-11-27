@@ -67,7 +67,7 @@ export class TreeDndModel<T = ITreeItem> {
             return;
         }
         e.stopPropagation();
-        setTraitDragData(e.dataTransfer, traitTypeId, data);
+        setTraitDragData(e.dataTransfer, traitTypeId, data, this.tree.props.dragEffectAllowed ?? "move");
         this.update((state) => { state.draggingValue = row.value; });
     };
 
@@ -84,7 +84,9 @@ export class TreeDndModel<T = ITreeItem> {
         const row = this.tree.rows[rowIndex];
         if (!row) return;
         e.preventDefault();
-        e.dataTransfer.dropEffect = isFileDrag(e.dataTransfer) ? "copy" : "move";
+        e.dataTransfer.dropEffect = isFileDrag(e.dataTransfer)
+            ? "copy"
+            : e.shiftKey ? "move" : e.ctrlKey ? "copy" : this.tree.props.traitDropDefaultEffect ?? "move";
         if (this.dropTargetTracker.enter(row.value)) {
             this.update((state) => { state.dragOverValue = row.value; });
             this.scheduleHoverExpand(row);
@@ -94,7 +96,9 @@ export class TreeDndModel<T = ITreeItem> {
     onDragOver = (e: DragEvent, rowIndex: number) => {
         if (!this.canDropRow(rowIndex) || !this.acceptsDrag(e.dataTransfer)) return;
         e.preventDefault();
-        e.dataTransfer.dropEffect = isFileDrag(e.dataTransfer) ? "copy" : "move";
+        e.dataTransfer.dropEffect = isFileDrag(e.dataTransfer)
+            ? "copy"
+            : e.shiftKey ? "move" : e.ctrlKey ? "copy" : this.tree.props.traitDropDefaultEffect ?? "move";
     };
 
     onDragLeave = (_e: DragEvent, rowIndex: number) => {
@@ -120,8 +124,8 @@ export class TreeDndModel<T = ITreeItem> {
         if (!payload) return;
         const row = this.tree.rows[rowIndex];
         if (!row) return;
-        if (this.tree.props.canTraitDrop?.(row.source, payload, row.level) ?? true) {
-            this.tree.props.onTraitDrop?.(row.source, payload, row.level);
+        if (this.tree.props.canTraitDrop?.(row.source, payload, row.level, e) ?? true) {
+            this.tree.props.onTraitDrop?.(row.source, payload, row.level, e);
         }
     };
 

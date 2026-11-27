@@ -9,6 +9,8 @@ export interface LinkTrait {
     getItems(data: unknown): ILink[];
     /** Optional source identifier for same-source detection. */
     getSourceId?(data: unknown): string | undefined;
+    /** Optional opaque, in-document token for resolving a live source provider. */
+    getTreeDragToken?(data: unknown): string | undefined;
 }
 
 /** Trait key for link data. */
@@ -18,4 +20,5 @@ export const LINK = new TraitKey<LinkTrait>("Link");
 export interface LinkDragData {
     items: ILink[];
     sourceId?: string;
+    treeDragToken?: string;
 }

@@ -23,9 +23,17 @@ export interface TraitDragPayload {
 
 let activeDragNonce: string | undefined;
 let nonceListenersInstalled = false;
+let clearHostDragSource: (() => void) | undefined;
 
-function endHostDrag(): void {
+/** Register cleanup for optional host-only drag metadata without importing app components here. */
+export function registerHostDragCleanup(cleanup: () => void): void {
+    clearHostDragSource = cleanup;
+}
+
+function endHostDrag(expectedNonce?: string): void {
+    if (expectedNonce && activeDragNonce !== expectedNonce) return;
     activeDragNonce = undefined;
+    clearHostDragSource?.();
 }
 
 function installNonceListeners(): void {
@@ -34,9 +42,15 @@ function installNonceListeners(): void {
     // Capture phase on the document, so a handler that stops propagation cannot keep the nonce
     // alive. A drop ends it after the drop handlers have run; `pointerdown` ends one whose
     // `dragend` never reached the document (its source element was removed during the drag).
-    document.addEventListener("dragend", endHostDrag, true);
-    document.addEventListener("drop", () => setTimeout(endHostDrag, 0), true);
-    document.addEventListener("pointerdown", endHostDrag, true);
+    document.addEventListener("dragend", () => {
+        const nonce = activeDragNonce;
+        if (nonce) endHostDrag(nonce);
+    }, true);
+    document.addEventListener("drop", () => {
+        const nonce = activeDragNonce;
+        if (nonce) setTimeout(() => endHostDrag(nonce), 0);
+    }, true);
+    document.addEventListener("pointerdown", () => endHostDrag(), true);
 }
 
 /** Set trait drag data on a native drag event. Call only from this document's `dragstart`. */
@@ -44,12 +58,13 @@ export function setTraitDragData(
     dataTransfer: DataTransfer,
     typeId: TraitTypeId,
     data: unknown,
+    effectAllowed: DataTransfer["effectAllowed"] = "move",
 ): void {
     installNonceListeners();
     activeDragNonce = crypto.randomUUID();
     const payload: TraitDragPayload & { nonce: string } = { typeId, data, nonce: activeDragNonce };
     dataTransfer.setData(MIME_TYPE, JSON.stringify(payload));
-    dataTransfer.effectAllowed = "move";
+    dataTransfer.effectAllowed = effectAllowed;
 }
 
 /** Read trait drag data from a native drag event. Returns null if not a trait drag, or if the drag

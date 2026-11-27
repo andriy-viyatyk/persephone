@@ -4,6 +4,7 @@ import { pipeFromLink } from "../rebuild-pipe";
 import { MAX_BOARD_PIPE_CHUNK_BYTES, MAX_BUFFERED_PIPE_BYTES } from "../../../shared/board-pipe-constants";
 import { errMessage } from "../../../shared/utils";
 import { treeTransferCapability, type TransferEntry, type TransferNodeKind, type TreeTransferCapability } from "./tree-provider-capabilities";
+import { t } from "../../../shared/i18n/t";
 
 export type TreeConflictAction = "overwrite" | "skip" | "keep-both";
 export interface TreeTransferConflict {
@@ -44,7 +45,7 @@ interface PlannedNode { entry: TransferEntry; children: PlannedNode[]; skipped: 
 interface PlannedItem { entry?: TransferEntry; tree?: PlannedNode; result: TreeTransferItemResult; complete: boolean }
 
 function checkSignal(signal?: AbortSignal): void {
-    if (signal?.aborted) throw new Error("Transfer cancelled.");
+    if (signal?.aborted) throw new Error(t("dialogs.treeTransferCancelled"));
 }
 
 function isDirectory(kind: TransferNodeKind): boolean {
@@ -57,7 +58,7 @@ function sameKind(source: TransferNodeKind, destination: TransferNodeKind): bool
 
 function compareInside(capability: TreeTransferCapability, parent: string, child: string): boolean {
     const result = capability.isInside(parent, child);
-    if (result === undefined) throw new Error("Tree provider cannot prove path containment safely.");
+    if (result === undefined) throw new Error(t("dialogs.treeTransferContainmentUnknown"));
     return result;
 }
 
@@ -66,19 +67,19 @@ export class TreeTransfer {
     async transfer(source: TreeTransferSource, target: TreeTransferTarget, options: TreeTransferOptions = {}): Promise<TreeTransferResult> {
         const sourceCapability = treeTransferCapability(source.provider);
         const targetCapability = treeTransferCapability(target.provider);
-        if (!sourceCapability || !targetCapability) throw new Error("Tree transfer is supported only for local and board trees.");
-        if (!target.provider.writable) throw new Error("The destination tree is read-only.");
-        if (source.provider.type === "archive" || target.provider.type === "archive") throw new Error("Archive trees cannot participate in transfers.");
+        if (!sourceCapability || !targetCapability) throw new Error(t("dialogs.treeTransferUnsupported"));
+        if (!target.provider.writable) throw new Error(t("dialogs.treeTransferReadOnly"));
+        if (source.provider.type === "archive" || target.provider.type === "archive") throw new Error(t("dialogs.treeTransferArchiveUnsupported"));
         const targetFolder = await targetCapability.stat(target.folderPath);
         if (!targetFolder.stat.exists || !isDirectory(targetFolder.kind) || targetFolder.kind === "directory-symlink") {
-            throw new Error("The destination folder does not exist or is not a safe directory.");
+            throw new Error(t("dialogs.treeTransferInvalidDestination"));
         }
         const results: TreeTransferItemResult[] = [];
         const planned: PlannedItem[] = [];
         const selectedPaths: Array<{ path: string; item: ILink; index: number }> = [];
         for (const item of source.items) {
             if (options.signal?.aborted) {
-                const result = { source: item, status: "cancelled" as const, failures: ["Transfer cancelled."] };
+                const result = { source: item, status: "cancelled" as const, failures: [t("dialogs.treeTransferCancelled")] };
                 results.push(result); planned.push({ result, complete: false }); continue;
             }
             let path: string;
@@ -99,14 +100,14 @@ export class TreeTransfer {
                 results.push(result); planned.push({ result, complete: false }); continue;
             }
             if (redundant) {
-                const result = { source: item, status: "skipped" as const, failures: ["Redundant selection; an ancestor is already selected."] };
+                const result = { source: item, status: "skipped" as const, failures: [t("dialogs.treeTransferRedundantSelection")] };
                 results.push(result); planned.push({ result, complete: false }); continue;
             }
             for (const selected of contained) {
                 const prior = planned[selected.index];
                 if (!prior) continue;
                 prior.result.status = "skipped";
-                prior.result.failures.push("Redundant selection; an ancestor is selected.");
+                prior.result.failures.push(t("dialogs.treeTransferRedundantSelection"));
                 prior.complete = false;
                 selectedPaths.splice(selectedPaths.indexOf(selected), 1);
             }
@@ -117,21 +118,21 @@ export class TreeTransfer {
             planned.push(plan);
             try {
                 const { stat, kind } = await sourceCapability.stat(path);
-                if (!stat.exists) throw new Error(`Source item no longer exists: ${path}`);
+                if (!stat.exists) throw new Error(t("dialogs.treeTransferSourceMissing", { path }));
                 const entry: TransferEntry = { link: item, path, name: item.title, kind, size: stat.size };
                 plan.entry = entry;
                 if (isDirectory(kind) && sourceCapability.backingStoreKey === targetCapability.backingStoreKey
                     && compareInside(sourceCapability, path, target.folderPath)) {
-                    throw new Error("A folder cannot be copied into itself or one of its descendants.");
+                    throw new Error(t("dialogs.treeTransferContainmentRefused"));
                 }
                 plan.tree = await this.walk(sourceCapability, entry, options.signal);
                 if (options.move && !this.hasSkipped(plan.tree) && !this.hasSafeDeletion(sourceCapability, plan.tree)) {
-                    throw new Error("The source tree does not declare safe deletion semantics for this item or a descendant.");
+                    throw new Error(t("dialogs.treeTransferDeletionUnsupported"));
                 }
                 plan.complete = !this.hasSkipped(plan.tree);
                 if (plan.tree.skipped) {
                     plan.result.status = "skipped";
-                    plan.result.failures.push(`Skipped unsupported directory link: ${path}`);
+                    plan.result.failures.push(t("dialogs.treeTransferDirectoryLinkSkipped", { path }));
                 }
             } catch (error: unknown) {
                 if (options.signal?.aborted) plan.result.status = "cancelled";
@@ -148,7 +149,7 @@ export class TreeTransfer {
             if (!plan.entry || !plan.tree || plan.result.status === "skipped" || plan.result.failures.length) continue;
             if (options.signal?.aborted) {
                 plan.result.status = "cancelled";
-                plan.result.failures.push("Transfer cancelled.");
+                plan.result.failures.push(t("dialogs.treeTransferCancelled"));
                 continue;
             }
             try {
@@ -168,7 +169,7 @@ export class TreeTransfer {
                 } else {
                     plan.result.destinationPath = copied.destinationPath;
                     plan.complete = plan.complete && copied.complete;
-                    plan.result.status = "copied";
+                    plan.result.status = copied.complete ? "copied" : "failed";
                 }
             } catch (error: unknown) {
                 plan.complete = false;
@@ -184,7 +185,7 @@ export class TreeTransfer {
                 const mode = sourceCapability.deletionMode(plan.tree.entry);
                 if (!mode) {
                     plan.result.status = "copied-not-deleted";
-                    plan.result.failures.push("The source tree does not declare a safe deletion strategy.");
+                    plan.result.failures.push(t("dialogs.treeTransferDeletionUnsupported"));
                     continue;
                 }
                 try {
@@ -192,8 +193,10 @@ export class TreeTransfer {
                     try {
                         await this.deleteTree(sourceCapability, plan.tree, mode, options.signal, deletedPaths);
                     } catch (error: unknown) {
-                        const alreadyDeleted = deletedPaths.length ? ` Already deleted: ${deletedPaths.join(", ")}.` : "";
-                        throw new Error(`${errMessage(error)}${alreadyDeleted}`, { cause: error });
+                        const message = deletedPaths.length
+                            ? t("dialogs.treeTransferPartialDeleteFailure", { error: errMessage(error), paths: deletedPaths.join(", ") })
+                            : errMessage(error);
+                        throw new Error(message, { cause: error });
                     }
                     plan.result.status = "moved";
                 } catch (error: unknown) {
@@ -205,7 +208,7 @@ export class TreeTransfer {
                 for (const plan of planned) {
                     if (plan.result.status === "copied") {
                         plan.result.status = "cancelled";
-                        plan.result.failures.push("Source retained because the transfer was cancelled.");
+                        plan.result.failures.push(t("dialogs.treeTransferSourceRetainedCancelled"));
                     }
                 }
             }
@@ -213,7 +216,7 @@ export class TreeTransfer {
             for (const plan of planned) {
                 if (plan.result.status === "copied") {
                     plan.result.status = "cancelled";
-                    plan.result.failures.push("Source retained because the transfer was cancelled.");
+                    plan.result.failures.push(t("dialogs.treeTransferSourceRetainedCancelled"));
                 }
             }
         }
@@ -232,7 +235,7 @@ export class TreeTransfer {
         for (const child of children) {
             checkSignal(signal);
             const { stat, kind } = await capability.stat(child.path);
-            if (!stat.exists) throw new Error(`Listed source item disappeared: ${child.path}`);
+            if (!stat.exists) throw new Error(t("dialogs.treeTransferSourceMissing", { path: child.path }));
             const verified = { ...child, kind, size: stat.size };
             plannedChildren.push(await this.walk(capability, verified, signal));
         }
@@ -295,14 +298,17 @@ export class TreeTransfer {
                 destinationPath = await this.keepBothPath(targetCapability, targetFolder, name, isDirectory(node.entry.kind));
                 destination = await targetCapability.stat(destinationPath);
             } else if (destination.kind === "file-symlink" || destination.kind === "directory-symlink") {
-                throw new Error("Overwriting a symbolic-link destination is not supported safely.");
+                throw new Error(t("dialogs.treeTransferSymlinkOverwriteUnsupported"));
             } else if (!sameKind(node.entry.kind, destination.kind)) {
-                throw new Error(`Cannot overwrite a ${isDirectory(node.entry.kind) ? "file" : "folder"} with a ${isDirectory(destination.kind) ? "folder" : "file"}.`);
+                throw new Error(t("dialogs.treeTransferKindMismatch", {
+                    sourceKind: t(isDirectory(node.entry.kind) ? "dialogs.treeTransferFolder" : "dialogs.treeTransferFile"),
+                    destinationKind: t(isDirectory(destination.kind) ? "dialogs.treeTransferFolder" : "dialogs.treeTransferFile"),
+                }));
             }
         }
         if (isDirectory(node.entry.kind)) {
             if (!destination.stat.exists) {
-                if (typeof targetProvider.mkdir !== "function") throw new Error("The destination tree cannot create folders.");
+                if (typeof targetProvider.mkdir !== "function") throw new Error(t("dialogs.treeTransferMkdirUnsupported"));
                 await targetProvider.mkdir(destinationPath);
             }
             let complete = true;
@@ -313,7 +319,7 @@ export class TreeTransfer {
                 } catch (error: unknown) {
                     if (options.signal?.aborted) throw error;
                     complete = false;
-                    state.failures.push(`${child.entry.name}: ${errMessage(error)}`);
+                    state.failures.push(t("dialogs.treeTransferNestedFailure", { name: child.entry.name, error: errMessage(error) }));
                 }
             }
             return { destinationPath, complete, skipped: false };
@@ -363,19 +369,19 @@ export class TreeTransfer {
         let bufferedLength = 0;
         try {
             if (sourcePipe.transformers.length || targetPipe.transformers.length) {
-                throw new Error("Transformed content pipes are not supported for bounded tree transfers.");
+                    throw new Error(t("dialogs.treeTransferTransformedPipeUnsupported"));
             }
             if (!targetPipe.provider.beginWrite && !targetPipe.provider.writeBinary) {
-                throw new Error("The destination content provider cannot write files.");
+                throw new Error(t("dialogs.treeTransferWriteUnsupported"));
             }
-            if (!sourcePipe.provider.stat) throw new Error("Source size is unavailable for bounded transfer.");
+            if (!sourcePipe.provider.stat) throw new Error(t("dialogs.treeTransferSourceSizeUnavailable"));
             const stat = await sourcePipe.stat({ signal: options.signal });
             if (!stat?.exists || !Number.isSafeInteger(stat.size) || stat.size! < 0) {
-                throw new Error("Source size is unavailable or unsafe for bounded transfer.");
+                throw new Error(t("dialogs.treeTransferSourceSizeUnavailable"));
             }
             const size = stat.size!;
             if (size > MAX_BUFFERED_PIPE_BYTES && !sourcePipe.provider.createReadStream) {
-                throw new Error(`Source exceeds the ${MAX_BUFFERED_PIPE_BYTES}-byte buffered transfer limit.`);
+                throw new Error(t("dialogs.treeTransferBufferedLimit", { limit: MAX_BUFFERED_PIPE_BYTES }));
             }
             checkSignal(options.signal);
             session = await targetPipe.provider.beginWrite?.({ signal: options.signal });
@@ -384,7 +390,7 @@ export class TreeTransfer {
                 if (session) await session.write(chunk);
                 else {
                     bufferedLength += chunk.byteLength;
-                    if (bufferedLength > MAX_BUFFERED_PIPE_BYTES) throw new Error("Buffered transfer exceeds the configured byte limit.");
+            if (bufferedLength > MAX_BUFFERED_PIPE_BYTES) throw new Error(t("dialogs.treeTransferBufferedLimit", { limit: MAX_BUFFERED_PIPE_BYTES }));
                     bufferedChunks.push(chunk);
                 }
                 if (session) {
@@ -405,19 +411,19 @@ export class TreeTransfer {
                         for await (const chunk of stream) {
                             const bytes = Buffer.from(chunk);
                             rangeBytes += bytes.byteLength;
-                            if (rangeBytes > length) throw new Error("Source stream returned more bytes than requested.");
+                    if (rangeBytes > length) throw new Error(t("dialogs.treeTransferRangeTooLarge"));
                             await write(bytes);
                         }
                     } finally { options.signal?.removeEventListener("abort", destroy); }
-                    if (rangeBytes !== length) throw new Error("Source stream ended before the requested range was complete.");
+                if (rangeBytes !== length) throw new Error(t("dialogs.treeTransferRangeIncomplete"));
                     offset += rangeBytes;
                 }
                 const finalStat = await sourcePipe.stat({ signal: options.signal });
-                if (!finalStat?.exists || finalStat.size !== size) throw new Error("Source size changed during transfer.");
+            if (!finalStat?.exists || finalStat.size !== size) throw new Error(t("dialogs.treeTransferSourceChanged"));
             } else {
-                if (size > MAX_BUFFERED_PIPE_BYTES) throw new Error("Source has no ranged stream and exceeds the buffered transfer limit.");
+                if (size > MAX_BUFFERED_PIPE_BYTES) throw new Error(t("dialogs.treeTransferBufferedLimit", { limit: MAX_BUFFERED_PIPE_BYTES }));
                 const bytes = await sourcePipe.readBinary({ signal: options.signal });
-                if (bytes.byteLength !== size || bytes.byteLength > MAX_BUFFERED_PIPE_BYTES) throw new Error("Buffered source size changed or exceeded the configured limit.");
+                if (bytes.byteLength !== size || bytes.byteLength > MAX_BUFFERED_PIPE_BYTES) throw new Error(t("dialogs.treeTransferSourceChanged"));
                 await write(bytes);
             }
             checkSignal(options.signal);
@@ -441,10 +447,12 @@ export class TreeTransfer {
             targetPipe.dispose();
         }
         if (failure && cleanupFailure) {
-            throw new Error(`${errMessage(failure)}; write cleanup also failed: ${errMessage(cleanupFailure)}`, { cause: failure });
+            throw new Error(t("dialogs.treeTransferWriteCleanupAlsoFailed", {
+                error: errMessage(failure), cleanupError: errMessage(cleanupFailure),
+            }), { cause: failure });
         }
         if (failure) throw failure;
-        if (cleanupFailure) throw new Error(`Write cleanup failed: ${errMessage(cleanupFailure)}`, { cause: cleanupFailure });
+        if (cleanupFailure) throw new Error(t("dialogs.treeTransferWriteCleanupFailed", { error: errMessage(cleanupFailure) }), { cause: cleanupFailure });
     }
 
     private async deleteTree(
@@ -462,7 +470,7 @@ export class TreeTransfer {
         }
         for (const child of node.children) {
             const childMode = capability.deletionMode(child.entry);
-            if (!childMode) throw new Error(`Deletion semantics are unknown for ${child.entry.path}.`);
+            if (!childMode) throw new Error(t("dialogs.treeTransferDeletionSemanticsUnknown", { path: child.entry.path }));
             await this.deleteTree(capability, child, childMode, signal, deletedPaths);
         }
         checkSignal(signal);

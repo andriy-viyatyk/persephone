@@ -2,7 +2,7 @@ import { hrefKey, sameHref } from "./href-utils";
 import { createComponentModelDriver, type ComponentModelDriver } from "../../core/state/model";
 import { TraitSet, traited, type Traited } from "../../core/traits/traits";
 import { isTraitTypeId, TraitTypeId, type TraitDragPayload } from "../../core/traits";
-import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
+import { isLocalFileProvider, treeTransferCapability } from "../../content/tree-providers/tree-provider-capabilities";
 import { getTraitDropAction } from "./drop-dispatch";
 import {
     TreeProviderViewModel,
@@ -13,6 +13,7 @@ import {
 import type { TreeProviderNode } from "./tree-provider-node";
 import { createTreeProviderItemIconElement, subscribeFileIconElements } from "../icons/icon-elements";
 import { t } from "../../../shared/i18n/t";
+import { ui } from "../../api/ui";
 import { TREE_ITEM_KEY } from "../../uikit/Tree/types";
 import type { TreeProps } from "../../uikit/Tree/types";
 import type { SlotContent } from "../../uikit/shared/fill-slot";
@@ -31,6 +32,10 @@ import "../../uikit/Text/Text.css";
 import "./TreeProviderView.css";
 import { isProviderResolutionError, ProviderUnavailableError } from "../../content/registry";
 import { errMessage } from "../../../shared/utils";
+import { clearTreeDragSource, registerTreeDragSource } from "./tree-drag-source";
+import { treeDropMode } from "./tree-drop-mode";
+import { LINK, resolveTraits } from "../../core/traits";
+import { copyLocalItemsInto, dropOsFilesInto, moveTreeItemsInto, resolveDropTarget, transferTreeFiles, transferTreeItems } from "./tree-drop-actions";
 
 type ViewProps = TreeProviderViewProps;
 
@@ -74,6 +79,7 @@ export class TreeProviderView extends VanillaView<ViewProps> {
     private activeIndex: number | null = null;
     private iconSubscription: (() => void) | undefined;
     private inert = false;
+    private dragToken: string | undefined;
     private renderTrailingOwner: ViewProps["renderTrailing"] | undefined;
     private cachedRenderTrailing: TreeProps<TreeProviderNode>["renderTrailing"] | undefined;
 
@@ -96,6 +102,7 @@ export class TreeProviderView extends VanillaView<ViewProps> {
         // Tree and search views must release their DOM and listeners before the driver disposes
         // TreeProviderViewModel and clears its one-way reveal request.
         this.own(() => { this.inert = true; });
+        this.own(() => clearTreeDragSource(this.dragToken));
         this.own(() => this.treeSwap.dispose());
         this.own(() => this.driver.dispose());
         // Children release their reveal request before the model driver is disposed.
@@ -377,8 +384,10 @@ export class TreeProviderView extends VanillaView<ViewProps> {
                     : TraitTypeId.ILink)
                 : undefined,
             getDragData: writable ? this.getDragData : undefined,
+            dragEffectAllowed: "copyMove",
+            traitDropDefaultEffect: "copy",
             acceptsDrop: writable,
-            acceptsFileDrop: writable && !!provider.importFiles,
+            acceptsFileDrop: writable && (!!provider.importFiles || !!treeTransferCapability(provider)),
             canTraitDrop: writable ? this.canTraitDrop : undefined,
             onTraitDrop: writable ? this.onTraitDrop : undefined,
             onDragStartOverride: osDragEnabled ? this.onOsDragStart : undefined,
@@ -521,7 +530,10 @@ export class TreeProviderView extends VanillaView<ViewProps> {
         const provider = this.props.provider;
         if (sameHref(node.data.href, provider.rootPath)) return null;
         const items = this.model.dragItemsFor(node);
-        return items.length ? { items, sourceId: provider.sourceUrl } : null;
+        if (!items.length) return null;
+        clearTreeDragSource(this.dragToken);
+        this.dragToken = registerTreeDragSource(provider);
+        return { items, sourceId: provider.sourceUrl, treeDragToken: this.dragToken };
     };
 
     private readonly onOsDragStart = (
@@ -533,18 +545,45 @@ export class TreeProviderView extends VanillaView<ViewProps> {
     private readonly canTraitDrop = (
         node: TreeProviderNode,
         payload: TraitDragPayload,
+        _level: number,
     ): boolean => this.props.provider.writable
-        && !!getTraitDropAction(this.props.provider, node.data.href, payload);
+        && (!!getTraitDropAction(this.props.provider, node.data.href, payload, true, false,
+            resolveDropTarget(this.props.provider, node.data).path)
+            || !!getTraitDropAction(this.props.provider, node.data.href, payload, true, true,
+                resolveDropTarget(this.props.provider, node.data).path));
 
-    private readonly onTraitDrop = (node: TreeProviderNode, payload: TraitDragPayload): void => {
-        const action = getTraitDropAction(this.props.provider, node.data.href, payload);
+    private readonly onTraitDrop = (node: TreeProviderNode, payload: TraitDragPayload, _level: number, event: DragEvent): void => {
+        const link = resolveTraits(payload.typeId)?.get(LINK);
+        const sameTree = link?.getSourceId?.(payload.data) === this.props.provider.sourceUrl;
+        const mode = treeDropMode(sameTree, event);
+        const action = getTraitDropAction(this.props.provider, node.data.href, payload, true, mode === "copy",
+            resolveDropTarget(this.props.provider, node.data).path);
         if (!action) return;
         if (action.kind === "move") {
             void this.model.moveItems(action.items, node);
+        } else if (action.kind === "copy-local") {
+            void copyLocalItemsInto(this.props.provider, action.items, resolveDropTarget(this.props.provider, node.data))
+                .finally(() => { if (!this.inert) void this.model.buildTree(); });
+        } else if (action.kind === "move-tree") {
+            void moveTreeItemsInto(action.provider, action.items, action.sourcePaths,
+                resolveDropTarget(this.props.provider, node.data)).finally(() => {
+                if (!this.inert) void this.model.buildTree();
+            });
         } else if (action.kind === "import-links") {
             void this.model.importLinksTo(action.items, node);
+        } else if (action.kind === "transfer") {
+            void transferTreeItems(action.sourceProvider, this.props.provider, action.items,
+                resolveDropTarget(this.props.provider, node.data), mode).finally(() => {
+                if (!this.inert) void this.model.buildTree();
+            });
+        } else if (action.kind === "transfer-files") {
+            void transferTreeFiles(action.files, this.props.provider, resolveDropTarget(this.props.provider, node.data), mode).finally(() => {
+                if (!this.inert) void this.model.buildTree();
+            });
+        } else if (action.kind === "transfer-source-unavailable") {
+            ui.notify(t("dialogs.treeTransferLiveSourceUnavailable"), "warning");
         } else if (isLocalFileProvider(this.props.provider)) {
-            void this.model.dropOsFilesInto(action.files, node);
+            void dropOsFilesInto(this.props.provider, action.files, resolveDropTarget(this.props.provider, node.data));
         } else {
             void this.model.importFiles(action.files, node);
         }

@@ -237,6 +237,10 @@ export interface TreeOwnProps<T = ITreeItem> {
      * serialized into `dataTransfer` — keep it serializable.
      */
     getDragData?: (source: T, level: number) => unknown | null;
+    /** Native effect allowed for this tree's trait drags; defaults to move. */
+    dragEffectAllowed?: DataTransfer["effectAllowed"];
+    /** Default hover effect for trait drops; modifiers may override it. */
+    traitDropDefaultEffect?: "copy" | "move";
     /**
      * When true, rows accept trait drops. Section and disabled rows are never drop
      * targets, regardless of this prop. Container-level drop (no row hit) is unsupported.
@@ -254,12 +258,12 @@ export interface TreeOwnProps<T = ITreeItem> {
      * Per-row drop predicate. Invoked on `dragenter` and again on `drop`. When omitted,
      * defaults to `true`. Use to reject self-drop and ancestor-into-descendant moves.
      */
-    canTraitDrop?: (target: T, payload: TraitDragPayload, level: number) => boolean;
+    canTraitDrop?: (target: T, payload: TraitDragPayload, level: number, event: DragEvent) => boolean;
     /**
      * Drop handler. Invoked after `canTraitDrop` returns truthy. Consumer is responsible
      * for mutating the source data and firing whatever side effects the drop entails.
      */
-    onTraitDrop?: (target: T, payload: TraitDragPayload, level: number) => void;
+    onTraitDrop?: (target: T, payload: TraitDragPayload, level: number, event: DragEvent) => void;
     /**
      * Auto-expand a collapsed-with-children row that the cursor hovers over during a drag
      * after this many milliseconds. Set to 0 to disable. Default: 500.

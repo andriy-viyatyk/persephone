@@ -6,6 +6,8 @@ import { progressState } from "./progressModel";
 import "./Progress.css";
 import "../Spinner/Spinner.css";
 import "../Text/Text.css";
+import { ButtonView } from "../Button/ButtonView";
+import "../Button/Button.css";
 
 export interface ProgressOverlayProps {
     /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
@@ -22,23 +24,31 @@ type BranchKey = "notification" | "blocking";
 interface OverlayProjection {
     mode: OverlayMode;
     label?: string;
+    id?: number;
+    cancelLabel?: string;
+    cancelling?: boolean;
+    cancel?: () => void;
 }
 
 interface BlockingState {
     mode: "progress" | "locked";
     label?: string;
+    id?: number;
+    cancelLabel?: string;
+    cancelling?: boolean;
+    cancel?: () => void;
 }
 
 function projectState(state: {
     notifications: Array<{ label: string }>;
-    items: Array<{ label: string }>;
+    items: Array<{ id: number; label: string; cancelLabel?: string; cancelling: boolean; cancel?: () => void }>;
     locks: Array<unknown>;
 }): OverlayProjection {
     if (state.notifications.length > 0) {
         return { mode: "notification", label: state.notifications[0].label };
     }
     if (state.items.length > 0) {
-        return { mode: "progress", label: state.items[0].label };
+        return { mode: "progress", ...state.items[0] };
     }
     if (state.locks.length > 0) {
         return { mode: "locked" };
@@ -74,11 +84,12 @@ class NotificationBranchView extends VanillaView<{ label: string }> {
     }
 }
 
-class ProgressPillView extends VanillaView<{ label: string }> {
+class ProgressPillView extends VanillaView<OverlayProjection> {
     private spinner: SpinnerView | undefined;
     private message: HTMLSpanElement | undefined;
+    private cancelButton: ButtonView | undefined;
 
-    public constructor(props: { label: string }) {
+    public constructor(props: OverlayProjection) {
         super(props, document.createElement("div"));
         this.root.dataset.part = "progress-pill";
         // The spinner is created in onMount(); creating it here as well registered a
@@ -91,20 +102,31 @@ class ProgressPillView extends VanillaView<{ label: string }> {
         this.message = document.createElement("span");
         this.root.append(this.spinner.root, this.message);
         this.spinner.mount();
-        this.updateMessage(this.props.label);
+        this.updateMessage(this.props);
     }
 
-    protected onUpdate(props: { label: string }): void {
-        this.updateMessage(props.label);
+    protected onUpdate(props: OverlayProjection): void {
+        this.updateMessage(props);
     }
 
-    private updateMessage(label: string): void {
+    private updateMessage(props: OverlayProjection): void {
         if (!this.message) return;
         applyTextAttributes(
             this.message,
             resolveTextAttributes({ size: "base" }),
         );
-        this.message.textContent = label;
+        this.message.textContent = props.label ?? "";
+        if (props.cancelLabel && props.cancel) {
+            const buttonProps = { name: "progress-cancel", children: props.cancelLabel, disabled: !!props.cancelling, onClick: props.cancel };
+            if (!this.cancelButton) {
+                this.cancelButton = this.child(new ButtonView(buttonProps));
+                this.cancelButton.mount();
+                this.root.append(this.cancelButton.root);
+            } else this.cancelButton.update(buttonProps);
+        } else if (this.cancelButton) {
+            this.releaseChild(this.cancelButton);
+            this.cancelButton = undefined;
+        }
     }
 }
 
@@ -145,7 +167,7 @@ class BlockingBranchView extends VanillaView<BlockingState> {
         this.progressSwap.set(
             props.mode === "progress" ? "progress" : null,
             () => {
-                this.progressView = new ProgressPillView({ label: props.label ?? "" });
+                this.progressView = new ProgressPillView(props);
                 created = this.progressView;
                 return this.progressView;
             },
@@ -166,7 +188,7 @@ class BlockingBranchView extends VanillaView<BlockingState> {
         } else if (props.mode === "locked") {
             this.progressView = undefined;
         } else if (this.progressView) {
-            this.progressView.update({ label: props.label ?? "" });
+            this.progressView.update(props);
         }
     }
 }
@@ -229,6 +251,8 @@ export class ProgressOverlayView extends VanillaView<ProgressOverlayProps> {
             created = new BlockingBranchView({
                 mode: projection.mode === "progress" ? "progress" : "locked",
                 label: projection.label,
+                id: projection.id, cancelLabel: projection.cancelLabel,
+                cancelling: projection.cancelling, cancel: projection.cancel,
             });
             this.blockingView = created;
             return created;
@@ -239,6 +263,8 @@ export class ProgressOverlayView extends VanillaView<ProgressOverlayProps> {
             this.blockingView?.update({
                 mode: projection.mode === "progress" ? "progress" : "locked",
                 label: projection.label,
+                id: projection.id, cancelLabel: projection.cancelLabel,
+                cancelling: projection.cancelling, cancel: projection.cancel,
             });
         }
     }

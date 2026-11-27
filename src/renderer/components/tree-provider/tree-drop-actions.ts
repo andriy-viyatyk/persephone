@@ -11,16 +11,23 @@
 // folder-content view can never reach it and it stays in TreeProviderViewModel. The drop
 // dispatch is therefore split across two places on purpose.
 
-import type { IFileLink, ILink, ITreeProvider } from "../../api/types/io.tree";
+import type { IFileLink, ILink, ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
 import { ui } from "../../api/ui";
 import { copyPathsInto } from "../../api/copy-files";
 import { fpDirname, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { hrefCompareKey, isKeyInside } from "../../../shared/path-containment";
 import { pruneNestedItems } from "./plural-actions";
-import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
+import { isLocalFileProvider, treeTransferCapability } from "../../content/tree-providers/tree-provider-capabilities";
 import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
 import { errMessage } from "../../../shared/utils";
+import { TreeTransfer, type TreeConflictAction, type TreeTransferResult } from "../../content/tree-providers/TreeTransfer";
+import { treeItemListPath, treePathBasename } from "./tree-provider-path";
+import { showTreeTransferConflictDialog } from "../../api/dialogs/TreeTransferConflictDialog";
+import { showTextDialog } from "../../api/dialogs/TextDialog";
+import { createProgress } from "../../uikit/Progress/progressModel";
+import type { TreeDropMode } from "./tree-drop-mode";
+import { createOsTreeDropProvider, osTreeDropRoot, resolveOsTreeDropItem } from "./tree-drop-os-source";
 
 /**
  * Where a drop lands.
@@ -37,6 +44,237 @@ import { errMessage } from "../../../shared/utils";
 export interface DropTarget {
     path: string;
     title: string;
+}
+
+export function resolveDropTarget(provider: ITreeProvider, item: ITreeProviderItem): DropTarget {
+    const path = item.isDirectory ? treeItemListPath(provider, item) : item.category;
+    return { path, title: item.isDirectory ? item.title : treePathBasename(provider, path) || provider.displayName };
+}
+
+export async function moveTreeItemsInto(
+    provider: ITreeProvider,
+    items: ILink[],
+    sourcePaths: string[],
+    target: DropTarget,
+): Promise<boolean> {
+    if (!items.length || items.length !== sourcePaths.length) return false;
+    if (!provider.rename) {
+        ui.notify(t("dialogs.treeTransferRenameUnsupported"), "warning");
+        return true;
+    }
+    const moving = items.map((item, index) => ({ item, sourcePath: sourcePaths[index] }))
+        .filter(({ item }) => item.category !== target.path);
+    if (!moving.length) return false;
+    const button = await ui.confirm(t("dialogs.treeTransferSameTreeMoveConfirm", {
+        countLabel: t("dialogs.treeTransferItemCount", { count: moving.length }),
+        target: provider.displayName, folder: target.title,
+    }), { title: t("dialogs.treeTransferTitle"), buttons: [DialogButton.move, DialogButton.cancel] });
+    if (button !== DialogButton.move) return true;
+    const capability = treeTransferCapability(provider);
+    const results = [] as TreeTransferResult["items"];
+    for (const { item, sourcePath } of moving) {
+        if (!sourcePath) continue;
+        try {
+            const newPath = capability?.joinChild(target.path, item.title) ?? `${target.path}/${item.title}`;
+            await provider.rename(sourcePath, newPath);
+            results.push({ source: item, destinationPath: newPath, status: "moved", failures: [] });
+        } catch (error: unknown) {
+            results.push({ source: item, status: "failed", failures: [errMessage(error)] });
+        }
+    }
+    await showTransferSummary(results);
+    return true;
+}
+
+export async function copyLocalItemsInto(provider: ITreeProvider, items: ILink[], target: DropTarget): Promise<boolean> {
+    if (!isLocalFileProvider(provider) || !items.length) return false;
+    const button = await ui.confirm(t("dialogs.treeTransferLocalCopyConfirm", {
+        countLabel: t("dialogs.treeTransferItemCount", { count: items.length }), target: target.title,
+    }), { title: t("dialogs.treeTransferTitle"), buttons: [DialogButton.copy, DialogButton.cancel] });
+    if (button !== DialogButton.copy) return true;
+    const progress = await ui.createProgress(t("menus.copyingProgressTitle"));
+    try {
+        const result = await progress.show(copyPathsInto(items.map((item) => item.href), target.path, {
+            move: false,
+            onProgress: (done, total, name) => { progress.label = t("menus.copyingProgress", { done, total, name }); },
+        }));
+        if (result.errors.length) await showTextDialog({
+            title: t("dialogs.treeTransferResultsTitle"), text: result.errors.join("\n"), readOnly: true,
+            options: { wordWrap: "on", minimap: false },
+        });
+    } catch (error: unknown) {
+        ui.notify(errMessage(error, t("menus.failedToCopy")), "warning");
+    }
+    return true;
+}
+
+export async function transferTreeItems(
+    sourceProvider: ITreeProvider,
+    targetProvider: ITreeProvider,
+    items: ILink[],
+    target: DropTarget,
+    mode: TreeDropMode,
+): Promise<boolean> {
+    await runTreeTransfer(sourceProvider, targetProvider, items, target, mode);
+    return true;
+}
+
+export async function transferTreeFiles(
+    files: IFileLink[],
+    targetProvider: ITreeProvider,
+    target: DropTarget,
+    mode: TreeDropMode,
+): Promise<boolean> {
+    if (!files.length) return false;
+    const batches = new Map<string, IFileLink[]>();
+    const aggregate: TreeTransferResult["items"] = [];
+    for (const file of files) {
+        if (!file.filePath) {
+            aggregate.push({ source: fileLinkResultSource(file), status: "failed", failures: [t("dialogs.treeTransferMissingFilePath")] });
+            continue;
+        }
+        try {
+            const root = osTreeDropRoot(file.filePath);
+            const batch = batches.get(root) ?? [];
+            batch.push(file);
+            batches.set(root, batch);
+        } catch (error: unknown) {
+            aggregate.push({ source: fileLinkResultSource(file), status: "failed", failures: [errMessage(error)] });
+        }
+    }
+    if (!batches.size) {
+        await showTransferSummary(aggregate);
+        return true;
+    }
+    const actionButton = mode === "move" ? DialogButton.move : DialogButton.copy;
+    const confirmed = await ui.confirm(t("dialogs.treeTransferConfirm", {
+        action: t(mode === "move" ? "dialogs.treeTransferMove" : "dialogs.treeTransferCopy"),
+        countLabel: t("dialogs.treeTransferItemCount", { count: files.length }),
+        target: targetProvider.displayName, folder: target.title,
+    }), { title: t("dialogs.treeTransferTitle"), buttons: [actionButton, DialogButton.cancel] });
+    if (confirmed !== actionButton) return true;
+    const operationController = new AbortController();
+    const sharedChoice: { action?: TreeConflictAction } = {};
+    for (const [root, batch] of batches) {
+        if (operationController.signal.aborted) {
+            aggregate.push(...batch.map((file) => ({ source: fileLinkResultSource(file), status: "cancelled" as const, failures: [t("dialogs.treeTransferCancelled")] })));
+            continue;
+        }
+        let sourceProvider: ITreeProvider | undefined;
+        try {
+            sourceProvider = createOsTreeDropProvider(root);
+            const sourceItems: ILink[] = [];
+            for (const file of batch) {
+                const filePath = file.filePath;
+                if (!filePath) continue;
+                const source = await resolveOsTreeDropItem(sourceProvider, filePath);
+                if (source) sourceItems.push(source);
+                else aggregate.push({ source: fileLinkResultSource(file), status: "failed", failures: [t("dialogs.treeTransferSourceUnavailable", { name: filePath })] });
+            }
+            if (!sourceItems.length) continue;
+            const result = await runTreeTransfer(sourceProvider, targetProvider, sourceItems, target, mode, sharedChoice, false, true, operationController);
+            aggregate.push(...result);
+        } catch (error: unknown) {
+            aggregate.push(...batch.map((file) => ({ source: fileLinkResultSource(file), status: "failed" as const, failures: [errMessage(error)] })));
+        } finally {
+            sourceProvider?.dispose?.();
+        }
+    }
+    if (aggregate.length) await showTransferSummary(aggregate);
+    return true;
+}
+
+function fileLinkResultSource(file: IFileLink): ILink {
+    return {
+        title: file.name || t("dialogs.treeTransferUnknownItem"),
+        href: file.filePath ?? "",
+        category: file.filePath ? fpDirname(file.filePath) : "",
+        tags: [],
+        isDirectory: false,
+    };
+}
+
+async function runTreeTransfer(
+    sourceProvider: ITreeProvider,
+    targetProvider: ITreeProvider,
+    items: ILink[],
+    target: DropTarget,
+    mode: TreeDropMode,
+    sharedChoice?: { action?: TreeConflictAction },
+    showSummary = true,
+    skipConfirmation = false,
+    externalController?: AbortController,
+): Promise<TreeTransferResult["items"]> {
+    const moveLabel = mode === "move" ? DialogButton.move : DialogButton.copy;
+    if (!skipConfirmation) {
+        const confirmed = await ui.confirm(t("dialogs.treeTransferConfirm", {
+            action: t(mode === "move" ? "dialogs.treeTransferMove" : "dialogs.treeTransferCopy"),
+            countLabel: t("dialogs.treeTransferItemCount", { count: items.length }),
+            target: targetProvider.displayName,
+            folder: target.title,
+        }), { title: t("dialogs.treeTransferTitle"), buttons: [moveLabel, DialogButton.cancel] });
+        if (confirmed !== moveLabel) {
+            externalController?.abort();
+            return [];
+        }
+    }
+    const move = mode === "move";
+    const progress = createProgress(t("dialogs.treeTransferProgressTitle"), { cancelLabel: t("dialogs.buttonCancel") });
+    const cancelExternal = () => externalController?.abort();
+    progress.signal.addEventListener("abort", cancelExternal, { once: true });
+    try {
+        const result = await progress.show(new TreeTransfer().transfer(
+            { provider: sourceProvider, items },
+            { provider: targetProvider, folderPath: target.path },
+            {
+                move,
+                signal: progress.signal,
+                onConflict: async (conflict) => {
+                    if (sharedChoice?.action) return { action: sharedChoice.action, applyToAll: true };
+                    const choice = await showTreeTransferConflictDialog(conflict, progress.signal, () => {
+                        progress.cancel();
+                        externalController?.abort();
+                    });
+                    if (!choice) throw new Error(t("dialogs.treeTransferCancelled"));
+                    if (choice.applyToAll && sharedChoice) sharedChoice.action = choice.action;
+                    return choice;
+                },
+                onProgress: (value) => {
+                    progress.label = value.filesTotal === undefined || value.bytesTotal === undefined
+                        ? t("dialogs.treeTransferProgressUnknownTotals", {
+                            filesDone: value.filesDone, bytesDone: value.bytesDone, name: value.currentName,
+                        })
+                        : t("dialogs.treeTransferProgress", {
+                            filesDone: value.filesDone, filesTotal: value.filesTotal,
+                            bytesDone: value.bytesDone, bytesTotal: value.bytesTotal,
+                            name: value.currentName,
+                        });
+                },
+            },
+        ));
+        if (showSummary) await showTransferSummary(result.items);
+        progress.signal.removeEventListener("abort", cancelExternal);
+        return result.items;
+    } catch (error: unknown) {
+        progress.signal.removeEventListener("abort", cancelExternal);
+        if (!progress.signal.aborted) ui.notify(errMessage(error, t("dialogs.treeTransferFailed")), "warning");
+        return [{ source: items[0] ?? { title: "", href: "", category: "", tags: [], isDirectory: false }, status: "failed", failures: [errMessage(error, t("dialogs.treeTransferFailed"))] }];
+    }
+}
+
+async function showTransferSummary(items: TreeTransferResult["items"]): Promise<void> {
+    const statusKey = {
+        copied: "dialogs.treeTransferStatusCopied", moved: "dialogs.treeTransferStatusMoved",
+        skipped: "dialogs.treeTransferStatusSkipped", failed: "dialogs.treeTransferStatusFailed",
+        cancelled: "dialogs.treeTransferStatusCancelled", "copied-not-deleted": "dialogs.treeTransferStatusCopiedNotDeleted",
+    } as const;
+    const lines = items.map((item) => {
+        const status = t(statusKey[item.status]);
+        const failures = item.failures.length ? t("dialogs.treeTransferFailureDetails", { failures: item.failures.join("\n") }) : "";
+        return t("dialogs.treeTransferResultItem", { name: item.source.title, status, failures });
+    });
+    if (!lines.length) return;
+    await showTextDialog({ title: t("dialogs.treeTransferResultsTitle"), text: lines.join("\n\n"), readOnly: true, options: { wordWrap: "on", minimap: false } });
 }
 
 /**
