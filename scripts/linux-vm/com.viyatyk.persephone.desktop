@@ -3,6 +3,7 @@ Type=Application
 Name=Persephone (Development)
 Comment=Run the Persephone development build
 Exec=@NODE@ @CHECKOUT@/scripts/dev.mjs
+Path=@CHECKOUT@
 Icon=@CHECKOUT@/assets/icon.png
 Terminal=false
 Categories=Development;TextEditor;
