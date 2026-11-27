@@ -2,8 +2,7 @@ import { ContextMenuEvent } from "../../api/events/events";
 import { settings } from "../../api/settings";
 import { TOOLS_MANIFEST_FILE } from "../../api/tools/tools-manifest";
 import { openWithDefaultApp } from "../../content/open-with-default-app";
-import type { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
-import type { ITreeProviderItem } from "../../api/types/io.tree";
+import type { ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
 import type { SecondaryViewProps } from "../base/secondary-views/secondary-view-registry";
 import {
     createSideBarPanelHeader,
@@ -21,7 +20,9 @@ import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { Cleanup } from "../../core/utils/DisposableStore";
 import { createIconElement } from "../../uikit/shared/slots";
-import { fpBasename, fpDirname, fpNormalizeForCompare } from "../../core/utils/file-path";
+import { fpBasename, fpDirname } from "../../core/utils/file-path";
+import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
+import { treeParentPath, treeItemListPath, treePathBasename, sameTreePath } from "../../components/tree-provider/tree-provider-path";
 import { BOARD_MANIFEST_FILE } from "../../../shared/board/board-manifest-schema";
 import type { ExplorerEditor } from "./ExplorerEditorModel";
 import { openBoardsPanel, openClipboardPanel } from "./page-explorer";
@@ -34,7 +35,7 @@ import { getPlatformFeature } from "../../../shared/platform-features";
 
 export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProps<ExplorerEditor>> {
     private model: ExplorerEditor;
-    private provider: FileTreeProvider | undefined;
+    private provider: ITreeProvider | undefined;
     private treeProviderView: TreeProviderView | undefined;
     private treeProviderModel: TreeProviderViewModel | undefined;
     private header: SideBarPanelHeaderHandle | undefined;
@@ -205,7 +206,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         this.providerBinding = this.bind(
             model.treeProviderHost.providerState,
             (provider) => provider,
-            (provider) => this.replaceProvider(provider, model.rootPath),
+            (provider) => this.replaceProvider(provider),
         );
         this.selectionBinding = this.bind(
             model.selectionState,
@@ -218,8 +219,8 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         );
     }
 
-    private replaceProvider(provider: FileTreeProvider | null, rootPath: string): void {
-        if (this.provider?.sourceUrl === rootPath) {
+    private replaceProvider(provider: ITreeProvider | null): void {
+        if (this.provider === provider) {
             if (this.provider && this.treeProviderView) {
                 this.treeProviderView.update(this.treeProps(
                     this.provider,
@@ -264,7 +265,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         if (oldTree) this.releaseChild(oldTree);
     }
 
-    private treeProps(provider: FileTreeProvider, selectedHref?: string) {
+    private treeProps(provider: ITreeProvider, selectedHref?: string) {
         return {
             provider,
             multiSelect: true,
@@ -303,7 +304,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
     };
 
     private readonly handleItemDoubleClick = (item: ITreeProviderItem): void => {
-        void openWithDefaultApp(item.href);
+        if (this.provider && isLocalFileProvider(this.provider)) void openWithDefaultApp(item.href);
     };
 
     private readonly renderTrailingAction = (item: ITreeProviderItem): Node | undefined => {
@@ -311,7 +312,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         let name = "";
         let title = "";
         let onClick: IconButtonProps["onClick"] | undefined;
-        if (!item.isDirectory) {
+        if (this.provider && isLocalFileProvider(this.provider) && !item.isDirectory) {
             const base = fpBasename(item.href).toLowerCase();
             if (base === BOARD_MANIFEST_FILE) {
                 icon = "board";
@@ -365,15 +366,16 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         const provider = this.provider;
         if (!item?.isDirectory || !provider?.navigable) return;
         const rootPath = this.model.rootPath;
-        if (fpNormalizeForCompare(item.href) !== fpNormalizeForCompare(rootPath)) {
+        const targetPath = treeItemListPath(provider, item);
+        if (!sameTreePath(provider, targetPath, rootPath)) {
             event.items.push({
                 startGroup: true,
                 id: "make-root",
                 label: t("explorer.makeRoot"),
-                onClick: () => this.model.makeRoot(item.href),
+                onClick: () => this.model.makeRoot(targetPath),
             });
         }
-        event.items.push({
+        if (isLocalFileProvider(provider)) event.items.push({
             id: "search-in-folder",
             label: t("explorer.searchInFolder"),
             icon: createIconElement("search", { width: 14, height: 14 }),
@@ -384,12 +386,14 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
     private updateHeader(props: SecondaryViewProps<ExplorerEditor>): void {
         const provider = this.provider;
         const rootPath = this.model.rootPath;
-        const parentPath = fpDirname(rootPath);
-        const canNavigateUp = parentPath !== rootPath && rootPath !== "";
+        const parentPath = provider ? treeParentPath(provider, rootPath) : rootPath;
+        const canNavigateUp = !!provider?.navigable && parentPath !== rootPath && rootPath !== "";
         this.upButton?.update({
             name: "explorer-up",
             size: "sm",
-        title: canNavigateUp ? t("explorer.upToFolder", { folder: fpBasename(parentPath) }) : t("explorer.alreadyAtRoot"),
+        title: canNavigateUp ? t("explorer.upToFolder", {
+            folder: provider ? treePathBasename(provider, parentPath) : parentPath,
+        }) : t("explorer.alreadyAtRoot"),
             icon: "folder-up",
             disabled: !canNavigateUp,
             onClick: (event) => {
@@ -399,7 +403,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         });
         this.headerActions?.replaceChildren(
             ...(provider?.navigable && this.upButton ? [this.upButton.root] : []),
-            ...(this.searchButton ? [this.searchButton.root] : []),
+            ...(provider && isLocalFileProvider(provider) && this.searchButton ? [this.searchButton.root] : []),
             ...(this.boardsButton ? [this.boardsButton.root] : []),
             ...(this.clipboardButton ? [this.clipboardButton.root] : []),
             ...(this.collapseButton ? [this.collapseButton.root] : []),

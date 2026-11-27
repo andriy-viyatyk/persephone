@@ -23,10 +23,14 @@ import { InputView } from "../../uikit/Input/InputView";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
+import { ButtonView } from "../../uikit/Button/ButtonView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import "../../uikit/Panel/Panel.css";
+import "../../uikit/Button/Button.css";
 import "../../uikit/Text/Text.css";
 import "./TreeProviderView.css";
+import { isProviderResolutionError, ProviderUnavailableError } from "../../content/registry";
+import { errMessage } from "../../../shared/utils";
 
 type ViewProps = TreeProviderViewProps;
 
@@ -60,6 +64,9 @@ export class TreeProviderView extends VanillaView<ViewProps> {
     private searchField: HTMLInputElement | undefined;
     private messagePanel: HTMLDivElement | undefined;
     private messageText: HTMLSpanElement | undefined;
+    private messageDetail: HTMLSpanElement | undefined;
+    private retryButton: ButtonView | undefined;
+    private readonly folderRetryButtons = new Map<string, ButtonView>();
     private arm: Arm | undefined;
     private previousDeepSearch: boolean | undefined;
     private lastDisplayTree: TreeProviderNode | null | undefined;
@@ -122,6 +129,9 @@ export class TreeProviderView extends VanillaView<ViewProps> {
             (state) => ({
                 displayTree: state.displayTree,
                 error: state.error,
+                loading: state.loading,
+                loadingHrefs: state.loadingHrefs,
+                loadErrors: state.loadErrors,
                 searchText: state.searchText,
                 searchVisible: state.searchVisible,
                 expandedValues: state.expandedValues,
@@ -143,13 +153,20 @@ export class TreeProviderView extends VanillaView<ViewProps> {
         if (state.error) {
             this.leaveTreeArm();
             this.removeSearch();
-            this.showMessage("error", state.error);
+            const missingProvider = isProviderResolutionError(state.error)
+                && !(state.error instanceof ProviderUnavailableError && state.error.cause !== undefined);
+            this.showMessage(
+                "error",
+                missingProvider ? t("explorer.providerMissing") : errMessage(state.error, t("menus.failedToLoadItems")),
+                missingProvider ? errMessage(state.error) : undefined,
+                this.model.buildTree,
+            );
             return;
         }
         if (!tNodes) {
             this.leaveTreeArm();
             this.removeSearch();
-            this.showMessage("empty", t("mneme.noContent"));
+            this.showMessage("empty", state.loading ? t("menus.loading") : t("mneme.noContent"));
             return;
         }
 
@@ -173,6 +190,7 @@ export class TreeProviderView extends VanillaView<ViewProps> {
 
     private tNodesFor(displayTree: TreeProviderNode | null): Traited<TreeProviderNode[]> | null {
         if (displayTree === this.lastDisplayTree) return this.lastTNodes;
+        this.iconCache.clear();
         this.lastDisplayTree = displayTree;
         this.lastTNodes = displayTree
             ? traited<TreeProviderNode[]>([displayTree], tpvNodeTraits)
@@ -202,11 +220,11 @@ export class TreeProviderView extends VanillaView<ViewProps> {
         }
     }
 
-    private showMessage(kind: "error" | "empty", value: string): void {
+    private showMessage(kind: "error" | "empty", value: string, detail?: string, retry?: () => void): void {
         if (!this.messagePanel) {
             this.messagePanel = createPanelElement({
                 name: kind === "error" ? "tree-provider-error" : "tree-provider-empty",
-                direction: "row",
+                direction: "column",
             });
             this.root.append(this.messagePanel);
         }
@@ -224,6 +242,29 @@ export class TreeProviderView extends VanillaView<ViewProps> {
         }
         this.messageText.dataset.color = kind === "error" ? "error" : "light";
         this.messageText.textContent = value;
+        if (detail) {
+            if (!this.messageDetail) {
+                this.messageDetail = createTextElement(detail, { variant: "default", size: "sm", color: "light" });
+                this.messagePanel.append(this.messageDetail);
+            }
+            this.messageDetail.textContent = detail;
+        } else {
+            this.messageDetail?.remove();
+            this.messageDetail = undefined;
+        }
+        if (retry) {
+            const buttonProps = { name: "tree-provider-retry", size: "sm" as const, children: t("menus.retry"), onClick: retry };
+            if (!this.retryButton) {
+                this.retryButton = this.child(new ButtonView(buttonProps));
+                this.retryButton.mount();
+                this.messagePanel.append(this.retryButton.root);
+            } else {
+                this.retryButton.update(buttonProps);
+            }
+        } else if (this.retryButton) {
+            this.releaseChild(this.retryButton);
+            this.retryButton = undefined;
+        }
         this.arm = kind;
     }
 
@@ -231,6 +272,9 @@ export class TreeProviderView extends VanillaView<ViewProps> {
         this.messagePanel?.remove();
         this.messagePanel = undefined;
         this.messageText = undefined;
+        this.messageDetail = undefined;
+        if (this.retryButton) this.releaseChild(this.retryButton);
+        this.retryButton = undefined;
     }
 
     private ensureSearch(): void {
@@ -356,13 +400,42 @@ export class TreeProviderView extends VanillaView<ViewProps> {
         const owner = this.props.renderTrailing;
         if (!owner) {
             this.renderTrailingOwner = undefined;
-            this.cachedRenderTrailing = undefined;
-            return undefined;
-        }
-        if (owner !== this.renderTrailingOwner) {
+        } else if (owner !== this.renderTrailingOwner) {
             this.renderTrailingOwner = owner;
-            this.cachedRenderTrailing = (node) => owner(node.data);
         }
+        this.cachedRenderTrailing = (node) => {
+            const state = this.model.state.get();
+            const key = hrefKey(node.data.href);
+            if (state.loading && sameHref(node.data.href, this.props.provider.rootPath)) {
+                return createTextElement(t("menus.loading"), { variant: "default", size: "sm", color: "light" });
+            }
+            if (state.loadingHrefs.some(href => hrefKey(href) === key)) {
+                return createTextElement(t("menus.loading"), { variant: "default", size: "sm", color: "light" });
+            }
+            const error = state.loadErrors[key];
+            if (error) {
+                const props = {
+                    name: "tree-provider-folder-retry",
+                    size: "sm" as const,
+                    title: error,
+                    children: t("menus.retry"),
+                    onClick: (event: MouseEvent) => {
+                        event.stopPropagation();
+                        this.model.retryLoad(node.data.href);
+                    },
+                };
+                let retry = this.folderRetryButtons.get(key);
+                if (!retry) {
+                    retry = this.child(new ButtonView(props));
+                    retry.mount();
+                    this.folderRetryButtons.set(key, retry);
+                } else {
+                    retry.update(props);
+                }
+                return retry.root;
+            }
+            return owner?.(node.data);
+        };
         return this.cachedRenderTrailing;
     }
 

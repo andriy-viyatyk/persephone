@@ -1,6 +1,7 @@
 import type { IFileLink, ILink, ITreeProvider } from "../../api/types/io.tree";
 import { FILE_LINK, LINK, resolveTraits, type TraitDragPayload } from "../../core/traits";
 import { normalizeHref } from "./href-utils";
+import { boardSchemeOwner, schemeOf } from "../../content/scheme-registry";
 
 export type TraitDropAction =
     | { kind: "move"; items: ILink[] }
@@ -23,6 +24,10 @@ export function getTraitDropAction(
         && linkTrait.getSourceId?.(payload.data) === provider.sourceUrl;
 
     if (sameSource && items.length) {
+        if (items.some(item => {
+            const scheme = schemeOf(item.href);
+            return !!scheme && !!boardSchemeOwner(scheme);
+        })) return null;
         const target = normalizeHref(targetHref);
         if (items.some((item) => normalizeHref(item.href) === target)) return null;
         const sourceDirectories = items

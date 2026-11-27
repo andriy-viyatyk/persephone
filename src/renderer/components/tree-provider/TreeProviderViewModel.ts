@@ -5,7 +5,7 @@ import type { ContextMenuEvent } from "../../api/events/events";
 import { ui } from "../../api/ui";
 import { t } from "../../../shared/i18n/t";
 import { errMessage } from "../../../shared/utils";
-import { fpBasename, fpDirname, fpIsAbsolute, fpNormalizeForCompare, fpResolve } from "../../core/utils/file-path";
+import { fpBasename, fpIsAbsolute, fpNormalizeForCompare, fpResolve } from "../../core/utils/file-path";
 import type { IFileLink } from "../../core/traits/fileLinkTraits";
 import { pruneNestedItems } from "./plural-actions";
 import {
@@ -17,7 +17,7 @@ import {
 import { ProviderItemController } from "./provider-item-controller";
 import { hrefKey, sameHref, sameHrefs } from "./href-utils";
 import type { SlotText } from "../../uikit/shared/slots";
-import { findNode, findParent, type TreeProviderNode } from "./tree-provider-node";
+import { findNode, findParent, updateNodeChildren, type TreeProviderNode } from "./tree-provider-node";
 import { computeDisplayTree, getExpandedPaths } from "./tree-search-filter";
 import {
     isLocalFileProvider,
@@ -26,7 +26,8 @@ import {
 } from "../../content/tree-providers/tree-provider-capabilities";
 import { ProviderTreeExpansion } from "./provider-tree-expansion";
 import { ProviderTreeStore } from "./provider-tree-store";
-import { joinTreeChild } from "./tree-path";
+import { localTreeAncestorPaths, treeItemListPath, treePathHref } from "./tree-provider-path";
+import { ProviderTreeLoading } from "./provider-tree-loading";
 
 // =============================================================================
 // Types
@@ -81,7 +82,10 @@ export interface TreeProviderViewState {
     searchVisible: boolean;
     /** Controlled expansion for the current display-tree projection. */
     expandedValues: Readonly<Record<string | number, boolean>>;
-    error: string | null;
+    error: unknown | null;
+    loading: boolean;
+    loadingHrefs: string[];
+    loadErrors: Record<string, string>;
     /**
      * The tree's own selection (hrefs of the selected rows — files OR folders), in flat
      * visible order; the LAST entry is the primary (last-clicked) row. Single-select trees
@@ -101,6 +105,9 @@ export const defaultTreeProviderViewState: TreeProviderViewState = {
     searchVisible: false,
     expandedValues: {},
     error: null,
+    loading: false,
+    loadingHrefs: [],
+    loadErrors: {},
     selectedValues: [],
 };
 
@@ -116,17 +123,29 @@ export class TreeProviderViewModel extends TComponentModel<
     // Props are assigned after construction (`TComponentModel.setPropsInternal`), so the store
     // receives its provider in the first `setProps`, not here.
     private readonly store = new ProviderTreeStore(
-        (node, provider) => this.getItemListPath(node.data, provider),
+        (node, provider) => treeItemListPath(provider, node.data),
     );
     private revealRequest: ((href: string) => Promise<void>) | undefined;
     private watchSubscription?: () => void;
     private watchOwnerRegistered = false;
+    private readonly loading = new ProviderTreeLoading(this.store, {
+        getTree: () => this.state.get().tree,
+        canLoad: () => !this.state.get().loading,
+        onStatusChange: (loadingHrefs, loadErrors) => {
+            this.state.update(state => {
+                state.loadingHrefs = loadingHrefs;
+                state.loadErrors = loadErrors;
+            });
+        },
+        onLoaded: tree => this.publishLoadedChildren(tree),
+        onStale: () => this.queueWatchRefresh(),
+    });
     private previousProvider: ITreeProvider | undefined;
     private previousShowLinks: boolean | undefined;
     private previousSelectedHref: string | undefined;
     private readonly itemController = new ProviderItemController({
         provider: () => this.props.provider,
-        getItemPath: (item) => this.getItemListPath(item),
+        getItemPath: (item) => treeItemListPath(this.props.provider, item),
         refresh: () => this.buildTree(),
         getSelectedItems: () => this.selectedNodes.map((node) => node.data),
         isMultiSelect: () => !!this.props.multiSelect,
@@ -137,10 +156,10 @@ export class TreeProviderViewModel extends TComponentModel<
         resolvePasteTarget: (item) => !item
             ? this.props.provider.rootPath
             : item.isDirectory
-                ? this.getItemListPath(item)
+                ? treeItemListPath(this.props.provider, item)
                 : item.category || this.props.provider.rootPath,
         resolveFileDirectory: (item) => item.category || this.props.provider.rootPath,
-        resolveFolderDirectory: (item) => this.getItemListPath(item),
+        resolveFolderDirectory: (item) => treeItemListPath(this.props.provider, item),
         isRoot: (item) => sameHref(item.href, this.props.provider.rootPath),
         canStartOsDrag: (item) => !!item.href && !sameHref(item.href, this.props.provider.rootPath),
         excludeRootFromDrag: true,
@@ -182,6 +201,7 @@ export class TreeProviderViewModel extends TComponentModel<
             this.initializeTree();
             this.subscribeWatch();
         } else if (providerChanged) {
+            this.invalidateFolderLoads();
             this.store.adoptProvider(props.provider);
             this.subscribeWatch();
             this.buildTree();
@@ -254,6 +274,7 @@ export class TreeProviderViewModel extends TComponentModel<
     };
 
     dispose = () => {
+        this.invalidateFolderLoads();
         this.store.dispose();
         this.watchSubscription?.();
         this.watchSubscription = undefined;
@@ -309,7 +330,7 @@ export class TreeProviderViewModel extends TComponentModel<
 
         // Pre-load children for restored expanded paths.
         if (this.props.initialState?.expandedPaths?.length) {
-            await this.loadChildrenForPaths(this.props.initialState.expandedPaths);
+            await this.loading.loadMany(this.props.initialState.expandedPaths);
         }
     };
 
@@ -331,7 +352,10 @@ export class TreeProviderViewModel extends TComponentModel<
         this.revealRequest = request;
     };
 
+    hasLoadedHref = (href: string): boolean => !!findNode(this.state.get().tree, href);
+
     collapseAll = () => {
+        this.invalidateFolderLoads();
         const { displayTree, searchText } = this.state.get();
         this.expansion.collapseAll(this.props.provider.rootPath, displayTree, searchText);
         this.publishExpansionChange(true);
@@ -340,18 +364,30 @@ export class TreeProviderViewModel extends TComponentModel<
     // ── Tree building ────────────────────────────────────────────────────
 
     buildTree = async () => {
+        this.invalidateFolderLoads();
         const operation = this.store.beginBuild();
         const { provider } = operation;
+        this.state.update(state => { state.loading = true; state.error = null; });
 
         // Read the canonical map, including restored paths whose nodes are not loaded yet. The
         // loaded Tree projection cannot represent those entries, but refresh must still reload
         // their descendants before publishing the rebuilt tree.
         const { displayTree, searchText } = this.state.get();
         const expandedPaths = this.expansion.expandedPaths(displayTree, searchText);
+        const previousTree = this.state.get().tree;
 
         try {
-            const workingTree = await this.store.buildTree(expandedPaths, this.props.rootLabel, operation);
-            if (!workingTree) return;
+            const listedTree = await this.store.buildTree(expandedPaths, this.props.rootLabel, operation);
+            if (!listedTree) return;
+            let workingTree = listedTree;
+            if (previousTree) {
+                for (const path of [...expandedPaths].sort((left, right) => left.length - right.length)) {
+                    const previousNode = findNode(previousTree, path);
+                    if (previousNode?.items !== undefined && findNode(workingTree, path)) {
+                        workingTree = updateNodeChildren(workingTree, path, previousNode.items);
+                    }
+                }
+            }
             this.expansion.seedTree(workingTree, provider.rootPath);
 
             const displayTree = computeDisplayTree(
@@ -370,7 +406,9 @@ export class TreeProviderViewModel extends TComponentModel<
                 s.expandedValues = expandedValues;
                 s.selectedValues = s.selectedValues.filter((href) => visible.has(hrefKey(href)));
                 s.error = null;
+                s.loading = false;
             });
+            void this.loading.loadMany(this.expansion.expandedPaths(displayTree, searchText), !!previousTree);
         } catch (err) {
             if (!operation.isCurrent()) return;
             this.store.setSnapshot(null);
@@ -379,106 +417,49 @@ export class TreeProviderViewModel extends TComponentModel<
                 s.tree = null;
                 s.displayTree = null;
                 s.expandedValues = expandedValues;
-                s.error = errMessage(err, "Failed to list directory");
+                s.error = err;
+                s.loading = false;
             });
         }
     };
 
     private loadChildrenIfNeeded = async (href: string) => {
-        const { tree } = this.state.get();
-        const operation = this.store.currentOperation();
-        const { provider, generation } = operation;
-        if (!tree) return;
+        if (this.state.get().loading) return;
+        const key = hrefKey(href);
+        if (this.state.get().loadingHrefs.some(value => hrefKey(value) === key)) return;
+        await this.loading.load(href);
+    };
 
-        const node = findNode(tree, href);
-        if (!node || !node.data.isDirectory || node.items !== undefined) return;
-
-        const newTree = await this.store.loadChildren(
-            tree,
-            [href],
-            "load-unloaded",
-            () => operation.isCurrent() && this.state.get().tree === tree,
-        );
-        if (!newTree) {
-            if (!this.store.isProviderActive(provider)) return;
-            if (!this.store.isGenerationCurrent(generation) || this.state.get().tree !== tree) {
-                this.queueWatchRefresh();
-            }
-            return;
-        }
+    private publishLoadedChildren(tree: TreeProviderNode): void {
         const { searchText } = this.state.get();
         const displayTree = computeDisplayTree(
-            newTree,
+            tree,
             searchText,
             this.props.showLinks !== false,
             getExpandedPaths(this.expansion.normalExpansionRecord()),
         );
         const expandedValues = this.expansion.getDisplayExpansion(displayTree, searchText);
-        this.store.setSnapshot(newTree);
-        this.state.update((s) => {
-            s.tree = newTree;
-            s.displayTree = displayTree;
-            s.expandedValues = expandedValues;
+        this.store.setSnapshot(tree);
+        this.state.update(state => {
+            state.tree = tree;
+            state.displayTree = displayTree;
+            state.expandedValues = expandedValues;
         });
+    }
+
+    retryLoad = (href: string): void => {
+        void this.loadChildrenIfNeeded(href);
     };
+
+    private invalidateFolderLoad(href: string): void {
+        this.loading.invalidate(href);
+    }
+
+    private invalidateFolderLoads(): void {
+        this.loading.invalidateAll();
+    }
 
     // ── Lazy loading ─────────────────────────────────────────────────────
-
-    private loadChildrenForPaths = async (paths: string[]) => {
-        const { tree } = this.state.get();
-        if (!tree) return;
-        const original = tree;
-        const operation = this.store.currentOperation();
-        const { provider, generation } = operation;
-        const next = await this.store.loadChildren(
-            tree,
-            paths,
-            "load-unloaded",
-            () => operation.isCurrent() && this.state.get().tree === original,
-        );
-        if (!next) {
-            if (!this.store.isProviderActive(provider)) return;
-            if (!this.store.isGenerationCurrent(generation) || this.state.get().tree !== original) {
-                this.queueWatchRefresh();
-            }
-            return;
-        }
-        if (next === original) return;
-        const { searchText } = this.state.get();
-        const displayTree = computeDisplayTree(
-            next,
-            searchText,
-            this.props.showLinks !== false,
-            getExpandedPaths(this.expansion.normalExpansionRecord()),
-        );
-        const expandedValues = this.expansion.getDisplayExpansion(displayTree, searchText);
-        this.store.setSnapshot(next);
-        this.state.update((s) => {
-            s.tree = next;
-            s.displayTree = displayTree;
-            s.expandedValues = expandedValues;
-        });
-    };
-
-    /** Get the path to pass to provider.list() for a given node. */
-    private getListPath = (node: TreeProviderNode): string => {
-        return this.getItemListPath(node.data);
-    };
-
-    /** Path flavor expected by provider list/create/rename calls. Archive hrefs include the
-     * archive prefix, so non-root items are rebuilt from category plus title. */
-    private getItemListPath = (item: ITreeProviderItem, provider = this.props.provider): string => {
-        if (sameHref(item.href, provider.rootPath)) {
-            return provider.rootPath;
-        }
-        // For FileTreeProvider: href is the absolute path, use it directly
-        // For ArchiveTreeProvider: href is "archive.zip!inner/path", we need inner path
-        // The category of children = the directory path the provider understands
-        // For root node, category is "" and we use provider.rootPath
-        // For child directories, build the inner path from category + name
-        const category = item.category;
-        return joinTreeChild(category, item.title);
-    };
 
     // ── State persistence ────────────────────────────────────────────────
 
@@ -502,6 +483,9 @@ export class TreeProviderViewModel extends TComponentModel<
         );
         const result = this.expansion.applyProposal(proposed, currentProjection, searchText);
         if (!result.changed) return;
+        for (const [href, expanded] of Object.entries(proposed)) {
+            if (!expanded && currentProjection[href]) this.invalidateFolderLoad(href);
+        }
         for (const href of result.expandedHrefs) this.loadChildrenIfNeeded(href);
         this.publishExpansionChange(result.collapsed);
     };
@@ -590,22 +574,17 @@ export class TreeProviderViewModel extends TComponentModel<
         const { tree } = this.state.get();
         if (!tree) return;
 
-        // Compute ancestor directory paths from href to rootPath.
-        const rootKey = hrefKey(provider.rootPath);
-        const ancestors: string[] = [];
-        let current = href;
-        let parent = fpDirname(current);
-        while (parent !== current && hrefKey(parent) !== rootKey) {
-            ancestors.unshift(parent);
-            current = parent;
-            parent = fpDirname(current);
+        if (!isLocalFileProvider(provider)) {
+            if (!findNode(tree, href)) throw new Error(`Explorer item is not loaded: ${href}`);
+            await this.revealRequest?.(href);
+            return;
         }
 
-        // Load children for all ancestor paths (no-op for already loaded).
-        const allPaths = [provider.rootPath, ...ancestors];
-        await this.loadChildrenForPaths(allPaths);
+        // Compute ancestor directory paths from href to rootPath.
+        const allPaths = localTreeAncestorPaths(provider.rootPath, href);
+        await this.loading.loadMany(allPaths);
 
-        const changed = this.expansion.openPaths([provider.rootPath, ...ancestors]);
+        const changed = this.expansion.openPaths(allPaths);
         if (changed) {
             this.publishExpansionChange();
         }
@@ -615,13 +594,15 @@ export class TreeProviderViewModel extends TComponentModel<
     };
 
     /** Tree items are keyed by the provider's href, so an agent's "C:/a/b" must become "C:\a\b". */
-    private toItemHref = (path: string): string => (fpIsAbsolute(path) ? fpResolve(path) : path);
+    private toItemHref = (path: string): string => isLocalFileProvider(this.props.provider)
+        ? (fpIsAbsolute(path) ? fpResolve(path) : path)
+        : treePathHref(this.props.provider, path);
 
     expandPath = async (path: string): Promise<void> => {
         const href = this.toItemHref(path);
         await this.revealItem(href);
         // revealItem loads the ancestors' children only; the folder's own children load here.
-        await this.loadChildrenForPaths([href]);
+        await this.loading.loadMany([href]);
         if (this.expansion.expandPath(href, this.state.get().searchText.length >= 3)) {
             this.publishExpansionChange();
         }
@@ -632,6 +613,7 @@ export class TreeProviderViewModel extends TComponentModel<
         await this.revealItem(href);
         const deep = this.state.get().searchText.length >= 3;
         if (this.expansion.collapsePath(href, this.state.get().tree, deep)) {
+            this.invalidateFolderLoad(href);
             this.publishExpansionChange(true);
         }
     };
@@ -713,7 +695,7 @@ export class TreeProviderViewModel extends TComponentModel<
             const targetDir = !node
                 ? provider.rootPath
                 : node.data.isDirectory
-                    ? this.getListPath(node)
+                    ? treeItemListPath(provider, node.data)
                     : (node.data.category || provider.rootPath);
             void this.itemController.paste(targetDir);
             return consume();
@@ -753,7 +735,7 @@ export class TreeProviderViewModel extends TComponentModel<
             ? node
             : findParent(this.state.get().tree, node.data.href);
         if (!dir) return null;
-        return { path: this.getListPath(dir), title: dir.data.title };
+        return { path: treeItemListPath(this.props.provider, dir.data), title: dir.data.title };
     };
 
     /** Import target: the category href written into. Drop on a folder → the folder itself;

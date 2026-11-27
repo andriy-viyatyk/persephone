@@ -14,7 +14,8 @@ import { fpBasename } from "../../core/utils/file-path";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { openToolset as openToolsetLink } from "../../content/persephone-toolset-link";
-import type { ExplorerEditorState } from "../explorer/ExplorerEditorModel";
+import type { ExplorerEditor, ExplorerEditorState } from "../explorer/ExplorerEditorModel";
+import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
 import { untranslated } from "../../../shared/i18n/t";
 
 export type BoardsPanelTab = "boards" | "tools";
@@ -62,8 +63,10 @@ export class BoardsPanelEditor extends EditorModel<BoardsPanelEditorState> {
     }
 
     get rootPath(): string {
-        const explorer = this.page?.findExplorer?.();
-        return explorer ? (explorer.state.get() as ExplorerEditorState).rootPath : "";
+        const explorer = this.page?.findExplorer?.() as ExplorerEditor | undefined;
+        if (!explorer || !explorer.treeProvider || !isLocalFileProvider(explorer.treeProvider)) return "";
+        const state = explorer.state.get() as ExplorerEditorState;
+        return state.tree?.rootPath ?? state.rootPath;
     }
 
     get boardsTab(): BoardsPanelTab { return this.boardsTabState.get().value; }
@@ -133,7 +136,12 @@ export class BoardsPanelEditor extends EditorModel<BoardsPanelEditorState> {
         if (explorer) {
             this.explorerRootUnsubscribe = explorer.state.subscribe(() => {
                 this.rootRevision.update(value => value + 1);
-            }, state => (state as ExplorerEditorState).rootPath);
+            }, state => {
+                const explorerState = state as ExplorerEditorState;
+                const rootPath = explorerState.tree?.rootPath ?? explorerState.rootPath;
+                const providerType = explorerState.tree?.type ?? (rootPath ? "file" : "");
+                return `${providerType}\0${rootPath}`;
+            });
         }
         this.rootRevision.update(value => value + 1);
     }

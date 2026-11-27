@@ -18,6 +18,8 @@ import { PageHistoryNode } from "../ai-vision/page-history";
 import { PagePanelsNode } from "../ai-vision/page-panels";
 import { PageTabNode } from "../ai-vision/page-tab";
 import { isArchiveFile, isArchivePath, isPlainLocalPath } from "../../core/utils/file-path";
+import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
+import type { ExplorerEditor } from "../../editors/explorer/ExplorerEditorModel";
 
 const PAGE_MEMBERS: readonly IAiMember[] = [
     { name: "id", kind: "property", summary: "Stable page id (use in pages[\"<id>\"])." },
@@ -131,10 +133,10 @@ export class PageWrapper implements IAiVisible {
     /** The folder this page's Explorer is rooted at — Persephone's equivalent of a VS Code
      * workspace folder; undefined when the page has no Explorer or is browsing an archive. */
     get workspaceFolder(): string | undefined {
-        const explorer = (this.page as PageModel | null)?.findExplorer?.();
-        if (!explorer) return undefined;
-        const state = explorer.state.get() as { rootPath?: string };
-        const rootPath = state.rootPath;
+        const explorer = (this.page as PageModel | null)?.findExplorer?.() as ExplorerEditor | undefined;
+        if (!explorer?.treeProvider || !isLocalFileProvider(explorer.treeProvider)) return undefined;
+        const state = explorer.state.get() as { rootPath?: string; tree?: { rootPath?: string } };
+        const rootPath = state.tree?.rootPath ?? state.rootPath;
         // Archive pages use the raw archive file as the Explorer root, so reject both archive
         // entries and archive files while retaining the required plain-local-path gate.
         if (!rootPath || !isPlainLocalPath(rootPath)

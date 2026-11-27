@@ -36,6 +36,7 @@ export const explorerCatalog = {
     clipboardListenerUnavailableNewItems: { message: "Clipboard listener is unavailable. No new items will be captured." },
     clipboardListenerUnavailableWithError: { message: "Clipboard listener is unavailable. No new items will be captured. {error}" },
     alreadyAtRoot: { message: "Already at root" },
+    providerMissing: { message: "Provider missing", note: "Heading shown when an Explorer tree provider is unavailable." },
     collapseAll: { message: "Collapse All" },
     restartClipboard: { message: "Restart", note: "Button restarting the clipboard history listener." },
     closeSearch: { message: "Close Search" },

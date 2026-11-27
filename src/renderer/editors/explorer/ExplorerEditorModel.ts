@@ -10,19 +10,24 @@ import type { EditorDescriptor } from "../../../shared/persistence";
 import type { ILink, ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
 import type { TreeProviderViewModel, TreeProviderViewSavedState } from "../../components/tree-provider/TreeProviderViewModel";
 import type { FileSearchState } from "../../components/file-search";
-import type { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
 import { createTreeProvider } from "../../content/tree-providers/tree-provider-factory";
+import type { TreeProviderDescriptor } from "../../content/tree-providers/tree-provider-factory";
 import { TREE_PROVIDER_HOST_TRAIT, TreeProviderHost } from "../base/tree-provider-host";
 import type { IPageHost } from "../../api/pages/IPageHost";
-import { fpDirname, fpIsInside, fpNormalizeForCompare } from "../../core/utils/file-path";
+import { fpIsInside, fpNormalizeForCompare } from "../../core/utils/file-path";
+import { treeParentPath, sameTreePath } from "../../components/tree-provider/tree-provider-path";
+import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
 import { createFolderIconElement } from "../../components/icons/icon-elements";
 import { createLinkData } from "../../../shared/link-data";
 import { hrefKey } from "../../components/tree-provider/href-utils";
 import { untranslated } from "../../../shared/i18n/t";
+import { ExplorerProviderRecovery } from "./ExplorerProviderRecovery";
 
 export interface ExplorerEditorState extends EditorStateBase {
     /** Root path for the file tree. */
     rootPath: string;
+    /** Factory descriptor for a provider-backed tree. */
+    tree?: TreeProviderDescriptor;
     /** EX3 (c) — typed persistence extras replacing legacy `_treeState` /
      *  `_selectedHref` / `_searchState` underscore-prefixed keys. The
      *  underscore form is still read for backward compat in `applyRestoreData`
@@ -30,6 +35,17 @@ export interface ExplorerEditorState extends EditorStateBase {
     treeState?: TreeProviderViewSavedState;
     selectedHref?: string | null;
     searchState?: FileSearchState;
+}
+
+function stableValue(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map(stableValue);
+    if (value !== null && typeof value === "object") {
+        return Object.fromEntries(Object.keys(value).sort().map(key => [
+            key,
+            stableValue((value as Record<string, unknown>)[key]),
+        ]));
+    }
+    return value;
 }
 
 export function getDefaultExplorerEditorState(): ExplorerEditorState {
@@ -50,13 +66,15 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
     readonly panelOrder = 0;
     readonly sidebarOptional = true;
 
-    readonly treeProviderHost = new TreeProviderHost<FileTreeProvider>();
+    readonly treeProviderHost = new TreeProviderHost<ITreeProvider>();
 
     /** Tree expansion state — persisted via `ExplorerEditorState.treeState`. */
     treeState: TreeProviderViewSavedState | undefined = undefined;
     treeProviderViewModel: TreeProviderViewModel | undefined;
+    private providerIdentityForCurrent = "";
+    private providerRecovery: ExplorerProviderRecovery | undefined;
 
-    get treeProvider(): FileTreeProvider | null {
+    get treeProvider(): ITreeProvider | null {
         return this.treeProviderHost.provider;
     }
 
@@ -71,11 +89,16 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
         super(state);
         this.searchState = state.get().searchState;
         this.traits.add(TREE_PROVIDER_HOST_TRAIT, this.treeProviderHost);
-        this.ensureTreeProvider(this.rootPath);
+        this.ensureTreeProvider();
         this.own(this.state.subscribe(
-            (rootPath: string) => this.ensureTreeProvider(rootPath),
-            (state) => state.rootPath,
+            () => this.ensureTreeProvider(),
+            (state) => this.providerIdentity(state.tree, state.rootPath),
         ));
+        this.own(this.selectionState.subscribe<string | null>(
+            selectedHref => this.state.update(state => { state.selectedHref = selectedHref; }),
+            selection => selection.selectedHref,
+        ));
+        this.own(() => this.providerRecovery?.dispose());
         this.noLanguage = true;
         this.skipSave = true;
         // Folder glyph for the "Explorer" sidebar panel — the same icon the
@@ -85,19 +108,48 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
     }
 
     get rootPath(): string {
-        return this.state.get().rootPath;
+        const state = this.state.get();
+        return state.tree?.rootPath ?? state.rootPath;
     }
 
-    private ensureTreeProvider(rootPath: string): void {
-        const provider: ITreeProvider | null = this.treeProviderHost.provider;
-        if (provider?.sourceUrl !== rootPath) {
-            provider?.dispose?.();
-            this.treeProviderHost.setProvider(rootPath ? createTreeProvider({ type: "file", rootPath }) : null);
+    private providerIdentity(tree: TreeProviderDescriptor | undefined, rootPath: string): string {
+        const descriptor = tree ?? (rootPath ? { type: "file", rootPath } : null);
+        if (descriptor && typeof descriptor === "object") {
+            return JSON.stringify(stableValue({ ...descriptor, config: descriptor.config ?? null }));
         }
+        return JSON.stringify(descriptor);
+    }
+
+    private ensureTreeProvider(): void {
+        const state = this.state.get();
+        const descriptor = state.tree ?? (state.rootPath ? { type: "file", rootPath: state.rootPath } : undefined);
+        const identity = descriptor ? this.providerIdentity(descriptor, state.rootPath) : "";
+        if (this.providerIdentityForCurrent === identity) return;
+        this.providerIdentityForCurrent = identity;
+        this.treeProvider?.dispose?.();
+        const provider = descriptor ? createTreeProvider(descriptor) : null;
+        this.treeProviderHost.setProvider(provider);
+        if (state.tree && !this.providerRecovery) {
+            this.providerRecovery = new ExplorerProviderRecovery(() => {
+                const currentProvider = this.treeProvider;
+                if (!currentProvider || !this.state.get().tree) return;
+                this.treeProviderViewModel?.buildTree();
+                this.treeProviderHost.providerState.set(currentProvider);
+            });
+        } else if (!state.tree && this.providerRecovery) {
+            this.providerRecovery.dispose();
+            this.providerRecovery = undefined;
+        }
+        if (provider && !isLocalFileProvider(provider) && this.searchState) {
+            this.searchState = undefined;
+            this.state.update(current => { current.searchState = undefined; });
+            this.secondaryView = this.composeSecondaryView();
+        }
+        this.treeProviderViewModel?.buildTree();
     }
 
     async listItems(): Promise<ILink[] | undefined> {
-        if (!this.page || !this.treeProvider || !this.rootPath) return undefined;
+        if (!this.page || !this.treeProvider) return undefined;
         const items = await this.treeProvider.list(this.rootPath);
         return items.slice(0, 200).map(item => ({ ...item, tags: [...item.tags] }));
     }
@@ -125,6 +177,15 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
         if (!this.secondaryView?.includes("explorer")) throw new Error("Explorer reveal unavailable: the Explorer panel is not present.");
         if (this.page.activePanelId !== "explorer") throw new Error("Explorer reveal unavailable: the Explorer panel is not active.");
         if (!this.treeProvider) throw new Error("Explorer reveal unavailable: no provider is attached.");
+        if (!isLocalFileProvider(this.treeProvider)) {
+            if (!this.treeProviderViewModel) throw new Error("Explorer tree is not mounted.");
+            if (!this.treeProviderViewModel.hasLoadedHref(href)) {
+                throw new Error(`Explorer item is not loaded: ${href}`);
+            }
+            this.setSelectedHref(href);
+            void this.treeProviderViewModel.revealItem(href);
+            return;
+        }
         this.setSelectedHref(href);
         this.treeProviderHost.requestReveal(href);
     }
@@ -143,6 +204,7 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
 
     setTreeState(state: TreeProviderViewSavedState): void {
         this.treeState = state;
+        this.state.update(current => { current.treeState = state; });
     }
 
     // ── Secondary-view composition ─────────────────────────────────────
@@ -150,13 +212,19 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
     /** Explorer contributes Search after its tree when search state exists. */
     private composeSecondaryView(): string[] {
         const ids = ["explorer"];
-        if (this.searchState) ids.push("search");
+        if (this.treeProvider && isLocalFileProvider(this.treeProvider) && this.searchState) ids.push("search");
         return ids;
     }
 
     // ── Search ───────────────────────────────────────────────────────
 
     openSearch(folder?: string): void {
+        if (!this.treeProvider || !isLocalFileProvider(this.treeProvider)) {
+            this.searchState = undefined;
+            this.state.update(state => { state.searchState = undefined; });
+            this.secondaryView = this.composeSecondaryView();
+            throw new Error("Search is unavailable for this Explorer provider.");
+        }
         const rootPath = this.rootPath;
         const searchFolder = folder || rootPath;
         if (!this.searchState || (folder && this.searchState.searchFolder !== folder)) {
@@ -170,6 +238,7 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
                 totalMatches: 0,
                 totalFiles: 0,
             };
+            this.state.update(state => { state.searchState = this.searchState; });
         }
         this.secondaryView = this.composeSecondaryView();
         this.page?.expandPanel("search");
@@ -177,15 +246,25 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
 
     closeSearch(): void {
         this.searchState = undefined;
+        this.state.update(state => { state.searchState = undefined; });
         this.secondaryView = this.composeSecondaryView();
         this.page?.expandPanel("explorer");
     }
 
     setSearchState = (state: FileSearchState): void => {
+        if (!this.treeProvider || !isLocalFileProvider(this.treeProvider)) {
+            this.searchState = undefined;
+            this.state.update(current => { current.searchState = undefined; });
+            return;
+        }
         this.searchState = state;
+        this.state.update(current => { current.searchState = state; });
     };
 
     async openSearchResult(path: string, lineNumber?: number): Promise<void> {
+        if (!this.treeProvider || !isLocalFileProvider(this.treeProvider)) {
+            throw new Error("Search is unavailable for this Explorer provider.");
+        }
         if (!this.page) throw new Error("Search action unavailable: no page host attached.");
         this.setSelectedHref(path);
         await app.events.openRawLink.sendAsync(createLinkData(path, {
@@ -203,16 +282,28 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
 
     navigateUp(): void {
         const rootPath = this.rootPath;
-        const parent = fpDirname(rootPath);
+        const provider = this.treeProvider;
+        if (!provider?.navigable) return;
+        const parent = treeParentPath(provider, rootPath);
         if (parent === rootPath) return;
         this.treeState = undefined;
-        this.state.update((s) => { s.rootPath = parent; });
+        this.state.update((s) => {
+            if (s.tree) s.tree.rootPath = parent;
+            else s.rootPath = parent;
+        });
     }
 
     makeRoot(newRoot: string): void {
-        if (fpNormalizeForCompare(newRoot) === fpNormalizeForCompare(this.rootPath)) return;
+        const provider = this.treeProvider;
+        if (provider && !provider.navigable) return;
+        if (provider
+            ? sameTreePath(provider, newRoot, this.rootPath)
+            : fpNormalizeForCompare(newRoot) === fpNormalizeForCompare(this.rootPath)) return;
         this.treeState = undefined;
-        this.state.update((s) => { s.rootPath = newRoot; });
+        this.state.update((s) => {
+            if (s.tree) s.tree.rootPath = newRoot;
+            else s.rootPath = newRoot;
+        });
     }
 
     // ── Highlight + reveal ─────────────────────────────────────────
@@ -242,7 +333,8 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
             return;
         }
         const filePath = newMainEditor.filePath;
-        if (filePath && fpIsInside(this.rootPath, filePath)) {
+        if (filePath && this.treeProvider && isLocalFileProvider(this.treeProvider)
+            && fpIsInside(this.rootPath, filePath)) {
             this._selectAndReveal(filePath);
         } else {
             this._selectAndReveal(null);
@@ -269,6 +361,7 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
             state: {
                 ...s,
                 rootPath: this.rootPath,
+                tree: s.tree,
                 treeState: this.treeState,
                 selectedHref: this.selectionState.get().selectedHref ?? undefined,
                 searchState: this.searchState,
@@ -278,20 +371,23 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
 
     applyRestoreData(data: RestoreData<ExplorerEditorState>): void {
         super.applyRestoreData(data);
-        if (data.rootPath) {
-            this.state.update((s) => { s.rootPath = data.rootPath; });
-        }
-        // EX3 (c) — typed extras (new format).
-        if (data.treeState) this.treeState = data.treeState;
-        if (data.selectedHref) this.selectionState.set({ selectedHref: data.selectedHref });
-        if (data.searchState) this.searchState = data.searchState;
         const extra = data as Partial<ExplorerEditorState> & {
             _treeState?: TreeProviderViewSavedState;
             _selectedHref?: string;
             _searchState?: FileSearchState;
         };
+        this.state.update((s) => {
+            if (data.tree) s.tree = data.tree;
+            if (data.rootPath !== undefined) s.rootPath = data.rootPath;
+        });
+        // EX3 (c) — typed extras (new format).
+        if (data.treeState) this.treeState = data.treeState;
+        if (data.selectedHref !== undefined) {
+            this.selectionState.set({ selectedHref: data.selectedHref ?? null });
+        }
+        if (data.searchState) this.searchState = data.searchState;
         if (extra._treeState && !data.treeState) this.treeState = extra._treeState;
-        if (extra._selectedHref && !data.selectedHref) {
+        if (extra._selectedHref && data.selectedHref === undefined) {
             this.selectionState.set({ selectedHref: extra._selectedHref });
         }
         if (extra._searchState && !data.searchState) this.searchState = extra._searchState;
@@ -299,14 +395,14 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
 
     async restore(): Promise<void> {
         await super.restore();
-        if (this.page && this.rootPath) {
+        if (this.page && (this.state.get().tree || this.rootPath)) {
             this.secondaryView = this.composeSecondaryView();
         }
     }
 
     setPage(page: IPageHost | null): void {
         super.setPage(page);
-        if (page && this.rootPath && !this.secondaryView?.length) {
+        if (page && (this.state.get().tree || this.rootPath) && !this.secondaryView?.length) {
             this.secondaryView = this.composeSecondaryView();
         }
     }

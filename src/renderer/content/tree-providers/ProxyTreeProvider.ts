@@ -8,7 +8,6 @@ import type {
     TreeProviderRequest,
 } from "../../../ipc/module-service-channels";
 import { BoardRoot } from "../../../shared/board/board-root";
-import { pathsAreCaseInsensitive } from "../../../shared/platform";
 import { t } from "../../../shared/i18n/t";
 import { boardSchemeOwner, schemeOf } from "../scheme-registry";
 import {
@@ -59,7 +58,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function hrefKey(href: string): string {
-    return pathsAreCaseInsensitive ? href.toLowerCase() : href;
+    return href;
 }
 
 /** Tree view over a trusted board's accepted tree provider. */

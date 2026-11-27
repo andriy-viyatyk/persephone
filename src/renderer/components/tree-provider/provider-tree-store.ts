@@ -110,7 +110,7 @@ export class ProviderTreeStore {
     }
 
     async buildTree(
-        expandedHrefs: string[],
+        _expandedHrefs: string[],
         rootLabel: string | undefined,
         operation: TreeOperation,
     ): Promise<TreeProviderNode | null> {
@@ -147,13 +147,7 @@ export class ProviderTreeStore {
         // for findNode/updateNodeChildren to locate the deeper expanded entries.
         // Sequential await is fine: FileTreeProvider.watch is debounced 500ms, and the
         // OLD tree remains visible the entire time (no intermediate state.update).
-        const refreshed = await this.loadChildren(
-            rootTree,
-            expandedHrefs.filter(href => !sameHref(href, provider.rootPath)),
-            "load-unloaded",
-            operation.isCurrent,
-        );
-        return refreshed;
+        return rootTree;
     }
 
     async refreshWatchBatch(
@@ -191,6 +185,7 @@ export class ProviderTreeStore {
         hrefs: string[],
         mode: TreeLoadMode,
         isCurrent: () => boolean,
+        force = false,
     ): Promise<TreeProviderNode | null> {
         const provider = this.provider;
         let next = tree;
@@ -200,7 +195,7 @@ export class ProviderTreeStore {
             if (!isCurrent() && mode === "relist-loaded") return null;
             const node = findNode(next, href);
             if (!node || !node.data.isDirectory) continue;
-            if (mode === "load-unloaded" && node.items !== undefined) continue;
+            if (mode === "load-unloaded" && node.items !== undefined && !force) continue;
             if (mode === "relist-loaded" && node.items === undefined) continue;
 
             try {
@@ -213,17 +208,19 @@ export class ProviderTreeStore {
                 if (!current && (mode === "relist-loaded" || sorted.length === 1)) return null;
                 const filteredItems = filterTreeItems(items);
                 const children = filteredItems.map(item => {
-                    const old = mode === "relist-loaded"
+                    const old = mode === "relist-loaded" || force
                         ? node.items?.find(child =>
-                            fpNormalizeForCompare(child.data.href) === fpNormalizeForCompare(item.href),
+                            force
+                                ? sameHref(child.data.href, item.href)
+                                : fpNormalizeForCompare(child.data.href) === fpNormalizeForCompare(item.href),
                         )
                         : undefined;
-                    if (mode === "relist-loaded" && old && old.data.isDirectory !== item.isDirectory) {
+                    if ((mode === "relist-loaded" || force) && old && old.data.isDirectory !== item.isDirectory) {
                         throw new Error("Directory type changed");
                     }
                     return {
                         data: item,
-                        items: mode === "relist-loaded" && item.isDirectory ? old?.items : undefined,
+                        items: (mode === "relist-loaded" || force) && item.isDirectory ? old?.items : undefined,
                     };
                 });
                 next = updateNodeChildren(next, node.data.href, children);
@@ -231,7 +228,7 @@ export class ProviderTreeStore {
                 const current = isCurrent();
                 if (!current && (mode === "relist-loaded" || sorted.length === 1)) return null;
                 if (mode === "relist-loaded") throw error;
-                next = updateNodeChildren(next, node.data.href, []);
+                throw error;
             }
         }
 

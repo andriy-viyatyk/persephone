@@ -7,6 +7,7 @@ import type { FileSearchState } from "../../components/file-search";
 import { ClipboardPanelEditor } from "../clipboard/ClipboardPanelEditorModel";
 import { BoardsPanelEditor } from "../board/BoardsPanelEditorModel";
 import { InternalEditorIds } from "../base/editor-ids";
+import type { TreeProviderDescriptor } from "../../content/tree-providers/tree-provider-factory";
 
 // ============================================================================
 // page-explorer — Explorer provisioning for a page.
@@ -37,12 +38,13 @@ export function explorerRootForPanels(page: PageModel): string {
 
 export async function attachExplorer(
     page: PageModel,
-    options: { rootPath: string; search?: FileSearchState },
+    options: { rootPath?: string; tree?: TreeProviderDescriptor; search?: FileSearchState },
     onCreate?: (editor: ExplorerEditor) => void,
 ): Promise<ExplorerEditor> {
     const state = new TComponentState({
         ...getDefaultExplorerEditorState(),
-        rootPath: options.rootPath,
+        rootPath: options.rootPath ?? options.tree?.rootPath ?? "",
+        tree: options.tree,
         searchState: options.search,
     });
     const explorer = new ExplorerEditor(state);

@@ -1,9 +1,13 @@
 import { hrefCompareKey } from "../../../shared/path-containment";
 import { pathsAreCaseInsensitive } from "../../../shared/platform";
+import { boardSchemeOwner, schemeOf } from "../../content/scheme-registry";
 
 /** Href equality follows the platform's case rule; separators are compared as written. */
 export function hrefKey(href: string): string {
-    return pathsAreCaseInsensitive ? href.toLowerCase() : href;
+    const scheme = schemeOf(href);
+    return pathsAreCaseInsensitive && !(scheme && boardSchemeOwner(scheme))
+        ? href.toLowerCase()
+        : href;
 }
 
 export function sameHref(a: string, b: string): boolean {
@@ -17,5 +21,9 @@ export function sameHrefs(a: string[], b: string[]): boolean {
 
 /** Platform-aware href form for self/descendant drop guards. */
 export function normalizeHref(href: string): string {
-    return hrefCompareKey(href).replace(/\/+$/, "");
+    const scheme = schemeOf(href);
+    const normalized = pathsAreCaseInsensitive && !(scheme && boardSchemeOwner(scheme))
+        ? hrefCompareKey(href)
+        : href;
+    return normalized.replace(/\/+$/, "");
 }

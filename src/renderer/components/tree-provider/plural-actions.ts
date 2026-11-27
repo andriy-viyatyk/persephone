@@ -16,6 +16,7 @@ import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-
 import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
 import { hrefCompareKey } from "../../../shared/path-containment";
+import { errMessage } from "../../../shared/utils";
 
 /**
  * Drop any selected item that lives inside another selected folder. A folder-level action
@@ -52,10 +53,11 @@ export function buildMultiItemMenuItems(
     const hasRoot = hrefs.includes(provider.rootPath);
     const n = items.length;
     const menuItems: MenuItem[] = [];
+    const copyHrefs = !isLocalFileProvider(provider) || items.every(item => isUrlOrCurl(item.href));
 
     menuItems.push({
-        id: items.every((x) => isUrlOrCurl(x.href)) ? "copy-hrefs" : "copy-paths",
-        label: items.every((x) => isUrlOrCurl(x.href))
+        id: copyHrefs ? "copy-hrefs" : "copy-paths",
+        label: copyHrefs
             ? t("menus.copyHrefsCount", { count: n })
             : t("menus.copyPathsCount", { count: n }),
         icon: CopyIcon.createElement(),
@@ -148,13 +150,13 @@ export async function deleteItemsBatch(
                 try {
                     await provider.deleteItem?.(target.href);
                 } catch (err) {
-                    errors.push(`${target.title}: ${err?.message || "failed"}`);
+                    errors.push(`${target.title}: ${errMessage(err, "failed")}`);
                 }
                 done++;
             }
         })());
     } catch (err) {
-        ui.notify(err?.message || t("menus.failedToDelete"), "warning");
+        ui.notify(errMessage(err, t("menus.failedToDelete")), "warning");
     }
     if (errors.length) {
         const shown = errors.slice(0, 5).join("\n");

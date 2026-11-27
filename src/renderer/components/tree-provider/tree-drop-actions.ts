@@ -20,6 +20,7 @@ import { pruneNestedItems } from "./plural-actions";
 import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
 import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
+import { errMessage } from "../../../shared/utils";
 
 /**
  * Where a drop lands.
@@ -93,7 +94,7 @@ export async function moveItemsInto(
         try {
             await provider.rename(source.href, newPath);
         } catch (err) {
-            ui.notify(err.message || t("menus.failedToMove"), "warning");
+            ui.notify(errMessage(err, t("menus.failedToMove")), "warning");
             return false;
         }
     } else {
@@ -180,7 +181,7 @@ async function moveFilesInto(
                 : t("menus.itemsCouldNotBeMoved", { errors: shown }), "warning");
         }
     } catch (err) {
-        ui.notify(err?.message || t("menus.failedToMove"), "warning");
+        ui.notify(errMessage(err, t("menus.failedToMove")), "warning");
     }
     return true;
 }
@@ -213,7 +214,7 @@ export async function importFilesInto(
     try {
         await provider.importFiles(items, targetCategory);
     } catch (err) {
-        ui.notify(err.message || t("menus.failedToImportFiles"), "warning");
+        ui.notify(errMessage(err, t("menus.failedToImportFiles")), "warning");
         return false;
     }
     return true;
@@ -228,6 +229,7 @@ export async function dropOsFilesInto(
     items: IFileLink[],
     target: DropTarget,
 ): Promise<boolean> {
+    if (!isLocalFileProvider(provider)) return false;
     if (!items.length) return false;
 
     const targetDir = target.path;
@@ -289,7 +291,7 @@ export async function dropOsFilesInto(
                     : t("menus.itemsCouldNotBeCopied", { errors: shown }), "warning");
         }
     } catch (err) {
-        ui.notify(err?.message || (move ? t("menus.failedToMove") : t("menus.failedToCopy")), "warning");
+        ui.notify(errMessage(err, move ? t("menus.failedToMove") : t("menus.failedToCopy")), "warning");
     }
     return true;
 }

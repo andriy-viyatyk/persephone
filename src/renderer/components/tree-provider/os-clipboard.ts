@@ -15,6 +15,8 @@ import { hrefCompareKey } from "../../../shared/path-containment";
 import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
 import { isLinux } from "../../../shared/platform";
+import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
+import { errMessage } from "../../../shared/utils";
 
 /** Put N files/folders on the OS clipboard (Windows Explorer can paste them).
  *  `cut: true` marks them for move — pasting (here or in Explorer) relocates them. */
@@ -42,6 +44,7 @@ export async function pasteOsClipboardInto(
     provider: ITreeProvider,
     targetDir: string,
 ): Promise<boolean> {
+    if (!isLocalFileProvider(provider)) return false;
     const clip = await api.clipboardReadFilePaths();
     if (!clip.paths.length) {
         ui.notify(t("menus.clipboardNoFiles"), "info");
@@ -96,7 +99,7 @@ export async function pasteOsClipboardInto(
             }
         }
     } catch (err) {
-        ui.notify(err?.message || t("menus.failedToPaste"), "warning");
+        ui.notify(errMessage(err, t("menus.failedToPaste")), "warning");
     }
     return true;
 }

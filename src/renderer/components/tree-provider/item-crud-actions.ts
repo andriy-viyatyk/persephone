@@ -22,7 +22,7 @@ export async function pasteIntoDir(context: ItemCrudContext, directory: string):
 
 export async function createNewFile(context: ItemCrudContext, directory: string): Promise<void> {
     const { provider } = context;
-    if (!provider.addItem) return;
+    if (!provider.writable || !provider.addItem) return;
 
     const inputResult = await ui.input(t("menus.enterFileName"), {
         title: t("menus.newFile"),
@@ -49,7 +49,7 @@ export async function createNewFile(context: ItemCrudContext, directory: string)
 
 export async function createNewFolder(context: ItemCrudContext, directory: string): Promise<void> {
     const { provider } = context;
-    if (!provider.mkdir) return;
+    if (!provider.writable || !provider.mkdir) return;
 
     const inputResult = await ui.input(t("menus.enterFolderName"), {
         title: t("menus.newFolder"),

@@ -65,22 +65,14 @@ function pushEditGroup(
             onClick: () => actions.deleteItem(item),
         });
     }
-    if (provider.writable && provider.mkdir) {
-        items.push(
-            {
-                id: "new-file",
-                label: t("menus.newFileAction"),
-                icon: NewFileIcon.createElement(),
-                onClick: () => actions.createFile(directory),
-            },
-            {
-                id: "new-folder",
-                label: t("menus.newFolderAction"),
-                icon: NewFolderIcon.createElement(),
-                onClick: () => actions.createFolder(directory),
-            },
-        );
-    }
+    if (provider.writable && provider.addItem) items.push({
+        id: "new-file", label: t("menus.newFileAction"), icon: NewFileIcon.createElement(),
+        onClick: () => actions.createFile(directory),
+    });
+    if (provider.writable && provider.mkdir) items.push({
+        id: "new-folder", label: t("menus.newFolderAction"), icon: NewFolderIcon.createElement(),
+        onClick: () => actions.createFolder(directory),
+    });
 
     // Whichever of the four survived the provider's capabilities opens the group.
     const first = items[startIndex];
@@ -94,7 +86,7 @@ export function getFileMenuItems(
     /** The file's parent — what Paste and New File / New Folder target, as Ctrl+V does. */
     directory: string,
 ): MenuItem[] {
-    const isUrl = isUrlOrCurl(item.href);
+    const isUrl = !isLocalFileProvider(provider) || isUrlOrCurl(item.href);
     const items: MenuItem[] = [{
         id: isUrl ? "copy-href" : "copy-path",
         label: isUrl ? t("menus.copyHref") : t("menus.copyPath"),
@@ -151,8 +143,8 @@ export function getFolderMenuItems(options: FolderMenuOptions): MenuItem[] {
         items.push({ id: "open", label: t("common.open"), icon: FolderOpenIcon.createElement(), onClick: onOpen });
     }
 
-    const isUrl = isUrlOrCurl(item.href);
-    items.push({
+    const isUrl = !isLocalFileProvider(provider) || isUrlOrCurl(item.href);
+    if (!(!isLocalFileProvider(provider) && isRoot && !isUrl)) items.push({
         startGroup: items.length > 0,
         id: isUrl ? "copy-href" : "copy-path",
         label: isUrl ? t("menus.copyHref") : t("menus.copyPath"),
@@ -210,21 +202,15 @@ export function getBackgroundMenuItems(
     actions: Pick<ItemMenuActions, "createFile" | "createFolder" | "paste">,
 ): MenuItem[] {
     const items: MenuItem[] = [];
-    if (provider.writable && provider.mkdir) {
-        items.push(
-            {
-                id: "new-file",
-                label: t("menus.newFileAction"),
-                icon: NewFileIcon.createElement(),
-                onClick: () => actions.createFile(directory),
-            },
-            {
-                id: "new-folder",
-                label: t("menus.newFolderAction"),
-                icon: NewFolderIcon.createElement(),
-                onClick: () => actions.createFolder(directory),
-            },
-        );
+    if (provider.writable && (provider.addItem || provider.mkdir)) {
+        if (provider.addItem) items.push({
+            id: "new-file", label: t("menus.newFileAction"), icon: NewFileIcon.createElement(),
+            onClick: () => actions.createFile(directory),
+        });
+        if (provider.mkdir) items.push({
+            id: "new-folder", label: t("menus.newFolderAction"), icon: NewFolderIcon.createElement(),
+            onClick: () => actions.createFolder(directory),
+        });
     }
     if (isLocalFileProvider(provider)) {
         items.push({
