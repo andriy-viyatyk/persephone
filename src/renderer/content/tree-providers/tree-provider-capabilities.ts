@@ -1,4 +1,34 @@
-import type { ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
+import type { ILink, ITreeProvider, ITreeProviderItem, ITreeStat } from "../../api/types/io.tree";
+
+export type TransferNodeKind = "file" | "directory" | "file-symlink" | "directory-symlink";
+export type TreeDeletionMode = "recursive" | "empty-only";
+
+export interface TransferEntry {
+    link: ILink;
+    path: string;
+    name: string;
+    kind: TransferNodeKind;
+    size?: number;
+}
+
+/** Explicit, strict operations required by safe cross-tree transfers. */
+export interface TreeTransferCapability {
+    backingStoreKey: string;
+    pathForLink(link: ILink): string;
+    joinChild(folderPath: string, name: string): string;
+    validateName(name: string): void;
+    listChildren(folderPath: string): Promise<TransferEntry[]>;
+    stat(path: string): Promise<{ stat: ITreeStat; kind: TransferNodeKind }>;
+    resolveContentHref(path: string): Promise<string>;
+    isInside(parentPath: string, childPath: string): boolean | undefined;
+    deletionMode(entry: TransferEntry): TreeDeletionMode | undefined;
+    deleteEntry(entry: TransferEntry): Promise<void>;
+}
+
+export function treeTransferCapability(provider: ITreeProvider): TreeTransferCapability | undefined {
+    const candidate = provider as ITreeProvider & { transfer?: TreeTransferCapability };
+    return candidate.transfer;
+}
 
 export type ClassifiedTreeWatchBatch =
     | { relist: Array<{ href: string; changedPaths?: string[] }> }

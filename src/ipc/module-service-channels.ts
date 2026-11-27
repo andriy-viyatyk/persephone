@@ -209,6 +209,9 @@ export interface ProviderTreeItem {
 export interface ProviderTreeStat {
     exists: boolean;
     isDirectory: boolean;
+    linkKind?: "file" | "directory" | "file-symlink" | "directory-symlink";
+    href?: string;
+    deleteMode?: "recursive" | "empty-only";
     size?: number;
     mtime?: string;
 }

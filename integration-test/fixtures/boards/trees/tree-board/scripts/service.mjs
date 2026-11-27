@@ -175,7 +175,15 @@ persephone.treeProviders.register(TYPE, {
     },
     stat(config, path) {
         const item = treeFor(config.conn).get(path);
-        return { exists: Boolean(item), isDirectory: item?.isDirectory ?? false, ...(item && !item.isDirectory ? { size: item.content.byteLength } : {}) };
+        const isDirectory = item?.isDirectory ?? false;
+        return {
+            exists: Boolean(item),
+            isDirectory,
+            href: hrefFor(config.conn, path),
+            ...(item ? { linkKind: isDirectory ? "directory" : "file" } : {}),
+            ...(item && isDirectory ? { deleteMode: "empty-only" } : {}),
+            ...(item && !isDirectory ? { size: item.content.byteLength } : {}),
+        };
     },
     mkdir(config, path) {
         assertWritable(config);

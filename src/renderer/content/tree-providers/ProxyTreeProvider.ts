@@ -3,6 +3,7 @@ import { moduleService } from "../../api/module-service";
 import { ui } from "../../api/ui";
 import { fpExtname } from "../../core/utils/file-path";
 import type {
+    ProviderTreeItem,
     ProviderResult,
     TreeProviderOperation,
     TreeProviderRequest,
@@ -20,7 +21,8 @@ import {
     whenProviderDeclarationsReady,
 } from "../registry";
 import { encodeCategoryLink } from "./tree-provider-link";
-import { boardTreeSourceIdentity } from "./tree-provider-identity";
+import { boardTreeBackingStoreIdentity, boardTreeSourceIdentity } from "./tree-provider-identity";
+import type { TransferEntry, TreeTransferCapability } from "./tree-provider-capabilities";
 import {
     invalidProviderResult,
     mapProviderRequestError,
@@ -59,10 +61,33 @@ export class ProxyTreeProvider implements ITreeProvider {
     private readonly hrefToPath = new Map<string, string>();
     private readonly pathToHref = new Map<string, string>();
     private readonly truncatedPaths = new Set<string>();
+    private readonly deleteModes = new Map<string, "recursive" | "empty-only">();
     private readonly requests = new Set<AbortController>();
     private readonly unsubscribeAvailability: () => void;
     private lastAcceptedRoot: string | undefined;
     private disposed = false;
+
+    get transfer(): TreeTransferCapability {
+        return {
+            backingStoreKey: boardTreeBackingStoreIdentity({ type: this.type, config: this.config }),
+            pathForLink: (link) => {
+                const path = this.hrefToPath.get(hrefKey(link.href));
+                if (!path) throw new Error(`The board item has not been listed by this provider: ${link.href}`);
+                return path;
+            },
+            joinChild: (folderPath, name) => {
+                this.validateTransferName(name);
+                return this.joinItemPath(folderPath, name);
+            },
+            validateName: (name) => this.validateTransferName(name),
+            listChildren: (folderPath) => this.listTransferChildren(folderPath),
+            stat: (path) => this.statTransferPath(path),
+            resolveContentHref: (path) => this.resolveTransferHref(path),
+            isInside: (parentPath, childPath) => this.pathInside(parentPath, childPath),
+            deletionMode: (entry) => this.deletionModeFor(entry),
+            deleteEntry: (entry) => this.deleteByHref(entry.link.href),
+        };
+    }
 
     constructor(
         readonly type: string,
@@ -86,7 +111,8 @@ export class ProxyTreeProvider implements ITreeProvider {
         const accepted = this.currentAcceptedProvider();
         if (!accepted) return false;
         const capabilities = moduleService.providerTreeCapabilities(accepted.boardRoot, this.type);
-        return capabilities?.mkdir === true || capabilities?.rename === true || capabilities?.delete === true;
+        return moduleService.providerWritable(accepted.boardRoot, this.type) === true
+            || capabilities?.mkdir === true || capabilities?.rename === true || capabilities?.delete === true;
     }
 
     get mkdir(): ITreeProvider["mkdir"] {
@@ -155,6 +181,105 @@ export class ProxyTreeProvider implements ITreeProvider {
             this.truncatedPaths.delete(pathKey);
         }
         return [...folders, ...files];
+    }
+
+    private validateTransferName(name: string): void {
+        if (!name || name === "." || name === ".." || /[\\/\0]/.test(name)) {
+            throw new Error(`Invalid board target name: ${name}`);
+        }
+    }
+
+    private async listTransferChildren(path: string): Promise<TransferEntry[]> {
+        const accepted = await this.requireAcceptedProvider();
+        const result = await this.request(accepted, "treeList", path);
+        if (!result.ok || result.operation !== "treeList" || result.truncated) {
+            throw new Error(`Board tree listing is incomplete at "${path}".`);
+        }
+        this.rememberListedItems(accepted, result.items);
+        return result.items.map((item) => ({
+            link: {
+                title: item.name, href: item.href, category: path, tags: item.isDirectory ? [] : this.extensionTags(item.name),
+                isDirectory: item.isDirectory, size: item.size, mtime: item.mtime,
+            },
+            path: item.path, name: item.name,
+            kind: item.isDirectory ? "directory" : "file",
+            size: item.size,
+        }));
+    }
+
+    private async statTransferPath(path: string): Promise<{ stat: ITreeStat; kind: TransferEntry["kind"] }> {
+        const accepted = await this.requireAcceptedProvider();
+        const result = await this.request(accepted, "treeStat", path);
+        if (!result.ok || result.operation !== "treeStat") {
+            throw invalidProviderResult("treeStat");
+        }
+        this.deleteModes.delete(path);
+        if (!result.stat.exists) {
+            const oldHref = this.pathToHref.get(path);
+            if (oldHref) this.hrefToPath.delete(hrefKey(oldHref));
+            this.pathToHref.delete(path);
+            return { stat: result.stat, kind: "file" };
+        }
+        if (!result.stat.linkKind) {
+            throw new Error(`Board tree link metadata is missing for "${path}".`);
+        }
+        if (result.stat.href) this.validateOwnedHref(accepted, result.stat.href, "treeStat");
+        if (result.stat.href) {
+            this.hrefToPath.set(hrefKey(result.stat.href), path);
+            this.pathToHref.set(path, result.stat.href);
+        }
+        if (result.stat.deleteMode) this.deleteModes.set(path, result.stat.deleteMode);
+        return { stat: result.stat, kind: result.stat.linkKind };
+    }
+
+    private async resolveTransferHref(path: string): Promise<string> {
+        const accepted = await this.requireAcceptedProvider();
+        const result = await this.request(accepted, "treeStat", path);
+        if (!result.ok || result.operation !== "treeStat" || !result.stat.href) {
+            throw new Error(`Board tree provider cannot resolve a destination href for "${path}".`);
+        }
+        this.validateOwnedHref(accepted, result.stat.href, "treeStat");
+        this.hrefToPath.set(hrefKey(result.stat.href), path);
+        this.pathToHref.set(path, result.stat.href);
+        return result.stat.href;
+    }
+
+    private deletionModeFor(entry: TransferEntry): "recursive" | "empty-only" | undefined {
+        if (!this.hasCapability("delete")) return undefined;
+        if (entry.kind === "file") return "empty-only";
+        if (entry.kind === "file-symlink" || entry.kind === "directory-symlink") return undefined;
+        return this.deleteModes.get(entry.path);
+    }
+
+    private pathInside(parent: string, child: string): boolean | undefined {
+        if (!isValidBoardTreePath(parent) || !isValidBoardTreePath(child)) return undefined;
+        const prefix = parent.endsWith("/") ? parent : `${parent}/`;
+        if (child === parent || child.startsWith(prefix)) return true;
+        if (child.toLowerCase() === parent.toLowerCase()
+            || child.toLowerCase().startsWith(prefix.toLowerCase())) return undefined;
+        return false;
+    }
+
+    private validateOwnedHref(accepted: AcceptedProvider, href: string, operation: TreeProviderOperation): void {
+        const scheme = schemeOf(href);
+        const owner = BoardRoot.tryFrom(boardSchemeOwner(scheme ?? ""));
+        const declared = accepted.schemes.some((value) => value.trim().toLowerCase().replace(/:$/, "") === scheme);
+        let parsed: URL;
+        try { parsed = new URL(href); } catch { throw invalidProviderResult(operation); }
+        const authority = /^[a-z][a-z\d+.-]*:\/\/([^/?#]*)/i.exec(href)?.[1];
+        if (!scheme || !declared || !owner?.equals(accepted.boardRoot) || parsed.username || parsed.password || authority?.includes("@")) {
+            throw invalidProviderResult(operation);
+        }
+    }
+
+    private rememberListedItems(accepted: AcceptedProvider, items: ProviderTreeItem[]): void {
+        const active = this.currentAcceptedProvider();
+        if (!active || !BoardRoot.tryFrom(active.boardRoot)?.equals(accepted.boardRoot)) throw new ProviderUnavailableError(this.type);
+        for (const item of items) {
+            this.validateOwnedHref(accepted, item.href, "treeList");
+            this.hrefToPath.set(hrefKey(item.href), item.path);
+            this.pathToHref.set(item.path, item.href);
+        }
     }
 
     async stat(path: string): Promise<ITreeStat> {
@@ -340,6 +465,7 @@ export class ProxyTreeProvider implements ITreeProvider {
         this.hrefToPath.clear();
         this.pathToHref.clear();
         this.truncatedPaths.clear();
+        this.deleteModes.clear();
         this.unsubscribeAvailability();
     }
 }

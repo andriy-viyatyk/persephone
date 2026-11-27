@@ -41,7 +41,7 @@ function isTreeProviderImplementation(value: unknown): value is TreeProviderImpl
 export { isValidBoardTreePath as isValidTreePath } from "../shared/board/board-tree-path";
 
 function validMetadata(value: Record<string, unknown>): boolean {
-    return (value.size === undefined || (typeof value.size === "number" && Number.isFinite(value.size) && value.size >= 0))
+    return (value.size === undefined || (typeof value.size === "number" && Number.isSafeInteger(value.size) && value.size >= 0))
         && (value.mtime === undefined || (typeof value.mtime === "string" && isIsoTimestamp(value.mtime)));
 }
 
@@ -107,12 +107,29 @@ function copyTreeItems(value: unknown, requestedPath: string): ProviderTreeItem[
 
 function copyTreeStat(value: unknown): ProviderTreeStat | undefined {
     if (!isRecord(value) || typeof value.exists !== "boolean" || typeof value.isDirectory !== "boolean"
-        || !validMetadata(value) || (!value.exists && value.isDirectory)) return undefined;
+        || !validMetadata(value) || (!value.exists && value.isDirectory)
+        || (value.linkKind !== undefined && !["file", "directory", "file-symlink", "directory-symlink"].includes(String(value.linkKind)))
+        || (value.href !== undefined && (typeof value.href !== "string" || !validTreeHref(value.href)))
+        || (value.deleteMode !== undefined && value.deleteMode !== "recursive" && value.deleteMode !== "empty-only")
+        || (value.deleteMode !== undefined && (!value.exists || !String(value.linkKind).startsWith("directory")))
+        || (value.linkKind !== undefined && (String(value.linkKind).startsWith("directory") !== value.isDirectory))) return undefined;
     return {
         exists: value.exists,
         isDirectory: value.isDirectory,
+        ...(typeof value.linkKind === "string" ? { linkKind: value.linkKind as ProviderTreeStat["linkKind"] } : {}),
+        ...(typeof value.href === "string" ? { href: value.href } : {}),
+        ...(typeof value.deleteMode === "string" ? { deleteMode: value.deleteMode as ProviderTreeStat["deleteMode"] } : {}),
         ...copyMetadata<Pick<ProviderTreeStat, "size" | "mtime">>(value),
     };
+}
+
+function validTreeHref(value: string): boolean {
+    if (value.length === 0 || value.length > MAX_TREE_HREF_LENGTH) return false;
+    try {
+        const href = new URL(value);
+        const authority = /^[a-z][a-z\d+.-]*:\/\/([^/?#]*)/i.exec(value)?.[1];
+        return /^[a-z][a-z\d+.-]*:/i.test(value) && !href.username && !href.password && !authority?.includes("@");
+    } catch { return false; }
 }
 
 function resultFailure(message: string): Extract<ProviderResult, { ok: false }> {

@@ -421,8 +421,15 @@ function requestTree(
             throw codedError("provider-invalid-result", "Tree list response was malformed.");
         }
         if (message.operation === "treeStat") {
-            const stat = (value as { stat?: { exists?: unknown; isDirectory?: unknown } }).stat;
+            const stat = (value as { stat?: { exists?: unknown; isDirectory?: unknown; linkKind?: unknown; href?: unknown; deleteMode?: unknown; size?: unknown; mtime?: unknown } }).stat;
             if (!stat || typeof stat.exists !== "boolean" || typeof stat.isDirectory !== "boolean") {
+                throw codedError("provider-invalid-result", "Tree stat response was malformed.");
+            }
+            if ((stat.linkKind !== undefined && !["file", "directory", "file-symlink", "directory-symlink"].includes(String(stat.linkKind)))
+                || (stat.href !== undefined && typeof stat.href !== "string")
+                || (stat.deleteMode !== undefined && stat.deleteMode !== "recursive" && stat.deleteMode !== "empty-only")
+                || (stat.size !== undefined && (typeof stat.size !== "number" || !Number.isSafeInteger(stat.size) || stat.size < 0))
+                || (stat.mtime !== undefined && typeof stat.mtime !== "string")) {
                 throw codedError("provider-invalid-result", "Tree stat response was malformed.");
             }
         }

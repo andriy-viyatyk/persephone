@@ -39,11 +39,32 @@ export type ServiceRequestHandler = (message: unknown) => unknown | Promise<unkn
 export type ServiceChannelHandler = (channel: import("../shared/service-channel").ServiceChannel, openMessage: unknown, info: unknown) => unknown | Promise<unknown>;
 export type ServiceShutdownHandler = (context: { reason: string }) => unknown | Promise<unknown>;
 
+export interface TreeProviderStatResult {
+    exists: boolean;
+    isDirectory: boolean;
+    size?: number;
+    mtime?: string;
+    /** Required on existing entries for transfer; file and directory symlinks are distinguished. */
+    linkKind?: "file" | "directory" | "file-symlink" | "directory-symlink";
+    /** Content link for this path; also returned for a not-yet-created destination. */
+    href?: string;
+    /** Required to move directories; omitted metadata keeps browsing and copying available. */
+    deleteMode?: "recursive" | "empty-only";
+}
+
+export interface TreeProviderImplementationDeclaration {
+    list(config: Record<string, unknown>, path: string, context: { signal: AbortSignal }): unknown | Promise<unknown>;
+    stat(config: Record<string, unknown>, path: string, context: { signal: AbortSignal }): TreeProviderStatResult | Promise<TreeProviderStatResult>;
+    mkdir?(config: Record<string, unknown>, path: string): unknown | Promise<unknown>;
+    rename?(config: Record<string, unknown>, oldPath: string, newPath: string): unknown | Promise<unknown>;
+    delete?(config: Record<string, unknown>, path: string): unknown | Promise<unknown>;
+}
+
 export interface PersephoneHostApi {
     settings?: { get(id: string): Promise<string | boolean | number>; onChange(callback: (change: { id: string; value: string | boolean | number }) => void): () => void };
     storage?: { get(key: unknown): Promise<unknown>; set(key: unknown, value: unknown): Promise<unknown>; delete(key: unknown): Promise<unknown>; keys(): Promise<unknown> };
     providers?: { register(type: string, implementation: unknown): void };
-    treeProviders?: { register(type: string, implementation: unknown): void };
+    treeProviders?: { register(type: string, implementation: TreeProviderImplementationDeclaration): void };
     getCapability?: (id: string, options?: CapabilityClientOptions) => Promise<CapabilityProxy | null>;
     capabilities?: { list(): Promise<unknown>; providers(id: string): Promise<unknown>; handle(id: string, method: string, handler: CapabilityHandler): () => void };
     service?: { onRequest(handler: ServiceRequestHandler): void; onChannel(handler: ServiceChannelHandler): void; onShutdown(handler: ServiceShutdownHandler): void };

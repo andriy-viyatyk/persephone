@@ -7,8 +7,9 @@ summary: "Which bridge version added each persephone.* member and manifest field
 # Boards — bridge version history and compatibility
 
 Bridge `1.66.0` adds optional transactional chunked writes to host-service providers
-(`writeBegin`, `writeChunk`, `writeCommit`, `writeAbort`). Chunks are limited to 1 MiB, each
-operation has a 10-second deadline, and at most 16 write sessions may be open service-wide.
+(`writeBegin`, `writeChunk`, `writeCommit`, `writeAbort`) and extends tree-provider `stat()` with
+optional link kind, content href (including for a missing destination), and directory deletion mode.
+Chunks are limited to 1 MiB, each operation has a 10-second deadline, and at most 16 write sessions may be open service-wide.
 Boards using the methods should declare `minBridgeVersion: "1.66.0"`; see the content-provider guide
 for cancellation, cleanup, and persistent-target recovery requirements.
 

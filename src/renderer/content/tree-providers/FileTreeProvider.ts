@@ -14,10 +14,10 @@ import { editorCatalog } from "../../editors/base/editor-catalog";
 import type { PathWatchBatch } from "../../../ipc/api-types";
 import { subscribe } from "../../api/path-watch";
 import { fs } from "../../api/fs";
-import { fpDirname, fpNormalizeForCompare, isArchivePath, isAsarPath } from "../../core/utils/file-path";
+import { fpBasename, fpDirname, fpJoin, fpNormalizeForCompare, isArchivePath, isAsarPath } from "../../core/utils/file-path";
 import { isKeyInside } from "../../../shared/path-containment";
 import { isWindows } from "../../../shared/platform";
-import type { ClassifiedTreeWatchBatch } from "./tree-provider-capabilities";
+import type { ClassifiedTreeWatchBatch, TransferEntry, TreeTransferCapability } from "./tree-provider-capabilities";
 
 // Direct Node.js imports — FileTreeProvider is a low-level filesystem provider
 // that intentionally bypasses app.fs archive transparency. Listed in
@@ -71,6 +71,32 @@ export class FileTreeProvider implements ITreeProvider {
     readonly hasHostnames = false;
 
     readonly rootPath: string;
+
+    readonly transfer: TreeTransferCapability = {
+        backingStoreKey: "local-filesystem",
+        pathForLink: (item) => {
+            if (!item.href || !path.isAbsolute(item.href)
+                || fpBasename(item.href) !== item.title
+                || fpNormalizeForCompare(fpDirname(item.href)) !== fpNormalizeForCompare(item.category)
+                || !isKeyInside(fpNormalizeForCompare(this.rootPath), fpNormalizeForCompare(item.href), { allowSame: false })) {
+                throw new Error("The selected item is not a local filesystem link.");
+            }
+            return item.href;
+        },
+        joinChild: (folderPath, name) => {
+            this.validateTransferName(name);
+            return fpJoin(folderPath, name);
+        },
+        validateName: (name) => this.validateTransferName(name),
+        listChildren: async (folderPath) => this.listTransferChildren(folderPath),
+        stat: async (itemPath) => this.statTransferPath(itemPath),
+        resolveContentHref: async (itemPath) => itemPath,
+        isInside: (parentPath, childPath) => isKeyInside(
+            fpNormalizeForCompare(parentPath), fpNormalizeForCompare(childPath),
+        ),
+        deletionMode: () => "recursive",
+        deleteEntry: async (entry) => this.deleteItem(entry.path),
+    };
 
     constructor(public readonly sourceUrl: string) {
         this.displayName = path.basename(sourceUrl);
@@ -169,6 +195,48 @@ export class FileTreeProvider implements ITreeProvider {
         }
     }
 
+    private validateTransferName(name: string): void {
+        if (!name || name === "." || name === ".." || /[\\/\0]/.test(name)) {
+            throw new Error(`Invalid target name: ${name}`);
+        }
+        // eslint-disable-next-line no-control-regex -- Windows forbids ASCII control characters in file names.
+        if (isWindows && (/[:<>"|?*\x00-\x1f]/.test(name) || /[ .]$/.test(name)
+            || /^(con|prn|aux|nul|conin\$|conout\$|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/i.test(name))) {
+            throw new Error(`Invalid Windows target name: ${name}`);
+        }
+    }
+
+    private async listTransferChildren(folderPath: string): Promise<TransferEntry[]> {
+        const links = this.listStrict(folderPath).filter((item) => !isParentRow(item, this.rootPath));
+        const entries: TransferEntry[] = [];
+        for (const link of links) {
+            const itemPath = this.transfer.pathForLink(link);
+            const { stat, kind } = await this.statTransferPath(itemPath);
+            if (!stat.exists) throw new Error(`Listed local item disappeared: ${itemPath}`);
+            entries.push({ link, path: itemPath, name: link.title, kind, size: stat.size });
+        }
+        return entries;
+    }
+
+    private async statTransferPath(itemPath: string): Promise<{ stat: ITreeStat; kind: "file" | "directory" | "file-symlink" | "directory-symlink" }> {
+        let linkStat: import("fs").Stats;
+        try {
+            linkStat = await nodefs.promises.lstat(itemPath);
+        } catch (error: unknown) {
+            if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+                return { stat: { exists: false, isDirectory: false }, kind: "file" };
+            }
+            throw error;
+        }
+        const isSymlink = linkStat.isSymbolicLink();
+        const followed = isSymlink ? await nodefs.promises.stat(itemPath) : linkStat;
+        const isDirectory = followed.isDirectory();
+        return {
+            stat: { exists: true, isDirectory, size: followed.size, mtime: followed.mtime.toISOString() },
+            kind: isSymlink ? (isDirectory ? "directory-symlink" : "file-symlink") : (isDirectory ? "directory" : "file"),
+        };
+    }
+
     resolveLink(filePath: string): string {
         return filePath;
     }
@@ -244,8 +312,8 @@ export class FileTreeProvider implements ITreeProvider {
     }
 
     async deleteItem(href: string): Promise<void> {
-        const s = nodefs.statSync(href);
-        if (s.isDirectory()) {
+        const s = nodefs.lstatSync(href);
+        if (s.isDirectory() && !s.isSymbolicLink()) {
             nodefs.rmSync(href, { recursive: true });
         } else {
             nodefs.unlinkSync(href);

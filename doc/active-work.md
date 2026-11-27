@@ -10,7 +10,7 @@ Overview of all active and planned epics and tasks.
 
 - **EPIC-218** — [Cross-tree transfer (remote trees phase 2)](epics/EPIC-218.md)
   - [ ] [US-2251: Chunked provider writes](tasks/US-2251-chunked-provider-writes/README.md)
-  - [ ] [US-2252: Transfer engine (`TreeTransfer`)](tasks/US-2252-tree-transfer-engine/README.md)
+  - [ ] [US-2252: Transfer engine (`TreeTransfer`, local and board trees)](tasks/US-2252-tree-transfer-engine/README.md)
   - [ ] [US-2253: Drop across trees](tasks/US-2253-drop-across-trees/README.md)
   - [ ] [US-2254: Copy/paste across trees](tasks/US-2254-paste-across-trees/README.md)
   - [ ] [US-2255: Download to…](tasks/US-2255-download-to/README.md)
