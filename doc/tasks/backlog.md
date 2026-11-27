@@ -4,7 +4,7 @@ Ideas and future tasks not yet planned for implementation.
 
 - [ ] **Follow the OS light/dark theme, all platforms.**
 - [ ] **Remote trees (SSH / FTP / Kudu boards).** Boards supply Explorer trees; four phases in
-  [remote-trees-roadmap.md](../reviews/remote-trees-roadmap.md); Phase 1 is EPIC-217 (planned); phase 2 is cross-tree copy/move, phases 3–5 the boards.
+  [remote-trees-roadmap.md](../reviews/remote-trees-roadmap.md); Phase 1 was EPIC-217 (completed 2026-11-27); phase 2 is EPIC-218 (cross-tree copy/move, active); phases 3–5 are the boards.
 
 ## Follow-ups from EPIC-130 (editors follow file and folder moves)
 

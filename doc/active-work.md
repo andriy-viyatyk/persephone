@@ -8,7 +8,14 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-*(none)*
+- **EPIC-218** — [Cross-tree transfer (remote trees phase 2)](epics/EPIC-218.md)
+  - [ ] US-2251: Chunked provider writes
+  - [ ] US-2252: Transfer engine (`TreeTransfer`)
+  - [ ] US-2253: Drop across trees
+  - [ ] US-2254: Copy/paste across trees
+  - [ ] US-2255: Download to…
+  - [ ] US-2256: Test board and UI tests
+  - [ ] US-2257: Guides
 
 ## Planned
 
