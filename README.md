@@ -60,7 +60,11 @@ The practical loop: describe the tool you need to your agent — it scaffolds th
 
 ### Linux (x86_64)
 
-Download `persephone-<version>-linux-amd64.deb` from [GitHub Releases](https://github.com/andriy-viyatyk/persephone/releases) and install with `sudo apt install ./persephone-<version>-linux-amd64.deb`. Ubuntu 26.04 LTS GNOME is supported; Debian 13 was install-checked; other distributions are untested. See the [Linux installation guide](assets/guides/getting-started.md#linux).
+| Format | Link |
+| :--- | :--- |
+| **Debian package** | [![Download DEB](https://img.shields.io/badge/Download-Package%20(.deb)-E95420?style=for-the-badge&logo=ubuntu)](https://github.com/andriy-viyatyk/persephone/releases/latest) |
+
+Install with `sudo apt install ./persephone-<version>-linux-amd64.deb`. Ubuntu 26.04 LTS GNOME is supported; Debian 13 was install-checked; other distributions are untested. See the [Linux installation guide](assets/guides/getting-started.md#linux).
 
 ### Privacy policy
 
