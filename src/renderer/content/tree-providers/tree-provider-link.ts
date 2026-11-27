@@ -15,8 +15,8 @@ export function relativeCategorySegments(category: string): ICategorySegment[] {
 
 /**
  * Minimal metadata encoded in a tree-category:// link.
- * Used for routing (parser detects prefix, sets editor target)
- * and fallback provider creation (if NavigationData has no provider).
+ * Used for routing (parser detects prefix, sets editor target) and matching
+ * an already-attached provider host in the Category editor.
  */
 export interface ITreeProviderLink {
     /** Provider type: "file", "archive", "link". */

@@ -9,7 +9,8 @@ import { mnemeConnection } from "../../api/mneme-connection";
 import { mnemeClient } from "../../api/mneme-client";
 import type { WikiSearchHit } from "../../api/mneme-types";
 import { decodeMnemeFolderLink } from "../../content/mneme-folder-link";
-import { MnemeTreeProvider } from "../../content/tree-providers/MnemeTreeProvider";
+import type { MnemeTreeProvider } from "../../content/tree-providers/MnemeTreeProvider";
+import { createTreeProvider } from "../../content/tree-providers/tree-provider-factory";
 import { fpJoin } from "../../core/utils/file-path";
 import { editorRegistry } from "../base/editorRegistry";
 import { untranslated } from "../../../shared/i18n/t";
@@ -261,7 +262,7 @@ export class MnemeRootEditorModel extends EditorModel<MnemeRootEditorState> {
                 this.state.update((s) => { s.resolving = false; s.error = "Not a registered Mneme root."; });
                 return;
             }
-            this.treeProvider = new MnemeTreeProvider(match.name);
+            this.treeProvider = createTreeProvider({ type: "mneme", rootPath: match.name });
             this.state.update((s) => {
                 s.resolving = false;
                 s.error = undefined;

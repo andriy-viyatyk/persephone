@@ -10,7 +10,8 @@ import type { EditorDescriptor } from "../../../shared/persistence";
 import type { ILink, ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
 import type { TreeProviderViewModel, TreeProviderViewSavedState } from "../../components/tree-provider/TreeProviderViewModel";
 import type { FileSearchState } from "../../components/file-search";
-import { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
+import type { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
+import { createTreeProvider } from "../../content/tree-providers/tree-provider-factory";
 import { TREE_PROVIDER_HOST_TRAIT, TreeProviderHost } from "../base/tree-provider-host";
 import type { IPageHost } from "../../api/pages/IPageHost";
 import { fpDirname, fpIsInside, fpNormalizeForCompare } from "../../core/utils/file-path";
@@ -91,7 +92,7 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
         const provider: ITreeProvider | null = this.treeProviderHost.provider;
         if (provider?.sourceUrl !== rootPath) {
             provider?.dispose?.();
-            this.treeProviderHost.setProvider(rootPath ? new FileTreeProvider(rootPath) : null);
+            this.treeProviderHost.setProvider(rootPath ? createTreeProvider({ type: "file", rootPath }) : null);
         }
     }
 

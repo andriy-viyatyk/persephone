@@ -1,0 +1,78 @@
+# US-2244: Manifest tree flag and service API
+
+## Goal
+
+Enable a board to declare and register a tree provider and expose its operations and capabilities through the existing module-service provider channel for [EPIC-217](../../epics/EPIC-217.md).
+
+## Background
+
+Epic decision 1 uses one content-provider type and scheme for files and folders. Configuration is opaque board-owned data and must contain a connection key, not credentials. Tree operations use the existing provider channel; cross-tree transfer and chunked writes belong to roadmap phase 2.
+
+The current service registration is **not** manifest-checked: `src/module-service-host/provider-dispatch.ts` validates the type format, required `readBinary`, optional methods and duplicates, then stores a local map. Renderer ownership is separately claimed by `collectProviderAxis` / `commitProviderAxis` in `src/renderer/api/boards/custom-editor-registry.ts` and `boardProviderTypeRefusal` / `OwnershipRegistry` in `src/renderer/content/registry.ts`. Tree registration follows the same model: the host checks shape, name and duplicates only. A tree registered for an undeclared type is never called. The renderer registry owns the accepted declaration and provider owner; the US-2243 factory's namespaced matcher, extended by US-2245, must issue tree requests only to that accepted owner when its declaration has `tree: true`.
+
+`ProviderRequest` is currently an interface, not a discriminated union; `ProviderResult` is a union. Existing content `stat` has no deadline but is classified `control`, whereas binary reads are `content-read`. The renderer owns deadlines and forwards cancellation; the host lease removes pending work and aborts its controller. `src/module-service-host/` is the current typed utility host, not `src/main/board-host/`.
+
+`createBoardSchemeHooks` resolves a claimed URL into content config `{ url: data.url }`; it does not carry tree config. A board must encode the connection key and path in the href and resolve them itself.
+
+The bridge history at `assets/guides/agents/boards/bridge-versions.md` records module-service APIs as bridge releases and `boardManifestCompatibility` gates `minBridgeVersion` using `BOARD_BRIDGE_VERSION`. The service API has no separate discovered version negotiation. Although the page bridge is unchanged, bump the shared version from 1.63.0 to the next available minor (currently 1.64.0) and add one history line so boards can gate use; use the next free minor at implementation time; US-2247 takes the next free minor after this task.
+
+## Implementation Plan
+
+- [ ] **Manifest and display.** In `src/shared/board/board-manifest-schema.ts`, add `tree?: boolean` to `BoardContentProviderDeclaration`; `normalizeContentProviders` retains only literal `true` (`false`, absent and malformed become absent), keeping the existing scheme normalization. Carry `tree` and the normalized schemes in both trusted and installed declarations from `collectProviderAxis` in `src/renderer/api/boards/custom-editor-registry.ts` to `ProviderDeclaration` and `replaceProviderDeclarations` in `src/renderer/content/registry.ts`. Preserve existing ownership precedence; US-2245 must check the accepted provider owner as well as the flag before issuing a request, rather than treating a collected declaration alone as proof of ownership. Add `tree?: boolean` to `IBoardContentProviderDeclaration` in `src/renderer/api/types/board-editor.d.ts` and copy it in `projectBoardContentProvider` in `src/renderer/scripting/api-wrapper/board-manifest-projection.ts` (Board Info's facade aliases this type). In `src/renderer/editors/board-info/BoardInfoEditorView.ts`, append a localized “Tree” marker only for true; add the English message in `src/shared/i18n/en/board.ts`, following existing localization and translation-at-epic-close rules. The model already passes normalized declarations through.
+
+  ```ts
+  // normalizeContentProviders, before → after
+  out.push({ type, schemes });
+  out.push({ type, schemes, ...(candidate.tree === true ? { tree: true } : {}) });
+  ```
+
+- [ ] **Service registry and dispatch.** Add `treeProviders.register` to the service global assembled by `src/module-service-host/service-api.ts` and `index.ts`. A focused `src/module-service-host/tree-provider-dispatch.ts` owns the tree map, shape validation, dispatch and validated result copying; route tree operations through the existing `provider-dispatch.ts` / lease request handling. Require callable `list` and `stat`, callable-or-absent write methods, a valid namespaced type. Throw registration-style invalid/duplicate errors synchronously; no registration or capabilities announcement on refusal. A separate tree map allows content and tree implementations to register the same type independently. Do not check manifest declarations or ownership in the service host; the renderer ownership gate described above determines which service is called.
+
+  ```js
+  // Service entry: before → after (content API remains unchanged)
+  persephone.providers.register('acme/files', content);
+  persephone.treeProviders.register('acme/files', {
+    list(config, path, { signal }) { /* return { items, truncated } */ },
+    stat(config, path, { signal }) { /* return tree stat */ },
+    mkdir(config, path) {}, rename(config, oldPath, newPath) {}, delete(config, path) {},
+  });
+  ```
+
+- [ ] **Wire, policy and cancellation.** Extend `src/shared/provider-operation-policy.ts` with `treeList`, `treeStat`, `treeMkdir`, `treeRename`, `treeDelete`; list/stat use `{ requestClass: "content-read" }` (no deadline), writes use `{ requestClass: "control", deadlineMs: CAPABILITY_DEFAULT_TIMEOUT_MS }` (10 seconds). Content `stat` remains unchanged: it accepts only content config, returns no directory bit and defaults to exists, so it cannot represent a required tree stat with a separate path. Extend `ProviderRequest` in `src/ipc/module-service-channels.ts` with `path?: string` and `newPath?: string`, and extend the success variants of `ProviderResult` for these operations; validate required strings for each operation in host dispatch before invocation. `treeRename` uses `path` as oldPath. List/stat get `{ signal: controller.signal }`; writes receive only documented arguments. Reuse `moduleService.request`, `renderer-lease.ts` cancellation and pending tracking, existing `providerFailure` / wire error envelope, and existing deadlines: no new channel, correlator, ack window or error format. Update stale cancellation and read-count comments: tree reads now share the content-read class and count, and cancellation releases the pending slot even when a board ignores its signal. Write timeouts use the same cancellation cleanup; they cannot promise rollback of an already-started write.
+
+- [ ] **Wire result contract and validation handoff.** The service returns `treeList: { items: TreeItem[], truncated: boolean }`, where `TreeItem = { name: string; path: string; href: string; isDirectory: boolean; size?: number; mtime?: string }`; `treeStat` returns `{ exists: boolean; isDirectory: boolean; size?: number; mtime?: string }`. Missing stat uses `exists: false, isDirectory: false`. `size` is finite nonnegative bytes; `mtime` is a valid ISO timestamp string. `name` is 1–255 UTF-16 code units, a single name with no slash, backslash, NUL, `.` or `..`; `path` is a board-owned absolute slash-delimited path, up to 4096 code units, no NUL, dot segments or backslash; child paths must be direct children of requested path and unique. Bound href to 8192 characters; it must be an absolute URL without credentials and distinct among items. The service constructs href from its opaque config connection key plus path using its scheme's own encoding; core never derives it from config. Board file handlers must decode the href from content `config.url` to select the same connection and path; e.g. config `{conn:'demo'}`, path `/docs/a.txt`, href `acme://demo/docs/a.txt`. Escaping and matching the href to that path/connection are board responsibilities; the host checks URL shape, not scheme ownership or opaque config. Require the service to cap results at 5,000 and set `truncated: true` when more exist; reject oversized or malformed lists as `provider-invalid-result`, rather than silently truncate. 5,000 bounds clone cost and comfortably covers ordinary directories. The host tree collaborator owns item shape, metadata, paths, uniqueness and bounds validation before IPC. US-2245's `ProxyTreeProvider` owns the separate scheme-ownership check: every href scheme must be claimed for this type by the accepted board owner, using the renderer's existing scheme ownership in `src/renderer/content/scheme-registry.ts` and the declaration's schemes. It also checks the result envelope/discriminant and displays the truncation marker; it does not duplicate host shape or bounds validation. Since `ITreeProvider.list` currently returns only `ILink[]`, US-2245 must choose a visible marker representation and preserve it through its UI; do not silently drop `truncated`.
+
+- [ ] **Capabilities and client.** Extend existing `ProviderCapabilities` with a tree capability object `{ mkdir: boolean; rename: boolean; delete: boolean }` and an explicit tree-registered indicator. Announce on either content or tree registration and on lease attach, merging both maps so registering one cannot erase the other. `module-service.ts` maintains a per-type tree map alongside `capabilities` / `rangeCapabilities`, clears it in `loseLease`, and exposes `moduleService.providerTreeCapabilities(boardRoot, type)` returning the object or `undefined` until announced. No config-based fallback: unknown means hide writes until a lease/list has attached and announced. Methods reflect registration for the whole type; a board still enforces per-connection write authorization in each write handler and can refuse writes. Dynamic per-connection capabilities are not represented by this API. Add `moduleService.requestTree(boardRoot, request, signal?)` as the minimal typed wrapper over existing `request`, with tree request/result types in `module-service-channels.ts`; validate response envelope and operation, preserving existing errors. US-2245 calls this method and queries capabilities after acquisition. Do not add a separate client transport.
+
+- [ ] **Version.** Leave `window.persephone`, `src/board-shim.ts`, the page bridge and `src/main/board-host/` unchanged. Bump `src/shared/board-bridge-version.ts` minor as above and add a concise line to `assets/guides/agents/boards/bridge-versions.md` for the service registration and manifest flag; US-2249 owns all other guide prose. No `await import()` or bypass wrapper to evade `eslint.config.mjs` zones. Respect strict null checks in `src/shared`, `src/ipc`, `src/module-service-host`, `src/renderer/content`, `src/renderer/api` and `src/renderer/scripting`; null-check repairs are type-only unless separately recorded as behavior changes. The §2.3 listing also names old `assets/module-service-host.mjs`; the current typed source is `src/module-service-host/` and the old asset must not grow. `src/renderer/api/module-service.ts` and `src/ipc/module-service-channels.ts` are not listed as god files.
+
+## Concerns
+
+- Service registration does not establish ownership. The renderer must check the accepted provider owner and `tree: true` before dispatch, and US-2245 must separately check each returned href against that owner's accepted scheme claims.
+- Registration capabilities are per type, not per config: they advertise implemented methods, not permission for a particular connection. Boards must enforce their own read-only policy. This limits how precisely US-2245 can hide actions for different connections without a future capability extension.
+- A capped result reduces transport and rendering work, but cannot prevent a board from allocating an oversized array before returning it. Reject it before cloning; require boards to enumerate boundedly and set `truncated`.
+- There are no unresolved design decisions for this plan. The shared bridge version is a compatibility gate, not a separate module-service protocol version.
+
+## Acceptance Criteria
+
+- [ ] Literal `tree: true` survives normalization, ownership, Board Info and scripting projections; omitted, false and malformed values do not enable trees. Only the accepted owner is eligible for renderer tree dispatch.
+- [ ] A service can register content and tree implementations for the same type; malformed names, malformed implementations and duplicate tree registrations are refused. Undeclared or non-tree registrations may exist in the host but the renderer must not dispatch to them; US-2245 gates dispatch on the accepted owner and `tree: true`.
+- [ ] All five operations and metadata use the existing provider transport, error envelope and policy; unbounded reads cancel via signal and settle even for an uncooperative service; writes time out after 10 seconds. Existing content provider behavior remains intact.
+- [ ] Host validation enforces the listed shape, path, URL, metadata, uniqueness, bounds and truncation rules. US-2245 checks accepted scheme ownership separately. The typed client reports operation-specific results and live write capabilities without inventing a new channel.
+- [ ] The implementer runs `npm run typecheck`, `npm run lint`, and the production build (`npm run build-prod`), and performs a host-side self-check of the validation rules by reading the implementation. No unit tests are added. Live end-to-end verification waits for US-2245's proxy and US-2248's test board; Claude runs it then. Codex cannot run Persephone.
+- [ ] US-2249 covers `assets/guides/boards/content-providers.md` (flag, service signatures, path/config/href, limits, truncation, cancellation and errors, optional writes and connection authorization), relevant `assets/guides/agents/boards/` authoring guidance, `openTree` and claimed-scheme `openRawLink`, bridge history details and `whats-new.md`; it runs `npm run guides:check`.
+
+## Files Changed Summary
+
+| File | Planned change |
+|---|---|
+| `src/shared/board/board-manifest-schema.ts` | Normalize the tree flag. |
+| `src/renderer/content/registry.ts`, `src/renderer/api/boards/custom-editor-registry.ts` | Carry the tree flag and schemes through existing declarations; preserve existing ownership behavior. |
+| `src/renderer/api/types/board-editor.d.ts`, `src/renderer/scripting/api-wrapper/board-manifest-projection.ts` | Expose flag in existing scripting projections. |
+| `src/renderer/editors/board-info/BoardInfoEditorView.ts`, `src/shared/i18n/en/board.ts` | Localized tree indicator. |
+| `src/ipc/module-service-channels.ts`, `src/shared/provider-operation-policy.ts` | Extend existing request, result, capabilities and operation policy. |
+| `src/module-service-host/service-api.ts`, `src/module-service-host/index.ts`, `src/module-service-host/provider-dispatch.ts`, new `src/module-service-host/tree-provider-dispatch.ts` | Register, dispatch and validate tree operations with existing lease. |
+| `src/renderer/api/module-service.ts` | Typed tree request and capability getter on the existing client. |
+| `src/shared/board-bridge-version.ts`, `assets/guides/agents/boards/bridge-versions.md` | Minor version and one history line. |
+
+**No changes:** `src/board-shim.ts`, `src/main/board-host/`, page bridge, `src/shared/board/board-service-declarations.ts`, `src/shared/board/board-manifest-queries.ts`, factory, `ProxyTreeProvider`, Explorer, test board, unit tests and other guide pages. The service declaration module owns service interfaces/uses, not content providers; manifest queries only consumes the shared bridge version for compatibility.

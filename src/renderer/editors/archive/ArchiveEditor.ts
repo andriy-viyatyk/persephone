@@ -7,6 +7,7 @@ import {
 } from "../base/EditorModel";
 import type { EditorDescriptor } from "../../../shared/persistence";
 import type { ArchiveTreeProvider } from "../../content/tree-providers/ArchiveTreeProvider";
+import { createTreeProvider } from "../../content/tree-providers/tree-provider-factory";
 import { fpBasename, buildArchivePath } from "../../core/utils/file-path";
 import { archiveService, type ArchiveEntry } from "../../api/archive-service";
 import { app } from "../../api/app";
@@ -70,10 +71,7 @@ export class ArchiveEditor extends EditorModel<ArchiveEditorState> {
      *  widget hides — no regression. Empty for a non-local archive (boards edit local files). */
     /** Initialize from archive path. Creates ArchiveTreeProvider and sets title. */
     async initFromArchive(archiveUrl: string): Promise<void> {
-        const { ArchiveTreeProvider } = await import(
-            "../../content/tree-providers/ArchiveTreeProvider"
-        );
-        this.treeProviderHost.setProvider(new ArchiveTreeProvider(archiveUrl));
+        this.treeProviderHost.setProvider(createTreeProvider({ type: "archive", url: archiveUrl, rootPath: "" }));
         this.state.update((s) => {
             s.title = fpBasename(archiveUrl);
             s.archiveUrl = archiveUrl;
@@ -84,10 +82,7 @@ export class ArchiveEditor extends EditorModel<ArchiveEditorState> {
         await super.restore();
         const archiveUrl = this.state.get().archiveUrl;
         if (archiveUrl && !this.treeProvider) {
-            const { ArchiveTreeProvider } = await import(
-                "../../content/tree-providers/ArchiveTreeProvider"
-            );
-            this.treeProviderHost.setProvider(new ArchiveTreeProvider(archiveUrl));
+            this.treeProviderHost.setProvider(createTreeProvider({ type: "archive", url: archiveUrl, rootPath: "" }));
         }
         // Direct-open path may already have `page`; navigation/restore paths
         // publish via setPage() once attached.

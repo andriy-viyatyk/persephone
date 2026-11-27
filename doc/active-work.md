@@ -8,12 +8,19 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-*(none)*
+- **EPIC-217** — [Board tree providers (remote trees phase 1)](epics/EPIC-217.md)
+  - [ ] [US-2243: Tree provider factory](tasks/US-2243-tree-provider-factory/README.md)
+  - [ ] [US-2244: Manifest tree flag and service API](tasks/US-2244-board-tree-service-api/README.md)
+  - [ ] [US-2245: `ProxyTreeProvider`](tasks/US-2245-proxy-tree-provider/README.md)
+  - [ ] US-2246: Explorer shows and persists any tree
+  - [ ] [US-2247: Bridge: `openTree` and claimed-scheme links](tasks/US-2247-bridge-open-tree/README.md)
+  - [ ] US-2248: Test board and UI tests
+  - [ ] US-2249: Guides
 
 ## Planned
 
 - *(no epic)*
-  - [ ] US-2242: Packaged Linux build: intermittent main-process SIGILL. Seen twice in EPIC-216's exit run: once when systemd stopped every app process at once, and once at the start of the `boards/bridge` module under `--app` (GdkPixbuf "loaders could not be found" warnings just before). A targeted rerun passed 18/18. Get a symbolized stack (`/var/crash/_opt_persephone_persephone.1000.crash`, `apport-retrace`) before guessing
+  - [ ] US-2242: Packaged Linux build: intermittent main-process SIGILL. Seen twice in EPIC-216's exit run: once when systemd stopped every app process at once, and once at the start of the `boards/bridge` module under `--app` (GdkPixbuf "loaders could not be found" warnings just before). A targeted rerun passed 18/18. Seen again 2026-11-27 with the released 5.0.23 `.deb` on `systemctl --user stop` (SIGTERM) of an idle instance; that report is kept in persephone-vm at `~/crash-evidence/sigill-on-sigterm-2026-11-27.crash`. Get a symbolized stack (`/var/crash/_opt_persephone_persephone.1000.crash`, `apport-retrace`) before guessing
   - [ ] US-2241: "Start Mneme" on the Mneme page starts the sidecar but leaves the page "Disconnected" while `mneme.enabled` is false (the shared connection follows only the setting; `MnemeConfigView` `mneme-start` → `restartMneme`). Found in the EPIC-216 exit run, all platforms; decide whether Start should also enable the setting
   - [ ] [US-2139: Board hotkeys](tasks/US-2139-board-hotkeys/README.md) — recorded idea, not investigated: a board declares an action with a default hotkey, the user can rebind it, and it works with no board page open
 
