@@ -1,3 +1,36 @@
+## EPIC-217 — Board tree providers (remote trees phase 1)
+
+Completed 2026-11-27. Phase 1 of the [remote trees roadmap](../reviews/remote-trees-roadmap.md): a board can supply a
+file tree that Persephone shows in the Explorer panel, the base for later SSH, FTP and Kudu boards.
+
+- **Factory:** `createTreeProvider({ type, rootPath, url?, config? })` in `src/renderer/content/tree-providers/`
+  builds file, archive, Mneme and board trees; Explorer, Archive and Mneme use it.
+- **Board API:** `tree: true` on a `contentProviders` entry; the service registers `persephone.treeProviders.register`
+  (list/stat plus optional mkdir/rename/delete) over the existing provider channel. Listings are capped at 5,000 items
+  with a truncation warning.
+- **`ProxyTreeProvider`:** forwards to the owning board, checks the accepted owner and that every href is in the
+  board's claimed scheme; file opens go through `ProxyProvider`.
+- **Explorer:** state carries a `tree` descriptor that restores across restart with expansion and selection; "Provider
+  missing" recovery; per-folder loading/error/retry; local-only actions hidden for board trees; board hrefs compare
+  case-exactly.
+- **Bridge (1.64.0, 1.65.0):** `persephone.openTree(...)` opens or reuses a sidebar-only Explorer page for the calling
+  board's own tree; board `openRawLink` accepts the calling board's claimed schemes, replacing the hard-coded
+  `torrent:`.
+- **Tests:** `boards/trees` fixture boards and 16 UI tests. The run found Explorer clearing a board-tree selection on
+  main-editor change; fixed. Dropping OS files onto a board tree stays a manual check.
+- **Completion skills:** run by Codex (Luna); the review replaced one non-null assertion with a request check. Three
+  messages translated into all 17 packs. The demo board gained a read-only `demo/mem` tree.
+
+Epic document: [EPIC-217](EPIC-217.md).
+
+- [x] **Tree provider factory (US-2243).**
+- [x] **Manifest tree flag and service API (US-2244).**
+- [x] **`ProxyTreeProvider` (US-2245).**
+- [x] **Explorer shows and persists any tree (US-2246).**
+- [x] **Bridge: `openTree` and claimed-scheme links (US-2247).**
+- [x] **Test board and UI tests (US-2248).**
+- [x] **Guides (US-2249).**
+
 ## EPIC-216 — Linux packaging, release and docs (multiplatform phase 4)
 
 Completed 2026-11-27. Phase 4 of the [multiplatform roadmap](../reviews/multiplatform-roadmap.md): Persephone ships a
