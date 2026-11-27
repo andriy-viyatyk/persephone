@@ -9,7 +9,7 @@ import {
     setClipboardEnabled as setClipboardEnabledService,
     setClipboardHealthMonitoring as setClipboardHealthMonitoringService,
 } from "../../main/clipboard-service";
-import { writeClipboardPng, writeClipboardText } from "../../main/system-clipboard";
+import { readClipboardText, writeClipboardPng, writeClipboardText } from "../../main/system-clipboard";
 import type { ClipboardApi } from "../contracts/clipboard";
 import { bindDomain } from "./endpoint-registry";
 import { startScreenSnip } from "../../main/snip-service";
@@ -35,6 +35,7 @@ export function initClipboardHandlers(): void {
             return startScreenSnip(hideWindows);
         },
         clipboardWriteText: async (_event: IpcMainEvent, text: string) => writeClipboardText(text),
+        clipboardReadText: async () => readClipboardText(),
         clipboardWritePng: async (_event: IpcMainEvent, bytes: Uint8Array) => writeClipboardPng(bytes),
         clipboardReadFilePaths: async () => readClipboardFiles(),
         clipboardWriteFilePaths: async (_event: IpcMainEvent, paths: string[], cut: boolean) =>

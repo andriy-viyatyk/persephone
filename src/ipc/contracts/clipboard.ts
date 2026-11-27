@@ -18,6 +18,7 @@ export interface ClipboardApi {
     restartClipboard: (maxItems: number) => Promise<ClipboardStatus>;
     startScreenSnip: (hideWindows: boolean) => Promise<string | null>;
     clipboardWriteText: (text: string) => Promise<void>;
+    clipboardReadText: () => Promise<string>;
     clipboardWritePng: (bytes: Uint8Array) => Promise<void>;
     clipboardReadFilePaths: () => Promise<ClipboardFileList>;
     clipboardWriteFilePaths: (paths: string[], cut: boolean) => Promise<boolean>;

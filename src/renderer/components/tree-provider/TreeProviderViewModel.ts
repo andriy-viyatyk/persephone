@@ -28,6 +28,7 @@ import { ProviderTreeExpansion } from "./provider-tree-expansion";
 import { ProviderTreeStore } from "./provider-tree-store";
 import { localTreeAncestorPaths, treeItemListPath, treePathHref } from "./tree-provider-path";
 import { ProviderTreeLoading } from "./provider-tree-loading";
+import { handleTreeClipboardKeyDown } from "./tree-keyboard-actions";
 
 // =============================================================================
 // Types
@@ -683,29 +684,14 @@ export class TreeProviderViewModel extends TComponentModel<
             }
         }
 
-        // OS file clipboard actions — file provider only.
-        if (!e.ctrlKey || e.altKey || e.shiftKey) return false;
-        const key = e.key.toLowerCase();
-        if (key !== "c" && key !== "x" && key !== "v") return false;
-        if (!isLocalFileProvider(provider)) return false;
-
-        if (key === "v") {
-            // The primary row decides the target: folder → into it; file → its parent;
-            // nothing selected → root.
-            const targetDir = !node
-                ? provider.rootPath
-                : node.data.isDirectory
-                    ? treeItemListPath(provider, node.data)
-                    : (node.data.category || provider.rootPath);
-            void this.itemController.paste(targetDir);
-            return consume();
-        }
-        // Copy is allowed on the root (mirrors the context menu); Cut is not.
-        if (!nodes.length) return false;
-        if (hasRoot && key === "x") return false;
-        const targets = this.operationItems(nodes.map((n) => n.data));
-        void this.itemController.copyItemsToClipboard(targets, key === "x");
-        return consume();
+        return handleTreeClipboardKeyDown(
+            e,
+            provider,
+            nodes.map((selectedNode) => selectedNode.data),
+            node?.data,
+            (items, cut) => this.itemController.copyItemsToClipboard(items, cut),
+            (directory) => this.itemController.paste(directory),
+        );
     };
 
     // ── Context menus ────────────────────────────────────────────────────

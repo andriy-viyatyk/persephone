@@ -66,10 +66,19 @@ export class ProxyTreeProvider implements ITreeProvider {
     private readonly unsubscribeAvailability: () => void;
     private lastAcceptedRoot: string | undefined;
     private disposed = false;
+    private clipboardSourceFactory?: () => ITreeProvider;
 
     get transfer(): TreeTransferCapability {
         return {
+            sourceKind: "board",
+            sourceIdentity: this.sourceUrl,
             backingStoreKey: boardTreeBackingStoreIdentity({ type: this.type, config: this.config }),
+            assertAvailable: async () => { await this.requireAcceptedProvider(); },
+            createClipboardSource: () => {
+                if (!this.currentAcceptedProvider()) throw new ProviderUnavailableError(this.type);
+                if (!this.clipboardSourceFactory) throw new Error(t("menus.treeClipboardSourceUnavailable"));
+                return this.clipboardSourceFactory();
+            },
             pathForLink: (link) => {
                 const path = this.hrefToPath.get(hrefKey(link.href));
                 if (!path) throw new Error(`The board item has not been listed by this provider: ${link.href}`);
@@ -99,6 +108,11 @@ export class ProxyTreeProvider implements ITreeProvider {
         this.sourceUrl = boardTreeSourceIdentity({ type, config, rootPath });
         this.lastAcceptedRoot = this.currentAcceptedProvider()?.boardRoot;
         this.unsubscribeAvailability = this.subscribeForOwnerChanges();
+    }
+
+    /** Installed by the factory so clipboard clones use the same accepted-provider boundary. */
+    setClipboardSourceFactory(factory: () => ITreeProvider): void {
+        this.clipboardSourceFactory = factory;
     }
 
     get displayName(): string {

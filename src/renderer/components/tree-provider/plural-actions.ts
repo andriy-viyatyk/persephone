@@ -11,12 +11,12 @@ import { ui } from "../../api/ui";
 import { isUrlOrCurl } from "../../content/link-utils";
 import { toClipboard } from "../../api/clipboard";
 import { CopyIcon, CutIcon, DeleteIcon } from "../../theme/icons";
-import { copyPathsToOsClipboard } from "./os-clipboard";
-import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
+import { isLocalFileProvider, treeTransferCapability } from "../../content/tree-providers/tree-provider-capabilities";
 import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
 import { hrefCompareKey } from "../../../shared/path-containment";
 import { errMessage } from "../../../shared/utils";
+import { sameHref } from "./href-utils";
 
 /**
  * Drop any selected item that lives inside another selected folder. A folder-level action
@@ -42,12 +42,28 @@ export function pruneNestedItems<T extends Pick<ILink, "href" | "isDirectory">>(
     });
 }
 
+/** Use verified provider paths for board hrefs, which are opaque and not path-shaped. */
+export function pruneProviderItems<T extends ILink>(provider: ITreeProvider, items: T[]): T[] {
+    const capability = treeTransferCapability(provider);
+    if (capability?.sourceKind !== "board") return pruneNestedItems(items);
+    const paths = items.map((item) => sameHref(item.href, provider.rootPath)
+        ? provider.rootPath
+        : capability.pathForLink(item));
+    return items.filter((item, itemIndex) => !items.some((parent, parentIndex) => {
+        if (!parent.isDirectory || parentIndex === itemIndex) return false;
+        const inside = capability.isInside(paths[parentIndex], paths[itemIndex]);
+        if (inside === undefined) throw new Error(t("dialogs.treeTransferContainmentUnknown"));
+        return inside;
+    }));
+}
+
 /** Set-shaped actions over N selected items. `items` must already be pruned, so every count
  *  shown here is the pruned count. */
 export function buildMultiItemMenuItems(
     provider: ITreeProvider,
     items: ILink[],
     onDelete: () => void,
+    onClipboard: (items: ILink[], cut: boolean) => void,
 ): MenuItem[] {
     const hrefs = items.map((i) => i.href);
     const hasRoot = hrefs.includes(provider.rootPath);
@@ -67,22 +83,24 @@ export function buildMultiItemMenuItems(
     // OS file clipboard — Windows Explorer interop, file provider only. No Cut when the
     // tree root is in the set (mirrors the single-row gating). A folder's listed children
     // never include the provider root, so the guard is inert for the folder-content view.
-    if (isLocalFileProvider(provider)) {
-        if (!hasRoot) {
+    const transfer = treeTransferCapability(provider);
+    if (isLocalFileProvider(provider) || transfer?.sourceKind === "board") {
+        if (!hasRoot && (isLocalFileProvider(provider)
+            || (!!provider.writable && !!provider.deleteItem && transfer?.sourceKind === "board"))) {
             menuItems.push({
                 startGroup: true,
                 id: "cut",
                 label: t("menus.cutCount", { count: n }),
                 icon: CutIcon.createElement(),
-                onClick: () => copyPathsToOsClipboard(hrefs, true),
+                onClick: () => onClipboard(items, true),
             });
         }
-        menuItems.push({
+        if (!hasRoot || isLocalFileProvider(provider)) menuItems.push({
             startGroup: hasRoot,
             id: "copy",
             label: t("menus.copyCount", { count: n }),
             icon: CopyIcon.createElement(),
-            onClick: () => copyPathsToOsClipboard(hrefs, false),
+            onClick: () => onClipboard(items, false),
         });
     }
 

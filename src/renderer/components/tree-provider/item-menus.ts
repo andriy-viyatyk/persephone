@@ -13,8 +13,7 @@ import {
     RenameIcon,
     TerminalIcon,
 } from "../../theme/icons";
-import { copyPathToOsClipboard } from "./os-clipboard";
-import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
+import { isLocalFileProvider, treeTransferCapability } from "../../content/tree-providers/tree-provider-capabilities";
 import { t } from "../../../shared/i18n/t";
 import { getPlatformFeature } from "../../../shared/platform-features";
 
@@ -24,6 +23,21 @@ export interface ItemMenuActions {
     paste(directory: string): void;
     rename(item: ITreeProviderItem): void;
     deleteItem(item: ITreeProviderItem): void;
+    copyItems(items: ITreeProviderItem[], cut: boolean): void;
+}
+
+function canClipboardCopy(provider: ITreeProvider): boolean {
+    return isLocalFileProvider(provider) || treeTransferCapability(provider)?.sourceKind === "board";
+}
+
+function canClipboardCut(provider: ITreeProvider, isRoot: boolean): boolean {
+    return !isRoot && (isLocalFileProvider(provider)
+        || (!!provider.writable && !!provider.deleteItem && treeTransferCapability(provider)?.sourceKind === "board"));
+}
+
+function canPaste(provider: ITreeProvider): boolean {
+    return isLocalFileProvider(provider)
+        || (!!provider.writable && treeTransferCapability(provider)?.sourceKind === "board");
 }
 
 /**
@@ -94,26 +108,28 @@ export function getFileMenuItems(
         onClick: () => toClipboard(item.href),
     }];
 
-    if (isLocalFileProvider(provider)) {
+    if (canClipboardCopy(provider)) {
+        const isRoot = false;
+        if (canClipboardCut(provider, isRoot)) items.push({
+            startGroup: true,
+            id: "cut",
+            label: t("menus.cut"),
+            icon: CutIcon.createElement(),
+            onClick: () => actions.copyItems([item], true),
+        });
         items.push(
             {
                 startGroup: true,
-                id: "cut",
-                label: t("menus.cut"),
-                icon: CutIcon.createElement(),
-                onClick: () => copyPathToOsClipboard(item.href, true),
-            },
-            {
                 id: "copy",
                 label: t("menus.copy"),
                 icon: CopyIcon.createElement(),
-                onClick: () => copyPathToOsClipboard(item.href, false),
+                onClick: () => actions.copyItems([item], false),
             },
         );
         // Paste belongs with Cut/Copy, as it already does on a folder row. The background
         // handler that used to contribute it appends after every other layer, which stranded
         // it at the bottom of the menu next to Inspect.
-        items.push({
+        if (canPaste(provider)) items.push({
             id: "paste",
             label: t("menus.paste"),
             icon: PasteIcon.createElement(),
@@ -152,25 +168,28 @@ export function getFolderMenuItems(options: FolderMenuOptions): MenuItem[] {
         onClick: () => toClipboard(item.href),
     });
 
-    if (isLocalFileProvider(provider)) {
-        if (!isRoot) {
+    if (canClipboardCopy(provider)) {
+        if (canClipboardCut(provider, isRoot)) {
             items.push({
                 startGroup: true,
                 id: "cut",
                 label: t("menus.cut"),
                 icon: CutIcon.createElement(),
-                onClick: () => copyPathToOsClipboard(item.href, true),
+                onClick: () => actions.copyItems([item], true),
             });
         }
-        items.push(
+        if (canClipboardCopy(provider) && (!isRoot || isLocalFileProvider(provider))) items.push(
             {
                 startGroup: isRoot,
                 id: "copy",
                 label: t("menus.copy"),
                 icon: CopyIcon.createElement(),
-                onClick: () => copyPathToOsClipboard(item.href, false),
+                onClick: () => actions.copyItems([item], false),
             },
+        );
+        if (canPaste(provider)) items.push(
             {
+                startGroup: !canClipboardCut(provider, isRoot),
                 id: "paste",
                 label: t("menus.paste"),
                 icon: PasteIcon.createElement(),
@@ -212,7 +231,7 @@ export function getBackgroundMenuItems(
             onClick: () => actions.createFolder(directory),
         });
     }
-    if (isLocalFileProvider(provider)) {
+    if (canPaste(provider)) {
         items.push({
             startGroup: items.length > 0,
             id: "paste",

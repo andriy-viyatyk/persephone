@@ -3,7 +3,7 @@ import { app } from "../../api/app";
 import { ContextMenuEvent } from "../../api/events/events";
 import { api } from "../../../ipc/renderer/api";
 import { getPlatformFeature } from "../../../shared/platform-features";
-import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
+import { isLocalFileProvider, treeTransferCapability } from "../../content/tree-providers/tree-provider-capabilities";
 import type { MenuItem } from "../../uikit/Menu";
 import { copyPathsToOsClipboard } from "./os-clipboard";
 import {
@@ -21,7 +21,11 @@ import {
     type ItemMenuActions,
 } from "./item-menus";
 import { hrefKey, sameHref } from "./href-utils";
-import { buildMultiItemMenuItems, deleteItemsBatch, pruneNestedItems } from "./plural-actions";
+import { buildMultiItemMenuItems, deleteItemsBatch, pruneNestedItems, pruneProviderItems } from "./plural-actions";
+import { writeBoardTreeClipboard } from "./tree-clipboard";
+import { errMessage } from "../../../shared/utils";
+import { ui } from "../../api/ui";
+import { t } from "../../../shared/i18n/t";
 
 export interface ProviderItemControllerOptions {
     provider(): ITreeProvider;
@@ -69,12 +73,19 @@ export class ProviderItemController {
         createFile: (directory) => { void createNewFile(this.crudContext, directory); },
         createFolder: (directory) => { void createNewFolder(this.crudContext, directory); },
         paste: (directory) => { void this.paste(directory); },
+        copyItems: (items, cut) => { void this.copyItemsToClipboard(items, cut); },
         rename: (item) => { void this.renameItem(item); },
         deleteItem: (item) => { void this.deleteItem(item); },
     };
 
-    paste = (directory = this.options.resolvePasteTarget()): Promise<void> =>
-        pasteIntoDir(this.crudContext, directory);
+    paste = async (directory = this.options.resolvePasteTarget()): Promise<void> => {
+        const provider = this.options.provider();
+        if (!isLocalFileProvider(provider)) {
+            const capability = treeTransferCapability(provider);
+            if (!provider.writable || capability?.sourceKind !== "board") return;
+        }
+        await pasteIntoDir(this.crudContext, directory);
+    };
 
     renameItem = (item: ITreeProviderItem): Promise<void> =>
         renameItem(this.crudContext, item);
@@ -94,9 +105,40 @@ export class ProviderItemController {
     };
 
     copyItemsToClipboard = async (items: ITreeProviderItem[], cut: boolean): Promise<void> => {
-        if (!isLocalFileProvider(this.options.provider())) return;
-        const targets = pruneNestedItems(items);
-        await copyPathsToOsClipboard(targets.map((item) => item.href), cut);
+        const provider = this.options.provider();
+        let targets: ITreeProviderItem[];
+        try {
+            targets = pruneProviderItems(provider, items);
+        } catch (error: unknown) {
+            ui.notify(errMessage(error, t("menus.treeClipboardSourceUnavailable")), "warning");
+            return;
+        }
+        const hasRoot = targets.some((item) => sameHref(item.href, provider.rootPath));
+        if (cut && hasRoot) return;
+        if (isLocalFileProvider(provider)) {
+            await copyPathsToOsClipboard(targets.map((item) => item.href), cut);
+            return;
+        }
+        if (treeTransferCapability(provider)?.sourceKind !== "board") return;
+        if (hasRoot) {
+            ui.notify(t("menus.treeClipboardRootUnsupported"), "warning");
+            return;
+        }
+        if (cut && (!provider.writable || !provider.deleteItem)) {
+            ui.notify(t("menus.treeClipboardCutUnavailable"), "warning");
+            return;
+        }
+        try {
+            await writeBoardTreeClipboard(provider, targets, cut, this);
+        } catch (error: unknown) {
+            ui.notify(errMessage(error, cut ? t("menus.treeClipboardCutUnavailable") : t("menus.failedPutManyOnClipboard")), "warning");
+        }
+    };
+
+    refreshClipboardSource = async (identity: string): Promise<void> => {
+        const provider = this.options.provider();
+        if (treeTransferCapability(provider)?.sourceIdentity !== identity) return;
+        await this.options.refresh();
     };
 
     onItemContextMenu = (item: ITreeProviderItem, event: MouseEvent): void => {
@@ -177,7 +219,12 @@ export class ProviderItemController {
         const selected = this.options.getSelectedItems();
         if (selected.length < 2) return null;
         if (!selected.some((selectedItem) => hrefKey(selectedItem.href) === hrefKey(item.href))) return null;
-        const targets = pruneNestedItems(selected);
+        let targets: ITreeProviderItem[];
+        try {
+            targets = pruneProviderItems(this.options.provider(), selected);
+        } catch {
+            targets = selected;
+        }
         return targets.length > 1 ? targets : null;
     }
 
@@ -186,6 +233,7 @@ export class ProviderItemController {
             this.options.provider(),
             items,
             () => this.deleteItems(items),
+            (selected, cut) => { void this.copyItemsToClipboard(selected as ITreeProviderItem[], cut); },
         );
     }
 }

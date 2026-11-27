@@ -57,33 +57,54 @@ export async function moveTreeItemsInto(
     sourcePaths: string[],
     target: DropTarget,
 ): Promise<boolean> {
-    if (!items.length || items.length !== sourcePaths.length) return false;
+    const results = await moveTreeItemsWithResults(provider, items, sourcePaths, target);
+    return results.some((result) => result.status === "moved" || result.status === "failed");
+}
+
+export async function moveTreeItemsWithResults(
+    provider: ITreeProvider,
+    items: ILink[],
+    sourcePaths: string[],
+    target: DropTarget,
+): Promise<TreeTransferResult["items"]> {
+    if (!items.length || items.length !== sourcePaths.length) return [];
     if (!provider.rename) {
         ui.notify(t("dialogs.treeTransferRenameUnsupported"), "warning");
-        return true;
+        return items.map((source) => ({ source, status: "failed", failures: [t("dialogs.treeTransferRenameUnsupported")] }));
     }
     const moving = items.map((item, index) => ({ item, sourcePath: sourcePaths[index] }))
         .filter(({ item }) => item.category !== target.path);
-    if (!moving.length) return false;
+    const results: TreeTransferResult["items"] = items.filter((item) => item.category === target.path)
+        .map((source) => ({ source, status: "skipped" as const, failures: [] as string[] }));
+    if (!moving.length) return results;
     const button = await ui.confirm(t("dialogs.treeTransferSameTreeMoveConfirm", {
         countLabel: t("dialogs.treeTransferItemCount", { count: moving.length }),
         target: provider.displayName, folder: target.title,
     }), { title: t("dialogs.treeTransferTitle"), buttons: [DialogButton.move, DialogButton.cancel] });
-    if (button !== DialogButton.move) return true;
+    if (button !== DialogButton.move) {
+        return items.map((source) => ({ source, status: "skipped", failures: [t("dialogs.treeTransferCancelled")] }));
+    }
     const capability = treeTransferCapability(provider);
-    const results = [] as TreeTransferResult["items"];
+    const outcomes = [...results] as TreeTransferResult["items"];
     for (const { item, sourcePath } of moving) {
-        if (!sourcePath) continue;
+        if (!sourcePath) {
+            outcomes.push({ source: item, status: "failed", failures: [t("dialogs.treeTransferFailed")] });
+            continue;
+        }
         try {
+            if (capability) {
+                const inside = capability.isInside(sourcePath, target.path);
+                if (inside !== false) throw new Error(t("dialogs.treeTransferFailed"));
+            }
             const newPath = capability?.joinChild(target.path, item.title) ?? `${target.path}/${item.title}`;
             await provider.rename(sourcePath, newPath);
-            results.push({ source: item, destinationPath: newPath, status: "moved", failures: [] });
+            outcomes.push({ source: item, destinationPath: newPath, status: "moved", failures: [] });
         } catch (error: unknown) {
-            results.push({ source: item, status: "failed", failures: [errMessage(error)] });
+            outcomes.push({ source: item, status: "failed", failures: [errMessage(error)] });
         }
     }
-    await showTransferSummary(results);
-    return true;
+    await showTransferSummary(outcomes);
+    return outcomes;
 }
 
 export async function copyLocalItemsInto(provider: ITreeProvider, items: ILink[], target: DropTarget): Promise<boolean> {
@@ -115,8 +136,19 @@ export async function transferTreeItems(
     target: DropTarget,
     mode: TreeDropMode,
 ): Promise<boolean> {
-    await runTreeTransfer(sourceProvider, targetProvider, items, target, mode);
+    await transferTreeItemsWithResults(sourceProvider, targetProvider, items, target, mode);
     return true;
+}
+
+/** Run the shared transfer UI and return its per-item outcome to clipboard owners. */
+export function transferTreeItemsWithResults(
+    sourceProvider: ITreeProvider,
+    targetProvider: ITreeProvider,
+    items: ILink[],
+    target: DropTarget,
+    mode: TreeDropMode,
+): Promise<TreeTransferResult["items"]> {
+    return runTreeTransfer(sourceProvider, targetProvider, items, target, mode);
 }
 
 export async function transferTreeFiles(

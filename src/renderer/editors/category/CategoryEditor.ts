@@ -10,7 +10,7 @@ import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { hrefKey } from "../../components/tree-provider/href-utils";
-import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
+import { isLocalFileProvider, treeTransferCapability } from "../../content/tree-providers/tree-provider-capabilities";
 import { CategoryView } from "../../components/tree-provider/CategoryView";
 import {
     type CategoryItemsViewFactory,
@@ -211,7 +211,7 @@ export class CategoryEditorView extends VanillaView<{ model: CategoryEditorModel
             viewMode: this.model.viewMode,
             onViewModeChange: this.handleViewModeChange,
             selectedHref: this.selectedHref ?? undefined,
-            multiSelect: isLocalFileProvider(provider),
+            multiSelect: isLocalFileProvider(provider) || treeTransferCapability(provider)?.sourceKind === "board",
             onItemClick: this.handleSelect,
             onItemDoubleClick: this.handleNavigate,
             onFolderClick: this.handleNavigate,

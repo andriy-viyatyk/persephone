@@ -388,12 +388,34 @@ export class CategoryViewModel extends TComponentModel<
     /** Keys handled while the item grid has focus. No-op unless multiSelect is on, so
      *  single-select folder pages keep native behavior. */
     onKeyDown = (e: KeyboardEvent) => {
-        if (!this.props.multiSelect) return;
         // The search input (or any editable element) keeps native key behavior.
         if (ProviderItemController.isEditableTarget(e)) return;
 
         const { provider } = this.props;
+        const capability = treeTransferCapability(provider);
+        const clipboardSupported = isLocalFileProvider(provider) || capability?.sourceKind === "board";
+        if (!clipboardSupported) return;
 
+        if (e.ctrlKey && !e.altKey && !e.shiftKey) {
+            const key = e.key.toLowerCase();
+            if (key === "c" || key === "x") {
+                const items = this.selectionItems();
+                if (!items.length) return;
+                if (key === "x" && !isLocalFileProvider(provider)
+                    && (!provider.writable || !provider.deleteItem)) return;
+                e.preventDefault();
+                void this.itemController.copyItemsToClipboard(items, key === "x");
+                return;
+            }
+            if (key === "v") {
+                if (!isLocalFileProvider(provider) && (!provider.writable || !capability)) return;
+                e.preventDefault();
+                void this.itemController.paste(this.props.category);
+                return;
+            }
+        }
+
+        if (!this.props.multiSelect) return;
         if (e.ctrlKey && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "a") {
             e.preventDefault();
             this.setSelection(this.state.get().filteredItems.map((i) => i.href));

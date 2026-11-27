@@ -17,12 +17,14 @@ import { t } from "../../../shared/i18n/t";
 import { isLinux } from "../../../shared/platform";
 import { isLocalFileProvider } from "../../content/tree-providers/tree-provider-capabilities";
 import { errMessage } from "../../../shared/utils";
+import type { ClipboardFileList } from "../../../ipc/clipboard-ipc";
+import { writeLocalTreeClipboard } from "./tree-clipboard";
 
 /** Put N files/folders on the OS clipboard (Windows Explorer can paste them).
  *  `cut: true` marks them for move — pasting (here or in Explorer) relocates them. */
 export async function copyPathsToOsClipboard(paths: string[], cut: boolean): Promise<void> {
     if (!paths.length) return;
-    const ok = await api.clipboardWriteFilePaths(paths, cut);
+    const ok = await writeLocalTreeClipboard(paths, cut);
     if (!ok) {
         ui.notify(paths.length === 1
             ? t("menus.failedPutOneOnClipboard")
@@ -43,9 +45,10 @@ export async function copyPathToOsClipboard(path: string, cut: boolean): Promise
 export async function pasteOsClipboardInto(
     provider: ITreeProvider,
     targetDir: string,
+    snapshot?: ClipboardFileList,
 ): Promise<boolean> {
     if (!isLocalFileProvider(provider)) return false;
-    const clip = await api.clipboardReadFilePaths();
+    const clip = snapshot ?? await api.clipboardReadFilePaths();
     if (!clip.paths.length) {
         ui.notify(t("menus.clipboardNoFiles"), "info");
         return false;

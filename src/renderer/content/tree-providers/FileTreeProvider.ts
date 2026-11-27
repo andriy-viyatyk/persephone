@@ -73,7 +73,10 @@ export class FileTreeProvider implements ITreeProvider {
     readonly rootPath: string;
 
     readonly transfer: TreeTransferCapability = {
+        sourceKind: "local",
+        sourceIdentity: "local-filesystem",
         backingStoreKey: "local-filesystem",
+        assertAvailable: async () => undefined,
         pathForLink: (item) => {
             if (!item.href || !path.isAbsolute(item.href)
                 || fpBasename(item.href) !== item.title

@@ -1,7 +1,7 @@
 import type { ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
 import { ui } from "../../api/ui";
 import { errMessage } from "../../../shared/utils";
-import { pasteOsClipboardInto } from "./os-clipboard";
+import { pasteTreeClipboardInto, reportTreePasteFailure } from "./tree-paste-actions";
 import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
 import { joinTreeChild } from "./tree-path";
@@ -15,8 +15,10 @@ export interface ItemCrudContext {
 
 /** Paste OS clipboard files into a directory and refresh after a successful operation. */
 export async function pasteIntoDir(context: ItemCrudContext, directory: string): Promise<void> {
-    if (await pasteOsClipboardInto(context.provider, directory)) {
-        await context.refresh();
+    try {
+        if (await pasteTreeClipboardInto(context.provider, directory)) await context.refresh();
+    } catch (error: unknown) {
+        reportTreePasteFailure(error);
     }
 }
 

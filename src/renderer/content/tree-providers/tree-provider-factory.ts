@@ -70,5 +70,12 @@ registerTreeProvider("mneme", ({ rootPath }) => {
     return new MnemeTreeProvider(rootPath);
 });
 
-registerTreeProvider((type) => boardProviderTypeRefusal(type) === undefined, (descriptor) =>
-    new ProxyTreeProvider(descriptor.type, descriptor.config, descriptor.rootPath));
+registerTreeProvider((type) => boardProviderTypeRefusal(type) === undefined, (descriptor) => {
+    const provider = new ProxyTreeProvider(descriptor.type, descriptor.config, descriptor.rootPath);
+    provider.setClipboardSourceFactory(() => createTreeProvider({
+        type: descriptor.type,
+        rootPath: descriptor.rootPath,
+        config: descriptor.config,
+    }));
+    return provider;
+});

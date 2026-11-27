@@ -13,7 +13,13 @@ export interface TransferEntry {
 
 /** Explicit, strict operations required by safe cross-tree transfers. */
 export interface TreeTransferCapability {
+    sourceKind: "local" | "board";
+    sourceIdentity: string;
     backingStoreKey: string;
+    /** Recheck the provider's current owner and service before an operation. */
+    assertAvailable(): Promise<void>;
+    /** Create a page-independent source for a clipboard snapshot. */
+    createClipboardSource?(): ITreeProvider;
     pathForLink(link: ILink): string;
     joinChild(folderPath: string, name: string): string;
     validateName(name: string): void;
