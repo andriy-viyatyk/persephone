@@ -1,6 +1,6 @@
 import { app } from "../../api/app";
 import { createLinkData } from "../../../shared/link-data";
-import { createOpenWithMenuItem } from "./open-with-editor";
+import { createOpenWithMenuItem, isOnDiskPath } from "./open-with-editor";
 import { t } from "../../../shared/i18n/t";
 
 /**
@@ -49,7 +49,10 @@ export function registerTreeContextMenuHandlers(): void {
         const item = event.target;
         if (!item) return;
         if (item.href.startsWith("http://") || item.href.startsWith("https://")) return;
+        // `mneme:` and board-tree links are not paths on disk; only on-disk items get OS-level actions.
+        const onDisk = isOnDiskPath(item.href);
         if (item.isDirectory) {
+            if (!onDisk) return;
             event.items.push(
                 {
                     startGroup: true,
@@ -73,14 +76,18 @@ export function registerTreeContextMenuHandlers(): void {
                 },
             });
         } else {
+            event.items.push({
+                startGroup: true,
+                id: "open-in-new-tab",
+                label: t("shell.openInNewTab"),
+                icon: "open-file",
+                onClick: () => app.events.openRawLink.sendAsync(createLinkData(item.href)),
+            });
+            if (!onDisk) {
+                event.items.push(createOpenWithMenuItem(item.href));
+                return;
+            }
             event.items.push(
-                {
-                    startGroup: true,
-                    id: "open-in-new-tab",
-                    label: t("shell.openInNewTab"),
-                    icon: "open-file",
-                    onClick: () => app.events.openRawLink.sendAsync(createLinkData(item.href)),
-                },
                 {
                     id: "open-in-new-window",
                     label: t("shell.openInNewWindow"),

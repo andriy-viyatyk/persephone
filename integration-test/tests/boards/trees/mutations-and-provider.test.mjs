@@ -62,7 +62,7 @@ export default [
         }
     }, { requires: ["launch"] }),
 
-    test("read-only connection rejects mkdir, rename, and delete without changing its tree", async (ctx) => {
+    test("read-only connection offers no mkdir, rename, or delete and keeps its tree", async (ctx) => {
         const root = fixtureBoard(ctx, BOARD);
         let board;
         try {
@@ -70,26 +70,11 @@ export default [
             board = await openBoardPage(ctx, root);
             const id = await openTree(ctx, board, "ro");
             const initial = await listedNames(ctx, id);
-
+            // The fixture marks every `ro` listing readOnly (US-2258), so no write action is offered.
             await openTreeContextMenu(ctx, "Readme.md");
-            await chooseTreeMenuItem(ctx, "new-folder");
-            await answerInputDialog(ctx, "forbidden-folder", "Create");
-            let alerts = await ctx.app.ui.alerts.list();
-            ctx.expect(alerts.some((alert) => alert.message.includes("tree-test-read-only"))).toBe(true);
-            ctx.expect(await listedNames(ctx, id)).toEqual(initial);
-
-            await openTreeContextMenu(ctx, "Readme.md");
-            await chooseTreeMenuItem(ctx, "rename");
-            await answerInputDialog(ctx, "forbidden-readme.md", "Rename");
-            alerts = await ctx.app.ui.alerts.list();
-            ctx.expect(alerts.some((alert) => alert.message.includes("tree-test-read-only"))).toBe(true);
-            ctx.expect(await listedNames(ctx, id)).toEqual(initial);
-
-            await openTreeContextMenu(ctx, "Readme.md");
-            await chooseTreeMenuItem(ctx, "delete");
-            await ctx.call("window.screen.click", ['text="Delete"'], { dialog: true });
-            alerts = await ctx.app.ui.alerts.list();
-            ctx.expect(alerts.some((alert) => alert.message.includes("tree-test-read-only"))).toBe(true);
+            const menu = JSON.stringify(await ctx.call("menus[0].items", undefined, { dialog: true })).toLowerCase();
+            await ctx.call("menus[0].close", [], { dialog: true }).catch(() => undefined);
+            for (const menuId of ['"new-folder"', '"new-file"', '"rename"', '"delete"', '"cut"', '"paste"']) ctx.expect(menu).not.toContain(menuId);
             ctx.expect(await listedNames(ctx, id)).toEqual(initial);
             ctx.expect((await ctx.app.pages[id].panels.explorer.listItems()).find((item) => item.title === "Readme.md").href).toBe("testtree://ro/Readme.md");
         } finally {
@@ -112,6 +97,7 @@ export default [
             ctx.expect(labels).not.toContain("import");
             ctx.expect(labels).not.toContain("reveal");
             ctx.expect(labels).not.toContain("terminal");
+            for (const id of ['"show-in-file-explorer"', '"open-in-new-window"', '"open-with:default-app"']) ctx.expect(labels).not.toContain(id);
             await ctx.call("menus[0].close", [], { dialog: true }).catch(() => undefined);
             ctx.expect(await ctx.app.pages[id].panels.explorer.providerType).toBe("test/tree");
         } finally {

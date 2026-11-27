@@ -9,6 +9,7 @@ import { ArchiveIcon, type SvgIconComponent } from "../../theme/icons";
 import { DefaultIcon, GridIcon, LinkIcon } from "../../theme/language-icons";
 import { openWithDefaultApp } from "../../content/open-with-default-app";
 import { t } from "../../../shared/i18n/t";
+import { schemeOf } from "../../content/scheme-registry";
 
 /** Built-in editors with a recognisable icon; every other built-in (the Text Editor included)
  *  gets the generic file icon. */
@@ -26,6 +27,12 @@ function editorOptionIcon(editorId: string): Element {
     return (BUILT_IN_EDITOR_ICONS[editorId] ?? DefaultIcon).createElement({ width: 16, height: 16 });
 }
 
+/** A multi-letter scheme is a URL; no scheme or a one-letter drive prefix is a path on disk. */
+export function isOnDiskPath(path: string): boolean {
+    const scheme = schemeOf(path);
+    return !scheme || scheme.length === 1;
+}
+
 /** Create the shared Open with submenu used by file trees and Recent Files. */
 export function createOpenWithMenuItem(path: string): MenuItem {
     const options = getFileOpenEditorOptions(path);
@@ -40,12 +47,13 @@ export function createOpenWithMenuItem(path: string): MenuItem {
                 icon: editorOptionIcon(id),
                 onClick: () => openWithEditor(path, id),
             })),
-            {
+            // The OS shell can open only a path on disk, not a `mneme:` or board-tree link.
+            ...(isOnDiskPath(path) ? [{
                 id: "open-with:default-app",
                 label: t("menus.defaultApp"),
                 icon: "open-link",
                 onClick: () => openWithDefaultApp(path),
-            },
+            }] : []),
         ],
     };
 }
