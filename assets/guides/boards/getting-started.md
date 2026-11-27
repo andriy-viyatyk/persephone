@@ -111,7 +111,8 @@ Board errors — including script and load failures — are appended to `ui.log`
 `console.error` and `console.warn` from the board, service output, and warnings or errors sent
 through `persephone.notify()`. Choose **Open board log** from the in-board toolbar's **…** menu
 to review it. Ordinary boards keep the file in their board folder; bundled boards keep it at
-`%APPDATA%\persephone\board-logs\<id>\ui.log` (or the corresponding named application profile folder).
+`%APPDATA%\persephone\board-logs\<id>\ui.log` on Windows or
+`~/.config/persephone/board-logs/<id>/ui.log` by default on Linux (or the named profile folder).
 
 Opening or reloading a board adds a `----- board loaded -----` separator, so earlier entries remain
 available across reloads. The log is limited to 256 KiB; when it grows beyond that, older entries

@@ -142,7 +142,7 @@ Editors with no specific actions (e.g. MCP Inspector) show no greyed-out entries
 | Save | Save the file |
 | Save As... | Save with a new name |
 | Rename | Rename the file/tab |
-| Show in File Explorer | Open the file's folder in Windows Explorer |
+| Show in File Explorer | Open the file's folder in the system file manager |
 | Copy File Path | Copy the full file path to clipboard |
 | Encrypt / Change Password | Encrypt the file or change its password (see [Encryption](../encryption.md)) |
 | Decrypt | Decrypt an encrypted file |
@@ -152,14 +152,14 @@ Editors with no specific actions (e.g. MCP Inspector) show no greyed-out entries
 
 | Action | Description |
 |--------|-------------|
-| Open Git Root Folder | Reveal the repository root folder in Windows Explorer |
+| Open Git Root Folder | Reveal the repository root in the system file manager |
 | Copy Remote URL | Copy the configured remote URL (origin preferred) to the clipboard |
 
 *Image and Archive tabs:*
 
 | Action | Description |
 |--------|-------------|
-| Show in File Explorer | Open the source file's folder in Windows Explorer |
+| Show in File Explorer | Open the source file's folder in the system file manager |
 | Copy File Path | Copy the source file's full path to clipboard |
 
 *HTML file tabs (`.html`, `.htm`, `.xhtml`):*
@@ -167,7 +167,7 @@ Editors with no specific actions (e.g. MCP Inspector) show no greyed-out entries
 | Action | Description |
 |--------|-------------|
 | Open in Browser | Open the local HTML file in Persephone's built-in browser |
-| Show in File Explorer | Open the file's folder in Windows Explorer |
+| Show in File Explorer | Open the file's folder in the system file manager |
 | Copy File Path | Copy the full file path to clipboard |
 
 *Board tabs:*

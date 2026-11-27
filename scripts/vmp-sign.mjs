@@ -11,7 +11,8 @@
  *   - EVS account credentials (run: python -m castlabs_evs.account signup)
  *
  * Set VMP_SIGN=true to enable signing (skipped by default to avoid
- * breaking builds for developers without EVS credentials).
+ * breaking builds for developers without EVS credentials). Linux builds
+ * always skip it: Castlabs offers VMP only for Windows and macOS.
  */
 
 import { execSync } from "node:child_process";
@@ -19,6 +20,11 @@ import fs from "node:fs";
 import path from "node:path";
 
 export default async function afterSign(context) {
+    // VMP signing exists only for Windows and macOS; Linux Widevine runs without it (L3, no VMP).
+    if (context.electronPlatformName === "linux") {
+        console.log("  • VMP signing skipped (not available on Linux)");
+        return;
+    }
     if (process.env.VMP_SIGN !== "true") {
         console.log("  • VMP signing skipped (set VMP_SIGN=true to enable)");
         return;

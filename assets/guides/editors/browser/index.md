@@ -99,11 +99,13 @@ address yourself, paste it into the URL bar.
 
 Select **Downloads** in the toolbar to see current and completed downloads. Active downloads show
 their progress and can be cancelled. For every completed download, choose **Open in Windows Default
-App** to hand it to Windows. When Persephone has a matching built-in editor, installed board, or
+App** to hand it to the system default. When Persephone has a matching built-in editor, installed board, or
 Monaco language for the file type, **Open in Persephone** also opens the file in a Persephone tab.
 **Show in Folder** opens its location in File Explorer. Use **Clear** in the popup header to remove
 completed, failed, and cancelled entries from the list. Incognito and Tor pages list only their own
 downloads.
+
+Linux keyring, Widevine DRM, downloads and unavailable Windows single sign-on are covered in [Network and agent API](network-and-agent.md#linux-browser-security-and-drm).
 
 ### Page zoom
 

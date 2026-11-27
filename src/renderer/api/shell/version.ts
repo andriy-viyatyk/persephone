@@ -1,5 +1,6 @@
 import { api } from "../../../ipc/renderer/api";
 import type { IVersionService, IRuntimeVersions, IUpdateInfo } from "../types/shell";
+import { mapUpdateResult } from "./map-update-result";
 
 class VersionService implements IVersionService {
     async runtimeVersions(): Promise<IRuntimeVersions> {
@@ -8,17 +9,7 @@ class VersionService implements IVersionService {
 
     async checkForUpdates(force?: boolean): Promise<IUpdateInfo> {
         const result = await api.checkForUpdates(force);
-        const ri = result.releaseInfo;
-        return {
-            currentVersion: result.currentVersion,
-            latestVersion: result.latestVersion,
-            updateAvailable: result.updateAvailable,
-            releaseUrl: ri?.htmlUrl ?? null,
-            releaseVersion: ri?.version ?? null,
-            publishedAt: ri?.publishedAt ?? null,
-            releaseNotes: ri?.body ?? null,
-            error: result.error,
-        };
+        return mapUpdateResult(result);
     }
 }
 

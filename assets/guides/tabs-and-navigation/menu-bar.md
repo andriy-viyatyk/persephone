@@ -28,7 +28,7 @@ Click a folder in the left panel to see its contents in the right panel.
 
 **Managing Custom Folders:**
 - Click the **Add Folder** button at the bottom of the left panel to pick a folder and add it as a shortcut
-- Right-click in the left panel for the same **Add Folder** option, plus **Open in New Tab**, **Show in File Explorer**, **Open Terminal here** (Windows only — see [Open Terminal here](file-explorer-and-panels.md#open-terminal-here)), and **Remove Folder** on an existing shortcut
+- Right-click in the left panel for the same **Add Folder** option, plus **Open in New Tab**, **Show in File Explorer**, **Open Terminal here** (Windows and Linux — see [Open Terminal here](file-explorer-and-panels.md#open-terminal-here)), and **Remove Folder** on an existing shortcut
 - Folders provide quick access to frequently used directories
 
 ### Right Panel — Contents
@@ -52,10 +52,10 @@ The right panel shows the contents of the selected folder:
     and the new-item actions target its parent folder; on a folder row, they target that folder.
     File clipboard copy and cut work on Windows and Linux. Clipboard history is available on Windows;
     it is unavailable on Linux; GNOME Wayland has no supported way for apps to watch the clipboard.
-- Right-click a folder for **Open Terminal here** (Windows only — see [Open Terminal here](file-explorer-and-panels.md#open-terminal-here))
+- Right-click a folder for **Open Terminal here** (Windows and Linux — see [Open Terminal here](file-explorer-and-panels.md#open-terminal-here))
 - Search files by name with `Ctrl+F` when the file explorer is active
-- **Drag a file out to the OS** — drag a file from the tree onto Windows Explorer or into a Microsoft Teams chat to copy/attach it there. No modifier key needed. Dragging it into another folder in the tree instead asks whether to **Move** or **Copy** it there. Currently one file at a time.
-- **Drop files from Windows Explorer** — drag a file or folder from Windows Explorer (or another app) and drop it onto a folder in the tree; a **Move / Copy / Cancel** dialog asks which you want (folders are handled recursively), and dropping onto an existing name asks for confirmation before overwriting.
+- **Drag a file out to the OS** — drag a file from the tree onto Windows Explorer, GNOME Files or into a Microsoft Teams chat to copy/attach it there. No modifier key needed. Dragging it into another folder in the tree instead asks whether to **Move** or **Copy** it there. Currently one file at a time.
+- **Drop files from the OS** — drag a file or folder from Windows Explorer, GNOME Files or another app onto a folder in the tree; a **Move / Copy / Cancel** dialog asks which you want (folders are handled recursively), and dropping onto an existing name asks for confirmation before overwriting.
 
 ### Menu Bar Buttons
 

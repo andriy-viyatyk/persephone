@@ -235,10 +235,10 @@ Every operation below applies to the whole selection when more than one row is s
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl+C` | Copy the selected file(s)/folder(s) to the Windows clipboard |
-| `Ctrl+X` | Cut the selected file(s)/folder(s) to the Windows clipboard (not on the tree's root) |
-| `Ctrl+V` | Paste from the Windows clipboard into the selected folder (or the selected file's parent, or the root) |
-| Drag | Drag the selection out to Windows Explorer or Teams (native OS drag; not on the tree's root). Dragging onto another folder in the tree instead opens a Move/Copy/Cancel dialog. Dragging a row outside the selection carries only that row |
+| `Ctrl+C` | Copy selected files/folders to the OS clipboard |
+| `Ctrl+X` | Cut selected files/folders to the OS clipboard (not on the tree root) |
+| `Ctrl+V` | Paste from the OS clipboard into the selected folder (or its parent, or the root) |
+| Drag | Drag the selection to Windows Explorer, GNOME Files, or Teams (not on the tree root). Dragging onto another tree folder opens a Move/Copy/Cancel dialog; an unselected row drags alone |
 | `Delete` | Delete the selected file(s)/folder(s) (shows the confirmation dialog) |
 | `F2` | Rename the selected file/folder (single selection only) |
 

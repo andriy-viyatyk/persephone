@@ -42,6 +42,8 @@ if (update.updateAvailable) {
 }
 ```
 
+Checks notify only; they do not install updates. Open `downloadUrl` when present, or `releaseUrl` as the fallback.
+
 ### IRuntimeVersions
 
 | Property | Type |
@@ -58,6 +60,7 @@ if (update.updateAvailable) {
 | `latestVersion` | `string \| null` | Latest available version. |
 | `updateAvailable` | `boolean` | True if an update is available. |
 | `releaseUrl` | `string \| null` | URL to the release page. |
+| `downloadUrl` | `string \| null` | Platform installer asset URL, or `null` when unavailable. |
 | `releaseVersion` | `string \| null` | Release version string. |
 | `publishedAt` | `string \| null` | Release publish date. |
 | `releaseNotes` | `string \| null` | Release notes text. |

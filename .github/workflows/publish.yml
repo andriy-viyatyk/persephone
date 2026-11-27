@@ -67,3 +67,189 @@ jobs:
             gh release delete-asset "$TAG" "$asset" --yes || true
           done
         shell: bash
+
+  linux:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.3'
+          cache: npm
+
+      - name: Install Linux build and runtime dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y libnss3 libasound2t64 libgbm1 libxss1 libxtst6 \
+            libatk-bridge2.0-0t64 libcups2t64 libdrm2 libsecret-1-0 \
+            build-essential curl xz-utils fonts-noto-core file binutils
+        shell: bash
+
+      - name: Install JavaScript dependencies
+        run: |
+          set -euo pipefail
+          npm ci
+          node node_modules/electron/install.js
+        shell: bash
+
+      - name: Build Linux helpers
+        run: |
+          set -euo pipefail
+          cargo build --release --manifest-path mneme/Cargo.toml
+          cargo build --release --manifest-path snip-tool/Cargo.toml
+          test -f mneme/target/release/mneme
+          test -f snip-tool/target/release/persephone-snip
+        shell: bash
+
+      - name: Build Linux release packages
+        run: |
+          set -euo pipefail
+          npm run build-prod
+          # The .deb is the only Linux release format (US-2235: an AppImage cannot keep the sandbox on Ubuntu).
+          npx electron-builder --linux deb --x64 --publish never
+        shell: bash
+
+      - name: Check package assets and GLIBC requirements
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          DEB="release/persephone-${VERSION}-linux-amd64.deb"
+          UNPACKED="release/linux-unpacked"
+          test -f "$DEB"
+          test -f "$UNPACKED/mneme"
+          test -f "$UNPACKED/persephone-snip"
+
+          ELF_COUNT=0
+          MNEME_INSPECTED=0
+          SNIP_INSPECTED=0
+          inspect_file() {
+            local candidate="$1"
+            local description
+            local objdump_output
+            description="$(file -b -- "$candidate")"
+            if [[ "$description" != ELF* ]]; then
+              return 0
+            fi
+            ELF_COUNT=$((ELF_COUNT + 1))
+            [[ "$candidate" != "$UNPACKED/mneme" ]] || MNEME_INSPECTED=1
+            [[ "$candidate" != "$UNPACKED/persephone-snip" ]] || SNIP_INSPECTED=1
+            objdump_output="$(mktemp)"
+            if ! objdump -T -- "$candidate" > "$objdump_output"; then
+              echo "objdump failed for ELF: $candidate" >&2
+              rm -f -- "$objdump_output"
+              return 1
+            fi
+            while IFS= read -r symbol_line; do
+              while IFS= read -r requirement; do
+                [[ -n "$requirement" ]] || continue
+                local highest
+                highest="$(printf '%s\n' "$requirement" GLIBC_2.39 | sort -V | tail -n 1)"
+                if [[ "$highest" != GLIBC_2.39 ]]; then
+                  printf 'GLIBC ceiling exceeded: %s: %s\n' "$candidate" "$symbol_line" >&2
+                  rm -f -- "$objdump_output"
+                  return 1
+                fi
+              done < <(grep -oE 'GLIBC_[0-9]+(\.[0-9]+)+' <<< "$symbol_line" || true)
+            done < <(grep -E '\*UND\*.*GLIBC_[0-9]' "$objdump_output" || true)
+            rm -f -- "$objdump_output"
+          }
+          inspect_tree() {
+            local root="$1"
+            local candidate
+            local file_list
+            file_list="$(mktemp)"
+            if ! find "$root" -type f -print0 > "$file_list"; then
+              rm -f -- "$file_list"
+              echo "Failed to enumerate files under $root." >&2
+              return 1
+            fi
+            while IFS= read -r -d '' candidate; do
+              inspect_file "$candidate"
+            done < "$file_list"
+            rm -f -- "$file_list"
+          }
+
+          inspect_tree "$UNPACKED"
+          if [[ "$ELF_COUNT" -eq 0 || "$MNEME_INSPECTED" -ne 1 || "$SNIP_INSPECTED" -ne 1 ]]; then
+            echo 'No ELF files or one of the Linux helpers was not inspected in linux-unpacked.' >&2
+            exit 1
+          fi
+          echo "Inspected $ELF_COUNT ELF files in $UNPACKED, including both helpers."
+
+          DEB_ROOT="$(mktemp -d)"
+          trap 'rm -rf -- "$DEB_ROOT"' EXIT
+          dpkg-deb -x "$DEB" "$DEB_ROOT"
+          DEB_ELF_START="$ELF_COUNT"
+          inspect_tree "$DEB_ROOT"
+          if [[ "$ELF_COUNT" -eq "$DEB_ELF_START" ]]; then
+            echo 'No ELF files found in the Debian package payload.' >&2
+            exit 1
+          fi
+          echo "Inspected $((ELF_COUNT - DEB_ELF_START)) additional Debian payload ELF files."
+        shell: bash
+
+      - name: Upload packages to the existing draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          RELEASES="$(gh api --paginate repos/andriy-viyatyk/persephone/releases | jq -s 'add')"
+          MATCHES="$(jq --arg version "$VERSION" --arg tag "v$VERSION" \
+            '[.[] | select(.tag_name == $version or .tag_name == $tag)]' <<< "$RELEASES")"
+          MATCH_COUNT="$(jq 'length' <<< "$MATCHES")"
+          if [[ "$MATCH_COUNT" -ne 1 ]]; then
+            echo "Expected exactly one release for version $VERSION; found $MATCH_COUNT." >&2
+            exit 1
+          fi
+          if [[ "$(jq -r '.[0].draft' <<< "$MATCHES")" != true ]]; then
+            echo "Matching release for $VERSION is not a draft." >&2
+            exit 1
+          fi
+          RELEASE_ID="$(jq -r '.[0].id' <<< "$MATCHES")"
+          RELEASE_TAG="$(jq -r '.[0].tag_name' <<< "$MATCHES")"
+          echo "Uploading to draft release ID $RELEASE_ID (tag $RELEASE_TAG)."
+          list_assets() {
+            gh api --paginate "repos/andriy-viyatyk/persephone/releases/$RELEASE_ID/assets" | jq -s 'add'
+          }
+          echo 'Draft assets before upload:'
+          list_assets | jq -r '.[].name'
+
+          DEB="release/persephone-${VERSION}-linux-amd64.deb"
+          test -f "$DEB"
+          gh release upload "$RELEASE_TAG" "$DEB" --repo andriy-viyatyk/persephone --clobber
+
+          echo 'Draft assets after upload:'
+          ASSETS="$(list_assets)"
+          jq -r '.[].name' <<< "$ASSETS"
+          jq -e --arg deb "$(basename "$DEB")" '[.[].name] | index($deb) != null' <<< "$ASSETS" > /dev/null
+
+          while IFS= read -r asset_id; do
+            [[ -n "$asset_id" ]] || continue
+            gh api --method DELETE "repos/andriy-viyatyk/persephone/releases/assets/$asset_id"
+          done < <(jq -r '.[] | select((.name | endswith("-linux.yml")) or ((.name | ascii_downcase | contains("linux")) and (.name | endswith(".blockmap")))) | .id' <<< "$ASSETS")
+
+          FINAL_ASSETS="$(list_assets)"
+          echo 'Final draft assets:'
+          jq -r '.[].name' <<< "$FINAL_ASSETS"
+          if jq -e '[.[] | select((.name | endswith("-linux.yml")) or ((.name | ascii_downcase | contains("linux")) and (.name | endswith(".blockmap"))))] | length == 0' <<< "$FINAL_ASSETS" > /dev/null; then
+            :
+          else
+            echo 'Linux update metadata or an external Linux blockmap remains attached.' >&2
+            exit 1
+          fi
+          jq -e --arg deb "$(basename "$DEB")" '[.[].name] | index($deb) != null' <<< "$FINAL_ASSETS" > /dev/null
+          FINAL_RELEASE="$(gh api "repos/andriy-viyatyk/persephone/releases/$RELEASE_ID")"
+          jq -e '.draft == true' <<< "$FINAL_RELEASE" > /dev/null
+          echo "Verified release ID $RELEASE_ID still contains the Linux package."
+        shell: bash

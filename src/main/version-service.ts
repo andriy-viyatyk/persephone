@@ -3,6 +3,8 @@ import { electronStore } from "./e-store";
 import { openWindows } from "./open-windows";
 import { ReleaseInfo, RuntimeVersions, UpdateCheckResult } from "../ipc/api-param-types";
 import { compareVersions } from "../shared/version-utils";
+import { supportedPlatform } from "../shared/platform";
+import { selectUpdateAssetUrl } from "../shared/update-asset-policy";
 
 // `parseVersion` / `compareVersions` now live in the shared module so the renderer
 // (published-boards catalog) can use the same compare without pulling this module's
@@ -40,6 +42,7 @@ async function fetchLatestRelease(): Promise<ReleaseInfo | null> {
             tagName: data.tag_name,
             version: data.tag_name.replace(/^v/, ""),
             htmlUrl: data.html_url,
+            downloadUrl: selectUpdateAssetUrl(data.assets, supportedPlatform, Boolean(process.env.APPIMAGE)),
             publishedAt: data.published_at,
             body: data.body || "",
         };

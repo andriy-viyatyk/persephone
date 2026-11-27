@@ -8,11 +8,21 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-*(none)*
+- **EPIC-216** — [Linux packaging, release and docs (multiplatform phase 4)](epics/EPIC-216.md)
+  - [ ] US-2233: Clean install VMs (Debian 13 and a clean Ubuntu 26.04)
+  - [ ] [US-2234: Linux package targets (`.deb`)](tasks/US-2234-linux-package-targets/README.md)
+  - [ ] [US-2235: Sandbox and AppArmor](tasks/US-2235-sandbox-apparmor/README.md)
+  - [ ] US-2236: Per-platform signing hook and Linux Widevine
+  - [ ] [US-2237: Update notice per platform](tasks/US-2237-update-notice-per-platform/README.md)
+  - [ ] [US-2238: Release workflow matrix](tasks/US-2238-release-workflow-matrix/README.md)
+  - [ ] [US-2239: Linux docs](tasks/US-2239-linux-docs/README.md)
+  - [ ] US-2240: Phase 4 exit run
 
 ## Planned
 
 - *(no epic)*
+  - [ ] US-2242: Packaged Linux build: intermittent main-process SIGILL. Seen twice in EPIC-216's exit run: once when systemd stopped every app process at once, and once at the start of the `boards/bridge` module under `--app` (GdkPixbuf "loaders could not be found" warnings just before). A targeted rerun passed 18/18. Get a symbolized stack (`/var/crash/_opt_persephone_persephone.1000.crash`, `apport-retrace`) before guessing
+  - [ ] US-2241: "Start Mneme" on the Mneme page starts the sidecar but leaves the page "Disconnected" while `mneme.enabled` is false (the shared connection follows only the setting; `MnemeConfigView` `mneme-start` → `restartMneme`). Found in the EPIC-216 exit run, all platforms; decide whether Start should also enable the setting
   - [ ] [US-2139: Board hotkeys](tasks/US-2139-board-hotkeys/README.md) — recorded idea, not investigated: a board declares an action with a default hotkey, the user can rebind it, and it works with no board page open
 
 ## Scheduled

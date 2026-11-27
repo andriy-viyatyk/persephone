@@ -69,6 +69,7 @@ export interface ReleaseInfo {
     tagName: string;
     version: string;
     htmlUrl: string;
+    downloadUrl: string | null;
     publishedAt: string;
     body: string;
 }

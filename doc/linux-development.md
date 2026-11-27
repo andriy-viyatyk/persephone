@@ -55,7 +55,56 @@ The development app looks for `mneme/target/release/mneme` and
 separately after syncing. On Linux, the snip helper's no-argument invocation opens the desktop
 Screenshot portal for an interactive capture; other subcommands remain unsupported. The portal
 response is read from its local file URI, and the helper attempts to remove that returned file.
-Linux packaging is deferred to the release phase.
+
+## Build Linux packages
+
+Linux packages build only on Linux: use the separate checkout in WSL or the VM (not `/mnt/c`) with its own
+`node_modules`, Node 24 and Rust. Then:
+
+```bash
+npm ci
+node node_modules/electron/install.js
+cargo build --release --manifest-path mneme/Cargo.toml
+cargo build --release --manifest-path snip-tool/Cargo.toml
+npm run dist:linux
+```
+
+`release/` then holds `persephone-<version>-linux-amd64.deb`, which installs to `/opt/persephone`. It carries `mneme` and `persephone-snip` beside the
+`persephone` executable, where `getMnemeExePath()` and `getSnipToolPath()` look for them, and only the
+`linux_x64` koffi build. electron-builder warns but continues when a helper is missing, so build both crates
+first. The desktop entry `com.viyatyk.persephone.desktop` (from `desktopName`, `syncDesktopName`) offers
+"Open With" for plain text and folders and passes `%U`; `file://` operands are converted to paths in
+`src/main/launch-operand.ts`. URL handling stays with the app's own handler entry
+(`linux-browser-registration.ts`). The `afterSign` hook (`scripts/vmp-sign.mjs`) does not run for Linux
+targets, and returns early on Linux if it ever does: VMP signing exists only for Windows and macOS.
+
+- **glibc floor.** The packages need the build machine's glibc: on Ubuntu 26.04 (glibc 2.43) `mneme` links
+  `libm` symbols versioned 2.43 and will not start on Debian 13 (glibc 2.41). Release packages are built on
+  Ubuntu 24.04 (glibc 2.39) in the release workflow. A package built in WSL or the dev VM is for local checks
+  on Ubuntu 26.04 only.
+- **Dependencies.** `deb.depends` in `electron-builder.yml` lists electron-builder's defaults plus every
+  library `dpkg-shlibdeps` reports. Re-run the audit when Electron or a helper changes:
+
+  ```bash
+  mkdir -p /tmp/pk/debian && cd /tmp/pk && dpkg-deb -x ~/persephone/release/*.deb x
+  printf 'Source: persephone
+
+Package: persephone
+Architecture: amd64
+' > debian/control
+  ELF=$(find x/opt/persephone -type f -exec file {} + | grep -E 'ELF.*(executable|shared object)' | cut -d: -f1)
+  LD_LIBRARY_PATH=$PWD/x/opt/persephone dpkg-shlibdeps -O --ignore-missing-info $(printf -- '-e%s ' $ELF)
+  ```
+
+  Every package in the printed `shlibs:Depends` must appear in `deb.depends` (koffi's `uv_*` warnings are
+  expected: Electron provides libuv).
+- **Sandbox.** The `.deb`'s builder-generated `postinst` installs an AppArmor profile for
+  `/opt/persephone/persephone`, so Chromium's namespace sandbox works on Ubuntu 26.04 without the setuid
+  helper. There is no AppImage: electron-builder's AppImage launcher (`AppRun`) adds `--no-sandbox` by
+  itself when unprivileged user namespaces are blocked, which is Ubuntu's default, and it needs `libfuse2`
+  (US-2235). Never add `--no-sandbox` yourself.
+- **Network.** The first build downloads Electron and fpm into electron-builder's cache;
+  later builds reuse it. A clean offline build is not supported.
 
 ## Runtime dependencies
 
@@ -87,8 +136,8 @@ Run `npm start` from the WSL checkout. WSLg displays the window on the Windows d
 changes arrive through Vite HMR; main-process changes restart Electron. The validated setup used
 an MCP port distinct from the Windows instance (7875 instead of 7865).
 
-This setup documents only development and test work. Linux packaging, installation, and user
-release instructions belong to the later Linux release phase.
+This setup documents Linux development and package creation. Installation and user release
+instructions belong to the later Linux release phase.
 
 ## Ubuntu VM (desktop checks)
 
@@ -119,7 +168,7 @@ The entry launches `scripts/dev.mjs` directly, uses the checkout's absolute `ass
 rm "$HOME/.local/share/applications/com.viyatyk.persephone.desktop"
 ```
 
-This is a development-only entry. Packaged desktop files and icon installation belong to the Linux release phase.
+This is a development-only entry. The packages install their own entry with the same name (see "Build Linux packages"), so remove this one before installing a package on the same machine.
 
 Agents control it with plain OpenSSH (key `~/.ssh/persephone-vm`, host alias `persephone-vm` in `~/.ssh/config`,
 password login disabled) and with [`scripts/linux-vm/vm.ps1`](../scripts/linux-vm/vm.ps1):
@@ -161,5 +210,33 @@ Setup notes:
 - **UI tests:** run the suite in the VM over SSH from a login shell (`bash -lc`, so `npm` is on PATH) with the
   session variables above. Without `npm start` in the VM, run `npm run build-prod` and then
   `npm run test:ui -- --prod --area <area>`. The build replaces the dev bundle, so run `npm start` again afterwards.
+  Against an installed package (`--app /opt/persephone/persephone`), unlock the login keyring first: the packaged
+  build encrypts cookies through GNOME Keyring, the automatic login leaves it locked, and browser pages wait behind
+  GNOME's unlock prompt (type the VM password into it once per boot).
 - **GitHub Linux CI** (`.github/workflows/linux-ci.yml`) runs only on demand: the Actions tab, or
   `gh workflow run linux-ci.yml --ref <branch>`. The VM is the usual Linux check.
+
+### Clean install VMs
+
+Package install checks run in two VMs without development tools, so a library missing from the `.deb` is not
+hidden by the dev setup. Both are built like `persephone-vm` (same `dev` user, SSH key, passwordless `sudo`,
+automatic login, screen lock and blanking off) and have a `clean` checkpoint taken at the logged-in desktop.
+Restore it before every install check. Every `vm.ps1` command takes `-Vm <name>`.
+
+| VM | System | Address | Install source |
+|---|---|---|---|
+| `persephone-clean` | Ubuntu 26.04.1 Desktop | `<switch network>.51` | The desktop ISO with `autoinstall.yaml` (a late command writes the static netplan) |
+| `persephone-debian` | Debian 13.8 GNOME (Wayland) | `<switch network>.52` | The netinst ISO with `preseed.cfg` and a one-entry `grub.cfg` (static network on the kernel command line) |
+
+Install configs and credentials live in `%USERPROFILE%\VMs\<vm>\`, never in the repository. Each VM has 6 GB,
+4 vCPU and a 60 GB disk. **Run one VM at a time**: the host cannot hold two of them next to WSL and Persephone.
+`fix-network` writes Ubuntu's netplan, so it works only for the two Ubuntu VMs; after a subnet move, fix the
+Debian VM's network from its console.
+
+```powershell
+./vm.ps1 stop; ./vm.ps1 restore clean -Vm persephone-clean; ./vm.ps1 start -Vm persephone-clean
+scp release/persephone-*-linux-amd64.deb persephone-clean:
+ssh persephone-clean 'sudo apt-get install -y ./persephone-*-linux-amd64.deb'
+```
+
+The Hyper-V thumbnail refuses a full-size capture on some VMs; `screenshot` then saves a 1280x720 image.

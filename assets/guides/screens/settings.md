@@ -86,11 +86,11 @@ does not respond, Settings reports a timeout separately.
 ## Language
 
 In **General → Language**, choose **Automatic** to use the first supported language from your
-system preferences, or choose a language pack from the list. Each pack shows its native and English
-names and translation completeness percentage. To load a compatible pack, place its
-`<code>.lang.json` file in the application profile's `data\languages\` folder (normally
-`%APPDATA%\persephone\data\languages\`), then reopen Settings or restart
-Persephone to refresh the list. Choosing a language saves the setting and immediately reloads all
+system preferences, or choose a language pack from the list. Each shows its native and English name
+and translation completeness. Load a compatible `<code>.lang.json` in `data\languages\` (Windows:
+`%APPDATA%\persephone\data\languages\`; Linux default: `~/.config/persephone/data/languages/`).
+Profiles and XDG configuration can change the root. Reopen Settings or restart to refresh the list.
+Choosing a language saves the setting and immediately reloads all
 open windows; their pages are restored afterward. If no preferred language is available, Automatic
 uses English. Persephone includes 17 built-in translations alongside English. Ask your agent to add
 a language, update a pack, or fix a translation; the agent can validate changes before saving them.
@@ -239,12 +239,12 @@ settings appear as a board-named panel in Settings, with controls for the declar
 
 Board-supplied descriptions appear on the help buttons beside their setting labels.
 
-Persephone owns the values in the application profile's `data\board-settings.json` (normally
-`%APPDATA%\persephone\data\board-settings.json`); a board can only
+Values live in profile `data\board-settings.json` (Windows: `%APPDATA%\persephone\data\board-settings.json`; Linux default: `~/.config/persephone/data/board-settings.json`); a board can only
 read its own declared values through `persephone.settings.get(id)` and subscribe with
 `persephone.settings.onChange(callback)`. The bridge exposes effective values, so a reset sends
 the declaration's default. See [Boards](../boards/board-ui.md#board-settings) for the manifest and bridge
 example.
+Named profiles and XDG configuration can change the data root.
 
 ## Settings worth knowing about
 
@@ -290,9 +290,8 @@ return { theme: app.settings.get("theme"), path: app.settings.settingsFilePath }
 The `call` surface refuses changes to `mcp.enabled` and `mcp.port` because either can disconnect
 the caller. Direct `app.settings.set` remains the normal script and UI path.
 
-When not connected, edit the application profile's `data\appSettings.json` (normally
-`%APPDATA%\persephone\data\appSettings.json`) to turn MCP on. The file is
-JSON5, so comments and trailing commas are allowed. Persephone watches it and reloads changes
-without a restart. It rewrites the file and its comments when a setting changes in the UI, so
-change values rather than relying on added commentary. Deleting a key restores its default, and
-deleting the whole file is safe because it is recreated.
+When disconnected from MCP, edit profile `data\appSettings.json` to enable it (Windows:
+`%APPDATA%\persephone\data\appSettings.json`; Linux default:
+`~/.config/persephone/data/appSettings.json`). Named/custom profiles and `XDG_CONFIG_HOME` can
+change the root. This watched JSON5 file reloads without restart. UI saves rewrite its comments;
+deleting a key restores its default, and the file is recreated if deleted.

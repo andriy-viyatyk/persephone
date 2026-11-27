@@ -9,6 +9,7 @@ export const aboutCatalog = {
     checkingUpdates: { message: "Checking for updates…" },
     newVersionAvailable: { message: "New version {version} available!" },
     download: { message: "Download" },
+    openReleasePage: { message: "Open release page" },
     whatsNew: { message: "What's New" },
     upToDate: { message: "You're up to date!" },
     availableBoards: { message: "Available boards" },

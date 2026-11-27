@@ -8,7 +8,7 @@ summary: "Choose a test command, configure runner options, and understand output
 
 Return to [Web-app regression tests](./index.md) for the test context and core browser features.
 
-In an installed app on Windows, run `persephone-test.exe` from beside the installed
+In an installed app on Windows, run the `persephone-test.exe` console wrapper from beside the installed
 `persephone.exe`. The console wrapper finds that sibling executable, adds `--test`, forwards the
 arguments, waits, streams output, and returns the app's exit code:
 
@@ -16,9 +16,11 @@ arguments, waits, streams output, and returns the app's exit code:
 persephone-test.exe .\web-tests --profile qa --log-dir .\web-test-logs
 ```
 
-`persephone.exe --test <file-or-folder>` starts the same test controller directly. `persephone.exe`
-is a GUI-subsystem program, so its console output is not shown by a normal shell invocation; use
-`persephone-test.exe` when you need visible console output and a waited exit code.
+`persephone.exe --test <file-or-folder>` starts the same controller directly. On Windows its GUI-subsystem console output is hidden, so use the Windows-only `persephone-test.exe` for visible output and a waited exit code. On Linux, run the installed app directly:
+
+```sh
+/opt/persephone/persephone --test ./web-tests --profile qa --log-dir ./web-test-logs
+```
 
 For a developer checkout, run the app entry point and pass the test options:
 
@@ -32,11 +34,7 @@ the checkout.
 
 ## Initialize a starter suite
 
-Create a generic offline suite with `persephone-test.exe --init <folder>` or
-`persephone-test.exe --init=<folder>`. Init writes into an absent or empty folder; if the folder
-contains entries, it lists conflicts on stderr, writes nothing, and exits 1. In a developer checkout,
-run `electron . --test --init .\web-test-starter` from the repository root. Init exits without
-starting the test host or a window.
+Create a generic offline suite with `persephone-test.exe --init <folder>` on Windows. Init writes into an absent or empty folder; otherwise it lists conflicts on stderr, writes nothing, and exits 1. In a developer checkout, run `electron . --test --init .\web-test-starter`; on Linux use `/opt/persephone/persephone --test --init ./web-tests`. Init exits without starting the test host or a window.
 
 Options:
 - `--test <file|folder>` runs one `.test.mjs` file or recursively discovers files in a folder.

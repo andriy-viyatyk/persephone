@@ -8,7 +8,10 @@ export interface IUpdateInfo {
     currentVersion: string;
     latestVersion: string | null;
     updateAvailable: boolean;
+    /** URL of the GitHub release page, retained for script callers. */
     releaseUrl: string | null;
+    /** URL of the matching installer, or null when the release has no supported asset. */
+    downloadUrl: string | null;
     releaseVersion: string | null;
     publishedAt: string | null;
     releaseNotes: string | null;

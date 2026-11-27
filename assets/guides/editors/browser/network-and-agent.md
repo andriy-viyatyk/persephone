@@ -55,7 +55,11 @@ default.
 
 The proof is requested only for HTTPS page or frame navigations to `login.microsoftonline.com` and
 `login.live.com`. It is obtained from Windows for each eligible request and is not used by Incognito
-or Tor pages. If Windows cannot provide it, the browser continues the sign-in without it.
+or Tor pages. If Windows cannot provide it, the browser continues the sign-in without it. Windows single sign-on is unavailable on Linux.
+
+## Linux browser security and DRM
+
+Chromium stores browser cookies and passwords encrypted with GNOME Keyring. A normal password login opens the keyring with the session; automatic login may prompt once to create a **Default Keyring**. Without a keyring, Chromium uses a fixed key, which provides weaker at-rest protection. Linux downloads lack Windows Mark-of-the-Web. Widevine works at L3 without VMP; services requiring VMP or a higher security level may refuse playback.
 
 ## Agent API
 

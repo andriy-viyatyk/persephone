@@ -34,7 +34,7 @@ knows the purpose of each control.
 
 ## What Persephone is
 
-Persephone is a Windows notepad replacement built for developers. It keeps Notepad's fast,
+Persephone is a Windows and Linux notepad replacement built for developers. It keeps Notepad's fast,
 tabbed, open-anything feel and adds the VS Code editor engine (syntax highlighting, IntelliSense,
 multi-cursor, and compare mode), specialized editors for structured data and diagrams, the catalog
 Notebook board for `.note.json` files, link collections,
@@ -96,7 +96,7 @@ browser, tab switcher, and Settings entry point; its controls and destinations a
 - Check for updates → `about-check-updates`
 - GitHub Repository → `about-github`
 - Report an issue → `about-report-issue`
-- Download → `about-update-download`
+- Download / Open release page → `about-update-download`
 - What's New update → `about-update-whats-new`
 - About splitter → `about-splitter`
 - Guide browser → `about-guide-browser`

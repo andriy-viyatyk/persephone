@@ -197,8 +197,8 @@ const sub = app.settings.onChanged.subscribe(({ key, value }) => { ... });
 sub.dispose();  // Unsubscribe
 ```
 
-Settings live in `%APPDATA%\persephone\data\appSettings.json` — JSON5, watched, and reloaded on
-save, so an external edit applies immediately and fires `onChanged` just like `set()` does. Use
+Settings live in `%APPDATA%\persephone\data\appSettings.json` on Windows or
+`~/.config/persephone/data/appSettings.json` by default on Linux — JSON5, watched, and reloaded on save, so an external edit applies immediately and fires `onChanged` just like `set()` does. Use
 `set()` when you are connected; edit the file only when you are not (that is how the MCP server
 gets turned on in the first place). Persephone regenerates the file's comments on every save, so
 comments added by hand are lost. Keys, defaults, and accepted values are documented in the file

@@ -163,7 +163,7 @@ The **Mneme** sidebar panel shows the root as a navigable tree — like the File
 
 - **Open** a document by clicking it. Markdown opens in Preview; images and other attachments open in the appropriate viewer.
 - **Create, rename, delete** files and folders directly in the tree (deleting a folder removes it and its contents).
-- **Drag-and-drop import** — drop files from Windows Explorer onto the tree to add them to the knowledge base.
+- **Drag-and-drop import** — drop files from Windows Explorer or GNOME Files onto the tree to add them to the knowledge base.
 - **Move & copy** — drag documents within a root to move them; drag between two different roots (even across separate windows) to copy them.
 - **Drag to Link editor** — drag a document node from the Mneme tree onto a category in the Collections panel (or onto the main links area) of an open Link editor to create a `mneme://` link to that document.
 - **Copy Path** — right-click a tree node and choose **Copy Path** to copy its full `mneme://{root}/{path}` URL to the clipboard.

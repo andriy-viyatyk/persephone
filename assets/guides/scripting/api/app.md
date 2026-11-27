@@ -174,13 +174,15 @@ themselves. Opens a new tab or reuses a matching one if it already exists.
 
 ```javascript
 // Open a local file in a new tab
-await app.openRawLink("C:/data/report.json");
+await app.openRawLink("C:/data/report.json"); // Windows
+await app.openRawLink("/home/me/data/report.json"); // Linux
 
 // Open a URL in the built-in browser
 await app.openRawLink("https://example.com");
 
 // Open a Board by its root path (prefer app.boards.openBoard for boards)
-await app.boards.openBoard("C:/work/boards/My Board");
+await app.boards.openBoard("C:/work/boards/My Board"); // Windows
+await app.boards.openBoard("/home/me/boards/My Board"); // Linux
 
 // Request a specific editor — render Markdown instead of opening its source
 await app.openRawLink("C:/notes/README.md", { editor: "md-view" });

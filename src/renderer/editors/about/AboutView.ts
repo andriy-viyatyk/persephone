@@ -1,6 +1,7 @@
 import { app } from "../../api/app";
 import { publishedBoards } from "../../api/boards/published-boards";
 import { shell } from "../../api/shell";
+import { mapUpdateResult } from "../../api/shell/map-update-result";
 import { guard } from "../../core/utils/guard";
 import { createLinkData } from "../../../shared/link-data";
 import type { IRuntimeVersions, IUpdateInfo } from "../../api/types/shell";
@@ -22,21 +23,6 @@ import "../../uikit/Divider/Divider.css";
 
 export interface AboutEditorProps {
     model: AboutEditor;
-}
-
-
-function mapUpdateResult(result: UpdateCheckResult): IUpdateInfo {
-    const releaseInfo = result.releaseInfo;
-    return {
-        currentVersion: result.currentVersion,
-        latestVersion: result.latestVersion,
-        updateAvailable: result.updateAvailable,
-        releaseUrl: releaseInfo?.htmlUrl ?? null,
-        releaseVersion: releaseInfo?.version ?? null,
-        publishedAt: releaseInfo?.publishedAt ?? null,
-        releaseNotes: releaseInfo?.body ?? null,
-        error: result.error,
-    };
 }
 
 const DEFAULT_LEFT_PANE_WIDTH = 400;
@@ -295,7 +281,7 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
         if (!this.updateResult) return;
 
         if (this.updateResult.updateAvailable && this.updateResult.releaseVersion && this.updateResult.releaseUrl) {
-            const { releaseVersion, releaseUrl } = this.updateResult;
+            const { releaseVersion, releaseUrl, downloadUrl } = this.updateResult;
             const status = createTextElement(t("about.newVersionAvailable", { version: releaseVersion }), {
                 size: "md",
                 color: "warning",
@@ -305,8 +291,8 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
                 name: "about-update-download",
                 variant: "link",
                 size: "sm",
-                onClick: () => { void shell.openExternal(releaseUrl); },
-                children: t("board.download"),
+                onClick: () => { void shell.openExternal(downloadUrl ?? releaseUrl); },
+                children: downloadUrl ? t("board.download") : t("about.openReleasePage"),
             }));
             const whatsNew = this.child(new ButtonView({
                 name: "about-update-whats-new",
@@ -355,5 +341,3 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
         }
     }
 }
-
-export { mapUpdateResult };

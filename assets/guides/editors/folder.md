@@ -78,8 +78,8 @@ counts; applicable context-menu actions for the row you clicked may also appear.
 
 ### Drag and drop
 
-Drag files from Windows Explorer onto a folder row or empty folder space to copy them in. Drag a
-selection out to Windows Explorer or another application. Archive folders remain single-select and
+Drag files from Windows Explorer or GNOME Files onto a folder row or empty folder space to copy them in. Drag a
+selection out to either file manager or another application. Archive folders remain single-select and
 read-only.
 
 ## Agent API

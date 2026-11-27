@@ -51,7 +51,7 @@ Boards that rely on multiline settings must declare `minBridgeVersion: "1.42.0"`
 
 The settings appear in a board-named panel in **Settings**. A board that is also a custom editor
 appears under **Editors**; a standalone board appears under **Boards**. Persephone stores explicit
-values in the application profile's `data\board-settings.json` (normally `%APPDATA%\persephone\data\board-settings.json`), namespaced by the board's stable
+values in the profile's `data\board-settings.json` (`%APPDATA%\persephone\data\board-settings.json` on Windows or `~/.config/persephone/data/board-settings.json` by default on Linux), namespaced by the board's stable
 `author`/`name` identity. Resetting a setting removes its stored value and restores the manifest
 default.
 

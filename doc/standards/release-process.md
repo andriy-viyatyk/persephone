@@ -2,6 +2,20 @@
 
 How to publish a new version of persephone.
 
+## Release assets and Linux verification
+
+The Windows workflow builds the signed `persephone-setup-<version>.exe` installer and the Windows
+portable ZIP. The release workflow also builds the Linux packages in CI on `ubuntu-24.04` (glibc
+2.39); Linux release packages are not built on a maintainer workstation. The Linux asset is
+`persephone-<version>-linux-amd64.deb` (the only Linux format; no AppImage, see US-2235). Both
+platforms' assets are attached to the same draft.
+
+Before publishing Linux packages, Claude checks each enabled format in the clean Ubuntu 26.04 and
+Debian 13 VMs documented in [`linux-development.md`](../linux-development.md#clean-install-vms).
+Restore the VM's `clean` checkpoint before each format/check, and run only one VM at a time. Follow
+that document's install checklist for each package. The user remains in control of publication: the
+release stays a draft until the user publishes it.
+
 ## Branch & Version Convention
 
 - Development happens on a **working branch** named `upcoming-vX.Y.Z` (e.g., `upcoming-v2.0.2` for version 2.0.2).
@@ -142,20 +156,42 @@ For releasing v2.0.1 and starting v2.0.2:
 | New branch | `git checkout -b upcoming-v2.0.2` |
 | Commit + push | `git commit ... && git push -u origin upcoming-v2.0.2` |
 
-## Test Build (draft, without releasing)
+## Isolated workflow check (throwaway draft)
 
-To verify the GitHub Actions build succeeds — and to get an installer you can install locally — **without** merging to `main` or creating a `vX.Y.Z` tag, trigger the workflow manually on the working branch. The pipeline also fires on `workflow_dispatch` (see `.github/workflows/publish.yml`):
+Never dispatch a test build with the real upcoming package version. Claude checks the workflow on a
+disposable branch with a unique prerelease version, then removes only the identified test draft and
+the disposable remote branch. This avoids collisions with the real upcoming release.
 
-```bash
-gh workflow run publish.yml --ref upcoming-vX.Y.Z
-gh run watch <run-id> --exit-status   # optional: follow to completion
-```
+1. On a disposable branch containing the completed workflow and its Linux packaging dependencies,
+   choose a unique valid semver prerelease such as `<next-version>-ci.us2238.<unique-number>`. First
+   confirm neither `v<test-version>` nor `<test-version>` already identifies a release or tag.
+2. Run `npm version <test-version> --no-git-tag-version` so both `package.json` and
+   `package-lock.json` have the test version. Commit and push this disposable branch only. Do not
+   alter the real upcoming branch's version, push a tag, merge the test version commit, or publish
+   its draft.
+3. Dispatch and inspect the run:
 
-This runs the full production pipeline (`npm run dist:publish`, including VMP signing) and creates a **draft** GitHub release for the current `package.json` version. A draft is maintainer-only — invisible to users, no notification, and no auto-update — so it does not affect the public release. Download `persephone-setup-X.Y.Z.exe` from the draft to install and test locally.
+   ```bash
+   gh workflow run publish.yml --repo andriy-viyatyk/persephone --ref <disposable-branch>
+   gh run list --repo andriy-viyatyk/persephone --workflow publish.yml --branch <disposable-branch>
+   gh run watch <run-id> --repo andriy-viyatyk/persephone --exit-status
+   gh release view v<test-version> --repo andriy-viyatyk/persephone --json tagName,isDraft,assets
+   ```
 
-Notes:
-- The "remove auto-update artifacts" cleanup step only runs on tag pushes (`if: startsWith(github.ref, 'refs/tags/v')`), so a dispatch draft keeps `latest.yml` and the `.blockmap` files. That is harmless for local testing.
-- Delete the throwaway draft (Releases page → the untagged `X.Y.Z` draft → Delete) before doing the real tag release, so electron-builder doesn't collide with it.
+   Use the actual matching tag if the release uses the bare version. Confirm both jobs, the single
+   matching draft, the Windows setup installer and portable ZIP, the signing step, dispatch
+   metadata, both Linux packages, the GLIBC check, and the absence of Linux update metadata. Record
+   the actual generated and uploaded files. The workflow's Windows cleanup is tag-only, so dispatch
+   metadata (`latest.yml` and Windows blockmaps) remains attached until the throwaway draft is
+   deleted.
+4. After recording results, delete that identified test draft only. If a test tag was unexpectedly
+   created, stop and investigate rather than deleting it automatically. Then delete the disposable
+   remote branch with `git push origin --delete <disposable-branch>`. If a job fails, record the
+   failure and safely remove the identified test draft and disposable remote branch before retrying
+   with a fresh unique prerelease version and branch.
+
+Do not publish the test draft. A dispatch draft is not a test of the tag-only Windows cleanup; the
+draft must be deleted before the real release version is used.
 
 ## VMP Signing (Widevine DRM)
 

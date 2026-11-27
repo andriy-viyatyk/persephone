@@ -12,15 +12,20 @@
   ./vm.ps1 tunnel          # forward the VM app's MCP port 7875 to localhost:7875 (runs until stopped;
                            # conflicts with a WSL Persephone on the same port, so stop that first)
   ./vm.ps1 checkpoint <name> | restore <name> | checkpoints
+  ./vm.ps1 <command> -Vm persephone-clean   # any command against another VM (default persephone-vm)
 #>
 param(
     [Parameter(Position = 0)][string]$Command = "status",
     [Parameter(Position = 1)][string]$Arg = "",
-    [switch]$Enter
+    [switch]$Enter,
+    # persephone-vm (dev), persephone-clean (clean Ubuntu 26.04) or persephone-debian (clean Debian 13)
+    [string]$Vm = "persephone-vm"
 )
 $ErrorActionPreference = "Stop"
-$VmName = "persephone-vm"
-$HostOctet = 50            # the VM's address is <Default Switch network>.<HostOctet>
+$VmName = $Vm              # also the SSH host alias in ~/.ssh/config
+$Octets = @{ "persephone-vm" = 50; "persephone-clean" = 51; "persephone-debian" = 52 }
+if (-not $Octets.ContainsKey($VmName)) { throw "Unknown VM: $VmName" }
+$HostOctet = $Octets[$VmName]   # the VM's address is <Default Switch network>.<HostOctet>
 $Repo = Resolve-Path "$PSScriptRoot\..\.."
 $McpLocalPort = 7875       # must equal the VM app's mcp.port: the MCP server checks the Host header's port
 
@@ -71,6 +76,12 @@ function Save-Screenshot([string]$Out) {
     $svc = Get-CimInstance -Namespace root\virtualization\v2 -ClassName Msvm_VirtualSystemManagementService
     $r = Invoke-CimMethod -InputObject $svc -MethodName GetVirtualSystemThumbnailImage -Arguments @{
         TargetSystem = $settings; WidthPixels = [uint16]$w; HeightPixels = [uint16]$h }
+    if ($r.ReturnValue -eq 32775) {
+        # Some VMs (and every installer screen) refuse a full-size thumbnail; take a scaled one instead.
+        $w = 1280; $h = 720
+        $r = Invoke-CimMethod -InputObject $svc -MethodName GetVirtualSystemThumbnailImage -Arguments @{
+            TargetSystem = $settings; WidthPixels = [uint16]$w; HeightPixels = [uint16]$h }
+    }
     if ($r.ReturnValue -ne 0) { throw "GetVirtualSystemThumbnailImage returned $($r.ReturnValue)" }
     $bytes = [byte[]]$r.ImageData
     $bmp = New-Object System.Drawing.Bitmap $w, $h, ([System.Drawing.Imaging.PixelFormat]::Format16bppRgb565)
@@ -128,7 +139,9 @@ switch ($Command) {
         $parent = Split-Path $Repo.Path -Parent
         $unixParent = "/" + $parent.Substring(0, 1).ToLower() + ($parent.Substring(2) -replace '\\', '/')
         $folder = Split-Path $Repo.Path -Leaf
-        bash -c "tar -C '$unixParent' -cf - $excludes $folder | ssh $VmName 'tar -C ~ -xf -'"
+        # Git Bash's tar: a bare `bash` can resolve to WSL, which does not have this SSH setup.
+        $gitBash = Join-Path ((Get-Command git).Source -replace '\\(cmd|bin|mingw64\\bin)\\git\.exe$', '') 'bin\bash.exe'
+        & $gitBash -c "tar -C '$unixParent' -cf - $excludes $folder | ssh $VmName 'tar -C ~ -xf -'"
         "synced (deleted files are not removed; use a fresh copy if that matters)"
     }
     "app-start" {

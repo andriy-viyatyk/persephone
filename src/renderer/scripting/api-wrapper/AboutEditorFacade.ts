@@ -14,7 +14,7 @@ export const ABOUT_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "about-check-updates", purpose: "Check whether a newer Persephone release is available.", where: "lower part of the About card" },
     { name: "about-github", purpose: "Open the Persephone GitHub repository.", where: "bottom of the About card" },
     { name: "about-report-issue", purpose: "Open the Persephone issue tracker to report a problem.", where: "bottom of the About card, beside GitHub Repository" },
-    { name: "about-update-download", purpose: "Download the available Persephone update release.", where: "About update status area" },
+    { name: "about-update-download", purpose: "Download the available Persephone installer, or open the release page when no matching installer is available.", where: "About update status area" },
     { name: "about-update-whats-new", purpose: "Open the in-app What's New guide for the available update.", where: "About update status area, beside Download" },
     { name: "about-splitter", purpose: "Resize the left About card pane and the right guide pane.", where: "between the About card and guide browser" },
     { name: "about-guide-browser", purpose: "The right side of About containing either guide contents or the selected guide page.", where: "right pane of About" },

@@ -1,6 +1,6 @@
 # <img src="assets/icon.png" width="38" /> Persephone
 
-**Persephone** is a notepad for Windows that opens almost anything. It starts exactly like a notepad — one empty text page — but drop in a JSON file, a Word document, a SQLite database, or a ZIP archive and it shows the content, not the bytes. And it is built to be shared with AI agents: everything you see on screen, an agent can see and drive too.
+**Persephone** is a notepad for Windows and Linux that opens almost anything. It starts exactly like a notepad — one empty text page — but drop in a JSON file, a Word document, a SQLite database, or a ZIP archive and it shows the content, not the bytes. And it is built to be shared with AI agents: everything you see on screen, an agent can see and drive too.
 
 **Website:** [andriy-viyatyk.github.io/persephone](https://andriy-viyatyk.github.io/persephone/) — demo videos, features and use cases, plus the [board catalog](https://andriy-viyatyk.github.io/boards/).
 
@@ -49,12 +49,18 @@ The practical loop: describe the tool you need to your agent — it scaffolds th
 - **Themes and languages** — eight built-in color themes plus your own, and the interface in 18 languages.
 - **Scripting** — the `app.*` API behind the agent's object model is yours too, in a JavaScript/TypeScript tab with full Node.js access. See the [Scripting guide](assets/guides/scripting/index.md).
 
-## Download (Windows)
+## Download
+
+### Windows
 
 | Format | Link |
 | :--- | :--- |
 | **Installer** | [![Download EXE](https://img.shields.io/badge/Download-Installer%20(.exe)-blue?style=for-the-badge&logo=windows)](https://github.com/andriy-viyatyk/persephone/releases/latest) |
 | **Portable** | [![Download ZIP](https://img.shields.io/badge/Download-Portable%20(.zip)-orange?style=for-the-badge&logo=windows)](https://github.com/andriy-viyatyk/persephone/releases/latest) |
+
+### Linux (x86_64)
+
+Download `persephone-<version>-linux-amd64.deb` from [GitHub Releases](https://github.com/andriy-viyatyk/persephone/releases) and install with `sudo apt install ./persephone-<version>-linux-amd64.deb`. Ubuntu 26.04 LTS GNOME is supported; Debian 13 was install-checked; other distributions are untested. See the [Linux installation guide](assets/guides/getting-started.md#linux).
 
 ### Privacy policy
 

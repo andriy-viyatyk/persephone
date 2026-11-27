@@ -68,6 +68,7 @@ immediately before each tagged test, not once for a whole file or run. If a lock
 test, that test is not interrupted; the next tagged test is checked again. For example:
 
 ```js
+// Windows-only clipboard example; Linux clipboard history is unavailable.
 test("copies a value to the Windows clipboard", async (ctx) => {
   // Exercise an operation that uses the real OS clipboard.
 }, { requires: ["desktop"] });

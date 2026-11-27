@@ -219,7 +219,7 @@ Adjusted from the [runtime findings](multiplatform-2026-11/runtime-findings.md) 
 - Mneme Linux build, ONNX Runtime packaging and a check that search results match Windows (WIN-34).
 - The clipboard watcher's Linux backend, if Phase 2 kept history limited to while Persephone is focused (WIN-16).
 
-### Phase 4 — Packaging, release and docs (epic)
+### Phase 4 — Packaging, release and docs ([EPIC-216](../epics/EPIC-216.md))
 
 **Exit:** Persephone's first Linux release, `.deb` and AppImage, is published next to the Windows build. Installing
 it on a fresh Ubuntu 26.04 VM passes the checklist. Published on GitHub Releases only.

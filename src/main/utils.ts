@@ -5,6 +5,7 @@ import { app } from 'electron';
 import type { LaunchInput } from "../shared/launch-input";
 import { isKeyInside, resolvedPathCompareKey, type PathContainmentOptions } from "../shared/path-containment";
 import { stripTestInstanceOptions } from "./test-mode/instance-options";
+import { launchOperandToLocalPath } from "./launch-operand";
 
 /** Comparison key for non-board paths. Board roots use BoardRoot.key. */
 export function comparePathKey(filePath: string): string {
@@ -182,7 +183,10 @@ export function parseLaunchArguments(operands: string[], cwd: string): LaunchInp
             continue;
         }
 
-        const resolvedPath = path.resolve(cwd, operand);
+        const pathOperand = launchOperandToLocalPath(operand);
+        if (pathOperand === undefined) continue;
+
+        const resolvedPath = path.resolve(cwd, pathOperand);
         if (isValidOpenPath(resolvedPath)) {
             inputs.push({ kind: "file", path: resolvedPath });
         }

@@ -93,11 +93,11 @@ Registration is deliberately a **user-only** decision — an agent can never sil
 
 This is stricter than the [Boards](./boards/index.md) trust gate on purpose: a board is a *visible* artifact you look at, whereas a registered tool later runs **headlessly** whenever an agent calls it — and re-runs after the agent edits it — so registration is your one natural checkpoint on that capability.
 
-- Registration is **remembered across restarts** (stored in `%AppData%\persephone\data\trustedTools.txt`).
+- Registration is **remembered across restarts** (`%APPDATA%\persephone\data\trustedTools.txt` on Windows; `~/.config/persephone/data/trustedTools.txt` by default on Linux).
 - Matching is **per exact folder** — there is no inherited/parent trust (each toolset is registered individually).
 - Removing a toolset from a management panel **unregisters** it (its tools stop being discoverable/runnable); the folder on disk is untouched.
 
-> Only register toolsets you created or fully understand — registering lets the toolset's scripts run programs and access files with your Windows user account's privileges.
+> Only register toolsets you created or understand: their scripts run programs and access files with the current OS user's privileges.
 
 ---
 

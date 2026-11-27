@@ -27,7 +27,18 @@ persephone.exe https://example.com
 persephone.exe diff before.txt after.txt
 ```
 
-Quote paths that contain spaces. If Persephone is already running, these inputs open in that instance. If you're upgrading from an older version that had the (now removed) "Set as default app for text files" option checked, that upgrade releases those file associations — each extension reverts to whatever app previously handled it.
+Quote paths that contain spaces. If Persephone is already running, inputs open in that instance. Upgrading from an older version with the removed default-text-app option releases those associations.
+
+### Linux
+
+Download the x86_64 `.deb` from [GitHub Releases](https://github.com/andriy-viyatyk/persephone/releases), then install with `sudo apt install ./persephone-<version>-linux-amd64.deb` (apt resolves dependencies). Double-clicking may open Software. Ubuntu 26.04 LTS with GNOME is supported; Debian 13 was install-checked, and other distributions are untested. The package installs in `/opt/persephone`, adds a Persephone launcher and Open With for text files and folders, and installs AppArmor policy for Chromium sandboxing. Remove it with `sudo apt remove persephone`; settings remain under `~/.config/persephone`. No AppImage, Flatpak, Snap or apt repository is provided.
+
+Linux command examples use `/opt/persephone/persephone`, for example:
+
+```text
+/opt/persephone/persephone notes.md
+/opt/persephone/persephone --profile demo --profile-dir "/home/me/Persephone Data/demo" notes.md
+```
 
 ### Separate application profiles
 
@@ -42,19 +53,15 @@ Names are case-insensitive and normalized to lowercase. Use 1–32 ASCII letters
 `default` is reserved. Launching the same name again opens its existing instance. The name appears
 in window titles and the tray tooltip. This is separate from browser profiles in Settings.
 
-Each application profile has its own settings, sessions and application data under
-`%APPDATA%\persephone-profiles\<name>`. Files and external folders you choose, as well as the Windows
-clipboard, remain shared. To reset a profile, quit it and delete its folder. Board shortcuts created
-in a profile reopen that profile. Browser registration is available from the usual instance, and
-named profiles do not check for updates automatically.
+Each application profile has its own settings, sessions and data: `%APPDATA%\persephone-profiles\<name>` on Windows, `~/.config/persephone-profiles/<name>` by default on Linux. Files, external folders and the OS clipboard remain shared. Delete the profile folder to reset it. Browser registration is managed by the usual instance; named profiles do not check for updates automatically.
 
 Named profiles default to MCP port 7965, Mneme 7800, video streaming 7966 and Tor SOCKS 9052.
 These are configurable per profile; multiple named profiles use the same defaults, so change ports
 when running their services simultaneously. An existing customized Tor configuration is preserved.
 
 For advanced launches, `--profile-dir <path>` stores a named profile's data in a specific folder
-instead of `%APPDATA%\persephone-profiles\<name>`. It requires `--profile <name>` and accepts
-paths with spaces when quoted:
+instead of the platform default profile folder. It requires `--profile <name>` and accepts paths
+with spaces when quoted:
 
 ```text
 persephone.exe --profile demo --profile-dir "D:\Persephone Data\demo"
@@ -78,7 +85,7 @@ When you first open persephone, you'll see a clean, simple interface:
 - Tab bar at the top
 - An empty text editor
 
-The application looks like a simple notepad by default. To access additional features (recent files, folder bookmarks, settings, and About with its guide browser), click the **persephone icon** at the top-left corner of the tab bar — the Menu Bar slides in from the left. Click anywhere outside it to dismiss it.
+The application looks like a simple notepad by default. On Linux with automatic login, the first browser launch may prompt once to create a GNOME Keyring "Default Keyring"; see [Browser security and DRM](editors/browser/network-and-agent.md#linux-browser-security-and-drm). Click the **persephone icon** at the top-left for recent files, folder bookmarks, Settings and About.
 
 ## Basic Operations
 
@@ -129,7 +136,7 @@ Text Editor.
 
 ## Checking for Updates
 
-persephone automatically checks for updates once every 24 hours. When a new version is available, you'll see a notification.
+Persephone checks for updates once every 24 hours and notifies you; it never installs updates automatically. **Download** opens the Windows setup `.exe` or Linux `.deb`. **Open release page** is shown when no matching installer asset is available.
 
 To manually check for updates:
 1. Click the app button (persephone icon) in the top-left corner to open the Menu Bar
@@ -161,11 +168,11 @@ You can also cycle through themes with `Ctrl+Alt+]` (next) and `Ctrl+Alt+[` (pre
 
 Your theme preference is saved automatically and applied on next launch. New settings start with the Persephone theme; a valid theme already saved in your settings continues to be used.
 
-The Settings page also has a "View Settings File" button to open the raw `appSettings.json` for manual editing (normally `%APPDATA%\persephone\data\appSettings.json`, or under the named application profile folder). Edits to the file — made by hand, by a script, or by an AI agent — take effect immediately, with no restart needed, including settings that start or stop something (the MCP server, Mneme). The file carries a header comment plus a per-setting comment (accepted values, default, and any gotcha — for example, changing a port only moves a running server if you also toggle the feature off and on). Persephone rewrites these comments on every save, so they always match the current version.
+The Settings page also has a "View Settings File" button for `appSettings.json` (Windows: `%APPDATA%\persephone\data\appSettings.json`; Linux: `~/.config/persephone/data/appSettings.json` by default; named or custom profiles use their own data root). Edits take effect immediately, including MCP and Mneme changes. Persephone rewrites the file's setting comments on each save.
 
 ## Window Behavior
 
-Closing persephone's last window hides it into the notification tray by default, keeping background services (the MCP server, Mneme) running. The tray icon stays visible while the app is running — left-click it to toggle window visibility, or use its menu (**Show App**, **Quit**).
+When a system tray is available, closing Persephone's last window hides it there by default, keeping background services (the MCP server, Mneme) running. The tray icon toggles window visibility and has **Show App** and **Quit** actions. Without tray support, the app quits when the last window closes.
 
 To make closing the last window quit the app instead:
 

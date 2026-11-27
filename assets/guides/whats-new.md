@@ -12,7 +12,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.23 (Upcoming)
 
-*No changes yet.*
+### Linux release
+
+- Linux is available as an x86_64 `.deb` from GitHub Releases. Ubuntu 26.04 LTS with GNOME is supported; Debian 13 was install-checked; other distributions are untested. Install with `sudo apt install ./persephone-<version>-linux-amd64.deb`. No AppImage, Flatpak, Snap, apt repository or automatic updates.
+- Update checks notify only. **Download** opens the matching Windows setup or Linux `.deb`; **Open release page** is the fallback. Linux browser cookies use GNOME Keyring, Widevine is L3 without VMP, and some services may refuse playback.
 
 ---
 

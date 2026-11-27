@@ -117,15 +117,16 @@ available, including filesystem, networking, streams, crypto, workers, and timer
 receive Electron objects such as `electron`, `app`, `BrowserWindow`, `webContents`, or `ipcMain`.
 The environment is sanitized to the supervisor allowlist plus `PERSEPHONE_SERVICE=1`,
 `PERSEPHONE_BOARD_ROOT`, and `PERSEPHONE_BOARD_DATA`. This process environment value points to
-`%LOCALAPPDATA%\Persephone\board-data\<id>` for the default profile and
-`<userData>\board-data\<id>` for named profiles and test instances. Persephone does not create
-the board folder; the board creates it on first write. When the variable is absent, including on an
-older host, use the legacy `%LOCALAPPDATA%\Persephone\board-data\<id>` path. Named profiles
-start empty with no automatic migration; users may copy an individual board folder by hand. This
+`%LOCALAPPDATA%\Persephone\board-data\<id>` on Windows, or
+`~/.config/persephone/board-data/<id>` by default on Linux. Named profiles and test instances use
+their own `<userData>\board-data\<id>` path. Persephone does not create the board folder; the board
+creates it on first write. If the variable is absent, use the legacy Windows path. Named profiles
+start empty with no migration; users may copy an individual board folder by hand. This
 does not add a `window.persephone` member. Service stdout and stderr are captured in the board's
 `ui.log`. For
 boards you add, that file is `<boardRoot>/ui.log`; bundled boards keep it at
-`%APPDATA%\persephone\board-logs\<id>\ui.log` (or the corresponding named application profile folder).
+`%APPDATA%\persephone\board-logs\<id>\ui.log` on Windows or
+`~/.config/persephone/board-logs/<id>/ui.log` by default on Linux (or the named profile folder).
 
 The `service` permission controls whether this process may start; the frame's `fileSystem` and
 `network` permissions control host bridge APIs and do not sandbox the service. Its ordinary Node
