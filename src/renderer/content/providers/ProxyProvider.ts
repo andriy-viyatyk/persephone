@@ -4,11 +4,15 @@ import {
     type ProviderOperation,
     type ProviderRequest,
     type ProviderResult,
-    type ProviderWireErrorCode,
 } from "../../../ipc/module-service-channels";
 import { MAX_BUFFERED_PIPE_BYTES } from "../../../shared/board-pipe-constants";
-import { ProviderUnavailableError, providerDeclarationFor } from "../registry";
 import { errMessage } from "../../../shared/utils";
+import {
+    ProviderOperationError,
+    invalidProviderResult,
+    mapProviderRequestError,
+    providerResultError,
+} from "./proxy-provider-errors";
 
 // Node's `stream` module for `Readable.from`. `require` rather than `import` because Vite
 // externalizes Node builtins into broken browser stubs when statically imported — same pattern
@@ -63,33 +67,7 @@ function copyProviderStatus(value: unknown): IPipeStageStatus | undefined {
     return status;
 }
 
-function unavailableError(type: string, error: unknown): ProviderUnavailableError {
-    const unavailable = new ProviderUnavailableError(type, providerDeclarationFor(type));
-    unavailable.cause = error;
-    return unavailable;
-}
-
-export class ProviderOperationError extends Error {
-    constructor(
-        readonly code: ProviderWireErrorCode,
-        message: string,
-    ) {
-        super(message);
-        this.name = "ProviderOperationError";
-    }
-}
-
-function resultError(result: ProviderResult): ProviderOperationError | undefined {
-    if (result.ok !== false) return undefined;
-    return new ProviderOperationError(result.error.code, result.error.message);
-}
-
-function invalidResult(operation: ProviderOperation): ProviderOperationError {
-    return new ProviderOperationError(
-        "provider-invalid-result",
-        `Provider operation "${operation}" returned a malformed result.`,
-    );
-}
+export { ProviderOperationError } from "./proxy-provider-errors";
 
 export class ProxyProvider implements IProvider {
     readonly restorable = true;
@@ -153,22 +131,22 @@ export class ProxyProvider implements IProvider {
                 signal,
             );
             if (!isRecord(result) || result.kind !== "provider-result" || typeof result.ok !== "boolean") {
-                throw invalidResult(operation);
+                throw invalidProviderResult(operation);
             }
             const providerResult = result as ProviderResult;
-            const error = resultError(providerResult);
+            const error = providerResultError(providerResult);
             if (error) throw error;
             return providerResult as Extract<ProviderResult, { ok: true }>;
         } catch (error: unknown) {
             if (error instanceof ProviderOperationError) throw error;
-            throw unavailableError(this.type, error);
+            throw mapProviderRequestError(this.type, error);
         }
     }
 
     async readBinary(options?: { signal?: AbortSignal }): Promise<Buffer> {
         const result = await this.request("readBinary", {}, options?.signal);
         if (result.operation !== "readBinary" || !isUint8Array(result.data)) {
-            throw invalidResult("readBinary");
+            throw invalidProviderResult("readBinary");
         }
         if (result.data.byteLength > MAX_BUFFERED_PIPE_BYTES) {
             throw new ProviderOperationError(
@@ -195,7 +173,7 @@ export class ProxyProvider implements IProvider {
         const result = await this.request("writeBinary", {
             data: new Uint8Array(data),
         });
-        if (result.operation !== "writeBinary") throw invalidResult("writeBinary");
+        if (result.operation !== "writeBinary") throw invalidProviderResult("writeBinary");
     }
 
     private get rangeReadable(): boolean {
@@ -238,7 +216,7 @@ export class ProxyProvider implements IProvider {
     private async fetchRange(range: { start: number; end: number }, signal?: AbortSignal): Promise<Buffer> {
         const result = await this.request("readRange", { range }, signal);
         if (result.operation !== "readRange" || !isUint8Array(result.data)) {
-            throw invalidResult("readRange");
+            throw invalidProviderResult("readRange");
         }
         const requestedLength = range.end - range.start + 1;
         if (result.data.byteLength > requestedLength) {
@@ -259,7 +237,7 @@ export class ProxyProvider implements IProvider {
                     || !Number.isFinite(result.stat.size)
                     || result.stat.size < 0))
             || (result.stat.mtime !== undefined && typeof result.stat.mtime !== "string")) {
-            throw invalidResult("stat");
+            throw invalidProviderResult("stat");
         }
         return result.stat;
     }

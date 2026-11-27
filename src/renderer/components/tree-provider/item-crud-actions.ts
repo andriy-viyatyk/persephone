@@ -4,6 +4,7 @@ import { errMessage } from "../../../shared/utils";
 import { pasteOsClipboardInto } from "./os-clipboard";
 import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
+import { joinTreeChild } from "./tree-path";
 
 export interface ItemCrudContext {
     provider: ITreeProvider;
@@ -30,7 +31,7 @@ export async function createNewFile(context: ItemCrudContext, directory: string)
     if (inputResult?.button !== DialogButton.create || !inputResult.value.trim()) return;
 
     const name = inputResult.value.trim();
-    const href = provider.resolveLink(directory ? directory + "/" + name : name);
+    const href = provider.resolveLink(joinTreeChild(directory, name));
     try {
         await provider.addItem({
             href,
@@ -57,7 +58,7 @@ export async function createNewFolder(context: ItemCrudContext, directory: strin
     if (inputResult?.button !== DialogButton.create || !inputResult.value.trim()) return;
 
     const name = inputResult.value.trim();
-    const folderPath = directory ? directory + "/" + name : name;
+    const folderPath = joinTreeChild(directory, name);
     try {
         await provider.mkdir(folderPath);
     } catch (error) {
@@ -81,7 +82,7 @@ export async function renameItem(context: ItemCrudContext, item: ITreeProviderIt
 
     const name = inputResult.value.trim();
     const category = item.category;
-    const newPath = category ? category + "/" + name : name;
+    const newPath = joinTreeChild(category, name);
     try {
         await provider.rename(context.getItemPath(item), newPath);
     } catch (error) {

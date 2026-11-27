@@ -225,6 +225,12 @@ export function providerDeclarationFor(type: string): ProviderDeclaration | unde
     return providerDeclarations.get(type);
 }
 
+/** Return the currently accepted board owner for a provider type, if a board claimed it. */
+export function acceptedBoardProviderOwner(type: string): string | undefined {
+    const registration = providerOwnership.get(type);
+    return registration?.origin === "board" ? registration.owner : undefined;
+}
+
 /** The manifest name of the trusted board at `boardRoot`, from its provider declarations (a board that
  *  claims a scheme always declares the provider behind it). */
 export function trustedProviderBoardName(boardRoot: string): string | undefined {

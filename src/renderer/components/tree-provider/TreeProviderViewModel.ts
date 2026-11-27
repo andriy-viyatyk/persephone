@@ -26,6 +26,7 @@ import {
 } from "../../content/tree-providers/tree-provider-capabilities";
 import { ProviderTreeExpansion } from "./provider-tree-expansion";
 import { ProviderTreeStore } from "./provider-tree-store";
+import { joinTreeChild } from "./tree-path";
 
 // =============================================================================
 // Types
@@ -476,9 +477,7 @@ export class TreeProviderViewModel extends TComponentModel<
         // For root node, category is "" and we use provider.rootPath
         // For child directories, build the inner path from category + name
         const category = item.category;
-        return category
-            ? category + "/" + item.title
-            : item.title;
+        return joinTreeChild(category, item.title);
     };
 
     // ── State persistence ────────────────────────────────────────────────

@@ -68,6 +68,7 @@ export const apiCatalog = {
     failedToOpenRequestInRestClient: { message: "Failed to open request in REST Client: {error}" },
     failedToOpenImageForEditing: { message: "Failed to open image for editing" },
     providerRegistrationFailed: { message: "Provider registration failed: {error}" },
+    proxyTreeTruncated: { message: "The board tree listing for {path} was truncated to {count} items." },
     duplicateProviderRegistration: { message: "Duplicate {kind} registration: \"{name}\". The first registration remains active.", note: "Registration warning; `{name}` is the duplicate provider name." },
     duplicateProviderOwnedByBoard: { message: "{kind} \"{name}\" is already owned by board \"{owner}\".", note: "Registration warning; `{name}` is the provider name and `{owner}` is its owning board." },
     duplicateProviderRegisteredBy: { message: "{kind} \"{name}\" is already registered by {origin}.", note: "Registration warning; `{name}` is the provider name and `{origin}` identifies its registrar." },

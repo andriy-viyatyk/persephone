@@ -2,6 +2,8 @@ import type { ITreeProvider } from "../../api/types/io.tree";
 import { ArchiveTreeProvider } from "./ArchiveTreeProvider";
 import { FileTreeProvider } from "./FileTreeProvider";
 import { MnemeTreeProvider } from "./MnemeTreeProvider";
+import { boardProviderTypeRefusal } from "../registry";
+import { ProxyTreeProvider } from "./ProxyTreeProvider";
 
 /** Data needed to construct a tree provider. `url` identifies the source; `rootPath` is its root. */
 export interface TreeProviderDescriptor {
@@ -67,3 +69,6 @@ registerTreeProvider("mneme", ({ rootPath }) => {
     }
     return new MnemeTreeProvider(rootPath);
 });
+
+registerTreeProvider((type) => boardProviderTypeRefusal(type) === undefined, (descriptor) =>
+    new ProxyTreeProvider(descriptor.type, descriptor.config, descriptor.rootPath));

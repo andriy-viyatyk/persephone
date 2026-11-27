@@ -20,6 +20,7 @@ import { sameHref, sameHrefs } from "./href-utils";
 import type { GridModelCapability } from "../../uikit/DataGrid";
 import { t } from "../../../shared/i18n/t";
 import { matchesSearchWords } from "./tree-search-filter";
+import { joinTreeChild } from "./tree-path";
 
 // =============================================================================
 // Types
@@ -621,7 +622,7 @@ export class CategoryViewModel extends TComponentModel<
     deleteItemAction = (item: ITreeProviderItem): Promise<void> => this.itemController.deleteItem(item);
 
     private getItemListPath = (item: ITreeProviderItem): string => {
-        return item.category ? item.category + "/" + item.title : item.title;
+        return joinTreeChild(item.category, item.title);
     };
 }
 

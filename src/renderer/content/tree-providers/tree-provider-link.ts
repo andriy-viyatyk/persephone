@@ -2,6 +2,7 @@ import type { ICategorySegment } from "../../api/types/io.tree";
 
 /** Prefix for tree-category links. */
 export const TREE_CATEGORY_PREFIX = "tree-category://";
+const UTF8_LINK_PREFIX = "v1.";
 
 /** Segment a `/`-separated RELATIVE category (Link, Archive). Root category is "". */
 export function relativeCategorySegments(category: string): ICategorySegment[] {
@@ -30,7 +31,10 @@ export interface ITreeProviderLink {
 /** Encode a tree provider link as a tree-category:// URL. */
 export function encodeCategoryLink(link: ITreeProviderLink): string {
     const json = JSON.stringify(link);
-    const base64 = btoa(json);
+    const bytes = new TextEncoder().encode(json);
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    const base64 = UTF8_LINK_PREFIX + btoa(binary);
     return TREE_CATEGORY_PREFIX + base64;
 }
 
@@ -38,8 +42,12 @@ export function encodeCategoryLink(link: ITreeProviderLink): string {
 export function decodeCategoryLink(raw: string): ITreeProviderLink | null {
     if (!raw.startsWith(TREE_CATEGORY_PREFIX)) return null;
     try {
-        const base64 = raw.slice(TREE_CATEGORY_PREFIX.length);
-        const json = atob(base64);
+        const payload = raw.slice(TREE_CATEGORY_PREFIX.length);
+        const isUtf8 = payload.startsWith(UTF8_LINK_PREFIX);
+        const binary = atob(isUtf8 ? payload.slice(UTF8_LINK_PREFIX.length) : payload);
+        const json = isUtf8
+            ? new TextDecoder().decode(Uint8Array.from(binary, (character) => character.charCodeAt(0)))
+            : binary;
         return JSON.parse(json) as ITreeProviderLink;
     } catch {
         return null;
