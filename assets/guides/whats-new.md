@@ -12,7 +12,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.24 (Upcoming)
 
-*No changes yet.*
+- **Boards can provide Explorer trees:** browse remote folders from SSH, FTP or Kudu boards, open their files in Persephone, and make supported changes from the Explorer.
 
 ---
 

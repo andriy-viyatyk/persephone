@@ -456,7 +456,10 @@ consumers; the provider engine is supplied by a separately installed and trusted
 
 ### `io` — Content Delivery API
 
-Provides access to content pipe providers, transformers, pipe assembly, and link events.
+Provides access to content pipe providers, transformers, pipe assembly, and link events. Boards
+declare service-backed provider types in `contentProviders`; entries with `tree: true` can also
+serve Explorer trees through the module-service API. See the [board content provider guide](../../assets/guides/agents/boards/services.md)
+for the service registration contract.
 
 ```typescript
 interface IIoNamespace {

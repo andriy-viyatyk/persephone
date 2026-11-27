@@ -1962,7 +1962,10 @@
     "voiceTyping.tooLong": "Nagrywanie zostało zatrzymane po osiągnięciu limitu pięciu minut.",
     "voiceTyping.transcribing": "Transkrypcja — Esc, aby anulować",
     "voiceTyping.translatingRecording": "Nagrywanie — tłumaczenie na angielski — {binding}, aby zatrzymać; Esc, aby anulować",
-    "voiceTyping.translatingTranscribing": "Transkrypcja na angielski — Esc, aby anulować"
+    "voiceTyping.translatingTranscribing": "Transkrypcja na angielski — Esc, aby anulować",
+    "api.proxyTreeTruncated": "Lista drzewa boardu dla {path} została ograniczona do {count} elementów.",
+    "board.treeProvider": "Drzewo",
+    "explorer.providerMissing": "Brak dostawcy"
   },
   "source": {
     "about.availableBoards": "76ad9921",
@@ -3678,6 +3681,9 @@
     "voiceTyping.tooLong": "c62c3147",
     "voiceTyping.transcribing": "a45bf601",
     "voiceTyping.translatingRecording": "e3db99f8",
-    "voiceTyping.translatingTranscribing": "dcf439f0"
+    "voiceTyping.translatingTranscribing": "dcf439f0",
+    "api.proxyTreeTruncated": "73d008cb",
+    "board.treeProvider": "edb780f5",
+    "explorer.providerMissing": "17ed64d4"
   }
 }

@@ -1864,7 +1864,10 @@
     "voiceTyping.tooLong": "A felvétel leállt, mert elérte az ötperces korlátot.",
     "voiceTyping.transcribing": "Átírás — megszakítás: Esc",
     "voiceTyping.translatingRecording": "Felvétel — fordítás angolra — leállítás: {binding}, megszakítás: Esc",
-    "voiceTyping.translatingTranscribing": "Átírás angolul — megszakítás: Esc"
+    "voiceTyping.translatingTranscribing": "Átírás angolul — megszakítás: Esc",
+    "api.proxyTreeTruncated": "A board {path} helyen lévő fák listája {count} elemre lett korlátozva.",
+    "board.treeProvider": "Fa",
+    "explorer.providerMissing": "A szolgáltató hiányzik"
   },
   "source": {
     "about.availableBoards": "76ad9921",
@@ -3580,6 +3583,9 @@
     "voiceTyping.tooLong": "c62c3147",
     "voiceTyping.transcribing": "a45bf601",
     "voiceTyping.translatingRecording": "e3db99f8",
-    "voiceTyping.translatingTranscribing": "dcf439f0"
+    "voiceTyping.translatingTranscribing": "dcf439f0",
+    "api.proxyTreeTruncated": "73d008cb",
+    "board.treeProvider": "edb780f5",
+    "explorer.providerMissing": "17ed64d4"
   }
 }

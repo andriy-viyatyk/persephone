@@ -9,13 +9,13 @@ Overview of all active and planned epics and tasks.
 ## Active
 
 - **EPIC-217** — [Board tree providers (remote trees phase 1)](epics/EPIC-217.md)
-  - [ ] [US-2243: Tree provider factory](tasks/US-2243-tree-provider-factory/README.md)
-  - [ ] [US-2244: Manifest tree flag and service API](tasks/US-2244-board-tree-service-api/README.md)
-  - [ ] [US-2245: `ProxyTreeProvider`](tasks/US-2245-proxy-tree-provider/README.md)
-  - [ ] [US-2246: Explorer shows and persists any tree](tasks/US-2246-explorer-any-tree/README.md)
-  - [ ] [US-2247: Bridge: `openTree` and claimed-scheme links](tasks/US-2247-bridge-open-tree/README.md)
-  - [ ] [US-2248: Test board and UI tests](tasks/US-2248-tree-test-board/README.md)
-  - [ ] US-2249: Guides
+  - [x] [US-2243: Tree provider factory](tasks/US-2243-tree-provider-factory/README.md)
+  - [x] [US-2244: Manifest tree flag and service API](tasks/US-2244-board-tree-service-api/README.md)
+  - [x] [US-2245: `ProxyTreeProvider`](tasks/US-2245-proxy-tree-provider/README.md)
+  - [x] [US-2246: Explorer shows and persists any tree](tasks/US-2246-explorer-any-tree/README.md)
+  - [x] [US-2247: Bridge: `openTree` and claimed-scheme links](tasks/US-2247-bridge-open-tree/README.md)
+  - [x] [US-2248: Test board and UI tests](tasks/US-2248-tree-test-board/README.md)
+  - [x] US-2249: Guides
 
 ## Planned
 

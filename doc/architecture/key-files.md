@@ -198,6 +198,10 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Text source/cache pipe ownership | `/src/renderer/content/PipePair.ts`       |
 | Content pipe registry and script-provider shape validation (first-construction validation, cached verdicts, and registration diagnostics) | `/src/renderer/content/registry.ts` |
 | Board provider factory (constructs the renderer-side service delegate) | `/src/renderer/content/board-provider-factory.ts` |
+| Tree provider factory (maps built-in and accepted board tree types to providers) | `/src/renderer/content/tree-providers/tree-provider-factory.ts` |
+| Board tree provider (validated listing/stat and optional mutations delegated to the owning board service) | `/src/renderer/content/tree-providers/ProxyTreeProvider.ts`, `/src/module-service-host/tree-provider-dispatch.ts` |
+| Board tree page opening and descriptor identity (validates caller ownership, reuses matching Explorer pages, and restores board tree roots) | `/src/renderer/api/boards/board-tree-page.ts`, `/src/renderer/content/tree-providers/tree-provider-identity.ts`, `/src/shared/board/board-tree-request.ts` |
+| Board tree request and path validation | `/src/shared/board/board-tree-request.ts`, `/src/shared/board/board-tree-path.ts` |
 | URL scheme registry      | `/src/renderer/content/scheme-registry.ts`        |
 | Built-in URL-scheme hooks | `/src/renderer/content/builtin-schemes.ts`       |
 | File provider (including typed moved-source watch events) | `/src/renderer/content/providers/FileProvider.ts` |

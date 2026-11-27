@@ -417,6 +417,9 @@ editors, and UIKit are framework-free `VanillaView` classes. Native global style
 │   ├── tree-providers/           # ITreeProvider implementations
 │   │   ├── FileTreeProvider.ts  # Local filesystem directories
 │   │   ├── ArchiveTreeProvider.ts # Archives (ZIP, RAR, 7z, TAR, cab, ISO — read-only)
+│   │   ├── ProxyTreeProvider.ts # Trusted board service tree over the module-service provider channel
+│   │   ├── tree-provider-factory.ts # Type-to-provider construction shared by tree hosts
+│   │   ├── tree-provider-identity.ts # Stable identity for persisted board tree sources
 │   │   ├── tree-provider-capabilities.ts # Classified watch batches and internal provider capability predicates
 │   │   ├── tree-provider-link.ts # tree-category:// link format (encode/decode)
 │   │   ├── MnemeTreeProvider.ts  # ITreeProvider over a Mneme root — browse like a filesystem; create/rename/delete; drag-drop import

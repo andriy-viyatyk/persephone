@@ -71,7 +71,7 @@ srv.write(JSON.stringify({ id: 1, sql }) + "\n");   // per query — db stays op
 
 ## Service-backed content providers
 
-Declare `contentProviders: [{ "type": "acme/mem", "schemes": ["mem"] }]` in the manifest and
+Declare `contentProviders: [{ "type": "example/mem", "schemes": ["mem"] }]` in the manifest and
 implement the matching type inside the module service with
 `persephone.providers.register(type, implementation)`. This registration is service-only because
 the implementation contains functions that cannot cross the board frame's structured-clone RPC.
@@ -97,6 +97,24 @@ Info. New independent registration issues produce a toast once; unchanged issues
 on refresh. Reserved schemes are `http`, `https`, `file`, `data`, `blob`, `mneme`, and every
 `persephone-*` name. Provider registration is service-owned; there is no `contentProviders`
 permission flag. The service requires `service: true`.
+
+### Tree providers
+
+Add `"tree": true` to a `contentProviders` entry to make the same provider type available to the
+Explorer. Register tree handlers in the module service with
+`persephone.treeProviders.register(type, implementation)`. A type without the manifest flag is
+refused. `list(config, path, { signal })` returns `{ items, truncated }`; each item has a unique
+`name`, its child `path`, an `href` in one of the board's declared schemes, an `isDirectory` flag,
+and optional `size` and ISO `mtime`. Keep names to single path segments. `stat(config, path,
+{ signal })` returns `{ exists, isDirectory, size?, mtime? }`. Optional `mkdir(config, path)`,
+`rename(config, oldPath, newPath)`, and `delete(config, path)` handlers add the matching Explorer
+actions. There is no tree search or cross-provider move API. Listing and stat requests support
+cancellation and have no timer deadline; mutations use the shared service-request deadline.
+
+From a board frame, `persephone.openTree({ type, config, rootPath, title? })` opens the Explorer on
+that tree. The caller must own the accepted declaration for `type`; `rootPath` is `/` or a valid
+provider path. Repeating the call for the same type, config, and root focuses the existing page.
+This bridge member requires version `1.65.0`.
 
 The `service` permission controls whether the declared background program can run. The Trust board
 dialog and Board Info show the permission set granted to that board. The service runs as a normal

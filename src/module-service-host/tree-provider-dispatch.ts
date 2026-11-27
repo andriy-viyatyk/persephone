@@ -160,7 +160,8 @@ export function createTreeProviderDispatch(dependencies: {
         }
         if (request.operation === "treeRename") {
             if (!implementation.rename) return { kind: "provider-result", ok: false, error: { kind: "provider-error", code: "provider-read-only", message: `Tree provider "${request.type}" does not support rename().` } };
-            await Promise.resolve(implementation.rename(request.config, request.path, request.newPath!));
+            if (typeof request.newPath !== "string") return resultFailure("treeRename request is missing newPath.");
+            await Promise.resolve(implementation.rename(request.config, request.path, request.newPath));
             return { kind: "provider-result", operation: "treeRename", ok: true };
         }
         if (!implementation.delete) return { kind: "provider-result", ok: false, error: { kind: "provider-error", code: "provider-read-only", message: `Tree provider "${request.type}" does not support delete().` } };

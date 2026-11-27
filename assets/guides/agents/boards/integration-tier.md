@@ -51,7 +51,7 @@ DNS before Persephone sees anything: the return is lost and that tab is left on 
 page. Persephone closes the tab the return created and leaves the tab the user was reading alone.
 
 - `persephone.openBoard(folder)` → `Promise<void>` (bridge 1.48.0) — open a board folder this caller is authorized to list. Relative paths resolve against the caller board root. The target uses the normal trust and permission-change dialogs; this call does not grant trust. Requires list-equivalent `fileSystem` access and `minBridgeVersion: "1.48.0"` in the caller manifest.
-- `persephone.openRawLink(href, options?)` — open a file/URL through Persephone's page pipeline. Main accepts absolute paths (`path.isAbsolute` under Windows, including `/docs/x.md` and `\docs\x.md`), `file:`, `http:`, `https:`, `mailto:`, `data:image/png;base64,` and `torrent:`; relative paths and other schemes are rejected.
+- `persephone.openRawLink(href, options?)` — open a file/URL through Persephone's page pipeline. Main accepts absolute paths (`path.isAbsolute` under Windows, including `/docs/x.md` and `\docs\x.md`), `file:`, `http:`, `https:`, `mailto:`, `data:image/png;base64,` and schemes claimed by the calling board's accepted content-provider declaration; relative paths and other unclaimed schemes are rejected.
   Bridge **1.46.0+** returns a `Promise<void>`; feature-detect with
   `if (persephone.version >= "1.46.0")` before using the new options in older supported apps.
   Pass `{ editor }` to request an editor (e.g. `"md-view"`), `{ revealLine, highlightText }` to

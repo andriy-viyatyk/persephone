@@ -19,6 +19,20 @@ globalThis.persephone.providers.register("demo/mem", {
     },
 });
 
+globalThis.persephone.treeProviders.register("demo/mem", {
+    list(_config, path) {
+        const items = path === "/"
+            ? [{ name: "demo.txt", path: "/demo.txt", href: "mem://demo", isDirectory: false, size: providerBytes.byteLength }]
+            : [];
+        return { items, truncated: false };
+    },
+    stat(_config, path) {
+        if (path === "/") return { exists: true, isDirectory: true };
+        if (path === "/demo.txt") return { exists: true, isDirectory: false, size: providerBytes.byteLength };
+        return { exists: false, isDirectory: false };
+    },
+});
+
 const storage = globalThis.persephone?.storage;
 if (!storage) {
     console.error("Demo service did not receive the Persephone storage adapter.");

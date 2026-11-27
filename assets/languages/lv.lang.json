@@ -1913,7 +1913,10 @@
     "voiceTyping.tooLong": "Ierakstīšana tika apturēta, jo tika sasniegts piecu minūšu ierobežojums.",
     "voiceTyping.transcribing": "Notiek transkribēšana — Esc, lai atceltu",
     "voiceTyping.translatingRecording": "Notiek ierakstīšana — tulkošana angļu valodā — {binding}, lai apturētu; Esc, lai atceltu",
-    "voiceTyping.translatingTranscribing": "Notiek transkribēšana angļu valodā — Esc, lai atceltu"
+    "voiceTyping.translatingTranscribing": "Notiek transkribēšana angļu valodā — Esc, lai atceltu",
+    "api.proxyTreeTruncated": "Dēļa koka saraksts ceļam {path} ir ierobežots līdz {count} vienumiem.",
+    "board.treeProvider": "Koks",
+    "explorer.providerMissing": "Nodrošinātāja nav"
   },
   "source": {
     "about.availableBoards": "76ad9921",
@@ -3629,6 +3632,9 @@
     "voiceTyping.tooLong": "c62c3147",
     "voiceTyping.transcribing": "a45bf601",
     "voiceTyping.translatingRecording": "e3db99f8",
-    "voiceTyping.translatingTranscribing": "dcf439f0"
+    "voiceTyping.translatingTranscribing": "dcf439f0",
+    "api.proxyTreeTruncated": "73d008cb",
+    "board.treeProvider": "edb780f5",
+    "explorer.providerMissing": "17ed64d4"
   }
 }

@@ -1815,7 +1815,10 @@
     "voiceTyping.tooLong": "5분 제한에 도달하여 녹음이 중지되었습니다.",
     "voiceTyping.transcribing": "텍스트 변환 중 — 취소: Esc",
     "voiceTyping.translatingRecording": "녹음 중 — 영어로 번역 — 중지: {binding}, 취소: Esc",
-    "voiceTyping.translatingTranscribing": "영어로 텍스트 변환 중 — 취소: Esc"
+    "voiceTyping.translatingTranscribing": "영어로 텍스트 변환 중 — 취소: Esc",
+    "api.proxyTreeTruncated": "보드의 {path} 트리 목록이 {count}개 항목으로 제한되었습니다.",
+    "board.treeProvider": "트리",
+    "explorer.providerMissing": "공급자 없음"
   },
   "source": {
     "about.availableBoards": "76ad9921",
@@ -3531,6 +3534,9 @@
     "voiceTyping.tooLong": "c62c3147",
     "voiceTyping.transcribing": "a45bf601",
     "voiceTyping.translatingRecording": "e3db99f8",
-    "voiceTyping.translatingTranscribing": "dcf439f0"
+    "voiceTyping.translatingTranscribing": "dcf439f0",
+    "api.proxyTreeTruncated": "73d008cb",
+    "board.treeProvider": "edb780f5",
+    "explorer.providerMissing": "17ed64d4"
   }
 }

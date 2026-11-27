@@ -459,6 +459,15 @@ owner: platform/reserved names are protected and the first trusted board registr
 Unknown persisted provider types restore as a restorable missing provider; a trusted board whose
 service is still starting uses the pending state and lazy module-service acquisition.
 
+A provider declaration may also set `tree: true`. Its module service registers `list` and `stat`
+handlers through `persephone.treeProviders.register`; optional `mkdir`, `rename`, and `delete`
+handlers define the supported mutations. The renderer's `ProxyTreeProvider` validates returned
+items and requires each file link to use a scheme owned by that board. `persephone.openTree()`
+opens an Explorer page for one of the caller's declared tree types. The `{ type, config,
+rootPath }` descriptor is persisted and `config` remains opaque to core; boards should store
+connection references there rather than credentials. These operations use the existing
+module-service provider channel and its shared deadline policy.
+
 Custom-editor boards may use `editorKind: "stream-host"` to keep the platform-owned pipe in memory
 and receive `persephone.host.streamUrl()`. The resulting
 `board://<host>/__pipe/<pageId>` URL is served by main through the owning renderer, which applies

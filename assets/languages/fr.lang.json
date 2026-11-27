@@ -1913,7 +1913,10 @@
     "voiceTyping.tooLong": "L’enregistrement s’est arrêté, car la limite de cinq minutes a été atteinte.",
     "voiceTyping.transcribing": "Transcription — Échap pour annuler",
     "voiceTyping.translatingRecording": "Enregistrement — traduction vers l’anglais — {binding} pour arrêter, Échap pour annuler",
-    "voiceTyping.translatingTranscribing": "Transcription en anglais — Échap pour annuler"
+    "voiceTyping.translatingTranscribing": "Transcription en anglais — Échap pour annuler",
+    "api.proxyTreeTruncated": "La liste de l\u0027arborescence du board pour {path} a été limitée à {count} éléments.",
+    "board.treeProvider": "Arborescence",
+    "explorer.providerMissing": "Fournisseur manquant"
   },
   "source": {
     "about.availableBoards": "76ad9921",
@@ -3629,6 +3632,9 @@
     "voiceTyping.tooLong": "c62c3147",
     "voiceTyping.transcribing": "a45bf601",
     "voiceTyping.translatingRecording": "e3db99f8",
-    "voiceTyping.translatingTranscribing": "dcf439f0"
+    "voiceTyping.translatingTranscribing": "dcf439f0",
+    "api.proxyTreeTruncated": "73d008cb",
+    "board.treeProvider": "edb780f5",
+    "explorer.providerMissing": "17ed64d4"
   }
 }

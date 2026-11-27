@@ -1864,7 +1864,10 @@
     "voiceTyping.tooLong": "Salvestamine peatus, sest saavutati viie minuti piirang.",
     "voiceTyping.transcribing": "Transkribeerimine — tühistamiseks Esc",
     "voiceTyping.translatingRecording": "Salvestamine — tõlkimine inglise keelde — peatamiseks {binding}, tühistamiseks Esc",
-    "voiceTyping.translatingTranscribing": "Transkribeerimine inglise keeles — tühistamiseks Esc"
+    "voiceTyping.translatingTranscribing": "Transkribeerimine inglise keeles — tühistamiseks Esc",
+    "api.proxyTreeTruncated": "Laualoend asukohas {path} lühendati {count} üksuseni.",
+    "board.treeProvider": "Puu",
+    "explorer.providerMissing": "Pakkuja puudub"
   },
   "source": {
     "about.availableBoards": "76ad9921",
@@ -3580,6 +3583,9 @@
     "voiceTyping.tooLong": "c62c3147",
     "voiceTyping.transcribing": "a45bf601",
     "voiceTyping.translatingRecording": "e3db99f8",
-    "voiceTyping.translatingTranscribing": "dcf439f0"
+    "voiceTyping.translatingTranscribing": "dcf439f0",
+    "api.proxyTreeTruncated": "73d008cb",
+    "board.treeProvider": "edb780f5",
+    "explorer.providerMissing": "17ed64d4"
   }
 }

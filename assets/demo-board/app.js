@@ -458,6 +458,11 @@
             document.getElementById("stream-readout").textContent = JSON.stringify(result, null, 2);
             print(JSON.stringify(result, null, 2));
         },
+        async openTree() {
+            header("persephone.openTree → demo/mem");
+            await P.openTree({ type: "demo/mem", config: {}, rootPath: "/", title: "Demo service tree" });
+            print("opened the demo/mem provider in Explorer");
+        },
 
         // --- integration tier ----------------------------------------------
         async notify() {

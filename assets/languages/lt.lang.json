@@ -1962,7 +1962,10 @@
     "voiceTyping.tooLong": "Įrašymas sustabdytas, nes pasiekta penkių minučių riba.",
     "voiceTyping.transcribing": "Transkribuojama — atšaukti galite paspaudę „Esc“",
     "voiceTyping.translatingRecording": "Įrašoma — verčiama į anglų kalbą — sustabdykite sparčiuoju klavišu {binding}, atšaukite paspaudę „Esc“",
-    "voiceTyping.translatingTranscribing": "Transkribuojama anglų kalba — atšaukti galite paspaudę „Esc“"
+    "voiceTyping.translatingTranscribing": "Transkribuojama anglų kalba — atšaukti galite paspaudę „Esc“",
+    "api.proxyTreeTruncated": "Lentos {path} medžio sąrašas apribotas iki {count} elementų.",
+    "board.treeProvider": "Medis",
+    "explorer.providerMissing": "Teikėjo nėra"
   },
   "source": {
     "about.availableBoards": "76ad9921",
@@ -3678,6 +3681,9 @@
     "voiceTyping.tooLong": "c62c3147",
     "voiceTyping.transcribing": "a45bf601",
     "voiceTyping.translatingRecording": "e3db99f8",
-    "voiceTyping.translatingTranscribing": "dcf439f0"
+    "voiceTyping.translatingTranscribing": "dcf439f0",
+    "api.proxyTreeTruncated": "73d008cb",
+    "board.treeProvider": "edb780f5",
+    "explorer.providerMissing": "17ed64d4"
   }
 }

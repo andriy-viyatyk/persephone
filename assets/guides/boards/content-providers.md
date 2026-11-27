@@ -16,7 +16,7 @@ Boards can also declare service-backed content providers:
 
 ```json
 {
-  "contentProviders": [{ "type": "acme/mem", "schemes": ["mem"] }]
+  "contentProviders": [{ "type": "example/mem", "schemes": ["mem"] }]
 }
 ```
 
@@ -30,6 +30,60 @@ capability, settings, and browser URL mask registrations. Boards may not claim `
 the declared background service. Provider registration is
 controlled by the `contentProviders` declaration itself; it is separate from the permission flags.
 
+### Browse a board-provided tree
+
+A board can make the same content provider available in the Explorer by adding `"tree": true` to
+its declaration:
+
+```json
+{
+  "contentProviders": [{ "type": "example/mem", "schemes": ["mem"], "tree": true }]
+}
+```
+
+Register the tree from the declared module service with `persephone.treeProviders.register()`.
+The type must be declared with `tree: true`; Persephone refuses tree registration for other types.
+`list()` and `stat()` are required. `list(config, path, { signal })` returns
+`{ items, truncated }`. Each item has a unique single-segment `name`, its child `path`, an `href`
+using one of the board's declared schemes, and an `isDirectory` flag; `size` and ISO `mtime` are
+optional. `stat(config, path, { signal })` returns `{ exists, isDirectory, size?, mtime? }`.
+Optional `mkdir(config, path)`, `rename(config, oldPath, newPath)`, and `delete(config, path)`
+enable those Explorer actions. Listing and stat support cancellation and have no timer deadline;
+mutations use the service request deadline. Search and moving items between different trees are not
+available.
+
+```js
+persephone.treeProviders.register("example/mem", {
+    async list(config, path, { signal }) {
+        const entries = await readFolder(config, path, { signal });
+        return {
+            items: entries.map(entry => ({
+                name: entry.name,
+                path: path === "/" ? `/${entry.name}` : `${path}/${entry.name}`,
+                href: `mem://${config.root}/${encodeURIComponent(entry.id)}`,
+                isDirectory: entry.isDirectory,
+            })),
+            truncated: false,
+        };
+    },
+    async stat(config, path, { signal }) {
+        return readMetadata(config, path, { signal });
+    },
+});
+```
+
+The board can open or focus an Explorer page for its tree with
+`persephone.openTree({ type, config, rootPath, title? })`. The calling board must own the accepted
+declaration for `type`. `config` is board-owned JSON data saved with the page, so keep credentials
+in the board's secure storage and pass only a reference. Repeating the call with the same `type`,
+`config`, and `rootPath` focuses the existing page. `openTree()` requires bridge version `1.65.0`;
+tree registration requires `1.64.0`.
+
+A board may also pass URLs in its own declared schemes to `persephone.openRawLink()`. Persephone
+routes those links through the board's content provider, while continuing to accept absolute paths,
+`file:`, `http:`, `https:`, and `mailto:` links. The board cannot use a scheme claimed by another
+board.
+
 A web page in a browser tab can also link to a claimed scheme. Treat such a URL as untrusted input:
 the page chooses its path and query. Persephone opens it only right after the user clicks or
 presses a key in the page, and only after the user allows that site to open the scheme in your
@@ -38,7 +92,7 @@ board (asked once per site, remembered until restart).
 Register the implementation from the declared module service, not from the board page:
 
 ```js
-persephone.providers.register("acme/mem", {
+persephone.providers.register("example/mem", {
     readBinary(config) {
         return new TextEncoder().encode(`content for ${config.name}`);
     },
@@ -61,7 +115,7 @@ than 1 MB in one call — the platform pulls a large read as a sequence of bound
 again for the next range once the previous one is consumed:
 
 ```js
-persephone.providers.register("acme/mem", {
+persephone.providers.register("example/mem", {
     readBinary(config) { /* ... */ },
     readRange(config, range) {
         const data = loadFromWherever(config);
@@ -89,7 +143,7 @@ optional trailing `{ signal }` argument — second for `readBinary`/`stat`, thir
 `AbortSignal` that fires when the platform stops waiting:
 
 ```js
-persephone.providers.register("acme/mem", {
+persephone.providers.register("example/mem", {
     readBinary(config, options) {
         options?.signal?.addEventListener("abort", () => cancelUnderlyingWork());
         return loadFromWherever(config);

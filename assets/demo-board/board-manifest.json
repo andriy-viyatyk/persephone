@@ -40,7 +40,7 @@
   ],
   "service": "scripts/service.mjs",
   "contentProviders": [
-    { "type": "demo/mem", "schemes": ["mem"] }
+    { "type": "demo/mem", "schemes": ["mem"], "tree": true }
   ],
   "fileMasks": ["*.stream-demo"],
   "editorName": "Demo Stream Host",
