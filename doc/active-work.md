@@ -8,15 +8,7 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-216** — [Linux packaging, release and docs (multiplatform phase 4)](epics/EPIC-216.md)
-  - [ ] US-2233: Clean install VMs (Debian 13 and a clean Ubuntu 26.04)
-  - [ ] [US-2234: Linux package targets (`.deb`)](tasks/US-2234-linux-package-targets/README.md)
-  - [ ] [US-2235: Sandbox and AppArmor](tasks/US-2235-sandbox-apparmor/README.md)
-  - [ ] US-2236: Per-platform signing hook and Linux Widevine
-  - [ ] [US-2237: Update notice per platform](tasks/US-2237-update-notice-per-platform/README.md)
-  - [ ] [US-2238: Release workflow matrix](tasks/US-2238-release-workflow-matrix/README.md)
-  - [ ] [US-2239: Linux docs](tasks/US-2239-linux-docs/README.md)
-  - [ ] US-2240: Phase 4 exit run
+*(none)*
 
 ## Planned
 

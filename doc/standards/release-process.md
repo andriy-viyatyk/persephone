@@ -7,14 +7,14 @@ How to publish a new version of persephone.
 The Windows workflow builds the signed `persephone-setup-<version>.exe` installer and the Windows
 portable ZIP. The release workflow also builds the Linux packages in CI on `ubuntu-24.04` (glibc
 2.39); Linux release packages are not built on a maintainer workstation. The Linux asset is
-`persephone-<version>-linux-amd64.deb` (the only Linux format; no AppImage, see US-2235). Both
+`persephone-<version>-linux-amd64.deb` (the only Linux format). Both
 platforms' assets are attached to the same draft.
 
-Before publishing Linux packages, Claude checks each enabled format in the clean Ubuntu 26.04 and
-Debian 13 VMs documented in [`linux-development.md`](../linux-development.md#clean-install-vms).
-Restore the VM's `clean` checkpoint before each format/check, and run only one VM at a time. Follow
-that document's install checklist for each package. The user remains in control of publication: the
-release stays a draft until the user publishes it.
+Before publishing a Linux package, Claude checks the `.deb` in the clean Ubuntu 26.04 and Debian 13
+VMs documented in [`linux-development.md`](../linux-development.md#clean-install-vms). Restore each
+VM's `clean` checkpoint before the install check, and run only one VM at a time. Follow that
+document's install checklist. The user remains in control of publication: the release stays a draft
+until the user publishes it.
 
 ## Branch & Version Convention
 

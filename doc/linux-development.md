@@ -1,8 +1,8 @@
 # Linux development environment
 
-This is a development setup for the Linux port work. Linux is not a supported user release
-target yet; do not use this as an installation guide. The validated environment is Ubuntu 26.04
-inside WSL with WSLg, using a normal non-root Linux user and a checkout in the WSL filesystem.
+This is a development setup for Linux. For installation, use the Linux instructions in the user
+guides; this document covers development and package creation. The validated environment is Ubuntu
+26.04 inside WSL with WSLg, using a normal non-root Linux user and a checkout in the WSL filesystem.
 
 ## WSL checkout
 
@@ -101,8 +101,8 @@ Architecture: amd64
 - **Sandbox.** The `.deb`'s builder-generated `postinst` installs an AppArmor profile for
   `/opt/persephone/persephone`, so Chromium's namespace sandbox works on Ubuntu 26.04 without the setuid
   helper. There is no AppImage: electron-builder's AppImage launcher (`AppRun`) adds `--no-sandbox` by
-  itself when unprivileged user namespaces are blocked, which is Ubuntu's default, and it needs `libfuse2`
-  (US-2235). Never add `--no-sandbox` yourself.
+  itself when unprivileged user namespaces are blocked, which is Ubuntu's default, and it needs `libfuse2`.
+  Never add `--no-sandbox` yourself.
 - **Network.** The first build downloads Electron and fpm into electron-builder's cache;
   later builds reuse it. A clean offline build is not supported.
 
@@ -136,8 +136,8 @@ Run `npm start` from the WSL checkout. WSLg displays the window on the Windows d
 changes arrive through Vite HMR; main-process changes restart Electron. The validated setup used
 an MCP port distinct from the Windows instance (7875 instead of 7865).
 
-This setup documents Linux development and package creation. Installation and user release
-instructions belong to the later Linux release phase.
+This setup documents Linux development and package creation. Installation instructions are in the
+user guides; the release process is documented in [`release-process.md`](standards/release-process.md).
 
 ## Ubuntu VM (desktop checks)
 

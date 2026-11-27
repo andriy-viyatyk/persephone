@@ -49,7 +49,7 @@ it to parity and ship it.
 | In scope | Out of scope (for now) |
 |---|---|
 | **The newest Ubuntu LTS only**, currently 26.04 LTS, x86_64, GNOME on Wayland (GNOME has no X11 session since Ubuntu 25.10). The target moves to each new LTS | Older Ubuntu releases (22.04, 24.04) and X11 sessions |
-| **Debian stable** (currently 13), GNOME on Wayland: install check of the `.deb` and AppImage in Phase 4 (decision 6). Other x86_64 distributions that can run the AppImage may work, but are not tested or supported | macOS builds, signing and notarization (but see §8) |
+| **Debian stable** (currently 13), GNOME on Wayland: install check of the `.deb` in Phase 4. Other Debian-based distributions may install the package but are not tested | macOS builds, signing and notarization (but see §8) |
 | Publishing on GitHub Releases | Other channels: an apt repository, Flathub, the AUR |
 | | ARM64 Linux (Raspberry Pi, ARM laptops) |
 | Development in WSL2 and testing in a Hyper-V Ubuntu VM on the user's laptop | Flatpak and Snap (their sandboxes fight Persephone's file and process access) |
@@ -72,7 +72,7 @@ generic one.
 | Integration test runner (`--test`) | ✓ | **Same** | On Linux the app binary writes to the console, so no console-wrapper `.exe` is needed (WIN-32, 35). Today the test host can't launch the app on Linux (R-1) |
 | Single instance, opening files into the running app, named profiles | ✓ | **Same** | Electron second-instance or a Unix socket (WIN-6, 7, 38) |
 | "Open terminal here" | ✓ | **Same** | Detect `x-terminal-emulator`, `gnome-terminal`, `konsole` and others; configurable (WIN-10) |
-| File associations, "Open with", installer shortcuts | ✓ | **Equivalent** | `.desktop` file and MIME types from the `.deb`; the AppImage offers integration on first run (WIN-3) |
+| File associations, "Open with", installer shortcuts | ✓ | **Equivalent** | `.desktop` file and MIME types from the `.deb` (WIN-3) |
 | Default browser registration | ✓ | **Equivalent** | `xdg-settings` and `.desktop` scheme handlers (WIN-8) |
 | Board desktop shortcuts | ✓ | **Equivalent** | Per-board `.desktop` launchers with PNG icons (WIN-9) |
 | Tray, close-to-tray | ✓ | **Equivalent** | StatusNotifier where available; close-to-tray only when a tray is detected (WIN-30) |
@@ -123,11 +123,9 @@ These hold for every epic in this roadmap. Each epic restates the ones it relies
      only if it's slow.
 5. **Rust helpers are per-platform builds of one crate**, with code for each OS behind `cfg` switches. A missing
    helper turns its feature off through `platformFeatures`; it never crashes.
-6. **The `.deb` is the main Ubuntu format; the AppImage is the portable one.**
-   - The `.deb` installs to `/opt` with Chromium's setuid sandbox, which Ubuntu's AppArmor rules allow.
-   - The AppImage needs an AppArmor profile or the user's consent. Running without the sandbox (`--no-sandbox`) is
-     not the fix.
-   - Both formats are built by electron-builder.
+6. **The `.deb` is the only Linux package format.** It installs to `/opt`; its AppArmor profile lets Chromium's
+   namespace sandbox work on Ubuntu 26.04. The AppImage was dropped because it requires `libfuse2` and its launcher
+   disables the sandbox on Ubuntu 26.04.
 7. **Keyboard shortcuts go through one keymap with a primary modifier**: Ctrl on Windows and Linux, Cmd later on
    macOS. Labels come from the same keymap, and shortcuts the desktop takes for itself are checked on GNOME.
 8. **Testing has three layers:**
@@ -139,8 +137,9 @@ These hold for every epic in this roadmap. Each epic restates the ones it relies
    tests do on a locked screen.
 9. **Develop from a separate checkout inside WSL's Linux file system**, for example `~/persephone`. `node_modules`
    holds platform-specific binaries, and `/mnt/c` is slow. The Windows checkout stays as it is.
-10. **No user-visible Linux release until Phase 4 is done.** Phases 0–3 ship nothing to users; the Windows release
-    cadence is unchanged.
+10. **No user-visible Linux release before Phase 4 is complete.** Phases 0–3 ship nothing to users; the Windows
+    release continues normally. The first Linux release is a `.deb` at full parity and follows the normal release
+    process when requested.
 
 ---
 
@@ -221,17 +220,19 @@ Adjusted from the [runtime findings](multiplatform-2026-11/runtime-findings.md) 
 
 ### Phase 4 — Packaging, release and docs ([EPIC-216](../epics/EPIC-216.md))
 
-**Exit:** Persephone's first Linux release, `.deb` and AppImage, is published next to the Windows build. Installing
-it on a fresh Ubuntu 26.04 VM passes the checklist. Published on GitHub Releases only.
+**Exit (completed 2026-11-27):** The `.deb` is built by CI alongside the Windows assets and passes the install
+checklist on clean Ubuntu 26.04 and Debian 13 VMs. The first Linux release has not been published; it follows the
+normal release process when requested. GitHub Releases is the only channel. See the phase notes in
+[`EPIC-216`](../epics/EPIC-216.md) for the install and UI-suite results.
 
 - **Debian check (decision 6):** a second Hyper-V VM with Debian stable (GNOME, Wayland), built and controlled the
-  same way as `persephone-vm`. Install the `.deb` and the AppImage there and run the install, window, tray-fallback
-  (plain GNOME has no tray), file-handoff and default-browser lines of the checklist. Failures that are Debian-only
-  are fixed if small, otherwise listed as known limits in the release notes.
+  same way as `persephone-vm`. Install the `.deb` and run the install, window, tray-fallback (plain GNOME has no tray),
+  file-handoff and default-browser lines of the checklist. Failures that are Debian-only are fixed if small,
+  otherwise listed as known limits in the release notes.
 
 - electron-builder Linux targets, the Linux `koffi` binary, Linux helpers in `extraFiles`, and the `.desktop` file,
   MIME types and icons (WIN-1, 3).
-- Sandbox and AppArmor for both formats (WIN-37, decision 6).
+- Chromium sandbox and AppArmor profile for the `.deb` (WIN-37, decision 6).
 - Signing hooks per platform: skip VMP signing on Linux, and check Linux Widevine on one streaming test site (WIN-2,
   5).
 - Version check chooses the asset for the current platform; the update notice links the right file (WIN-4).
@@ -256,8 +257,8 @@ Phase 0 ──► Phase 1 ──► Phase 2 ──► Phase 4
 ```
 
 - Phases 2 and 3 can overlap, because they touch different owners.
-- Phase 4 needs Phase 3. There is no early Linux preview: the first Linux release ships at full parity (user decision
-  2026-11-25). Packaging tasks may still be prototyped early, but nothing is published before Phase 4 is done.
+- Phase 4 needs Phase 3. There is no early Linux preview: the first Linux release ships at full parity. Packaging
+  tasks may be prototyped early, but nothing is published before Phase 4 is done.
 
 ---
 
@@ -267,7 +268,7 @@ Phase 0 ──► Phase 1 ──► Phase 2 ──► Phase 4
 |---|---|---|
 | WSL's GUI support behaves differently from a real GNOME desktop | Bugs found late | Decision 8: every Phase 2 and 4 exit check runs in the Hyper-V VM, not WSL |
 | Wayland limits (no window placement, no background clipboard, portal consent dialogs) | Some features can't match Windows | §3 labels them limited or not offered; `platformFeatures` makes it explicit |
-| Ubuntu's AppArmor rules block Chromium's sandbox (since 24.04) | AppImage fails to start | `.deb` first; AppImage profile in Phase 4 |
+| Ubuntu's AppArmor rules block Chromium's sandbox (since 24.04) | Chromium cannot start sandboxed | The `.deb` installs an AppArmor profile; the AppImage was dropped |
 | Castlabs Linux Widevine has no VMP | Some DRM streaming sites refuse | Accept and document it; Persephone is a developer notepad |
 | The same feature must now be tested twice | Ongoing cost | Linux CI suite from Phase 1; `requires` tags keep skips explicit |
 | `process.platform` checks spread again | Platform logic scattered across the code | ESLint rule and allowlist (decision 1) |
@@ -298,7 +299,7 @@ These cost little now and avoid a rewrite later:
 4. **Distribution:** GitHub Releases only.
 5. **Live Linux checks stay with Claude for now.** Why Codex can't start Persephone (on Windows, and possibly in WSL)
    is a separate question to look at later. Until then, task briefs for Codex leave runtime checks to Claude.
-6. **Debian (2026-11-26):** Debian stable is checked as well, in Phase 4, once the `.deb` and AppImage exist: a second
+6. **Debian (2026-11-26):** Debian stable is checked as well in Phase 4 with a second
    VM with Debian's GNOME desktop. Debian is Ubuntu's parent and shares the `.deb` format; the main expected
    difference is that plain GNOME has no tray, which the Phase 2 close-to-tray fallback already handles. Other
    desktops (KDE, Xfce) stay untested.

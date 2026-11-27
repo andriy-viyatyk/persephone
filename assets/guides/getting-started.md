@@ -49,6 +49,13 @@ persephone.exe --profile demo
 persephone.exe --profile=demo notes.md
 ```
 
+On Linux, launch the same profile with the installed app:
+
+```text
+/opt/persephone/persephone --profile demo
+/opt/persephone/persephone --profile demo notes.md
+```
+
 Names are case-insensitive and normalized to lowercase. Use 1–32 ASCII letters, digits or hyphens;
 `default` is reserved. Launching the same name again opens its existing instance. The name appears
 in window titles and the tray tooltip. This is separate from browser profiles in Settings.
@@ -65,6 +72,12 @@ with spaces when quoted:
 
 ```text
 persephone.exe --profile demo --profile-dir "D:\Persephone Data\demo"
+```
+
+On Linux, use a POSIX path for the custom data directory:
+
+```text
+/opt/persephone/persephone --profile demo --profile-dir "/home/me/Persephone Data/demo"
 ```
 
 The profile name still identifies the instance; only its data folder changes. You can use a relative

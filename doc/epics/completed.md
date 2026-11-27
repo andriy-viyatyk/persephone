@@ -1,3 +1,38 @@
+## EPIC-216 — Linux packaging, release and docs (multiplatform phase 4)
+
+Completed 2026-11-27. Phase 4 of the [multiplatform roadmap](../reviews/multiplatform-roadmap.md): Persephone ships a
+Linux `.deb` next to the Windows assets. The first Linux release goes out through the normal release process when the
+user asks.
+
+- **Package:** `persephone-<version>-linux-amd64.deb` (x86_64, installs to `/opt/persephone`) with `mneme`,
+  `persephone-snip`, the Linux koffi build, a `com.viyatyk.persephone.desktop` entry ("Open With" for text and
+  folders) and dependencies from a `dpkg-shlibdeps` audit. `file://` launch operands become paths. Windows packaging is
+  unchanged (identical file and asar listings).
+- **Sandbox:** on through the builder's AppArmor profile on Ubuntu 26.04 and Debian 13. The AppImage was dropped by
+  user decision: on Ubuntu its launcher falls back to `--no-sandbox`, and it needs `libfuse2`.
+- **Release workflow:** a Linux job on `ubuntu-24.04` (glibc 2.39; a 26.04 build makes `mneme` fail on Debian 13) with
+  a GLIBC gate, uploading the `.deb` to the Windows job's draft. Checked with a throwaway draft, then deleted.
+- **Update notice:** links the platform's installer asset, or the release page when none matches.
+- **DRM:** Widevine L3 without VMP plays protected test content; services that require VMP may refuse.
+- **Clean install VMs:** `persephone-clean` (Ubuntu 26.04) and `persephone-debian` (Debian 13) with `clean`
+  checkpoints; `vm.ps1 -Vm`.
+- **Exit run:** the CI-built `.deb` passed the install checklist in both clean VMs. UI suite against the installed
+  build: failures traced to GNOME's locked-keyring prompt in the autologin dev VM; after unlocking, the rerun passed
+  except one intermittent main-process SIGILL (filed as US-2242). Mneme "Start" UX filed as US-2241.
+- **Completion skills:** run by Codex (Luna); the review found nothing to fix. One new message translated into all
+  17 packs.
+
+Epic document: [EPIC-216](EPIC-216.md).
+
+- [x] **Clean install VMs (US-2233).**
+- [x] **Linux package targets (US-2234).**
+- [x] **Sandbox and AppArmor (US-2235).**
+- [x] **Per-platform signing hook and Linux Widevine (US-2236).**
+- [x] **Update notice per platform (US-2237).**
+- [x] **Release workflow matrix (US-2238).**
+- [x] **Linux docs (US-2239).**
+- [x] **Phase 4 exit run (US-2240).**
+
 ## EPIC-215 — Linux native helpers and media (multiplatform phase 3)
 
 Completed 2026-11-27. Phase 3 of the [multiplatform roadmap](../reviews/multiplatform-roadmap.md): the Rust helpers,
