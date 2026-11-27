@@ -39,8 +39,8 @@ payload, and `clipboard.remove(id)` or `clipboard.clear()` only when the user ex
 deletion. A file-list read returns a plain `string[]` of absolute paths; its `dropEffect` remains
 metadata on the history item for copy-versus-cut semantics. Older file-list payloads written as
 JSON are still read, but new payloads are stored as one path per line. The feature is opt-in, and
-stored non-excluded content may remain readable on disk. Clipboard history is unavailable on Linux
-because GNOME Wayland gives apps no way to watch the clipboard; a copied enabled setting does not
+stored non-excluded content may remain readable on disk. Clipboard history is unavailable on Linux;
+GNOME Wayland has no supported way for apps to watch the clipboard. A copied enabled setting does not
 make its MCP node available there.
 
 ### `app.call(path, options?)`

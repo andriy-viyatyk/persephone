@@ -8,10 +8,8 @@ editorId: "settings-view"
 
 # Settings
 
-**Microphone Audio** controls local cleaning of managed microphone capture. The attenuation limit
-is in dB; zero means unlimited. Resonance cuts are disabled by default and saved per identified
-microphone. The device list is selected to the current system default microphone when available.
-Changing capture settings can affect Wake Word recognition; re-record enrollments.
+**Microphone Audio** controls cleaning and per-device resonance cuts for managed capture. Changes
+can affect Wake Word recognition; re-record enrollments.
 
 Settings opens from the Menu Bar gear icon, `[data-name="menubar-settings"]`. Its fixed two-level
 **Content** tree sits left of scrollable section panels. Built-in sections are grouped under
@@ -152,14 +150,12 @@ continues unfiltered. The active recording UI indicates these private captures.
 
 ## Clipboard history
 
-The **Clipboard** section contains an opt-in **Enable clipboard history** toggle and a **Maximum
-history items** limit. History is off by default. When enabled, Persephone records supported copied
-text, HTML, images, and file lists—including copies made in Persephone's Text Editor/Monaco and
-Browser tabs—for the [Clipboard panel](./sidebar.md#clipboard), retaining between 1 and 1000 items
-(100 by default). Capture depends on the copy reaching the system clipboard, not on which editor or
-page supplied it. History works on Windows; Linux lacks support because GNOME Wayland cannot expose
-clipboard watching. Copied secrets may remain on disk. Linux hides Clipboard Settings; restored
-panels report unavailable without loading items.
+The **Clipboard** section has an opt-in **Enable clipboard history** toggle and a **Maximum history
+items** limit of 1–1000 (100 by default). When enabled, supported text, HTML, images, and file lists
+are recorded for the [Clipboard panel](./sidebar.md#clipboard), including copies from Text
+Editor/Monaco and Browser. Capture depends on the system clipboard. History is offered on Windows
+only; GNOME Wayland has no supported clipboard-watch API. Secrets may remain on disk. Linux hides
+these settings and marks restored panels unavailable without loading history.
 
 ## Browser site permissions
 

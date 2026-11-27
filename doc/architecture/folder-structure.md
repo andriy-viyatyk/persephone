@@ -85,8 +85,9 @@ persephone/
 │   │   └── CLAUDE.md       # Toolset authoring guide (manifest, stdin/stdout contract, .env, requirements)
 │   ├── demo-board/         # Bundled Demo board — exercises the full board surface
 │   └── test-suite-template/ # Offline starter suite copied by `persephone-test --init`
-├── snip-tool/              # Rust native screen snip tool + Windows clipboard helper (persephone-snip.exe; `clipboard-read`/`clipboard-write`/`clipboard-watch` subcommands)
-│   ├── src/main.rs         # Entry point, PNG encoding, stdout output, subcommand dispatch
+├── snip-tool/              # Rust native screen snip and Windows clipboard helper (persephone-snip.exe on Windows, persephone-snip on Linux)
+│   ├── src/main.rs         # Entry point, PNG encoding, stdout output, platform-gated subcommand dispatch
+│   ├── src/screenshot_linux.rs # Interactive desktop Screenshot portal capture on Linux/Wayland
 │   ├── src/capture.rs      # Monitor enumeration + GDI screen capture
 │   ├── src/clipboard.rs    # CF_HDROP file-list read/write interop
 │   ├── src/clipboard_watch.rs # Win32 clipboard listener and JSON-lines change/health protocol
@@ -1265,10 +1266,9 @@ transformer factories, `scheme-registry.ts` owns platform/script URL-scheme hook
 │   ├── cdp-drag-intercept.ts # Drag interception lifecycle
 │   └── cdp-ai-vision-binding.ts # Browser AiVision CDP binding lifecycle
 ├── mneme-service.ts        # Mneme concerns on top of sidecar-process: port/config wiring and MnemeStatus broadcasts for the knowledge-base service
-├── snip-service.ts         # Screen snip (spawns persephone-snip.exe, reads PNG from stdout; exports getSnipToolPath for clipboard services)
+├── snip-service.ts         # Screen snip (spawns the platform-named helper, reads PNG from stdout; exports getSnipToolPath for clipboard services)
 ├── recording-service.ts    # Per-webContents video recording files, ordered chunk writes, permission grants, and seven-day cleanup
-├── clipboard-service.ts    # Opt-in clipboard history — shared storage and platform capture backends
-├── clipboard-history-linux.ts # Focused-window clipboard sampling on Linux/Wayland
+├── clipboard-service.ts    # Opt-in clipboard history — shared storage and available platform capture backend
 ├── clipboard-history-persistence.ts # Clipboard history payload/index persistence
 ├── clip-service.ts         # Platform dispatch for file clipboard read/write
 ├── clip-service-linux.ts   # Linux text/uri-list and GNOME cut/copy file clipboard interop

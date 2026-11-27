@@ -1,3 +1,34 @@
+## EPIC-215 — Linux native helpers and media (multiplatform phase 3)
+
+Completed 2026-11-27. Phase 3 of the [multiplatform roadmap](../reviews/multiplatform-roadmap.md): the Rust helpers,
+screen snip, system audio and clipboard history on Ubuntu 26.04 GNOME Wayland. Nothing is released for Linux yet.
+
+- **Rust helpers:** `mneme` and `snip-tool` build on Linux; Windows resources and dependencies are target-gated, and
+  `helperExecutableName` names the binary per platform.
+- **Mneme:** runs on Linux; text and vector search rank the same as on Windows.
+- **Screen snip:** the desktop Screenshot portal through `dbus` (vendored); GNOME's picker, Persephone hidden while it is
+  open. GNOME also saves and copies the image; the helper deletes the saved file.
+- **System audio and meeting transcript:** Computer and Both modes work on Linux. Echo cancellation of computer audio
+  stays off on Linux (a VM loopback cannot validate the Windows tuning); enabling it is one matrix value after a check
+  on real hardware.
+- **Clipboard history:** hidden on Linux, because only copies made inside Persephone could be recorded; the file
+  clipboard is unchanged.
+- **Missing helpers (decision 4, amended):** a missing or failing helper reports through its feature's existing status
+  path and never crashes the app; `platformFeatures` holds what a platform offers, not runtime health.
+- **Exit run:** full suite 548/549 in the VM and 561/562 on Windows; the two failures are filed as US-2231 and US-2232.
+- **Completion skills:** run by Codex (Luna); the review found nothing to fix. Three new and three changed messages
+  translated into all 17 packs.
+
+Epic document: [EPIC-215](EPIC-215.md).
+
+- [x] **Capture mechanisms on GNOME Wayland (US-2224).**
+- [x] **Linux builds of the Rust helpers (US-2225).**
+- [x] **Mneme on Linux (US-2226).**
+- [x] **Screen snip on Linux (US-2227).**
+- [x] **System audio and meeting transcript on Linux (US-2228).**
+- [x] **Hide clipboard history on Linux (US-2229).**
+- [x] **Phase 3 exit run (US-2230).**
+
 ## EPIC-214 — Linux desktop integration (multiplatform phase 2)
 
 Completed 2026-11-26. Phase 2 of the [multiplatform roadmap](../reviews/multiplatform-roadmap.md): desktop integration

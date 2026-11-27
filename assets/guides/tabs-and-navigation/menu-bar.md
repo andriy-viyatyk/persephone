@@ -51,7 +51,7 @@ The right panel shows the contents of the selected folder:
   the shared edit group **Rename**, **Delete**, **New File**, **New Folder**. On a file row, Paste
     and the new-item actions target its parent folder; on a folder row, they target that folder.
     File clipboard copy and cut work on Windows and Linux. Clipboard history is available on Windows;
-    it is unavailable on Linux because GNOME Wayland gives apps no way to watch the clipboard.
+    it is unavailable on Linux; GNOME Wayland has no supported way for apps to watch the clipboard.
 - Right-click a folder for **Open Terminal here** (Windows only — see [Open Terminal here](file-explorer-and-panels.md#open-terminal-here))
 - Search files by name with `Ctrl+F` when the file explorer is active
 - **Drag a file out to the OS** — drag a file from the tree onto Windows Explorer or into a Microsoft Teams chat to copy/attach it there. No modifier key needed. Dragging it into another folder in the tree instead asks whether to **Move** or **Copy** it there. Currently one file at a time.

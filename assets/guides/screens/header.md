@@ -133,7 +133,7 @@ one category, while unassigned editors appear under **Other**.
 |                                          ------------------------   |
 |                                          [MCP]                [on]  |
 |                                          [Mneme]              [on]  |
-|                                          [Clipboard listener] [on]  |
+|                                          [Clipboard listener] [on]  |  Windows only
 +---------------------------------------------------------------------+
 ```
 
@@ -202,7 +202,8 @@ conditional.
 | MCP indicator | Appears while the MCP server is running; it shows idle status or the connected-client count and opens the MCP request log | `[data-name="mcp-indicator"]` |
 
 The indicators are entry points, not the screen guides for their destinations. Quick settings contains
-the two snip actions, **Record…**, and live switches for MCP, Mneme, and the clipboard listener. Expand
+the two snip actions, **Record…**, and live switches for MCP, Mneme, and (on Windows) the clipboard
+listener. Expand
 **Record…** to choose **Full window**, **Active page**, or **Main editor area**. While the recording is
 being prepared or captured, controls appear immediately before Minimize. They provide Start/Cancel
 before capture begins, then Pause or Resume and Stop with the elapsed time. Click anywhere on a

@@ -182,7 +182,7 @@ while preserving source timestamps across gaps. Microphone capture remains conti
 
 Board pages and services need trusted status and exact `audio@1` `uses`. Capture additionally needs
 the source grant: `microphone` for device listing and microphone capture or explicit `computerAudio`
-for Windows loopback. A service
+for system loopback where `audio.computerCapture` is available. A service
 must also have its service permission. Playback requires `uses` only. Platform callers need no board
 grant, while agents can discover the channel declarations but cannot invoke channels or the hidden device call. Authorization
 is repeated while active; revocation closes the stream. The audio window receives independent,

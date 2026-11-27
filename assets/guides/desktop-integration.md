@@ -30,10 +30,10 @@ manager or Linux desktop, and drag files from those locations into Persephone. S
 and Panels](./tabs-and-navigation/file-explorer-and-panels.md#file-explorer-panel) for selection,
 multi-file, and overwrite behavior.
 
-Clipboard history is available on Windows and is optional. It is unavailable on Linux because GNOME
-Wayland gives apps no way to watch the clipboard. Windows history does not provide clipboard
-exclusion metadata. See the [Clipboard panel](./screens/sidebar.md#clipboard). File copy, cut, and
-paste remain available on Linux.
+Clipboard history is available on Windows and is optional. Persephone does not offer it on Linux;
+GNOME Wayland has no supported way for apps to watch the clipboard. Windows history does not provide
+clipboard exclusion metadata. See the [Clipboard panel](./screens/sidebar.md#clipboard). File copy,
+cut, and paste remain available on Linux.
 
 ## Notifications
 

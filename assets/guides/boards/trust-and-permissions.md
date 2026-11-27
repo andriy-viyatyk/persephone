@@ -84,7 +84,7 @@ The permission list in the trust dialog uses these meanings:
 | `appScripting` | Control Persephone, run app scripts, open and change pages, and use agent tools. **Full access.** |
 | `network: "internet"` / `"full"` | Allows the frame's host-mediated remote requests through `persephone.fetch()` and HTTP(S) `content.open()`, to public internet services or also this computer and your local network. `"full"` is **Full access**. `false` denies those frame requests; it does not block a service or child process from networking. |
 | `clipboardRead` | Read the contents of your clipboard. |
-  | `camera`, `microphone`, `computerAudio`, `geolocation` | Use your camera or microphone, capture audio playing on your computer, or read this device's location. Computer audio capture is available on Windows and Linux. Cancellation is currently unavailable on Linux because its echo tuning has not been verified. |
+| `camera`, `microphone`, `computerAudio`, `geolocation` | Use your camera or microphone, capture audio playing on your computer, or read this device's location. Computer audio capture is available on Windows and Linux. Cancellation is currently unavailable on Linux because its echo tuning has not been verified. |
 | `notifications` | Show desktop notifications. |
 | `themes` | Create, change, delete, and apply app themes. This does not grant `appScripting`. |
 
