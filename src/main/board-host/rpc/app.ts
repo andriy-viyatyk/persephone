@@ -5,6 +5,8 @@ import { clipboard, ClipboardItem, nativeImage } from "electron";
 import type { BoardCallRequest } from "../../../ipc/board-bridge/port-protocol";
 import type { OpenFileDialogParams, OpenFolderDialogParams, SaveFileDialogParams } from "../../../ipc/api-param-types";
 import { BoardGrantDeniedError } from "../../../shared/board/board-grant";
+import { isValidBoardTreePath } from "../../../shared/board/board-tree-path";
+import { isBoardOpenTreeRequest } from "../../../shared/board/board-tree-request";
 import { boardFileAccess } from "../../board-file-access";
 import { showOpenFileDialog, showOpenFolderDialog, showSaveFileDialog } from "../../native-dialogs";
 import { errMessage } from "../../../shared/utils";
@@ -70,11 +72,10 @@ openRawLink: { handle: async (entry, href, rawOptions) => {
         if (!isAbsolutePath && !isPngDataUrl) {
             try { parsedUrl = new URL(trimmedHref); } catch { /* Not a URL; reject below. */ }
         }
-        const allowedProtocol = parsedUrl && ["file:", "http:", "https:", "mailto:", "torrent:"].includes(parsedUrl.protocol.toLowerCase());
-        if (!isAbsolutePath && !isPngDataUrl && !allowedProtocol) {
+        if (!isAbsolutePath && !isPngDataUrl && !parsedUrl) {
             throw new BoardRpcError(
                 "invalid-argument",
-                "openRawLink accepts only absolute paths, file:, http:, https:, mailto:, data:image/png;base64, and torrent: links.",
+                "openRawLink accepts only absolute paths or valid absolute URLs.",
             );
         }
         if (rawOptions !== undefined && (!rawOptions || typeof rawOptions !== "object" || Array.isArray(rawOptions))) {
@@ -117,6 +118,14 @@ openRawLink: { handle: async (entry, href, rawOptions) => {
             target, editor, revealLine, highlightText, reuseKey, inPlace, boardRoot: entry.root,
             ...(inPlace ? { ownerId: entry.ownerId } : {}),
         });
+        return undefined;
+    } },
+openTree: { handle: async (entry, rawRequest) => {
+        if (!isBoardOpenTreeRequest(rawRequest) || !isValidBoardTreePath(rawRequest.rootPath)) {
+            throw new BoardRpcError("invalid-argument", "Invalid openTree request.");
+        }
+        ownerWindow(entry.hostWebContents)?.focus();
+        await dependencies.hostRequest(entry, "openTree", { ...rawRequest, boardRoot: entry.root });
         return undefined;
     } },
 openBoard: { handle: async (entry, folder) => {
@@ -197,6 +206,7 @@ call: { handle: (entry, request) => runBoardCall(entry, request, dependencies) }
 
 export type AppDomainKeys =
     | "openRawLink"
+    | "openTree"
     | "openBoard"
     | "openFileDialog"
     | "saveFileDialog"

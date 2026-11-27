@@ -18,6 +18,9 @@ import { createLinkData } from "../../../shared/link-data";
 import { t } from "../../../shared/i18n/t";
 import { ui } from "../ui";
 import type { RendererRpcServer } from "../renderer-rpc";
+import { openBoardTreePage } from "./board-tree-page";
+import { isAcceptedBoardSchemeForRoot, schemeOf } from "../../content/scheme-registry";
+import { fpIsAbsolute } from "../../core/utils/file-path";
 
 function cloneJson(value: unknown): unknown {
     const seen = new Set<object>();
@@ -63,6 +66,14 @@ function resolveBoardHost(ownerId: string) {
         throw new Error("The Board is no longer attached to its hosting page.");
     }
     return { page, boardEditor, boardRoot, contextEditor };
+}
+
+function isAllowedBoardLinkTarget(target: string, boardRoot: string): boolean {
+    if (fpIsAbsolute(target) || /^data:image\/png;base64,/i.test(target)) return true;
+    const scheme = schemeOf(target);
+    if (!scheme) return false;
+    if (["file", "http", "https", "mailto"].includes(scheme)) return true;
+    return isAcceptedBoardSchemeForRoot(target, boardRoot);
 }
 
 function invokeThemeMethod(method: string, callArgs: unknown[]): unknown {
@@ -193,6 +204,9 @@ export function registerBoardHostRpc(server: RendererRpcServer): void {
         }
         const inPlace = params.inPlace === true;
         try {
+            if (!isAllowedBoardLinkTarget(target, boardRoot)) {
+                throw new Error("The Board does not own this link scheme.");
+            }
             const page = inPlace
                 ? resolveBoardHost(typeof params.ownerId === "string" ? params.ownerId : "").page
                 : undefined;
@@ -215,6 +229,13 @@ export function registerBoardHostRpc(server: RendererRpcServer): void {
             void ui.notify(t("api.actionFailed", { action, error: errMessage(error) }), "error");
             throw error;
         }
+    });
+    server.register("openTree", async (params): Promise<null> => {
+        if (!params || typeof params.boardRoot !== "string" || !params.boardRoot) {
+            throw new Error("Invalid board openTree request.");
+        }
+        await openBoardTreePage(pages, params, params.boardRoot);
+        return null;
     });
     server.register("openBoard", async (params): Promise<null> => {
         if (!params || typeof params.folder !== "string" || !params.folder.trim()) throw new Error("Invalid board openBoard request.");

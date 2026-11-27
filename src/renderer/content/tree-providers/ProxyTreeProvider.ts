@@ -8,6 +8,7 @@ import type {
     TreeProviderRequest,
 } from "../../../ipc/module-service-channels";
 import { BoardRoot } from "../../../shared/board/board-root";
+import { isValidBoardTreePath } from "../../../shared/board/board-tree-path";
 import { t } from "../../../shared/i18n/t";
 import { boardSchemeOwner, schemeOf } from "../scheme-registry";
 import {
@@ -19,6 +20,7 @@ import {
     whenProviderDeclarationsReady,
 } from "../registry";
 import { encodeCategoryLink } from "./tree-provider-link";
+import { boardTreeSourceIdentity } from "./tree-provider-identity";
 import {
     invalidProviderResult,
     mapProviderRequestError,
@@ -31,25 +33,9 @@ interface AcceptedProvider {
     schemes: readonly string[];
 }
 
-function stableValue(value: unknown): unknown {
-    if (Array.isArray(value)) return value.map(stableValue);
-    if (value !== null && typeof value === "object") {
-        return Object.fromEntries(Object.keys(value).sort().map((key) => [
-            key,
-            stableValue((value as Record<string, unknown>)[key]),
-        ]));
-    }
-    return value;
-}
-
 function validateRootPath(rootPath: string): void {
-    if (!BoardRoot.tryFrom(rootPath)) {
+    if (!isValidBoardTreePath(rootPath) || !BoardRoot.tryFrom(rootPath)) {
         throw new TypeError("A board tree root must be an absolute path.");
-    }
-    const driveRoot = /^[A-Za-z]:[\\/]$/.test(rootPath);
-    const uncRoot = /^[\\/]{2}[^\\/]+[\\/][^\\/]+[\\/]$/.test(rootPath);
-    if (/[\\/]$/.test(rootPath) && rootPath !== "/" && !driveRoot && !uncRoot) {
-        throw new TypeError("A board tree root cannot have a trailing separator.");
     }
 }
 
@@ -85,7 +71,7 @@ export class ProxyTreeProvider implements ITreeProvider {
     ) {
         validateRootPath(rootPath);
         this.rootPath = rootPath;
-        this.sourceUrl = `board-tree:${JSON.stringify(stableValue([type, config ?? null, rootPath]))}`;
+        this.sourceUrl = boardTreeSourceIdentity({ type, config, rootPath });
         this.lastAcceptedRoot = this.currentAcceptedProvider()?.boardRoot;
         this.unsubscribeAvailability = this.subscribeForOwnerChanges();
     }

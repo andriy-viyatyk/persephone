@@ -3,8 +3,7 @@ import { TOneState } from "../../core/state/state";
 import { afterDispatch } from "../../core/state/dispatch";
 import type { EditorModelInstance as EditorModel } from "../../editors/base";
 import {
-    explorerRootForPanels,
-    autoInitExplorer,
+    explorerRootForPanels, pageDisplayTitle, autoInitExplorer,
     toggleNavigator as togglePageNavigator,
 } from "../../editors/explorer/page-explorer";
 import type { PageDescriptor } from "../../../shared/persistence";
@@ -271,7 +270,7 @@ export class PageModel implements IPageHost {
 
     /** Display title — delegates to mainEditor, or "Empty" for empty pages. */
     get title(): string {
-        return this.mainEditor?.displayTitle ?? "Empty";
+        return pageDisplayTitle(this);
     }
 
     /** Aggregate modified flag: true if any editor in `editors[]` is modified. */

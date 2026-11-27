@@ -16,6 +16,7 @@ import {
 } from "../runner-channels";
 import type { BoardThemePalette } from "./boot";
 import type { BoardServiceStatus } from "../module-service-channels";
+import type { BoardOpenTreeRequest } from "../../shared/board/board-tree-request";
 
 export type BoardNotifyType = "info" | "success" | "warning" | "error";
 export interface BoardNotifyMsg { message: string; type?: BoardNotifyType; persistent?: boolean }
@@ -35,6 +36,7 @@ export interface BoardCallRequest { path: string; args?: unknown[]; value?: unkn
 /** Positional arguments and result types for every private board RPC. */
 export interface BoardPortMethods {
     openRawLink: { params: [href: string, options?: BoardOpenRawLinkOptions]; result: void };
+    openTree: { params: [request: BoardOpenTreeRequest]; result: void };
     openBoard: { params: [folder: string]; result: void };
     openFileDialog: { params: [params: unknown]; result: string[] | undefined };
     saveFileDialog: { params: [params: unknown]; result: string | undefined };

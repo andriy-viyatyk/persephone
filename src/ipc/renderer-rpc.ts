@@ -3,6 +3,7 @@ import type { BoardCallRequest } from "./board-bridge/port-protocol";
 import type { BoardServiceSettingValue } from "./board-service-settings-channels";
 import type { BoundOpenDispatch, CapabilityOutcome } from "./capability-bus-channels";
 import type { WireError } from "../shared/wire-error";
+import type { BoardOpenTreeRequest } from "../shared/board/board-tree-request";
 
 export const RendererRpcChannel = {
     request: "renderer-rpc:request",
@@ -37,6 +38,7 @@ export interface RendererRpcMethods {
     boardCall: { params: { ownerId: string; boardId: string; request: BoardCallRequest }; result: unknown };
     boardThemes: { params: { ownerId: string; boardId: string; method: string; args: unknown[]; value?: unknown }; result: unknown };
     openRawLink: { params: { target: string; boardRoot: string; editor?: string; revealLine?: number; highlightText?: string; reuseKey?: string; inPlace?: boolean; ownerId?: string }; result: null };
+    openTree: { params: BoardOpenTreeRequest & { boardRoot: string }; result: null };
     openBoard: { params: { folder: string }; result: null };
     registerTsProject: { params: { root: string; owner: string }; result: null };
     unregisterTsProject: { params: { root: string; owner: string }; result: null };

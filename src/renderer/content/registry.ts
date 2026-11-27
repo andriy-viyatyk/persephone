@@ -1,6 +1,7 @@
 import { errMessage } from "../../shared/utils";
 import { englishMessage, t } from "../../shared/i18n/t";
 import { OwnershipRegistry } from "../../shared/ownership-registry";
+import { BoardRoot } from "../../shared/board/board-root";
 import { isCanonicalGuidePath } from "../../shared/guides/guide-links";
 import type { IProvider, IProviderDescriptor } from "../api/types/io.provider";
 import type { ITransformer, ITransformerDescriptor } from "../api/types/io.transformer";
@@ -229,6 +230,17 @@ export function providerDeclarationFor(type: string): ProviderDeclaration | unde
 export function acceptedBoardProviderOwner(type: string): string | undefined {
     const registration = providerOwnership.get(type);
     return registration?.origin === "board" ? registration.owner : undefined;
+}
+
+/** Return a trusted, accepted tree declaration only when `callerRoot` owns this type. */
+export function acceptedBoardTreeProviderForRoot(type: string, callerRoot: string): ProviderDeclaration | undefined {
+    const declaration = providerDeclarations.get(type);
+    const caller = BoardRoot.tryFrom(callerRoot);
+    const declaredRoot = BoardRoot.tryFrom(declaration?.boardRoot);
+    const acceptedRoot = BoardRoot.tryFrom(acceptedBoardProviderOwner(type));
+    if (!declaration?.trusted || declaration.tree !== true || !caller
+        || !declaredRoot?.equals(caller) || !acceptedRoot?.equals(caller)) return undefined;
+    return declaration;
 }
 
 /** The manifest name of the trusted board at `boardRoot`, from its provider declarations (a board that

@@ -6,6 +6,9 @@ summary: "Which bridge version added each persephone.* member and manifest field
 
 # Boards — bridge version history and compatibility
 
+Bridge `1.65.0` adds `persephone.openTree()` for opening or focusing an accepted board tree and
+allows `persephone.openRawLink()` to route links in schemes accepted for the calling board.
+
 Bridge `1.64.0` adds the manifest `contentProviders[].tree` flag and the host-service
 `persephone.treeProviders.register(type, implementation)` API for listing, statting, and optional
 tree writes. Boards using tree providers should declare `minBridgeVersion: "1.64.0"`.

@@ -1,4 +1,5 @@
 import type { ILinkData } from "../../shared/link-data";
+import { BoardRoot } from "../../shared/board/board-root";
 import { OwnershipRegistry } from "../../shared/ownership-registry";
 import type { IContentPipe, IPipeDescriptor } from "../api/types/io.pipe";
 import {
@@ -131,6 +132,13 @@ export function isBoardClaimedScheme(scheme: string): boolean {
 export function boardSchemeOwner(scheme: string): string | undefined {
     const registration = schemeOwnership.get(normalizeScheme(scheme))?.value;
     return registration?.origin === "board" ? registration.owner : undefined;
+}
+
+/** Whether an accepted custom scheme is currently owned by the board that supplied a request. */
+export function isAcceptedBoardSchemeForRoot(value: string, boardRoot: string): boolean {
+    const scheme = schemeOf(value);
+    const owner = scheme ? boardSchemeOwner(scheme) : undefined;
+    return owner !== undefined && BoardRoot.tryFrom(owner)?.equals(boardRoot) === true;
 }
 
 export function listRegisteredSchemes(): string[] {

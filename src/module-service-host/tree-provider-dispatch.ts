@@ -4,10 +4,10 @@ import type {
     ProviderTreeStat,
     TreeProviderRequest,
 } from "../ipc/module-service-channels";
+import { isValidBoardTreePath } from "../shared/board/board-tree-path";
 import { isRecord } from "./validation";
 
 const MAX_TREE_ITEMS = 5000;
-const MAX_TREE_PATH_LENGTH = 4096;
 const MAX_TREE_HREF_LENGTH = 8192;
 
 export interface TreeProviderImplementation {
@@ -38,13 +38,7 @@ function isTreeProviderImplementation(value: unknown): value is TreeProviderImpl
     return ["mkdir", "rename", "delete"].every((method) => value[method] === undefined || typeof value[method] === "function");
 }
 
-export function isValidTreePath(value: unknown): value is string {
-    if (typeof value !== "string" || value.length === 0 || value.length > MAX_TREE_PATH_LENGTH
-        || !value.startsWith("/") || value.includes("\\") || value.includes("\0")) return false;
-    if (value === "/") return true;
-    const segments = value.slice(1).split("/");
-    return segments.every((segment) => segment.length > 0 && segment !== "." && segment !== "..");
-}
+export { isValidBoardTreePath as isValidTreePath } from "../shared/board/board-tree-path";
 
 function validMetadata(value: Record<string, unknown>): boolean {
     return (value.size === undefined || (typeof value.size === "number" && Number.isFinite(value.size) && value.size >= 0))
@@ -86,7 +80,7 @@ function copyTreeItems(value: unknown, requestedPath: string): ProviderTreeItem[
         if (!isRecord(item)
             || typeof item.name !== "string" || item.name.length < 1 || item.name.length > 255
             || item.name === "." || item.name === ".." || /[\\/\0]/.test(item.name)
-            || typeof item.path !== "string" || !isValidTreePath(item.path)
+            || !isValidBoardTreePath(item.path)
             || typeof item.href !== "string" || item.href.length === 0 || item.href.length > MAX_TREE_HREF_LENGTH
             || typeof item.isDirectory !== "boolean" || !validMetadata(item)) return undefined;
         const expectedPath = requestedPath === "/" ? `/${item.name}` : `${requestedPath}/${item.name}`;

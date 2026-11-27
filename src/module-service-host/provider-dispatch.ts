@@ -6,7 +6,7 @@ import type { ProviderOperation, ProviderRequest, ProviderResult, ProviderWireEr
 import type { RendererLease, RendererLeaseManager, ProviderSubscription } from "./renderer-lease";
 import { isRecord } from "./validation";
 import type { TreeProviderDispatch } from "./tree-provider-dispatch";
-import { isValidTreePath } from "./tree-provider-dispatch";
+import { isValidBoardTreePath } from "../shared/board/board-tree-path";
 
 export interface ProviderImplementation {
     readBinary(config: Record<string, unknown>, context: { signal: AbortSignal }): Promise<unknown> | unknown;
@@ -110,8 +110,8 @@ function isProviderRequest(message: unknown, validation: { message?: string }): 
         validation.message = "Malformed or oversized provider payload."; return false;
     }
     if (["treeList", "treeStat", "treeMkdir", "treeRename", "treeDelete"].includes(message.operation)) {
-        if (!isValidTreePath(message.path)
-            || (message.operation === "treeRename" && !isValidTreePath(message.newPath))) {
+        if (!isValidBoardTreePath(message.path)
+            || (message.operation === "treeRename" && !isValidBoardTreePath(message.newPath))) {
             validation.message = "Malformed tree provider path.";
             return false;
         }

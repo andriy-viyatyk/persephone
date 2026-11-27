@@ -1,5 +1,6 @@
 import type { BoardOpenContentRequest } from "../ipc/board-bridge/frame-protocol";
 import type { BoardOpenRawLinkOptions } from "../ipc/board-bridge/port-protocol";
+import type { BoardOpenTreeRequest } from "../shared/board/board-tree-request";
 import type { MainPortChannel } from "./main-port-channel";
 import type { HostFrameChannel } from "./board-host-frame-channel";
 
@@ -10,6 +11,9 @@ export function createBridgeActionsApi(deps: { mainPort: MainPortChannel; hostFr
         void result.catch(() => {});
         return result;
     }
+    function openTree(options: BoardOpenTreeRequest): Promise<void> {
+        return mainPort.rpc("openTree", options);
+    }
     function openContentRpc(request: BoardOpenContentRequest): Promise<string> {
         return hostFrame.request("openContent", { request }).then((pageId) => {
             if (typeof pageId === "string") return pageId;
@@ -18,6 +22,7 @@ export function createBridgeActionsApi(deps: { mainPort: MainPortChannel; hostFr
     }
     const api = {
         openRawLink,
+        openTree,
         openContent(options: { editor: string; language?: string; title?: string; content?: string }): Promise<string> {
             if (!options || typeof options !== "object") {
                 return Promise.reject(new Error('openContent() expects an options object, e.g. { editor: "md-view" }.'));

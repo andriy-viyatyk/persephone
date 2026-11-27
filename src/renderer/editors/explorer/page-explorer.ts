@@ -38,11 +38,22 @@ export function explorerRootForPanels(page: PageModel): string {
 
 export async function attachExplorer(
     page: PageModel,
-    options: { rootPath?: string; tree?: TreeProviderDescriptor; search?: FileSearchState },
+    options: { rootPath?: string; tree?: TreeProviderDescriptor; search?: FileSearchState; title?: string },
     onCreate?: (editor: ExplorerEditor) => void,
 ): Promise<ExplorerEditor> {
+    const explorer = attachExplorerSync(page, options, onCreate);
+    await explorer.restore();
+    return explorer;
+}
+
+export function attachExplorerSync(
+    page: PageModel,
+    options: { rootPath?: string; tree?: TreeProviderDescriptor; search?: FileSearchState; title?: string },
+    onCreate?: (editor: ExplorerEditor) => void,
+): ExplorerEditor {
     const state = new TComponentState({
         ...getDefaultExplorerEditorState(),
+        ...(options.title ? { title: options.title } : {}),
         rootPath: options.rootPath ?? options.tree?.rootPath ?? "",
         tree: options.tree,
         searchState: options.search,
@@ -50,8 +61,16 @@ export async function attachExplorer(
     const explorer = new ExplorerEditor(state);
     onCreate?.(explorer);
     page.attach(explorer);
-    await explorer.restore();
     return explorer;
+}
+
+/** Select a display title for a page without changing local folder or main-editor titles. */
+export function pageDisplayTitle(page: PageModel): string {
+    if (page.mainEditor) return page.mainEditor.displayTitle;
+    const explorer = page.findExplorer() as ExplorerEditor | undefined;
+    const tree = explorer?.state.get().tree;
+    if (tree && tree.type.includes("/")) return explorer.displayTitle;
+    return "Empty";
 }
 
 export function ensureBoardsPanel(page: PageModel): BoardsPanelEditor {
