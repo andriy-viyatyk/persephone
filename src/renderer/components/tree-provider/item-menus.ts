@@ -12,6 +12,7 @@ import {
     PasteIcon,
     RenameIcon,
     TerminalIcon,
+    DownloadIcon,
 } from "../../theme/icons";
 import { isLocalFileProvider, treeTransferCapability } from "../../content/tree-providers/tree-provider-capabilities";
 import { t } from "../../../shared/i18n/t";
@@ -24,6 +25,7 @@ export interface ItemMenuActions {
     rename(item: ITreeProviderItem): void;
     deleteItem(item: ITreeProviderItem): void;
     copyItems(items: ITreeProviderItem[], cut: boolean): void;
+    downloadItems(items: ITreeProviderItem[]): void;
 }
 
 function canClipboardCopy(provider: ITreeProvider): boolean {
@@ -137,6 +139,14 @@ export function getFileMenuItems(
         });
     }
 
+    if (treeTransferCapability(provider)?.sourceKind === "board") items.push({
+        startGroup: true,
+        id: "download-to",
+        label: t("menus.downloadTo"),
+        icon: DownloadIcon.createElement(),
+        onClick: () => actions.downloadItems([item]),
+    });
+
     pushEditGroup(items, { provider, item, directory, actions, allowRenameDelete: true });
     return items;
 }
@@ -197,6 +207,14 @@ export function getFolderMenuItems(options: FolderMenuOptions): MenuItem[] {
             },
         );
     }
+
+    if (!isRoot && treeTransferCapability(provider)?.sourceKind === "board") items.push({
+        startGroup: true,
+        id: "download-to",
+        label: t("menus.downloadTo"),
+        icon: DownloadIcon.createElement(),
+        onClick: () => actions.downloadItems([item]),
+    });
 
     pushEditGroup(items, { provider, item, directory, actions, allowRenameDelete: !isRoot });
 

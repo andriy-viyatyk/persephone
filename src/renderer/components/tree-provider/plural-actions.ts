@@ -10,7 +10,7 @@ import type { MenuItem } from "../../uikit/Menu";
 import { ui } from "../../api/ui";
 import { isUrlOrCurl } from "../../content/link-utils";
 import { toClipboard } from "../../api/clipboard";
-import { CopyIcon, CutIcon, DeleteIcon } from "../../theme/icons";
+import { CopyIcon, CutIcon, DeleteIcon, DownloadIcon } from "../../theme/icons";
 import { isLocalFileProvider, treeTransferCapability } from "../../content/tree-providers/tree-provider-capabilities";
 import { DialogButton } from "../../api/dialogs/dialog-buttons";
 import { t } from "../../../shared/i18n/t";
@@ -64,6 +64,7 @@ export function buildMultiItemMenuItems(
     items: ILink[],
     onDelete: () => void,
     onClipboard: (items: ILink[], cut: boolean) => void,
+    onDownload: (items: ILink[]) => void,
 ): MenuItem[] {
     const hrefs = items.map((i) => i.href);
     const hasRoot = hrefs.includes(provider.rootPath);
@@ -84,6 +85,14 @@ export function buildMultiItemMenuItems(
     // tree root is in the set (mirrors the single-row gating). A folder's listed children
     // never include the provider root, so the guard is inert for the folder-content view.
     const transfer = treeTransferCapability(provider);
+    if (!hasRoot && transfer?.sourceKind === "board") menuItems.push({
+        startGroup: true,
+        id: "download-to",
+        label: t("menus.downloadTo"),
+        icon: DownloadIcon.createElement(),
+        onClick: () => onDownload(items),
+    });
+
     if (isLocalFileProvider(provider) || transfer?.sourceKind === "board") {
         if (!hasRoot && (isLocalFileProvider(provider)
             || (!!provider.writable && !!provider.deleteItem && transfer?.sourceKind === "board"))) {

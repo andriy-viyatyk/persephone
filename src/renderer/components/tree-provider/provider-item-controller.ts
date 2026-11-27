@@ -23,6 +23,7 @@ import {
 import { hrefKey, sameHref } from "./href-utils";
 import { buildMultiItemMenuItems, deleteItemsBatch, pruneNestedItems, pruneProviderItems } from "./plural-actions";
 import { writeBoardTreeClipboard } from "./tree-clipboard";
+import { downloadBoardTreeItems } from "./tree-download-actions";
 import { errMessage } from "../../../shared/utils";
 import { ui } from "../../api/ui";
 import { t } from "../../../shared/i18n/t";
@@ -74,6 +75,7 @@ export class ProviderItemController {
         createFolder: (directory) => { void createNewFolder(this.crudContext, directory); },
         paste: (directory) => { void this.paste(directory); },
         copyItems: (items, cut) => { void this.copyItemsToClipboard(items, cut); },
+        downloadItems: (items) => { void downloadBoardTreeItems(this.options.provider(), items); },
         rename: (item) => { void this.renameItem(item); },
         deleteItem: (item) => { void this.deleteItem(item); },
     };
@@ -234,6 +236,7 @@ export class ProviderItemController {
             items,
             () => this.deleteItems(items),
             (selected, cut) => { void this.copyItemsToClipboard(selected as ITreeProviderItem[], cut); },
+            (selected) => { void downloadBoardTreeItems(this.options.provider(), selected as ITreeProviderItem[]); },
         );
     }
 }

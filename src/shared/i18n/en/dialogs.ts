@@ -11,6 +11,7 @@ export const dialogsCatalog = {
     buttonOk: { message: "OK" },
     buttonMove: { message: "Move", note: "Built-in dialog button confirming a move operation." },
     treeTransferTitle: { message: "Transfer items" },
+    treeDownloadPickerTitle: { message: "Choose a folder to download items to" },
     treeTransferConfirm: { message: "{action} {countLabel} to {folder} in {target}?", note: "Confirmation shown before a cross-tree transfer. The target tree and folder are named explicitly." },
     treeTransferSameTreeMoveConfirm: { message: "Move {countLabel} to {folder} in {target}?" },
     treeTransferLocalCopyConfirm: { message: "Copy {countLabel} to {target}?" },

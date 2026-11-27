@@ -45,6 +45,7 @@ export const menusCatalog = {
     cut: { message: "Cut" },
     copy: { message: "Copy", note: "File operation menu command copying selected files or folders." },
     paste: { message: "Paste" },
+    downloadTo: { message: "Download to…", note: "Board-tree context-menu command to copy selected items into a local folder." },
     openTerminalHere: { message: "Open Terminal here" },
     copyHrefsCount: { message: "Copy Hrefs ({count})" },
     copyPathsCount: { message: "Copy Paths ({count})" },
