@@ -332,6 +332,12 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
             this._selectAndReveal(null);
             return;
         }
+        if (this.treeProvider && !isLocalFileProvider(this.treeProvider)) {
+            // A file opened from a board tree keeps its item href as the source link. Select it
+            // without a reveal: a non-local tree can reveal only items it has already loaded.
+            this.treeProviderHost.setSelected(newMainEditor.sourceLink?.href ?? null);
+            return;
+        }
         const filePath = newMainEditor.filePath;
         if (filePath && this.treeProvider && isLocalFileProvider(this.treeProvider)
             && fpIsInside(this.rootPath, filePath)) {

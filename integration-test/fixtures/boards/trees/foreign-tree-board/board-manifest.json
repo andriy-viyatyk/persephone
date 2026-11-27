@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "name": "Foreign Tree Test Board",
+  "description": "Second tree owner for board ownership tests.",
+  "author": "Persephone test fixture",
+  "minBridgeVersion": "1.65.0",
+  "permissions": {
+    "execute": false,
+    "service": true,
+    "fileSystem": false,
+    "openExternal": false,
+    "appScripting": false,
+    "network": false,
+    "clipboardRead": false,
+    "camera": false,
+    "microphone": false,
+    "computerAudio": false,
+    "geolocation": false,
+    "notifications": false,
+    "themes": false
+  },
+  "service": "scripts/service.mjs",
+  "contentProviders": [
+    { "type": "test/foreign-tree", "schemes": ["othertree"], "tree": true }
+  ],
+  "fileMasks": ["*.foreign-tree"],
+  "editorName": "Foreign Tree Fixture",
+  "editorKind": "content-host",
+  "editorPriority": 200
+}
