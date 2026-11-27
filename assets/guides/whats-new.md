@@ -10,7 +10,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 5.0.23 (Upcoming)
+## Version 5.0.24 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 5.0.23
 
 ### Linux release
 
@@ -445,39 +451,9 @@ The move removes note script execution; HTML, Mermaid, and SVG previews; Monaco 
 
 ### New Features
 
-- **Right-pinned pages:** Keep reference pages in chips at the right of the header and open them in
-  a resizable popover while your active work page stays in place. Right-click a tab to pin it left
-  or right; scripts can inspect `app.pages.popoverPage` and open or close the popover.
-- **Board bridge 1.42.0:** Boards can declare multi-line settings. String settings with
-  `format: "multiline"` use a multi-line editor in Persephone's Settings page and save when focus leaves the field. Boards that
-  rely on this behavior require bridge `1.42.0` through `minBridgeVersion`.
-- **Service board settings:** Host-managed module services can read their board's declared settings
-  and subscribe to effective changes, including manifest defaults after reset.
-- **Private MCP sessions for board agents:** Authorized board services can issue a loopback MCP
-  endpoint for one agent session, then revoke it when that session ends. Issuance requires the
-  board's `appScripting` permission and uses the existing bridge `1.42.0` release.
-- **Board service channels:** Board frames can open ordered, two-way streaming channels to their
-  own module service, with bounded backpressure and lifecycle cleanup under the same bridge release.
-- **Cross-board service interfaces:** Trusted boards can declare exact-version service interfaces
-  and connect through the existing bounded channel. Consumer `uses` grants are disclosed as Full
-  access; provider trust and service permission are checked independently.
-- **Footer chips for boards:** Board footer text items accept `variant: "chip"`, which shows the
-  text as a compact bordered pill, so several values can sit side by side and stay distinct. Part of
-  bridge `1.42.0`.
-- **Agent Session guide:** Board authors can follow the `agent.session` v1 contract for streaming,
-  resumable CLI sessions with bounded permissions and approvals.
-
-### Bug Fixes
-
-- **Mermaid diagrams with line breaks render again.** A label containing `<br/>` left the
-  diagram blank, showing only a "Mermaid Diagram" placeholder, in Mermaid pages, Markdown
-  previews, and the Log View.
-- **Explorer and open files keep following disk changes.** Dropping a file onto the window or
-  clicking a file or external link could silently stop every file and folder watch in that window
-  until restart, so new files never appeared in Explorer.
-- **Pasting cells copied from Excel into an editor or grid pastes the data.** Excel also puts a
-  picture of the range on the clipboard, and that picture opened as a "Pasted image" tab instead.
-  A screenshot pasted anywhere still opens in the Image viewer.
+- **Right-pinned pages:** keep reference pages as header chips that open in a resizable popover.
+- **Board bridge 1.42.0:** multi-line board settings, settings for module services, private MCP sessions for board agents, service channels, cross-board service interfaces and footer chips.
+- **Agent Session guide:** the `agent.session` v1 contract for streaming, resumable CLI sessions.
 
 ---
 
