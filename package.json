@@ -3,7 +3,7 @@
   "productName": "persephone",
   "desktopName": "com.viyatyk.persephone.desktop",
   "homepage": "https://github.com/andriy-viyatyk/persephone",
-  "version": "5.0.23",
+  "version": "5.0.24",
   "description": "Persephone",
   "main": ".vite/build/main.js",
   "scripts": {
