@@ -183,6 +183,7 @@ export interface ProviderRequest {
     range?: { start: number; end: number };
     path?: string;
     newPath?: string;
+    writeId?: string;
 }
 
 export type TreeProviderOperation = "treeList" | "treeStat" | "treeMkdir" | "treeRename" | "treeDelete";
@@ -244,6 +245,8 @@ export type ProviderResult =
     | { kind: "provider-result"; operation: "readBinary"; ok: true; data: Uint8Array }
     | { kind: "provider-result"; operation: "readRange"; ok: true; data: Uint8Array }
     | { kind: "provider-result"; operation: "writeBinary"; ok: true }
+    | { kind: "provider-result"; operation: "writeBegin"; ok: true; writeId: string }
+    | { kind: "provider-result"; operation: "writeChunk" | "writeCommit" | "writeAbort"; ok: true; writeId: string }
     | { kind: "provider-result"; operation: "stat"; ok: true; stat: ProviderWireStat }
     | { kind: "provider-result"; operation: "treeList"; ok: true; items: ProviderTreeItem[]; truncated: boolean }
     | { kind: "provider-result"; operation: "treeStat"; ok: true; stat: ProviderTreeStat }
@@ -268,6 +271,7 @@ export interface ProviderCapabilities {
     type: string;
     writable: boolean;
     rangeReadable: boolean;
+    chunkWritable: boolean;
     treeRegistered: boolean;
     tree: { mkdir: boolean; rename: boolean; delete: boolean };
 }

@@ -13,6 +13,7 @@ import {
     mapProviderRequestError,
     providerResultError,
 } from "./proxy-provider-errors";
+import { beginProxyWriteSession } from "./proxy-write-session";
 
 // Node's `stream` module for `Readable.from`. `require` rather than `import` because Vite
 // externalizes Node builtins into broken browser stubs when statically imported — same pattern
@@ -78,6 +79,7 @@ export class ProxyProvider implements IProvider {
     private statusDisposer?: () => void;
     private statusSubscription = 0;
     private disposed = false;
+    private readonly writeControllers = new Set<AbortController>();
 
     constructor(
         private readonly boardRoot: string,
@@ -174,6 +176,33 @@ export class ProxyProvider implements IProvider {
             data: new Uint8Array(data),
         });
         if (result.operation !== "writeBinary") throw invalidProviderResult("writeBinary");
+    }
+
+    get beginWrite(): IProvider["beginWrite"] {
+        if (moduleService.providerChunkWritable(this.boardRoot, this.type) !== true) return undefined;
+        return async (options) => {
+            const controller = new AbortController();
+            const relayAbort = (): void => controller.abort();
+            options?.signal?.addEventListener("abort", relayAbort, { once: true });
+            this.writeControllers.add(controller);
+            if (this.disposed || options?.signal?.aborted) controller.abort();
+            try {
+                return await beginProxyWriteSession(
+                    this.boardRoot,
+                    this.type,
+                    this.config,
+                    controller.signal,
+                    () => {
+                        this.writeControllers.delete(controller);
+                        options?.signal?.removeEventListener("abort", relayAbort);
+                    },
+                );
+            } catch (error: unknown) {
+                this.writeControllers.delete(controller);
+                options?.signal?.removeEventListener("abort", relayAbort);
+                throw error;
+            }
+        };
     }
 
     private get rangeReadable(): boolean {
@@ -319,6 +348,7 @@ export class ProxyProvider implements IProvider {
         this.stopStatusSubscription(false);
         for (const disposer of this.watchDisposers) disposer();
         this.watchDisposers.clear();
+        for (const controller of this.writeControllers) controller.abort();
         this.statusListeners.clear();
         this.statusSnapshot = undefined;
     }

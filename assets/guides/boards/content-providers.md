@@ -104,6 +104,42 @@ persephone.providers.register("example/mem", {
 
 `readBinary()` must return a `Uint8Array`; `writeBinary()`, `stat()`, and `watch()` are optional.
 
+### Transactional chunked writes
+
+A writable provider may optionally register all four methods `writeBegin(config, { signal })`,
+`writeChunk(handle, data, { signal })`, `writeCommit(handle, { signal })`, and `writeAbort(handle)`.
+Registering only part of this group is rejected. Keep `writable: true` and `writeBinary()` for
+existing buffered callers. A complete group advertises chunk-write capability; providers without
+it keep using buffered writes, which remain capped at 256 MiB.
+
+The host supplies a private handle returned by `writeBegin`; it is never sent to the renderer. Each
+session accepts sequential awaited chunks of at most 1 MiB, including zero chunks for an empty file.
+There are at most 16 open or starting/closing sessions across the service, all leases, and provider
+types. Every begin, chunk, commit, and abort request has its own 10-second deadline; there is no
+whole-file deadline. Reject writes after termination and make `writeAbort` idempotent. The signal
+remains associated with begin, chunks, and commit. Cooperate with it: after cancellation or a failed
+write, stop accepting chunks, wait for in-flight work, and discard the staged target. Commit should
+publish only after the full write is complete. A successful commit replaces the target; keep an old
+target intact until then. Report cleanup failures, and make abort safe to repeat.
+
+Persephone sends abort on renderer cancellation, timeout, provider disposal, and lease loss. If a
+begin reply is lost, the renderer still sends `writeAbort` by its generated write ID; host-side
+cleanup remains authoritative if that request cannot reach the service. A lease loss cleans up its
+sessions after in-flight operations settle. Commit can race cancellation: if rename already
+succeeded, the destination is committed and cannot be rolled back. A timed-out commit is never
+reported as success, so its outcome may be uncertain.
+
+A killed utility process cannot run `writeAbort`, and Persephone has neither remote credentials nor
+the board's temporary names. For persistent targets, use a durable connection-scoped temp journal or
+an identifiable exclusive temp namespace, then reconcile uncommitted entries on the next service
+start or connection before accepting writes. Detect a completed rename separately from an orphan and
+never delete the destination. Recovery is eventual and board-owned; it cannot be guaranteed if the
+board or remote host never reconnects. In-memory boards lose their staged session map on process
+death. Local file providers also use identifiable exclusive sibling temps; process termination can
+leave one behind, so recovery must never sweep unrelated files.
+
+The `1.66.0` bridge adds these optional methods. Set `minBridgeVersion: "1.66.0"` when using them.
+
 Add `readRange(config, range)` to serve ranged reads without buffering the whole resource into
 memory first — this is what lets the built-in editors (Monaco, Image, the media player) and a
 `stream-host` page's `persephone.host.streamUrl()` seek through a board's own provider. `range` is

@@ -1,7 +1,8 @@
-import type { IProvider, IProviderDescriptor, IProviderStat } from "../../api/types/io.provider";
+import type { IProvider, IProviderDescriptor, IProviderStat, IProviderWrite } from "../../api/types/io.provider";
 import type { PathWatchBatch } from "../../../ipc/api-types";
 import { subscribe } from "../../api/path-watch";
 import { fpBasename, isArchivePath, isAsarPath } from "../../core/utils/file-path";
+import { createFileWriteSession } from "./file-write-session";
 
 const nodefs = require("fs");
 
@@ -12,6 +13,7 @@ const nodefs = require("fs");
  * comes from FileProvider + ArchiveTransformer in the pipe chain.
  */
 export class FileProvider implements IProvider {
+    private readonly writeSessions = new Set<IProviderWrite>();
     readonly type = "file";
     readonly restorable = true;
     readonly writable = true;
@@ -37,6 +39,14 @@ export class FileProvider implements IProvider {
 
     async writeBinary(data: Buffer): Promise<void> {
         await nodefs.promises.writeFile(this.filePath, data);
+    }
+
+    async beginWrite(options?: { signal?: AbortSignal }): Promise<IProviderWrite> {
+        const session = await createFileWriteSession(this.filePath, options?.signal, (settled) => {
+            this.writeSessions.delete(settled);
+        });
+        this.writeSessions.add(session);
+        return session;
     }
 
     async stat(): Promise<IProviderStat> {
@@ -88,7 +98,7 @@ export class FileProvider implements IProvider {
     }
 
     dispose(): void {
-        // No resources to release. Watch subscriptions are managed
-        // by the caller via the returned disposer.
+        for (const session of this.writeSessions) void session.abort().catch((): undefined => undefined);
+        this.writeSessions.clear();
     }
 }

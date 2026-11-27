@@ -46,6 +46,7 @@ export function createRendererLeaseManager(dependencies: {
     postMain(message: ServiceMainMessage): void;
     announceCapabilities(lease: RendererLease): void;
     handleRequest(lease: RendererLease, message: unknown): void;
+    cleanupLease(lease: RendererLease): Promise<void>;
 }): RendererLeaseManager {
     const leases = new Map<string, RendererLease>();
 
@@ -88,6 +89,9 @@ export function createRendererLeaseManager(dependencies: {
         clearTimeout(lease.timer);
         post(lease, { kind: "lease-lost", reason });
         settlePending(lease, reason);
+        void dependencies.cleanupLease(lease).catch((error: unknown) => {
+            console.error("Provider write cleanup failed during lease close:", error);
+        });
         disposeSubscriptions(lease);
         lease.activeContentReads = 0;
         leases.delete(lease.leaseNonce);

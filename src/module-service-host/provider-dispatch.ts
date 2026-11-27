@@ -7,11 +7,16 @@ import type { RendererLease, RendererLeaseManager, ProviderSubscription } from "
 import { isRecord } from "./validation";
 import type { TreeProviderDispatch } from "./tree-provider-dispatch";
 import { isValidBoardTreePath } from "../shared/board/board-tree-path";
+import { ProviderWriteSessions, type ProviderWriteImplementation } from "./provider-write-sessions";
 
 export interface ProviderImplementation {
     readBinary(config: Record<string, unknown>, context: { signal: AbortSignal }): Promise<unknown> | unknown;
     readRange?(config: Record<string, unknown>, range: { start: number; end: number } | undefined, context: { signal: AbortSignal }): Promise<unknown> | unknown;
     writeBinary?(config: Record<string, unknown>, data: Uint8Array): Promise<unknown> | unknown;
+    writeBegin?(config: Record<string, unknown>, context: { signal: AbortSignal }): Promise<unknown> | unknown;
+    writeChunk?(handle: unknown, data: Uint8Array, context: { signal: AbortSignal }): Promise<unknown> | unknown;
+    writeCommit?(handle: unknown, context: { signal: AbortSignal }): Promise<unknown> | unknown;
+    writeAbort?(handle: unknown): Promise<unknown> | unknown;
     stat?(config: Record<string, unknown>, context: { signal: AbortSignal }): Promise<unknown> | unknown;
     watch?(config: Record<string, unknown>, listener: (event: unknown) => void): (() => void) | { dispose(): void };
     status?(config: Record<string, unknown>, listener: (status: unknown) => void): (() => void) | { dispose(): void };
@@ -30,12 +35,15 @@ export interface ProviderDispatch {
     register(type: string, implementation: unknown): void;
     announceCapabilities(lease: RendererLease): void;
     handleRendererRequest(lease: RendererLease, message: unknown): void;
+    closeLease(lease: RendererLease): Promise<void>;
 }
 
 type ValidatedProviderRequest = ProviderRequest & (
     | { operation: "readBinary" | "stat" }
     | { operation: "readRange"; range: { start: number; end: number } }
     | { operation: "writeBinary"; data: Uint8Array }
+    | { operation: "writeBegin" | "writeAbort" | "writeCommit"; writeId: string }
+    | { operation: "writeChunk"; writeId: string; data: Uint8Array }
     | { operation: "treeList" | "treeStat" | "treeMkdir" | "treeDelete"; path: string }
     | { operation: "treeRename"; path: string; newPath: string }
     | { operation: "watchSubscribe" | "watchUnsubscribe" | "statusSubscribe" | "statusUnsubscribe"; subscriptionId: string }
@@ -47,6 +55,7 @@ export function createProviderDispatch(dependencies: {
     treeProviders: TreeProviderDispatch;
 }): ProviderDispatch {
     const providers = new Map<string, ProviderImplementation>();
+    const writeSessions = new ProviderWriteSessions();
     const PROVIDER_STATUS_STATES: ReadonlySet<string> = new Set(["idle", "connecting", "active", "done", "error"]);
     const PROVIDER_STATUS_INTERVAL_MS = 250;
 
@@ -65,6 +74,7 @@ function announceCapabilities(lease: RendererLease): void {
             type,
             writable: implementation?.writable === true && typeof implementation.writeBinary === "function",
             rangeReadable: typeof implementation?.readRange === "function",
+            chunkWritable: hasChunkWrite(implementation),
             treeRegistered: tree !== undefined,
             tree: tree ?? { mkdir: false, rename: false, delete: false },
         });
@@ -73,10 +83,18 @@ function announceCapabilities(lease: RendererLease): void {
 
 function isProviderImplementation(value: unknown): value is ProviderImplementation {
     if (!isRecord(value) || typeof value.readBinary !== "function") return false;
-    for (const method of ["writeBinary", "stat", "watch", "readRange", "status"] as const) {
+    for (const method of ["writeBinary", "stat", "watch", "readRange", "status", "writeBegin", "writeChunk", "writeCommit", "writeAbort"] as const) {
         if (value[method] !== undefined && typeof value[method] !== "function") return false;
     }
+    const chunkMethods = [value.writeBegin, value.writeChunk, value.writeCommit, value.writeAbort];
+    if (chunkMethods.some(method => method !== undefined) && (chunkMethods.some(method => typeof method !== "function") || value.writable !== true || typeof value.writeBinary !== "function")) return false;
     return true;
+}
+
+function hasChunkWrite(implementation: ProviderImplementation | undefined): boolean {
+    return Boolean(implementation && typeof implementation.writeBegin === "function"
+        && typeof implementation.writeChunk === "function" && typeof implementation.writeCommit === "function"
+        && typeof implementation.writeAbort === "function" && implementation.writable === true);
 }
 
 function registerProvider(type: string, implementation: unknown): void {
@@ -108,6 +126,14 @@ function isProviderRequest(message: unknown, validation: { message?: string }): 
     if (message.operation === "writeBinary"
         && (!isUint8Array(message.data) || message.data.byteLength > MAX_BUFFERED_PIPE_BYTES)) {
         validation.message = "Malformed or oversized provider payload."; return false;
+    }
+    if (["writeBegin", "writeChunk", "writeCommit", "writeAbort"].includes(message.operation)
+        && (typeof message.writeId !== "string" || !/^[A-Za-z0-9._:-]{1,128}$/.test(message.writeId))) {
+        validation.message = "Malformed provider write ID."; return false;
+    }
+    if (message.operation === "writeChunk"
+        && (!isUint8Array(message.data) || message.data.byteLength > MAX_BOARD_PIPE_CHUNK_BYTES)) {
+        validation.message = "Malformed or oversized provider write chunk."; return false;
     }
     if (["treeList", "treeStat", "treeMkdir", "treeRename", "treeDelete"].includes(message.operation)) {
         if (!isValidBoardTreePath(message.path)
@@ -189,6 +215,27 @@ async function executeProviderRequest(lease: RendererLease, request: ValidatedPr
         }
         await Promise.resolve(implementation.writeBinary(request.config, copyBytes(request.data)));
         return { kind: "provider-result", operation: "writeBinary", ok: true };
+    }
+
+    if (request.operation === "writeBegin") {
+        if (!hasChunkWrite(implementation) || implementation.writable !== true) {
+            return providerFailure("provider-read-only", `Provider "${request.type}" does not support chunked writes.`);
+        }
+        await writeSessions.begin(lease, request.writeId, request.type, request.config,
+            implementation as ProviderWriteImplementation, controller.signal);
+        return { kind: "provider-result", operation: "writeBegin", ok: true, writeId: request.writeId };
+    }
+    if (request.operation === "writeChunk") {
+        await writeSessions.chunk(lease, request.writeId, request.type, copyBytes(request.data), controller.signal);
+        return { kind: "provider-result", operation: "writeChunk", ok: true, writeId: request.writeId };
+    }
+    if (request.operation === "writeCommit") {
+        await writeSessions.commit(lease, request.writeId, request.type, controller.signal);
+        return { kind: "provider-result", operation: "writeCommit", ok: true, writeId: request.writeId };
+    }
+    if (request.operation === "writeAbort") {
+        await writeSessions.abort(lease, request.writeId, request.type);
+        return { kind: "provider-result", operation: "writeAbort", ok: true, writeId: request.writeId };
     }
 
     if (request.operation === "stat") {
@@ -431,5 +478,5 @@ function copyProviderStatus(value: unknown): ProviderStatusSnapshot | undefined 
 }
 
 
-return { register: registerProvider, announceCapabilities, handleRendererRequest };
+return { register: registerProvider, announceCapabilities, handleRendererRequest, closeLease: (lease: RendererLease) => writeSessions.closeLease(lease) };
 }

@@ -23,6 +23,14 @@ export interface ProviderWatchDetails {
     newPath: string;
 }
 
+/** A transactional provider write. Commit replaces the target; abort discards staged bytes. */
+export interface IProviderWrite {
+    write(chunk: Buffer): Promise<void>;
+    commit(): Promise<void>;
+    /** Idempotent; harmless after commit or abort. */
+    abort(): Promise<void>;
+}
+
 /** Live status reported by one content-pipeline stage. Progress is measured in bytes and rate in bytes per second. */
 export interface IPipeStageStatus {
     readonly state: "idle" | "connecting" | "active" | "done" | "error";
@@ -74,6 +82,8 @@ export interface IProvider {
     ): NodeJS.ReadableStream;
     /** Write binary content to the source. Only present if writable. */
     writeBinary?(data: Buffer): Promise<void>;
+    /** Optional ordered chunked write. Each chunk is at most 1 MiB; commit replaces the target. */
+    beginWrite?(options?: { signal?: AbortSignal }): Promise<IProviderWrite>;
     /** Get resource metadata (size, modified date, existence). */
     stat?(options?: { signal?: AbortSignal }): Promise<IProviderStat>;
     /** Watch for external changes. Returns a disposer to stop watching. */

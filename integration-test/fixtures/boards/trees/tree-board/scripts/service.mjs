@@ -3,6 +3,7 @@ const MAX_ITEMS = 5000;
 const FAIL_MESSAGE = "tree-test-read-only: writes are disabled for this connection";
 const connections = new Map();
 const failedNestedLists = new Set();
+const stagedWrites = new Set();
 
 function hrefFor(connection, path) {
     const encodedPath = path.split("/").map((part) => encodeURIComponent(part)).join("/");
@@ -95,8 +96,52 @@ persephone.providers.register(TYPE, {
         const { connection, path } = pathFromUrl(config.url);
         assertWritable({ conn: connection });
         const tree = treeFor(connection);
-        if (!tree.has(path) || tree.get(path).isDirectory) throw new Error("tree-test-file-not-found");
+        const parent = parentPath(path);
+        if (!parent || !tree.get(parent)?.isDirectory || tree.get(path)?.isDirectory) throw new Error("tree-test-invalid-file-target");
         tree.set(path, { isDirectory: false, content: new Uint8Array(data) });
+    },
+    readRange(config, range) {
+        if (range.end - range.start + 1 > 1024 * 1024) throw new Error("tree-test-range-too-large");
+        const { connection, path } = pathFromUrl(config.url);
+        const item = treeFor(connection).get(path);
+        if (!item || item.isDirectory) throw new Error("tree-test-file-not-found");
+        return item.content.slice(range.start, range.end + 1);
+    },
+    writeBegin(config, { signal }) {
+        if (signal.aborted) throw new Error("tree-test-request-cancelled");
+        const { connection, path } = pathFromUrl(config.url);
+        assertWritable({ conn: connection });
+        const tree = treeFor(connection);
+        const parent = parentPath(path);
+        if (!parent || !tree.get(parent)?.isDirectory || tree.get(path)?.isDirectory) throw new Error("tree-test-invalid-file-target");
+        const handle = { connection, path, chunks: [], closed: false };
+        stagedWrites.add(handle);
+        return handle;
+    },
+    writeChunk(handle, data, { signal }) {
+        if (signal.aborted || !stagedWrites.has(handle) || handle.closed) throw new Error("tree-test-write-closed");
+        handle.chunks.push(new Uint8Array(data));
+    },
+    writeCommit(handle, { signal }) {
+        if (signal.aborted || !stagedWrites.has(handle) || handle.closed) throw new Error("tree-test-write-closed");
+        assertWritable({ conn: handle.connection });
+        const tree = treeFor(handle.connection);
+        const parent = parentPath(handle.path);
+        if (!parent || !tree.get(parent)?.isDirectory || tree.get(handle.path)?.isDirectory) throw new Error("tree-test-invalid-file-target");
+        const length = handle.chunks.reduce((total, chunk) => total + chunk.byteLength, 0);
+        const content = new Uint8Array(length);
+        let offset = 0;
+        for (const chunk of handle.chunks) { content.set(chunk, offset); offset += chunk.byteLength; }
+        tree.set(handle.path, { isDirectory: false, content });
+        handle.closed = true;
+        handle.chunks.length = 0;
+        stagedWrites.delete(handle);
+    },
+    writeAbort(handle) {
+        if (!stagedWrites.has(handle)) return;
+        handle.closed = true;
+        handle.chunks.length = 0;
+        stagedWrites.delete(handle);
     },
     stat(config) {
         const { connection, path } = pathFromUrl(config.url);

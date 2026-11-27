@@ -381,6 +381,13 @@ class MissingProvider implements IProvider {
         return (range, options) => createReadStream.call(delegate, range, options);
     }
 
+    get beginWrite(): IProvider["beginWrite"] {
+        const delegate = this.delegate;
+        const beginWrite = delegate?.beginWrite;
+        if (!beginWrite) return undefined;
+        return options => beginWrite.call(delegate, options);
+    }
+
     readBinary(options?: { signal?: AbortSignal }): Promise<Buffer> {
         return this.resolveDelegate().then((delegate) => delegate.readBinary(options));
     }

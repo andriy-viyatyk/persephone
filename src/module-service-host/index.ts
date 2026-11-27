@@ -68,6 +68,7 @@ const rendererLeases = createRendererLeaseManager({
     postMain: postMainMessage,
     announceCapabilities: providerDispatch.announceCapabilities,
     handleRequest: providerDispatch.handleRendererRequest,
+    cleanupLease: providerDispatch.closeLease,
 });
 rendererLeaseReference.set(rendererLeases);
 const capabilityHost = createCapabilityHost({

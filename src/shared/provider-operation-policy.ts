@@ -4,6 +4,10 @@ export type ProviderOperation =
     | "readBinary"
     | "readRange"
     | "writeBinary"
+    | "writeBegin"
+    | "writeChunk"
+    | "writeCommit"
+    | "writeAbort"
     | "stat"
     | "watchSubscribe"
     | "watchUnsubscribe"
@@ -29,6 +33,10 @@ export const PROVIDER_OPERATION_POLICY: Readonly<Record<ProviderOperation, Provi
     readBinary: { requestClass: "content-read" },
     readRange: { requestClass: "content-read" },
     writeBinary: { deadlineMs: CAPABILITY_DEFAULT_TIMEOUT_MS, requestClass: "control" },
+    writeBegin: { deadlineMs: CAPABILITY_DEFAULT_TIMEOUT_MS, requestClass: "control" },
+    writeChunk: { deadlineMs: CAPABILITY_DEFAULT_TIMEOUT_MS, requestClass: "control" },
+    writeCommit: { deadlineMs: CAPABILITY_DEFAULT_TIMEOUT_MS, requestClass: "control" },
+    writeAbort: { deadlineMs: CAPABILITY_DEFAULT_TIMEOUT_MS, requestClass: "control" },
     stat: { requestClass: "control" },
     watchSubscribe: { deadlineMs: CAPABILITY_DEFAULT_TIMEOUT_MS, requestClass: "control" },
     watchUnsubscribe: { deadlineMs: CAPABILITY_DEFAULT_TIMEOUT_MS, requestClass: "control" },

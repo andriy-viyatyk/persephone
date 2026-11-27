@@ -6,6 +6,12 @@ summary: "Which bridge version added each persephone.* member and manifest field
 
 # Boards — bridge version history and compatibility
 
+Bridge `1.66.0` adds optional transactional chunked writes to host-service providers
+(`writeBegin`, `writeChunk`, `writeCommit`, `writeAbort`). Chunks are limited to 1 MiB, each
+operation has a 10-second deadline, and at most 16 write sessions may be open service-wide.
+Boards using the methods should declare `minBridgeVersion: "1.66.0"`; see the content-provider guide
+for cancellation, cleanup, and persistent-target recovery requirements.
+
 Bridge `1.65.0` adds `persephone.openTree()` for opening or focusing an accepted board tree and
 allows `persephone.openRawLink()` to route links in schemes accepted for the calling board.
 

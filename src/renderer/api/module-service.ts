@@ -58,6 +58,7 @@ interface ServiceLeaseClient {
     pending: Map<string, PendingRequest>;
     capabilities: Map<string, boolean>;
     rangeCapabilities: Map<string, boolean>;
+    chunkCapabilities: Map<string, boolean>;
     treeCapabilities: Map<string, { registered: boolean; capabilities: { mkdir: boolean; rename: boolean; delete: boolean } }>;
     watchIntents: Map<string, ProviderWatchIntent>;
     statusIntents: Map<string, ProviderStatusIntent>;
@@ -105,6 +106,7 @@ function getClient(boardRoot: string): ServiceLeaseClient {
             pending: new Map(),
             capabilities: new Map(),
             rangeCapabilities: new Map(),
+            chunkCapabilities: new Map(),
             treeCapabilities: new Map(),
             watchIntents: new Map(),
             statusIntents: new Map(),
@@ -181,6 +183,7 @@ function handleMessage(client: ServiceLeaseClient, message: RendererServiceMessa
         if (client.state === "attached" && typeof message.type === "string") {
             client.capabilities.set(message.type, message.writable === true);
             client.rangeCapabilities.set(message.type, message.rangeReadable === true);
+            client.chunkCapabilities.set(message.type, message.chunkWritable === true);
             client.treeCapabilities.set(message.type, {
                 registered: message.treeRegistered === true,
                 capabilities: {
@@ -269,6 +272,7 @@ function loseLease(client: ServiceLeaseClient, code: string): void {
     client.state = "lost";
     client.capabilities.clear();
     client.rangeCapabilities.clear();
+    client.chunkCapabilities.clear();
     client.treeCapabilities.clear();
     client.activeContentReads = 0;
     for (const intent of client.watchIntents.values()) intent.acknowledged = false;
@@ -586,6 +590,11 @@ function providerRangeReadable(boardRoot: string, type: string): boolean | undef
     return client?.rangeCapabilities.get(type);
 }
 
+function providerChunkWritable(boardRoot: string, type: string): boolean | undefined {
+    const client = clients.get(BoardRoot.from(boardRoot).key);
+    return client?.chunkCapabilities.get(type);
+}
+
 function providerTreeCapabilities(
     boardRoot: string,
     type: string,
@@ -609,6 +618,7 @@ export const moduleService = {
     subscribeProviderStatus,
     providerWritable,
     providerRangeReadable,
+    providerChunkWritable,
     providerTreeCapabilities,
     activeContentReads,
 };
